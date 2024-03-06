@@ -2,34 +2,9 @@
 using System.ComponentModel;
 namespace Catan3.Models
 {
-    public partial class PersonModel(string firstName, string lastName) : INotifyPropertyChanged
+    public partial class PersonModel : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
-
-        public string FirstName
-        {
-            get => firstName;
-            set
-            {
-                if (Equals(value, firstName)) return;
-                firstName = value;
-                OnPropertyChanged(nameof(FirstName));
-                OnPropertyChanged(nameof(FullName));
-            }
-        }
-
-        public string LastName
-        {
-            get => lastName;
-            set
-            {
-                if (Equals(value, lastName)) return;
-                lastName = value;
-                OnPropertyChanged(nameof(LastName));
-                OnPropertyChanged(nameof(FullName));
-            }
-        }
-
         protected virtual void OnPropertyChanged(string propertyName) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }

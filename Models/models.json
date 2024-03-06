@@ -3,7 +3,7 @@
         "ClassName": "PersonModel",
         "Namespace": "Catan3.Models",
         "Path": "Person",
-        "Ctor" :  true,
+        "Ctor" :  false,
         "Properties": [
             {
                 "Name": "FirstName",
