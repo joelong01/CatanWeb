@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Catan3 (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Catan3 (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
