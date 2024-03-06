@@ -13,8 +13,8 @@ namespace Catan3.Models
     {
         public static RegularBoardLayout Default { get; } = new RegularBoardLayout();
         public double HexSize { get; set; } = 100.0;
-        public double HexStrokeThickness { get; set; } = 8.0;
-        public double TileGap { get; set; } = 10.0; // this is *inside* the tile
+        public double HexStrokeThickness { get; set; } = 5.0;
+        public double TileGap { get; set; } = 5; // this is *inside* the tile
         public double ColumnOffset { get; set; } = 1.5;
         public int ColumnCount { get; set; } = 5;
         public double GameMargin { get; set; } = 0.0;

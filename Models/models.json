@@ -1,0 +1,22 @@
+[
+    {
+        "ClassName": "PersonModel",
+        "Namespace": "Catan3.Models",
+        "Path": "Person",
+        "Ctor" :  true,
+        "Properties": [
+            {
+                "Name": "FirstName",
+                "Type": "string",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "FullName" ]
+            },
+            {
+                "Name": "LastName",
+                "Type": "string",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "FullName" ]
+            }
+        ]
+    }
+]

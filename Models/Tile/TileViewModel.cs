@@ -7,12 +7,16 @@ namespace Catan3.Models
         public double Left { get; private set; } = 110.0;
         public double Top { get; private set; } = 200.0;
         public TileModel Tile { get; private set; }
-        public IBoardLayout Layout { get; set; }
+        public IBoardLayout? Layout { get; set; }
         public TileViewModel(TileModel tile, IBoardLayout layout)
         {
             Tile = tile;
-            layout.PropertyChanged += Layout_PropertyChanged;
-            Layout = layout;
+            if (layout is not null && layout is RegularBoardLayout rbl)
+            {
+                rbl.PropertyChanged += Layout_PropertyChanged;
+                Layout = layout;
+            }
+           
             UpdateLayout();
         }
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -20,7 +24,7 @@ namespace Catan3.Models
             if (sender is IBoardLayout layout)
             {
                
-              //  this.TraceMessage($"{e.PropertyName} changed for tile {Tile.TileKey}");
+               // this.TraceMessage($"{e.PropertyName} changed for tile {Tile.TileKey}");
                 Layout = layout;
                 UpdateLayout();
                 if (e.PropertyName == nameof(IBoardLayout.HexSize))
@@ -31,8 +35,11 @@ namespace Catan3.Models
         }
         private void UpdateLayout()
         {
-            Left = Layout.Left(Tile.TileKey);
-            Top = Layout.Top(Tile.TileKey);
+            if (Layout != null)
+            {
+                Left = Layout.Left(Tile.TileKey);
+                Top = Layout.Top(Tile.TileKey);
+            }
         }
         public override string ToString()
         {

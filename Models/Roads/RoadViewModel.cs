@@ -12,15 +12,20 @@ namespace Catan3.Models
         public PlayerViewModel? Owner { get; set; } = null; // need to make sure to only serialize the Owner's id
         public Brush Background { get; set; } = BrushCache.GetSolidColorBrush(Colors.Transparent);
         public Brush Foreground { get; set; } = BrushCache.GetSolidColorBrush(Colors.Transparent);
-        public IBoardLayout Layout { get; set; }
+        public IBoardLayout? Layout { get; set; }
         public double Left { get; set; }
         public double Top { get; set; }
         public double Index { get; set; }
         public RoadViewModel(RoadModel roadModel, IBoardLayout layout)
         {
-            Layout = layout;
+            if (layout is not null && layout is RegularBoardLayout rbl)
+            {
+                rbl.PropertyChanged += Layout_PropertyChanged;
+                Layout = layout;
+            }
+       
             Road = roadModel;
-            Layout.PropertyChanged += Layout_PropertyChanged;
+
             UpdateLayout();
         }
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -93,6 +98,8 @@ namespace Catan3.Models
         }
         private double GetLeft()
         {
+            if (Layout is null) return 0.0;
+
             var left = Layout.Left(Road.RoadKey.TileKey);
             var buildingPoints =  Layout.BuildingHexPoints;
             left += buildingPoints[( int )BuildingPosition.TopLeft].X;
@@ -100,6 +107,7 @@ namespace Catan3.Models
         }
         private double GetTop()
         {
+            if (Layout is null) return 0.0;
             var top = Layout.Top(Road.RoadKey.TileKey);
            
             switch (Road.RoadKey.RoadPosition)
@@ -107,7 +115,7 @@ namespace Catan3.Models
                 case RoadPosition.Top:
                 case RoadPosition.TopLeft:
                 case RoadPosition.TopRight:
-                    top -= ( Layout.HexStrokeThickness / 2.0 + Layout.TileGap );
+                    top -= ( Layout.HexStrokeThickness  + Layout.TileGap ) / 2.0;
                     break;
                 case RoadPosition.BottomRight:
                 case RoadPosition.BottomLeft:
@@ -130,8 +138,8 @@ namespace Catan3.Models
             get
             {
                 PointCollection points = [];
+                if (Layout is null) return points;
                 var tilePoints = Layout.ListToDictionary(Layout.TileHexPoints);
-                var buildingPoints = Layout.ListToDictionary(Layout.BuildingHexPoints);
                 double height = Layout.TileGap + Layout.HexStrokeThickness * 2 ;
                 var width = tilePoints[BuildingPosition.TopRight].X - tilePoints[BuildingPosition.TopLeft].X + 4;
                 double triangleHeight = height / 2.0 * Math.Cos(Math.PI / 3.0) ;

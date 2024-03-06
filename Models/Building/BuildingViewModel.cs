@@ -21,8 +21,15 @@ namespace Catan3.Models
         {
             Building = building;
             building.PropertyChanged += Building_PropertyChanged;
-            layout.PropertyChanged += Layout_PropertyChanged;
-            Layout = layout;
+            if (layout is not null && layout is RegularBoardLayout rbl)
+            {
+                rbl.PropertyChanged += Layout_PropertyChanged;
+                Layout = layout;
+            }
+            else
+            {
+                Layout = RegularBoardLayout.Default;
+            }
             UpdateLayout();
             Index = _index;
             _index++;

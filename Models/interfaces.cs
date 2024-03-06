@@ -40,6 +40,5 @@ namespace Catan3.Models
         PointCollection TileHexPoints { get; }
         PointCollection BuildingHexPoints { get; }
         public Dictionary<BuildingPosition, Point> ListToDictionary(PointCollection points);
-        event PropertyChangedEventHandler? PropertyChanged;
     }
 }
