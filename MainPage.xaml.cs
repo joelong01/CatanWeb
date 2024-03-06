@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
+using Catan3.Controls;
 using Catan3.Models;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
@@ -148,7 +149,7 @@ namespace Catan3
             }
         }
 
-        private void Tile_RightClicked(TileViewModel tileViewModel, RightTappedRoutedEventArgs e)
+        private void Tile_RightClicked(TileCtrl tileCtrl, RightTappedRoutedEventArgs e)
         {
             if (GameViewModel is null) return;
 
@@ -182,7 +183,7 @@ namespace Catan3
 
             // Show the context menu
 
-            contextMenu.ShowAt(e.OriginalSource as UIElement, e.GetPosition(null));
+            contextMenu.ShowAt(tileCtrl, e.GetPosition(tileCtrl));
 
 
 
@@ -194,7 +195,7 @@ namespace Catan3
                     // Handle the click event, e.g., display information about the selected player
                     // Consider using a dialog or a flyout for displaying messages in WinUI 3, as MessageBox is not available.
                     // E.g., use a ContentDialog for messages.
-                    GameViewModel.BaronTile = tileViewModel.Tile.TileKey;
+                    GameViewModel.BaronTile = tileCtrl.TileViewModel.Tile.TileKey;
                 }
             }
         }
@@ -203,5 +204,7 @@ namespace Catan3
         {
 
         }
+
+
     }
 }

@@ -10,7 +10,7 @@ namespace Catan3.Controls
     public delegate void BuildingClicked(BuildingViewModel viewModel);
     public delegate void BuildingMouseEnter(BuildingViewModel viewModel);
     public delegate void BuildingMouseLeave(BuildingViewModel viewModel);
-    public delegate void TileRightMouseClicked(TileViewModel viewModel, RightTappedRoutedEventArgs e);
+    public delegate void TileRightMouseClicked(TileCtrl tileCtrl, RightTappedRoutedEventArgs e);
     /// <summary>
     /// Interaction logic for GameBoardCtrl.xaml
     /// </summary>
@@ -28,9 +28,15 @@ namespace Catan3.Controls
         public GameBoardCtrl()
         {
             InitializeComponent();
-    
+            VB_Baron.Loaded += VB_Baron_Loaded;
+
         }
 
+        private void VB_Baron_Loaded(object sender, RoutedEventArgs e)
+        {
+            UpdateBaronTileLocation();
+            VB_Baron.Loaded -= VB_Baron_Loaded;
+        }
 
         public static readonly DependencyProperty GameViewModelProperty = DependencyProperty.Register("GameViewModel", typeof(GameViewModel), typeof(GameBoardCtrl), new PropertyMetadata(null, GameViewModelChanged));
         public GameViewModel? GameViewModel
@@ -52,7 +58,7 @@ namespace Catan3.Controls
                 oldValue.PropertyChanged -= GameViewModel_PropertyChanged;
             }
             if (newValue is not null)
-            { 
+            {
                 newValue.PropertyChanged += GameViewModel_PropertyChanged;
             }
             UpdateBaronTileLocation();
@@ -69,7 +75,7 @@ namespace Catan3.Controls
         }
 
 
- 
+
 
 
         private void GameViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -87,17 +93,20 @@ namespace Catan3.Controls
 
         private void UpdateBaronTileLocation()
         {
-            if (this.Resources["MoveBaronAnimation"] is Storyboard storyboard &&  GameViewModel is not null)
+            if (this.Resources["MoveBaronAnimation"] is Storyboard storyboard && GameViewModel is not null)
             {
                 // Assuming the first two children are the X and Y animations
                 if (storyboard.Children[0] is DoubleAnimation animationX && storyboard.Children[1] is DoubleAnimation animationY)
                 {
-                    double x =  GameViewModel.BoardInfo.Layout.Left(GameViewModel.BaronTile) + GameViewModel.BoardInfo.Layout.HexSize - VB_Baron.ActualWidth / 2.0;
-                    double y =  GameViewModel.BoardInfo.Layout.Top(GameViewModel.BaronTile) + GameViewModel.BoardInfo.Layout.HexSize - VB_Baron.ActualHeight / 2.0;
-                    animationX.To = x;
-                    animationY.To = y;
+                    if (VB_Baron.ActualWidth > 0 && VB_Baron.ActualHeight > 0)
+                    {
+                        double x =  GameViewModel.BoardInfo.Layout.Left(GameViewModel.BaronTile) + GameViewModel.BoardInfo.Layout.HexSize - VB_Baron.ActualWidth / 2.0;
+                        double y =  GameViewModel.BoardInfo.Layout.Top(GameViewModel.BaronTile) + GameViewModel.BoardInfo.Layout.HexSize - VB_Baron.ActualHeight / 2.0;
+                        animationX.To = x;
+                        animationY.To = y;
 
-                    storyboard.Begin();
+                        storyboard.Begin();
+                    }
                 }
             }
         }
@@ -153,7 +162,7 @@ namespace Catan3.Controls
         {
             if (sender is TileCtrl Tile)
             {
-                TileRightMouseClicked?.Invoke(Tile.TileViewModel, e);
+                TileRightMouseClicked?.Invoke(Tile, e);
             }
         }
     }
