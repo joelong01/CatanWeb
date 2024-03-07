@@ -38,6 +38,7 @@ namespace Catan3.Models
         double ControlHeight { get; }
         double BuildingSize { get; set; }
         double BoardWidth { get; }
+        double BoardHeight { get; }
         double RoadStrokeThickness { get; }
         double Top(TileKey key);
         double Left(TileKey key);

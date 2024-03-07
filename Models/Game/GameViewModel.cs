@@ -1,35 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
+
 namespace Catan3.Models
 {
-    public partial class HouseRules : INotifyPropertyChanged
-    {
-        public int GoldTiles { get; set; } = 1;
-        public bool WallsProtectCities { get; set; } = true;
-        public bool HideBaronBeforeInvasion { get; set; } = false;
-        public bool KnightMovesBaronBeforeRoll { get; set; } = true;
-    }
+
     public partial class GameViewModel : INotifyPropertyChanged
     {
-        public TileKey BaronTile {  get; set; }
-        public string Name { get; set; } = "Regular";
-        public bool HasSupplementalBuildPhase { get; set; } = false;
-        public bool IsKnightsAndRobbers { get; set; } = false;
-        public HouseRules HouseRules { get; set; } = new HouseRules();
-        public IBoardInfo BoardInfo { get; set; }
-        public PlayerViewModel? CurrentPlayer { get; set; }
-        public ObservableCollection<TileViewModel> Tiles { get; set; } = [];
-        public ObservableCollection<BuildingViewModel> Buildings { get; set; } = [];
-        public ObservableCollection<PlayerViewModel> Players { get; } = [];
-        public ObservableCollection<RoadViewModel> Roads { get; } = [];
-        private GameViewModel() { throw new NotImplementedException(); }
-        public GameViewModel(GameModel gameModel, List<PlayerViewModel> playingPlayers)
+      
+        public GameViewModel(GameModel gameModel, List<PlayerViewModel> playingPlayers) 
         {
             if (gameModel.BoardSize == BoardSize.Regular)
             {
@@ -52,13 +34,13 @@ namespace Catan3.Models
                 player.Player = new PlayerModel(playingPlayers.IndexOf(player));
                 Players.Add(player);
             }
-            
+
             foreach (var road in gameModel.Roads)
             {
                 var roadView = new RoadViewModel(road, BoardInfo.Layout);
                 roadView.Index = Roads.Count;
-                Roads.Add(roadView) ;
-                
+                Roads.Add(roadView);
+
             }
             BaronTile = gameModel.BaronTile;
             SetPipCount();
@@ -95,4 +77,5 @@ namespace Catan3.Models
             return tiles;
         }
     }
+
 }

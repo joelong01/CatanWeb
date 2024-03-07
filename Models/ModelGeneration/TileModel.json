@@ -1,0 +1,42 @@
+﻿[
+    {
+        "ModelVersion": "1.0",
+        "ClassName": "TileModel",
+        "Namespace": "Catan3.Models",
+        "Path": "..\\Tile",
+        "CallInit": false,
+        "Usings": [
+            "System.ComponentModel"
+        ],
+        "ConstructedProperties": [],
+        "NormalProperties": [
+            {
+                "Name": "TileKey",
+                "Type": "TileKey",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "TileKey.Default",
+                "IsLiteral": false
+            },
+            {
+                "Name": "ResourceType",
+                "Type": "ResourceType",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "ResourceType.None",
+                "IsLiteral": false
+            },
+            {
+                "Name": "Number",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "0",
+                "IsLiteral": false
+            }
+        ]
+    }
+]

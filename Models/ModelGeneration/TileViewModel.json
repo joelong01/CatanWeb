@@ -1,0 +1,51 @@
+﻿[
+    {
+        "ModelVersion": "1.0a",
+        "ClassName": "TileViewModel",
+        "Namespace": "Catan3.Models",
+        "Path": "..\\Tile",
+        "CallInit": true,
+        "Usings": [
+            "System.ComponentModel"
+        ],
+        "ConstructedProperties": [
+            {
+                "Name": "Tile",
+                "Type": "TileModel",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false
+              
+            },
+            {
+                "Name": "Layout",
+                "Type": "IBoardLayout",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": true,
+                "Default": "null",
+                "IsLiteral": false
+            }
+        ],
+        "NormalProperties": [
+            {
+                "Name": "Left",
+                "Type": "double",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "110.0",
+                "IsLiteral": false
+            },
+            {
+                "Name": "Top",
+                "Type": "double",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "200.0",
+                "IsLiteral": false
+            }
+        ]
+    }
+]

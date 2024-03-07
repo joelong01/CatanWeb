@@ -98,13 +98,12 @@ namespace Catan3.Controls
                 // Assuming the first two children are the X and Y animations
                 if (storyboard.Children[0] is DoubleAnimation animationX && storyboard.Children[1] is DoubleAnimation animationY)
                 {
-                    if (VB_Baron.ActualWidth > 0 && VB_Baron.ActualHeight > 0)
+                    if (VB_Baron.ActualWidth > 0 && VB_Baron.ActualHeight > 0 && GameViewModel.BoardInfo is not null)
                     {
-                        double x =  GameViewModel.BoardInfo.Layout.Left(GameViewModel.BaronTile) + GameViewModel.BoardInfo.Layout.HexSize - VB_Baron.ActualWidth / 2.0;
+                        double x = GameViewModel.BoardInfo.Layout.Left(GameViewModel.BaronTile) + GameViewModel.BoardInfo.Layout.HexSize - VB_Baron.ActualWidth / 2.0;
                         double y =  GameViewModel.BoardInfo.Layout.Top(GameViewModel.BaronTile) + GameViewModel.BoardInfo.Layout.HexSize - VB_Baron.ActualHeight / 2.0;
                         animationX.To = x;
                         animationY.To = y;
-
                         storyboard.Begin();
                     }
                 }

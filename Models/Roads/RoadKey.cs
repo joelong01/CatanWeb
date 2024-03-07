@@ -5,8 +5,7 @@ namespace Catan3.Models
     public partial class RoadKey (TileKey tileKey, RoadPosition position) : INotifyPropertyChanged
     {
        
-        public TileKey TileKey { get; set; } = tileKey;
-        public RoadPosition RoadPosition { get; set; } = position;
+       
         public override string ToString()
         {
             return String.Format($"{TileKey}-{RoadPosition}");

@@ -24,8 +24,7 @@ namespace Catan3.Models
         }
         private void Building_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            // Manually raise PropertyChanged for dependent properties - this cannot be done via
-            // Fody's [DependsOn] attribute because it is in a different class.
+          
             switch (e.PropertyName)
             {
                 case nameof(BuildingModel.BuildingState):

@@ -1,0 +1,102 @@
+[
+    {
+        "ClassName": "GameViewModel",
+        "ModelVersion": "1.0a",
+        "Namespace": "Catan3.Models",
+        "Path": "..\\Game",
+        "Usings": [
+            "System.Collections.ObjectModel",
+            "System.ComponentModel"
+        ],
+        "ConstructedProperties": [],
+        "NormalProperties": [
+            {
+                "Name": "BaronTile",
+                "Type": "TileKey",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "TileKey.Default"
+            },
+            {
+                "Name": "Name",
+                "Type": "string",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "Nameless",
+                "IsLiteral": true
+            },
+            {
+                "Name": "HasSupplementalBuildPhase",
+                "Type": "bool",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "false"
+            },
+            {
+                "Name": "IsKnightsAndRobbers",
+                "Type": "bool",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "false"
+            },
+            {
+                "Name": "HouseRules",
+                "Type": "HouseRules",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "new HouseRules()"
+            },
+            {
+                "Name": "BoardInfo",
+                "Type": "IBoardInfo",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": true
+            },
+            {
+                "Name": "CurrentPlayer",
+                "Type": "PlayerViewModel",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": true
+            },
+            {
+                "Name": "Tiles",
+                "Type": "ObservableCollection<TileViewModel>",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "[]"
+            },
+            {
+                "Name": "Buildings",
+                "Type": "ObservableCollection<BuildingViewModel>",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "[]"
+            },
+            {
+                "Name": "Players",
+                "Type": "ObservableCollection<PlayerViewModel>",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "[]"
+            },
+            {
+                "Name": "Roads",
+                "Type": "ObservableCollection<RoadViewModel>",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "[]"
+            }
+        ]
+    }
+]

@@ -1,0 +1,67 @@
+﻿[
+    {
+        "ModelVersion": "1.0",
+        "ClassName": "PlayerViewModel",
+        "Namespace": "Catan3.Models",
+        "Path": "..\\Player",
+        "Usings": [
+            "System.ComponentModel",
+            "Windows.UI"
+        ],
+        "ConstructedProperties": [],
+        "NormalProperties": [
+            {
+                "Name": "Id",
+                "Type": "string",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "string.Empty"
+            },
+            {
+                "Name": "Name",
+                "Type": "string",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "name",
+                "IsLiteral": false
+            },
+            {
+                "Name": "Foreground",
+                "Type": "Color",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "foreground"
+            },
+            {
+                "Name": "Background",
+                "Type": "Color",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "background"
+            },
+            {
+                "Name": "ImageFileName",
+                "Type": "string",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "ms-appx:///Assets/guest.jpg",
+                "IsLiteral": true
+
+            },
+            {
+                "Name": "Player",
+                "Type": "PlayerModel",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "PlayerModel.Default"
+            }
+        ]
+
+    }
+]

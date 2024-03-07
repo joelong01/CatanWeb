@@ -1,9 +1,10 @@
 [
     {
+        "ModelVersion": "1.0",
         "ClassName": "BuildingViewModel",
         "Namespace": "Catan3.Models",
         "Path": "..\\Building",
-        "CallInit":  true,
+        "CallInit": true,
         "Usings": [
             "System.ComponentModel",
             "Microsoft.UI",
@@ -39,7 +40,7 @@
                 "ReadOnly": true,
                 "AdditionalNotifications": [],
                 "Nullable": false
-            },           
+            },
             {
                 "Name": "Pips",
                 "Type": "int",

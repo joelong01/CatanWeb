@@ -1,0 +1,43 @@
+﻿[
+    {
+        "ModelVersion": "1.0",
+        "ClassName": "TileKey",
+        "Namespace": "Catan3.Models",
+        "Path": "..\\Tile",
+        "CallInit": false,
+        "Usings": [
+            "System.ComponentModel"
+        ],
+        "NormalProperties": [
+            {
+                "Name": "Q",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "q",
+                "IsLiteral": false
+            },
+            {
+                "Name": "R",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "r",
+                "IsLiteral": false
+            },
+            {
+                "Name": "S",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "s",
+                "IsLiteral": false
+            }
+        ],
+        "ConstructedProperties": []
+
+    }
+]

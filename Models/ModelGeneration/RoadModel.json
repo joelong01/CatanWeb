@@ -1,0 +1,45 @@
+﻿[
+    {
+        "ModelVersion": "1.0d",
+        "ClassName": "RoadModel",
+        "Namespace": "Catan3.Models",
+        "Path": "..\\Roads",
+        "Usings": [
+            "System.ComponentModel"
+        ],
+        "ConstructedProperties": [
+            {
+                "Name": "RoadKey",
+                "Type": "RoadKey",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "IsLiteral": false
+            }
+        ],
+        "NormalProperties": [
+            {
+                "Name": "RoadState",
+                "Type": "RoadState",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "RoadState.Unowned",
+                "IsLiteral": false
+            },
+            {
+                "Name": "Owner",
+                "Type": "PlayerModel",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": true,
+                "Default": "null",
+                "IsLiteral":  false
+              
+
+            }
+        ]
+    }
+
+
+]

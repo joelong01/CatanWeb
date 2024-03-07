@@ -31,14 +31,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Fody" Version="6.8.0">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
 		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240227000" />
 		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.3233" />
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-		<PackageReference Include="PropertyChanged.Fody" Version="4.1.0" PrivateAssets="All" />
 		<PackageReference Include="System.Text.Encodings.Web" Version="8.0.0" />
 		<PackageReference Include="System.Text.Json" Version="8.0.2" />
 		<Manifest Include="$(ApplicationManifest)" />
@@ -103,4 +97,5 @@
 		<HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
 	
 	</PropertyGroup>
+	<ProjectExtensions><VisualStudio><UserProperties models_4modelgeneration_4buildingkey_1json__JsonSchema="{" /></VisualStudio></ProjectExtensions>
 </Project>

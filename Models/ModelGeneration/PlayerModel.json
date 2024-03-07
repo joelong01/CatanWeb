@@ -1,0 +1,150 @@
+﻿[
+    {
+        "ModelVersion": "1.0",
+        "ClassName": "PlayerModel",
+        "Namespace": "Catan3.Models",
+        "Path": "..\\Player",
+        "Usings": [
+            "System.ComponentModel"
+        ],
+        "ConstructedProperties": [],
+        "NormalProperties": [
+            {
+                "Name": "Index",
+                "Type": "int",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "idx"
+            },
+            {
+                "Name": "CitiesPlayed",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            },
+            {
+                "Name": "KnightsPlayed",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "0"
+            },
+            {
+                "Name": "GoldRolls",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "0"
+            },
+            {
+                "Name": "GoodRoll",
+                "Type": "bool",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "false"
+            },
+            {
+                "Name": "HasLongestRoad",
+                "Type": "bool",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "false"
+            },
+            {
+                "Name": "IsCurrentPlayer",
+                "Type": "bool",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "false"
+            },
+            {
+                "Name": "IslandsPlayed",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            },
+            {
+                "Name": "LargestArmy",
+                "Type": "bool",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "false"
+            },
+            {
+                "Name": "LongestRoad",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            },
+            {
+                "Name": "MaxNoResourceRolls",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "0"
+            },
+            {
+                "Name": "NoResourceCount",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "0"
+            },
+            {
+                "Name": "Pips",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "0"
+            },
+            {
+                "Name": "RoadsPlayed",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            },
+            {
+                "Name": "Score",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            },
+            {
+                "Name": "SettlementsPlayed",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            },
+            {
+                "Name": "ShipsPlayed",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            },
+            {
+                "Name": "TimesTargeted",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            }
+        ]
+    }
+]

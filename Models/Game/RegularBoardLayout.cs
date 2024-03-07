@@ -2,32 +2,17 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using Microsoft.UI.Xaml.Media;
-using PropertyChanged;
+
 using Windows.Foundation;
 namespace Catan3.Models
 {
     /// <summary>
     ///     Data that defines how layout works. 
     /// </summary>
-    public partial class RegularBoardLayout : IBoardLayout, INotifyPropertyChanged
+    public partial class RegularBoardLayout : IBoardLayout
     {
+   
         public static RegularBoardLayout Default { get; } = new RegularBoardLayout();
-        public double HexSize { get; set; } = 100.0;
-        public double HexStrokeThickness { get; set; } = 5.0;
-        public double TileGap { get; set; } = 5; // this is *inside* the tile
-        public double ColumnOffset { get; set; } = 1.5;
-        public int ColumnCount { get; set; } = 5;
-        public double GameMargin { get; set; } = 0.0;
-        [DependsOn(nameof(HexSize))]
-        public double ControlWidth => HexSize * 2.0;
-        [DependsOn(nameof(HexSize))]
-        public double ControlHeight => HexSize * Math.Sqrt(3);
-        public double BuildingSize { get; set; } = 40;
-        [DependsOn(nameof(BuildingSize), nameof(ColumnCount), nameof(GameMargin), nameof(HexSize))]
-        public double BoardWidth => HexSize * 7 + BuildingSize + GameMargin;
-        [DependsOn(nameof(BuildingSize), nameof(ColumnCount), nameof(GameMargin), nameof(HexSize))]
-        public double BoardHeight => HexSize * Math.Sqrt(3) * ColumnCount + BuildingSize + GameMargin;
-        public double RoadStrokeThickness => 2.0;
         public double Top(TileKey key)
         {
             var top =  ( .5 * key.Q +  key.R)* HexSize * Math.Sqrt(3) ;
@@ -64,7 +49,7 @@ namespace Catan3.Models
                 };
             return points;
         }
-        [DependsOn(nameof(HexSize), nameof(TileGap), nameof(HexStrokeThickness))]
+ 
         public PointCollection TileHexPoints
         {
             get
@@ -74,7 +59,7 @@ namespace Catan3.Models
             }
         }
         public double TileHeight => ( HexSize * Math.Sqrt(3) - ( TileGap + HexStrokeThickness ) ) / Math.Sqrt(3);
-        [DependsOn(nameof(HexSize), nameof(TileGap), nameof(HexStrokeThickness))]
+
         public PointCollection BuildingHexPoints
         {
             get
@@ -82,6 +67,15 @@ namespace Catan3.Models
                 return CalculateHexGeometry(HexSize, 0, 0);
             }
         }
+
+        public double ControlWidth => this.HexSize * 2.0;
+
+        public double ControlHeight => this.HexSize * Math.Sqrt(3);
+
+        public double BoardWidth => HexSize * 7 + BuildingSize + GameMargin;
+
+        public double BoardHeight => HexSize * Math.Sqrt(3) * ColumnCount + BuildingSize + GameMargin;
+
         public Dictionary<BuildingPosition, Point> ListToDictionary(PointCollection points)
         {
             var dict = new Dictionary<BuildingPosition, Point>
@@ -95,5 +89,7 @@ namespace Catan3.Models
             };
             return dict;
         }
+
+      
     }
 }

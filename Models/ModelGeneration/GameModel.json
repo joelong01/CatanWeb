@@ -1,0 +1,63 @@
+[
+    {
+        "ModelVersion": "1.0",
+        "ClassName": "GameModel",
+        "Namespace": "Catan3.Models",
+        "Path": "..\\Game",
+        "Usings": [
+            "System.Collections.ObjectModel",
+            "System.ComponentModel"
+        ],
+        "ConstructedProperties": [],
+        "NormalProperties": [
+            {
+                "Name": "Tiles",
+                "Type": "ObservableCollection<TileModel>",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "[]"
+            },
+            {
+                "Name": "Buildings",
+                "Type": "ObservableCollection<BuildingModel>",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "[]"
+            },
+            {
+                "Name": "BoardSize",
+                "Type": "BoardSize",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "BoardSize.Regular"
+            },
+            {
+                "Name": "Players",
+                "Type": "ObservableCollection<PlayerModel>",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "[]"
+            },
+            {
+                "Name": "Roads",
+                "Type": "ObservableCollection<RoadModel>",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "[]"
+            },
+            {
+                "Name": "BaronTile",
+                "Type": "TileKey",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "TileKey.Default"
+            }
+        ]
+    }
+]

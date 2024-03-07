@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 
 namespace Catan3.Models
@@ -9,7 +8,7 @@ namespace Catan3.Models
     /// <summary>
     ///     Static data about a game Board
     /// </summary>
-    public partial class RegularBoardInfo : IBoardInfo, INotifyPropertyChanged
+    public partial class RegularBoardInfo : IBoardInfo
     {
         public IBoardLayout Layout { get; } = new RegularBoardLayout();
         public List<TileKey> TileKeys { get; } =

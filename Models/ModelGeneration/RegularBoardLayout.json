@@ -1,0 +1,80 @@
+﻿[
+    {
+        "ModelVersion": "1.0a",
+        "ClassName": "RegularBoardLayout",
+        "Namespace": "Catan3.Models",
+        "Path": "..\\Game",
+        "Usings": [
+            "System",
+            "System.ComponentModel"
+        ],
+        "ConstructedProperties": [],
+        "NormalProperties": [
+            {
+                "Name": "HexSize",
+                "Type": "double",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "ControlWidth", "ControlHeight", "BoardWidth", "BoardHeight", "TileHexPoints" ],
+                "Nullable": false,
+                "Default": "100.0"
+            },
+
+            {
+                "Name": "HexStrokeThickness",
+                "Type": "double",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "TileHexPoints" ],
+                "Nullable": false,
+                "Default": "5.0"
+            },
+            {
+                "Name": "TileGap",
+                "Type": "double",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "TileHexPoints" ],
+                "Nullable": false,
+                "Default": "5"
+            },
+            {
+                "Name": "ColumnOffset",
+                "Type": "double",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "1.5"
+            },
+            {
+                "Name": "ColumnCount",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "BoardHeight" ],
+                "Nullable": false,
+                "Default": "5"
+            },
+            {
+                "Name": "GameMargin",
+                "Type": "double",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "BoardWidth", "BoardHeight" ],
+                "Nullable": false,
+                "Default": "0.0"
+            },
+            {
+                "Name": "BuildingSize",
+                "Type": "double",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "BoardWidth", "BoardHeight", "BuildingHexPoints" ],
+                "Nullable": false,
+                "Default": "40"
+            },
+            {
+                "Name": "RoadStrokeThickness",
+                "Type": "double",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "2.0"
+            }
+        ]
+    }
+]

@@ -16,9 +16,7 @@ namespace Catan3.Models
                         { Direction.SouthWest, new TileKey(-1, 1, 0) },
                         { Direction.NorthWest, new TileKey(-1, 0, 1) }
                     };
-        public int Q { get; set; } = q;
-        public int R { get; set; } = r;
-        public int S { get; set; } = s;
+     
         public override string ToString()
         {
             return $"({Q},{R},{S})";

@@ -1,30 +1,21 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Diagnostics;
-using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 namespace Catan3.Models
 {
     public partial class RoadViewModel : INotifyPropertyChanged
     {
-        public RoadModel Road { get; set; }
-        public PlayerViewModel? Owner { get; set; } = null; // need to make sure to only serialize the Owner's id
-        public Brush Background { get; set; } = BrushCache.GetSolidColorBrush(Colors.Transparent);
-        public Brush Foreground { get; set; } = BrushCache.GetSolidColorBrush(Colors.Transparent);
-        public IBoardLayout? Layout { get; set; }
-        public double Left { get; set; }
-        public double Top { get; set; }
-        public double Index { get; set; }
-        public RoadViewModel(RoadModel roadModel, IBoardLayout layout)
+
+        public void Init()
         {
-            if (layout is not null && layout is RegularBoardLayout rbl)
+            if (Layout is not null && Layout is RegularBoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
-                Layout = layout;
+
             }
-       
-            Road = roadModel;
+
 
             UpdateLayout();
         }
@@ -109,13 +100,13 @@ namespace Catan3.Models
         {
             if (Layout is null) return 0.0;
             var top = Layout.Top(Road.RoadKey.TileKey);
-           
+
             switch (Road.RoadKey.RoadPosition)
             {
                 case RoadPosition.Top:
                 case RoadPosition.TopLeft:
                 case RoadPosition.TopRight:
-                    top -= ( Layout.HexStrokeThickness  + Layout.TileGap ) / 2.0;
+                    top -= ( Layout.HexStrokeThickness + Layout.TileGap ) / 2.0;
                     break;
                 case RoadPosition.BottomRight:
                 case RoadPosition.BottomLeft:

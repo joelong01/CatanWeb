@@ -6,7 +6,7 @@ using Windows.UI.ViewManagement;
 
 namespace Catan3
 {
-    public partial class MainWindow : Window, INotifyPropertyChanged
+    public partial class MainWindow : Window
     {
 
         public MainWindow()

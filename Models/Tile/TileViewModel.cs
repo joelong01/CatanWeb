@@ -3,18 +3,14 @@ namespace Catan3.Models
 {
     public partial class TileViewModel : INotifyPropertyChanged
     {
-        // Fody will weave property change notifications into these properties.
-        public double Left { get; private set; } = 110.0;
-        public double Top { get; private set; } = 200.0;
-        public TileModel Tile { get; private set; }
-        public IBoardLayout? Layout { get; set; }
-        public TileViewModel(TileModel tile, IBoardLayout layout)
+        
+        public void Init()
         {
-            Tile = tile;
-            if (layout is not null && layout is RegularBoardLayout rbl)
+            
+            if (Layout is not null && Layout is RegularBoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
-                Layout = layout;
+              
             }
            
             UpdateLayout();
