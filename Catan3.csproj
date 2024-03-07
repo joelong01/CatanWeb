@@ -53,7 +53,7 @@
 		<ProjectCapability Include="Msix" />
 	</ItemGroup>
 	<ItemGroup>
-	  <None Update="Models\models.tt">
+	  <None Update="Models\ModelGeneration\models.tt">
 	    <Generator>TextTemplatingFileGenerator</Generator>
 	    <LastGenOutput>models.cs</LastGenOutput>
 	  </None>
@@ -87,7 +87,7 @@
 	  <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
 	</ItemGroup>
 	<ItemGroup>
-	  <Compile Update="Models\models.cs">
+	  <Compile Update="Models\ModelGeneration\models.cs">
 	    <DesignTime>True</DesignTime>
 	    <AutoGen>True</AutoGen>
 	    <DependentUpon>models.tt</DependentUpon>

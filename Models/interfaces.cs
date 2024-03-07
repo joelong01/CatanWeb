@@ -7,6 +7,10 @@ using Windows.Foundation;
 
 namespace Catan3.Models
 {
+    public interface ICatanModel
+    {
+        void Initi() { }
+    }
     public interface IHouseRules
     {
         int GoldTiles { get; }

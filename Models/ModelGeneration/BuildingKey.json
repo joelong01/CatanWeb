@@ -1,0 +1,29 @@
+[
+    {
+        "ClassName": "BuildingKey",
+        "Namespace": "Catan3.Models",
+        "Path": "..\\Building",
+        "Usings": [
+            "System.ComponentModel"
+        ],
+        "ConstructedProperties": [
+            {
+                "Name": "TileKey",
+                "Type": "TileKey",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            },
+            {
+                "Name": "BuildingPosition",
+                "Type": "BuildingPosition",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            }
+
+        ],
+        "NormalProperties": []
+
+    }
+]

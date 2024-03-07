@@ -91,10 +91,7 @@ namespace Catan3.Models
                     var building = game.FindBuilding(buildingKey);
                     if (building is null)
                     {
-                        BuildingModel buildingModel = new()
-                        {
-                            BuildingKey = buildingKey,
-                        };
+                        BuildingModel buildingModel = new(buildingKey, BuildingState.Empty);
                         game.Buildings.Add(buildingModel);
                     }
                 }

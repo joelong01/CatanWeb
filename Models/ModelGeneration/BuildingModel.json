@@ -1,0 +1,54 @@
+[
+    {
+        "ClassName": "BuildingModel",
+        "Namespace": "Catan3.Models",
+        "Path": "..\\Building",
+        "Usings": [
+            "System.ComponentModel"
+        ],
+        "ConstructedProperties": [
+            {
+                "Name": "BuildingKey",
+                "Type": "BuildingKey",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+
+            },
+            {
+                "Name": "BuildingState",
+                "Type": "BuildingState",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            }
+        ],
+        "NormalProperties": [
+            {
+                "Name": "Wall",
+                "Type": "bool",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "false"
+            },
+            {
+                "Name": "Metropolis",
+                "Type": "bool",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "false"
+            },
+            {
+                "Name": "Owner",
+                "Type": "PlayerModel",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": true,
+                "Default": "null"
+            }
+        ]
+    }
+]
+
