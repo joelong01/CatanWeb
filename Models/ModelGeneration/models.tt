@@ -40,7 +40,7 @@
                         Directory.CreateDirectory(modelDirectory);
                     }
 
-                    string modelFile = Path.Combine(modelDirectory, model.ClassName + ".cs");
+                    string modelFile = Path.Combine(modelDirectory, model.ClassName + ".tt_generated.cs");
                     var modelContent = GenerateClass(model, version);
                     File.WriteAllText(modelFile, modelContent);
                     // Pass templateDirectory as an argument
