@@ -6,29 +6,29 @@ namespace Catan3.Models
     public partial class BuildingKey : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
-    private TileKey _tileKey;
-    public TileKey TileKey
-    {
-        get => _tileKey;
-        set
-        {
-            if (Equals(value, _tileKey)) return;
-            _tileKey = value;
-            OnPropertyChanged(nameof(TileKey));
-        }
-    }
+        private TileKey _tileKey;
+        public TileKey TileKey
+         {
+            get => _tileKey;
+            set
+            {
+                if (Equals(value, _tileKey)) return;
+                _tileKey = value;
+                OnPropertyChanged(nameof(TileKey));
+             }
+         }
 
-    private BuildingPosition _buildingPosition;
-    public BuildingPosition BuildingPosition
-    {
-        get => _buildingPosition;
-        set
-        {
-            if (Equals(value, _buildingPosition)) return;
-            _buildingPosition = value;
-            OnPropertyChanged(nameof(BuildingPosition));
-        }
-    }
+        private BuildingPosition _buildingPosition;
+        public BuildingPosition BuildingPosition
+         {
+            get => _buildingPosition;
+            set
+            {
+                if (Equals(value, _buildingPosition)) return;
+                _buildingPosition = value;
+                OnPropertyChanged(nameof(BuildingPosition));
+             }
+         }
 
 
         public BuildingKey(TileKey tilekey, BuildingPosition buildingposition)

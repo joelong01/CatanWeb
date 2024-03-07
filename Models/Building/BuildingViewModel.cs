@@ -8,89 +8,89 @@ namespace Catan3.Models
     public partial class BuildingViewModel : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
-    private BuildingModel _building;
-    public BuildingModel Building
-    {
-        get => _building;
-        set
-        {
-            if (Equals(value, _building)) return;
-            _building = value;
-            OnPropertyChanged(nameof(Building));
-        }
-    }
+        private BuildingModel _building;
+        public BuildingModel Building
+         {
+            get => _building;
+            set
+            {
+                if (Equals(value, _building)) return;
+                _building = value;
+                OnPropertyChanged(nameof(Building));
+             }
+         }
 
-    private IBoardLayout _layout;
-    public IBoardLayout Layout
-    {
-        get => _layout;
-        set
-        {
-            if (Equals(value, _layout)) return;
-            _layout = value;
-            OnPropertyChanged(nameof(Layout));
-        }
-    }
+        private IBoardLayout _layout;
+        public IBoardLayout Layout
+         {
+            get => _layout;
+            set
+            {
+                if (Equals(value, _layout)) return;
+                _layout = value;
+                OnPropertyChanged(nameof(Layout));
+             }
+         }
 
-    private double _left;
-    public double Left
-    {
-        get => _left;
-        set
-        {
-            if (Equals(value, _left)) return;
-            _left = value;
-            OnPropertyChanged(nameof(Left));
-        }
-    }
+        private double _left;
+        public double Left
+         {
+            get => _left;
+            set
+            {
+                if (Equals(value, _left)) return;
+                _left = value;
+                OnPropertyChanged(nameof(Left));
+             }
+         }
 
-    private double _top;
-    public double Top
-    {
-        get => _top;
-        set
-        {
-            if (Equals(value, _top)) return;
-            _top = value;
-            OnPropertyChanged(nameof(Top));
-        }
-    }
+        private double _top;
+        public double Top
+         {
+            get => _top;
+            set
+            {
+                if (Equals(value, _top)) return;
+                _top = value;
+                OnPropertyChanged(nameof(Top));
+             }
+         }
 
-    private int _pips = 0;
-    public int Pips
-    {
-        get => _pips;
-        set
-        {
-            if (Equals(value, _pips)) return;
-            _pips = value;
-            OnPropertyChanged(nameof(Pips));
-        }
-    }
+        private int _pips = 0;
+        public int Pips
+         {
+            get => _pips;
+            set
+            {
+                if (Equals(value, _pips)) return;
+                _pips = value;
+                OnPropertyChanged(nameof(Pips));
+             }
+         }
 
-    private Brush? _background = BrushCache.GetSolidColorBrush(Colors.Transparent);
-    public Brush? Background
-    {
-        get => _background;
-        set
-        {
-            if (Equals(value, _background)) return;
-            _background = value;
-            OnPropertyChanged(nameof(Background));
-        }
-    }
+        private Brush? _background = BrushCache.GetSolidColorBrush(Colors.Transparent);
+        public Brush? Background
+         {
+            get => _background;
+            set
+            {
+                if (Equals(value, _background)) return;
+                _background = value;
+                OnPropertyChanged(nameof(Background));
+             }
+         }
 
-    private Brush? _foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
-    public Brush? Foreground
-    {
-        get => _foreground;
-        set
-        {
-            if (Equals(value, _foreground)) return;
-            _foreground = value;
-            OnPropertyChanged(nameof(Foreground));
-        }
-    }
+        private Brush? _foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
+        public Brush? Foreground
+         {
+            get => _foreground;
+            set
+            {
+                if (Equals(value, _foreground)) return;
+                _foreground = value;
+                OnPropertyChanged(nameof(Foreground));
+             }
+         }
 
 
         public BuildingViewModel(BuildingModel building, IBoardLayout layout)

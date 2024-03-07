@@ -171,21 +171,21 @@ void GenerateProperty(StringBuilder classBuilder, Property property)
     string fieldName = $"_{Char.ToLowerInvariant(property.Name[0])}{property.Name.Substring(1)}";
     string defaultValue = property.Default != null ? $" = {GetDefaultValue(property)};" : ";";
 
-    classBuilder.AppendLine($"    private {propType} {fieldName}{defaultValue}");
-    classBuilder.AppendLine($"    public {propType} {property.Name}");
-    classBuilder.AppendLine("    {");
-    classBuilder.AppendLine($"        get => {fieldName};");
-    classBuilder.AppendLine("        set");
-    classBuilder.AppendLine("        {");
-    classBuilder.AppendLine($"            if (Equals(value, {fieldName})) return;");
-    classBuilder.AppendLine($"            {fieldName} = value;");
-    classBuilder.AppendLine($"            OnPropertyChanged(nameof({property.Name}));");
+    classBuilder.AppendLine($"        private {propType} {fieldName}{defaultValue}");
+    classBuilder.AppendLine($"        public {propType} {property.Name}");
+    classBuilder.AppendLine("         {");
+    classBuilder.AppendLine($"            get => {fieldName};");
+    classBuilder.AppendLine("            set");
+    classBuilder.AppendLine("            {");
+    classBuilder.AppendLine($"                if (Equals(value, {fieldName})) return;");
+    classBuilder.AppendLine($"                {fieldName} = value;");
+    classBuilder.AppendLine($"                OnPropertyChanged(nameof({property.Name}));");
     foreach (var notifyProp in property.AdditionalNotifications)
     {
-        classBuilder.AppendLine($"            OnPropertyChanged(nameof({notifyProp}));");
+        classBuilder.AppendLine($"                OnPropertyChanged(nameof({notifyProp}));");
     }
-    classBuilder.AppendLine("        }");
-    classBuilder.AppendLine("    }");
+    classBuilder.AppendLine("             }");
+    classBuilder.AppendLine("         }");
     classBuilder.AppendLine();
 }
 

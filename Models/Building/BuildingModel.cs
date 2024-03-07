@@ -6,65 +6,65 @@ namespace Catan3.Models
     public partial class BuildingModel : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
-    private BuildingKey _buildingKey;
-    public BuildingKey BuildingKey
-    {
-        get => _buildingKey;
-        set
-        {
-            if (Equals(value, _buildingKey)) return;
-            _buildingKey = value;
-            OnPropertyChanged(nameof(BuildingKey));
-        }
-    }
+        private BuildingKey _buildingKey;
+        public BuildingKey BuildingKey
+         {
+            get => _buildingKey;
+            set
+            {
+                if (Equals(value, _buildingKey)) return;
+                _buildingKey = value;
+                OnPropertyChanged(nameof(BuildingKey));
+             }
+         }
 
-    private BuildingState _buildingState;
-    public BuildingState BuildingState
-    {
-        get => _buildingState;
-        set
-        {
-            if (Equals(value, _buildingState)) return;
-            _buildingState = value;
-            OnPropertyChanged(nameof(BuildingState));
-        }
-    }
+        private BuildingState _buildingState;
+        public BuildingState BuildingState
+         {
+            get => _buildingState;
+            set
+            {
+                if (Equals(value, _buildingState)) return;
+                _buildingState = value;
+                OnPropertyChanged(nameof(BuildingState));
+             }
+         }
 
-    private bool _wall = false;
-    public bool Wall
-    {
-        get => _wall;
-        set
-        {
-            if (Equals(value, _wall)) return;
-            _wall = value;
-            OnPropertyChanged(nameof(Wall));
-        }
-    }
+        private bool _wall = false;
+        public bool Wall
+         {
+            get => _wall;
+            set
+            {
+                if (Equals(value, _wall)) return;
+                _wall = value;
+                OnPropertyChanged(nameof(Wall));
+             }
+         }
 
-    private bool _metropolis = false;
-    public bool Metropolis
-    {
-        get => _metropolis;
-        set
-        {
-            if (Equals(value, _metropolis)) return;
-            _metropolis = value;
-            OnPropertyChanged(nameof(Metropolis));
-        }
-    }
+        private bool _metropolis = false;
+        public bool Metropolis
+         {
+            get => _metropolis;
+            set
+            {
+                if (Equals(value, _metropolis)) return;
+                _metropolis = value;
+                OnPropertyChanged(nameof(Metropolis));
+             }
+         }
 
-    private PlayerModel? _owner = null;
-    public PlayerModel? Owner
-    {
-        get => _owner;
-        set
-        {
-            if (Equals(value, _owner)) return;
-            _owner = value;
-            OnPropertyChanged(nameof(Owner));
-        }
-    }
+        private PlayerModel? _owner = null;
+        public PlayerModel? Owner
+         {
+            get => _owner;
+            set
+            {
+                if (Equals(value, _owner)) return;
+                _owner = value;
+                OnPropertyChanged(nameof(Owner));
+             }
+         }
 
 
         public BuildingModel(BuildingKey buildingkey, BuildingState buildingstate)
