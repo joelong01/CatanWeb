@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 #TT Generated files
 *tt_generated*
+/Models/ModelGeneration/models.cs
