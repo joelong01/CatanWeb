@@ -2,6 +2,7 @@ using Catan3.Models;
 using Catan3.Utility;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -36,5 +37,18 @@ namespace Catan3.Controls
         }
 
         private string LaurelGlyph => CatanFont.Laurel;
+
+        private string GetStateGlyph(BuildingState state)
+        {
+            return state switch
+            {
+                BuildingState.Empty => "",
+                BuildingState.Settlement => CatanFont.Gate,
+                BuildingState.City => CatanFont.City,
+                BuildingState.Pips => BuildingViewModel.Pips.ToString(),
+                BuildingState.Knight => CatanFont.Knight,
+                _ => "",
+            };
+        }
     }
 }

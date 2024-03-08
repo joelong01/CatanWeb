@@ -8,8 +8,6 @@ namespace Catan3.Models
 
         void Init()
         {
-          
-            Building.PropertyChanged += Building_PropertyChanged;
             if (Layout is not null && Layout is RegularBoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
@@ -20,39 +18,8 @@ namespace Catan3.Models
                 Layout = RegularBoardLayout.Default;
             }
             UpdateLayout();
+        }
 
-        }
-        private void Building_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-          
-            switch (e.PropertyName)
-            {
-                case nameof(BuildingModel.BuildingState):
-                    OnPropertyChanged(nameof(StateGlyph));
-                    break;
-                case nameof(BuildingModel.Owner):
-                    {
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
-        public string StateGlyph
-        {
-            get
-            {
-                return Building.BuildingState switch
-                {
-                    BuildingState.Empty => "",
-                    BuildingState.Settlement => CatanFont.Gate,
-                    BuildingState.City => CatanFont.City,
-                    BuildingState.Pips => Pips.ToString() + " ",
-                    BuildingState.Knight => CatanFont.Knight,
-                    _ => "",
-                };
-            }
-        }
         private string EmptyString(BuildingPosition position)
         {
             string s=$"";
