@@ -9,7 +9,7 @@ namespace Catan3.Models
     /// <summary>
     ///     Data that defines how layout works. 
     /// </summary>
-    public partial class RegularBoardLayout : IBoardLayout
+    public partial class RegularBoardLayout 
     {
    
         public static RegularBoardLayout Default { get; } = new RegularBoardLayout();

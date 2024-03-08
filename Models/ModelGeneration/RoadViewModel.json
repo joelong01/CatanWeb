@@ -22,7 +22,7 @@
             },
             {
                 "Name": "Layout",
-                "Type": "IBoardLayout",
+                "Type": "RegularBoardLayout",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": true,

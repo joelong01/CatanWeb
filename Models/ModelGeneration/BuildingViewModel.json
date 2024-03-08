@@ -1,6 +1,6 @@
 [
     {
-        "ModelVersion": "1.0",
+        "ModelVersion": "1.0a",
         "ClassName": "BuildingViewModel",
         "Namespace": "Catan3.Models",
         "Path": "..\\Building",
@@ -20,7 +20,7 @@
             },
             {
                 "Name": "Layout",
-                "Type": "IBoardLayout",
+                "Type": "RegularBoardLayout",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false

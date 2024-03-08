@@ -10,7 +10,7 @@ namespace Catan3.Models
     /// </summary>
     public partial class RegularBoardInfo : IBoardInfo
     {
-        public IBoardLayout Layout { get; } = new RegularBoardLayout();
+        public RegularBoardLayout Layout { get; } = new RegularBoardLayout();
         public List<TileKey> TileKeys { get; } =
              [
                  new(-2, 0, 2),

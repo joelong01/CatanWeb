@@ -17,7 +17,7 @@ namespace Catan3.Models
         }
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (sender is IBoardLayout layout)
+            if (sender is not null && sender is RegularBoardLayout layout)
             {
                
                // this.TraceMessage($"{e.PropertyName} changed for tile {Tile.TileKey}");

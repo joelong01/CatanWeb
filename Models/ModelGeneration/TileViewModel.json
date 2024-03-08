@@ -1,6 +1,6 @@
 ﻿[
     {
-        "ModelVersion": "1.0a",
+        "ModelVersion": "1.0b",
         "ClassName": "TileViewModel",
         "Namespace": "Catan3.Models",
         "Path": "..\\Tile",
@@ -19,7 +19,7 @@
             },
             {
                 "Name": "Layout",
-                "Type": "IBoardLayout",
+                "Type": "RegularBoardLayout",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": true,

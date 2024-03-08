@@ -23,7 +23,7 @@ namespace Catan3.Models
         List<TileKey> TileKeys { get; }
         public List<ResourceType> Resources { get; }
         public List<int> Numbers { get; }
-        public IBoardLayout Layout { get; }
+        public RegularBoardLayout Layout { get; }
     }
     public interface IBoardLayout
     {
