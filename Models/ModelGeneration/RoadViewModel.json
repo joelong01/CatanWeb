@@ -1,6 +1,6 @@
 ﻿[
     {
-        "ModelVersion": "1.0",
+        "ModelVersion": "1.0a",
         "ClassName": "RoadViewModel",
         "Namespace": "Catan3.Models",
         "Path": "..\\Roads",
@@ -25,9 +25,7 @@
                 "Type": "RegularBoardLayout",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
-                "Nullable": true,
-                "Default": "null",
-                "IsLiteral": false
+                "Nullable": false
             }
         ],
         "NormalProperties": [
@@ -73,6 +71,7 @@
                 "AdditionalNotifications": [],
                 "Nullable": false
             },
+
             {
                 "Name": "Index",
                 "Type": "double",

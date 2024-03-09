@@ -9,9 +9,9 @@ namespace Catan3.Models
     /// <summary>
     ///     Data that defines how layout works. 
     /// </summary>
-    public partial class RegularBoardLayout 
+    public partial class RegularBoardLayout
     {
-   
+
         public static RegularBoardLayout Default { get; } = new RegularBoardLayout();
         public double Top(TileKey key)
         {
@@ -30,7 +30,7 @@ namespace Catan3.Models
             left += GameMargin;
             return left;
         }
-        public PointCollection CalculateHexGeometry(double size, double top, double left)
+        public static PointCollection CalculateHexGeometry(double size, double top, double left)
         {
             double height = Math.Sqrt(3) * size;
             double width = size * 2;
@@ -49,13 +49,14 @@ namespace Catan3.Models
                 };
             return points;
         }
- 
+
+        public double InnerTileSize => (HexSize* Math.Sqrt(3) - (TileGap + HexStrokeThickness)) / Math.Sqrt(3) ;
+
         public PointCollection TileHexPoints
         {
             get
             {
-                double innerSize = (HexSize * Math.Sqrt(3) - (TileGap + HexStrokeThickness)) / Math.Sqrt(3) ;
-                return CalculateHexGeometry(innerSize, ( HexStrokeThickness + TileGap ) * .5, ( HexStrokeThickness + TileGap ) * .5);
+                return CalculateHexGeometry(InnerTileSize, ( HexStrokeThickness + TileGap ) * .5, ( HexStrokeThickness + TileGap ) * .5);
             }
         }
         public double TileHeight => ( HexSize * Math.Sqrt(3) - ( TileGap + HexStrokeThickness ) ) / Math.Sqrt(3);
@@ -90,6 +91,6 @@ namespace Catan3.Models
             return dict;
         }
 
-      
+
     }
 }

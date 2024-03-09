@@ -111,7 +111,7 @@ namespace Catan3.Models
                 case RoadPosition.BottomRight:
                 case RoadPosition.BottomLeft:
                 case RoadPosition.Bottom:
-                    top += Layout.ControlHeight - ( Layout.HexStrokeThickness / 2.0 + Layout.TileGap );
+                    top += Layout.ControlHeight - ( Layout.HexStrokeThickness  + Layout.TileGap );
                     break;
                 default:
                     break;
