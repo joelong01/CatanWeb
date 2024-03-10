@@ -1,6 +1,10 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using Catan3.Utility;
+using Microsoft.UI.Composition.Interactions;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 namespace Catan3.Models
@@ -10,7 +14,7 @@ namespace Catan3.Models
 
         public void Init()
         {
-            if (Layout is not null && Layout is RegularBoardLayout rbl)
+            if (Layout is not null && Layout is BoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
 
@@ -21,7 +25,7 @@ namespace Catan3.Models
         }
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (sender is RegularBoardLayout layout)
+            if (sender is BoardLayout layout)
             {
                 Layout = layout;
                 UpdateLayout();
@@ -29,9 +33,11 @@ namespace Catan3.Models
         }
         private void UpdateLayout()
         {
+            
             Top = GetTop();
             Left = GetLeft();
-            OnPropertyChanged(nameof(BorderPoints));
+            OnPropertyChanged(nameof(RoadPolygon));
+            OnPropertyChanged(nameof(Angle));
         }
         public double Angle
         {
@@ -45,16 +51,18 @@ namespace Catan3.Models
                         angle = 0;
                         break;
                     case RoadPosition.TopRight:
-                        angle = -120.0;
+                        angle =  -120.0;
+                     //   angle += 120.0;
                         break;
                     case RoadPosition.BottomRight:
-                        angle = 120.0;
+                        angle =  120.0;
+                       // angle -= 120.0;
                         break;
                     case RoadPosition.BottomLeft:
-                        angle = -120;
+                        angle = 0; // -120;
                         break;
                     case RoadPosition.TopLeft:
-                        angle = 120;
+                        angle = 0; // 120;
                         break;
                     default:
                         Debug.Assert(false, "Bad RoadKey");
@@ -63,83 +71,161 @@ namespace Catan3.Models
                 return angle;
             }
         }
-        public Point TransformOrigin
-        {
-            get
-            {
-                switch (Road.RoadKey.RoadPosition)
-                {
-                    case RoadPosition.Top:
-                    case RoadPosition.Bottom:
-                        return new Point(0, 0);
-                    case RoadPosition.TopRight:
-                        return new Point(1.0, 0.5);
-                    case RoadPosition.BottomRight:
-                        return new Point(1.0, 0.5);
-                    case RoadPosition.BottomLeft:
-                        return new Point(0, 0.5);
-                    case RoadPosition.TopLeft:
-                        return new Point(0, 0.5);
-                    default:
-                        Debug.Assert(false, "Bad RoadKey");
-                        break;
-                }
-                return new Point(0, 0);
-            }
-        }
+        /// <summary>
+        ///     put the Top and Bottom where they need to be on the Left
+        ///     all others are placed with the middle of the polygon at the position it rotates
+        /// </summary>
+        /// <returns></returns>
         private double GetLeft()
         {
             if (Layout is null) return 0.0;
 
-            var left = Layout.Left(Road.RoadKey.TileKey);
-            var buildingPoints =  Layout.BuildingHexPoints;
-            left += buildingPoints[( int )BuildingPosition.TopLeft].X;
+            var left = Layout.Left(Road.RoadKey.TileKey) - RoadWidth / 2.0; // start with the middle at 0,0
+            var midPoint = HexGeometry.BisectingPoint(Layout.InnerHexSize);
+
+            switch (Road.RoadKey.RoadPosition)
+            {
+                case RoadPosition.None:
+                    throw new Exception("Bad RoadPosition");
+                case RoadPosition.Bottom:
+                case RoadPosition.Top:
+                    left += RoadWidth;
+                    break;
+                case RoadPosition.TopRight:
+                    left += midPoint.X  + Layout.OuterHexSize - Layout.TileGap / 2.0;
+                    break;
+                case RoadPosition.BottomRight:
+                    left += midPoint.X  + Layout.OuterHexSize - Layout.TileGap / 2.0;
+                    break;
+
+
+                case RoadPosition.BottomLeft:
+                case RoadPosition.TopLeft:
+                    left += Layout.OuterHexSize + midPoint.X ;
+                    left -= 5000;
+                    break;
+                default:
+                    break;
+            }
             return left;
         }
         private double GetTop()
         {
             if (Layout is null) return 0.0;
-            var top = Layout.Top(Road.RoadKey.TileKey);
-
+            var top = Layout.Top(Road.RoadKey.TileKey) - VisualRoadHeight / 2.0; ;
+            var midPoint = HexGeometry.BisectingPoint(Layout.InnerHexSize);
             switch (Road.RoadKey.RoadPosition)
             {
                 case RoadPosition.Top:
+                    break;
                 case RoadPosition.TopLeft:
                 case RoadPosition.TopRight:
-                    top -= ( Layout.HexStrokeThickness + Layout.TileGap ) / 2.0;
+                    top += midPoint.Y;
+                   
                     break;
                 case RoadPosition.BottomRight:
                 case RoadPosition.BottomLeft:
+                    top += HexGeometry.Height(Layout.InnerHexSize) / 2.0 + midPoint.Y + Layout.InnerHexStrokeThickness;
+                    break;
                 case RoadPosition.Bottom:
-                    top += Layout.ControlHeight - ( Layout.HexStrokeThickness  + Layout.TileGap );
+                    top += Layout.ControlHeight;
+
                     break;
                 default:
                     break;
             }
             return top;
         }
+        public double VisualRoadHeight
+        {
+            get
+            {
+                double height = 2 * Layout.TileGap;
+                height += Layout.InnerHexStrokeThickness * 2;
+                height += Layout.RoadStrokeThickness ;
+                return height;
+            }
+        }
+
+        public double RoadWidth
+        {
+            get
+            {
+                var outerPointsDictionary = Layout.OuterHexPoints.ListToDictionary();
+
+
+                var width = outerPointsDictionary[HexPosition.TopRight].X - outerPointsDictionary[HexPosition.TopLeft].X;
+
+                return width;
+            }
+        }
+
+        public PointCollection InnerHexPointsZeroBorder
+        {
+            get
+            {
+
+                // The inner hexagon needs to be positioned such that the gap is equal on all sides.
+                // Therefore, the vertical and horizontal adjustments are half the TileGap, since it will appear on both sides of the hex.
+                double verticalAdjustment = Layout.TileGap / 2;
+                double horizontalAdjustment = Layout.TileGap / 2;
+
+
+
+                // Calculate the horizontal difference after accounting for the stroke
+                double sizeDiff = (Layout.OuterHexSize - Layout.InnerHexSize) / 2;
+
+                return HexGeometry.HexPoints(Layout.InnerHexSize, sizeDiff + horizontalAdjustment, sizeDiff + verticalAdjustment);
+            }
+        }
+
         /// <summary>
-        ///                  / 1 --------_----------- 2 \
+        ///     keep this around if you want to put the road position in the roads for debugging purposes
+        /// </summary>
+        /// <param name="position"></param>
+        /// <returns></returns>
+        public string PositionShortName
+        {
+            get
+            {
+                string s=$"{Index}:";
+                return this.Road.RoadKey.RoadPosition switch
+                {
+
+                    RoadPosition.BottomRight => s + "BR",
+                    RoadPosition.BottomLeft => s + "BL",
+                    RoadPosition.TopLeft => s + "TL",
+                    RoadPosition.TopRight => s + "TR",
+                    RoadPosition.None => s + "None",
+                    RoadPosition.Top => s + "T",
+                    RoadPosition.Bottom => s + "B",
+                    _ => s + "?",
+                };
+            }
+        }
+        /// <summary>
+        ///                  / 1 -------------------- 2 \
         ///                 /                            \
         ///                0                              3
         ///                 \                            /
         ///                  \ 5 ------------------- 4  /
-        public PointCollection BorderPoints
+        public PointCollection RoadPolygon
         {
             get
             {
                 PointCollection points = [];
                 if (Layout is null) return points;
-                var tilePoints = Layout.ListToDictionary(Layout.TileHexPoints);
-                double height = Layout.TileGap + Layout.HexStrokeThickness * 2 ;
-                var width = tilePoints[BuildingPosition.TopRight].X - tilePoints[BuildingPosition.TopLeft].X + 4;
-                double triangleHeight = height / 2.0 * Math.Cos(Math.PI / 3.0) ;
-                points.Add(new Point(0, height * 0.5)); // 0
-                points.Add(new Point(triangleHeight, 0)); //1
-                points.Add(new Point(width, 0)); //2
-                points.Add(new Point(width + triangleHeight, height * 0.5)); //3
-                points.Add(new Point(width, height)); //4
-                points.Add(new Point(triangleHeight, height));  //5
+                var polygonHeight = VisualRoadHeight - Layout.RoadStrokeThickness  ; 
+                var polygonWidth = RoadWidth - Layout.RoadStrokeThickness ;
+                var halfStroke = Layout.RoadStrokeThickness * 0.5;
+                double pointOneFiveX = polygonHeight / 2.0 * Math.Sqrt(3) / 4.0 ;
+                points.Add(new Point(0, polygonHeight * 0.5)); // 0
+                points.Add(new Point(pointOneFiveX, 0)); //1
+                points.Add(new Point(polygonWidth - pointOneFiveX, 0)); //2
+                points.Add(new Point(polygonWidth, polygonHeight * 0.5 )); //3
+                points.Add(new Point(polygonWidth - pointOneFiveX, polygonHeight)); //4
+                points.Add(new Point(pointOneFiveX, polygonHeight));  //5
+
                 return points;
             }
         }

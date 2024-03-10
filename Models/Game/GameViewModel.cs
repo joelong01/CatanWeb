@@ -3,6 +3,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using Catan3.Utility;
 
 
 namespace Catan3.Models
@@ -66,7 +67,7 @@ namespace Catan3.Models
             tiles.Add(tileModel);
             // get the aliases
             var aliases = key.Aliases();
-            foreach ((BuildingPosition position, Direction direction) in aliases)
+            foreach ((HexPosition position, Direction direction) in aliases)
             {
                 var neighbor = Tiles.TileFromCoords(tileModel.TileKey.GetAdjacentTile(direction));
                 if (neighbor is not null)

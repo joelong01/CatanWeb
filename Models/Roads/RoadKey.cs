@@ -17,7 +17,7 @@ namespace Catan3.Models
                    key.TileKey == this.TileKey;
         }
         public override int GetHashCode() => HashCode.Combine(TileKey, RoadPosition);
-        public static BuildingKey Default => new(TileKey.Default, Models.BuildingPosition.None);
+        public static BuildingKey Default => new(TileKey.Default, Utility.HexPosition.None);
         public static bool operator ==(RoadKey left, RoadKey right)
         {
             if (left is null || right is null)

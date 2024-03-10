@@ -1,6 +1,7 @@
 ﻿
 using System.Collections.Generic;
 using System.ComponentModel;
+using Catan3.Utility;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 
@@ -23,7 +24,7 @@ namespace Catan3.Models
         List<TileKey> TileKeys { get; }
         public List<ResourceType> Resources { get; }
         public List<int> Numbers { get; }
-        public RegularBoardLayout Layout { get; }
+        public BoardLayout Layout { get; }
     }
     public interface IBoardLayout
     {
@@ -44,6 +45,6 @@ namespace Catan3.Models
         double Left(TileKey key);
         PointCollection TileHexPoints { get; }
         PointCollection BuildingHexPoints { get; }
-        public Dictionary<BuildingPosition, Point> ListToDictionary(PointCollection points);
+        public Dictionary<HexPosition, Point> ListToDictionary(PointCollection points);
     }
 }

@@ -1,11 +1,11 @@
 [
     {
         "ClassName": "BuildingKey",
-        "ModelVersion": "1.0",
+        "ModelVersion": "1.0b",
         "Namespace": "Catan3.Models",
         "Path": "..\\Building",
         "Usings": [
-            "System.ComponentModel"
+            "System.ComponentModel", "Catan3.Utility"
         ],
         "ConstructedProperties": [
             {
@@ -16,8 +16,8 @@
                 "Nullable": false
             },
             {
-                "Name": "BuildingPosition",
-                "Type": "BuildingPosition",
+                "Name": "Position",
+                "Type": "HexPosition",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false

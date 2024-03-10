@@ -15,19 +15,7 @@
         SouthWest,
         NorthWest
     }
-    /// <summary>
-    ///     this order needs to match the CalculateHexGeometry PointCollection order
-    /// </summary>
-    public enum BuildingPosition
-    {
-        TopLeft = 0,
-        TopRight = 1,
-        Right = 2,
-        BottomRight = 3,
-        BottomLeft = 4,
-        Left = 5,
-        None,
-    }
+   
     public enum BuildingState
     {
         Empty,

@@ -1,38 +1,43 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Catan3.Utility;
 namespace Catan3.Models
 {
+    /// <summary>
+    ///     this order needs to match the CalculateHexGeometry PointCollection order
+    /// </summary>
+   
     public static class BuildingModelExtensions
     {
-        public static List<(BuildingPosition position, Direction direction)> Aliases(this BuildingKey key)
+        public static List<(HexPosition position, Direction direction)> Aliases(this BuildingKey key)
         {
-            List<(BuildingPosition, Direction)> directions = [];
-            switch (key.BuildingPosition)
+            List<(HexPosition, Direction)> directions = [];
+            switch (key.Position)
             {
-                case BuildingPosition.TopRight:
-                    directions.Add((BuildingPosition.BottomRight, Direction.North));
-                    directions.Add((BuildingPosition.Left, Direction.NorthEast));
+                case HexPosition.TopRight:
+                    directions.Add((HexPosition.BottomRight, Direction.North));
+                    directions.Add((HexPosition.Left, Direction.NorthEast));
                     break;
-                case BuildingPosition.Right:
-                    directions.Add((BuildingPosition.BottomLeft, Direction.NorthEast));
-                    directions.Add((BuildingPosition.TopLeft, Direction.SouthEast));
+                case HexPosition.Right:
+                    directions.Add((HexPosition.BottomLeft, Direction.NorthEast));
+                    directions.Add((HexPosition.TopLeft, Direction.SouthEast));
                     break;
-                case BuildingPosition.BottomRight:
-                    directions.Add((BuildingPosition.TopRight, Direction.South));
-                    directions.Add((BuildingPosition.Left, Direction.SouthEast));
+                case HexPosition.BottomRight:
+                    directions.Add((HexPosition.TopRight, Direction.South));
+                    directions.Add((HexPosition.Left, Direction.SouthEast));
                     break;
-                case BuildingPosition.BottomLeft:
-                    directions.Add((BuildingPosition.Right, Direction.SouthWest));
-                    directions.Add((BuildingPosition.TopLeft, Direction.South));
+                case HexPosition.BottomLeft:
+                    directions.Add((HexPosition.Right, Direction.SouthWest));
+                    directions.Add((HexPosition.TopLeft, Direction.South));
                     break;
-                case BuildingPosition.Left:
-                    directions.Add((BuildingPosition.BottomRight, Direction.NorthWest));
-                    directions.Add((BuildingPosition.TopRight, Direction.SouthWest));
+                case HexPosition.Left:
+                    directions.Add((HexPosition.BottomRight, Direction.NorthWest));
+                    directions.Add((HexPosition.TopRight, Direction.SouthWest));
                     break;
-                case BuildingPosition.TopLeft:
-                    directions.Add((BuildingPosition.Right, Direction.NorthWest));
-                    directions.Add((BuildingPosition.BottomLeft, Direction.North));
+                case HexPosition.TopLeft:
+                    directions.Add((HexPosition.Right, Direction.NorthWest));
+                    directions.Add((HexPosition.BottomLeft, Direction.North));
                     break;
             }
             return directions;
@@ -44,7 +49,7 @@ namespace Catan3.Models
             if (building is null)
             {
                 var aliases = key.Aliases();
-                foreach ((BuildingPosition position, Direction direction) in aliases)
+                foreach ((HexPosition position, Direction direction) in aliases)
                 {
                     var aliasCoords = key.TileKey.GetAdjacentTile(direction);
                     var aliasKey = new BuildingKey(aliasCoords, position);
@@ -74,7 +79,7 @@ namespace Catan3.Models
 
         public override string ToString()
         {
-            return $"[{this.TileKey}-{BuildingPosition}]";
+            return $"[{this.TileKey}-{Position}]";
         }
         public static BuildingKey? FromString(string str)
         {
@@ -83,17 +88,17 @@ namespace Catan3.Models
             if (tokens.Length != 2) return null;
             var tileCoord = TileKey.FromString(tokens[0]);
             if (tileCoord is null) return null;
-            var buildingPos = (BuildingPosition)Enum.Parse(typeof(BuildingPosition), tokens[1]);
+            var buildingPos = (HexPosition)Enum.Parse(typeof(HexPosition), tokens[1]);
             return new BuildingKey(tileCoord, buildingPos);
         }
         public override bool Equals(object? obj)
         {
             return obj is not null && obj is BuildingKey key &&
-                   key.BuildingPosition == this.BuildingPosition &&
+                   key.Position == this.Position &&
                    key.TileKey == this.TileKey;
         }
-        public override int GetHashCode() => HashCode.Combine(TileKey, BuildingPosition);
-        public static BuildingKey Default => new(TileKey.Default, BuildingPosition.None);
+        public override int GetHashCode() => HashCode.Combine(TileKey, Position);
+        public static BuildingKey Default => new(TileKey.Default, HexPosition.None);
         public static bool operator ==(BuildingKey left, BuildingKey right)
         {
             if (left is null || right is null)

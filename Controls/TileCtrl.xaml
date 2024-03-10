@@ -17,19 +17,20 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid BorderBrush="White" BorderThickness="0" Width="{Binding Layout.ControlWidth, Mode=OneWay}"
+    <Grid BorderBrush="Green" BorderThickness="1" Width="{Binding Layout.ControlWidth, Mode=OneWay}"
             Height="{Binding Layout.ControlHeight, Mode=OneWay}">
         <Polygon Stroke="{StaticResource bmMaple}"
-                StrokeThickness="{Binding Layout.HexStrokeThickness, Mode=OneWay}"
-                Points="{Binding Layout.TileHexPoints,Mode=OneWay}"
+                StrokeThickness="{Binding Layout.InnerHexStrokeThickness, Mode=OneWay}"
+                Points="{Binding Layout.InnerHexPoints,Mode=OneWay}"
                 Fill="{Binding Tile.ResourceType, Mode=OneWay, Converter={StaticResource ResourceTypeToImageBrush}}" />
-        <Polygon Stroke="Red" StrokeThickness="1" Points="{x:Bind TileViewModel.Layout.BuildingHexPoints, Mode=OneWay}"
-                Fill="Transparent" Visibility="Collapsed" />
-        <Grid Width="65" Height="65" VerticalAlignment="Top" Margin="0,20,0,0"
+        <Polygon Stroke="Red" StrokeThickness="2" Points="{x:Bind TileViewModel.Layout.OuterHexPoints, Mode=OneWay}"
+                StrokeDashArray=".5 1" Fill="Transparent" Visibility="Visible" />
+        <Grid Width="65" Height="65" VerticalAlignment="Top" Margin="0" HorizontalAlignment="Center"
+                RenderTransformOrigin=".5 0"
                 Visibility="{x:Bind TileViewModel.Tile.Number, Mode=OneWay, Converter={StaticResource NumberToVisibilityConverter}}">
-            <Border BorderBrush="White" BorderThickness=".5" CornerRadius="30" Opacity=".5">
-                <Ellipse Fill="#FF2F6999" Opacity="1" />
-            </Border>
+
+            <Ellipse Fill="#FF2F6999" Stroke="White" StrokeThickness=".5" Opacity=".75" />
+
             <TextBlock FontFamily="Segoe UI" FontWeight="Bold" Text="{x:Bind TileViewModel.Tile.Number, Mode=OneWay}"
                     Foreground="{x:Bind GetPipsForeground(TileViewModel.Tile.Number), Mode=OneWay}"
                     VerticalAlignment="Top" HorizontalAlignment="Center" FontSize="24" />
@@ -51,6 +52,12 @@
                         Visibility="{x:Bind PipsVisibility(TileViewModel.Tile.Number, 4), Mode=OneWay}"
                         Foreground="{x:Bind GetPipsForeground(TileViewModel.Tile.Number), Mode=OneWay}" />
             </StackPanel>
+            <Grid.RenderTransform>
+                <CompositeTransform ScaleX="{x:Bind NumberScale(TileViewModel.Layout.OuterHexSize), Mode=OneWay}"
+                        ScaleY="{x:Bind NumberScale(TileViewModel.Layout.OuterHexSize), Mode=OneWay}"
+                        TranslateY="{x:Bind NumberTop(TileViewModel.Layout.TileGap, TileViewModel.Layout.InnerHexStrokeThickness), Mode=OneWay}" />
+
+            </Grid.RenderTransform>
         </Grid>
         <Grid Background="Black" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,14" Height="16">
             <Viewbox Stretch="Uniform">

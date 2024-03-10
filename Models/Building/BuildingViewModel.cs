@@ -5,47 +5,27 @@ namespace Catan3.Models
 {
     public partial class BuildingViewModel
     {
-
+        /// <summary>
+        ///     This partial class gets called by the template generated BuildingViewModel during its ctor in order
+        ///     to subscribe to Layoutchanges to update the calculated fiels.
+        /// </summary>
         void Init()
         {
-            if (Layout is not null && Layout is RegularBoardLayout rbl)
+            if (Layout is not null && Layout is BoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
                 Layout = Layout;
             }
             else
             {
-                Layout = RegularBoardLayout.Default;
+                Layout = BoardLayout.Default;
             }
             UpdateLayout();
         }
-
-        private string EmptyString(BuildingPosition position)
-        {
-            string s=$"";
-            switch (position)
-            {
-                case BuildingPosition.Right:
-                    return s + "R";
-                case BuildingPosition.BottomRight:
-                    return s + "BR";
-                case BuildingPosition.BottomLeft:
-                    return s + "BL";
-                case BuildingPosition.Left:
-                    return s + "L";
-                case BuildingPosition.TopLeft:
-                    return s + "TL";
-                case BuildingPosition.TopRight:
-                    return s + "TR";
-                case BuildingPosition.None:
-                    return s + "None";
-                default:
-                    return s + "?";
-            }
-        }
+        
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (sender is RegularBoardLayout layout)
+            if (sender is BoardLayout layout)
             {
                 this.Layout = layout;
                 UpdateLayout();
@@ -56,18 +36,28 @@ namespace Catan3.Models
             Top = GetTop(Building.BuildingKey);
             Left = GetLeft(Building.BuildingKey);
         }
+        /// <summary>
+        ///     Top (and Left) are centered in the OuterKexPoints positions
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
         private double GetTop(BuildingKey key)
         {
             var top =  Layout.Top(key.TileKey);
-            var center = Layout.BuildingHexPoints[(int)key.BuildingPosition];
+            var center = Layout.OuterHexPoints[(int)key.Position];
             top += center.Y;
             top -= ( Layout.BuildingSize ) * 0.5;
             return top;
         }
+        /// <summary>
+        ///     Top (and Left) are centered in the OuterKexPoints positions
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
         private double GetLeft(BuildingKey key)
         {
             var left =  Layout.Left(key.TileKey) ;
-            var center = Layout.BuildingHexPoints[(int)key.BuildingPosition];
+            var center = Layout.OuterHexPoints[(int)key.Position];
             left -= Layout.BuildingSize / 2.0;
             left += center.X;
             return left;

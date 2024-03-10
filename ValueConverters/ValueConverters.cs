@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Globalization;
-
-using Catan3.Models;
+using Catan3.Utility;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
@@ -16,30 +14,30 @@ namespace Catan3.Converters
         public object Convert(object value, Type targetType, object parameter, string language)
         {
             Color color= Colors.Red;
-            if (value is BuildingPosition position)
+            if (value is HexPosition position)
             {
 
                 switch (position)
                 {
-                    case BuildingPosition.TopLeft:
+                    case HexPosition.TopLeft:
                         color = Colors.Red;
                         break;
-                    case BuildingPosition.TopRight:
+                    case HexPosition.TopRight:
                         color = Colors.Blue;
                         break;
-                    case BuildingPosition.Right:
+                    case HexPosition.Right:
                         color = Colors.Green;
                         break;
-                    case BuildingPosition.BottomRight:
+                    case HexPosition.BottomRight:
                         color = Colors.Yellow;
                         break;
-                    case BuildingPosition.BottomLeft:
+                    case HexPosition.BottomLeft:
                         color = Colors.Purple;
                         break;
-                    case BuildingPosition.Left:
+                    case HexPosition.Left:
                         color = Colors.Black;
                         break;
-                    case BuildingPosition.None:
+                    case HexPosition.None:
                         color = Colors.White;
                         break;
                     default:

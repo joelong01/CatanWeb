@@ -1,9 +1,24 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 
 namespace Catan3.Utility
 {
+    /// <summary>
+    ///     this order needs to match the CalculateHexGeometry PointCollection order
+    /// </summary>
+    public enum HexPosition
+    {
+        TopLeft = 0,
+        TopRight = 1,
+        Right = 2,
+        BottomRight = 3,
+        BottomLeft = 4,
+        Left = 5,
+        None,
+    }
+
     /// <summary>
     ///     this is a static class for the Geometry of a Regular Flat Top Hexagon.  Points assume (0,0) as the origin
     /// </summary>
@@ -11,33 +26,87 @@ namespace Catan3.Utility
     {
 
         /// <summary>
-        /// Given the size of a regular hexagon, returns a PointCollection that defines the vertices to draw that hexagon.
+        /// Given the size of a regular hexagon, returns a PointCollection that defines the vertices to draw a flat top hexagon.
         /// The size parameter represents the distance from the center of the hexagon to any of its vertices.
-        /// The first vertex (upper left of the hexagon) is calculated based on the hexagon being centered at (size, size).
+        /// The first vertex is at the top center of the hexagon, assuming (0,0) as the origin.
         /// </summary>
         /// <param name="size">The distance from the center of the hexagon to any of its vertices.</param>
         /// <returns>A PointCollection representing the vertices of the hexagon in the order to draw it.</returns>
-        public static PointCollection HexPoints(double size)
+        public static PointCollection HexPoints(double size, double deltaX, double deltaY)
         {
-            PointCollection points = new PointCollection();
+            PointCollection points = [];
 
-            // The angle between vertices in a hexagon in radians
+            // Calculate the width and height for positioning adjustments
+  
+            double height = Math.Sqrt(3) * size;
+
+            // The angle between vertices in a hexagon in radians, starting from the horizontal right (for a flat top)
             double angleRadians = Math.PI / 3;
 
-            // Starting angle for the upper left vertex
-            double startAngleRadians = Math.PI / 6;
-
-            // Calculate each vertex position
+            // Calculate each vertex position, assuming the rightmost point should be at (0, height / 2)
             for (int i = 0; i < 6; i++)
             {
-                double angle = startAngleRadians + i * angleRadians;
-                double x = size * Math.Cos(angle) + size;
-                double y = size * Math.Sin(angle) + size;
-                points.Add(new Point(x, y));
+                double angle = i * angleRadians;
+                // Original x and y based on the center at (0,0)
+                double originalX = size * Math.Cos(angle);
+                double originalY = size * Math.Sin(angle);
+
+                // Adjust x to align the rightmost point at x=0 and y to center vertically in the parent control
+                double adjustedX = originalX + size; // Translate x to move the hexagon's rightmost point to x=0
+                double adjustedY = originalY + (height / 2); // Translate y to center the hexagon vertically
+
+                adjustedX += deltaX;
+                adjustedY += deltaY;
+
+                points.Add(new Point(adjustedX, adjustedY));
             }
 
             return points;
         }
+
+        public static List<PointCollection> OuterHex(double size, double width, double deltaX, double deltaY)
+        {
+            var outerSegments = new List<PointCollection>();
+            double angleRadians = Math.PI / 3; // 60 degrees in radians
+            double outerSize = size + width; // Calculate the outer size based on the width offset
+
+            // Calculate the points for the original and outer hexagon
+            List<Point> innerPoints = new List<Point>();
+            List<Point> outerPoints = new List<Point>();
+
+            for (int i = 0; i < 6; i++)
+            {
+                double angle = i * angleRadians;
+
+                // Calculate and add points for the inner hexagon
+                double innerX = size * Math.Cos(angle) + deltaX + size;
+                double innerY = size * Math.Sin(angle) + deltaY + (Math.Sqrt(3) * size / 2);
+                innerPoints.Add(new Point(innerX, innerY));
+
+                // Calculate and add points for the outer hexagon
+                double outerX = outerSize * Math.Cos(angle) + deltaX + size;
+                double outerY = outerSize * Math.Sin(angle) + deltaY + (Math.Sqrt(3) * outerSize / 2);
+                outerPoints.Add(new Point(outerX, outerY));
+            }
+
+            // Create segments between each pair of points
+            for (int i = 0; i < 6; i++)
+            {
+                var segmentPoints = new PointCollection();
+                int nextIndex = (i + 1) % 6;
+
+                // Add points to create the trapezoid segment
+                segmentPoints.Add(innerPoints[i]);
+                segmentPoints.Add(outerPoints[i]);
+                segmentPoints.Add(outerPoints[nextIndex]);
+                segmentPoints.Add(innerPoints[nextIndex]);
+
+                outerSegments.Add(segmentPoints);
+            }
+
+            return outerSegments;
+        }
+
 
         /// <summary>
         /// Calculates the height of a regular hexagon given its size.

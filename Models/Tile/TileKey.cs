@@ -67,20 +67,20 @@ namespace Catan3.Models
             return left.Equals(right);
         }
         public static bool operator !=(TileKey left, TileKey right) => !( left == right );
-        public double Top(RegularBoardLayout layout)
+        public double Top(BoardLayout layout)
         {
-            var top =  ( .5 * Q +  R)*layout.HexSize * Math.Sqrt(3) ;
-            top += 2 * layout.HexSize * Math.Sqrt(3);
+            var top =  ( .5 * Q +  R)*layout.OuterHexSize * Math.Sqrt(3) ;
+            top += 2 * layout.OuterHexSize * Math.Sqrt(3);
             top = Math.Round(top + layout.BuildingSize * .5, 1); // the buildings will go on top of the highest tile, give them room
-            top += layout.HexStrokeThickness + layout.GameMargin;
+            top += layout.InnerHexStrokeThickness + layout.GameMargin;
             return top;
         }
-        public double Left(RegularBoardLayout layout)
+        public double Left(BoardLayout layout)
         {
-            var left = 2 * layout.HexSize * .75 * Q ;
-            left += layout.ColumnOffset * 2 * layout.HexSize;
+            var left = 2 * layout.OuterHexSize * .75 * Q ;
+            left += layout.ColumnOffset * 2 * layout.OuterHexSize;
             left += ( layout.BuildingSize * 0.5 );
-            left += layout.HexStrokeThickness * 0.5;
+            left += layout.InnerHexStrokeThickness * 0.5;
             left += layout.GameMargin;
 
             return left;

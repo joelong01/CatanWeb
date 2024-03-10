@@ -1,7 +1,7 @@
 ﻿[
     {
-        "ModelVersion": "1.0a",
-        "ClassName": "RegularBoardLayout",
+        "ModelVersion": "1.1",
+        "ClassName": "BoardLayout",
         "Namespace": "Catan3.Models",
         "Path": "..\\Game",
         "Usings": [
@@ -11,27 +11,35 @@
         "ConstructedProperties": [],
         "NormalProperties": [
             {
-                "Name": "HexSize",
+                "Name": "OuterHexSize",
                 "Type": "double",
                 "ReadOnly": false,
-                "AdditionalNotifications": [ "ControlWidth", "ControlHeight", "BoardWidth", "BoardHeight", "TileHexPoints" ],
+                "AdditionalNotifications": [ "ControlWidth", "ControlHeight", "BoardWidth", "BoardHeight", "InnerHexPoints", "InnerHexSize", "OuterHexPoints" ],
                 "Nullable": false,
                 "Default": "100.0"
             },
 
             {
-                "Name": "HexStrokeThickness",
+                "Name": "InnerHexStrokeThickness",
                 "Type": "double",
                 "ReadOnly": false,
-                "AdditionalNotifications": [ "TileHexPoints" ],
+                "AdditionalNotifications": [ "InnerHexPoints", "InnerHexSize" ],
                 "Nullable": false,
                 "Default": "5.0"
+            },
+            {
+                "Name": "OuterHexStrokeThickness",
+                "Type": "double",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "OuterHexPoints", "OuterHexSize" ],
+                "Nullable": false,
+                "Default": "0.0"
             },
             {
                 "Name": "TileGap",
                 "Type": "double",
                 "ReadOnly": false,
-                "AdditionalNotifications": [ "TileHexPoints" ],
+                "AdditionalNotifications": [ "InnerHexPoints", "InnerHexSize" ],
                 "Nullable": false,
                 "Default": "5"
             },
@@ -63,7 +71,7 @@
                 "Name": "BuildingSize",
                 "Type": "double",
                 "ReadOnly": false,
-                "AdditionalNotifications": [ "BoardWidth", "BoardHeight", "BuildingHexPoints" ],
+                "AdditionalNotifications": [ "BoardWidth", "BoardHeight", "OuterHexPoints" ],
                 "Nullable": false,
                 "Default": "40"
             },

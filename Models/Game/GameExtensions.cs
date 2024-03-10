@@ -1,4 +1,6 @@
-﻿namespace Catan3.Models
+﻿using Catan3.Utility;
+
+namespace Catan3.Models
 {
     public static class GameExtensions
     {
@@ -13,7 +15,7 @@
             if (building is null)
             {
                 var aliases = key.Aliases();
-                foreach ((BuildingPosition position, Direction direction) in aliases)
+                foreach ((HexPosition position, Direction direction) in aliases)
                 {
                     var aliasCoords = key.TileKey.GetAdjacentTile(direction);
                     var aliasKey = new BuildingKey(aliasCoords, position);

@@ -19,7 +19,7 @@
             },
             {
                 "Name": "Layout",
-                "Type": "RegularBoardLayout",
+                "Type": "BoardLayout",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": true,

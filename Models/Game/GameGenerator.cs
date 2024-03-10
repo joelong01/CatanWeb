@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Catan3.Utility;
 
 namespace Catan3.Models
 {
@@ -10,7 +11,7 @@ namespace Catan3.Models
     /// </summary>
     public partial class RegularBoardInfo : IBoardInfo
     {
-        public RegularBoardLayout Layout { get; } = new RegularBoardLayout();
+        public BoardLayout Layout { get; } = new BoardLayout();
         public List<TileKey> TileKeys { get; } =
              [
                  new(-2, 0, 2),
@@ -82,10 +83,10 @@ namespace Catan3.Models
             }
             foreach (var tile in game.Tiles)
             {
-                foreach (BuildingPosition buildingPosition in Enum.GetValues(typeof(BuildingPosition)))
+                foreach (HexPosition buildingPosition in Enum.GetValues(typeof(HexPosition)))
                 {
                     
-                    if (buildingPosition == BuildingPosition.None) continue;
+                    if (buildingPosition == HexPosition.None) continue;
                     BuildingKey buildingKey = new(tile.TileKey, buildingPosition);
                     var building = game.FindBuilding(buildingKey);
                     if (building is null)
