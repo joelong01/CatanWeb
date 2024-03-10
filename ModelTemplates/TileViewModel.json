@@ -3,7 +3,7 @@
         "ModelVersion": "1.0b",
         "ClassName": "TileViewModel",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Tile",
+        "Path": "..\\Tiles",
         "CallInit": true,
         "Usings": [
             "System.ComponentModel"

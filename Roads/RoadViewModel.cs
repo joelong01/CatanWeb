@@ -37,103 +37,24 @@ namespace Catan3.Models
             Top = GetTop();
             Left = GetLeft();
             OnPropertyChanged(nameof(RoadPolygon));
-            OnPropertyChanged(nameof(Angle));
+           
         }
-        public double Angle
-        {
-            get
-            {
-                double angle = 0.0;
-                switch (Road.RoadKey.RoadPosition)
-                {
-                    case RoadPosition.Top:
-                    case RoadPosition.Bottom:
-                        angle = 0;
-                        break;
-                    case RoadPosition.TopRight:
-                        angle =  -120.0;
-                     //   angle += 120.0;
-                        break;
-                    case RoadPosition.BottomRight:
-                        angle =  120.0;
-                       // angle -= 120.0;
-                        break;
-                    case RoadPosition.BottomLeft:
-                        angle = 0; // -120;
-                        break;
-                    case RoadPosition.TopLeft:
-                        angle = 0; // 120;
-                        break;
-                    default:
-                        Debug.Assert(false, "Bad RoadKey");
-                        break;
-                }
-                return angle;
-            }
-        }
-        /// <summary>
-        ///     put the Top and Bottom where they need to be on the Left
-        ///     all others are placed with the middle of the polygon at the position it rotates
-        /// </summary>
-        /// <returns></returns>
+     
+    
         private double GetLeft()
         {
-            if (Layout is null) return 0.0;
-
-            var left = Layout.Left(Road.RoadKey.TileKey) - RoadWidth / 2.0; // start with the middle at 0,0
-            var midPoint = HexGeometry.BisectingPoint(Layout.InnerHexSize);
-
-            switch (Road.RoadKey.RoadPosition)
-            {
-                case RoadPosition.None:
-                    throw new Exception("Bad RoadPosition");
-                case RoadPosition.Bottom:
-                case RoadPosition.Top:
-                    left += RoadWidth;
-                    break;
-                case RoadPosition.TopRight:
-                    left += midPoint.X  + Layout.OuterHexSize - Layout.TileGap / 2.0;
-                    break;
-                case RoadPosition.BottomRight:
-                    left += midPoint.X  + Layout.OuterHexSize - Layout.TileGap / 2.0;
-                    break;
 
 
-                case RoadPosition.BottomLeft:
-                case RoadPosition.TopLeft:
-                    left += Layout.OuterHexSize + midPoint.X ;
-                    left -= 5000;
-                    break;
-                default:
-                    break;
-            }
+            var left = Layout.Left(Road.RoadKey.TileKey);
+           
             return left;
         }
         private double GetTop()
         {
             if (Layout is null) return 0.0;
-            var top = Layout.Top(Road.RoadKey.TileKey) - VisualRoadHeight / 2.0; ;
-            var midPoint = HexGeometry.BisectingPoint(Layout.InnerHexSize);
-            switch (Road.RoadKey.RoadPosition)
-            {
-                case RoadPosition.Top:
-                    break;
-                case RoadPosition.TopLeft:
-                case RoadPosition.TopRight:
-                    top += midPoint.Y;
-                   
-                    break;
-                case RoadPosition.BottomRight:
-                case RoadPosition.BottomLeft:
-                    top += HexGeometry.Height(Layout.InnerHexSize) / 2.0 + midPoint.Y + Layout.InnerHexStrokeThickness;
-                    break;
-                case RoadPosition.Bottom:
-                    top += Layout.ControlHeight;
-
-                    break;
-                default:
-                    break;
-            }
+            var top = Layout.Top(Road.RoadKey.TileKey)  ;
+            
+            
             return top;
         }
         public double VisualRoadHeight

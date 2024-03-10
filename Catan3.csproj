@@ -87,6 +87,9 @@
 	    <DependentUpon>models.tt</DependentUpon>
 	  </Compile>
 	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="Tiles\" />
+	</ItemGroup>
 
 	<!-- 
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution 
@@ -97,5 +100,5 @@
 		<HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
 	
 	</PropertyGroup>
-	<ProjectExtensions><VisualStudio><UserProperties models_4modelgeneration_4buildingkey_1json__JsonSchema="{" /></VisualStudio></ProjectExtensions>
+	<ProjectExtensions><VisualStudio><UserProperties /></VisualStudio></ProjectExtensions>
 </Project>

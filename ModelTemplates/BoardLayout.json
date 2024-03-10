@@ -3,7 +3,7 @@
         "ModelVersion": "1.1",
         "ClassName": "BoardLayout",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Game",
+        "Path": "..\\Layout",
         "Usings": [
             "System",
             "System.ComponentModel"
