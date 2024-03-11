@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using Catan3.Utility;
 using Microsoft.UI.Xaml.Media;
+using Windows.Devices.Midi;
 using Windows.Foundation;
 namespace Catan3.Models
 {
@@ -135,7 +136,12 @@ namespace Catan3.Models
                 if (Layout is null) return points;
                 var outerHexPoints = Layout.OuterHexPoints.ListToDictionary();
                 var innerHexPoints =  Layout.InnerHexPoints.ListToDictionary();
-
+                //
+                //  hackity hack -- we need these because we are doing the visual layout from the perspetive of the current tile
+                //  the points are on adjacent tiles, so we either reget their layout and do the math, or go back to first principles
+                //  to do the math.
+                var magicX = (Layout.TileGap * .5 - Layout.RoadStrokeThickness + Layout.InnerHexStrokeThickness * .43);
+                var magicY =  (Layout.TileGap * .86 + Layout.RoadStrokeThickness + Layout.InnerHexStrokeThickness);
                 switch (Road.RoadKey.RoadPosition)
                 {
                     case RoadPosition.None:
@@ -147,20 +153,26 @@ namespace Catan3.Models
                         points.Add(innerHexPoints[HexPosition.TopLeft]);
                         break;
                     case RoadPosition.TopRight:
-                         points.Add(outerHexPoints[HexPosition.TopRight]);
+                        points.Add(outerHexPoints[HexPosition.TopRight]);
                         points.Add(innerHexPoints[HexPosition.TopRight]);
                         points.Add(innerHexPoints[HexPosition.Right]);
                         points.Add(outerHexPoints[HexPosition.Right]);
-                        //var deltaX = outerHexPoints[HexPosition.Right].X - innerHexPoints[HexPosition.Right].X;
-                        //var deltaY = outerHexPoints[HexPosition.Right].Y - innerHexPoints[HexPosition.Right].Y;
-                        //
-                        //  hackity hack -- it'd be nice to calculate these 
-                        points.Add(new Point(outerHexPoints[HexPosition.Right].X + Layout.TileGap * .5 - Layout.RoadStrokeThickness + Layout.InnerHexStrokeThickness * .43 ,
-                                             outerHexPoints[HexPosition.Right].Y - Layout.TileGap * .86 - Layout.RoadStrokeThickness - Layout.InnerHexStrokeThickness ));
-                        points.Add(new Point(outerHexPoints[HexPosition.TopRight].X + outerHexPoints[HexPosition.Right].X - innerHexPoints[HexPosition.Right].X,
+                        points.Add(new Point(outerHexPoints[HexPosition.Right].X + magicX,
+                                            outerHexPoints[HexPosition.Right].Y - magicY));
+                        points.Add(new Point(outerHexPoints[HexPosition.TopRight].X + outerHexPoints[HexPosition.Right].X - innerHexPoints[HexPosition.Right].X - Layout.RoadStrokeThickness ,
                                              outerHexPoints[HexPosition.TopRight].Y));
                         break;
                     case RoadPosition.BottomRight:
+                        points.Add(innerHexPoints[HexPosition.BottomRight]);
+                        points.Add(outerHexPoints[HexPosition.BottomRight]);
+                        double dX = outerHexPoints[HexPosition.Right].X - innerHexPoints[HexPosition.Right].X;
+                        Point p = new (outerHexPoints[HexPosition.BottomRight].X + dX, outerHexPoints[HexPosition.BottomRight].Y);
+                        points.Add(p);
+                        p = new(outerHexPoints[HexPosition.Right].X + magicX, outerHexPoints[HexPosition.Right].Y + magicY);
+                        points.Add(p);
+                        points.Add(outerHexPoints[HexPosition.Right]);
+                        points.Add(innerHexPoints[HexPosition.Right]);
+
                         break;
                     case RoadPosition.Bottom:
                         points.Add(outerHexPoints[HexPosition.BottomLeft]);
@@ -171,8 +183,16 @@ namespace Catan3.Models
                         points.Add(new Point(innerHexPoints[HexPosition.BottomLeft].X, innerHexPoints[HexPosition.TopLeft].Y + Layout.ControlHeight));
                         break;
                     case RoadPosition.BottomLeft:
+                        points.Add(innerHexPoints[HexPosition.BottomLeft]);
+                        points.Add(outerHexPoints[HexPosition.BottomLeft]);
+                        points.Add(outerHexPoints[HexPosition.Left]);
+                        points.Add(innerHexPoints[HexPosition.Left]);
                         break;
                     case RoadPosition.TopLeft:
+                        points.Add(innerHexPoints[HexPosition.Left]);
+                        points.Add(outerHexPoints[HexPosition.Left]);
+                        points.Add(outerHexPoints[HexPosition.TopLeft]);
+                        points.Add(innerHexPoints[HexPosition.TopLeft]);
                         break;
                     default:
                         break;
