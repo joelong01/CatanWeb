@@ -8,10 +8,10 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid HorizontalAlignment="Left" VerticalAlignment="Top" Background="Transparent" Opacity="1"
+    <Grid HorizontalAlignment="Left" VerticalAlignment="Top" Background="Transparent" Opacity="1" 
          Width="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}" Height="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}">
      <Ellipse Width="10" HorizontalAlignment="Center" VerticalAlignment="Center" Height="10" Fill="Red" Opacity=".75"
-             Visibility="Visible" />
+             Visibility="Collapsed" />
      <Ellipse Fill="{x:Bind BuildingViewModel.Background, Mode=OneWay}"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
    
          <Viewbox Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="3">

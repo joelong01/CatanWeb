@@ -44,7 +44,7 @@ namespace Catan3.Models
         private double GetTop(BuildingKey key)
         {
             var top =  Layout.Top(key.TileKey);
-            var center = Layout.OuterHexPoints[(int)key.Position];
+            var center = Layout.OuterHexPoints.ListToDictionary()[key.Position];
             top += center.Y;
             top -= ( Layout.BuildingSize ) * 0.5;
             return top;
@@ -57,7 +57,7 @@ namespace Catan3.Models
         private double GetLeft(BuildingKey key)
         {
             var left =  Layout.Left(key.TileKey) ;
-            var center = Layout.OuterHexPoints[(int)key.Position];
+            var center =  Layout.OuterHexPoints.ListToDictionary()[key.Position];
             left -= Layout.BuildingSize / 2.0;
             left += center.X;
             return left;

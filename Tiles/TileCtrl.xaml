@@ -17,14 +17,14 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid BorderBrush="Green" BorderThickness="1" Width="{Binding Layout.ControlWidth, Mode=OneWay}"
+    <Grid BorderBrush="Green" BorderThickness="0" Width="{Binding Layout.ControlWidth, Mode=OneWay}"
             Height="{Binding Layout.ControlHeight, Mode=OneWay}">
-        <Polygon Stroke="Black"
+        <Polygon Stroke="{StaticResource bmMaple}"
                 StrokeThickness="{Binding Layout.InnerHexStrokeThickness, Mode=OneWay}"
                 Points="{Binding Layout.InnerHexPoints,Mode=OneWay}"
                 Fill="{Binding Tile.ResourceType, Mode=OneWay, Converter={StaticResource ResourceTypeToImageBrush}}" />
         <Polygon Stroke="Red" StrokeThickness="2" Points="{x:Bind TileViewModel.Layout.OuterHexPoints, Mode=OneWay}"
-                StrokeDashArray=".5 1" Fill="Transparent" Visibility="Visible" />
+                StrokeDashArray=".5 1" Fill="Transparent" Visibility="Collapsed" />
         <Grid Width="65" Height="65" VerticalAlignment="Top" Margin="0" HorizontalAlignment="Center"
                 RenderTransformOrigin=".5 0"
                 Visibility="{x:Bind TileViewModel.Tile.Number, Mode=OneWay, Converter={StaticResource NumberToVisibilityConverter}}">

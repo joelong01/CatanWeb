@@ -16,15 +16,13 @@
             PointerPressed="Grid_PointerPressed" IsHitTestVisible="True" 
             RenderTransformOrigin=".5 .5">
         <Polygon Fill="{x:Bind ViewModel.Background, Mode=TwoWay}" Points="{x:Bind ViewModel.RoadPolygon, Mode=OneWay}" 
-                Stroke="HotPink" StrokeThickness="{x:Bind ViewModel.Layout.RoadStrokeThickness, Mode=OneWay}" />
-        <Ellipse Width="10" Height="10" Fill="Green" />
+                Stroke="{x:Bind ViewModel.Foreground, Mode=TwoWay}" StrokeThickness="{x:Bind ViewModel.Layout.RoadStrokeThickness, Mode=OneWay}" />
+        <Ellipse Width="10" Height="10" Fill="Green" Visibility="Collapsed"/>
         <!--<Viewbox Stretch="Uniform" Height="20" HorizontalAlignment="Center">
             <TextBlock Text="{x:Bind ViewModel.PositionShortName, Mode=OneWay}" FontSize="16"
                     HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White" />
         </Viewbox>-->
-        <Canvas.RenderTransform>
-            <RotateTransform Angle="{Binding Angle, Mode=OneWay}" />
-        </Canvas.RenderTransform>
+
     </Canvas>
 
 </UserControl>

@@ -63,7 +63,7 @@
                     Foreground="Black" SelectedItem="{x:Bind GameViewModel.CurrentPlayer, Mode=TwoWay}"
                     HorizontalAlignment="Left" VerticalAlignment="Top" Width="200" />
         </StackPanel>
-        <Viewbox Grid.Column="1" Stretch="None">
+        <Viewbox Grid.Column="1" Stretch="Uniform">
             <c:GameBoardCtrl Grid.Column="1" GameViewModel="{x:Bind GameViewModel, Mode=OneWay}"
                     BuildingClicked="Building_Clicked" BuildingMouseEnter="Building_MouseEnter"
                     BuildingMouseLeave="Building_MouseLeave" RoadClicked="Road_Clicked" RoadMouseEnter="Road_MouseEnter"
