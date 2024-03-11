@@ -19,7 +19,7 @@
 
     <Grid BorderBrush="Green" BorderThickness="1" Width="{Binding Layout.ControlWidth, Mode=OneWay}"
             Height="{Binding Layout.ControlHeight, Mode=OneWay}">
-        <Polygon Stroke="{StaticResource bmMaple}"
+        <Polygon Stroke="Black"
                 StrokeThickness="{Binding Layout.InnerHexStrokeThickness, Mode=OneWay}"
                 Points="{Binding Layout.InnerHexPoints,Mode=OneWay}"
                 Fill="{Binding Tile.ResourceType, Mode=OneWay, Converter={StaticResource ResourceTypeToImageBrush}}" />

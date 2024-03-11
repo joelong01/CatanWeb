@@ -48,8 +48,8 @@ namespace Catan3.Utility
             {
                 double angle = i * angleRadians;
                 // Original x and y based on the center at (0,0)
-                double originalX = size * Math.Cos(angle);
-                double originalY = size * Math.Sin(angle);
+                double originalX = Math.Round(size * Math.Cos(angle), 2);
+                double originalY = Math.Round(size * Math.Sin(angle), 2);
 
                 // Adjust x to align the rightmost point at x=0 and y to center vertically in the parent control
                 double adjustedX = originalX + size; // Translate x to move the hexagon's rightmost point to x=0

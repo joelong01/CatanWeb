@@ -88,7 +88,7 @@ namespace Catan3.Models
 
                 // Adjust for the stroke thickness of the inner hex by subtracting half the StrokeThickenss from the height on the InnerHexSize
                 // since the stroke is centered on the hexagon's path, we only add half of the stroke thickness to the adjustment
-                double innerSizeWithStroke = OuterHexSize - (InnerHexStrokeThickness  / 2.0) - TileGap;
+                double innerSizeWithStroke = OuterHexSize - (InnerHexStrokeThickness) - TileGap;
 
                 // Calculate the horizontal difference after accounting for the stroke
                 double sizeDiff = (OuterHexSize - innerSizeWithStroke);
@@ -96,7 +96,7 @@ namespace Catan3.Models
                 // The inner hexagon needs to be positioned such that the gap is equal on all sides.
     
                 double verticalAdjustment = (sizeDiff + (TileGap  + InnerHexStrokeThickness  )  * 0.5) / 2.0;
-                double horizontalAdjustment = verticalAdjustment;
+                double horizontalAdjustment = (sizeDiff + (TileGap  + InnerHexStrokeThickness  )  * Math.Sqrt(3) / 2.0) / 2.0; ;  
 
                 return HexGeometry.HexPoints(innerSizeWithStroke, horizontalAdjustment, verticalAdjustment);
             }

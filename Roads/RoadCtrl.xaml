@@ -12,19 +12,19 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Background="Transparent" HorizontalAlignment="Left" VerticalAlignment="Top" Canvas.ZIndex="100"
-            PointerPressed="Grid_PointerPressed" IsHitTestVisible="True"
+    <Canvas Background="Transparent" HorizontalAlignment="Left" VerticalAlignment="Top" Canvas.ZIndex="100" 
+            PointerPressed="Grid_PointerPressed" IsHitTestVisible="True" 
             RenderTransformOrigin=".5 .5">
         <Polygon Fill="{x:Bind ViewModel.Background, Mode=TwoWay}" Points="{x:Bind ViewModel.RoadPolygon, Mode=OneWay}" 
-                Stroke="Yellow" StrokeThickness="{x:Bind ViewModel.Layout.RoadStrokeThickness, Mode=OneWay}" />
+                Stroke="HotPink" StrokeThickness="{x:Bind ViewModel.Layout.RoadStrokeThickness, Mode=OneWay}" />
         <Ellipse Width="10" Height="10" Fill="Green" />
-        <Viewbox Stretch="Uniform" Height="{x:Bind ViewModel.VisualRoadHeight, Mode=OneWay}">
+        <!--<Viewbox Stretch="Uniform" Height="20" HorizontalAlignment="Center">
             <TextBlock Text="{x:Bind ViewModel.PositionShortName, Mode=OneWay}" FontSize="16"
                     HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White" />
-        </Viewbox>
-        <Grid.RenderTransform>
+        </Viewbox>-->
+        <Canvas.RenderTransform>
             <RotateTransform Angle="{Binding Angle, Mode=OneWay}" />
-        </Grid.RenderTransform>
-    </Grid>
+        </Canvas.RenderTransform>
+    </Canvas>
 
 </UserControl>

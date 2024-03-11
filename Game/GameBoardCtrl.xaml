@@ -18,7 +18,7 @@
     </UserControl.Resources>
 
     <Viewbox Stretch="None">
-        <Grid Background="LightSlateGray" Width="850" Height="910">
+        <Grid Background="Transparent" Width="850" Height="910">
             <!--Tiles-->
             <ItemsControl x:Name="IC_Tiles" ItemsSource="{x:Bind GameViewModel.Tiles, Mode=OneWay}">
                 <ItemsControl.ItemsPanel>

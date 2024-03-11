@@ -2,9 +2,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using Catan3.Utility;
-using Microsoft.UI.Composition.Interactions;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 namespace Catan3.Models
@@ -33,28 +30,27 @@ namespace Catan3.Models
         }
         private void UpdateLayout()
         {
-            
+
             Top = GetTop();
             Left = GetLeft();
             OnPropertyChanged(nameof(RoadPolygon));
-           
+
         }
-     
-    
+
+
         private double GetLeft()
         {
 
 
             var left = Layout.Left(Road.RoadKey.TileKey);
-           
+
             return left;
         }
         private double GetTop()
         {
             if (Layout is null) return 0.0;
-            var top = Layout.Top(Road.RoadKey.TileKey)  ;
-            
-            
+            var top = Layout.Top(Road.RoadKey.TileKey);
+
             return top;
         }
         public double VisualRoadHeight
@@ -63,7 +59,7 @@ namespace Catan3.Models
             {
                 double height = 2 * Layout.TileGap;
                 height += Layout.InnerHexStrokeThickness * 2;
-                height += Layout.RoadStrokeThickness ;
+                height += Layout.RoadStrokeThickness;
                 return height;
             }
         }
@@ -130,25 +126,84 @@ namespace Catan3.Models
         ///                0                              3
         ///                 \                            /
         ///                  \ 5 ------------------- 4  /
+        ///                  
         public PointCollection RoadPolygon
         {
             get
             {
                 PointCollection points = [];
                 if (Layout is null) return points;
-                var polygonHeight = VisualRoadHeight - Layout.RoadStrokeThickness  ; 
-                var polygonWidth = RoadWidth - Layout.RoadStrokeThickness ;
-                var halfStroke = Layout.RoadStrokeThickness * 0.5;
-                double pointOneFiveX = polygonHeight / 2.0 * Math.Sqrt(3) / 4.0 ;
-                points.Add(new Point(0, polygonHeight * 0.5)); // 0
-                points.Add(new Point(pointOneFiveX, 0)); //1
-                points.Add(new Point(polygonWidth - pointOneFiveX, 0)); //2
-                points.Add(new Point(polygonWidth, polygonHeight * 0.5 )); //3
-                points.Add(new Point(polygonWidth - pointOneFiveX, polygonHeight)); //4
-                points.Add(new Point(pointOneFiveX, polygonHeight));  //5
+                var outerHexPoints = Layout.OuterHexPoints.ListToDictionary();
+                var innerHexPoints =  Layout.InnerHexPoints.ListToDictionary();
 
+                switch (Road.RoadKey.RoadPosition)
+                {
+                    case RoadPosition.None:
+                        break;
+                    case RoadPosition.Top: // this are "half roads"
+                        points.Add(outerHexPoints[HexPosition.TopLeft]);
+                        points.Add(outerHexPoints[HexPosition.TopRight]);
+                        points.Add(innerHexPoints[HexPosition.TopRight]);
+                        points.Add(innerHexPoints[HexPosition.TopLeft]);
+                        break;
+                    case RoadPosition.TopRight:
+                         points.Add(outerHexPoints[HexPosition.TopRight]);
+                        points.Add(innerHexPoints[HexPosition.TopRight]);
+                        points.Add(innerHexPoints[HexPosition.Right]);
+                        points.Add(outerHexPoints[HexPosition.Right]);
+                        //var deltaX = outerHexPoints[HexPosition.Right].X - innerHexPoints[HexPosition.Right].X;
+                        //var deltaY = outerHexPoints[HexPosition.Right].Y - innerHexPoints[HexPosition.Right].Y;
+                        //
+                        //  hackity hack -- it'd be nice to calculate these 
+                        points.Add(new Point(outerHexPoints[HexPosition.Right].X + Layout.TileGap * .5 - Layout.RoadStrokeThickness + Layout.InnerHexStrokeThickness * .43 ,
+                                             outerHexPoints[HexPosition.Right].Y - Layout.TileGap * .86 - Layout.RoadStrokeThickness - Layout.InnerHexStrokeThickness ));
+                        points.Add(new Point(outerHexPoints[HexPosition.TopRight].X + outerHexPoints[HexPosition.Right].X - innerHexPoints[HexPosition.Right].X,
+                                             outerHexPoints[HexPosition.TopRight].Y));
+                        break;
+                    case RoadPosition.BottomRight:
+                        break;
+                    case RoadPosition.Bottom:
+                        points.Add(outerHexPoints[HexPosition.BottomLeft]);
+                        points.Add(innerHexPoints[HexPosition.BottomLeft]);
+                        points.Add(innerHexPoints[HexPosition.BottomRight]);
+                        points.Add(outerHexPoints[HexPosition.BottomRight]);
+                        points.Add(new Point(innerHexPoints[HexPosition.BottomRight].X, innerHexPoints[HexPosition.TopRight].Y + Layout.ControlHeight));
+                        points.Add(new Point(innerHexPoints[HexPosition.BottomLeft].X, innerHexPoints[HexPosition.TopLeft].Y + Layout.ControlHeight));
+                        break;
+                    case RoadPosition.BottomLeft:
+                        break;
+                    case RoadPosition.TopLeft:
+                        break;
+                    default:
+                        break;
+                }
                 return points;
             }
         }
+
+
+
+
+        //public PointCollection RoadPolygon
+        //{
+        //    get
+        //    {
+        //        PointCollection points = [];
+        //        if (Layout is null) return points;
+        //        var polygonHeight = VisualRoadHeight - Layout.RoadStrokeThickness  ; 
+        //        var polygonWidth = RoadWidth - Layout.RoadStrokeThickness ;
+        //        var halfStroke = Layout.RoadStrokeThickness * 0.5;
+        //        double pointOneFiveX = polygonHeight / 2.0 * Math.Sqrt(3) / 4.0 ;
+        //        points.Add(new Point(0, polygonHeight * 0.5)); // 0
+        //        points.Add(new Point(pointOneFiveX, 0)); //1
+        //        points.Add(new Point(polygonWidth - pointOneFiveX, 0)); //2
+        //        points.Add(new Point(polygonWidth, polygonHeight * 0.5 )); //3
+        //        points.Add(new Point(polygonWidth - pointOneFiveX, polygonHeight)); //4
+        //        points.Add(new Point(pointOneFiveX, polygonHeight));  //5
+
+        //        return points;
+        //    }
+        //}
+        //  }
     }
 }

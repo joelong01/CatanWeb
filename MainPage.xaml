@@ -4,7 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
         RightTapped="OnRightButtonTapped" KeyUp="OnKeyUp" xmlns:c="using:Catan3.Controls"
-        xmlns:m="clr-namespace:Catan3.Models" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+      Background="DarkGray"
+        xmlns:m="clr-namespace:Catan3.Models" >
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="LightGray">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="20*" />
