@@ -6,17 +6,18 @@ using Windows.Foundation;
 namespace Catan3.Utility
 {
     /// <summary>
-    ///     this order needs to match the CalculateHexGeometry PointCollection order
+    ///     this order matches the CalculateHexGeometry PointCollection order
     /// </summary>
     public enum HexPosition
     {
-        TopLeft = 0,
-        TopRight = 1,
-        Right = 2,
-        BottomRight = 3,
-        BottomLeft = 4,
-        Left = 5,
-        None,
+        
+        Right = 0,
+        BottomRight = 1,
+        BottomLeft = 2,
+        Left = 3,
+        TopLeft = 4,
+        TopRight = 5,
+        None = -1,
     }
 
     /// <summary>

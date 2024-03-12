@@ -87,11 +87,29 @@ namespace Catan3.Controls
             //}
             return size / 100.0;
         }
+        /// <summary>
+        ///     DataBinding function to set the top to the Catan Number
+        /// </summary>
+        /// <param name="tileGap"></param>
+        /// <param name="hexStroke"></param>
+        /// <returns></returns>
 
         private double NumberTop(double tileGap, double hexStroke)
         {
             return tileGap + hexStroke + 5; // 5 is an arbitrary number that just "looks good"
         }
+        /// <summary>
+        ///    the position above the bottom of the control for the Coordinates
+        ///    this should place it right above the border
+        /// </summary>
+        /// <param name="tileGap"></param>
+        /// <param name="hexStroke"></param>
+        /// <returns></returns>
+        private Thickness CooordinateTextMargin(double tileGap, double hexStroke)
+        {
+            return new Thickness(0, 0, 0, hexStroke + tileGap);
+        }
 
+     
     }
 }

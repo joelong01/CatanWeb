@@ -16,8 +16,8 @@ namespace Catan3.Models
     {
         int GoldTiles { get; }
         bool WallsProtectCities { get; }
-        bool HideBaronBeforeInvasion { get; }
-        bool KnightMovesBaronBeforeRoll { get; }
+        bool HideRobberBeforeInvasion { get; }
+        bool KnightMovesRobberBeforeRoll { get; }
     }
     public interface IBoardInfo
     {

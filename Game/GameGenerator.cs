@@ -158,7 +158,7 @@ namespace Catan3.Models
                 }
             } while (!Game.ValidateGame());
 
-            Game.BaronTile = Game.Tiles.TilesWithResource(ResourceType.Desert)[0].TileKey;
+            Game.RobberTile = Game.Tiles.TilesWithResource(ResourceType.Desert)[0].TileKey;
             // this.TraceMessage($"valid.  iters: {iters}");
         }
         private static bool ValidateGame(this GameModel Game)

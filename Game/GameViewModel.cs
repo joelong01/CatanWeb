@@ -43,7 +43,7 @@ namespace Catan3.Models
                 Roads.Add(roadView);
 
             }
-            BaronTile = gameModel.BaronTile;
+            RobberTile = gameModel.RobberTile;
             SetPipCount();
         }
         private void SetPipCount()

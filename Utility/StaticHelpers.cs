@@ -30,6 +30,16 @@ namespace Catan3
             s += list.ElementAt(c - 1)?.ToString();
             return s;
         }
+        
+        public static PointCollection Clone(this PointCollection points)
+        {
+            var clonedPoints = new PointCollection();
+            foreach (var point in points)
+            {
+                clonedPoints.Add(point);
+            }
+            return clonedPoints;
+        }
     }
     public static class BrushCache
     {

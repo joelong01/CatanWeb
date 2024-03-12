@@ -35,10 +35,13 @@ namespace Catan3.Models
                 {
                     OnPropertyChanged(nameof(Layout.InnerHexPoints)); // Notify the UI to reevaluate this path
                     OnPropertyChanged(nameof(Layout.OuterHexPoints)); // Notify the UI to reevaluate this path
+                    OnPropertyChanged(nameof(Layout.ControlHeight));
+                    OnPropertyChanged(nameof(Layout.ControlWidth));
+                    
                 }
             }
         }
-        private void UpdateLayout()
+ private void UpdateLayout()
         {
             if (Layout != null)
             {

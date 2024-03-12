@@ -141,7 +141,7 @@ namespace Catan3.Models
                 //  the points are on adjacent tiles, so we either reget their layout and do the math, or go back to first principles
                 //  to do the math.
                 var magicX = (Layout.TileGap * .5 - Layout.RoadStrokeThickness + Layout.InnerHexStrokeThickness * .43);
-                var magicY =  (Layout.TileGap * .86 + Layout.RoadStrokeThickness + Layout.InnerHexStrokeThickness);
+                var magicY =  (Layout.TileGap * Math.Sqrt(3) / 2.0 + Layout.RoadStrokeThickness / 2.0 + Layout.InnerHexStrokeThickness / 2.0);
                 switch (Road.RoadKey.RoadPosition)
                 {
                     case RoadPosition.None:
@@ -165,10 +165,10 @@ namespace Catan3.Models
                     case RoadPosition.BottomRight:
                         points.Add(innerHexPoints[HexPosition.BottomRight]);
                         points.Add(outerHexPoints[HexPosition.BottomRight]);
-                        double dX = outerHexPoints[HexPosition.Right].X - innerHexPoints[HexPosition.Right].X;
+                        double dX = outerHexPoints[HexPosition.Right].X - innerHexPoints[HexPosition.Right].X ;
                         Point p = new (outerHexPoints[HexPosition.BottomRight].X + dX, outerHexPoints[HexPosition.BottomRight].Y);
                         points.Add(p);
-                        p = new(outerHexPoints[HexPosition.Right].X + magicX, outerHexPoints[HexPosition.Right].Y + magicY);
+                        p = new(outerHexPoints[HexPosition.Right].X + magicX, outerHexPoints[HexPosition.Right].Y + magicY ) ;
                         points.Add(p);
                         points.Add(outerHexPoints[HexPosition.Right]);
                         points.Add(innerHexPoints[HexPosition.Right]);

@@ -195,7 +195,7 @@ namespace Catan3
                     // Handle the click event, e.g., display information about the selected player
                     // Consider using a dialog or a flyout for displaying messages in WinUI 3, as MessageBox is not available.
                     // E.g., use a ContentDialog for messages.
-                    GameViewModel.BaronTile = tileCtrl.TileViewModel.Tile.TileKey;
+                    GameViewModel.RobberTile = tileCtrl.TileViewModel.Tile.TileKey;
                 }
             }
         }

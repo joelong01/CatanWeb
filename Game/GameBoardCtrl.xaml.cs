@@ -28,14 +28,14 @@ namespace Catan3.Controls
         public GameBoardCtrl()
         {
             InitializeComponent();
-            VB_Baron.Loaded += VB_Baron_Loaded;
+            VB_Robber.Loaded += VB_Robber_Loaded;
 
         }
 
-        private void VB_Baron_Loaded(object sender, RoutedEventArgs e)
+        private void VB_Robber_Loaded(object sender, RoutedEventArgs e)
         {
-            UpdateBaronTileLocation();
-            VB_Baron.Loaded -= VB_Baron_Loaded;
+            UpdateRobberTileLocation();
+            VB_Robber.Loaded -= VB_Robber_Loaded;
         }
 
         public static readonly DependencyProperty GameViewModelProperty = DependencyProperty.Register("GameViewModel", typeof(GameViewModel), typeof(GameBoardCtrl), new PropertyMetadata(null, GameViewModelChanged));
@@ -61,7 +61,7 @@ namespace Catan3.Controls
             {
                 newValue.PropertyChanged += GameViewModel_PropertyChanged;
             }
-            UpdateBaronTileLocation();
+            UpdateRobberTileLocation();
             //
             // WinUI3 does send property changed notifications when the collection changes, only when the contents of the collection change
             // this will force rebind to the new collections
@@ -81,27 +81,27 @@ namespace Catan3.Controls
         private void GameViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
 
-            if (e.PropertyName == nameof(GameViewModel.BaronTile))
+            if (e.PropertyName == nameof(GameViewModel.RobberTile))
             {
 
-                UpdateBaronTileLocation();
+                UpdateRobberTileLocation();
             }
 
         }
 
 
 
-        private void UpdateBaronTileLocation()
+        private void UpdateRobberTileLocation()
         {
-            if (this.Resources["MoveBaronAnimation"] is Storyboard storyboard && GameViewModel is not null)
+            if (this.Resources["MoveRobberAnimation"] is Storyboard storyboard && GameViewModel is not null)
             {
                 // Assuming the first two children are the X and Y animations
                 if (storyboard.Children[0] is DoubleAnimation animationX && storyboard.Children[1] is DoubleAnimation animationY)
                 {
-                    if (VB_Baron.ActualWidth > 0 && VB_Baron.ActualHeight > 0 && GameViewModel.BoardInfo is not null)
+                    if (VB_Robber.ActualWidth > 0 && VB_Robber.ActualHeight > 0 && GameViewModel.BoardInfo is not null)
                     {
-                        double x = GameViewModel.BoardInfo.Layout.Left(GameViewModel.BaronTile) + GameViewModel.BoardInfo.Layout.OuterHexSize - VB_Baron.ActualWidth / 2.0;
-                        double y =  GameViewModel.BoardInfo.Layout.Top(GameViewModel.BaronTile) + GameViewModel.BoardInfo.Layout.OuterHexSize - VB_Baron.ActualHeight / 2.0;
+                        double x = GameViewModel.BoardInfo.Layout.Left(GameViewModel.RobberTile) + GameViewModel.BoardInfo.Layout.OuterHexSize - VB_Robber.ActualWidth / 2.0;
+                        double y =  GameViewModel.BoardInfo.Layout.Top(GameViewModel.RobberTile) + GameViewModel.BoardInfo.Layout.OuterHexSize - VB_Robber.ActualHeight / 2.0;
                         animationX.To = x;
                         animationY.To = y;
                         storyboard.Begin();
