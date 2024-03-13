@@ -9,7 +9,7 @@ namespace Catan3.Models
     /// <summary>
     ///     Static data about a game Board
     /// </summary>
-    public partial class RegularBoardInfo : IBoardInfo
+    public partial class RegularBoardInfo
     {
         public BoardLayout Layout { get; } = new BoardLayout();
         public List<TileKey> TileKeys { get; } =
@@ -55,13 +55,25 @@ namespace Catan3.Models
             ResourceType.Wood,
             ResourceType.Wood
             ];
+        public List<HarborModel> HarborModels { get; } = [
+            new HarborModel(new TileKey(0, -2, 2), HarborType.Ore, HexSide.Top),
+            new HarborModel(new TileKey(1, -2, 1), HarborType.Wheat, HexSide.TopRight),
+            new HarborModel(new TileKey(2, -1, -1), HarborType.Wood, HexSide.TopRight),
+            new HarborModel(new TileKey(2, 0, -2), HarborType.Brick, HexSide.BottomRight),
+            new HarborModel(new TileKey(1, 1, -2), HarborType.Sheep, HexSide.Bottom),
+            new HarborModel(new TileKey(-1, 2, -1), HarborType.ThreeForOne, HexSide.BottomRight),
+            new HarborModel(new TileKey(-2, 2, 0), HarborType.ThreeForOne, HexSide.BottomLeft),
+            new HarborModel(new TileKey(-2, 1, 1), HarborType.ThreeForOne, HexSide.TopLeft),
+          new HarborModel(new TileKey(-2, 0, 2), HarborType.ThreeForOne, HexSide.TopRight)
+
+            ];
         public List<int> Numbers { get; } = [7, 2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12];
     }
     public static class GameGenerator
     {
         public static GameModel CreateGame(BoardSize boardSize)
         {
-            IBoardInfo boardInfo;
+            RegularBoardInfo boardInfo;
             if (boardSize == BoardSize.Regular)
             {
                 boardInfo = new RegularBoardInfo();
@@ -85,7 +97,7 @@ namespace Catan3.Models
             {
                 foreach (HexPosition buildingPosition in Enum.GetValues(typeof(HexPosition)))
                 {
-                    
+
                     if (buildingPosition == HexPosition.None) continue;
                     BuildingKey buildingKey = new(tile.TileKey, buildingPosition);
                     var building = game.FindBuilding(buildingKey);
@@ -95,23 +107,27 @@ namespace Catan3.Models
                         game.Buildings.Add(buildingModel);
                     }
                 }
-               // if (tile.TileKey == new TileKey(0,0,0))
-                foreach (RoadPosition roadPosition in Enum.GetValues(typeof(RoadPosition)))
+                // if (tile.TileKey == new TileKey(0,0,0))
+                foreach (HexSide roadPosition in Enum.GetValues(typeof(HexSide)))
                 {
-                    if (roadPosition == RoadPosition.None) continue;
+                    if (roadPosition == HexSide.None) continue;
                     var roadKey = new RoadKey(tile.TileKey, roadPosition);
                     var road = game.FindRoad(roadKey);
-                    if (road is null )
+                    if (road is null)
                     {
                         road = new RoadModel(roadKey);
-                        
+
                         game.Roads.Add(road);
                     }
-                   
+
                 }
             }
-            
-            
+
+            foreach (var harbor in boardInfo.HarborModels)
+            {
+                game.Harbors.Add(harbor);
+            }
+
             game.Shuffle();
             return game;
         }

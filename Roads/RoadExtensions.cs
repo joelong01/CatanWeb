@@ -11,7 +11,7 @@ namespace Catan3.Models
             if (road is null)
             {
                 var aliases = key.Aliases();
-                foreach ((RoadPosition position, Direction direction) in aliases)
+                foreach ((HexSide position, Direction direction) in aliases)
                 {
                     var aliasCoords = key.TileKey.GetAdjacentTile(direction);
                     var aliasKey = new RoadKey(aliasCoords, position);
@@ -24,30 +24,30 @@ namespace Catan3.Models
             }
             return null;
         }
-        public static List<(RoadPosition position, Direction direction)> Aliases(this RoadKey key)
+        public static List<(HexSide position, Direction direction)> Aliases(this RoadKey key)
         {
-            List<(RoadPosition, Direction)> directions = [];
-            switch (key.RoadPosition)
+            List<(HexSide, Direction)> directions = [];
+            switch (key.HexSide)
             {
-                case RoadPosition.TopRight:
-                    directions.Add((RoadPosition.BottomLeft, Direction.NorthEast));
+                case HexSide.TopRight:
+                    directions.Add((HexSide.BottomLeft, Direction.NorthEast));
                    
                     break;
               
-                case RoadPosition.BottomRight:
-                    directions.Add((RoadPosition.TopLeft, Direction.SouthEast));
+                case HexSide.BottomRight:
+                    directions.Add((HexSide.TopLeft, Direction.SouthEast));
                     break;
-                case RoadPosition.BottomLeft:
-                    directions.Add((RoadPosition.TopRight, Direction.SouthWest));
+                case HexSide.BottomLeft:
+                    directions.Add((HexSide.TopRight, Direction.SouthWest));
                     break;
-                case RoadPosition.Bottom:
-                    directions.Add((RoadPosition.Top, Direction.South));
+                case HexSide.Bottom:
+                    directions.Add((HexSide.Top, Direction.South));
                     break;
-                case RoadPosition.Top:
-                    directions.Add((RoadPosition.Bottom, Direction.North));
+                case HexSide.Top:
+                    directions.Add((HexSide.Bottom, Direction.North));
                     break;
-                case RoadPosition.TopLeft:
-                    directions.Add((RoadPosition.BottomRight, Direction.NorthWest));
+                case HexSide.TopLeft:
+                    directions.Add((HexSide.BottomRight, Direction.NorthWest));
                     break;
             }
             return directions;

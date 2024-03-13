@@ -1,0 +1,46 @@
+[
+    {
+        "ModelVersion": "1.0",
+        "ClassName": "HarborViewModel",
+        "Namespace": "Catan3.Models",
+        "Path": "..\\Harbors",
+        "CallInit": true,
+        "Usings": [
+            "System.ComponentModel",
+            "Microsoft.UI",
+            "Microsoft.UI.Xaml.Media"
+        ],
+        "ConstructedProperties": [
+            {
+                "Name": "Harbor",
+                "Type": "HarborModel",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            },
+            {
+                "Name": "Layout",
+                "Type": "BoardLayout",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            }
+        ],
+        "NormalProperties": [
+            {
+                "Name": "Left",
+                "Type": "double",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            },
+            {
+                "Name": "Top",
+                "Type": "double",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false
+            }
+        ]
+    }
+]

@@ -9,10 +9,10 @@ using Catan3.Utility;
 namespace Catan3.Models
 {
 
-    public partial class GameViewModel : INotifyPropertyChanged
-    {
-      
-        public GameViewModel(GameModel gameModel, List<PlayerViewModel> playingPlayers) 
+    public partial class GameViewModel
+     {
+
+        public GameViewModel(GameModel gameModel, List<PlayerViewModel> playingPlayers)
         {
             if (gameModel.BoardSize == BoardSize.Regular)
             {
@@ -42,6 +42,10 @@ namespace Catan3.Models
                 roadView.Index = Roads.Count;
                 Roads.Add(roadView);
 
+            }
+            foreach (var harbor in gameModel.Harbors)
+            {
+                Harbors.Add(new HarborViewModel(harbor, BoardInfo.Layout));
             }
             RobberTile = gameModel.RobberTile;
             SetPipCount();

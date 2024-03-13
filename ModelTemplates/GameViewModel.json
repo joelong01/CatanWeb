@@ -1,7 +1,7 @@
 [
     {
         "ClassName": "GameViewModel",
-        "ModelVersion": "1.0a",
+        "ModelVersion": "1.0d",
         "Namespace": "Catan3.Models",
         "Path": "..\\Game",
         "Usings": [
@@ -11,7 +11,7 @@
         "ConstructedProperties": [],
         "NormalProperties": [
             {
-                "Name": "BaronTile",
+                "Name": "RobberTile",
                 "Type": "TileKey",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
@@ -53,7 +53,7 @@
             },
             {
                 "Name": "BoardInfo",
-                "Type": "IBoardInfo",
+                "Type": "RegularBoardInfo",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": true
@@ -92,6 +92,14 @@
             {
                 "Name": "Roads",
                 "Type": "ObservableCollection<RoadViewModel>",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "[]"
+            },
+            {
+                "Name": "Harbors",
+                "Type": "ObservableCollection<HarborViewModel>",
                 "ReadOnly": true,
                 "AdditionalNotifications": [],
                 "Nullable": false,

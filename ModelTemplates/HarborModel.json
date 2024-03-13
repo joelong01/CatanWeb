@@ -1,0 +1,50 @@
+[
+    {
+        "ModelVersion": "1.0a",
+        "ClassName": "HarborModel",
+        "Namespace": "Catan3.Models",
+        "Path": "..\\Harbors",
+        "Usings": [
+            "System.ComponentModel"
+        ],
+        "ConstructedProperties": [
+           
+
+        ],
+        "NormalProperties": [
+            {
+                "Name": "TileKey",
+                "Type": "TileKey",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default" :  "tilekey"
+
+            },
+            {
+                "Name": "HarborType",
+                "Type": "HarborType",
+                "ReadOnly": false,
+                "Nullable": false,
+                "Default": "harbortype"
+            },
+            {
+                "Name": "Position",
+                "Type": "HexSide",
+                "ReadOnly": false,
+                "Nullable": false,
+                "Default": "position"
+            },
+
+            {
+                "Name": "Owner",
+                "Type": "PlayerModel",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": true,
+                "Default": "null"
+            }
+        ]
+    }
+]
+

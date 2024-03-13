@@ -17,6 +17,7 @@
 		<None Remove="Controls\GameBoardCtrl.xaml" />
 		<None Remove="Controls\RoadCtrl.xaml" />
 		<None Remove="Controls\TileCtrl.xaml" />
+		<None Remove="Harbors\HarborCtrl.xaml" />
 		<None Remove="MainPage.xaml" />
 	</ItemGroup>
 
@@ -47,6 +48,9 @@
 		<ProjectCapability Include="Msix" />
 	</ItemGroup>
 	<ItemGroup>
+	  <Page Update="Harbors\HarborCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	  <None Update="Models\ModelGeneration\models.tt">
 	    <Generator>TextTemplatingFileGenerator</Generator>
 	    <LastGenOutput>models.cs</LastGenOutput>

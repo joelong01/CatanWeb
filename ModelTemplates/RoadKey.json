@@ -19,8 +19,8 @@
                 "IsLiteral": false
             },
             {
-                "Name": "RoadPosition",
-                "Type": "RoadPosition",
+                "Name": "HexSide",
+                "Type": "HexSide",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,

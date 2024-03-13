@@ -51,7 +51,15 @@
                 "Default": "[]"
             },
             {
-                "Name": "BaronTile",
+                "Name": "Harbors",
+                "Type": "ObservableCollection<HarborModel>",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "[]"
+            },
+            {
+                "Name": "RobberTile",
                 "Type": "TileKey",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],

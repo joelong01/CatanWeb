@@ -107,16 +107,16 @@ namespace Catan3.Models
             get
             {
                 string s=$"{Index}:";
-                return this.Road.RoadKey.RoadPosition switch
+                return this.Road.RoadKey.HexSide switch
                 {
 
-                    RoadPosition.BottomRight => s + "BR",
-                    RoadPosition.BottomLeft => s + "BL",
-                    RoadPosition.TopLeft => s + "TL",
-                    RoadPosition.TopRight => s + "TR",
-                    RoadPosition.None => s + "None",
-                    RoadPosition.Top => s + "T",
-                    RoadPosition.Bottom => s + "B",
+                    HexSide.BottomRight => s + "BR",
+                    HexSide.BottomLeft => s + "BL",
+                    HexSide.TopLeft => s + "TL",
+                    HexSide.TopRight => s + "TR",
+                    HexSide.None => s + "None",
+                    HexSide.Top => s + "T",
+                    HexSide.Bottom => s + "B",
                     _ => s + "?",
                 };
             }
@@ -142,17 +142,17 @@ namespace Catan3.Models
                 //  to do the math.
                 var magicX = (Layout.TileGap * .5 - Layout.RoadStrokeThickness + Layout.InnerHexStrokeThickness * .43);
                 var magicY =  (Layout.TileGap * Math.Sqrt(3) / 2.0 + Layout.RoadStrokeThickness / 2.0 + Layout.InnerHexStrokeThickness / 2.0);
-                switch (Road.RoadKey.RoadPosition)
+                switch (Road.RoadKey.HexSide)
                 {
-                    case RoadPosition.None:
+                    case HexSide.None:
                         break;
-                    case RoadPosition.Top: // this are "half roads"
+                    case HexSide.Top: // this are "half roads"
                         points.Add(outerHexPoints[HexPosition.TopLeft]);
                         points.Add(outerHexPoints[HexPosition.TopRight]);
                         points.Add(innerHexPoints[HexPosition.TopRight]);
                         points.Add(innerHexPoints[HexPosition.TopLeft]);
                         break;
-                    case RoadPosition.TopRight:
+                    case HexSide.TopRight:
                         points.Add(outerHexPoints[HexPosition.TopRight]);
                         points.Add(innerHexPoints[HexPosition.TopRight]);
                         points.Add(innerHexPoints[HexPosition.Right]);
@@ -162,7 +162,7 @@ namespace Catan3.Models
                         points.Add(new Point(outerHexPoints[HexPosition.TopRight].X + outerHexPoints[HexPosition.Right].X - innerHexPoints[HexPosition.Right].X - Layout.RoadStrokeThickness ,
                                              outerHexPoints[HexPosition.TopRight].Y));
                         break;
-                    case RoadPosition.BottomRight:
+                    case HexSide.BottomRight:
                         points.Add(innerHexPoints[HexPosition.BottomRight]);
                         points.Add(outerHexPoints[HexPosition.BottomRight]);
                         double dX = outerHexPoints[HexPosition.Right].X - innerHexPoints[HexPosition.Right].X ;
@@ -174,7 +174,7 @@ namespace Catan3.Models
                         points.Add(innerHexPoints[HexPosition.Right]);
 
                         break;
-                    case RoadPosition.Bottom:
+                    case HexSide.Bottom:
                         points.Add(outerHexPoints[HexPosition.BottomLeft]);
                         points.Add(innerHexPoints[HexPosition.BottomLeft]);
                         points.Add(innerHexPoints[HexPosition.BottomRight]);
@@ -182,13 +182,13 @@ namespace Catan3.Models
                         points.Add(new Point(innerHexPoints[HexPosition.BottomRight].X, innerHexPoints[HexPosition.TopRight].Y + Layout.ControlHeight));
                         points.Add(new Point(innerHexPoints[HexPosition.BottomLeft].X, innerHexPoints[HexPosition.TopLeft].Y + Layout.ControlHeight));
                         break;
-                    case RoadPosition.BottomLeft:
+                    case HexSide.BottomLeft:
                         points.Add(innerHexPoints[HexPosition.BottomLeft]);
                         points.Add(outerHexPoints[HexPosition.BottomLeft]);
                         points.Add(outerHexPoints[HexPosition.Left]);
                         points.Add(innerHexPoints[HexPosition.Left]);
                         break;
-                    case RoadPosition.TopLeft:
+                    case HexSide.TopLeft:
                         points.Add(innerHexPoints[HexPosition.Left]);
                         points.Add(outerHexPoints[HexPosition.Left]);
                         points.Add(outerHexPoints[HexPosition.TopLeft]);

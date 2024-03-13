@@ -21,7 +21,7 @@ namespace Catan3.Controls
         {
             InitializeComponent();
         }
-        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(RoadViewModel), typeof(RoadCtrl), new PropertyMetadata(new RoadKey(TileKey.Default, RoadPosition.None), ViewModelChanged));
+        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(RoadViewModel), typeof(RoadCtrl), new PropertyMetadata(new RoadKey(TileKey.Default, HexSide.None), ViewModelChanged));
         public RoadViewModel ViewModel
         {
             get => ( RoadViewModel )GetValue(ViewModelProperty);
