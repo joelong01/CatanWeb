@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using Catan3.Utility;
@@ -136,12 +137,6 @@ namespace Catan3.Models
                 if (Layout is null) return points;
                 var outerHexPoints = Layout.OuterHexPoints.ListToDictionary();
                 var innerHexPoints =  Layout.InnerHexPoints.ListToDictionary();
-                //
-                //  hackity hack -- we need these because we are doing the visual layout from the perspetive of the current tile
-                //  the points are on adjacent tiles, so we either reget their layout and do the math, or go back to first principles
-                //  to do the math.
-                var magicX = (Layout.TileGap * .5 - Layout.RoadStrokeThickness + Layout.InnerHexStrokeThickness * .43);
-                var magicY =  (Layout.TileGap * Math.Sqrt(3) / 2.0 + Layout.RoadStrokeThickness / 2.0 + Layout.InnerHexStrokeThickness / 2.0);
                 switch (Road.RoadKey.HexSide)
                 {
                     case HexSide.None:
@@ -153,23 +148,21 @@ namespace Catan3.Models
                         points.Add(innerHexPoints[HexPosition.TopLeft]);
                         break;
                     case HexSide.TopRight:
+                        var gap = GapBetweenTiles(Direction.NorthEast);
                         points.Add(outerHexPoints[HexPosition.TopRight]);
                         points.Add(innerHexPoints[HexPosition.TopRight]);
                         points.Add(innerHexPoints[HexPosition.Right]);
                         points.Add(outerHexPoints[HexPosition.Right]);
-                        points.Add(new Point(outerHexPoints[HexPosition.Right].X + magicX,
-                                            outerHexPoints[HexPosition.Right].Y - magicY));
-                        points.Add(new Point(outerHexPoints[HexPosition.TopRight].X + outerHexPoints[HexPosition.Right].X - innerHexPoints[HexPosition.Right].X - Layout.RoadStrokeThickness ,
-                                             outerHexPoints[HexPosition.TopRight].Y));
+                        points.Add(new Point(innerHexPoints[HexPosition.BottomLeft].X + gap.X,
+                                            innerHexPoints[HexPosition.BottomRight].Y + gap.Y));
+                        points.Add(new Point(innerHexPoints[HexPosition.Left].X + gap.X, innerHexPoints[HexPosition.Left].Y + gap.Y));
                         break;
                     case HexSide.BottomRight:
+                        var delta = GapBetweenTiles(Direction.SouthEast);
                         points.Add(innerHexPoints[HexPosition.BottomRight]);
                         points.Add(outerHexPoints[HexPosition.BottomRight]);
-                        double dX = outerHexPoints[HexPosition.Right].X - innerHexPoints[HexPosition.Right].X ;
-                        Point p = new (outerHexPoints[HexPosition.BottomRight].X + dX, outerHexPoints[HexPosition.BottomRight].Y);
-                        points.Add(p);
-                        p = new(outerHexPoints[HexPosition.Right].X + magicX, outerHexPoints[HexPosition.Right].Y + magicY ) ;
-                        points.Add(p);
+                        points.Add(new Point(innerHexPoints[HexPosition.Left].X + delta.X, innerHexPoints[HexPosition.Left].Y + delta.Y));
+                        points.Add(new Point(innerHexPoints[HexPosition.TopLeft].X + delta.X, innerHexPoints[HexPosition.TopLeft].Y + delta.Y));
                         points.Add(outerHexPoints[HexPosition.Right]);
                         points.Add(innerHexPoints[HexPosition.Right]);
 
@@ -201,29 +194,15 @@ namespace Catan3.Models
             }
         }
 
+        private Point GapBetweenTiles(Direction direction)
+        {
+            var adjacentKey  = this.Road.RoadKey.TileKey.GetAdjacentTile(direction);
+            double  xGap = adjacentKey.Left(this.Layout) - this.Road.RoadKey.TileKey.Left(this.Layout);
+            double  yGap = adjacentKey.Top(this.Layout) - this.Road.RoadKey.TileKey.Top(this.Layout);
+            return new Point(xGap, yGap);
 
+        }
 
-
-        //public PointCollection RoadPolygon
-        //{
-        //    get
-        //    {
-        //        PointCollection points = [];
-        //        if (Layout is null) return points;
-        //        var polygonHeight = VisualRoadHeight - Layout.RoadStrokeThickness  ; 
-        //        var polygonWidth = RoadWidth - Layout.RoadStrokeThickness ;
-        //        var halfStroke = Layout.RoadStrokeThickness * 0.5;
-        //        double pointOneFiveX = polygonHeight / 2.0 * Math.Sqrt(3) / 4.0 ;
-        //        points.Add(new Point(0, polygonHeight * 0.5)); // 0
-        //        points.Add(new Point(pointOneFiveX, 0)); //1
-        //        points.Add(new Point(polygonWidth - pointOneFiveX, 0)); //2
-        //        points.Add(new Point(polygonWidth, polygonHeight * 0.5 )); //3
-        //        points.Add(new Point(polygonWidth - pointOneFiveX, polygonHeight)); //4
-        //        points.Add(new Point(pointOneFiveX, polygonHeight));  //5
-
-        //        return points;
-        //    }
-        //}
-        //  }
+      
     }
 }
