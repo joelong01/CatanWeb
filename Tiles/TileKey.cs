@@ -70,9 +70,9 @@ namespace Catan3.Models
         public double Top(BoardLayout layout)
         {
             var top =  ( .5 * Q +  R)*layout.OuterHexSize * Math.Sqrt(3) ;
-            top += 2 * layout.OuterHexSize * Math.Sqrt(3);
+            top += 2 * layout.OuterHexSize * Math.Sqrt(3); // the height of the hex/control
             top = Math.Round(top + layout.BuildingSize * .5, 1); // the buildings will go on top of the highest tile, give them room
-            top += layout.InnerHexStrokeThickness + layout.GameMargin;
+            top += layout.GameMargin; // space around the whole board
             return top;
         }
         public double Left(BoardLayout layout)
@@ -80,7 +80,7 @@ namespace Catan3.Models
             var left = 2 * layout.OuterHexSize * .75 * Q ;
             left += layout.ColumnOffset * 2 * layout.OuterHexSize;
             left += ( layout.BuildingSize * 0.5 );
-            left += layout.InnerHexStrokeThickness * 0.5;
+           // left += layout.InnerHexStrokeThickness * 0.5;
             left += layout.GameMargin;
 
             return left;

@@ -30,6 +30,8 @@ namespace Catan3.Models
     /// </summary>
     public partial class BoardLayout
     {
+       
+
         //
         //  this is used in the DependencyProperties so that there is a reasonable non-null default
         public static BoardLayout Default { get; } = new BoardLayout();
@@ -70,8 +72,8 @@ namespace Catan3.Models
             get
             {
                 // Adjust the inner hex size to exclude the stroke thickness from the hex itself.
-                // The outer hex size is reduced by the TileGap and the full stroke thickness (once, not doubled)
-                double adjustedSize = OuterHexSize - TileGap - InnerHexStrokeThickness;
+                // The outer hex size is reduced by the TileGap and the 1/2 stroke thickness 
+                double adjustedSize = OuterHexSize - TileGap - InnerHexStrokeThickness * .5;
                 return adjustedSize;
             }
         }
@@ -79,26 +81,24 @@ namespace Catan3.Models
         ///     The Points that a Polygon can bind to that has InnerHexSize.  Note that the math here can be strange
         ///     because from a geometry point of view, the InnerHexSize defines exactly the size of the Hex -- but 
         ///     Polygon geometry needs to offset this because the Stroke is 1/2 in the Polygon and 1/2 out of it.
+        ///     the size is the "radius" of the hex and the vertical/Horizontal offsets are therefore twice (diameter)
+        ///     as much as might be expected
         /// </summary>
         public PointCollection InnerHexPoints
         {
             get
             {
-               
 
-                // Adjust for the stroke thickness of the inner hex by subtracting half the StrokeThickenss from the height on the InnerHexSize
-                // since the stroke is centered on the hexagon's path, we only add half of the stroke thickness to the adjustment
-                double innerSizeWithStroke = OuterHexSize - (InnerHexStrokeThickness) - TileGap;
 
                 // Calculate the horizontal difference after accounting for the stroke
-                double sizeDiff = (OuterHexSize - innerSizeWithStroke);
+                double sizeDiff = (OuterHexSize - InnerHexSize);
 
                 // The inner hexagon needs to be positioned such that the gap is equal on all sides.
-    
-                double verticalAdjustment = (sizeDiff + (TileGap  + InnerHexStrokeThickness  )  * 0.5) / 2.0;
-                double horizontalAdjustment = (sizeDiff + (TileGap  + InnerHexStrokeThickness  )  * Math.Sqrt(3) / 2.0) / 2.0; ;  
 
-                return HexGeometry.HexPoints(innerSizeWithStroke, horizontalAdjustment, verticalAdjustment);
+                double verticalAdjustment = (sizeDiff ) * .86;
+                double horizontalAdjustment = (sizeDiff )  ;
+
+                return HexGeometry.HexPoints(InnerHexSize, horizontalAdjustment, verticalAdjustment);
             }
         }
 

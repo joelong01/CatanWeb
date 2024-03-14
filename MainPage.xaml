@@ -62,6 +62,8 @@
             <ComboBox ItemsSource="{x:Bind GameViewModel.Players, Mode=OneWay}" DisplayMemberPath="Name"
                     Foreground="Black" SelectedItem="{x:Bind GameViewModel.CurrentPlayer, Mode=TwoWay}"
                     HorizontalAlignment="Left" VerticalAlignment="Top" Width="200" />
+
+            <Button Content="Hit Me" Click="OnHitMe" />
         </StackPanel>
         <Viewbox Grid.Column="1" Stretch="None">
             <c:GameBoardCtrl Grid.Column="1" GameViewModel="{x:Bind GameViewModel, Mode=OneWay}"

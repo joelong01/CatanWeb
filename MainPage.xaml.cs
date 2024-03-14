@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Catan3.Controls;
 using Catan3.Models;
+using Catan3.Utility;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -205,6 +206,9 @@ namespace Catan3
 
         }
 
-
+        private void OnHitMe(object sender, RoutedEventArgs e)
+        {
+            this.TraceMessage($"[CacheHit={HexGeometry.CacheHit}][cacheMiss={HexGeometry.CacheMiss}][cacheSize={HexGeometry.CacheSize}]");
+        }
     }
 }

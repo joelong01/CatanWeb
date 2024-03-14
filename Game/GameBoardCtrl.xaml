@@ -139,7 +139,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <Viewbox x:Name="VB_Robber" Stretch="Uniform" Height="80"
+            <Viewbox x:Name="VB_Robber" Stretch="Uniform" Height="{x:Bind RobberHeight(GameViewModel.BoardInfo.Layout.OuterHexSize), Mode=OneWay}"
                     HorizontalAlignment="Left" VerticalAlignment="Top"
                     Margin="0,0,0,0">
                 <Viewbox.RenderTransform>

@@ -3,7 +3,6 @@ using Catan3.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 namespace Catan3.Controls
 {
@@ -29,6 +28,7 @@ namespace Catan3.Controls
         {
             InitializeComponent();
             VB_Robber.Loaded += VB_Robber_Loaded;
+
 
         }
 
@@ -56,10 +56,18 @@ namespace Catan3.Controls
             if (oldValue is not null)
             {
                 oldValue.PropertyChanged -= GameViewModel_PropertyChanged;
+                if (oldValue.BoardInfo is not null)
+                {
+                    oldValue.BoardInfo.Layout.PropertyChanged -= Layout_PropertyChanged;
+                }
             }
             if (newValue is not null)
             {
                 newValue.PropertyChanged += GameViewModel_PropertyChanged;
+                if (newValue.BoardInfo is not null)
+                {
+                    newValue.BoardInfo.Layout.PropertyChanged += Layout_PropertyChanged;
+                }
             }
             UpdateRobberTileLocation();
             //
@@ -73,10 +81,15 @@ namespace Catan3.Controls
             //  we use Binding in some places where it is convinient and x:Bind in others. Binding needs data context, so set it here
             this.DataContext = newValue;
         }
-
-
-
-
+        /// <summary>
+        ///     When the geometry of the board changes, we have to update the location of the Robber
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            UpdateRobberTileLocation();
+        }
 
         private void GameViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -163,6 +176,12 @@ namespace Catan3.Controls
             {
                 TileRightMouseClicked?.Invoke(Tile, e);
             }
+        }
+
+        private double RobberHeight(double hexSize)
+        {
+            if (GameViewModel is null || GameViewModel.BoardInfo is null) return 80;
+            return 80 * ( GameViewModel.BoardInfo.Layout.InnerHexSize * 2 - 92.5 ) / 92.5;
         }
     }
 }

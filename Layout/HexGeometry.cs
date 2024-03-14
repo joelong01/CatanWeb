@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using Catan3.Models;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 
@@ -27,6 +30,14 @@ namespace Catan3.Utility
     {
 
         /// <summary>
+        ///     we have an OuterHex and an InnerHex in the game. we'll cache 2 PointCollections so that we aren't constantly
+        ///     recalculating them.
+        /// </summary>
+        private static readonly Dictionary<double, PointCollection> HexCache = [];
+        public static int CacheHit { get; private set; }
+        public static int CacheMiss { get; private set; }
+        public static int CacheSize => HexCache.Count;
+        /// <summary>
         /// Given the size of a regular hexagon, returns a PointCollection that defines the vertices to draw a flat top hexagon.
         /// The size parameter represents the distance from the center of the hexagon to any of its vertices.
         /// The first vertex is at the top center of the hexagon, assuming (0,0) as the origin.
@@ -35,8 +46,22 @@ namespace Catan3.Utility
         /// <returns>A PointCollection representing the vertices of the hexagon in the order to draw it.</returns>
         public static PointCollection HexPoints(double size, double deltaX, double deltaY)
         {
-            PointCollection points = [];
+            if (HexCache.TryGetValue(size, out PointCollection? points))
+            {
+                if (points is not null)
+                {
 
+                    if (points is not null)
+                    {
+                        Debug.Assert(points.Count > 0);
+                        CacheHit++;
+                        return points.Clone();
+                    }
+                }
+            }
+            if (HexCache.Count > 2) HexCache.Clear();
+            CacheMiss++;
+            points = [];
             // Calculate the width and height for positioning adjustments
   
             double height = Math.Sqrt(3) * size;
@@ -59,55 +84,15 @@ namespace Catan3.Utility
                 adjustedX += deltaX;
                 adjustedY += deltaY;
 
+                HexCache[size] = points;
+
                 points.Add(new Point(adjustedX, adjustedY));
             }
 
             return points;
         }
 
-        public static List<PointCollection> OuterHex(double size, double width, double deltaX, double deltaY)
-        {
-            var outerSegments = new List<PointCollection>();
-            double angleRadians = Math.PI / 3; // 60 degrees in radians
-            double outerSize = size + width; // Calculate the outer size based on the width offset
-
-            // Calculate the points for the original and outer hexagon
-            List<Point> innerPoints = new List<Point>();
-            List<Point> outerPoints = new List<Point>();
-
-            for (int i = 0; i < 6; i++)
-            {
-                double angle = i * angleRadians;
-
-                // Calculate and add points for the inner hexagon
-                double innerX = size * Math.Cos(angle) + deltaX + size;
-                double innerY = size * Math.Sin(angle) + deltaY + (Math.Sqrt(3) * size / 2);
-                innerPoints.Add(new Point(innerX, innerY));
-
-                // Calculate and add points for the outer hexagon
-                double outerX = outerSize * Math.Cos(angle) + deltaX + size;
-                double outerY = outerSize * Math.Sin(angle) + deltaY + (Math.Sqrt(3) * outerSize / 2);
-                outerPoints.Add(new Point(outerX, outerY));
-            }
-
-            // Create segments between each pair of points
-            for (int i = 0; i < 6; i++)
-            {
-                var segmentPoints = new PointCollection();
-                int nextIndex = (i + 1) % 6;
-
-                // Add points to create the trapezoid segment
-                segmentPoints.Add(innerPoints[i]);
-                segmentPoints.Add(outerPoints[i]);
-                segmentPoints.Add(outerPoints[nextIndex]);
-                segmentPoints.Add(innerPoints[nextIndex]);
-
-                outerSegments.Add(segmentPoints);
-            }
-
-            return outerSegments;
-        }
-
+       
 
         /// <summary>
         /// Calculates the height of a regular hexagon given its size.

@@ -86,7 +86,7 @@ namespace Catan3.Models
             get
             {
 
-                // The inner hexagon needs to be positioned such that the gap is equal on all sides.
+                // The inner hexagon needs to be positioned such that the delta is equal on all sides.
                 // Therefore, the vertical and horizontal adjustments are half the TileGap, since it will appear on both sides of the hex.
                 double verticalAdjustment = Layout.TileGap / 2;
                 double horizontalAdjustment = Layout.TileGap / 2;
@@ -132,10 +132,11 @@ namespace Catan3.Models
 
                 if (Layout is null) return [];
                 var points =  GetRoadPoints(Road.RoadKey.HexSide, Road.RoadKey.TileKey, Layout);
-                if (Road.RoadKey.TileKey == new TileKey(2, 0, -2) && Road.RoadKey.HexSide == HexSide.Bottom)
-                {
-                    this.TraceMessage($"[cacheHit={cacheHit}][cacheMiss={cacheMiss}][cacheSize={RoadCache.Count}]");
-                }
+                //leaving comment here in case the cache is looked at again.
+                //if (Road.RoadKey.TileKey == new TileKey(2, 0, -2) && Road.RoadKey.HexSide == HexSide.Bottom)
+                //{
+                //    this.TraceMessage($"[CacheHit={cacheHit}][cacheMiss={cacheMiss}][cacheSize={RoadCache.Count}]");
+                //}
                 return points;
 
             }
@@ -149,7 +150,7 @@ namespace Catan3.Models
         /// <summary>
         ///  Every tile has the same PointsCollection.   the collection must be unique per control because of the way x:Bind works...but the 
         ///  values are all the same.  So we cache them in a dictionary so that we only do the calculations once per side for any particular
-        ///  layout.  for a regular board, we should see something like this: [cacheHit=66][cacheMiss=6][cacheSize=1]
+        ///  layout.  for a regular board, we should see something like this: [CacheHit=66][cacheMiss=6][cacheSize=1]
         ///  
         /// </summary>
         /// <param name="side"></param>
@@ -198,28 +199,30 @@ namespace Catan3.Models
             if (layout is null) return points;
             var outerHexPoints = layout.OuterHexPoints.ListToDictionary();
             var innerHexPoints =  layout.InnerHexPoints.ListToDictionary();
+            Point delta;
             switch (side)
             {
                 case HexSide.None:
                     break;
-                case HexSide.Top: // this are "half roads"
-                    points.Add(outerHexPoints[HexPosition.TopLeft]);
-                    points.Add(outerHexPoints[HexPosition.TopRight]);
-                    points.Add(innerHexPoints[HexPosition.TopRight]);
-                    points.Add(innerHexPoints[HexPosition.TopLeft]);
+                case HexSide.Top: // this is exactly the same as the bottom, just offset by the height
+                    PointCollection bottom = PointsForSide(HexSide.Bottom, tileKey, layout);
+                    foreach (var point in bottom)
+                    {
+                        points.Add(new Point(point.X, point.Y - layout.ControlHeight));
+                    }
                     break;
                 case HexSide.TopRight:
-                    var gap = GapBetweenTiles(tileKey, Direction.NorthEast, layout);
+                    delta = GapBetweenTiles(tileKey, Direction.NorthEast, layout);
                     points.Add(outerHexPoints[HexPosition.TopRight]);
                     points.Add(innerHexPoints[HexPosition.TopRight]);
                     points.Add(innerHexPoints[HexPosition.Right]);
                     points.Add(outerHexPoints[HexPosition.Right]);
-                    points.Add(new Point(innerHexPoints[HexPosition.BottomLeft].X + gap.X,
-                                        innerHexPoints[HexPosition.BottomRight].Y + gap.Y));
-                    points.Add(new Point(innerHexPoints[HexPosition.Left].X + gap.X, innerHexPoints[HexPosition.Left].Y + gap.Y));
+                    points.Add(new Point(innerHexPoints[HexPosition.BottomLeft].X + delta.X,
+                                        innerHexPoints[HexPosition.BottomRight].Y + delta.Y));
+                    points.Add(new Point(innerHexPoints[HexPosition.Left].X + delta.X, innerHexPoints[HexPosition.Left].Y + delta.Y));
                     break;
                 case HexSide.BottomRight:
-                    var delta = GapBetweenTiles(tileKey, Direction.SouthEast, layout);
+                    delta = GapBetweenTiles(tileKey, Direction.SouthEast, layout);
                     points.Add(innerHexPoints[HexPosition.BottomRight]);
                     points.Add(outerHexPoints[HexPosition.BottomRight]);
                     points.Add(new Point(innerHexPoints[HexPosition.Left].X + delta.X, innerHexPoints[HexPosition.Left].Y + delta.Y));
@@ -237,16 +240,30 @@ namespace Catan3.Models
                     points.Add(new Point(innerHexPoints[HexPosition.BottomLeft].X, innerHexPoints[HexPosition.TopLeft].Y + layout.ControlHeight));
                     break;
                 case HexSide.BottomLeft:
+                    delta = GapBetweenTiles(tileKey, Direction.SouthWest, layout);
                     points.Add(innerHexPoints[HexPosition.BottomLeft]);
                     points.Add(outerHexPoints[HexPosition.BottomLeft]);
+                   
+
+                    points.Add(new Point(innerHexPoints[HexPosition.Right].X + delta.X,
+                                        innerHexPoints[HexPosition.Right].Y + delta.Y));
+
+                    points.Add(new Point(innerHexPoints[HexPosition.TopRight].X + delta.X,
+                                         innerHexPoints[HexPosition.TopRight].Y + delta.Y));
+
                     points.Add(outerHexPoints[HexPosition.Left]);
                     points.Add(innerHexPoints[HexPosition.Left]);
                     break;
                 case HexSide.TopLeft:
-                    points.Add(innerHexPoints[HexPosition.Left]);
-                    points.Add(outerHexPoints[HexPosition.Left]);
-                    points.Add(outerHexPoints[HexPosition.TopLeft]);
+                    
+                    delta = GapBetweenTiles(tileKey, Direction.NorthWest, layout);
                     points.Add(innerHexPoints[HexPosition.TopLeft]);
+                    points.Add(outerHexPoints[HexPosition.TopLeft]);
+                    points.Add(new Point(innerHexPoints[HexPosition.Right].X + delta.X, innerHexPoints[HexPosition.Right].Y + delta.Y));
+                    points.Add(new Point(innerHexPoints[HexPosition.BottomRight].X + delta.X, innerHexPoints[HexPosition.BottomRight].Y + delta.Y));
+                    points.Add(outerHexPoints[HexPosition.Left]);
+                    points.Add(innerHexPoints[HexPosition.Left]);
+
                     break;
                 default:
                     break;
