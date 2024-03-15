@@ -1,7 +1,7 @@
 [
     {
         "ClassName": "BuildingKey",
-        "ModelVersion": "1.0b",
+        "ModelVersion": "2",
         "Namespace": "Catan3.Models",
         "Path": "..\\Buildings",
         "Usings": [
@@ -9,8 +9,8 @@
         ],
         "ConstructedProperties": [
             {
-                "Name": "TileKey",
-                "Type": "TileKey",
+                "Name": "HexCoordinates",
+                "Type": "HexCoordinates",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false

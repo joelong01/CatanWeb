@@ -1,6 +1,6 @@
 ﻿[
     {
-        "ModelVersion": "1.0d",
+        "ModelVersion": "2",
         "ClassName": "RoadModel",
         "Namespace": "Catan3.Models",
         "Path": "..\\Roads",

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Catan3.Utility;
 namespace Catan3.Models
 {
     public static class RoadExtensions

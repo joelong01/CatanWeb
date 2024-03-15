@@ -181,7 +181,10 @@ namespace Catan3.Controls
         private double RobberHeight(double hexSize)
         {
             if (GameViewModel is null || GameViewModel.BoardInfo is null) return 80;
-            return 80 * ( GameViewModel.BoardInfo.Layout.InnerHexSize * 2 - 92.5 ) / 92.5;
+            var result =  hexSize * .8;
+            if (result < 10) return 10;
+
+            return result;
         }
     }
 }

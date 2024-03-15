@@ -1,22 +1,23 @@
 ﻿[
     {
-        "ModelVersion": "1.0",
+        "ModelVersion": "3",
         "ClassName": "TileModel",
         "Namespace": "Catan3.Models",
         "Path": "..\\Tiles",
         "CallInit": false,
         "Usings": [
-            "System.ComponentModel"
+            "System.ComponentModel",
+            "Catan3.Utility"
         ],
         "ConstructedProperties": [],
         "NormalProperties": [
             {
                 "Name": "TileKey",
-                "Type": "TileKey",
+                "Type": "HexCoordinates",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "TileKey.Default",
+                "Default": "HexCoordinates.Default",
                 "IsLiteral": false
             },
             {

@@ -1,8 +1,9 @@
 ﻿using System;
 using System.ComponentModel;
+using Catan3.Utility;
 namespace Catan3.Models
 {
-    public partial class RoadKey (TileKey tileKey, HexSide position) : INotifyPropertyChanged
+    public partial class RoadKey (HexCoordinates tileKey, HexSide position) : INotifyPropertyChanged
     {
        
        
@@ -17,7 +18,7 @@ namespace Catan3.Models
                    key.TileKey == this.TileKey;
         }
         public override int GetHashCode() => HashCode.Combine(TileKey, HexSide);
-        public static BuildingKey Default => new(TileKey.Default, Utility.HexPosition.None);
+        public static BuildingKey Default => new(HexCoordinates.Default, Utility.HexPosition.None);
         public static bool operator ==(RoadKey left, RoadKey right)
         {
             if (left is null || right is null)

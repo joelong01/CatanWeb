@@ -44,7 +44,7 @@ namespace Catan3.Models
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public double Top(TileKey key)
+        public double Top(HexCoordinates key)
         {
             var outerHeight = HexGeometry.Height(OuterHexSize);
             var top =  ( .5 * key.Q +  key.R)*outerHeight ;
@@ -53,7 +53,7 @@ namespace Catan3.Models
             top += InnerHexStrokeThickness + GameMargin;
             return top;
         }
-        public double Left(TileKey key)
+        public double Left(HexCoordinates key)
         {
             var left = 2 * OuterHexSize * .75 * key.Q ;
             left += ColumnOffset * 2 * OuterHexSize;

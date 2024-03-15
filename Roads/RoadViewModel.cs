@@ -133,7 +133,7 @@ namespace Catan3.Models
                 if (Layout is null) return [];
                 var points =  GetRoadPoints(Road.RoadKey.HexSide, Road.RoadKey.TileKey, Layout);
                 //leaving comment here in case the cache is looked at again.
-                //if (Road.RoadKey.TileKey == new TileKey(2, 0, -2) && Road.RoadKey.HexSide == HexSide.Bottom)
+                //if (Road.RoadKey.HexCoordinates == new HexCoordinates(2, 0, -2) && Road.RoadKey.HexSide == HexSide.Bottom)
                 //{
                 //    this.TraceMessage($"[CacheHit={cacheHit}][cacheMiss={cacheMiss}][cacheSize={RoadCache.Count}]");
                 //}
@@ -157,7 +157,7 @@ namespace Catan3.Models
         /// <param name="tileKey"></param>
         /// <param name="layout"></param>
         /// <returns></returns>
-        private static PointCollection GetRoadPoints(HexSide side, TileKey tileKey, BoardLayout layout)
+        private static PointCollection GetRoadPoints(HexSide side, HexCoordinates tileKey, BoardLayout layout)
         {
             Dictionary<HexSide, PointCollection>? sideDictionary;
             if (RoadCache.TryGetValue((layout.OuterHexSize, layout.TileGap, layout.InnerHexStrokeThickness), out sideDictionary))
@@ -193,7 +193,7 @@ namespace Catan3.Models
         ///                 \                            /
         ///                  \ 5 ------------------- 4  / 
         ///        
-        private static PointCollection PointsForSide(HexSide side, TileKey tileKey, BoardLayout layout)
+        private static PointCollection PointsForSide(HexSide side, HexCoordinates tileKey, BoardLayout layout)
         {
             PointCollection points = [];
             if (layout is null) return points;
@@ -272,11 +272,11 @@ namespace Catan3.Models
             }
             return points;
         }
-        private static Point GapBetweenTiles(TileKey key, Direction direction, BoardLayout layout)
+        private static Point GapBetweenTiles(HexCoordinates key, Direction direction, BoardLayout layout)
         {
             var adjacentKey  = key.GetAdjacentTile(direction);
-            double  xGap = adjacentKey.Left(layout) - key.Left(layout);
-            double  yGap = adjacentKey.Top(layout) - key.Top(layout);
+            double  xGap = layout.Left(adjacentKey) - layout.Left(key);
+            double  yGap = layout.Top(adjacentKey) - layout.Top(key);
             return new Point(xGap, yGap);
         }
     }

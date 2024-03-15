@@ -43,7 +43,7 @@ namespace Catan3.Models
         /// <returns></returns>
         private double GetTop(BuildingKey key)
         {
-            var top =  Layout.Top(key.TileKey);
+            var top =  Layout.Top(key.HexCoordinates);
             var center = Layout.OuterHexPoints.ListToDictionary()[key.Position];
             top += center.Y;
             top -= ( Layout.BuildingSize ) * 0.5;
@@ -56,7 +56,7 @@ namespace Catan3.Models
         /// <returns></returns>
         private double GetLeft(BuildingKey key)
         {
-            var left =  Layout.Left(key.TileKey) ;
+            var left =  Layout.Left(key.HexCoordinates) ;
             var center =  Layout.OuterHexPoints.ListToDictionary()[key.Position];
             left -= Layout.BuildingSize / 2.0;
             left += center.X;

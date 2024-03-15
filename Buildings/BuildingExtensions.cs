@@ -51,7 +51,7 @@ namespace Catan3.Models
                 var aliases = key.Aliases();
                 foreach ((HexPosition position, Direction direction) in aliases)
                 {
-                    var aliasCoords = key.TileKey.GetAdjacentTile(direction);
+                    var aliasCoords = key.HexCoordinates.GetAdjacentTile(direction);
                     var aliasKey = new BuildingKey(aliasCoords, position);
                     building = buildings.FirstOrDefault(b => b.BuildingKey == aliasKey);
                     if (building is not null)
@@ -79,14 +79,14 @@ namespace Catan3.Models
 
         public override string ToString()
         {
-            return $"[{this.TileKey}-{Position}]";
+            return $"[{this.HexCoordinates}-{Position}]";
         }
         public static BuildingKey? FromString(string str)
         {
             string[] tokens = str.Split(["[", "]", "-"], StringSplitOptions.RemoveEmptyEntries);
             if (tokens is null) return null;
             if (tokens.Length != 2) return null;
-            var tileCoord = TileKey.FromString(tokens[0]);
+            var tileCoord = HexCoordinates.FromString(tokens[0]);
             if (tileCoord is null) return null;
             var buildingPos = (HexPosition)Enum.Parse(typeof(HexPosition), tokens[1]);
             return new BuildingKey(tileCoord, buildingPos);
@@ -95,10 +95,10 @@ namespace Catan3.Models
         {
             return obj is not null && obj is BuildingKey key &&
                    key.Position == this.Position &&
-                   key.TileKey == this.TileKey;
+                   key.HexCoordinates == this.HexCoordinates;
         }
-        public override int GetHashCode() => HashCode.Combine(TileKey, Position);
-        public static BuildingKey Default => new(TileKey.Default, HexPosition.None);
+        public override int GetHashCode() => HashCode.Combine(HexCoordinates, Position);
+        public static BuildingKey Default => new(HexCoordinates.Default, HexPosition.None);
         public static bool operator ==(BuildingKey left, BuildingKey right)
         {
             if (left is null || right is null)

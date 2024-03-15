@@ -1,6 +1,7 @@
 ﻿
 
 
+using Catan3.Utility;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using System.ComponentModel;
@@ -42,7 +43,7 @@ namespace Catan3.Models
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        private double GetTop(TileKey key)
+        private double GetTop(HexCoordinates key)
         {
             var top =  Layout.Top(key);
             top -= 25;
@@ -53,7 +54,7 @@ namespace Catan3.Models
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        private double GetLeft(TileKey key)
+        private double GetLeft(HexCoordinates key)
         {
             var left =  Layout.Left(key) ;
              

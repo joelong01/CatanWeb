@@ -1,12 +1,13 @@
 [
     {
-        "ModelVersion": "1.0",
+        "ModelVersion": "4",
         "ClassName": "GameModel",
         "Namespace": "Catan3.Models",
         "Path": "..\\Game",
         "Usings": [
             "System.Collections.ObjectModel",
-            "System.ComponentModel"
+            "System.ComponentModel", 
+            "Catan3.Utility"
         ],
         "ConstructedProperties": [],
         "NormalProperties": [
@@ -60,11 +61,11 @@
             },
             {
                 "Name": "RobberTile",
-                "Type": "TileKey",
+                "Type": "HexCoordinates",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "TileKey.Default"
+                "Default": "HexCoordinates.Default"
             }
         ]
     }

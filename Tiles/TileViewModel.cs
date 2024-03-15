@@ -28,7 +28,7 @@ namespace Catan3.Models
             if (sender is not null && sender is BoardLayout layout)
             {
 
-                // this.TraceMessage($"{e.PropertyName} changed for tile {Tile.TileKey}");
+                // this.TraceMessage($"{e.PropertyName} changed for tile {Tile.HexCoordinates}");
                 Layout = layout;
                 UpdateLayout();
                 if (e.PropertyName == nameof(BoardLayout.OuterHexSize))

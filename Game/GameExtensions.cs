@@ -17,7 +17,7 @@ namespace Catan3.Models
                 var aliases = key.Aliases();
                 foreach ((HexPosition position, Direction direction) in aliases)
                 {
-                    var aliasCoords = key.TileKey.GetAdjacentTile(direction);
+                    var aliasCoords = key.HexCoordinates.GetAdjacentTile(direction);
                     var aliasKey = new BuildingKey(aliasCoords, position);
                     building = gameModel.Buildings.FindBuilding(aliasKey);
                     if (building is not null)

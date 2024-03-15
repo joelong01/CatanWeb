@@ -65,7 +65,7 @@
 
             <Button Content="Hit Me" Click="OnHitMe" />
         </StackPanel>
-        <Viewbox Grid.Column="1" Stretch="None">
+        <Viewbox Grid.Column="1" Stretch="Uniform">
             <c:GameBoardCtrl Grid.Column="1" GameViewModel="{x:Bind GameViewModel, Mode=OneWay}"
                     BuildingClicked="Building_Clicked" BuildingMouseEnter="Building_MouseEnter"
                     BuildingMouseLeave="Building_MouseLeave" RoadClicked="Road_Clicked" RoadMouseEnter="Road_MouseEnter"

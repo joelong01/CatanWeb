@@ -1,0 +1,85 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using Catan3.Models;
+namespace Catan3.Utility
+{
+
+    public enum HexSide { None = -1, Top = 0, TopRight = 1, BottomRight = 2, Bottom = 3, BottomLeft = 4, TopLeft = 5 };
+    public enum Direction
+    {
+        North,
+        NorthEast,
+        SouthEast,
+        South,
+        SouthWest,
+        NorthWest
+    }
+
+    public partial class HexCoordinates(int q, int r, int s)
+    {
+        public static
+                Dictionary<Direction, HexCoordinates> Directions
+        { get; } = new()
+                    {
+                        { Direction.North, new HexCoordinates(0, -1, 1) },
+                        { Direction.NorthEast, new HexCoordinates(1, -1, 0) },
+                        { Direction.SouthEast, new HexCoordinates(1, 0, -1) },
+                        { Direction.South, new HexCoordinates(0, 1, -1) },
+                        { Direction.SouthWest, new HexCoordinates(-1, 1, 0) },
+                        { Direction.NorthWest, new HexCoordinates(-1, 0, 1) }
+                    };
+     
+        public override string ToString()
+        {
+            return $"({Q},{R},{S})";
+        }
+        public static HexCoordinates? FromString(string str)
+        {
+            string[] tokens = str.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            if (tokens is null || tokens.Length != 3) return null;
+            var q = Int32.Parse(tokens[0]);
+            var r = Int32.Parse(tokens[1]);
+            var s = Int32.Parse(tokens[2]);
+            return new HexCoordinates(q, r, s);
+        }
+        public static HexCoordinates operator +(HexCoordinates x, HexCoordinates y)
+        {
+            return new HexCoordinates(x.Q + y.Q, x.R + y.R, x.S + y.S);
+        }
+        //
+        //  this will be the TileKeys of the North tile.  depending on the 
+        //  collection, the tile might not exist
+        public HexCoordinates North => this + Directions[Direction.North];
+        public HexCoordinates NorthEast => this + Directions[Direction.NorthEast];
+        public HexCoordinates SouthEast => this + Directions[Direction.SouthEast];
+        public HexCoordinates South => this + Directions[Direction.South];
+        public HexCoordinates SouthWest => this + Directions[Direction.SouthWest];
+        public HexCoordinates NorthWest => this + Directions[Direction.NorthWest];
+        public HexCoordinates GetAdjacentTile(Direction dir) => this + Directions[dir];
+        public override bool Equals(object? obj)
+        {
+            if (obj == null) return false;
+            return obj is HexCoordinates key &&
+                   Q == key.Q &&
+                   R == key.R &&
+                   S == key.S;
+        }
+        public override int GetHashCode() => HashCode.Combine(Q, R, S);
+        public static HexCoordinates Default => new(-10, -10, -10);
+        public static bool operator ==(HexCoordinates left, HexCoordinates right)
+        {
+            if (left is null || right is null)
+            {
+                return false;
+            }
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+            return left.Equals(right);
+        }
+        public static bool operator !=(HexCoordinates left, HexCoordinates right) => !( left == right );
+       
+    }
+}

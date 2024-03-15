@@ -66,8 +66,8 @@ namespace Catan3.Models
         {
             List<TileModel> tiles = [];
             // get the tile
-            var tileModel = Tiles.TileFromCoords(key.TileKey)?.Tile;
-            Debug.Assert(tileModel is not null, "Bad TileKey");
+            var tileModel = Tiles.TileFromCoords(key.HexCoordinates)?.Tile;
+            Debug.Assert(tileModel is not null, "Bad HexCoordinates");
             tiles.Add(tileModel);
             // get the aliases
             var aliases = key.Aliases();

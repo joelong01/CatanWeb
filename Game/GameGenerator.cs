@@ -12,7 +12,7 @@ namespace Catan3.Models
     public partial class RegularBoardInfo
     {
         public BoardLayout Layout { get; } = new BoardLayout();
-        public List<TileKey> TileKeys { get; } =
+        public List<HexCoordinates> TileKeys { get; } =
              [
                  new(-2, 0, 2),
                  new(-2, 1, 1),
@@ -56,15 +56,15 @@ namespace Catan3.Models
             ResourceType.Wood
             ];
         public List<HarborModel> HarborModels { get; } = [
-            new HarborModel(new TileKey(0, -2, 2), HarborType.Ore, HexSide.Top),
-            new HarborModel(new TileKey(1, -2, 1), HarborType.Wheat, HexSide.TopRight),
-            new HarborModel(new TileKey(2, -1, -1), HarborType.Wood, HexSide.TopRight),
-            new HarborModel(new TileKey(2, 0, -2), HarborType.Brick, HexSide.BottomRight),
-            new HarborModel(new TileKey(1, 1, -2), HarborType.Sheep, HexSide.Bottom),
-            new HarborModel(new TileKey(-1, 2, -1), HarborType.ThreeForOne, HexSide.BottomRight),
-            new HarborModel(new TileKey(-2, 2, 0), HarborType.ThreeForOne, HexSide.BottomLeft),
-            new HarborModel(new TileKey(-2, 1, 1), HarborType.ThreeForOne, HexSide.TopLeft),
-          new HarborModel(new TileKey(-2, 0, 2), HarborType.ThreeForOne, HexSide.TopRight)
+            new HarborModel(new HexCoordinates(0, -2, 2), HarborType.Ore, HexSide.Top),
+            new HarborModel(new HexCoordinates(1, -2, 1), HarborType.Wheat, HexSide.TopRight),
+            new HarborModel(new HexCoordinates(2, -1, -1), HarborType.Wood, HexSide.TopRight),
+            new HarborModel(new HexCoordinates(2, 0, -2), HarborType.Brick, HexSide.BottomRight),
+            new HarborModel(new HexCoordinates(1, 1, -2), HarborType.Sheep, HexSide.Bottom),
+            new HarborModel(new HexCoordinates(-1, 2, -1), HarborType.ThreeForOne, HexSide.BottomRight),
+            new HarborModel(new HexCoordinates(-2, 2, 0), HarborType.ThreeForOne, HexSide.BottomLeft),
+            new HarborModel(new HexCoordinates(-2, 1, 1), HarborType.ThreeForOne, HexSide.TopLeft),
+          new HarborModel(new HexCoordinates(-2, 0, 2), HarborType.ThreeForOne, HexSide.TopRight)
 
             ];
         public List<int> Numbers { get; } = [7, 2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12];
@@ -107,7 +107,7 @@ namespace Catan3.Models
                         game.Buildings.Add(buildingModel);
                     }
                 }
-                // if (tile.TileKey == new TileKey(0,0,0))
+                // if (tile.HexCoordinates == new HexCoordinates(0,0,0))
                 foreach (HexSide roadPosition in Enum.GetValues(typeof(HexSide)))
                 {
                     if (roadPosition == HexSide.None) continue;

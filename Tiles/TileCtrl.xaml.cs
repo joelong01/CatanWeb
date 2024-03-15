@@ -1,4 +1,5 @@
 using Catan3.Models;
+using Catan3.Utility;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -70,8 +71,6 @@ namespace Catan3.Controls
             return StaticBrushes.WhiteBrush;
         }
 
-        private static TileKey CenterKey => new TileKey(0, 0, 0);
-
         /// <summary>
         ///     DataBinding function to scale the CatanNumber in XAML
         ///     The default size of a tile is 100, so as it gets bigger, the scale to the bigger number
@@ -81,7 +80,7 @@ namespace Catan3.Controls
 
         private double NumberScale(double size)
         {
-            //if (this.TileViewModel.Tile.TileKey == CenterKey)
+            //if (this.TileViewModel.Tile.HexCoordinates == CenterKey)
             //{
             //    this.TraceMessage($"InnerHexSize={size}");
             //}

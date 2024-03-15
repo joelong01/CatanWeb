@@ -1,9 +1,9 @@
 ﻿[
     {
-        "ModelVersion": "1.0",
-        "ClassName": "TileKey",
-        "Namespace": "Catan3.Models",
-        "Path": "..\\Tiles",
+        "ModelVersion": "2",
+        "ClassName": "HexCoordinates",
+        "Namespace": "Catan3.Utility",
+        "Path": "..\\Layout",
         "CallInit": false,
         "Usings": [
             "System.ComponentModel"

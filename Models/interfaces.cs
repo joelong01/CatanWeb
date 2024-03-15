@@ -21,7 +21,7 @@ namespace Catan3.Models
     }
     public interface IBoardInfo
     {
-        List<TileKey> TileKeys { get; }
+        List<HexCoordinates> TileKeys { get; }
         public List<ResourceType> Resources { get; }
         public List<int> Numbers { get; }
         public BoardLayout Layout { get; }
@@ -41,8 +41,8 @@ namespace Catan3.Models
         double BoardWidth { get; }
         double BoardHeight { get; }
         double RoadStrokeThickness { get; }
-        double Top(TileKey key);
-        double Left(TileKey key);
+        double Top(HexCoordinates key);
+        double Left(HexCoordinates key);
         PointCollection TileHexPoints { get; }
         PointCollection BuildingHexPoints { get; }
         public Dictionary<HexPosition, Point> ListToDictionary(PointCollection points);

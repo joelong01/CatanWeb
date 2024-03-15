@@ -2,13 +2,12 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Catan3.Utility;
 namespace Catan3.Models
 {
     public static class TileExtensions
     {
-        public static TileViewModel? TileFromCoords(this IEnumerable<TileViewModel> collection, TileKey coords)
+        public static TileViewModel? TileFromCoords(this IEnumerable<TileViewModel> collection, HexCoordinates coords)
         {
             ArgumentNullException.ThrowIfNull(collection, nameof(collection));
             ArgumentNullException.ThrowIfNull(coords, nameof(coords));
@@ -23,7 +22,7 @@ namespace Catan3.Models
                 collection.Add(item);
             }
         }
-        public static TileModel? TileFromCoords(this IEnumerable<TileModel> collection, TileKey coords)
+        public static TileModel? TileFromCoords(this IEnumerable<TileModel> collection, HexCoordinates coords)
         {
             ArgumentNullException.ThrowIfNull(collection, nameof(collection));
             ArgumentNullException.ThrowIfNull(coords, nameof(coords));
@@ -38,7 +37,7 @@ namespace Catan3.Models
         public static List<TileModel> AdjacentTiles(this IEnumerable<TileModel> collection, TileModel tile)
         {
             var result = new List<TileModel>();
-            foreach (var (_, coord) in TileKey.Directions)
+            foreach (var (_, coord) in HexCoordinates.Directions)
             {
                 var t = collection.TileFromCoords(tile.TileKey + coord);
                 if (t is not null) result.Add(t);

@@ -6,9 +6,7 @@ using Catan3.Models;
 using Catan3.Utility;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
-using Windows.Foundation;
-using Windows.Security.Cryptography.Certificates;
+
 namespace Catan3.Controls
 {
     public delegate void RoadClicked(RoadViewModel viewModel);
@@ -21,7 +19,7 @@ namespace Catan3.Controls
         {
             InitializeComponent();
         }
-        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(RoadViewModel), typeof(RoadCtrl), new PropertyMetadata(new RoadKey(TileKey.Default, HexSide.None), ViewModelChanged));
+        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(RoadViewModel), typeof(RoadCtrl), new PropertyMetadata(new RoadKey(HexCoordinates.Default, HexSide.None), ViewModelChanged));
         public RoadViewModel ViewModel
         {
             get => ( RoadViewModel )GetValue(ViewModelProperty);
