@@ -4,7 +4,7 @@
         "ModelVersion": "2",
         "ClassName": "RoadKey",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Roads",
+        "Path": ".",
         "Usings": [
             "System.ComponentModel",
             "Catan3.Utility"

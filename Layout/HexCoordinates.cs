@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using Catan3.Models;
+using Windows.Foundation;
 namespace Catan3.Utility
 {
 
@@ -29,7 +30,7 @@ namespace Catan3.Utility
                         { Direction.SouthWest, new HexCoordinates(-1, 1, 0) },
                         { Direction.NorthWest, new HexCoordinates(-1, 0, 1) }
                     };
-     
+
         public override string ToString()
         {
             return $"({Q},{R},{S})";
@@ -80,6 +81,33 @@ namespace Catan3.Utility
             return left.Equals(right);
         }
         public static bool operator !=(HexCoordinates left, HexCoordinates right) => !( left == right );
-       
+        public static Point MidPoint(double left, double top, double size, HexSide side)
+        {
+            double height = Math.Sqrt(3) * size;
+            double width = 2 * size; // Full width from left vertex to right vertex
+            double sideLength = (Math.Sqrt(3)/2) * size; // Horizontal length of a side
+            double horizontalMargin = (size - sideLength) / 2; // Distance from bounding box to hexagon side
+
+            switch (side)
+            {
+                case HexSide.Top:
+                    return new Point(left + size, top);
+                case HexSide.TopRight:
+                    return new Point(left + width - horizontalMargin, top + height / 4);
+                case HexSide.BottomRight:
+                    return new Point(left + width - horizontalMargin, top + 3 * height / 4);
+                case HexSide.Bottom:
+                    return new Point(left + size, top + height);
+                case HexSide.BottomLeft:
+                    return new Point(left + horizontalMargin, top + 3 * height / 4);
+                case HexSide.TopLeft:
+                    return new Point(left + horizontalMargin, top + height / 4);
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(side), $"Invalid hex side: {side}");
+            }
+        }
+
+    
+
     }
 }

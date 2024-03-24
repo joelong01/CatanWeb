@@ -3,7 +3,7 @@
         "ClassName": "GameViewModel",
         "ModelVersion": "2",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Game",
+        "Path": ".",
         "Usings": [
             "System.Collections.ObjectModel",
             "System.ComponentModel",

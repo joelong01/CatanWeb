@@ -57,7 +57,7 @@ namespace Catan3.Models
         {
             if (this.Tile.TileKey.Q == 0 && this.Tile.TileKey.R == 0 && this.Tile.TileKey.S == 0)
             {
-                this.TraceMessage($"[{Tile}]:[Left={Left}][Top={Top}]");
+                this.TraceMessage($"[{Tile}]:[Left={Left}][top={Top}]");
             }
         }
     }

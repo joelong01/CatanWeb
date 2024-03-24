@@ -1,30 +1,29 @@
-﻿[
+[
     {
-        "ModelVersion": "1.0b",
-        "ClassName": "TileViewModel",
+        "ModelVersion": "2",
+        "ClassName": "HarborViewModel",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Tiles",
+        "Path": ".",
         "CallInit": true,
         "Usings": [
-            "System.ComponentModel"
+            "System.ComponentModel",
+            "Microsoft.UI",
+            "Microsoft.UI.Xaml.Media"
         ],
         "ConstructedProperties": [
             {
-                "Name": "Tile",
-                "Type": "TileModel",
-                "ReadOnly": true,
+                "Name": "Harbor",
+                "Type": "HarborModel",
+                "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false
-              
             },
             {
                 "Name": "Layout",
                 "Type": "BoardLayout",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
-                "Nullable": true,
-                "Default": "null",
-                "IsLiteral": false
+                "Nullable": false
             }
         ],
         "NormalProperties": [
@@ -33,18 +32,14 @@
                 "Type": "double",
                 "ReadOnly": true,
                 "AdditionalNotifications": [],
-                "Nullable": false,
-                "Default": "110.0",
-                "IsLiteral": false
+                "Nullable": false
             },
             {
                 "Name": "Top",
                 "Type": "double",
                 "ReadOnly": true,
                 "AdditionalNotifications": [],
-                "Nullable": false,
-                "Default": "200.0",
-                "IsLiteral": false
+                "Nullable": false
             }
         ]
     }

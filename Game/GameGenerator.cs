@@ -61,10 +61,10 @@ namespace Catan3.Models
             new HarborModel(new HexCoordinates(2, -1, -1), HarborType.Wood, HexSide.TopRight),
             new HarborModel(new HexCoordinates(2, 0, -2), HarborType.Brick, HexSide.BottomRight),
             new HarborModel(new HexCoordinates(1, 1, -2), HarborType.Sheep, HexSide.Bottom),
-            new HarborModel(new HexCoordinates(-1, 2, -1), HarborType.ThreeForOne, HexSide.BottomRight),
+            new HarborModel(new HexCoordinates(-1, 2, -1), HarborType.ThreeForOne, HexSide.BottomLeft),
             new HarborModel(new HexCoordinates(-2, 2, 0), HarborType.ThreeForOne, HexSide.BottomLeft),
             new HarborModel(new HexCoordinates(-2, 1, 1), HarborType.ThreeForOne, HexSide.TopLeft),
-          new HarborModel(new HexCoordinates(-2, 0, 2), HarborType.ThreeForOne, HexSide.TopRight)
+            new HarborModel(new HexCoordinates(-1, -1, 2), HarborType.ThreeForOne, HexSide.TopLeft)
 
             ];
         public List<int> Numbers { get; } = [7, 2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12];

@@ -1,31 +1,32 @@
 [
     {
-        "ModelVersion": "2",
-        "ClassName": "BuildingModel",
+        "ModelVersion": "1.0",
+        "ClassName": "HouseRules",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Buildings",
+        "Path": ".",
         "Usings": [
             "System.ComponentModel"
         ],
-        "ConstructedProperties": [
-            {
-                "Name": "BuildingKey",
-                "Type": "BuildingKey",
-                "ReadOnly": false,
-                "AdditionalNotifications": [],
-                "Nullable": false
-
-            },
-            {
-                "Name": "BuildingState",
-                "Type": "BuildingState",
-                "ReadOnly": false,
-                "Nullable": false
-            }
-        ],
+        "ConstructedProperties": [],
         "NormalProperties": [
             {
-                "Name": "Wall",
+                "Name": "GoldTiles",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "1"
+            },
+            {
+                "Name": "WallsProtectCities",
+                "Type": "bool",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "true"
+            },
+            {
+                "Name": "HideBaronBeforeInvasion",
                 "Type": "bool",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
@@ -33,22 +34,13 @@
                 "Default": "false"
             },
             {
-                "Name": "Metropolis",
+                "Name": "KnightMovesBaronBeforeRoll",
                 "Type": "bool",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "false"
-            },
-            {
-                "Name": "Owner",
-                "Type": "PlayerModel",
-                "ReadOnly": false,
-                "AdditionalNotifications": [],
-                "Nullable": true,
-                "Default": "null"
+                "Default": "true"
             }
         ]
     }
 ]
-

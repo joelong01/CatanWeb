@@ -30,7 +30,7 @@ namespace Catan3.Models
     /// </summary>
     public partial class BoardLayout
     {
-       
+
 
         //
         //  this is used in the DependencyProperties so that there is a reasonable non-null default
@@ -50,7 +50,8 @@ namespace Catan3.Models
             var top =  ( .5 * key.Q +  key.R)*outerHeight ;
             top += 2 * outerHeight;
             top = Math.Round(top + BuildingSize * .5, 1); // the buildings will go on top of the highest tile, give them room
-            top += InnerHexStrokeThickness + GameMargin;
+            top += GameMargin;
+            top += HarborSize; // there is always 1 harbor on the top or the bottom
             return top;
         }
         public double Left(HexCoordinates key)
@@ -58,7 +59,6 @@ namespace Catan3.Models
             var left = 2 * OuterHexSize * .75 * key.Q ;
             left += ColumnOffset * 2 * OuterHexSize;
             left += ( BuildingSize * 0.5 );
-            left += InnerHexStrokeThickness * 0.5;
             left += GameMargin;
             return left;
         }
@@ -98,7 +98,7 @@ namespace Catan3.Models
                 double verticalAdjustment = (sizeDiff ) * .86;
                 double horizontalAdjustment = (sizeDiff )  ;
 
-                return HexGeometry.HexPoints(InnerHexSize, horizontalAdjustment, verticalAdjustment);
+                return HexGeometry.FlatTopHexPoints(InnerHexSize, horizontalAdjustment, verticalAdjustment);
             }
         }
 
@@ -110,7 +110,16 @@ namespace Catan3.Models
             get
             {
                 // OuterHex doesn't need adjustment as it's the reference
-                return HexGeometry.HexPoints(OuterHexSize, 0, 0);
+                return HexGeometry.FlatTopHexPoints(OuterHexSize, 0, 0);
+            }
+        }
+
+        public PointCollection PointyHexPoints
+        {
+            get
+            {
+                // adjust these points so they are in the center of the flat to pHex
+                return HexGeometry.PointyTopHexPoints(OuterHexSize, ControlWidth / 2.0, ControlHeight / 2.0);
             }
         }
 
@@ -121,7 +130,7 @@ namespace Catan3.Models
 
         public double BoardWidth => OuterHexSize * 7 + BuildingSize + GameMargin;
 
-        public double BoardHeight => OuterHexSize * Math.Sqrt(3) * ColumnCount + BuildingSize + GameMargin;
+        public double BoardHeight => OuterHexSize * Math.Sqrt(3) * ColumnCount + BuildingSize + GameMargin + HarborSize;
 
 
 
@@ -133,11 +142,11 @@ namespace Catan3.Models
         ///     This is useful for laying out the Buildings.  Take the OuterHexPoints and get the HexGeometry.
         ///     then call this function
         ///     
-        ///     var dict = layout.OuterHexPoints.ListToDictionary()
+        ///     var dict = layout.OuterHexPoints.FlatTopListToDictionary()
         /// </summary>
         /// <param name="points"></param>
         /// <returns></returns>
-        public static Dictionary<HexPosition, Point> ListToDictionary(this PointCollection points)
+        public static Dictionary<HexPosition, Point> FlatTopListToDictionary(this PointCollection points)
         {
             Debug.Assert(points.Count == 6);
             var dict = new Dictionary<HexPosition, Point>
@@ -151,6 +160,34 @@ namespace Catan3.Models
             };
             return dict;
         }
+        /// <summary>
+        ///     This is useful for laying out the Harbors.  Take the OuterHexPoints and get the HexGeometry.
+        ///     then call this function
+        ///     
+        ///     var dict = layout.PointyHexPoints.PointyTopListToDictionary()
+        /// </summary>
+        /// <param name="points"></param>
+        /// <returns></returns>
+        public static Dictionary<HexSide, Point> PointyTopListToDictionary(this PointCollection points)
+        {
+            // Ensure that the points collection has exactly 6 points
+            Debug.Assert(points.Count == 6);
+
+            var pointyTopDictionary = new Dictionary<HexSide, Point>
+            { // The point indices are adjusted to match the flat-top hexagon's sides.
+              // The mapping is done by rotating the pointy-top hexagon's points to align with the flat-top's sides.
+                [HexSide.Top] = points[5], // Top-left of pointy-top is the top of flat-top
+                [HexSide.TopRight] = points[0], // Top of pointy-top is the top-right of flat-top
+                [HexSide.BottomRight] = points[1], // Top-right of pointy-top is the bottom-right of flat-top
+                [HexSide.Bottom] = points[2], // Right of pointy-top is the bottom of flat-top
+                [HexSide.BottomLeft] = points[3], // Bottom-right of pointy-top is the bottom-left of flat-top
+                [HexSide.TopLeft] = points[4], // Bottom of pointy-top is the top-left of flat-top
+
+            };
+
+            return pointyTopDictionary;
+        }
+
 
     }
 }

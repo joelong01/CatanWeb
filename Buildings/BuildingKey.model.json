@@ -3,7 +3,7 @@
         "ClassName": "BuildingKey",
         "ModelVersion": "2",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Buildings",
+        "Path": ".",
         "Usings": [
             "System.ComponentModel", "Catan3.Utility"
         ],

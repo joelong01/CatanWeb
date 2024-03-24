@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Reflection.Metadata.Ecma335;
 using Catan3.Utility;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Windows.Devices.Midi;
 using Windows.Foundation;
 namespace Catan3.Models
 {
@@ -57,48 +53,7 @@ namespace Catan3.Models
 
             return top;
         }
-        public double VisualRoadHeight
-        {
-            get
-            {
-                double height = 2 * Layout.TileGap;
-                height += Layout.InnerHexStrokeThickness * 2;
-                height += Layout.RoadStrokeThickness;
-                return height;
-            }
-        }
-
-        public double RoadWidth
-        {
-            get
-            {
-                var outerPointsDictionary = Layout.OuterHexPoints.ListToDictionary();
-
-
-                var width = outerPointsDictionary[HexPosition.TopRight].X - outerPointsDictionary[HexPosition.TopLeft].X;
-
-                return width;
-            }
-        }
-
-        public PointCollection InnerHexPointsZeroBorder
-        {
-            get
-            {
-
-                // The inner hexagon needs to be positioned such that the delta is equal on all sides.
-                // Therefore, the vertical and horizontal adjustments are half the TileGap, since it will appear on both sides of the hex.
-                double verticalAdjustment = Layout.TileGap / 2;
-                double horizontalAdjustment = Layout.TileGap / 2;
-
-
-
-                // Calculate the horizontal difference after accounting for the stroke
-                double sizeDiff = (Layout.OuterHexSize - Layout.InnerHexSize) / 2;
-
-                return HexGeometry.HexPoints(Layout.InnerHexSize, sizeDiff + horizontalAdjustment, sizeDiff + verticalAdjustment);
-            }
-        }
+        
 
         /// <summary>
         ///     keep this around if you want to put the road position in the roads for debugging purposes
@@ -197,8 +152,8 @@ namespace Catan3.Models
         {
             PointCollection points = [];
             if (layout is null) return points;
-            var outerHexPoints = layout.OuterHexPoints.ListToDictionary();
-            var innerHexPoints =  layout.InnerHexPoints.ListToDictionary();
+            var outerHexPoints = layout.OuterHexPoints.FlatTopListToDictionary();
+            var innerHexPoints =  layout.InnerHexPoints.FlatTopListToDictionary();
             Point delta;
             switch (side)
             {

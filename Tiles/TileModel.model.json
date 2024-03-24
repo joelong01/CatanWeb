@@ -1,43 +1,43 @@
 ﻿[
     {
-        "ModelVersion": "2",
-        "ClassName": "HexCoordinates",
-        "Namespace": "Catan3.Utility",
-        "Path": "..\\Layout",
+        "ModelVersion": "3",
+        "ClassName": "TileModel",
+        "Namespace": "Catan3.Models",
+        "Path": ".",
         "CallInit": false,
         "Usings": [
-            "System.ComponentModel"
+            "System.ComponentModel",
+            "Catan3.Utility"
         ],
+        "ConstructedProperties": [],
         "NormalProperties": [
             {
-                "Name": "Q",
-                "Type": "int",
+                "Name": "TileKey",
+                "Type": "HexCoordinates",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "q",
+                "Default": "HexCoordinates.Default",
                 "IsLiteral": false
             },
             {
-                "Name": "R",
-                "Type": "int",
+                "Name": "ResourceType",
+                "Type": "ResourceType",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "r",
+                "Default": "ResourceType.None",
                 "IsLiteral": false
             },
             {
-                "Name": "S",
+                "Name": "Number",
                 "Type": "int",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "s",
+                "Default": "0",
                 "IsLiteral": false
             }
-        ],
-        "ConstructedProperties": []
-
+        ]
     }
 ]

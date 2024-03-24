@@ -73,6 +73,9 @@
             <converters:BuildingPositionToFillConverter
                     x:Key="BuildingPositionToFillConverter" />
 
+            <converters:NullToDefaultValueConverter
+                    x:Key="NullToDefaultValueConverter" />
+
             <Style TargetType="ListViewItem" x:Key="ListViewItemStyle">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderBrush" Value="Transparent" />

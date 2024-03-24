@@ -37,27 +37,27 @@ namespace Catan3.Models
             Left = GetLeft(Building.BuildingKey);
         }
         /// <summary>
-        ///     Top (and Left) are centered in the OuterKexPoints positions
+        ///     top (and Left) are centered in the OuterKexPoints positions
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
         private double GetTop(BuildingKey key)
         {
             var top =  Layout.Top(key.HexCoordinates);
-            var center = Layout.OuterHexPoints.ListToDictionary()[key.Position];
+            var center = Layout.OuterHexPoints.FlatTopListToDictionary()[key.Position];
             top += center.Y;
             top -= ( Layout.BuildingSize ) * 0.5;
             return top;
         }
         /// <summary>
-        ///     Top (and Left) are centered in the OuterKexPoints positions
+        ///     top (and Left) are centered in the OuterKexPoints positions
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
         private double GetLeft(BuildingKey key)
         {
             var left =  Layout.Left(key.HexCoordinates) ;
-            var center =  Layout.OuterHexPoints.ListToDictionary()[key.Position];
+            var center =  Layout.OuterHexPoints.FlatTopListToDictionary()[key.Position];
             left -= Layout.BuildingSize / 2.0;
             left += center.X;
             return left;

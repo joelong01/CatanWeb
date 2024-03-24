@@ -8,7 +8,23 @@ using Microsoft.UI.Xaml.Media;
 using Windows.UI;
 namespace Catan3.Converters
 {
+    public class NullToDefaultValueConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value == null)
+            {
+                // Return a default value or use the parameter to specify one
+                return parameter ?? 0; // Example default value
+            }
+            return value;
+        }
 
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
     public class BuildingPositionToFillConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)

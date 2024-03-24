@@ -1,43 +1,43 @@
 ﻿[
     {
-        "ModelVersion": "3",
-        "ClassName": "TileModel",
-        "Namespace": "Catan3.Models",
-        "Path": "..\\Tiles",
+        "ModelVersion": "2",
+        "ClassName": "HexCoordinates",
+        "Namespace": "Catan3.Utility",
+        "Path": ".",
         "CallInit": false,
         "Usings": [
-            "System.ComponentModel",
-            "Catan3.Utility"
+            "System.ComponentModel"
         ],
-        "ConstructedProperties": [],
         "NormalProperties": [
             {
-                "Name": "TileKey",
-                "Type": "HexCoordinates",
-                "ReadOnly": false,
-                "AdditionalNotifications": [],
-                "Nullable": false,
-                "Default": "HexCoordinates.Default",
-                "IsLiteral": false
-            },
-            {
-                "Name": "ResourceType",
-                "Type": "ResourceType",
-                "ReadOnly": false,
-                "AdditionalNotifications": [],
-                "Nullable": false,
-                "Default": "ResourceType.None",
-                "IsLiteral": false
-            },
-            {
-                "Name": "Number",
+                "Name": "Q",
                 "Type": "int",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "0",
+                "Default": "q",
+                "IsLiteral": false
+            },
+            {
+                "Name": "R",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "r",
+                "IsLiteral": false
+            },
+            {
+                "Name": "S",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "s",
                 "IsLiteral": false
             }
-        ]
+        ],
+        "ConstructedProperties": []
+
     }
 ]

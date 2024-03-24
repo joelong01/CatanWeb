@@ -3,7 +3,7 @@
         "ModelVersion": "1.0",
         "ClassName": "PlayerModel",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Player",
+        "Path": ".",
         "Usings": [
             "System.ComponentModel"
         ],

@@ -22,16 +22,17 @@ namespace Catan3.Utility
     }
 
     /// <summary>
-    ///     this is a static class for the Geometry of a Regular Flat Top Hexagon.  Points assume (0,0) as the origin
+    ///     this is a static class for the Geometry of a Regular Flat top Hexagon.  Points assume (0,0) as the origin
     /// </summary>
     public static class HexGeometry
     {
 
         /// <summary>
         ///     we have an OuterHex and an InnerHex in the game. we'll cache 2 PointCollections so that we aren't constantly
-        ///     recalculating them.
+        ///     recalculating them.  the bool is "IsFlatTop", because we use the same size for the pointer hex to get the 
+        ///     points to place harbors and for the size of the Tile
         /// </summary>
-        private static readonly Dictionary<double, PointCollection> HexCache = [];
+        private static readonly Dictionary<(double, bool), PointCollection> HexCache = [];
         public static int CacheHit { get; private set; }
         public static int CacheMiss { get; private set; }
         public static int CacheSize => HexCache.Count;
@@ -42,9 +43,9 @@ namespace Catan3.Utility
         /// </summary>
         /// <param name="size">The distance from the center of the hexagon to any of its vertices.</param>
         /// <returns>A PointCollection representing the vertices of the hexagon in the order to draw it.</returns>
-        public static PointCollection HexPoints(double size, double deltaX, double deltaY)
+        public static PointCollection FlatTopHexPoints(double size, double deltaX, double deltaY)
         {
-            if (HexCache.TryGetValue(size, out PointCollection? points))
+            if (HexCache.TryGetValue((size, true), out PointCollection? points))
             {
                 if (points is not null)
                 {
@@ -82,15 +83,62 @@ namespace Catan3.Utility
                 adjustedX += deltaX;
                 adjustedY += deltaY;
 
-                HexCache[size] = points;
+                HexCache[(size, true)] = points;
 
                 points.Add(new Point(adjustedX, adjustedY));
             }
 
             return points;
         }
+        /// <summary>
+        ///     same idea as FlatTopHexPoints, except it draws a pointy top Hex
+        /// </summary>
+        /// <param name="size"></param>
+        /// <param name="deltaX"></param>
+        /// <param name="deltaY"></param>
+        /// <returns></returns>
+        public static PointCollection PointyTopHexPoints(double size, double deltaX, double deltaY)
+        {
+            if (HexCache.TryGetValue((size, false), out PointCollection? points))
+            {
+                if (points is not null)
+                {
+                    Debug.Assert(points.Count > 0);
+                    CacheHit++;
+                    return points.Clone();
+                }
+            }
+            if (HexCache.Count > 2) HexCache.Clear();
+            CacheMiss++;
+            points = [];
 
-       
+            // Calculate the width and height for positioning adjustments
+            double width = 2 * size;
+            double height = Math.Sqrt(3) / 2 * width;
+
+            // The angle between vertices in a hexagon in radians, starting from the top (for a pointy top)
+            double angleRadians = Math.PI / 3;
+
+            // Calculate each vertex position, assuming the topmost point should be at (0, 0)
+            for (int i = 0; i < 6; i++)
+            {
+                double angle = i * angleRadians - Math.PI / 6; // Start from the top vertex
+
+                // Original x and y based on the center at (0,0)
+                double originalX = Math.Round(size * Math.Cos(angle), 2);
+                double originalY = Math.Round(size * Math.Sin(angle), 2);
+
+                // Adjust x and y to align the topmost point at (deltaX, deltaY)
+                double adjustedX = originalX + deltaX;
+                double adjustedY = originalY + deltaY;
+
+                points.Add(new Point(adjustedX, adjustedY));
+            }
+
+            HexCache[(size, false)] = points;
+            return points;
+        }
+
 
         /// <summary>
         /// Calculates the height of a regular hexagon given its size.

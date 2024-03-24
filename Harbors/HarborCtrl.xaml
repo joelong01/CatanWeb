@@ -17,57 +17,14 @@
             <Setter Property="Visibility" Value="Collapsed" />
         </Style>
     </UserControl.Resources>
-    <Grid>
-
-        <Ellipse Width="50" Height="50" Fill="Green">
-            <Ellipse.RenderTransform>
-                <CompositeTransform TranslateX="-40" />
-            </Ellipse.RenderTransform>
-        </Ellipse>
-        <Path  Grid.RowSpan="3" Grid.ColumnSpan="3"
-                Style="{StaticResource HarborPathStyle}" Visibility="Visible">
-            <Path.Clip>
-                <RectangleGeometry Rect="8 0 100 100"  />
-            </Path.Clip>
-            <Path.Data>
-                <PathGeometry>
-                    <PathGeometry.Figures>
-                        <PathFigureCollection>
-                            <PathFigure StartPoint="48 0">
-                                <PathFigure.Segments>
-                                    <LineSegment Point="48 50" />
-                                </PathFigure.Segments>
-                            </PathFigure>
-
-                            <PathFigure StartPoint="9 16">
-                                <PathFigure.Segments>
-                                    <LineSegment Point="9 34" />
-                                </PathFigure.Segments>
-                            </PathFigure>
-
-                            <PathFigure StartPoint="48 0">
-                                <PathFigure.Segments>
-                                    <PathSegmentCollection>
-                                        <ArcSegment IsLargeArc="True"
-                                                Point="2 0" Size="1 1"
-                                                SweepDirection="Clockwise" />
-                                    </PathSegmentCollection>
-                                </PathFigure.Segments>
-                            </PathFigure>
-                            <PathFigure StartPoint="48 50">
-                                <PathFigure.Segments>
-                                    <PathSegmentCollection>
-                                        <ArcSegment IsLargeArc="True"
-                                                Point="2 50" Size="3 3"
-                                                SweepDirection="Counterclockwise" />
-                                    </PathSegmentCollection>
-                                </PathFigure.Segments>
-                            </PathFigure>
-                        </PathFigureCollection>
-                    </PathGeometry.Figures>
-                </PathGeometry>
-            </Path.Data>
-        </Path>
+    <Grid BorderBrush="Yellow" BorderThickness="0">
         
+        <Ellipse Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
+                Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
+                Fill="{x:Bind Bind_HarborImage(ViewModel.Harbor.HarborType), Mode=OneWay}">
+
+        </Ellipse>
+        
+
     </Grid>
 </UserControl>

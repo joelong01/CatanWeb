@@ -3,7 +3,7 @@
         "ModelVersion": "1.0",
         "ClassName": "PlayerViewModel",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Player",
+        "Path": ".",
         "Usings": [
             "System.ComponentModel",
             "Windows.UI"

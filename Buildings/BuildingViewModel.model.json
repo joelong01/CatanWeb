@@ -3,7 +3,7 @@
         "ModelVersion": "2",
         "ClassName": "BuildingViewModel",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Buildings",
+        "Path": ".",
         "CallInit": true,
         "Usings": [
             "System.ComponentModel",

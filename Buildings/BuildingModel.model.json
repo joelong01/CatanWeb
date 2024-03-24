@@ -1,32 +1,31 @@
 [
     {
-        "ModelVersion": "1.0",
-        "ClassName": "HouseRules",
+        "ModelVersion": "2",
+        "ClassName": "BuildingModel",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Game",
+        "Path": ".",
         "Usings": [
             "System.ComponentModel"
         ],
-        "ConstructedProperties": [],
+        "ConstructedProperties": [
+            {
+                "Name": "BuildingKey",
+                "Type": "BuildingKey",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
+
+            },
+            {
+                "Name": "BuildingState",
+                "Type": "BuildingState",
+                "ReadOnly": false,
+                "Nullable": false
+            }
+        ],
         "NormalProperties": [
             {
-                "Name": "GoldTiles",
-                "Type": "int",
-                "ReadOnly": false,
-                "AdditionalNotifications": [],
-                "Nullable": false,
-                "Default": "1"
-            },
-            {
-                "Name": "WallsProtectCities",
-                "Type": "bool",
-                "ReadOnly": false,
-                "AdditionalNotifications": [],
-                "Nullable": false,
-                "Default": "true"
-            },
-            {
-                "Name": "HideBaronBeforeInvasion",
+                "Name": "Wall",
                 "Type": "bool",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
@@ -34,13 +33,22 @@
                 "Default": "false"
             },
             {
-                "Name": "KnightMovesBaronBeforeRoll",
+                "Name": "Metropolis",
                 "Type": "bool",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "true"
+                "Default": "false"
+            },
+            {
+                "Name": "Owner",
+                "Type": "PlayerModel",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": true,
+                "Default": "null"
             }
         ]
     }
 ]
+

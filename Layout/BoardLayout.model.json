@@ -1,9 +1,9 @@
 ﻿[
     {
-        "ModelVersion": "1.1",
+        "ModelVersion": "4",
         "ClassName": "BoardLayout",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Layout",
+        "Path": ".",
         "Usings": [
             "System",
             "System.ComponentModel"
@@ -14,7 +14,7 @@
                 "Name": "OuterHexSize",
                 "Type": "double",
                 "ReadOnly": false,
-                "AdditionalNotifications": [ "ControlWidth", "ControlHeight", "BoardWidth", "BoardHeight", "InnerHexPoints", "InnerHexSize", "OuterHexPoints" ],
+                "AdditionalNotifications": [ "ControlWidth", "ControlHeight", "BoardWidth", "BoardHeight", "InnerHexPoints", "InnerHexSize", "OuterHexPoints", "PointyHexPoints" ],
                 "Nullable": false,
                 "Default": "100.0"
             },
@@ -82,6 +82,14 @@
                 "AdditionalNotifications": [],
                 "Nullable": false,
                 "Default": "2.0"
+            },
+            {
+                "Name": "HarborSize",
+                "Type": "double",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "50.0"
             }
         ]
     }

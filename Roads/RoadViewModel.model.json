@@ -3,7 +3,7 @@
         "ModelVersion": "1.0b",
         "ClassName": "RoadViewModel",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Roads",
+        "Path": ".",
         "CallInit":  true,
         "Usings": [
             "System.ComponentModel",

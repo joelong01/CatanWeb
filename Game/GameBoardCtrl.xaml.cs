@@ -76,6 +76,7 @@ namespace Catan3.Controls
             IC_Roads.ItemsSource = newValue?.Roads;
             IC_Buildings.ItemsSource = newValue?.Buildings;
             IC_Tiles.ItemsSource = newValue?.Tiles;
+            IC_Harbors.ItemsSource = newValue?.Harbors;
 
             //
             //  we use Binding in some places where it is convinient and x:Bind in others. Binding needs data context, so set it here

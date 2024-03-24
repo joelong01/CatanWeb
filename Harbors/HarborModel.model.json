@@ -1,9 +1,9 @@
 [
     {
-        "ModelVersion": "1.0b",
+        "ModelVersion": "3",
         "ClassName": "HarborModel",
         "Namespace": "Catan3.Models",
-        "Path": "..\\Harbors",
+        "Path": ".",
         "Usings": [
             "System.ComponentModel",
             "Catan3.Utility"
@@ -14,12 +14,12 @@
         ],
         "NormalProperties": [
             {
-                "Name": "TileKey",
-                 "Type": "HexCoordinates",
+                "Name": "TileCoordinates",
+                "Type": "HexCoordinates",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default" :  "tilekey"
+                "Default": "new (0,0,0)"
 
             },
             {
@@ -27,14 +27,14 @@
                 "Type": "HarborType",
                 "ReadOnly": false,
                 "Nullable": false,
-                "Default": "harbortype"
+                "Default": "HarborType.ThreeForOne"
             },
             {
                 "Name": "Position",
                 "Type": "HexSide",
                 "ReadOnly": false,
                 "Nullable": false,
-                "Default": "position"
+                "Default": "HexSide.Bottom"
             },
 
             {
