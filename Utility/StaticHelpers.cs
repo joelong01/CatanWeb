@@ -10,6 +10,14 @@ using Windows.UI;
 
 namespace Catan3
 {
+    public static class PointExtensions
+    {
+        public static Point Offset(this Point point, double x, double y)
+        {
+            return new Point(point.X + x, point.Y + y);
+        }
+    }
+
     public static class StaticBrushes
     {
         public static readonly SolidColorBrush RedBrush = new(Colors.Red);
@@ -30,7 +38,7 @@ namespace Catan3
             s += list.ElementAt(c - 1)?.ToString();
             return s;
         }
-        
+
         public static PointCollection Clone(this PointCollection points)
         {
             var clonedPoints = new PointCollection();

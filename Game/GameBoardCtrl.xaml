@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:c="using:Catan3.Controls" xmlns:m="using:Catan3.Models"
         d:DataContext="{d:DesignInstance Type=m:GameViewModel}" mc:Ignorable="d"
-        d:DesignHeight="450" d:DesignWidth="800">
+        Canvas.ZIndex="1" d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>
         <Storyboard x:Key="MoveRobberAnimation">
             <DoubleAnimation Storyboard.TargetName="VB_Robber"
@@ -22,6 +22,33 @@
         <Grid Background="Transparent"
                 Width="{Binding BoardInfo.Layout.BoardWidth, Mode=OneWay}"
                 Height="{Binding BoardInfo.Layout.BoardHeight, Mode=OneWay}">
+            <!--Harbors-->
+            <ItemsControl x:Name="IC_Harbors"
+                    ItemsSource="{x:Bind GameViewModel.Harbors}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+
+                        <Setter Property="Canvas.ZIndex" Value="-1" />
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="m:HarborViewModel">
+                        <c:HarborCtrl ViewModel="{x:Bind Mode=OneWay}">
+                            <c:HarborCtrl.RenderTransform>
+                                <CompositeTransform
+                                        TranslateX="{x:Bind Left, Mode=OneWay}"
+                                        TranslateY="{x:Bind Top, Mode=OneWay}" />
+                            </c:HarborCtrl.RenderTransform>
+                        </c:HarborCtrl>
+
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <!--Tiles-->
             <ItemsControl x:Name="IC_Tiles"
                     ItemsSource="{x:Bind GameViewModel.Tiles, Mode=OneWay}">
@@ -113,33 +140,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <!--Harbors-->
-            <ItemsControl x:Name="IC_Harbors"
-                    ItemsSource="{x:Bind GameViewModel.Harbors}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <Canvas />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemContainerStyle>
-                    <Style TargetType="ContentPresenter">
 
-                        <Setter Property="Canvas.ZIndex" Value="1" />
-                    </Style>
-                </ItemsControl.ItemContainerStyle>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="m:HarborViewModel">
-                        <c:HarborCtrl ViewModel="{x:Bind Mode=OneWay}">
-                            <c:HarborCtrl.RenderTransform>
-                                <CompositeTransform
-                                        TranslateX="{x:Bind Left, Mode=OneWay}"
-                                        TranslateY="{x:Bind Top, Mode=OneWay}" />
-                            </c:HarborCtrl.RenderTransform>
-                        </c:HarborCtrl>
-
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
             <Viewbox x:Name="VB_Robber" Stretch="Uniform"
                     Height="{x:Bind RobberHeight(GameViewModel.BoardInfo.Layout.OuterHexSize), Mode=OneWay}"
                     HorizontalAlignment="Left" VerticalAlignment="Top"

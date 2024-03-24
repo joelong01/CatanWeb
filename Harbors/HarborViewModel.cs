@@ -1,6 +1,8 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using Catan3.Utility;
+using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 
 namespace Catan3.Models
@@ -85,8 +87,80 @@ namespace Catan3.Models
 
             Top = top;
             Left = left;
+
+            OnPropertyChanged(nameof(HarborPoints));
         }
 
+
+        public PointCollection HarborPoints
+        {
+            get
+            {
+                PointCollection points = new PointCollection();
+                double size = Layout.BuildingSize; // Assuming this is the diameter of the harbor circle
+                var flatTopDictionary = Layout.OuterHexPoints.FlatTopListToDictionary();
+                var tileTop = Layout.Top(Harbor.TileCoordinates);
+                var tileLeft = Layout.Left(Harbor.TileCoordinates);
+
+                var yOffset = Math.Abs(tileTop - Top);
+                var xOffset = Math.Abs(Left - tileLeft);
+
+                // Calculate the coordinates of the triangle relative to the UserControl's coordinates
+                // (0,0) is the top-left corner of the UserControl
+                double centerX = size / 2.0; // X coordinate of the center of the harbor within the UserControl
+                double centerY = size / 2.0; // Y coordinate of the center of the harbor within the UserControl
+                Point topRight, topLeft, bottomRight, bottomLeft, left, right;
+
+                switch (Harbor.Position)
+                {
+                    case HexSide.Top:
+                        topLeft = flatTopDictionary[HexPosition.TopLeft];
+                        topRight = flatTopDictionary[HexPosition.TopRight];
+                        points.Add(new Point(centerX, centerY));
+                        points.Add(topLeft.Offset(-xOffset, yOffset));
+                        points.Add(topRight.Offset(-xOffset, yOffset));
+                        break;
+                    case HexSide.TopRight:
+                        topRight = flatTopDictionary[HexPosition.TopRight];
+                        right = flatTopDictionary[HexPosition.Right];
+                        points.Add(new Point(centerX, centerY));
+                        points.Add(topRight.Offset(-xOffset, -yOffset));
+                        points.Add(right.Offset(-xOffset, -yOffset));
+                        break;
+                    case HexSide.BottomRight:
+                        right = flatTopDictionary[HexPosition.Right];
+                        bottomRight = flatTopDictionary[HexPosition.BottomRight];
+                        points.Add(new Point(centerX, centerY));
+                        points.Add(right.Offset(-xOffset, -yOffset));
+                        points.Add(bottomRight.Offset(-xOffset, -yOffset));
+                        break;
+                    case HexSide.Bottom:
+                        bottomLeft = flatTopDictionary[HexPosition.BottomLeft];
+                        bottomRight = flatTopDictionary[HexPosition.BottomRight];
+                        points.Add(new Point(centerX, centerY));
+                        points.Add(bottomLeft.Offset(-xOffset, -yOffset));
+                        points.Add(bottomRight.Offset(-xOffset, -yOffset));
+                        break;
+                    case HexSide.BottomLeft:
+                        bottomLeft = flatTopDictionary[HexPosition.BottomLeft];
+                        left = flatTopDictionary[HexPosition.Left];
+                        points.Add(new Point(centerX, centerY));
+                        points.Add(bottomLeft.Offset(xOffset, -yOffset));
+                        points.Add(left.Offset(xOffset, -yOffset));
+                        break;
+                    case HexSide.TopLeft:
+                        topLeft = flatTopDictionary[HexPosition.TopLeft];
+                        left = flatTopDictionary[HexPosition.Left];
+                        points.Add(new Point(centerX, centerY));
+                        points.Add(topLeft.Offset(xOffset, -yOffset));
+                        points.Add(left.Offset(xOffset, -yOffset));
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(Harbor.Position), $"Invalid hex side: {Harbor.Position}");
+                }
+                return points;
+            }
+        }
 
 
         public override string? ToString()

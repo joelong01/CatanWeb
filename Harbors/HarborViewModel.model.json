@@ -6,9 +6,7 @@
         "Path": ".",
         "CallInit": true,
         "Usings": [
-            "System.ComponentModel",
-            "Microsoft.UI",
-            "Microsoft.UI.Xaml.Media"
+            "System.ComponentModel"
         ],
         "ConstructedProperties": [
             {
