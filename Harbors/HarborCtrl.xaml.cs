@@ -17,15 +17,7 @@ namespace Catan3.Controls
             this.InitializeComponent();
         }
 
-        private static HarborViewModel DefaultViewModel()
-        {
-            HarborModel hm = new();
-            HarborViewModel hvm = new HarborViewModel(hm, new BoardLayout());
-            return hvm;
-
-        }
-
-        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(HarborViewModel), typeof(HarborCtrl), new PropertyMetadata(DefaultViewModel()));
+        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(HarborViewModel), typeof(HarborCtrl), new PropertyMetadata(null));
         public HarborViewModel ViewModel
         {
             get => ( HarborViewModel )GetValue(ViewModelProperty);

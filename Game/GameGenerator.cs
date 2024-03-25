@@ -11,7 +11,9 @@ namespace Catan3.Models
     /// </summary>
     public partial class RegularBoardInfo
     {
-        public BoardLayout Layout { get; } = new BoardLayout();
+        public RegularBoardInfo() => Layout = new BoardLayout(ColumnCount);
+        public static int ColumnCount => 5;
+        public BoardLayout Layout { get; private set; }
         public List<HexCoordinates> TileKeys { get; } =
              [
                  new(-2, 0, 2),
@@ -69,6 +71,10 @@ namespace Catan3.Models
             ];
         public List<int> Numbers { get; } = [7, 2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12];
     }
+
+
+
+
     public static class GameGenerator
     {
         public static GameModel CreateGame(BoardSize boardSize)

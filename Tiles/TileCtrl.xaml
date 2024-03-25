@@ -20,16 +20,19 @@
     </UserControl.Resources>
     <Canvas Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
             Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}">
-        <Polygon Stroke="{StaticResource bmMaple}"
+
+        <Polygon Stroke="PaleVioletRed" 
+                StrokeThickness="{x:Bind TileViewModel.Layout.TileGap, Mode=OneWay}"
+                Points="{x:Bind TileViewModel.Layout.OuterHexPoints, Mode=OneWay}"
+                Fill="{StaticResource bmMaple}" />
+
+        <Polygon Stroke="Transparent"
                 StrokeThickness="{Binding Layout.InnerHexStrokeThickness, Mode=OneWay}"
                 Points="{x:Bind TileViewModel.Layout.InnerHexPoints, Mode=OneWay}"
                 Fill="{x:Bind TileViewModel.Tile.ResourceType, Mode=OneWay, Converter={StaticResource ResourceTypeToImageBrush}}" />
 
-        <Polygon Stroke="Red" StrokeDashArray="1 1" StrokeThickness="{x:Bind TileViewModel.Layout.LayoutGuideStrokeWidth, Mode=OneWay}"
-                Points="{x:Bind TileViewModel.Layout.OuterHexPoints, Mode=OneWay}"
-                Fill="Transparent" />
-
-        <Polygon Stroke="Blue" StrokeDashArray="1 1" StrokeThickness="{x:Bind TileViewModel.Layout.LayoutGuideStrokeWidth, Mode=OneWay}"
+        <Polygon Stroke="Blue" StrokeDashArray="1 1"
+                StrokeThickness="{x:Bind TileViewModel.Layout.LayoutGuideStrokeWidth, Mode=OneWay}"
                 Points="{x:Bind TileViewModel.Layout.PointyHexPoints, Mode=OneWay}"
                 Fill="Transparent" />
 

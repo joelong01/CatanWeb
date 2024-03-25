@@ -1,6 +1,6 @@
 ﻿[
     {
-        "ModelVersion": "5",
+        "ModelVersion": "6",
         "ClassName": "BoardLayout",
         "Namespace": "Catan3.Models",
         "Path": ".",
@@ -8,7 +8,16 @@
             "System",
             "System.ComponentModel"
         ],
-        "ConstructedProperties": [],
+        "ConstructedProperties": [
+            {
+                "Name": "ColumnCount",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "BoardHeight" ],
+                "Nullable": false,
+                "Default": "5"
+            }
+        ],
         "NormalProperties": [
             {
                 "Name": "OuterHexSize",
@@ -51,14 +60,7 @@
                 "Nullable": false,
                 "Default": "1.5"
             },
-            {
-                "Name": "ColumnCount",
-                "Type": "int",
-                "ReadOnly": false,
-                "AdditionalNotifications": [ "BoardHeight" ],
-                "Nullable": false,
-                "Default": "5"
-            },
+            
             {
                 "Name": "GameMargin",
                 "Type": "double",

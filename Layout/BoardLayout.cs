@@ -31,10 +31,9 @@ namespace Catan3.Models
     public partial class BoardLayout
     {
 
-
         //
         //  this is used in the DependencyProperties so that there is a reasonable non-null default
-        public static BoardLayout Default { get; } = new BoardLayout();
+        public static BoardLayout Default { get; } = new BoardLayout(5);
 
         /// <summary>
         ///     return the top based on the geometry of a Regular Flat Topped Hexagon
@@ -114,6 +113,8 @@ namespace Catan3.Models
             }
         }
 
+       
+
         public PointCollection PointyHexPoints
         {
             get
@@ -128,7 +129,7 @@ namespace Catan3.Models
 
         public double ControlHeight => HexGeometry.Height(this.OuterHexSize);
 
-        public double BoardWidth => OuterHexSize * 7 + BuildingSize + GameMargin;
+        public double BoardWidth => OuterHexSize * (ColumnCount + 2) + BuildingSize + GameMargin;
 
         public double BoardHeight => OuterHexSize * Math.Sqrt(3) * ColumnCount + BuildingSize + GameMargin + HarborSize;
 
