@@ -25,11 +25,11 @@
                 Points="{x:Bind TileViewModel.Layout.InnerHexPoints, Mode=OneWay}"
                 Fill="{x:Bind TileViewModel.Tile.ResourceType, Mode=OneWay, Converter={StaticResource ResourceTypeToImageBrush}}" />
 
-        <Polygon Stroke="Red" StrokeDashArray="1 1" StrokeThickness="1"
+        <Polygon Stroke="Red" StrokeDashArray="1 1" StrokeThickness="{x:Bind TileViewModel.Layout.LayoutGuideStrokeWidth, Mode=OneWay}"
                 Points="{x:Bind TileViewModel.Layout.OuterHexPoints, Mode=OneWay}"
                 Fill="Transparent" />
 
-        <Polygon Stroke="Blue" StrokeDashArray="1 1" StrokeThickness="1"
+        <Polygon Stroke="Blue" StrokeDashArray="1 1" StrokeThickness="{x:Bind TileViewModel.Layout.LayoutGuideStrokeWidth, Mode=OneWay}"
                 Points="{x:Bind TileViewModel.Layout.PointyHexPoints, Mode=OneWay}"
                 Fill="Transparent" />
 

@@ -1,6 +1,6 @@
 ﻿[
     {
-        "ModelVersion": "4",
+        "ModelVersion": "5",
         "ClassName": "BoardLayout",
         "Namespace": "Catan3.Models",
         "Path": ".",
@@ -90,6 +90,14 @@
                 "AdditionalNotifications": [],
                 "Nullable": false,
                 "Default": "50.0"
+            },
+            {
+                "Name": "LayoutGuideStrokeWidth",
+                "Type": "double",
+                "ReadOnly": true,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "1.0"
             }
         ]
     }

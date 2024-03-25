@@ -1,75 +1,104 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Page x:Class="Catan3.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="using:Catan3"
+<Page x:Class="Catan3.MainPage"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Catan3"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
-        RightTapped="OnRightButtonTapped" KeyUp="OnKeyUp" xmlns:c="using:Catan3.Controls"
-      Background="DarkGray"
-        xmlns:m="clr-namespace:Catan3.Models" >
-    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="LightGray">
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" RightTapped="OnRightButtonTapped" KeyUp="OnKeyUp"
+        xmlns:c="using:Catan3.Controls" Background="DarkGray"
+        xmlns:m="clr-namespace:Catan3.Models">
+    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+            Background="LightGray">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="20*" />
             <ColumnDefinition Width="60*" />
             <ColumnDefinition Width="20*" />
         </Grid.ColumnDefinitions>
-        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10">
-            <Button Content="Regenerate" Click="OnRegenerate" Background="Black" Foreground="White" />
-            
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center"
+                Margin="10">
+            <Button Content="Regenerate" Click="OnRegenerate" Background="Black"
+                    Foreground="White" />
+
             <!--Tile Size-->
             <TextBlock Text="Tile Size" Foreground="Black" />
-            <Slider Width="200" HorizontalAlignment="Left" Minimum="25" Maximum="200" SmallChange="11" LargeChange="10"
+            <Slider Width="200" HorizontalAlignment="Left" Minimum="25"
+                    Maximum="200" SmallChange="11" LargeChange="10"
                     Background="Black" Foreground="White"
                     Value="{x:Bind GameViewModel.BoardInfo.Layout.OuterHexSize, Mode=TwoWay}" />
             <TextBox Width="200" HorizontalAlignment="Left"
-                    Text="{x:Bind GameViewModel.BoardInfo.Layout.OuterHexSize, Mode=TwoWay}" Background="White"
-                    Foreground="Black" />
-            
+                    Text="{x:Bind GameViewModel.BoardInfo.Layout.OuterHexSize, Mode=TwoWay}"
+                    Background="White" Foreground="Black" />
+
             <!--Tile Gap-->
             <TextBlock Foreground="Black" Text="Tile Gap" />
-            <Slider Width="200" HorizontalAlignment="Left" Minimum="0" Maximum="40" SmallChange=".5" LargeChange="1"
-                    Value="{x:Bind GameViewModel.BoardInfo.Layout.TileGap, Mode=TwoWay}" Background="Black"
-                    Foreground="White" />
+            <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
+                    Maximum="40" SmallChange=".5" LargeChange="1"
+                    Value="{x:Bind GameViewModel.BoardInfo.Layout.TileGap, Mode=TwoWay}"
+                    Background="Black" Foreground="White" />
             <TextBox Width="200" HorizontalAlignment="Left"
-                    Text="{x:Bind GameViewModel.BoardInfo.Layout.TileGap, Mode=TwoWay}" Foreground="Black" />
-            
+                    Text="{x:Bind GameViewModel.BoardInfo.Layout.TileGap, Mode=TwoWay}"
+                    Foreground="Black" />
+
             <!--Building Size-->
             <TextBlock Text="Building Size" Foreground="Black" />
-            <Slider Width="200" HorizontalAlignment="Left" Minimum="20" Maximum="200" SmallChange="1" LargeChange="10"
-                    Value="{x:Bind GameViewModel.BoardInfo.Layout.BuildingSize, Mode=TwoWay}" Background="Black"
-                    Foreground="White" />
+            <Slider Width="200" HorizontalAlignment="Left" Minimum="20"
+                    Maximum="200" SmallChange="1" LargeChange="10"
+                    Value="{x:Bind GameViewModel.BoardInfo.Layout.BuildingSize, Mode=TwoWay}"
+                    Background="Black" Foreground="White" />
             <TextBox Width="200" HorizontalAlignment="Left"
-                    Text="{x:Bind GameViewModel.BoardInfo.Layout.BuildingSize, Mode=TwoWay}" Foreground="Black" />
-            
+                    Text="{x:Bind GameViewModel.BoardInfo.Layout.BuildingSize, Mode=TwoWay}"
+                    Foreground="Black" />
+
             <!--Roads Stroke-->
             <TextBlock Text="Road Stroke Thickness" Foreground="Black" />
-            <Slider Width="200" HorizontalAlignment="Left" Minimum="0" Maximum="10" SmallChange="1" LargeChange="4"
-                    Value="{x:Bind GameViewModel.BoardInfo.Layout.RoadStrokeThickness, Mode=TwoWay}" Background="Black"
-                    Foreground="White" />
+            <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
+                    Maximum="10" SmallChange="1" LargeChange="4"
+                    Value="{x:Bind GameViewModel.BoardInfo.Layout.RoadStrokeThickness, Mode=TwoWay}"
+                    Background="Black" Foreground="White" />
             <TextBox Width="200" HorizontalAlignment="Left"
-                    Text="{x:Bind GameViewModel.BoardInfo.Layout.RoadStrokeThickness, Mode=TwoWay}" Foreground="Black" />
+                    Text="{x:Bind GameViewModel.BoardInfo.Layout.RoadStrokeThickness, Mode=TwoWay}"
+                    Foreground="Black" />
 
-            <!--Tile Stroke--> 
+            <!--Tile Stroke-->
             <TextBlock Text="Inner Hex Stroke Thickness" Foreground="Black" />
-            <Slider Width="200" HorizontalAlignment="Left" Minimum="0" Maximum="40" SmallChange="1" LargeChange="4"
+            <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
+                    Maximum="40" SmallChange="1" LargeChange="4"
                     Value="{x:Bind GameViewModel.BoardInfo.Layout.InnerHexStrokeThickness, Mode=TwoWay}"
                     Background="Black" Foreground="White" />
             <TextBox Width="200" HorizontalAlignment="Left"
                     Text="{x:Bind GameViewModel.BoardInfo.Layout.InnerHexStrokeThickness, Mode=TwoWay}"
                     Foreground="Black" />
 
-            <!--Players--> 
-            <TextBlock Text="Players" Foreground="Black" />
-            <ComboBox ItemsSource="{x:Bind GameViewModel.Players, Mode=OneWay}" DisplayMemberPath="Name"
-                    Foreground="Black" SelectedItem="{x:Bind GameViewModel.CurrentPlayer, Mode=TwoWay}"
-                    HorizontalAlignment="Left" VerticalAlignment="Top" Width="200" />
+            <!--Hex Guidelines stroke-->
+            <TextBlock Text="Hex Guidelines" Foreground="Black" />
+            <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
+                    Maximum="40" SmallChange="1" LargeChange="4"
+                    Value="{x:Bind GameViewModel.BoardInfo.Layout.LayoutGuideStrokeWidth, Mode=TwoWay}"
+                    Background="Black" Foreground="White" />
+            <TextBox Width="200" HorizontalAlignment="Left"
+                    Text="{x:Bind GameViewModel.BoardInfo.Layout.LayoutGuideStrokeWidth, Mode=TwoWay}"
+                    Foreground="Black" />
 
-            <Button Content="Hit Me" Click="OnHitMe" />
+            <!--Players-->
+            <TextBlock Text="Players" Foreground="Black" />
+            <ComboBox ItemsSource="{x:Bind GameViewModel.Players, Mode=OneWay}"
+                    DisplayMemberPath="Name" Foreground="Black"
+                    SelectedItem="{x:Bind GameViewModel.CurrentPlayer, Mode=TwoWay}"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Width="200" />
+
+            <Button Content="Do Misc" Click="OnHitMe" />
         </StackPanel>
         <Viewbox Grid.Column="1" Stretch="Uniform">
-            <c:GameBoardCtrl Grid.Column="1" GameViewModel="{x:Bind GameViewModel, Mode=OneWay}"
-                    BuildingClicked="Building_Clicked" BuildingMouseEnter="Building_MouseEnter"
-                    BuildingMouseLeave="Building_MouseLeave" RoadClicked="Road_Clicked" RoadMouseEnter="Road_MouseEnter"
-                    RoadMouseLeave="Road_MouseLeave" TileRightMouseClicked="Tile_RightClicked" />
+            <c:GameBoardCtrl Grid.Column="1"
+                    GameViewModel="{x:Bind GameViewModel, Mode=OneWay}"
+                    BuildingClicked="Building_Clicked"
+                    BuildingMouseEnter="Building_MouseEnter"
+                    BuildingMouseLeave="Building_MouseLeave"
+                    RoadClicked="Road_Clicked" RoadMouseEnter="Road_MouseEnter"
+                    RoadMouseLeave="Road_MouseLeave"
+                    TileRightMouseClicked="Tile_RightClicked" />
         </Viewbox>
     </Grid>
 </Page>

@@ -8,6 +8,34 @@ using Microsoft.UI.Xaml.Media;
 using Windows.UI;
 namespace Catan3.Converters
 {
+    public class DoubleToThickness : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is string d)
+            {
+                var n = Double.Parse(d);
+                return new Thickness(n);
+               
+            }
+            if (value is double val)
+            {
+                return new Thickness(val);
+            }
+
+            throw new ArgumentException($"{value} is not a double");
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            if (value is Thickness thickness)
+            {
+                return thickness.Left;
+            }
+            throw new ArgumentException($"{value} is not a Thickness");
+        }
+    }
+
     public class NullToDefaultValueConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)

@@ -76,6 +76,8 @@
             <converters:NullToDefaultValueConverter
                     x:Key="NullToDefaultValueConverter" />
 
+            <converters:DoubleToThickness x:Key="DoubleToThickness" />
+
             <Style TargetType="ListViewItem" x:Key="ListViewItemStyle">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderBrush" Value="Transparent" />

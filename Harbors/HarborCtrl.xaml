@@ -17,7 +17,7 @@
             <Setter Property="Visibility" Value="Collapsed" />
         </Style>
     </UserControl.Resources>
-    <Border BorderBrush="Yellow" BorderThickness="1">
+    <Border BorderBrush="Yellow" BorderThickness="0">
         <Canvas Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
      
                     Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}">
