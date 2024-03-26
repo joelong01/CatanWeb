@@ -22,4 +22,6 @@
 
     public enum HarborType { Sheep, Wood, Ore, Wheat, Brick, ThreeForOne, None };
 
+    public enum Orientation { FaceUp, FaceDown }
+
 }

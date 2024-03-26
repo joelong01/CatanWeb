@@ -17,7 +17,7 @@ namespace Catan3.Utility
         NorthWest
     }
 
-    public partial class HexCoordinates(int q, int r, int s)
+    public partial class HexCoordinates(int q, int r, int s) : IComparable<HexCoordinates>
     {
         public static
                 Dictionary<Direction, HexCoordinates> Directions
@@ -68,19 +68,8 @@ namespace Catan3.Utility
         }
         public override int GetHashCode() => HashCode.Combine(Q, R, S);
         public static HexCoordinates Default => new(-10, -10, -10);
-        public static bool operator ==(HexCoordinates left, HexCoordinates right)
-        {
-            if (left is null || right is null)
-            {
-                return false;
-            }
-            if (ReferenceEquals(left, right))
-            {
-                return true;
-            }
-            return left.Equals(right);
-        }
-        public static bool operator !=(HexCoordinates left, HexCoordinates right) => !( left == right );
+        
+       
         public static Point MidPoint(double left, double top, double size, HexSide side)
         {
             double height = Math.Sqrt(3) * size;
@@ -107,7 +96,45 @@ namespace Catan3.Utility
             }
         }
 
-    
+        public int CompareTo(HexCoordinates? other)
+        {
+            if (other is null) return 1;
+
+            if (Q.CompareTo(other.Q) != 0)
+            {
+                return Q.CompareTo(other.Q);
+            }
+            else if (R.CompareTo(other.R) != 0)
+            {
+                return R.CompareTo(other.R);
+            }
+            else
+            {
+                // Note the order is reversed for S to sort in descending order
+                return -S.CompareTo(other.S);
+            }
+        }
+
+        // Override == and != operators to use CompareTo for consistency
+        public static bool operator ==(HexCoordinates left, HexCoordinates right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+            if (left is null || right is null)
+            {
+                return false;
+            }
+            return left.CompareTo(right) == 0;
+        }
+
+        public static bool operator !=(HexCoordinates left, HexCoordinates right)
+        {
+            return !( left == right );
+        }
+
+
 
     }
 }

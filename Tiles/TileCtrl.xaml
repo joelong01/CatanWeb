@@ -82,10 +82,14 @@
             <Grid Background="Black" HorizontalAlignment="Center"
                     VerticalAlignment="Bottom"
                     Margin="{x:Bind CooordinateTextMargin(TileViewModel.Layout.TileGap, TileViewModel.Layout.InnerHexStrokeThickness), Mode=OneWay}"
-                    Height="16">
+                    Height="32">
                 <Viewbox Stretch="Uniform">
-                    <TextBlock Text="{x:Bind TileViewModel.Tile.TileKey}"
-                            Foreground="White" />
+                    <StackPanel HorizontalAlignment="Stretch">
+                        <TextBlock Text="{x:Bind TileViewModel.Index, Mode=OneWay}"
+                                HorizontalAlignment="Center" Foreground="White" />
+                        <TextBlock Text="{x:Bind TileViewModel.Tile.TileKey}"
+                                HorizontalAlignment="Center" Foreground="White" />
+                    </StackPanel>
                 </Viewbox>
             </Grid>
         </Grid>

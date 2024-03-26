@@ -4,13 +4,14 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using Catan3.Utility;
+using System.Linq;
 
 
 namespace Catan3.Models
 {
 
     public partial class GameViewModel
-     {
+    {
 
         public GameViewModel(GameModel gameModel, List<PlayerViewModel> playingPlayers)
         {
@@ -21,14 +22,14 @@ namespace Catan3.Models
             else if (gameModel.GameType == CatanGame.Expansion)
             {
                 BoardInfo = new ExpansionBoardInfo();
-            } else
+            }
+            else
             {
                 throw new ArgumentException($"invalid boardsize");
             }
-            foreach (var tile in gameModel.Tiles)
-            {
-                Tiles.Add(new TileViewModel(tile, BoardInfo.Layout));
-            }
+
+            Tiles = CreateAndSortTileViewModelList(gameModel.Tiles);
+           
             foreach (var building in gameModel.Buildings)
             {
                 Buildings.Add(new BuildingViewModel(building, BoardInfo.Layout));
@@ -84,6 +85,24 @@ namespace Catan3.Models
             }
             return tiles;
         }
+
+        private ObservableCollection<TileViewModel> CreateAndSortTileViewModelList(ObservableCollection<TileModel> tiles)
+        {
+            Debug.Assert(BoardInfo is not null);
+            var sortedTiles = tiles.OrderBy(tvm => tvm.TileKey).ToList();
+            ObservableCollection<TileViewModel> result = [];
+            for (int i = 0;i<sortedTiles.Count; i++)
+            {
+                var tvm = new TileViewModel(sortedTiles[i], BoardInfo.Layout)
+                {
+                    Index = i
+                };
+                result.Add(tvm);
+            }
+
+            return result;
+        }
+
     }
 
 }
