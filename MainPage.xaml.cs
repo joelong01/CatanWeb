@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Catan3.Controls;
 using Catan3.Models;
@@ -29,8 +30,24 @@ namespace Catan3
             AvailablePlayers.Add(new("Chris", Colors.White, Colors.Black));
             AvailablePlayers.Add(new("Adrian", Colors.White, Colors.Purple));
             AvailablePlayers.Add(new("Ryan", Colors.White, Colors.DarkGray));
+            Games.Add(CatanGame.Expansion);
+            Games.Add(CatanGame.Regular);
+            SelectedGame = CatanGame.Expansion;
             NewGame();
             Debug.Assert(GameViewModel != null);
+        }
+        public static readonly DependencyProperty SelectedGameProperty = DependencyProperty.Register("SelectedGame", typeof(CatanGame), typeof(MainPage), new PropertyMetadata(CatanGame.Regular));
+        public CatanGame SelectedGame
+        {
+            get => ( CatanGame )GetValue(SelectedGameProperty);
+            set 
+            {
+                if (value != SelectedGame)
+                {
+
+                    SetValue(SelectedGameProperty, value);
+                }
+            }
         }
         public static readonly DependencyProperty GameViewModelProperty = DependencyProperty.Register("GameViewModel", typeof(GameViewModel), typeof(MainPage), new PropertyMetadata(null));
         public GameViewModel? GameViewModel
@@ -39,6 +56,7 @@ namespace Catan3
             set => SetValue(GameViewModelProperty, value);
         }
         private static List<PlayerViewModel> AvailablePlayers { get; set; } = [];
+        public  ObservableCollection<CatanGame> Games { get; set; } = [];
         private void OnRightButtonTapped(object sender, RightTappedRoutedEventArgs e)
         {
 
@@ -53,7 +71,7 @@ namespace Catan3
             playingPlayers.Add(AvailablePlayers[0]);
             playingPlayers.Add(AvailablePlayers[1]);
             playingPlayers.Add(AvailablePlayers[2]);
-            GameViewModel = new GameViewModel(GameGenerator.CreateGame(BoardSize.Regular), playingPlayers);
+            GameViewModel = new GameViewModel(GameGenerator.CreateGame(SelectedGame), playingPlayers);
             GameViewModel.CurrentPlayer = GameViewModel.Players[0];
             this.DataContext = GameViewModel;
        

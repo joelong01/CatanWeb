@@ -190,5 +190,16 @@ namespace Catan3.Utility
             return height / Math.Sqrt(3);
         }
 
+        public static HexCoordinates HexSubtract(HexCoordinates a, HexCoordinates b)
+        {
+            return new HexCoordinates(a.Q - b.Q, a.R - b.R, a.S - b.S);
+        }
+
+        public static double Distance(HexCoordinates a, HexCoordinates b)
+        {
+            var vec = HexSubtract(a, b);
+            return ( Math.Abs(vec.Q) + Math.Abs(vec.R) + Math.Abs(vec.S) ) / 2.0;
+        }
+
     }
 }

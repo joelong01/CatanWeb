@@ -9,7 +9,15 @@
             "System.ComponentModel",
             "Catan3.Utility"
         ],
-        "ConstructedProperties": [],
+        "ConstructedProperties": [
+            {
+                "Name": "BoardInfo",
+                "Type": "IBoardInfo",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": true
+            }
+        ],
         "NormalProperties": [
             {
                 "Name": "RobberTile",
@@ -29,14 +37,6 @@
                 "IsLiteral": true
             },
             {
-                "Name": "HasSupplementalBuildPhase",
-                "Type": "bool",
-                "ReadOnly": false,
-                "AdditionalNotifications": [],
-                "Nullable": false,
-                "Default": "false"
-            },
-            {
                 "Name": "IsKnightsAndRobbers",
                 "Type": "bool",
                 "ReadOnly": false,
@@ -52,13 +52,7 @@
                 "Nullable": false,
                 "Default": "new HouseRules()"
             },
-            {
-                "Name": "BoardInfo",
-                "Type": "RegularBoardInfo",
-                "ReadOnly": false,
-                "AdditionalNotifications": [],
-                "Nullable": true
-            },
+           
             {
                 "Name": "CurrentPlayer",
                 "Type": "PlayerViewModel",

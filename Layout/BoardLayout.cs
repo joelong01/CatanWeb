@@ -33,7 +33,7 @@ namespace Catan3.Models
 
         //
         //  this is used in the DependencyProperties so that there is a reasonable non-null default
-        public static BoardLayout Default { get; } = new BoardLayout(5);
+        public static BoardLayout Default { get; } = new BoardLayout(5, 1.5);
 
         /// <summary>
         ///     return the top based on the geometry of a Regular Flat Topped Hexagon
@@ -50,7 +50,7 @@ namespace Catan3.Models
             top += 2 * outerHeight;
             top = Math.Round(top + BuildingSize * .5, 1); // the buildings will go on top of the highest tile, give them room
             top += GameMargin;
-            top += HarborSize; // there is always 1 harbor on the top or the bottom
+            top += BuildingSize; // there is always 1 harbor on the top or the bottom
             return top;
         }
         public double Left(HexCoordinates key)
@@ -129,9 +129,22 @@ namespace Catan3.Models
 
         public double ControlHeight => HexGeometry.Height(this.OuterHexSize);
 
-        public double BoardWidth => OuterHexSize * (ColumnCount + 2) + BuildingSize + GameMargin;
+        public double BoardWidth
+        {
+            get
+            {
+                if (ColumnCount == 5)
+                {
+                    return OuterHexSize * 8 + BuildingSize + GameMargin * 2;
+                }
+                else
+                {
+                    return OuterHexSize * 12 + BuildingSize + GameMargin * 2;
+                }
+            }
+        }
 
-        public double BoardHeight => OuterHexSize * Math.Sqrt(3) * ColumnCount + BuildingSize + GameMargin + HarborSize;
+        public double BoardHeight => OuterHexSize * Math.Sqrt(3) * (ColumnCount) + BuildingSize * 2 + GameMargin*2; // HarborSize == buildingSize
 
 
 

@@ -14,13 +14,16 @@ namespace Catan3.Models
 
         public GameViewModel(GameModel gameModel, List<PlayerViewModel> playingPlayers)
         {
-            if (gameModel.BoardSize == BoardSize.Regular)
+            if (gameModel.GameType == CatanGame.Regular)
             {
                 BoardInfo = new RegularBoardInfo();
             }
-            else
+            else if (gameModel.GameType == CatanGame.Expansion)
             {
-                throw new NotImplementedException();
+                BoardInfo = new ExpansionBoardInfo();
+            } else
+            {
+                throw new ArgumentException($"invalid boardsize");
             }
             foreach (var tile in gameModel.Tiles)
             {

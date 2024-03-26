@@ -1,15 +1,32 @@
 [
     {
-        "ModelVersion": "4",
+        "ModelVersion": "7",
         "ClassName": "GameModel",
         "Namespace": "Catan3.Models",
         "Path": ".",
         "Usings": [
             "System.Collections.ObjectModel",
-            "System.ComponentModel", 
+            "System.ComponentModel",
             "Catan3.Utility"
         ],
-        "ConstructedProperties": [],
+        "ConstructedProperties": [
+            {
+                "Name": "GameType",
+                "Type": "CatanGame",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "CatanGame.Regular"
+            },
+            {
+                "Name": "HasSupplementalBuildPhase",
+                "Type": "bool",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "false"
+            }
+        ],
         "NormalProperties": [
             {
                 "Name": "Tiles",
@@ -26,14 +43,6 @@
                 "AdditionalNotifications": [],
                 "Nullable": false,
                 "Default": "[]"
-            },
-            {
-                "Name": "BoardSize",
-                "Type": "BoardSize",
-                "ReadOnly": false,
-                "AdditionalNotifications": [],
-                "Nullable": false,
-                "Default": "BoardSize.Regular"
             },
             {
                 "Name": "Players",

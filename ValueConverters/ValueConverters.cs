@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Catan3.Utility;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
@@ -230,8 +231,9 @@ namespace Catan3.Converters
                 double scale = Double.Parse(param);
                 return original * scale;
             }
+            if (parameter is null) return 1.0;
             Debug.Assert(false, "Value should be a double");
-            return 0.0;
+            return 1.0;
         }
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {

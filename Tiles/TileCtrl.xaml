@@ -18,10 +18,11 @@
 
         </Style>
     </UserControl.Resources>
-    <Canvas Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
+    <Canvas HorizontalAlignment="Left" VerticalAlignment="Top"
+            Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
             Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}">
 
-        <Polygon Stroke="PaleVioletRed" 
+        <Polygon Stroke="PaleVioletRed"
                 StrokeThickness="{x:Bind TileViewModel.Layout.TileGap, Mode=OneWay}"
                 Points="{x:Bind TileViewModel.Layout.OuterHexPoints, Mode=OneWay}"
                 Fill="{StaticResource bmMaple}" />

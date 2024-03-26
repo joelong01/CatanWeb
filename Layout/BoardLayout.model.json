@@ -1,6 +1,6 @@
 ﻿[
     {
-        "ModelVersion": "6",
+        "ModelVersion": "9",
         "ClassName": "BoardLayout",
         "Namespace": "Catan3.Models",
         "Path": ".",
@@ -13,9 +13,17 @@
                 "Name": "ColumnCount",
                 "Type": "int",
                 "ReadOnly": false,
-                "AdditionalNotifications": [ "BoardHeight" ],
+                "AdditionalNotifications": [ "BoardHeight", "BoardWidth" ],
                 "Nullable": false,
                 "Default": "5"
+            },
+            {
+                "Name": "ColumnOffset",
+                "Type": "double",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "BoardHeight", "BoardWidth" ],
+                "Nullable": false,
+                "Default": "1.5; //the number of Size's to the .Left of the control"
             }
         ],
         "NormalProperties": [
@@ -53,21 +61,12 @@
                 "Default": "5"
             },
             {
-                "Name": "ColumnOffset",
-                "Type": "double",
-                "ReadOnly": false,
-                "AdditionalNotifications": [],
-                "Nullable": false,
-                "Default": "1.5"
-            },
-            
-            {
                 "Name": "GameMargin",
                 "Type": "double",
                 "ReadOnly": false,
                 "AdditionalNotifications": [ "BoardWidth", "BoardHeight" ],
                 "Nullable": false,
-                "Default": "0.0"
+                "Default": "7.0"
             },
             {
                 "Name": "BuildingSize",
@@ -86,20 +85,12 @@
                 "Default": "2.0"
             },
             {
-                "Name": "HarborSize",
-                "Type": "double",
-                "ReadOnly": true,
-                "AdditionalNotifications": [],
-                "Nullable": false,
-                "Default": "50.0"
-            },
-            {
                 "Name": "LayoutGuideStrokeWidth",
                 "Type": "double",
                 "ReadOnly": true,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "1.0"
+                "Default": "0.0"
             }
         ]
     }

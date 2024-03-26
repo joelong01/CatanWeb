@@ -8,10 +8,7 @@ using Windows.Foundation;
 
 namespace Catan3.Models
 {
-    public interface ICatanModel
-    {
-        void Initi() { }
-    }
+
     public interface IHouseRules
     {
         int GoldTiles { get; }
@@ -21,10 +18,16 @@ namespace Catan3.Models
     }
     public interface IBoardInfo
     {
+        static int ColumnCount { get; }
+        public static double ColumnOffset { get; }
+
         List<HexCoordinates> TileKeys { get; }
         public List<ResourceType> Resources { get; }
         public List<int> Numbers { get; }
+        public List<HarborModel> Harbors { get; }
         public BoardLayout Layout { get; }
+        public bool HasSupplemental { get; }
+       
     }
     public interface IBoardLayout
     {

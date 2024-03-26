@@ -16,7 +16,7 @@
         Pips,
         Knight,
     }
-    public enum BoardSize { Regular, Expansion }
+    public enum CatanGame { Regular, Expansion }
    
     public enum RoadState { Unowned, Road, Ship };
 

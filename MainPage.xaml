@@ -2,14 +2,14 @@
 <Page x:Class="Catan3.MainPage"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="using:Catan3"
+        xmlns:local="using:Catan3" x:Name="PAGE_MainPage"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" RightTapped="OnRightButtonTapped" KeyUp="OnKeyUp"
         xmlns:c="using:Catan3.Controls" Background="DarkGray"
         xmlns:m="clr-namespace:Catan3.Models">
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-            Background="LightGray">
+            Background="DarkGray">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="20*" />
             <ColumnDefinition Width="60*" />
@@ -80,6 +80,16 @@
                     Text="{x:Bind GameViewModel.BoardInfo.Layout.LayoutGuideStrokeWidth, Mode=TwoWay}"
                     Foreground="Black" />
 
+            <!--Game Margin-->
+            <TextBlock Text="Margin" Foreground="Black" />
+            <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
+                    Maximum="40" SmallChange="1" LargeChange="4"
+                    Value="{x:Bind GameViewModel.BoardInfo.Layout.GameMargin, Mode=TwoWay}"
+                    Background="Black" Foreground="White" />
+            <TextBox Width="200" HorizontalAlignment="Left"
+                    Text="{x:Bind GameViewModel.BoardInfo.Layout.GameMargin, Mode=TwoWay}"
+                    Foreground="Black" />
+
             <!--Players-->
             <TextBlock Text="Players" Foreground="Black" />
             <ComboBox ItemsSource="{x:Bind GameViewModel.Players, Mode=OneWay}"
@@ -88,17 +98,28 @@
                     HorizontalAlignment="Left" VerticalAlignment="Top"
                     Width="200" />
 
+            <!--Game Type-->
+            <TextBlock Text="Game Type" Foreground="Black" />
+            <ComboBox ItemsSource="{x:Bind Games, Mode=OneWay}"
+                    SelectedItem="{x:Bind SelectedGame, Mode=TwoWay}"
+                    Foreground="Black" HorizontalAlignment="Left"
+                    VerticalAlignment="Top" Width="200" />
+
             <Button Content="Do Misc" Click="OnHitMe" />
         </StackPanel>
-        <Viewbox Grid.Column="1" Stretch="Uniform">
-            <c:GameBoardCtrl Grid.Column="1"
-                    GameViewModel="{x:Bind GameViewModel, Mode=OneWay}"
-                    BuildingClicked="Building_Clicked"
-                    BuildingMouseEnter="Building_MouseEnter"
-                    BuildingMouseLeave="Building_MouseLeave"
-                    RoadClicked="Road_Clicked" RoadMouseEnter="Road_MouseEnter"
-                    RoadMouseLeave="Road_MouseLeave"
-                    TileRightMouseClicked="Tile_RightClicked" />
-        </Viewbox>
+        <Border BorderBrush="Blue" BorderThickness="2" Grid.Column="1"
+                Grid.ColumnSpan="1">
+            <Viewbox Stretch="Uniform">
+                <c:GameBoardCtrl Grid.Column="1"
+                        GameViewModel="{x:Bind GameViewModel, Mode=OneWay}"
+                        BuildingClicked="Building_Clicked"
+                        BuildingMouseEnter="Building_MouseEnter"
+                        BuildingMouseLeave="Building_MouseLeave"
+                        RoadClicked="Road_Clicked"
+                        RoadMouseEnter="Road_MouseEnter"
+                        RoadMouseLeave="Road_MouseLeave"
+                        TileRightMouseClicked="Tile_RightClicked" />
+            </Viewbox>
+        </Border>
     </Grid>
 </Page>
