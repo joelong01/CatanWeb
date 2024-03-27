@@ -55,11 +55,11 @@ namespace Catan3.Controls
         {
             if (ViewModel.Orientation == CatanOrientation.FaceUp)
             {
-                AnimationHelpers.FlipToFaceUp(C_Front, C_Back);
+                AnimationHelpers.FlipToFaceUp(Ellipse_Front, Ellipse_Back);
             }
             else // Assuming the only other state is FaceDown
             {
-                AnimationHelpers.FlipToFaceDown(C_Front, C_Back);
+                AnimationHelpers.FlipToFaceDown(Ellipse_Front, Ellipse_Back);
             }
         }
 

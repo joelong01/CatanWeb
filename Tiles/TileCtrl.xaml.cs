@@ -61,11 +61,11 @@ namespace Catan3.Controls
         {
             if (TileViewModel.Orientation == CatanOrientation.FaceUp)
             {
-                AnimationHelpers.FlipToFaceUp(CANVAS_FaceDown, CANVAS_FaceUp);
+                AnimationHelpers.FlipToFaceUp(C_Back, C_Front);
             }
             else // Assuming the only other state is FaceDown
             {
-                AnimationHelpers.FlipToFaceDown(CANVAS_FaceDown, CANVAS_FaceUp);
+                AnimationHelpers.FlipToFaceDown(C_Back, C_Front);
             }
         }
 

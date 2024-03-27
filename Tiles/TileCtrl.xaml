@@ -21,23 +21,20 @@
     <Canvas Name="CANVAS_LayoutRoot"
             Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
             Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}">
-        <Canvas Name="CANVAS_FaceDown" Canvas.ZIndex="1"
+        <Canvas Name="C_Back" Canvas.ZIndex="1"
                 Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
                 Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}">
             <Polygon Stroke="PaleVioletRed"
                     StrokeThickness="{x:Bind TileViewModel.Layout.TileGap, Mode=OneWay}"
                     Points="{Binding Layout.OuterHexPoints, Mode=OneWay}"
                     Fill="{StaticResource bmWater}" />
-            <Canvas.Projection>
-                <PlaneProjection x:Name="PJ_FaceDown" RotationY="0" />
-            </Canvas.Projection>
         </Canvas>
-        <Canvas Name="CANVAS_FaceUp" HorizontalAlignment="Left"
+        <Canvas Name="C_Front" HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
                 Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}">
             <Canvas.Projection>
-                <PlaneProjection x:Name="PJ_FaceUp" RotationY="90" />
+                <PlaneProjection RotationY="90" />
             </Canvas.Projection>
             <Polygon Stroke="PaleVioletRed"
                     StrokeThickness="{x:Bind TileViewModel.Layout.TileGap, Mode=OneWay}"
