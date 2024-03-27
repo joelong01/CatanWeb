@@ -74,16 +74,16 @@ namespace Catan3.Models
 
             game.Shuffle();
 
-            game.RobberTile = game.Tiles.TilesWithResource(ResourceType.Desert)[0].TileKey;
+            game.Robber.Coordinates = game.Tiles.TilesWithResource(ResourceType.Desert)[0].TileKey;
             return game;
         }
         /// <summary>
         /// 
         ///  can be called any time and returns a random valid board
         /// </summary>
-        public static void Shuffle(this GameModel Game)
+        public static void Shuffle(this GameModel game)
         {
-            int count = Game.Tiles.Count;
+            int count = game.Tiles.Count;
             // Using DateTime.Now.Ticks to get the current time in ticks and using that as a seed
             Random random = new((int)(DateTime.Now.Ticks & 0x0000FFFF));
             int iters = 0;
@@ -93,8 +93,8 @@ namespace Catan3.Models
                 for (int i = 0; i < count; i++)
                 {
                     int index = random.Next(0, count);
-                    var x = Game.Tiles[index];
-                    var y = Game.Tiles[i];
+                    var x = game.Tiles[index];
+                    var y = game.Tiles[i];
                     var xN = x.Number;
                     var yN = y.Number;
                     var xR = x.ResourceType;
@@ -104,8 +104,8 @@ namespace Catan3.Models
                     y.ResourceType = xR;
                     y.Number = xN;
                 }
-                var tilesWithSeven = Game.Tiles.TilesWithNumber(7);
-                var desertTiles = Game.Tiles.TilesWithResource(ResourceType.Desert);
+                var tilesWithSeven = game.Tiles.TilesWithNumber(7);
+                var desertTiles = game.Tiles.TilesWithResource(ResourceType.Desert);
                 Debug.Assert(tilesWithSeven.Count == desertTiles.Count);
                 // if any of the deserts have a non-7 number, swap with the tile that has a 7
                 for (int i = 0; i < tilesWithSeven.Count; i++)
@@ -118,7 +118,17 @@ namespace Catan3.Models
                 {
                     Debug.Assert(false, "Too many iterations");
                 }
-            } while (!Game.ValidateGame());
+            } while (!game.ValidateGame());
+
+            count = game.Harbors.Count;
+            for (int i = 0; i < count; i++)
+            {
+                int index = random.Next(0, count);
+                var x = game.Harbors[index].HarborType;
+                var y = game.Harbors[i].HarborType;
+                game.Harbors[i].HarborType = x;
+                game.Harbors[index].HarborType = y;
+            }
 
             // this.TraceMessage($"valid.  iters: {iters}");
         }

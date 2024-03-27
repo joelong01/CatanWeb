@@ -4,12 +4,67 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Microsoft.UI;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Foundation;
 using Windows.UI;
 
 namespace Catan3
 {
+    public static class AnimationHelpers
+    {
+        public static void FlipToFaceUp(FrameworkElement faceDown, FrameworkElement faceUp)
+        {
+            // Animate CANVAS_FaceDown to 90 degrees
+            AnimateRotation(faceDown, 0, 90, () =>
+            {
+                //  CANVAS_FaceDown.Visibility = Visibility.Collapsed;
+
+                // Once CANVAS_FaceDown is flipped, start animating CANVAS_FaceUp from -90 to 0 degrees
+                //  CANVAS_FaceUp.Visibility = Visibility.Visible;
+                AnimateRotation(faceUp, -90, 0, null); // No further action on completion
+            });
+        }
+
+        public static void FlipToFaceDown(FrameworkElement faceDown, FrameworkElement faceUp)
+        {
+            // Animate CANVAS_FaceUp to 90 degrees
+            AnimateRotation(faceUp, 0, 90, () =>
+            {
+
+                // Once CANVAS_FaceUp is flipped, start animating CANVAS_FaceDown from -90 to 0 degrees
+                AnimateRotation(faceDown, -90, 0, null); // No further action on completion
+            });
+        }
+
+        private static void AnimateRotation(FrameworkElement element, double from, double to, Action? onAnimationCompleted)
+        {
+            if (element.Projection == null)
+            {
+                element.Projection = new PlaneProjection();
+            }
+
+            var da = new DoubleAnimation
+            {
+                From = from,
+                To = to,
+                Duration = TimeSpan.FromSeconds(0.5)
+            };
+            var storyboard = new Storyboard();
+            storyboard.Children.Add(da);
+            Storyboard.SetTarget(da, element.Projection);
+            Storyboard.SetTargetProperty(da, "RotationY");
+
+            if (onAnimationCompleted != null)
+            {
+                storyboard.Completed += (s, e) => onAnimationCompleted();
+            }
+
+            storyboard.Begin();
+        }
+    }
+
     public static class PointExtensions
     {
         public static Point Offset(this Point point, double x, double y)

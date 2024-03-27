@@ -1,6 +1,6 @@
 [
     {
-        "ModelVersion": "7",
+        "ModelVersion": "8",
         "ClassName": "GameModel",
         "Namespace": "Catan3.Models",
         "Path": ".",
@@ -69,12 +69,12 @@
                 "Default": "[]"
             },
             {
-                "Name": "RobberTile",
-                "Type": "HexCoordinates",
+                "Name": "Robber",
+                "Type": "RobberModel",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "HexCoordinates.Default"
+                "Default": "new()"
             }
         ]
     }

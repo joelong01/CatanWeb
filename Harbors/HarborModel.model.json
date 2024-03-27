@@ -1,6 +1,6 @@
 [
     {
-        "ModelVersion": "3",
+        "ModelVersion": "4",
         "ClassName": "HarborModel",
         "Namespace": "Catan3.Models",
         "Path": ".",
@@ -36,7 +36,6 @@
                 "Nullable": false,
                 "Default": "HexSide.Bottom"
             },
-
             {
                 "Name": "Owner",
                 "Type": "PlayerModel",

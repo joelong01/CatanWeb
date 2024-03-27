@@ -1,6 +1,6 @@
 ﻿[
     {
-        "ModelVersion": "2",
+        "ModelVersion": "3",
         "ClassName": "TileViewModel",
         "Namespace": "Catan3.Models",
         "Path": ".",
@@ -57,11 +57,11 @@
             },
             {
                 "Name": "Orientation",
-                "Type": "Orientation",
+                "Type": "CatanOrientation",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "Orientation.FaceUp",
+                "Default": "CatanOrientation.FaceDown",
                 "IsLiteral": false
             }
         ]

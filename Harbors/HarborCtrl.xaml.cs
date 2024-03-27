@@ -17,11 +17,50 @@ namespace Catan3.Controls
             this.InitializeComponent();
         }
 
-        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(HarborViewModel), typeof(HarborCtrl), new PropertyMetadata(null));
+        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(HarborViewModel), typeof(HarborCtrl), new PropertyMetadata(null, ViewModelChanged));
         public HarborViewModel ViewModel
         {
             get => ( HarborViewModel )GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
+        }
+        private static void ViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var depPropClass = d as HarborCtrl;
+            depPropClass?.SetViewModel(( HarborViewModel )e.NewValue, (HarborViewModel)e.OldValue);
+        }
+        private void SetViewModel(HarborViewModel newValue, HarborViewModel oldValue)
+        {
+
+            if (oldValue is not null)
+            {
+                oldValue.PropertyChanged -= HarborViewModel_PropertyChanged;
+            }
+
+            if (newValue is not null)
+            {
+                newValue.PropertyChanged += HarborViewModel_PropertyChanged;
+            }
+            SetOrientation();
+        }
+
+        private void HarborViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(HarborViewModel.Orientation))
+            {
+                SetOrientation();
+            }
+        }
+
+        private void SetOrientation()
+        {
+            if (ViewModel.Orientation == CatanOrientation.FaceUp)
+            {
+                AnimationHelpers.FlipToFaceUp(C_Front, C_Back);
+            }
+            else // Assuming the only other state is FaceDown
+            {
+                AnimationHelpers.FlipToFaceDown(C_Front, C_Back);
+            }
         }
 
         public ImageBrush Bind_HarborImage(HarborType harborType)

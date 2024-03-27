@@ -1,8 +1,13 @@
+using System;
+using System.ComponentModel;
+using System.Diagnostics;
 using Catan3.Models;
 using Catan3.Utility;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
+using CatanOrientation = Catan3.Models.CatanOrientation;
 namespace Catan3.Controls
 {
     /// <summary>
@@ -13,6 +18,7 @@ namespace Catan3.Controls
         public TileCtrl()
         {
             this.InitializeComponent();
+
         }
         public static readonly DependencyProperty TileViewModelProperty = DependencyProperty.Register("TileViewModel", typeof(TileViewModel), typeof(TileCtrl), new PropertyMetadata(null, TileViewModelChanged));
         public TileViewModel TileViewModel
@@ -24,12 +30,47 @@ namespace Catan3.Controls
         {
             var depPropClass = d as TileCtrl;
             var depPropValue = (TileViewModel)e.NewValue;
-            depPropClass?.SetTileViewModel(depPropValue);
+            depPropClass?.SetTileViewModel(depPropValue, ( TileViewModel )e.OldValue);
         }
-        private void SetTileViewModel(TileViewModel tileViewModel)
+        private void SetTileViewModel(TileViewModel newModel, TileViewModel? oldModel)
         {
-            this.DataContext = tileViewModel;
+            if (oldModel is not null)
+            {
+                oldModel.PropertyChanged -= TileViewModel_PropertyChanged;
+            }
+            this.DataContext = newModel;
+            newModel.PropertyChanged += TileViewModel_PropertyChanged;
+            if (oldModel is not null && newModel is TileViewModel)
+            {
+                if (oldModel.Orientation != newModel.Orientation)
+                {
+                    SetOrientation();
+                }
+            }
+
         }
+
+        private void TileViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == "Orientation") SetOrientation();
+        }
+
+        
+
+        private void SetOrientation()
+        {
+            if (TileViewModel.Orientation == CatanOrientation.FaceUp)
+            {
+                AnimationHelpers.FlipToFaceUp(CANVAS_FaceDown, CANVAS_FaceUp);
+            }
+            else // Assuming the only other state is FaceDown
+            {
+                AnimationHelpers.FlipToFaceDown(CANVAS_FaceDown, CANVAS_FaceUp);
+            }
+        }
+
+
+
 
         private Visibility PipsVisibility(int tileNumber, int pipIndex)
         {
@@ -110,5 +151,6 @@ namespace Catan3.Controls
         }
 
      
+
     }
 }

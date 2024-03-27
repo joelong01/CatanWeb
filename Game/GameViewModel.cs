@@ -51,7 +51,7 @@ namespace Catan3.Models
             {
                 Harbors.Add(new HarborViewModel(harbor, BoardInfo.Layout));
             }
-            RobberTile = gameModel.RobberTile;
+            Robber = new RobberViewModel(gameModel.Robber);
             SetPipCount();
         }
         private void SetPipCount()

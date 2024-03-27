@@ -11,6 +11,7 @@
             </ResourceDictionary.MergedDictionaries>
             <FontFamily x:Key="CatanFont">ms-appx:///Assets/Fonts/Catan.ttf#Catan</FontFamily>
 
+            <ImageBrush x:Key="bmWater" ImageSource="Assets/water.png" Stretch="UniformToFill" />
             <ImageBrush x:Key="ResourceType.Back"
                     ImageSource="Assets/Tiles/back.jpg" Stretch="UniformToFill" />
             <ImageBrush x:Key="ResourceType.Sea"

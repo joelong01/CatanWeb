@@ -9,16 +9,23 @@
     <UserControl.Resources>
         <Storyboard x:Key="MoveRobberAnimation">
             <DoubleAnimation Storyboard.TargetName="VB_Robber"
-                    Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                    Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransfrom.TranslateX)"
                     Duration="0:0:1" To="100" />
             <DoubleAnimation Storyboard.TargetName="VB_Robber"
-                    Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                    Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransfrom.TranslateY)"
                     Duration="0:0:1" To="100" />
 
         </Storyboard>
+        <Storyboard x:Name="SB_AnimateOpacity">
+            <DoubleAnimation x:Name="DA_AnimateOpacity"
+                    Storyboard.TargetName="VB_Robber"
+                    Storyboard.TargetProperty="Opacity" BeginTime="0:0:1"
+                    Duration="0:0:0.500" From="0.0" To="1.0" />
+        </Storyboard>
     </UserControl.Resources>
 
-    <Canvas Background="Green" HorizontalAlignment="Left" VerticalAlignment="Top"
+    <Canvas Background="Transparent" HorizontalAlignment="Left"
+            VerticalAlignment="Top"
             Height="{x:Bind GameViewModel.BoardInfo.Layout.BoardHeight, Mode=OneWay}"
             Width="{x:Bind GameViewModel.BoardInfo.Layout.BoardWidth, Mode=OneWay}">
         <!--Harbors-->
@@ -145,7 +152,7 @@
                 HorizontalAlignment="Left" VerticalAlignment="Top"
                 Margin="0,0,0,0">
             <Viewbox.RenderTransform>
-                <TranslateTransform />
+                <CompositeTransform />
             </Viewbox.RenderTransform>
             <Grid Opacity=".75">
                 <TextBlock FontFamily="Catan" FontSize="100" Text="&#xE925;"

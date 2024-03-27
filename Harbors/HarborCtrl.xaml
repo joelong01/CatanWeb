@@ -5,7 +5,7 @@
         xmlns:local="using:Catan3.Controls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" >
+        mc:Ignorable="d">
     <UserControl.Resources>
         <Style x:Key="HarborPathStyle" TargetType="Path">
             <Setter Property="HorizontalAlignment" Value="Left" />
@@ -18,20 +18,35 @@
         </Style>
     </UserControl.Resources>
     <Border BorderBrush="Yellow" BorderThickness="0">
-        <Canvas Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
-     
-                    Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}">
+        <Canvas Name="LayoutRoot"
+                Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
+                Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}">
             <Polygon Points="{x:Bind ViewModel.HarborPoints, Mode=OneWay}"
                     Canvas.ZIndex="-1" IsHitTestVisible="False"
-                    Fill="blue" Stroke="Blue" StrokeThickness="0" />
+                    Fill="{StaticResource bmWater}" StrokeThickness="0" />
 
-            <Ellipse Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
+            <Canvas Name="C_Front"
+                    Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
+                    Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}">
+                <Ellipse
+                        Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
+                        Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
+                        Fill="{StaticResource bmWater}">
 
-                    Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
-                    Fill="{x:Bind Bind_HarborImage(ViewModel.Harbor.HarborType), Mode=OneWay}">
+                </Ellipse>
+            </Canvas>
+            <Canvas Name="C_Back"
+                    Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
+                    Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}">
 
-            </Ellipse>
+                <Ellipse
+                        Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
+                        Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
+                        Fill="{x:Bind Bind_HarborImage(ViewModel.Harbor.HarborType), Mode=OneWay}">
 
+                </Ellipse>
+
+            </Canvas>
         </Canvas>
     </Border>
 </UserControl>

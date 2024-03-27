@@ -105,7 +105,9 @@
                     Foreground="Black" HorizontalAlignment="Left"
                     VerticalAlignment="Top" Width="200" />
 
+            <Button Content="Flip Orientation" Click="OnFlipTiles" />
             <Button Content="Do Misc" Click="OnHitMe" />
+            
         </StackPanel>
         <Border BorderBrush="Blue" BorderThickness="2" Grid.Column="1"
                 Grid.ColumnSpan="1">

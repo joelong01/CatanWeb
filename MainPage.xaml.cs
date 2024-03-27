@@ -40,7 +40,7 @@ namespace Catan3
         public CatanGame SelectedGame
         {
             get => ( CatanGame )GetValue(SelectedGameProperty);
-            set 
+            set
             {
                 if (value != SelectedGame)
                 {
@@ -56,7 +56,7 @@ namespace Catan3
             set => SetValue(GameViewModelProperty, value);
         }
         private static List<PlayerViewModel> AvailablePlayers { get; set; } = [];
-        public  ObservableCollection<CatanGame> Games { get; set; } = [];
+        public ObservableCollection<CatanGame> Games { get; set; } = [];
         private void OnRightButtonTapped(object sender, RightTappedRoutedEventArgs e)
         {
 
@@ -74,7 +74,7 @@ namespace Catan3
             GameViewModel = new GameViewModel(GameGenerator.CreateGame(SelectedGame), playingPlayers);
             GameViewModel.CurrentPlayer = GameViewModel.Players[0];
             this.DataContext = GameViewModel;
-       
+
         }
         private void OnRegenerate(object sender, RoutedEventArgs e)
         {
@@ -214,7 +214,7 @@ namespace Catan3
                     // Handle the click event, e.g., display information about the selected player
                     // Consider using a dialog or a flyout for displaying messages in WinUI 3, as MessageBox is not available.
                     // E.g., use a ContentDialog for messages.
-                    GameViewModel.RobberTile = tileCtrl.TileViewModel.Tile.TileKey;
+                    GameViewModel.Robber.RobberModel.Coordinates = tileCtrl.TileViewModel.Tile.TileKey;
                 }
             }
         }
@@ -227,6 +227,26 @@ namespace Catan3
         private void OnHitMe(object sender, RoutedEventArgs e)
         {
             this.TraceMessage($"[CacheHit={HexGeometry.CacheHit}][cacheMiss={HexGeometry.CacheMiss}][cacheSize={HexGeometry.CacheSize}]");
+        }
+
+        private void OnFlipTiles(object sender, RoutedEventArgs e)
+        {
+            if (GameViewModel is null || GameViewModel.Tiles.Count == 0) return;
+            CatanOrientation newOrientaiton = CatanOrientation.FaceUp;
+            if (GameViewModel.Tiles[0].Orientation == CatanOrientation.FaceUp)
+            {
+                newOrientaiton = CatanOrientation.FaceDown;
+            }
+
+            foreach (var tile in GameViewModel.Tiles)
+            {
+                tile.Orientation = newOrientaiton;
+            }
+
+            foreach (var harbor in GameViewModel.Harbors)
+            {
+                harbor.Orientation = newOrientaiton;
+            }
         }
     }
 }

@@ -1,6 +1,6 @@
 [
     {
-        "ModelVersion": "2",
+        "ModelVersion": "3",
         "ClassName": "HarborViewModel",
         "Namespace": "Catan3.Models",
         "Path": ".",
@@ -38,6 +38,14 @@
                 "ReadOnly": true,
                 "AdditionalNotifications": [],
                 "Nullable": false
+            },
+            {
+                "Name": "Orientation",
+                "Type": "CatanOrientation",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "CatanOrientation.FaceDown"
             }
         ]
     }
