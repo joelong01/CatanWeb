@@ -362,7 +362,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-#TT Generated files
-*tt_generated*
-/Models/ModelGeneration/models.cs
-/ModelTemplates/models.tt.bak
+
