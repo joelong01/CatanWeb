@@ -10,7 +10,7 @@
         ],
         "ConstructedProperties": [
             {
-                "Name": "ColumnCount",
+                "Name": "RowCount",
                 "Type": "int",
                 "ReadOnly": false,
                 "AdditionalNotifications": [ "BoardHeight", "BoardWidth" ],

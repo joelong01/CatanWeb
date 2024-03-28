@@ -161,51 +161,50 @@ namespace Catan3
         }
     }
 
-    public static class DragAndDrop
-    {
-        public interface IDragAndDropProgress
-        {
-            #region Methods
+    //public static class DragAndDrop
+    //{
+    //    public interface IDragAndDropProgress
+    //    {
+    //        #region Methods
 
-            void Report(PointerRoutedEventArgs e, Point value);
+    //        void Report(PointerRoutedEventArgs e, Point value);
 
-            #endregion Methods
-        }
-        public static Task<Point> DragAsync(UIElement control, PointerRoutedEventArgs origE, IDragAndDropProgress progress = null)
-        {
-            TaskCompletionSource<Point> taskCompletionSource = new TaskCompletionSource<Point>();
-            UIElement mousePositionWindow = Window.Current.Content;
-            GeneralTransform gt = Window.Current.Content.TransformToVisual(control);
-            UIElement root = Window.Current.Content;
+    //        #endregion Methods
+    //    }
+    //    public static Task<Point> DragAsync(UIElement control, PointerRoutedEventArgs origE, IDragAndDropProgress? progress = null)
+    //    {
+    //        TaskCompletionSource<Point> taskCompletionSource = new TaskCompletionSource<Point>();
+    //        UIElement mousePositionWindow = Window.Current.Content;
+    //        GeneralTransform gt = Window.Current.Content.TransformToVisual(control);
+    //        UIElement root = Window.Current.Content;
 
-            Point pointMouseDown = gt.TransformPoint(origE.GetCurrentPoint(mousePositionWindow).Position);
+    //        Point pointMouseDown = gt.TransformPoint(origE.GetCurrentPoint(mousePositionWindow).Position);
 
-            PointerEventHandler pointerMovedHandler = null;
-            PointerEventHandler pointerReleasedHandler = null;
+     
+    //        PointerEventHandler pointerMovedHandler = (object s, PointerRoutedEventArgs e) =>
+    //        {
+    //            Point pt = e.GetCurrentPoint(mousePositionWindow).Position;
+    //            pt = gt.TransformPoint(pt);
+    //            Point delta = new Point
+    //            {
+    //                X = pt.X - pointMouseDown.X,
+    //                Y = pt.Y - pointMouseDown.Y
+    //            };
 
-            pointerMovedHandler = (object s, PointerRoutedEventArgs e) =>
-            {
-                Point pt = e.GetCurrentPoint(mousePositionWindow).Position;
-                pt = gt.TransformPoint(pt);
-                Point delta = new Point
-                {
-                    X = pt.X - pointMouseDown.X,
-                    Y = pt.Y - pointMouseDown.Y
-                };
-
-                if (!( control.RenderTransform is CompositeTransform compositeTransform ))
-                {
-                    compositeTransform = new CompositeTransform();
-                    control.RenderTransform = compositeTransform;
-                }
-                compositeTransform.TranslateX += delta.X;
-                compositeTransform.TranslateY += delta.Y;
-                control.RenderTransform = compositeTransform;
-                pointMouseDown = pt;
-                if (progress != null)
-                {
-                    progress.Report(e, pt);
-                }
-            };
-        }
+    //            if (!( control.RenderTransform is CompositeTransform compositeTransform ))
+    //            {
+    //                compositeTransform = new CompositeTransform();
+    //                control.RenderTransform = compositeTransform;
+    //            }
+    //            compositeTransform.TranslateX += delta.X;
+    //            compositeTransform.TranslateY += delta.Y;
+    //            control.RenderTransform = compositeTransform;
+    //            pointMouseDown = pt;
+    //            if (progress != null)
+    //            {
+    //                progress.Report(e, pt);
+    //            }
+    //        };
+    //    }
+    //}
 }

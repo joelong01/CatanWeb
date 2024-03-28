@@ -22,15 +22,15 @@ namespace Catan3.Models
     public partial class BoardLayout : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
-        private int _columnCount = 5;
-        public int ColumnCount
+        private int _rowCount = 5;
+        public int RowCount
          {
-            get => _columnCount;
+            get => _rowCount;
             set
             {
-                if (Equals(value, _columnCount)) return;
-                _columnCount = value;
-                OnPropertyChanged(nameof(ColumnCount));
+                if (Equals(value, _rowCount)) return;
+                _rowCount = value;
+                OnPropertyChanged(nameof(RowCount));
                 OnPropertyChanged(nameof(BoardHeight));
                 OnPropertyChanged(nameof(BoardWidth));
              }
@@ -166,9 +166,9 @@ namespace Catan3.Models
          }
 
 
-        public BoardLayout(int columncount, double columnoffset)
+        public BoardLayout(int rowcount, double columnoffset)
         {
-            _columnCount = columncount;
+            _rowCount = rowcount;
             _columnOffset = columnoffset;
         }
 

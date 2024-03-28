@@ -18,7 +18,7 @@ namespace Catan3.Models
     }
     public interface IBoardInfo
     {
-        static int ColumnCount { get; }
+        static int RowCount { get; }
         public static double ColumnOffset { get; }
 
         List<HexCoordinates> TileKeys { get; }
@@ -36,7 +36,7 @@ namespace Catan3.Models
         double HexStrokeThickness { get; set; }
         double TileGap { get; set; }
         double ColumnOffset { get; set; }
-        int ColumnCount { get; set; }
+        int RowCount { get; set; }
         double GameMargin { get; set; }
         double ControlWidth { get; }
         double ControlHeight { get; }

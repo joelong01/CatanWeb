@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net.Http.Headers;
 using Catan3.Utility;
 using Microsoft.UI.Xaml.Media;
 
@@ -48,16 +49,18 @@ namespace Catan3.Models
             var outerHeight = HexGeometry.Height(OuterHexSize);
             var top =  ( .5 * key.Q +  key.R)*outerHeight ;
             top += 2 * outerHeight;
-            top = Math.Round(top + BuildingSize * .5, 1); // the buildings will go on top of the highest tile, give them room
+           
             top += GameMargin;
             top += BuildingSize; // there is always 1 harbor on the top or the bottom
+            top += FlatToPointHeightDifference; // the vertical placement of the harbor
+           
             return top;
         }
         public double Left(HexCoordinates key)
         {
             var left = 2 * OuterHexSize * .75 * key.Q ;
             left += ColumnOffset * 2 * OuterHexSize;
-            left += ( BuildingSize * 0.5 );
+            left += ( BuildingSize *.5  );
             left += GameMargin;
             return left;
         }
@@ -113,7 +116,7 @@ namespace Catan3.Models
             }
         }
 
-       
+
 
         public PointCollection PointyHexPoints
         {
@@ -129,24 +132,20 @@ namespace Catan3.Models
 
         public double ControlHeight => HexGeometry.Height(this.OuterHexSize);
 
-        public double BoardWidth
-        {
-            get
-            {
-                if (ColumnCount == 5)
-                {
-                    return OuterHexSize * 8 + BuildingSize + GameMargin * 2;
-                }
-                else
-                {
-                    return OuterHexSize * 12 + BuildingSize + GameMargin * 2;
-                }
-            }
-        }
+        public double BoardWidth => GridWidth + 2 * FlatToPointHeightDifference / 2 + 2 * GameMargin;
 
-        public double BoardHeight => OuterHexSize * Math.Sqrt(3) * (ColumnCount) + BuildingSize * 2 + GameMargin*2; // HarborSize == buildingSize
+        //
+        //  We are told how many rows we have. the height of the control times the rows plus there is a harbor on the top (always)
+        //  and we are placing the harbor on the point of the pointy hex - whose size is the same as the flat top hex.  so the 
+        // difference in height from the pointy top to the flat top is the difference between the Width of the pointy hex top (2*OuterHexSize)
+        // and the Height of the flat top Hext size (Math.Sqrt(3) * OuterHexSize.  We also need room for the harbor on the bottom of the middle
+        // column -- these are 1/2 the size of the building, so we multiple  1.5*BuildingSize.  We also have a way to give extra white space
+        // at the top and the bottom.
+        public double BoardHeight => GridHeight + BuildingSize * 1.5 + FlatToPointHeightDifference + 2 * GameMargin;
 
-
+        private double GridHeight => ControlHeight * RowCount;
+        private double GridWidth => GridHeight * 2 / Math.Sqrt(3);
+        private double FlatToPointHeightDifference => ( 2 - Math.Sqrt(3) ) * OuterHexSize;
 
     }
 

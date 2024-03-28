@@ -24,7 +24,7 @@
         </Storyboard>
     </UserControl.Resources>
 
-    <Canvas Background="Transparent" HorizontalAlignment="Left"
+    <Grid Background="Transparent" HorizontalAlignment="Left"
             VerticalAlignment="Top"
             Height="{x:Bind GameViewModel.BoardInfo.Layout.BoardHeight, Mode=OneWay}"
             Width="{x:Bind GameViewModel.BoardInfo.Layout.BoardWidth, Mode=OneWay}">
@@ -163,6 +163,6 @@
                         TextAlignment="Center" />
             </Grid>
         </Viewbox>
-    </Canvas>
+    </Grid>
 
 </UserControl>

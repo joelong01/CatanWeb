@@ -9,9 +9,9 @@ namespace Catan3.Models
     /// </summary>
     public partial class RegularBoardInfo : IBoardInfo
     {
-        public RegularBoardInfo() => Layout = new BoardLayout(ColumnCount, ColumnOffset);
+        public RegularBoardInfo() => Layout = new BoardLayout(RowCount, ColumnOffset);
         public bool HasSupplemental => false;
-        public static int ColumnCount => 5;
+        public static int RowCount => 5;
         public static double ColumnOffset => 1.5;
         public BoardLayout Layout { get; private set; }
         public List<HexCoordinates> TileKeys { get; } =

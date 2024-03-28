@@ -31,7 +31,11 @@ namespace Catan3.Utility
             PointerEventHandler ? pointerEnterHandler = null;
             PointerEventHandler ? pointerExitedHandler = null;
 
-            CompositeTransform ? compositeTransform = toDrag.RenderTransform as CompositeTransform;
+            if (toDrag.RenderTransform is not CompositeTransform compositeTransform)
+            {
+                compositeTransform = new CompositeTransform();
+                toDrag.RenderTransform = compositeTransform;
+            }
 
             pointerEnterHandler = (object s, PointerRoutedEventArgs e) =>
             {
@@ -141,14 +145,18 @@ namespace Catan3.Utility
             for (int i = 0; i < childCount; i++)
             {
                 var child = VisualTreeHelper.GetChild(control, i);
-                if (child != null && child is T)
+                if ( child is null)
+                {
+                    return null;
+                }
+                if (child is T)
                 {
                     return ( T )child;
                 }
                 else
                 {
                     T? childOfChild = FindChildControl<T>(child);
-                    if (childOfChild != null)
+                    if (childOfChild is not null)
                     {
                         return childOfChild;
                     }

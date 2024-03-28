@@ -3,6 +3,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:Catan3" x:Name="PAGE_MainPage"
+        xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" RightTapped="OnRightButtonTapped" KeyUp="OnKeyUp"
@@ -12,105 +13,115 @@
             Background="DarkGray">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="20*" />
+            <ColumnDefinition Width="Auto" MinWidth="5" />
             <ColumnDefinition Width="60*" />
+            <ColumnDefinition Width="Auto" MinWidth="5" />
             <ColumnDefinition Width="20*" />
         </Grid.ColumnDefinitions>
-        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center"
-                Margin="10">
-            <Button Content="Regenerate" Click="OnRegenerate" Background="Black"
-                    Foreground="White" />
 
-            <!--Tile Size-->
-            <TextBlock Text="Tile Size" Foreground="Black" />
-            <Slider Width="200" HorizontalAlignment="Left" Minimum="25"
-                    Maximum="200" SmallChange="11" LargeChange="10"
-                    Background="Black" Foreground="White"
-                    Value="{x:Bind GameViewModel.BoardInfo.Layout.OuterHexSize, Mode=TwoWay}" />
-            <TextBox Width="200" HorizontalAlignment="Left"
-                    Text="{x:Bind GameViewModel.BoardInfo.Layout.OuterHexSize, Mode=TwoWay}"
-                    Background="White" Foreground="Black" />
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Auto" VerticalAlignment="Top"
+                HorizontalAlignment="Left">
+            <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center"
+                    ScrollViewer.VerticalScrollMode="Auto" Margin="10">
+                <Button Content="Regenerate" Click="OnRegenerate"
+                        Background="Black" Foreground="White" />
 
-            <!--Tile Gap-->
-            <TextBlock Foreground="Black" Text="Tile Gap" />
-            <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
-                    Maximum="40" SmallChange=".5" LargeChange="1"
-                    Value="{x:Bind GameViewModel.BoardInfo.Layout.TileGap, Mode=TwoWay}"
-                    Background="Black" Foreground="White" />
-            <TextBox Width="200" HorizontalAlignment="Left"
-                    Text="{x:Bind GameViewModel.BoardInfo.Layout.TileGap, Mode=TwoWay}"
-                    Foreground="Black" />
+                <!--Tile Size-->
+                <TextBlock Text="Tile Size" Foreground="Black" />
+                <Slider Width="200" HorizontalAlignment="Left" Minimum="25"
+                        Maximum="200" SmallChange="11" LargeChange="10"
+                        Background="Black" Foreground="White"
+                        Value="{x:Bind GameViewModel.BoardInfo.Layout.OuterHexSize, Mode=TwoWay}" />
+                <TextBox Width="200" HorizontalAlignment="Left"
+                        Text="{x:Bind GameViewModel.BoardInfo.Layout.OuterHexSize, Mode=TwoWay}"
+                        Background="White" Foreground="Black" />
 
-            <!--Building Size-->
-            <TextBlock Text="Building Size" Foreground="Black" />
-            <Slider Width="200" HorizontalAlignment="Left" Minimum="20"
-                    Maximum="200" SmallChange="1" LargeChange="10"
-                    Value="{x:Bind GameViewModel.BoardInfo.Layout.BuildingSize, Mode=TwoWay}"
-                    Background="Black" Foreground="White" />
-            <TextBox Width="200" HorizontalAlignment="Left"
-                    Text="{x:Bind GameViewModel.BoardInfo.Layout.BuildingSize, Mode=TwoWay}"
-                    Foreground="Black" />
+                <!--Tile Gap-->
+                <TextBlock Foreground="Black" Text="Tile Gap" />
+                <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
+                        Maximum="40" SmallChange=".5" LargeChange="1"
+                        Value="{x:Bind GameViewModel.BoardInfo.Layout.TileGap, Mode=TwoWay}"
+                        Background="Black" Foreground="White" />
+                <TextBox Width="200" HorizontalAlignment="Left"
+                        Text="{x:Bind GameViewModel.BoardInfo.Layout.TileGap, Mode=TwoWay}"
+                        Foreground="Black" />
 
-            <!--Roads Stroke-->
-            <TextBlock Text="Road Stroke Thickness" Foreground="Black" />
-            <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
-                    Maximum="10" SmallChange="1" LargeChange="4"
-                    Value="{x:Bind GameViewModel.BoardInfo.Layout.RoadStrokeThickness, Mode=TwoWay}"
-                    Background="Black" Foreground="White" />
-            <TextBox Width="200" HorizontalAlignment="Left"
-                    Text="{x:Bind GameViewModel.BoardInfo.Layout.RoadStrokeThickness, Mode=TwoWay}"
-                    Foreground="Black" />
+                <!--Building Size-->
+                <TextBlock Text="Building Size" Foreground="Black" />
+                <Slider Width="200" HorizontalAlignment="Left" Minimum="20"
+                        Maximum="200" SmallChange="1" LargeChange="10"
+                        Value="{x:Bind GameViewModel.BoardInfo.Layout.BuildingSize, Mode=TwoWay}"
+                        Background="Black" Foreground="White" />
+                <TextBox Width="200" HorizontalAlignment="Left"
+                        Text="{x:Bind GameViewModel.BoardInfo.Layout.BuildingSize, Mode=TwoWay}"
+                        Foreground="Black" />
 
-            <!--Tile Stroke-->
-            <TextBlock Text="Inner Hex Stroke Thickness" Foreground="Black" />
-            <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
-                    Maximum="40" SmallChange="1" LargeChange="4"
-                    Value="{x:Bind GameViewModel.BoardInfo.Layout.InnerHexStrokeThickness, Mode=TwoWay}"
-                    Background="Black" Foreground="White" />
-            <TextBox Width="200" HorizontalAlignment="Left"
-                    Text="{x:Bind GameViewModel.BoardInfo.Layout.InnerHexStrokeThickness, Mode=TwoWay}"
-                    Foreground="Black" />
+                <!--Roads Stroke-->
+                <TextBlock Text="Road Stroke Thickness" Foreground="Black" />
+                <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
+                        Maximum="10" SmallChange="1" LargeChange="4"
+                        Value="{x:Bind GameViewModel.BoardInfo.Layout.RoadStrokeThickness, Mode=TwoWay}"
+                        Background="Black" Foreground="White" />
+                <TextBox Width="200" HorizontalAlignment="Left"
+                        Text="{x:Bind GameViewModel.BoardInfo.Layout.RoadStrokeThickness, Mode=TwoWay}"
+                        Foreground="Black" />
 
-            <!--Hex Guidelines stroke-->
-            <TextBlock Text="Hex Guidelines" Foreground="Black" />
-            <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
-                    Maximum="40" SmallChange="1" LargeChange="4"
-                    Value="{x:Bind GameViewModel.BoardInfo.Layout.LayoutGuideStrokeWidth, Mode=TwoWay}"
-                    Background="Black" Foreground="White" />
-            <TextBox Width="200" HorizontalAlignment="Left"
-                    Text="{x:Bind GameViewModel.BoardInfo.Layout.LayoutGuideStrokeWidth, Mode=TwoWay}"
-                    Foreground="Black" />
+                <!--Tile Stroke-->
+                <TextBlock Text="Inner Hex Stroke Thickness" Foreground="Black" />
+                <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
+                        Maximum="40" SmallChange="1" LargeChange="4"
+                        Value="{x:Bind GameViewModel.BoardInfo.Layout.InnerHexStrokeThickness, Mode=TwoWay}"
+                        Background="Black" Foreground="White" />
+                <TextBox Width="200" HorizontalAlignment="Left"
+                        Text="{x:Bind GameViewModel.BoardInfo.Layout.InnerHexStrokeThickness, Mode=TwoWay}"
+                        Foreground="Black" />
 
-            <!--Game Margin-->
-            <TextBlock Text="Margin" Foreground="Black" />
-            <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
-                    Maximum="40" SmallChange="1" LargeChange="4"
-                    Value="{x:Bind GameViewModel.BoardInfo.Layout.GameMargin, Mode=TwoWay}"
-                    Background="Black" Foreground="White" />
-            <TextBox Width="200" HorizontalAlignment="Left"
-                    Text="{x:Bind GameViewModel.BoardInfo.Layout.GameMargin, Mode=TwoWay}"
-                    Foreground="Black" />
+                <!--Hex Guidelines stroke-->
+                <TextBlock Text="Hex Guidelines" Foreground="Black" />
+                <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
+                        Maximum="40" SmallChange="1" LargeChange="4"
+                        Value="{x:Bind GameViewModel.BoardInfo.Layout.LayoutGuideStrokeWidth, Mode=TwoWay}"
+                        Background="Black" Foreground="White" />
+                <TextBox Width="200" HorizontalAlignment="Left"
+                        Text="{x:Bind GameViewModel.BoardInfo.Layout.LayoutGuideStrokeWidth, Mode=TwoWay}"
+                        Foreground="Black" />
 
-            <!--Players-->
-            <TextBlock Text="Players" Foreground="Black" />
-            <ComboBox ItemsSource="{x:Bind GameViewModel.Players, Mode=OneWay}"
-                    DisplayMemberPath="Name" Foreground="Black"
-                    SelectedItem="{x:Bind GameViewModel.CurrentPlayer, Mode=TwoWay}"
-                    HorizontalAlignment="Left" VerticalAlignment="Top"
-                    Width="200" />
+                <!--Game Margin-->
+                <TextBlock Text="Margin" Foreground="Black" />
+                <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
+                        Maximum="40" SmallChange="1" LargeChange="4"
+                        Value="{x:Bind GameViewModel.BoardInfo.Layout.GameMargin, Mode=TwoWay}"
+                        Background="Black" Foreground="White" />
+                <TextBox Width="200" HorizontalAlignment="Left"
+                        Text="{x:Bind GameViewModel.BoardInfo.Layout.GameMargin, Mode=TwoWay}"
+                        Foreground="Black" />
 
-            <!--Game Type-->
-            <TextBlock Text="Game Type" Foreground="Black" />
-            <ComboBox ItemsSource="{x:Bind Games, Mode=OneWay}"
-                    SelectedItem="{x:Bind SelectedGame, Mode=TwoWay}"
-                    Foreground="Black" HorizontalAlignment="Left"
-                    VerticalAlignment="Top" Width="200" />
+                <!--Players-->
+                <TextBlock Text="Players" Foreground="Black" />
+                <ComboBox
+                        ItemsSource="{x:Bind GameViewModel.Players, Mode=OneWay}"
+                        DisplayMemberPath="Name" Foreground="Black"
+                        SelectedItem="{x:Bind GameViewModel.CurrentPlayer, Mode=TwoWay}"
+                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                        Width="200" />
 
-            <Button Content="Flip Orientation" Click="OnFlipTiles" />
-            <Button Content="Do Misc" Click="OnHitMe" />
-            
-        </StackPanel>
-        <Border BorderBrush="Blue" BorderThickness="2" Grid.Column="1"
-                Grid.ColumnSpan="1">
+                <!--Game Type-->
+                <TextBlock Text="Game Type" Foreground="Black" />
+                <ComboBox ItemsSource="{x:Bind Games, Mode=OneWay}"
+                        SelectedItem="{x:Bind SelectedGame, Mode=TwoWay}"
+                        Foreground="Black" HorizontalAlignment="Left"
+                        VerticalAlignment="Top" Width="200" />
+
+                <Button Content="Flip Orientation" Click="OnFlipTiles" />
+                <Button Content="Do Misc" Click="OnHitMe" />
+
+            </StackPanel>
+        </ScrollViewer>
+        <!-- GridSplitter for adjusting the size between the first and second columns -->
+
+        <Border BorderBrush="Blue" BorderThickness="0" Grid.Column="1"
+                Grid.ColumnSpan="2">
             <Viewbox Stretch="Uniform">
                 <c:GameBoardCtrl Grid.Column="1"
                         GameViewModel="{x:Bind GameViewModel, Mode=OneWay}"
@@ -123,5 +134,9 @@
                         TileRightMouseClicked="Tile_RightClicked" />
             </Viewbox>
         </Border>
+        <toolkit:GridSplitter Grid.Column="1" Width="5"
+                HorizontalAlignment="Stretch" Background="Gray" />
+        <toolkit:GridSplitter Grid.Column="3" Width="5"
+                HorizontalAlignment="Stretch" Background="Gray" />
     </Grid>
 </Page>
