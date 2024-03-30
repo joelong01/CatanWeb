@@ -9,9 +9,9 @@ namespace Catan3.Models
         //  this needs to be part of Game instead of BuildingModel because it needs
         //  to join two datasets (BuildingModel and TileModel)...added as an extension
         //  method so that it isn't part of the "pure data" model that gets serialized/deserialized
-        public static BuildingModel? FindBuilding(this GameModel gameModel, BuildingKey key)
+        public static BuildingModel? FindBuildingModel(this GameModel gameModel, BuildingKey key)
         {
-            var building = gameModel.Buildings.FindBuilding(key);
+            var building = gameModel.Buildings.FindBuildingModel(key);
             if (building is null)
             {
                 var aliases = key.Aliases();
@@ -19,7 +19,7 @@ namespace Catan3.Models
                 {
                     var aliasCoords = key.HexCoordinates.GetAdjacentTile(direction);
                     var aliasKey = new BuildingKey(aliasCoords, position);
-                    building = gameModel.Buildings.FindBuilding(aliasKey);
+                    building = gameModel.Buildings.FindBuildingModel(aliasKey);
                     if (building is not null)
                     {
                         return building;

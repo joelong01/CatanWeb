@@ -22,29 +22,57 @@ namespace Catan3.Models
     public partial class BoardLayout : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
-        private int _rowCount = 5;
-        public int RowCount
+        private double _tileYOffset = 0;
+        public double TileYOffset
          {
-            get => _rowCount;
+            get => _tileYOffset;
             set
             {
-                if (Equals(value, _rowCount)) return;
-                _rowCount = value;
-                OnPropertyChanged(nameof(RowCount));
+                if (Equals(value, _tileYOffset)) return;
+                _tileYOffset = value;
+                OnPropertyChanged(nameof(TileYOffset));
                 OnPropertyChanged(nameof(BoardHeight));
                 OnPropertyChanged(nameof(BoardWidth));
              }
          }
 
-        private double _columnOffset = 1.5; //the number of Size's to the .Left of the control;
-        public double ColumnOffset
+        private double _tileXOffset = 0;
+        public double TileXOffset
          {
-            get => _columnOffset;
+            get => _tileXOffset;
             set
             {
-                if (Equals(value, _columnOffset)) return;
-                _columnOffset = value;
-                OnPropertyChanged(nameof(ColumnOffset));
+                if (Equals(value, _tileXOffset)) return;
+                _tileXOffset = value;
+                OnPropertyChanged(nameof(TileXOffset));
+                OnPropertyChanged(nameof(BoardHeight));
+                OnPropertyChanged(nameof(BoardWidth));
+             }
+         }
+
+        private double _boardWidth = 500;
+        public double BoardWidth
+         {
+            get => _boardWidth;
+            set
+            {
+                if (Equals(value, _boardWidth)) return;
+                _boardWidth = value;
+                OnPropertyChanged(nameof(BoardWidth));
+                OnPropertyChanged(nameof(BoardHeight));
+                OnPropertyChanged(nameof(BoardWidth));
+             }
+         }
+
+        private double _boardHeight = 500;
+        public double BoardHeight
+         {
+            get => _boardHeight;
+            set
+            {
+                if (Equals(value, _boardHeight)) return;
+                _boardHeight = value;
+                OnPropertyChanged(nameof(BoardHeight));
                 OnPropertyChanged(nameof(BoardHeight));
                 OnPropertyChanged(nameof(BoardWidth));
              }
@@ -165,12 +193,6 @@ namespace Catan3.Models
              }
          }
 
-
-        public BoardLayout(int rowcount, double columnoffset)
-        {
-            _rowCount = rowcount;
-            _columnOffset = columnoffset;
-        }
 
         protected virtual void OnPropertyChanged(string propertyName) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

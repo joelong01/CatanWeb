@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using Catan3.Controls;
 using Catan3.Models;
 using Catan3.Utility;
@@ -226,7 +227,80 @@ namespace Catan3
 
         private void OnHitMe(object sender, RoutedEventArgs e)
         {
-            this.TraceMessage($"[CacheHit={HexGeometry.CacheHit}][cacheMiss={HexGeometry.CacheMiss}][cacheSize={HexGeometry.CacheSize}]");
+            if (GameViewModel is null || GameViewModel.BoardInfo is null) return;
+            // this.TraceMessage($"[CacheHit={HexGeometry.CacheHit}][cacheMiss={HexGeometry.CacheMiss}][cacheSize={HexGeometry.CacheSize}]");
+
+            double leftMost = 0.0;
+            double topMost = 0.0;
+            double right = 0.0;
+            double bottom = 0.0;
+            foreach (var harbor in GameViewModel.Harbors)
+            {
+                var left = harbor.Left;
+                if (left < leftMost) leftMost = left;
+                var top = harbor.Top;
+                if (top < topMost) topMost = top;
+
+                left += GameViewModel.BoardInfo.Layout.BuildingSize;
+                if (left > right) right = left;
+
+                top += GameViewModel.BoardInfo.Layout.BuildingSize;
+                if (top > bottom) bottom = top;
+
+            }
+
+            // find the bottom tile - it will be the one in the middle of the board (q == 0)
+            // going down the column increments r by 1 and decrements s by 1
+
+            int r = 0;
+            int s = 0;
+          
+            TileViewModel? lowestTile = null;
+            do
+            {
+                var coord = new HexCoordinates(0,r,s);
+                TileViewModel? tile = GameViewModel.Tiles.TileFromCoords(coord);
+                if (tile is null) break;
+                lowestTile = tile;
+                r++;
+                s--;
+
+            } while (true);
+
+           if (lowestTile is null) return;
+
+           //
+           //   see if we have a harbor there - that takes up the most space
+
+            HarborViewModel? bottomHarbor = GameViewModel.Harbors.FirstOrDefault(h => h.Harbor.TileCoordinates == lowestTile.Tile.TileKey && h.Harbor.Side == HexSide.Bottom);
+            if (bottomHarbor is not null)
+            {
+                var left = bottomHarbor.Left;
+                if (left < leftMost) leftMost = left;
+                var top = bottomHarbor.Top;
+                if (top < topMost) topMost = top;
+
+                left += GameViewModel.BoardInfo.Layout.BuildingSize;
+                if (left > right) right = left;
+
+                top += GameViewModel.BoardInfo.Layout.BuildingSize;
+                if (top > bottom) bottom = top;
+            } else
+            {
+                // no harbor
+                BuildingKey key = new(lowestTile.Tile.TileKey, HexPosition.BottomLeft);
+                BuildingViewModel? building = GameViewModel.Buildings.FirstOrDefault(b => b.Building.BuildingKey == key);
+                Debug.Assert(building is not null);
+
+                var top = building.Top + GameViewModel.BoardInfo.Layout.BuildingSize;
+
+                if (top > bottom) bottom = top;
+            }
+
+           
+
+            this.TraceMessage($"[Top={topMost}][Left={leftMost}][Bottom={bottom}][Right={right}]");
+            this.TraceMessage($"[Width={GameViewModel.BoardInfo.Layout.BoardWidth}][Height={GameViewModel.BoardInfo.Layout.BoardHeight}]");
         }
 
         private void OnFlipTiles(object sender, RoutedEventArgs e)

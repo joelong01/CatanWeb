@@ -42,7 +42,29 @@ namespace Catan3.Models
             }
             return directions;
         }
-        public static BuildingModel? FindBuilding(this IEnumerable<BuildingModel> buildings, BuildingKey key)
+        public static BuildingViewModel? FindBuildingViewModel(this IEnumerable<BuildingViewModel> buildings, BuildingKey key)
+        {
+            if (buildings is null || !buildings.Any()) return null;
+            var building = buildings.FirstOrDefault(b => b.Building.BuildingKey == key);
+            if (building is null)
+            {
+                var aliases = key.Aliases();
+                foreach ((HexPosition position, Direction direction) in aliases)
+                {
+                    var aliasCoords = key.HexCoordinates.GetAdjacentTile(direction);
+                    var aliasKey = new BuildingKey(aliasCoords, position);
+                    building = buildings.FirstOrDefault(b => b.Building.BuildingKey == aliasKey);
+                    if (building is not null)
+                    {
+                        return building;
+                    }
+                }
+
+                return null;
+            }
+            return building;
+        }
+        public static BuildingModel? FindBuildingModel(this IEnumerable<BuildingModel> buildings, BuildingKey key)
         {
             if (buildings is null || !buildings.Any()) return null;
             var building = buildings.FirstOrDefault(b => b.BuildingKey == key);
@@ -62,16 +84,7 @@ namespace Catan3.Models
             }
             return null;
         }
-        public static BuildingModel? FindBuilding(this IEnumerable<BuildingViewModel> viewModels, BuildingKey key)
-        {
-            if (viewModels is null || !viewModels.Any())
-            {
-                return null;
-            }
-            
-            var buildings =  viewModels.Select(bvm => bvm.Building);
-            return FindBuilding(buildings, key);
-        }
+
     }
 
     public partial class BuildingKey

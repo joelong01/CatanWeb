@@ -30,7 +30,7 @@
                     Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
                     Fill="{StaticResource bmWater}">
                 <Ellipse.Projection>
-                    <PlaneProjection x:Name="PP_Front" RotationY="90" />
+                    <PlaneProjection x:Name="PP_Front" RotationY="0" />
                 </Ellipse.Projection>
 
             </Ellipse>
@@ -40,7 +40,7 @@
                     Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
                     Fill="{x:Bind Bind_HarborImage(ViewModel.Harbor.HarborType), Mode=OneWay}">
                 <Ellipse.Projection>
-                    <PlaneProjection x:Name="PP_Back" RotationY="0" />
+                    <PlaneProjection x:Name="PP_Back" RotationY="-90" />
                 </Ellipse.Projection>
             </Ellipse>
 

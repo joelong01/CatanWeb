@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Catan3.Utility;
 using Microsoft.UI.Xaml.Media;
@@ -36,14 +38,23 @@ namespace Catan3.Models
         }
         private void UpdateLayout()
         {
-            double top = Layout.Top(Harbor.TileCoordinates);
-            double left = Layout.Left(Harbor.TileCoordinates);
+            var point = GetLeftTop(Layout, Harbor.TileCoordinates, Harbor.Side);
+            Left = point.X;
+            Top = point.Y;
+
+            OnPropertyChanged(nameof(HarborPoints));
+        }
+
+        public static Point GetLeftTop(BoardLayout Layout, HexCoordinates coordinates, HexSide side)
+        {
+            double top = Layout.Top(coordinates);
+            double left = Layout.Left(coordinates);
             double size = Layout.BuildingSize;
 
             var pointDictionary = Layout.PointyHexPoints.PointyTopListToDictionary();
 
             // Get the point from the dictionary that corresponds to the harbor's position
-            Point vertexPoint = pointDictionary[Harbor.Position];
+            Point vertexPoint = pointDictionary[side];
 
             // Adjust top and left to position the center of the harbor on the vertex
             top += vertexPoint.Y - size / 2.0; // Center vertically
@@ -55,7 +66,7 @@ namespace Catan3.Models
             double verticalOffset = edgeOffset / 2;
 
             // Now adjust based on Harbor position so that it is on the "edge" of the pointy tip
-            switch (Harbor.Position)
+            switch (side)
             {
                 case HexSide.Top:
                     // No horizontal adjustment needed
@@ -82,15 +93,11 @@ namespace Catan3.Models
                     top -= verticalOffset; // Move up (edge of the circle)
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(Harbor.Position), $"Invalid hex side: {Harbor.Position}");
+                    throw new ArgumentOutOfRangeException(nameof(Harbor.Side), $"Invalid hex side: {side}");
             }
-
-            Top = top;
-            Left = left;
-
-            OnPropertyChanged(nameof(HarborPoints));
+            return new Point(left, top);
+           
         }
-
 
         public PointCollection HarborPoints
         {
@@ -111,7 +118,7 @@ namespace Catan3.Models
                 double centerY = size / 2.0; // Y coordinate of the center of the harbor within the UserControl
                 Point topRight, topLeft, bottomRight, bottomLeft, left, right;
 
-                switch (Harbor.Position)
+                switch (Harbor.Side)
                 {
                     case HexSide.Top:
                         topLeft = flatTopDictionary[HexPosition.TopLeft];
@@ -156,7 +163,7 @@ namespace Catan3.Models
                         points.Add(left.Offset(xOffset, -yOffset));
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(Harbor.Position), $"Invalid hex side: {Harbor.Position}");
+                        throw new ArgumentOutOfRangeException(nameof(Harbor.Side), $"Invalid hex side: {Harbor.Side}");
                 }
                 return points;
             }
@@ -170,5 +177,18 @@ namespace Catan3.Models
         }
 
 
+    }
+
+    public static class HarborExtensions
+    {
+        public static HarborViewModel? FindHarbor(this IEnumerable<HarborViewModel> collection, HexCoordinates coords, HexSide side)
+        {
+            return collection.FirstOrDefault(h => h.Harbor.TileCoordinates == coords && h.Harbor.Side == side);
+        }
+
+        public static List<HarborViewModel>? FindAnyHarbor(this IEnumerable<HarborViewModel> collection, HexCoordinates coords)
+        {
+            return collection.Where(h => h.Harbor.TileCoordinates == coords).ToList();
+        }
     }
 }

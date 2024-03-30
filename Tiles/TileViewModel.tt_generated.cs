@@ -81,7 +81,7 @@ namespace Catan3.Models
              }
          }
 
-        private CatanOrientation _orientation = CatanOrientation.FaceDown;
+        private CatanOrientation _orientation = CatanOrientation.FaceUp;
         public CatanOrientation Orientation
          {
             get => _orientation;

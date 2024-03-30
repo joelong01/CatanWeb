@@ -28,13 +28,16 @@
                     StrokeThickness="{x:Bind TileViewModel.Layout.TileGap, Mode=OneWay}"
                     Points="{Binding Layout.OuterHexPoints, Mode=OneWay}"
                     Fill="{StaticResource bmWater}" />
+            <Canvas.Projection>
+                <PlaneProjection RotationY="-90" />
+            </Canvas.Projection>
         </Canvas>
         <Canvas Name="C_Front" HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
                 Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}">
             <Canvas.Projection>
-                <PlaneProjection RotationY="90" />
+                <PlaneProjection RotationY="0" />
             </Canvas.Projection>
             <Polygon Stroke="PaleVioletRed"
                     StrokeThickness="{x:Bind TileViewModel.Layout.TileGap, Mode=OneWay}"

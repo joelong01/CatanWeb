@@ -44,7 +44,7 @@ namespace Catan3.Models
 
                     if (buildingPosition == HexPosition.None) continue;
                     BuildingKey buildingKey = new(tile.TileKey, buildingPosition);
-                    var building = game.FindBuilding(buildingKey);
+                    var building = game.FindBuildingModel(buildingKey);
                     if (building is null)
                     {
                         BuildingModel buildingModel = new(buildingKey, BuildingState.Empty);

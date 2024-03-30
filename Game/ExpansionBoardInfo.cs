@@ -6,11 +6,9 @@ namespace Catan3.Models
 {
     public partial class ExpansionBoardInfo : IBoardInfo
     {
-        public ExpansionBoardInfo() => Layout = new BoardLayout(RowCount, ColumnOffset);
+        public ExpansionBoardInfo() => Layout = new BoardLayout();
         public BoardLayout Layout { get; private set; }
         public bool HasSupplemental => true;
-        public static int RowCount => 6;
-        public static double ColumnOffset => 2.5;
         public List<HexCoordinates> TileKeys { get; } =
              [
                 // column 1

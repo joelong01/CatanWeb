@@ -178,12 +178,12 @@ namespace Catan3
     //        GeneralTransform gt = Window.Current.Content.TransformToVisual(control);
     //        UIElement root = Window.Current.Content;
 
-    //        Point pointMouseDown = gt.TransformPoint(origE.GetCurrentPoint(mousePositionWindow).Position);
+    //        Point pointMouseDown = gt.TransformPoint(origE.GetCurrentPoint(mousePositionWindow).Side);
 
      
     //        PointerEventHandler pointerMovedHandler = (object s, PointerRoutedEventArgs e) =>
     //        {
-    //            Point pt = e.GetCurrentPoint(mousePositionWindow).Position;
+    //            Point pt = e.GetCurrentPoint(mousePositionWindow).Side;
     //            pt = gt.TransformPoint(pt);
     //            Point delta = new Point
     //            {

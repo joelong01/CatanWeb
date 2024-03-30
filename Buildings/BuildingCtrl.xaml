@@ -7,7 +7,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
 
-    <Grid HorizontalAlignment="Left" VerticalAlignment="Top"
+    <Grid HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="White" BorderThickness="0"
             Background="Transparent" Opacity="1"
             Width="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}"
             Height="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}">

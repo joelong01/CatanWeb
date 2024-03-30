@@ -24,145 +24,160 @@
         </Storyboard>
     </UserControl.Resources>
 
-    <Grid Background="Transparent" HorizontalAlignment="Left"
-            VerticalAlignment="Top"
+    <Canvas Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Top"
             Height="{x:Bind GameViewModel.BoardInfo.Layout.BoardHeight, Mode=OneWay}"
             Width="{x:Bind GameViewModel.BoardInfo.Layout.BoardWidth, Mode=OneWay}">
-        <!--Harbors-->
-        <ItemsControl x:Name="IC_Harbors"
-                ItemsSource="{x:Bind GameViewModel.Harbors}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <Canvas />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemContainerStyle>
-                <Style TargetType="ContentPresenter">
+      
+        
+            <!--Harbors-->
+            <ItemsControl x:Name="IC_Harbors"
+                    ItemsSource="{x:Bind GameViewModel.Harbors}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas VerticalAlignment="Top"
+                                HorizontalAlignment="Left" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+                        <Setter Property="Canvas.ZIndex" Value="-1" />
+                        
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="m:HarborViewModel">
+                        <c:HarborCtrl ViewModel="{x:Bind Mode=OneWay}"
+                                VerticalAlignment="Top"
+                                HorizontalAlignment="Left">
+                            <c:HarborCtrl.RenderTransform>
+                                <CompositeTransform
+                                        TranslateX="{x:Bind Left, Mode=OneWay}"
+                                        TranslateY="{x:Bind Top, Mode=OneWay}" />
+                            </c:HarborCtrl.RenderTransform>
+                        </c:HarborCtrl>
 
-                    <Setter Property="Canvas.ZIndex" Value="-1" />
-                </Style>
-            </ItemsControl.ItemContainerStyle>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="m:HarborViewModel">
-                    <c:HarborCtrl ViewModel="{x:Bind Mode=OneWay}">
-                        <c:HarborCtrl.RenderTransform>
-                            <CompositeTransform
-                                    TranslateX="{x:Bind Left, Mode=OneWay}"
-                                    TranslateY="{x:Bind Top, Mode=OneWay}" />
-                        </c:HarborCtrl.RenderTransform>
-                    </c:HarborCtrl>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <!--Tiles-->
+            <ItemsControl x:Name="IC_Tiles"
+                    ItemsSource="{x:Bind GameViewModel.Tiles, Mode=OneWay}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas VerticalAlignment="Top"
+                                HorizontalAlignment="Left" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+                        <Setter Property="Canvas.ZIndex" Value="10" />
+                      
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="m:TileViewModel">
+                        <c:TileCtrl TileViewModel="{x:Bind Mode=OneWay}"
+                                VerticalAlignment="Top"
+                                HorizontalAlignment="Left"
+                                Width="{Binding Layout.ControlWidth, Mode=OneWay}"
+                                Height="{Binding Layout.ControlHeight, Mode=OneWay}"
+                                RightTapped="Tile_RightMouseDown">
+                            <c:TileCtrl.RenderTransform>
+                                <CompositeTransform
+                                        TranslateX="{x:Bind Left, Mode=OneWay}"
+                                        TranslateY="{x:Bind Top, Mode=OneWay}" />
+                            </c:TileCtrl.RenderTransform>
+                        </c:TileCtrl>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <!--Roads-->
+            <ItemsControl x:Name="IC_Roads"
+                    ItemsSource="{x:Bind GameViewModel.Roads}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas VerticalAlignment="Top"
+                                HorizontalAlignment="Left" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
 
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <!--Tiles-->
-        <ItemsControl x:Name="IC_Tiles"
-                ItemsSource="{x:Bind GameViewModel.Tiles, Mode=OneWay}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <Canvas />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemContainerStyle>
-                <Style TargetType="ContentPresenter">
-                    <Setter Property="Canvas.ZIndex" Value="10" />
-                </Style>
-            </ItemsControl.ItemContainerStyle>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="m:TileViewModel">
-                    <c:TileCtrl TileViewModel="{x:Bind Mode=OneWay}"
-                            Width="{Binding Layout.ControlWidth, Mode=OneWay}"
-                            Height="{Binding Layout.ControlHeight, Mode=OneWay}"
-                            RightTapped="Tile_RightMouseDown">
-                        <c:TileCtrl.RenderTransform>
-                            <CompositeTransform
-                                    TranslateX="{x:Bind Left, Mode=OneWay}"
-                                    TranslateY="{x:Bind Top, Mode=OneWay}" />
-                        </c:TileCtrl.RenderTransform>
-                    </c:TileCtrl>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <!--Roads-->
-        <ItemsControl x:Name="IC_Roads"
-                ItemsSource="{x:Bind GameViewModel.Roads}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <Canvas />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemContainerStyle>
-                <Style TargetType="ContentPresenter">
+                        <Setter Property="Canvas.ZIndex" Value="20" />
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="m:RoadViewModel">
+                        <c:RoadCtrl ViewModel="{x:Bind Mode=OneWay}"
+                                Height="{Binding Layout.BuildingSize, Mode=OneWay}"
+                                VerticalAlignment="Top"
+                                HorizontalAlignment="Left"
+                                PointerEntered="Road_MouseEnter"
+                                PointerExited="Road_MouseLeave"
+                                RoadClicked="Road_Clicked">
+                            <c:RoadCtrl.RenderTransform>
+                                <CompositeTransform
+                                        TranslateX="{x:Bind Left, Mode=OneWay}"
+                                        TranslateY="{x:Bind Top, Mode=OneWay}" />
+                            </c:RoadCtrl.RenderTransform>
+                        </c:RoadCtrl>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <!--Buildings-->
+            <ItemsControl x:Name="IC_Buildings"
+                    ItemsSource="{x:Bind GameViewModel.Buildings}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas VerticalAlignment="Top"
+                                HorizontalAlignment="Left" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
 
-                    <Setter Property="Canvas.ZIndex" Value="20" />
-                </Style>
-            </ItemsControl.ItemContainerStyle>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="m:RoadViewModel">
-                    <c:RoadCtrl ViewModel="{x:Bind Mode=OneWay}"
-                            Height="{Binding Layout.BuildingSize, Mode=OneWay}"
-                            PointerEntered="Road_MouseEnter"
-                            PointerExited="Road_MouseLeave"
-                            RoadClicked="Road_Clicked">
-                        <c:RoadCtrl.RenderTransform>
-                            <CompositeTransform
-                                    TranslateX="{x:Bind Left, Mode=OneWay}"
-                                    TranslateY="{x:Bind Top, Mode=OneWay}" />
-                        </c:RoadCtrl.RenderTransform>
-                    </c:RoadCtrl>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <!--Buildings-->
-        <ItemsControl x:Name="IC_Buildings"
-                ItemsSource="{x:Bind GameViewModel.Buildings}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <Canvas />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemContainerStyle>
-                <Style TargetType="ContentPresenter">
+                        <Setter Property="Canvas.ZIndex" Value="30" />
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="m:BuildingViewModel">
+                        <c:BuildingCtrl BuildingViewModel="{x:Bind Mode=OneWay}"
+                                Width="{Binding Layout.BuildingSize, Mode=OneWay}"
+                                Height="{Binding Layout.BuildingSize, Mode=OneWay}"
+                                VerticalAlignment="Top"
+                                HorizontalAlignment="Left"
+                                PointerEntered="Building_MouseEnter"
+                                PointerExited="Building_MouseLeave"
+                                PointerPressed="Building_MousePressed">
+                            <c:BuildingCtrl.RenderTransform>
+                                <CompositeTransform
+                                        TranslateX="{x:Bind Left, Mode=OneWay}"
+                                        TranslateY="{x:Bind Top, Mode=OneWay}" />
+                            </c:BuildingCtrl.RenderTransform>
 
-                    <Setter Property="Canvas.ZIndex" Value="30" />
-                </Style>
-            </ItemsControl.ItemContainerStyle>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="m:BuildingViewModel">
-                    <c:BuildingCtrl BuildingViewModel="{x:Bind Mode=OneWay}"
-                            Width="{Binding Layout.BuildingSize, Mode=OneWay}"
-                            Height="{Binding Layout.BuildingSize, Mode=OneWay}"
-                            PointerEntered="Building_MouseEnter"
-                            PointerExited="Building_MouseLeave"
-                            PointerPressed="Building_MousePressed">
-                        <c:BuildingCtrl.RenderTransform>
-                            <CompositeTransform
-                                    TranslateX="{x:Bind Left, Mode=OneWay}"
-                                    TranslateY="{x:Bind Top, Mode=OneWay}" />
-                        </c:BuildingCtrl.RenderTransform>
+                        </c:BuildingCtrl>
 
-                    </c:BuildingCtrl>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+            <Viewbox x:Name="VB_Robber" Stretch="Uniform"
+                    Height="{x:Bind RobberHeight(GameViewModel.BoardInfo.Layout.OuterHexSize), Mode=OneWay}"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Margin="0,0,0,0">
+                <Viewbox.RenderTransform>
+                    <CompositeTransform />
+                </Viewbox.RenderTransform>
+                <Grid Opacity=".75">
+                    <TextBlock FontFamily="Catan" FontSize="100" Text="&#xE925;"
+                            Foreground="White" HorizontalAlignment="Center"
+                            TextAlignment="Center" />
+                    <TextBlock FontFamily="Catan" FontSize="80" Text="&#xE90C;"
+                            Foreground="Red" HorizontalAlignment="Center"
+                            TextAlignment="Center" />
+                </Grid>
+            </Viewbox>
 
-        <Viewbox x:Name="VB_Robber" Stretch="Uniform"
-                Height="{x:Bind RobberHeight(GameViewModel.BoardInfo.Layout.OuterHexSize), Mode=OneWay}"
-                HorizontalAlignment="Left" VerticalAlignment="Top"
-                Margin="0,0,0,0">
-            <Viewbox.RenderTransform>
-                <CompositeTransform />
-            </Viewbox.RenderTransform>
-            <Grid Opacity=".75">
-                <TextBlock FontFamily="Catan" FontSize="100" Text="&#xE925;"
-                        Foreground="White" HorizontalAlignment="Center"
-                        TextAlignment="Center" />
-                <TextBlock FontFamily="Catan" FontSize="80" Text="&#xE90C;"
-                        Foreground="Red" HorizontalAlignment="Center"
-                        TextAlignment="Center" />
-            </Grid>
-        </Viewbox>
-    </Grid>
+    </Canvas>
 
 </UserControl>

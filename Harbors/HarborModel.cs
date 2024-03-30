@@ -13,7 +13,7 @@ namespace Catan3.Models
         {
             this.TileCoordinates = tilekey;
             this.HarborType = harbortype;
-            this.Position = position;
+            this.Side = position;
         }
         public HarborModel()
         { 

@@ -7,7 +7,7 @@
     template file     = file://D:/GitHub/Catan3
     model file        = file://D:/GitHub/Catan3/Harbors/HarborModel.model.json
     code gen version  = 5
-    model version     = 4
+    model version     = 5
 
     to update the generated model, execute the .\update_models.bat file, or run the
     GenerateModels.tt Text Template. Both of these depend on the ModelGenerator project
@@ -46,15 +46,15 @@ namespace Catan3.Models
              }
          }
 
-        private HexSide _position = HexSide.Bottom;
-        public HexSide Position
+        private HexSide _side = HexSide.Bottom;
+        public HexSide Side
          {
-            get => _position;
+            get => _side;
             set
             {
-                if (Equals(value, _position)) return;
-                _position = value;
-                OnPropertyChanged(nameof(Position));
+                if (Equals(value, _side)) return;
+                _side = value;
+                OnPropertyChanged(nameof(Side));
              }
          }
 

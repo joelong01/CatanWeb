@@ -120,10 +120,10 @@
         </ScrollViewer>
         <!-- GridSplitter for adjusting the size between the first and second columns -->
 
-        <Border BorderBrush="Blue" BorderThickness="0" Grid.Column="1"
-                Grid.ColumnSpan="2">
-            <Viewbox Stretch="Uniform">
-                <c:GameBoardCtrl Grid.Column="1"
+        <Border BorderBrush="Blue" BorderThickness="0" Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Top"
+                Grid.ColumnSpan="1">
+            <Viewbox Stretch="Uniform" Margin="2">
+                <c:GameBoardCtrl 
                         GameViewModel="{x:Bind GameViewModel, Mode=OneWay}"
                         BuildingClicked="Building_Clicked"
                         BuildingMouseEnter="Building_MouseEnter"
@@ -135,8 +135,16 @@
             </Viewbox>
         </Border>
         <toolkit:GridSplitter Grid.Column="1" Width="5"
-                HorizontalAlignment="Stretch" Background="Gray" />
+                HorizontalAlignment="Stretch" Background="Gray">
+            <toolkit:GridSplitter.RenderTransform>
+                <CompositeTransform TranslateX="-5" />
+            </toolkit:GridSplitter.RenderTransform>
+        </toolkit:GridSplitter>
         <toolkit:GridSplitter Grid.Column="3" Width="5"
-                HorizontalAlignment="Stretch" Background="Gray" />
+                HorizontalAlignment="Stretch" Background="Gray">
+            <toolkit:GridSplitter.RenderTransform>
+                <CompositeTransform TranslateX="5" />
+            </toolkit:GridSplitter.RenderTransform>
+        </toolkit:GridSplitter>
     </Grid>
 </Page>

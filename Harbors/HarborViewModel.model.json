@@ -45,7 +45,7 @@
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "CatanOrientation.FaceDown"
+                "Default": "CatanOrientation.FaceUp"
             }
         ]
     }

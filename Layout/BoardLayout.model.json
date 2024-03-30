@@ -8,25 +8,42 @@
             "System",
             "System.ComponentModel"
         ],
-        "ConstructedProperties": [
+        "ConstructedProperties": [],
+        "NormalProperties": [
+
             {
-                "Name": "RowCount",
-                "Type": "int",
-                "ReadOnly": false,
-                "AdditionalNotifications": [ "BoardHeight", "BoardWidth" ],
-                "Nullable": false,
-                "Default": "5"
-            },
-            {
-                "Name": "ColumnOffset",
+                "Name": "TileYOffset",
                 "Type": "double",
                 "ReadOnly": false,
                 "AdditionalNotifications": [ "BoardHeight", "BoardWidth" ],
                 "Nullable": false,
-                "Default": "1.5; //the number of Size's to the .Left of the control"
-            }
-        ],
-        "NormalProperties": [
+                "Default": "0"
+            },
+            {
+                "Name": "TileXOffset",
+                "Type": "double",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "BoardHeight", "BoardWidth" ],
+                "Nullable": false,
+                "Default": "0"
+            },
+            {
+                "Name": "BoardWidth",
+                "Type": "double",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "BoardHeight", "BoardWidth" ],
+                "Nullable": false,
+                "Default": "500"
+            },
+            {
+                "Name": "BoardHeight",
+                "Type": "double",
+                "ReadOnly": false,
+                "AdditionalNotifications": [ "BoardHeight", "BoardWidth" ],
+                "Nullable": false,
+                "Default": "500"
+            },
+
             {
                 "Name": "OuterHexSize",
                 "Type": "double",

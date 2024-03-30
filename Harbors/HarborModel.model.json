@@ -1,6 +1,6 @@
 [
     {
-        "ModelVersion": "4",
+        "ModelVersion": "5",
         "ClassName": "HarborModel",
         "Namespace": "Catan3.Models",
         "Path": ".",
@@ -30,7 +30,7 @@
                 "Default": "HarborType.ThreeForOne"
             },
             {
-                "Name": "Position",
+                "Name": "Side",
                 "Type": "HexSide",
                 "ReadOnly": false,
                 "Nullable": false,
