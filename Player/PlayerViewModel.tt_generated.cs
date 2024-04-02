@@ -7,7 +7,7 @@
     template file     = file://D:/GitHub/Catan3
     model file        = file://D:/GitHub/Catan3/Player/PlayerViewModel.model.json
     code gen version  = 5
-    model version     = 1.0
+    model version     = 2
 
     to update the generated model, execute the .\update_models.bat file, or run the
     GenerateModels.tt Text Template. Both of these depend on the ModelGenerator project
@@ -16,6 +16,7 @@
 
 using System.ComponentModel;
 using Windows.UI;
+using Microsoft.UI;
 
 namespace Catan3.Models
 {
@@ -34,7 +35,7 @@ namespace Catan3.Models
              }
          }
 
-        private string _name = name;
+        private string _name = "Nameless";
         public string Name
          {
             get => _name;
@@ -46,7 +47,7 @@ namespace Catan3.Models
              }
          }
 
-        private Color _foreground = foreground;
+        private Color _foreground = Colors.White;
         public Color Foreground
          {
             get => _foreground;
@@ -58,7 +59,7 @@ namespace Catan3.Models
              }
          }
 
-        private Color _background = background;
+        private Color _background = Colors.HotPink;
         public Color Background
          {
             get => _background;

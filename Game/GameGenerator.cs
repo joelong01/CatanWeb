@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Catan3.Utility;
 
 namespace Catan3.Models
@@ -8,7 +9,7 @@ namespace Catan3.Models
 
     public static class GameGenerator
     {
-        public static GameModel CreateGame(CatanGame gameType)
+        public static GameModel CreateGame(CatanGame gameType, List<string> players)
         {
             IBoardInfo boardInfo;
             if (gameType == CatanGame.Regular)
@@ -25,8 +26,10 @@ namespace Catan3.Models
             }
 
             Debug.Assert(( boardInfo.TileKeys.Count == boardInfo.Numbers.Count ) && ( boardInfo.TileKeys.Count == boardInfo.Resources.Count ));
+            List<PlayerModel> playerModels = players.Select(Id => new PlayerModel(Id)).ToList();
+            GameModel game = new(gameType, boardInfo.HasSupplemental, playerModels);
 
-            GameModel game = new(gameType, boardInfo.HasSupplemental);
+          
             for (int i = 0; i < boardInfo.TileKeys.Count; i++)
             {
                 var tile = new TileModel()

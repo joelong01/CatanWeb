@@ -1,12 +1,13 @@
 ﻿[
     {
-        "ModelVersion": "1.0",
+        "ModelVersion": "2",
         "ClassName": "PlayerViewModel",
         "Namespace": "Catan3.Models",
         "Path": ".",
         "Usings": [
             "System.ComponentModel",
-            "Windows.UI"
+            "Windows.UI",
+            "Microsoft.UI"
         ],
         "ConstructedProperties": [],
         "NormalProperties": [
@@ -24,8 +25,8 @@
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "name",
-                "IsLiteral": false
+                "Default": "Nameless",
+                "IsLiteral": true
             },
             {
                 "Name": "Foreground",
@@ -33,7 +34,7 @@
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "foreground"
+                "Default": "Colors.White"
             },
             {
                 "Name": "Background",
@@ -41,7 +42,7 @@
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "background"
+                "Default": "Colors.HotPink"
             },
             {
                 "Name": "ImageFileName",

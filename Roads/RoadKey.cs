@@ -1,11 +1,16 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 using Catan3.Utility;
 namespace Catan3.Models
 {
     public partial class RoadKey (HexCoordinates tileKey, HexSide position) : INotifyPropertyChanged
     {
-       
+        [JsonConstructor]
+       public RoadKey() : this (HexCoordinates.Default, HexSide.Bottom)
+        {
+           
+        }
        
         public override string ToString()
         {

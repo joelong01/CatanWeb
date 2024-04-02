@@ -1,7 +1,7 @@
 [
     {
         "ClassName": "GameViewModel",
-        "ModelVersion": "3",
+        "ModelVersion": "4",
         "Namespace": "Catan3.Models",
         "Path": ".",
         "Usings": [
@@ -52,7 +52,7 @@
                 "Nullable": false,
                 "Default": "new HouseRules()"
             },
-           
+
             {
                 "Name": "CurrentPlayer",
                 "Type": "PlayerViewModel",

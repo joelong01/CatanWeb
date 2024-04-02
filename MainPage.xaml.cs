@@ -1,7 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using Catan3.Controls;
 using Catan3.Models;
 using Catan3.Utility;
@@ -66,16 +70,35 @@ namespace Catan3
         {
 
         }
-        private void NewGame()
+        private async void NewGame()
         {
-            List<PlayerViewModel> playingPlayers = [];
-            playingPlayers.Add(AvailablePlayers[0]);
-            playingPlayers.Add(AvailablePlayers[1]);
-            playingPlayers.Add(AvailablePlayers[2]);
-            GameViewModel = new GameViewModel(GameGenerator.CreateGame(SelectedGame), playingPlayers);
-            GameViewModel.CurrentPlayer = GameViewModel.Players[0];
-            this.DataContext = GameViewModel;
+            try
+            {
+                List<PlayerViewModel> playingPlayers = [];
+                playingPlayers.Add(AvailablePlayers[0]);
+                playingPlayers.Add(AvailablePlayers[1]);
+                playingPlayers.Add(AvailablePlayers[2]);
+                List<string> playerIds = playingPlayers.Select( p => p.Id ).ToList();
+                GameViewModel = new GameViewModel(GameGenerator.CreateGame(SelectedGame, playerIds), AvailablePlayers);
+                GameViewModel.CurrentPlayer = GameViewModel.Players[0];
+                this.DataContext = GameViewModel;
+            }
+            catch (Exception ex)
+            {
+                await ShowMessageDialog(ex.ToString(), "Catan New Game Error");
+            }
 
+        }
+        private async Task ShowMessageDialog(string message, string title)
+        {
+            ContentDialog dialog = new ContentDialog
+            {
+                Title = title,
+                Content = message,
+                CloseButtonText = "Ok"
+            };
+
+            await dialog.ShowAsync();
         }
         private void OnRegenerate(object sender, RoutedEventArgs e)
         {
@@ -225,82 +248,55 @@ namespace Catan3
 
         }
 
-        private void OnHitMe(object sender, RoutedEventArgs e)
+        private void OnHitMe(object sender, RoutedEventArgs rea)
         {
-            if (GameViewModel is null || GameViewModel.BoardInfo is null) return;
-            // this.TraceMessage($"[CacheHit={HexGeometry.CacheHit}][cacheMiss={HexGeometry.CacheMiss}][cacheSize={HexGeometry.CacheSize}]");
+            if (GameViewModel is null) return;
 
-            double leftMost = 0.0;
-            double topMost = 0.0;
-            double right = 0.0;
-            double bottom = 0.0;
-            foreach (var harbor in GameViewModel.Harbors)
+            var jsonOptions = new JsonSerializerOptions
             {
-                var left = harbor.Left;
-                if (left < leftMost) leftMost = left;
-                var top = harbor.Top;
-                if (top < topMost) topMost = top;
+                IgnoreReadOnlyFields = true,
+                PropertyNameCaseInsensitive = true
+            };
+            jsonOptions.Converters.Add(new JsonStringEnumConverter());
+            try
+            {
+                var json = JsonSerializer.Serialize(GameViewModel.GameModel, jsonOptions);
 
-                left += GameViewModel.BoardInfo.Layout.BuildingSize;
-                if (left > right) right = left;
+               // this.TraceMessage(json);
+                var gameModel = JsonSerializer.Deserialize<GameModel>(json, jsonOptions);
+                  
 
-                top += GameViewModel.BoardInfo.Layout.BuildingSize;
-                if (top > bottom) bottom = top;
+                json = JsonSerializer.Serialize(GameViewModel.Tiles, jsonOptions);
+                this.TraceMessage(json);
+                var tiles = JsonSerializer.Deserialize<TileViewModel>(json, jsonOptions);
 
+                json = JsonSerializer.Serialize(GameViewModel.Harbors, jsonOptions);
+                var harbors = JsonSerializer.Deserialize<HarborViewModel>(json, jsonOptions);
+
+                json = JsonSerializer.Serialize(GameViewModel.Roads, jsonOptions);
+                var roads = JsonSerializer.Deserialize<RoadViewModel>(json, jsonOptions);
+
+                json = JsonSerializer.Serialize(GameViewModel.Buildings, jsonOptions);
+                var buildings = JsonSerializer.Deserialize<BuildingViewModel>(json, jsonOptions);
+
+                json = JsonSerializer.Serialize(GameViewModel.Players, jsonOptions);
+                var players = JsonSerializer.Deserialize<PlayerViewModel>(json, jsonOptions);
+
+                //var game = JsonSerializer.Deserialize<GameModel>(json, jsonOptions);
+                //this.TraceMessage($"{game}");
+                //var gv = JsonSerializer.Deserialize<GameViewModel>(json, jsonOptions);
+            }
+            catch(Exception e)
+            {
+                this.TraceMessage(e.ToString());
             }
 
-            // find the bottom tile - it will be the one in the middle of the board (q == 0)
-            // going down the column increments r by 1 and decrements s by 1
 
-            int r = 0;
-            int s = 0;
-          
-            TileViewModel? lowestTile = null;
-            do
-            {
-                var coord = new HexCoordinates(0,r,s);
-                TileViewModel? tile = GameViewModel.Tiles.TileFromCoords(coord);
-                if (tile is null) break;
-                lowestTile = tile;
-                r++;
-                s--;
 
-            } while (true);
+            // List<PlayerViewModel>? players = JsonSerializer.Deserialize<List<PlayerViewModel>>(json);  
+           // this.TraceMessage($"Players count={gameModel?.Players.Count}");
 
-           if (lowestTile is null) return;
-
-           //
-           //   see if we have a harbor there - that takes up the most space
-
-            HarborViewModel? bottomHarbor = GameViewModel.Harbors.FirstOrDefault(h => h.Harbor.TileCoordinates == lowestTile.Tile.TileKey && h.Harbor.Side == HexSide.Bottom);
-            if (bottomHarbor is not null)
-            {
-                var left = bottomHarbor.Left;
-                if (left < leftMost) leftMost = left;
-                var top = bottomHarbor.Top;
-                if (top < topMost) topMost = top;
-
-                left += GameViewModel.BoardInfo.Layout.BuildingSize;
-                if (left > right) right = left;
-
-                top += GameViewModel.BoardInfo.Layout.BuildingSize;
-                if (top > bottom) bottom = top;
-            } else
-            {
-                // no harbor
-                BuildingKey key = new(lowestTile.Tile.TileKey, HexPosition.BottomLeft);
-                BuildingViewModel? building = GameViewModel.Buildings.FirstOrDefault(b => b.Building.BuildingKey == key);
-                Debug.Assert(building is not null);
-
-                var top = building.Top + GameViewModel.BoardInfo.Layout.BuildingSize;
-
-                if (top > bottom) bottom = top;
-            }
-
-           
-
-            this.TraceMessage($"[Top={topMost}][Left={leftMost}][Bottom={bottom}][Right={right}]");
-            this.TraceMessage($"[Width={GameViewModel.BoardInfo.Layout.BoardWidth}][Height={GameViewModel.BoardInfo.Layout.BoardHeight}]");
+          //  this.TraceMessage(json);
         }
 
         private void OnFlipTiles(object sender, RoutedEventArgs e)

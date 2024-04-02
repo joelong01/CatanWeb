@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 using Catan3.Models;
 using Windows.Foundation;
 namespace Catan3.Utility
@@ -19,6 +20,7 @@ namespace Catan3.Utility
 
     public partial class HexCoordinates(int q, int r, int s) : IComparable<HexCoordinates>
     {
+        [JsonIgnore]
         public static
                 Dictionary<Direction, HexCoordinates> Directions
         { get; } = new()
@@ -51,12 +53,13 @@ namespace Catan3.Utility
         //
         //  this will be the TileKeys of the North tile.  depending on the 
         //  collection, the tile might not exist
+        [JsonIgnore]
         public HexCoordinates North => this + Directions[Direction.North];
-        public HexCoordinates NorthEast => this + Directions[Direction.NorthEast];
-        public HexCoordinates SouthEast => this + Directions[Direction.SouthEast];
-        public HexCoordinates South => this + Directions[Direction.South];
-        public HexCoordinates SouthWest => this + Directions[Direction.SouthWest];
-        public HexCoordinates NorthWest => this + Directions[Direction.NorthWest];
+        [JsonIgnore] public HexCoordinates NorthEast => this + Directions[Direction.NorthEast];
+        [JsonIgnore] public HexCoordinates SouthEast => this + Directions[Direction.SouthEast];
+        [JsonIgnore] public HexCoordinates South => this + Directions[Direction.South];
+        [JsonIgnore] public HexCoordinates SouthWest => this + Directions[Direction.SouthWest];
+        [JsonIgnore] public HexCoordinates NorthWest => this + Directions[Direction.NorthWest];
         public HexCoordinates GetAdjacentTile(Direction dir) => this + Directions[dir];
         public override bool Equals(object? obj)
         {
@@ -68,8 +71,8 @@ namespace Catan3.Utility
         }
         public override int GetHashCode() => HashCode.Combine(Q, R, S);
         public static HexCoordinates Default => new(-10, -10, -10);
-        
-       
+
+
         public static Point MidPoint(double left, double top, double size, HexSide side)
         {
             double height = Math.Sqrt(3) * size;

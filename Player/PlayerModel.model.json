@@ -1,6 +1,6 @@
 ﻿[
     {
-        "ModelVersion": "1.0",
+        "ModelVersion": "2",
         "ClassName": "PlayerModel",
         "Namespace": "Catan3.Models",
         "Path": ".",
@@ -10,12 +10,12 @@
         "ConstructedProperties": [],
         "NormalProperties": [
             {
-                "Name": "Index",
-                "Type": "int",
+                "Name": "Id",
+                "Type": "string",
                 "ReadOnly": true,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "idx"
+                "Default": "id"
             },
             {
                 "Name": "CitiesPlayed",

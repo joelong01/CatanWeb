@@ -1,13 +1,14 @@
 [
     {
-        "ModelVersion": "8",
+        "ModelVersion": "10",
         "ClassName": "GameModel",
         "Namespace": "Catan3.Models",
         "Path": ".",
         "Usings": [
             "System.Collections.ObjectModel",
             "System.ComponentModel",
-            "Catan3.Utility"
+            "Catan3.Utility",
+            "System.Collections.Generic"
         ],
         "ConstructedProperties": [
             {
@@ -25,7 +26,15 @@
                 "AdditionalNotifications": [],
                 "Nullable": false,
                 "Default": "false"
+            },
+            {
+                "Name": "Players",
+                "Type": "List<PlayerModel>",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false
             }
+
         ],
         "NormalProperties": [
             {
@@ -39,14 +48,6 @@
             {
                 "Name": "Buildings",
                 "Type": "ObservableCollection<BuildingModel>",
-                "ReadOnly": true,
-                "AdditionalNotifications": [],
-                "Nullable": false,
-                "Default": "[]"
-            },
-            {
-                "Name": "Players",
-                "Type": "ObservableCollection<PlayerModel>",
                 "ReadOnly": true,
                 "AdditionalNotifications": [],
                 "Nullable": false,

@@ -51,13 +51,13 @@ namespace Catan3.Models
 
             var top =  (key.Q / 2.0 +  key.R)*OuterHexSize*Math.Sqrt(3) ;
             top += TileYOffset;
-            return top;
+            return Math.Round(top, 2);
         }
         public double Left(HexCoordinates key)
         {
             var left = OuterHexSize * 1.5 * key.Q ;
             left += TileXOffset;
-            return left;
+            return Math.Round(left, 2);
         }
         /// <summary>
         ///     InnerHexSize if a function of the TileGame, InnerHexStroke, and OuterHexSize (which is defined by the TD4 Template)

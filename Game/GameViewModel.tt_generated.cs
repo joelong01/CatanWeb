@@ -7,7 +7,7 @@
     template file     = file://D:/GitHub/Catan3
     model file        = file://D:/GitHub/Catan3/Game/GameViewModel.model.json
     code gen version  = 5
-    model version     = 3
+    model version     = 4
 
     to update the generated model, execute the .\update_models.bat file, or run the
     GenerateModels.tt Text Template. Both of these depend on the ModelGenerator project

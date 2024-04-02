@@ -5,13 +5,13 @@ namespace Catan3.Models
     ///     this should have all the data representing per player state that is bound to the UI 
     /// </summary>
     /// <param name="idx"></param>
-    public partial class PlayerModel(int idx) 
+    public partial class PlayerModel(string id)
     {
-        public static PlayerModel Default { get; } = new PlayerModel(-1);
+        public static PlayerModel Default { get; } = new PlayerModel("Nameless-001");
 
         public override string ToString()
         {
-            return $"{Index}";
+            return $"{Id}";
         }
        
     }

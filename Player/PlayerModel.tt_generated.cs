@@ -7,7 +7,7 @@
     template file     = file://D:/GitHub/Catan3
     model file        = file://D:/GitHub/Catan3/Player/PlayerModel.model.json
     code gen version  = 5
-    model version     = 1.0
+    model version     = 2
 
     to update the generated model, execute the .\update_models.bat file, or run the
     GenerateModels.tt Text Template. Both of these depend on the ModelGenerator project
@@ -21,15 +21,15 @@ namespace Catan3.Models
     public partial class PlayerModel : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
-        private int _index = idx;
-        public int Index
+        private string _id = id;
+        public string Id
          {
-            get => _index;
+            get => _id;
             set
             {
-                if (Equals(value, _index)) return;
-                _index = value;
-                OnPropertyChanged(nameof(Index));
+                if (Equals(value, _id)) return;
+                _id = value;
+                OnPropertyChanged(nameof(Id));
              }
          }
 

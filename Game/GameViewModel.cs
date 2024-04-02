@@ -7,6 +7,8 @@ using Catan3.Utility;
 using System.Linq;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Foundation;
+using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 
 namespace Catan3.Models
@@ -14,8 +16,10 @@ namespace Catan3.Models
 
     public partial class GameViewModel
     {
+      
+        public GameModel? GameModel { get; set; }
 
-        public GameViewModel(GameModel gameModel, List<PlayerViewModel> playingPlayers)
+        public GameViewModel(GameModel gameModel, IEnumerable<PlayerViewModel> allPlayers)
         {
             if (gameModel.GameType == CatanGame.Regular)
             {
@@ -30,16 +34,23 @@ namespace Catan3.Models
                 throw new ArgumentException($"invalid boardsize");
             }
 
+            GameModel = gameModel;
+
             Tiles = CreateAndSortTileViewModelList(gameModel.Tiles);
 
             foreach (var building in gameModel.Buildings)
             {
                 Buildings.Add(new BuildingViewModel(building, BoardInfo.Layout));
             }
-            foreach (var player in playingPlayers)
+            foreach (var player in gameModel.Players)
             {
-                player.Player = new PlayerModel(playingPlayers.IndexOf(player));
-                Players.Add(player);
+                var playerViewModel = allPlayers.FirstOrDefault( p => p.Id == player.Id);
+                if (playerViewModel is null)
+                {
+                    throw new Exception($"Player {player.Id} not found");
+                }
+                playerViewModel.Player = player;
+                Players.Add(playerViewModel);
             }
 
             foreach (var road in gameModel.Roads)
@@ -57,6 +68,7 @@ namespace Catan3.Models
             SetPipCount();
             this.BoardInfo.Layout.PropertyChanged += Layout_PropertyChanged;
             UpdateLayout();
+           
         }
 
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -162,13 +174,13 @@ namespace Catan3.Models
             var tileTop = BoardInfo.Layout.Top(key);
             var pointyDictionary = BoardInfo.Layout.PointyHexPoints.PointyTopListToDictionary();
             var top = pointyDictionary[HexSide.Top].Y;
-            BoardInfo.Layout.TileYOffset = Math.Abs(tileTop) + Math.Abs(top) + harborSize;
+            BoardInfo.Layout.TileYOffset = Math.Round(Math.Abs(tileTop) + Math.Abs(top) + harborSize, 2);
 
             // get X offset
             var firstTile = Tiles.FirstColumn().First();
             // all of the Harbors will have the same X on the first column, so make one up assuming that one will be there.
             var harborTopLeft = HarborViewModel.GetLeftTop(BoardInfo.Layout, firstTile.Tile.TileKey, HexSide.BottomLeft);
-            BoardInfo.Layout.TileXOffset = Math.Abs(harborTopLeft.X);
+            BoardInfo.Layout.TileXOffset = Math.Abs(Math.Round(harborTopLeft.X));
             this.TraceMessage($"({BoardInfo.Layout.TileXOffset},{BoardInfo.Layout.TileYOffset})");
 
 

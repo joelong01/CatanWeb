@@ -7,7 +7,7 @@
     template file     = file://D:/GitHub/Catan3
     model file        = file://D:/GitHub/Catan3/Game/GameModel.model.json
     code gen version  = 5
-    model version     = 8
+    model version     = 10
 
     to update the generated model, execute the .\update_models.bat file, or run the
     GenerateModels.tt Text Template. Both of these depend on the ModelGenerator project
@@ -17,6 +17,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Catan3.Utility;
+using System.Collections.Generic;
 
 namespace Catan3.Models
 {
@@ -47,6 +48,18 @@ namespace Catan3.Models
              }
          }
 
+        private List<PlayerModel> _players;
+        public List<PlayerModel> Players
+         {
+            get => _players;
+            set
+            {
+                if (Equals(value, _players)) return;
+                _players = value;
+                OnPropertyChanged(nameof(Players));
+             }
+         }
+
         private ObservableCollection<TileModel> _tiles = [];
         public ObservableCollection<TileModel> Tiles
          {
@@ -68,18 +81,6 @@ namespace Catan3.Models
                 if (Equals(value, _buildings)) return;
                 _buildings = value;
                 OnPropertyChanged(nameof(Buildings));
-             }
-         }
-
-        private ObservableCollection<PlayerModel> _players = [];
-        public ObservableCollection<PlayerModel> Players
-         {
-            get => _players;
-            set
-            {
-                if (Equals(value, _players)) return;
-                _players = value;
-                OnPropertyChanged(nameof(Players));
              }
          }
 
@@ -120,10 +121,11 @@ namespace Catan3.Models
          }
 
 
-        public GameModel(CatanGame gametype, bool hassupplementalbuildphase)
+        public GameModel(CatanGame gametype, bool hassupplementalbuildphase, List<PlayerModel> players)
         {
             _gameType = gametype;
             _hasSupplementalBuildPhase = hassupplementalbuildphase;
+            _players = players;
         }
 
         protected virtual void OnPropertyChanged(string propertyName) =>

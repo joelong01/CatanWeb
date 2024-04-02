@@ -84,8 +84,8 @@ namespace Catan3.Utility
                 adjustedY += deltaY;
 
                 HexCache[(size, true)] = points;
-
-                points.Add(new Point(adjustedX, adjustedY));
+                var newPoint = new Point(Math.Round(adjustedX, 2), Math.Round(adjustedY, 2));
+                points.Add(newPoint);
             }
 
             return points;
@@ -132,7 +132,7 @@ namespace Catan3.Utility
                 double adjustedX = originalX + deltaX;
                 double adjustedY = originalY + deltaY;
 
-                points.Add(new Point(adjustedX, adjustedY));
+                points.Add(new Point(Math.Round(adjustedX, 2), Math.Round(adjustedY, 2)));
             }
 
             HexCache[(size, false)] = points;
@@ -148,7 +148,7 @@ namespace Catan3.Utility
 
         public static double Height(double size)
         {
-            return size * Math.Sqrt(3);
+            return Math.Round(size * Math.Sqrt(3), 2);
 
         }
 
@@ -161,7 +161,7 @@ namespace Catan3.Utility
         {
             // The width of a regular hexagon is equal to twice its side length.
             // This is because the hexagon can be divided into two equilateral triangles along its width.
-            return 2 * size;
+            return Math.Round(2 * size, 2);
         }
         /// <summary>
         /// Calculates the coordinates of the midpoint on the upper right side of a regular hexagon.
@@ -176,7 +176,7 @@ namespace Catan3.Utility
             // The y-coordinate is half the height of the equilateral triangle formed by the segment,
             // which is given by the sine of 60 degrees times the size.
             // These calculations assume the hexagon's orientation is such that one side is horizontal at the top.
-            return new Point(Math.Sqrt(3) / 2.0 * size, size / 2.0);
+            return new Point(Math.Round(Math.Sqrt(3) / 2.0 * size, 2), Math.Round(size / 2.0, 2));
         }
 
         /// <summary>
@@ -187,7 +187,7 @@ namespace Catan3.Utility
         /// the square root of 3, based on the geometric properties of a regular hexagon.</returns>
         public static double SizeFromHeight(double height)
         {
-            return height / Math.Sqrt(3);
+            return Math.Round(height / Math.Sqrt(3), 2);
         }
 
         public static HexCoordinates HexSubtract(HexCoordinates a, HexCoordinates b)
