@@ -103,7 +103,7 @@ namespace Catan3.Converters
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            string key = $"ResourceType.{value}";
+            string key = $"ResourceTileType.{value}";
             return ( ImageBrush )Application.Current.Resources[key];
         }
         public object ConvertBack(object value, Type targetType, object parameter, string language)

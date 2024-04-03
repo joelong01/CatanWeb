@@ -1,4 +1,6 @@
 
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace Catan3.Models
@@ -11,6 +13,14 @@ namespace Catan3.Models
             _players = [];
             _gameType = CatanGame.Regular;
             _hasSupplementalBuildPhase = false;
+        }
+
+        public int StarCount(ResourceTileType tileType)
+        {
+            var total = this.Tiles.Where(tile => tile.ResourceTileType == tileType)
+                .Sum(tile => tile.Stars);
+
+            return total;
         }
     }
 }

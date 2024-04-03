@@ -1,0 +1,24 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:u="using:Catan3.Utility">
+
+    <Style TargetType="u:FlipperCtrl">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="u:FlipperCtrl">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                        <Grid>
+                            <ContentPresenter x:Name="BackPresenter"
+                                    Content="{TemplateBinding Back}" />
+
+                            <ContentPresenter x:Name="FrontPresenter"
+                                              Content="{TemplateBinding Front}"/>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

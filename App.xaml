@@ -7,38 +7,39 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <!-- Other merged dictionaries here -->
+                <ResourceDictionary Source="Themes/Generic.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <FontFamily x:Key="CatanFont">ms-appx:///Assets/Fonts/Catan.ttf#Catan</FontFamily>
 
-            <ImageBrush x:Key="bmWater" ImageSource="Assets/water.png" Stretch="UniformToFill" />
-            <ImageBrush x:Key="ResourceType.Back"
+            <ImageBrush x:Key="bmWater" ImageSource="Assets/water.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceTileType.Back"
                     ImageSource="Assets/Tiles/back.jpg" Stretch="UniformToFill" />
-            <ImageBrush x:Key="ResourceType.Sea"
+            <ImageBrush x:Key="ResourceTileType.Sea"
                     ImageSource="Assets/Tiles/back.jpg" Stretch="UniformToFill" />
-            <ImageBrush x:Key="ResourceType.Brick"
+            <ImageBrush x:Key="ResourceTileType.Brick"
                     ImageSource="Assets/Tiles/brick.png" Stretch="UniformToFill" />
-            <ImageBrush x:Key="ResourceType.GoldMine"
+            <ImageBrush x:Key="ResourceTileType.GoldMine"
                     ImageSource="Assets/Tiles/goldMine.png"
                     Stretch="UniformToFill" />
-            <ImageBrush x:Key="ResourceType.Ore"
+            <ImageBrush x:Key="ResourceTileType.Ore"
                     ImageSource="Assets/Tiles/ore.png" Stretch="UniformToFill" />
-            <ImageBrush x:Key="ResourceType.Sheep"
+            <ImageBrush x:Key="ResourceTileType.Sheep"
                     ImageSource="Assets/Tiles/sheep.png" Stretch="UniformToFill" />
-            <ImageBrush x:Key="ResourceType.Wheat"
+            <ImageBrush x:Key="ResourceTileType.Wheat"
                     ImageSource="Assets/Tiles/wheat.png" Stretch="UniformToFill" />
-            <ImageBrush x:Key="ResourceType.Wood"
+            <ImageBrush x:Key="ResourceTileType.Wood"
                     ImageSource="Assets/Tiles/wood.png" Stretch="UniformToFill" />
-            <ImageBrush x:Key="ResourceType.Desert"
+            <ImageBrush x:Key="ResourceTileType.Desert"
                     ImageSource="Assets/Tiles/desert.png"
                     Stretch="UniformToFill" />
-            <ImageBrush x:Key="ResourceType.Invasion"
+            <ImageBrush x:Key="ResourceTileType.Invasion"
                     ImageSource="Assets/Tiles/gpt invasion.png"
                     Stretch="UniformToFill" />
             <ImageBrush x:Key="bmMaple" ImageSource="Assets/maple.jpg"
                     Stretch="UniformToFill" />
 
-            <!--  ResourceType HarborType - should be one per enum value  -->
+            <!--  ResourceTileType HarborType - should be one per enum value  -->
             <ImageBrush x:Key="HarborType.Brick"
                     ImageSource="Assets/Harbors/2 for 1 brick.png"
                     Stretch="UniformToFill" />
@@ -59,6 +60,64 @@
                     Stretch="UniformToFill" />
             <ImageBrush x:Key="HarborType.None" ImageSource="Assets/water.png"
                     Stretch="UniformToFill" />
+
+            <!--Resource Cards -->
+            <ImageBrush x:Key="ResourceCard.None"
+                    ImageSource="Assets/ResourceCards/back.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Back"
+                    ImageSource="Assets/ResourceCards/back.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Brick"
+                    ImageSource="Assets/ResourceCards/brick.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.GoldMine"
+                    ImageSource="Assets/ResourceCards/goldMine.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Ore"
+                    ImageSource="Assets/ResourceCards/ore.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Sheep"
+                    ImageSource="Assets/ResourceCards/sheep.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Wheat"
+                    ImageSource="Assets/ResourceCards/wheat.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Wood"
+                    ImageSource="Assets/ResourceCards/wood.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Desert"
+                    ImageSource="Assets/Tiles/desert.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Sea" ImageSource="Assets/water.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Cloth"
+                    ImageSource="Assets/ResourceCards/cloth.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Paper"
+                    ImageSource="Assets/ResourceCards/paper.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Coin"
+                    ImageSource="Assets/ResourceCards/coin.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Trade"
+                    ImageSource="Assets/ResourceCards/trade.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Politics"
+                    ImageSource="Assets/ResourceCards/politics.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.Science"
+                    ImageSource="Assets/ResourceCards/science.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.AnyDevCard"
+                    ImageSource="Assets/ResourceCards/anydevcard.png"
+                    Stretch="UniformToFill" />
+            <ImageBrush x:Key="ResourceCard.VictoryPoint"
+                    ImageSource="Assets/ResourceCards/victorypoint.png"
+                    Stretch="UniformToFill" />
+
+            <ImageBrush x:Key="ResourceCard.Invasion"
+                    ImageSource="Assets\Tiles\gpt invasion.png" Stretch="Fill" />
 
             <converters:ResourceTypeToImageBrush
                     x:Key="ResourceTypeToImageBrush" />

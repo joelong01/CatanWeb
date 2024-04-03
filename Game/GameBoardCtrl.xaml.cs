@@ -101,7 +101,7 @@ namespace Catan3.Controls
 
         private static TileViewModel DesertTile(GameViewModel gameViewModel)
         {
-            return gameViewModel.Tiles.Where(t => t.Tile.ResourceType == ResourceType.Desert).ToList().First();
+            return gameViewModel.Tiles.Where(t => t.Tile.ResourceTileType == ResourceTileType.Desert).ToList().First();
         }
 
 

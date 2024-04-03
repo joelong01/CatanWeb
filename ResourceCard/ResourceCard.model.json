@@ -1,0 +1,54 @@
+﻿[
+    {
+
+        "ModelVersion": "2",
+        "ClassName": "ResourceCardModel",
+        "Namespace": "Catan3.Models",
+        "Path": ".",
+        "Usings": [
+            "System.ComponentModel",
+            "Microsoft.UI.Xaml"
+        ],
+        "NormalProperties": [
+            {
+                "Name": "ResourceType",
+                "Type": "ResourceCardType",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "ResourceCardType.None",
+                "IsLiteral": false
+            },
+            {
+                "Name": "Count",
+                "Type": "int",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "0",
+                "IsLiteral": false
+            },
+            {
+                "Name": "Orientation",
+                "Type": "CatanOrientation",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "CatanOrientation.FaceDown",
+                "IsLiteral": false
+            },
+            {
+                "Name": "CountVisibility",
+                "Type": "Visibility",
+                "ReadOnly": false,
+                "AdditionalNotifications": [],
+                "Nullable": false,
+                "Default": "Visibility.Visible",
+                "IsLiteral": false
+            }
+        ],
+        "ConstructedProperties": []
+
+    }
+
+]

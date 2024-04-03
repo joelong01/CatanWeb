@@ -34,15 +34,15 @@ namespace Catan3.Models
              }
          }
 
-        private ResourceType _resourceType = ResourceType.None;
-        public ResourceType ResourceType
+        private ResourceTileType _resourceTileType = ResourceTileType.None;
+        public ResourceTileType ResourceTileType
          {
-            get => _resourceType;
+            get => _resourceTileType;
             set
             {
-                if (Equals(value, _resourceType)) return;
-                _resourceType = value;
-                OnPropertyChanged(nameof(ResourceType));
+                if (Equals(value, _resourceTileType)) return;
+                _resourceTileType = value;
+                OnPropertyChanged(nameof(ResourceTileType));
              }
          }
 
@@ -55,6 +55,7 @@ namespace Catan3.Models
                 if (Equals(value, _number)) return;
                 _number = value;
                 OnPropertyChanged(nameof(Number));
+                OnPropertyChanged(nameof(Stars));
              }
          }
 

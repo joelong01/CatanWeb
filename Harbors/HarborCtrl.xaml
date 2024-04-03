@@ -24,7 +24,15 @@
             <Polygon Points="{x:Bind ViewModel.HarborPoints, Mode=OneWay}"
                     Canvas.ZIndex="-1" IsHitTestVisible="False"
                     Fill="{StaticResource bmWater}" StrokeThickness="0" />
-
+            
+            <Ellipse Name="Ellipse_Back"
+                    Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
+                    Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
+                    Fill="{x:Bind Bind_HarborImage(ViewModel.Harbor.HarborType), Mode=OneWay}">
+                <Ellipse.Projection>
+                    <PlaneProjection x:Name="PP_Back" RotationY="-90" />
+                </Ellipse.Projection>
+            </Ellipse>
             <Ellipse Name="Ellipse_Front"
                     Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
                     Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
@@ -33,15 +41,6 @@
                     <PlaneProjection x:Name="PP_Front" RotationY="0" />
                 </Ellipse.Projection>
 
-            </Ellipse>
-
-            <Ellipse Name="Ellipse_Back"
-                    Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
-                    Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
-                    Fill="{x:Bind Bind_HarborImage(ViewModel.Harbor.HarborType), Mode=OneWay}">
-                <Ellipse.Projection>
-                    <PlaneProjection x:Name="PP_Back" RotationY="-90" />
-                </Ellipse.Projection>
             </Ellipse>
 
         </Canvas>

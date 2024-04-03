@@ -21,19 +21,19 @@
                 "IsLiteral": false
             },
             {
-                "Name": "ResourceType",
-                "Type": "ResourceType",
+                "Name": "ResourceTileType",
+                "Type": "ResourceTileType",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],
                 "Nullable": false,
-                "Default": "ResourceType.None",
+                "Default": "ResourceTileType.None",
                 "IsLiteral": false
             },
             {
                 "Name": "Number",
                 "Type": "int",
                 "ReadOnly": false,
-                "AdditionalNotifications": [],
+                "AdditionalNotifications": ["Stars"],
                 "Nullable": false,
                 "Default": "0",
                 "IsLiteral": false

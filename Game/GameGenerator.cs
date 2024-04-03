@@ -34,7 +34,7 @@ namespace Catan3.Models
             {
                 var tile = new TileModel()
                 {
-                    ResourceType = boardInfo.Resources[i],
+                    ResourceTileType = boardInfo.Resources[i],
                     Number = boardInfo.Numbers[i],
                     TileKey = boardInfo.TileKeys[i]
                 };
@@ -77,7 +77,7 @@ namespace Catan3.Models
 
             game.Shuffle();
 
-            game.Robber.Coordinates = game.Tiles.TilesWithResource(ResourceType.Desert)[0].TileKey;
+            game.Robber.Coordinates = game.Tiles.TilesWithResource(ResourceTileType.Desert)[0].TileKey;
             return game;
         }
         /// <summary>
@@ -98,17 +98,29 @@ namespace Catan3.Models
                     int index = random.Next(0, count);
                     var x = game.Tiles[index];
                     var y = game.Tiles[i];
+
+                    var xR = x.ResourceTileType;
+                    var yR = y.ResourceTileType;
+            
+                    x.ResourceTileType = yR;
+                    y.ResourceTileType = xR;
+       
+                }
+
+                for (int i = 0; i < count; i++)
+                {
+                    int index = random.Next(0, count);
+                    var x = game.Tiles[index];
+                    var y = game.Tiles[i];
                     var xN = x.Number;
                     var yN = y.Number;
-                    var xR = x.ResourceType;
-                    var yR = y.ResourceType;
+              
                     x.Number = yN;
-                    x.ResourceType = yR;
-                    y.ResourceType = xR;
+          
                     y.Number = xN;
                 }
                 var tilesWithSeven = game.Tiles.TilesWithNumber(7);
-                var desertTiles = game.Tiles.TilesWithResource(ResourceType.Desert);
+                var desertTiles = game.Tiles.TilesWithResource(ResourceTileType.Desert);
                 Debug.Assert(tilesWithSeven.Count == desertTiles.Count);
                 // if any of the deserts have a non-7 number, swap with the tile that has a 7
                 for (int i = 0; i < tilesWithSeven.Count; i++)

@@ -9,6 +9,17 @@
         mc:Ignorable="d" RightTapped="OnRightButtonTapped" KeyUp="OnKeyUp"
         xmlns:c="using:Catan3.Controls" Background="DarkGray"
         xmlns:m="clr-namespace:Catan3.Models">
+    <Page.Resources>
+        <Style TargetType="Rectangle" x:Key="RECT_ResourceCard">
+
+            <Setter Property="Width" Value="67" />
+            <Setter Property="Height" Value="100" />
+            <Setter Property="Stretch" Value="Fill" />
+            <Setter Property="RadiusX" Value="5" />
+            <Setter Property="RadiusY" Value="5" />
+            <Setter Property="Margin" Value="1" />
+        </Style>
+    </Page.Resources>
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
             Background="DarkGray">
         <Grid.ColumnDefinitions>
@@ -120,10 +131,11 @@
         </ScrollViewer>
         <!-- GridSplitter for adjusting the size between the first and second columns -->
 
-        <Border BorderBrush="Blue" BorderThickness="0" Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Top"
+        <Border BorderBrush="Blue" BorderThickness="0" Grid.Column="2"
+                HorizontalAlignment="Left" VerticalAlignment="Top"
                 Grid.ColumnSpan="1">
             <Viewbox Stretch="Uniform" Margin="2">
-                <c:GameBoardCtrl 
+                <c:GameBoardCtrl
                         GameViewModel="{x:Bind GameViewModel, Mode=OneWay}"
                         BuildingClicked="Building_Clicked"
                         BuildingMouseEnter="Building_MouseEnter"
@@ -134,6 +146,9 @@
                         TileRightMouseClicked="Tile_RightClicked" />
             </Viewbox>
         </Border>
+
+        <c:BoardMeasurementCtrl Grid.Column="4" Height="200" Background="Green" ViewModel="{x:Bind GameViewModel.GameModel, Mode=OneWay}" />
+
         <toolkit:GridSplitter Grid.Column="1" Width="5"
                 HorizontalAlignment="Stretch" Background="Gray">
             <toolkit:GridSplitter.RenderTransform>

@@ -19,8 +19,12 @@
 		<None Remove="Controls\GameBoardCtrl.xaml" />
 		<None Remove="Controls\RoadCtrl.xaml" />
 		<None Remove="Controls\TileCtrl.xaml" />
+		<None Remove="FlipperCtrl.xaml" />
 		<None Remove="Harbors\HarborCtrl.xaml" />
 		<None Remove="MainPage.xaml" />
+		<None Remove="ResourceCard\BoardMeasurementCtrl.xaml" />
+		<None Remove="ResourceCard\ResourceCardCtrl.xaml" />
+		<None Remove="Themes\Generic.xaml" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -53,6 +57,9 @@
 	  <Page Update="Harbors\HarborCtrl.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
+	  <Page Update="FlipperCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	  <None Update="GenerateModels.tt">
 	    <Generator>TextTemplatingFileGenerator</Generator>
 	    <LastGenOutput>GenerateModels.txt</LastGenOutput>
@@ -66,6 +73,15 @@
 	    <Generator>TextTemplatingFileGenerator</Generator>
 	    <LastGenOutput>models.cs</LastGenOutput>
 	  </None>
+	  <Page Update="Themes\Generic.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="ResourceCard\BoardMeasurementCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="ResourceCard\ResourceCardCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	</ItemGroup>
 	<ItemGroup>
 	  <Page Update="Controls\TileCtrl.xaml">

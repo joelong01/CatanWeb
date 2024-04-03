@@ -65,7 +65,7 @@ namespace Catan3.Models
                 Harbors.Add(new HarborViewModel(harbor, BoardInfo.Layout));
             }
             Robber = new RobberViewModel(gameModel.Robber);
-            SetPipCount();
+            SetStarCount();
             this.BoardInfo.Layout.PropertyChanged += Layout_PropertyChanged;
             UpdateLayout();
            
@@ -96,7 +96,7 @@ namespace Catan3.Models
 
         }
 
-        private void SetPipCount()
+        private void SetStarCount()
         {
             foreach (var building in Buildings)
             {
@@ -181,7 +181,7 @@ namespace Catan3.Models
             // all of the Harbors will have the same X on the first column, so make one up assuming that one will be there.
             var harborTopLeft = HarborViewModel.GetLeftTop(BoardInfo.Layout, firstTile.Tile.TileKey, HexSide.BottomLeft);
             BoardInfo.Layout.TileXOffset = Math.Abs(Math.Round(harborTopLeft.X));
-            this.TraceMessage($"({BoardInfo.Layout.TileXOffset},{BoardInfo.Layout.TileYOffset})");
+           // this.TraceMessage($"({BoardInfo.Layout.TileXOffset},{BoardInfo.Layout.TileYOffset})");
 
 
 
@@ -227,6 +227,10 @@ namespace Catan3.Models
             }
 
         }
+
+        
+
+       
 
     }
 

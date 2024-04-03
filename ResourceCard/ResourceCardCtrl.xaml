@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="Catan3.Controls.ResourceCardCtrl"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:u="using:Catan3.Utility"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style TargetType="Grid" x:Key="Grid_ResourceCard">
+
+            <Setter Property="Width" Value="67" />
+            <Setter Property="Height" Value="100" />
+
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="CornerRadius" Value="5" />
+        </Style>
+    </UserControl.Resources>
+    <u:FlipperCtrl Name="LayoutRoot" Orientation="{x:Bind ViewModel.Orientation, Mode=OneWay}">
+        <u:FlipperCtrl.Back>
+            <Grid x:Name="GRID_Back"
+                    Background="{StaticResource ResourceCard.Back}"
+                    Style="{StaticResource Grid_ResourceCard}">
+                <TextBlock Text="Back" FontSize="20" />
+            </Grid>
+        </u:FlipperCtrl.Back>
+        <u:FlipperCtrl.Front>
+            <Grid x:Name="GRID_Front"
+                    Background="{x:Bind BIND_FrontImage(ViewModel.ResourceType), Mode=OneWay}"
+                    Style="{StaticResource Grid_ResourceCard}">
+               <Viewbox Stretch="Uniform" Height="20"
+                        HorizontalAlignment="Center" VerticalAlignment="Bottom">
+                    <Grid Background="Black">
+                        <TextBlock Text="{x:Bind ViewModel.Count, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.CountVisibility, Mode=OneWay}" />
+                    </Grid>
+                </Viewbox>
+            </Grid>
+        </u:FlipperCtrl.Front>
+    </u:FlipperCtrl>
+</UserControl>

@@ -74,9 +74,9 @@ namespace Catan3.Models
         /// <param name="collection"></param>
         /// <param name="number"></param>
         /// <returns></returns>
-        public static List<TileModel> TilesWithResource(this IEnumerable<TileModel> collection, ResourceType resource)
+        public static List<TileModel> TilesWithResource(this IEnumerable<TileModel> collection, ResourceTileType resource)
         {
-            return collection.Where(t => t.ResourceType == resource).ToList();
+            return collection.Where(t => t.ResourceTileType == resource).ToList();
         }
         /// <summary>
         ///     returns all tiles with the specified number

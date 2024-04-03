@@ -1,13 +1,18 @@
 ﻿namespace Catan3.Models
 {
-    public enum ResourceType
+    public enum ResourceTileType
+    {
+        Sheep, Wood, Ore, Wheat, Brick, GoldMine, Desert,
+        Back, None, Sea,
+
+    };
+
+    public enum ResourceCardType
     {
         Sheep, Wood, Ore, Wheat, Brick, GoldMine, Desert,
         Back, None, Sea,
         Coin, Cloth, Paper, Politics, Trade, Science, AnyDevCard, VictoryPoint, Invasion
     };
-   
-
     public enum BuildingState
     {
         Empty,
@@ -17,7 +22,7 @@
         Knight,
     }
     public enum CatanGame { Regular, Expansion }
-   
+
     public enum RoadState { Unowned, Road, Ship };
 
     public enum HarborType { Sheep, Wood, Ore, Wheat, Brick, ThreeForOne, None };
