@@ -2,13 +2,46 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using Catan3.Utility;
+using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 namespace Catan3.Models
 {
-    public partial class RoadViewModel : INotifyPropertyChanged
+    public partial class RoadViewModel : ObservableObject
     {
+        [ObservableProperty]
+        private RoadModel _road;
 
+        [ObservableProperty]
+        private BoardLayout _layout;
+
+        [ObservableProperty]
+        private PlayerViewModel? _owner;
+
+        [ObservableProperty]
+        private Brush _background = BrushCache.GetSolidColorBrush(Colors.Transparent);
+
+        [ObservableProperty]
+        private Brush _foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(RoadPolygon))]
+        private double _left;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(RoadPolygon))]
+        private double _top;
+
+        [ObservableProperty]
+        private double _index;
+
+        public RoadViewModel(RoadModel road, BoardLayout layout)
+        {
+            _road = road;
+            _layout = layout;
+            Init();
+        }
         public void Init()
         {
             if (Layout is not null && Layout is BoardLayout rbl)
@@ -31,28 +64,12 @@ namespace Catan3.Models
         private void UpdateLayout()
         {
 
-            Top = GetTop();
-            Left = GetLeft();
+            Top = Layout.Top(Road.RoadKey.TileKey);
+            Left = Layout.Left(Road.RoadKey.TileKey);
+
             OnPropertyChanged(nameof(RoadPolygon));
-
         }
 
-
-        private double GetLeft()
-        {
-
-
-            var left = Layout.Left(Road.RoadKey.TileKey);
-
-            return left;
-        }
-        private double GetTop()
-        {
-            if (Layout is null) return 0.0;
-            var top = Layout.Top(Road.RoadKey.TileKey);
-
-            return top;
-        }
         
 
         /// <summary>

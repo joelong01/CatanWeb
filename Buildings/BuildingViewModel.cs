@@ -1,20 +1,50 @@
 ﻿using System.ComponentModel;
 using Catan3.Utility;
+using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI;
 
 namespace Catan3.Models
 {
-    public partial class BuildingViewModel
+    public partial class BuildingViewModel : ObservableObject
     {
-        /// <summary>
-        ///     This partial class gets called by the template generated BuildingViewModel during its ctor in order
-        ///     to subscribe to Layoutchanges to update the calculated fiels.
-        /// </summary>
+        [ObservableProperty]
+        private BuildingModel _building;
+
+        [ObservableProperty]
+        private BoardLayout _layout;
+
+        [ObservableProperty]
+        private double _left;
+
+        [ObservableProperty]
+        private double _top;
+
+        [ObservableProperty]
+        private int _stars = 0;
+
+        [ObservableProperty]
+        private Brush? _background = BrushCache.GetSolidColorBrush(Colors.Transparent);
+
+        [ObservableProperty]
+        private Brush? _foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
+
+
+
+        public BuildingViewModel(BuildingModel building, BoardLayout layout)
+        {
+            _building = building;
+            _layout = layout;
+            Init();
+        }
+
+       
         void Init()
         {
             if (Layout is not null && Layout is BoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
-                Layout = Layout;
+                Layout = rbl;
             }
             else
             {

@@ -9,15 +9,56 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.Foundation;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 
 namespace Catan3.Models
 {
 
-    public partial class GameViewModel
+    public partial class GameViewModel : ObservableObject
     {
-      
-        public GameModel? GameModel { get; set; }
+        [ObservableProperty]
+        private IBoardInfo? _boardInfo;
+
+        [ObservableProperty]
+        private RobberViewModel _robber = new(new());
+
+        [ObservableProperty]
+        private string _name = "Nameless";
+
+        [ObservableProperty]
+        private bool _isKnightsAndRobbers = false;
+
+        [ObservableProperty]
+        private HouseRules _houseRules = new();
+
+        [ObservableProperty]
+        private PlayerViewModel? _currentPlayer;
+
+        [ObservableProperty]
+        private ObservableCollection<TileViewModel> _tiles = [];
+
+        [ObservableProperty]
+        private ObservableCollection<BuildingViewModel> _buildings = [];
+
+        [ObservableProperty]
+        private ObservableCollection<PlayerViewModel> _players = [];
+
+        [ObservableProperty]
+        private ObservableCollection<RoadViewModel> _roads = [];
+
+        [ObservableProperty]
+        private ObservableCollection<HarborViewModel> _harbors = [];
+
+        [ObservableProperty]
+        public GameModel? _gameModel;
+
+        public GameViewModel(IBoardInfo? boardinfo)
+        {
+            BoardInfo = boardinfo;
+        }
+
+       
 
         public GameViewModel(GameModel gameModel, IEnumerable<PlayerViewModel> allPlayers)
         {
@@ -86,13 +127,13 @@ namespace Catan3.Models
             {
                 // these are the properties that the UpdateLayout depends on
 
-                Debug.WriteLine($"Updating Layout because of PropertyChanged {e.PropertyName}");
+                
 
                 UpdateLayout();
                 return;
             }
 
-            Debug.WriteLine($"Skipping because of PropertyChanged {e.PropertyName}");
+        
 
         }
 

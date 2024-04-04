@@ -1,14 +1,46 @@
 
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.Json.Serialization;
 using Catan3.Utility;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Models
 {
-    public partial class GameModel 
+    public partial class GameModel : ObservableObject
     {
+        [ObservableProperty]
+        private CatanGame _gameType = CatanGame.Regular;
+
+        [ObservableProperty]
+        private bool _hasSupplementalBuildPhase = false;
+
+        [ObservableProperty]
+        private List<PlayerModel> _players;
+
+        [ObservableProperty]
+        private ObservableCollection<TileModel> _tiles = [];
+
+        [ObservableProperty]
+        private ObservableCollection<BuildingModel> _buildings = [];
+
+        [ObservableProperty]
+        private ObservableCollection<RoadModel> _roads = [];
+
+        [ObservableProperty]
+        private ObservableCollection<HarborModel> _harbors = [];
+
+        [ObservableProperty]
+        private RobberModel _robber = new();
+
+        public GameModel(CatanGame gametype, bool hassupplementalbuildphase, List<PlayerModel> players)
+        {
+            GameType = gametype;
+            HasSupplementalBuildPhase = hassupplementalbuildphase;
+            Players = players;
+        }
         [JsonConstructor]
         public GameModel()
         {

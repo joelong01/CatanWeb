@@ -1,10 +1,12 @@
 ﻿
 
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace Catan3.Models
 {
-    public partial class RobberViewModel
+    public partial class RobberViewModel(RobberModel robberModel) : ObservableObject
     {
-        //
-        //  in case we need to add anything here...
+        [ObservableProperty]
+        private RobberModel _robberModel = robberModel;
     }
 }

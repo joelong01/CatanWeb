@@ -1,17 +1,25 @@
 ﻿using System;
-using System.ComponentModel;
+
 using System.Text.Json.Serialization;
 using Catan3.Utility;
+using CommunityToolkit.Mvvm.ComponentModel;
 namespace Catan3.Models
 {
-    public partial class RoadKey (HexCoordinates tileKey, HexSide position) : INotifyPropertyChanged
+    public partial class RoadKey(HexCoordinates tileKey, HexSide side) : ObservableObject
     {
+        [ObservableProperty]
+        private HexCoordinates _tileKey = tileKey;
+
+        [ObservableProperty]
+        private HexSide _hexSide = side;
         [JsonConstructor]
-       public RoadKey() : this (HexCoordinates.Default, HexSide.Bottom)
+        public RoadKey() : this(HexCoordinates.Default, HexSide.Bottom)
         {
-           
+            {
+
+            }
         }
-       
+
         public override string ToString()
         {
             return String.Format($"{TileKey}-{HexSide}");

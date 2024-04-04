@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text.Json.Serialization;
 using Catan3.Models;
+using CommunityToolkit.Mvvm.ComponentModel;
 using Windows.Foundation;
 namespace Catan3.Utility
 {
@@ -18,8 +19,17 @@ namespace Catan3.Utility
         NorthWest
     }
 
-    public partial class HexCoordinates(int q, int r, int s) : IComparable<HexCoordinates>
+    public partial class HexCoordinates(int q, int r, int s) : ObservableObject, IComparable<HexCoordinates>
     {
+        [ObservableProperty]
+        private int _q = q;
+
+        [ObservableProperty]
+        private int _r = r;
+
+        [ObservableProperty]
+        private int _s = s;
+
         [JsonIgnore]
         public static
                 Dictionary<Direction, HexCoordinates> Directions

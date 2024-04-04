@@ -7,10 +7,12 @@ namespace Catan3.Models
     /// </summary>
     public partial class TileViewModel
     {
-        /// <summary>
-        ///     Init is called from the TD4 template generated TileViewModel.  We register for update notification so that we 
-        ///     can update the Tile geormetry when any of the base measurements change.
-        /// </summary>
+        public TileViewModel(TileModel tile, BoardLayout? layout)
+        {
+            _tile = tile;
+            _layout = layout;
+            Init();
+        }
 
         public void Init()
         {
@@ -37,11 +39,11 @@ namespace Catan3.Models
                     OnPropertyChanged(nameof(Layout.OuterHexPoints)); // Notify the UI to reevaluate this path
                     OnPropertyChanged(nameof(Layout.ControlHeight));
                     OnPropertyChanged(nameof(Layout.ControlWidth));
-                    
+
                 }
             }
         }
- private void UpdateLayout()
+        private void UpdateLayout()
         {
             if (Layout != null)
             {

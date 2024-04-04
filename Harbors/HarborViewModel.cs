@@ -4,13 +4,37 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Catan3.Utility;
+using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 
 namespace Catan3.Models
 {
-    public partial class HarborViewModel
+    public partial class HarborViewModel : ObservableObject
     {
+        [ObservableProperty]
+        private HarborModel _harbor;
+
+        [ObservableProperty]
+        private BoardLayout _layout;
+
+        [ObservableProperty]
+        private double _left;
+
+        [ObservableProperty]
+        private double _top;
+
+        [ObservableProperty]
+        private CatanOrientation _orientation = CatanOrientation.FaceUp;
+
+        public HarborViewModel(HarborModel harbor, BoardLayout layout)
+        {
+            Harbor = harbor;
+            Layout = layout;
+            Init();
+        }
+
 
         public static HarborViewModel Default => new HarborViewModel(HarborModel.Default, BoardLayout.Default);
 
@@ -19,11 +43,12 @@ namespace Catan3.Models
             if (Layout is not null && Layout is BoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
-                Layout = Layout;
+              
             }
             else
             {
                 Layout = BoardLayout.Default;
+                Layout.PropertyChanged += Layout_PropertyChanged;
             }
             UpdateLayout();
         }
@@ -96,14 +121,14 @@ namespace Catan3.Models
                     throw new ArgumentOutOfRangeException(nameof(Harbor.Side), $"Invalid hex side: {side}");
             }
             return new Point(left, top);
-           
+
         }
 
         public PointCollection HarborPoints
         {
             get
             {
-                PointCollection points = new PointCollection();
+                PointCollection points = [];
                 double size = Layout.BuildingSize; // Assuming this is the diameter of the harbor circle
                 var flatTopDictionary = Layout.OuterHexPoints.FlatTopListToDictionary();
                 var tileTop = Layout.Top(Harbor.TileCoordinates);
