@@ -18,7 +18,7 @@
         Empty,
         Settlement,
         City,
-        Pips,
+        Stars,
         Knight,
     }
     public enum CatanGame { Regular, Expansion }

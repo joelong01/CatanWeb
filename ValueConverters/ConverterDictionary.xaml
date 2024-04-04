@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="using:Catan3.Converters">
+
+    <converters:ResourceTypeToImageBrush x:Key="ResourceTypeToImageBrush" />
+    <converters:NumberToPipsVisibility x:Key="NumberToPipsVisibility" />
+    <converters:NumberToVisibilityConverter x:Key="NumberToVisibilityConverter" />
+    <converters:NumberToPipsForegroundConverter
+            x:Key="NumberToPipsForegroundConverter" />
+    <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    <converters:MetroToScaleConverter x:Key="MetroToScaleConverter" />
+    <converters:ScaleConverter x:Key="ScaleConverter" />
+    <converters:BuildingPositionToFillConverter
+            x:Key="BuildingPositionToFillConverter" />
+
+    <converters:NullToDefaultValueConverter x:Key="NullToDefaultValueConverter" />
+
+    <converters:DoubleToThickness x:Key="DoubleToThickness" />
+
+</ResourceDictionary>

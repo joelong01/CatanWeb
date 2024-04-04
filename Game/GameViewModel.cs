@@ -100,7 +100,7 @@ namespace Catan3.Models
         {
             foreach (var building in Buildings)
             {
-                building.Pips = TilesForBuildings(building.Building.BuildingKey).Pips();
+                building.Stars = TilesForBuildings(building.Building.BuildingKey).Stars();
             }
         }
         /// <summary>
@@ -110,22 +110,8 @@ namespace Catan3.Models
         /// <returns></returns>
         public List<TileModel> TilesForBuildings(BuildingKey key)
         {
-            List<TileModel> tiles = [];
-            // get the tile
-            var tileModel = Tiles.TileFromCoords(key.HexCoordinates)?.Tile;
-            Debug.Assert(tileModel is not null, "Bad HexCoordinates");
-            tiles.Add(tileModel);
-            // get the aliases
-            var aliases = key.Aliases();
-            foreach ((HexPosition position, Direction direction) in aliases)
-            {
-                var neighbor = Tiles.TileFromCoords(tileModel.TileKey.GetAdjacentTile(direction));
-                if (neighbor is not null)
-                {
-                    tiles.Add(neighbor.Tile);
-                }
-            }
-            return tiles;
+            Debug.Assert(GameModel is not null);
+            return GameModel.TilesForBuildings(key);
         }
 
         private ObservableCollection<TileViewModel> CreateAndSortTileViewModelList(ObservableCollection<TileModel> tiles)

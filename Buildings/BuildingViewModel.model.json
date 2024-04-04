@@ -42,7 +42,7 @@
                 "Nullable": false
             },
             {
-                "Name": "Pips",
+                "Name": "Stars",
                 "Type": "int",
                 "ReadOnly": false,
                 "AdditionalNotifications": [],

@@ -32,7 +32,7 @@ namespace Catan3.Controls
 
         private ImageBrush BIND_FrontImage(ResourceCardType resourceCardType)
         {
-            this.TraceMessage($"Resource: {resourceCardType}");
+           // this.TraceMessage($"Resource: {resourceCardType}");
             string key = $"ResourceCard.{resourceCardType}";
             var result =  ( ImageBrush )Application.Current.Resources[key];
             Debug.Assert(result is not null);

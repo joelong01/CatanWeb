@@ -71,15 +71,15 @@ namespace Catan3.Models
              }
          }
 
-        private int _pips = 0;
-        public int Pips
+        private int _stars = 0;
+        public int Stars
          {
-            get => _pips;
+            get => _stars;
             set
             {
-                if (Equals(value, _pips)) return;
-                _pips = value;
-                OnPropertyChanged(nameof(Pips));
+                if (Equals(value, _stars)) return;
+                _stars = value;
+                OnPropertyChanged(nameof(Stars));
              }
          }
 

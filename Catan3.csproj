@@ -25,6 +25,14 @@
 		<None Remove="ResourceCard\BoardMeasurementCtrl.xaml" />
 		<None Remove="ResourceCard\ResourceCardCtrl.xaml" />
 		<None Remove="Themes\Generic.xaml" />
+		<None Remove="Themes\ImageResources.xaml" />
+		<None Remove="Themes\StyleResourceDictionary.xaml" />
+		<None Remove="Themes\Styles.xaml" />
+		<None Remove="Tiles\CatanNumber.xaml" />
+		<None Remove="ValueConverters\ConverterDictionary.xaml" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Page Remove="Themes\Styles.xaml" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -73,6 +81,18 @@
 	    <Generator>TextTemplatingFileGenerator</Generator>
 	    <LastGenOutput>models.cs</LastGenOutput>
 	  </None>
+	  <Page Update="Tiles\CatanNumber.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="ValueConverters\ConverterDictionary.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Themes\ImageResources.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Themes\StyleResourceDictionary.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	  <Page Update="Themes\Generic.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>

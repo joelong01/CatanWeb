@@ -21,7 +21,6 @@
             <Grid x:Name="GRID_Back"
                     Background="{StaticResource ResourceCard.Back}"
                     Style="{StaticResource Grid_ResourceCard}">
-                <TextBlock Text="Back" FontSize="20" />
             </Grid>
         </u:FlipperCtrl.Back>
         <u:FlipperCtrl.Front>

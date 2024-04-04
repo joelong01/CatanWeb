@@ -31,19 +31,19 @@ namespace Catan3.Controls
 
             this.InitializeComponent();
         }
-        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(GameModel), typeof(BoardMeasurementCtrl), new PropertyMetadata(null, ViewModelChanged));
-        public GameModel ViewModel
+        public static readonly DependencyProperty GameModelProperty = DependencyProperty.Register("GameModel", typeof(GameModel), typeof(BoardMeasurementCtrl), new PropertyMetadata(null, GameModelChanged));
+        public GameModel GameModel
         {
-            get => ( GameModel )GetValue(ViewModelProperty);
-            set => SetValue(ViewModelProperty, value);
+            get => ( GameModel )GetValue(GameModelProperty);
+            set => SetValue(GameModelProperty, value);
         }
-        private static void ViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        private static void GameModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as BoardMeasurementCtrl;
             var depPropValue = (GameModel)e.NewValue;
-            depPropClass?.SetViewModel(depPropValue);
+            depPropClass?.SetGameModel(depPropValue);
         }
-        private void SetViewModel(GameModel value)
+        private void SetGameModel(GameModel value)
         {
             if (value is null) return;
             this.DataContext = value;
@@ -105,6 +105,18 @@ namespace Catan3.Controls
                     card.Orientation = CatanOrientation.FaceUp;
                 }
             }
+        }
+
+        public string BIND_StarCount(int stars, GameModel gameModel)
+        {
+            int count = 0;
+            foreach (var building in gameModel.Buildings)
+            {
+                var tiles = gameModel.TilesForBuildings(building.BuildingKey);
+                if (tiles.Stars() == stars) count++;
+
+            }
+            return count.ToString();
         }
     }
 }

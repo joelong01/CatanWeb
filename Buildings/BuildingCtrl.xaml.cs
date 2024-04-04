@@ -45,7 +45,7 @@ namespace Catan3.Controls
                 BuildingState.Empty => "",
                 BuildingState.Settlement => CatanFont.Gate,
                 BuildingState.City => CatanFont.City,
-                BuildingState.Pips => BuildingViewModel.Pips.ToString(),
+                BuildingState.Stars => BuildingViewModel.Stars.ToString(),
                 BuildingState.Knight => CatanFont.Knight,
                 _ => "",
             };

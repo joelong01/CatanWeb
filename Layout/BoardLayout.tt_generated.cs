@@ -7,7 +7,7 @@
     template file     = file://D:/GitHub/Catan3
     model file        = file://D:/GitHub/Catan3/Layout/BoardLayout.model.json
     code gen version  = 5
-    model version     = 9
+    model version     = 10
 
     to update the generated model, execute the .\update_models.bat file, or run the
     GenerateModels.tt Text Template. Both of these depend on the ModelGenerator project
@@ -98,7 +98,7 @@ namespace Catan3.Models
              }
          }
 
-        private double _innerHexStrokeThickness = 5.0;
+        private double _innerHexStrokeThickness = 16.0;
         public double InnerHexStrokeThickness
          {
             get => _innerHexStrokeThickness;
@@ -126,7 +126,7 @@ namespace Catan3.Models
              }
          }
 
-        private double _tileGap = 5;
+        private double _tileGap = 2;
         public double TileGap
          {
             get => _tileGap;

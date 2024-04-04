@@ -1,6 +1,6 @@
 ﻿[
     {
-        "ModelVersion": "9",
+        "ModelVersion": "10",
         "ClassName": "BoardLayout",
         "Namespace": "Catan3.Models",
         "Path": ".",
@@ -59,7 +59,7 @@
                 "ReadOnly": false,
                 "AdditionalNotifications": [ "InnerHexPoints", "InnerHexSize" ],
                 "Nullable": false,
-                "Default": "5.0"
+                "Default": "16.0"
             },
             {
                 "Name": "OuterHexStrokeThickness",
@@ -75,7 +75,7 @@
                 "ReadOnly": false,
                 "AdditionalNotifications": [ "InnerHexPoints", "InnerHexSize" ],
                 "Nullable": false,
-                "Default": "5"
+                "Default": "2"
             },
             {
                 "Name": "GameMargin",

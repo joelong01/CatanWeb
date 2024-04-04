@@ -5,26 +5,16 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:m="using:Catan3.Models"
+        xmlns:c="using:Catan3.Controls"
         d:DataContext="{d:DesignInstance Type=m:TileViewModel}" mc:Ignorable="d">
-    <UserControl.Resources>
-        <Style TargetType="TextBlock" x:Key="PipsStyle">
-            <Setter Property="Text" Value="" />
-            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
-            <Setter Property="FontSize" Value="10" />
-            <Setter Property="Foreground" Value="Black" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Margin" Value="0" />
-            <Setter Property="FontWeight" Value="Bold" />
-        </Style>
 
-    </UserControl.Resources>
     <Canvas Name="CANVAS_LayoutRoot"
             Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
             Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}">
         <Canvas Name="C_Back" Canvas.ZIndex="1"
                 Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
                 Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}">
-            <Polygon Stroke="PaleVioletRed"
+            <Polygon Stroke="{StaticResource bmCherry}"
                     StrokeThickness="{x:Bind TileViewModel.Layout.TileGap, Mode=OneWay}"
                     Points="{Binding Layout.OuterHexPoints, Mode=OneWay}"
                     Fill="{StaticResource bmWater}" />
@@ -39,7 +29,7 @@
             <Canvas.Projection>
                 <PlaneProjection RotationY="0" />
             </Canvas.Projection>
-            <Polygon Stroke="PaleVioletRed"
+            <Polygon Stroke="{StaticResource bmCherry}"
                     StrokeThickness="{x:Bind TileViewModel.Layout.TileGap, Mode=OneWay}"
                     Points="{x:Bind TileViewModel.Layout.OuterHexPoints, Mode=OneWay}"
                     Fill="{StaticResource bmMaple}" />
@@ -62,34 +52,9 @@
                         HorizontalAlignment="Center"
                         RenderTransformOrigin=".5 0"
                         Visibility="{x:Bind TileViewModel.Tile.Number, Mode=OneWay, Converter={StaticResource NumberToVisibilityConverter}}">
+                    <c:CatanNumber
+                            Number="{x:Bind TileViewModel.Tile.Number, Mode=OneWay}" />
 
-                    <Ellipse Fill="#FF2F6999" Stroke="White"
-                            StrokeThickness=".5" Opacity=".75" />
-
-                    <TextBlock FontFamily="Segoe UI" FontWeight="Bold"
-                            Text="{x:Bind TileViewModel.Tile.Number, Mode=OneWay}"
-                            Foreground="{x:Bind GetPipsForeground(TileViewModel.Tile.Number), Mode=OneWay}"
-                            VerticalAlignment="Top" HorizontalAlignment="Center"
-                            FontSize="24" />
-                    <StackPanel Orientation="Horizontal"
-                            VerticalAlignment="Center"
-                            HorizontalAlignment="Center" Margin="0,10,0,0">
-                        <TextBlock Style="{StaticResource PipsStyle}"
-                                Visibility="{x:Bind PipsVisibility(TileViewModel.Tile.Number, 0), Mode=OneWay}"
-                                Foreground="{x:Bind GetPipsForeground(TileViewModel.Tile.Number), Mode=OneWay}" />
-                        <TextBlock Style="{StaticResource PipsStyle}"
-                                Visibility="{x:Bind PipsVisibility(TileViewModel.Tile.Number, 1), Mode=OneWay}"
-                                Foreground="{x:Bind GetPipsForeground(TileViewModel.Tile.Number), Mode=OneWay}" />
-                        <TextBlock Style="{StaticResource PipsStyle}"
-                                Visibility="{x:Bind PipsVisibility(TileViewModel.Tile.Number, 2), Mode=OneWay}"
-                                Foreground="{x:Bind GetPipsForeground(TileViewModel.Tile.Number), Mode=OneWay}" />
-                        <TextBlock Style="{StaticResource PipsStyle}"
-                                Visibility="{x:Bind PipsVisibility(TileViewModel.Tile.Number, 3), Mode=OneWay}"
-                                Foreground="{x:Bind GetPipsForeground(TileViewModel.Tile.Number), Mode=OneWay}" />
-                        <TextBlock Style="{StaticResource PipsStyle}"
-                                Visibility="{x:Bind PipsVisibility(TileViewModel.Tile.Number, 4), Mode=OneWay}"
-                                Foreground="{x:Bind GetPipsForeground(TileViewModel.Tile.Number), Mode=OneWay}" />
-                    </StackPanel>
                     <Grid.RenderTransform>
                         <CompositeTransform
                                 ScaleX="{x:Bind NumberScale(TileViewModel.Layout.OuterHexSize), Mode=OneWay}"

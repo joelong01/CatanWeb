@@ -44,7 +44,7 @@ namespace Catan3.Models
             }
             return result;
         }
-        public static int Pips(this IEnumerable<TileModel> collection)
+        public static int Stars(this IEnumerable<TileModel> collection)
         {
             ArgumentNullException.ThrowIfNull(collection);
             return collection.Sum(tile => tile.Number switch

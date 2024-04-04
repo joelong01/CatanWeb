@@ -111,7 +111,7 @@ namespace Catan3
             {
                 viewModel.Background = BrushCache.GetGradientBrush(GameViewModel.CurrentPlayer.Background, Colors.Black);
                 viewModel.Foreground = BrushCache.GetSolidColorBrush(GameViewModel.CurrentPlayer.Foreground);
-                viewModel.Building.BuildingState = BuildingState.Pips;
+                viewModel.Building.BuildingState = BuildingState.Stars;
             }
         }
         private void Building_Clicked(BuildingViewModel viewModel)
@@ -142,7 +142,7 @@ namespace Catan3
                             viewModel.Building.Metropolis = true;
                         }
                         break;
-                    case BuildingState.Pips:
+                    case BuildingState.Stars:
                         viewModel.Building.BuildingState = BuildingState.Settlement;
                         break;
                     case BuildingState.Knight:
