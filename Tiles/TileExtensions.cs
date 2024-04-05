@@ -44,6 +44,12 @@ namespace Catan3.Models
             }
             return result;
         }
+        /// <summary>
+        ///     add up all the Stars for the buildings in the collection
+        /// </summary>
+        /// <param name="collection"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static int Stars(this IEnumerable<TileModel> collection)
         {
             ArgumentNullException.ThrowIfNull(collection);

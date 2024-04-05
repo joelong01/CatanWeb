@@ -38,14 +38,14 @@ namespace Catan3.Controls
 
         private string LaurelGlyph => CatanFont.Laurel;
 
-        private string GetStateGlyph(BuildingState state)
+        public string BIND_GetStateGlyph(int stars, BuildingState state)
         {
             return state switch
             {
                 BuildingState.Empty => "",
                 BuildingState.Settlement => CatanFont.Gate,
                 BuildingState.City => CatanFont.City,
-                BuildingState.Stars => BuildingViewModel.Stars.ToString(),
+                BuildingState.Stars => stars.ToString(),
                 BuildingState.Knight => CatanFont.Knight,
                 _ => "",
             };

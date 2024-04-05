@@ -77,7 +77,7 @@ namespace Catan3.Models
 
             game.Shuffle();
 
-            game.Robber.Coordinates = game.Tiles.TilesWithResource(ResourceTileType.Desert)[0].TileKey;
+           
             return game;
         }
         /// <summary>
@@ -144,7 +144,8 @@ namespace Catan3.Models
                 game.Harbors[i].HarborType = x;
                 game.Harbors[index].HarborType = y;
             }
-
+            game.Robber.Coordinates = game.Tiles.TilesWithResource(ResourceTileType.Desert)[0].TileKey;
+           
             // this.TraceMessage($"valid.  iters: {iters}");
         }
         private static bool ValidateGame(this GameModel Game)

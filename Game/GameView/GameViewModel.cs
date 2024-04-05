@@ -10,6 +10,8 @@ using Windows.Foundation;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Windows.ApplicationModel.Activation;
 
 
 namespace Catan3.Models
@@ -17,50 +19,17 @@ namespace Catan3.Models
 
     public partial class GameViewModel : ObservableObject
     {
-        [ObservableProperty]
-        private IBoardInfo? _boardInfo;
-
-        [ObservableProperty]
-        private RobberViewModel _robber = new(new());
-
-        [ObservableProperty]
-        private string _name = "Nameless";
-
-        [ObservableProperty]
-        private bool _isKnightsAndRobbers = false;
-
-        [ObservableProperty]
-        private HouseRules _houseRules = new();
-
-        [ObservableProperty]
-        private PlayerViewModel? _currentPlayer;
-
-        [ObservableProperty]
-        private ObservableCollection<TileViewModel> _tiles = [];
-
-        [ObservableProperty]
-        private ObservableCollection<BuildingViewModel> _buildings = [];
-
-        [ObservableProperty]
-        private ObservableCollection<PlayerViewModel> _players = [];
-
-        [ObservableProperty]
-        private ObservableCollection<RoadViewModel> _roads = [];
-
-        [ObservableProperty]
-        private ObservableCollection<HarborViewModel> _harbors = [];
-
-        [ObservableProperty]
-        public GameModel? _gameModel;
-
-        public GameViewModel(IBoardInfo? boardinfo)
-        {
-            BoardInfo = boardinfo;
-        }
-
        
 
-        public GameViewModel(GameModel gameModel, IEnumerable<PlayerViewModel> allPlayers)
+        public GameViewModel(IBoardInfo? boardinfo) : this()
+        {
+            BoardInfo = boardinfo;
+            
+        }
+
+      
+
+        public GameViewModel(GameModel gameModel, IEnumerable<PlayerViewModel> allPlayers) : this()
         {
             if (gameModel.GameType == CatanGame.Regular)
             {
@@ -76,6 +45,7 @@ namespace Catan3.Models
             }
 
             GameModel = gameModel;
+
 
             Tiles = CreateAndSortTileViewModelList(gameModel.Tiles);
 
@@ -96,8 +66,10 @@ namespace Catan3.Models
 
             foreach (var road in gameModel.Roads)
             {
-                var roadView = new RoadViewModel(road, BoardInfo.Layout);
-                roadView.Index = Roads.Count;
+                var roadView = new RoadViewModel(road, BoardInfo.Layout)
+                {
+                    Index = Roads.Count
+                };
                 Roads.Add(roadView);
 
             }
@@ -106,10 +78,21 @@ namespace Catan3.Models
                 Harbors.Add(new HarborViewModel(harbor, BoardInfo.Layout));
             }
             Robber = new RobberViewModel(gameModel.Robber);
-            SetStarCount();
             this.BoardInfo.Layout.PropertyChanged += Layout_PropertyChanged;
             UpdateLayout();
+            SetStars();
            
+        }
+        /// <summary>
+        ///     the Star for each building is dependend on the Tiles and thus changes everytime we Shuffle...but Shuffle is driven off of
+        ///     GameModel, not GameViewModel...so we can't do it there.  
+        /// </summary>
+        private void SetStars()
+        {
+            foreach (var building in Buildings)
+            {
+                building.Stars = TilesForBuildings(building.Building.BuildingKey).Stars();
+            }
         }
 
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -132,18 +115,8 @@ namespace Catan3.Models
                 UpdateLayout();
                 return;
             }
-
-        
-
         }
 
-        private void SetStarCount()
-        {
-            foreach (var building in Buildings)
-            {
-                building.Stars = TilesForBuildings(building.Building.BuildingKey).Stars();
-            }
-        }
         /// <summary>
         ///     Data that joins 2 or more collections is implemented here instead of as extension methods to the collection
         /// </summary>

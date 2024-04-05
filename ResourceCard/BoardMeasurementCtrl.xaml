@@ -28,7 +28,8 @@
             <Setter Property="Foreground" Value="White" />
         </Style>
         <Style x:Key="GridStarCounterStyle" TargetType="Grid">
-            <Setter Property="Background" Value="{StaticResource ResourceCard.GoldMine}"/>
+            <Setter Property="Background"
+                    Value="{StaticResource ResourceCard.GoldMine}" />
             <Setter Property="Height" Value="80" />
             <Setter Property="Width" Value="80" />
             <Setter Property="CornerRadius" Value="40" />
@@ -51,7 +52,7 @@
                     </DataTemplate>
                 </GridView.ItemTemplate>
             </GridView>
-            <StackPanel Orientation="Horizontal" >
+            <StackPanel Orientation="Horizontal">
 
                 <Grid Style="{StaticResource GridStarCounterStyle}">
 
@@ -61,7 +62,7 @@
 
                     <TextBlock Text="13" Style="{StaticResource StarCountStyle}" />
                     <TextBlock
-                            Text="{x:Bind BIND_StarCount(13, GameModel), Mode=OneWay}"
+                            Text="{x:Bind BIND_StarCount(13, GameViewModel), Mode=OneWay}"
                             Style="{StaticResource StarCountStyle}"
                             FontFamily="SegoeUi" VerticalAlignment="Bottom" />
                 </Grid>
@@ -74,7 +75,7 @@
 
                     <TextBlock Text="12" Style="{StaticResource StarCountStyle}" />
                     <TextBlock
-                            Text="{x:Bind BIND_StarCount(12, GameModel), Mode=OneWay}"
+                            Text="{x:Bind BIND_StarCount(12, GameViewModel), Mode=OneWay}"
                             Style="{StaticResource StarCountStyle}"
                             FontFamily="SegoeUi" VerticalAlignment="Bottom" />
                 </Grid>
@@ -87,7 +88,7 @@
 
                     <TextBlock Text="11" Style="{StaticResource StarCountStyle}" />
                     <TextBlock
-                            Text="{x:Bind BIND_StarCount(11, GameModel), Mode=OneWay}"
+                            Text="{x:Bind BIND_StarCount(11, GameViewModel), Mode=OneWay}"
                             Style="{StaticResource StarCountStyle}"
                             FontFamily="SegoeUi" VerticalAlignment="Bottom" />
                 </Grid>
@@ -100,13 +101,39 @@
 
                     <TextBlock Text="10" Style="{StaticResource StarCountStyle}" />
                     <TextBlock
-                            Text="{x:Bind BIND_StarCount(10, GameModel), Mode=OneWay}"
+                            Text="{x:Bind BIND_StarCount(10, GameViewModel), Mode=OneWay}"
                             Style="{StaticResource StarCountStyle}"
                             FontFamily="SegoeUi" VerticalAlignment="Bottom" />
                 </Grid>
 
             </StackPanel>
-            <Button Content="Flip" Click="OnFlip" />
+            <StackPanel Orientation="Horizontal" Margin="0,20,0,20"
+                    HorizontalAlignment="Center">
+                <StackPanel Orientation="Vertical" Margin="0,0,20,0">
+                    <Button Content="&#xE10E;"
+                            Style="{StaticResource GameControllerStyle}"
+                            Background="Transparent" Foreground="White" />
+                    <TextBlock Margin="10, 5, 0, 0" Text="Previous Board"
+                            HorizontalAlignment="Center" Foreground="White"
+                            TextLineBounds="Tight" />
+                </StackPanel>
+
+                <StackPanel HorizontalAlignment="Center" Orientation="Vertical">
+                    <Button Command="{x:Bind GameViewModel.ShuffleCommand}" Content="&#xE10D;"
+                            Style="{StaticResource GameControllerStyle}"
+                            Background="Transparent" Foreground="White" />
+                    <TextBlock Margin="10, 5, 0, 0" Text="New Board"
+                            HorizontalAlignment="Center" Foreground="White"
+                            TextLineBounds="Tight" />
+                </StackPanel>
+
+            </StackPanel>
+            <Slider HorizontalAlignment="Center" Width="300"
+                    IsDirectionReversed="false" Minimum="0" Maximum="14"
+                    Value="{x:Bind GameViewModel.ShownStars, Mode=TwoWay}"
+                    Orientation="Horizontal" SmallChange="1" TickFrequency="1" />
+
+          
         </StackPanel>
     </Grid>
 </UserControl>

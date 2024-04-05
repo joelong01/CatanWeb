@@ -31,26 +31,27 @@ namespace Catan3.Controls
 
             this.InitializeComponent();
         }
-        public static readonly DependencyProperty GameModelProperty = DependencyProperty.Register("GameModel", typeof(GameModel), typeof(BoardMeasurementCtrl), new PropertyMetadata(null, GameModelChanged));
-        public GameModel GameModel
+        public static readonly DependencyProperty GameViewModelProperty = DependencyProperty.Register("GameViewModel", typeof(GameViewModel), typeof(BoardMeasurementCtrl), new PropertyMetadata(null, GameViewModelChanged));
+        public GameViewModel GameViewModel
         {
-            get => ( GameModel )GetValue(GameModelProperty);
-            set => SetValue(GameModelProperty, value);
+            get => ( GameViewModel )GetValue(GameViewModelProperty);
+            set => SetValue(GameViewModelProperty, value);
         }
-        private static void GameModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        private static void GameViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as BoardMeasurementCtrl;
-            var depPropValue = (GameModel)e.NewValue;
-            depPropClass?.SetGameModel(depPropValue);
+            var depPropValue = (GameViewModel)e.NewValue;
+            depPropClass?.SetGameViewModel(depPropValue);
         }
-        private void SetGameModel(GameModel value)
+        private void SetGameViewModel(GameViewModel gameViewModel)
         {
-            if (value is null) return;
-            this.DataContext = value;
+            if (gameViewModel is null || gameViewModel.GameModel is null) return;
+            this.DataContext = gameViewModel;
 
             foreach (var card in ResourceCards)
             {
-                card.Count = value.StarCount(CardTypeToTileType(card.ResourceType));
+               
+                card.Count = gameViewModel.GameModel.StarCount(CardTypeToTileType(card.ResourceType));
             }
         }
 
@@ -107,12 +108,12 @@ namespace Catan3.Controls
             }
         }
 
-        public string BIND_StarCount(int stars, GameModel gameModel)
+        public string BIND_StarCount(int stars, GameViewModel gameModel)
         {
             int count = 0;
             foreach (var building in gameModel.Buildings)
             {
-                var tiles = gameModel.TilesForBuildings(building.BuildingKey);
+                var tiles = gameModel.TilesForBuildings(building.Building.BuildingKey);
                 if (tiles.Stars() == stars) count++;
 
             }

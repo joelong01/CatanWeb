@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml.Data;
 
 namespace Catan3.Models
 {
@@ -48,7 +49,11 @@ namespace Catan3.Models
             _gameType = CatanGame.Regular;
             _hasSupplementalBuildPhase = false;
         }
-
+        /// <summary>
+        ///     Add up all the stars for the given resource top
+        /// </summary>
+        /// <param name="tileType"></param>
+        /// <returns></returns>
         public int StarCount(ResourceTileType tileType)
         {
             var total = this.Tiles.Where(tile => tile.ResourceTileType == tileType)
@@ -81,7 +86,18 @@ namespace Catan3.Models
             }
             return tiles;
         }
+        /// <summary>
+        ///     Given a building key, get the count of stars for that building
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
 
+        public int BuildingStars(BuildingKey key)
+        {
+            var adjacentTiles = TilesForBuildings(key);
+            var stars = adjacentTiles.Stars();
+            return stars;
+        }
 
     }
 }

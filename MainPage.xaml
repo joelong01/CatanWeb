@@ -147,7 +147,7 @@
             </Viewbox>
         </Border>
 
-        <c:BoardMeasurementCtrl Grid.Column="4"  Background="Green" GameModel="{x:Bind GameViewModel.GameModel, Mode=OneWay}" BorderBrush="Black" BorderThickness="2" />
+        <c:BoardMeasurementCtrl Grid.Column="4"  Background="Green" GameViewModel="{x:Bind GameViewModel, Mode=OneWay}" BorderBrush="Black" BorderThickness="2" />
 
         <toolkit:GridSplitter Grid.Column="1" Width="5"
                 HorizontalAlignment="Stretch" Background="Gray">
