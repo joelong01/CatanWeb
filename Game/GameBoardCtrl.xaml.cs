@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using Catan3.Models;
 using Catan3.Utility;
@@ -55,6 +56,8 @@ namespace Catan3.Controls
         }
         private void SetGameViewModel(GameViewModel? oldValue, GameViewModel? newValue)
         {
+            if (newValue is null) return; // happens when we force binding in Shuffle
+            // this.TraceMessage($"GameViewModel changed first Tile={newValue.Tiles[0]}");
             if (oldValue is not null)
             {
                 oldValue.PropertyChanged -= GameViewModel_PropertyChanged;
@@ -62,9 +65,11 @@ namespace Catan3.Controls
                 {
                     oldValue.BoardInfo.Layout.PropertyChanged -= Layout_PropertyChanged;
                 }
-
-                oldValue.Robber.RobberModel.PropertyChanged -= RobberModel_PropertyChanged;
-                DesertTile(oldValue).PropertyChanged -= DesertTile_PropertyChanged;
+                if (oldValue.Robber.RobberModel is not null)
+                {
+                    oldValue.Robber.RobberModel.PropertyChanged -= RobberModel_PropertyChanged;
+                    DesertTile(oldValue).PropertyChanged -= DesertTile_PropertyChanged;
+                }
             }
             if (newValue is not null)
             {
@@ -73,8 +78,10 @@ namespace Catan3.Controls
                 {
                     newValue.BoardInfo.Layout.PropertyChanged += Layout_PropertyChanged;
                 }
-
-                newValue.Robber.RobberModel.PropertyChanged += RobberModel_PropertyChanged;
+                if (newValue.Robber.RobberModel is not null)
+                {
+                    newValue.Robber.RobberModel.PropertyChanged += RobberModel_PropertyChanged;
+                }
                 if (newValue.Tiles is not null)
                 {
                     var desert =  DesertTile(newValue);
@@ -161,12 +168,16 @@ namespace Catan3.Controls
 
         private void UpdateRobberTileLocation()
         {
+
             if (this.Resources["MoveRobberAnimation"] is Storyboard storyboard && GameViewModel is not null)
             {
+                Debug.Assert(GameViewModel.Robber.RobberModel is not null);
+                // this.TraceMessage($"Moving Robber to {GameViewModel.Robber.RobberModel.Coordinates}");
+
                 // Assuming the first two children are the X and Y animations
                 if (storyboard.Children[0] is DoubleAnimation animationX && storyboard.Children[1] is DoubleAnimation animationY)
                 {
-                    if (VB_Robber.ActualWidth > 0 && VB_Robber.ActualHeight > 0 && GameViewModel.BoardInfo is not null)
+                    if (VB_Robber.ActualWidth > 0 && VB_Robber.ActualHeight > 0 && GameViewModel.BoardInfo is not null && GameViewModel.Robber.RobberModel is not null)
                     {
                         double x = GameViewModel.BoardInfo.Layout.Left(GameViewModel.Robber.RobberModel.Coordinates) + GameViewModel.BoardInfo.Layout.OuterHexSize - VB_Robber.ActualWidth / 2.0;
                         double y =  GameViewModel.BoardInfo.Layout.Top(GameViewModel.Robber.RobberModel.Coordinates) + GameViewModel.BoardInfo.Layout.OuterHexSize - VB_Robber.ActualHeight / 2.0;

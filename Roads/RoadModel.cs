@@ -1,8 +1,9 @@
+using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Models
 {
-    public partial class RoadModel(RoadKey roadKey) : ObservableObject
+    public partial class RoadModel(RoadKey roadKey) : ObservableObject, IComparable<RoadModel>  
     {
         [ObservableProperty]
         private RoadKey _roadKey = roadKey;
@@ -12,5 +13,11 @@ namespace Catan3.Models
 
         [ObservableProperty]
         private PlayerModel? _owner;
+
+        public int CompareTo(RoadModel? other)
+        {
+            if (other is null) return 1;
+            return RoadKey.CompareTo(other.RoadKey);
+        }
     }
 }

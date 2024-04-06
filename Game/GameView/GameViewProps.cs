@@ -4,7 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Models
 {
-    public partial class GameViewModel : ObservableObject
+    public partial class GameViewModel : ObservableRecipient
     {
         [ObservableProperty]
         private IBoardInfo? _boardInfo;
@@ -44,7 +44,10 @@ namespace Catan3.Models
 
         [ObservableProperty]
         private int _shownStars = 13; // stars are visible above this number
-        
+
+        [ObservableProperty]
+        private int _shuffleCount = 0; // stars are visible above this number
+
 
         /// <summary>
         ///     NOTE:  this is *partial* method that is implemented by the MVVM Toolkit
@@ -55,6 +58,17 @@ namespace Catan3.Models
         partial void OnShownStarsChanged(int value)
         {
             ShowStarValues(value);
+        }
+
+        public void UpdateBindings()
+        {
+            OnPropertyChanged(nameof(Tiles));
+            OnPropertyChanged(nameof(Buildings));
+            OnPropertyChanged(nameof(Players));
+            OnPropertyChanged(nameof(Roads));
+            OnPropertyChanged(nameof(Harbors));
+            OnPropertyChanged(nameof(Robber));
+        
         }
     }
 }

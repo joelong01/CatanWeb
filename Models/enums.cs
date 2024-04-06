@@ -21,7 +21,7 @@
         Stars,
         Knight,
     }
-    public enum CatanGame { Regular, Expansion }
+    public enum GameType { Regular, Expansion, Unset }
 
     public enum RoadState { Unowned, Road, Ship };
 

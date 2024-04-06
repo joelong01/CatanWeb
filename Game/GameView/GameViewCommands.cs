@@ -1,30 +1,22 @@
-﻿
-
+﻿using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI;
-using Microsoft.Windows.AppLifecycle;
 
 namespace Catan3.Models
 {
 
-    public partial class GameViewModel
+    public partial class GameViewModel : ObservableRecipient
     {
-        public GameViewModel()
-        {
-
-        }
+      
 
         [RelayCommand]
-        private void Shuffle()
+        public void Shuffle()
         {
-            if (GameModel is null) return;
-
-            GameModel.Shuffle();
-            SetStars();
-            ShowStarValues(ShownStars);
+            this.TraceMessage("Make this a message to the MainPageModel");
         }
 
+        
         
         [RelayCommand]
         private void ShowStarValues(int stars)

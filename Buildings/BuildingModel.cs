@@ -7,7 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Models
 {
-    public partial class BuildingModel(BuildingKey buildingkey, BuildingState buildingstate) : ObservableObject
+    public partial class BuildingModel(BuildingKey buildingkey, BuildingState buildingstate) : ObservableObject, IComparable<BuildingModel>
     {
         [ObservableProperty]
         private BuildingKey _buildingKey = buildingkey;
@@ -23,5 +23,12 @@ namespace Catan3.Models
 
         [ObservableProperty]
         private PlayerModel? _owner = null;
+
+        public int CompareTo(BuildingModel? other)
+        {
+            if (other is null) return 1;
+            
+            return BuildingKey.CompareTo(other.BuildingKey);
+        }
     }
 }

@@ -1,8 +1,10 @@
 
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -13,7 +15,7 @@ namespace Catan3.Models
     public partial class GameModel : ObservableObject
     {
         [ObservableProperty]
-        private CatanGame _gameType = CatanGame.Regular;
+        private GameType _gameType = GameType.Regular;
 
         [ObservableProperty]
         private bool _hasSupplementalBuildPhase = false;
@@ -36,7 +38,7 @@ namespace Catan3.Models
         [ObservableProperty]
         private RobberModel _robber = new();
 
-        public GameModel(CatanGame gametype, bool hassupplementalbuildphase, List<PlayerModel> players)
+        public GameModel(GameType gametype, bool hassupplementalbuildphase, List<PlayerModel> players)
         {
             GameType = gametype;
             HasSupplementalBuildPhase = hassupplementalbuildphase;
@@ -46,7 +48,7 @@ namespace Catan3.Models
         public GameModel()
         {
             _players = [];
-            _gameType = CatanGame.Regular;
+            _gameType = GameType.Regular;
             _hasSupplementalBuildPhase = false;
         }
         /// <summary>
@@ -60,6 +62,11 @@ namespace Catan3.Models
                 .Sum(tile => tile.Stars);
 
             return total;
+        }
+
+        public void Rebind()
+        {
+            //   OnPropertyChanged(nameof(Tiles));
         }
 
         /// <summary>
@@ -97,6 +104,15 @@ namespace Catan3.Models
             var adjacentTiles = TilesForBuildings(key);
             var stars = adjacentTiles.Stars();
             return stars;
+        }
+
+        public  GameModel Copy()
+        {
+
+            var gameModelJson = JsonSerializer.Serialize(this);
+            GameModel? newModel = JsonSerializer.Deserialize<GameModel>(gameModelJson);
+            return ( newModel is null ) ? throw new Exception("We just serialized it. it should deserialize!") : newModel;
+
         }
 
     }

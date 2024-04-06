@@ -45,6 +45,8 @@ namespace Catan3.Controls
         }
         private void SetGameViewModel(GameViewModel gameViewModel)
         {
+           // this.TraceMessage("GameviewModel changed");
+
             if (gameViewModel is null || gameViewModel.GameModel is null) return;
             this.DataContext = gameViewModel;
 
@@ -108,12 +110,12 @@ namespace Catan3.Controls
             }
         }
 
-        public string BIND_StarCount(int stars, GameViewModel gameModel)
+        public string BIND_StarCount(int stars, ObservableCollection<TileViewModel> _tiles)
         {
             int count = 0;
-            foreach (var building in gameModel.Buildings)
+            foreach (var building in GameViewModel.Buildings)
             {
-                var tiles = gameModel.TilesForBuildings(building.Building.BuildingKey);
+                var tiles = GameViewModel.TilesForBuildings(building.Building.BuildingKey);
                 if (tiles.Stars() == stars) count++;
 
             }

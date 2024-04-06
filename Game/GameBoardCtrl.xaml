@@ -10,28 +10,30 @@
         <Storyboard x:Key="MoveRobberAnimation">
             <DoubleAnimation Storyboard.TargetName="VB_Robber"
                     Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransfrom.TranslateX)"
-                    Duration="0:0:1" To="100" />
+                    Duration="0:0:0.250" To="100" />
             <DoubleAnimation Storyboard.TargetName="VB_Robber"
                     Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransfrom.TranslateY)"
-                    Duration="0:0:1" To="100" />
+                    Duration="0:0:0.250" To="100" />
 
         </Storyboard>
         <Storyboard x:Name="SB_AnimateOpacity">
             <DoubleAnimation x:Name="DA_AnimateOpacity"
                     Storyboard.TargetName="VB_Robber"
                     Storyboard.TargetProperty="Opacity" BeginTime="0:0:1"
-                    Duration="0:0:0.500" From="0.0" To="1.0" />
+                    Duration="0:0:0.250" From="0.0" To="1.0" />
         </Storyboard>
     </UserControl.Resources>
 
     <Canvas Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Top"
             Height="{x:Bind GameViewModel.BoardInfo.Layout.BoardHeight, Mode=OneWay}"
             Width="{x:Bind GameViewModel.BoardInfo.Layout.BoardWidth, Mode=OneWay}">
-      
-        
-            <!--Harbors-->
+
+        <TextBlock Text="{x:Bind GameViewModel.ShuffleCount, Mode=OneWay}"
+                FontSize="30" HorizontalAlignment="Left" VerticalAlignment="Top" />
+
+        <!--Harbors-->
             <ItemsControl x:Name="IC_Harbors"
-                    ItemsSource="{x:Bind GameViewModel.Harbors}">
+                    ItemsSource="{x:Bind GameViewModel.Harbors, Mode=OneWay}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <Canvas VerticalAlignment="Top"
@@ -93,7 +95,7 @@
             </ItemsControl>
             <!--Roads-->
             <ItemsControl x:Name="IC_Roads"
-                    ItemsSource="{x:Bind GameViewModel.Roads}">
+                    ItemsSource="{x:Bind GameViewModel.Roads, Mode=OneWay}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <Canvas VerticalAlignment="Top"
@@ -126,7 +128,7 @@
             </ItemsControl>
             <!--Buildings-->
             <ItemsControl x:Name="IC_Buildings"
-                    ItemsSource="{x:Bind GameViewModel.Buildings}">
+                    ItemsSource="{x:Bind GameViewModel.Buildings, Mode=OneWay}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <Canvas VerticalAlignment="Top"

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -105,6 +106,23 @@ namespace Catan3
             }
             return clonedPoints;
         }
+
+
+        public static void InsertSorted<T>(this IList<T> collection, T item) where T : IComparable<T>
+        {
+            if (collection == null)
+                throw new ArgumentNullException(nameof(collection));
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
+
+            int index = 0;
+            while (index < collection.Count && collection[index].CompareTo(item) < 0)
+            {
+                index++;
+            }
+            collection.Insert(index, item);
+        }
+
     }
     public static class BrushCache
     {
@@ -180,7 +198,7 @@ namespace Catan3
 
     //        Point pointMouseDown = gt.TransformPoint(origE.GetCurrentPoint(mousePositionWindow).Side);
 
-     
+
     //        PointerEventHandler pointerMovedHandler = (object s, PointerRoutedEventArgs e) =>
     //        {
     //            Point pt = e.GetCurrentPoint(mousePositionWindow).Side;

@@ -5,7 +5,7 @@ using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 namespace Catan3.Models
 {
-    public partial class RoadKey(HexCoordinates tileKey, HexSide side) : ObservableObject
+    public partial class RoadKey(HexCoordinates tileKey, HexSide side) : ObservableObject, IComparable<RoadKey>
     {
         [ObservableProperty]
         private HexCoordinates _tileKey = tileKey;
@@ -31,6 +31,22 @@ namespace Catan3.Models
                    key.TileKey == this.TileKey;
         }
         public override int GetHashCode() => HashCode.Combine(TileKey, HexSide);
+
+        public int CompareTo(RoadKey? other)
+        {
+            if (other is null) return 1;
+
+            // First, compare by HexCoordinates
+            int hexCompare = TileKey.CompareTo(other.TileKey);
+            if (hexCompare != 0)
+            {
+                return hexCompare;
+            }
+
+          
+            return HexSide.CompareTo(other.HexSide);
+        }
+
         public static BuildingKey Default => new(HexCoordinates.Default, Utility.HexPosition.None);
         public static bool operator ==(RoadKey left, RoadKey right)
         {

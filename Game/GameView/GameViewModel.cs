@@ -1,47 +1,207 @@
-﻿using System.Collections.Generic;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
-using Catan3.Utility;
+using System.Diagnostics.Contracts;
 using System.Linq;
-using Microsoft.UI.Xaml.Controls;
-using Windows.Foundation;
-using System.Runtime.CompilerServices;
-using System.Text.Json.Serialization;
+using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using Windows.ApplicationModel.Activation;
 
 
 namespace Catan3.Models
 {
 
-    public partial class GameViewModel : ObservableObject
+    public partial class GameViewModel : ObservableRecipient
     {
-       
+        private GameType GameType { get; set; } = GameType.Unset;
 
         public GameViewModel(IBoardInfo? boardinfo) : this()
         {
             BoardInfo = boardinfo;
-            
+
         }
-
-      
-
-        public GameViewModel(GameModel gameModel, IEnumerable<PlayerViewModel> allPlayers) : this()
+        /// <summary>
+        ///     var game = new GameViewModel(GameType.Regular, PlayingPlayers)
+        ///     var gameModel = GameFactory.CreateGame(SelectedGame, playerIds);
+        ///     game.UpdateGameModel(gameModel);
+        /// </summary>
+        /// <param name="gameType"></param>
+        public GameViewModel(GameType gameType, IEnumerable<PlayerViewModel> playingPlayers) : this()
         {
-            if (gameModel.GameType == CatanGame.Regular)
+
+
+            GameType = gameType;
+            if (GameType == GameType.Regular)
             {
                 BoardInfo = new RegularBoardInfo();
             }
-            else if (gameModel.GameType == CatanGame.Expansion)
+            else if (GameType == GameType.Expansion)
             {
                 BoardInfo = new ExpansionBoardInfo();
             }
             else
             {
                 throw new ArgumentException($"invalid boardsize");
+            }
+            this.BoardInfo.Layout.PropertyChanged += Layout_PropertyChanged;
+
+
+
+            Tiles = [];
+            Players = [];
+            Roads = [];
+            Buildings = [];
+            Harbors = [];
+            Robber = new RobberViewModel(null);
+            Players = new(playingPlayers);
+
+        }
+
+        public void UpdateViewModel(GameModel gameModel)
+        {
+            if (gameModel.GameType != this.GameType) throw new Exception("Create new one instead of updating this one");
+            if (BoardInfo is null) throw new Exception("Board Info can't be null");
+            CreateOrUpdateTiles(gameModel);
+            CreateOrUpdateBuildings(gameModel);
+            CreateOrUpdateHarbors(gameModel);
+            CreateOrUpdateRoads(gameModel);
+            UpdatePlayers(gameModel);
+            Robber.RobberModel = gameModel.Robber;
+            OnPropertyChanged(nameof(Robber));
+            GameModel = gameModel;
+            SetStars();
+            UpdateLayout();
+
+        }
+
+
+        private void UpdatePlayers(GameModel gameModel)
+        {
+            // the ViewModel Players is always created.
+
+            for (int i = 0; i < Players.Count; i++)
+            {
+                //Debug.Assert(Players[i].Player.Id == gameModel.Players[i].Id);
+                Players[i].Player = gameModel.Players[i];
+            }
+
+            OnPropertyChanged(nameof(Players));
+        }
+
+        private void CreateOrUpdateTiles(GameModel gameModel)
+        {
+            Contract.Assert(BoardInfo is not null);
+            if (Tiles.Count == 0) // need to create them for the first time
+            {
+                Tiles = new ObservableCollection<TileViewModel>(
+                gameModel.Tiles.Select((tile, index) => new TileViewModel(tile, BoardInfo.Layout) { Index = index }));
+            }
+            else
+            {
+                Debug.Assert(Tiles.Count == gameModel.Tiles.Count);
+                for (int i = 0; i < gameModel.Tiles.Count; i++)
+                {
+                    Contract.Assert(Tiles[i].Tile.TileKey == gameModel.Tiles[i].TileKey);
+                    Tiles[i].Tile = gameModel.Tiles[i];
+                }
+            }
+            OnPropertyChanged(nameof(Tiles));
+        }
+        private void CreateOrUpdateRoads(GameModel gameModel)
+        {
+            Contract.Assert(BoardInfo is not null);
+            if (Roads.Count == 0)
+            {
+                Roads = new ObservableCollection<RoadViewModel>(
+                    gameModel.Roads.Select(road => new RoadViewModel(road, BoardInfo.Layout))
+                );
+            }
+            else
+            {
+                Debug.Assert(Roads.Count == gameModel.Roads.Count, "Road count mismatch.");
+                for (int i = 0; i < gameModel.Roads.Count; i++)
+                {
+                    Contract.Assert(Roads[i].Road.RoadKey == gameModel.Roads[i].RoadKey);
+                    Roads[i].Road = gameModel.Roads[i];
+
+                }
+            }
+            OnPropertyChanged(nameof(Roads));
+        }
+
+        private void CreateOrUpdateBuildings(GameModel gameModel)
+        {
+            Contract.Assert(BoardInfo is not null, "BoardInfo cannot be null.");
+            if (Buildings.Count == 0) // Check if buildings need to be created for the first time
+            {
+                Buildings = new ObservableCollection<BuildingViewModel>(
+                    gameModel.Buildings.Select(building => new BuildingViewModel(building, BoardInfo.Layout))
+                );
+            }
+            else // Update existing buildings
+            {
+                Debug.Assert(Buildings.Count == gameModel.Buildings.Count, "Building count mismatch.");
+                for (int i = 0; i < gameModel.Buildings.Count; i++)
+                {
+                    Contract.Assert(Buildings[i].Building.BuildingKey == gameModel.Buildings[i].BuildingKey, "Building key mismatch.");
+                    Buildings[i].Building = gameModel.Buildings[i];
+                }
+            }
+            OnPropertyChanged(nameof(Buildings));
+        }
+
+
+        private void CreateOrUpdateHarbors(GameModel gameModel)
+        {
+            Contract.Assert(BoardInfo is not null, "BoardInfo cannot be null.");
+            if (Harbors.Count == 0) // Check if harbors need to be created for the first time
+            {
+                Harbors = new ObservableCollection<HarborViewModel>(
+                    gameModel.Harbors.Select(harbor => new HarborViewModel(harbor, BoardInfo.Layout))
+                );
+            }
+            else // Update existing harbors
+            {
+                Debug.Assert(Harbors.Count == gameModel.Harbors.Count, "Harbor count mismatch.");
+                for (int i = 0; i < gameModel.Harbors.Count; i++)
+                {
+                    Contract.Assert(Harbors[i].Harbor.HexCoordinates == gameModel.Harbors[i].HexCoordinates, "Harbor key mismatch.");
+                    Contract.Assert(Harbors[i].Harbor.Side == gameModel.Harbors[i].Side, "Harbor key mismatch.");
+                    Harbors[i].Harbor = gameModel.Harbors[i];
+                }
+            }
+            OnPropertyChanged(nameof(Harbors));
+        }
+
+
+
+
+        public GameViewModel(GameModel gameModel, IEnumerable<PlayerViewModel> playingPlayers) : this()
+        {
+            Debug.Assert(BoardInfo is not null);
+            Debug.Assert(gameModel.GameType != GameType.Unset);
+            if (GameType != gameModel.GameType)
+            {
+                Tiles = [];
+                Players = [];
+                Roads = [];
+                Buildings = [];
+                Harbors = [];
+                Robber = new RobberViewModel(gameModel.Robber);
+                GameType = gameModel.GameType;
+                if (gameModel.GameType == GameType.Regular)
+                {
+                    BoardInfo = new RegularBoardInfo();
+                }
+                else if (gameModel.GameType == GameType.Expansion)
+                {
+                    BoardInfo = new ExpansionBoardInfo();
+                }
+                else
+                {
+                    throw new ArgumentException($"invalid boardsize");
+                }
             }
 
             GameModel = gameModel;
@@ -53,16 +213,16 @@ namespace Catan3.Models
             {
                 Buildings.Add(new BuildingViewModel(building, BoardInfo.Layout));
             }
-            foreach (var player in gameModel.Players)
-            {
-                var playerViewModel = allPlayers.FirstOrDefault( p => p.Id == player.Id);
-                if (playerViewModel is null)
-                {
-                    throw new Exception($"Player {player.Id} not found");
-                }
-                playerViewModel.Player = player;
-                Players.Add(playerViewModel);
-            }
+            //foreach (var player in gameModel.Players)
+            //{
+            //    var playerViewModel = allPlayers.FirstOrDefault( p => p.Id == player.Id);
+            //    if (playerViewModel is null)
+            //    {
+            //        throw new Exception($"Player {player.Id} not found");
+            //    }
+            //    playerViewModel.Player = player;
+            //    Players.Add(playerViewModel);
+            //}
 
             foreach (var road in gameModel.Roads)
             {
@@ -81,7 +241,7 @@ namespace Catan3.Models
             this.BoardInfo.Layout.PropertyChanged += Layout_PropertyChanged;
             UpdateLayout();
             SetStars();
-           
+
         }
         /// <summary>
         ///     the Star for each building is dependend on the Tiles and thus changes everytime we Shuffle...but Shuffle is driven off of
@@ -110,7 +270,7 @@ namespace Catan3.Models
             {
                 // these are the properties that the UpdateLayout depends on
 
-                
+
 
                 UpdateLayout();
                 return;
@@ -145,6 +305,23 @@ namespace Catan3.Models
             return result;
         }
 
+        public ObservableCollection<TileViewModel> UpdateTiles(ObservableCollection<TileModel> tiles)
+        {
+            Debug.Assert(BoardInfo is not null);
+            var sortedTiles = tiles.OrderBy(tvm => tvm.TileKey).ToList();
+            ObservableCollection<TileViewModel> result = [];
+            for (int i = 0; i < sortedTiles.Count; i++)
+            {
+                var tvm = new TileViewModel(sortedTiles[i], BoardInfo.Layout)
+                {
+                    Index = i
+                };
+                result.Add(tvm);
+            }
+
+            return result;
+        }
+
         /// <summary>
         ///     We want to calculate the offset of the tile positions from the harborLeft of the board so that we leave the right space for the buildings 
         ///     and harbors around the board.  when we start calling .Left and .Top, the space to add to harborLeft and top is 0.  this will calculate what
@@ -157,11 +334,22 @@ namespace Catan3.Models
         ///     
         ///     the space will either be a harbor or be a building.
         /// </summary>
-
+        double cached_BuildingSize = -1;
+        double cached_OuterHexSize = -1;
         private void UpdateLayout()
         {
-            Debug.Assert(BoardInfo is not null && BoardInfo.Layout is not null);
-            Debug.Assert(Harbors is not null);
+
+            Contract.Assert(BoardInfo is not null && BoardInfo.Layout is not null, "Cannot do layout with no BoardInfo");
+            Contract.Assert(Harbors is not null, "Must have Harbors to layout Harbors");
+
+            if (cached_BuildingSize == BoardInfo.Layout.BuildingSize && cached_OuterHexSize == BoardInfo.Layout.OuterHexSize)
+            {
+                return;
+            }
+
+            cached_BuildingSize = BoardInfo.Layout.BuildingSize;
+            cached_OuterHexSize = BoardInfo.Layout.OuterHexSize;
+
             BoardInfo.Layout.TileXOffset = 0;
             BoardInfo.Layout.TileYOffset = 0;
             var harborSize = BoardInfo.Layout.BuildingSize;
@@ -181,7 +369,7 @@ namespace Catan3.Models
             // all of the Harbors will have the same X on the first column, so make one up assuming that one will be there.
             var harborTopLeft = HarborViewModel.GetLeftTop(BoardInfo.Layout, firstTile.Tile.TileKey, HexSide.BottomLeft);
             BoardInfo.Layout.TileXOffset = Math.Abs(Math.Round(harborTopLeft.X));
-           // this.TraceMessage($"({BoardInfo.Layout.TileXOffset},{BoardInfo.Layout.TileYOffset})");
+            // this.TraceMessage($"({BoardInfo.Layout.TileXOffset},{BoardInfo.Layout.TileYOffset})");
 
 
 
@@ -228,9 +416,9 @@ namespace Catan3.Models
 
         }
 
-        
 
-       
+
+
 
     }
 
