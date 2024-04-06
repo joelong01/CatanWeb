@@ -11,15 +11,21 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
+using Windows.Devices.Sms;
 using Windows.UI.StartScreen;
 
 namespace Catan3.Models
 {
+   
+
     public class RequestUpdateBuildingState(BuildingViewModel building)
     {
         public BuildingViewModel Building { get; set; } = building;
     }
-
+    public class RequestShuffle
+    {
+       
+    }
 
 
     public partial class MainPageModel : ObservableRecipient
@@ -27,18 +33,37 @@ namespace Catan3.Models
         [ObservableProperty]
         GameViewModel? _gameViewModel;
 
-        
+        public   IMessenger MessageService => this.Messenger;
 
         private void RegisterMessages()
         {
+            Debug.Assert(Messenger is not null);
             Messenger.Register<RequestUpdateBuildingState>(this, (recipient, message) =>
             {
                 UpdateBuildingState(message.Building);
             });
+
+            Messenger.Register<RequestShuffle>(this, (recipient, message) =>
+            {
+              
+                Shuffle();
+            });
+        }
+        //
+        // this doesn't get logged as it is just a UI update
+        private void HandleShowStars(int starCount)
+        {
+            if (GameViewModel is null)
+            {
+                Debug.Assert(false, "Should not be null - state problem.");
+                return;
+            }
+            GameViewModel.ShownStars = starCount;
         }
 
-        public MainPageModel(GameType selectedGame, List<PlayerViewModel> playingPlayers) 
+        public MainPageModel(GameType selectedGame, List<PlayerViewModel> playingPlayers)
         {
+            RegisterMessages();
             // create a new GameModel - this would usually come from the service
 
             List<string> playerIds = playingPlayers.Select( p => p.Id ).ToList();
@@ -50,10 +75,10 @@ namespace Catan3.Models
             // joing the Game Model with the GameViewModel
             GameViewModel.UpdateViewModel(gameModel);
             GameViewModel.CurrentPlayer = GameViewModel.Players[0];
-            RegisterMessages();
+          
         }
 
-       
+
         /// <summary>
         ///     Shuffle can be undone, so it 
         ///     1. copies the GameModel
@@ -79,17 +104,12 @@ namespace Catan3.Models
             newModel.Shuffle();
             GameViewModel.UpdateViewModel(newModel);
             GameViewModel.ShuffleCount++;
-          //  OnPropertyChanged(nameof(GameViewModel));
-          //  OnPropertyChanged(nameof(GameViewModel.Robber));
-
+           
             GameViewModel tempViewModel = GameViewModel;
             GameViewModel = null; // Reset to trigger update
             GameViewModel = tempViewModel; // Reassign
-            //RobberViewModel rvm = GameViewModel.Robber;
-            //GameViewModel.Robber = new(new());
-            //GameViewModel.Robber = rvm;
-            //GameViewModel.UpdateBindings();
 
+            GameViewModel.ShowStarValues(GameViewModel.ShownStars);
         }
 
         private void UpdateBuildingState(BuildingViewModel building)

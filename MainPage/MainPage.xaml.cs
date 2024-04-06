@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Catan3.Controls;
 using Catan3.Models;
 using Catan3.Utility;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -32,13 +33,12 @@ namespace Catan3
         public MainPage()
         {
             this.InitializeComponent();
-            InitializeComponent();
-
+        
             Games.Add(GameType.Expansion);
             Games.Add(GameType.Regular);
             SelectedGame = GameType.Expansion;
             NewGame();
-            
+            Messenger = MainPageModel.MessageService;
         }
         public static readonly DependencyProperty SelectedGameProperty = DependencyProperty.Register("SelectedGame", typeof(GameType), typeof(MainPage), new PropertyMetadata(GameType.Regular));
         public GameType SelectedGame
@@ -67,9 +67,12 @@ namespace Catan3
         }
         private void SetMainPageModel(MainPageModel value)
         {
-            this.TraceMessage("MainPage updated");
+            Messenger = value.MessageService;
         }
 
+#pragma warning disable CS8618 // fixing confused compiler
+        public static IMessenger Messenger { get; private set; }
+#pragma warning restore CS8618 // restoring 
 
         private static List<PlayerViewModel> AvailablePlayers { get; set; } = [..PlayerDatabase.AvailablePlayers];
         public ObservableCollection<GameType> Games { get; set; } = [];

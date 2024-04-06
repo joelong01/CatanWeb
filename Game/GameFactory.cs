@@ -90,74 +90,34 @@ namespace Catan3.Models
         /// </summary>
         public static void Shuffle(this GameModel game)
         {
-          //  var copy = game.Copy();
+
             Random random = new Random();
             int count = game.Tiles.Count;
-          //  Dictionary<ResourceTileType, int> beforeShuffle = Test_GetTileResourceCounts(copy.Tiles);
-            // Explicitly specify the type arguments for TileModel and its properties
-            ShuffleList<TileModel, ResourceTileType>(game.Tiles, random,
-                tile => tile.ResourceTileType,
-                (tile, type) => tile.ResourceTileType = type);
-          //  CheckNumberCounts(game.Tiles, copy.Tiles);
-         //   var afterShuffle = Test_GetTileResourceCounts(game.Tiles);
+            do
+            {
+                ShuffleList<TileModel, ResourceTileType>(game.Tiles, random,
+                     tile => tile.ResourceTileType,
+                     (tile, type) => tile.ResourceTileType = type);
 
-         //   Test_CompareResourceTypes(afterShuffle, beforeShuffle);
+                ShuffleList<TileModel, int>(game.Tiles, random,
+                    tile => tile.Number,
+                    (tile, number) => tile.Number = number);
 
-            ShuffleList<TileModel, int>(game.Tiles, random,
-                tile => tile.Number,
-                (tile, number) => tile.Number = number);
+                ShuffleList<HarborModel, HarborType>(game.Harbors, random,
+                   harbor => harbor.HarborType,
+                   (harbor, type) => harbor.HarborType = type);
 
-            //afterShuffle = Test_GetTileResourceCounts(game.Tiles);
-            //Test_CompareResourceTypes(afterShuffle, beforeShuffle);
-           // CheckNumberCounts(game.Tiles, copy.Tiles);
-            // Shuffle harbors with explicit type arguments
-            ShuffleList<HarborModel, HarborType>(game.Harbors, random,
-                harbor => harbor.HarborType,
-                (harbor, type) => harbor.HarborType = type);
-
-            // Correct the placement of the number 7 on desert tiles
-            EnsureDesertSeven(game);
-
+                // Correct the placement of the number 7 on desert tiles
+                EnsureDesertSeven(game);
+            } while (!ValidateGame(game));
 
             // Place the robber on the first desert tile found
             game.Robber.Coordinates = game.Tiles.FirstOrDefault(tile => tile.ResourceTileType == ResourceTileType.Desert)?.TileKey ?? throw new Exception("there must be a desert tile for the game to work");
 
-            //game.TraceMessage($"Robber should be on: {game.Robber.Coordinates}");
-            //game.TraceMessage($"Tile[0]={game.Tiles[0]}");
+
         }
 
-        //private static Dictionary<ResourceTileType, int> Test_GetTileResourceCounts(IList<TileModel> tiles)
-        //{
-        //    Dictionary<ResourceTileType, int> result = new Dictionary<ResourceTileType, int>();
-        //    foreach (ResourceTileType val in Enum.GetValues(typeof(ResourceTileType)))
-        //    {
-        //        result[val] = tiles.Count(t => t.ResourceTileType == val);
-        //    }
-        //    return result;
-        //}
 
-        //private static void CheckNumberCounts(IList<TileModel> a, IList<TileModel> b)
-        //{
-        //    for (int n = 2; n <= 12; n++)
-        //    {
-        //        int a_count = a.Count( t => t.Number == n );
-        //        int b_count = b.Count( t => t.Number == n);
-        //        Debug.Assert(a_count == b_count);
-        //        if (n == 7)
-        //        {
-        //            a.TraceMessage($"{a_count} 7's");
-        //        }
-        //    }
-        //}
-
-        //private static void Test_CompareResourceTypes(Dictionary<ResourceTileType, int> a, Dictionary<ResourceTileType, int> b)
-        //{
-        //    Debug.Assert(a.Count == b.Count);
-        //    foreach (ResourceTileType val in Enum.GetValues(typeof(ResourceTileType)))
-        //    {
-        //        Debug.Assert(a[val] == b[val]);
-        //    }
-        //}
         private static void ShuffleList<T, TValue>(IList<T> list, Random random, Func<T, TValue> valueSelector, Action<T, TValue> valueSetter)
         {
             int count = list.Count;
