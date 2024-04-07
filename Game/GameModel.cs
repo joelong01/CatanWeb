@@ -38,6 +38,9 @@ namespace Catan3.Models
         [ObservableProperty]
         private RobberModel _robber = new();
 
+        [ObservableProperty]
+        private string _currentPlayerId = string.Empty;
+
         public GameModel(GameType gametype, bool hassupplementalbuildphase, List<PlayerModel> players)
         {
             GameType = gametype;

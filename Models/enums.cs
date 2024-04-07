@@ -23,7 +23,7 @@
     }
     public enum GameType { Regular, Expansion, Unset }
 
-    public enum RoadState { Unowned, Road, Ship };
+    public enum RoadState { Unowned, Road, Ship, Highlighted };
 
     public enum HarborType { Sheep, Wood, Ore, Wheat, Brick, ThreeForOne, None };
 

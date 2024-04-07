@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using Catan3.Utility;
@@ -251,5 +252,7 @@ namespace Catan3.Models
             double  yGap = layout.Top(adjacentKey) - layout.Top(key);
             return new Point(xGap, yGap);
         }
+
+      
     }
 }

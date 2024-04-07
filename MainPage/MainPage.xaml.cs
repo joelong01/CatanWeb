@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Catan3.Controls;
 using Catan3.Models;
 using Catan3.Utility;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
@@ -22,18 +23,34 @@ using Windows.UI.ViewManagement;
 namespace Catan3
 {
 
-   
+    public partial class SelectPlayerModel(string name, string id, bool selected) : ObservableObject
+    {
+        [ObservableProperty]
+        private string _name = name;
+        [ObservableProperty]
+        private bool _playing = selected;
+        [ObservableProperty]
+        private string _id = id;
+    }
+
+
 
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
     public sealed partial class MainPage : Page
     {
-       
+
+        private ObservableCollection<SelectPlayerModel> AvailablePlayers { get; set; }
+
         public MainPage()
         {
             this.InitializeComponent();
-        
+            AvailablePlayers = new ObservableCollection<SelectPlayerModel>(
+                PlayerDatabase.AvailablePlayers.Select(player => new SelectPlayerModel(player.Name, player.Id, false)));
+            AvailablePlayers[0].Playing = true;
+            AvailablePlayers[1].Playing = true;
+            AvailablePlayers[2].Playing = true;
             Games.Add(GameType.Expansion);
             Games.Add(GameType.Regular);
             SelectedGame = GameType.Expansion;
@@ -74,7 +91,6 @@ namespace Catan3
         public static IMessenger Messenger { get; private set; }
 #pragma warning restore CS8618 // restoring 
 
-        private static List<PlayerViewModel> AvailablePlayers { get; set; } = [..PlayerDatabase.AvailablePlayers];
         public ObservableCollection<GameType> Games { get; set; } = [];
         private void OnRightButtonTapped(object sender, RightTappedRoutedEventArgs e)
         {
@@ -88,12 +104,15 @@ namespace Catan3
         {
             try
             {
-                List<PlayerViewModel> playingPlayers = [];
-                playingPlayers.Add(AvailablePlayers[0]);
-                playingPlayers.Add(AvailablePlayers[1]);
-                playingPlayers.Add(AvailablePlayers[2]);
-               
-                MainPageModel = new MainPageModel(SelectedGame, playingPlayers);
+                var selectedPlayers = new List<PlayerViewModel>(
+                            AvailablePlayers
+                                .Where(selectModel => selectModel.Playing) // Filter for models where Playing is true
+                                .Select(selectModel => PlayerDatabase.AvailablePlayers.FirstOrDefault(pvm => pvm.Id == selectModel.Id)) // Map to PlayerViewModel
+                                .OfType<PlayerViewModel>() // Filter out any nulls effectively and ensure all are PlayerViewModel
+                        );
+
+
+                MainPageModel = new MainPageModel(SelectedGame, selectedPlayers);
                 this.DataContext = MainPageModel.GameViewModel;
             }
             catch (Exception ex)
@@ -168,37 +187,18 @@ namespace Catan3
         }
         private void Building_MouseLeave(BuildingViewModel viewModel)
         {
-            if ( MainPageModel.GameViewModel?.CurrentPlayer is not null &&  MainPageModel.GameViewModel?.CurrentPlayer.Background is not null && viewModel.Building.Owner is null)
+            if (MainPageModel.GameViewModel?.CurrentPlayer is not null && MainPageModel.GameViewModel?.CurrentPlayer.Background is not null && viewModel.Building.Owner is null)
             {
                 viewModel.Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 viewModel.Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 viewModel.Building.BuildingState = BuildingState.Empty;
             }
         }
-        private void Road_MouseEnter(RoadViewModel viewModel)
-        {
-            // this.TraceMessage($"{viewModel.Road.RoadKey} {Game?.CurrentPlayer?.Name} {viewModel.Road.RoadState}");
-            if ( MainPageModel.GameViewModel?.CurrentPlayer is not null &&  MainPageModel.GameViewModel?.CurrentPlayer.Background is not null && viewModel.Road.Owner is null)
-            {
-                viewModel.Background = BrushCache.GetGradientBrush( MainPageModel.GameViewModel.CurrentPlayer.Background, Colors.Black);
-                viewModel.Foreground = BrushCache.GetSolidColorBrush( MainPageModel.GameViewModel.CurrentPlayer.Foreground);
-                viewModel.Road.RoadState = RoadState.Road;
-            }
-        }
-        private void Road_MouseLeave(RoadViewModel viewModel)
-        {
-            //   this.TraceMessage($"{viewModel.Road.RoadKey} {Game?.CurrentPlayer?.Name} {viewModel.Road.RoadState}");
-            if ( MainPageModel.GameViewModel?.CurrentPlayer is not null &&  MainPageModel.GameViewModel?.CurrentPlayer.Background is not null && viewModel.Road.Owner is null)
-            {
-                viewModel.Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
-                viewModel.Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
-                viewModel.Road.RoadState = RoadState.Unowned;
-            }
-        }
+        
         private void Road_Clicked(RoadViewModel viewModel)
         {
             //  this.TraceMessage($"{viewModel.Road.RoadKey} {Game?.CurrentPlayer?.Name} {viewModel.Road.RoadState}");
-            if ( MainPageModel.GameViewModel?.CurrentPlayer is not null &&  MainPageModel.GameViewModel?.CurrentPlayer.Background is not null && viewModel.Road.Owner is null)
+            if (MainPageModel.GameViewModel?.CurrentPlayer is not null && MainPageModel.GameViewModel?.CurrentPlayer.Background is not null && viewModel.Road.Owner is null)
             {
                 viewModel.Road.Owner = MainPageModel.GameViewModel.CurrentPlayer.Player;
                 viewModel.Road.RoadState = RoadState.Road;

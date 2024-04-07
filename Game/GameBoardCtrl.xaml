@@ -114,9 +114,8 @@
                                 Height="{Binding Layout.BuildingSize, Mode=OneWay}"
                                 VerticalAlignment="Top"
                                 HorizontalAlignment="Left"
-                                PointerEntered="Road_MouseEnter"
-                                PointerExited="Road_MouseLeave"
-                                RoadClicked="Road_Clicked">
+                                
+                                >
                             <c:RoadCtrl.RenderTransform>
                                 <CompositeTransform
                                         TranslateX="{x:Bind Left, Mode=OneWay}"

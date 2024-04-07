@@ -67,10 +67,12 @@ namespace Catan3.Models
             CreateOrUpdateHarbors(gameModel);
             CreateOrUpdateRoads(gameModel);
             UpdatePlayers(gameModel);
+            CurrentPlayer = PlayerDatabase.FromId(gameModel.CurrentPlayerId);
             Robber.RobberModel = gameModel.Robber;
-            OnPropertyChanged(nameof(Robber));
+           // OnPropertyChanged(nameof(Robber));
             GameModel = gameModel;
             SetStars();
+            ShowStarValues(ShownStars);
             UpdateLayout();
 
         }
@@ -106,7 +108,7 @@ namespace Catan3.Models
                     Tiles[i].Tile = gameModel.Tiles[i];
                 }
             }
-            OnPropertyChanged(nameof(Tiles));
+          //  OnPropertyChanged(nameof(Tiles));
         }
         private void CreateOrUpdateRoads(GameModel gameModel)
         {
@@ -127,7 +129,7 @@ namespace Catan3.Models
 
                 }
             }
-            OnPropertyChanged(nameof(Roads));
+         //   OnPropertyChanged(nameof(Roads));
         }
 
         private void CreateOrUpdateBuildings(GameModel gameModel)
@@ -148,7 +150,7 @@ namespace Catan3.Models
                     Buildings[i].Building = gameModel.Buildings[i];
                 }
             }
-            OnPropertyChanged(nameof(Buildings));
+         //   OnPropertyChanged(nameof(Buildings));
         }
 
 
@@ -171,7 +173,7 @@ namespace Catan3.Models
                     Harbors[i].Harbor = gameModel.Harbors[i];
                 }
             }
-            OnPropertyChanged(nameof(Harbors));
+        //    OnPropertyChanged(nameof(Harbors));
         }
 
 

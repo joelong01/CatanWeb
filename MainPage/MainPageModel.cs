@@ -27,6 +27,15 @@ namespace Catan3.Models
        
     }
 
+    public class RoadMouseEntered(RoadViewModel roadViewModel)
+    {
+        public RoadViewModel RoadViewModel { get; } = roadViewModel;
+    }
+
+    public class RoadMouseExit(RoadViewModel roadViewModel)
+    {
+        public RoadViewModel RoadViewModel { get; } = roadViewModel;
+    }
 
     public partial class MainPageModel : ObservableRecipient
     {
@@ -47,6 +56,16 @@ namespace Catan3.Models
             {
               
                 Shuffle();
+            });
+            Messenger.Register<RoadMouseEntered>(this, (recipient, message) =>
+            {
+
+                Road_MouseEnter(message.RoadViewModel);
+            });
+            Messenger.Register<RoadMouseExit>(this, (recipient, message) =>
+            {
+
+                Road_MouseExit(message.RoadViewModel);
             });
         }
         //
@@ -71,10 +90,11 @@ namespace Catan3.Models
 
             // create a GameViewModel -- this sticks for the lifetime of the game
             GameViewModel = new GameViewModel(selectedGame, playingPlayers);
-
+            PlayerViewModel? currentPlayer = PlayerDatabase.FromId(gameModel.CurrentPlayerId) ?? throw new Exception($"Bad PlayerId: {gameModel.CurrentPlayerId}");
+            GameViewModel.CurrentPlayer = GameViewModel.Players[0];
             // joing the Game Model with the GameViewModel
             GameViewModel.UpdateViewModel(gameModel);
-            GameViewModel.CurrentPlayer = GameViewModel.Players[0];
+           
           
         }
 
@@ -129,6 +149,45 @@ namespace Catan3.Models
                     break;
             }
         }
+        /// <summary>
+        ///     just shows current player color when a mouse enters. NOT loggable.
+        ///     TODO: should only highlight if it is a buildable road.
+        ///     TODO: send a broadcast message when the CurrentPlayer changes so that the RoadViewModel can do this itself.
+        ///     TODO: when a Road entitlement is bought, Highlight (.5 Opacity) buildable roads
+        /// </summary>
+        /// <param name="viewModel"></param>
+        private void Road_MouseEnter(RoadViewModel viewModel)
+        {
+            if (GameViewModel is null)
+            {
+                Debug.Assert(false, "How can there be a null GameViewModel that has roads?");
+                return;
+            }
+            // this.TraceMessage($"{viewModel.Road.RoadKey} {Game?.CurrentPlayer?.Name} {viewModel.Road.RoadState}");
+            if (GameViewModel?.CurrentPlayer is not null && GameViewModel?.CurrentPlayer.Background is not null && viewModel.Road.Owner is null)
+            {
+                viewModel.Background = BrushCache.GetGradientBrush(GameViewModel.CurrentPlayer.Background, Colors.Black);
+                viewModel.Foreground = BrushCache.GetSolidColorBrush(GameViewModel.CurrentPlayer.Foreground);
+                viewModel.Road.RoadState = RoadState.Highlighted;
+                
+               
+            }
+        }
+        private void Road_MouseExit(RoadViewModel viewModel)
+        {
+            if (GameViewModel is null)
+            {
+                Debug.Assert(false, "How can there be a null GameViewModel that has roads?");
+                return;
+            }
+            //   this.TraceMessage($"{viewModel.Road.RoadKey} {Game?.CurrentPlayer?.Name} {viewModel.Road.RoadState}");
+            if (viewModel.Road.RoadState == RoadState.Highlighted)
+            {
+                viewModel.Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
+                viewModel.Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
+                viewModel.Road.RoadState = RoadState.Unowned;
+            }
+        }
 
 
     }
@@ -144,6 +203,11 @@ namespace Catan3.Models
                 new ("Adrian", Colors.White, Colors.Purple),
                 new ("Ryan", Colors.White, Colors.DarkGray)
             ];
+
+        public static PlayerViewModel? FromId(string id)
+        {
+            return AvailablePlayers.FirstOrDefault(x => x.Id == id);
+        }
     }
 
 

@@ -15,13 +15,15 @@
     </UserControl.Resources>
 
     <Canvas Background="Transparent" HorizontalAlignment="Left"
-            VerticalAlignment="Top" Canvas.ZIndex="100"
-            PointerPressed="Grid_PointerPressed" IsHitTestVisible="True"
+            VerticalAlignment="Top" Canvas.ZIndex="100" IsHitTestVisible="True"
             RenderTransformOrigin=".5 .5">
+
         <Polygon Fill="{x:Bind ViewModel.Background, Mode=TwoWay}"
                 Points="{x:Bind ViewModel.RoadPolygon, Mode=OneWay}"
                 Stroke="{x:Bind ViewModel.Foreground, Mode=TwoWay}"
-                StrokeThickness="{x:Bind ViewModel.Layout.RoadStrokeThickness, Mode=OneWay}" />
+                StrokeThickness="{x:Bind ViewModel.Layout.RoadStrokeThickness, Mode=OneWay}" 
+                 PointerEntered="OnPointerEntered" PointerExited="OnPointerExited"/>
+
         <Ellipse Width="10" Height="10" Fill="Green" Visibility="Collapsed" />
         <!--<Viewbox Stretch="Uniform" Height="20" HorizontalAlignment="Center">
             <TextBlock Text="{x:Bind ViewModel.PositionShortName, Mode=OneWay}" FontSize="16"

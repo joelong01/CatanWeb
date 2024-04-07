@@ -31,6 +31,7 @@ namespace Catan3.Models
             Debug.Assert(( boardInfo.TileKeys.Count == boardInfo.Numbers.Count ) && ( boardInfo.TileKeys.Count == boardInfo.Resources.Count ));
             List<PlayerModel> playerModels = players.Select(Id => new PlayerModel(Id)).ToList();
             GameModel game = new(gameType, boardInfo.HasSupplemental, playerModels);
+            game.CurrentPlayerId = players[0];
 
             for (int i = 0; i < boardInfo.TileKeys.Count; i++)
             {

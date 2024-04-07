@@ -37,7 +37,9 @@
                     ScrollViewer.VerticalScrollMode="Auto" Margin="10">
                 <Button Content="New Game" Click="OnRegenerate"
                         Background="Black" Foreground="White" />
-                <Button Content="Shuffle" Command="{x:Bind MainPageModel.ShuffleCommand, Mode=OneWay}" Background="Black" Foreground="White" />
+                <Button Content="Shuffle"
+                        Command="{x:Bind MainPageModel.ShuffleCommand, Mode=OneWay}"
+                        Background="Black" Foreground="White" />
 
                 <!--Tile Size-->
                 <TextBlock Text="Tile Size" Foreground="Black" />
@@ -111,12 +113,23 @@
 
                 <!--Players-->
                 <TextBlock Text="Players" Foreground="Black" />
-                <ComboBox
-                        ItemsSource="{x:Bind MainPageModel.GameViewModel.Players, Mode=OneWay}"
-                        DisplayMemberPath="Name" Foreground="Black"
-                        SelectedItem="{x:Bind MainPageModel.GameViewModel.CurrentPlayer, Mode=TwoWay}"
+                <ComboBox ItemsSource="{x:Bind AvailablePlayers, Mode=OneWay}"
+                        Foreground="Black"
                         HorizontalAlignment="Left" VerticalAlignment="Top"
-                        Width="200" />
+                        >
+
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Width="200">
+
+                                <TextBlock Text="{Binding Name, Mode=OneWay}" 
+                                        HorizontalAlignment="Left"  VerticalAlignment="Center"/>
+                                <CheckBox HorizontalAlignment="Right"
+                                        IsChecked="{Binding Playing, Mode=TwoWay}"  VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
 
                 <!--Game Type-->
                 <TextBlock Text="Game Type" Foreground="Black" />
@@ -125,8 +138,10 @@
                         Foreground="Black" HorizontalAlignment="Left"
                         VerticalAlignment="Top" Width="200" />
 
-                <Button Content="Flip Orientation" Click="OnFlipTiles" Background="Black" Foreground="White"/>
-                <Button Content="Do Misc" Click="OnHitMe" Background="Black" Foreground="White"/>
+                <Button Content="Flip Orientation" Click="OnFlipTiles"
+                        Background="Black" Foreground="White" />
+                <Button Content="Do Misc" Click="OnHitMe" Background="Black"
+                        Foreground="White" />
 
             </StackPanel>
         </ScrollViewer>
@@ -137,11 +152,13 @@
                 Grid.ColumnSpan="1">
             <Viewbox Stretch="Uniform" Margin="2">
                 <c:GameBoardCtrl
-                        GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}"/>
+                        GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" />
             </Viewbox>
         </Border>
 
-        <c:BoardMeasurementCtrl Grid.Column="4"  Background="Green" GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" BorderBrush="Black" BorderThickness="2" />
+        <c:BoardMeasurementCtrl Grid.Column="4" Background="Green"
+                GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}"
+                BorderBrush="Black" BorderThickness="2" />
 
         <toolkit:GridSplitter Grid.Column="1" Width="5"
                 HorizontalAlignment="Stretch" Background="Gray">
