@@ -8,7 +8,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" RightTapped="OnRightButtonTapped" KeyUp="OnKeyUp"
         xmlns:c="using:Catan3.Controls" Background="DarkGray"
-        xmlns:m="clr-namespace:Catan3.Models">
+        xmlns:m="clr-namespace:Catan3.Models"
+        d:DataContext="{d:DesignInstance Type=m:GameViewModel}">
     <Page.Resources>
         <Style TargetType="Rectangle" x:Key="RECT_ResourceCard">
 
@@ -35,6 +36,8 @@
                 HorizontalAlignment="Left">
             <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center"
                     ScrollViewer.VerticalScrollMode="Auto" Margin="10">
+                <TextBlock FontSize="20"
+                        Text="{x:Bind MainPageModel.GameViewModel.Id, Mode=OneWay}" />
                 <Button Content="New Game" Click="OnRegenerate"
                         Background="Black" Foreground="White" />
                 <Button Content="Shuffle"
@@ -111,26 +114,39 @@
                         Text="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.GameMargin, Mode=TwoWay}"
                         Foreground="Black" />
 
-                <!--Players-->
+                <!--Availabe Players-->
                 <TextBlock Text="Players" Foreground="Black" />
                 <ComboBox ItemsSource="{x:Bind AvailablePlayers, Mode=OneWay}"
-                        Foreground="Black"
-                        HorizontalAlignment="Left" VerticalAlignment="Top"
-                        >
+                        Foreground="Black" HorizontalAlignment="Left"
+                        VerticalAlignment="Top">
 
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <Grid Width="200">
 
-                                <TextBlock Text="{Binding Name, Mode=OneWay}" 
-                                        HorizontalAlignment="Left"  VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Name, Mode=OneWay}"
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center" />
                                 <CheckBox HorizontalAlignment="Right"
-                                        IsChecked="{Binding Playing, Mode=TwoWay}"  VerticalAlignment="Center"/>
+                                        IsChecked="{Binding Playing, Mode=TwoWay}"
+                                        VerticalAlignment="Center" />
                             </Grid>
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
 
+                <!--Current Player (and Playing Players)-->
+                <TextBlock Text="Current Player" Foreground="Black" />
+                <ComboBox
+                        ItemsSource="{x:Bind MainPageModel.GameViewModel.Players, Mode=OneWay}"
+                        SelectedItem="{x:Bind MainPageModel.GameViewModel.CurrentPlayer, Mode=OneWay}"
+                        DisplayMemberPath="Name" Foreground="Black"
+                        HorizontalAlignment="Left" VerticalAlignment="Top">
+
+                </ComboBox>
+                <Button
+                        Command="{x:Bind MainPageModel.NextPlayerCommand, Mode=OneWay}"
+                        Content="Next Player" />
                 <!--Game Type-->
                 <TextBlock Text="Game Type" Foreground="Black" />
                 <ComboBox ItemsSource="{x:Bind Games, Mode=OneWay}"

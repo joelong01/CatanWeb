@@ -12,17 +12,18 @@ using Windows.ApplicationModel.Contacts;
 namespace Catan3.Models
 {
 
-  
+
 
 
     public partial class GameViewModel : ObservableRecipient
     {
         public GameViewModel()
         {
-            // Register to receive the BuildingUpdateMessage
-            
+            IsActive = true;
+            Id = GetHashCode().ToString();
+
         }
 
-       
+
     }
 }

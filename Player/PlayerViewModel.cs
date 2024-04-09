@@ -1,5 +1,6 @@
 ﻿
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI;
 using Windows.UI;
@@ -25,10 +26,15 @@ namespace Catan3.Models
 
         [ObservableProperty]
         private string _imageFileName = "ms-appx:///Assets/guest.jpg";
-
+        [JsonIgnore]
         [ObservableProperty]
         private PlayerModel _player = PlayerModel.Default;
         public PlayerViewModel() : this("Nameless", Colors.White, Colors.HotPink) { }
+        
+        
+        [JsonIgnore]
+        public static PlayerViewModel Default { get; } = new();
+
         public PlayerViewModel(string name, Color foreground, Color background)
         {
             Name = name;

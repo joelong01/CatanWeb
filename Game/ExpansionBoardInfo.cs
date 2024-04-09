@@ -6,7 +6,8 @@ namespace Catan3.Models
 {
     public partial class ExpansionBoardInfo : IBoardInfo
     {
-        public ExpansionBoardInfo() => Layout = new BoardLayout();
+        public static ExpansionBoardInfo Default {get;} = new ExpansionBoardInfo();
+        private ExpansionBoardInfo() => Layout = BoardLayout.Default;
         public BoardLayout Layout { get; private set; }
         public bool HasSupplemental => true;
         public List<HexCoordinates> TileKeys { get; } =

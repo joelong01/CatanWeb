@@ -18,12 +18,7 @@ namespace Catan3.Controls
     /// </summary>
     public partial class GameBoardCtrl : UserControl
     {
-        public event BuildingClicked? BuildingClicked;
-        public event BuildingMouseEnter? BuildingMouseEnter;
-        public event BuildingMouseLeave? BuildingMouseLeave;
-        public event RoadClicked? RoadClicked;
-        public event RoadMouseEnter? RoadMouseEnter;
-        public event RoadMouseLeave? RoadMouseLeave;
+      
         public event TileRightMouseClicked? TileRightMouseClicked;
 
 
@@ -108,6 +103,7 @@ namespace Catan3.Controls
 
         private static TileViewModel DesertTile(GameViewModel gameViewModel)
         {
+            if (gameViewModel.Tiles.Count == 0) return TileViewModel.Default;
             return gameViewModel.Tiles.Where(t => t.Tile.ResourceTileType == ResourceTileType.Desert).ToList().First();
         }
 
@@ -190,51 +186,6 @@ namespace Catan3.Controls
         }
 
 
-
-
-
-        private void Building_MouseEnter(object sender, PointerRoutedEventArgs e)
-        {
-            if (sender is BuildingCtrl building)
-            {
-                BuildingMouseEnter?.Invoke(building.BuildingViewModel);
-            }
-        }
-        private void Building_MouseLeave(object sender, PointerRoutedEventArgs e)
-        {
-            if (sender is BuildingCtrl building)
-            {
-                BuildingMouseLeave?.Invoke(building.BuildingViewModel);
-            }
-        }
-
-        private void Road_MouseEnter(object sender, PointerRoutedEventArgs e)
-        {
-            if (sender is RoadCtrl Road)
-            {
-                RoadMouseEnter?.Invoke(Road.ViewModel);
-            }
-        }
-        private void Road_MouseLeave(object sender, PointerRoutedEventArgs e)
-        {
-            if (sender is RoadCtrl Road)
-            {
-                RoadMouseLeave?.Invoke(Road.ViewModel);
-            }
-        }
-        private void Road_Clicked(RoadViewModel viewModel)
-        {
-            RoadClicked?.Invoke(viewModel);
-        }
-
-
-        private void Building_MousePressed(object sender, PointerRoutedEventArgs e)
-        {
-            if (sender is BuildingCtrl building)
-            {
-                BuildingClicked?.Invoke(building.BuildingViewModel);
-            }
-        }
 
         private void Tile_RightMouseDown(object sender, RightTappedRoutedEventArgs e)
         {

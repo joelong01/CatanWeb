@@ -1,15 +1,12 @@
 ﻿using System.ComponentModel;
-using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI;
 
 namespace Catan3.Models
 {
-    public partial class BuildingViewModel : ObservableObject
+    public partial class BuildingViewModel : ObservableRecipient
     {
       
-        public BuildingViewModel(BuildingModel building, BoardLayout layout)
+        public BuildingViewModel(BuildingModel building, BoardLayout layout) : this()
         {
             _building = building;
             _layout = layout;
@@ -19,6 +16,7 @@ namespace Catan3.Models
        
         void Init()
         {
+            IsActive = true;
             if (Layout is not null && Layout is BoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
@@ -70,11 +68,7 @@ namespace Catan3.Models
             left += center.X;
             return left;
         }
-        public override string? ToString()
-        {
-
-            return Building.ToString();
-        }
+      
     }
 }
 

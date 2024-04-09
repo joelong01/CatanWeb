@@ -6,7 +6,7 @@ namespace Catan3.Models
 {
     public partial class TileModel : IComparable<TileModel>, IEquatable<TileModel>
     {
-      
+       public static TileModel Default { get; } = new TileModel();
         public TileModel() { }
         public override string ToString()
         {

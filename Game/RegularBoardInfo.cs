@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Catan3.Utility;
+using Windows.Foundation.Metadata;
 
 namespace Catan3.Models
 {
@@ -9,7 +10,9 @@ namespace Catan3.Models
     /// </summary>
     public partial class RegularBoardInfo : IBoardInfo
     {
-        public RegularBoardInfo() => Layout = new BoardLayout();
+
+        public static RegularBoardInfo Default { get; } = new RegularBoardInfo();
+        private RegularBoardInfo() => Layout = BoardLayout.Default;
         public bool HasSupplemental => false;
         
         public BoardLayout Layout { get; private set; }

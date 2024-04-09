@@ -20,6 +20,7 @@
         City,
         Stars,
         Knight,
+        Highlighted,
     }
     public enum GameType { Regular, Expansion, Unset }
 

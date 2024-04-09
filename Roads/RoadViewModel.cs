@@ -1,16 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 namespace Catan3.Models
 {
-    public partial class RoadViewModel : ObservableObject
+    public partial class RoadViewModel : ObservableRecipient
     {
+        [JsonIgnore]
         [ObservableProperty]
         private RoadModel _road;
 
@@ -37,6 +39,8 @@ namespace Catan3.Models
         [ObservableProperty]
         private double _index;
 
+        private PlayerViewModel CurrentPlayer { get; set; } = PlayerViewModel.Default;
+
         public RoadViewModel(RoadModel road, BoardLayout layout)
         {
             _road = road;
@@ -45,13 +49,18 @@ namespace Catan3.Models
         }
         public void Init()
         {
+            IsActive = true;
+            Messenger.Register<CurrentPlayerChanged>(this, (recipient, message) =>
+            {
+                HandleCurrentPlayerChanged(message.CurrentPlayer);
+            });
+
+
             if (Layout is not null && Layout is BoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
 
             }
-
-
             UpdateLayout();
         }
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -61,6 +70,12 @@ namespace Catan3.Models
                 Layout = layout;
                 UpdateLayout();
             }
+        }
+
+        private void HandleCurrentPlayerChanged(PlayerViewModel newCurrentPlayer)
+        {
+            CurrentPlayer = newCurrentPlayer;
+            
         }
         private void UpdateLayout()
         {

@@ -146,10 +146,7 @@
                                 Width="{Binding Layout.BuildingSize, Mode=OneWay}"
                                 Height="{Binding Layout.BuildingSize, Mode=OneWay}"
                                 VerticalAlignment="Top"
-                                HorizontalAlignment="Left"
-                                PointerEntered="Building_MouseEnter"
-                                PointerExited="Building_MouseLeave"
-                                PointerPressed="Building_MousePressed">
+                                HorizontalAlignment="Left">
                             <c:BuildingCtrl.RenderTransform>
                                 <CompositeTransform
                                         TranslateX="{x:Bind Left, Mode=OneWay}"

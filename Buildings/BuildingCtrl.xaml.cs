@@ -50,5 +50,20 @@ namespace Catan3.Controls
                 _ => "",
             };
         }
+
+        private void OnPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            BuildingViewModel.UpgradeCommand.Execute(BuildingViewModel);
+        }
+
+        private void OnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            BuildingViewModel.MouseExitCommand.Execute(BuildingViewModel);
+        }
+
+        private void OnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            BuildingViewModel.MouseEnterCommand.Execute(BuildingViewModel);
+        }
     }
 }

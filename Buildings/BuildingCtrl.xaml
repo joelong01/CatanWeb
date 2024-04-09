@@ -10,7 +10,8 @@
     <Grid HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="White" BorderThickness="0"
             Background="Transparent" Opacity="1"
             Width="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}"
-            Height="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}">
+            Height="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}"
+            PointerEntered="OnPointerEntered" PointerExited="OnPointerExited" PointerPressed="OnPointerPressed">
         <Ellipse Width="10" HorizontalAlignment="Center"
                 VerticalAlignment="Center" Height="10" Fill="Red" Opacity=".75"
                 Visibility="Collapsed" />

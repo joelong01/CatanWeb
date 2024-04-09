@@ -1,9 +1,11 @@
+using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Models
 {
     public partial class TileViewModel : ObservableObject
     {
+        [JsonIgnore]
         [ObservableProperty]
         private TileModel _tile;
 
@@ -21,7 +23,7 @@ namespace Catan3.Models
 
         [ObservableProperty]
         private CatanOrientation _orientation = CatanOrientation.FaceUp;
-
-       
+        [JsonIgnore]
+        public static TileViewModel Default { get; } = new(TileModel.Default, BoardLayout.Default);
     }
 }

@@ -1,11 +1,16 @@
 ﻿
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Catan3.Models
 {
     public partial class GameViewModel : ObservableRecipient
     {
+
+        [ObservableProperty]
+        private string _id;
+
         [ObservableProperty]
         private IBoardInfo? _boardInfo;
 
@@ -22,7 +27,7 @@ namespace Catan3.Models
         private HouseRules _houseRules = new();
 
         [ObservableProperty]
-        private PlayerViewModel? _currentPlayer;
+        private PlayerViewModel _currentPlayer = PlayerViewModel.Default;
 
         [ObservableProperty]
         private ObservableCollection<TileViewModel> _tiles = [];
@@ -40,13 +45,13 @@ namespace Catan3.Models
         private ObservableCollection<HarborViewModel> _harbors = [];
 
         [ObservableProperty]
-        public GameModel? _gameModel;
+        public GameModel _gameModel = new();
 
         [ObservableProperty]
         private int _shownStars = 13; // stars are visible above this number
 
         [ObservableProperty]
-        private int _shuffleCount = 0; // stars are visible above this number
+        private int _shuffleCount = 0;
 
 
         /// <summary>
@@ -60,6 +65,14 @@ namespace Catan3.Models
             ShowStarValues(value);
         }
 
+        partial void OnCurrentPlayerChanged(PlayerViewModel? oldValue, PlayerViewModel newValue)
+        {
+            if (newValue is null) return;
+         //   this.TraceMessage($"Current Player: {oldValue} -> {newValue}");
+            this.GameModel.CurrentPlayerId = newValue.Id;
+            Messenger.Send(new CurrentPlayerChanged(newValue));
+        }
+
         public void UpdateBindings()
         {
             OnPropertyChanged(nameof(Tiles));
@@ -68,7 +81,7 @@ namespace Catan3.Models
             OnPropertyChanged(nameof(Roads));
             OnPropertyChanged(nameof(Harbors));
             OnPropertyChanged(nameof(Robber));
-        
+
         }
     }
 }

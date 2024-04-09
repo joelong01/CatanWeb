@@ -16,6 +16,8 @@ namespace Catan3.Models
     {
         private GameType GameType { get; set; } = GameType.Unset;
 
+        public static GameViewModel Default { get; } = new();
+
         public GameViewModel(IBoardInfo? boardinfo) : this()
         {
             BoardInfo = boardinfo;
@@ -27,18 +29,18 @@ namespace Catan3.Models
         ///     game.UpdateGameModel(gameModel);
         /// </summary>
         /// <param name="gameType"></param>
-        public GameViewModel(GameType gameType, IEnumerable<PlayerViewModel> playingPlayers) : this()
+        public GameViewModel(GameType gameType, IList<PlayerViewModel> playingPlayers) : this()
         {
 
 
             GameType = gameType;
             if (GameType == GameType.Regular)
             {
-                BoardInfo = new RegularBoardInfo();
+                BoardInfo = RegularBoardInfo.Default;
             }
             else if (GameType == GameType.Expansion)
             {
-                BoardInfo = new ExpansionBoardInfo();
+                BoardInfo = ExpansionBoardInfo.Default;
             }
             else
             {
@@ -58,37 +60,75 @@ namespace Catan3.Models
 
         }
 
-        public void UpdateViewModel(GameModel gameModel)
+        public GameViewModel(GameModel gameModel) : this()
         {
-            if (gameModel.GameType != this.GameType) throw new Exception("Create new one instead of updating this one");
-            if (BoardInfo is null) throw new Exception("Board Info can't be null");
-            CreateOrUpdateTiles(gameModel);
-            CreateOrUpdateBuildings(gameModel);
-            CreateOrUpdateHarbors(gameModel);
-            CreateOrUpdateRoads(gameModel);
-            UpdatePlayers(gameModel);
-            CurrentPlayer = PlayerDatabase.FromId(gameModel.CurrentPlayerId);
-            Robber.RobberModel = gameModel.Robber;
-           // OnPropertyChanged(nameof(Robber));
-            GameModel = gameModel;
-            SetStars();
-            ShowStarValues(ShownStars);
-            UpdateLayout();
+            GameType = gameModel.GameType;
+            if (GameType == GameType.Regular)
+            {
+                BoardInfo = RegularBoardInfo.Default;
+            }
+            else if (GameType == GameType.Expansion)
+            {
+                BoardInfo = ExpansionBoardInfo.Default;
+            }
+            else
+            {
+                throw new ArgumentException($"invalid boardsize");
+            }
 
+            MergeGameModel(gameModel);
+
+
+        }
+        private void CallTimedFunction(string description, Action action)
+        {
+            using (new FunctionTimer(description))
+            {
+                action();
+            }
         }
 
 
+        public void MergeGameModel(GameModel gameModel)
+        {
+            if (gameModel.GameType != this.GameType) throw new Exception("Create new one instead of updating this one");
+            if (BoardInfo is null) throw new Exception("Board Info can't be null");
+            CallTimedFunction("Merging Tiles", () => CreateOrUpdateTiles(gameModel));
+            CallTimedFunction("Merging Buildings", () => CreateOrUpdateBuildings(gameModel));
+            CallTimedFunction("Merging Harbors", () => CreateOrUpdateHarbors(gameModel));
+            CallTimedFunction("Merging Roads", () => CreateOrUpdateRoads(gameModel));
+
+            Robber.RobberModel = gameModel.Robber;
+            GameModel = gameModel;
+            CallTimedFunction("Updating Players", () => UpdatePlayers(GameModel));
+            //OnPropertyChanged(nameof(Players));
+            CallTimedFunction("SetCurrentPlayer", () => SetCurrentPlayer(gameModel.CurrentPlayerId));
+           // CallTimedFunction("Updating Layout", () => UpdateLayout());
+
+        }
+        /// <summary>
+        /// 
+        ///     Create the this.Players collection of PlayerViewModels based on the passed in list of playerIds
+        ///     stored in gameModel.Players
+        /// </summary>
+        /// <param name="gameModel"></param>
+
         private void UpdatePlayers(GameModel gameModel)
         {
-            // the ViewModel Players is always created.
 
-            for (int i = 0; i < Players.Count; i++)
+            for (int i = 0; i < gameModel.Players.Count; i++)
             {
-                //Debug.Assert(Players[i].Player.Id == gameModel.Players[i].Id);
-                Players[i].Player = gameModel.Players[i];
+                PlayerViewModel player = PlayerDatabase.FromId(gameModel.Players[i].Id) ?? throw new Exception($"Bad PlayerId: {gameModel.Players[i].Id}");
+                player.Player = gameModel.Players[i];
+                this.Players.Add(player);
             }
 
-            OnPropertyChanged(nameof(Players));
+        }
+
+        public void SetCurrentPlayer(string playerId)
+        {
+            PlayerViewModel player = Players.FirstOrDefault(p=> p.Id == playerId) ?? throw new Exception($"Player with Id {playerId} not found in Playing Players collection");
+            CurrentPlayer = player;
         }
 
         private void CreateOrUpdateTiles(GameModel gameModel)
@@ -108,7 +148,7 @@ namespace Catan3.Models
                     Tiles[i].Tile = gameModel.Tiles[i];
                 }
             }
-          //  OnPropertyChanged(nameof(Tiles));
+            // OnPropertyChanged(nameof(Tiles));
         }
         private void CreateOrUpdateRoads(GameModel gameModel)
         {
@@ -129,7 +169,7 @@ namespace Catan3.Models
 
                 }
             }
-         //   OnPropertyChanged(nameof(Roads));
+            //   OnPropertyChanged(nameof(Roads));
         }
 
         private void CreateOrUpdateBuildings(GameModel gameModel)
@@ -150,7 +190,7 @@ namespace Catan3.Models
                     Buildings[i].Building = gameModel.Buildings[i];
                 }
             }
-         //   OnPropertyChanged(nameof(Buildings));
+            //   OnPropertyChanged(nameof(Buildings));
         }
 
 
@@ -173,7 +213,7 @@ namespace Catan3.Models
                     Harbors[i].Harbor = gameModel.Harbors[i];
                 }
             }
-        //    OnPropertyChanged(nameof(Harbors));
+            //    OnPropertyChanged(nameof(Harbors));
         }
 
 
@@ -194,11 +234,11 @@ namespace Catan3.Models
                 GameType = gameModel.GameType;
                 if (gameModel.GameType == GameType.Regular)
                 {
-                    BoardInfo = new RegularBoardInfo();
+                    BoardInfo = RegularBoardInfo.Default;
                 }
                 else if (gameModel.GameType == GameType.Expansion)
                 {
-                    BoardInfo = new ExpansionBoardInfo();
+                    BoardInfo = ExpansionBoardInfo.Default;
                 }
                 else
                 {
@@ -249,7 +289,7 @@ namespace Catan3.Models
         ///     the Star for each building is dependend on the Tiles and thus changes everytime we Shuffle...but Shuffle is driven off of
         ///     GameModel, not GameViewModel...so we can't do it there.  
         /// </summary>
-        private void SetStars()
+        public void SetStars()
         {
             foreach (var building in Buildings)
             {
@@ -338,7 +378,7 @@ namespace Catan3.Models
         /// </summary>
         double cached_BuildingSize = -1;
         double cached_OuterHexSize = -1;
-        private void UpdateLayout()
+        public void UpdateLayout()
         {
 
             Contract.Assert(BoardInfo is not null && BoardInfo.Layout is not null, "Cannot do layout with no BoardInfo");
@@ -418,7 +458,15 @@ namespace Catan3.Models
 
         }
 
+        partial void OnGameModelChanged(GameModel? oldValue, GameModel newValue)
+        {
+            //  this.TraceMessage("GameModel changed");
+        }
 
+        partial void OnPlayersChanged(ObservableCollection<PlayerViewModel>? oldValue, ObservableCollection<PlayerViewModel> newValue)
+        {
+            //  this.TraceMessage("Players Changed");
+        }
 
 
 

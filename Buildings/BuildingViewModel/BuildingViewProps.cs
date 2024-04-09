@@ -3,16 +3,18 @@ using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI;
+using System.Text.Json.Serialization;
 
 namespace Catan3.Models
 {
-    public partial class BuildingViewModel : ObservableObject
+    public partial class BuildingViewModel : ObservableRecipient
     {
+        [JsonIgnore]
         [ObservableProperty]
-        private BuildingModel _building;
+        private BuildingModel _building = BuildingModel.Default;
 
         [ObservableProperty]
-        private BoardLayout _layout;
+        private BoardLayout _layout = BoardLayout.Default;
 
         [ObservableProperty]
         private double _left;
@@ -29,7 +31,10 @@ namespace Catan3.Models
         [ObservableProperty]
         private Brush? _foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
 
+        [JsonIgnore]
+        private PlayerViewModel CurrentPlayer { get; set; } = PlayerViewModel.Default;
 
+        public override string? ToString() => Building.ToString();
 
     }
 }

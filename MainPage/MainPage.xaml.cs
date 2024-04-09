@@ -70,19 +70,19 @@ namespace Catan3
                 }
             }
         }
-        public static readonly DependencyProperty MainPageModelProperty = DependencyProperty.Register("MainPageModel", typeof(MainPageModel), typeof(MainPage), new PropertyMetadata(null, MainPageModelChanged));
-        public MainPageModel MainPageModel
+        public static readonly DependencyProperty MainPageModelProperty = DependencyProperty.Register("MainPageModel", typeof(MainPageViewModel), typeof(MainPage), new PropertyMetadata(null, MainPageModelChanged));
+        public MainPageViewModel MainPageModel
         {
-            get => ( MainPageModel )GetValue(MainPageModelProperty);
+            get => ( MainPageViewModel )GetValue(MainPageModelProperty);
             set => SetValue(MainPageModelProperty, value);
         }
         private static void MainPageModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as MainPage;
-            var depPropValue = (MainPageModel)e.NewValue;
+            var depPropValue = (MainPageViewModel)e.NewValue;
             depPropClass?.SetMainPageModel(depPropValue);
         }
-        private void SetMainPageModel(MainPageModel value)
+        private void SetMainPageModel(MainPageViewModel value)
         {
             Messenger = value.MessageService;
         }
@@ -100,25 +100,20 @@ namespace Catan3
         {
 
         }
-        private async void NewGame()
+        private void NewGame()
         {
-            try
-            {
-                var selectedPlayers = new List<PlayerViewModel>(
+
+            var selectedPlayers = new List<PlayerViewModel>(
                             AvailablePlayers
                                 .Where(selectModel => selectModel.Playing) // Filter for models where Playing is true
-                                .Select(selectModel => PlayerDatabase.AvailablePlayers.FirstOrDefault(pvm => pvm.Id == selectModel.Id)) // Map to PlayerViewModel
-                                .OfType<PlayerViewModel>() // Filter out any nulls effectively and ensure all are PlayerViewModel
+                                .Select(selectModel => PlayerDatabase.AvailablePlayers.FirstOrDefault(pvm => pvm.Id == selectModel.Id)) // Map to CurrentPlayer
+                                .OfType<PlayerViewModel>() // Filter out any nulls effectively and ensure all are CurrentPlayer
                         );
 
 
-                MainPageModel = new MainPageModel(SelectedGame, selectedPlayers);
-                this.DataContext = MainPageModel.GameViewModel;
-            }
-            catch (Exception ex)
-            {
-                await ShowMessageDialog(ex.ToString(), "Catan New Game Error");
-            }
+            MainPageModel = new MainPageViewModel(SelectedGame, selectedPlayers);
+            this.DataContext = MainPageModel.GameViewModel;
+
 
         }
         private async Task ShowMessageDialog(string message, string title)
@@ -138,13 +133,11 @@ namespace Catan3
         }
         private void Building_MouseEnter(BuildingViewModel viewModel)
         {
-            // this.TraceMessage($"{viewModel.Building.BuildingKey} {Game?.CurrentPlayer.Name}");
-            if (MainPageModel.GameViewModel?.CurrentPlayer is not null && MainPageModel.GameViewModel?.CurrentPlayer.Background is not null && viewModel.Building.Owner is null)
-            {
-                viewModel.Background = BrushCache.GetGradientBrush(MainPageModel.GameViewModel.CurrentPlayer.Background, Colors.Black);
-                viewModel.Foreground = BrushCache.GetSolidColorBrush(MainPageModel.GameViewModel.CurrentPlayer.Foreground);
-                viewModel.Building.BuildingState = BuildingState.Stars;
-            }
+
+            viewModel.Background = BrushCache.GetGradientBrush(MainPageModel.GameViewModel.CurrentPlayer.Background, Colors.Black);
+            viewModel.Foreground = BrushCache.GetSolidColorBrush(MainPageModel.GameViewModel.CurrentPlayer.Foreground);
+            viewModel.Building.BuildingState = BuildingState.Stars;
+
         }
         private void Building_Clicked(BuildingViewModel viewModel)
         {
@@ -194,7 +187,7 @@ namespace Catan3
                 viewModel.Building.BuildingState = BuildingState.Empty;
             }
         }
-        
+
         private void Road_Clicked(RoadViewModel viewModel)
         {
             //  this.TraceMessage($"{viewModel.Road.RoadKey} {Game?.CurrentPlayer?.Name} {viewModel.Road.RoadState}");
@@ -266,52 +259,12 @@ namespace Catan3
         {
             if (MainPageModel.GameViewModel is null) return;
 
-            var jsonOptions = new JsonSerializerOptions
-            {
-                IgnoreReadOnlyFields = true,
-                PropertyNameCaseInsensitive = true
-            };
-            jsonOptions.Converters.Add(new JsonStringEnumConverter());
-            try
-            {
-                var json = JsonSerializer.Serialize( MainPageModel.GameViewModel.GameModel, jsonOptions);
+            this.TraceMessage($"Current Player: {MainPageModel.GameViewModel.CurrentPlayer}");
+           
 
-                // this.TraceMessage(json);
-                var gameModel = JsonSerializer.Deserialize<GameModel>(json, jsonOptions);
-
-
-                json = JsonSerializer.Serialize(MainPageModel.GameViewModel.Tiles, jsonOptions);
-                this.TraceMessage(json);
-                var tiles = JsonSerializer.Deserialize<TileViewModel>(json, jsonOptions);
-
-                json = JsonSerializer.Serialize(MainPageModel.GameViewModel.Harbors, jsonOptions);
-                var harbors = JsonSerializer.Deserialize<HarborViewModel>(json, jsonOptions);
-
-                json = JsonSerializer.Serialize(MainPageModel.GameViewModel.Roads, jsonOptions);
-                var roads = JsonSerializer.Deserialize<RoadViewModel>(json, jsonOptions);
-
-                json = JsonSerializer.Serialize(MainPageModel.GameViewModel.Buildings, jsonOptions);
-                var buildings = JsonSerializer.Deserialize<BuildingViewModel>(json, jsonOptions);
-
-                json = JsonSerializer.Serialize(MainPageModel.GameViewModel.Players, jsonOptions);
-                var players = JsonSerializer.Deserialize<PlayerViewModel>(json, jsonOptions);
-
-                //var game = JsonSerializer.Deserialize<GameModel>(json, jsonOptions);
-                //this.TraceMessage($"{game}");
-                //var gv = JsonSerializer.Deserialize<GameViewModel>(json, jsonOptions);
-            }
-            catch (Exception e)
-            {
-                this.TraceMessage(e.ToString());
-            }
-
-
-
-            // List<PlayerViewModel>? players = JsonSerializer.Deserialize<List<PlayerViewModel>>(json);  
-            // this.TraceMessage($"Players count={gameModel?.Players.Count}");
-
-            //  this.TraceMessage(json);
         }
+
+   
 
         private void OnFlipTiles(object sender, RoutedEventArgs e)
         {

@@ -21,7 +21,7 @@ namespace Catan3.Models
         private bool _hasSupplementalBuildPhase = false;
 
         [ObservableProperty]
-        private List<PlayerModel> _players;
+        private List<PlayerModel> _players = [];
 
         [ObservableProperty]
         private ObservableCollection<TileModel> _tiles = [];
@@ -109,12 +109,15 @@ namespace Catan3.Models
             return stars;
         }
 
-        public  GameModel Copy()
+        public GameModel Copy()
         {
-
-            var gameModelJson = JsonSerializer.Serialize(this);
-            GameModel? newModel = JsonSerializer.Deserialize<GameModel>(gameModelJson);
-            return ( newModel is null ) ? throw new Exception("We just serialized it. it should deserialize!") : newModel;
+            using (new FunctionTimer("GameModel.Copy"))
+            {
+                var gameModelJson = JsonSerializer.Serialize(this);
+            //    this.TraceMessage($"json size: {gameModelJson.Length}");
+                GameModel? newModel = JsonSerializer.Deserialize<GameModel>(gameModelJson);
+                return ( newModel is null ) ? throw new Exception("We just serialized it. it should deserialize!") : newModel;
+            }
 
         }
 

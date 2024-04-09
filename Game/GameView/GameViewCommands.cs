@@ -31,12 +31,9 @@ namespace Catan3.Models
         [RelayCommand]
         public void ShowStarValues(int stars)
         {
-            if (GameModel is null || CurrentPlayer is null)
-            {
-                Debug.Assert(false, "Both GameModel and CurrentPlayer should be set at this time");
-                return;
-            }
+            
 
+           // this.TraceMessage($"Current Player: {CurrentPlayer}");
 
             foreach (var building in Buildings)
             {

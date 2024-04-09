@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Controls;
@@ -13,6 +14,7 @@ namespace Catan3.Models
 {
     public partial class HarborViewModel : ObservableObject
     {
+        [JsonIgnore]
         [ObservableProperty]
         private HarborModel _harbor;
 

@@ -17,11 +17,11 @@ namespace Catan3.Models
             IBoardInfo boardInfo;
             if (gameType == GameType.Regular)
             {
-                boardInfo = new RegularBoardInfo();
+                boardInfo =  RegularBoardInfo.Default;
             }
             else if (gameType == GameType.Expansion)
             {
-                boardInfo = new ExpansionBoardInfo();
+                boardInfo =  ExpansionBoardInfo.Default;
             }
             else
             {
@@ -30,8 +30,10 @@ namespace Catan3.Models
 
             Debug.Assert(( boardInfo.TileKeys.Count == boardInfo.Numbers.Count ) && ( boardInfo.TileKeys.Count == boardInfo.Resources.Count ));
             List<PlayerModel> playerModels = players.Select(Id => new PlayerModel(Id)).ToList();
-            GameModel game = new(gameType, boardInfo.HasSupplemental, playerModels);
-            game.CurrentPlayerId = players[0];
+            GameModel game = new(gameType, boardInfo.HasSupplemental, playerModels)
+            {
+                CurrentPlayerId = players[0]
+            };
 
             for (int i = 0; i < boardInfo.TileKeys.Count; i++)
             {
@@ -81,7 +83,7 @@ namespace Catan3.Models
             }
 
             game.Shuffle();
-
+         
 
             return game;
         }
