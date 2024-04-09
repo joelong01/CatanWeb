@@ -31,13 +31,13 @@ namespace Catan3.Models
         [RelayCommand]
         public void ShowStarValues(int stars)
         {
-            
+           
 
-           // this.TraceMessage($"Current Player: {CurrentPlayer}");
+            this.TraceMessage($"stars: {stars}");
 
             foreach (var building in Buildings)
             {
-                if (building.Building.Owner != null) continue;
+                if (building.Building.Owner is not null) continue;
                 int buildingStars = GameModel.BuildingStars(building.Building.BuildingKey);
                
                 if (buildingStars >= stars)
@@ -47,6 +47,7 @@ namespace Catan3.Models
                     building.Foreground = BrushCache.GetSolidColorBrush(CurrentPlayer.Foreground);
                     
                     building.Building.BuildingState = BuildingState.Stars;
+                
 
                 }
                 else

@@ -97,6 +97,7 @@ namespace Catan3.Models
             GameModel = gameModel;
             FunctionTimer.CallTimedFunction("Updating Players", () => UpdatePlayers(GameModel));
             FunctionTimer.CallTimedFunction("SetCurrentPlayer", () => SetCurrentPlayer(gameModel.CurrentPlayerId));
+            SetStars();
         
 
         }

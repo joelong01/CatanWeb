@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -65,6 +66,7 @@ namespace Catan3.Models
         {
             if (_oldState == BuildingState.Empty)
             {
+                Debug.Assert(Building.Owner is null);
                 Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 Building.BuildingState = BuildingState.Empty;

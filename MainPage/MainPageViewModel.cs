@@ -63,7 +63,7 @@ namespace Catan3.Models
         private void Building_Upgrade(BuildingViewModel buildingViewModel)
         {
             var newGameView = CopyGameViewModel();
-    //        DoneStack.Push(GameViewModel.GameModel);
+            DoneStack.Push(GameViewModel.GameModel);
             var bvm = newGameView.Buildings.FindBuildingViewModel(buildingViewModel.Building.BuildingKey);
             if (bvm is null) return;
 
@@ -99,8 +99,10 @@ namespace Catan3.Models
  
 
             this.GameViewModel = newGameView;
-            
-          
+            GameViewModel.ShownStars = 14;
+         
+
+
         }
 
         [RelayCommand]
@@ -110,21 +112,12 @@ namespace Catan3.Models
 
             var gameViewModel = CopyGameViewModel();
             gameViewModel.GameModel.Shuffle();
-
-
             this.GameViewModel = gameViewModel;
-
-            ////
-            ////  fix strange binding error with 2 way binding
-            //if (GameViewModel.CurrentPlayer == null)
-            //{
-            //    GameViewModel.SetCurrentPlayer(GameViewModel.GameModel.CurrentPlayerId);
-            //    // NextPlayer();
-            //}
             GameViewModel.SetStars();
-            this.TraceMessage($"ShownStars: {currentStars}");
+            GameViewModel.ShownStars = 14;
             GameViewModel.ShownStars = currentStars;
             Debug.Assert(GameViewModel.CurrentPlayer != null);
+      
 
         }
         [RelayCommand]

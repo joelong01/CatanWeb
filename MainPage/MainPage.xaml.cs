@@ -182,6 +182,7 @@ namespace Catan3
         {
             if (MainPageModel.GameViewModel?.CurrentPlayer is not null && MainPageModel.GameViewModel?.CurrentPlayer.Background is not null && viewModel.Building.Owner is null)
             {
+                this.TraceMessage("Resetting brush");
                 viewModel.Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 viewModel.Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 viewModel.Building.BuildingState = BuildingState.Empty;

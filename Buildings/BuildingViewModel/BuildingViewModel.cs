@@ -88,6 +88,7 @@ namespace Catan3.Models
             {
                 case nameof(BuildingModel.BuildingState):
                     UpdateStateGlyph();
+                    UpdateBrushes();
                     break;
                 case nameof(BuildingModel.Owner):
                     UpdateBrushes();
