@@ -7,6 +7,7 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI;
 
 
 namespace Catan3.Models
@@ -80,30 +81,23 @@ namespace Catan3.Models
 
 
         }
-        private void CallTimedFunction(string description, Action action)
-        {
-            using (new FunctionTimer(description))
-            {
-                action();
-            }
-        }
+       
 
 
         public void MergeGameModel(GameModel gameModel)
         {
             if (gameModel.GameType != this.GameType) throw new Exception("Create new one instead of updating this one");
             if (BoardInfo is null) throw new Exception("Board Info can't be null");
-            CallTimedFunction("Merging Tiles", () => CreateOrUpdateTiles(gameModel));
-            CallTimedFunction("Merging Buildings", () => CreateOrUpdateBuildings(gameModel));
-            CallTimedFunction("Merging Harbors", () => CreateOrUpdateHarbors(gameModel));
-            CallTimedFunction("Merging Roads", () => CreateOrUpdateRoads(gameModel));
+            FunctionTimer.CallTimedFunction("Merging Tiles", () => CreateOrUpdateTiles(gameModel));
+            FunctionTimer.CallTimedFunction("Merging Buildings", () => CreateOrUpdateBuildings(gameModel));
+            FunctionTimer.CallTimedFunction("Merging Harbors", () => CreateOrUpdateHarbors(gameModel));
+            FunctionTimer.CallTimedFunction("Merging Roads", () => CreateOrUpdateRoads(gameModel));
 
             Robber.RobberModel = gameModel.Robber;
             GameModel = gameModel;
-            CallTimedFunction("Updating Players", () => UpdatePlayers(GameModel));
-            //OnPropertyChanged(nameof(Players));
-            CallTimedFunction("SetCurrentPlayer", () => SetCurrentPlayer(gameModel.CurrentPlayerId));
-           // CallTimedFunction("Updating Layout", () => UpdateLayout());
+            FunctionTimer.CallTimedFunction("Updating Players", () => UpdatePlayers(GameModel));
+            FunctionTimer.CallTimedFunction("SetCurrentPlayer", () => SetCurrentPlayer(gameModel.CurrentPlayerId));
+        
 
         }
         /// <summary>
@@ -175,22 +169,12 @@ namespace Catan3.Models
         private void CreateOrUpdateBuildings(GameModel gameModel)
         {
             Contract.Assert(BoardInfo is not null, "BoardInfo cannot be null.");
-            if (Buildings.Count == 0) // Check if buildings need to be created for the first time
-            {
+          
                 Buildings = new ObservableCollection<BuildingViewModel>(
                     gameModel.Buildings.Select(building => new BuildingViewModel(building, BoardInfo.Layout))
                 );
-            }
-            else // Update existing buildings
-            {
-                Debug.Assert(Buildings.Count == gameModel.Buildings.Count, "Building count mismatch.");
-                for (int i = 0; i < gameModel.Buildings.Count; i++)
-                {
-                    Contract.Assert(Buildings[i].Building.BuildingKey == gameModel.Buildings[i].BuildingKey, "Building key mismatch.");
-                    Buildings[i].Building = gameModel.Buildings[i];
-                }
-            }
-            //   OnPropertyChanged(nameof(Buildings));
+          
+
         }
 
 
@@ -294,6 +278,8 @@ namespace Catan3.Models
             foreach (var building in Buildings)
             {
                 building.Stars = TilesForBuildings(building.Building.BuildingKey).Stars();
+                if (building.Stars == 0) this.TraceMessage($"{building}");
+                
             }
         }
 

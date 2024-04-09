@@ -21,7 +21,7 @@ namespace Catan3.Models
         public IMessenger MessageService => this.Messenger;
         public MainPageViewModel(GameType selectedGame, List<PlayerViewModel> playingPlayers)
         {
-            FunctionTimer.Enabled = true;
+            FunctionTimer.Enabled = false;
             RegisterMessages();
             // create a new GameModel - this would usually come from the service
 
@@ -30,6 +30,8 @@ namespace Catan3.Models
             var gvm = new GameViewModel(gameModel);
             this.GameViewModel = gvm;
             GameViewModel.UpdateLayout();
+            GameViewModel.SetStars();
+
 
         }
         private void RegisterMessages()
@@ -64,48 +66,42 @@ namespace Catan3.Models
     //        DoneStack.Push(GameViewModel.GameModel);
             var bvm = newGameView.Buildings.FindBuildingViewModel(buildingViewModel.Building.BuildingKey);
             if (bvm is null) return;
-            
+
             switch (bvm.Building.BuildingState)
             {
                 case BuildingState.Empty:
                 case BuildingState.Highlighted:
                 case BuildingState.Stars:
+                    
                     bvm.Building.BuildingState = BuildingState.Settlement;
                     bvm.Building.Owner = GameViewModel.CurrentPlayer.Player;
-                    bvm.Background = BrushCache.GetGradientBrush(GameViewModel.CurrentPlayer.Background, Colors.Black);
-                    bvm.Foreground = BrushCache.GetSolidColorBrush(GameViewModel.CurrentPlayer.Foreground);
+                 
                     break;
                 case BuildingState.Settlement:
+                    
+                    
                     Debug.Assert(bvm.Building.Owner != null);
                     if (bvm.Building.Owner.Id != GameViewModel.CurrentPlayer.Id) return;
                     bvm.Building.BuildingState = BuildingState.City;
+                 
                     break;
                 case BuildingState.City:
+
+
+                    Debug.Assert(bvm.Building.Owner != null);
+                    if (bvm.Building.Owner.Id != GameViewModel.CurrentPlayer.Id) return;
                     bvm.Building.BuildingState = BuildingState.Knight;
+                 
                     break;
                 case BuildingState.Knight:
                     break;
             }
-
+ 
 
             this.GameViewModel = newGameView;
+            
+          
         }
-
-
-
-        //
-        // this doesn't get logged as it is just a UI update
-        private void HandleShowStars(int starCount)
-        {
-            if (GameViewModel is null)
-            {
-                Debug.Assert(false, "Should not be null - state problem.");
-                return;
-            }
-            GameViewModel.ShownStars = starCount;
-        }
-
-       
 
         [RelayCommand]
         private void Shuffle()
@@ -118,16 +114,16 @@ namespace Catan3.Models
 
             this.GameViewModel = gameViewModel;
 
-            //
-            //  fix strange binding error with 2 way binding
-            if (GameViewModel.CurrentPlayer == null)
-            {
-                GameViewModel.SetCurrentPlayer(GameViewModel.GameModel.CurrentPlayerId);
-                // NextPlayer();
-            }
+            ////
+            ////  fix strange binding error with 2 way binding
+            //if (GameViewModel.CurrentPlayer == null)
+            //{
+            //    GameViewModel.SetCurrentPlayer(GameViewModel.GameModel.CurrentPlayerId);
+            //    // NextPlayer();
+            //}
             GameViewModel.SetStars();
-            //   this.TraceMessage($"ShownStars: {currentStars}");
-            GameViewModel.ShowStarValues(currentStars);
+            this.TraceMessage($"ShownStars: {currentStars}");
+            GameViewModel.ShownStars = currentStars;
             Debug.Assert(GameViewModel.CurrentPlayer != null);
 
         }

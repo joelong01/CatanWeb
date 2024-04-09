@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Catan3.Utility
 {
@@ -43,6 +39,14 @@ namespace Catan3.Utility
             watch.Stop();
             double elapsedMs = watch.ElapsedMilliseconds;
             this.TraceMessage($"{message}: {elapsedMs}ms");
+        }
+
+        public static void CallTimedFunction(string description, Action action)
+        {
+            using (new FunctionTimer(description))
+            {
+                action();
+            }
         }
 
         #endregion Methods

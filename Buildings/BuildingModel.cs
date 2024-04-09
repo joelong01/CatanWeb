@@ -47,5 +47,7 @@ namespace Catan3.Models
             return BuildingKey.CompareTo(other.BuildingKey);
         }
         public override string? ToString() => $"{BuildingKey}-{BuildingState}-{Owner}";
+
+       
     }
 }

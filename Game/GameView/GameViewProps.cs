@@ -62,6 +62,7 @@ namespace Catan3.Models
         /// <param name="value"></param>
         partial void OnShownStarsChanged(int value)
         {
+            //this.TraceMessage($"New Shown Stars: {value}");
             ShowStarValues(value);
         }
 
@@ -73,15 +74,6 @@ namespace Catan3.Models
             Messenger.Send(new CurrentPlayerChanged(newValue));
         }
 
-        public void UpdateBindings()
-        {
-            OnPropertyChanged(nameof(Tiles));
-            OnPropertyChanged(nameof(Buildings));
-            OnPropertyChanged(nameof(Players));
-            OnPropertyChanged(nameof(Roads));
-            OnPropertyChanged(nameof(Harbors));
-            OnPropertyChanged(nameof(Robber));
-
-        }
+       
     }
 }

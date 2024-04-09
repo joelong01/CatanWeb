@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
@@ -7,7 +8,10 @@ namespace Catan3.Models
 {
     public partial class BuildingViewModel : ObservableRecipient
     {
-
+        /// <summary>
+        ///     the user has clicked on a building.  Send this to the MainPageViewModel via a message 
+        ///     so that it can be logged and the logic can span roads and buildings.
+        /// </summary>
         public BuildingViewModel()
         {
             IsActive = true;
@@ -16,7 +20,11 @@ namespace Catan3.Models
                 HandleCurrentPlayerChanged(message.CurrentPlayer);
             });
         }
-
+        /// <summary>
+        ///     We recieve a message from MainPageViewModel that the current player has changed.
+        ///     Store this in a non-Observable property!
+        /// </summary>
+        /// <param name="newCurrentPlayer"></param>
         private void HandleCurrentPlayerChanged(PlayerViewModel newCurrentPlayer)
         {
             CurrentPlayer = newCurrentPlayer;
@@ -27,9 +35,10 @@ namespace Catan3.Models
                 Foreground = BrushCache.GetSolidColorBrush(CurrentPlayer.Foreground);
             }
 
-            
-        }
 
+        }
+        //
+        //  used for MouseEnter/Mouse leave log
         private BuildingState _oldState = BuildingState.Empty;
 
         [RelayCommand]
@@ -40,14 +49,14 @@ namespace Catan3.Models
         [RelayCommand]
         private void MouseEnter()
         {
-           // this.TraceMessage($"CurrentPlayer={this.CurrentPlayer}");
+            // this.TraceMessage($"CurrentPlayer={this.CurrentPlayer}");
             _oldState = Building.BuildingState;
             if (Building.BuildingState == BuildingState.Empty)
             {
                 Background = BrushCache.GetGradientBrush(CurrentPlayer.Background, Colors.Black);
                 Foreground = BrushCache.GetSolidColorBrush(CurrentPlayer.Foreground);
                 Building.BuildingState = BuildingState.Highlighted;
-                
+
             }
         }
 
@@ -62,9 +71,12 @@ namespace Catan3.Models
             }
         }
 
+        internal void SendChangeNotification()
+        {
 
+            OnPropertyChanged(nameof(Building));
 
-
+        }
     }
 }
 

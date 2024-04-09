@@ -29,7 +29,9 @@ namespace Catan3.Controls
         }
         private void SetBuildingViewModel(BuildingViewModel value)
         {
-
+            //this.TraceMessage($"{value}-{value.StateGlyph}-{value.Stars} Hashcode: {value.GetHashCode()}");
+            //var bindingExpression = TXT_StateGlyph.GetBindingExpression(TextBlock.TextProperty);
+            //if (bindingExpression is not null) bindingExpression.UpdateSource();
         }
         private static double MetroBuildingZoom(bool isMetropolis)
         {
@@ -38,18 +40,7 @@ namespace Catan3.Controls
 
         private string LaurelGlyph => CatanFont.Laurel;
 
-        public string BIND_GetStateGlyph(int stars, BuildingState state)
-        {
-            return state switch
-            {
-                BuildingState.Empty => "",
-                BuildingState.Settlement => CatanFont.Gate,
-                BuildingState.City => CatanFont.City,
-                BuildingState.Stars => stars.ToString(),
-                BuildingState.Knight => CatanFont.Knight,
-                _ => "",
-            };
-        }
+        
 
         private void OnPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {

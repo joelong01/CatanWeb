@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI;
 using System.Text.Json.Serialization;
+using System;
 
 namespace Catan3.Models
 {
@@ -31,11 +32,13 @@ namespace Catan3.Models
         [ObservableProperty]
         private Brush? _foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
 
+        [ObservableProperty]
+        private string _stateGlyph = string.Empty;
+
         [JsonIgnore]
         private PlayerViewModel CurrentPlayer { get; set; } = PlayerViewModel.Default;
 
-        public override string? ToString() => Building.ToString();
-
+       
     }
 }
 

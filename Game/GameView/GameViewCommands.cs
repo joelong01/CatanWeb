@@ -39,11 +39,13 @@ namespace Catan3.Models
             {
                 if (building.Building.Owner != null) continue;
                 int buildingStars = GameModel.BuildingStars(building.Building.BuildingKey);
+               
                 if (buildingStars >= stars)
                 {
 
                     building.Background = BrushCache.GetGradientBrush(CurrentPlayer.Background, Colors.Black);
                     building.Foreground = BrushCache.GetSolidColorBrush(CurrentPlayer.Foreground);
+                    
                     building.Building.BuildingState = BuildingState.Stars;
 
                 }
