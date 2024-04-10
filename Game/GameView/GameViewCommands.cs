@@ -49,24 +49,18 @@ namespace Catan3.Models
 
             foreach (var building in Buildings)
             {
-                if (building.Building.Owner is not null) continue;
+                if (building.Building.OwnerId is not null) continue;
                 int buildingStars = GameModel.BuildingStars(building.Building.BuildingKey);
                
                 if (buildingStars >= stars)
                 {
 
-                    building.Background = BrushCache.GetGradientBrush(CurrentPlayer.Background, Colors.Black);
-                    building.Foreground = BrushCache.GetSolidColorBrush(CurrentPlayer.Foreground);
-                    
-                    building.Building.BuildingState = BuildingState.Stars;
-                
-
+                         building.Building.BuildingState = BuildingState.Stars;
+        
                 }
                 else
                 {
-                    building.Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
-                    building.Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
-                    building.Building.BuildingState = BuildingState.Empty;
+                     building.Building.BuildingState = BuildingState.Empty;
                 }
 
             }

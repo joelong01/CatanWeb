@@ -26,17 +26,10 @@ namespace Catan3.Models
         [ObservableProperty]
         private int _stars = 0;
 
-        [ObservableProperty]
-        private Brush? _background = BrushCache.GetSolidColorBrush(Colors.Transparent);
-
-        [ObservableProperty]
-        private Brush? _foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
-
-        [ObservableProperty]
-        private string _stateGlyph = string.Empty;
 
         [JsonIgnore]
-        private PlayerViewModel CurrentPlayer { get; set; } = PlayerViewModel.Default;
+        [ObservableProperty]
+        private PlayerViewModel _currentPlayer = PlayerViewModel.Default;
 
        
     }

@@ -36,7 +36,7 @@ namespace Catan3.Models
         private bool _metropolis = false;
 
         [ObservableProperty]
-        private PlayerModel? _owner = null;
+        private string? _ownerId = null;
 
         public static BuildingModel Default { get; } = new();
 
@@ -46,7 +46,7 @@ namespace Catan3.Models
             
             return BuildingKey.CompareTo(other.BuildingKey);
         }
-        public override string? ToString() => $"{BuildingKey}-{BuildingState}-{Owner}";
+        public override string? ToString() => $"{BuildingKey}-{BuildingState}-{OwnerId}";
 
        
     }

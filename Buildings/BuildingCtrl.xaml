@@ -16,7 +16,8 @@
         <Ellipse Width="10" HorizontalAlignment="Center"
                 VerticalAlignment="Center" Height="10" Fill="Red" Opacity=".75"
                 Visibility="Collapsed" />
-        <Ellipse Fill="{x:Bind BuildingViewModel.Background, Mode=OneWay}"
+        <Ellipse
+                Fill="{x:Bind BuildingViewModel.GetBackgroundBrush(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
 
         <Viewbox Stretch="Uniform" HorizontalAlignment="Center"
@@ -25,11 +26,11 @@
                     VerticalAlignment="Stretch">
                 <Viewbox Stretch="Uniform" Margin="0">
                     <TextBlock x:Name="TXT_StateGlyph"
-                            Text="{x:Bind BuildingViewModel.StateGlyph, Mode=OneWay}"
+                            Text="{x:Bind BuildingViewModel.GetStateGlyph(BuildingViewModel.Building.BuildingState), Mode=OneWay}"
                             FontFamily="{StaticResource CatanFont}"
                             Margin="-1,0,0,1" RenderTransformOrigin="0.5 0.5"
                             TextAlignment="Center"
-                            Foreground="{x:Bind BuildingViewModel.Foreground, Mode=OneWay}">
+                            Foreground="{x:Bind BuildingViewModel.GetForegroundBrush(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}">
                         <TextBlock.RenderTransform>
                             <ScaleTransform
                                     ScaleX="{x:Bind BuildingViewModel.Building.Metropolis, Converter={StaticResource MetroToScaleConverter}, Mode=OneWay}"
@@ -38,7 +39,7 @@
                     </TextBlock>
                 </Viewbox>
                 <TextBlock Text="{x:Bind LaurelGlyph}"
-                        Foreground="{x:Bind BuildingViewModel.Foreground, Mode=OneWay}"
+                        Foreground="{x:Bind BuildingViewModel.GetForegroundBrush(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
                         HorizontalAlignment="Center" VerticalAlignment="Center"
                         RenderTransformOrigin=".5 .5"
                         FontFamily="{StaticResource CatanFont}"

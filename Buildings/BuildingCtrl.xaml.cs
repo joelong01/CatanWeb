@@ -29,7 +29,7 @@ namespace Catan3.Controls
         }
         private void SetBuildingViewModel(BuildingViewModel value)
         {
-            this.TraceMessage($"{value}-{value.StateGlyph}-{value.Stars} Hashcode: {value.GetHashCode()}");
+           // this.TraceMessage($"{value} Hashcode: {value.GetHashCode()}");
             //var bindingExpression = TXT_StateGlyph.GetBindingExpression(TextBlock.TextProperty);
             //if (bindingExpression is not null) bindingExpression.UpdateSource();
         }

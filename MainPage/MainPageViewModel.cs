@@ -36,7 +36,8 @@ namespace Catan3.Models
         {
             if (sender is not null && sender is BindingList<string> list)
             {
-                this.CanUndo = list.Count > 1; // don't undo past the start
+                this.CanUndo = list.Count > 0; // don't undo past the start
+                this.TraceMessage($"Done Depth {list.Count}");
             }
         }
 
@@ -137,7 +138,7 @@ namespace Catan3.Models
         public IMessenger MessageService => this.Messenger;
         public MainPageViewModel(GameType selectedGame, List<PlayerViewModel> playingPlayers)
         {
-            FunctionTimer.Enabled = true;
+            FunctionTimer.Enabled = false;
             RegisterMessages();
             // create a new GameModel - this would usually come from the service
 
@@ -249,22 +250,22 @@ namespace Catan3.Models
                 case BuildingState.Stars:
 
                     bvm.Building.BuildingState = BuildingState.Settlement;
-                    bvm.Building.Owner = GameViewModel.CurrentPlayer.Player;
+                    bvm.Building.OwnerId = GameViewModel.CurrentPlayer.Id;
 
                     break;
                 case BuildingState.Settlement:
 
 
-                    Debug.Assert(bvm.Building.Owner != null);
-                    if (bvm.Building.Owner.Id != GameViewModel.CurrentPlayer.Id) return;
+                    Debug.Assert(bvm.Building.OwnerId != null);
+                    if (bvm.Building.OwnerId != GameViewModel.CurrentPlayer.Id) return;
                     bvm.Building.BuildingState = BuildingState.City;
 
                     break;
                 case BuildingState.City:
 
 
-                    Debug.Assert(bvm.Building.Owner != null);
-                    if (bvm.Building.Owner.Id != GameViewModel.CurrentPlayer.Id) return;
+                    Debug.Assert(bvm.Building.OwnerId != null);
+                    if (bvm.Building.OwnerId != GameViewModel.CurrentPlayer.Id) return;
                     bvm.Building.BuildingState = BuildingState.Knight;
 
                     break;
@@ -283,6 +284,7 @@ namespace Catan3.Models
         [RelayCommand]
         private void NextPlayer()
         {
+            Log.Done(GameViewModel.GameModel);
             Debug.Assert(GameViewModel.CurrentPlayer != null);
             int index = GameViewModel.Players.IndexOf(GameViewModel.CurrentPlayer);
             Debug.Assert(index >= 0);

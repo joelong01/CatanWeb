@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI;
+using Microsoft.UI.Xaml.Media;
 
 namespace Catan3.Models
 {
@@ -67,101 +68,19 @@ namespace Catan3.Models
             left += center.X;
             return left;
         }
+
         /// <summary>
-        ///     this will get called when you "merge" a GameModel with a GameViewModel as the BuildingViewModel 
-        ///     stays the same for the lifetime of the board, but the underlying BuildingModel will change because
-        ///     of user actions such as Undo and Redo.  We try to be careful to only update state that is needed
-        ///     so that we minimize the number of rebinds.
+        ///     Bound to UI control
+        ///     return the proper way to represent the BuildingState
         /// </summary>
-        /// <param name="oldValue"></param>
-        /// <param name="newValue"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        /// <exception cref="System.Exception"></exception>
 
-        partial void OnBuildingChanged(BuildingModel? oldValue, BuildingModel newValue)
-        {
-            // first unsubscribe to event changes if we need to
-            if (oldValue is not null)
-            {
-                oldValue.PropertyChanged -= OnBuildingModelPropertyChanged;
-            }
-            // tell us of new changes (such as upgrading or buying the building)
-            if (newValue is not null)
-            {
-                newValue.PropertyChanged += OnBuildingModelPropertyChanged;
-               
-            }
-
-            //
-            //  now go through the logic of what happens when the BuildingModel is changed
-
-
-            
-            if (oldValue is not null && newValue is not null)
-            {
-                // if the building state changed, update the StateGlyph (rebinds UI)
-                if (oldValue.BuildingState != newValue.BuildingState)
-                {
-
-                    UpdateStateGlyph();
-                }
-
-                //
-                //  if the owner transitioned to nobody, make the brushes transparent
-                //  the state better be empty!
-
-                if (oldValue.Owner is not null && newValue.Owner is null)
-                {
-
-                    Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
-                    Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
-                    Debug.Assert(newValue.BuildingState == BuildingState.Empty);
-
-                }
-                //
-                //  this is a redo scenario -- we changed the BuidlingModel and a new owner
-                //  has shown up (vs. updating an existing building model)
-                if (oldValue.Owner is null && newValue.Owner is not null)
-                {
-                    Debug.Assert(newValue.BuildingState != BuildingState.Empty);
-                    UpdateBrushes();
-
-                }
-            }
-        }
-
-        private void OnBuildingModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            switch (e.PropertyName)
-            {
-                case nameof(BuildingModel.BuildingState):
-                    UpdateStateGlyph();
-                    UpdateBrushes();
-                    break;
-                case nameof(BuildingModel.Owner):
-                    UpdateBrushes();
-                    break;
-                default:
-                    this.TraceMessage($"ignoring change: {e.PropertyName}");
-                    break;
-            }
-
-        }
-
-        private void UpdateBrushes()
-        {
-            if (Building.Owner is not null)
-            {
-
-                PlayerViewModel owner = PlayerDatabase.FromId(Building.Owner.Id) ?? throw new Exception($"Bad PlayerId: {Building.Owner.Id}");
-                Background = BrushCache.GetGradientBrush(owner.Background, Colors.Black);
-                Foreground = BrushCache.GetSolidColorBrush(owner.Foreground);
-            }
-
-        }
-
-        public void UpdateStateGlyph()
+        public string GetStateGlyph(BuildingState state)
         {
 
-            var glyph =  Building.BuildingState switch
+            var glyph =  state switch
             {
                 BuildingState.Empty => string.Empty,
                 BuildingState.Settlement => CatanFont.Gate,
@@ -171,18 +90,77 @@ namespace Catan3.Models
                 BuildingState.Knight => CatanFont.Knight,
                 _ => throw new System.Exception("Did you add a state w/o setting a glyph?"),
             };
-
-            StateGlyph = glyph;
-
+            return glyph;
         }
-        partial void OnStateGlyphChanged(string? oldValue, string newValue)
+        /// <summary>
+        ///     if the state is empty, be transparent
+        ///     if their is an owner, use their color
+        ///     otherwise, use the color of the current player
+        /// 
+        ///     all brushes are cached.
+        /// 
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="ownerId"></param>
+        /// <param name="currentPlayer"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public Brush GetForegroundBrush(BuildingState state, string ownerId, PlayerViewModel currentPlayer)
         {
-            // this.TraceMessage($"ObjectId={this.GetHashCode()} Glyph={newValue}");
+
+            if (state == BuildingState.Empty)
+            {
+                Debug.Assert(ownerId is null);
+                return BrushCache.GetSolidColorBrush(Colors.Transparent);
+            }
+
+            if (ownerId is not null)
+            {
+                Debug.Assert(state != BuildingState.Highlighted);
+                PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {Building.OwnerId}");
+                return BrushCache.GetSolidColorBrush(owner.Foreground);
+            }
+            else
+            {
+                return BrushCache.GetSolidColorBrush(currentPlayer.Foreground);
+            }
+
+
         }
-        partial void OnStarsChanged(int oldValue, int newValue)
+        /// <summary>
+        ///     if the state is empty, be transparent
+        ///     if their is an owner, use their color
+        ///     otherwise, use the color of the current player
+        /// 
+        ///     all brushes are cached.
+        /// 
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="ownerId"></param>
+        /// <param name="currentPlayer"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public Brush GetBackgroundBrush(BuildingState state, string ownerId, PlayerViewModel currentPlayer)
         {
-            // this.TraceMessage($"{Building.BuildingKey} Stars={newValue}");
+
+            if (state == BuildingState.Empty)
+            {
+                Debug.Assert(ownerId is null);
+                return BrushCache.GetSolidColorBrush(Colors.Transparent);
+            }
+            if (ownerId is not null)
+            {
+                Debug.Assert(ownerId is not null);
+
+                PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {Building.OwnerId}");
+                return BrushCache.GetGradientBrush(owner.Background, Colors.Black);
+            }
+            else
+            {
+                return BrushCache.GetGradientBrush(currentPlayer.Background, Colors.Black);
+            }
         }
+
 
 
         public override string? ToString() => $"{Building} Stars={Stars}";

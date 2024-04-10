@@ -29,13 +29,7 @@ namespace Catan3.Models
         private void HandleCurrentPlayerChanged(PlayerViewModel newCurrentPlayer)
         {
             CurrentPlayer = newCurrentPlayer;
-            if (Building.BuildingState == BuildingState.Stars)
-            {
-                // this switches all Star color to the current player's colors
-                Background = BrushCache.GetGradientBrush(CurrentPlayer.Background, Colors.Black);
-                Foreground = BrushCache.GetSolidColorBrush(CurrentPlayer.Foreground);
-            }
-
+           
 
         }
         //
@@ -55,8 +49,7 @@ namespace Catan3.Models
             _oldState = Building.BuildingState;
             if (Building.BuildingState == BuildingState.Empty)
             {
-                Background = BrushCache.GetGradientBrush(CurrentPlayer.Background, Colors.Black);
-                Foreground = BrushCache.GetSolidColorBrush(CurrentPlayer.Foreground);
+               
                 Building.BuildingState = BuildingState.Highlighted;
 
             }
@@ -65,10 +58,8 @@ namespace Catan3.Models
         [RelayCommand]
         private void MouseExit()
         {
-            if (_oldState == BuildingState.Empty && Building.Owner is null) // it can be empty going in, bu owned coming out...
+            if (_oldState == BuildingState.Empty && Building.OwnerId is null) // it can be empty going in, bu owned coming out...
             {
-                Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
-                Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 Building.BuildingState = BuildingState.Empty;
             }
         }
