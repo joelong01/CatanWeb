@@ -10,5 +10,7 @@ namespace Catan3.Models
         [JsonIgnore]
         [ObservableProperty]
         private RobberModel? _robberModel = robberModel;
+
+   
     }
 }

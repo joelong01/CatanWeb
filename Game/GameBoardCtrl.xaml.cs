@@ -18,7 +18,7 @@ namespace Catan3.Controls
     /// </summary>
     public partial class GameBoardCtrl : UserControl
     {
-      
+
         public event TileRightMouseClicked? TileRightMouseClicked;
 
 
@@ -52,7 +52,7 @@ namespace Catan3.Controls
         private void SetGameViewModel(GameViewModel? oldValue, GameViewModel? newValue)
         {
             if (newValue is null) return; // happens when we force binding in Shuffle
-            // this.TraceMessage($"GameViewModel changed first Tile={newValue.Tiles[0]}");
+            this.TraceMessage($"GameViewModel changed first Tile={newValue.Tiles[0]}");
             if (oldValue is not null)
             {
                 oldValue.PropertyChanged -= GameViewModel_PropertyChanged;
@@ -60,9 +60,9 @@ namespace Catan3.Controls
                 {
                     oldValue.BoardInfo.Layout.PropertyChanged -= Layout_PropertyChanged;
                 }
-                if (oldValue.Robber.RobberModel is not null)
+                if (oldValue.Robber is not null)
                 {
-                    oldValue.Robber.RobberModel.PropertyChanged -= RobberModel_PropertyChanged;
+                    oldValue.Robber.PropertyChanged -= RobberModel_PropertyChanged;
                     DesertTile(oldValue).PropertyChanged -= DesertTile_PropertyChanged;
                 }
             }
@@ -73,9 +73,9 @@ namespace Catan3.Controls
                 {
                     newValue.BoardInfo.Layout.PropertyChanged += Layout_PropertyChanged;
                 }
-                if (newValue.Robber.RobberModel is not null)
+                if (newValue.Robber is not null)
                 {
-                    newValue.Robber.RobberModel.PropertyChanged += RobberModel_PropertyChanged;
+                    newValue.Robber.PropertyChanged += RobberModel_PropertyChanged;
                 }
                 if (newValue.Tiles is not null)
                 {
@@ -136,7 +136,7 @@ namespace Catan3.Controls
 
         private void RobberModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(GameViewModel.Robber.RobberModel.Coordinates))
+            if (e.PropertyName == nameof(GameViewModel.Robber.RobberModel))
             {
 
                 UpdateRobberTileLocation();

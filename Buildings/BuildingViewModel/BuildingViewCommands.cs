@@ -64,9 +64,8 @@ namespace Catan3.Models
         [RelayCommand]
         private void MouseExit()
         {
-            if (_oldState == BuildingState.Empty)
-            {
-                Debug.Assert(Building.Owner is null);
+            if (_oldState == BuildingState.Empty && Building.Owner is null) // it can be empty going in, bu owned coming out...
+            { 
                 Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 Building.BuildingState = BuildingState.Empty;

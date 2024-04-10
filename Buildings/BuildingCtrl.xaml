@@ -23,7 +23,7 @@
                 VerticalAlignment="Center" Margin="5">
             <Grid Margin="1" HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch">
-                <Viewbox Stretch="Uniform" Margin="5">
+                <Viewbox Stretch="Uniform" Margin="0">
                     <TextBlock x:Name="TXT_StateGlyph"
                             Text="{x:Bind BuildingViewModel.StateGlyph, Mode=OneWay}"
                             FontFamily="{StaticResource CatanFont}"

@@ -21,7 +21,7 @@ namespace Catan3.Models
         public IMessenger MessageService => this.Messenger;
         public MainPageViewModel(GameType selectedGame, List<PlayerViewModel> playingPlayers)
         {
-            FunctionTimer.Enabled = false;
+            FunctionTimer.Enabled = true;
             RegisterMessages();
             // create a new GameModel - this would usually come from the service
 
@@ -54,6 +54,27 @@ namespace Catan3.Models
         }
 
 
+        [RelayCommand]
+        private void Shuffle()
+        {
+            DoneStack.Push(GameViewModel.GameModel);
+
+            var currentStars = GameViewModel.ShownStars;
+            List<string> playerIds = GameViewModel.Players.Select( p => p.Id ).ToList();
+            var gameModel = GameFactory.CreateGame(GameViewModel.GameModel.GameType, playerIds);
+            gameModel.Shuffle();
+            GameViewModel.MergeGameModel(gameModel); 
+
+            GameViewModel.SetStars();
+            GameViewModel.ShownStars = 14;
+            GameViewModel.ShownStars = currentStars;
+            Debug.Assert(GameViewModel.CurrentPlayer != null);
+            GameViewModel.Id = GameViewModel.GameModel.GetHashCode().ToString();
+            //OnPropertyChanged(nameof(GameViewModel));
+
+        }
+
+
 
         private Stack<GameModel> DoneStack { get; } = [];
         /// <summary>
@@ -62,9 +83,9 @@ namespace Catan3.Models
         /// <param name="buildingViewModel"></param>
         private void Building_Upgrade(BuildingViewModel buildingViewModel)
         {
-            var newGameView = CopyGameViewModel();
-            DoneStack.Push(GameViewModel.GameModel);
-            var bvm = newGameView.Buildings.FindBuildingViewModel(buildingViewModel.Building.BuildingKey);
+          
+            DoneStack.Push(GameViewModel.GameModel.Copy());
+            var bvm = GameViewModel.Buildings.FindBuildingViewModel(buildingViewModel.Building.BuildingKey);
             if (bvm is null) return;
 
             switch (bvm.Building.BuildingState)
@@ -98,28 +119,13 @@ namespace Catan3.Models
             }
  
 
-            this.GameViewModel = newGameView;
+            //
+            //  turn off all the Stars after you build a building
             GameViewModel.ShownStars = 14;
-         
-
 
         }
 
-        [RelayCommand]
-        private void Shuffle()
-        {
-            var currentStars = GameViewModel.ShownStars;
-
-            var gameViewModel = CopyGameViewModel();
-            gameViewModel.GameModel.Shuffle();
-            this.GameViewModel = gameViewModel;
-            GameViewModel.SetStars();
-            GameViewModel.ShownStars = 14;
-            GameViewModel.ShownStars = currentStars;
-            Debug.Assert(GameViewModel.CurrentPlayer != null);
-      
-
-        }
+       
         [RelayCommand]
         private void NextPlayer()
         {

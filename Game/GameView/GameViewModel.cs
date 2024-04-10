@@ -94,6 +94,7 @@ namespace Catan3.Models
             FunctionTimer.CallTimedFunction("Merging Roads", () => CreateOrUpdateRoads(gameModel));
 
             Robber.RobberModel = gameModel.Robber;
+           
             GameModel = gameModel;
             FunctionTimer.CallTimedFunction("Updating Players", () => UpdatePlayers(GameModel));
             FunctionTimer.CallTimedFunction("SetCurrentPlayer", () => SetCurrentPlayer(gameModel.CurrentPlayerId));
@@ -169,13 +170,24 @@ namespace Catan3.Models
 
         private void CreateOrUpdateBuildings(GameModel gameModel)
         {
-            Contract.Assert(BoardInfo is not null, "BoardInfo cannot be null.");
-          
+            if (Buildings.Count == 0)
+            {
+                Contract.Assert(BoardInfo is not null, "BoardInfo cannot be null.");
+
                 Buildings = new ObservableCollection<BuildingViewModel>(
                     gameModel.Buildings.Select(building => new BuildingViewModel(building, BoardInfo.Layout))
                 );
-          
-
+            }
+            else
+            {
+                Debug.Assert(Buildings.Count == gameModel.Buildings.Count);
+                for (int i = 0; i < gameModel.Buildings.Count; i++)
+                {
+                    Contract.Assert(Buildings[i].Building.BuildingKey == gameModel.Buildings[i].BuildingKey);
+                    Buildings[i].Building = gameModel.Buildings[i];
+                }
+            }
+            
         }
 
 
@@ -279,8 +291,6 @@ namespace Catan3.Models
             foreach (var building in Buildings)
             {
                 building.Stars = TilesForBuildings(building.Building.BuildingKey).Stars();
-                if (building.Stars == 0) this.TraceMessage($"{building}");
-                
             }
         }
 

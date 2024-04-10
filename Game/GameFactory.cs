@@ -116,7 +116,7 @@ namespace Catan3.Models
 
             // Place the robber on the first desert tile found
             game.Robber.Coordinates = game.Tiles.FirstOrDefault(tile => tile.ResourceTileType == ResourceTileType.Desert)?.TileKey ?? throw new Exception("there must be a desert tile for the game to work");
-
+            
 
         }
 

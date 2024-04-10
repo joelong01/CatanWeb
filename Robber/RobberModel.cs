@@ -17,6 +17,8 @@ namespace Catan3.Models
 
         [ObservableProperty]
         private int _resourcesStolen = 0;
+
+        
     }
 
 }
