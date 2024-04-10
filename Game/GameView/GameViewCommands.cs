@@ -19,10 +19,22 @@ namespace Catan3.Models
         [RelayCommand]
         public void Shuffle()
         {
-            MainPage.Messenger.Send(new RequestShuffle());
+            MainPage.Messenger.Send(new DoAction(GameAction.Shuffle));
         }
 
-        
+        [RelayCommand]
+        public void Undo()
+        {
+            MainPage.Messenger.Send(new DoAction(GameAction.Undo));
+        }
+        [RelayCommand]
+        public void Redo()
+        {
+            MainPage.Messenger.Send(new DoAction(GameAction.Redo));
+        }
+
+
+
         /// <summary>
         ///     this is not undoable, client only ... so we can implement this here instead
         ///     of with a message.

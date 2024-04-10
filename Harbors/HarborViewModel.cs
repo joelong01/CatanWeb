@@ -38,7 +38,7 @@ namespace Catan3.Models
         }
 
 
-        public static HarborViewModel Default => new HarborViewModel(HarborModel.Default, BoardLayout.Default);
+        public static HarborViewModel Default => new(HarborModel.Default, BoardLayout.Default);
 
         void Init()
         {

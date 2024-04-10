@@ -67,18 +67,64 @@ namespace Catan3.Models
             left += center.X;
             return left;
         }
+        /// <summary>
+        ///     this will get called when you "merge" a GameModel with a GameViewModel as the BuildingViewModel 
+        ///     stays the same for the lifetime of the board, but the underlying BuildingModel will change because
+        ///     of user actions such as Undo and Redo.  We try to be careful to only update state that is needed
+        ///     so that we minimize the number of rebinds.
+        /// </summary>
+        /// <param name="oldValue"></param>
+        /// <param name="newValue"></param>
 
         partial void OnBuildingChanged(BuildingModel? oldValue, BuildingModel newValue)
         {
+            // first unsubscribe to event changes if we need to
             if (oldValue is not null)
             {
                 oldValue.PropertyChanged -= OnBuildingModelPropertyChanged;
             }
-
+            // tell us of new changes (such as upgrading or buying the building)
             if (newValue is not null)
             {
                 newValue.PropertyChanged += OnBuildingModelPropertyChanged;
-               // UpdateStateGlyph();  // Update glyph when the model changes
+               
+            }
+
+            //
+            //  now go through the logic of what happens when the BuildingModel is changed
+
+
+            
+            if (oldValue is not null && newValue is not null)
+            {
+                // if the building state changed, update the StateGlyph (rebinds UI)
+                if (oldValue.BuildingState != newValue.BuildingState)
+                {
+
+                    UpdateStateGlyph();
+                }
+
+                //
+                //  if the owner transitioned to nobody, make the brushes transparent
+                //  the state better be empty!
+
+                if (oldValue.Owner is not null && newValue.Owner is null)
+                {
+
+                    Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
+                    Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
+                    Debug.Assert(newValue.BuildingState == BuildingState.Empty);
+
+                }
+                //
+                //  this is a redo scenario -- we changed the BuidlingModel and a new owner
+                //  has shown up (vs. updating an existing building model)
+                if (oldValue.Owner is null && newValue.Owner is not null)
+                {
+                    Debug.Assert(newValue.BuildingState != BuildingState.Empty);
+                    UpdateBrushes();
+
+                }
             }
         }
 
@@ -109,7 +155,7 @@ namespace Catan3.Models
                 Background = BrushCache.GetGradientBrush(owner.Background, Colors.Black);
                 Foreground = BrushCache.GetSolidColorBrush(owner.Foreground);
             }
-            
+
         }
 
         public void UpdateStateGlyph()
@@ -124,7 +170,7 @@ namespace Catan3.Models
                 BuildingState.Stars => Stars.ToString() ,
                 BuildingState.Knight => CatanFont.Knight,
                 _ => throw new System.Exception("Did you add a state w/o setting a glyph?"),
-            }; ;
+            };
 
             StateGlyph = glyph;
 
@@ -135,7 +181,7 @@ namespace Catan3.Models
         }
         partial void OnStarsChanged(int oldValue, int newValue)
         {
-          // this.TraceMessage($"{Building.BuildingKey} Stars={newValue}");
+            // this.TraceMessage($"{Building.BuildingKey} Stars={newValue}");
         }
 
 

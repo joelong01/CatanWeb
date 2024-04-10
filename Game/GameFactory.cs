@@ -94,7 +94,7 @@ namespace Catan3.Models
         public static void Shuffle(this GameModel game)
         {
 
-            Random random = new Random();
+            Random random = new();
             int count = game.Tiles.Count;
             do
             {

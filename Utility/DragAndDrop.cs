@@ -20,7 +20,7 @@ namespace Catan3.Utility
 
         public Task<Point> DragAsync<T>(UIElement root, FrameworkElement toDrag, FrameworkElement knight, PointerRoutedEventArgs origE, List<T> targets) where T : UIElement
         {
-            TaskCompletionSource<Point> taskCompletionSource = new TaskCompletionSource<Point>();
+            TaskCompletionSource<Point> taskCompletionSource = new();
             UIElement mousePositionWindow = Window.Current.Content;
             GeneralTransform gt = Window.Current.Content.TransformToVisual(toDrag);
 
@@ -53,7 +53,7 @@ namespace Catan3.Utility
 
                 Point pt = e.GetCurrentPoint(mousePositionWindow).Position;
                 pt = gt.TransformPoint(pt);
-                Point delta = new Point
+                Point delta = new()
                 {
                     X = pt.X - pointMouseDown.X,
                     Y = pt.Y - pointMouseDown.Y

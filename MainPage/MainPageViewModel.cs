@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
@@ -11,13 +12,127 @@ using Microsoft.UI;
 
 namespace Catan3.Models
 {
+    public partial class Log : ObservableObject
+    {
 
+        private readonly  BindingList<string> DoneStack = new();
+        private readonly  BindingList<string> RedoStack = new();
+
+        public Log()
+        {
+            DoneStack.ListChanged += DoneStack_ListChanged;
+            RedoStack.ListChanged += RedoStack_ListChanged;
+        }
+
+        private void RedoStack_ListChanged(object? sender, ListChangedEventArgs e)
+        {
+            if (sender is not null && sender is BindingList<string> list)
+            {
+                this.CanRedo = list.Count > 0;
+            }
+        }
+
+        private void DoneStack_ListChanged(object? sender, ListChangedEventArgs e)
+        {
+            if (sender is not null && sender is BindingList<string> list)
+            {
+                this.CanUndo = list.Count > 1; // don't undo past the start
+            }
+        }
+
+        /// <summary>
+        ///     Serialize the model
+        ///     put it on the DoneStack
+        ///     clear the RedoStack
+        /// </summary>
+        /// <param name="model"></param>
+        public void Done(GameModel model)
+        {
+            DoneStack.Add(model.Serialize());
+            RedoStack.Clear();
+        }
+        /// <summary>
+        /// Performs an undo operation by restoring the state from the undo stack.
+        /// The current state is pushed onto the redo stack before the undo is applied.
+        /// </summary>
+        /// <param name="viewModel">The game view model containing the current game state.</param>
+        /// <returns>true if the undo operation was successful; false otherwise.</returns>
+        public bool Undo(GameViewModel viewModel)
+        {
+            if (!CanUndo)  
+                return false;
+
+            try
+            {
+                var currentState = viewModel.GameModel.Serialize();
+                RedoStack.Add(currentState);  // Save current state to redo stack
+
+                var undoState = DoneStack[^1];  // Using indexers for readability
+                DoneStack.RemoveAt(DoneStack.Count - 1);
+
+                var model = GameModel.Deserialize(undoState) ?? throw new InvalidOperationException("Failed to deserialize the undo state.");
+                viewModel.MergeGameModel(model);  // Apply the restored state
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Undo operation failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Restores the game state from the redo stack, pushing the current state onto the undo stack.
+        /// </summary>
+        /// <param name="viewModel">The game view model to which the state will be applied.</param>
+        /// <returns>true if the redo operation was successful; false otherwise.</returns>
+        public bool Redo(GameViewModel viewModel)
+        {
+            if (!CanRedo)  // More explicit than CanRedo for understanding
+                return false;
+
+            try
+            {
+                var redoState = RedoStack[^1];  // Retrieve the last state to redo
+                RedoStack.RemoveAt(RedoStack.Count - 1);  // Remove the last item
+
+                DoneStack.Add(redoState);  // Save the redo state back to the undo stack
+
+                var model = GameModel.Deserialize(redoState) ?? throw new InvalidOperationException("Failed to deserialize the redo state.");
+                viewModel.MergeGameModel(model);  // Apply the restored state
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Redo operation failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        ///     Updating via notifcation when the UndoStack changes
+        /// </summary>
+        [ObservableProperty]
+        private bool _canUndo = false;
+
+        /// <summary>
+        ///  Updated via notification when the RedoStack changes
+        /// </summary>
+        [ObservableProperty]
+        private bool _canRedo = false;
+
+
+
+    }
 
 
     public partial class MainPageViewModel : ObservableRecipient
     {
         [ObservableProperty]
         GameViewModel _gameViewModel = GameViewModel.Default;
+
+        [ObservableProperty]
+        private Log _log = new();
 
         public IMessenger MessageService => this.Messenger;
         public MainPageViewModel(GameType selectedGame, List<PlayerViewModel> playingPlayers)
@@ -40,11 +155,12 @@ namespace Catan3.Models
 
             Debug.Assert(Messenger is not null);
             IsActive = true;
-            Messenger.Register<RequestShuffle>(this, (recipient, message) =>
+           
+            Messenger.Register<DoAction>(this, (recipient, message) =>
             {
-                Shuffle();
+                DoAction(message.Action);
             });
-
+           
 
             Messenger.Register<BuildingUpgrade>(this, (recipient, message) =>
             {
@@ -57,13 +173,34 @@ namespace Catan3.Models
 
 
         }
+        /// <summary>
+        ///     if the message takes no parameters, then we can just add enum elements and then add a case statement
+        ///     without modifying code inbetween
+        /// </summary>
+        /// <param name="action"></param>
+        private void DoAction(GameAction action)
+        {
+            switch (action)
+            {
+                case GameAction.Shuffle:
+                    Shuffle();
+                    break;
+                case GameAction.Undo:
+                    Log.Undo(this.GameViewModel);
+                    break;
+                case GameAction.Redo:
+                    Log.Redo(this.GameViewModel);
+                    break;
+            }
+        }
 
         private void Road_Purchase(RoadKey roadKey)
         {
-       
+
             var roadView = GameViewModel.Roads.FirstOrDefault(r => r.Road.RoadKey == roadKey);
             if (roadView is null) return;
-            DoneStack.Push(GameViewModel.GameModel.Copy());
+            Log.Done(GameViewModel.GameModel);
+
             if (roadView.Owner == null)
             {
                 roadView.Owner = GameViewModel.CurrentPlayer;
@@ -74,7 +211,7 @@ namespace Catan3.Models
         [RelayCommand]
         private void Shuffle()
         {
-            DoneStack.Push(GameViewModel.GameModel);
+            Log.Done(GameViewModel.GameModel);
 
             var currentStars = GameViewModel.ShownStars;
             List<string> playerIds = GameViewModel.Players.Select( p => p.Id ).ToList();
@@ -93,7 +230,7 @@ namespace Catan3.Models
 
 
 
-        private Stack<GameModel> DoneStack { get; } = [];
+
         /// <summary>
         ///     This is a loggable event.  in the case of a Service, this would be a service call.
         /// </summary>
@@ -101,10 +238,10 @@ namespace Catan3.Models
         private void Building_Upgrade(BuildingKey buildingKey)
         {
 
-           
+
             var bvm = GameViewModel.Buildings.FindBuildingViewModel(buildingKey);
             if (bvm is null) return;
-            DoneStack.Push(GameViewModel.GameModel.Copy());
+            Log.Done(GameViewModel.GameModel);
             switch (bvm.Building.BuildingState)
             {
                 case BuildingState.Empty:
@@ -154,29 +291,18 @@ namespace Catan3.Models
             GameViewModel.CurrentPlayer = GameViewModel.Players[index];
         }
 
-        private GameViewModel CopyGameViewModel()
+        [RelayCommand]
+        private void Undo()
         {
-            using (new FunctionTimer("CopyGameViewModel"))
-            {
-                DoneStack.Push(GameViewModel.GameModel);
-                var newGameModel = GameViewModel.GameModel.Copy();
-
-                var gameViewModel = new GameViewModel(newGameModel);
-                gameViewModel.SetCurrentPlayer(newGameModel.CurrentPlayerId);
-                return gameViewModel;
-
-            }
-
+            Log.Undo(GameViewModel);
         }
 
 
-        partial void OnGameViewModelChanged(GameViewModel? oldValue, GameViewModel newValue)
+        [RelayCommand]
+        private void Redo()
         {
-            //  this.TraceMessage($"GameViewModel updated to {GameViewModel.Id} CurrentPlayer={GameViewModel.CurrentPlayer}");
-
+            Log.Redo(GameViewModel);
         }
-
-
 
 
     }

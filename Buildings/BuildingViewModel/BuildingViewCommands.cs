@@ -45,6 +45,7 @@ namespace Catan3.Models
         [RelayCommand]
         private void Upgrade()
         {
+            if (Building.BuildingState == BuildingState.Highlighted) { Building.BuildingState = BuildingState.Empty; }
             MainPage.Messenger.Send(new BuildingUpgrade(Building.BuildingKey));
         }
         [RelayCommand]
@@ -65,7 +66,7 @@ namespace Catan3.Models
         private void MouseExit()
         {
             if (_oldState == BuildingState.Empty && Building.Owner is null) // it can be empty going in, bu owned coming out...
-            { 
+            {
                 Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 Building.BuildingState = BuildingState.Empty;

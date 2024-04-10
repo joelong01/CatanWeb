@@ -118,7 +118,7 @@ namespace Catan3
         }
         private async Task ShowMessageDialog(string message, string title)
         {
-            ContentDialog dialog = new ContentDialog
+            ContentDialog dialog = new()
             {
                 Title = title,
                 Content = message,
@@ -140,14 +140,14 @@ namespace Catan3
             if (MainPageModel.GameViewModel is null) return;
 
             // Create a new context menu (MenuFlyout)
-            MenuFlyout contextMenu = new MenuFlyout();
+            MenuFlyout contextMenu = new();
 
             // Add a menu item for each player in the Players collection
             foreach (var player in MainPageModel.GameViewModel.Players)
             {
                 if (player == MainPageModel.GameViewModel.CurrentPlayer) continue;
 
-                MenuFlyoutItem menuItem = new MenuFlyoutItem
+                MenuFlyoutItem menuItem = new()
                 {
                     Text = "Target " + player.Name,
                     Tag = player,
@@ -160,7 +160,7 @@ namespace Catan3
             contextMenu.Items.Add(new MenuFlyoutSeparator());
 
             // Add a "Cancel" menu item
-            MenuFlyoutItem cancelItem = new MenuFlyoutItem
+            MenuFlyoutItem cancelItem = new()
             {
                 Text = "Cancel"
             };

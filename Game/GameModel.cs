@@ -109,16 +109,28 @@ namespace Catan3.Models
             return stars;
         }
 
-        public GameModel Copy()
+        public string Serialize()
         {
-            using (new FunctionTimer("GameModel.Copy"))
+            string gameModelJson = String.Empty;
+            FunctionTimer.CallTimedFunction("GameModel.Serialize", () =>
             {
-                var gameModelJson = JsonSerializer.Serialize(this);
-            //    this.TraceMessage($"json size: {gameModelJson.Length}");
-                GameModel? newModel = JsonSerializer.Deserialize<GameModel>(gameModelJson);
-                return ( newModel is null ) ? throw new Exception("We just serialized it. it should deserialize!") : newModel;
-            }
+                gameModelJson = JsonSerializer.Serialize(this);
+               
+            });
 
+            return gameModelJson;
+
+        }
+        
+        public static GameModel? Deserialize(string json)
+        {
+            GameModel? result = null;
+            FunctionTimer.CallTimedFunction("GameModel.Serialize", () =>
+            {
+                result =  JsonSerializer.Deserialize<GameModel>(json);
+
+            });
+            return result;
         }
 
     }

@@ -1,12 +1,13 @@
 ﻿namespace Catan3.Models
+
 {
+    public enum GameAction { Shuffle, Undo, Redo }
 
-
-
-    public class RequestShuffle
+    public class DoAction(GameAction action)
     {
-
+        public GameAction Action { get; } = action;
     }
+
 
     public class BuyRoad(RoadKey key)
     {
