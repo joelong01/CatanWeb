@@ -43,12 +43,9 @@ namespace Catan3.Models
 
         public RoadViewModel(RoadModel road, BoardLayout layout)
         {
-            _road = road;
-            _layout = layout;
-            Init();
-        }
-        public void Init()
-        {
+            Road = road;
+            Layout = layout;
+            
             IsActive = true;
             Messenger.Register<CurrentPlayerChanged>(this, (recipient, message) =>
             {
@@ -62,6 +59,13 @@ namespace Catan3.Models
 
             }
             UpdateLayout();
+        }
+
+        partial void OnOwnerChanged(PlayerViewModel? oldValue, PlayerViewModel? newValue)
+        {
+            if (newValue is null) return;
+
+            Road.OwnerId = newValue.Player.Id;
         }
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {

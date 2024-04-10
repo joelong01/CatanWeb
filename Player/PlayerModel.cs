@@ -5,10 +5,10 @@ namespace Catan3.Models
     ///     this should have all the data representing per player state that is bound to the UI 
     /// </summary>
     /// <param name="idx"></param>
-    public partial class PlayerModel(string id) : ObservableObject
+    public partial class PlayerModel : ObservableObject
     {
         [ObservableProperty]
-        private string _id = id;
+        private string _id ;
 
         [ObservableProperty]
         private int _citiesPlayed;
@@ -61,6 +61,11 @@ namespace Catan3.Models
         [ObservableProperty]
         private int _timesTargeted;
         public static PlayerModel Default { get; } = new PlayerModel("Nameless-001");
+        private PlayerModel() { Id = "Nameless-002"; }
+        public PlayerModel(string id)
+        {
+            Id = id;
+        }
 
         public override string ToString()
         {

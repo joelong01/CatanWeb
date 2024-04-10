@@ -45,5 +45,10 @@ namespace Catan3.Controls
         {
             ViewModel.MouseExitCommand.Execute(ViewModel);
         }
+
+        private void OnPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            ViewModel.MouseClickedCommand.Execute(ViewModel);
+        }
     }
 }

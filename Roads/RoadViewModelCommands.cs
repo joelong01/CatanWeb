@@ -9,7 +9,7 @@ namespace Catan3.Models
         [RelayCommand]
         private void MouseEnter()
         {
-            if (Road.Owner is null)
+            if (Road.OwnerId is null)
             {
                 Background = BrushCache.GetGradientBrush(CurrentPlayer.Background, Colors.Black);
                 Foreground = BrushCache.GetSolidColorBrush(CurrentPlayer.Foreground);
@@ -27,6 +27,15 @@ namespace Catan3.Models
                 Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 Road.RoadState = RoadState.Unowned;
+            }
+        }
+
+        [RelayCommand]
+        private void MouseClicked()
+        {
+            if (Road.RoadState == RoadState.Highlighted)
+            {
+                MainPage.Messenger.Send(new BuyRoad(this));
             }
         }
 

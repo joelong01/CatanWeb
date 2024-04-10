@@ -12,7 +12,7 @@ namespace Catan3.Models
         private RoadState _roadState = RoadState.Unowned;
 
         [ObservableProperty]
-        private PlayerModel? _owner;
+        private string? _ownerId;
 
         public int CompareTo(RoadModel? other)
         {

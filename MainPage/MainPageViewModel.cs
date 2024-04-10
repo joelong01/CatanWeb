@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
@@ -49,10 +50,24 @@ namespace Catan3.Models
             {
                 Building_Upgrade(message.BuildingViewModel);
             });
+            Messenger.Register<BuyRoad>(this, (recipient, message) =>
+                       {
+                           Road_Purchase(message.Road);
+                       });
 
 
         }
 
+        private void Road_Purchase(RoadViewModel road)
+        {
+            DoneStack.Push(GameViewModel.GameModel.Copy());
+
+            if (road.Owner == null)
+            {
+                road.Owner = GameViewModel.CurrentPlayer;
+                road.Road.RoadState = RoadState.Road;
+            }
+        }
 
         [RelayCommand]
         private void Shuffle()
@@ -63,7 +78,7 @@ namespace Catan3.Models
             List<string> playerIds = GameViewModel.Players.Select( p => p.Id ).ToList();
             var gameModel = GameFactory.CreateGame(GameViewModel.GameModel.GameType, playerIds);
             gameModel.Shuffle();
-            GameViewModel.MergeGameModel(gameModel); 
+            GameViewModel.MergeGameModel(gameModel);
 
             GameViewModel.SetStars();
             GameViewModel.ShownStars = 14;
@@ -83,7 +98,7 @@ namespace Catan3.Models
         /// <param name="buildingViewModel"></param>
         private void Building_Upgrade(BuildingViewModel buildingViewModel)
         {
-          
+
             DoneStack.Push(GameViewModel.GameModel.Copy());
             var bvm = GameViewModel.Buildings.FindBuildingViewModel(buildingViewModel.Building.BuildingKey);
             if (bvm is null) return;
@@ -93,18 +108,18 @@ namespace Catan3.Models
                 case BuildingState.Empty:
                 case BuildingState.Highlighted:
                 case BuildingState.Stars:
-                    
+
                     bvm.Building.BuildingState = BuildingState.Settlement;
                     bvm.Building.Owner = GameViewModel.CurrentPlayer.Player;
-                 
+
                     break;
                 case BuildingState.Settlement:
-                    
-                    
+
+
                     Debug.Assert(bvm.Building.Owner != null);
                     if (bvm.Building.Owner.Id != GameViewModel.CurrentPlayer.Id) return;
                     bvm.Building.BuildingState = BuildingState.City;
-                 
+
                     break;
                 case BuildingState.City:
 
@@ -112,12 +127,12 @@ namespace Catan3.Models
                     Debug.Assert(bvm.Building.Owner != null);
                     if (bvm.Building.Owner.Id != GameViewModel.CurrentPlayer.Id) return;
                     bvm.Building.BuildingState = BuildingState.Knight;
-                 
+
                     break;
                 case BuildingState.Knight:
                     break;
             }
- 
+
 
             //
             //  turn off all the Stars after you build a building
@@ -125,7 +140,7 @@ namespace Catan3.Models
 
         }
 
-       
+
         [RelayCommand]
         private void NextPlayer()
         {
@@ -145,7 +160,7 @@ namespace Catan3.Models
                 var newGameModel = GameViewModel.GameModel.Copy();
 
                 var gameViewModel = new GameViewModel(newGameModel);
-                gameViewModel.SetCurrentPlayer(newGameModel.CurrentPlayerId);   
+                gameViewModel.SetCurrentPlayer(newGameModel.CurrentPlayerId);
                 return gameViewModel;
 
             }

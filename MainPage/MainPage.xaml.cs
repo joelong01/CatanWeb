@@ -131,73 +131,9 @@ namespace Catan3
         {
             NewGame();
         }
-        private void Building_MouseEnter(BuildingViewModel viewModel)
-        {
+       
 
-            viewModel.Background = BrushCache.GetGradientBrush(MainPageModel.GameViewModel.CurrentPlayer.Background, Colors.Black);
-            viewModel.Foreground = BrushCache.GetSolidColorBrush(MainPageModel.GameViewModel.CurrentPlayer.Foreground);
-            viewModel.Building.BuildingState = BuildingState.Stars;
-
-        }
-        private void Building_Clicked(BuildingViewModel viewModel)
-        {
-            if (MainPageModel.GameViewModel?.CurrentPlayer is not null && MainPageModel.GameViewModel?.CurrentPlayer.Background is not null && viewModel.Building.Owner is null)
-            {
-                viewModel.Building.Owner = MainPageModel.GameViewModel.CurrentPlayer.Player;
-            }
-            if (viewModel.Building.Owner is not null)
-            {
-                switch (viewModel.Building.BuildingState)
-                {
-                    case BuildingState.Empty:
-                        viewModel.Building.BuildingState = BuildingState.Settlement;
-                        viewModel.Building.Metropolis = false;
-                        break;
-                    case BuildingState.Settlement:
-                        viewModel.Building.BuildingState = BuildingState.City;
-                        break;
-                    case BuildingState.City:
-                        if (viewModel.Building.Metropolis)
-                        {
-                            viewModel.Building.Metropolis = false;
-                            viewModel.Building.BuildingState = BuildingState.Knight;
-                        }
-                        else
-                        {
-                            viewModel.Building.Metropolis = true;
-                        }
-                        break;
-                    case BuildingState.Stars:
-                        viewModel.Building.BuildingState = BuildingState.Settlement;
-                        break;
-                    case BuildingState.Knight:
-                        viewModel.Building.BuildingState = BuildingState.Empty;
-                        break;
-                    default:
-                        break;
-                }
-            }
-        }
-        private void Building_MouseLeave(BuildingViewModel viewModel)
-        {
-            if (MainPageModel.GameViewModel?.CurrentPlayer is not null && MainPageModel.GameViewModel?.CurrentPlayer.Background is not null && viewModel.Building.Owner is null)
-            {
-                this.TraceMessage("Resetting brush");
-                viewModel.Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
-                viewModel.Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
-                viewModel.Building.BuildingState = BuildingState.Empty;
-            }
-        }
-
-        private void Road_Clicked(RoadViewModel viewModel)
-        {
-            //  this.TraceMessage($"{viewModel.Road.RoadKey} {Game?.CurrentPlayer?.Name} {viewModel.Road.RoadState}");
-            if (MainPageModel.GameViewModel?.CurrentPlayer is not null && MainPageModel.GameViewModel?.CurrentPlayer.Background is not null && viewModel.Road.Owner is null)
-            {
-                viewModel.Road.Owner = MainPageModel.GameViewModel.CurrentPlayer.Player;
-                viewModel.Road.RoadState = RoadState.Road;
-            }
-        }
+       
 
         private void Tile_RightClicked(TileCtrl tileCtrl, RightTappedRoutedEventArgs e)
         {

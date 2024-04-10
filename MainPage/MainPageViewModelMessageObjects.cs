@@ -8,14 +8,9 @@
 
     }
 
-    public class RoadMouseEntered(RoadViewModel roadViewModel)
+    public class BuyRoad(RoadViewModel road)
     {
-        public RoadViewModel RoadViewModel { get; } = roadViewModel;
-    }
-
-    public class RoadMouseExit(RoadViewModel roadViewModel)
-    {
-        public RoadViewModel RoadViewModel { get; } = roadViewModel;
+        public RoadViewModel Road { get; set; } = road;
     }
 
     public class BuildingMouseEntered(BuildingViewModel buildingViewModel)

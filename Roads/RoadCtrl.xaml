@@ -21,8 +21,10 @@
         <Polygon Fill="{x:Bind ViewModel.Background, Mode=TwoWay}"
                 Points="{x:Bind ViewModel.RoadPolygon, Mode=OneWay}"
                 Stroke="{x:Bind ViewModel.Foreground, Mode=TwoWay}"
-                StrokeThickness="{x:Bind ViewModel.Layout.RoadStrokeThickness, Mode=OneWay}" 
-                 PointerEntered="OnPointerEntered" PointerExited="OnPointerExited"/>
+                StrokeThickness="{x:Bind ViewModel.Layout.RoadStrokeThickness, Mode=OneWay}"
+                PointerEntered="OnPointerEntered"
+                PointerExited="OnPointerExited"
+                 PointerPressed="OnPointerPressed"/>
 
         <Ellipse Width="10" Height="10" Fill="Green" Visibility="Collapsed" />
         <!--<Viewbox Stretch="Uniform" Height="20" HorizontalAlignment="Center">
