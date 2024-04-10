@@ -45,7 +45,7 @@ namespace Catan3.Models
         [RelayCommand]
         private void Upgrade()
         {
-            MainPage.Messenger.Send(new BuildingUpgrade(this));
+            MainPage.Messenger.Send(new BuildingUpgrade(Building.BuildingKey));
         }
         [RelayCommand]
         private void MouseEnter()

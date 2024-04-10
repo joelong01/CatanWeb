@@ -35,7 +35,7 @@ namespace Catan3.Models
         {
             if (Road.RoadState == RoadState.Highlighted)
             {
-                MainPage.Messenger.Send(new BuyRoad(this));
+                MainPage.Messenger.Send(new BuyRoad(Road.RoadKey));
             }
         }
 

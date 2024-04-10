@@ -48,24 +48,26 @@ namespace Catan3.Models
 
             Messenger.Register<BuildingUpgrade>(this, (recipient, message) =>
             {
-                Building_Upgrade(message.BuildingViewModel);
+                Building_Upgrade(message.BuildingKey);
             });
             Messenger.Register<BuyRoad>(this, (recipient, message) =>
                        {
-                           Road_Purchase(message.Road);
+                           Road_Purchase(message.RoadKey);
                        });
 
 
         }
 
-        private void Road_Purchase(RoadViewModel road)
+        private void Road_Purchase(RoadKey roadKey)
         {
+       
+            var roadView = GameViewModel.Roads.FirstOrDefault(r => r.Road.RoadKey == roadKey);
+            if (roadView is null) return;
             DoneStack.Push(GameViewModel.GameModel.Copy());
-
-            if (road.Owner == null)
+            if (roadView.Owner == null)
             {
-                road.Owner = GameViewModel.CurrentPlayer;
-                road.Road.RoadState = RoadState.Road;
+                roadView.Owner = GameViewModel.CurrentPlayer;
+                roadView.Road.RoadState = RoadState.Road;
             }
         }
 
@@ -95,14 +97,14 @@ namespace Catan3.Models
         /// <summary>
         ///     This is a loggable event.  in the case of a Service, this would be a service call.
         /// </summary>
-        /// <param name="buildingViewModel"></param>
-        private void Building_Upgrade(BuildingViewModel buildingViewModel)
+        /// <param name="buildingKey"></param>
+        private void Building_Upgrade(BuildingKey buildingKey)
         {
 
-            DoneStack.Push(GameViewModel.GameModel.Copy());
-            var bvm = GameViewModel.Buildings.FindBuildingViewModel(buildingViewModel.Building.BuildingKey);
+           
+            var bvm = GameViewModel.Buildings.FindBuildingViewModel(buildingKey);
             if (bvm is null) return;
-
+            DoneStack.Push(GameViewModel.GameModel.Copy());
             switch (bvm.Building.BuildingState)
             {
                 case BuildingState.Empty:

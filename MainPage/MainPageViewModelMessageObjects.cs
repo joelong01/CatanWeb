@@ -8,9 +8,9 @@
 
     }
 
-    public class BuyRoad(RoadViewModel road)
+    public class BuyRoad(RoadKey key)
     {
-        public RoadViewModel Road { get; set; } = road;
+        public RoadKey RoadKey { get; set; } = key;
     }
 
     public class BuildingMouseEntered(BuildingViewModel buildingViewModel)
@@ -22,9 +22,9 @@
     {
         public BuildingViewModel BuildingViewModel { get; } = buildingViewModel;
     }
-    public class BuildingUpgrade(BuildingViewModel buildingViewModel)
+    public class BuildingUpgrade(BuildingKey key)
     {
-        public BuildingViewModel BuildingViewModel { get; } = buildingViewModel;
+        public BuildingKey BuildingKey { get; } = key;
     }
 
 
