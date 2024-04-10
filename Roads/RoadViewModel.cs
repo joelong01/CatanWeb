@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json.Serialization;
@@ -6,6 +7,7 @@ using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 namespace Catan3.Models
@@ -19,15 +21,7 @@ namespace Catan3.Models
         [ObservableProperty]
         private BoardLayout _layout;
 
-        [ObservableProperty]
-        private PlayerViewModel? _owner;
-
-        [ObservableProperty]
-        private Brush _background = BrushCache.GetSolidColorBrush(Colors.Transparent);
-
-        [ObservableProperty]
-        private Brush _foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
-
+      
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(RoadPolygon))]
         private double _left;
@@ -38,8 +32,8 @@ namespace Catan3.Models
 
         [ObservableProperty]
         private double _index;
-
-        private PlayerViewModel CurrentPlayer { get; set; } = PlayerViewModel.Default;
+        [ObservableProperty]
+        private PlayerViewModel _currentPlayer  = PlayerViewModel.Default;
 
         public RoadViewModel(RoadModel road, BoardLayout layout)
         {
@@ -61,12 +55,7 @@ namespace Catan3.Models
             UpdateLayout();
         }
 
-        partial void OnOwnerChanged(PlayerViewModel? oldValue, PlayerViewModel? newValue)
-        {
-            if (newValue is null) return;
 
-            Road.OwnerId = newValue.Player.Id;
-        }
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (sender is BoardLayout layout)
@@ -271,7 +260,68 @@ namespace Catan3.Models
             double  yGap = layout.Top(adjacentKey) - layout.Top(key);
             return new Point(xGap, yGap);
         }
+        ///     if the state is empty, be transparent
+        ///     if their is an owner, use their color
+        ///     otherwise, use the color of the current player
+        /// 
+        ///     all brushes are cached.
+        public Brush GetForegroundBrush(RoadState state, string ownerId, PlayerViewModel currentPlayer)
+        {
 
-      
+            if (state == RoadState.Unowned && ownerId is null)
+            {
+                return BrushCache.GetSolidColorBrush(Colors.Transparent);
+            }
+
+            if (ownerId is not null)
+            {
+               
+                PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
+                return BrushCache.GetSolidColorBrush(owner.Foreground);
+            }
+            else
+            {
+                return BrushCache.GetSolidColorBrush(currentPlayer.Foreground);
+            }
+
+
+        }
+
+        /// <summary>
+        ///     if the state is empty, be transparent
+        ///     if their is an owner, use their color
+        ///     otherwise, use the color of the current player
+        /// 
+        ///     all brushes are cached.
+        /// 
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="ownerId"></param>
+        /// <param name="currentPlayer"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public Brush GetBackgroundBrush(RoadState state, string ownerId, PlayerViewModel currentPlayer)
+        {
+
+            if (state == RoadState.Unowned && ownerId is null)
+            {
+                return BrushCache.GetSolidColorBrush(Colors.Transparent);
+            }
+            if (ownerId is not null)
+            {
+                PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
+                return BrushCache.GetGradientBrush(owner.Background, Colors.Black);
+            }
+            else
+            {
+                return BrushCache.GetGradientBrush(currentPlayer.Background, Colors.Black);
+            }
+        }
+
+        public override string ToString()
+        {
+            return $"{Road}";
+        }
+
     }
 }

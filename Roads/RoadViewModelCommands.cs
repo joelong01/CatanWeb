@@ -11,11 +11,7 @@ namespace Catan3.Models
         {
             if (Road.OwnerId is null)
             {
-                Background = BrushCache.GetGradientBrush(CurrentPlayer.Background, Colors.Black);
-                Foreground = BrushCache.GetSolidColorBrush(CurrentPlayer.Foreground);
                 Road.RoadState = RoadState.Highlighted;
-
-
             }
         }
 
@@ -24,8 +20,6 @@ namespace Catan3.Models
         {
             if (Road.RoadState == RoadState.Highlighted)
             {
-                Background = BrushCache.GetSolidColorBrush(Colors.Transparent);
-                Foreground = BrushCache.GetSolidColorBrush(Colors.Transparent);
                 Road.RoadState = RoadState.Unowned;
             }
         }

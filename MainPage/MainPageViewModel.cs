@@ -60,7 +60,7 @@ namespace Catan3.Models
         /// <returns>true if the undo operation was successful; false otherwise.</returns>
         public bool Undo(GameViewModel viewModel)
         {
-            if (!CanUndo)  
+            if (!CanUndo)
                 return false;
 
             try
@@ -156,12 +156,12 @@ namespace Catan3.Models
 
             Debug.Assert(Messenger is not null);
             IsActive = true;
-           
+
             Messenger.Register<DoAction>(this, (recipient, message) =>
             {
                 DoAction(message.Action);
             });
-           
+
 
             Messenger.Register<BuildingUpgrade>(this, (recipient, message) =>
             {
@@ -200,13 +200,14 @@ namespace Catan3.Models
 
             var roadView = GameViewModel.Roads.FirstOrDefault(r => r.Road.RoadKey == roadKey);
             if (roadView is null) return;
+            if (roadView.Road.OwnerId is not null) return;
+            //
+            //  this will be the state we go back to when we Undo
+            if (roadView.Road.RoadState == RoadState.Highlighted) roadView.Road.RoadState = RoadState.Unowned;
             Log.Done(GameViewModel.GameModel);
+            roadView.Road.OwnerId = GameViewModel.CurrentPlayer.Id;
+            roadView.Road.RoadState = RoadState.Road;
 
-            if (roadView.Owner == null)
-            {
-                roadView.Owner = GameViewModel.CurrentPlayer;
-                roadView.Road.RoadState = RoadState.Road;
-            }
         }
 
         [RelayCommand]
@@ -225,7 +226,6 @@ namespace Catan3.Models
             GameViewModel.ShownStars = currentStars;
             Debug.Assert(GameViewModel.CurrentPlayer != null);
             GameViewModel.Id = GameViewModel.GameModel.GetHashCode().ToString();
-            //OnPropertyChanged(nameof(GameViewModel));
 
         }
 

@@ -117,7 +117,7 @@ namespace Catan3.Models
             if (ownerId is not null)
             {
                 Debug.Assert(state != BuildingState.Highlighted);
-                PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {Building.OwnerId}");
+                PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
                 return BrushCache.GetSolidColorBrush(owner.Foreground);
             }
             else
@@ -150,9 +150,7 @@ namespace Catan3.Models
             }
             if (ownerId is not null)
             {
-                Debug.Assert(ownerId is not null);
-
-                PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {Building.OwnerId}");
+                PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
                 return BrushCache.GetGradientBrush(owner.Background, Colors.Black);
             }
             else

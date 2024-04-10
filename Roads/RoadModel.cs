@@ -19,5 +19,9 @@ namespace Catan3.Models
             if (other is null) return 1;
             return RoadKey.CompareTo(other.RoadKey);
         }
+        public override string ToString()
+        {
+            return $"{RoadKey}-{RoadState}-{OwnerId}";
+        }
     }
 }

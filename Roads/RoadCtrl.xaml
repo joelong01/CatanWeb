@@ -18,9 +18,9 @@
             VerticalAlignment="Top" Canvas.ZIndex="100" IsHitTestVisible="True"
             RenderTransformOrigin=".5 .5">
 
-        <Polygon Fill="{x:Bind ViewModel.Background, Mode=TwoWay}"
+        <Polygon Fill="{x:Bind ViewModel.GetBackgroundBrush(ViewModel.Road.RoadState, ViewModel.Road.OwnerId, ViewModel.CurrentPlayer), Mode=OneWay}"
                 Points="{x:Bind ViewModel.RoadPolygon, Mode=OneWay}"
-                Stroke="{x:Bind ViewModel.Foreground, Mode=TwoWay}"
+                Stroke="{x:Bind ViewModel.GetForegroundBrush(ViewModel.Road.RoadState, ViewModel.Road.OwnerId, ViewModel.CurrentPlayer), Mode=OneWay}"
                 StrokeThickness="{x:Bind ViewModel.Layout.RoadStrokeThickness, Mode=OneWay}"
                 PointerEntered="OnPointerEntered"
                 PointerExited="OnPointerExited"
