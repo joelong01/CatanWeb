@@ -1,7 +1,9 @@
 ﻿namespace Catan3.Models
 
 {
-    public enum GameAction { Shuffle, Undo, Redo }
+    public enum GameAction { Shuffle, Undo, Redo,
+        NextPlayer
+    }
 
     public class DoAction(GameAction action)
     {

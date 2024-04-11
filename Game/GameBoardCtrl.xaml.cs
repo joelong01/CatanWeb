@@ -52,7 +52,7 @@ namespace Catan3.Controls
         private void SetGameViewModel(GameViewModel? oldValue, GameViewModel? newValue)
         {
             if (newValue is null) return; // happens when we force binding in Shuffle
-            this.TraceMessage($"GameViewModel changed first Tile={newValue.Tiles[0]}");
+          //  this.TraceMessage($"GameViewModel changed first Tile={newValue.Tiles[0]}");
             if (oldValue is not null)
             {
                 oldValue.PropertyChanged -= GameViewModel_PropertyChanged;

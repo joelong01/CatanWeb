@@ -158,10 +158,18 @@
                         Background="Black" Foreground="White" />
                 <Button Content="Do Misc" Click="OnHitMe" Background="Black"
                         Foreground="White" />
+                <Button Content="Undo" Background="Black" Foreground="White"
+                        Command="{x:Bind MainPageModel.GameViewModel.UndoCommand, Mode=OneWay}" />
+                <Button Content="Redo" Background="Black" Foreground="White"
+                        Command="{x:Bind MainPageModel.GameViewModel.RedoCommand, Mode=OneWay}" />
 
             </StackPanel>
         </ScrollViewer>
-        <!-- GridSplitter for adjusting the size between the first and second columns -->
+    
+        <!--Game Buttons-->
+        <c:GameButtons  Grid.Column="2" HorizontalAlignment="Right" 
+                VerticalAlignment="Top"
+                ViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" />
 
         <Border BorderBrush="Blue" BorderThickness="0" Grid.Column="2"
                 HorizontalAlignment="Left" VerticalAlignment="Top"

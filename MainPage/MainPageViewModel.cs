@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,123 +13,15 @@ using Microsoft.UI;
 
 namespace Catan3.Models
 {
-    public partial class Log : ObservableObject
-    {
+    
 
-        private readonly  BindingList<string> DoneStack = new();
-        private readonly  BindingList<string> RedoStack = new();
-
-        public Log()
-        {
-            DoneStack.ListChanged += DoneStack_ListChanged;
-            RedoStack.ListChanged += RedoStack_ListChanged;
-        }
-
-        private void RedoStack_ListChanged(object? sender, ListChangedEventArgs e)
-        {
-            if (sender is not null && sender is BindingList<string> list)
-            {
-                this.CanRedo = list.Count > 0;
-            }
-        }
-
-        private void DoneStack_ListChanged(object? sender, ListChangedEventArgs e)
-        {
-            if (sender is not null && sender is BindingList<string> list)
-            {
-                this.CanUndo = list.Count > 0; // don't undo past the start
-                this.TraceMessage($"Done Depth {list.Count}");
-            }
-        }
-
-        /// <summary>
-        ///     Serialize the model
-        ///     put it on the DoneStack
-        ///     clear the RedoStack
-        /// </summary>
-        /// <param name="model"></param>
-        public void Done(GameModel model)
-        {
-            DoneStack.Add(model.Serialize());
-            RedoStack.Clear();
-        }
-        /// <summary>
-        /// Performs an undo operation by restoring the state from the undo stack.
-        /// The current state is pushed onto the redo stack before the undo is applied.
-        /// </summary>
-        /// <param name="viewModel">The game view model containing the current game state.</param>
-        /// <returns>true if the undo operation was successful; false otherwise.</returns>
-        public bool Undo(GameViewModel viewModel)
-        {
-            if (!CanUndo)
-                return false;
-
-            try
-            {
-                var currentState = viewModel.GameModel.Serialize();
-                RedoStack.Add(currentState);  // Save current state to redo stack
-
-                var undoState = DoneStack[^1];  // Using indexers for readability
-                DoneStack.RemoveAt(DoneStack.Count - 1);
-
-                var model = GameModel.Deserialize(undoState) ?? throw new InvalidOperationException("Failed to deserialize the undo state.");
-                viewModel.MergeGameModel(model);  // Apply the restored state
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Undo operation failed: {ex.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Restores the game state from the redo stack, pushing the current state onto the undo stack.
-        /// </summary>
-        /// <param name="viewModel">The game view model to which the state will be applied.</param>
-        /// <returns>true if the redo operation was successful; false otherwise.</returns>
-        public bool Redo(GameViewModel viewModel)
-        {
-            if (!CanRedo)  // More explicit than CanRedo for understanding
-                return false;
-
-            try
-            {
-                var redoState = RedoStack[^1];  // Retrieve the last state to redo
-                RedoStack.RemoveAt(RedoStack.Count - 1);  // Remove the last item
-
-                DoneStack.Add(redoState);  // Save the redo state back to the undo stack
-
-                var model = GameModel.Deserialize(redoState) ?? throw new InvalidOperationException("Failed to deserialize the redo state.");
-                viewModel.MergeGameModel(model);  // Apply the restored state
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Redo operation failed: {ex.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>
-        ///     Updating via notifcation when the UndoStack changes
-        /// </summary>
-        [ObservableProperty]
-        private bool _canUndo = false;
-
-        /// <summary>
-        ///  Updated via notification when the RedoStack changes
-        /// </summary>
-        [ObservableProperty]
-        private bool _canRedo = false;
-
-
-
-    }
+    
 
 
     public partial class MainPageViewModel : ObservableRecipient
     {
+        public static MainPageViewModel Default { get; } = new MainPageViewModel(GameType.Regular, [PlayerViewModel.Default]);
+
         [ObservableProperty]
         GameViewModel _gameViewModel = GameViewModel.Default;
 
@@ -148,7 +41,8 @@ namespace Catan3.Models
             this.GameViewModel = gvm;
             GameViewModel.UpdateLayout();
             GameViewModel.SetStars();
-
+            Log.Done(GameViewModel.GameModel);
+          
 
         }
         private void RegisterMessages()
@@ -192,6 +86,9 @@ namespace Catan3.Models
                 case GameAction.Redo:
                     Log.Redo(this.GameViewModel);
                     break;
+                case GameAction.NextPlayer:
+                    NextPlayer();
+                    break;
             }
         }
 
@@ -204,17 +101,17 @@ namespace Catan3.Models
             //
             //  this will be the state we go back to when we Undo
             if (roadView.Road.RoadState == RoadState.Highlighted) roadView.Road.RoadState = RoadState.Unowned;
-            Log.Done(GameViewModel.GameModel);
+           
             roadView.Road.OwnerId = GameViewModel.CurrentPlayer.Id;
             roadView.Road.RoadState = RoadState.Road;
+            Log.Done(GameViewModel.GameModel);
 
         }
 
         [RelayCommand]
         private void Shuffle()
         {
-            Log.Done(GameViewModel.GameModel);
-
+          
             var currentStars = GameViewModel.ShownStars;
             List<string> playerIds = GameViewModel.Players.Select( p => p.Id ).ToList();
             var gameModel = GameFactory.CreateGame(GameViewModel.GameModel.GameType, playerIds);
@@ -226,6 +123,7 @@ namespace Catan3.Models
             GameViewModel.ShownStars = currentStars;
             Debug.Assert(GameViewModel.CurrentPlayer != null);
             GameViewModel.Id = GameViewModel.GameModel.GetHashCode().ToString();
+            Log.Done(GameViewModel.GameModel);
 
         }
 
@@ -242,7 +140,7 @@ namespace Catan3.Models
 
             var bvm = GameViewModel.Buildings.FindBuildingViewModel(buildingKey);
             if (bvm is null) return;
-            Log.Done(GameViewModel.GameModel);
+         
             switch (bvm.Building.BuildingState)
             {
                 case BuildingState.Empty:
@@ -277,35 +175,24 @@ namespace Catan3.Models
             //
             //  turn off all the Stars after you build a building
             GameViewModel.ShownStars = 14;
-
+            Log.Done(GameViewModel.GameModel);
         }
 
 
         [RelayCommand]
         private void NextPlayer()
         {
-            Log.Done(GameViewModel.GameModel);
+           
             Debug.Assert(GameViewModel.CurrentPlayer != null);
             int index = GameViewModel.Players.IndexOf(GameViewModel.CurrentPlayer);
             Debug.Assert(index >= 0);
             index++;
             index = index % GameViewModel.Players.Count;
             GameViewModel.CurrentPlayer = GameViewModel.Players[index];
+            Log.Done(GameViewModel.GameModel);
         }
 
-        [RelayCommand]
-        private void Undo()
-        {
-            Log.Undo(GameViewModel);
-        }
-
-
-        [RelayCommand]
-        private void Redo()
-        {
-            Log.Redo(GameViewModel);
-        }
-
+      
 
     }
 

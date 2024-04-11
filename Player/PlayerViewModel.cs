@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI;
+using Microsoft.UI.Xaml.Media;
 using Windows.UI;
 
 namespace Catan3.Models
@@ -30,8 +31,8 @@ namespace Catan3.Models
         [ObservableProperty]
         private PlayerModel _player = PlayerModel.Default;
         public PlayerViewModel() : this("Nameless", Colors.White, Colors.HotPink) { }
-        
-        
+
+
         [JsonIgnore]
         public static PlayerViewModel Default { get; } = new();
 
@@ -45,6 +46,15 @@ namespace Catan3.Models
         public override string ToString()
         {
             return $"{Name}";
+        }
+
+        public Brush GetBrush(Color color, bool foreground)
+        {
+            if (foreground) 
+                return BrushCache.GetSolidColorBrush(color);
+
+            else
+                return BrushCache.GetGradientBrush(color, Colors.Black);
         }
     }
 }

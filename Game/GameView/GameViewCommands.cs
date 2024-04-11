@@ -33,6 +33,11 @@ namespace Catan3.Models
             MainPage.Messenger.Send(new DoAction(GameAction.Redo));
         }
 
+        [RelayCommand]
+        public void NextPlayer()
+        {
+            MainPage.Messenger.Send(new DoAction(GameAction.NextPlayer));
+        }
 
 
         /// <summary>
@@ -43,9 +48,6 @@ namespace Catan3.Models
         [RelayCommand]
         public void ShowStarValues(int stars)
         {
-           
-
-            this.TraceMessage($"stars: {stars}");
 
             foreach (var building in Buildings)
             {
