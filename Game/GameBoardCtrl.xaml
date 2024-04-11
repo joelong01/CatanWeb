@@ -28,51 +28,8 @@
             VerticalAlignment="Top"
             Height="{x:Bind GameViewModel.BoardInfo.Layout.BoardHeight, Mode=OneWay}"
             Width="{x:Bind GameViewModel.BoardInfo.Layout.BoardWidth, Mode=OneWay}">
-        
-        <Viewbox Width="200" Stretch="Uniform">
-            
-       <StackPanel BorderBrush="{StaticResource bmCherry}" BorderThickness="2" 
-                    Background="{x:Bind GameViewModel.CurrentPlayer.GetBrush(GameViewModel.CurrentPlayer.Background, x:False), Mode=OneWay}"
-                    
-                CornerRadius="5">
-            <StackPanel Orientation="Horizontal" Margin="2">
-                <StackPanel Orientation="Vertical" Margin="0,0,0,0"
-                        HorizontalAlignment="Left" VerticalAlignment="Top"
-                        Width="100" Height="100">
-                    <Button Content="&#xE10E;"
-                            Command="{x:Bind GameViewModel.UndoCommand, Mode=OneWay}"
-                            Style="{StaticResource GameControllerStyle}"
-                            Background="Transparent" Foreground="White" />
-                    <TextBlock Margin="10, 5, 0, 0" Text="Undo"
-                            HorizontalAlignment="Center" Foreground="White"
-                            TextLineBounds="Tight" />
-                </StackPanel>
-                <StackPanel Orientation="Vertical" Margin="0,0,0,0"
-                        HorizontalAlignment="Left" VerticalAlignment="Top"
-                        Width="100" Height="100">
-                    <Button Content="&#xE101;"
-                            Command="{x:Bind GameViewModel.NextPlayerCommand, Mode=OneWay}"
-                            Style="{StaticResource GameControllerStyle}"
-                            Background="Transparent" Foreground="White" />
-                    <TextBlock Margin="10, 5, 0, 0" Text="Next"
-                            HorizontalAlignment="Center" Foreground="White"
-                            TextLineBounds="Tight" />
-                </StackPanel>
-                <StackPanel Orientation="Vertical" Margin="0,0,0,0"
-                        HorizontalAlignment="Left" VerticalAlignment="Top"
-                        Width="100" Height="100">
-                    <Button Content="&#xE10D;"
-                            Command="{x:Bind GameViewModel.RedoCommand, Mode=OneWay}"
-                            Style="{StaticResource GameControllerStyle}"
-                            Background="Transparent" Foreground="White" />
-                    <TextBlock Margin="10, 5, 0, 0" Text="Redo"
-                            HorizontalAlignment="Center" Foreground="White"
-                            TextLineBounds="Tight" />
-                </StackPanel>
-            </StackPanel>
-            <TextBlock Text="Add State Message" HorizontalAlignment="Center" Margin="5"/>
-        </StackPanel>
-         </Viewbox>
+
+      
         <!--Harbors-->
         <ItemsControl x:Name="IC_Harbors"
                 ItemsSource="{x:Bind GameViewModel.Harbors, Mode=OneWay}">

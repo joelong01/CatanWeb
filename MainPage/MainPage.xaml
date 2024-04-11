@@ -163,13 +163,14 @@
                 <Button Content="Redo" Background="Black" Foreground="White"
                         Command="{x:Bind MainPageModel.GameViewModel.RedoCommand, Mode=OneWay}" />
 
+                
+                  
+                
             </StackPanel>
+          
         </ScrollViewer>
-    
-        <!--Game Buttons-->
-        <c:GameButtons  Grid.Column="2" HorizontalAlignment="Right" 
-                VerticalAlignment="Top"
-                ViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" />
+        
+        <c:GameControls ViewModel="{x:Bind MainPageModel, Mode=OneWay}" Grid.Column="2" Canvas.ZIndex="9999" HorizontalAlignment="Left" VerticalAlignment="Top"/>
 
         <Border BorderBrush="Blue" BorderThickness="0" Grid.Column="2"
                 HorizontalAlignment="Left" VerticalAlignment="Top"

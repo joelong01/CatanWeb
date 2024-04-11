@@ -21,6 +21,7 @@
 		<None Remove="Controls\TileCtrl.xaml" />
 		<None Remove="FlipperCtrl.xaml" />
 		<None Remove="GameButtons.xaml" />
+		<None Remove="Game\Game Control\GameControls.xaml" />
 		<None Remove="Harbors\HarborCtrl.xaml" />
 		<None Remove="MainPage.xaml" />
 		<None Remove="ResourceCard\BoardMeasurementCtrl.xaml" />
@@ -71,6 +72,9 @@
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
 	  <Page Update="GameButtons.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Game\Game Control\GameControls.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
 	  <None Update="GenerateModels.tt">
@@ -142,9 +146,6 @@
 	    <AutoGen>True</AutoGen>
 	    <DependentUpon>models.tt</DependentUpon>
 	  </Compile>
-	</ItemGroup>
-	<ItemGroup>
-	  <Folder Include="Game\Game Control\" />
 	</ItemGroup>
 
 	<!-- 
