@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Catan.Utility;
 using Catan3.Controls;
 using Catan3.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -10,13 +12,9 @@ using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-
-using Microsoft.UI.Windowing;
+using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
-using Windows.Storage;
-using Microsoft.UI;
-using System.Diagnostics;
 
 
 
@@ -26,11 +24,9 @@ using System.Diagnostics;
 namespace Catan3
 {
 
-    public interface IFileService
-    {
-        Task<StorageFile?> SaveFileAsync(string defaultFileName);
-        Task<StorageFile?> OpenFileAsync();
-    }
+
+
+
 
 
     public partial class SelectPlayerModel(string name, string id, bool selected) : ObservableObject
@@ -48,11 +44,11 @@ namespace Catan3
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
-    public sealed partial class MainPage : Page, IFileService
+    public sealed partial class MainPage : Page
     {
 
         private ObservableCollection<SelectPlayerModel> AvailablePlayers { get; set; }
-
+       
         public MainPage()
         {
             this.InitializeComponent();
@@ -120,8 +116,8 @@ namespace Catan3
                                 .OfType<PlayerViewModel>() // Filter out any nulls effectively and ensure all are CurrentPlayer
                         );
 
-
-            MainPageModel = new MainPageViewModel(this, SelectedGame, selectedPlayers);
+            
+            MainPageModel = new MainPageViewModel(new FileService(), SelectedGame, selectedPlayers);
             this.DataContext = MainPageModel.GameViewModel;
 
 
@@ -137,7 +133,7 @@ namespace Catan3
 
             await dialog.ShowAsync();
         }
-        private void OnRegenerate(object sender, RoutedEventArgs e)
+        private void OnNewGame(object sender, RoutedEventArgs e)
         {
             NewGame();
         }

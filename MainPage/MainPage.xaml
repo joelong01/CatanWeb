@@ -38,7 +38,7 @@
                     ScrollViewer.VerticalScrollMode="Auto" Margin="10">
                 <TextBlock FontSize="20"
                         Text="{x:Bind MainPageModel.GameViewModel.Id, Mode=OneWay}" />
-                <Button Content="New Game" Click="OnRegenerate"
+                <Button Content="New Game" Click="OnNewGame"
                         Background="Black" Foreground="White" />
                 <Button Content="Shuffle"
                         Command="{x:Bind MainPageModel.ShuffleCommand, Mode=OneWay}"
@@ -160,7 +160,10 @@
                         Foreground="White" />
                 <Button Content="Save" Background="Black" Foreground="White"
                         Command="{x:Bind MainPageModel.SaveCommand, Mode=OneWay}" />
-                <Button Content="Open" Background="Black" Foreground="White"
+                <Button Content="Save As..." Background="Black"
+                        Foreground="White"
+                        Command="{x:Bind MainPageModel.SaveAsCommand, Mode=OneWay}" />
+                <Button Content="Open..." Background="Black" Foreground="White"
                         Command="{x:Bind MainPageModel.OpenCommand, Mode=OneWay}" />
 
             </StackPanel>

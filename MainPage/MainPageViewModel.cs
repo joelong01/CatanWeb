@@ -1,21 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Text.Json;
+using System.Threading.Tasks;
+using Catan.Utility;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
-using Windows.Security.Cryptography.Core;
-using Windows.Storage.Provider;
-using Windows.Storage;
-using System.Threading.Tasks;
-using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace Catan3.Models
 {
@@ -31,7 +24,7 @@ namespace Catan3.Models
         GameViewModel _gameViewModel = GameViewModel.Default;
 
         [ObservableProperty]
-        private Log _log;
+        private Log<byte[]> _log;
 
         private readonly IFileService _fileService;
 
@@ -49,7 +42,7 @@ namespace Catan3.Models
             this.GameViewModel = gvm;
             GameViewModel.UpdateLayout();
             GameViewModel.SetStars();
-            Log = new Log(selectedGame);
+            Log = new Log<byte[]>(selectedGame);
             Log.Done(GameViewModel.GameModel);
 
 
@@ -204,63 +197,71 @@ namespace Catan3.Models
         [RelayCommand]
         private async Task Save()
         {
+            var uncompressedLog = Log.GetSerializableLog(); // this always comes back the same
+            var json = SerializationHelper.JsonSerialize(uncompressedLog);
+            var compressedBytes = SerializationHelper.Compress(json);
+            await _fileService.SaveFileAsync(compressedBytes);
 
-            var file = await _fileService.SaveFileAsync("Test Game");
-            if (file == null) return;
-            using (new FunctionTimer("compression", true))
-            {
-                var uncompressedLog = Log.GetSerializableLog();
-                var json = SerializationHelper.JsonSerialize(uncompressedLog);
-                var compressedBytes = SerializationHelper.CompressString(json);
-                CachedFileManager.DeferUpdates(file);
 
-                await FileIO.WriteBytesAsync(file, compressedBytes);
-            }
-
-          
-            
-            // Let Windows know that we're finished changing the file so the other app can update the remote version of the file.
-            FileUpdateStatus status = await CachedFileManager.CompleteUpdatesAsync(file);
-            if (status == FileUpdateStatus.Complete)
-            {
-                // File saved
-                this.TraceMessage($"DoneCount={Log.DoneCount}");
-            }
-            else
-            {
-                // Error saving file
-                this.TraceMessage("Error saving file.");
-            }
+        }
+        [RelayCommand]
+        private async Task SaveAs()
+        {
+            var uncompressedLog = Log.GetSerializableLog(); // this always comes back the same
+            var json = SerializationHelper.JsonSerialize(uncompressedLog);
+            var compressedBytes = SerializationHelper.Compress(json);
+            await _fileService.SaveFileAsAsync($"GameModel DoneDepth={Log.DoneCount}", compressedBytes);
 
 
         }
         [RelayCommand]
         private async Task Open()
         {
-            var file = await _fileService.OpenFileAsync();
-            if (file == null) return;  // Exit if no file was selected or there was an error
-
-            // Read the compressed data from the file
-            var compressedData = await FileIO.ReadBufferAsync(file);
-            var compressedBytes = compressedData.ToArray();
-            var decompressedJson = SerializationHelper.DecompressString(compressedBytes);
-
-            // Deserialize the JSON back into your Log or relevant data structure
             try
             {
-                var log = SerializationHelper.JsonDeserialize<Log>(decompressedJson);
-                if (log == null)
+              
+                var compressedBytes = await _fileService.OpenFileAsync();
+                if (compressedBytes is null)
+                {
+                    this.TraceMessage("Unable to open file");
+                    return;
+                }
+
+                var decompressedJson = SerializationHelper.Decompress(compressedBytes);
+
+                // Deserialize the JSON back into your Log or relevant data structure
+
+                var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson);
+                if (savedLog == null)
                 {
                     this.TraceMessage("Error: Failed to load the game data.");
                     return;
                 }
 
-                this.Log = log;
-                var gameModel = Log.CurrentState();
-                GameViewModel.MergeGameModel(gameModel);
-                GameViewModel.SetStars();
-                GameViewModel.ShownStars = 14;
+                Log<byte[]> log = Log<byte[]>.FromSerializableLog(savedLog);
 
+                if (log.GameType == GameViewModel.GameModel.GameType)
+                {
+
+                    this.Log = log;
+                    var gameModel = Log.CurrentState();
+                    GameViewModel.MergeGameModel(gameModel);
+                    GameViewModel.SetStars();
+                    GameViewModel.ShownStars = 14;
+                }
+
+                else
+                {
+                    var gameModel = log.CurrentState();
+                    var gvm = new GameViewModel(gameModel);
+                    
+                    this.GameViewModel = gvm;
+
+                    GameViewModel.UpdateLayout();
+                    GameViewModel.SetStars();
+                    Log = log;
+                }
+                GC.Collect();
             }
             catch (Exception ex)
             {
