@@ -207,15 +207,18 @@ namespace Catan3.Models
 
             var file = await _fileService.SaveFileAsync("Test Game");
             if (file == null) return;
+            using (new FunctionTimer("compression", true))
+            {
+                var uncompressedLog = Log.GetSerializableLog();
+                var json = SerializationHelper.JsonSerialize(uncompressedLog);
+                var compressedBytes = SerializationHelper.CompressString(json);
+                CachedFileManager.DeferUpdates(file);
 
+                await FileIO.WriteBytesAsync(file, compressedBytes);
+            }
 
-            var data = SerializationHelper.PackToJson(this.Log);
-            var compressed = SerializationHelper.CompressString(data);
-
-            // Prevent updates to the remote version of the file until we finish making changes and call CompleteUpdatesAsync.
-            CachedFileManager.DeferUpdates(file);
-            // Write data to the file
-            await FileIO.WriteBytesAsync(file, compressed);
+          
+            
             // Let Windows know that we're finished changing the file so the other app can update the remote version of the file.
             FileUpdateStatus status = await CachedFileManager.CompleteUpdatesAsync(file);
             if (status == FileUpdateStatus.Complete)
@@ -245,16 +248,15 @@ namespace Catan3.Models
             // Deserialize the JSON back into your Log or relevant data structure
             try
             {
-                var log = SerializationHelper.UnpackFromJson<Log>(decompressedJson);
+                var log = SerializationHelper.JsonDeserialize<Log>(decompressedJson);
                 if (log == null)
                 {
                     this.TraceMessage("Error: Failed to load the game data.");
                     return;
                 }
 
-                this.Log = log;  
-                var json = Log.Peek();
-                var gameModel = SerializationHelper.UnpackFromJson<GameModel>(json) ?? throw new Exception("Invalid Game File");
+                this.Log = log;
+                var gameModel = Log.CurrentState();
                 GameViewModel.MergeGameModel(gameModel);
                 GameViewModel.SetStars();
                 GameViewModel.ShownStars = 14;

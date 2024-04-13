@@ -10,27 +10,26 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Catan3.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
-using MessagePack;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Security.Cryptography;
+using System.Linq;
+
 
 namespace Catan3.Utility
 
 {
-    [MessagePackObject]
     public class SerializableLog
     {
-        [Key(0)]
+   
         public List<string> DoneStack { get; set; } = [];
 
-        [Key(1)]
+
         public List<string> RedoStack { get; set; } = [];
 
-        [Key(2)]
+
         public GameType GameType { get; set; } = GameType.Regular;
 
-        [Key(3)]
+
         public int DoneCount { get; set; } = 0;
-        [Key(4)]
         public int RedoCount { get; set; } = 0;
 
 
@@ -40,9 +39,9 @@ namespace Catan3.Utility
     public partial class Log : ObservableObject
     {
      
-        public ObservableCollection<string> DoneStack { get; set; } = [];
+        public ObservableCollection<byte[]> DoneStack { get; set; } = [];
        
-        public ObservableCollection<string> RedoStack { get; set; } = [];
+        public ObservableCollection<byte[]> RedoStack { get; set; } = [];
 
         public GameType GameType { get; set; } = GameType.Regular;
         public Log() { }
@@ -55,44 +54,44 @@ namespace Catan3.Utility
 
         public int DoneCount => DoneStack.Count;
 
-       
-
-
         public SerializableLog GetSerializableLog()
         {
-            var log =  new SerializableLog();
-            log.DoneStack.AddRange(DoneStack);
-            log.RedoStack.AddRange(RedoStack);
-            log.GameType = GameType;
-            log.DoneCount = DoneStack.Count;
-            log.RedoCount = RedoStack.Count;
+            var log = new SerializableLog();
+            // Preserve the order: the earliest entry first as in a stack operation
+            for (int i = DoneStack.Count - 1; i >= 0; i--)
+            {
+                var json = SerializationHelper.DecompressString(DoneStack[i]);
+                log.DoneStack.Add(json);
+            }
+            for (int i = RedoStack.Count - 1; i >= 0; i--)
+            {
+                var json = SerializationHelper.DecompressString(RedoStack[i]);
+                log.RedoStack.Add(json);
+            }
+
+            log.GameType = GameType;  
             return log;
         }
 
-        public void SetLog(SerializableLog log)
-        {
-            DoneStack.Clear();
-            RedoStack.Clear();
-            DoneStack.AddRange(log.DoneStack);
-            RedoStack.AddRange(log.RedoStack);
-            GameType = log.GameType;
-        }
+       
+
+
 
         private void RedoStack_ListChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
-            if (sender is not null && sender is ObservableCollection<string> list)
+            if (sender is not null && sender is ObservableCollection<byte[]> list)
             {
                 this.CanRedo = list.Count > 0;
-                this.TraceMessage($"Redo Depth {list.Count}");
+                this.TraceMessage($"Redo Depth {list.Count} size={DumpLogSize(list)}");
             }
         }
 
         private void DoneStack_ListChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
-            if (sender is not null && sender is ObservableCollection<string> list)
+            if (sender is not null && sender is ObservableCollection<byte[]> list)
             {
                 this.CanUndo = list.Count > 1; // don't undo past the start
-                this.TraceMessage($"Done Depth {list.Count}");
+                this.TraceMessage($"Done Depth {list.Count}  size={DumpLogSize(list)}");
             }
         }
 
@@ -104,14 +103,16 @@ namespace Catan3.Utility
         /// <param name="model"></param>
         public void Done(GameModel model)
         {
-            DoneStack.Push(model.Serialize());
+            var json = model.Serialize();
+            var compressed = SerializationHelper.CompressString(json);
+            DoneStack.Push(compressed);
             RedoStack.Clear();
         }
         /// <summary>
         /// Performs an undo operation by restoring the state from the undo stack.
         /// The current state is in the Done stack
         /// we need to pop the current state and push it onto the Redo stack
-        /// then we need to Peek at the Undone stack and make that the current state
+        /// then we need to CurrentState at the Undone stack and make that the current state
         /// </summary>
         /// <param name="viewModel">The game view model containing the current game state.</param>
         /// <returns>true if the undo operation was successful; false otherwise.</returns>
@@ -127,8 +128,10 @@ namespace Catan3.Utility
                 var currentState = DoneStack.Pop();
                 RedoStack.Push(currentState);
 
-                var previousState = DoneStack.Peek();
-                var model = GameModel.Deserialize(previousState) ?? throw new InvalidOperationException("Failed to deserialize the undo state.");
+                var previousStateCompressed = DoneStack.Peek();
+                this.TraceMessage($"compressed record: {previousStateCompressed.Length}");
+                var previousJson = SerializationHelper.DecompressString(previousStateCompressed);
+                var model = GameModel.Deserialize(previousJson) ?? throw new InvalidOperationException("Failed to deserialize the undo state.");
                 viewModel.MergeGameModel(model);  // Apply the restored state
                 return true;
             }
@@ -152,11 +155,13 @@ namespace Catan3.Utility
 
             try
             {
-                var redoState = RedoStack.Pop();
+                var redoStateCompressed = RedoStack.Pop();
 
-                DoneStack.Push(redoState);
+                DoneStack.Push(redoStateCompressed);
 
-                var model = GameModel.Deserialize(redoState) ?? throw new InvalidOperationException("Failed to deserialize the redo state.");
+                var json = SerializationHelper.DecompressString(redoStateCompressed);
+
+                var model = GameModel.Deserialize(json) ?? throw new InvalidOperationException("Failed to deserialize the redo state.");
                 viewModel.MergeGameModel(model);  // Apply the restored state
                 return true;
             }
@@ -180,31 +185,26 @@ namespace Catan3.Utility
         [ObservableProperty]
         [JsonIgnore]
         private bool _canRedo = false;
-
-        public string Peek()
+        
+        /// <summary>
+        ///     Used when reading the log to find out what the current state should be
+        /// </summary>
+        /// <returns></returns>
+        public GameModel CurrentState()
         {
-            return DoneStack.Peek();
+            var compressedBytes =  DoneStack.Peek();
+            var json = SerializationHelper.DecompressString(compressedBytes);
+        
+            var gameModel = SerializationHelper.JsonDeserialize<GameModel>(json) ?? throw new Exception("Invalid Game File");
+            return gameModel;
         }
 
-        public string Serialize()
+        public static int DumpLogSize(IList<byte[]> data)
         {
-
-            return JsonSerializer.Serialize(this, _options);
+            var size = data.Sum( a => a.Length );
+            size.TraceMessage($"Size: {size}");
+            return size;
         }
-
-        public static Log? FromJson(string json)
-        {
-
-            return JsonSerializer.Deserialize<Log>(json, _options);
-        }
-
-        private static JsonSerializerOptions _options = new()
-        {
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            Converters = { new LogConverter() },
-            WriteIndented = true
-        };
-
     }
 
     public static class LogExtensions
@@ -227,78 +227,20 @@ namespace Catan3.Utility
         }
     }
 
-    public class LogConverter : JsonConverter<Log>
-    {
-        public override Log Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-        {
-            Log log = new Log();
-            while (reader.Read())
-            {
-                if (reader.TokenType == JsonTokenType.PropertyName)
-                {
-                    var propName = reader.GetString();
-                    reader.Read();
-                    switch (propName)
-                    {
-                        case "DoneStack":
-                            log.DoneStack = JsonSerializer.Deserialize<ObservableCollection<string>>(ref reader, options) ?? throw new Exception("Invalid Json");
-                            break;
-                        case "RedoStack":
-                            log.RedoStack = JsonSerializer.Deserialize<ObservableCollection<string>>(ref reader, options) ?? throw new Exception("Invalid Json"); ;
-                            break;
-                        case "GameType":
-                            log.GameType = ( GameType )JsonSerializer.Deserialize<int>(ref reader, options);
-                            break;
-                    }
-                }
-                if (reader.TokenType == JsonTokenType.EndObject)
-                {
-                    break;
-                }
-            }
-            return log;
-        }
-
-        public override void Write(Utf8JsonWriter writer, Log value, JsonSerializerOptions options)
-        {
-            writer.WriteStartObject();
-
-            writer.WritePropertyName("DoneStack");
-            JsonSerializer.Serialize(writer, value.DoneStack, options);
-
-            writer.WritePropertyName("RedoStack");
-            JsonSerializer.Serialize(writer, value.RedoStack, options);
-
-            writer.WritePropertyName("GameType");
-            writer.WriteNumberValue(( int )value.GameType);
-
-            writer.WriteEndObject();
-        }
-    }
-
     public class SerializationHelper
     {
-        public static byte[] Pack<T>(T obj)
+       
+        public static string JsonSerialize<T>(T obj)
         {
-            return MessagePackSerializer.Serialize(obj);
+            return JsonSerializer.Serialize(obj, JsonOptions);
         }
 
-        public static T Unpack<T>(byte[] data)
+        public static T? JsonDeserialize<T>(string json)
         {
-            return MessagePackSerializer.Deserialize<T>(data);
+            return JsonSerializer.Deserialize<T>(json, JsonOptions);
         }
 
-        public static string PackToJson<T>(T obj)
-        {
-            return JsonSerializer.Serialize(obj, _options);
-        }
-
-        public static T? UnpackFromJson<T>(string json)
-        {
-            return JsonSerializer.Deserialize<T>(json, _options);
-        }
-
-        private static JsonSerializerOptions _options = new()
+        private static readonly JsonSerializerOptions JsonOptions = new()
         {
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = false
