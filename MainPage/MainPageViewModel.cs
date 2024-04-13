@@ -5,33 +5,40 @@ using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text.Json;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
+using Windows.Security.Cryptography.Core;
+using Windows.Storage.Provider;
+using Windows.Storage;
+using System.Threading.Tasks;
 
 namespace Catan3.Models
 {
-    
 
-    
+
+
 
 
     public partial class MainPageViewModel : ObservableRecipient
     {
-        public static MainPageViewModel Default { get; } = new MainPageViewModel(GameType.Regular, [PlayerViewModel.Default]);
-
+      
         [ObservableProperty]
         GameViewModel _gameViewModel = GameViewModel.Default;
 
         [ObservableProperty]
-        private Log _log = new();
+        private Log _log;
+
+        private readonly IFileService _fileService;
 
         public IMessenger MessageService => this.Messenger;
-        public MainPageViewModel(GameType selectedGame, List<PlayerViewModel> playingPlayers)
+        public MainPageViewModel(IFileService fileService, GameType selectedGame, List<PlayerViewModel> playingPlayers)
         {
             FunctionTimer.Enabled = false;
+            _fileService = fileService;
             RegisterMessages();
             // create a new GameModel - this would usually come from the service
 
@@ -41,8 +48,9 @@ namespace Catan3.Models
             this.GameViewModel = gvm;
             GameViewModel.UpdateLayout();
             GameViewModel.SetStars();
+            Log = new Log(selectedGame);
             Log.Done(GameViewModel.GameModel);
-          
+
 
         }
         private void RegisterMessages()
@@ -101,7 +109,7 @@ namespace Catan3.Models
             //
             //  this will be the state we go back to when we Undo
             if (roadView.Road.RoadState == RoadState.Highlighted) roadView.Road.RoadState = RoadState.Unowned;
-           
+
             roadView.Road.OwnerId = GameViewModel.CurrentPlayer.Id;
             roadView.Road.RoadState = RoadState.Road;
             Log.Done(GameViewModel.GameModel);
@@ -111,7 +119,7 @@ namespace Catan3.Models
         [RelayCommand]
         private void Shuffle()
         {
-          
+
             var currentStars = GameViewModel.ShownStars;
             List<string> playerIds = GameViewModel.Players.Select( p => p.Id ).ToList();
             var gameModel = GameFactory.CreateGame(GameViewModel.GameModel.GameType, playerIds);
@@ -140,7 +148,7 @@ namespace Catan3.Models
 
             var bvm = GameViewModel.Buildings.FindBuildingViewModel(buildingKey);
             if (bvm is null) return;
-         
+
             switch (bvm.Building.BuildingState)
             {
                 case BuildingState.Empty:
@@ -182,7 +190,7 @@ namespace Catan3.Models
         [RelayCommand]
         private void NextPlayer()
         {
-           
+
             Debug.Assert(GameViewModel.CurrentPlayer != null);
             int index = GameViewModel.Players.IndexOf(GameViewModel.CurrentPlayer);
             Debug.Assert(index >= 0);
@@ -192,8 +200,52 @@ namespace Catan3.Models
             Log.Done(GameViewModel.GameModel);
         }
 
-      
+        [RelayCommand]
+        private async Task Save()
+        {
 
+            var file = await _fileService.SaveFileAsync("Test Game");
+            if (file == null) return;
+
+            //  var json = Log.Serialize();
+
+            var data = Log.Pack();
+
+            // Prevent updates to the remote version of the file until we finish making changes and call CompleteUpdatesAsync.
+            CachedFileManager.DeferUpdates(file);
+            // Write data to the file
+            await FileIO.WriteBytesAsync(file, data);
+            // Let Windows know that we're finished changing the file so the other app can update the remote version of the file.
+            FileUpdateStatus status = await CachedFileManager.CompleteUpdatesAsync(file);
+            if (status == FileUpdateStatus.Complete)
+            {
+                // File saved
+                this.TraceMessage($"DoneCount={Log.DoneCount}");
+            }
+            else
+            {
+                // Error saving file
+                this.TraceMessage("Error saving file.");
+            }
+
+
+        }
+        [RelayCommand]
+        private void Open()
+        {
+            //var newLog = Log.FromJson(json);
+
+            //if (newLog is null) return;
+            //var gameJson = newLog.DoneStack.Peek();
+            //GameModel? newModel = JsonSerializer.Deserialize<GameModel>(gameJson);
+            //Debug.Assert(newModel != null);
+            //var gvm = new GameViewModel(newModel);
+            //this.GameViewModel = gvm;
+            //this.Log = newLog;
+
+            //GameViewModel.UpdateLayout();
+            //GameViewModel.SetStars();
+        }
     }
 
     public static class PlayerDatabase

@@ -158,14 +158,9 @@
                         Background="Black" Foreground="White" />
                 <Button Content="Do Misc" Click="OnHitMe" Background="Black"
                         Foreground="White" />
-                <Button Content="Undo" Background="Black" Foreground="White"
-                        Command="{x:Bind MainPageModel.GameViewModel.UndoCommand, Mode=OneWay}" />
-                <Button Content="Redo" Background="Black" Foreground="White"
-                        Command="{x:Bind MainPageModel.GameViewModel.RedoCommand, Mode=OneWay}" />
+                <Button Content="Save"
+                        Command="{x:Bind MainPageModel.SaveCommand, Mode=OneWay}" />
 
-                
-                  
-                
             </StackPanel>
           
         </ScrollViewer>

@@ -1,27 +1,36 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Catan3.Controls;
 using Catan3.Models;
-using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Windows.UI.ViewManagement;
+
+using Microsoft.UI.Windowing;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
+using Windows.Storage;
+using Microsoft.UI;
+
+
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 
 namespace Catan3
 {
+
+    public interface IFileService
+    {
+        Task<StorageFile?> SaveFileAsync(string defaultFileName);
+        Task<StorageFile?> OpenFileAsync();
+    }
+
 
     public partial class SelectPlayerModel(string name, string id, bool selected) : ObservableObject
     {
@@ -38,7 +47,7 @@ namespace Catan3
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
-    public sealed partial class MainPage : Page
+    public sealed partial class MainPage : Page, IFileService
     {
 
         private ObservableCollection<SelectPlayerModel> AvailablePlayers { get; set; }
@@ -111,7 +120,7 @@ namespace Catan3
                         );
 
 
-            MainPageModel = new MainPageViewModel(SelectedGame, selectedPlayers);
+            MainPageModel = new MainPageViewModel(this, SelectedGame, selectedPlayers);
             this.DataContext = MainPageModel.GameViewModel;
 
 
@@ -131,9 +140,9 @@ namespace Catan3
         {
             NewGame();
         }
-       
 
-       
+
+
 
         private void Tile_RightClicked(TileCtrl tileCtrl, RightTappedRoutedEventArgs e)
         {
@@ -197,11 +206,11 @@ namespace Catan3
             if (MainPageModel.GameViewModel is null) return;
 
             this.TraceMessage($"Current Player: {MainPageModel.GameViewModel.CurrentPlayer}");
-           
+
 
         }
 
-   
+
 
         private void OnFlipTiles(object sender, RoutedEventArgs e)
         {
@@ -221,6 +230,36 @@ namespace Catan3
             {
                 harbor.Orientation = newOrientaiton;
             }
+        }
+
+        public async Task<StorageFile?> SaveFileAsync(string defaultFileName)
+        {
+            try
+            {
+                var savePicker = new FileSavePicker();
+                savePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+
+                savePicker.FileTypeChoices.Add("Catan File", [".catan"]);
+
+                savePicker.SuggestedFileName = defaultFileName;
+
+                var window = (Application.Current as App)?.MainWindow as MainWindow;
+                IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle( window);
+                InitializeWithWindow.Initialize(savePicker, hwnd);
+
+                return await savePicker.PickSaveFileAsync();
+
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"{ex}");
+                return null;
+            }
+        }
+
+        public Task<StorageFile?> OpenFileAsync()
+        {
+            throw new NotImplementedException();
         }
     }
 }
