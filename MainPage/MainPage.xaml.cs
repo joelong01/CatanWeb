@@ -16,6 +16,7 @@ using Windows.Storage.Pickers;
 using WinRT.Interop;
 using Windows.Storage;
 using Microsoft.UI;
+using System.Diagnostics;
 
 
 
@@ -257,9 +258,31 @@ namespace Catan3
             }
         }
 
-        public Task<StorageFile?> OpenFileAsync()
+        public async Task<StorageFile?> OpenFileAsync()
         {
-            throw new NotImplementedException();
+            try
+            {
+                // Create a new instance of the FileOpenPicker
+                var openPicker = new FileOpenPicker();
+                openPicker.ViewMode = PickerViewMode.Thumbnail;
+                openPicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+                openPicker.FileTypeFilter.Add(".catan");  // Specify the file types that are allowed to be opened
+
+                // Get the MainWindow and its window handle
+                var window = (Application.Current as App)?.MainWindow as MainWindow;
+                IntPtr hwnd = WindowNative.GetWindowHandle(window);
+                InitializeWithWindow.Initialize(openPicker, hwnd);
+
+                // Show the file picker and await the user's file selection
+                StorageFile file = await openPicker.PickSingleFileAsync();
+                return file;  // Return the selected file
+            }
+            catch (Exception ex)
+            {
+                // Log or handle the exception as needed
+                Debug.WriteLine($"Error in opening file: {ex}");
+                return null;  // Return null in case of an error
+            }
         }
     }
 }

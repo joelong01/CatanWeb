@@ -15,6 +15,7 @@ using Windows.Security.Cryptography.Core;
 using Windows.Storage.Provider;
 using Windows.Storage;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace Catan3.Models
 {
@@ -25,7 +26,7 @@ namespace Catan3.Models
 
     public partial class MainPageViewModel : ObservableRecipient
     {
-      
+
         [ObservableProperty]
         GameViewModel _gameViewModel = GameViewModel.Default;
 
@@ -207,14 +208,14 @@ namespace Catan3.Models
             var file = await _fileService.SaveFileAsync("Test Game");
             if (file == null) return;
 
-            //  var json = Log.Serialize();
 
-            var data = Log.Pack();
+            var data = SerializationHelper.PackToJson(this.Log);
+            var compressed = SerializationHelper.CompressString(data);
 
             // Prevent updates to the remote version of the file until we finish making changes and call CompleteUpdatesAsync.
             CachedFileManager.DeferUpdates(file);
             // Write data to the file
-            await FileIO.WriteBytesAsync(file, data);
+            await FileIO.WriteBytesAsync(file, compressed);
             // Let Windows know that we're finished changing the file so the other app can update the remote version of the file.
             FileUpdateStatus status = await CachedFileManager.CompleteUpdatesAsync(file);
             if (status == FileUpdateStatus.Complete)
@@ -231,21 +232,40 @@ namespace Catan3.Models
 
         }
         [RelayCommand]
-        private void Open()
+        private async Task Open()
         {
-            //var newLog = Log.FromJson(json);
+            var file = await _fileService.OpenFileAsync();
+            if (file == null) return;  // Exit if no file was selected or there was an error
 
-            //if (newLog is null) return;
-            //var gameJson = newLog.DoneStack.Peek();
-            //GameModel? newModel = JsonSerializer.Deserialize<GameModel>(gameJson);
-            //Debug.Assert(newModel != null);
-            //var gvm = new GameViewModel(newModel);
-            //this.GameViewModel = gvm;
-            //this.Log = newLog;
+            // Read the compressed data from the file
+            var compressedData = await FileIO.ReadBufferAsync(file);
+            var compressedBytes = compressedData.ToArray();
+            var decompressedJson = SerializationHelper.DecompressString(compressedBytes);
 
-            //GameViewModel.UpdateLayout();
-            //GameViewModel.SetStars();
+            // Deserialize the JSON back into your Log or relevant data structure
+            try
+            {
+                var log = SerializationHelper.UnpackFromJson<Log>(decompressedJson);
+                if (log == null)
+                {
+                    this.TraceMessage("Error: Failed to load the game data.");
+                    return;
+                }
+
+                this.Log = log;  
+                var json = Log.Peek();
+                var gameModel = SerializationHelper.UnpackFromJson<GameModel>(json) ?? throw new Exception("Invalid Game File");
+                GameViewModel.MergeGameModel(gameModel);
+                GameViewModel.SetStars();
+                GameViewModel.ShownStars = 14;
+
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Failed to deserialize or apply the game data: {ex.Message}");
+            }
         }
+
     }
 
     public static class PlayerDatabase

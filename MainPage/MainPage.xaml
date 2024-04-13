@@ -158,14 +158,18 @@
                         Background="Black" Foreground="White" />
                 <Button Content="Do Misc" Click="OnHitMe" Background="Black"
                         Foreground="White" />
-                <Button Content="Save"
+                <Button Content="Save" Background="Black" Foreground="White"
                         Command="{x:Bind MainPageModel.SaveCommand, Mode=OneWay}" />
+                <Button Content="Open" Background="Black" Foreground="White"
+                        Command="{x:Bind MainPageModel.OpenCommand, Mode=OneWay}" />
 
             </StackPanel>
-          
+
         </ScrollViewer>
-        
-        <c:GameControls ViewModel="{x:Bind MainPageModel, Mode=OneWay}" Grid.Column="2" Canvas.ZIndex="9999" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+
+        <c:GameControls ViewModel="{x:Bind MainPageModel, Mode=OneWay}"
+                Grid.Column="2" Canvas.ZIndex="9999" HorizontalAlignment="Left"
+                VerticalAlignment="Top" />
 
         <Border BorderBrush="Blue" BorderThickness="0" Grid.Column="2"
                 HorizontalAlignment="Left" VerticalAlignment="Top"

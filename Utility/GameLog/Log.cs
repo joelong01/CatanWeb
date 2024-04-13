@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.IO.Compression;
+using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Catan3.Models;
@@ -52,15 +55,8 @@ namespace Catan3.Utility
 
         public int DoneCount => DoneStack.Count;
 
-        public byte[] Pack()
-        {
-            return MessagePackSerializer.Serialize(GetSerializableLog());
-        }
+       
 
-        public Log Unpack(byte[] data)
-        {
-            return MessagePackSerializer.Deserialize<Log>(data);
-        }
 
         public SerializableLog GetSerializableLog()
         {
@@ -280,27 +276,54 @@ namespace Catan3.Utility
         }
     }
 
-    public static class SerializationHelper
+    public class SerializationHelper
     {
-        public static byte[] Pack<T>(this T obj)
+        public static byte[] Pack<T>(T obj)
         {
             return MessagePackSerializer.Serialize(obj);
         }
 
-        public static T Unpack<T>(this byte[] data)
+        public static T Unpack<T>(byte[] data)
         {
             return MessagePackSerializer.Deserialize<T>(data);
         }
 
-        public static string PackToJson<T>(this T obj)
+        public static string PackToJson<T>(T obj)
         {
-            return JsonSerializer.Serialize(obj);
+            return JsonSerializer.Serialize(obj, _options);
         }
 
         public static T? UnpackFromJson<T>(string json)
         {
-            return JsonSerializer.Deserialize<T>(json);
+            return JsonSerializer.Deserialize<T>(json, _options);
+        }
+
+        private static JsonSerializerOptions _options = new()
+        {
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            WriteIndented = false
+        };
+
+        public static byte[] CompressString(string text)
+        {
+            var buffer = Encoding.UTF8.GetBytes(text);
+            using var memoryStream = new MemoryStream();
+            using (var brotliStream = new BrotliStream(memoryStream, CompressionMode.Compress, true))
+            {
+                brotliStream.Write(buffer, 0, buffer.Length);
+            }
+            return memoryStream.ToArray();
+        }
+
+        public static string DecompressString(byte[] data)
+        {
+            using var compressedStream = new MemoryStream(data);
+            using var brotliStream = new BrotliStream(compressedStream, CompressionMode.Decompress);
+            using var resultStream = new MemoryStream();
+            brotliStream.CopyTo(resultStream);
+            return Encoding.UTF8.GetString(resultStream.ToArray());
         }
     }
-
 }
+
+
