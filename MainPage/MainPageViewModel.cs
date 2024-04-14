@@ -4,11 +4,13 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Catan.Utility;
+using Catan3.Controls;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
+using Windows.Security.Isolation;
 
 namespace Catan3.Models
 {
@@ -63,13 +65,47 @@ namespace Catan3.Models
             {
                 Building_Upgrade(message.BuildingKey);
             });
+
             Messenger.Register<BuyRoad>(this, (recipient, message) =>
                        {
                            Road_Purchase(message.RoadKey);
                        });
 
 
+            Messenger.Register<RequestTileOwners>(this, (recipient, message) =>
+            {
+                OnRequestTileOwners(message.TileViewModel);
+            });
+            Messenger.Register<MoveRobber>(this, (recipient, message) =>
+            {
+                GameViewModel.RobberViewModel.RobberModel.Coordinates = message.Coordinates;
+                GameViewModel.RobberViewModel.RobberModel.MovedBy = GameViewModel.CurrentPlayer.Id;
+                Log.Done(GameViewModel.GameModel);
+
+            });
+
         }
+
+        private void OnRequestTileOwners(TileViewModel tileViewModel)
+        {
+            var buildings = GameViewModel.GameModel.Buildings.BuildingsInTile(tileViewModel.Tile.TileKey);
+            List<PlayerViewModel> owners = [];
+            foreach (var building in buildings)
+            {
+                if (building.OwnerId is not null)
+                {
+                    var p = GameViewModel.Players.First( player => player.Id == building.OwnerId );
+                    Debug.Assert(p is not null);
+                    if (p.Id != GameViewModel.CurrentPlayer.Id)
+                    {
+                        owners.Add(p);
+                    }
+                }
+            }
+            Messenger.Send(new TileOwnersResponse(owners));
+
+        }
+
         /// <summary>
         ///     if the message takes no parameters, then we can just add enum elements and then add a case statement
         ///     without modifying code inbetween
@@ -219,7 +255,7 @@ namespace Catan3.Models
         {
             try
             {
-              
+
                 var compressedBytes = await _fileService.OpenFileAsync();
                 if (compressedBytes is null)
                 {
@@ -254,7 +290,7 @@ namespace Catan3.Models
                 {
                     var gameModel = log.CurrentState();
                     var gvm = new GameViewModel(gameModel);
-                    
+
                     this.GameViewModel = gvm;
 
                     GameViewModel.UpdateLayout();

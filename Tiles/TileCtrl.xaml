@@ -4,10 +4,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:m="using:Catan3.Models"
-        xmlns:c="using:Catan3.Controls"
+        xmlns:m="using:Catan3.Models" xmlns:c="using:Catan3.Controls"
         d:DataContext="{d:DesignInstance Type=m:TileViewModel}" mc:Ignorable="d">
-
+    
     <Canvas Name="CANVAS_LayoutRoot"
             Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
             Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}">
@@ -25,10 +24,12 @@
         <Canvas Name="C_Front" HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
-                Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}">
+                Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}"
+                RightTapped="OnRightClicked">
             <Canvas.Projection>
                 <PlaneProjection RotationY="0" />
             </Canvas.Projection>
+
             <Polygon Stroke="{StaticResource bmCherry}"
                     StrokeThickness="{x:Bind TileViewModel.Layout.TileGap, Mode=OneWay}"
                     Points="{x:Bind TileViewModel.Layout.OuterHexPoints, Mode=OneWay}"

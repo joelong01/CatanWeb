@@ -140,64 +140,6 @@ namespace Catan3
 
 
 
-
-        private void Tile_RightClicked(TileCtrl tileCtrl, RightTappedRoutedEventArgs e)
-        {
-            if (MainPageModel.GameViewModel is null) return;
-
-            // Create a new context menu (MenuFlyout)
-            MenuFlyout contextMenu = new();
-
-            // Add a menu item for each player in the Players collection
-            foreach (var player in MainPageModel.GameViewModel.Players)
-            {
-                if (player == MainPageModel.GameViewModel.CurrentPlayer) continue;
-
-                MenuFlyoutItem menuItem = new()
-                {
-                    Text = "Target " + player.Name,
-                    Tag = player,
-                };
-                menuItem.Click += MenuItem_Click; // Local function for handling clicks
-                contextMenu.Items.Add(menuItem);
-            }
-
-            // Add a separator
-            contextMenu.Items.Add(new MenuFlyoutSeparator());
-
-            // Add a "Cancel" menu item
-            MenuFlyoutItem cancelItem = new()
-            {
-                Text = "Cancel"
-            };
-            cancelItem.Click += (s, e) => { /* Close the menu without doing anything */ };
-            contextMenu.Items.Add(cancelItem);
-
-            // Show the context menu
-
-            contextMenu.ShowAt(tileCtrl, e.GetPosition(tileCtrl));
-
-
-
-            // Local function to handle menu item clicks
-            void MenuItem_Click(object sender, RoutedEventArgs args)
-            {
-                if (MainPageModel.GameViewModel.Robber.RobberModel is null) return;
-                if (sender is MenuFlyoutItem clickedItem && clickedItem.Tag is PlayerViewModel player)
-                {
-                    // Handle the click event, e.g., display information about the selected player
-                    // Consider using a dialog or a flyout for displaying messages in WinUI 3, as MessageBox is not available.
-                    // E.g., use a ContentDialog for messages.
-                    MainPageModel.GameViewModel.Robber.RobberModel.Coordinates = tileCtrl.TileViewModel.Tile.TileKey;
-                }
-            }
-        }
-
-        private void Test_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-
-        }
-
         private void OnHitMe(object sender, RoutedEventArgs rea)
         {
             if (MainPageModel.GameViewModel is null) return;

@@ -56,7 +56,7 @@ namespace Catan3.Models
             Roads = [];
             Buildings = [];
             Harbors = [];
-            Robber = new RobberViewModel(null);
+            RobberViewModel = new(new());
             Players = new(playingPlayers);
 
         }
@@ -81,7 +81,7 @@ namespace Catan3.Models
 
 
         }
-       
+
 
 
         public void MergeGameModel(GameModel gameModel)
@@ -92,16 +92,25 @@ namespace Catan3.Models
             FunctionTimer.CallTimedFunction("Merging Buildings", () => CreateOrUpdateBuildings(gameModel));
             FunctionTimer.CallTimedFunction("Merging Harbors", () => CreateOrUpdateHarbors(gameModel));
             FunctionTimer.CallTimedFunction("Merging Roads", () => CreateOrUpdateRoads(gameModel));
+            FunctionTimer.CallTimedFunction("Merging Robber", () => MergeRobber(gameModel));
 
-            Robber.RobberModel = gameModel.Robber;
-           
+
+
+
             GameModel = gameModel;
             FunctionTimer.CallTimedFunction("Updating Players", () => UpdatePlayers(GameModel));
             FunctionTimer.CallTimedFunction("SetCurrentPlayer", () => SetCurrentPlayer(gameModel.CurrentPlayerId));
             SetStars();
-        
+
 
         }
+
+        private void MergeRobber(GameModel gameModel)
+        {
+            RobberViewModel.RobberModel = gameModel.Robber;
+
+        }
+
         /// <summary>
         /// 
         ///     Create the this.Players collection of PlayerViewModels based on the passed in list of playerIds
@@ -187,7 +196,7 @@ namespace Catan3.Models
                     Buildings[i].Building = gameModel.Buildings[i];
                 }
             }
-            
+
         }
 
 
@@ -227,7 +236,7 @@ namespace Catan3.Models
                 Roads = [];
                 Buildings = [];
                 Harbors = [];
-                Robber = new RobberViewModel(gameModel.Robber);
+                RobberViewModel = new RobberViewModel(gameModel.Robber);
                 GameType = gameModel.GameType;
                 if (gameModel.GameType == GameType.Regular)
                 {
@@ -276,7 +285,7 @@ namespace Catan3.Models
             {
                 Harbors.Add(new HarborViewModel(harbor, BoardInfo.Layout));
             }
-            Robber = new RobberViewModel(gameModel.Robber);
+            RobberViewModel = new RobberViewModel(gameModel.Robber);
             this.BoardInfo.Layout.PropertyChanged += Layout_PropertyChanged;
             UpdateLayout();
             SetStars();

@@ -60,9 +60,10 @@ namespace Catan3.Controls
                 {
                     oldValue.BoardInfo.Layout.PropertyChanged -= Layout_PropertyChanged;
                 }
-                if (oldValue.Robber is not null)
+                if (oldValue.RobberViewModel is not null)
                 {
-                    oldValue.Robber.PropertyChanged -= RobberModel_PropertyChanged;
+                    oldValue.RobberViewModel.RobberModel.PropertyChanged -= RobberModel_PropertyChanged;
+                    oldValue.RobberViewModel.PropertyChanged -= RobberViewModel_PropertyChanged;
                     DesertTile(oldValue).PropertyChanged -= DesertTile_PropertyChanged;
                 }
             }
@@ -73,9 +74,10 @@ namespace Catan3.Controls
                 {
                     newValue.BoardInfo.Layout.PropertyChanged += Layout_PropertyChanged;
                 }
-                if (newValue.Robber is not null)
+                if (newValue.RobberViewModel is not null)
                 {
-                    newValue.Robber.PropertyChanged += RobberModel_PropertyChanged;
+                    newValue.RobberViewModel.RobberModel.PropertyChanged += RobberModel_PropertyChanged;
+                    newValue.RobberViewModel.PropertyChanged += RobberViewModel_PropertyChanged;
                 }
                 if (newValue.Tiles is not null)
                 {
@@ -136,9 +138,21 @@ namespace Catan3.Controls
 
         private void RobberModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(GameViewModel.Robber.RobberModel))
+            this.TraceMessage($"robber changed: {e.PropertyName}");
+            if (e.PropertyName == nameof(GameViewModel.RobberViewModel.RobberModel.Coordinates) )
             {
 
+                UpdateRobberTileLocation();
+            }
+        }
+
+        private void RobberViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (GameViewModel is null) return;
+            this.TraceMessage($"robber changed: {e.PropertyName}");
+            if (e.PropertyName == nameof(GameViewModel.RobberViewModel.RobberModel))
+            {
+                GameViewModel.RobberViewModel.RobberModel.PropertyChanged += RobberModel_PropertyChanged;
                 UpdateRobberTileLocation();
             }
         }
@@ -167,16 +181,16 @@ namespace Catan3.Controls
 
             if (this.Resources["MoveRobberAnimation"] is Storyboard storyboard && GameViewModel is not null)
             {
-                Debug.Assert(GameViewModel.Robber.RobberModel is not null);
-                // this.TraceMessage($"Moving Robber to {GameViewModel.Robber.RobberModel.Coordinates}");
+                Debug.Assert(GameViewModel.RobberViewModel.RobberModel is not null);
+                this.TraceMessage($"Moving Robber to {GameViewModel.RobberViewModel.RobberModel.Coordinates}");
 
                 // Assuming the first two children are the X and Y animations
                 if (storyboard.Children[0] is DoubleAnimation animationX && storyboard.Children[1] is DoubleAnimation animationY)
                 {
-                    if (VB_Robber.ActualWidth > 0 && VB_Robber.ActualHeight > 0 && GameViewModel.BoardInfo is not null && GameViewModel.Robber.RobberModel is not null)
+                    if (VB_Robber.ActualWidth > 0 && VB_Robber.ActualHeight > 0 && GameViewModel.BoardInfo is not null && GameViewModel.RobberViewModel.RobberModel is not null)
                     {
-                        double x = GameViewModel.BoardInfo.Layout.Left(GameViewModel.Robber.RobberModel.Coordinates) + GameViewModel.BoardInfo.Layout.OuterHexSize - VB_Robber.ActualWidth / 2.0;
-                        double y =  GameViewModel.BoardInfo.Layout.Top(GameViewModel.Robber.RobberModel.Coordinates) + GameViewModel.BoardInfo.Layout.OuterHexSize - VB_Robber.ActualHeight / 2.0;
+                        double x = GameViewModel.BoardInfo.Layout.Left(GameViewModel.RobberViewModel.RobberModel.Coordinates) + GameViewModel.BoardInfo.Layout.OuterHexSize - VB_Robber.ActualWidth / 2.0;
+                        double y =  GameViewModel.BoardInfo.Layout.Top(GameViewModel.RobberViewModel.RobberModel.Coordinates) + GameViewModel.BoardInfo.Layout.OuterHexSize - VB_Robber.ActualHeight / 2.0;
                         animationX.To = x;
                         animationY.To = y;
                         storyboard.Begin();

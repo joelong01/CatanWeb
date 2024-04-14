@@ -1,11 +1,15 @@
 ﻿using System.ComponentModel;
+using System.Data.SqlTypes;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 namespace Catan3.Models
 {
     /// <summary>
     ///     this is the partial class to the template generated TileViewModel.  we subscribe to change events for Layout changes
     ///     and then update the layout calculations based on updates to the layoutproperties (Hex Size, Gap, Stroke, etc.)
     /// </summary>
-    public partial class TileViewModel
+    public partial class TileViewModel : ObservableRecipient
     {
         public TileViewModel(TileModel tile, BoardLayout? layout)
         {
@@ -16,15 +20,67 @@ namespace Catan3.Models
 
         public void Init()
         {
-
+            IsActive = true;
             if (Layout is not null && Layout is BoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
 
             }
-
+           
             UpdateLayout();
         }
+
+        private void RegisterTargetMessageResponse()
+        {
+            if (this.Messenger.IsRegistered<TileOwnersResponse>(this))
+            {
+                this.TraceMessage($"{this} is already registerd!");
+                return;
+            }
+            this.Messenger.Register<TileOwnersResponse>(this, (recipient, message) =>
+            {
+                this.TraceMessage($"{this} response recieved ");
+                try
+                {
+                    Targets.Clear();
+                    if (message.Owners.Count == 0)
+                    {
+                        Targets.Add(new TargetViewModel("Nobody. How Nice!", "Nameless-001"));
+                        return;
+                    }
+                    foreach (var owner in message.Owners)
+                    {
+                        var target = new TargetViewModel(owner.Name, owner.Id);
+                        if (!Targets.Contains(target))
+                        {
+                            Targets.Add(target);
+                        }
+                    }
+                }
+                finally
+                {
+                    this.TraceMessage($"{this} unregistering for response");
+                    this.Messenger.Unregister<TileOwnersResponse>(this);
+                }
+
+            });
+        }
+
+        [RelayCommand]
+        public void Target()
+        {
+            this.TraceMessage("sending target message");
+            RegisterTargetMessageResponse();
+            MainPage.Messenger.Send(new RequestTileOwners(this)); ;
+        }
+
+        [RelayCommand]
+        public void TargetPicked(string id)
+        {
+            this.TraceMessage($"targetting {id}");
+            this.Messenger.Send<MoveRobber>(new MoveRobber(this.Tile.TileKey, id)); 
+        }
+
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (sender is not null && sender is BoardLayout layout)

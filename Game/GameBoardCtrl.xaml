@@ -29,7 +29,6 @@
             Height="{x:Bind GameViewModel.BoardInfo.Layout.BoardHeight, Mode=OneWay}"
             Width="{x:Bind GameViewModel.BoardInfo.Layout.BoardWidth, Mode=OneWay}">
 
-      
         <!--Harbors-->
         <ItemsControl x:Name="IC_Harbors"
                 ItemsSource="{x:Bind GameViewModel.Harbors, Mode=OneWay}">
@@ -147,7 +146,7 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-
+        <!--Robber-->
         <Viewbox x:Name="VB_Robber" Stretch="Uniform"
                 Height="{x:Bind RobberHeight(GameViewModel.BoardInfo.Layout.OuterHexSize), Mode=OneWay}"
                 HorizontalAlignment="Left" VerticalAlignment="Top"
@@ -157,11 +156,11 @@
             </Viewbox.RenderTransform>
             <Grid Opacity=".75">
                 <TextBlock FontFamily="Catan" FontSize="100" Text="&#xE925;"
-                        Foreground="White" HorizontalAlignment="Center"
-                        TextAlignment="Center" />
+                        Foreground="{x:Bind GameViewModel.RobberViewModel.Background(GameViewModel.RobberViewModel.RobberModel, GameViewModel.RobberViewModel.RobberModel.MovedBy), Mode=OneWay}"
+                        HorizontalAlignment="Center" TextAlignment="Center" />
                 <TextBlock FontFamily="Catan" FontSize="80" Text="&#xE90C;"
-                        Foreground="Red" HorizontalAlignment="Center"
-                        TextAlignment="Center" />
+                        Foreground="{x:Bind GameViewModel.RobberViewModel.Foreground(GameViewModel.RobberViewModel.RobberModel, GameViewModel.RobberViewModel.RobberModel.MovedBy), Mode=OneWay}"
+                        HorizontalAlignment="Center" TextAlignment="Center" />
             </Grid>
         </Viewbox>
 

@@ -15,7 +15,7 @@ namespace Catan3.Models
         private IBoardInfo? _boardInfo;
 
         [ObservableProperty]
-        private RobberViewModel _robber = new(new());
+        private RobberViewModel _robberViewModel = new(new());
 
         [ObservableProperty]
         private string _name = "Nameless";

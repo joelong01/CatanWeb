@@ -82,7 +82,29 @@ namespace Catan3.Models
                     }
                 }
             }
-            return null;
+            return building;
+        }
+        /// <summary>
+        ///     e.g. GameViewModel.GameModel.Buildings.BuildingsInTile(new HexCoordinates(0,0,0)) returns all the buildings in the center tile
+        /// </summary>
+        /// <param name="collection"></param>
+        /// <param name="coordinates"></param>
+        /// <returns></returns>
+        public static List<BuildingModel> BuildingsInTile(this IList<BuildingModel> collection, HexCoordinates coordinates)
+        {
+            List<BuildingModel> result = [];
+            foreach (HexPosition pos in Enum.GetValues(typeof(HexPosition)))
+            {
+                if (pos == HexPosition.None) continue;
+                var building = collection.FindBuildingModel(new BuildingKey(coordinates, pos));
+                if (building is not null)
+                {
+                    result.Add(building);
+                }
+                
+            }
+
+            return result;
         }
 
     }
@@ -94,16 +116,7 @@ namespace Catan3.Models
         {
             return $"[{this.HexCoordinates}-{Position}]";
         }
-        public static BuildingKey? FromString(string str)
-        {
-            string[] tokens = str.Split(["[", "]", "-"], StringSplitOptions.RemoveEmptyEntries);
-            if (tokens is null) return null;
-            if (tokens.Length != 2) return null;
-            var tileCoord = HexCoordinates.FromString(tokens[0]);
-            if (tileCoord is null) return null;
-            var buildingPos = (HexPosition)Enum.Parse(typeof(HexPosition), tokens[1]);
-            return new BuildingKey(tileCoord, buildingPos);
-        }
+       
         public override bool Equals(object? obj)
         {
             return obj is not null && obj is BuildingKey key &&
