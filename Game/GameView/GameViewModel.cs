@@ -101,7 +101,7 @@ namespace Catan3.Models
             FunctionTimer.CallTimedFunction("Updating Players", () => UpdatePlayers(GameModel));
             FunctionTimer.CallTimedFunction("SetCurrentPlayer", () => SetCurrentPlayer(gameModel.CurrentPlayerId));
             SetStars();
-
+            OnPropertyChanged(nameof(Orientation));
 
         }
 

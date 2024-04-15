@@ -18,6 +18,8 @@ namespace Catan3.Models
         [ObservableProperty]
         private int _resourcesStolen = 0;
 
+      
+
         public override string ToString()
         {
             return $"{Coordinates}-{MovedBy}->{Targetted}: {ResourcesStolen}";

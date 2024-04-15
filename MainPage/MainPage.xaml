@@ -38,8 +38,8 @@
                     ScrollViewer.VerticalScrollMode="Auto" Margin="10">
                 <TextBlock FontSize="20"
                         Text="{x:Bind MainPageModel.GameViewModel.Id, Mode=OneWay}" />
-                <Button Content="New Game" Click="OnNewGame"
-                        Background="Black" Foreground="White" />
+                <Button Content="New Game" Click="OnNewGame" Background="Black"
+                        Foreground="White" />
                 <Button Content="Shuffle"
                         Command="{x:Bind MainPageModel.ShuffleCommand, Mode=OneWay}"
                         Background="Black" Foreground="White" />
@@ -156,8 +156,9 @@
 
                 <Button Content="Flip Orientation" Click="OnFlipTiles"
                         Background="Black" Foreground="White" />
-                <Button Content="Do Misc" Click="OnHitMe" Background="Black"
-                        Foreground="White" />
+                <Button Content="Do Misc"
+                        Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}"
+                        Background="Black" Foreground="White" />
                 <Button Content="Save" Background="Black" Foreground="White"
                         Command="{x:Bind MainPageModel.SaveCommand, Mode=OneWay}" />
                 <Button Content="Save As..." Background="Black"

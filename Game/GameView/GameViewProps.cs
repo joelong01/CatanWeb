@@ -53,6 +53,14 @@ namespace Catan3.Models
         [ObservableProperty]
         private int _shuffleCount = 0;
 
+        [ObservableProperty]
+        private CatanOrientation _orientation = CatanOrientation.FaceUp;
+
+        partial void OnOrientationChanged(CatanOrientation value)
+        {
+            Messenger.Send(new UpdateOrientation(value));
+        }
+
 
         /// <summary>
         ///     NOTE:  this is *partial* method that is implemented by the MVVM Toolkit

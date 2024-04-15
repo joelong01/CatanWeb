@@ -4,6 +4,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:c="using:Catan3.Controls" xmlns:m="using:Catan3.Models"
+        xmlns:u="using:Catan3.Utility"
         d:DataContext="{d:DesignInstance Type=m:GameViewModel}" mc:Ignorable="d"
         Canvas.ZIndex="1" d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>
@@ -154,14 +155,27 @@
             <Viewbox.RenderTransform>
                 <CompositeTransform />
             </Viewbox.RenderTransform>
-            <Grid Opacity=".75">
-                <TextBlock FontFamily="Catan" FontSize="100" Text="&#xE925;"
-                        Foreground="{x:Bind GameViewModel.RobberViewModel.Background(GameViewModel.RobberViewModel.RobberModel, GameViewModel.RobberViewModel.RobberModel.MovedBy), Mode=OneWay}"
-                        HorizontalAlignment="Center" TextAlignment="Center" />
-                <TextBlock FontFamily="Catan" FontSize="80" Text="&#xE90C;"
-                        Foreground="{x:Bind GameViewModel.RobberViewModel.Foreground(GameViewModel.RobberViewModel.RobberModel, GameViewModel.RobberViewModel.RobberModel.MovedBy), Mode=OneWay}"
-                        HorizontalAlignment="Center" TextAlignment="Center" />
-            </Grid>
+            <u:FlipperCtrl
+                    Orientation="{x:Bind GameViewModel.RobberViewModel.Orientation, Mode=OneWay}">
+                <u:FlipperCtrl.Front>
+                    <Grid Opacity=".75">
+                        <TextBlock FontFamily="Catan" FontSize="100"
+                                Text="&#xE925;"
+                                Foreground="{x:Bind GameViewModel.RobberViewModel.Background(GameViewModel.RobberViewModel.RobberModel, GameViewModel.RobberViewModel.RobberModel.MovedBy), Mode=OneWay}"
+                                HorizontalAlignment="Center"
+                                TextAlignment="Center" />
+                        <TextBlock FontFamily="Catan" FontSize="80"
+                                Text="&#xE90C;"
+                                Foreground="{x:Bind GameViewModel.RobberViewModel.Foreground(GameViewModel.RobberViewModel.RobberModel, GameViewModel.RobberViewModel.RobberModel.MovedBy), Mode=OneWay}"
+                                HorizontalAlignment="Center"
+                                TextAlignment="Center" />
+                    </Grid>
+                </u:FlipperCtrl.Front>
+                <u:FlipperCtrl.Back>
+                    <Grid Opacity="0" />
+                </u:FlipperCtrl.Back>
+            </u:FlipperCtrl>
+
         </Viewbox>
 
     </Canvas>

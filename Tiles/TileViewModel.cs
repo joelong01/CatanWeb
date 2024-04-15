@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel;
-using System.Data.SqlTypes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -28,6 +27,11 @@ namespace Catan3.Models
             }
            
             UpdateLayout();
+
+            Messenger.Register<UpdateOrientation>(this, (recipient, message) =>
+            {
+                this.Orientation = message.Orientation;
+            });
         }
 
         private void RegisterTargetMessageResponse()

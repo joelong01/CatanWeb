@@ -3,16 +3,30 @@
 using System;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
 
 namespace Catan3.Models
 {
-    public partial class RobberViewModel(RobberModel robberModel) : ObservableObject
+    public partial class RobberViewModel : ObservableRecipient
     {
         [JsonIgnore]
         [ObservableProperty]
-        private RobberModel _robberModel = robberModel;
+        private RobberModel _robberModel;
+
+        [ObservableProperty]
+        private CatanOrientation _orientation = CatanOrientation.FaceUp;
+
+
+        public RobberViewModel(RobberModel robberModel)
+        {
+            _robberModel = robberModel;
+            Messenger.Register<UpdateOrientation>(this, (recipient, message) =>
+            {
+                this.Orientation = message.Orientation;
+            });
+        }
 
         public static RobberViewModel Default { get; } = new RobberViewModel(new());
         /// <summary>

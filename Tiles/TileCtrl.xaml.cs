@@ -36,40 +36,11 @@ namespace Catan3.Controls
         }
         private void SetTileViewModel(TileViewModel newModel, TileViewModel? oldModel)
         {
-            if (oldModel is not null)
-            {
-                oldModel.PropertyChanged -= TileViewModel_PropertyChanged;
-            }
-            this.DataContext = newModel;
-            newModel.PropertyChanged += TileViewModel_PropertyChanged;
-            if (oldModel is not null && newModel is TileViewModel)
-            {
-                if (oldModel.Orientation != newModel.Orientation)
-                {
-                    SetOrientation();
-                }
-            }
+           
 
         }
 
-        private void TileViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == "Orientation") SetOrientation();
-        }
-
-        
-
-        private void SetOrientation()
-        {
-            if (TileViewModel.Orientation == CatanOrientation.FaceUp)
-            {
-                AnimationHelpers.FlipToFaceUp(C_Back, C_Front);
-            }
-            else // Assuming the only other state is FaceDown
-            {
-                AnimationHelpers.FlipToFaceDown(C_Back, C_Front);
-            }
-        }
+    
 
 
 

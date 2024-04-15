@@ -64,7 +64,7 @@ namespace Catan3.Controls
                 {
                     oldValue.RobberViewModel.RobberModel.PropertyChanged -= RobberModel_PropertyChanged;
                     oldValue.RobberViewModel.PropertyChanged -= RobberViewModel_PropertyChanged;
-                    DesertTile(oldValue).PropertyChanged -= DesertTile_PropertyChanged;
+                   
                 }
             }
             if (newValue is not null)
@@ -79,12 +79,7 @@ namespace Catan3.Controls
                     newValue.RobberViewModel.RobberModel.PropertyChanged += RobberModel_PropertyChanged;
                     newValue.RobberViewModel.PropertyChanged += RobberViewModel_PropertyChanged;
                 }
-                if (newValue.Tiles is not null)
-                {
-                    var desert =  DesertTile(newValue);
-                    desert.PropertyChanged += DesertTile_PropertyChanged;
-                    ShowRobber(desert.Orientation);
-                }
+              
             }
             UpdateRobberTileLocation();
 
@@ -102,43 +97,11 @@ namespace Catan3.Controls
             //  we use Binding in some places where it is convinient and x:Bind in others. Binding needs data context, so set it here
             this.DataContext = newValue;
         }
-
-        private static TileViewModel DesertTile(GameViewModel gameViewModel)
-        {
-            if (gameViewModel.Tiles.Count == 0) return TileViewModel.Default;
-            return gameViewModel.Tiles.Where(t => t.Tile.ResourceTileType == ResourceTileType.Desert).ToList().First();
-        }
-
-
-        private void DesertTile_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == "Orientation" && GameViewModel is not null)
-            {
-                ShowRobber(DesertTile(GameViewModel).Orientation);
-            }
-        }
-
-        private void ShowRobber(CatanOrientation orientation)
-        {
-            double newValue;
-            if (orientation == CatanOrientation.FaceUp)
-            {
-                newValue = 1.0;
-
-            }
-            else
-            {
-                newValue = 0.0;
-            }
-            SB_AnimateOpacity.SkipToFill();
-            DA_AnimateOpacity.From = VB_Robber.Opacity; // Current opacity as starting point
-            DA_AnimateOpacity.To = newValue; // The target opacity
-            SB_AnimateOpacity.Begin();
-        }
+    
 
         private void RobberModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            this.TraceMessage($"robber changed: {e.PropertyName}");
+           
             if (e.PropertyName == nameof(GameViewModel.RobberViewModel.RobberModel.Coordinates) )
             {
 

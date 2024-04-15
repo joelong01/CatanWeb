@@ -57,4 +57,9 @@ namespace Catan3.Models
 
     }
 
+    public class UpdateOrientation(CatanOrientation newOrientation)
+    {
+        public CatanOrientation Orientation { get; } = newOrientation;
+    }
+
 }

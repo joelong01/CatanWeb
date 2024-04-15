@@ -68,5 +68,13 @@ namespace Catan3.Models
             }
 
         }
+        /// <summary>
+        ///     this has the side effect of broadcasting a UpdateOrientation command
+        /// </summary>
+        [RelayCommand]
+        public void FlipOrientation()
+        {
+            Orientation = Orientation == CatanOrientation.FaceUp ? CatanOrientation.FaceDown : CatanOrientation.FaceUp;
+        }
     }
 }

@@ -2,17 +2,17 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Runtime.InteropServices;
+
 using System.Text.Json.Serialization;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.UI.Xaml.Controls;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 
 namespace Catan3.Models
 {
-    public partial class HarborViewModel : ObservableObject
+    public partial class HarborViewModel : ObservableRecipient
     {
         [JsonIgnore]
         [ObservableProperty]
@@ -53,6 +53,11 @@ namespace Catan3.Models
                 Layout.PropertyChanged += Layout_PropertyChanged;
             }
             UpdateLayout();
+
+            Messenger.Register<UpdateOrientation>(this, (recipient, message) =>
+            {
+                this.Orientation = message.Orientation;
+            });
         }
 
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
