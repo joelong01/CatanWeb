@@ -154,10 +154,10 @@
                         Foreground="Black" HorizontalAlignment="Left"
                         VerticalAlignment="Top" Width="200" />
 
-                <Button Content="Flip Orientation" Click="OnFlipTiles"
+                <Button Content="Flip Orientation" Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}"
                         Background="Black" Foreground="White" />
                 <Button Content="Do Misc"
-                        Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}"
+                        Click="OnHitMe"
                         Background="Black" Foreground="White" />
                 <Button Content="Save" Background="Black" Foreground="White"
                         Command="{x:Bind MainPageModel.SaveCommand, Mode=OneWay}" />
