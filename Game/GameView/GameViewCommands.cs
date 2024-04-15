@@ -19,24 +19,24 @@ namespace Catan3.Models
         [RelayCommand]
         public void Shuffle()
         {
-            MainPage.Messenger.Send(new DoAction(GameAction.Shuffle));
+           Messenger.Send(new DoAction(GameAction.Shuffle));
         }
 
         [RelayCommand]
         public void Undo()
         {
-            MainPage.Messenger.Send(new DoAction(GameAction.Undo));
+            Messenger.Send(new DoAction(GameAction.Undo));
         }
         [RelayCommand]
         public void Redo()
         {
-            MainPage.Messenger.Send(new DoAction(GameAction.Redo));
+            Messenger.Send(new DoAction(GameAction.Redo));
         }
 
         [RelayCommand]
         public void NextPlayer()
         {
-            MainPage.Messenger.Send(new DoAction(GameAction.NextPlayer));
+            Messenger.Send(new DoAction(GameAction.NextPlayer));
         }
 
 

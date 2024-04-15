@@ -1,20 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Catan.Utility;
-using Catan3.Controls;
 using Catan3.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Windows.Storage;
-using Windows.Storage.Pickers;
-using WinRT.Interop;
 
 
 
@@ -61,7 +56,7 @@ namespace Catan3
             Games.Add(GameType.Regular);
             SelectedGame = GameType.Expansion;
             NewGame();
-            Messenger = MainPageModel.MessageService;
+          
         }
         public static readonly DependencyProperty SelectedGameProperty = DependencyProperty.Register("SelectedGame", typeof(GameType), typeof(MainPage), new PropertyMetadata(GameType.Regular));
         public GameType SelectedGame
@@ -90,12 +85,9 @@ namespace Catan3
         }
         private void SetMainPageModel(MainPageViewModel value)
         {
-            Messenger = value.MessageService;
+           
         }
 
-#pragma warning disable CS8618 // fixing confused compiler
-        public static IMessenger Messenger { get; private set; }
-#pragma warning restore CS8618 // restoring 
 
         public ObservableCollection<GameType> Games { get; set; } = [];
         private void OnRightButtonTapped(object sender, RightTappedRoutedEventArgs e)

@@ -40,7 +40,7 @@ namespace Catan3.Models
         private void Upgrade()
         {
             if (Building.BuildingState == BuildingState.Highlighted) { Building.BuildingState = BuildingState.Empty; }
-            MainPage.Messenger.Send(new BuildingUpgrade(Building.BuildingKey));
+            Messenger.Send(new BuildingUpgrade(Building.BuildingKey));
         }
         [RelayCommand]
         private void MouseEnter()

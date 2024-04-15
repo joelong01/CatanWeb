@@ -75,7 +75,7 @@ namespace Catan3.Models
         {
             this.TraceMessage("sending target message");
             RegisterTargetMessageResponse();
-            MainPage.Messenger.Send(new RequestTileOwners(this)); ;
+           Messenger.Send(new RequestTileOwners(this)); ;
         }
 
         [RelayCommand]
