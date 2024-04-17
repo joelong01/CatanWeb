@@ -11,7 +11,8 @@
     <Canvas Name="CANVAS_LayoutRoot"
             Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
             Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}">
-        <u:FlipperCtrl  Orientation="{x:Bind TileViewModel.Orientation, Mode=OneWay}">
+        <u:FlipperCtrl
+                Orientation="{x:Bind TileViewModel.Orientation, Mode=OneWay}">
             <u:FlipperCtrl.Back>
                 <Canvas Name="C_Back" Canvas.ZIndex="1"
                         Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
@@ -38,12 +39,12 @@
                     <Polygon Stroke="{StaticResource bmCherry}"
                             StrokeThickness="{x:Bind TileViewModel.Layout.TileGap, Mode=OneWay}"
                             Points="{x:Bind TileViewModel.Layout.OuterHexPoints, Mode=OneWay}"
-                            Fill="{StaticResource bmMaple}" />
+                            Fill="{x:Bind TileViewModel.GetTileBorderBrush(TileViewModel.Tile, TileViewModel.Highlighted), Mode=OneWay}" />
 
                     <Polygon Stroke="Transparent"
                             StrokeThickness="{Binding Layout.InnerHexStrokeThickness, Mode=OneWay}"
                             Points="{x:Bind TileViewModel.Layout.InnerHexPoints, Mode=OneWay}"
-                            Fill="{x:Bind TileViewModel.Tile.ResourceTileType, Mode=OneWay, Converter={StaticResource ResourceTypeToImageBrush}}" />
+                            Fill="{x:Bind TileViewModel.GetTileResourceType(TileViewModel.Tile, TileViewModel.Tile.TemporarilyGold, TileViewModel.Tile.ResourceTileType), Mode=OneWay}" />
 
                     <Polygon Stroke="Blue" StrokeDashArray="1 1"
                             StrokeThickness="{x:Bind TileViewModel.Layout.LayoutGuideStrokeWidth, Mode=OneWay}"
@@ -69,6 +70,19 @@
 
                             </Grid.RenderTransform>
                         </Grid>
+                        <Viewbox Height="50" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0, 50, 0, 0">
+                            <u:FlipperCtrl
+                                    Orientation="{x:Bind TileViewModel.TempGoldOrientation(TileViewModel.Tile, TileViewModel.Tile.TemporarilyGold), Mode=OneWay}">
+                                <u:FlipperCtrl.Front>
+                                    <c:ResourceCardCtrl
+                                            ViewModel="{x:Bind TileViewModel.TempGoldResourceCardModel, Mode=OneWay}"
+                                            CornerRadius="5" />
+                                </u:FlipperCtrl.Front >
+                                <u:FlipperCtrl.Back>
+                                    <Grid Opacity="0" />
+                                </u:FlipperCtrl.Back>
+                            </u:FlipperCtrl>
+                        </Viewbox>
                         <Grid Background="Black" HorizontalAlignment="Center"
                                 VerticalAlignment="Bottom"
                                 Margin="{x:Bind CooordinateTextMargin(TileViewModel.Layout.TileGap, TileViewModel.Layout.InnerHexStrokeThickness), Mode=OneWay}"

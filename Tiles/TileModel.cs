@@ -10,7 +10,7 @@ namespace Catan3.Models
         public TileModel() { }
         public override string ToString()
         {
-            return $"({ResourceTileType}, {Number}, {TileKey})";
+            return $"({ResourceTileType}, {Number}, {TileKey}, {TemporarilyGold})";
         }
 
         public int CompareTo(TileModel? other)
@@ -22,7 +22,7 @@ namespace Catan3.Models
         public bool Equals(TileModel? other)
         {
             if (other == null) return false;
-            bool eq =  TileKey.Equals(other.TileKey) && ResourceTileType == other.ResourceTileType && Number == other.Number;
+            bool eq =  TileKey.Equals(other.TileKey) && ResourceTileType == other.ResourceTileType && Number == other.Number && TemporarilyGold == other.TemporarilyGold;
             return eq;
         }
 
@@ -33,7 +33,7 @@ namespace Catan3.Models
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(TileKey, ResourceTileType, Number);
+            return HashCode.Combine(TileKey, ResourceTileType, Number, TemporarilyGold);
         }
 
         [JsonIgnore]

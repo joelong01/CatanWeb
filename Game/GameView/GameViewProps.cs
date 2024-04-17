@@ -24,9 +24,6 @@ namespace Catan3.Models
         private bool _isKnightsAndRobbers = false;
 
         [ObservableProperty]
-        private HouseRules _houseRules = new();
-
-        [ObservableProperty]
         private PlayerViewModel _currentPlayer = PlayerViewModel.Default;
 
         [ObservableProperty]
@@ -56,6 +53,9 @@ namespace Catan3.Models
         [ObservableProperty]
         private CatanOrientation _orientation = CatanOrientation.FaceUp;
 
+        [ObservableProperty]
+        private RollViewModel _rollViewModel = new();
+
         partial void OnOrientationChanged(CatanOrientation value)
         {
             Messenger.Send(new UpdateOrientation(value));
@@ -77,11 +77,11 @@ namespace Catan3.Models
         partial void OnCurrentPlayerChanged(PlayerViewModel? oldValue, PlayerViewModel newValue)
         {
             if (newValue is null) return;
-         //   this.TraceMessage($"Current Player: {oldValue} -> {newValue}");
+            //   this.TraceMessage($"Current Player: {oldValue} -> {newValue}");
             this.GameModel.CurrentPlayerId = newValue.Id;
             Messenger.Send(new CurrentPlayerChanged(newValue));
         }
 
-       
+
     }
 }

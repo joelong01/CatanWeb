@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Threading.Tasks;
 using Catan.Utility;
@@ -10,7 +11,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
+using Microsoft.UI.Xaml.Controls;
 using Windows.Security.Isolation;
+using static System.Collections.Specialized.BitVector32;
 
 namespace Catan3.Models
 {
@@ -30,6 +33,7 @@ namespace Catan3.Models
 
         private readonly IFileService _fileService;
 
+
         public IMessenger MessageService => this.Messenger;
         public MainPageViewModel(IFileService fileService, GameType selectedGame, List<PlayerViewModel> playingPlayers)
         {
@@ -45,6 +49,7 @@ namespace Catan3.Models
             GameViewModel.UpdateLayout();
             GameViewModel.SetStars();
             Log = new Log<byte[]>(selectedGame);
+            SetTempGoldTiles();
             Log.Done(GameViewModel.GameModel);
 
 
@@ -57,18 +62,18 @@ namespace Catan3.Models
 
             Messenger.Register<DoAction>(this, (recipient, message) =>
             {
-                DoAction(message.Action);
+                OnAction(message.Action);
             });
 
 
             Messenger.Register<BuildingUpgrade>(this, (recipient, message) =>
             {
-                Building_Upgrade(message.BuildingKey);
+                OnBuildingUpgrade(message.BuildingKey);
             });
 
             Messenger.Register<BuyRoad>(this, (recipient, message) =>
                        {
-                           Road_Purchase(message.RoadKey);
+                           OnRoadPurchase(message.RoadKey);
                        });
 
 
@@ -83,227 +88,70 @@ namespace Catan3.Models
                 Log.Done(GameViewModel.GameModel);
 
             });
-
-        }
-
-        private void OnRequestTileOwners(TileViewModel tileViewModel)
-        {
-            var buildings = GameViewModel.GameModel.Buildings.BuildingsInTile(tileViewModel.Tile.TileKey);
-            List<PlayerViewModel> owners = [];
-            foreach (var building in buildings)
+            Messenger.Register<Rolled>(this, (recipient, message) =>
             {
-                if (building.OwnerId is not null)
-                {
-                    var p = GameViewModel.Players.First( player => player.Id == building.OwnerId );
-                    Debug.Assert(p is not null);
-                    if (p.Id != GameViewModel.CurrentPlayer.Id)
-                    {
-                        owners.Add(p);
-                    }
-                }
-            }
-            Messenger.Send(new TileOwnersResponse(owners));
+                OnRoll(message.Roll);
 
-        }
-
-        /// <summary>
-        ///     if the message takes no parameters, then we can just add enum elements and then add a case statement
-        ///     without modifying code inbetween
-        /// </summary>
-        /// <param name="action"></param>
-        private void DoAction(GameAction action)
-        {
-            switch (action)
-            {
-                case GameAction.Shuffle:
-                    Shuffle();
-                    break;
-                case GameAction.Undo:
-                    Log.Undo(this.GameViewModel);
-                    break;
-                case GameAction.Redo:
-                    Log.Redo(this.GameViewModel);
-                    break;
-                case GameAction.NextPlayer:
-                    NextPlayer();
-                    break;
-            }
-        }
-
-        private void Road_Purchase(RoadKey roadKey)
-        {
-
-            var roadView = GameViewModel.Roads.FirstOrDefault(r => r.Road.RoadKey == roadKey);
-            if (roadView is null) return;
-            if (roadView.Road.OwnerId is not null) return;
-            //
-            //  this will be the state we go back to when we Undo
-            if (roadView.Road.RoadState == RoadState.Highlighted) roadView.Road.RoadState = RoadState.Unowned;
-
-            roadView.Road.OwnerId = GameViewModel.CurrentPlayer.Id;
-            roadView.Road.RoadState = RoadState.Road;
-            Log.Done(GameViewModel.GameModel);
-
-        }
-
-        [RelayCommand]
-        private void Shuffle()
-        {
-
-            var currentStars = GameViewModel.ShownStars;
-            List<string> playerIds = GameViewModel.Players.Select( p => p.Id ).ToList();
-            var gameModel = GameFactory.CreateGame(GameViewModel.GameModel.GameType, playerIds);
-            gameModel.Shuffle();
-            GameViewModel.MergeGameModel(gameModel);
-
-            GameViewModel.SetStars();
-            GameViewModel.ShownStars = 14;
-            GameViewModel.ShownStars = currentStars;
-            Debug.Assert(GameViewModel.CurrentPlayer != null);
-            GameViewModel.Id = GameViewModel.GameModel.GetHashCode().ToString();
-            Log.Done(GameViewModel.GameModel);
+            });
 
         }
 
 
-
-
-        /// <summary>
-        ///     This is a loggable event.  in the case of a Service, this would be a service call.
-        /// </summary>
-        /// <param name="buildingKey"></param>
-        private void Building_Upgrade(BuildingKey buildingKey)
-        {
-
-
-            var bvm = GameViewModel.Buildings.FindBuildingViewModel(buildingKey);
-            if (bvm is null) return;
-
-            switch (bvm.Building.BuildingState)
-            {
-                case BuildingState.Empty:
-                case BuildingState.Highlighted:
-                case BuildingState.Stars:
-
-                    bvm.Building.BuildingState = BuildingState.Settlement;
-                    bvm.Building.OwnerId = GameViewModel.CurrentPlayer.Id;
-
-                    break;
-                case BuildingState.Settlement:
-
-
-                    Debug.Assert(bvm.Building.OwnerId != null);
-                    if (bvm.Building.OwnerId != GameViewModel.CurrentPlayer.Id) return;
-                    bvm.Building.BuildingState = BuildingState.City;
-
-                    break;
-                case BuildingState.City:
-
-
-                    Debug.Assert(bvm.Building.OwnerId != null);
-                    if (bvm.Building.OwnerId != GameViewModel.CurrentPlayer.Id) return;
-                    bvm.Building.BuildingState = BuildingState.Knight;
-
-                    break;
-                case BuildingState.Knight:
-                    break;
-            }
-
-
-            //
-            //  turn off all the Stars after you build a building
-            GameViewModel.ShownStars = 14;
-            Log.Done(GameViewModel.GameModel);
-        }
-
-
-        [RelayCommand]
-        private void NextPlayer()
-        {
-
-            Debug.Assert(GameViewModel.CurrentPlayer != null);
-            int index = GameViewModel.Players.IndexOf(GameViewModel.CurrentPlayer);
-            Debug.Assert(index >= 0);
-            index++;
-            index = index % GameViewModel.Players.Count;
-            GameViewModel.CurrentPlayer = GameViewModel.Players[index];
-            Log.Done(GameViewModel.GameModel);
-        }
-
-        [RelayCommand]
-        private async Task Save()
-        {
-            var uncompressedLog = Log.GetSerializableLog(); // this always comes back the same
-            var json = SerializationHelper.JsonSerialize(uncompressedLog);
-            var compressedBytes = SerializationHelper.Compress(json);
-            await _fileService.SaveFileAsync(compressedBytes);
-
-
-        }
-        [RelayCommand]
-        private async Task SaveAs()
-        {
-            var uncompressedLog = Log.GetSerializableLog(); // this always comes back the same
-            var json = SerializationHelper.JsonSerialize(uncompressedLog);
-            var compressedBytes = SerializationHelper.Compress(json);
-            await _fileService.SaveFileAsAsync($"GameModel DoneDepth={Log.DoneCount}", compressedBytes);
-
-
-        }
-        [RelayCommand]
-        private async Task Open()
+        private void SetTempGoldTiles()
         {
             try
             {
 
-                var compressedBytes = await _fileService.OpenFileAsync();
-                if (compressedBytes is null)
+                if (GameViewModel.GameModel.HouseRules.GoldTiles == 0) return;
+
+                var gameModel = GameViewModel.GameModel;
+
+
+                int goldCount = GameViewModel.Tiles.Count( t => t.Tile.TemporarilyGold);
+                Debug.Assert(goldCount == 0 || goldCount == GameViewModel.GameModel.HouseRules.GoldTiles);
+                Contract.Assert(gameModel.HouseRules.GoldTiles > 0);
+                foreach (TileModel tile in gameModel.Tiles)
                 {
-                    this.TraceMessage("Unable to open file");
-                    return;
+                    tile.TemporarilyGold = false;
                 }
-
-                var decompressedJson = SerializationHelper.Decompress(compressedBytes);
-
-                // Deserialize the JSON back into your Log or relevant data structure
-
-                var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson);
-                if (savedLog == null)
+                var rand = new Random((int)DateTime.Now.Ticks);
+                int count = 0;
+                List<TileViewModel> goldTiles = [];
+                while (count < GameViewModel.GameModel.HouseRules.GoldTiles)
                 {
-                    this.TraceMessage("Error: Failed to load the game data.");
-                    return;
+                    var index = rand.Next(GameViewModel.Tiles.Count);
+                    var tileViewModel =  GameViewModel.Tiles[index] ;
+                    Contract.Assert(tileViewModel is not null, "this should *never* happen!");
+                    if (tileViewModel.Tile.ResourceTileType != ResourceTileType.Desert && tileViewModel.Tile.TemporarilyGold == false)
+                    {
+                        tileViewModel.Tile.TemporarilyGold = true;
+                        tileViewModel.Orientation = CatanOrientation.FaceDown;
+                        goldTiles.Add(tileViewModel);
+                        this.TraceMessage($"GoldTile: {GameViewModel.GameModel.CurrentPlayerId}={tileViewModel}");
+                        count++;
+                    }
                 }
-
-                Log<byte[]> log = Log<byte[]>.FromSerializableLog(savedLog);
-
-                if (log.GameType == GameViewModel.GameModel.GameType)
+                foreach (var t in goldTiles)
                 {
-
-                    this.Log = log;
-                    var gameModel = Log.CurrentState();
-                    GameViewModel.MergeGameModel(gameModel);
-                    GameViewModel.SetStars();
-                    GameViewModel.ShownStars = 14;
+                    t.Orientation = CatanOrientation.FaceUp;
                 }
-
-                else
-                {
-                    var gameModel = log.CurrentState();
-                    var gvm = new GameViewModel(gameModel);
-
-                    this.GameViewModel = gvm;
-
-                    GameViewModel.UpdateLayout();
-                    GameViewModel.SetStars();
-                    Log = log;
-                }
-                GC.Collect();
             }
-            catch (Exception ex)
+            finally
             {
-                this.TraceMessage($"Failed to deserialize or apply the game data: {ex.Message}");
+#if DEBUG
+
+
+                var goldCount = GameViewModel.Tiles.Count(t => t.Tile.TemporarilyGold);
+                Debug.Assert(goldCount == GameViewModel.GameModel.HouseRules.GoldTiles);
+#endif
             }
+
+            //
+            //   this is *not* logged here -- the caller should log so that they
+            //   get undone together.
         }
+
+
 
     }
 

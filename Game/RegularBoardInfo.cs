@@ -10,6 +10,7 @@ namespace Catan3.Models
     /// </summary>
     public partial class RegularBoardInfo : IBoardInfo
     {
+        public  HouseRules HouseRules { get; } = new HouseRules() {GoldTiles = 1, HideBaronBeforeInvasion=false, KnightMovesBaronBeforeRoll=true, WallsProtectCities=true};
 
         public static RegularBoardInfo Default { get; } = new RegularBoardInfo();
         private RegularBoardInfo() => Layout = BoardLayout.Default;

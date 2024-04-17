@@ -14,6 +14,9 @@ namespace Catan3.Models
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(Stars))]
         private int _number = 0;
+
+        [ObservableProperty]
+        private bool _temporarilyGold = false;
        
     }
 }

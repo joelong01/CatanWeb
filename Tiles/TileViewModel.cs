@@ -1,7 +1,12 @@
 ﻿using System.ComponentModel;
+using System.Security;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.UI;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 namespace Catan3.Models
 {
     /// <summary>
@@ -12,26 +17,43 @@ namespace Catan3.Models
     {
         public TileViewModel(TileModel tile, BoardLayout? layout)
         {
-            _tile = tile;
-            _layout = layout;
-            Init();
-        }
+            Tile = tile;
+            Layout = layout;
 
-        public void Init()
-        {
             IsActive = true;
             if (Layout is not null && Layout is BoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
 
             }
-           
+
             UpdateLayout();
 
             Messenger.Register<UpdateOrientation>(this, (recipient, message) =>
             {
                 this.Orientation = message.Orientation;
             });
+
+            TempGoldResourceCardModel = new ResourceCardModel()
+            {
+                ResourceType = tile.ResourceTileType.ToResourceCardType(),
+                Orientation = CatanOrientation.FaceDown,
+                CountVisibility = Microsoft.UI.Xaml.Visibility.Collapsed
+            };
+
+            Tile.PropertyChanged += Tile_PropertyChanged;
+        }
+        /// <summary>
+        ///     Listen for the change to the TemporarilyGold flag and set the orientation of the TempGoldOrientation
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Tile_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(TileModel.TemporarilyGold))
+            {
+                TempGoldResourceCardModel.Orientation = Tile.TemporarilyGold ? CatanOrientation.FaceUp : CatanOrientation.FaceDown;
+            }
         }
 
         private void RegisterTargetMessageResponse()
@@ -75,14 +97,14 @@ namespace Catan3.Models
         {
             this.TraceMessage("sending target message");
             RegisterTargetMessageResponse();
-           Messenger.Send(new RequestTileOwners(this)); ;
+            Messenger.Send(new RequestTileOwners(this)); ;
         }
 
         [RelayCommand]
         public void TargetPicked(string id)
         {
             this.TraceMessage($"targetting {id}");
-            this.Messenger.Send<MoveRobber>(new MoveRobber(this.Tile.TileKey, id)); 
+            this.Messenger.Send<MoveRobber>(new MoveRobber(this.Tile.TileKey, id));
         }
 
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -122,5 +144,37 @@ namespace Catan3.Models
                 this.TraceMessage($"[{Tile}]:[Left={Left}][top={Top}]");
             }
         }
+
+        public CatanOrientation TempGoldOrientation(TileModel _, bool tempGold)
+        {
+            var orientation =  tempGold ? CatanOrientation.FaceUp : CatanOrientation.FaceDown;
+            TempGoldResourceCardModel.Orientation = orientation;
+            return orientation;
+        }
+        /// <summary>
+        ///     if any of these 3 things change, we need to update the resource type image
+        /// </summary>
+        /// <param name="tileModel"></param>
+        /// <param name="tempGold"></param>
+        /// <param name="resourceTileType"></param>
+        /// <returns></returns>
+        public Brush GetTileResourceType(TileModel _, bool tempGold, ResourceTileType resourceTileType)
+        {
+        
+            var resourceType = tempGold ? ResourceTileType.GoldMine : resourceTileType;
+            string key = $"ResourceTileType.{resourceType}";
+            return ( ImageBrush )Application.Current.Resources[key];
+        }
+
+        public Brush GetTileBorderBrush(TileModel _, bool highlighted)
+        {
+            if (!highlighted)
+            {
+                return ( Brush )Application.Current.Resources["bmMaple"];
+            }
+
+            return ( Brush )BrushCache.GetSolidColorBrush(Colors.Yellow);
+        }
+
     }
 }

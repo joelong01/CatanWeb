@@ -86,6 +86,7 @@ namespace Catan3
     {
         public static string ListToCsv<T>(this IEnumerable<T> list)
         {
+            if (list.Count() == 0) return "Empty";
             string s = String.Empty;
             int c = list.Count();
             for (int i = 0; i < c - 1; i++)

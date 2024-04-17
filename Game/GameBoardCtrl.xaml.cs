@@ -112,7 +112,7 @@ namespace Catan3.Controls
         private void RobberViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (GameViewModel is null) return;
-            this.TraceMessage($"robber changed: {e.PropertyName}");
+         //   this.TraceMessage($"robber changed: {e.PropertyName}");
             if (e.PropertyName == nameof(GameViewModel.RobberViewModel.RobberModel))
             {
                 GameViewModel.RobberViewModel.RobberModel.PropertyChanged += RobberModel_PropertyChanged;
@@ -145,7 +145,7 @@ namespace Catan3.Controls
             if (this.Resources["MoveRobberAnimation"] is Storyboard storyboard && GameViewModel is not null)
             {
                 Debug.Assert(GameViewModel.RobberViewModel.RobberModel is not null);
-                this.TraceMessage($"Moving Robber to {GameViewModel.RobberViewModel.RobberModel.Coordinates}");
+             //   this.TraceMessage($"Moving Robber to {GameViewModel.RobberViewModel.RobberModel.Coordinates}");
 
                 // Assuming the first two children are the X and Y animations
                 if (storyboard.Children[0] is DoubleAnimation animationX && storyboard.Children[1] is DoubleAnimation animationY)

@@ -134,5 +134,34 @@ namespace Catan3.Models
                 .First();
 
         }
+
+        public static ResourceCardType ToResourceCardType(this ResourceTileType tileType)
+        {
+            switch (tileType)
+            {
+                case ResourceTileType.Sheep:
+                    return ResourceCardType.Sheep;
+                case ResourceTileType.Wood:
+                    return ResourceCardType.Wood;
+                case ResourceTileType.Ore:
+                    return ResourceCardType.Ore;
+                case ResourceTileType.Wheat:
+                    return ResourceCardType.Wheat;
+                case ResourceTileType.Brick:
+                    return ResourceCardType.Brick;
+                case ResourceTileType.GoldMine:
+                    return ResourceCardType.GoldMine;
+                case ResourceTileType.Desert:
+                    return ResourceCardType.Desert;
+                case ResourceTileType.Back:
+                    return ResourceCardType.Back;
+                case ResourceTileType.None:
+                    return ResourceCardType.None;
+                case ResourceTileType.Sea:
+                    return ResourceCardType.Sea;
+            }
+
+            throw new ArgumentException("did you forget to update this?", nameof(tileType));
+        }
     }
 }

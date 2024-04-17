@@ -5,7 +5,9 @@ using Catan3.Utility;
 namespace Catan3.Models
 
 {
-    public enum GameAction { Shuffle, Undo, Redo,
+    public enum GameAction
+    {
+        Shuffle, Undo, Redo,
         NextPlayer
     }
 
@@ -42,15 +44,15 @@ namespace Catan3.Models
 
     public class RequestTileOwners(TileViewModel tileViewModel)
     {
-        public TileViewModel TileViewModel{ get; } = tileViewModel;
+        public TileViewModel TileViewModel { get; } = tileViewModel;
     }
 
     public class TileOwnersResponse(IList<PlayerViewModel> players)
     {
-        public IList<PlayerViewModel> Owners{ get; } = players;
+        public IList<PlayerViewModel> Owners { get; } = players;
     }
 
-    public class MoveRobber (HexCoordinates coordinates, string targetPlayerId)
+    public class MoveRobber(HexCoordinates coordinates, string targetPlayerId)
     {
         public HexCoordinates Coordinates { get; } = coordinates;
         public string TargetPlayerId { get; } = targetPlayerId;
@@ -60,6 +62,11 @@ namespace Catan3.Models
     public class UpdateOrientation(CatanOrientation newOrientation)
     {
         public CatanOrientation Orientation { get; } = newOrientation;
+    }
+
+    public class Rolled(RollModel roll)
+    {
+        public RollModel Roll { get; } = roll;
     }
 
 }

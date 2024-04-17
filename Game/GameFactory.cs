@@ -35,6 +35,8 @@ namespace Catan3.Models
                 CurrentPlayerId = players[0]
             };
 
+            game.HouseRules = boardInfo.HouseRules;
+
             for (int i = 0; i < boardInfo.TileKeys.Count; i++)
             {
                 var tile = new TileModel()

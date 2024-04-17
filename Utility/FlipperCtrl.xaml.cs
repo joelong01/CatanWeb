@@ -75,7 +75,7 @@ namespace Catan3.Utility
             {
                 From = from,
                 To = to,
-                Duration = TimeSpan.FromSeconds(0.5)
+                Duration = TimeSpan.FromSeconds(0.250)
             };
             var storyboard = new Storyboard();
             storyboard.Children.Add(da);

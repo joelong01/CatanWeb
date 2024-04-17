@@ -6,6 +6,7 @@ namespace Catan3.Models
 {
     public partial class ExpansionBoardInfo : IBoardInfo
     {
+        public  HouseRules HouseRules { get; } = new HouseRules() {GoldTiles = 2, HideBaronBeforeInvasion=false, KnightMovesBaronBeforeRoll=true, WallsProtectCities=true};
         public static ExpansionBoardInfo Default {get;} = new ExpansionBoardInfo();
         private ExpansionBoardInfo() => Layout = BoardLayout.Default;
         public BoardLayout Layout { get; private set; }

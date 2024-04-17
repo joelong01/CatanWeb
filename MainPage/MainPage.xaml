@@ -144,6 +144,90 @@
                         HorizontalAlignment="Left" VerticalAlignment="Top">
 
                 </ComboBox>
+
+                <!--Rolls -->
+                <VariableSizedWrapGrid Orientation="Horizontal"
+                        MaximumRowsOrColumns="4" ItemHeight="100"
+                        ItemWidth="100">
+                    <Button
+                            Command="{x:Bind MainPageModel.GameViewModel.RollViewModel.NormalRollCommand, Mode=OneWay}"
+                            CommandParameter="Two">
+                        <Viewbox Stretch="Uniform">
+                            <c:CatanNumber Number="2" />
+                        </Viewbox>
+                    </Button>
+                    <Button
+                            Command="{x:Bind MainPageModel.GameViewModel.RollViewModel.NormalRollCommand, Mode=OneWay}"
+                            CommandParameter="Three">
+                        <Viewbox Stretch="Uniform">
+                            <c:CatanNumber Number="3" />
+                        </Viewbox>
+                    </Button>
+                    <Button
+                            Command="{x:Bind MainPageModel.GameViewModel.RollViewModel.NormalRollCommand, Mode=OneWay}"
+                            CommandParameter="Four">
+                        <Viewbox Stretch="Uniform">
+                            <c:CatanNumber Number="4" />
+                        </Viewbox>
+                    </Button>
+                    <Button
+                            Command="{x:Bind MainPageModel.GameViewModel.RollViewModel.NormalRollCommand, Mode=OneWay}"
+                            CommandParameter="Five">
+                        <Viewbox Stretch="Uniform">
+                            <c:CatanNumber Number="5" />
+                        </Viewbox>
+                    </Button>
+                    <Button
+                            Command="{x:Bind MainPageModel.GameViewModel.RollViewModel.NormalRollCommand, Mode=OneWay}"
+                            CommandParameter="Six">
+                        <Viewbox Stretch="Uniform">
+                            <c:CatanNumber Number="6" />
+                        </Viewbox>
+                    </Button>
+                    <Button
+                            Command="{x:Bind MainPageModel.GameViewModel.RollViewModel.NormalRollCommand, Mode=OneWay}"
+                            CommandParameter="Seven">
+                        <Viewbox Stretch="Uniform">
+                            <c:CatanNumber Number="7" />
+                        </Viewbox>
+                    </Button>
+                   
+                    <Button
+                            Command="{x:Bind MainPageModel.GameViewModel.RollViewModel.NormalRollCommand, Mode=OneWay}"
+                            CommandParameter="Eight">
+                        <Viewbox Stretch="Uniform">
+                            <c:CatanNumber Number="8" />
+                        </Viewbox>
+                    </Button>
+                    <Button
+                            Command="{x:Bind MainPageModel.GameViewModel.RollViewModel.NormalRollCommand, Mode=OneWay}"
+                            CommandParameter="Nine">
+                        <Viewbox Stretch="Uniform">
+                            <c:CatanNumber Number="9" />
+                        </Viewbox>
+                    </Button>
+                    <Button
+                            Command="{x:Bind MainPageModel.GameViewModel.RollViewModel.NormalRollCommand, Mode=OneWay}"
+                            CommandParameter="Ten">
+                        <Viewbox Stretch="Uniform">
+                            <c:CatanNumber Number="10" />
+                        </Viewbox>
+                    </Button>
+                    <Button
+                            Command="{x:Bind MainPageModel.GameViewModel.RollViewModel.NormalRollCommand, Mode=OneWay}"
+                            CommandParameter="11">
+                        <Viewbox Stretch="Uniform">
+                            <c:CatanNumber Number="11" />
+                        </Viewbox>
+                    </Button>
+                    <Button
+                            Command="{x:Bind MainPageModel.GameViewModel.RollViewModel.NormalRollCommand, Mode=OneWay}"
+                            CommandParameter="Twelve">
+                        <Viewbox Stretch="Uniform">
+                            <c:CatanNumber Number="12" />
+                        </Viewbox>
+                    </Button>
+                </VariableSizedWrapGrid>
                 <Button
                         Command="{x:Bind MainPageModel.NextPlayerCommand, Mode=OneWay}"
                         Content="Next Player" />
@@ -154,11 +238,11 @@
                         Foreground="Black" HorizontalAlignment="Left"
                         VerticalAlignment="Top" Width="200" />
 
-                <Button Content="Flip Orientation" Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}"
+                <Button Content="Flip Orientation"
+                        Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}"
                         Background="Black" Foreground="White" />
-                <Button Content="Do Misc"
-                        Click="OnHitMe"
-                        Background="Black" Foreground="White" />
+                <Button Content="Do Misc" Click="OnHitMe" Background="Black"
+                        Foreground="White" />
                 <Button Content="Save" Background="Black" Foreground="White"
                         Command="{x:Bind MainPageModel.SaveCommand, Mode=OneWay}" />
                 <Button Content="Save As..." Background="Black"

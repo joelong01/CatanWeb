@@ -3,17 +3,18 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Reflection;
+
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Catan3.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Windows.Media.Capture;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using CommunityToolkit.Mvvm.Messaging;
+
 
 
 namespace Catan3.Utility
@@ -37,7 +38,7 @@ namespace Catan3.Utility
 
     }
 
-    public partial class Log<T> : ObservableObject
+    public partial class Log<T> : ObservableRecipient
     {
 
         private ObservableCollection<T> DoneStack { get; set; } = [];
@@ -277,7 +278,7 @@ namespace Catan3.Utility
             if (sender is not null && sender is ObservableCollection<T> list)
             {
                 this.CanRedo = list.Count > 0;
-                this.TraceMessage($"Redo Depth {list.Count} size={GetStackSize(list)}");
+              //  this.TraceMessage($"Redo Depth {list.Count} size={GetStackSize(list)}");
             }
         }
 
@@ -286,7 +287,7 @@ namespace Catan3.Utility
             if (sender is not null && sender is ObservableCollection<T> list)
             {
                 this.CanUndo = list.Count > 1; // don't undo past the start
-                this.TraceMessage($"Done Depth {list.Count}  size={GetStackSize(list)}");
+               // this.TraceMessage($"Done Depth {list.Count}  size={GetStackSize(list)}");
             }
         }
 
@@ -334,13 +335,16 @@ namespace Catan3.Utility
                 // Move the current state to the RedoStack
                 var currentState = DoneStack.Pop();
                 RedoStack.Push(currentState);
+                GameModel? currentGameModel = ToGameModel(currentState);
+                Contract.Assert(currentGameModel != null);
+               
 
                 // Retrieve and deserialize the previous state
                 var previousState = DoneStack.Peek();
-                var model = ToGameModel(previousState) ?? throw new InvalidOperationException("Failed to deserialize the undo state.");
-
+                var newGameModel = ToGameModel(previousState) ?? throw new InvalidOperationException("Failed to deserialize the undo state.");
+     
                 // Apply the restored state
-                viewModel.MergeGameModel(model);
+                viewModel.MergeGameModel(newGameModel);
                 return true;
             }
             catch (Exception ex)

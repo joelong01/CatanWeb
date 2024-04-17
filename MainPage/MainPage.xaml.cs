@@ -135,8 +135,12 @@ namespace Catan3
         private void OnHitMe(object sender, RoutedEventArgs rea)
         {
             if (MainPageModel.GameViewModel is null) return;
+            var rand = new Random((int)DateTime.Now.Ticks);
+            var index = rand.Next(MainPageModel.GameViewModel.Tiles.Count);
+            var tile = MainPageModel.GameViewModel.Tiles[index] ;
+            if (tile is null) return;
 
-            this.TraceMessage($"Current Player: {MainPageModel.GameViewModel.CurrentPlayer}");
+            tile.Tile.TemporarilyGold = tile.Tile.TemporarilyGold ? false : true;
 
 
         }

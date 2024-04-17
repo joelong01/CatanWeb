@@ -15,7 +15,13 @@ namespace Catan3.Models
     public partial class GameModel : ObservableObject
     {
         [ObservableProperty]
+        private RollModel? _thisTurnsRoll = null;
+
+        [ObservableProperty]
         private GameType _gameType = GameType.Regular;
+
+        [ObservableProperty]
+        private GameState _gameState = GameState.WaitingForNewGame;
 
         [ObservableProperty]
         private bool _hasSupplementalBuildPhase = false;
@@ -39,7 +45,12 @@ namespace Catan3.Models
         private RobberModel _robber = new();
 
         [ObservableProperty]
+        private HouseRules _houseRules = new();
+
+        [ObservableProperty]
         private string _currentPlayerId = string.Empty;
+
+    
 
         public GameModel(GameType gametype, bool hassupplementalbuildphase, List<PlayerModel> players)
         {

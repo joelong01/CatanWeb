@@ -24,6 +24,7 @@ namespace Catan3.Models
         public List<HarborModel> Harbors { get; }
         public BoardLayout Layout { get; }
         public bool HasSupplemental { get; }
+        public HouseRules HouseRules { get; }
 
     }
     public interface IBoardLayout
