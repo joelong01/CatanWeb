@@ -39,7 +39,7 @@
                     <Polygon Stroke="{StaticResource bmCherry}"
                             StrokeThickness="{x:Bind TileViewModel.Layout.TileGap, Mode=OneWay}"
                             Points="{x:Bind TileViewModel.Layout.OuterHexPoints, Mode=OneWay}"
-                            Fill="{x:Bind TileViewModel.GetTileBorderBrush(TileViewModel.Tile, TileViewModel.Highlighted), Mode=OneWay}" />
+                            Fill="{x:Bind TileViewModel.GetTileBorderBrush(TileViewModel.Tile, TileViewModel.Tile.Highlighted), Mode=OneWay}" />
 
                     <Polygon Stroke="Transparent"
                             StrokeThickness="{Binding Layout.InnerHexStrokeThickness, Mode=OneWay}"

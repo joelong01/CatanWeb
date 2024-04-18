@@ -8,14 +8,15 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.UI.Xaml.Data;
 
 namespace Catan3.Models
 {
     public partial class GameModel : ObservableObject
     {
+      
+
         [ObservableProperty]
-        private RollModel? _thisTurnsRoll = null;
+        private RollModel _rollModel = RollModel.Default;
 
         [ObservableProperty]
         private GameType _gameType = GameType.Regular;
@@ -50,7 +51,12 @@ namespace Catan3.Models
         [ObservableProperty]
         private string _currentPlayerId = string.Empty;
 
-    
+        public override string ToString()
+        {
+            return $"State={GameState} CurrentPlayer={CurrentPlayerId}";
+        }
+
+       
 
         public GameModel(GameType gametype, bool hassupplementalbuildphase, List<PlayerModel> players)
         {

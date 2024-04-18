@@ -17,6 +17,13 @@ namespace Catan3.Models
 
         [ObservableProperty]
         private bool _temporarilyGold = false;
+        /// <summary>
+        ///     this is a little strange to have here instead of the view model because all it does 
+        ///     is change the way the tile is displayed -- but only the data models are logged and
+        ///     we want highlighting to be part of the logged (and saved) state.
+        /// </summary>
+        [ObservableProperty]
+        private bool _highlighted = false;
        
     }
 }

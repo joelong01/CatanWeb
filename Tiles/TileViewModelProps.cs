@@ -9,7 +9,7 @@ namespace Catan3.Models
     {
 
         [ObservableProperty]
-        private TileModel _tile;
+        private TileModel _tile = TileModel.Default;
 
         [ObservableProperty]
         private BoardLayout? _layout;
@@ -34,8 +34,6 @@ namespace Catan3.Models
         [ObservableProperty]
         public ObservableCollection<TargetViewModel> _targets = [];
 
-        [ObservableProperty]
-        private bool _highlighted = false;
     }
 
 

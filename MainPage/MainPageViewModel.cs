@@ -29,7 +29,7 @@ namespace Catan3.Models
         GameViewModel _gameViewModel = GameViewModel.Default;
 
         [ObservableProperty]
-        private Log<byte[]> _log;
+        private Log<GameModel> _log;
 
         private readonly IFileService _fileService;
 
@@ -48,8 +48,8 @@ namespace Catan3.Models
             this.GameViewModel = gvm;
             GameViewModel.UpdateLayout();
             GameViewModel.SetStars();
-            Log = new Log<byte[]>(selectedGame);
-            SetTempGoldTiles();
+            Log = new Log<GameModel>(selectedGame);
+            GameViewModel.GameModel.GameState = GameState.PickingBoard;
             Log.Done(GameViewModel.GameModel);
 
 
@@ -110,9 +110,23 @@ namespace Catan3.Models
                 int goldCount = GameViewModel.Tiles.Count( t => t.Tile.TemporarilyGold);
                 Debug.Assert(goldCount == 0 || goldCount == GameViewModel.GameModel.HouseRules.GoldTiles);
                 Contract.Assert(gameModel.HouseRules.GoldTiles > 0);
-                foreach (TileModel tile in gameModel.Tiles)
+                for ( int i = 0; i< GameViewModel.Tiles.Count -1; i++ )
+                {
+                    Debug.Assert(GameViewModel.Tiles[i].Tile.GetHashCode() == gameModel.Tiles[i].GetHashCode());
+                    Debug.Assert(GameViewModel.Tiles[i].Tile == gameModel.Tiles[i]);
+                    Debug.Assert(GameViewModel.Tiles[i].Tile.Equals(gameModel.Tiles[i]));
+                }
+                foreach (TileModel tile in GameViewModel.GameModel.Tiles)
                 {
                     tile.TemporarilyGold = false;
+                }
+                foreach (TileViewModel tile in GameViewModel.Tiles)
+                {
+                    if (tile.Tile.TemporarilyGold)
+                    {
+
+                        Debug.Assert(false, "how is this possible?");
+                    }
                 }
                 var rand = new Random((int)DateTime.Now.Ticks);
                 int count = 0;

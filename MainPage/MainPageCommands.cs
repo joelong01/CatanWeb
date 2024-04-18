@@ -1,19 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Threading.Tasks;
-using Catan.Utility;
-using Catan3.Controls;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.UI;
-using Microsoft.UI.Xaml.Controls;
-using Windows.Security.Isolation;
-using static System.Collections.Specialized.BitVector32;
 
 namespace Catan3.Models
 {
@@ -64,31 +56,31 @@ namespace Catan3.Models
         {
 
             Debug.Assert(GameViewModel.CurrentPlayer != null);
+            GameViewModel.GameModel.RollModel.ThisTurnsRoll = null; // wipe the current players roll model - don't need it anymore
+           
+            // change player
             int index = GameViewModel.Players.IndexOf(GameViewModel.CurrentPlayer);
             Debug.Assert(index >= 0);
             index++;
             index = index % GameViewModel.Players.Count;
             GameViewModel.CurrentPlayer = GameViewModel.Players[index];
-            GameViewModel.GameModel.GameState = GameState.WaitingForRoll;
 
-            GameViewModel.GameModel.ThisTurnsRoll = new RollModel();
-            GameViewModel.RollViewModel.RollModel = GameViewModel.GameModel.ThisTurnsRoll;
+            // update state
+            GameViewModel.GameModel.GameState = GameState.WaitingForRoll;
+            
+            // get a little state machine to know when a roll is complete and set it in both the GameModel and the GameViewModel
+            GameViewModel.GameModel.RollModel.ThisTurnsRoll = new RollData();
+            GameViewModel.RollViewModel.RollModel = GameViewModel.GameModel.RollModel;
+
+            //
+            //  set up the gold tiles for the new player
             SetTempGoldTiles();
-            foreach (var tile in GameViewModel.Tiles)
-            {
-                tile.Highlighted = false;
-            }
+
+            // log the changes
             Log.Done(GameViewModel.GameModel);
         }
 
-        [RelayCommand]
-        private void DoRoll(RollModel roll)
-        {
-            if (GameViewModel.GameModel.GameState != GameState.WaitingForRoll) return;
-
-
-
-        }
+      
 
         [RelayCommand]
         private async Task Save()
@@ -134,7 +126,7 @@ namespace Catan3.Models
                     return;
                 }
 
-                Log<byte[]> log = Log<byte[]>.FromSerializableLog(savedLog);
+                Log<GameModel> log =  Log<GameModel>.FromSerializableLog(savedLog);
 
                 if (log.GameType == GameViewModel.GameModel.GameType)
                 {

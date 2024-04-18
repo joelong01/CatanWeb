@@ -41,7 +41,7 @@ namespace Catan3.Models
         [RelayCommand]
         public void NextPlayer()
         {
-            Messenger.Send(new DoAction(GameAction.NextPlayer));
+            Messenger.Send(new DoAction(GameAction.Next));
           
         }
 

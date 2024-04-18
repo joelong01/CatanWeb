@@ -163,7 +163,8 @@ namespace Catan3.Models
         
             var resourceType = tempGold ? ResourceTileType.GoldMine : resourceTileType;
             string key = $"ResourceTileType.{resourceType}";
-            return ( ImageBrush )Application.Current.Resources[key];
+            var brush =  ( ImageBrush )Application.Current.Resources[key];
+            return ( Brush )brush;
         }
 
         public Brush GetTileBorderBrush(TileModel _, bool highlighted)
@@ -172,7 +173,7 @@ namespace Catan3.Models
             {
                 return ( Brush )Application.Current.Resources["bmMaple"];
             }
-
+            this.TraceMessage($"Highlighting {this}");
             return ( Brush )BrushCache.GetSolidColorBrush(Colors.Yellow);
         }
 

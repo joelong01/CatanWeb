@@ -4,13 +4,13 @@ using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 namespace Catan3.Models
 {
-    public partial class TileModel : IComparable<TileModel>, IEquatable<TileModel>
+    public partial class TileModel : IComparable<TileModel>
     {
        public static TileModel Default { get; } = new TileModel();
         public TileModel() { }
         public override string ToString()
         {
-            return $"({ResourceTileType}, {Number}, {TileKey}, {TemporarilyGold})";
+            return $"({ResourceTileType}, {Number}, {TileKey}, [Gold={TemporarilyGold})][Highlighted={Highlighted}])";
         }
 
         public int CompareTo(TileModel? other)
@@ -19,22 +19,14 @@ namespace Catan3.Models
             return TileKey.CompareTo(other.TileKey);
         }
 
-        public bool Equals(TileModel? other)
-        {
-            if (other == null) return false;
-            bool eq =  TileKey.Equals(other.TileKey) && ResourceTileType == other.ResourceTileType && Number == other.Number && TemporarilyGold == other.TemporarilyGold;
-            return eq;
-        }
-
-        public override bool Equals(object? obj)
-        {
-            return Equals(obj as TileModel);
-        }
+       
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(TileKey, ResourceTileType, Number, TemporarilyGold);
+            return HashCode.Combine(TileKey, ResourceTileType, Number, TemporarilyGold, Highlighted);
         }
+
+       
 
         [JsonIgnore]
         public int Stars

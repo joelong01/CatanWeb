@@ -26,6 +26,7 @@
 		<None Remove="MainPage.xaml" />
 		<None Remove="ResourceCard\BoardMeasurementCtrl.xaml" />
 		<None Remove="ResourceCard\ResourceCardCtrl.xaml" />
+		<None Remove="Rolls\SingleRoll.xaml" />
 		<None Remove="Themes\Generic.xaml" />
 		<None Remove="Themes\ImageResources.xaml" />
 		<None Remove="Themes\StyleResourceDictionary.xaml" />
@@ -89,6 +90,9 @@
 	    <Generator>TextTemplatingFileGenerator</Generator>
 	    <LastGenOutput>models.cs</LastGenOutput>
 	  </None>
+	  <Page Update="Rolls\SingleRoll.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	  <Page Update="Tiles\CatanNumber.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>

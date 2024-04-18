@@ -7,30 +7,46 @@ using CommunityToolkit.Mvvm.Messaging;
 
 namespace Catan3.Models
 {
+
+
     public partial class MainPageViewModel
     {
         private void OnRoll(RollModel roll)
         {
+            if (GameViewModel.GameModel.GameState != GameState.WaitingForRoll) return;
+            if (roll.ThisTurnsRoll is null)
+            {
+                throw new ArgumentNullException(nameof(roll));
+            }
+
+            GameViewModel.GameModel.RollModel.RollCounts[( int )roll.ThisTurnsRoll.NormalRoll - 2]++;
+            GameViewModel.GameModel.RollModel.TotalRolls++;
+
+
+            GameViewModel.GameModel.GameState = GameState.WaitingForNext;
+
             List<TileViewModel> highlightedTiles = [];
             foreach (TileViewModel tile in GameViewModel.Tiles)
             {
-                if (tile.Tile.Number == ( int )roll.NormalRoll)
+                if (tile.Tile.Number == ( int )roll.ThisTurnsRoll.NormalRoll)
                 {
                     highlightedTiles.Add(tile);
-                    tile.Highlighted = true;
+                    tile.Tile.Highlighted = true;
                     tile.Orientation = CatanOrientation.FaceDown;
                 }
                 else
                 {
-                    tile.Highlighted = false;
+                    tile.Tile.Highlighted = false;
                     tile.Orientation = CatanOrientation.FaceUp;
                 }
             }
-            
-           foreach (var tile in highlightedTiles)
+
+            foreach (var tile in highlightedTiles)
             {
                 tile.Orientation = CatanOrientation.FaceUp;
             }
+
+            Log.Done(GameViewModel.GameModel);
 
         }
 
@@ -72,12 +88,37 @@ namespace Catan3.Models
                 case GameAction.Redo:
                     Log.Redo(this.GameViewModel);
                     break;
-                case GameAction.NextPlayer:
-                    NextPlayer();
+                case GameAction.Next:
+                    OnNext();
                     break;
             }
         }
+        private void OnNext()
+        {
+            GameModel gameModel = GameViewModel.GameModel;
+            GameState currentState = GameViewModel.GameModel.GameState;
+            if (currentState == GameState.PickingBoard)
+            {
+                GameViewModel.GameModel.GameState = GameState.WaitingForRoll;
+                RollData thisTurnsRollData = new();
+                gameModel.RollModel.ThisTurnsRoll = thisTurnsRollData;
+                GameViewModel.RollViewModel.RollModel.ThisTurnsRoll = thisTurnsRollData;
+                SetTempGoldTiles();
+                Log.Done(GameViewModel.GameModel);
+                return;
+            }
 
+            if (currentState == GameState.WaitingForRoll)
+            {
+                return; // need to roll to update state
+            }
+
+            if (currentState == GameState.WaitingForNext)
+            {
+                NextPlayer();
+                return;
+            }
+        }
         private void OnRoadPurchase(RoadKey roadKey)
         {
 

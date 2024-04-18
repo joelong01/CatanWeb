@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Foundation;
@@ -15,6 +14,28 @@ using Windows.UI;
 
 namespace Catan3
 {
+    public static class EnumExtensions
+    {
+        #region Methods
+
+        public static string Description(this Enum instance)
+        {
+
+            string output = "";
+            Type type = instance.GetType();
+            if (type is null) return String.Empty;
+            FieldInfo? fi = type.GetField(instance.ToString());
+            if (fi is null) return String.Empty;
+            DescriptionAttribute[]? attrs = fi.GetCustomAttributes(attributeType: typeof(DescriptionAttribute), false) as DescriptionAttribute[];
+            if (attrs is not null && attrs.Length > 0)
+            {
+                output = attrs[0].Description;
+            }
+            return output;
+        }
+
+        #endregion Methods
+    }
     public static class AnimationHelpers
     {
         public static void FlipToFaceUp(FrameworkElement faceDown, FrameworkElement faceUp)

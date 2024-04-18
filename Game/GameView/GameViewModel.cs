@@ -94,7 +94,7 @@ namespace Catan3.Models
             FunctionTimer.CallTimedFunction("Merging Roads", () => CreateOrUpdateRoads(gameModel));
             FunctionTimer.CallTimedFunction("Merging Robber", () => MergeRobber(gameModel));
 
-            RollViewModel.RollModel = gameModel.ThisTurnsRoll;
+            RollViewModel.RollModel = gameModel.RollModel;
             
 
             GameModel = gameModel;
@@ -151,10 +151,13 @@ namespace Catan3.Models
                 {
                     Contract.Assert(Tiles[i].Tile.TileKey == gameModel.Tiles[i].TileKey);
                     Tiles[i].Tile = gameModel.Tiles[i];
+
+                    Debug.Assert(Tiles[i].Tile == gameModel.Tiles[i]);
                     if (gameModel.Tiles[i].TemporarilyGold)
                     {
                         this.TraceMessage($"temp gold: {gameModel.Tiles[i]}");
                     }
+                   
                 }
             }
             // OnPropertyChanged(nameof(Tiles));

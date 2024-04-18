@@ -55,7 +55,7 @@
                                 TextLineBounds="Tight" />
                     </StackPanel>
                 </StackPanel>
-                <TextBlock Text="Add State Message" HorizontalAlignment="Center"
+                <TextBlock Text="{x:Bind ViewModel.GameViewModel.StateMessage(ViewModel.GameViewModel.GameModel, ViewModel.GameViewModel.GameModel.GameState), Mode=OneWay}" HorizontalAlignment="Center"
                         Margin="5" />
             </StackPanel>
         </Viewbox>
