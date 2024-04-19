@@ -110,16 +110,6 @@ namespace Catan3.Controls
             }
         }
 
-        public string BIND_StarCount(int stars, ObservableCollection<TileViewModel> _tiles)
-        {
-            int count = 0;
-            foreach (var building in GameViewModel.Buildings)
-            {
-                var tiles = GameViewModel.TilesForBuildings(building.Building.BuildingKey);
-                if (tiles.Stars() == stars) count++;
-
-            }
-            return count.ToString();
-        }
+       
     }
 }

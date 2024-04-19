@@ -58,6 +58,10 @@ namespace Catan3.Models
             {
                 this.Orientation = message.Orientation;
             });
+            Messenger.Register<EndGame>(this, (recipient, message) =>
+            {
+                Messenger.UnregisterAll(this);
+            });
         }
 
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)

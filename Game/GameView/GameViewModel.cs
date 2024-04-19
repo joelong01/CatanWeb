@@ -17,8 +17,7 @@ namespace Catan3.Models
     {
         private GameType GameType { get; set; } = GameType.Unset;
 
-        public static GameViewModel Default { get; } = new();
-
+       
         public GameViewModel(IBoardInfo? boardinfo) : this()
         {
             BoardInfo = boardinfo;
@@ -88,21 +87,26 @@ namespace Catan3.Models
         {
             if (gameModel.GameType != this.GameType) throw new Exception("Create new one instead of updating this one");
             if (BoardInfo is null) throw new Exception("Board Info can't be null");
-            FunctionTimer.CallTimedFunction("Merging Tiles", () => CreateOrUpdateTiles(gameModel));
-            FunctionTimer.CallTimedFunction("Merging Buildings", () => CreateOrUpdateBuildings(gameModel));
-            FunctionTimer.CallTimedFunction("Merging Harbors", () => CreateOrUpdateHarbors(gameModel));
-            FunctionTimer.CallTimedFunction("Merging Roads", () => CreateOrUpdateRoads(gameModel));
-            FunctionTimer.CallTimedFunction("Merging Robber", () => MergeRobber(gameModel));
-
-            RollViewModel.RollModel = gameModel.RollModel;
+            CreateOrUpdateTiles(gameModel);
+            MergeBuildings(gameModel);
+            MergeHarbors(gameModel);
+            MergeRoads(gameModel);
+            MergeRobber(gameModel);
+            MergePlayers(gameModel.Players, gameModel.CurrentPlayerId);
+            MergeRolls(gameModel);
+            
             
 
             GameModel = gameModel;
-            FunctionTimer.CallTimedFunction("Updating Players", () => UpdatePlayers(GameModel));
-            FunctionTimer.CallTimedFunction("SetCurrentPlayer", () => SetCurrentPlayer(gameModel.CurrentPlayerId));
+     
             SetStars();
-            OnPropertyChanged(nameof(Orientation));
+     
 
+        }
+
+        private void MergeRolls(GameModel gameModel)
+        {
+            this.RollViewModel.RollModel = gameModel.RollModel;
         }
 
         private void MergeRobber(GameModel gameModel)
@@ -118,23 +122,19 @@ namespace Catan3.Models
         /// </summary>
         /// <param name="gameModel"></param>
 
-        private void UpdatePlayers(GameModel gameModel)
+        private void MergePlayers(IList<PlayerModel> playerModels, string currentPlayerId)
         {
 
-            for (int i = 0; i < gameModel.Players.Count; i++)
+            for (int i = 0; i < playerModels.Count; i++)
             {
-                PlayerViewModel player = PlayerDatabase.FromId(gameModel.Players[i].Id) ?? throw new Exception($"Bad PlayerId: {gameModel.Players[i].Id}");
-                player.Player = gameModel.Players[i];
+                PlayerViewModel player = PlayerDatabase.FromId(playerModels[i].Id) ?? throw new Exception($"Bad PlayerId: {playerModels[i].Id}");
+                if (playerModels[i].Id == currentPlayerId) this.CurrentPlayer = player;
+                player.Player = playerModels[i];
                 this.Players.Add(player);
             }
-
+           
         }
 
-        public void SetCurrentPlayer(string playerId)
-        {
-            PlayerViewModel player = Players.FirstOrDefault(p=> p.Id == playerId) ?? throw new Exception($"Player with Id {playerId} not found in Playing Players collection");
-            CurrentPlayer = player;
-        }
 
         private void CreateOrUpdateTiles(GameModel gameModel)
         {
@@ -160,9 +160,8 @@ namespace Catan3.Models
                    
                 }
             }
-            // OnPropertyChanged(nameof(Tiles));
         }
-        private void CreateOrUpdateRoads(GameModel gameModel)
+        private void MergeRoads(GameModel gameModel)
         {
             Contract.Assert(BoardInfo is not null);
             if (Roads.Count == 0)
@@ -181,10 +180,9 @@ namespace Catan3.Models
 
                 }
             }
-            //   OnPropertyChanged(nameof(Roads));
         }
 
-        private void CreateOrUpdateBuildings(GameModel gameModel)
+        private void MergeBuildings(GameModel gameModel)
         {
             if (Buildings.Count == 0)
             {
@@ -207,7 +205,7 @@ namespace Catan3.Models
         }
 
 
-        private void CreateOrUpdateHarbors(GameModel gameModel)
+        private void MergeHarbors(GameModel gameModel)
         {
             Contract.Assert(BoardInfo is not null, "BoardInfo cannot be null.");
             if (Harbors.Count == 0) // Check if harbors need to be created for the first time
@@ -226,78 +224,10 @@ namespace Catan3.Models
                     Harbors[i].Harbor = gameModel.Harbors[i];
                 }
             }
-            //    OnPropertyChanged(nameof(Harbors));
         }
 
 
 
-
-        public GameViewModel(GameModel gameModel, IEnumerable<PlayerViewModel> playingPlayers) : this()
-        {
-            Debug.Assert(BoardInfo is not null);
-            Debug.Assert(gameModel.GameType != GameType.Unset);
-            if (GameType != gameModel.GameType)
-            {
-                Tiles = [];
-                Players = [];
-                Roads = [];
-                Buildings = [];
-                Harbors = [];
-                RobberViewModel = new RobberViewModel(gameModel.Robber);
-                GameType = gameModel.GameType;
-                if (gameModel.GameType == GameType.Regular)
-                {
-                    BoardInfo = RegularBoardInfo.Default;
-                }
-                else if (gameModel.GameType == GameType.Expansion)
-                {
-                    BoardInfo = ExpansionBoardInfo.Default;
-                }
-                else
-                {
-                    throw new ArgumentException($"invalid boardsize");
-                }
-            }
-
-            GameModel = gameModel;
-
-
-            Tiles = CreateAndSortTileViewModelList(gameModel.Tiles);
-
-            foreach (var building in gameModel.Buildings)
-            {
-                Buildings.Add(new BuildingViewModel(building, BoardInfo.Layout));
-            }
-            //foreach (var player in gameModel.Players)
-            //{
-            //    var playerViewModel = allPlayers.FirstOrDefault( p => p.Id == player.Id);
-            //    if (playerViewModel is null)
-            //    {
-            //        throw new Exception($"Player {player.Id} not found");
-            //    }
-            //    playerViewModel.Player = player;
-            //    Players.Add(playerViewModel);
-            //}
-
-            foreach (var road in gameModel.Roads)
-            {
-                var roadView = new RoadViewModel(road, BoardInfo.Layout)
-                {
-                    Index = Roads.Count
-                };
-                Roads.Add(roadView);
-
-            }
-            foreach (var harbor in gameModel.Harbors)
-            {
-                Harbors.Add(new HarborViewModel(harbor, BoardInfo.Layout));
-            }
-            RobberViewModel = new RobberViewModel(gameModel.Robber);
-            this.BoardInfo.Layout.PropertyChanged += Layout_PropertyChanged;
-            UpdateLayout();
-            SetStars();
-
-        }
         /// <summary>
         ///     the Star for each building is dependend on the Tiles and thus changes everytime we Shuffle...but Shuffle is driven off of
         ///     GameModel, not GameViewModel...so we can't do it there.  
@@ -471,16 +401,7 @@ namespace Catan3.Models
 
         }
 
-        partial void OnGameModelChanged(GameModel? oldValue, GameModel newValue)
-        {
-            //  this.TraceMessage("GameModel changed");
-        }
-
-        partial void OnPlayersChanged(ObservableCollection<PlayerViewModel>? oldValue, ObservableCollection<PlayerViewModel> newValue)
-        {
-            //  this.TraceMessage("Players Changed");
-        }
-
+       
 
 
     }

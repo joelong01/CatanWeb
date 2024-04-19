@@ -30,6 +30,10 @@ namespace Catan3.Models
         [JsonIgnore]
         [ObservableProperty]
         private PlayerModel _player = PlayerModel.Default;
+
+        [ObservableProperty]
+        private TradeResourceViewModel _resourcesThisTurn = new();
+
         public PlayerViewModel() : this("Nameless", Colors.White, Colors.HotPink) { }
 
 

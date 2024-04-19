@@ -3,17 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq;
-using System.Threading.Tasks;
 using Catan.Utility;
-using Catan3.Controls;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
-using Microsoft.UI.Xaml.Controls;
-using Windows.Security.Isolation;
-using static System.Collections.Specialized.BitVector32;
 
 namespace Catan3.Models
 {
@@ -26,7 +20,7 @@ namespace Catan3.Models
     {
 
         [ObservableProperty]
-        GameViewModel _gameViewModel = GameViewModel.Default;
+        GameViewModel _gameViewModel;
 
         [ObservableProperty]
         private Log<GameModel> _log;
@@ -94,6 +88,11 @@ namespace Catan3.Models
 
             });
 
+            Messenger.Register<EndGame>(this, (recipient, message) =>
+            {
+                Messenger.UnregisterAll(this);
+            });
+
         }
 
 
@@ -110,7 +109,7 @@ namespace Catan3.Models
                 int goldCount = GameViewModel.Tiles.Count( t => t.Tile.TemporarilyGold);
                 Debug.Assert(goldCount == 0 || goldCount == GameViewModel.GameModel.HouseRules.GoldTiles);
                 Contract.Assert(gameModel.HouseRules.GoldTiles > 0);
-                for ( int i = 0; i< GameViewModel.Tiles.Count -1; i++ )
+                for (int i = 0; i < GameViewModel.Tiles.Count - 1; i++)
                 {
                     Debug.Assert(GameViewModel.Tiles[i].Tile.GetHashCode() == gameModel.Tiles[i].GetHashCode());
                     Debug.Assert(GameViewModel.Tiles[i].Tile == gameModel.Tiles[i]);
@@ -165,8 +164,10 @@ namespace Catan3.Models
             //   get undone together.
         }
 
-
-
+        public void EndGame()
+        {
+            Messenger.Send(new EndGame());
+        }
     }
 
     public static class PlayerDatabase

@@ -27,7 +27,7 @@ namespace Catan3.Models
         private void WhiteRoll(int roll)
         {
             if (RollModel.ThisTurnsRoll is null) return;
-          
+
             RollModel.ThisTurnsRoll.WhiteRoll = roll;
             if (IsComplete) { Messenger.Send(new Rolled(RollModel)); }
         }
@@ -42,7 +42,10 @@ namespace Catan3.Models
         [RelayCommand]
         private void NormalRoll(ValidCatanRoll roll)
         {
-            if (RollModel.ThisTurnsRoll is null) return;
+            if (RollModel.ThisTurnsRoll is null)
+            {
+                RollModel.ThisTurnsRoll = new();
+            }
             if (roll == ValidCatanRoll.None) return;
             RollModel.ThisTurnsRoll.NormalRoll = roll;
             Messenger.Send(new Rolled(RollModel));

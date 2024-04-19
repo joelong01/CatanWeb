@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Catan3.Models
 {
@@ -54,8 +55,10 @@ namespace Catan3.Models
         [RelayCommand]
         private void NextPlayer()
         {
-
             Debug.Assert(GameViewModel.CurrentPlayer != null);
+            Messenger.Send(new TurnEnding(GameViewModel.CurrentPlayer.Id));
+
+           
             GameViewModel.GameModel.RollModel.ThisTurnsRoll = null; // wipe the current players roll model - don't need it anymore
            
             // change player
@@ -65,16 +68,8 @@ namespace Catan3.Models
             index = index % GameViewModel.Players.Count;
             GameViewModel.CurrentPlayer = GameViewModel.Players[index];
 
-            // update state
-            GameViewModel.GameModel.GameState = GameState.WaitingForRoll;
-            
-            // get a little state machine to know when a roll is complete and set it in both the GameModel and the GameViewModel
-            GameViewModel.GameModel.RollModel.ThisTurnsRoll = new RollData();
-            GameViewModel.RollViewModel.RollModel = GameViewModel.GameModel.RollModel;
-
-            //
-            //  set up the gold tiles for the new player
-            SetTempGoldTiles();
+           
+            Messenger.Send(new TurnStarting(GameViewModel.CurrentPlayer.Id));
 
             // log the changes
             Log.Done(GameViewModel.GameModel);

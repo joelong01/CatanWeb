@@ -62,7 +62,7 @@
 
                     <TextBlock Text="13" Style="{StaticResource StarCountStyle}" />
                     <TextBlock
-                            Text="{x:Bind BIND_StarCount(13, GameViewModel.Tiles), Mode=OneWay}"
+                            Text="{x:Bind GameViewModel.BIND_StarCount(13, GameViewModel.GameModel.Tiles), Mode=OneWay}"
                             Style="{StaticResource StarCountStyle}"
                             FontFamily="SegoeUi" VerticalAlignment="Bottom" />
                 </Grid>
@@ -75,7 +75,7 @@
 
                     <TextBlock Text="12" Style="{StaticResource StarCountStyle}" />
                     <TextBlock
-                            Text="{x:Bind BIND_StarCount(12, GameViewModel.Tiles), Mode=OneWay}"
+                            Text="{x:Bind GameViewModel.BIND_StarCount(12, GameViewModel.GameModel.Tiles), Mode=OneWay}"
                             Style="{StaticResource StarCountStyle}"
                             FontFamily="SegoeUi" VerticalAlignment="Bottom" />
                 </Grid>
@@ -88,7 +88,7 @@
 
                     <TextBlock Text="11" Style="{StaticResource StarCountStyle}" />
                     <TextBlock
-                            Text="{x:Bind BIND_StarCount(11, GameViewModel.Tiles), Mode=OneWay}"
+                            Text="{x:Bind GameViewModel.BIND_StarCount(11, GameViewModel.GameModel.Tiles), Mode=OneWay}"
                             Style="{StaticResource StarCountStyle}"
                             FontFamily="SegoeUi" VerticalAlignment="Bottom" />
                 </Grid>
@@ -101,7 +101,7 @@
 
                     <TextBlock Text="10" Style="{StaticResource StarCountStyle}" />
                     <TextBlock
-                            Text="{x:Bind BIND_StarCount(10, GameViewModel.Tiles), Mode=OneWay}"
+                            Text="{x:Bind GameViewModel.BIND_StarCount(10, GameViewModel.GameModel.Tiles), Mode=OneWay}"
                             Style="{StaticResource StarCountStyle}"
                             FontFamily="SegoeUi" VerticalAlignment="Bottom" />
                 </Grid>

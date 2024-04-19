@@ -45,6 +45,10 @@ namespace Catan3.Models
             {
                 HandleCurrentPlayerChanged(message.CurrentPlayer);
             });
+            Messenger.Register<EndGame>(this, (recipient, message) =>
+            {
+                Messenger.UnregisterAll(this);
+            });
 
 
             if (Layout is not null && Layout is BoardLayout rbl)

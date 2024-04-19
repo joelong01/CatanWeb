@@ -32,10 +32,9 @@ namespace Catan3.Models
             List<PlayerModel> playerModels = players.Select(Id => new PlayerModel(Id)).ToList();
             GameModel game = new(gameType, boardInfo.HasSupplemental, playerModels)
             {
-                CurrentPlayerId = players[0]
+                CurrentPlayerId = players[0],
+                HouseRules = boardInfo.HouseRules
             };
-
-            game.HouseRules = boardInfo.HouseRules;
 
             for (int i = 0; i < boardInfo.TileKeys.Count; i++)
             {

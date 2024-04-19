@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using Catan10.Models;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace Catan3.Models
@@ -44,6 +45,17 @@ namespace Catan3.Models
             foreach (var tile in highlightedTiles)
             {
                 tile.Orientation = CatanOrientation.FaceUp;
+                var buildings = GameViewModel.GameModel.Buildings.OwnedBuildings(tile.Tile.TileKey);
+                foreach (BuildingModel building in buildings)
+                {
+                    Debug.Assert(building.OwnerId is not null, "OwnedBuildings should only return Owned buildings...");
+                    var effectiveType = tile.Tile.TemporarilyGold ? ResourceTileType.GoldMine : tile.Tile.ResourceTileType;
+                    TradeResourcesModel resources = building.Resources(effectiveType);
+                    var player = PlayerDatabase.FromId(building.OwnerId) ?? throw new Exception($"bad playerId in allocating resources to owners: {building.OwnerId}");
+                    Debug.Assert(player.Player.ResourcesThisTurn is not null);
+                   
+                    player.Player.ResourcesThisTurn.Add(resources);
+                }
             }
 
             Log.Done(GameViewModel.GameModel);
@@ -99,11 +111,12 @@ namespace Catan3.Models
             GameState currentState = GameViewModel.GameModel.GameState;
             if (currentState == GameState.PickingBoard)
             {
-                GameViewModel.GameModel.GameState = GameState.WaitingForRoll;
+               
                 RollData thisTurnsRollData = new();
                 gameModel.RollModel.ThisTurnsRoll = thisTurnsRollData;
                 GameViewModel.RollViewModel.RollModel.ThisTurnsRoll = thisTurnsRollData;
-                SetTempGoldTiles();
+                Messenger.Send(new TurnStarting(GameViewModel.CurrentPlayer.Id));
+                Debug.Assert(gameModel.GameState == GameState.WaitingForRoll);
                 Log.Done(GameViewModel.GameModel);
                 return;
             }
@@ -121,7 +134,7 @@ namespace Catan3.Models
         }
         private void OnRoadPurchase(RoadKey roadKey)
         {
-
+            if (GameViewModel.GameModel.GameState != GameState.WaitingForNext) return;
             var roadView = GameViewModel.Roads.FirstOrDefault(r => r.Road.RoadKey == roadKey);
             if (roadView is null) return;
             if (roadView.Road.OwnerId is not null) return;
@@ -142,7 +155,7 @@ namespace Catan3.Models
         private void OnBuildingUpgrade(BuildingKey buildingKey)
         {
 
-
+            if (GameViewModel.GameModel.GameState != GameState.WaitingForNext) return;
             var bvm = GameViewModel.Buildings.FindBuildingViewModel(buildingKey);
             if (bvm is null) return;
 

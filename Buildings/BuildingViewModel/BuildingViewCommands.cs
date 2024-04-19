@@ -20,6 +20,10 @@ namespace Catan3.Models
             {
                 HandleCurrentPlayerChanged(message.CurrentPlayer);
             });
+            Messenger.Register<EndGame>(this, (recipient, message) =>
+            {
+                Messenger.UnregisterAll(this);
+            });
         }
         /// <summary>
         ///     We recieve a message from MainPageViewModel that the current player has changed.

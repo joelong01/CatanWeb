@@ -100,6 +100,10 @@ namespace Catan3
         }
         private void NewGame()
         {
+            if (MainPageModel is not null)
+            {
+                MainPageModel.EndGame();
+            }
 
             var selectedPlayers = new List<PlayerViewModel>(
                             AvailablePlayers

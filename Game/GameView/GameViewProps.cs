@@ -56,6 +56,8 @@ namespace Catan3.Models
         [ObservableProperty]
         private RollViewModel _rollViewModel = new();
 
+       
+
         partial void OnOrientationChanged(CatanOrientation value)
         {
             Messenger.Send(new UpdateOrientation(value));

@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using Catan10.Models;
 using Catan3.Utility;
 namespace Catan3.Models
 {
     /// <summary>
     ///     this order needs to match the CalculateHexGeometry PointCollection order
     /// </summary>
-   
+
     public static class BuildingModelExtensions
     {
         public static List<(HexPosition position, Direction direction)> Aliases(this BuildingKey key)
@@ -101,7 +103,51 @@ namespace Catan3.Models
                 {
                     result.Add(building);
                 }
-                
+
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        ///     returns the list of buildings that are owned in the tile
+        /// </summary>
+        /// <param name="tile"></param>
+        /// <returns></returns>
+
+        public static List<BuildingModel> OwnedBuildings(this IList<BuildingModel> collection, HexCoordinates coordinates)
+        {
+            List<BuildingModel> result = [];
+            foreach (HexPosition pos in Enum.GetValues(typeof(HexPosition)))
+            {
+                if (pos == HexPosition.None) continue;
+                var building = collection.FindBuildingModel(new BuildingKey(coordinates, pos));
+                if (building is not null && building.OwnerId is not null)
+                {
+                    result.Add(building);
+                }
+
+            }
+
+            return result;
+
+        }
+        ///
+
+        public static TradeResourcesModel Resources(this BuildingModel model, ResourceTileType resource)
+        {
+            TradeResourcesModel result = new TradeResourcesModel();
+            if (model.BuildingState == BuildingState.City)
+            {
+                result.AddResource(resource, 2);
+            }
+            else if (model.BuildingState == BuildingState.Settlement)
+            {
+                result.AddResource(resource, 1);
+            }
+            else
+            {
+                Debug.Assert(false, "haven't implemented something yet...");
             }
 
             return result;
@@ -116,7 +162,7 @@ namespace Catan3.Models
         {
             return $"[{this.HexCoordinates}-{Position}]";
         }
-       
+
         public override bool Equals(object? obj)
         {
             return obj is not null && obj is BuildingKey key &&

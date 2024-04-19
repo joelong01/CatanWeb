@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using Catan10.Models;
+using CommunityToolkit.Mvvm.ComponentModel;
 namespace Catan3.Models
 {
     /// <summary>
@@ -24,9 +25,6 @@ namespace Catan3.Models
 
         [ObservableProperty]
         private bool _hasLongestRoad = false;
-
-        [ObservableProperty]
-        private bool _isCurrentPlayer = false;
 
         [ObservableProperty]
         private int _islandsPlayed;
@@ -60,6 +58,10 @@ namespace Catan3.Models
 
         [ObservableProperty]
         private int _timesTargeted;
+
+        [ObservableProperty]
+        private TradeResourcesModel? _resourcesThisTurn = null;
+
         public static PlayerModel Default { get; } = new PlayerModel("Nameless-001");
         private PlayerModel() { Id = "Nameless-002"; }
         public PlayerModel(string id)

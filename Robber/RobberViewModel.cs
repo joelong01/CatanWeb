@@ -26,6 +26,10 @@ namespace Catan3.Models
             {
                 this.Orientation = message.Orientation;
             });
+            Messenger.Register<EndGame>(this, (recipient, message) =>
+            {
+                Messenger.UnregisterAll(this);
+            });
         }
 
         public static RobberViewModel Default { get; } = new RobberViewModel(new());

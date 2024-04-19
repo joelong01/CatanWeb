@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Security;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -33,7 +34,10 @@ namespace Catan3.Models
             {
                 this.Orientation = message.Orientation;
             });
-
+            Messenger.Register<EndGame>(this, (recipient, message) =>
+            {
+                Messenger.UnregisterAll(this);
+            });
             TempGoldResourceCardModel = new ResourceCardModel()
             {
                 ResourceType = tile.ResourceTileType.ToResourceCardType(),
@@ -176,6 +180,8 @@ namespace Catan3.Models
             this.TraceMessage($"Highlighting {this}");
             return ( Brush )BrushCache.GetSolidColorBrush(Colors.Yellow);
         }
+
+       
 
     }
 }

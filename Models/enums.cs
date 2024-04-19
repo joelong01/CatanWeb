@@ -2,6 +2,13 @@
 
 namespace Catan3.Models
 {
+    
+    public enum GameAction
+    {
+        Shuffle, Undo, Redo,
+        Next
+    }
+
     public enum ResourceTileType
     {
         Sheep, Wood, Ore, Wheat, Brick, GoldMine, Desert,

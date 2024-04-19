@@ -4,13 +4,7 @@ using Catan3.Utility;
 
 namespace Catan3.Models
 
-{
-    public enum GameAction
-    {
-        Shuffle, Undo, Redo,
-        Next
-    }
-
+{ 
     public class DoAction(GameAction action)
     {
         public GameAction Action { get; } = action;
@@ -67,6 +61,21 @@ namespace Catan3.Models
     public class Rolled(RollModel roll)
     {
         public RollModel Roll { get; } = roll;
+    }
+
+    public class TurnEnding(string playerId)
+    {
+        public string PlayerId { get; } = playerId;
+    }
+
+    public class TurnStarting(string playerId)
+    {
+        public string PlayerId { get; } = playerId;
+    }
+
+    public class EndGame
+    {
+
     }
 
 }

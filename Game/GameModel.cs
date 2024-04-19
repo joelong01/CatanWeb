@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Catan10.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -51,6 +52,8 @@ namespace Catan3.Models
         [ObservableProperty]
         private string _currentPlayerId = string.Empty;
 
+       
+
         public override string ToString()
         {
             return $"State={GameState} CurrentPlayer={CurrentPlayerId}";
@@ -67,9 +70,9 @@ namespace Catan3.Models
         [JsonConstructor]
         public GameModel()
         {
-            _players = [];
-            _gameType = GameType.Regular;
-            _hasSupplementalBuildPhase = false;
+            Players = [];
+            GameType = GameType.Regular;
+            HasSupplementalBuildPhase = false;
         }
         /// <summary>
         ///     Add up all the stars for the given resource top
@@ -82,11 +85,6 @@ namespace Catan3.Models
                 .Sum(tile => tile.Stars);
 
             return total;
-        }
-
-        public void Rebind()
-        {
-            //   OnPropertyChanged(nameof(Tiles));
         }
 
         /// <summary>
