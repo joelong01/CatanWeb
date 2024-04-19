@@ -32,7 +32,7 @@ namespace Catan3.Models
 
             Messenger.Register<EndGame>(this, (recipient, message) =>
             {
-              Messenger.UnregisterAll(this);
+                Messenger.UnregisterAll(this);
             });
         }
 
@@ -48,33 +48,34 @@ namespace Catan3.Models
 
             // lets do GameModel fix up first
             GameModel.CurrentPlayerId = playerId;
-            GameModel.RollModel.ThisTurnsRoll = null; // wipe the current players roll model - don't need it anymore
-            foreach (var playerModel in GameModel.Players)
-            {
-                playerModel.ResourcesThisTurn = new();
-              
 
-            }
-            GameModel.RollModel = new();
-            RollViewModel.RollModel = GameModel.RollModel;
-            GameModel.GameState = GameState.WaitingForRoll;
+            // create a set the place to collect the roll
+            GameModel.TurnRollModel = new();
+            this.TurnRollViewModel.TurnRollModel = GameModel.TurnRollModel;
+            // make sure we don't have any EqualityComparer propblems by ensuring the reference's are the same
+            Debug.Assert(ReferenceEquals(GameModel.TurnRollModel, TurnRollViewModel.TurnRollModel));
 
+
+            // create a place for this turn's resources for each of the players
             foreach (var playerViewModel in Players)
             {
-                playerViewModel.ResourcesThisTurn = new();
-               
-                Debug.Assert(playerViewModel.Player.ResourcesThisTurn is not null); // alocated above
+                playerViewModel.Player.ResourcesThisTurn = new();
                 playerViewModel.ResourcesThisTurn.ResourceModel = playerViewModel.Player.ResourcesThisTurn;
+
             }
 
             SetTempGoldTiles();
+            GameModel.GameState = GameState.WaitingForRoll;
 
+            // logging done by the caller
         }
 
         private void OnTurnEnding(string playerId)
         {
             this.TraceMessage($"Turn Ending for {playerId}");
             ClearTempGoldTiles();
+            GameModel.TurnRollModel = null; // wipe the current players roll model - don't need it anymore
+            this.TurnRollViewModel.TurnRollModel = null;
         }
 
         private void ClearTempGoldTiles()

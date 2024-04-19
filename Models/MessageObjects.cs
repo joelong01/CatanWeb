@@ -58,9 +58,9 @@ namespace Catan3.Models
         public CatanOrientation Orientation { get; } = newOrientation;
     }
 
-    public class Rolled(RollModel roll)
+    public class Rolled(TurnRollModel roll)
     {
-        public RollModel Roll { get; } = roll;
+        public TurnRollModel Roll { get; } = roll;
     }
 
     public class TurnEnding(string playerId)

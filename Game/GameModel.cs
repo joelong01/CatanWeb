@@ -17,7 +17,7 @@ namespace Catan3.Models
       
 
         [ObservableProperty]
-        private RollModel _rollModel = RollModel.Default;
+        private TurnRollModel? _turnRollModel = null; // nullable as it gets set to null when the turn is over and the new one is created when the turn is started
 
         [ObservableProperty]
         private GameType _gameType = GameType.Regular;
@@ -52,7 +52,8 @@ namespace Catan3.Models
         [ObservableProperty]
         private string _currentPlayerId = string.Empty;
 
-       
+        [ObservableProperty]
+        private GameRollModel _gameRollModel = new();
 
         public override string ToString()
         {
@@ -136,17 +137,7 @@ namespace Catan3.Models
             return gameModelJson;
 
         }
-        
-        public static GameModel? Deserialize(string json)
-        {
-            GameModel? result = null;
-            FunctionTimer.CallTimedFunction("GameModel.Serialize", () =>
-            {
-                result =  JsonSerializer.Deserialize<GameModel>(json);
 
-            });
-            return result;
-        }
 
     }
 }

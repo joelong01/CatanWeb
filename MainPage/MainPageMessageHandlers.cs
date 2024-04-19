@@ -12,24 +12,36 @@ namespace Catan3.Models
 
     public partial class MainPageViewModel
     {
-        private void OnRoll(RollModel roll)
+        /// <summary>
+        ///     when a roll comes in 
+        ///     . make sure that we are ready for a roll
+        ///     . update the game state to reflect the roll
+        ///     . change the game state
+        ///     . highlight the tiles
+        ///     . calculate the resources for each plaery
+        /// </summary>
+        /// <param name="roll"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="Exception"></exception>
+        private void OnRoll(TurnRollModel roll)
         {
+            // you can only roll in the state GameState.WaitingForRoll
             if (GameViewModel.GameModel.GameState != GameState.WaitingForRoll) return;
-            if (roll.ThisTurnsRoll is null)
-            {
-                throw new ArgumentNullException(nameof(roll));
-            }
 
-            GameViewModel.GameModel.RollModel.RollCounts[( int )roll.ThisTurnsRoll.NormalRoll - 2]++;
-            GameViewModel.GameModel.RollModel.TotalRolls++;
+            // update the global counts for rolls
+            GameViewModel.GameModel.GameRollModel.RollCounts[( int )roll.NormalRoll - 2]++;
+            GameViewModel.GameModel.GameRollModel.TotalRolls++;
 
+            Debug.Assert(ReferenceEquals(GameViewModel.GameModel.GameRollModel, GameViewModel.GameRollViewModel.GameRollModel), "these should be the same GameRollModels!");
 
+            // update the state
             GameViewModel.GameModel.GameState = GameState.WaitingForNext;
 
+            // highlight the tiles - we also flip them to draw the eye
             List<TileViewModel> highlightedTiles = [];
             foreach (TileViewModel tile in GameViewModel.Tiles)
             {
-                if (tile.Tile.Number == ( int )roll.ThisTurnsRoll.NormalRoll)
+                if (tile.Tile.Number == ( int )roll.NormalRoll)
                 {
                     highlightedTiles.Add(tile);
                     tile.Tile.Highlighted = true;
@@ -41,7 +53,8 @@ namespace Catan3.Models
                     tile.Orientation = CatanOrientation.FaceUp;
                 }
             }
-
+            //
+            // calculate resources based on the tiles that are highlighted (which we just set)
             foreach (var tile in highlightedTiles)
             {
                 tile.Orientation = CatanOrientation.FaceUp;
@@ -53,10 +66,22 @@ namespace Catan3.Models
                     TradeResourcesModel resources = building.Resources(effectiveType);
                     var player = PlayerDatabase.FromId(building.OwnerId) ?? throw new Exception($"bad playerId in allocating resources to owners: {building.OwnerId}");
                     Debug.Assert(player.Player.ResourcesThisTurn is not null);
-                   
-                    player.Player.ResourcesThisTurn.Add(resources);
+#if DEBUG
+                    var playerModel = GameViewModel.GameModel.Players.Find((p) => p.Id == building.OwnerId);
+                    Debug.Assert(ReferenceEquals(player.Player, playerModel), "these should be the same PlayerModel objects!");
+#endif
+
+                    player.Player.ResourcesThisTurn.Add(resources); // this is updating the underlying GameModel
+                    player.Player.TotalResourcesGenerated.Add(resources);
                 }
             }
+
+            foreach (var player in GameViewModel.GameModel.Players)
+            {
+                this.TraceMessage($"Player {player} got {player.ResourcesThisTurn}");
+            }
+
+            // save our changes to the GameModel to the log
 
             Log.Done(GameViewModel.GameModel);
 
@@ -112,9 +137,7 @@ namespace Catan3.Models
             if (currentState == GameState.PickingBoard)
             {
                
-                RollData thisTurnsRollData = new();
-                gameModel.RollModel.ThisTurnsRoll = thisTurnsRollData;
-                GameViewModel.RollViewModel.RollModel.ThisTurnsRoll = thisTurnsRollData;
+               
                 Messenger.Send(new TurnStarting(GameViewModel.CurrentPlayer.Id));
                 Debug.Assert(gameModel.GameState == GameState.WaitingForRoll);
                 Log.Done(GameViewModel.GameModel);

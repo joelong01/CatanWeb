@@ -150,27 +150,38 @@
                         MaximumRowsOrColumns="4" ItemHeight="150"
                         ItemWidth="100">
                     <c:SingleRoll Number="2"
-                            ViewModel="{x:Bind MainPageModel.GameViewModel.RollViewModel, Mode=OneWay}" />
+                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
                     <c:SingleRoll Number="3"
-                            ViewModel="{x:Bind MainPageModel.GameViewModel.RollViewModel, Mode=OneWay}" />
+                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
                     <c:SingleRoll Number="4"
-                            ViewModel="{x:Bind MainPageModel.GameViewModel.RollViewModel, Mode=OneWay}" />
+                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
                     <c:SingleRoll Number="5"
-                            ViewModel="{x:Bind MainPageModel.GameViewModel.RollViewModel, Mode=OneWay}" />
+                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
                     <c:SingleRoll Number="6"
-                            ViewModel="{x:Bind MainPageModel.GameViewModel.RollViewModel, Mode=OneWay}" />
+                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
                     <c:SingleRoll Number="7"
-                            ViewModel="{x:Bind MainPageModel.GameViewModel.RollViewModel, Mode=OneWay}" />
+                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
                     <c:SingleRoll Number="8"
-                            ViewModel="{x:Bind MainPageModel.GameViewModel.RollViewModel, Mode=OneWay}" />
+                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
                     <c:SingleRoll Number="9"
-                            ViewModel="{x:Bind MainPageModel.GameViewModel.RollViewModel, Mode=OneWay}" />
+                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
                     <c:SingleRoll Number="10"
-                            ViewModel="{x:Bind MainPageModel.GameViewModel.RollViewModel, Mode=OneWay}" />
+                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
                     <c:SingleRoll Number="11"
-                            ViewModel="{x:Bind MainPageModel.GameViewModel.RollViewModel, Mode=OneWay}" />
+                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
                     <c:SingleRoll Number="12"
-                            ViewModel="{x:Bind MainPageModel.GameViewModel.RollViewModel, Mode=OneWay}" />
+                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
 
                 </VariableSizedWrapGrid>
                 <Button

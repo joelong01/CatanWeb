@@ -18,17 +18,17 @@
         <StackPanel>
 
             <TextBlock
-                    Text="{x:Bind ViewModel.GetRollCount(ViewModel.RollModel, ViewModel.RollModel.TotalRolls, ValidCatanRoll), Mode=OneWay}"
+                    Text="{x:Bind GameRolls.GetRollCount(GameRolls.GameRollModel, ValidCatanRoll), Mode=OneWay}"
                     Style="{StaticResource RollTextStyle}" />
 
-            <Button Command="{x:Bind ViewModel.NormalRollCommand, Mode=OneWay}"
+            <Button Command="{x:Bind TurnRoll.NormalRollCommand, Mode=OneWay}"
                     CommandParameter="{x:Bind ValidCatanRoll, Mode=OneWay}">
                 <Viewbox Stretch="Uniform" Height="80">
                     <local:CatanNumber Number="{x:Bind Number, Mode=OneWay}" />
                 </Viewbox>
             </Button>
             <TextBlock
-                    Text="{x:Bind ViewModel.GetRollPercent(ViewModel.RollModel, ViewModel.RollModel.TotalRolls, ValidCatanRoll), Mode=OneWay}"
+                    Text="{x:Bind GameRolls.GetRollPercent(GameRolls.GameRollModel, ValidCatanRoll), Mode=OneWay}"
                     Style="{StaticResource RollTextStyle}" />
         </StackPanel>
     </Grid>

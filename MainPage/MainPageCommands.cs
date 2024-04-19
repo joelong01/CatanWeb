@@ -59,13 +59,13 @@ namespace Catan3.Models
             Messenger.Send(new TurnEnding(GameViewModel.CurrentPlayer.Id));
 
            
-            GameViewModel.GameModel.RollModel.ThisTurnsRoll = null; // wipe the current players roll model - don't need it anymore
+           
            
             // change player
             int index = GameViewModel.Players.IndexOf(GameViewModel.CurrentPlayer);
             Debug.Assert(index >= 0);
             index++;
-            index = index % GameViewModel.Players.Count;
+            index %= GameViewModel.Players.Count;
             GameViewModel.CurrentPlayer = GameViewModel.Players[index];
 
            

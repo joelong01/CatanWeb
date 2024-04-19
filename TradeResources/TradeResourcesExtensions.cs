@@ -13,27 +13,24 @@ namespace Catan3.Models
 {
     public static class TradeResourcesModelExtensions
     {
-        public static TradeResourcesModel Add(this TradeResourcesModel a, TradeResourcesModel b)
+        public static void Add(this TradeResourcesModel a, TradeResourcesModel b)
         {
-            return new TradeResourcesModel()
-            {
-                Wheat = a.Wheat + b.Wheat,
-                Wood = a.Wood + b.Wood,
-                Ore = a.Ore + b.Ore,
-                Sheep = a.Sheep + b.Sheep,
-                Brick = a.Brick + b.Brick,
-                GoldMine = a.GoldMine + b.GoldMine,
-                Coin = a.Coin + b.Coin,
-                Paper = a.Paper + b.Paper,
-                Cloth = a.Cloth + b.Cloth,
 
-                Politics = a.Politics + b.Politics,
-                Trade = a.Trade + b.Trade,
-                Science = a.Science + b.Science,
-                VictoryPoint = a.VictoryPoint + b.VictoryPoint,
-                AnyDevCard = a.AnyDevCard + b.AnyDevCard
+            a.Wheat += b.Wheat;
+            a.Wood += b.Wood; 
+            a.Ore += b.Ore; 
+            a.Sheep += b.Sheep;
+            a.Brick += b.Brick;
+            a.GoldMine += b.GoldMine;
+            a.Coin += b.Coin; 
+            a.Paper += b.Paper;
+            a.Cloth += b.Cloth; 
+            a.Politics += b.Politics;
+            a.Trade += b.Trade;
+            a.Science += b.Science;
+            a.VictoryPoint += b.VictoryPoint;
+            a.AnyDevCard += b.AnyDevCard;
 
-            };
         }
 
         public static TradeResourcesModel TradeResourcesModelForRedDie(SpecialDice roll)

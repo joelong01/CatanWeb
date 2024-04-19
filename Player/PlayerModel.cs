@@ -62,6 +62,9 @@ namespace Catan3.Models
         [ObservableProperty]
         private TradeResourcesModel? _resourcesThisTurn = null;
 
+        [ObservableProperty]
+        private TradeResourcesModel _totalResourcesGenerated = new();
+
         public static PlayerModel Default { get; } = new PlayerModel("Nameless-001");
         private PlayerModel() { Id = "Nameless-002"; }
         public PlayerModel(string id)

@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using static Catan3.Models.TurnRollViewModel;
 
 namespace Catan3.Models
 {
@@ -42,6 +43,9 @@ namespace Catan3.Models
         private ObservableCollection<HarborViewModel> _harbors = [];
 
         [ObservableProperty]
+        private ObservableCollection<ResourceCardModel> _gameResources = [];
+
+        [ObservableProperty]
         public GameModel _gameModel = new();
 
         [ObservableProperty]
@@ -54,9 +58,10 @@ namespace Catan3.Models
         private CatanOrientation _orientation = CatanOrientation.FaceUp;
 
         [ObservableProperty]
-        private RollViewModel _rollViewModel = new();
+        private GameRollViewModel _gameRollViewModel = new();
 
-       
+        [ObservableProperty]
+        private TurnRollViewModel  _turnRollViewModel = new();
 
         partial void OnOrientationChanged(CatanOrientation value)
         {

@@ -26,5 +26,7 @@ namespace Catan3.Models
             }
             return count.ToString();
         }
+
+     
     }
 }

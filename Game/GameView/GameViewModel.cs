@@ -8,6 +8,7 @@ using System.Linq;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI;
+using Microsoft.UI.Xaml;
 
 
 namespace Catan3.Models
@@ -99,14 +100,19 @@ namespace Catan3.Models
 
             GameModel = gameModel;
      
+
+            // things that depend on 
             SetStars();
      
 
         }
 
+       
+
         private void MergeRolls(GameModel gameModel)
         {
-            this.RollViewModel.RollModel = gameModel.RollModel;
+            this.GameRollViewModel.GameRollModel = gameModel.GameRollModel;
+       
         }
 
         private void MergeRobber(GameModel gameModel)
@@ -119,6 +125,8 @@ namespace Catan3.Models
         /// 
         ///     Create the this.Players collection of PlayerViewModels based on the passed in list of playerIds
         ///     stored in gameModel.Players
+        ///     
+        ///     Note that this also updates the per-player data like total Resources
         /// </summary>
         /// <param name="gameModel"></param>
 
@@ -238,6 +246,21 @@ namespace Catan3.Models
             {
                 building.Stars = TilesForBuildings(building.Building.BuildingKey).Stars();
             }
+
+            ObservableCollection<ResourceCardModel> result = [];
+            ResourceCardType[] resources = [ ResourceCardType.Sheep, ResourceCardType.Wheat, ResourceCardType.Wood, ResourceCardType.Brick, ResourceCardType.Ore];
+            foreach (var resource in resources)
+            {
+                result.Add(new ResourceCardModel()
+                {
+                    ResourceType = resource,
+                    Orientation = CatanOrientation.FaceUp,
+                    CountVisibility = Visibility.Visible,
+                    Count = GameModel.StarCount(resource.ToTileType())
+
+                }); ;
+            }
+            this.GameResources = result;
         }
 
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)

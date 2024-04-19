@@ -38,7 +38,7 @@
     </UserControl.Resources>
     <Grid Margin="0, 0, 0, 0" HorizontalAlignment="Center">
         <StackPanel>
-            <GridView ItemsSource="{x:Bind ResourceCards}">
+            <GridView ItemsSource="{x:Bind GameViewModel.GameResources, Mode=OneWay}">
                 <GridView.ItemContainerStyle>
                     <Style TargetType="GridViewItem">
                         <Setter Property="Padding" Value="3" />
@@ -48,7 +48,7 @@
 
                 <GridView.ItemTemplate>
                     <DataTemplate x:DataType="models:ResourceCardModel">
-                        <c:ResourceCardCtrl ViewModel="{x:Bind}" />
+                        <c:ResourceCardCtrl ViewModel="{x:Bind Mode=OneWay}" />
                     </DataTemplate>
                 </GridView.ItemTemplate>
             </GridView>

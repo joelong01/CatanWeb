@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System.Text.Json.Serialization;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan10.Models
 {
@@ -65,6 +66,15 @@ namespace Catan10.Models
             Science = tradeResources.Science;
             VictoryPoint = tradeResources.VictoryPoint;
             AnyDevCard = tradeResources.AnyDevCard;
+        }
+
+        [JsonIgnore]
+        public int Count => Wheat + Wood + Brick + Ore + Sheep + GoldMine + Cloth + Coin + Paper + VictoryPoint + Politics + Science + Trade + AnyDevCard;
+
+
+        public override string ToString()
+        {
+            return $"[Count={Count}][Ore={Ore}][Brick={Brick}][Wheat={Wheat}][Wood={Wood}][Sheep={Sheep}][Gold={GoldMine}][Coin={Coin}][Cloth={Cloth}][Paper={Paper}]";
         }
     }
 }

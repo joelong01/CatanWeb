@@ -1,72 +1,77 @@
 ﻿using System;
-using System.Reflection.Metadata.Ecma335;
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace Catan3.Models
 {
-    public partial class RollViewModel : ObservableRecipient
+    public partial class TurnRollViewModel : ObservableRecipient
     {
         [ObservableProperty]
-        private RollModel _rollModel = RollModel.Default;
+        private TurnRollModel? _turnRollModel;
 
 
 
-        private bool IsComplete => RollModel.ThisTurnsRoll is not null && RollModel.ThisTurnsRoll.RedRoll != -1 && RollModel.ThisTurnsRoll.WhiteRoll != -1 && RollModel.ThisTurnsRoll.SpecialRoll != SpecialDice.None;
+        private bool IsComplete => TurnRollModel is not null && TurnRollModel.RedRoll != -1 && TurnRollModel.WhiteRoll != -1 && TurnRollModel.SpecialRoll != SpecialDice.None;
 
 
         [RelayCommand]
         private void RedRoll(int roll)
         {
-            if (RollModel.ThisTurnsRoll is null) return;
-            RollModel.ThisTurnsRoll.RedRoll = roll;
-            if (IsComplete) { Messenger.Send(new Rolled(RollModel)); }
+            if (TurnRollModel is null) return;
+            TurnRollModel.RedRoll = roll;
+            if (IsComplete) { Messenger.Send(new Rolled(TurnRollModel)); }
         }
         [RelayCommand]
         private void WhiteRoll(int roll)
         {
-            if (RollModel.ThisTurnsRoll is null) return;
+            if (TurnRollModel is null) return;
 
-            RollModel.ThisTurnsRoll.WhiteRoll = roll;
-            if (IsComplete) { Messenger.Send(new Rolled(RollModel)); }
+            TurnRollModel.WhiteRoll = roll;
+            if (IsComplete) { Messenger.Send(new Rolled(TurnRollModel)); }
         }
         [RelayCommand]
         private void SpecialRoll(SpecialDice roll)
         {
-            if (RollModel.ThisTurnsRoll is null) return;
-            RollModel.ThisTurnsRoll.SpecialRoll = roll;
-            if (IsComplete) { Messenger.Send(new Rolled(RollModel)); }
+            if (TurnRollModel is null) return;
+            TurnRollModel.SpecialRoll = roll;
+            if (IsComplete) { Messenger.Send(new Rolled(TurnRollModel)); }
         }
 
         [RelayCommand]
         private void NormalRoll(ValidCatanRoll roll)
         {
-            if (RollModel.ThisTurnsRoll is null)
-            {
-                RollModel.ThisTurnsRoll = new();
-            }
+            Debug.Assert(TurnRollModel is not null, "Turn roll model is null.  probably a bug in NextPlayer"); 
             if (roll == ValidCatanRoll.None) return;
-            RollModel.ThisTurnsRoll.NormalRoll = roll;
-            Messenger.Send(new Rolled(RollModel));
+            TurnRollModel.NormalRoll = roll;
+            Messenger.Send(new Rolled(TurnRollModel));
         }
 
-        public string GetRollCount(RollModel? _, int? __, ValidCatanRoll roll)
+        public partial class GameRollViewModel : ObservableObject
         {
-            if (roll == ValidCatanRoll.None) return "Error";
-            var r = (int)roll;
-            return $"{RollModel.RollCounts[r - 2]}  ";
-        }
+            [ObservableProperty]
+            private GameRollModel _gameRollModel = new();
 
-        public string GetRollPercent(RollModel _, int totalrolls, ValidCatanRoll roll)
-        {
-            if (roll == ValidCatanRoll.None) return "Error";
-            var r = (int) roll;
-            var count =  RollModel.RollCounts[r - 2];
-            if (totalrolls == 0) { return "0%"; }
-            var percent = (double) count / (double)totalrolls * 100;
-            var result =  $"{Math.Round(percent, 2)}%";
-            return result;
+            public string GetRollCount(GameRollModel? gameRollModel,  ValidCatanRoll roll)
+            {
+                Debug.Assert(ReferenceEquals(gameRollModel, GameRollModel));
+                if (roll == ValidCatanRoll.None) return "Error";
+                var r = (int)roll;
+                return $"{gameRollModel.RollCounts[r - 2]}  ";
+            }
+
+            public string GetRollPercent(GameRollModel gameRollModel ,  ValidCatanRoll roll)
+            {
+                Debug.Assert(ReferenceEquals(gameRollModel, GameRollModel));
+                if (roll == ValidCatanRoll.None) return "Error";
+                var r = (int) roll;
+                var count =  gameRollModel.RollCounts[r - 2];
+                if (gameRollModel.TotalRolls == 0) { return "0%"; }
+                var percent = (double) count / (double)gameRollModel.TotalRolls * 100;
+                var result =  $"{Math.Round(percent, 2)}%";
+                return result;
+            }
         }
 
     }
