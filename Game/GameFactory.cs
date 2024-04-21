@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Catan3.Utility;
+using Microsoft.UI.Xaml;
 
 namespace Catan3.Models
 {
@@ -83,6 +84,8 @@ namespace Catan3.Models
                 game.Harbors.InsertSorted(harbor);
             }
 
+            
+           
             game.Shuffle();
          
 
@@ -99,7 +102,7 @@ namespace Catan3.Models
             int count = game.Tiles.Count;
             do
             {
-                ShuffleList<TileModel, ResourceTileType>(game.Tiles, random,
+                ShuffleList<TileModel, ResourceType>(game.Tiles, random,
                      tile => tile.ResourceTileType,
                      (tile, type) => tile.ResourceTileType = type);
 
@@ -116,7 +119,7 @@ namespace Catan3.Models
             } while (!ValidateGame(game));
 
             // Place the robber on the first desert tile found
-            game.Robber.Coordinates = game.Tiles.FirstOrDefault(tile => tile.ResourceTileType == ResourceTileType.Desert)?.TileKey ?? throw new Exception("there must be a desert tile for the game to work");
+            game.Robber.Coordinates = game.Tiles.FirstOrDefault(tile => tile.ResourceTileType == ResourceType.Desert)?.TileKey ?? throw new Exception("there must be a desert tile for the game to work");
             
 
         }
@@ -136,7 +139,7 @@ namespace Catan3.Models
 
         private static void EnsureDesertSeven(GameModel game)
         {
-            var deserts = game.Tiles.Where(t => t.ResourceTileType == ResourceTileType.Desert).ToList();
+            var deserts = game.Tiles.Where(t => t.ResourceTileType == ResourceType.Desert).ToList();
             var sevens = game.Tiles.Where(t => t.Number == 7).ToList();
 
             Debug.Assert(deserts.Count == sevens.Count, "Mismatch between deserts and tiles with number 7");

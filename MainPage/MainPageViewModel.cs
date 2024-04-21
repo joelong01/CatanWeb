@@ -135,7 +135,7 @@ namespace Catan3.Models
                     var index = rand.Next(GameViewModel.Tiles.Count);
                     var tileViewModel =  GameViewModel.Tiles[index] ;
                     Contract.Assert(tileViewModel is not null, "this should *never* happen!");
-                    if (tileViewModel.Tile.ResourceTileType != ResourceTileType.Desert && tileViewModel.Tile.TemporarilyGold == false)
+                    if (tileViewModel.Tile.ResourceTileType != ResourceType.Desert && tileViewModel.Tile.TemporarilyGold == false)
                     {
                         tileViewModel.Tile.TemporarilyGold = true;
                         tileViewModel.Orientation = CatanOrientation.FaceDown;

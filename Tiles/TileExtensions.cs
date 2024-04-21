@@ -80,7 +80,7 @@ namespace Catan3.Models
         /// <param name="collection"></param>
         /// <param name="number"></param>
         /// <returns></returns>
-        public static List<TileModel> TilesWithResource(this IEnumerable<TileModel> collection, ResourceTileType resource)
+        public static List<TileModel> TilesWithResource(this IEnumerable<TileModel> collection, ResourceType resource)
         {
             return collection.Where(t => t.ResourceTileType == resource).ToList();
         }
@@ -135,30 +135,30 @@ namespace Catan3.Models
 
         }
 
-        public static ResourceCardType ToResourceCardType(this ResourceTileType tileType)
+        public static ResourceType ToResourceCardType(this ResourceType tileType)
         {
             switch (tileType)
             {
-                case ResourceTileType.Sheep:
-                    return ResourceCardType.Sheep;
-                case ResourceTileType.Wood:
-                    return ResourceCardType.Wood;
-                case ResourceTileType.Ore:
-                    return ResourceCardType.Ore;
-                case ResourceTileType.Wheat:
-                    return ResourceCardType.Wheat;
-                case ResourceTileType.Brick:
-                    return ResourceCardType.Brick;
-                case ResourceTileType.GoldMine:
-                    return ResourceCardType.GoldMine;
-                case ResourceTileType.Desert:
-                    return ResourceCardType.Desert;
-                case ResourceTileType.Back:
-                    return ResourceCardType.Back;
-                case ResourceTileType.None:
-                    return ResourceCardType.None;
-                case ResourceTileType.Sea:
-                    return ResourceCardType.Sea;
+                case ResourceType.Sheep:
+                    return ResourceType.Sheep;
+                case ResourceType.Wood:
+                    return ResourceType.Wood;
+                case ResourceType.Ore:
+                    return ResourceType.Ore;
+                case ResourceType.Wheat:
+                    return ResourceType.Wheat;
+                case ResourceType.Brick:
+                    return ResourceType.Brick;
+                case ResourceType.GoldMine:
+                    return ResourceType.GoldMine;
+                case ResourceType.Desert:
+                    return ResourceType.Desert;
+                case ResourceType.Back:
+                    return ResourceType.Back;
+                case ResourceType.None:
+                    return ResourceType.None;
+                case ResourceType.Sea:
+                    return ResourceType.Sea;
             }
 
             throw new ArgumentException("did you forget to update this?", nameof(tileType));

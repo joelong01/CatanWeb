@@ -1,9 +1,10 @@
 ﻿using System.Text.Json.Serialization;
+using Catan3.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan10.Models
 {
-    public partial class TradeResourcesModel : ObservableObject
+    public partial class ResourcesModel : ObservableObject
     {
         [ObservableProperty]
         private int brick;
@@ -47,9 +48,9 @@ namespace Catan10.Models
         [ObservableProperty]
         private int anyDevCard;
 
-        public TradeResourcesModel() { }
+        public ResourcesModel() { }
 
-        public TradeResourcesModel(TradeResourcesModel tradeResources)
+        public ResourcesModel(ResourcesModel tradeResources)
         {
             Wheat = tradeResources.Wheat;
             Wood = tradeResources.Wood;
@@ -75,6 +76,62 @@ namespace Catan10.Models
         public override string ToString()
         {
             return $"[Count={Count}][Ore={Ore}][Brick={Brick}][Wheat={Wheat}][Wood={Wood}][Sheep={Sheep}][Gold={GoldMine}][Coin={Coin}][Cloth={Cloth}][Paper={Paper}]";
+        }
+
+        public int CountForResource(ResourceType resourceCardType)
+        {
+            int count = 0;
+            switch (resourceCardType)
+            {
+                case ResourceType.Sheep:
+                    count = Sheep;
+                    break;
+                case ResourceType.Wood:
+                    count = Wood;
+                    break;
+                case ResourceType.Ore:
+                    count = Ore;
+                    break;
+                case ResourceType.Wheat:
+                    count = Wheat;
+                    break;
+                case ResourceType.Brick:
+                    count = Brick;
+                    break;
+                case ResourceType.GoldMine:
+                    count = GoldMine;
+                    break;
+              
+                case ResourceType.Coin:
+                    count = Coin;
+                    break;
+                case ResourceType.Cloth:
+                    count = Cloth;
+                    break;
+                case ResourceType.Paper:
+                    count = Paper;
+                    break;
+                case ResourceType.Politics:
+                    count = Politics;
+                    break;
+                case ResourceType.Trade:
+                    count = Trade;
+                    break;
+                case ResourceType.Science:
+                    count = Science;
+                    break;
+                case ResourceType.AnyDevCard:
+                    count = AnyDevCard;
+                    break;
+                case ResourceType.VictoryPoint:
+                    count = VictoryPoint;
+                    break;
+                default:
+                    count = 0;
+                    break;
+            }
+
+            return count;
         }
     }
 }

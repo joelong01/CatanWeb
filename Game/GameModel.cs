@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Catan10.Models;
@@ -12,6 +13,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Models
 {
+   
     public partial class GameModel : ObservableObject
     {
       
@@ -54,6 +56,10 @@ namespace Catan3.Models
 
         [ObservableProperty]
         private GameRollModel _gameRollModel = new();
+        //
+        //  keep track of the total resources ever generated in the game by everyone
+        [ObservableProperty]
+        private ResourcesModel _gameResourcesModel = new();
 
         public override string ToString()
         {
@@ -80,7 +86,7 @@ namespace Catan3.Models
         /// </summary>
         /// <param name="tileType"></param>
         /// <returns></returns>
-        public int StarCount(ResourceTileType tileType)
+        public int StarCount(ResourceType tileType)
         {
             var total = this.Tiles.Where(tile => tile.ResourceTileType == tileType)
                 .Sum(tile => tile.Stars);
@@ -140,4 +146,6 @@ namespace Catan3.Models
 
 
     }
+
+   
 }

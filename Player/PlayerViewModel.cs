@@ -1,7 +1,6 @@
-﻿
-using System.ComponentModel;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
+
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
@@ -32,9 +31,13 @@ namespace Catan3.Models
         private PlayerModel _player = PlayerModel.Default;
 
         [ObservableProperty]
-        private TradeResourceViewModel _resourcesThisTurn = new();
+        private ResourcesViewModel _resourcesThisTurn = new();
 
-        public PlayerViewModel() : this("Nameless", Colors.White, Colors.HotPink) { }
+        
+        public PlayerViewModel() : this("Nameless", Colors.White, Colors.HotPink) { 
+        
+            
+        }
 
 
         [JsonIgnore]
@@ -46,6 +49,8 @@ namespace Catan3.Models
             Foreground = foreground;
             Background = background;
             Id = name + "-0001";
+
+       
         }
         public override string ToString()
         {
@@ -54,11 +59,16 @@ namespace Catan3.Models
 
         public Brush GetBrush(Color color, bool foreground)
         {
-            if (foreground) 
+            if (foreground)
                 return BrushCache.GetSolidColorBrush(color);
 
             else
                 return BrushCache.GetGradientBrush(color, Colors.Black);
         }
+    
+
+       
+
+
     }
 }

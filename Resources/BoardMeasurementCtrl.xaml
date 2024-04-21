@@ -6,7 +6,7 @@
         xmlns:models="using:Catan3.Models"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d">
+         mc:Ignorable="d">
 
     <UserControl.Resources>
         <Style x:Key="StarStyle" TargetType="TextBlock">
@@ -38,20 +38,8 @@
     </UserControl.Resources>
     <Grid Margin="0, 0, 0, 0" HorizontalAlignment="Center">
         <StackPanel>
-            <GridView ItemsSource="{x:Bind GameViewModel.GameResources, Mode=OneWay}">
-                <GridView.ItemContainerStyle>
-                    <Style TargetType="GridViewItem">
-                        <Setter Property="Padding" Value="3" />
-                        <Setter Property="Margin" Value="0" />
-                    </Style>
-                </GridView.ItemContainerStyle>
-
-                <GridView.ItemTemplate>
-                    <DataTemplate x:DataType="models:ResourceCardModel">
-                        <c:ResourceCardCtrl ViewModel="{x:Bind Mode=OneWay}" />
-                    </DataTemplate>
-                </GridView.ItemTemplate>
-            </GridView>
+            <c:TrackedResourcesCtrl TrackGold="False"
+                    ResourcesViewModel="{x:Bind GameViewModel.StarsResourceViewModel, Mode=OneWay}" />
             <StackPanel Orientation="Horizontal">
 
                 <Grid Style="{StaticResource GridStarCounterStyle}">
@@ -120,7 +108,9 @@
                 </StackPanel>
 
                 <StackPanel HorizontalAlignment="Center" Orientation="Vertical">
-                    <Button Command="{x:Bind GameViewModel.ShuffleCommand, Mode=OneWay}" Content="&#xE10D;"
+                    <Button
+                            Command="{x:Bind GameViewModel.ShuffleCommand, Mode=OneWay}"
+                            Content="&#xE10D;"
                             Style="{StaticResource GameControllerStyle}"
                             Background="Transparent" Foreground="White" />
                     <TextBlock Margin="10, 5, 0, 0" Text="New Board"
@@ -134,7 +124,6 @@
                     Value="{x:Bind GameViewModel.ShownStars, Mode=TwoWay}"
                     Orientation="Horizontal" SmallChange="1" TickFrequency="1" />
 
-          
         </StackPanel>
     </Grid>
 </UserControl>

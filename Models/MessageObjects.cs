@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using Catan3.Utility;
 
 namespace Catan3.Models
@@ -76,6 +77,15 @@ namespace Catan3.Models
     public class EndGame
     {
 
+    }
+
+    /// <summary>
+    ///     we pass the resources tracked from the GameViewModel to whatever ViewModel needs to know (e.g. PlayerviewModel
+    /// </summary>
+    /// <param name="list"></param>
+    public class TrackedResourceTypes(ObservableCollection<ResourceType> list)
+    {
+        public ObservableCollection<ResourceType> TrackedResources { get; set; } = list;
     }
 
 }

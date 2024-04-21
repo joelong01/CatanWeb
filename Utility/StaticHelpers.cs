@@ -35,43 +35,7 @@ namespace Catan3
             return output;
         }
 
-        public static ResourceTileType ToTileType(this ResourceCardType cardType)
-        {
-            switch (cardType)
-            {
-                case ResourceCardType.Sheep:
-                    return ResourceTileType.Sheep;
-                case ResourceCardType.Wood:
-                    return ResourceTileType.Wood;
-                case ResourceCardType.Ore:
-                    return ResourceTileType.Ore;
-                case ResourceCardType.Wheat:
-                    return ResourceTileType.Wheat;
-                case ResourceCardType.Brick:
-                    return ResourceTileType.Brick;
-                case ResourceCardType.GoldMine:
-                    return ResourceTileType.GoldMine;
-                case ResourceCardType.Desert:
-                    return ResourceTileType.Desert;
-
-                case ResourceCardType.Back:
-                    return ResourceTileType.Back;
-                case ResourceCardType.None:
-                    return ResourceTileType.None;
-                case ResourceCardType.Sea:
-                case ResourceCardType.Coin:
-                case ResourceCardType.Cloth:
-                case ResourceCardType.Paper:
-                case ResourceCardType.Politics:
-                case ResourceCardType.Trade:
-                case ResourceCardType.Science:
-                case ResourceCardType.AnyDevCard:
-                case ResourceCardType.VictoryPoint:
-                case ResourceCardType.Invasion:
-                default:
-                    return ResourceTileType.None;
-            }
-        }
+        
 
         #endregion Methods
     }

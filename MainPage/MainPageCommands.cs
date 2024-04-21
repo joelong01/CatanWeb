@@ -23,11 +23,13 @@ namespace Catan3.Models
         [RelayCommand]
         private void Shuffle()
         {
-
+            if (GameViewModel.GameModel.GameState != GameState.PickingBoard) return;
             var currentStars = GameViewModel.ShownStars;
             List<string> playerIds = GameViewModel.Players.Select( p => p.Id ).ToList();
             var gameModel = GameFactory.CreateGame(GameViewModel.GameModel.GameType, playerIds);
+            gameModel.GameState = GameState.PickingBoard;
             gameModel.Shuffle();
+            
             GameViewModel.MergeGameModel(gameModel);
 
             GameViewModel.SetStars();

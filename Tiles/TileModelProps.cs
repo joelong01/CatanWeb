@@ -9,7 +9,7 @@ namespace Catan3.Models
         private HexCoordinates _tileKey = HexCoordinates.Default;
 
         [ObservableProperty]
-        private ResourceTileType _resourceTileType = ResourceTileType.None;
+        private ResourceType _resourceTileType = ResourceType.None;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(Stars))]

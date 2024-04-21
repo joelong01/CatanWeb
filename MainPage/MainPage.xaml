@@ -8,8 +8,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" RightTapped="OnRightButtonTapped" KeyUp="OnKeyUp"
         xmlns:c="using:Catan3.Controls" Background="DarkGray"
-        xmlns:m="clr-namespace:Catan3.Models"
-        d:DataContext="{d:DesignInstance Type=m:GameViewModel}">
+        xmlns:models="using:Catan3.Models"
+        d:DataContext="{d:DesignInstance Type=models:GameViewModel}">
     <Page.Resources>
         <Style TargetType="Rectangle" x:Key="RECT_ResourceCard">
 
@@ -20,6 +20,7 @@
             <Setter Property="RadiusY" Value="5" />
             <Setter Property="Margin" Value="1" />
         </Style>
+
     </Page.Resources>
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
             Background="DarkGray">
@@ -43,76 +44,6 @@
                 <Button Content="Shuffle"
                         Command="{x:Bind MainPageModel.ShuffleCommand, Mode=OneWay}"
                         Background="Black" Foreground="White" />
-
-                <!--Tile Size-->
-                <TextBlock Text="Tile Size" Foreground="Black" />
-                <Slider Width="200" HorizontalAlignment="Left" Minimum="25"
-                        Maximum="200" SmallChange="11" LargeChange="10"
-                        Background="Black" Foreground="White"
-                        Value="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.OuterHexSize, Mode=TwoWay}" />
-                <TextBox Width="200" HorizontalAlignment="Left"
-                        Text="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.OuterHexSize, Mode=TwoWay}"
-                        Background="White" Foreground="Black" />
-
-                <!--Tile Gap-->
-                <TextBlock Foreground="Black" Text="Tile Gap" />
-                <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
-                        Maximum="40" SmallChange=".5" LargeChange="1"
-                        Value="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.TileGap, Mode=TwoWay}"
-                        Background="Black" Foreground="White" />
-                <TextBox Width="200" HorizontalAlignment="Left"
-                        Text="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.TileGap, Mode=TwoWay}"
-                        Foreground="Black" />
-
-                <!--Building Size-->
-                <TextBlock Text="Building Size" Foreground="Black" />
-                <Slider Width="200" HorizontalAlignment="Left" Minimum="20"
-                        Maximum="200" SmallChange="1" LargeChange="10"
-                        Value="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.BuildingSize, Mode=TwoWay}"
-                        Background="Black" Foreground="White" />
-                <TextBox Width="200" HorizontalAlignment="Left"
-                        Text="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.BuildingSize, Mode=TwoWay}"
-                        Foreground="Black" />
-
-                <!--Roads Stroke-->
-                <TextBlock Text="Road Stroke Thickness" Foreground="Black" />
-                <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
-                        Maximum="10" SmallChange="1" LargeChange="4"
-                        Value="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.RoadStrokeThickness, Mode=TwoWay}"
-                        Background="Black" Foreground="White" />
-                <TextBox Width="200" HorizontalAlignment="Left"
-                        Text="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.RoadStrokeThickness, Mode=TwoWay}"
-                        Foreground="Black" />
-
-                <!--Tile Stroke-->
-                <TextBlock Text="Inner Hex Stroke Thickness" Foreground="Black" />
-                <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
-                        Maximum="40" SmallChange="1" LargeChange="4"
-                        Value="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.InnerHexStrokeThickness, Mode=TwoWay}"
-                        Background="Black" Foreground="White" />
-                <TextBox Width="200" HorizontalAlignment="Left"
-                        Text="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.InnerHexStrokeThickness, Mode=TwoWay}"
-                        Foreground="Black" />
-
-                <!--Hex Guidelines stroke-->
-                <TextBlock Text="Hex Guidelines" Foreground="Black" />
-                <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
-                        Maximum="40" SmallChange="1" LargeChange="4"
-                        Value="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.LayoutGuideStrokeWidth, Mode=TwoWay}"
-                        Background="Black" Foreground="White" />
-                <TextBox Width="200" HorizontalAlignment="Left"
-                        Text="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.LayoutGuideStrokeWidth, Mode=TwoWay}"
-                        Foreground="Black" />
-
-                <!--Game Margin-->
-                <TextBlock Text="Margin" Foreground="Black" />
-                <Slider Width="200" HorizontalAlignment="Left" Minimum="0"
-                        Maximum="40" SmallChange="1" LargeChange="4"
-                        Value="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.GameMargin, Mode=TwoWay}"
-                        Background="Black" Foreground="White" />
-                <TextBox Width="200" HorizontalAlignment="Left"
-                        Text="{x:Bind MainPageModel.GameViewModel.BoardInfo.Layout.GameMargin, Mode=TwoWay}"
-                        Foreground="Black" />
 
                 <!--Availabe Players-->
                 <TextBlock Text="Players" Foreground="Black" />
@@ -146,44 +77,45 @@
                 </ComboBox>
 
                 <!--Rolls -->
-                <VariableSizedWrapGrid Orientation="Horizontal"
-                        MaximumRowsOrColumns="4" ItemHeight="150"
-                        ItemWidth="100">
-                    <c:SingleRoll Number="2"
-                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                    <c:SingleRoll Number="3"
-                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                    <c:SingleRoll Number="4"
-                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                    <c:SingleRoll Number="5"
-                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                    <c:SingleRoll Number="6"
-                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                    <c:SingleRoll Number="7"
-                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                    <c:SingleRoll Number="8"
-                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                    <c:SingleRoll Number="9"
-                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                    <c:SingleRoll Number="10"
-                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                    <c:SingleRoll Number="11"
-                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                    <c:SingleRoll Number="12"
-                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                <Viewbox HorizontalAlignment="Stretch" Stretch="Uniform">
+                    <VariableSizedWrapGrid Orientation="Horizontal"
+                            MaximumRowsOrColumns="4">
+                        <c:SingleRoll Number="2"
+                                GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                                TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                        <c:SingleRoll Number="3"
+                                GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                                TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                        <c:SingleRoll Number="4"
+                                GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                                TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                        <c:SingleRoll Number="5"
+                                GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                                TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                        <c:SingleRoll Number="6"
+                                GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                                TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                        <c:SingleRoll Number="7"
+                                GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                                TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                        <c:SingleRoll Number="8"
+                                GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                                TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                        <c:SingleRoll Number="9"
+                                GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                                TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                        <c:SingleRoll Number="10"
+                                GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                                TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                        <c:SingleRoll Number="11"
+                                GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                                TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                        <c:SingleRoll Number="12"
+                                GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
+                                TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
 
-                </VariableSizedWrapGrid>
+                    </VariableSizedWrapGrid>
+                </Viewbox>
                 <Button
                         Command="{x:Bind MainPageModel.NextPlayerCommand, Mode=OneWay}"
                         Content="Next Player" />
@@ -224,9 +156,41 @@
             </Viewbox>
         </Border>
 
-        <c:BoardMeasurementCtrl Grid.Column="4" Background="Green"
-                GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}"
-                BorderBrush="Black" BorderThickness="2" />
+        <Border BorderBrush="Black" BorderThickness="2"
+                Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.GetBrush(MainPageModel.GameViewModel.CurrentPlayer.Background, x:False), Mode=OneWay}"
+                VerticalAlignment="Bottom">
+            <c:BoardMeasurementCtrl
+                    GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" />
+        </Border>
+        <!--The far right column that has the total resources for the game and a list of player information-->
+        <StackPanel Grid.Column="4" HorizontalAlignment="Stretch"
+                Background="DarkOliveGreen">
+            <c:TrackedResourcesCtrl
+                    
+                    ResourcesViewModel="{x:Bind MainPageModel.GameViewModel.GameResourceViewModel, Mode=OneWay}" />
+            <ItemsControl
+                    ItemsSource="{x:Bind MainPageModel.GameViewModel.Players, Mode=OneWay}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel HorizontalAlignment="Stretch"
+                                Margin="10,0,0,0" Padding="0" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+                        <Setter Property="Padding" Value="0" />
+
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="models:PlayerViewModel">
+                        <c:PlayerCtrl PlayerViewModel="{x:Bind Mode=OneWay}" />
+                    </DataTemplate>
+
+                </ItemsControl.ItemTemplate>
+
+            </ItemsControl>
+        </StackPanel>
 
         <toolkit:GridSplitter Grid.Column="1" Width="5"
                 HorizontalAlignment="Stretch" Background="Gray">

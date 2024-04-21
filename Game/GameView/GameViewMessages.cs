@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using Catan10.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 
@@ -34,6 +35,8 @@ namespace Catan3.Models
             {
                 Messenger.UnregisterAll(this);
             });
+
+            BroadCastGlobalMetaData();
         }
 
         /// <summary>
@@ -59,8 +62,11 @@ namespace Catan3.Models
             // create a place for this turn's resources for each of the players
             foreach (var playerViewModel in Players)
             {
-                playerViewModel.Player.ResourcesThisTurn = new();
-                playerViewModel.ResourcesThisTurn.ResourceModel = playerViewModel.Player.ResourcesThisTurn;
+                ResourcesModel resourceModel = new();
+                playerViewModel.Player.ResourcesThisTurn = resourceModel;
+                playerViewModel.ResourcesThisTurn.ResourceModel = resourceModel;
+
+
 
             }
 
@@ -111,7 +117,7 @@ namespace Catan3.Models
                     var index = rand.Next(Tiles.Count);
                     var tileViewModel =  Tiles[index] ;
                     Contract.Assert(tileViewModel is not null, "this should *never* happen!");
-                    if (tileViewModel.Tile.ResourceTileType != ResourceTileType.Desert && tileViewModel.Tile.TemporarilyGold == false)
+                    if (tileViewModel.Tile.ResourceTileType != ResourceType.Desert && tileViewModel.Tile.TemporarilyGold == false)
                     {
                         tileViewModel.Tile.TemporarilyGold = true;
                         tileViewModel.Orientation = CatanOrientation.FaceDown;

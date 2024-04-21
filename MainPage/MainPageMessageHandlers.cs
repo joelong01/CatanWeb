@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Resources;
 using System.Threading;
 using Catan10.Models;
 using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.UI.Xaml.Data;
 
 namespace Catan3.Models
 {
@@ -55,6 +57,13 @@ namespace Catan3.Models
             }
             //
             // calculate resources based on the tiles that are highlighted (which we just set)
+            Dictionary<string, ResourcesModel> playerResources = [];
+            foreach (var player in  GameViewModel.GameModel.Players)
+            {
+                playerResources[player.Id] = new();
+            }
+            //
+            //  go through and poplulate the ResourceModel with the resources won for the roll
             foreach (var tile in highlightedTiles)
             {
                 tile.Orientation = CatanOrientation.FaceUp;
@@ -62,23 +71,33 @@ namespace Catan3.Models
                 foreach (BuildingModel building in buildings)
                 {
                     Debug.Assert(building.OwnerId is not null, "OwnedBuildings should only return Owned buildings...");
-                    var effectiveType = tile.Tile.TemporarilyGold ? ResourceTileType.GoldMine : tile.Tile.ResourceTileType;
-                    TradeResourcesModel resources = building.Resources(effectiveType);
-                    var player = PlayerDatabase.FromId(building.OwnerId) ?? throw new Exception($"bad playerId in allocating resources to owners: {building.OwnerId}");
-                    Debug.Assert(player.Player.ResourcesThisTurn is not null);
-#if DEBUG
-                    var playerModel = GameViewModel.GameModel.Players.Find((p) => p.Id == building.OwnerId);
-                    Debug.Assert(ReferenceEquals(player.Player, playerModel), "these should be the same PlayerModel objects!");
-#endif
+                    var effectiveType = tile.Tile.TemporarilyGold ? ResourceType.GoldMine : tile.Tile.ResourceTileType;
+                    ResourcesModel resources = building.Resources(effectiveType);
+                    playerResources[building.OwnerId].Add(resources);
 
-                    player.Player.ResourcesThisTurn.Add(resources); // this is updating the underlying GameModel
-                    player.Player.TotalResourcesGenerated.Add(resources);
+                   
+                    
                 }
             }
-
-            foreach (var player in GameViewModel.GameModel.Players)
+            // now fix up the underlying resource models in the same way as if we loading it from disk or got it back from a service
+            // -- e.g. create new data objects and stick the full object into the model
+            foreach (var player in GameViewModel.Players)
             {
-                this.TraceMessage($"Player {player} got {player.ResourcesThisTurn}");
+                var newResources =  playerResources[player.Id];
+                player.Player.ResourcesThisTurn = newResources; // this is updating the underlying GameModel, triggering the binding updates
+                player.ResourcesThisTurn.ResourceModel = newResources;
+
+                var newTotal = new ResourcesModel(player.Player.TotalResourcesGenerated);
+                newTotal.Add(newResources);
+
+                player.Player.TotalResourcesGenerated = newTotal;
+                // TODO: need a player.TotalResourcesGenerated ResourceViewModel
+
+                var newGameTotal = new ResourcesModel(GameViewModel.GameModel.GameResourcesModel);
+                newGameTotal.Add(newResources);
+
+                GameViewModel.GameModel.GameResourcesModel = newGameTotal;
+                GameViewModel.GameResourceViewModel.ResourceModel = newGameTotal;
             }
 
             // save our changes to the GameModel to the log

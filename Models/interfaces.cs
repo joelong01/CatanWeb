@@ -19,7 +19,7 @@ namespace Catan3.Models
     public interface IBoardInfo
     {
         List<HexCoordinates> TileKeys { get; }
-        public List<ResourceTileType> Resources { get; }
+        public List<ResourceType> Resources { get; }
         public List<int> Numbers { get; }
         public List<HarborModel> Harbors { get; }
         public BoardLayout Layout { get; }

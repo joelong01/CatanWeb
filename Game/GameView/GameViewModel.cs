@@ -5,10 +5,10 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using Catan10.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.UI;
-using Microsoft.UI.Xaml;
+using CommunityToolkit.Mvvm.Messaging;
 
 
 namespace Catan3.Models
@@ -18,10 +18,13 @@ namespace Catan3.Models
     {
         private GameType GameType { get; set; } = GameType.Unset;
 
-       
+        //
+        //  the default ctor is in GameViewMessages.cs
+
         public GameViewModel(IBoardInfo? boardinfo) : this()
         {
             BoardInfo = boardinfo;
+
 
         }
         /// <summary>
@@ -57,8 +60,20 @@ namespace Catan3.Models
             Buildings = [];
             Harbors = [];
             RobberViewModel = new(new());
-            Players = new(playingPlayers);
 
+
+
+
+        }
+        /// <summary>
+        ///     Send messages to *viewmodels* after creating them that has information they need
+        ///     that you don't want to pass as parameters. this should be static config per gametype
+        /// </summary>
+        /// <exception cref="NotImplementedException"></exception>
+
+        private void BroadCastGlobalMetaData()
+        {
+            Messenger.Send(new TrackedResourceTypes(TrackedResources));
         }
 
         public GameViewModel(GameModel gameModel) : this()
@@ -77,6 +92,14 @@ namespace Catan3.Models
                 throw new ArgumentException($"invalid boardsize");
             }
 
+            Debug.Assert(gameModel.Players.Count > 0);
+            foreach (var player in gameModel.Players)
+            {
+                var playerViewModel = PlayerDatabase.FromId(player.Id) ?? throw new Exception($"Bad PlayerId: {player.Id}");
+                Players.Add(playerViewModel);
+            }
+
+        
             MergeGameModel(gameModel);
 
 
@@ -95,24 +118,27 @@ namespace Catan3.Models
             MergeRobber(gameModel);
             MergePlayers(gameModel.Players, gameModel.CurrentPlayerId);
             MergeRolls(gameModel);
-            
-            
+            MergeResources(gameModel);
+
 
             GameModel = gameModel;
-     
+
 
             // things that depend on 
             SetStars();
-     
+
 
         }
 
-       
+        private void MergeResources(GameModel gameModel)
+        {
+            this.GameResourceViewModel.ResourceModel = gameModel.GameResourcesModel;
+        }
 
         private void MergeRolls(GameModel gameModel)
         {
             this.GameRollViewModel.GameRollModel = gameModel.GameRollModel;
-       
+
         }
 
         private void MergeRobber(GameModel gameModel)
@@ -132,15 +158,17 @@ namespace Catan3.Models
 
         private void MergePlayers(IList<PlayerModel> playerModels, string currentPlayerId)
         {
+            Debug.Assert(this.Players.Count == playerModels.Count);
+            Debug.Assert(this.Players.Count > 0);
 
             for (int i = 0; i < playerModels.Count; i++)
             {
                 PlayerViewModel player = PlayerDatabase.FromId(playerModels[i].Id) ?? throw new Exception($"Bad PlayerId: {playerModels[i].Id}");
                 if (playerModels[i].Id == currentPlayerId) this.CurrentPlayer = player;
                 player.Player = playerModels[i];
-                this.Players.Add(player);
+               
             }
-           
+
         }
 
 
@@ -165,7 +193,7 @@ namespace Catan3.Models
                     {
                         this.TraceMessage($"temp gold: {gameModel.Tiles[i]}");
                     }
-                   
+
                 }
             }
         }
@@ -247,20 +275,15 @@ namespace Catan3.Models
                 building.Stars = TilesForBuildings(building.Building.BuildingKey).Stars();
             }
 
-            ObservableCollection<ResourceCardModel> result = [];
-            ResourceCardType[] resources = [ ResourceCardType.Sheep, ResourceCardType.Wheat, ResourceCardType.Wood, ResourceCardType.Brick, ResourceCardType.Ore];
-            foreach (var resource in resources)
-            {
-                result.Add(new ResourceCardModel()
-                {
-                    ResourceType = resource,
-                    Orientation = CatanOrientation.FaceUp,
-                    CountVisibility = Visibility.Visible,
-                    Count = GameModel.StarCount(resource.ToTileType())
 
-                }); ;
+            var resourceModel = new ResourcesModel();
+            foreach (var resource in TrackedResources)
+            {
+                resourceModel.AddResource(resource, GameModel.StarCount(resource));
+
             }
-            this.GameResources = result;
+            this.StarsResourceViewModel.ResourceModel = resourceModel;
+
         }
 
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -424,7 +447,7 @@ namespace Catan3.Models
 
         }
 
-       
+
 
 
     }

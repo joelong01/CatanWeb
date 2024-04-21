@@ -1,4 +1,5 @@
 ﻿
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
@@ -42,8 +43,7 @@ namespace Catan3.Models
         [ObservableProperty]
         private ObservableCollection<HarborViewModel> _harbors = [];
 
-        [ObservableProperty]
-        private ObservableCollection<ResourceCardModel> _gameResources = [];
+      
 
         [ObservableProperty]
         public GameModel _gameModel = new();
@@ -63,6 +63,22 @@ namespace Catan3.Models
         [ObservableProperty]
         private TurnRollViewModel  _turnRollViewModel = new();
 
+        // total resoruces allocated for the game
+        [ObservableProperty]
+        private ResourcesViewModel _gameResourceViewModel = new();
+
+        // total stars for each resourcetype in the game
+        [ObservableProperty]
+        private ResourcesViewModel _starsResourceViewModel = new();
+        //
+        //  resources that show up in the UI as ResourceCardCtrl - not not observable as designed for one time only binding.
+        //  when we build the Pirates expansion, we'll have to add to this list.
+        public ObservableCollection<ResourceType> TrackedResources { get; } =  [ResourceType.Sheep, ResourceType.Wheat, ResourceType.Wood, ResourceType.Brick, ResourceType.Ore, ResourceType.GoldMine];
+
+        /// <summary>
+        ///     this broadcasts to all things that are looking for the global orientation that causes things like Tiles and Harbors to flip
+        /// </summary>
+        /// <param name="value"></param>
         partial void OnOrientationChanged(CatanOrientation value)
         {
             Messenger.Send(new UpdateOrientation(value));
@@ -89,6 +105,7 @@ namespace Catan3.Models
             Messenger.Send(new CurrentPlayerChanged(newValue));
         }
 
+     
 
     }
 }

@@ -134,9 +134,9 @@ namespace Catan3.Models
         }
         ///
 
-        public static TradeResourcesModel Resources(this BuildingModel model, ResourceTileType resource)
+        public static ResourcesModel Resources(this BuildingModel model, ResourceType resource)
         {
-            TradeResourcesModel result = new TradeResourcesModel();
+            ResourcesModel result = new ResourcesModel();
             if (model.BuildingState == BuildingState.City)
             {
                 result.AddResource(resource, 2);

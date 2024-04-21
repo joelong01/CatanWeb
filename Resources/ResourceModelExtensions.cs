@@ -11,9 +11,9 @@ using Microsoft.UI.Xaml.Shapes;
 
 namespace Catan3.Models
 {
-    public static class TradeResourcesModelExtensions
+    public static class ResourcesModelExtensions
     {
-        public static void Add(this TradeResourcesModel a, TradeResourcesModel b)
+        public static void Add(this ResourcesModel a, ResourcesModel b)
         {
 
             a.Wheat += b.Wheat;
@@ -33,9 +33,9 @@ namespace Catan3.Models
 
         }
 
-        public static TradeResourcesModel TradeResourcesModelForRedDie(SpecialDice roll)
+        public static ResourcesModel TradeResourcesModelForRedDie(SpecialDice roll)
         {
-            TradeResourcesModel tr = new();
+            ResourcesModel tr = new();
             switch (roll)
             {
                 case SpecialDice.Trade:
@@ -55,34 +55,34 @@ namespace Catan3.Models
             return tr;
         }
 
-        public static TradeResourcesModel TradeResourcesModelForCity(ResourceTileType resourceType, bool pirates)
+        public static ResourcesModel TradeResourcesModelForCity(ResourceType resourceType, bool pirates)
         {
-            TradeResourcesModel tr = new TradeResourcesModel();
+            ResourcesModel tr = new ResourcesModel();
 
             switch (resourceType)
             {
-                case ResourceTileType.Sheep:
+                case ResourceType.Sheep:
                     tr.Sheep++;
                     tr.Cloth += pirates ? 1 : 0;
                     tr.Sheep += pirates ? 0 : 1;
                     break;
-                case ResourceTileType.Wood:
+                case ResourceType.Wood:
                     tr.Wood++;
                     tr.Wood += pirates ? 0 : 1;
                     tr.Paper += pirates ? 1 : 0;
                     break;
-                case ResourceTileType.Ore:
+                case ResourceType.Ore:
                     tr.Ore++;
                     tr.Ore += pirates ? 0 : 1;
                     tr.Coin += pirates ? 1 : 0;
                     break;
-                case ResourceTileType.Wheat:
+                case ResourceType.Wheat:
                     tr.Wheat += 2;
                     break;
-                case ResourceTileType.Brick:
+                case ResourceType.Brick:
                     tr.Brick += 2;
                     break;
-                case ResourceTileType.GoldMine:
+                case ResourceType.GoldMine:
                     tr.GoldMine += 2;
                     break;
                 default:
@@ -91,31 +91,31 @@ namespace Catan3.Models
             return tr;
         }
 
-        public static void AddResource(this TradeResourcesModel model, ResourceTileType resourceType, int toAdd)
+        public static void AddResource(this ResourcesModel model, ResourceType resourceType, int toAdd)
         {
             switch (resourceType)
             {
-                case ResourceTileType.Sheep:
+                case ResourceType.Sheep:
                     model.Sheep += toAdd;
                     break;
 
-                case ResourceTileType.Wood:
+                case ResourceType.Wood:
                     model.Wood += toAdd;
                     break;
 
-                case ResourceTileType.Ore:
+                case ResourceType.Ore:
                     model.Ore += toAdd;
                     break;
 
-                case ResourceTileType.Wheat:
+                case ResourceType.Wheat:
                     model.Wheat += toAdd;
                     break;
 
-                case ResourceTileType.Brick:
+                case ResourceType.Brick:
                     model.Brick += toAdd;
                     break;
 
-                case ResourceTileType.GoldMine:
+                case ResourceType.GoldMine:
                     model.GoldMine += toAdd;
                     break;
                 //case ResourceTileType.Cloth:
@@ -144,11 +144,11 @@ namespace Catan3.Models
                 //case ResourceTileType.AnyDevCard:
                 //    AnyDevCard += toAdd;
                 //    break;
-                case ResourceTileType.Back:
+                case ResourceType.Back:
 
-                case ResourceTileType.None:
+                case ResourceType.None:
 
-                case ResourceTileType.Sea:
+                case ResourceType.Sea:
 
                 default:
                     model.TraceMessage($"{resourceType} passed to Add()");
@@ -156,9 +156,9 @@ namespace Catan3.Models
             }
         }
 
-        public static TradeResourcesModel TradeResourcesModelForBuilding(BuildingState buildingState, ResourceTileType resourceType, bool pirates)
+        public static ResourcesModel TradeResourcesModelForBuilding(BuildingState buildingState, ResourceType resourceType, bool pirates)
         {
-            var tr = new TradeResourcesModel();
+            var tr = new ResourcesModel();
             switch (buildingState)
             {
                 case BuildingState.Settlement:

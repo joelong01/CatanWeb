@@ -2,25 +2,17 @@
 
 namespace Catan3.Models
 {
-    
+
     public enum GameAction
     {
         Shuffle, Undo, Redo,
         Next
     }
 
-    public enum ResourceTileType
+    public enum ResourceType
     {
         Sheep, Wood, Ore, Wheat, Brick, GoldMine, Desert,
-        Back, None, Sea,
-
-    };
-
-    public enum ResourceCardType
-    {
-        Sheep, Wood, Ore, Wheat, Brick, GoldMine, Desert,
-        Back, None, Sea,
-        Coin, Cloth, Paper, Politics, Trade, Science, AnyDevCard, VictoryPoint, Invasion
+        Back, None, Sea, Coin, Cloth, Paper, Politics, Trade, Science, AnyDevCard, VictoryPoint, Invasion
     };
     public enum BuildingState
     {

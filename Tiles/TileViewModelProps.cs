@@ -26,8 +26,6 @@ namespace Catan3.Models
         [ObservableProperty]
         private CatanOrientation _orientation = CatanOrientation.FaceUp;
 
-        [ObservableProperty]
-        private ResourceCardModel _tempGoldResourceCardModel;
 
         public static TileViewModel Default { get; } = new(TileModel.Default, BoardLayout.Default);
 

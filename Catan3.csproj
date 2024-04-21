@@ -24,8 +24,10 @@
 		<None Remove="Game\Game Control\GameControls.xaml" />
 		<None Remove="Harbors\HarborCtrl.xaml" />
 		<None Remove="MainPage.xaml" />
-		<None Remove="ResourceCard\BoardMeasurementCtrl.xaml" />
-		<None Remove="ResourceCard\ResourceCardCtrl.xaml" />
+		<None Remove="Player\PlayerCtrl.xaml" />
+		<None Remove="Resources\BoardMeasurementCtrl.xaml" />
+		<None Remove="Resources\ResourceCardCtrl.xaml" />
+		<None Remove="Resources\TrackedResourcesCtrl.xaml" />
 		<None Remove="Rolls\SingleRoll.xaml" />
 		<None Remove="Themes\Generic.xaml" />
 		<None Remove="Themes\ImageResources.xaml" />
@@ -90,6 +92,12 @@
 	    <Generator>TextTemplatingFileGenerator</Generator>
 	    <LastGenOutput>models.cs</LastGenOutput>
 	  </None>
+	  <Page Update="Resources\TrackedResourcesCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Player\PlayerCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	  <Page Update="Rolls\SingleRoll.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>

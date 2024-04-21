@@ -39,26 +39,26 @@ namespace Catan3.Models
                  new(2, -1, -1),
                  new(2, 0, -2)
              ];
-        public List<ResourceTileType> Resources { get; } = [
-            ResourceTileType.Desert,
-            ResourceTileType.Brick,
-            ResourceTileType.Brick,
-            ResourceTileType.Brick,
-            ResourceTileType.Ore,
-            ResourceTileType.Ore,
-            ResourceTileType.Ore,
-            ResourceTileType.Sheep,
-            ResourceTileType.Sheep,
-            ResourceTileType.Sheep,
-            ResourceTileType.Sheep,
-            ResourceTileType.Wheat,
-            ResourceTileType.Wheat,
-            ResourceTileType.Wheat,
-            ResourceTileType.Wheat,
-            ResourceTileType.Wood,
-            ResourceTileType.Wood,
-            ResourceTileType.Wood,
-            ResourceTileType.Wood
+        public List<ResourceType> Resources { get; } = [
+            ResourceType.Desert,
+            ResourceType.Brick,
+            ResourceType.Brick,
+            ResourceType.Brick,
+            ResourceType.Ore,
+            ResourceType.Ore,
+            ResourceType.Ore,
+            ResourceType.Sheep,
+            ResourceType.Sheep,
+            ResourceType.Sheep,
+            ResourceType.Sheep,
+            ResourceType.Wheat,
+            ResourceType.Wheat,
+            ResourceType.Wheat,
+            ResourceType.Wheat,
+            ResourceType.Wood,
+            ResourceType.Wood,
+            ResourceType.Wood,
+            ResourceType.Wood
             ];
         public List<HarborModel> Harbors { get; } = [
             new HarborModel(new HexCoordinates(0, -2, 2), HarborType.Ore, HexSide.Top),

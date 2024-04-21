@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Security;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -38,27 +39,11 @@ namespace Catan3.Models
             {
                 Messenger.UnregisterAll(this);
             });
-            TempGoldResourceCardModel = new ResourceCardModel()
-            {
-                ResourceType = tile.ResourceTileType.ToResourceCardType(),
-                Orientation = CatanOrientation.FaceDown,
-                CountVisibility = Microsoft.UI.Xaml.Visibility.Collapsed
-            };
+           
 
-            Tile.PropertyChanged += Tile_PropertyChanged;
+           
         }
-        /// <summary>
-        ///     Listen for the change to the TemporarilyGold flag and set the orientation of the TempGoldOrientation
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Tile_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(TileModel.TemporarilyGold))
-            {
-                TempGoldResourceCardModel.Orientation = Tile.TemporarilyGold ? CatanOrientation.FaceUp : CatanOrientation.FaceDown;
-            }
-        }
+       
 
         private void RegisterTargetMessageResponse()
         {
@@ -151,8 +136,12 @@ namespace Catan3.Models
 
         public CatanOrientation TempGoldOrientation(TileModel _, bool tempGold)
         {
+            Debug.Assert(tempGold == this.Tile.TemporarilyGold);
+            if (tempGold)
+            {
+                this.TraceMessage($"{Tile.TileKey} is tempGold");
+            }
             var orientation =  tempGold ? CatanOrientation.FaceUp : CatanOrientation.FaceDown;
-            TempGoldResourceCardModel.Orientation = orientation;
             return orientation;
         }
         /// <summary>
@@ -162,10 +151,14 @@ namespace Catan3.Models
         /// <param name="tempGold"></param>
         /// <param name="resourceTileType"></param>
         /// <returns></returns>
-        public Brush GetTileResourceType(TileModel _, bool tempGold, ResourceTileType resourceTileType)
+        public Brush GetTileResourceType(TileModel _, bool tempGold, ResourceType resourceTileType)
         {
+            if (tempGold)
+            {
+                this.TraceMessage($"Temp Gold Resource: {resourceTileType}");
+            }
         
-            var resourceType = tempGold ? ResourceTileType.GoldMine : resourceTileType;
+            var resourceType = tempGold ? ResourceType.GoldMine : resourceTileType;
             string key = $"ResourceTileType.{resourceType}";
             var brush =  ( ImageBrush )Application.Current.Resources[key];
             return ( Brush )brush;
@@ -180,8 +173,19 @@ namespace Catan3.Models
             this.TraceMessage($"Highlighting {this}");
             return ( Brush )BrushCache.GetSolidColorBrush(Colors.Yellow);
         }
+        public ImageBrush GetResourceImage(TileModel tileModel, ResourceType resourceType)
+        {
+            // this.TraceMessage($"Resource: {resourceCardType}");
+            string key = $"ResourceCard.{resourceType}";
+            var result =  ( ImageBrush )Application.Current.Resources[key];
+            Debug.Assert(result is not null);
+            if (tileModel.TemporarilyGold)
+            {
+                this.TraceMessage($"ImageKey={key} {Tile.TileKey}{Tile.ResourceTileType}");
+            }
+            return result;
+        }
 
-       
 
     }
 }
