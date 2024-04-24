@@ -1,13 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.Contracts;
-using Catan3.Utility;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.UI;
-using Windows.ApplicationModel.VoiceCommands;
 
 namespace Catan3.Models
 {
@@ -28,7 +21,7 @@ namespace Catan3.Models
         }
 
         [RelayCommand]
-        public void Undo()
+        public void Undo()  
         {
             Messenger.Send(new DoAction(GameAction.Undo));
         }

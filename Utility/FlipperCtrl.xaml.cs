@@ -15,8 +15,8 @@ namespace Catan3.Utility
         {
             this.DefaultStyleKey = typeof(FlipperCtrl);
         }
-
-        public static readonly DependencyProperty OrientationProperty = DependencyProperty.Register("Orientation", typeof(CatanOrientation), typeof(FlipperCtrl), new PropertyMetadata(CatanOrientation.FaceDown, OrientationChanged));
+        public static readonly DependencyProperty FlipsProperty = DependencyProperty.Register("Flips", typeof(bool), typeof(FlipperCtrl), new PropertyMetadata(true));
+           public static readonly DependencyProperty OrientationProperty = DependencyProperty.Register("Orientation", typeof(CatanOrientation), typeof(FlipperCtrl), new PropertyMetadata(CatanOrientation.FaceDown, OrientationChanged));
         public CatanOrientation Orientation
         {
             get => ( CatanOrientation )GetValue(OrientationProperty);
@@ -30,6 +30,7 @@ namespace Catan3.Utility
         private void SetOrientation(CatanOrientation oldValue, CatanOrientation newValue)
         {
             if (oldValue == newValue) return;
+         
           //  this.TraceMessage($"old orientation: {oldValue} New:{newValue}");
             if (Orientation == CatanOrientation.FaceUp)
             {

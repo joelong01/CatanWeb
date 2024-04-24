@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<UserControl
-    x:Class="Catan3.Controls.GameControls"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:Catan3.Controls"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
+<UserControl x:Class="Catan3.Controls.GameControls"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Catan3.Controls"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d">
 
     <Grid>
 
@@ -22,7 +21,7 @@
                             Width="100" Height="100">
                         <Button Content="&#xE10E;"
                                 Command="{x:Bind ViewModel.GameViewModel.UndoCommand, Mode=OneWay}"
-                                IsEnabled="{x:Bind ViewModel.Log.CanUndo, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.GameViewModel.ActionFlags.UndoEnabled, Mode=OneWay}"
                                 Style="{StaticResource GameControllerStyle}"
                                 Background="Transparent" Foreground="White" />
                         <TextBlock Margin="10, 5, 0, 0" Text="Undo"
@@ -34,9 +33,8 @@
                             Width="100" Height="100">
                         <Button Content="&#xE101;"
                                 Command="{x:Bind ViewModel.GameViewModel.NextPlayerCommand, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.GameViewModel.ActionFlags.NextEnabled, Mode=OneWay}"
                                 Style="{StaticResource GameControllerStyle}"
-                               
-                                
                                 Background="Transparent" Foreground="White" />
                         <TextBlock Margin="10, 5, 0, 0" Text="Next"
                                 HorizontalAlignment="Center" Foreground="White"
@@ -48,15 +46,16 @@
                         <Button Content="&#xE10D;"
                                 Command="{x:Bind ViewModel.GameViewModel.RedoCommand, Mode=OneWay}"
                                 Style="{StaticResource GameControllerStyle}"
-                                  IsEnabled="{x:Bind ViewModel.Log.CanRedo, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.GameViewModel.ActionFlags.RedoEnabled, Mode=OneWay}"
                                 Background="Transparent" Foreground="White" />
                         <TextBlock Margin="10, 5, 0, 0" Text="Redo"
                                 HorizontalAlignment="Center" Foreground="White"
                                 TextLineBounds="Tight" />
                     </StackPanel>
                 </StackPanel>
-                <TextBlock Text="{x:Bind ViewModel.GameViewModel.StateMessage(ViewModel.GameViewModel.GameModel, ViewModel.GameViewModel.GameModel.GameState), Mode=OneWay}" HorizontalAlignment="Center"
-                        Margin="5" />
+                <TextBlock
+                        Text="{x:Bind ViewModel.GameViewModel.StateMessage(ViewModel.GameViewModel.GameModel, ViewModel.GameViewModel.GameModel.GameState), Mode=OneWay}"
+                        HorizontalAlignment="Center" Margin="5" />
             </StackPanel>
         </Viewbox>
     </Grid>

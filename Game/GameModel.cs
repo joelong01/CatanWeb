@@ -13,10 +13,27 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Models
 {
+    public partial class ActionFlags : ObservableObject
+    {
+        [ObservableProperty]
+        private bool _undoEnabled = false;
+
+        [ObservableProperty]
+        private bool _redoEnabled = false;
+
+        [ObservableProperty]
+        private bool _nextEnabled = false;
+
+        public override string ToString()
+        {
+            return $"UndoEnabled: {UndoEnabled} RedoEnabled={RedoEnabled} NextEnabled={NextEnabled}";
+        }
+    }
    
     public partial class GameModel : ObservableObject
     {
-      
+        [ObservableProperty]
+        private ActionFlags _actionFlags = new();
 
         [ObservableProperty]
         private TurnRollModel? _turnRollModel = null; // nullable as it gets set to null when the turn is over and the new one is created when the turn is started
@@ -60,6 +77,8 @@ namespace Catan3.Models
         //  keep track of the total resources ever generated in the game by everyone
         [ObservableProperty]
         private ResourcesModel _gameResourcesModel = new();
+
+       
 
         public override string ToString()
         {

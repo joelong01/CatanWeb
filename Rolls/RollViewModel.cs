@@ -21,7 +21,7 @@ namespace Catan3.Models
         {
             if (TurnRollModel is null) return;
             TurnRollModel.RedRoll = roll;
-            if (IsComplete) { Messenger.Send(new Rolled(TurnRollModel)); }
+            if (IsComplete) { Messenger.Send(new RollMessage(TurnRollModel)); }
         }
         [RelayCommand]
         private void WhiteRoll(int roll)
@@ -29,14 +29,14 @@ namespace Catan3.Models
             if (TurnRollModel is null) return;
 
             TurnRollModel.WhiteRoll = roll;
-            if (IsComplete) { Messenger.Send(new Rolled(TurnRollModel)); }
+            if (IsComplete) { Messenger.Send(new RollMessage(TurnRollModel)); }
         }
         [RelayCommand]
         private void SpecialRoll(SpecialDice roll)
         {
             if (TurnRollModel is null) return;
             TurnRollModel.SpecialRoll = roll;
-            if (IsComplete) { Messenger.Send(new Rolled(TurnRollModel)); }
+            if (IsComplete) { Messenger.Send(new RollMessage(TurnRollModel)); }
         }
 
         [RelayCommand]
@@ -45,7 +45,7 @@ namespace Catan3.Models
             Debug.Assert(TurnRollModel is not null, "Turn roll model is null.  probably a bug in NextPlayer"); 
             if (roll == ValidCatanRoll.None) return;
             TurnRollModel.NormalRoll = roll;
-            Messenger.Send(new Rolled(TurnRollModel));
+            Messenger.Send(new RollMessage(TurnRollModel));
         }
 
         public partial class GameRollViewModel : ObservableObject

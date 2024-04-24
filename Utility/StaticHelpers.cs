@@ -35,7 +35,7 @@ namespace Catan3
             return output;
         }
 
-        
+
 
         #endregion Methods
     }
@@ -187,6 +187,24 @@ namespace Catan3
             }
             return brush;
         }
+
+        public static ImageBrush ResourceCardImage(ResourceType resourceType)
+        {
+            try
+            {
+                string key = $"ResourceCard.{resourceType}";
+                var result =  ( ImageBrush )Application.Current.Resources[key];
+                Debug.Assert(result is not null);
+                return result;
+            }
+            catch
+            ( Exception ex )
+            {
+                resourceType.TraceMessage($"{ex.Message}");
+                return ( ImageBrush )Application.Current.Resources["ResourceCard.None"];
+            }
+
+        }
     }
     public static class Extensions
     {
@@ -204,50 +222,5 @@ namespace Catan3
         }
     }
 
-    //public static class DragAndDrop
-    //{
-    //    public interface IDragAndDropProgress
-    //    {
-    //        #region Methods
 
-    //        void Report(PointerRoutedEventArgs e, Point value);
-
-    //        #endregion Methods
-    //    }
-    //    public static Task<Point> DragAsync(UIElement control, PointerRoutedEventArgs origE, IDragAndDropProgress? progress = null)
-    //    {
-    //        TaskCompletionSource<Point> taskCompletionSource = new TaskCompletionSource<Point>();
-    //        UIElement mousePositionWindow = Window.Current.Content;
-    //        GeneralTransform gt = Window.Current.Content.TransformToVisual(control);
-    //        UIElement root = Window.Current.Content;
-
-    //        Point pointMouseDown = gt.TransformPoint(origE.GetCurrentPoint(mousePositionWindow).Side);
-
-
-    //        PointerEventHandler pointerMovedHandler = (object s, PointerRoutedEventArgs e) =>
-    //        {
-    //            Point pt = e.GetCurrentPoint(mousePositionWindow).Side;
-    //            pt = gt.TransformPoint(pt);
-    //            Point delta = new Point
-    //            {
-    //                X = pt.X - pointMouseDown.X,
-    //                Y = pt.Y - pointMouseDown.Y
-    //            };
-
-    //            if (!( control.RenderTransform is CompositeTransform compositeTransform ))
-    //            {
-    //                compositeTransform = new CompositeTransform();
-    //                control.RenderTransform = compositeTransform;
-    //            }
-    //            compositeTransform.TranslateX += delta.X;
-    //            compositeTransform.TranslateY += delta.Y;
-    //            control.RenderTransform = compositeTransform;
-    //            pointMouseDown = pt;
-    //            if (progress != null)
-    //            {
-    //                progress.Report(e, pt);
-    //            }
-    //        };
-    //    }
-    //}
 }

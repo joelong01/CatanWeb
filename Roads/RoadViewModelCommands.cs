@@ -29,7 +29,7 @@ namespace Catan3.Models
         {
             if (Road.RoadState == RoadState.Highlighted)
             {
-                Messenger.Send(new BuyRoad(Road.RoadKey));
+                Messenger.Send(new RoadPurchaseMessage(Road.RoadKey));
             }
         }
 

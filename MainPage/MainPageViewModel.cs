@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using Catan.Utility;
+using Catan3.Controller;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
@@ -13,17 +14,13 @@ namespace Catan3.Models
 {
 
 
-
-
-
     public partial class MainPageViewModel : ObservableRecipient
     {
 
         [ObservableProperty]
         GameViewModel _gameViewModel;
 
-        [ObservableProperty]
-        private Log<GameModel> _log;
+        private GameController GameController { get; set; }
 
         private readonly IFileService _fileService;
 
@@ -33,18 +30,17 @@ namespace Catan3.Models
         {
             FunctionTimer.Enabled = false;
             _fileService = fileService;
+            GameController = new GameController();
             RegisterMessages();
             // create a new GameModel - this would usually come from the service
 
             List<string> playerIds = playingPlayers.Select( p => p.Id ).ToList();
-            var gameModel = GameFactory.CreateGame(selectedGame, playerIds);
+
+            var gameModel = GameController.NewGame(selectedGame, playerIds);
             var gvm = new GameViewModel(gameModel);
             this.GameViewModel = gvm;
             GameViewModel.UpdateLayout();
             GameViewModel.SetStars();
-            Log = new Log<GameModel>(selectedGame);
-            GameViewModel.GameModel.GameState = GameState.PickingBoard;
-            Log.Done(GameViewModel.GameModel);
 
 
         }
@@ -54,39 +50,9 @@ namespace Catan3.Models
             Debug.Assert(Messenger is not null);
             IsActive = true;
 
-            Messenger.Register<DoAction>(this, (recipient, message) =>
-            {
-                OnAction(message.Action);
-            });
 
 
-            Messenger.Register<BuildingUpgrade>(this, (recipient, message) =>
-            {
-                OnBuildingUpgrade(message.BuildingKey);
-            });
-
-            Messenger.Register<BuyRoad>(this, (recipient, message) =>
-                       {
-                           OnRoadPurchase(message.RoadKey);
-                       });
-
-
-            Messenger.Register<RequestTileOwners>(this, (recipient, message) =>
-            {
-                OnRequestTileOwners(message.TileViewModel);
-            });
-            Messenger.Register<MoveRobber>(this, (recipient, message) =>
-            {
-                GameViewModel.RobberViewModel.RobberModel.Coordinates = message.Coordinates;
-                GameViewModel.RobberViewModel.RobberModel.MovedBy = GameViewModel.CurrentPlayer.Id;
-                Log.Done(GameViewModel.GameModel);
-
-            });
-            Messenger.Register<Rolled>(this, (recipient, message) =>
-            {
-                OnRoll(message.Roll);
-
-            });
+           
 
             Messenger.Register<EndGame>(this, (recipient, message) =>
             {
@@ -96,73 +62,7 @@ namespace Catan3.Models
         }
 
 
-        private void SetTempGoldTiles()
-        {
-            try
-            {
-
-                if (GameViewModel.GameModel.HouseRules.GoldTiles == 0) return;
-
-                var gameModel = GameViewModel.GameModel;
-
-
-                int goldCount = GameViewModel.Tiles.Count( t => t.Tile.TemporarilyGold);
-                Debug.Assert(goldCount == 0 || goldCount == GameViewModel.GameModel.HouseRules.GoldTiles);
-                Contract.Assert(gameModel.HouseRules.GoldTiles > 0);
-                for (int i = 0; i < GameViewModel.Tiles.Count - 1; i++)
-                {
-                    Debug.Assert(GameViewModel.Tiles[i].Tile.GetHashCode() == gameModel.Tiles[i].GetHashCode());
-                    Debug.Assert(GameViewModel.Tiles[i].Tile == gameModel.Tiles[i]);
-                    Debug.Assert(GameViewModel.Tiles[i].Tile.Equals(gameModel.Tiles[i]));
-                }
-                foreach (TileModel tile in GameViewModel.GameModel.Tiles)
-                {
-                    tile.TemporarilyGold = false;
-                }
-                foreach (TileViewModel tile in GameViewModel.Tiles)
-                {
-                    if (tile.Tile.TemporarilyGold)
-                    {
-
-                        Debug.Assert(false, "how is this possible?");
-                    }
-                }
-                var rand = new Random((int)DateTime.Now.Ticks);
-                int count = 0;
-                List<TileViewModel> goldTiles = [];
-                while (count < GameViewModel.GameModel.HouseRules.GoldTiles)
-                {
-                    var index = rand.Next(GameViewModel.Tiles.Count);
-                    var tileViewModel =  GameViewModel.Tiles[index] ;
-                    Contract.Assert(tileViewModel is not null, "this should *never* happen!");
-                    if (tileViewModel.Tile.ResourceTileType != ResourceType.Desert && tileViewModel.Tile.TemporarilyGold == false)
-                    {
-                        tileViewModel.Tile.TemporarilyGold = true;
-                        tileViewModel.Orientation = CatanOrientation.FaceDown;
-                        goldTiles.Add(tileViewModel);
-                        this.TraceMessage($"GoldTile: {GameViewModel.GameModel.CurrentPlayerId}={tileViewModel}");
-                        count++;
-                    }
-                }
-                foreach (var t in goldTiles)
-                {
-                    t.Orientation = CatanOrientation.FaceUp;
-                }
-            }
-            finally
-            {
-#if DEBUG
-
-
-                var goldCount = GameViewModel.Tiles.Count(t => t.Tile.TemporarilyGold);
-                Debug.Assert(goldCount == GameViewModel.GameModel.HouseRules.GoldTiles);
-#endif
-            }
-
-            //
-            //   this is *not* logged here -- the caller should log so that they
-            //   get undone together.
-        }
+     
 
         public void EndGame()
         {

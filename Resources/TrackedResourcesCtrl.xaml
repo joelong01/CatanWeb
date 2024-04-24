@@ -9,7 +9,7 @@
         mc:Ignorable="d">
 
     <Grid>
-        <GridView ItemsSource="{x:Bind ResourcesViewModel.GetTrackedResources(TrackGold), Mode=OneWay}">
+        <GridView ItemsSource="{x:Bind ResourcesViewModel.ResourceCounters, Mode=OneWay}">
             <GridView.ItemContainerStyle>
                 <Style TargetType="GridViewItem">
                     <Setter Property="Padding" Value="3" />
@@ -19,10 +19,8 @@
             </GridView.ItemContainerStyle>
 
             <GridView.ItemTemplate>
-                <DataTemplate x:DataType="models:ResourceType">
-                    <c:ResourceCardCtrl ResourceType="{x:Bind}" 
-                            ViewModel="{Binding ElementName=CTRL_BoardMeasurement, Path=ResourcesViewModel, Mode=OneWay}" />
-
+                <DataTemplate x:DataType="models:ResourceCounterViewModel">
+                    <c:ResourceCardCtrl ViewModel="{x:Bind Mode=OneWay}"  />
                 </DataTemplate>
             </GridView.ItemTemplate>
         </GridView>

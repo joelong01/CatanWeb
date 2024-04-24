@@ -8,6 +8,7 @@ using System.Linq;
 using Catan10.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using Windows.Security.Isolation;
 
 namespace Catan3.Models
 {
@@ -36,7 +37,33 @@ namespace Catan3.Models
                 Messenger.UnregisterAll(this);
             });
 
-            BroadCastGlobalMetaData();
+            Messenger.Register<UpdateGameModel>(this, (recipient, message) => { MergeGameModel(message.GameModel); });
+
+            Messenger.Register<RequestTileOwners>(this, (recipient, message) =>
+            {
+                OnRequestTileOwners(message.TileViewModel);
+            });
+         
+        }
+
+        private void OnRequestTileOwners(TileViewModel tileViewModel)
+        {
+            var buildings = GameModel.Buildings.BuildingsInTile(tileViewModel.Tile.TileKey);
+            List<PlayerViewModel> owners = [];
+            foreach (var building in buildings)
+            {
+                if (building.OwnerId is not null)
+                {
+                    var p = Players.First( player => player.Id == building.OwnerId );
+                    Debug.Assert(p is not null);
+                    if (p.Id != CurrentPlayer.Id)
+                    {
+                        owners.Add(p);
+                    }
+                }
+            }
+            Messenger.Send(new TileOwnersResponse(owners));
+
         }
 
         /// <summary>

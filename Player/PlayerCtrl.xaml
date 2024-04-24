@@ -16,7 +16,7 @@
                         Height="50">
 
                 </StackPanel>
-                <c:TrackedResourcesCtrl ResourcesViewModel="{x:Bind PlayerViewModel.ResourcesThisTurn, Mode=OneWay}" TrackGold="True"/>
+                <c:TrackedResourcesCtrl ResourcesViewModel="{x:Bind PlayerViewModel.ResourcesThisTurn, Mode=OneWay}"/>
                 <StackPanel HorizontalAlignment="Stretch"
                         Orientation="Horizontal" Background="AliceBlue"
                         Height="50">

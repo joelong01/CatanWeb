@@ -48,7 +48,7 @@ namespace Catan3.Models
         [Description("Accept Board")]
         PickingBoard,
 
-        [Description("Roll...")]
+        [Description("Roll For Order...")]
         WaitingForRollForOrder,
 
         [Description("Order Done")]

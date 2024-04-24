@@ -3,22 +3,18 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Catan3.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Messaging;
 
 
 
 namespace Catan3.Utility
-
 {
     /// <summary>
     ///     The System.Text.Serialize package has trouble composing with MVVM becuse of the Code behind strategy
@@ -38,7 +34,21 @@ namespace Catan3.Utility
 
     }
 
-    public partial class Log<T> : ObservableRecipient
+    public interface ILog
+    {
+        GameType GameType { get; set; }
+        int DoneCount { get; }
+        int RedoCount { get; }
+        bool CanUndo { get; }
+        bool CanRedo { get; }
+        SerializableLog GetSerializableLog();
+        void Done(GameModel model);
+        GameModel? Undo();
+        GameModel? Redo();
+    }
+
+
+    public partial class Log<T> : ObservableRecipient, ILog
     {
 
         private ObservableCollection<T> DoneStack { get; set; } = [];
@@ -59,6 +69,7 @@ namespace Catan3.Utility
         }
 
         public int DoneCount => DoneStack.Count;
+        public int RedoCount => RedoStack.Count;
 
         /// <summary>
         /// Retrieves a GameModel from the provided data, handling different types of input.
@@ -285,7 +296,7 @@ namespace Catan3.Utility
 
         private void RedoStack_ListChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
-            if (sender is not null && sender is ObservableCollection<T> list)
+            if (sender is not null and ObservableCollection<T> list)
             {
                 this.CanRedo = list.Count > 0;
                 //  this.TraceMessage($"Redo Depth {list.Count} size={GetStackSize(list)}");
@@ -294,7 +305,7 @@ namespace Catan3.Utility
 
         private void DoneStack_ListChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
-            if (sender is not null && sender is ObservableCollection<T> list)
+            if (sender is not null and ObservableCollection<T> list)
             {
                 this.CanUndo = list.Count > 1; // don't undo past the start
                                                // this.TraceMessage($"Done Depth {list.Count}  size={GetStackSize(list)}");
@@ -328,17 +339,14 @@ namespace Catan3.Utility
         }
 
         /// <summary>
-        /// Performs an undo operation by restoring the state immediately preceding the current state.
+        /// Performs an undo operation by restoring the state immediately preceding the current state
         /// This is achieved by moving the current state to the RedoStack and applying the previous state to the given viewModel.
         /// </summary>
-        /// <param name="viewModel">The game view model containing the current game state, which will be updated to the previous state.</param>
-        /// <returns>True if the undo operation was successful; false otherwise.</returns>
-        public bool Undo(GameViewModel viewModel)
+        /// <returns>The GameModel representing the current state, null if Undo cannot be done.</returns>
+        public GameModel? Undo()
         {
-            if (viewModel == null) throw new ArgumentNullException(nameof(viewModel), "ViewModel cannot be null.");
-
             if (!CanUndo)
-                return false;
+                return null;
 
             try
             {
@@ -350,22 +358,12 @@ namespace Catan3.Utility
                 var previousState = DoneStack.Peek();
                 var newGameModel = ToGameModel(previousState) ?? throw new InvalidOperationException("Failed to deserialize the undo state.");
 
-                // Apply the restored state
-                viewModel.MergeGameModel(newGameModel);
-                for (int i = 0; i < viewModel.Tiles.Count - 1; i++)
-                {
-
-                    Debug.Assert(viewModel.Tiles[i].Tile.GetHashCode() == newGameModel.Tiles[i].GetHashCode());
-                    var tileModel = newGameModel.Tiles[i];
-                    Debug.Assert(viewModel.Tiles[i].Tile.Equals(tileModel));
-
-                }
-                return true;
+                return newGameModel;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Undo operation failed: {ex.Message}");
-                return false;
+                return null;
             }
         }
 
@@ -373,17 +371,16 @@ namespace Catan3.Utility
 
         /// <summary>
         /// Restores the game state from the redo stack, pushing the current state onto the undo stack.
-        /// This method pops the top state from the RedoStack, applies it to the provided viewModel,
-        /// and pushes the current state back to the DoneStack, effectively reversing a previous undo operation.
+        /// This method pops the top state from the RedoStack, pushes the current state back to the DoneStack, and
+        /// return that game model.
         /// </summary>
-        /// <param name="viewModel">The game view model to which the state will be applied. This model is updated to reflect the restored state.</param>
         /// <returns>True if the redo operation was successful; false otherwise.</returns>
-        public bool Redo(GameViewModel viewModel)
+        public GameModel? Redo()
         {
-            if (viewModel == null) throw new ArgumentNullException(nameof(viewModel), "ViewModel cannot be null.");
+
 
             if (!CanRedo)  // Check if there is a state to redo
-                return false;
+                return null;
 
             try
             {
@@ -393,14 +390,14 @@ namespace Catan3.Utility
 
                 // Deserialize the redo state and apply it to the viewModel
                 var model = ToGameModel(redoState) ?? throw new InvalidOperationException("Failed to deserialize the redo state.");
-                viewModel.MergeGameModel(model);  // Apply the restored state
-                return true;
+
+                return model;
             }
             catch (Exception ex)
             {
                 // Log the error and return false indicating failure
                 Debug.WriteLine($"Redo operation failed: {ex.Message}");
-                return false;
+                return null;
             }
         }
 
@@ -432,6 +429,43 @@ namespace Catan3.Utility
             if (DoneStack.Peek() is T data)
             {
                 return ToGameModel(data) ?? throw new InvalidOperationException("Failed to convert the top of DoneStack to GameModel.");
+            }
+
+            // This code should theoretically never be reached because of the above check, but it's a safeguard.
+            throw new InvalidOperationException("Unexpected type in DoneStack, cannot convert to GameModel");
+        }
+
+        public GameModel CopyCurrent()
+        {
+            if (DoneStack.Count == 0)
+                throw new InvalidOperationException("DoneStack is empty, no data to retrieve.");
+            string json=String.Empty;
+            if (DoneStack.Peek() is T data)
+            {
+                if (data is byte[] compressedData)
+                {
+                    try
+                    {
+                        json = SerializationHelper.Decompress(compressedData);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException("Failed to decompress data.", ex);
+                    }
+                }
+
+                // Handle string data assumed to be JSON.
+                if (data is string jsonString)
+                    json = jsonString;
+
+                if (data is GameModel gameModel)
+                {
+                    json = SerializationHelper.JsonSerialize(gameModel);
+                }
+
+                GameModel copy = SerializationHelper.JsonDeserialize<GameModel>(json) ?? throw new InvalidOperationException("Unabled to deserialize GameModel");
+                return copy;
+
             }
 
             // This code should theoretically never be reached because of the above check, but it's a safeguard.

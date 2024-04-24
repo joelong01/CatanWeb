@@ -30,4 +30,10 @@
         <Setter Property="Foreground" Value="White" />
         <Setter Property="CharacterSpacing" Value="0" />
     </Style>
+    <Style TargetType="Grid" x:Key="Grid_ResourceCard">
+        <Setter Property="Width" Value="67" />
+        <Setter Property="Height" Value="100" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="CornerRadius" Value="5" />
+    </Style>
 </ResourceDictionary>

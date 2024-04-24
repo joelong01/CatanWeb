@@ -6,17 +6,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
-    <UserControl.Resources>
-        <Style TargetType="Grid" x:Key="Grid_ResourceCard">
 
-            <Setter Property="Width" Value="67" />
-            <Setter Property="Height" Value="100" />
-
-            <Setter Property="Margin" Value="0" />
-            <Setter Property="CornerRadius" Value="5" />
-        </Style>
-    </UserControl.Resources>
-    <u:FlipperCtrl Name="LayoutRoot" Orientation="{x:Bind ViewModel.Orientation(ViewModel.ResourceModel, ResourceType), Mode=OneWay}">
+    <u:FlipperCtrl Name="LayoutRoot" Orientation="{x:Bind ViewModel.GetOrientation(ViewModel.Count), Mode=OneWay}" >
         <u:FlipperCtrl.Back>
             <Grid x:Name="GRID_Back"
                     Background="{StaticResource ResourceCard.Back}"
@@ -25,12 +16,12 @@
         </u:FlipperCtrl.Back>
         <u:FlipperCtrl.Front>
             <Grid x:Name="GRID_Front"
-                    Background="{x:Bind BIND_FrontImage(ResourceType), Mode=OneWay}"
+                    Background="{x:Bind ViewModel.FrontImage(ViewModel.Resource), Mode=OneWay}"
                     Style="{StaticResource Grid_ResourceCard}">
                <Viewbox Stretch="Uniform" Height="20"
                         HorizontalAlignment="Center" VerticalAlignment="Bottom">
                     <Grid Background="Black">
-                        <TextBlock Text="{x:Bind ViewModel.Count(ViewModel.ResourceModel, ResourceType), Mode=OneWay}"
+                        <TextBlock Text="{x:Bind ViewModel.Count, Mode=OneWay}"
                                 Visibility="Visible" />
                     </Grid>
                 </Viewbox>

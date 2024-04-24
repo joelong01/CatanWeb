@@ -6,13 +6,29 @@ using Catan3.Utility;
 namespace Catan3.Models
 
 { 
+    public class SetPlayerOrderMessage(IList<string> playerIds)
+    {
+        public IList<string> PlayerIds { get; set; } = playerIds;
+    }
+
+    public class UpdateGameModel(GameModel model)
+    {
+        public GameModel GameModel { get; set; } = model;
+    }
+
+    public class NewGameMessage(GameType selectedGame, List<string> playerIds)
+    {
+        public GameType GameType= selectedGame;
+        public List<string> PlayerIds { get; set; } = playerIds;
+    }
+
     public class DoAction(GameAction action)
     {
         public GameAction Action { get; } = action;
     }
 
 
-    public class BuyRoad(RoadKey key)
+    public class RoadPurchaseMessage(RoadKey key)
     {
         public RoadKey RoadKey { get; } = key;
     }
@@ -26,7 +42,7 @@ namespace Catan3.Models
     {
         public BuildingViewModel BuildingViewModel { get; } = buildingViewModel;
     }
-    public class BuildingUpgrade(BuildingKey key)
+    public class BuildingUpgradeMessage(BuildingKey key)
     {
         public BuildingKey BuildingKey { get; } = key;
     }
@@ -47,7 +63,7 @@ namespace Catan3.Models
         public IList<PlayerViewModel> Owners { get; } = players;
     }
 
-    public class MoveRobber(HexCoordinates coordinates, string targetPlayerId)
+    public class MoveRobberMessage(HexCoordinates coordinates, string targetPlayerId)
     {
         public HexCoordinates Coordinates { get; } = coordinates;
         public string TargetPlayerId { get; } = targetPlayerId;
@@ -59,7 +75,7 @@ namespace Catan3.Models
         public CatanOrientation Orientation { get; } = newOrientation;
     }
 
-    public class Rolled(TurnRollModel roll)
+    public class RollMessage(TurnRollModel roll)
     {
         public TurnRollModel Roll { get; } = roll;
     }

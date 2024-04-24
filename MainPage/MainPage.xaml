@@ -25,11 +25,11 @@
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
             Background="DarkGray">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="20*" />
+            <ColumnDefinition Width="15*" x:Name="CD_ColumnOne" />
             <ColumnDefinition Width="Auto" MinWidth="5" />
             <ColumnDefinition Width="60*" />
             <ColumnDefinition Width="Auto" MinWidth="5" />
-            <ColumnDefinition Width="20*" />
+            <ColumnDefinition Width="25*" />
         </Grid.ColumnDefinitions>
 
         <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto"
@@ -42,7 +42,7 @@
                 <Button Content="New Game" Click="OnNewGame" Background="Black"
                         Foreground="White" />
                 <Button Content="Shuffle"
-                        Command="{x:Bind MainPageModel.ShuffleCommand, Mode=OneWay}"
+                        Command="{x:Bind MainPageModel.GameViewModel.ShuffleCommand, Mode=OneWay}"
                         Background="Black" Foreground="White" />
 
                 <!--Availabe Players-->
@@ -77,9 +77,10 @@
                 </ComboBox>
 
                 <!--Rolls -->
-                <Viewbox HorizontalAlignment="Stretch" Stretch="Uniform">
-                    <VariableSizedWrapGrid Orientation="Horizontal"
-                            MaximumRowsOrColumns="4">
+
+                <StackPanel HorizontalAlignment="Stretch" Background="Blue" CornerRadius="5">
+                    <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Stretch">
                         <c:SingleRoll Number="2"
                                 GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
                                 TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
@@ -89,6 +90,9 @@
                         <c:SingleRoll Number="4"
                                 GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
                                 TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Stretch">
                         <c:SingleRoll Number="5"
                                 GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
                                 TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
@@ -98,6 +102,9 @@
                         <c:SingleRoll Number="7"
                                 GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
                                 TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Stretch">
                         <c:SingleRoll Number="8"
                                 GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
                                 TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
@@ -107,17 +114,20 @@
                         <c:SingleRoll Number="10"
                                 GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
                                 TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Stretch">
                         <c:SingleRoll Number="11"
                                 GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
                                 TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
                         <c:SingleRoll Number="12"
                                 GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
                                 TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
+                    </StackPanel>
 
-                    </VariableSizedWrapGrid>
-                </Viewbox>
+                </StackPanel>
                 <Button
-                        Command="{x:Bind MainPageModel.NextPlayerCommand, Mode=OneWay}"
+                        Command="{x:Bind MainPageModel.GameViewModel.NextPlayerCommand, Mode=OneWay}"
                         Content="Next Player" />
                 <!--Game Type-->
                 <TextBlock Text="Game Type" Foreground="Black" />
@@ -166,8 +176,7 @@
         <StackPanel Grid.Column="4" HorizontalAlignment="Stretch"
                 Background="DarkOliveGreen">
             <c:TrackedResourcesCtrl
-                    
-                    ResourcesViewModel="{x:Bind MainPageModel.GameViewModel.GameResourceViewModel, Mode=OneWay}" />
+                    ResourcesViewModel="{x:Bind MainPageModel.GameViewModel.GameResources, Mode=OneWay}" />
             <ItemsControl
                     ItemsSource="{x:Bind MainPageModel.GameViewModel.Players, Mode=OneWay}">
                 <ItemsControl.ItemsPanel>

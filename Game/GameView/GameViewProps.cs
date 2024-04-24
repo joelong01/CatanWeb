@@ -7,11 +7,19 @@ using static Catan3.Models.TurnRollViewModel;
 
 namespace Catan3.Models
 {
+    public static class GameViewModelStatics
+    {
+        public static ResourceType[] StarsTrackResourceList =  [ResourceType.Sheep, ResourceType.Wheat, ResourceType.Wood, ResourceType.Brick, ResourceType.Ore];
+        public static ResourceType[] PlayerTrackResourceList =  [..StarsTrackResourceList, ResourceType.GoldMine];
+    }
     public partial class GameViewModel : ObservableRecipient
     {
 
         [ObservableProperty]
         private string _id;
+
+        [ObservableProperty]
+        private ActionFlags _actionFlags = new();
 
         [ObservableProperty]
         private IBoardInfo? _boardInfo;
@@ -65,16 +73,13 @@ namespace Catan3.Models
 
         // total resoruces allocated for the game
         [ObservableProperty]
-        private ResourcesViewModel _gameResourceViewModel = new();
+        private ResourcesViewModel _gameResources = new(GameViewModelStatics.PlayerTrackResourceList);
+
 
         // total stars for each resourcetype in the game
         [ObservableProperty]
-        private ResourcesViewModel _starsResourceViewModel = new();
-        //
-        //  resources that show up in the UI as ResourceCardCtrl - not not observable as designed for one time only binding.
-        //  when we build the Pirates expansion, we'll have to add to this list.
-        public ObservableCollection<ResourceType> TrackedResources { get; } =  [ResourceType.Sheep, ResourceType.Wheat, ResourceType.Wood, ResourceType.Brick, ResourceType.Ore, ResourceType.GoldMine];
-
+        private ResourcesViewModel _starsResourceViewModel = new(GameViewModelStatics.StarsTrackResourceList);
+        
         /// <summary>
         ///     this broadcasts to all things that are looking for the global orientation that causes things like Tiles and Harbors to flip
         /// </summary>

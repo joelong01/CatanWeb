@@ -31,9 +31,11 @@ namespace Catan3.Models
         private PlayerModel _player = PlayerModel.Default;
 
         [ObservableProperty]
-        private ResourcesViewModel _resourcesThisTurn = new();
+        private ResourcesViewModel _resourcesThisTurn = new(GameViewModelStatics.PlayerTrackResourceList);
 
-        
+        [ObservableProperty]
+        private ResourcesViewModel _resourcesThisGame = new(GameViewModelStatics.PlayerTrackResourceList);
+
         public PlayerViewModel() : this("Nameless", Colors.White, Colors.HotPink) { 
         
             

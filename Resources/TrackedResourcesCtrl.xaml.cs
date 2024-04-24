@@ -15,7 +15,7 @@ namespace Catan3.Controls
         {
             this.InitializeComponent();
         }
-      
+       
         public static readonly DependencyProperty ResourcesViewModelProperty = DependencyProperty.Register("ResourcesViewModel", typeof(ResourcesViewModel), typeof(TrackedResourcesCtrl), new PropertyMetadata(null, ResourcesViewModelChanged));
         public ResourcesViewModel ResourcesViewModel
         {
@@ -33,14 +33,7 @@ namespace Catan3.Controls
             this.DataContext = value;
         }
 
-        public static readonly DependencyProperty TrackGoldProperty = DependencyProperty.Register("TrackGold", typeof(bool), typeof(TrackedResourcesCtrl), new PropertyMetadata(true));
-        public bool TrackGold
-        {
-            get => ( bool )GetValue(TrackGoldProperty);
-            set => SetValue(TrackGoldProperty, value);
-        }
-
-
+      
 
     }
 }
