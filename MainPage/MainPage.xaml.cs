@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Catan.Utility;
@@ -149,6 +150,15 @@ namespace Catan3
 
         }
 
-
+        private void OnUpdateLayout(object sender, RoutedEventArgs e)
+        {
+            if (MainPageModel is null) return;
+            if (MainPageModel.GameViewModel is null) return;
+            Debug.Assert(MainPageModel.GameViewModel.BoardInfo is not null);
+            Debug.Assert(MainPageModel.GameViewModel.BoardInfo.Layout is not null);
+            MainPageModel.GameViewModel.BoardInfo.Layout.OuterHexSize++ ;
+            MainPageModel.GameViewModel.BoardInfo.Layout.OuterHexSize--;
+          //  MainPageModel.GameViewModel.UpdateLayout();
+        }
     }
 }

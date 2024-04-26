@@ -112,9 +112,9 @@ namespace Catan3.Utility
             CacheMiss++;
             points = [];
 
-            // Calculate the width and height for positioning adjustments
-            double width = 2 * size;
-            double height = Math.Sqrt(3) / 2 * width;
+            //      // for future reference
+            // double width = 2 * size;
+            // double height = Math.Sqrt(3) / 2 * width;
 
             // The angle between vertices in a hexagon in radians, starting from the top (for a pointy top)
             double angleRadians = Math.PI / 3;
@@ -138,6 +138,8 @@ namespace Catan3.Utility
             HexCache[(size, false)] = points;
             return points;
         }
+
+        
 
 
         /// <summary>

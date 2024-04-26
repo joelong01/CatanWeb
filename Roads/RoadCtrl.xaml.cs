@@ -36,6 +36,11 @@ namespace Catan3.Controls
             DataContext = value;
         }
 
+        /// <summary>
+        ///     These are not bound in XAML because you can't bind to commands on Polygon mouse envents in XAML in winui3
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void OnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             ViewModel.MouseEnterCommand.Execute(ViewModel);

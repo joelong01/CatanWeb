@@ -7,6 +7,8 @@ using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
@@ -21,7 +23,9 @@ namespace Catan3.Models
         [ObservableProperty]
         private BoardLayout _layout;
 
-      
+        [ObservableProperty]
+        private Point _roadCenter = new Point(0,0);
+
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(RoadPolygon))]
         private double _left;
@@ -39,7 +43,7 @@ namespace Catan3.Models
         {
             Road = road;
             Layout = layout;
-            
+
             IsActive = true;
             Messenger.Register<CurrentPlayerChanged>(this, (recipient, message) =>
             {
@@ -72,18 +76,29 @@ namespace Catan3.Models
         private void HandleCurrentPlayerChanged(PlayerViewModel newCurrentPlayer)
         {
             CurrentPlayer = newCurrentPlayer;
-            
+
         }
         private void UpdateLayout()
         {
-
+            const double BUILD_INDEX_TEXT_SIZE = 20;
             Top = Layout.Top(Road.RoadKey.TileKey);
             Left = Layout.Left(Road.RoadKey.TileKey);
+            GetRoadPoints(Road.RoadKey.HexSide, Road.RoadKey.TileKey, Layout);
+
+            //
+            //  buildable roads get a BuildIndex to make it easy to say "Build Road #2"
+            //  they go in the middle of the road, which is set by the pointy top hex.
+            //  the position is centered halfway between the OuterHexSize and the InnerHexSize
+            //  BUILD_INDEX_TEXT_SIZE is set in RoadCtrl.xaml as the Width/Height of the Grid that holds the TextBlock.
+
+            double offset = Layout.OuterHexSize - Layout.InnerHexSize;
+            var pointyTopHexPoints = HexGeometry.PointyTopHexPoints(Layout.InnerHexSize - offset / 2.0, Layout.ControlWidth / 2.0, Layout.ControlHeight / 2.0).PointyTopListToDictionary(); ;
+            RoadCenter = new Point(pointyTopHexPoints[this.Road.RoadKey.HexSide].X - BUILD_INDEX_TEXT_SIZE / 2.0, pointyTopHexPoints[this.Road.RoadKey.HexSide].Y - BUILD_INDEX_TEXT_SIZE / 2.0);
 
             OnPropertyChanged(nameof(RoadPolygon));
         }
 
-        
+
 
         /// <summary>
         ///     keep this around if you want to put the road position in the roads for debugging purposes
@@ -184,6 +199,7 @@ namespace Catan3.Models
             if (layout is null) return points;
             var outerHexPoints = layout.OuterHexPoints.FlatTopListToDictionary();
             var innerHexPoints =  layout.InnerHexPoints.FlatTopListToDictionary();
+
             Point delta;
             switch (side)
             {
@@ -195,6 +211,7 @@ namespace Catan3.Models
                     {
                         points.Add(new Point(point.X, point.Y - layout.ControlHeight));
                     }
+
                     break;
                 case HexSide.TopRight:
                     delta = GapBetweenTiles(tileKey, Direction.NorthEast, layout);
@@ -205,6 +222,7 @@ namespace Catan3.Models
                     points.Add(new Point(innerHexPoints[HexPosition.BottomLeft].X + delta.X,
                                         innerHexPoints[HexPosition.BottomRight].Y + delta.Y));
                     points.Add(new Point(innerHexPoints[HexPosition.Left].X + delta.X, innerHexPoints[HexPosition.Left].Y + delta.Y));
+
                     break;
                 case HexSide.BottomRight:
                     delta = GapBetweenTiles(tileKey, Direction.SouthEast, layout);
@@ -228,7 +246,7 @@ namespace Catan3.Models
                     delta = GapBetweenTiles(tileKey, Direction.SouthWest, layout);
                     points.Add(innerHexPoints[HexPosition.BottomLeft]);
                     points.Add(outerHexPoints[HexPosition.BottomLeft]);
-                   
+
 
                     points.Add(new Point(innerHexPoints[HexPosition.Right].X + delta.X,
                                         innerHexPoints[HexPosition.Right].Y + delta.Y));
@@ -240,7 +258,7 @@ namespace Catan3.Models
                     points.Add(innerHexPoints[HexPosition.Left]);
                     break;
                 case HexSide.TopLeft:
-                    
+
                     delta = GapBetweenTiles(tileKey, Direction.NorthWest, layout);
                     points.Add(innerHexPoints[HexPosition.TopLeft]);
                     points.Add(outerHexPoints[HexPosition.TopLeft]);
@@ -279,7 +297,7 @@ namespace Catan3.Models
 
             if (ownerId is not null)
             {
-               
+
                 PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
                 return BrushCache.GetSolidColorBrush(owner.Foreground);
             }
@@ -307,7 +325,7 @@ namespace Catan3.Models
         public Brush GetBackgroundBrush(RoadState state, string ownerId, PlayerViewModel currentPlayer)
         {
 
-            if (state == RoadState.Unowned && ownerId is null)
+            if (state == RoadState.Unowned && ownerId is null && !Road.Buildable)
             {
                 return BrushCache.GetSolidColorBrush(Colors.Transparent);
             }
@@ -320,6 +338,30 @@ namespace Catan3.Models
             {
                 return BrushCache.GetGradientBrush(currentPlayer.Background, Colors.Black);
             }
+        }
+
+        public double Opacity(RoadModel roadModel, RoadState state)
+        {
+            if (state == RoadState.Highlighted) return 0.75;
+
+            if (roadModel.Buildable == true)
+            {
+                return  0.5;
+            }
+            if (roadModel.OwnerId is not null) { return 1.0; }
+            return 0.0;
+        }
+
+        public string BuildIndex(int index)
+        {
+            if (index > 0) return index.ToString();
+
+            return "";
+        }
+
+        public Visibility ShowBuildIndex(int index)
+        {
+            return index > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         public override string ToString()

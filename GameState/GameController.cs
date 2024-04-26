@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using Catan10.Models;
 using Catan3.Models;
 using Catan3.Utility;
@@ -15,6 +14,8 @@ namespace Catan3.Controller
     {
         private Log<string> Log = new();
         private  GameType GameType = GameType.Unset;
+
+
 
         public GameController()
         {
@@ -245,6 +246,10 @@ namespace Catan3.Controller
 
             }
 
+            //
+            // mark roads that can built
+            MarkBuildableRoads(gameModel);
+
             // save our changes to the GameModel to the log
             LogDone(gameModel);
 
@@ -377,7 +382,7 @@ namespace Catan3.Controller
                     gameModel.GameState = GameState.WaitingForRoll;
 
                     break;
-                  case GameState.WaitingForRoll:
+                case GameState.WaitingForRoll:
                     // GameState.WaitingForRoll is not controlled by the Next button.
                     // it is controlled by hitting a roll UI
                     break;
@@ -387,6 +392,7 @@ namespace Catan3.Controller
                     gameModel.Players.ForEach(p => p.ResourcesThisTurn = new());
                     SetTempGoldTiles(gameModel);
                     gameModel.GameState = GameState.WaitingForRoll;
+                    ResetBuildableRoads(gameModel);
                     break;
                 case GameState.Supplemental:
                     break;
@@ -444,6 +450,7 @@ namespace Catan3.Controller
         {
             GameModel gameModel = Log.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse]);
+
             var roadKey = message.RoadKey;
             // Retrieve the road model corresponding to the road key.
             var roadModel = gameModel.Roads.FirstOrDefault(r => r.RoadKey == roadKey);
@@ -452,6 +459,15 @@ namespace Catan3.Controller
             {
                 string roadKeyMsg = $"Invalid RoadKey {roadKey}";
                 throw new GameException(roadKeyMsg);
+            }
+
+            if (!gameModel.AllocationPhase())
+            {
+                MarkBuildableRoads(gameModel);
+                if (!roadModel.Buildable)
+                {
+                    throw new GameException($"Road {roadModel} is not buildable!");
+                }
             }
 
             // Ensure the road is not already owned.
@@ -474,6 +490,7 @@ namespace Catan3.Controller
 
             currentPlayerModel.RoadsPlayed++;
             UpdateScore(gameModel);
+            MarkBuildableRoads(gameModel);
             // Log the completed change.
             LogDone(gameModel);
 
@@ -545,6 +562,7 @@ namespace Catan3.Controller
 
             }
             UpdateScore(gameModel);
+            MarkBuildableRoads(gameModel);
             LogDone(gameModel);
             return gameModel;
         }
@@ -741,74 +759,75 @@ namespace Catan3.Controller
             SetActionFlags(result);
             return result;
         }
-    }
-    /// <summary>
-    /// Provides helper methods to change the current player in a GameModel.
-    /// </summary>
-    public static class ChangePlayerHelper
-    {
-        /// <summary>
-        /// Calculates the player ID that is a specified number of positions away from a given start player ID.
-        /// </summary>
-        /// <param name="gameModel">The game model containing the players.</param>
-        /// <param name="startPlayerId">The ID of the player from which to start counting.</param>
-        /// <param name="numberOfPositions">The number of positions to move forward in the player list; can be negative.</param>
-        /// <returns>The player ID of the player numberOfPositions away from the start player.</returns>
-        /// <exception cref="GameException">Thrown if the start player ID is invalid or not in the game.</exception>
-        public static string NextPlayerId(this GameModel gameModel, string startPlayerId, int numberOfPositions)
+        private void ResetBuildableRoads(GameModel gameModel)
         {
-            // Validate and find the starting player
-            var startPlayer = gameModel.Players.PlayerFromId(startPlayerId) ??
-            throw new GameException($"Invalid id: {startPlayerId}");
+            //
+            //   mark them not buildable
+            foreach (var road in gameModel.Roads)
+            {
+                road.Buildable = false;
+                road.BuildIndex = 0;
+            }
 
-            int idx = gameModel.Players.IndexOf(startPlayer);
-            if (idx == -1)
-                throw new GameException("The player must be in the game!");
-
-            int count = gameModel.Players.Count;
-
-            // Calculate the index of the next player, wrapping around if necessary
-            int newPlayerIndex = (idx + numberOfPositions) % count;
-            if (newPlayerIndex < 0)
-                newPlayerIndex += count;
-
-            // Retrieve the new player's ID
-            var newPlayer = gameModel.Players[newPlayerIndex];
-            return newPlayer.Id;
         }
-
         /// <summary>
-        /// Changes the current player to the player a specified number of positions forward.
+        ///     A Road is "Buildable" if 
+        ///     1. GameState is correct
+        ///     2. it is next to another road owned by the CurrentPlayer
+        ///     3. it is next to a building owned by the CurrentPlayer
         /// </summary>
-        /// <param name="gameModel">The game model where the current player will be changed.</param>
-        /// <param name="numberOfPositions">The number of positions to move forward in the player list.</param>
-        /// /// <exception cref="GameException">Thrown if the player ID is invalid.</exception>
-        public static void ChangePlayer(this GameModel gameModel, int numberOfPositions)
+        /// <param name="gameModel"></param>
+        private void MarkBuildableRoads(GameModel gameModel)
         {
-            // Ensure the current player ID is valid
-            if (string.IsNullOrEmpty(gameModel.CurrentPlayerId))
-                throw new GameException("Current player ID must not be null or empty.");
+            ResetBuildableRoads(gameModel);
+            List<RoadModel> buildableRoads = [];
+            foreach (var road in gameModel.Roads)
+            {
+                if (road.OwnerId == gameModel.CurrentPlayerId)
+                {
+                    var adjacentRoads = gameModel.Roads.AdjacentRoads(road.RoadKey);
+                    foreach (var r in adjacentRoads)
+                    {
+                        if (r.OwnerId is null && !buildableRoads.Contains(r))
+                        {
+                            buildableRoads.InsertSorted(r);
+                        }
+                    }
+                }
+            }
 
-            // Get the next player ID and change to it
-            var id = NextPlayerId(gameModel, gameModel.CurrentPlayerId, numberOfPositions);
-            gameModel.ChangePlayerTo(id);
-        }
+            foreach (var building in gameModel.Buildings)
+            {
+                if (building.OwnerId == gameModel.CurrentPlayerId)
+                {
+                    var roads = gameModel.AdjacentRoads(building.BuildingKey);
+                    string roadList = string.Join(", ", roads.Select(r => r.ToString()));
 
-        /// <summary>
-        /// Sets the current player to the specified player ID.
-        /// </summary>
-        /// <param name="gameModel">The game model where the current player will be set.</param>
-        /// <param name="playerId">The player ID to set as current.</param>
-        /// <exception cref="GameException">Thrown if the player ID is invalid.</exception>
-        public static void ChangePlayerTo(this GameModel gameModel, string playerId)
-        {
-            // Validate and find the new player
-            var newPlayer = gameModel.Players.PlayerFromId(playerId) ??
-            throw new GameException($"Invalid id: {playerId}");
+                    foreach (var adjacentRoad in roads)
+                    {
+                        if (adjacentRoad.OwnerId is null && !buildableRoads.Contains(adjacentRoad))
+                        {
+                            buildableRoads.InsertSorted(adjacentRoad);
+                        }
+                    }
+                }
+            }
+            this.TraceMessage($"{buildableRoads.Count} buildable roads");
+         
+            for (int i = 0; i < buildableRoads.Count; i++)
+            {
+                var road=buildableRoads[i];
+                road.Buildable = true;
+                road.BuildIndex = i + 1;
+                this.TraceMessage($"Index: {road.BuildIndex} {road.RoadKey}");
 
-            // Set the current player ID
-            gameModel.CurrentPlayerId = newPlayer.Id;
+            }
+
         }
     }
+
+
+
+
 
 }

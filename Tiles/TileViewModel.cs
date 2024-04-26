@@ -137,10 +137,7 @@ namespace Catan3.Models
         public CatanOrientation TempGoldOrientation(TileModel _, bool tempGold)
         {
             Debug.Assert(tempGold == this.Tile.TemporarilyGold);
-            if (tempGold)
-            {
-                this.TraceMessage($"{Tile.TileKey} is tempGold");
-            }
+            
             var orientation =  tempGold ? CatanOrientation.FaceUp : CatanOrientation.FaceDown;
             return orientation;
         }
@@ -153,10 +150,7 @@ namespace Catan3.Models
         /// <returns></returns>
         public Brush GetTileResourceType(TileModel _, bool tempGold, ResourceType resourceTileType)
         {
-            if (tempGold)
-            {
-                this.TraceMessage($"Temp Gold Resource: {resourceTileType}");
-            }
+           
         
             var resourceType = tempGold ? ResourceType.GoldMine : resourceTileType;
             string key = $"ResourceTileType.{resourceType}";
@@ -170,7 +164,7 @@ namespace Catan3.Models
             {
                 return ( Brush )Application.Current.Resources["bmMaple"];
             }
-            this.TraceMessage($"Highlighting {this}");
+          
             return ( Brush )BrushCache.GetSolidColorBrush(Colors.Yellow);
         }
         public ImageBrush GetResourceImage(TileModel tileModel, ResourceType resourceType)
@@ -179,10 +173,7 @@ namespace Catan3.Models
             string key = $"ResourceCard.{resourceType}";
             var result =  ( ImageBrush )Application.Current.Resources[key];
             Debug.Assert(result is not null);
-            if (tileModel.TemporarilyGold)
-            {
-                this.TraceMessage($"ImageKey={key} {Tile.TileKey}{Tile.ResourceTileType}");
-            }
+           
             return result;
         }
 

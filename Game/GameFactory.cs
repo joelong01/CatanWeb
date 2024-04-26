@@ -56,7 +56,7 @@ namespace Catan3.Models
 
                     if (buildingPosition == HexPosition.None) continue;
                     BuildingKey buildingKey = new(tile.TileKey, buildingPosition);
-                    var building = game.FindBuildingModel(buildingKey);
+                    var building = game.Buildings.FindBuildingModel(buildingKey);
                     if (building is null)
                     {
                         BuildingModel buildingModel = new(buildingKey, BuildingState.Empty);
@@ -68,7 +68,7 @@ namespace Catan3.Models
                 {
                     if (roadPosition == HexSide.None) continue;
                     var roadKey = new RoadKey(tile.TileKey, roadPosition);
-                    var road = game.FindRoad(roadKey);
+                    var road = game.Roads.FindRoad(roadKey);
                     if (road is null)
                     {
                         road = new RoadModel(roadKey);

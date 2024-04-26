@@ -148,7 +148,7 @@ namespace Catan3.Models
 
         private void MergeActionFlags(GameModel gameModel)
         {
-            this.TraceMessage($"{gameModel.ActionFlags}");
+          //  this.TraceMessage($"{gameModel.ActionFlags}");
             this.ActionFlags = gameModel.ActionFlags;
         }
         /// <summary>
@@ -262,10 +262,7 @@ namespace Catan3.Models
                     Tiles[i].Tile = gameModel.Tiles[i];
 
                     Debug.Assert(Tiles[i].Tile == gameModel.Tiles[i]);
-                    if (gameModel.Tiles[i].TemporarilyGold)
-                    {
-                        this.TraceMessage($"temp gold: {gameModel.Tiles[i]}");
-                    }
+                    
 
                 }
             }

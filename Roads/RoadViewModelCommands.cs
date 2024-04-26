@@ -9,7 +9,7 @@ namespace Catan3.Models
         [RelayCommand]
         private void MouseEnter()
         {
-            if (Road.OwnerId is null)
+            if (Road.OwnerId is null && Road.Buildable)
             {
                 Road.RoadState = RoadState.Highlighted;
             }
@@ -27,7 +27,7 @@ namespace Catan3.Models
         [RelayCommand]
         private void MouseClicked()
         {
-            if (Road.RoadState == RoadState.Highlighted)
+            if (Road.Buildable)
             {
                 Messenger.Send(new RoadPurchaseMessage(Road.RoadKey));
             }
