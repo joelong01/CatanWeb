@@ -44,6 +44,12 @@ namespace Catan3.Models
             }
             return result;
         }
+        /// <summary>
+        ///     add up all the Stars for the buildings in the collection
+        /// </summary>
+        /// <param name="collection"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static int Stars(this IEnumerable<TileModel> collection)
         {
             ArgumentNullException.ThrowIfNull(collection);
@@ -74,7 +80,7 @@ namespace Catan3.Models
         /// <param name="collection"></param>
         /// <param name="number"></param>
         /// <returns></returns>
-        public static List<TileModel> TilesWithResource(this IEnumerable<TileModel> collection, ResourceTileType resource)
+        public static List<TileModel> TilesWithResource(this IEnumerable<TileModel> collection, ResourceType resource)
         {
             return collection.Where(t => t.ResourceTileType == resource).ToList();
         }
@@ -127,6 +133,35 @@ namespace Catan3.Models
                 .OrderByDescending(tile => tile.Tile.TileKey.R)
                 .First();
 
+        }
+
+        public static ResourceType ToResourceCardType(this ResourceType tileType)
+        {
+            switch (tileType)
+            {
+                case ResourceType.Sheep:
+                    return ResourceType.Sheep;
+                case ResourceType.Wood:
+                    return ResourceType.Wood;
+                case ResourceType.Ore:
+                    return ResourceType.Ore;
+                case ResourceType.Wheat:
+                    return ResourceType.Wheat;
+                case ResourceType.Brick:
+                    return ResourceType.Brick;
+                case ResourceType.GoldMine:
+                    return ResourceType.GoldMine;
+                case ResourceType.Desert:
+                    return ResourceType.Desert;
+                case ResourceType.Back:
+                    return ResourceType.Back;
+                case ResourceType.None:
+                    return ResourceType.None;
+                case ResourceType.Sea:
+                    return ResourceType.Sea;
+            }
+
+            throw new ArgumentException("did you forget to update this?", nameof(tileType));
         }
     }
 }

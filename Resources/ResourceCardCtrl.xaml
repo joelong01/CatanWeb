@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="Catan3.Controls.ResourceCardCtrl"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:u="using:Catan3.Utility"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d">
+
+    <u:FlipperCtrl Name="LayoutRoot" Orientation="{x:Bind ViewModel.GetOrientation(ViewModel.Count), Mode=OneWay}" >
+        <u:FlipperCtrl.Back>
+            <Grid x:Name="GRID_Back"
+                    Background="{StaticResource ResourceCard.Back}"
+                    Style="{StaticResource Grid_ResourceCard}">
+            </Grid>
+        </u:FlipperCtrl.Back>
+        <u:FlipperCtrl.Front>
+            <Grid x:Name="GRID_Front"
+                    Background="{x:Bind ViewModel.FrontImage(ViewModel.Resource), Mode=OneWay}"
+                    Style="{StaticResource Grid_ResourceCard}">
+               <Viewbox Stretch="Uniform" Height="20"
+                        HorizontalAlignment="Center" VerticalAlignment="Bottom">
+                    <Grid Background="Black">
+                        <TextBlock Text="{x:Bind ViewModel.Count, Mode=OneWay}"
+                                Visibility="Visible" />
+                    </Grid>
+                </Viewbox>
+            </Grid>
+        </u:FlipperCtrl.Front>
+    </u:FlipperCtrl>
+</UserControl>

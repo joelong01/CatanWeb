@@ -31,6 +31,7 @@ namespace Catan3.Models
     /// </summary>
     public partial class BoardLayout
     {
+        private BoardLayout() { }
 
         //
         //  this is used in the DependencyProperties so that there is a reasonable non-null default

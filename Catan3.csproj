@@ -15,20 +15,21 @@
 		<StartupObject></StartupObject>
 	</PropertyGroup>
 	<ItemGroup>
-		<None Remove="Controls\BuildingCtrl.xaml" />
-		<None Remove="Controls\GameBoardCtrl.xaml" />
-		<None Remove="Controls\RoadCtrl.xaml" />
-		<None Remove="Controls\TileCtrl.xaml" />
+		<None Remove="Controls\PurchaseCtrl.xaml" />
 		<None Remove="FlipperCtrl.xaml" />
+		<None Remove="GameButtons.xaml" />
+		<None Remove="Game\Game Control\GameControls.xaml" />
 		<None Remove="Harbors\HarborCtrl.xaml" />
 		<None Remove="MainPage.xaml" />
-		<None Remove="ResourceCard\BoardMeasurementCtrl.xaml" />
-		<None Remove="ResourceCard\ResourceCardCtrl.xaml" />
+		<None Remove="Player\PlayerCtrl.xaml" />
+		<None Remove="Resources\BoardMeasurementCtrl.xaml" />
+		<None Remove="Resources\ResourceCardCtrl.xaml" />
+		<None Remove="Resources\TrackedResourcesCtrl.xaml" />
+		<None Remove="Rolls\SingleRoll.xaml" />
 		<None Remove="Themes\Generic.xaml" />
 		<None Remove="Themes\ImageResources.xaml" />
 		<None Remove="Themes\StyleResourceDictionary.xaml" />
 		<None Remove="Themes\Styles.xaml" />
-		<None Remove="Tiles\CatanNumber.xaml" />
 		<None Remove="ValueConverters\ConverterDictionary.xaml" />
 	</ItemGroup>
 	<ItemGroup>
@@ -45,8 +46,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
 		<PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
-		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240311000" />
+		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240404000" />
 		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.3233" />
 		<PackageReference Include="System.Text.Encodings.Web" Version="8.0.0" />
 		<PackageReference Include="System.Text.Json" Version="8.0.3" />
@@ -68,6 +70,15 @@
 	  <Page Update="FlipperCtrl.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
+	  <Page Update="GameButtons.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Game\Game Control\GameControls.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Controls\PurchaseCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	  <None Update="GenerateModels.tt">
 	    <Generator>TextTemplatingFileGenerator</Generator>
 	    <LastGenOutput>GenerateModels.txt</LastGenOutput>
@@ -81,6 +92,15 @@
 	    <Generator>TextTemplatingFileGenerator</Generator>
 	    <LastGenOutput>models.cs</LastGenOutput>
 	  </None>
+	  <Page Update="Resources\TrackedResourcesCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Player\PlayerCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Rolls\SingleRoll.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	  <Page Update="Tiles\CatanNumber.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
@@ -137,6 +157,9 @@
 	    <AutoGen>True</AutoGen>
 	    <DependentUpon>models.tt</DependentUpon>
 	  </Compile>
+	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="Game\GameFactory\" />
 	</ItemGroup>
 
 	<!-- 

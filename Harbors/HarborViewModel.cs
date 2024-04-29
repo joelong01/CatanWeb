@@ -2,30 +2,66 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Runtime.InteropServices;
+
+using System.Text.Json.Serialization;
 using Catan3.Utility;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 
 namespace Catan3.Models
 {
-    public partial class HarborViewModel
+    public partial class HarborViewModel : ObservableRecipient
     {
+        [JsonIgnore]
+        [ObservableProperty]
+        private HarborModel _harbor;
 
-        public static HarborViewModel Default => new HarborViewModel(HarborModel.Default, BoardLayout.Default);
+        [ObservableProperty]
+        private BoardLayout _layout;
+
+        [ObservableProperty]
+        private double _left;
+
+        [ObservableProperty]
+        private double _top;
+
+        [ObservableProperty]
+        private CatanOrientation _orientation = CatanOrientation.FaceUp;
+
+        public HarborViewModel(HarborModel harbor, BoardLayout layout)
+        {
+            Harbor = harbor;
+            Layout = layout;
+            Init();
+        }
+
+
+        public static HarborViewModel Default => new(HarborModel.Default, BoardLayout.Default);
 
         void Init()
         {
             if (Layout is not null && Layout is BoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
-                Layout = Layout;
+              
             }
             else
             {
                 Layout = BoardLayout.Default;
+                Layout.PropertyChanged += Layout_PropertyChanged;
             }
             UpdateLayout();
+
+            Messenger.Register<UpdateOrientation>(this, (recipient, message) =>
+            {
+                this.Orientation = message.Orientation;
+            });
+            Messenger.Register<EndGame>(this, (recipient, message) =>
+            {
+                Messenger.UnregisterAll(this);
+            });
         }
 
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -38,7 +74,7 @@ namespace Catan3.Models
         }
         private void UpdateLayout()
         {
-            var point = GetLeftTop(Layout, Harbor.TileCoordinates, Harbor.Side);
+            var point = GetLeftTop(Layout, Harbor.HexCoordinates, Harbor.Side);
             Left = point.X;
             Top = point.Y;
 
@@ -96,18 +132,18 @@ namespace Catan3.Models
                     throw new ArgumentOutOfRangeException(nameof(Harbor.Side), $"Invalid hex side: {side}");
             }
             return new Point(left, top);
-           
+
         }
 
         public PointCollection HarborPoints
         {
             get
             {
-                PointCollection points = new PointCollection();
+                PointCollection points = [];
                 double size = Layout.BuildingSize; // Assuming this is the diameter of the harbor circle
                 var flatTopDictionary = Layout.OuterHexPoints.FlatTopListToDictionary();
-                var tileTop = Layout.Top(Harbor.TileCoordinates);
-                var tileLeft = Layout.Left(Harbor.TileCoordinates);
+                var tileTop = Layout.Top(Harbor.HexCoordinates);
+                var tileLeft = Layout.Left(Harbor.HexCoordinates);
 
                 var yOffset = Math.Abs(tileTop - Top);
                 var xOffset = Math.Abs(Left - tileLeft);
@@ -183,12 +219,12 @@ namespace Catan3.Models
     {
         public static HarborViewModel? FindHarbor(this IEnumerable<HarborViewModel> collection, HexCoordinates coords, HexSide side)
         {
-            return collection.FirstOrDefault(h => h.Harbor.TileCoordinates == coords && h.Harbor.Side == side);
+            return collection.FirstOrDefault(h => h.Harbor.HexCoordinates == coords && h.Harbor.Side == side);
         }
 
         public static List<HarborViewModel>? FindAnyHarbor(this IEnumerable<HarborViewModel> collection, HexCoordinates coords)
         {
-            return collection.Where(h => h.Harbor.TileCoordinates == coords).ToList();
+            return collection.Where(h => h.Harbor.HexCoordinates == coords).ToList();
         }
     }
 }

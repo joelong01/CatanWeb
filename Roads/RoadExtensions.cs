@@ -5,6 +5,62 @@ namespace Catan3.Models
 {
     public static class RoadExtensions
     {
+
+        public static List<RoadModel> AdjacentRoads(this IEnumerable<RoadModel> roads, RoadKey key)
+        {
+            List<RoadModel> result = [];
+            List<RoadKey> adjacentKeys = [];
+            switch (key.HexSide)
+            {
+                case HexSide.None:
+                    throw new GameException($"Roadkey {key} has HexSide=None");
+                case HexSide.Top:
+                    adjacentKeys.Add(new RoadKey(key.TileKey, HexSide.TopRight));
+                    adjacentKeys.Add(new RoadKey(key.TileKey, HexSide.TopLeft));
+                    adjacentKeys.Add(new RoadKey(key.TileKey.North, HexSide.BottomRight));
+                    adjacentKeys.Add(new RoadKey(key.TileKey.NorthWest, HexSide.BottomLeft));
+                    break;
+                case HexSide.TopRight:
+                    adjacentKeys.Add(new RoadKey(key.TileKey, HexSide.BottomRight));
+                    adjacentKeys.Add(new RoadKey(key.TileKey, HexSide.Top));
+                    adjacentKeys.Add(new RoadKey(key.TileKey.NorthEast, HexSide.TopLeft));
+                    adjacentKeys.Add(new RoadKey(key.TileKey.NorthEast, HexSide.Bottom));
+                    break;
+                case HexSide.BottomRight:
+                    adjacentKeys.Add(new RoadKey(key.TileKey, HexSide.TopRight));
+                    adjacentKeys.Add(new RoadKey(key.TileKey, HexSide.Bottom));
+                    adjacentKeys.Add(new RoadKey(key.TileKey.SouthEast, HexSide.Top));
+                    adjacentKeys.Add(new RoadKey(key.TileKey.SouthEast, HexSide.BottomLeft));
+                    break;
+                case HexSide.Bottom:
+                    adjacentKeys.Add(new RoadKey(key.TileKey, HexSide.BottomLeft));
+                    adjacentKeys.Add(new RoadKey(key.TileKey, HexSide.BottomRight));
+                    adjacentKeys.Add(new RoadKey(key.TileKey.South, HexSide.TopLeft));
+                    adjacentKeys.Add(new RoadKey(key.TileKey.South, HexSide.TopRight));
+                    break;
+                case HexSide.BottomLeft:
+                    adjacentKeys.Add(new RoadKey(key.TileKey, HexSide.Bottom));
+                    adjacentKeys.Add(new RoadKey(key.TileKey, HexSide.TopLeft));
+                    adjacentKeys.Add(new RoadKey(key.TileKey.SouthWest, HexSide.Top));
+                    adjacentKeys.Add(new RoadKey(key.TileKey.SouthWest, HexSide.BottomRight));
+                    break;
+                case HexSide.TopLeft:
+                    adjacentKeys.Add(new RoadKey(key.TileKey, HexSide.Top));
+                    adjacentKeys.Add(new RoadKey(key.TileKey, HexSide.BottomLeft));
+                    adjacentKeys.Add(new RoadKey(key.TileKey.NorthWest, HexSide.TopRight));
+                    adjacentKeys.Add(new RoadKey(key.TileKey.NorthWest, HexSide.Bottom));
+                    break;
+            }
+            foreach (var roadKey in adjacentKeys)
+            {
+                RoadModel? road = roads.FindRoad(roadKey);
+                if (road is not null)
+                {
+                    result.Add(road);
+                }
+            }
+            return result;
+        }
         public static RoadModel? FindRoad(this IEnumerable<RoadModel> roads, RoadKey key)
         {
             if (roads is null || !roads.Any()) return null;
@@ -23,7 +79,7 @@ namespace Catan3.Models
                     }
                 }
             }
-            return null;
+            return road;
         }
         public static List<(HexSide position, Direction direction)> Aliases(this RoadKey key)
         {

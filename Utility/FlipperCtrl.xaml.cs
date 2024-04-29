@@ -1,11 +1,9 @@
 using System;
-using System.Runtime.CompilerServices;
 using Catan3.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Catan3.Utility
 {
@@ -15,8 +13,8 @@ namespace Catan3.Utility
         {
             this.DefaultStyleKey = typeof(FlipperCtrl);
         }
-
-        public static readonly DependencyProperty OrientationProperty = DependencyProperty.Register("Orientation", typeof(CatanOrientation), typeof(FlipperCtrl), new PropertyMetadata(CatanOrientation.FaceDown, OrientationChanged));
+        public static readonly DependencyProperty FlipsProperty = DependencyProperty.Register("Flips", typeof(bool), typeof(FlipperCtrl), new PropertyMetadata(true));
+           public static readonly DependencyProperty OrientationProperty = DependencyProperty.Register("Orientation", typeof(CatanOrientation), typeof(FlipperCtrl), new PropertyMetadata(CatanOrientation.FaceDown, OrientationChanged));
         public CatanOrientation Orientation
         {
             get => ( CatanOrientation )GetValue(OrientationProperty);
@@ -30,6 +28,7 @@ namespace Catan3.Utility
         private void SetOrientation(CatanOrientation oldValue, CatanOrientation newValue)
         {
             if (oldValue == newValue) return;
+         
           //  this.TraceMessage($"old orientation: {oldValue} New:{newValue}");
             if (Orientation == CatanOrientation.FaceUp)
             {
@@ -75,7 +74,7 @@ namespace Catan3.Utility
             {
                 From = from,
                 To = to,
-                Duration = TimeSpan.FromSeconds(0.5)
+                Duration = TimeSpan.FromSeconds(0.250)
             };
             var storyboard = new Storyboard();
             storyboard.Children.Add(da);

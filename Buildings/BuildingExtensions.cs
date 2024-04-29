@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using Catan10.Models;
 using Catan3.Utility;
 namespace Catan3.Models
 {
     /// <summary>
     ///     this order needs to match the CalculateHexGeometry PointCollection order
     /// </summary>
-   
+
     public static class BuildingModelExtensions
     {
         public static List<(HexPosition position, Direction direction)> Aliases(this BuildingKey key)
@@ -82,7 +84,73 @@ namespace Catan3.Models
                     }
                 }
             }
-            return null;
+            return building;
+        }
+        /// <summary>
+        ///     e.g. GameViewModel.GameModel.Buildings.BuildingsInTile(new HexCoordinates(0,0,0)) returns all the buildings in the center tile
+        /// </summary>
+        /// <param name="collection"></param>
+        /// <param name="coordinates"></param>
+        /// <returns></returns>
+        public static List<BuildingModel> BuildingsInTile(this IList<BuildingModel> collection, HexCoordinates coordinates)
+        {
+            List<BuildingModel> result = [];
+            foreach (HexPosition pos in Enum.GetValues(typeof(HexPosition)))
+            {
+                if (pos == HexPosition.None) continue;
+                var building = collection.FindBuildingModel(new BuildingKey(coordinates, pos));
+                if (building is not null)
+                {
+                    result.Add(building);
+                }
+
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        ///     returns the list of buildings that are owned in the tile
+        /// </summary>
+        /// <param name="tile"></param>
+        /// <returns></returns>
+
+        public static List<BuildingModel> OwnedBuildings(this IList<BuildingModel> collection, HexCoordinates coordinates)
+        {
+            List<BuildingModel> result = [];
+            foreach (HexPosition pos in Enum.GetValues(typeof(HexPosition)))
+            {
+                if (pos == HexPosition.None) continue;
+                var building = collection.FindBuildingModel(new BuildingKey(coordinates, pos));
+                if (building is not null && building.OwnerId is not null)
+                {
+                    result.Add(building);
+                }
+
+            }
+
+            return result;
+
+        }
+        ///
+
+        public static ResourcesModel Resources(this BuildingModel model, ResourceType resource)
+        {
+            ResourcesModel result = new ResourcesModel();
+            if (model.BuildingState == BuildingState.City)
+            {
+                result.AddResource(resource, 2);
+            }
+            else if (model.BuildingState == BuildingState.Settlement)
+            {
+                result.AddResource(resource, 1);
+            }
+            else
+            {
+                Debug.Assert(false, "haven't implemented something yet...");
+            }
+
+            return result;
         }
 
     }
@@ -94,16 +162,7 @@ namespace Catan3.Models
         {
             return $"[{this.HexCoordinates}-{Position}]";
         }
-        public static BuildingKey? FromString(string str)
-        {
-            string[] tokens = str.Split(["[", "]", "-"], StringSplitOptions.RemoveEmptyEntries);
-            if (tokens is null) return null;
-            if (tokens.Length != 2) return null;
-            var tileCoord = HexCoordinates.FromString(tokens[0]);
-            if (tileCoord is null) return null;
-            var buildingPos = (HexPosition)Enum.Parse(typeof(HexPosition), tokens[1]);
-            return new BuildingKey(tileCoord, buildingPos);
-        }
+
         public override bool Equals(object? obj)
         {
             return obj is not null && obj is BuildingKey key &&

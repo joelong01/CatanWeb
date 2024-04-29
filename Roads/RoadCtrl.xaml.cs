@@ -14,7 +14,7 @@ namespace Catan3.Controls
     public delegate void RoadMouseLeave(RoadViewModel viewModel);
     public partial class RoadCtrl : UserControl
     {
-        public event RoadClicked? RoadClicked;
+       
         public RoadCtrl()
         {
             InitializeComponent();
@@ -36,11 +36,24 @@ namespace Catan3.Controls
             DataContext = value;
         }
 
-
-        private void Grid_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        /// <summary>
+        ///     These are not bound in XAML because you can't bind to commands on Polygon mouse envents in XAML in winui3
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
-            RoadClicked?.Invoke(this.ViewModel);
+            ViewModel.MouseEnterCommand.Execute(ViewModel);
         }
 
+        private void OnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            ViewModel.MouseExitCommand.Execute(ViewModel);
+        }
+
+        private void OnPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            ViewModel.MouseClickedCommand.Execute(ViewModel);
+        }
     }
 }

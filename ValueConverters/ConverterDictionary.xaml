@@ -18,5 +18,6 @@
     <converters:NullToDefaultValueConverter x:Key="NullToDefaultValueConverter" />
 
     <converters:DoubleToThickness x:Key="DoubleToThickness" />
+    <converters:BrushToColorConverter x:Key="BrushToColorConverter" />
 
 </ResourceDictionary>

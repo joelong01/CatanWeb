@@ -1,0 +1,507 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Diagnostics.Contracts;
+using System.Linq;
+using Catan10.Models;
+using Catan3.Utility;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
+
+
+namespace Catan3.Models
+{
+
+    public partial class GameViewModel : ObservableRecipient
+    {
+        private GameType GameType { get; set; } = GameType.Unset;
+
+        //
+        // 
+
+
+        /// <summary>
+        ///     Send messages to *viewmodels* after creating them that has information they need
+        ///     that you don't want to pass as parameters. this should be static config per gametype
+        ///     
+        ///     the default ctor is in ./GameViewMessages.cs
+        /// </summary>
+        /// <exception cref="NotImplementedException"></exception>
+
+        public GameViewModel(GameModel gameModel) : this() // in GameViewModel() we RegisterMessages
+        {
+            GameType = gameModel.GameType;
+            if (GameType == GameType.Regular)
+            {
+                BoardInfo = RegularBoardInfo.Default;
+            }
+            else if (GameType == GameType.Expansion)
+            {
+                BoardInfo = ExpansionBoardInfo.Default;
+            }
+            else
+            {
+                throw new ArgumentException($"invalid boardsize");
+            }
+
+            Debug.Assert(gameModel.Players.Count > 0);
+            foreach (var player in gameModel.Players)
+            {
+                var playerViewModel = PlayerDatabase.FromId(player.Id) ?? throw new Exception($"Bad PlayerId: {player.Id}");
+                Players.Add(playerViewModel);
+            }
+
+
+            MergeGameModel(gameModel);
+
+
+        }
+
+
+
+        public void MergeGameModel(GameModel gameModel)
+        {
+            if (gameModel.GameType != this.GameType) throw new Exception("Create new one instead of updating this one");
+            if (BoardInfo is null) throw new Exception("Board Info can't be null");
+            CreateOrUpdateTiles(gameModel);
+            MergeBuildings(gameModel);
+            MergeHarbors(gameModel);
+            MergeRoads(gameModel);
+            MergeRobber(gameModel);
+            MergePlayers(gameModel);
+            MergeRolls(gameModel);
+            MergeResources(gameModel);
+            MergePurchaseModel(gameModel);
+
+            GameModel = gameModel;
+
+
+
+            SetStars();
+            FixupState(gameModel);
+
+        }
+        /// <summary>
+        ///     If we haven't done it yet, create the right view models
+        ///     if the view model count is wrong for some reason -- maybe the board is the same, but an option 
+        ///     changed what can be bought -- create a new ViewModel list
+        ///     then merge the data model into the viewmodel
+        /// </summary>
+        /// <param name="gameModel"></param>
+        private void MergePurchaseModel(GameModel gameModel)
+        {
+
+            var currentPlayer = gameModel.CurrentPlayer();
+
+            if (gameModel.EntitlementPurchaseModel.Count != this.PurchasableEntitlements.Count)
+            {
+                this.PurchasableEntitlements = [];
+                foreach (var dataModel in gameModel.EntitlementPurchaseModel)
+                {
+                    EntitlementPurchaseViewModel viewModel = new(PurchaseCommand, dataModel, this.CurrentPlayer.ForegroundBrush, this.CurrentPlayer.BackgroundBrush);
+                    this.PurchasableEntitlements.Add(viewModel);
+                }
+                return;
+            }
+
+            for (int i = 0; i < gameModel.EntitlementPurchaseModel.Count; i++)
+            {
+                var unspent = currentPlayer.UnspentEntitlements.Count( e => e == gameModel.EntitlementPurchaseModel[i].Entitlement );
+                this.PurchasableEntitlements[i].Merge(gameModel.EntitlementPurchaseModel[i], unspent, this.CurrentPlayer.ForegroundBrush, this.CurrentPlayer.BackgroundBrush);
+            }
+        }
+
+        private void FixupState(GameModel gameModel)
+        {
+            // do things here that the game state requires
+
+            if (gameModel.GameState == GameState.WaitingForRoll)
+            {
+                this.TurnRollViewModel.TurnRollModel = new();
+            }
+
+            if (gameModel.GameState == GameState.AllocateResourceForward || gameModel.GameState == GameState.AllocateResourceReverse || gameModel.GameState == GameState.PickingBoard)
+            {
+                // OnPropertyChanged(nameof(ShownStars));
+                var currentStars = ShownStars;
+                ShownStars = 14;
+                ShownStars = currentStars;
+                Debug.Assert(CurrentPlayer != null);
+                this.Id = GameModel.GetHashCode().ToString();
+            }
+        }
+
+
+        /// <summary>
+        ///     We are keeping track of 3 kinds of Resources
+        ///     1. Total reources generated by all players: gameModel.GameResourcesModel
+        ///     2. Total resources generated by each playe: gameModel.Player[i].ResourcesThisGame
+        ///     3. Resources generated by the player for this turn: gameModel.Player[i].ResourcesThisTurn
+        ///     
+        ///     the first one is merged here and the last 
+        /// 
+        /// </summary>
+        /// <param name="gameModel"></param>
+        private void MergeResources(GameModel gameModel)
+        {
+
+            this.GameResources.ResourceModel = gameModel.GameResourcesModel;
+
+
+
+
+        }
+
+        //public static void CopyData<TViewModel, TModel>(
+        //    IList<TViewModel> viewModels,
+        //    IList<TModel> models,
+        //    Action<TViewModel, TModel> copyAction,
+        //    Func<TViewModel, TModel, bool> matchPredicate)
+        //{
+        //    if (viewModels.Count != models.Count)
+        //    {
+        //        throw new ArgumentException("The collections must be of the same size.");
+        //    }
+
+        //    for (int i = 0; i < viewModels.Count; i++)
+        //    {
+        //        var viewModel = viewModels[i];
+        //        var model = models[i];
+
+        //        // Check if the current items match based on the provided predicate
+        //        if (!matchPredicate(viewModel, model))
+        //        {
+        //            throw new InvalidOperationException("Mismatched elements at position " + i);
+        //        }
+
+        //        // Perform the custom action
+        //        copyAction(viewModel, model);
+        //    }
+        //}
+
+
+        private void MergeRolls(GameModel gameModel)
+        {
+            this.GameRollViewModel.GameRollModel = gameModel.GameRollModel;
+
+        }
+
+        private void MergeRobber(GameModel gameModel)
+        {
+            RobberViewModel.RobberModel = gameModel.Robber;
+
+        }
+
+        /// <summary>
+        /// 
+        ///     Create the this.Players collection of PlayerViewModels based on the passed in list of playerIds
+        ///     stored in gameModel.Players
+        ///     
+        ///     all per player state should be merged here -- including the player resources
+        ///     
+        ///     Note that this also updates the per-player data like total Resources
+        /// </summary>
+        /// <param name="gameModel"></param>
+
+        private void MergePlayers(GameModel gameModel)
+        {
+            Debug.Assert(this.Players.Count == gameModel.Players.Count);
+            Debug.Assert(this.Players.Count > 0);
+
+            for (int i = 0; i < Players.Count; i++)
+            {
+                var playerViewModel = Players[i];
+                Debug.Assert(playerViewModel is not null);
+                var playerModel = gameModel.Players[i];
+                Debug.Assert(playerViewModel.Id == playerModel.Id);
+                playerViewModel.Player = playerModel;
+                playerViewModel.ResourcesThisTurn.ResourceModel = playerModel.ResourcesThisTurn;
+                playerViewModel.ResourcesThisGame.ResourceModel = playerModel.ResourcesThisGame;
+                if (playerModel.Id == gameModel.CurrentPlayerId) { this.CurrentPlayer = playerViewModel; }
+            }
+
+
+            Messenger.Send(new CurrentPlayerChanged(this.CurrentPlayer));
+
+        }
+
+
+        private void CreateOrUpdateTiles(GameModel gameModel)
+        {
+            Contract.Assert(BoardInfo is not null);
+            if (Tiles.Count == 0) // need to create them for the first time
+            {
+                Tiles = new ObservableCollection<TileViewModel>(
+                gameModel.Tiles.Select((tile, index) => new TileViewModel(tile, BoardInfo.Layout) { Index = index }));
+            }
+            else
+            {
+                Debug.Assert(Tiles.Count == gameModel.Tiles.Count);
+                for (int i = 0; i < gameModel.Tiles.Count; i++)
+                {
+                    Contract.Assert(Tiles[i].Tile.TileKey == gameModel.Tiles[i].TileKey);
+                    Tiles[i].Tile = gameModel.Tiles[i];
+
+                    Debug.Assert(Tiles[i].Tile == gameModel.Tiles[i]);
+
+
+                }
+            }
+        }
+        private void MergeRoads(GameModel gameModel)
+        {
+            Contract.Assert(BoardInfo is not null);
+            if (Roads.Count == 0)
+            {
+                Roads = new ObservableCollection<RoadViewModel>(
+                    gameModel.Roads.Select(road => new RoadViewModel(road, BoardInfo.Layout))
+                );
+            }
+            else
+            {
+                Debug.Assert(Roads.Count == gameModel.Roads.Count, "Road count mismatch.");
+                for (int i = 0; i < gameModel.Roads.Count; i++)
+                {
+                    Contract.Assert(Roads[i].Road.RoadKey == gameModel.Roads[i].RoadKey);
+                    Roads[i].Road = gameModel.Roads[i];
+
+                }
+            }
+        }
+
+        private void MergeBuildings(GameModel gameModel)
+        {
+            if (Buildings.Count == 0)
+            {
+                Contract.Assert(BoardInfo is not null, "BoardInfo cannot be null.");
+
+                Buildings = new ObservableCollection<BuildingViewModel>(
+                    gameModel.Buildings.Select(building => new BuildingViewModel(building, BoardInfo.Layout))
+                );
+            }
+            else
+            {
+                Debug.Assert(Buildings.Count == gameModel.Buildings.Count);
+                for (int i = 0; i < gameModel.Buildings.Count; i++)
+                {
+                    Contract.Assert(Buildings[i].Building.BuildingKey == gameModel.Buildings[i].BuildingKey);
+                    Buildings[i].Building = gameModel.Buildings[i];
+                }
+            }
+
+        }
+
+
+        private void MergeHarbors(GameModel gameModel)
+        {
+            Contract.Assert(BoardInfo is not null, "BoardInfo cannot be null.");
+            if (Harbors.Count == 0) // Check if harbors need to be created for the first time
+            {
+                Harbors = new ObservableCollection<HarborViewModel>(
+                    gameModel.Harbors.Select(harbor => new HarborViewModel(harbor, BoardInfo.Layout))
+                );
+            }
+            else // Update existing harbors
+            {
+                Debug.Assert(Harbors.Count == gameModel.Harbors.Count, "Harbor count mismatch.");
+                for (int i = 0; i < gameModel.Harbors.Count; i++)
+                {
+                    Contract.Assert(Harbors[i].Harbor.HexCoordinates == gameModel.Harbors[i].HexCoordinates, "Harbor key mismatch.");
+                    Contract.Assert(Harbors[i].Harbor.Side == gameModel.Harbors[i].Side, "Harbor key mismatch.");
+                    Harbors[i].Harbor = gameModel.Harbors[i];
+                }
+            }
+        }
+
+
+
+        /// <summary>
+        ///     the Star for each building is dependend on the Tiles and thus changes everytime we Shuffle...but Shuffle is driven off of
+        ///     GameModel, not GameViewModel...so we can't do it there.  
+        /// </summary>
+        public void SetStars()
+        {
+            foreach (var building in Buildings)
+            {
+                building.Stars = TilesForBuildings(building.Building.BuildingKey).Stars();
+            }
+
+
+            var resourceModel = new ResourcesModel();
+            foreach (var resource in GameViewModelStatics.StarsTrackResourceList)
+            {
+                resourceModel.AddResource(resource, GameModel.StarCount(resource));
+            }
+            this.StarsResourceViewModel.ResourceModel = resourceModel;
+
+        }
+
+        private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(BoardInfo.Layout.TileXOffset) ||
+                e.PropertyName == nameof(BoardInfo.Layout.TileYOffset) ||
+                e.PropertyName == nameof(BoardInfo.Layout.BoardWidth) ||
+                e.PropertyName == nameof(BoardInfo.Layout.BoardHeight))
+            {
+                // those are the 4 properties updated in UpdateLayout
+                return;
+            }
+
+            if (e.PropertyName == nameof(BoardInfo.Layout.OuterHexSize) || e.PropertyName == nameof(BoardInfo.Layout.BuildingSize))
+            {
+                // these are the properties that the UpdateLayout depends on
+
+
+
+                UpdateLayout();
+                return;
+            }
+        }
+
+        /// <summary>
+        ///     Data that joins 2 or more collections is implemented here instead of as extension methods to the collection
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public List<TileModel> TilesForBuildings(BuildingKey key)
+        {
+            Debug.Assert(GameModel is not null);
+            return GameModel.TilesForBuildings(key);
+        }
+
+        private ObservableCollection<TileViewModel> CreateAndSortTileViewModelList(ObservableCollection<TileModel> tiles)
+        {
+            Debug.Assert(BoardInfo is not null);
+            var sortedTiles = tiles.OrderBy(tvm => tvm.TileKey).ToList();
+            ObservableCollection<TileViewModel> result = [];
+            for (int i = 0; i < sortedTiles.Count; i++)
+            {
+                var tvm = new TileViewModel(sortedTiles[i], BoardInfo.Layout)
+                {
+                    Index = i
+                };
+                result.Add(tvm);
+            }
+
+            return result;
+        }
+
+        public ObservableCollection<TileViewModel> UpdateTiles(ObservableCollection<TileModel> tiles)
+        {
+            Debug.Assert(BoardInfo is not null);
+            var sortedTiles = tiles.OrderBy(tvm => tvm.TileKey).ToList();
+            ObservableCollection<TileViewModel> result = [];
+            for (int i = 0; i < sortedTiles.Count; i++)
+            {
+                var tvm = new TileViewModel(sortedTiles[i], BoardInfo.Layout)
+                {
+                    Index = i
+                };
+                result.Add(tvm);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        ///     We want to calculate the offset of the tile positions from the harborLeft of the board so that we leave the right space for the buildings 
+        ///     and harbors around the board.  when we start calling .Left and .Top, the space to add to harborLeft and top is 0.  this will calculate what
+        ///     should be added. 
+        ///     
+        ///     Left is calculated by looking for harbors off the first column
+        ///     Top is calculated by looking at the top of the middle row for Harbors or Buildings
+        ///     Height is calculated by looking at the bottom of the middle row for Harbors or Buildings
+        ///     Width is calculated by looking at the last column for harbors 
+        ///     
+        ///     the space will either be a harbor or be a building.
+        /// </summary>
+        double cached_BuildingSize = -1;
+        double cached_OuterHexSize = -1;
+        public void UpdateLayout()
+        {
+
+            Contract.Assert(BoardInfo is not null && BoardInfo.Layout is not null, "Cannot do layout with no BoardInfo");
+            Contract.Assert(Harbors is not null, "Must have Harbors to layout Harbors");
+
+            if (cached_BuildingSize == BoardInfo.Layout.BuildingSize && cached_OuterHexSize == BoardInfo.Layout.OuterHexSize)
+            {
+                return;
+            }
+
+            cached_BuildingSize = BoardInfo.Layout.BuildingSize;
+            cached_OuterHexSize = BoardInfo.Layout.OuterHexSize;
+
+            BoardInfo.Layout.TileXOffset = 0;
+            BoardInfo.Layout.TileYOffset = 0;
+            var harborSize = BoardInfo.Layout.BuildingSize;
+            var hexSize = BoardInfo.Layout.OuterHexSize;
+
+            //
+            //  get Y offset
+            var topTile = Tiles.TopTile();
+            var key = topTile.Tile.TileKey;
+            var tileTop = BoardInfo.Layout.Top(key);
+            var pointyDictionary = BoardInfo.Layout.PointyHexPoints.PointyTopListToDictionary();
+            var top = pointyDictionary[HexSide.Top].Y;
+            BoardInfo.Layout.TileYOffset = Math.Round(Math.Abs(tileTop) + Math.Abs(top) + harborSize, 2);
+
+            // get X offset
+            var firstTile = Tiles.FirstColumn().First();
+            // all of the Harbors will have the same X on the first column, so make one up assuming that one will be there.
+            var harborTopLeft = HarborViewModel.GetLeftTop(BoardInfo.Layout, firstTile.Tile.TileKey, HexSide.BottomLeft);
+            BoardInfo.Layout.TileXOffset = Math.Abs(Math.Round(harborTopLeft.X));
+            // this.TraceMessage($"({BoardInfo.Layout.TileXOffset},{BoardInfo.Layout.TileYOffset})");
+
+
+
+            // calculate the height
+
+            var bottomTile = Tiles.BottomTile();
+
+            HarborViewModel? bottomHarbor = Harbors.FindHarbor(bottomTile.Tile.TileKey, HexSide.Bottom);
+            if (bottomHarbor is not null)
+            {
+                BoardInfo.Layout.BoardHeight = bottomHarbor.Top + BoardInfo.Layout.BuildingSize; // BuildingSize is also HarborSize
+            }
+            else
+            {
+                var b = Buildings.FindBuildingViewModel(new BuildingKey(bottomTile.Tile.TileKey, HexPosition.BottomLeft));
+                Debug.Assert(b != null);
+
+                BoardInfo.Layout.BoardHeight = b.Top + BoardInfo.Layout.BuildingSize;
+            }
+
+            //
+            //  calulate the Width
+            var rightTile = Tiles.LastColumn().First();
+
+            double left = BoardInfo.Layout.Left(rightTile.Tile.TileKey) ;
+
+            BoardInfo.Layout.BoardWidth = left + 2 * hexSize + harborSize / 2.0;
+
+            foreach (var tile in Tiles.LastColumn())
+            {
+                if (tile is null) continue;
+                var harbors = Harbors.FindAnyHarbor(tile.Tile.TileKey);
+                if (harbors is null) continue;
+                foreach (HarborViewModel h in harbors)
+                {
+                    if (h.Harbor.Side == HexSide.Top || h.Harbor.Side == HexSide.Bottom) continue;
+
+                    var right = h.Left + harborSize;
+                    BoardInfo.Layout.BoardWidth = right;
+                    return;
+
+                }
+            }
+
+        }
+
+
+
+
+    }
+
+}

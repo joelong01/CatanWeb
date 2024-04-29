@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
+using Catan3.Models;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Foundation;
@@ -14,6 +15,30 @@ using Windows.UI;
 
 namespace Catan3
 {
+    public static class EnumExtensions
+    {
+        #region Methods
+
+        public static string Description(this Enum instance)
+        {
+
+            string output = "";
+            Type type = instance.GetType();
+            if (type is null) return String.Empty;
+            FieldInfo? fi = type.GetField(instance.ToString());
+            if (fi is null) return String.Empty;
+            DescriptionAttribute[]? attrs = fi.GetCustomAttributes(attributeType: typeof(DescriptionAttribute), false) as DescriptionAttribute[];
+            if (attrs is not null && attrs.Length > 0)
+            {
+                output = attrs[0].Description;
+            }
+            return output;
+        }
+
+
+
+        #endregion Methods
+    }
     public static class AnimationHelpers
     {
         public static void FlipToFaceUp(FrameworkElement faceDown, FrameworkElement faceUp)
@@ -85,6 +110,7 @@ namespace Catan3
     {
         public static string ListToCsv<T>(this IEnumerable<T> list)
         {
+            if (list.Count() == 0) return "Empty";
             string s = String.Empty;
             int c = list.Count();
             for (int i = 0; i < c - 1; i++)
@@ -105,6 +131,23 @@ namespace Catan3
             }
             return clonedPoints;
         }
+
+
+        public static void InsertSorted<T>(this IList<T> collection, T item) where T : IComparable<T>
+        {
+            if (collection == null)
+                throw new ArgumentNullException(nameof(collection));
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
+
+            int index = 0;
+            while (index < collection.Count && collection[index].CompareTo(item) < 0)
+            {
+                index++;
+            }
+            collection.Insert(index, item);
+        }
+
     }
     public static class BrushCache
     {
@@ -144,6 +187,24 @@ namespace Catan3
             }
             return brush;
         }
+
+        public static ImageBrush ResourceCardImage(ResourceType resourceType)
+        {
+            try
+            {
+                string key = $"ResourceCard.{resourceType}";
+                var result =  ( ImageBrush )Application.Current.Resources[key];
+                Debug.Assert(result is not null);
+                return result;
+            }
+            catch
+            ( Exception ex )
+            {
+                resourceType.TraceMessage($"{ex.Message}");
+                return ( ImageBrush )Application.Current.Resources["ResourceCard.None"];
+            }
+
+        }
     }
     public static class Extensions
     {
@@ -161,50 +222,5 @@ namespace Catan3
         }
     }
 
-    //public static class DragAndDrop
-    //{
-    //    public interface IDragAndDropProgress
-    //    {
-    //        #region Methods
 
-    //        void Report(PointerRoutedEventArgs e, Point value);
-
-    //        #endregion Methods
-    //    }
-    //    public static Task<Point> DragAsync(UIElement control, PointerRoutedEventArgs origE, IDragAndDropProgress? progress = null)
-    //    {
-    //        TaskCompletionSource<Point> taskCompletionSource = new TaskCompletionSource<Point>();
-    //        UIElement mousePositionWindow = Window.Current.Content;
-    //        GeneralTransform gt = Window.Current.Content.TransformToVisual(control);
-    //        UIElement root = Window.Current.Content;
-
-    //        Point pointMouseDown = gt.TransformPoint(origE.GetCurrentPoint(mousePositionWindow).Side);
-
-     
-    //        PointerEventHandler pointerMovedHandler = (object s, PointerRoutedEventArgs e) =>
-    //        {
-    //            Point pt = e.GetCurrentPoint(mousePositionWindow).Side;
-    //            pt = gt.TransformPoint(pt);
-    //            Point delta = new Point
-    //            {
-    //                X = pt.X - pointMouseDown.X,
-    //                Y = pt.Y - pointMouseDown.Y
-    //            };
-
-    //            if (!( control.RenderTransform is CompositeTransform compositeTransform ))
-    //            {
-    //                compositeTransform = new CompositeTransform();
-    //                control.RenderTransform = compositeTransform;
-    //            }
-    //            compositeTransform.TranslateX += delta.X;
-    //            compositeTransform.TranslateY += delta.Y;
-    //            control.RenderTransform = compositeTransform;
-    //            pointMouseDown = pt;
-    //            if (progress != null)
-    //            {
-    //                progress.Report(e, pt);
-    //            }
-    //        };
-    //    }
-    //}
 }

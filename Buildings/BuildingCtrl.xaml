@@ -7,34 +7,39 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
 
-    <Grid HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="White" BorderThickness="0"
-            Background="Transparent" Opacity="1"
+    <Grid HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="White"
+            BorderThickness="0" Background="Transparent" Opacity="1"
             Width="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}"
-            Height="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}">
+            Height="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}"
+            PointerEntered="OnPointerEntered" PointerExited="OnPointerExited"
+            PointerPressed="OnPointerPressed">
         <Ellipse Width="10" HorizontalAlignment="Center"
                 VerticalAlignment="Center" Height="10" Fill="Red" Opacity=".75"
                 Visibility="Collapsed" />
-        <Ellipse Fill="{x:Bind BuildingViewModel.Background, Mode=OneWay}"
+        <Ellipse
+                Fill="{x:Bind BuildingViewModel.GetBackgroundBrush(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
 
         <Viewbox Stretch="Uniform" HorizontalAlignment="Center"
-                VerticalAlignment="Center" Margin="3">
+                VerticalAlignment="Center" Margin="5">
             <Grid Margin="1" HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch">
-                <TextBlock
-                        Text="{x:Bind GetStateGlyph(BuildingViewModel.Building.BuildingState), Mode=OneWay}"
-                        FontFamily="{StaticResource CatanFont}"
-                        Margin="0,-1,0,0" RenderTransformOrigin="0.5 0.5"
-                        TextAlignment="Center"
-                        Foreground="{x:Bind BuildingViewModel.Foreground, Mode=OneWay}">
-                    <TextBlock.RenderTransform>
-                        <ScaleTransform
-                                ScaleX="{x:Bind BuildingViewModel.Building.Metropolis, Converter={StaticResource MetroToScaleConverter}, Mode=OneWay}"
-                                ScaleY="{x:Bind BuildingViewModel.Building.Metropolis, Converter={StaticResource MetroToScaleConverter}, Mode=OneWay}" />
-                    </TextBlock.RenderTransform>
-                </TextBlock>
+                <Viewbox Stretch="Uniform" Margin="0">
+                    <TextBlock x:Name="TXT_StateGlyph"
+                            Text="{x:Bind BuildingViewModel.GetStateGlyph(BuildingViewModel.Building.BuildingState), Mode=OneWay}"
+                            FontFamily="{StaticResource CatanFont}"
+                            Margin="-1,0,0,1" RenderTransformOrigin="0.5 0.5"
+                            TextAlignment="Center"
+                            Foreground="{x:Bind BuildingViewModel.GetForegroundBrush(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}">
+                        <TextBlock.RenderTransform>
+                            <ScaleTransform
+                                    ScaleX="{x:Bind BuildingViewModel.Building.Metropolis, Converter={StaticResource MetroToScaleConverter}, Mode=OneWay}"
+                                    ScaleY="{x:Bind BuildingViewModel.Building.Metropolis, Converter={StaticResource MetroToScaleConverter}, Mode=OneWay}" />
+                        </TextBlock.RenderTransform>
+                    </TextBlock>
+                </Viewbox>
                 <TextBlock Text="{x:Bind LaurelGlyph}"
-                        Foreground="{x:Bind BuildingViewModel.Foreground, Mode=OneWay}"
+                        Foreground="{x:Bind BuildingViewModel.GetForegroundBrush(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
                         HorizontalAlignment="Center" VerticalAlignment="Center"
                         RenderTransformOrigin=".5 .5"
                         FontFamily="{StaticResource CatanFont}"

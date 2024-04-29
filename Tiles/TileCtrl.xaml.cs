@@ -3,8 +3,10 @@ using System.ComponentModel;
 using System.Diagnostics;
 using Catan3.Models;
 using Catan3.Utility;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using CatanOrientation = Catan3.Models.CatanOrientation;
@@ -34,40 +36,11 @@ namespace Catan3.Controls
         }
         private void SetTileViewModel(TileViewModel newModel, TileViewModel? oldModel)
         {
-            if (oldModel is not null)
-            {
-                oldModel.PropertyChanged -= TileViewModel_PropertyChanged;
-            }
-            this.DataContext = newModel;
-            newModel.PropertyChanged += TileViewModel_PropertyChanged;
-            if (oldModel is not null && newModel is TileViewModel)
-            {
-                if (oldModel.Orientation != newModel.Orientation)
-                {
-                    SetOrientation();
-                }
-            }
+           
 
         }
 
-        private void TileViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == "Orientation") SetOrientation();
-        }
-
-        
-
-        private void SetOrientation()
-        {
-            if (TileViewModel.Orientation == CatanOrientation.FaceUp)
-            {
-                AnimationHelpers.FlipToFaceUp(C_Back, C_Front);
-            }
-            else // Assuming the only other state is FaceDown
-            {
-                AnimationHelpers.FlipToFaceDown(C_Back, C_Front);
-            }
-        }
+    
 
 
 
@@ -150,7 +123,42 @@ namespace Catan3.Controls
             return new Thickness(0, 0, 0, hexStroke + tileGap);
         }
 
-     
+        private void OnRightClicked(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs e)
+        {
+            this.TileViewModel.TargetCommand.Execute(null);
+     //       Debug.Assert(TileViewModel.Targets.Count != 0);
+            var flyout = new MenuFlyout();
 
+            foreach (var target in TileViewModel.Targets)
+            {
+                var menuItem = new MenuFlyoutItem
+                {
+                    Text = target.Name,
+                    Command = TileViewModel.TargetPickedCommand,
+                    CommandParameter = target.Id
+                };
+                flyout.Items.Add(menuItem);
+            }
+
+            // Add a separator
+            flyout.Items.Add(new MenuFlyoutSeparator());
+
+            // Add a "Cancel" menu item
+            var cancelItem = new MenuFlyoutItem
+            {
+                Text = "Cancel",
+                Command = new RelayCommand(() => {})
+            };
+            flyout.Items.Add(cancelItem);
+
+            flyout.ShowAt(sender as FrameworkElement, new FlyoutShowOptions
+            {
+                Position = e.GetPosition(sender as UIElement),
+                Placement = FlyoutPlacementMode.RightEdgeAlignedTop,
+                ShowMode = FlyoutShowMode.Transient
+            });
+
+            e.Handled = true;
+        }
     }
 }

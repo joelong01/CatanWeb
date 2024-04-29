@@ -29,6 +29,8 @@ namespace Catan3
             m_window.Activate();
         }
 
-        private Window m_window;
+        public Window m_window;
+
+        public Window MainWindow => m_window;
     }
 }

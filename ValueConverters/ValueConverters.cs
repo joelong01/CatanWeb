@@ -9,6 +9,29 @@ using Microsoft.UI.Xaml.Media;
 using Windows.UI;
 namespace Catan3.Converters
 {
+    public class BrushToColorConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is SolidColorBrush brush)
+            {
+                return brush.Color;
+            }
+            return Colors.Transparent; // Default to transparent if not applicable
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            if (value is Color color)
+            {
+                return new SolidColorBrush(color);
+            }
+#pragma warning disable CS8603 // Possible null reference return.
+            return null;
+#pragma warning restore CS8603 // Possible null reference return.
+        }
+    }
+
     public class DoubleToThickness : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
