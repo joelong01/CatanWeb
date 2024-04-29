@@ -1,11 +1,9 @@
 using System;
-using System.Runtime.CompilerServices;
 using Catan3.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Catan3.Utility
 {

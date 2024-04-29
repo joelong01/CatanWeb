@@ -15,10 +15,7 @@
 		<StartupObject></StartupObject>
 	</PropertyGroup>
 	<ItemGroup>
-		<None Remove="Controls\BuildingCtrl.xaml" />
-		<None Remove="Controls\GameBoardCtrl.xaml" />
-		<None Remove="Controls\RoadCtrl.xaml" />
-		<None Remove="Controls\TileCtrl.xaml" />
+		<None Remove="Controls\PurchaseCtrl.xaml" />
 		<None Remove="FlipperCtrl.xaml" />
 		<None Remove="GameButtons.xaml" />
 		<None Remove="Game\Game Control\GameControls.xaml" />
@@ -77,6 +74,9 @@
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
 	  <Page Update="Game\Game Control\GameControls.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Controls\PurchaseCtrl.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
 	  <None Update="GenerateModels.tt">
@@ -157,6 +157,9 @@
 	    <AutoGen>True</AutoGen>
 	    <DependentUpon>models.tt</DependentUpon>
 	  </Compile>
+	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="Game\GameFactory\" />
 	</ItemGroup>
 
 	<!-- 

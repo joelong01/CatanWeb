@@ -24,14 +24,24 @@ namespace Catan3.Models
         [ObservableProperty]
         private bool _nextEnabled = false;
 
+        [ObservableProperty]
+        private bool _rollsEnabled = false;
+
         public override string ToString()
         {
             return $"UndoEnabled: {UndoEnabled} RedoEnabled={RedoEnabled} NextEnabled={NextEnabled}";
         }
     }
-   
+
     public partial class GameModel : ObservableObject
     {
+        /// <summary>
+        ///     What kinds of things can be purchased in this game and if they are allowed to be purchased
+        ///     at this time?
+        /// </summary>
+        [ObservableProperty]
+        private ObservableCollection<EntitlementPurchaseModel> _entitlementPurchaseModel = [];
+
         [ObservableProperty]
         private ActionFlags _actionFlags = new();
 
@@ -69,6 +79,9 @@ namespace Catan3.Models
         private HouseRules _houseRules = new();
 
         [ObservableProperty]
+        private ResourceRules _resourceRules;
+
+        [ObservableProperty]
         private string _currentPlayerId = string.Empty;
 
         [ObservableProperty]
@@ -78,20 +91,32 @@ namespace Catan3.Models
         [ObservableProperty]
         private ResourcesModel _gameResourcesModel = new();
 
-       
+
 
         public override string ToString()
         {
             return $"State={GameState} CurrentPlayer={CurrentPlayerId}";
         }
 
-       
 
-        public GameModel(GameType gametype, bool hassupplementalbuildphase, List<PlayerModel> players)
+        /// <summary>
+        ///     called by the GameFactory when a new game is created.  All data that the game needs
+        ///     should be created here.
+        /// </summary>
+        /// <param name="gameInfo"></param>
+        /// <param name="players"></param>
+        public GameModel(IGameMetadata gameInfo, List<PlayerModel> players)
         {
-            GameType = gametype;
-            HasSupplementalBuildPhase = hassupplementalbuildphase;
+            Debug.Assert(players.Count > 0); // enforced by caller
+
+            GameType = gameInfo.GameType;
+            HasSupplementalBuildPhase = gameInfo.HasSupplemental;
             Players = players;
+            ResourceRules = gameInfo.ResourceRules;
+            HouseRules = gameInfo.HouseRules;
+            CurrentPlayerId = players[0].Id;
+
+            EntitlementPurchaseModel.AddRange(gameInfo.PurchaseableEntitlements);
         }
         [JsonConstructor]
         public GameModel()
@@ -99,6 +124,7 @@ namespace Catan3.Models
             Players = [];
             GameType = GameType.Regular;
             HasSupplementalBuildPhase = false;
+            ResourceRules = ResourceRules.Default;
         }
         /// <summary>
         ///     Add up all the stars for the given resource top
@@ -156,7 +182,7 @@ namespace Catan3.Models
             FunctionTimer.CallTimedFunction("GameModel.Serialize", () =>
             {
                 gameModelJson = JsonSerializer.Serialize(this);
-               
+
             });
 
             return gameModelJson;
@@ -166,5 +192,5 @@ namespace Catan3.Models
 
     }
 
-   
+
 }

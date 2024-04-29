@@ -1,21 +1,26 @@
 ﻿using System.Collections.Generic;
+using System.Reflection.Metadata.Ecma335;
 using Catan3.Utility;
 using Windows.Foundation.Metadata;
 
 namespace Catan3.Models
 {
 
+
+
     /// <summary>
     ///     Static data about a game Board
     /// </summary>
-    public partial class RegularBoardInfo : IBoardInfo
+    public partial class RegularBoardInfo : IGameMetadata
     {
-        public  HouseRules HouseRules { get; } = new HouseRules() {GoldTiles = 1, HideBaronBeforeInvasion=false, KnightMovesBaronBeforeRoll=true, WallsProtectCities=true};
-
+        public GameType GameType { get; } = GameType.Regular;
+        public string Description { get; } = "Regular Game";
+        public HouseRules HouseRules { get; } = new HouseRules() { GoldTiles = 1, HideBaronBeforeInvasion = false, KnightMovesBaronBeforeRoll = true, WallsProtectCities = true };
+        public ResourceRules ResourceRules { get; } = new ResourceRules(4, 5, 15, 3, 4);
         public static RegularBoardInfo Default { get; } = new RegularBoardInfo();
         private RegularBoardInfo() => Layout = BoardLayout.Default;
         public bool HasSupplemental => false;
-        
+
         public BoardLayout Layout { get; private set; }
         public List<HexCoordinates> TileKeys { get; } =
              [
@@ -73,6 +78,15 @@ namespace Catan3.Models
 
             ];
         public List<int> Numbers { get; } = [7, 2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12];
+
+        public List<EntitlementPurchaseModel> PurchaseableEntitlements { get; } = [
+                new EntitlementPurchaseModel(Entitlement.City),
+                new EntitlementPurchaseModel(Entitlement.Settlement),
+                new EntitlementPurchaseModel(Entitlement.Road),
+                new EntitlementPurchaseModel(Entitlement.PlayKnight),
+            ];
+
+      //  public Dictionary<GameState, Entitlement[]> StateToPurchaseMap { get; } = [GameState.WaitingForNext, [Entitlement.City, Entitlement.Settlement, Entitlement.Road]];
     }
 
 }

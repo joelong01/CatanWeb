@@ -14,15 +14,19 @@ namespace Catan3.Models
     }
     public partial class GameViewModel : ObservableRecipient
     {
+        /// <summary>
+        ///     Data that drives the PurchaseUi
+        /// </summary>
+        [ObservableProperty]
+        private ObservableCollection<EntitlementPurchaseViewModel> _purchasableEntitlements = [];
 
+        // id of the game
         [ObservableProperty]
         private string _id;
 
+       
         [ObservableProperty]
-        private ActionFlags _actionFlags = new();
-
-        [ObservableProperty]
-        private IBoardInfo? _boardInfo;
+        private IGameMetadata? _boardInfo;
 
         [ObservableProperty]
         private RobberViewModel _robberViewModel = new(new());
@@ -79,7 +83,10 @@ namespace Catan3.Models
         // total stars for each resourcetype in the game
         [ObservableProperty]
         private ResourcesViewModel _starsResourceViewModel = new(GameViewModelStatics.StarsTrackResourceList);
-        
+
+        [ObservableProperty]
+        private ErrorMessage? _errorMessage;
+
         /// <summary>
         ///     this broadcasts to all things that are looking for the global orientation that causes things like Tiles and Harbors to flip
         /// </summary>

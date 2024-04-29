@@ -53,5 +53,28 @@ namespace Catan3.Controls
             set => SetValue(ValidCatanRollProperty, value);
         }
 
+      
+
+        private void OnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            if (sender is Button ctrl)
+            {
+                ctrl.BorderThickness = new Thickness(0);
+            }
+        }
+
+        private void OnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            if (sender is Button ctrl)
+            {
+                ctrl.BorderThickness = new Thickness(3);
+            }
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            this.TraceMessage("done");
+        }
+
     }
 }

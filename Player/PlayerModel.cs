@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Catan10.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Linq;
+using System.Collections.ObjectModel;
 namespace Catan3.Models
 {
     /// <summary>
@@ -74,6 +75,15 @@ namespace Catan3.Models
         /// </summary>
         [ObservableProperty]
         private ResourcesModel _resourcesThisGame = new();
+
+        [ObservableProperty]
+        private ObservableCollection<Entitlement> _unspentEntitlements = [];
+
+        [ObservableProperty]
+        private ObservableCollection<Entitlement> _spentEntitlementsThisGame = [];
+
+        [ObservableProperty]
+        private ObservableCollection<Entitlement> _spentEntitlementsThisTurn = [];
 
         public static PlayerModel Default { get; } = new PlayerModel("Nameless-001");
         private PlayerModel() { Id = "Nameless-002"; }

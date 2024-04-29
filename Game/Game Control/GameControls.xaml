@@ -21,7 +21,7 @@
                             Width="100" Height="100">
                         <Button Content="&#xE10E;"
                                 Command="{x:Bind ViewModel.GameViewModel.UndoCommand, Mode=OneWay}"
-                                IsEnabled="{x:Bind ViewModel.GameViewModel.ActionFlags.UndoEnabled, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.GameViewModel.GameModel.ActionFlags.UndoEnabled, Mode=OneWay}"
                                 Style="{StaticResource GameControllerStyle}"
                                 Background="Transparent" Foreground="White" />
                         <TextBlock Margin="10, 5, 0, 0" Text="Undo"
@@ -33,7 +33,7 @@
                             Width="100" Height="100">
                         <Button Content="&#xE101;"
                                 Command="{x:Bind ViewModel.GameViewModel.NextPlayerCommand, Mode=OneWay}"
-                                IsEnabled="{x:Bind ViewModel.GameViewModel.ActionFlags.NextEnabled, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.GameViewModel.GameModel.ActionFlags.NextEnabled, Mode=OneWay}"
                                 Style="{StaticResource GameControllerStyle}"
                                 Background="Transparent" Foreground="White" />
                         <TextBlock Margin="10, 5, 0, 0" Text="Next"
@@ -46,7 +46,7 @@
                         <Button Content="&#xE10D;"
                                 Command="{x:Bind ViewModel.GameViewModel.RedoCommand, Mode=OneWay}"
                                 Style="{StaticResource GameControllerStyle}"
-                                IsEnabled="{x:Bind ViewModel.GameViewModel.ActionFlags.RedoEnabled, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.GameViewModel.GameModel.ActionFlags.RedoEnabled, Mode=OneWay}"
                                 Background="Transparent" Foreground="White" />
                         <TextBlock Margin="10, 5, 0, 0" Text="Redo"
                                 HorizontalAlignment="Center" Foreground="White"

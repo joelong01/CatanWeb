@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Runtime.CompilerServices;
 using Catan3.Utility;
 
 namespace Catan3.Models
@@ -102,6 +103,19 @@ namespace Catan3.Models
     public class TrackedResourceTypes(ObservableCollection<ResourceType> list)
     {
         public ObservableCollection<ResourceType> TrackedResources { get; set; } = list;
+    }
+
+    public class PurchaseMessage(Entitlement entitlement)
+    {
+        public Entitlement Entitlement { get; } = entitlement;
+    }
+
+    public class ErrorMessage(string message, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
+    {
+        public string Message { get; } = message;
+        public string CallerMemberName { get; } = cmb;
+        public string CallerLineNumber { get; } = cln.ToString();
+        public string CallerFilePath { get; } = cfp;
     }
 
 }

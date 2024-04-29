@@ -120,4 +120,72 @@ namespace Catan3.Models
     public enum SpecialDice { Trade=0, Politics=1, Science=2, Pirate=3, None=-1 };
     public enum ValidCatanRoll { Two=2, Three=3, Four=4, Five=5, Six=6, Seven=7, Eight=8, Nine=9, Ten=10, Eleven=11, Twelve=12, None=-1 };
 
+    public enum Entitlement
+    {
+        [Description("Undefined")]
+        Undefined,
+
+        [Description("Dev Card")]
+        DevCard,
+
+        [Description("Settlement")]
+        Settlement,
+
+        [Description("City")]
+        City,
+
+        [Description("Road")]
+        Road,
+
+        [Description("Ship")]
+        Ship,
+
+        [Description("Buy")]
+        BuyKnight,
+
+        [Description("Upgrade")]
+        UpgradeKnight,
+
+        [Description("Activate")]
+        ActivateKnight,
+
+        [Description("Move Robber")]
+        PlayKnight,
+
+        [Description("Politics")]
+        PoliticsUpgrade,
+
+        [Description("Science")]
+        ScienceUpgrade,
+
+        [Description("Trade")]
+        TradeUpgrade,
+
+        [Description("Wall")]
+        Wall,
+
+        [Description("Destroy City")]
+        DestroyCity,
+        [Description("Bishop")]
+        Bishop,
+        [Description("PickDeserter")]
+        Deserter,
+
+        [Description("Inventor")]
+        Inventor,
+        [Description("Intrigue")]
+        Intrigue,
+        [Description("Diplomat")]
+        Diplomat,
+
+        [Description("Merchant")]
+        Merchant,
+        [Description("Displace")]
+        KnightDisplacement,
+        [Description("Metropolis")]
+        UpgradeToMetro,
+        KnightDisplacementMoveKnightOutOfTheWay,
+        MoveBaronWithKnight,
+    }
+
 }

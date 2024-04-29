@@ -16,6 +16,12 @@ namespace Catan3.Models
 
         [ObservableProperty]
         private bool _knightMovesBaronBeforeRoll = true;
+
+        [ObservableProperty]
+        private bool _hideRobberBeforeInvasion =  false;
+
+        [ObservableProperty]
+        private bool _knightMovesRobberBeforeRoll = false;
     }
 
 }

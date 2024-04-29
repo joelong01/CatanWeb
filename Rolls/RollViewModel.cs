@@ -44,6 +44,7 @@ namespace Catan3.Models
         {
             Debug.Assert(TurnRollModel is not null, "Turn roll model is null.  probably a bug in NextPlayer"); 
             if (roll == ValidCatanRoll.None) return;
+      
             TurnRollModel.NormalRoll = roll;
             Messenger.Send(new RollMessage(TurnRollModel));
         }

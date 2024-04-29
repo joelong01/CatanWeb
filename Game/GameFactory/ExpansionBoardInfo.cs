@@ -4,10 +4,14 @@ using System.Collections.Generic;
 
 namespace Catan3.Models
 {
-    public partial class ExpansionBoardInfo : IBoardInfo
+
+    public partial class ExpansionBoardInfo : IGameMetadata
     {
-        public  HouseRules HouseRules { get; } = new HouseRules() {GoldTiles = 2, HideBaronBeforeInvasion=false, KnightMovesBaronBeforeRoll=true, WallsProtectCities=true};
-        public static ExpansionBoardInfo Default {get;} = new ExpansionBoardInfo();
+        public GameType GameType { get; } = GameType.Expansion;
+        public string Description { get; } = "Expansion Game";
+        public HouseRules HouseRules { get; } = new HouseRules() { GoldTiles = 2, HideBaronBeforeInvasion = false, KnightMovesBaronBeforeRoll = true, WallsProtectCities = true };
+        public static ExpansionBoardInfo Default { get; } = new ExpansionBoardInfo();
+        public ResourceRules ResourceRules { get; } = new ResourceRules(4, 5, 15, 5, 6);
         private ExpansionBoardInfo() => Layout = BoardLayout.Default;
         public BoardLayout Layout { get; private set; }
         public bool HasSupplemental => true;
@@ -106,5 +110,12 @@ namespace Catan3.Models
 
             ];
         public List<int> Numbers { get; } = [7, 7, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 8, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12];
+
+        public List<EntitlementPurchaseModel> PurchaseableEntitlements { get; } = [
+                new EntitlementPurchaseModel(Entitlement.City),
+                new EntitlementPurchaseModel(Entitlement.Settlement),
+                new EntitlementPurchaseModel(Entitlement.Road),
+                new EntitlementPurchaseModel(Entitlement.PlayKnight),
+            ];
     }
 }

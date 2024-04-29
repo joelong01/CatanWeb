@@ -83,7 +83,7 @@ namespace Catan3.Models
             var glyph =  state switch
             {
                 BuildingState.Empty => string.Empty,
-                BuildingState.Settlement => CatanFont.Gate,
+                BuildingState.Settlement => CatanFont.Settlement,
                 BuildingState.City => CatanFont.City,
                 BuildingState.Highlighted=>Stars.ToString(),
                 BuildingState.Stars => Stars.ToString() ,

@@ -15,35 +15,35 @@ namespace Catan3.Models
     {
         public static GameModel CreateGame(GameType gameType, List<string> players)
         {
-            IBoardInfo boardInfo;
+            IGameMetadata gameInfo;
             if (gameType == GameType.Regular)
             {
-                boardInfo =  RegularBoardInfo.Default;
+                gameInfo =  RegularBoardInfo.Default;
             }
             else if (gameType == GameType.Expansion)
             {
-                boardInfo =  ExpansionBoardInfo.Default;
+                gameInfo =  ExpansionBoardInfo.Default;
             }
             else
             {
                 throw new NotImplementedException();
             }
 
-            Debug.Assert(( boardInfo.TileKeys.Count == boardInfo.Numbers.Count ) && ( boardInfo.TileKeys.Count == boardInfo.Resources.Count ));
+            Debug.Assert(( gameInfo.TileKeys.Count == gameInfo.Numbers.Count ) && ( gameInfo.TileKeys.Count == gameInfo.Resources.Count ));
             List<PlayerModel> playerModels = players.Select(Id => new PlayerModel(Id)).ToList();
-            GameModel game = new(gameType, boardInfo.HasSupplemental, playerModels)
+            if (players.Count < gameInfo.ResourceRules.MinPlayers  || players.Count > gameInfo.ResourceRules.MaxPlayers )
             {
-                CurrentPlayerId = players[0],
-                HouseRules = boardInfo.HouseRules
-            };
+                throw new GameException($"{gameInfo.Description} must have players between {gameInfo.ResourceRules.MinPlayers} and {gameInfo.ResourceRules.MaxPlayers}. You gave {players.Count}");
+            }
+            GameModel game = new(gameInfo, playerModels);
 
-            for (int i = 0; i < boardInfo.TileKeys.Count; i++)
+            for (int i = 0; i < gameInfo.TileKeys.Count; i++)
             {
                 var tile = new TileModel()
                 {
-                    ResourceTileType = boardInfo.Resources[i],
-                    Number = boardInfo.Numbers[i],
-                    TileKey = boardInfo.TileKeys[i]
+                    ResourceTileType = gameInfo.Resources[i],
+                    Number = gameInfo.Numbers[i],
+                    TileKey = gameInfo.TileKeys[i]
                 };
                 game.Tiles.InsertSorted(tile);
             }
@@ -79,7 +79,7 @@ namespace Catan3.Models
                 }
             }
 
-            foreach (var harbor in boardInfo.Harbors)
+            foreach (var harbor in gameInfo.Harbors)
             {
                 game.Harbors.InsertSorted(harbor);
             }

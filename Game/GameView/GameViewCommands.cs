@@ -76,6 +76,11 @@ namespace Catan3.Models
             Orientation = Orientation == CatanOrientation.FaceUp ? CatanOrientation.FaceDown : CatanOrientation.FaceUp;
         }
 
+        [RelayCommand]
+        public void Purchase(Entitlement entitlement)
+        {
+            Messenger.Send(new PurchaseMessage(entitlement));
+        }
 
        
     }

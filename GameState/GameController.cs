@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Catan10.Models;
 using Catan3.Models;
 using Catan3.Utility;
@@ -76,7 +77,7 @@ namespace Catan3.Controller
                     }
                     catch (GameException e)
                     {
-                        this.TraceMessage($"Game Exception: {e}");
+                        SendErrorMessage(e.Message);
                     }
                 });
 
@@ -91,7 +92,7 @@ namespace Catan3.Controller
                 }
                 catch (GameException e)
                 {
-                    this.TraceMessage($"Game Exception: {e}");
+                    SendErrorMessage(e.Message);
                 }
             });
             Messenger.Register<RoadPurchaseMessage>(this, (recipient, message) =>
@@ -104,7 +105,7 @@ namespace Catan3.Controller
                     }
                     catch (GameException e)
                     {
-                        this.TraceMessage($"Game Exception: {e}");
+                        SendErrorMessage(e.Message);
                     }
                 });
 
@@ -119,7 +120,7 @@ namespace Catan3.Controller
                  }
                  catch (GameException e)
                  {
-                     this.TraceMessage($"Game Exception: {e}");
+                     SendErrorMessage(e.Message);
                  }
              });
             Messenger.Register<NewGameMessage>(this, (recipient, message) =>
@@ -132,7 +133,7 @@ namespace Catan3.Controller
                 }
                 catch (GameException e)
                 {
-                    this.TraceMessage($"Game Exception: {e}");
+                    SendErrorMessage(e.Message);
                 }
             });
             Messenger.Register<RollMessage>(this, (recipient, message) =>
@@ -145,7 +146,22 @@ namespace Catan3.Controller
                 }
                 catch (GameException e)
                 {
-                    this.TraceMessage($"Game Exception: {e}");
+                    SendErrorMessage(e.Message);
+                }
+
+            });
+
+            Messenger.Register<PurchaseMessage>(this, (recipient, message) =>
+            {
+                try
+                {
+                    var model = OnPurchase(message);
+                    Messenger.Send(new UpdateGameModel(model));
+
+                }
+                catch (GameException e)
+                {
+                    SendErrorMessage(e.Message);
                 }
 
             });
@@ -157,6 +173,69 @@ namespace Catan3.Controller
 
         }
 
+        private void SendErrorMessage(string message, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
+        {
+            this.TraceMessage(message, indentLevel, cmb, cln, cfp);
+            Messenger.Send(new ErrorMessage(message, cmb, cln, cfp));
+        }
+
+        private GameModel OnPurchase(PurchaseMessage message)
+        {
+            GameModel gameModel = Log.CopyCurrent();
+            Entitlement entitlement = message.Entitlement;
+            if (entitlement == Entitlement.PlayKnight)
+            {
+                // the entitlements you can get before rolling -- right now only the right to move the knight
+                ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.WaitingForRoll]);
+            }
+            else
+            {
+                ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext]);
+            }
+
+            if (!ValidatePurchase(gameModel, entitlement))
+            {
+                throw new GameException($"cannot buy {entitlement} in state {gameModel.GameState}");
+            }
+
+            gameModel.CurrentPlayer().UnspentEntitlements.Add(entitlement);
+
+            LogDone(gameModel);
+            return gameModel;
+
+        }
+
+        private bool ValidatePurchase(GameModel gameModel, Entitlement entitlement)
+        {
+            switch (entitlement)
+            {
+                case Entitlement.PlayKnight:
+                    if (gameModel.CurrentPlayer().SpentEntitlementsThisTurn.Contains(entitlement)) return false;
+                    if (gameModel.CurrentPlayer().UnspentEntitlements.Contains(entitlement)) return false;
+                    return true;
+
+                case Entitlement.City:
+                    int unspentCities = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
+                    if (unspentCities + gameModel.CurrentPlayer().CitiesPlayed > gameModel.ResourceRules.MaxCities) return false;
+
+                    return true;
+
+                case Entitlement.Settlement:
+                    int unspentSettlement = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
+                    if (unspentSettlement + gameModel.CurrentPlayer().SettlementsPlayed > gameModel.ResourceRules.MaxCities) return false;
+                    return true;
+
+                case Entitlement.Road:
+                    int unspentRoads = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
+                    if (unspentRoads + gameModel.CurrentPlayer().RoadsPlayed > gameModel.ResourceRules.MaxCities) return false;
+
+                    return true;
+
+                default:
+                    return false;
+            }
+
+        }
 
         public GameModel NewGame(GameType selectedGame, List<string> playerIds)
         {
@@ -246,10 +325,6 @@ namespace Catan3.Controller
 
             }
 
-            //
-            // mark roads that can built
-            MarkBuildableRoads(gameModel);
-
             // save our changes to the GameModel to the log
             LogDone(gameModel);
 
@@ -267,6 +342,7 @@ namespace Catan3.Controller
             gameModel.ActionFlags.UndoEnabled = Log.CanUndo;
             gameModel.ActionFlags.RedoEnabled = Log.CanRedo;
             gameModel.ActionFlags.NextEnabled = AllowNext(gameModel);
+            gameModel.ActionFlags.RollsEnabled = gameModel.GameState == GameState.WaitingForRoll;
         }
 
         private bool AllowNext(GameModel gameModel)
@@ -340,6 +416,7 @@ namespace Catan3.Controller
                 case GameState.WaitingForNewGame:
                     break;
                 case GameState.BeginResourceAllocation:
+                    GrantAllocationResources(gameModel);
                     gameModel.GameState = GameState.AllocateResourceForward;
                     break;
                 case GameState.WaitingForPlayers:
@@ -355,14 +432,18 @@ namespace Catan3.Controller
                     gameModel.GameState = GameState.BeginResourceAllocation;
                     break;
                 case GameState.AllocateResourceForward:
+
                     if (gameModel.Players.Last().Score == 1)
                     {
                         gameModel.GameState = GameState.AllocateResourceReverse;
+                        GrantAllocationResources(gameModel);
                     }
                     else
                     {
+
                         // move to the next player
                         gameModel.ChangePlayer(1);
+                        GrantAllocationResources(gameModel);
                     }
                     break;
                 case GameState.AllocateResourceReverse:
@@ -370,10 +451,13 @@ namespace Catan3.Controller
                     {
 
                         gameModel.GameState = GameState.DoneResourceAllocation;
+
                     }
                     else
                     {
+
                         gameModel.ChangePlayer(-1);
+                        GrantAllocationResources(gameModel);
 
                     }
                     break;
@@ -387,9 +471,15 @@ namespace Catan3.Controller
                     // it is controlled by hitting a roll UI
                     break;
                 case GameState.WaitingForNext:
+
                     gameModel.ChangePlayer(1);
                     gameModel.TurnRollModel = new();
-                    gameModel.Players.ForEach(p => p.ResourcesThisTurn = new());
+
+                    gameModel.Players.ForEach(p =>
+                    {
+                        p.ResourcesThisTurn = new();
+                        p.SpentEntitlementsThisTurn = [];
+                    });
                     SetTempGoldTiles(gameModel);
                     gameModel.GameState = GameState.WaitingForRoll;
                     ResetBuildableRoads(gameModel);
@@ -438,6 +528,18 @@ namespace Catan3.Controller
             LogDone(gameModel);
             return gameModel;
         }
+        /// <summary>
+        ///     during the allocation phase in the normal game, we give a Settlement and a Road.  Later on, some expansions give other resources
+        ///     (e.g.  a City on the second reverse allocation).
+        /// </summary>
+        /// <param name="gameModel"></param>
+        private void GrantAllocationResources(GameModel gameModel)
+        {
+            ThrowIfWrongState(gameModel.GameState, [GameState.BeginResourceAllocation, GameState.AllocateResourceForward, GameState.AllocateResourceReverse]);
+            var currentPlayer = gameModel.CurrentPlayer();
+            currentPlayer.UnspentEntitlements.Add(Entitlement.Settlement);
+            currentPlayer.UnspentEntitlements.Add(Entitlement.Road);
+        }
 
         /// <summary>
         /// Attempts to purchase a road for the current player based on the given road key.
@@ -450,7 +552,7 @@ namespace Catan3.Controller
         {
             GameModel gameModel = Log.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse]);
-
+            ThrowIfNoEntitlement(gameModel, Entitlement.Road);
             var roadKey = message.RoadKey;
             // Retrieve the road model corresponding to the road key.
             var roadModel = gameModel.Roads.FirstOrDefault(r => r.RoadKey == roadKey);
@@ -486,22 +588,72 @@ namespace Catan3.Controller
             // Set the owner of the road to the current player and update the road state to "Road".
             roadModel.OwnerId = gameModel.CurrentPlayerId;
             roadModel.RoadState = RoadState.Road;
-            var currentPlayerModel = gameModel.Players.PlayerFromId(gameModel.CurrentPlayerId) ?? throw new GameException($"Can't find player {gameModel.CurrentPlayerId}");
-
+            var currentPlayerModel = gameModel.CurrentPlayer();
             currentPlayerModel.RoadsPlayed++;
-            UpdateScore(gameModel);
-            MarkBuildableRoads(gameModel);
+            ConsumeEntitlement(gameModel, Entitlement.Road);
+
+
             // Log the completed change.
             LogDone(gameModel);
 
             return gameModel;
         }
+        /// <summary>
+        ///     The last thing that happens prior to returning
+        ///     
+        /// </summary>
+        /// <param name="gameModel"></param>
 
         private void LogDone(GameModel gameModel)
         {
+            UpdateScore(gameModel);
+            MarkBuildableRoads(gameModel);
             SetActionFlags(gameModel);
+            UpdatePurchaseAccess(gameModel);
             gameModel.ActionFlags.RedoEnabled = false;
             Log.Done(gameModel);
+        }
+        /// <summary>
+        ///     based on the game state and the entitlements the game allows, enable or disable the authority to buy an entitlement
+        /// </summary>
+        private void UpdatePurchaseAccess(GameModel gameModel)
+        {
+            foreach (var model in gameModel.EntitlementPurchaseModel)
+            {
+                model.Enabled = (gameModel.GameState == GameState.WaitingForNext);
+            }
+
+            SetPlayKnightAccess(gameModel);
+
+        }
+
+        private void SetPlayKnightAccess(GameModel gameModel)
+        {
+            var moveRobber = gameModel.EntitlementPurchaseModel.First( m => m.Entitlement == Entitlement.PlayKnight ) ?? throw new GameException("Playing Knight not found in Purchasable Entitlements!");
+            if (gameModel.GameState != GameState.WaitingForNext && gameModel.GameState != GameState.WaitingForRoll)
+            {
+                moveRobber.Enabled = false;
+                return;
+            }
+
+            // can buy it only once
+            PlayerModel currentPlayer = gameModel.CurrentPlayer();
+
+            if (currentPlayer.SpentEntitlementsThisTurn.Contains(Entitlement.PlayKnight) || currentPlayer.UnspentEntitlements.Contains(Entitlement.PlayKnight))
+            {
+                moveRobber.Enabled = false;
+                return;
+            }
+            moveRobber.Enabled = true;
+        }
+
+        private void ThrowIfNoEntitlement(GameModel gameModel, Entitlement entitlement)
+        {
+            var currentPlayer = gameModel.CurrentPlayer();
+            if (!gameModel.CurrentPlayer().UnspentEntitlements.Contains(entitlement))
+            {
+                throw new GameException($"{currentPlayer.Id} does not have a {entitlement}");
+            }
         }
 
         /// <summary>
@@ -515,6 +667,7 @@ namespace Catan3.Controller
         {
             GameModel gameModel = Log.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse]);
+
             BuildingKey buildingKey = message.BuildingKey;
             var building = gameModel.Buildings.FindBuildingModel(buildingKey)
                     ?? throw new GameException($"Invalid BuildingKey: {buildingKey}");
@@ -527,31 +680,37 @@ namespace Catan3.Controller
                 case BuildingState.Empty:
                 case BuildingState.Highlighted:
                 case BuildingState.Stars:
+                    ThrowIfNoEntitlement(gameModel, Entitlement.Settlement);
                     building.BuildingState = BuildingState.Settlement;
                     building.OwnerId = gameModel.CurrentPlayerId;
                     currentPlayerModel.SettlementsPlayed++;
+                    ConsumeEntitlement(gameModel, Entitlement.Settlement);
                     break;
 
                 case BuildingState.Settlement:
+                    ThrowIfNoEntitlement(gameModel, Entitlement.City);
+                    if (building.OwnerId != gameModel.CurrentPlayerId)
+                    {
+                        throw new GameException($"Don't try to upgrade somebody else's building: {building.OwnerId}");
+                    }
+                    building.BuildingState = BuildingState.City;
+                    currentPlayerModel.SettlementsPlayed--;
+                    currentPlayerModel.CitiesPlayed++;
+                    ConsumeEntitlement(gameModel, Entitlement.City);
+                    break;
                 case BuildingState.City:
+                    ThrowIfNoEntitlement(gameModel, Entitlement.BuyKnight);
                     // Ensure the building is owned by the current player before upgrading.
                     if (building.OwnerId != gameModel.CurrentPlayerId)
                     {
                         throw new GameException($"Don't try to upgrade somebody else's building: {building.OwnerId}");
                     }
                     // Upgrade settlement to city, and city potentially to knight.
-                    if (building.BuildingState == BuildingState.Settlement)
-                    {
-                        building.BuildingState = BuildingState.City;
-                        currentPlayerModel.SettlementsPlayed--;
-                        currentPlayerModel.CitiesPlayed++;
-                    }
-                    else
-                    {
-                        building.BuildingState = BuildingState.Knight;
-                        currentPlayerModel.KnightsPlayed++;
-                        currentPlayerModel.CitiesPlayed--;
-                    }
+
+                    building.BuildingState = BuildingState.Knight;
+                    currentPlayerModel.KnightsPlayed++;
+                    currentPlayerModel.CitiesPlayed--;
+                    ConsumeEntitlement(gameModel, Entitlement.BuyKnight);
 
                     break;
 
@@ -561,11 +720,27 @@ namespace Catan3.Controller
                     // No action needed if knights cannot be upgraded.
 
             }
-            UpdateScore(gameModel);
-            MarkBuildableRoads(gameModel);
+
             LogDone(gameModel);
             return gameModel;
         }
+        /// <summary>
+        ///     remove the entitlement from the UnspentEntitlements collection
+        ///     add the entitlement to the spent this turn collection
+        ///     add the entitlement to the spent this game collection
+        /// </summary>
+        /// <param name="gameModel"></param>
+        /// <param name="buyKnight"></param>
+        /// <exception cref="NotImplementedException"></exception>
+        private void ConsumeEntitlement(GameModel gameModel, Entitlement entitlement)
+        {
+            var currentPlayer = gameModel.CurrentPlayer();
+            currentPlayer.UnspentEntitlements.Remove(entitlement);
+            currentPlayer.SpentEntitlementsThisTurn.Add(entitlement);
+            currentPlayer.SpentEntitlementsThisGame.Add(entitlement);
+        }
+
+
 
 
         /// <summary>
@@ -611,11 +786,13 @@ namespace Catan3.Controller
             // Validate the current game state
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.WaitingForRoll]);
             ThrowIfBadPlayer(gameModel.CurrentPlayerId, gameModel.Players);
-
+            ThrowIfNoEntitlement(gameModel, Entitlement.PlayKnight); //TODO: fix this move knight state machine/entitlements
 
             // Update the robber's position and the player who moved it
             gameModel.Robber.Coordinates = moveRobber.Coordinates;
             gameModel.Robber.MovedBy = gameModel.CurrentPlayerId;
+
+            ConsumeEntitlement(gameModel, Entitlement.PlayKnight);
             LogDone(gameModel);
             return gameModel;
         }
@@ -632,7 +809,7 @@ namespace Catan3.Controller
             if (!validStates.Contains(currentState))
             {
                 string validStatesList = string.Join(", ", validStates.Select(vs => vs.ToString()));
-                throw new GameException($"{currentState} is invalid. Must be one of {validStatesList}");
+                throw new GameException($"{currentState} is invalid. Must be in this set: [{validStatesList}]");
             }
         }
 
@@ -780,6 +957,7 @@ namespace Catan3.Controller
         private void MarkBuildableRoads(GameModel gameModel)
         {
             ResetBuildableRoads(gameModel);
+            if (!gameModel.CurrentPlayer().UnspentEntitlements.Contains(Entitlement.Road)) return;
             List<RoadModel> buildableRoads = [];
             foreach (var road in gameModel.Roads)
             {
@@ -813,13 +991,13 @@ namespace Catan3.Controller
                 }
             }
             this.TraceMessage($"{buildableRoads.Count} buildable roads");
-         
+
             for (int i = 0; i < buildableRoads.Count; i++)
             {
                 var road=buildableRoads[i];
                 road.Buildable = true;
                 road.BuildIndex = i + 1;
-                this.TraceMessage($"Index: {road.BuildIndex} {road.RoadKey}");
+                //  this.TraceMessage($"Index: {road.BuildIndex} {road.RoadKey}");
 
             }
 

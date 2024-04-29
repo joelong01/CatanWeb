@@ -38,32 +38,34 @@
     </UserControl.Resources>
     <Grid Margin="0, 0, 0, 0" HorizontalAlignment="Center">
         <StackPanel>
-            <GridView ItemsSource="{x:Bind GameViewModel.StarsResourceViewModel.ResourceCounters, Mode=OneWay}">
+            <GridView
+                    ItemsSource="{x:Bind GameViewModel.StarsResourceViewModel.ResourceCounters, Mode=OneWay}">
                 <GridView.ItemContainerStyle>
-                <Style TargetType="GridViewItem">
-                    <Setter Property="Padding" Value="3" />
-                    <Setter Property="Margin" Value="0" />
+                    <Style TargetType="GridViewItem">
+                        <Setter Property="Padding" Value="3" />
+                        <Setter Property="Margin" Value="0" />
 
-                </Style>
-            </GridView.ItemContainerStyle>
-            <GridView.ItemTemplate>
-                <DataTemplate x:DataType="models:ResourceCounterViewModel">
-                    <Grid
-                            Background="{x:Bind FrontImage(Resource), Mode=OneWay}"
-                            Style="{StaticResource Grid_ResourceCard}">
-                        <Viewbox Stretch="Uniform" Height="20"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Bottom">
-                            <Grid Background="Black">
-                                <TextBlock Text="{x:Bind Count, Mode=OneWay}"
-                                        Visibility="Visible" />
-                            </Grid>
-                        </Viewbox>
-                    </Grid>
-                </DataTemplate>
-            </GridView.ItemTemplate>
+                    </Style>
+                </GridView.ItemContainerStyle>
+                <GridView.ItemTemplate>
+                    <DataTemplate x:DataType="models:ResourceCounterViewModel">
+                        <Grid
+                                Background="{x:Bind FrontImage(Resource), Mode=OneWay}"
+                                Style="{StaticResource Grid_ResourceCard}">
+                            <Viewbox Stretch="Uniform" Height="20"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Bottom">
+                                <Grid Background="Black">
+                                    <TextBlock
+                                            Text="{x:Bind Count, Mode=OneWay}"
+                                            Visibility="Visible" />
+                                </Grid>
+                            </Viewbox>
+                        </Grid>
+                    </DataTemplate>
+                </GridView.ItemTemplate>
             </GridView>
-          
+
             <StackPanel Orientation="Horizontal">
 
                 <Grid Style="{StaticResource GridStarCounterStyle}">

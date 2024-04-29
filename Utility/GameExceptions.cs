@@ -9,7 +9,8 @@ namespace Catan3.Utility
     {
         public GameException() : base() { }
 
-        public GameException(string message, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "") : base($"{cfp}({cln}):{message}\t\t[Caller={cmb}]") { }
+       
+        public GameException(string message) : base(message) { }
 
         public GameException(string message, Exception innerException) : base(message, innerException) { }
     }

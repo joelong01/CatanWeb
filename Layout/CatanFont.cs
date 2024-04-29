@@ -1,24 +1,45 @@
 ﻿
+using System.Collections.Generic;
+using Catan3.Models;
+
 namespace Catan3.Utility
 {
     public static class CatanFont
     {
-        public static string City { get; } = "\uE900";
-        public static string Deserter { get; } =  "\uE901";
-        public static string Diplomat { get; } = "\uE902";
-        public static string Gate { get; } = "\uE903";
-        public static string Politics { get; } = "\uE904";
-        public static string Spy { get; } = "\uE905";
-        public static string Inventor { get; } = "\uE906";
-        public static string Laurel { get; } = "\uE907";
-        public static string Merchant { get; } = "\uE908";
-        public static string NoEntitlement { get; } = "\uE90A";
-        public static string Science { get; } = "\uE901B";
-        public static string Pirate { get; } = "\uE90C";
-        public static string Ship { get; } = "\uE90D";
-        public static string SolidSheild { get; } = "\uE925";
-        public static string Settlement { get; } = "\uE926";
-        public static string FancySheild { get; } = "\uE927";
-        public static string Knight { get; } = "\uE930";
+        public static readonly string City = "\uE900";
+        public static readonly string Deserter = "\uE901";
+        public static readonly string Diplomat = "\uE902";
+        public static readonly string Gate = "\uE903";
+        public static readonly string Politics = "\uE904";
+        public static readonly string Spy = "\uE905";
+        public static readonly string Inventor = "\uE906";
+        public static readonly string Laurel = "\uE907";
+        public static readonly string Merchant = "\uE908";
+        public static readonly string NoEntitlement = "\uE90A";
+        public static readonly string Science = "\uE901B";
+        public static readonly string Pirate = "\uE90C";
+        public static readonly string Ship = "\uE90D";
+        public static readonly string SolidSheild = "\uE925";
+        public static readonly string Settlement = "\uE90E";
+        public static readonly string FancySheild = "\uE927";
+        public static readonly string Knight = "\uE930";
+        public static readonly string Road = "\uE909";
+
+        public static readonly Dictionary<Entitlement, string> EntitlementGlyph = new()
+        {
+            {Entitlement.Settlement, Settlement },
+            {Entitlement.City, City },
+            {Entitlement.PlayKnight, Pirate },
+            {Entitlement.Road, Road }
+        };
+
+        public static readonly Dictionary<BuildingState, string> RoadStateGlyph = new()
+        {
+            {BuildingState.Settlement, Settlement },
+            {BuildingState.City, City },
+            {BuildingState.Knight, Knight }
+        };
+
+
     }
 }

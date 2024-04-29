@@ -1,6 +1,7 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Diagnostics;
+using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
-
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
@@ -67,9 +68,15 @@ namespace Catan3.Models
             else
                 return BrushCache.GetGradientBrush(color, Colors.Black);
         }
-    
 
-       
+        public Brush ForegroundBrush => GetBrush(this.Foreground, true);
+        public Brush BackgroundBrush => GetBrush(this.Background, false);
+
+        [RelayCommand]
+        private void PurchaseEntitlement(Entitlement entitlement)
+        {
+            Debug.Assert(false);
+        }
 
 
     }
