@@ -8,6 +8,8 @@ using System.Runtime.CompilerServices;
 using Catan3.Models;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Foundation;
@@ -219,6 +221,101 @@ namespace Catan3
             {
                 Debug.Unindent();
             }
+        }
+    }
+    public delegate void SimulatedButtonClick();
+    public class ButtonLookAndFeel
+    {
+        public event SimulatedButtonClick? SimulatedClick;
+        private bool isPointerCaptured = false;
+
+
+        public ButtonLookAndFeel(Grid grid)
+        {
+          
+            grid.PointerEntered += OnPointerEntered;
+            grid.PointerExited += OnPointerExited;
+            grid.PointerPressed += OnPointerPressed;
+        }
+        private void OnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+           
+            if (sender is Grid grid)
+            {
+                grid.BorderThickness = new Thickness(1);
+            }
+        }
+
+        private void OnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            
+            if (sender is Grid grid)
+            {
+                if (!isPointerCaptured)
+                {
+                    grid.BorderThickness = new Thickness(0);
+                }
+            }
+        }
+   
+        private void OnPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+          
+            if (sender is Grid grid)
+            {
+                void pointerReleasedHandler(object s, PointerRoutedEventArgs origE)
+                {
+                    if (s is Grid releasedGrid)
+                    {
+                        // Check if pointer is still within the grid bounds when released
+                        var point = origE.GetCurrentPoint(releasedGrid).Position;
+                        bool isInside = point.X >= 0 && point.X <= releasedGrid.ActualWidth &&
+                                point.Y >= 0 && point.Y <= releasedGrid.ActualHeight;
+
+                        if (( PointerEventHandler? )pointerReleasedHandler is not null)
+                        {
+                            releasedGrid.PointerReleased -= pointerReleasedHandler;
+                        }
+                        releasedGrid.ReleasePointerCapture(origE.Pointer);
+                        isPointerCaptured = false;
+
+                        SwapColors(grid);
+                        if (isInside)
+                        {
+                            SimulatedClick?.Invoke();
+
+                        }
+                        else
+                        {
+                            releasedGrid.TraceMessage("Pointer released outside the grid.");
+                            grid.BorderThickness = new Thickness(0);
+                        }
+                    }
+                }
+
+                grid.CapturePointer(e.Pointer);
+                isPointerCaptured = true;
+                grid.PointerReleased += pointerReleasedHandler;
+
+                SwapColors(grid);
+            }
+        }
+
+        private void SwapColors(Grid grid)
+        {
+            Brush? temp = null;
+            grid.BorderBrush = grid.Background;
+            foreach (FrameworkElement child in grid.Children)
+            {
+                if (child is TextBlock tb)
+                {
+                    temp = tb.Foreground;
+                    tb.Foreground = grid.Background;
+
+                }
+            }
+            grid.Background = temp;
+
         }
     }
 

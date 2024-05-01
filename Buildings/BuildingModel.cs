@@ -38,6 +38,12 @@ namespace Catan3.Models
         [ObservableProperty]
         private string? _ownerId = null;
 
+        [ObservableProperty]
+        private bool _buildable = false;
+
+        [ObservableProperty]
+        private int _buildIndex = 0;
+
         public static BuildingModel Default { get; } = new();
 
         public int CompareTo(BuildingModel? other)

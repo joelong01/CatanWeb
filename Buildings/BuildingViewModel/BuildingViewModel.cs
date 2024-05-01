@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 
 namespace Catan3.Models
@@ -80,17 +81,39 @@ namespace Catan3.Models
         public string GetStateGlyph(BuildingState state)
         {
 
-            var glyph =  state switch
+            string glyph;
+
+            switch (state)
             {
-                BuildingState.Empty => string.Empty,
-                BuildingState.Settlement => CatanFont.Settlement,
-                BuildingState.City => CatanFont.City,
-                BuildingState.Highlighted=>Stars.ToString(),
-                BuildingState.Stars => Stars.ToString() ,
-                BuildingState.Knight => CatanFont.Knight,
-                _ => throw new System.Exception("Did you add a state w/o setting a glyph?"),
-            };
+                case BuildingState.Empty:
+                    glyph = string.Empty;
+                    break;
+                case BuildingState.Settlement:
+                    glyph = CatanFont.Settlement;
+                    break;
+                case BuildingState.City:
+                    glyph = CatanFont.City;
+                    break;
+                case BuildingState.Stars:
+                case BuildingState.Highlighted:
+                    if (Building.Buildable  && Stars > 0)
+                    {
+                        glyph = Stars.ToString();
+                    } else
+                    {
+                        glyph = String.Empty;
+                    }
+                    break;
+               
+                case BuildingState.Knight:
+                    glyph = CatanFont.Knight;
+                    break;
+                default:
+                    throw new System.Exception("Did you add a state w/o setting a glyph?");
+            }
+
             return glyph;
+
         }
         /// <summary>
         ///     if the state is empty, be transparent
@@ -158,8 +181,27 @@ namespace Catan3.Models
                 return BrushCache.GetGradientBrush(currentPlayer.Background, Colors.Black);
             }
         }
+        /// <summary>
+        ///     During the non-Allocation phase, any buildable building shoudl get 0.5 opacity and then
+        ///     get an Index on it.
+        /// </summary>
+        /// <param name="buildable"></param>
+        /// <returns></returns>
+        public double Opacity (bool buildable)
+        {
+            if (!buildable && Building.OwnerId == null) return 0;
+            if (this.Building.BuildingState == BuildingState.Highlighted) return 1.0;
+            if (buildable && this.Building.BuildingState != BuildingState.Stars) return 0.5;
 
+            return 1.0;
+        }
 
+        public Visibility ShowBuildIndex(BuildingModel building)
+        {
+            if (building.Buildable) return Visibility.Visible;
+
+            return Visibility.Collapsed;
+        }
 
         public override string? ToString() => $"{Building} Stars={Stars}";
 

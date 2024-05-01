@@ -43,12 +43,14 @@ namespace Catan3.Models
         [RelayCommand]
         private void Upgrade()
         {
+            if (!Building.Buildable) return;
             if (Building.BuildingState == BuildingState.Highlighted) { Building.BuildingState = BuildingState.Empty; }
             Messenger.Send(new BuildingUpgradeMessage(Building.BuildingKey));
         }
         [RelayCommand]
         private void MouseEnter()
         {
+            if (!Building.Buildable) return;
             // this.TraceMessage($"CurrentPlayer={this.CurrentPlayer}");
             _oldState = Building.BuildingState;
             if (Building.BuildingState == BuildingState.Empty)
@@ -62,6 +64,7 @@ namespace Catan3.Models
         [RelayCommand]
         private void MouseExit()
         {
+            if (!Building.Buildable) return;
             if (_oldState == BuildingState.Empty && Building.OwnerId is null) // it can be empty going in, bu owned coming out...
             {
                 Building.BuildingState = BuildingState.Empty;
@@ -70,7 +73,7 @@ namespace Catan3.Models
 
         internal void SendChangeNotification()
         {
-
+            if (!Building.Buildable) return;
             OnPropertyChanged(nameof(Building));
 
         }

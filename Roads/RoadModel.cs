@@ -15,9 +15,6 @@ namespace Catan3.Models
         private string? _ownerId;
 
         [ObservableProperty]
-        private bool _buildable = false;
-
-        [ObservableProperty]
         private int _buildIndex = 0;
 
         public int CompareTo(RoadModel? other)
@@ -27,7 +24,7 @@ namespace Catan3.Models
         }
         public override string ToString()
         {
-            return $"{RoadKey}-{RoadState}-{OwnerId}-{Buildable}";
+            return $"{RoadKey}-{RoadState}-{OwnerId}-{BuildIndex}";
         }
     }
 }

@@ -7,24 +7,31 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
 
-    <Grid HorizontalAlignment="Left" VerticalAlignment="Top" BorderBrush="White"
-            BorderThickness="0" Background="Transparent" Opacity="1"
+    <Grid Name="LayoutRoot" HorizontalAlignment="Left" VerticalAlignment="Top"
+            CornerRadius="20" BorderThickness="0"
+            Opacity="{x:Bind BuildingViewModel.Opacity(BuildingViewModel.Building.Buildable), Mode=OneWay}"
             Width="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}"
             Height="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}"
+            Background="{x:Bind BuildingViewModel.GetBackgroundBrush(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
+            BorderBrush="{x:Bind BuildingViewModel.GetForegroundBrush(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
             PointerEntered="OnPointerEntered" PointerExited="OnPointerExited"
             PointerPressed="OnPointerPressed">
         <Ellipse Width="10" HorizontalAlignment="Center"
                 VerticalAlignment="Center" Height="10" Fill="Red" Opacity=".75"
                 Visibility="Collapsed" />
-        <Ellipse
+        <Ellipse Name="Ellipse_Background" Visibility="Collapsed"
                 Fill="{x:Bind BuildingViewModel.GetBackgroundBrush(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
-                HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                Stroke="{x:Bind BuildingViewModel.GetForegroundBrush(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
+                StrokeThickness="0" />
 
         <Viewbox Stretch="Uniform" HorizontalAlignment="Center"
                 VerticalAlignment="Center" Margin="5">
-            <Grid Margin="1" HorizontalAlignment="Stretch"
-                    VerticalAlignment="Stretch">
-                <Viewbox Stretch="Uniform" Margin="0">
+            <Grid Margin="1"
+                    Width="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}"
+                    Height="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}">
+                <Viewbox Stretch="Uniform" Margin="-5, 0, 0,0"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock x:Name="TXT_StateGlyph"
                             Text="{x:Bind BuildingViewModel.GetStateGlyph(BuildingViewModel.Building.BuildingState), Mode=OneWay}"
                             FontFamily="{StaticResource CatanFont}"
@@ -37,6 +44,13 @@
                                     ScaleY="{x:Bind BuildingViewModel.Building.Metropolis, Converter={StaticResource MetroToScaleConverter}, Mode=OneWay}" />
                         </TextBlock.RenderTransform>
                     </TextBlock>
+                </Viewbox>
+                <Viewbox HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                        Height="25">
+                    <TextBlock Name="TB_BuildIndex" IsHitTestVisible="False"
+                            Foreground="{x:Bind BuildingViewModel.GetForegroundBrush(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
+                            Text="{x:Bind BuildingViewModel.Building.BuildIndex, Mode=OneWay}"
+                            Visibility="{x:Bind BuildingViewModel.ShowBuildIndex(BuildingViewModel.Building), Mode=OneWay}" />
                 </Viewbox>
                 <TextBlock Text="{x:Bind LaurelGlyph}"
                         Foreground="{x:Bind BuildingViewModel.GetForegroundBrush(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"

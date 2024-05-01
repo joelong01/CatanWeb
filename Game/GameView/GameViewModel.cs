@@ -325,7 +325,15 @@ namespace Catan3.Models
         {
             foreach (var building in Buildings)
             {
-                building.Stars = TilesForBuildings(building.Building.BuildingKey).Stars();
+                if (building.Building.Buildable)
+                {
+                    building.Stars = TilesForBuildings(building.Building.BuildingKey).Stars();
+                }
+                else
+                {
+                    building.Stars = 0;
+                    this.TraceMessage($"{GameModel.GameState} Building {building} not buildable");
+                }
             }
 
 

@@ -24,8 +24,7 @@
                 Stroke="{x:Bind ViewModel.GetForegroundBrush(ViewModel.Road.RoadState, ViewModel.Road.OwnerId, ViewModel.CurrentPlayer), Mode=OneWay}"
                 StrokeThickness="{x:Bind ViewModel.Layout.RoadStrokeThickness, Mode=OneWay}"
                 Opacity="{x:Bind ViewModel.Opacity(ViewModel.Road, ViewModel.Road.RoadState), Mode=OneWay}"
-                PointerEntered="OnPointerEntered"
-                PointerExited="OnPointerExited"
+              
                 PointerPressed="OnPointerPressed" />
 
         <Ellipse Width="10" Height="10" Fill="Green" Visibility="Collapsed" />

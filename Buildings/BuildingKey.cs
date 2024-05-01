@@ -27,5 +27,7 @@ namespace Catan3.Models
             // Since HexPosition is an enum, we can directly compare their underlying integer values
             return Position.CompareTo(other.Position);
         }
+
+       
     }
 }

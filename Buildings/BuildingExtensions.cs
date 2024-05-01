@@ -44,6 +44,61 @@ namespace Catan3.Models
             }
             return directions;
         }
+        /// <summary>
+        ///     returns the list of all buildings within one position of the BuildingKey
+        /// </summary>
+        /// <param name="gameModel"></param>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public static List<BuildingModel> AdjacentBuildings(this IList<BuildingModel> collection, BuildingKey key)
+        {
+            var result = new List<BuildingModel>();
+            var keys = new List<BuildingKey>();
+            BuildingModel? building;
+            switch (key.Position)
+            {
+                case HexPosition.Right:
+                    keys.Add(new BuildingKey(key.HexCoordinates, HexPosition.TopRight));
+                    keys.Add(new BuildingKey(key.HexCoordinates, HexPosition.BottomRight));
+                    keys.Add(new BuildingKey(key.HexCoordinates.NorthEast, HexPosition.BottomRight));
+                    break;
+                case HexPosition.BottomRight:
+                    keys.Add(new BuildingKey(key.HexCoordinates, HexPosition.Right));
+                    keys.Add(new BuildingKey(key.HexCoordinates, HexPosition.BottomLeft));
+                    keys.Add(new BuildingKey(key.HexCoordinates.South, HexPosition.Right));
+                    break;
+                case HexPosition.BottomLeft:
+                    keys.Add(new BuildingKey(key.HexCoordinates, HexPosition.Left));
+                    keys.Add(new BuildingKey(key.HexCoordinates, HexPosition.BottomRight));
+                    keys.Add(new BuildingKey(key.HexCoordinates.South, HexPosition.Left));
+                    break;
+                case HexPosition.Left:
+                    keys.Add(new BuildingKey(key.HexCoordinates, HexPosition.TopLeft));
+                    keys.Add(new BuildingKey(key.HexCoordinates, HexPosition.BottomLeft));
+                    keys.Add(new BuildingKey(key.HexCoordinates.NorthWest, HexPosition.BottomLeft));
+                    break;
+                case HexPosition.TopLeft:
+                    keys.Add(new BuildingKey(key.HexCoordinates, HexPosition.TopRight));
+                    keys.Add(new BuildingKey(key.HexCoordinates, HexPosition.Left));
+                    keys.Add(new BuildingKey(key.HexCoordinates.NorthWest, HexPosition.TopRight));
+                    break;
+                case HexPosition.TopRight:
+                    keys.Add(new BuildingKey(key.HexCoordinates, HexPosition.TopLeft));
+                    keys.Add(new BuildingKey(key.HexCoordinates, HexPosition.Right));
+                    keys.Add(new BuildingKey(key.HexCoordinates.North, HexPosition.Right));
+                    break;
+                case HexPosition.None:
+                    break;
+            }
+            foreach (var buildingKey in keys)
+            {
+                building = collection.FindBuildingModel(buildingKey);
+                if (building is not null) result.Add(building);
+            }
+
+            return result;
+        }
+
         public static BuildingViewModel? FindBuildingViewModel(this IEnumerable<BuildingViewModel> buildings, BuildingKey key)
         {
             if (buildings is null || !buildings.Any()) return null;

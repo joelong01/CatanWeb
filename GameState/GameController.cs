@@ -8,6 +8,7 @@ using Catan3.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using Windows.Devices.PointOfService;
 
 namespace Catan3.Controller
 {
@@ -340,7 +341,6 @@ namespace Catan3.Controller
         private void SetActionFlags(GameModel gameModel)
         {
             gameModel.ActionFlags.UndoEnabled = Log.CanUndo;
-            gameModel.ActionFlags.RedoEnabled = Log.CanRedo;
             gameModel.ActionFlags.NextEnabled = AllowNext(gameModel);
             gameModel.ActionFlags.RollsEnabled = gameModel.GameState == GameState.WaitingForRoll;
         }
@@ -349,7 +349,7 @@ namespace Catan3.Controller
         {
             if (gameModel.GameState == GameState.WaitingForRoll) return false;
 
-            // when you have entitlements, return false if there is an unspent entitlement
+            if (gameModel.CurrentPlayer().UnspentEntitlements.Count > 0) return false;
 
             return true;
         }
@@ -563,14 +563,11 @@ namespace Catan3.Controller
                 throw new GameException(roadKeyMsg);
             }
 
-            if (!gameModel.AllocationPhase())
+            if (roadModel.RoadState != RoadState.Buildable)
             {
-                MarkBuildableRoads(gameModel);
-                if (!roadModel.Buildable)
-                {
-                    throw new GameException($"Road {roadModel} is not buildable!");
-                }
+                throw new GameException($"Road {roadModel} is not buildable!");
             }
+
 
             // Ensure the road is not already owned.
 
@@ -579,11 +576,7 @@ namespace Catan3.Controller
                 string ownerMsg = $"Don't try to buy other people's roads! Owner: {roadModel.OwnerId}";
                 throw new GameException(ownerMsg);
             }
-            // Update the road state if necessary.
-            if (roadModel.RoadState == RoadState.Highlighted)
-            {
-                roadModel.RoadState = RoadState.Unowned;
-            }
+
 
             // Set the owner of the road to the current player and update the road state to "Road".
             roadModel.OwnerId = gameModel.CurrentPlayerId;
@@ -608,28 +601,20 @@ namespace Catan3.Controller
         {
             UpdateScore(gameModel);
             MarkBuildableRoads(gameModel);
+            MarkBuildableBuildings(gameModel);
             SetActionFlags(gameModel);
-            UpdatePurchaseAccess(gameModel);
+            SetPlayKnightAccess(gameModel);
             gameModel.ActionFlags.RedoEnabled = false;
             Log.Done(gameModel);
         }
-        /// <summary>
-        ///     based on the game state and the entitlements the game allows, enable or disable the authority to buy an entitlement
-        /// </summary>
-        private void UpdatePurchaseAccess(GameModel gameModel)
-        {
-            foreach (var model in gameModel.EntitlementPurchaseModel)
-            {
-                model.Enabled = (gameModel.GameState == GameState.WaitingForNext);
-            }
 
-            SetPlayKnightAccess(gameModel);
 
-        }
+
+
 
         private void SetPlayKnightAccess(GameModel gameModel)
         {
-            var moveRobber = gameModel.EntitlementPurchaseModel.First( m => m.Entitlement == Entitlement.PlayKnight ) ?? throw new GameException("Playing Knight not found in Purchasable Entitlements!");
+            var moveRobber = gameModel.PurchaseModel(Entitlement.PlayKnight );
             if (gameModel.GameState != GameState.WaitingForNext && gameModel.GameState != GameState.WaitingForRoll)
             {
                 moveRobber.Enabled = false;
@@ -672,7 +657,14 @@ namespace Catan3.Controller
             var building = gameModel.Buildings.FindBuildingModel(buildingKey)
                     ?? throw new GameException($"Invalid BuildingKey: {buildingKey}");
 
-            var currentPlayerModel = gameModel.Players.PlayerFromId(gameModel.CurrentPlayerId) ?? throw new GameException($"Can't find player {gameModel.CurrentPlayerId}");
+            if (!building.Buildable)
+            {
+                throw new GameException($"{building} is not buildingable.");
+            }
+
+            var currentPlayerModel = gameModel.CurrentPlayer();
+
+
 
             // Process the building upgrade based on its current state.
             switch (building.BuildingState)
@@ -942,7 +934,10 @@ namespace Catan3.Controller
             //   mark them not buildable
             foreach (var road in gameModel.Roads)
             {
-                road.Buildable = false;
+                if (road.RoadState == RoadState.Buildable)
+                {
+                    road.RoadState = RoadState.Unowned;
+                }
                 road.BuildIndex = 0;
             }
 
@@ -957,18 +952,23 @@ namespace Catan3.Controller
         private void MarkBuildableRoads(GameModel gameModel)
         {
             ResetBuildableRoads(gameModel);
-            if (!gameModel.CurrentPlayer().UnspentEntitlements.Contains(Entitlement.Road)) return;
+
             List<RoadModel> buildableRoads = [];
-            foreach (var road in gameModel.Roads)
+
+
+            if (!gameModel.AllocationPhase()) // during allocation we can only build next to the settlment
             {
-                if (road.OwnerId == gameModel.CurrentPlayerId)
+                foreach (var road in gameModel.Roads)
                 {
-                    var adjacentRoads = gameModel.Roads.AdjacentRoads(road.RoadKey);
-                    foreach (var r in adjacentRoads)
+                    if (road.OwnerId == gameModel.CurrentPlayerId)
                     {
-                        if (r.OwnerId is null && !buildableRoads.Contains(r))
+                        var adjacentRoads = gameModel.Roads.AdjacentRoads(road.RoadKey);
+                        foreach (var r in adjacentRoads)
                         {
-                            buildableRoads.InsertSorted(r);
+                            if (r.OwnerId is null && !buildableRoads.Contains(r))
+                            {
+                                buildableRoads.InsertSorted(r);
+                            }
                         }
                     }
                 }
@@ -978,8 +978,20 @@ namespace Catan3.Controller
             {
                 if (building.OwnerId == gameModel.CurrentPlayerId)
                 {
+                    if (gameModel.AllocationPhase())
+                    {
+                        var ownedRoads = gameModel.AdjacentRoads(building.BuildingKey).Where(r => r.OwnerId == gameModel.CurrentPlayerId).ToList();
+                        if (ownedRoads.Count == 0)
+                        {
+                            buildableRoads.AddRange(gameModel.AdjacentRoads(building.BuildingKey));
+                        }
+                        continue;
+                        // in allocation phase you have to build next to the building you just built -- whichi is 
+                        // the one with no roads next to it.
+
+                    }
+
                     var roads = gameModel.AdjacentRoads(building.BuildingKey);
-                    string roadList = string.Join(", ", roads.Select(r => r.ToString()));
 
                     foreach (var adjacentRoad in roads)
                     {
@@ -990,22 +1002,157 @@ namespace Catan3.Controller
                     }
                 }
             }
-            this.TraceMessage($"{buildableRoads.Count} buildable roads");
 
-            for (int i = 0; i < buildableRoads.Count; i++)
+            //
+            // can't build any roads, don't allow the user to buy them
+
+            if (buildableRoads.Count == 0)
             {
-                var road=buildableRoads[i];
-                road.Buildable = true;
-                road.BuildIndex = i + 1;
-                //  this.TraceMessage($"Index: {road.BuildIndex} {road.RoadKey}");
+                gameModel.PurchaseModel(Entitlement.Road).Enabled = false;
+                return;
+            }
+            //
+            //  we have at least one road we can build
 
+            gameModel.PurchaseModel(Entitlement.Road).Enabled = gameModel.BuildPhase();
+
+            if (gameModel.AllocationPhase()) Debug.Assert(gameModel.PurchaseModel(Entitlement.Road).Enabled == false);
+
+            if (gameModel.CurrentPlayer().UnspentEntitlements.Contains(Entitlement.Road))
+            {
+
+                for (int i = 0; i < buildableRoads.Count; i++)
+                {
+                    var road=buildableRoads[i];
+                    road.RoadState = RoadState.Buildable;
+                    road.BuildIndex = i + 1;
+
+                }
             }
 
         }
+
+        private void ResetBuildableBuildings(GameModel gameModel)
+        {
+            //
+            //   mark them not buildable
+            foreach (var building in gameModel.Buildings)
+            {
+                building.Buildable = false;
+                building.BuildIndex = 0;
+            }
+
+        }
+        private void MarkBuildableBuildings(GameModel gameModel)
+        {
+            ResetBuildableBuildings(gameModel);
+
+            var currentPlayer = gameModel.CurrentPlayer();
+            bool hasCity = currentPlayer.UnspentEntitlements.Contains(Entitlement.City);
+            bool hasSettlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.Settlement);
+
+
+            int buildIndex = 0;
+
+            List<BuildingModel> buildableCities = [];
+            List<BuildingModel> buildableSettlements = [];
+
+            var test = new BuildingKey(new HexCoordinates(-1, 1, 0), HexPosition.BottomRight);
+
+            //
+            // to be buildable, the location has to be adjacent to an owned road and cannot be within one road of another building
+
+            foreach (var building in gameModel.Buildings)
+            {
+                // can't build if there is a city
+
+                if (building.BuildingState == BuildingState.City) continue;
+                //
+                //  all settlements, in theory, are upgradable
+                if (building.BuildingState == BuildingState.Settlement)
+                {
+                    if (building.OwnerId == currentPlayer.Id)
+                    {
+                        // as long as it is yours...
+                        buildableCities.Add(building);
+                    }
+
+                    // if the building is already a settlement, then there is no way to build on it
+                    // other than a city upgrade
+
+                    continue;
+
+                }
+
+                Debug.Assert(building.BuildingState == BuildingState.Empty);
+                Debug.Assert(building.OwnerId is null);
+
+                if (building.BuildingKey.Equals(test))
+                {
+                    //Debug.Assert(false);
+                }
+
+                // for this empty building, look at the buildings next to it
+
+                var ownedAdjacentBuildings = gameModel.Buildings.AdjacentBuildings(building.BuildingKey).Where(b => b.OwnerId != null).ToList();
+
+                if (ownedAdjacentBuildings.Count == 0)
+                {
+                    if (building.OwnerId is null && gameModel.AllocationPhase())
+                    {
+                        // during allocation, you can place a building as long as you aren't next to another building
+                        buildableSettlements.Add(building);
+                        continue;
+                    }
+                    // so we have no owned adjacent buildings...but is there a road connect
+                    // there isn't a building within one of you, but if there is a owned road next
+                    // to you, that means there must be two roads and you can build
+                    var adjacentRoads = gameModel.AdjacentRoads(building.BuildingKey);
+                    foreach (var road in adjacentRoads)
+                    {
+
+                        if (road.OwnerId == currentPlayer.Id && building.OwnerId == null)
+                        {
+                            buildableSettlements.Add(building);
+                            break;
+                        }
+                    }
+
+
+                }
+
+            }
+
+            if (buildableCities.Count > 0)
+            {
+                // we never allow purchases during Allocation phase
+                gameModel.PurchaseModel(Entitlement.City).Enabled = gameModel.BuildPhase();
+            }
+
+            if (hasCity)
+            {
+                foreach (var c in buildableCities)
+                {
+                    c.Buildable = true;
+                    c.BuildIndex = buildIndex++;
+                }
+            }
+
+            if (buildableSettlements.Count > 0)
+            {
+                gameModel.PurchaseModel(Entitlement.Settlement).Enabled = gameModel.BuildPhase();
+            }
+
+            if (hasSettlement || gameModel.AllocationPhase())
+            {
+                foreach (var s in buildableSettlements)
+                {
+                    s.Buildable = true;
+                    s.BuildIndex = buildIndex++;
+                }
+            }
+        }
+
     }
-
-
-
-
 
 }

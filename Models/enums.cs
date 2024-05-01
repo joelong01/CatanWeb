@@ -25,7 +25,7 @@ namespace Catan3.Models
     }
     public enum GameType { Regular, Expansion, Unset }
 
-    public enum RoadState { Unowned, Road, Ship, Highlighted };
+    public enum RoadState { Unowned, Road, Ship, Buildable };
 
     public enum HarborType { Sheep, Wood, Ore, Wheat, Brick, ThreeForOne, None };
 

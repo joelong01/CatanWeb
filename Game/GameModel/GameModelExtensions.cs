@@ -1,4 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using ABI.Windows.Gaming.Preview.GamesEnumeration;
 using Catan3.Utility;
 
 namespace Catan3.Models
@@ -7,8 +10,23 @@ namespace Catan3.Models
     {
         public static bool AllocationPhase(this GameModel gameModel)
         {
-            return (gameModel.GameState == GameState.AllocateResourceForward || gameModel.GameState == GameState.AllocateResourceReverse);
-        } 
+            return ( gameModel.GameState == GameState.AllocateResourceForward || gameModel.GameState == GameState.AllocateResourceReverse || 
+                     gameModel.GameState == GameState.WaitingForRollForOrder || gameModel.GameState == GameState.FinishedRollOrder ||
+                     gameModel.GameState == GameState.BeginResourceAllocation || gameModel.GameState == GameState.PickingBoard);
+        }
+
+        public static bool BuildPhase(this GameModel gameModel)
+        {
+            return gameModel.GameState == GameState.WaitingForNext || gameModel.GameState == GameState.Supplemental;
+        }
+
+        public static EntitlementPurchaseModel PurchaseModel(this GameModel gameModel, Entitlement entitlement)
+        {
+            var model = gameModel.EntitlementPurchaseModel.First( m => m.Entitlement == entitlement ) ?? throw new GameException($"{entitlement} not found in Purchasable Entitlements!");
+            return model;
+        }
+        //
+        //  given a building, what roads are next to it?
         public static List<RoadModel> AdjacentRoads(this GameModel gameModel, BuildingKey buildingKey)
         {
             List<RoadModel> result = [];
@@ -60,6 +78,17 @@ namespace Catan3.Models
 
             return result;
         }
+
+        public static bool BuildableLocation(this GameModel gameModel, BuildingKey buildingKey)
+        {
+            var currentPlayer = gameModel.CurrentPlayer();
+
+
+
+
+            return false;
+        }
+
         /// <summary>
         /// Calculates the player ID that is a specified number of positions away from a given start player ID.
         /// </summary>

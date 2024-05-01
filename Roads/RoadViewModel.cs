@@ -325,7 +325,7 @@ namespace Catan3.Models
         public Brush GetBackgroundBrush(RoadState state, string ownerId, PlayerViewModel currentPlayer)
         {
 
-            if (state == RoadState.Unowned && ownerId is null && !Road.Buildable)
+            if (state == RoadState.Unowned && ownerId is null && state != RoadState.Buildable)
             {
                 return BrushCache.GetSolidColorBrush(Colors.Transparent);
             }
@@ -340,15 +340,13 @@ namespace Catan3.Models
             }
         }
 
-        public double Opacity(RoadModel roadModel, RoadState state)
+        public double Opacity(RoadModel model, RoadState state)
         {
-            if (state == RoadState.Highlighted) return 0.75;
+            if (state == RoadState.Buildable) return 0.5;
 
-            if (roadModel.Buildable == true)
-            {
-                return  0.5;
-            }
-            if (roadModel.OwnerId is not null) { return 1.0; }
+          
+            if (model.OwnerId is not null) { return 1.0; }
+
             return 0.0;
         }
 

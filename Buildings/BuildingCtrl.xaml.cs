@@ -49,11 +49,19 @@ namespace Catan3.Controls
 
         private void OnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
+            if (sender is Grid grid)
+            {
+                grid.BorderThickness = new Thickness(0);
+            }
             BuildingViewModel.MouseExitCommand.Execute(BuildingViewModel);
         }
 
         private void OnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
+            if (sender is Grid grid)
+            {
+                grid.BorderThickness = new Thickness(1);
+            }
             BuildingViewModel.MouseEnterCommand.Execute(BuildingViewModel);
         }
     }
