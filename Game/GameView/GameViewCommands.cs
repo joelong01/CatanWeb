@@ -47,26 +47,8 @@ namespace Catan3.Models
         [RelayCommand]
         public void ShowStarValues(int stars)
         {
-
-            foreach (var building in Buildings)
-            {
-                if (building.Building.OwnerId is not null) continue;
-               
-               
-                if (building.Building.Stars >= stars)
-                {
-
-                         building.Building.BuildingState = BuildingState.Stars;
-        
-                }
-                else
-                {
-                     building.Building.BuildingState = BuildingState.Empty;
-                }
-
-                building.Update();
-
-            }
+            throw new System.Exception("shouldn't be called");
+            
 
         }
         /// <summary>

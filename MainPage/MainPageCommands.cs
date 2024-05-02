@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Catan3.Controller;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -52,30 +53,16 @@ namespace Catan3.Models
                     return;
                 }
 
+                Messenger.Send(new EndGame());
+                GameController = new GameController();
+                RegisterMessages();
                 var gameModel = GameController.OpenSerializableLog(compressedBytes);
 
-                //
-                // if the GameTypes are the same as the current one, I don't need 
-                // to create a new board - just merge the gamestate in from the GameModel
-                if (gameModel.GameType == GameViewModel.GameModel.GameType)
-                {
-                    GameViewModel.MergeGameModel(gameModel);
-                    GameViewModel.SetStars();
-                    GameViewModel.ShownStars = 14;
-                }
+                this.GameViewModel = new GameViewModel(gameModel);
+                GameViewModel.UpdateLayout();
+                GameViewModel.SetGameStars();
 
-                else
-                {
-                    // different game type -- create the ViewModel
-                    var gvm = new GameViewModel(gameModel);
 
-                    this.GameViewModel = gvm;
-
-                    GameViewModel.UpdateLayout();
-                    GameViewModel.SetStars();
-
-                }
-                GC.Collect();
             }
             catch (Exception ex)
             {

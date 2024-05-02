@@ -521,8 +521,10 @@ namespace Catan3.Utility
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            WriteIndented = false
+            WriteIndented = false,
+            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
         };
+
 
         public static byte[] Compress(string text)
         {

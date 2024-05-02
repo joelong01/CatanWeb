@@ -1,8 +1,10 @@
 ﻿
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using Windows.ApplicationModel.Activation;
 using static Catan3.Models.TurnRollViewModel;
 
 namespace Catan3.Models
@@ -24,7 +26,7 @@ namespace Catan3.Models
         [ObservableProperty]
         private string _id;
 
-       
+
         [ObservableProperty]
         private IGameMetadata? _boardInfo;
 
@@ -55,7 +57,7 @@ namespace Catan3.Models
         [ObservableProperty]
         private ObservableCollection<HarborViewModel> _harbors = [];
 
-      
+
 
         [ObservableProperty]
         public GameModel _gameModel = new();
@@ -97,26 +99,6 @@ namespace Catan3.Models
         }
 
 
-        /// <summary>
-        ///     NOTE:  this is *partial* method that is implemented by the MVVM Toolkit
-        ///     and magically gets called based on the _foo => OnFooChanged() naming
-        ///     convention.
-        /// </summary>
-        /// <param name="value"></param>
-        partial void OnShownStarsChanged(int value)
-        {
-         //   this.TraceMessage($"New Shown Stars: {value}");
-            ShowStarValues(value);
-            
-        }
-
-        //public string StarValue(BuildingModel buildingModel, int showStars)
-        //{
-        //    if (buildingModel.BuildingState == BuildingState.Stars && buildingModel.Stars >= showStars) return buildingModel.Stars.ToString();
-
-        //    return string.Empty;
-        //}
-
         partial void OnCurrentPlayerChanged(PlayerViewModel? oldValue, PlayerViewModel newValue)
         {
             if (newValue is null) return;
@@ -125,7 +107,24 @@ namespace Catan3.Models
             Messenger.Send(new CurrentPlayerChanged(newValue));
         }
 
-     
+        partial void OnShownStarsChanged(int value)
+        {
+            foreach (var building in Buildings)
+            {
+                if (building.Building.OwnerId is not null) continue;
+                if (building.Building.BuildingState == BuildingState.NotBuildable) continue;
+                if (building.VisualState == BuildingVisualState.Highlighted) continue;
+
+                if (building.Stars >= value)
+                {
+                    building.VisualState = BuildingVisualState.Stars;
+                }
+                else
+                {
+                    building.VisualState = BuildingVisualState.Hidden;
+                }
+            }
+        }
 
     }
 }

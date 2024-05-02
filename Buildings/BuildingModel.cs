@@ -6,7 +6,7 @@ namespace Catan3.Models
 {
     public partial class BuildingModel  : ObservableObject, IComparable<BuildingModel>
     {
-        public BuildingModel() : this(new BuildingKey(HexCoordinates.Default, Utility.HexPosition.None), BuildingState.Empty)
+        public BuildingModel() : this(new BuildingKey(HexCoordinates.Default, Utility.HexPosition.None), BuildingState.NotBuildable)
         {
         }
         public BuildingModel(BuildingKey buildingKey, BuildingState buildingState)
@@ -21,7 +21,6 @@ namespace Catan3.Models
         private BuildingKey _buildingKey;
 
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(Stars))]
         private BuildingState _buildingState;
 
         [ObservableProperty]
@@ -33,15 +32,6 @@ namespace Catan3.Models
         [ObservableProperty]
         private string? _ownerId = null;
 
-        [ObservableProperty]
-        private bool _buildable = false;
-
-        [ObservableProperty]
-        private int _buildIndex = 0;
-
-        [ObservableProperty]
-        private int _stars = 0;
-
 
         public static BuildingModel Default { get; } = new();
 
@@ -51,7 +41,7 @@ namespace Catan3.Models
             
             return BuildingKey.CompareTo(other.BuildingKey);
         }
-        public override string? ToString() => $"{BuildingKey}-{BuildingState}-{OwnerId}-S={Stars} B={Buildable}";
+        public override string? ToString() => $"{BuildingKey}-{BuildingState}-{OwnerId}";
 
        
     }

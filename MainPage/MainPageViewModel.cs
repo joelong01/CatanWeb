@@ -40,7 +40,7 @@ namespace Catan3.Models
             var gvm = new GameViewModel(gameModel);
             this.GameViewModel = gvm;
             GameViewModel.UpdateLayout();
-            GameViewModel.SetStars();
+            GameViewModel.SetGameStars();
 
 
         }

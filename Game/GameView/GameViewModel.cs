@@ -79,7 +79,7 @@ namespace Catan3.Models
 
 
 
-            SetStars();
+            SetGameStars();
             FixupState(gameModel);
 
         }
@@ -280,16 +280,66 @@ namespace Catan3.Models
                 Buildings = new ObservableCollection<BuildingViewModel>(
                     gameModel.Buildings.Select(building => new BuildingViewModel(building, BoardInfo.Layout))
                 );
-            }
-            else
-            {
-                Debug.Assert(Buildings.Count == gameModel.Buildings.Count);
-                for (int i = 0; i < gameModel.Buildings.Count; i++)
+                Debug.Assert(gameModel.Tiles.Count > 0);
+                //
+                //  we only need to set stars once per game
+                foreach (var viewModel in Buildings)
                 {
-                    Contract.Assert(Buildings[i].Building.BuildingKey == gameModel.Buildings[i].BuildingKey);
-                    Buildings[i].Building = gameModel.Buildings[i];
+                    viewModel.Stars = gameModel.TilesForBuildings(viewModel.Building.BuildingKey).Stars();
                 }
             }
+
+            Debug.Assert(Buildings.Count == gameModel.Buildings.Count);
+            int buildingIndex = 1;
+            var currentPlayer =  gameModel.CurrentPlayer();
+            //
+            //  if they have a City entitlement, highlight and mark each Settlement
+            bool hasCityEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.City);
+            bool hasSettlementEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.Settlement);
+
+            for (int i = 0; i < gameModel.Buildings.Count; i++)
+            {
+                Contract.Assert(Buildings[i].Building.BuildingKey == gameModel.Buildings[i].BuildingKey);
+                Buildings[i].Building = gameModel.Buildings[i];
+                Debug.Assert(Buildings[i].Stars >= 0);
+                switch (gameModel.Buildings[i].BuildingState)
+                {
+                    case BuildingState.PossibleSettlement:
+                        if (hasSettlementEntitlement && gameModel.Phase() != GamePhase.PickingResources)
+                        {
+                            Buildings[i].VisualState = BuildingVisualState.Highlighted;
+                            Buildings[i].BuildIndex = buildingIndex++;
+                        }
+                        else if (Buildings[i].Stars >= this.ShownStars)
+                        {
+                            Buildings[i].VisualState = BuildingVisualState.Stars;
+                        }
+                        break;
+                    case BuildingState.NotBuildable:
+                        Buildings[i].VisualState = BuildingVisualState.Hidden;
+                        break;
+                    case BuildingState.Settlement:
+                        if (hasCityEntitlement && gameModel.Buildings[i].OwnerId == currentPlayer.Id)
+                        {
+
+                            Buildings[i].VisualState = BuildingVisualState.Highlighted;
+                            Buildings[i].BuildIndex = buildingIndex++;
+                        }
+                        else
+                        {
+                            Buildings[i].VisualState = BuildingVisualState.Normal;
+                        }
+                        break;
+                    case BuildingState.City:
+                    case BuildingState.Metropolis:
+                    case BuildingState.Knight:
+                        Buildings[i].VisualState = BuildingVisualState.Normal;
+                        break;
+                }
+
+
+            }
+
 
         }
 
@@ -321,9 +371,9 @@ namespace Catan3.Models
         ///     the Star for each building is dependend on the Tiles and thus changes everytime we Shuffle...but Shuffle is driven off of
         ///     GameModel, not GameViewModel...so we can't do it there.  
         /// </summary>
-        public void SetStars()
+        public void SetGameStars()
         {
-            
+
 
 
             var resourceModel = new ResourcesModel();
@@ -332,6 +382,11 @@ namespace Catan3.Models
                 resourceModel.AddResource(resource, GameModel.StarCount(resource));
             }
             this.StarsResourceViewModel.ResourceModel = resourceModel;
+
+            foreach (var viewModel in Buildings)
+            {
+                viewModel.Stars = GameModel.TilesForBuildings(viewModel.Building.BuildingKey).Stars();
+            }
 
         }
 

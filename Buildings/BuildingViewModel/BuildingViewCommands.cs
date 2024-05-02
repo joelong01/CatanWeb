@@ -38,25 +38,30 @@ namespace Catan3.Models
         }
         //
         //  used for MouseEnter/Mouse leave log
-        private BuildingState _oldState = BuildingState.Empty;
+        private BuildingVisualState _oldState = BuildingVisualState.Hidden;
 
         [RelayCommand]
         private void Upgrade()
         {
-            if (!Building.Buildable) return;
-            if (Building.BuildingState == BuildingState.Highlighted) { Building.BuildingState = BuildingState.Empty; }
+            if (Building.BuildingState == BuildingState.NotBuildable) return;
             Messenger.Send(new BuildingUpgradeMessage(Building.BuildingKey));
         }
+
+        //
+        /// <summary>
+        ///  this is useful in the beginning of the game when picking board and resources -- if the stars 
+        ///  aren't being shown, moving a mouse will show the stars.
+        /// </summary>
         [RelayCommand]
         private void MouseEnter()
         {
-            if (!Building.Buildable) return;
-       
-            _oldState = Building.BuildingState;
-            if (Building.BuildingState == BuildingState.Empty)
+            if (Building.BuildingState == BuildingState.NotBuildable) return;
+
+            _oldState = VisualState;
+            if ( VisualState == BuildingVisualState.Hidden)
             {
-               
-                Building.BuildingState = BuildingState.Highlighted;
+
+                VisualState = BuildingVisualState.Stars;
 
             }
         }
@@ -64,19 +69,13 @@ namespace Catan3.Models
         [RelayCommand]
         private void MouseExit()
         {
-            if (!Building.Buildable) return;
-            if (_oldState == BuildingState.Empty && Building.OwnerId is null) // it can be empty going in, bu owned coming out...
+            if (Building.BuildingState == BuildingState.NotBuildable) return;
+            if (_oldState == BuildingVisualState.Hidden && Building.OwnerId is null) // it can be empty going in, bu owned coming out...
             {
-                Building.BuildingState = BuildingState.Empty;
+                VisualState = BuildingVisualState.Hidden;
             }
         }
 
-        internal void SendChangeNotification()
-        {
-            if (!Building.Buildable) return;
-            OnPropertyChanged(nameof(Building));
-
-        }
     }
 }
 

@@ -178,7 +178,7 @@ namespace Catan3.Controller
 
         private void SendErrorMessage(string message, ErrorLevel errorLevel, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
         {
-            this.TraceMessage(errorLevel.ToString() + ": "+ message, indentLevel, cmb, cln, cfp);
+            this.TraceMessage(errorLevel.ToString() + ": " + message, indentLevel, cmb, cln, cfp);
             Messenger.Send(new ErrorMessage(message, errorLevel, cmb, cln, cfp));
         }
 
@@ -653,28 +653,25 @@ namespace Catan3.Controller
         private GameModel BuildingUpgrade(BuildingUpgradeMessage message)
         {
             GameModel gameModel = Log.CopyCurrent();
-            
+
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse]);
 
             BuildingKey buildingKey = message.BuildingKey;
             var building = gameModel.Buildings.FindBuildingModel(buildingKey)
                     ?? throw new GameException($"Invalid BuildingKey: {buildingKey}");
 
-            if (!building.Buildable)
+            if (building.BuildingState == BuildingState.NotBuildable)
             {
                 throw new GameException($"{building} is not buildingable.");
             }
 
             var currentPlayerModel = gameModel.CurrentPlayer();
 
-
-
             // Process the building upgrade based on its current state.
             switch (building.BuildingState)
             {
-                case BuildingState.Empty:
-                case BuildingState.Highlighted:
-                case BuildingState.Stars:
+                case BuildingState.PossibleSettlement:
+
                     ThrowIfNoEntitlement(gameModel, Entitlement.Settlement);
                     building.BuildingState = BuildingState.Settlement;
                     building.OwnerId = gameModel.CurrentPlayerId;
@@ -1038,28 +1035,26 @@ namespace Catan3.Controller
 
         }
 
-        private void ResetBuildableBuildings(GameModel gameModel)
-        {
-            //
-            //   mark them not buildable
-            foreach (var building in gameModel.Buildings)
-            {
-                building.Buildable = false;
-                building.BuildIndex = 0;
-                building.Stars = -1;
-            }
+        /// <summary>
+        ///     Go through each building and determine the correct building state for it
+        /// </summary>
+        /// <param name="gameModel"></param>
 
-        }
         private void MarkBuildableBuildings(GameModel gameModel)
         {
-            ResetBuildableBuildings(gameModel);
+            //
+            //  turn off anything that used to be though of as a possible place for a settlement
+            //  the rest of the function will turn them back on...
+            gameModel.Buildings
+                     .Where(b => b.BuildingState == BuildingState.PossibleSettlement)
+                     .ToList()
+                     .ForEach(b => b.BuildingState = BuildingState.NotBuildable);
+
+
 
             var currentPlayer = gameModel.CurrentPlayer();
             bool hasCity = currentPlayer.UnspentEntitlements.Contains(Entitlement.City);
             bool hasSettlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.Settlement);
-
-
-            int buildIndex = 1;
 
             List<BuildingModel> buildableCities = [];
             List<BuildingModel> buildableSettlements = [];
@@ -1071,11 +1066,12 @@ namespace Catan3.Controller
 
             foreach (var building in gameModel.Buildings)
             {
+             
                 if (building.BuildingKey.Equals(test))
                 {
-                  //  Debug.Assert(false);
+                    //  Debug.Assert(false);
                 }
-               
+
                 // can't build if there is a city
 
                 if (building.BuildingState == BuildingState.City) continue;
@@ -1095,16 +1091,7 @@ namespace Catan3.Controller
                     continue;
 
                 }
-                //
-                //  if they have bought an settlement entitlement they haven't used, it will be Highlighted
-                Debug.Assert(building.BuildingState == BuildingState.Empty || building.BuildingState == BuildingState.Highlighted);
-                Debug.Assert(building.OwnerId is null);
-                if (building.BuildingState == BuildingState.Highlighted)
-                {
-                    //
-                    // hide the highlighted buildings
-                    building.BuildingState = BuildingState.Empty;
-                }
+               
 
 
                 // for this empty building, look at the buildings next to it
@@ -1113,7 +1100,7 @@ namespace Catan3.Controller
 
                 if (ownedAdjacentBuildings.Count == 0)
                 {
-                    if (building.OwnerId is null && (gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard) )
+                    if (building.OwnerId is null && ( gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard ))
                     {
                         // during picking resources, you can place a building as long as you aren't next to another building
                         buildableSettlements.Add(building);
@@ -1149,14 +1136,7 @@ namespace Catan3.Controller
                 gameModel.PurchaseModel(Entitlement.City).Enabled = false;
             }
 
-            if (hasCity)
-            {
-                foreach (var c in buildableCities)
-                {
-                    c.Buildable = true;
-                    c.BuildIndex = buildIndex++;
-                }
-            }
+            
             int unspentSettlements = currentPlayer.UnspentEntitlements.Count(e => e == Entitlement.Settlement);
 
             if (buildableSettlements.Count > unspentSettlements && gameModel.Phase() == GamePhase.Purchase && AllowPurchase(gameModel, Entitlement.Settlement))
@@ -1171,16 +1151,11 @@ namespace Catan3.Controller
 
             if (hasSettlement || gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard)
             {
-                foreach (var s in buildableSettlements)
-                {
-                    s.Buildable = true;
-                    s.BuildIndex = buildIndex++;
-                    s.Stars = gameModel.TilesForBuildings(s.BuildingKey).Stars();
-                    s.BuildingState = hasSettlement ? BuildingState.Highlighted : BuildingState.Empty;
-                }
+                buildableSettlements.ForEach(building => { building.BuildingState = BuildingState.PossibleSettlement; });
+               
             }
 
-            
+
         }
 
         private static bool AllowPurchase(GameModel gameModel, Entitlement entitlement)

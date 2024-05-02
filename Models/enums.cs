@@ -16,13 +16,22 @@ namespace Catan3.Models
     };
     public enum BuildingState
     {
-        Empty,
+        PossibleSettlement,
+        NotBuildable,
         Settlement,
         City,
-        Stars,
+        Metropolis,
         Knight,
-        Highlighted,
     }
+
+    public enum BuildingVisualState
+    {
+        Highlighted,
+        Hidden,
+        Stars, 
+        Normal
+    }
+
     public enum GameType { Regular, Expansion, Unset }
 
     public enum RoadState { Unowned, Road, Ship, Buildable };

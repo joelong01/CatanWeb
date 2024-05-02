@@ -11,8 +11,8 @@
             CornerRadius="20" BorderThickness="0"
             Width="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}"
             Height="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}"
-            Background="{x:Bind BuildingViewModel.BIND_Background(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer, BuildingViewModel.Building.Buildable), Mode=OneWay}"
-            BorderBrush="{x:Bind BuildingViewModel.BIND_Foreground(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer, BuildingViewModel.Building.Buildable), Mode=OneWay}"
+            Background="{x:Bind BuildingViewModel.BIND_Background(BuildingViewModel.VisualState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
+            BorderBrush="{x:Bind BuildingViewModel.BIND_Foreground(BuildingViewModel.VisualState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
             PointerEntered="OnPointerEntered" PointerExited="OnPointerExited"
             PointerPressed="OnPointerPressed">
         <Ellipse Width="10" HorizontalAlignment="Center"
@@ -27,11 +27,11 @@
                 <Viewbox Stretch="Uniform" Margin="-5, 0, 0,0"
                         HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock x:Name="TXT_StateGlyph"
-                            Text="{x:Bind BuildingViewModel.BIND_StateGlyph(BuildingViewModel.Building.BuildingState), Mode=OneWay}"
+                            Text="{x:Bind BuildingViewModel.BIND_StateGlyph(BuildingViewModel.Building.BuildingState, BuildingViewModel.VisualState), Mode=OneWay}"
                             FontFamily="{StaticResource CatanFont}"
                             Margin="-1,0,0,1" RenderTransformOrigin="0.5 0.5"
                             TextAlignment="Center"
-                             Foreground="{x:Bind BuildingViewModel.BIND_Foreground(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer, BuildingViewModel.Building.Buildable), Mode=OneWay}">
+                             Foreground="{x:Bind BuildingViewModel.BIND_Foreground(BuildingViewModel.VisualState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}">
                         <TextBlock.RenderTransform>
                             <ScaleTransform
                                     ScaleX="{x:Bind BuildingViewModel.Building.Metropolis, Converter={StaticResource MetroToScaleConverter}, Mode=OneWay}"
@@ -42,12 +42,12 @@
                 <Viewbox HorizontalAlignment="Right" VerticalAlignment="Center"
                         Height="25">
                     <TextBlock Name="TB_BuildIndex" IsHitTestVisible="False"
-                            Foreground="{x:Bind BuildingViewModel.BIND_Foreground(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer, BuildingViewModel.Building.Buildable), Mode=OneWay}"
-                            Text="{x:Bind BuildingViewModel.Building.BuildIndex, Mode=OneWay}"
-                            Visibility="{x:Bind BuildingViewModel.BIND_BuildIndexVisibility(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.Buildable), Mode=OneWay}" />
+                            Foreground="{x:Bind BuildingViewModel.BIND_Foreground(BuildingViewModel.VisualState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
+                            Text="{x:Bind BuildingViewModel.BuildIndex, Mode=OneWay}"
+                            Visibility="{x:Bind BuildingViewModel.BIND_BuildIndexVisibility(BuildingViewModel.VisualState), Mode=OneWay}" />
                 </Viewbox>
                 <TextBlock Text="{x:Bind LaurelGlyph}"
-                         Foreground="{x:Bind BuildingViewModel.BIND_Foreground(BuildingViewModel.Building.BuildingState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer, BuildingViewModel.Building.Buildable), Mode=OneWay}"
+                         Foreground="{x:Bind BuildingViewModel.BIND_Foreground(BuildingViewModel.VisualState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
                         HorizontalAlignment="Center" VerticalAlignment="Center"
                         RenderTransformOrigin=".5 .5"
                         FontFamily="{StaticResource CatanFont}"
