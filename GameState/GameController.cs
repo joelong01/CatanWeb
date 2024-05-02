@@ -225,12 +225,12 @@ namespace Catan3.Controller
 
                 case Entitlement.Settlement:
                     int unspentSettlement = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
-                    if (unspentSettlement + gameModel.CurrentPlayer().SettlementsPlayed > gameModel.ResourceRules.MaxCities) return false;
+                    if (unspentSettlement + gameModel.CurrentPlayer().SettlementsPlayed > gameModel.ResourceRules.MaxSettlements) return false;
                     return true;
 
                 case Entitlement.Road:
                     int unspentRoads = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
-                    if (unspentRoads + gameModel.CurrentPlayer().RoadsPlayed > gameModel.ResourceRules.MaxCities) return false;
+                    if (unspentRoads + gameModel.CurrentPlayer().RoadsPlayed > gameModel.ResourceRules.MaxRoads) return false;
 
                     return true;
 
@@ -1064,13 +1064,18 @@ namespace Catan3.Controller
             List<BuildingModel> buildableCities = [];
             List<BuildingModel> buildableSettlements = [];
 
-            var test = new BuildingKey(new HexCoordinates(-1, 1, 0), HexPosition.BottomRight);
+            var test = new BuildingKey(new HexCoordinates(-3, 2, 1), HexPosition.Right);
 
             //
             // to be buildable, the location has to be adjacent to an owned road and cannot be within one road of another building
 
             foreach (var building in gameModel.Buildings)
             {
+                if (building.BuildingKey.Equals(test))
+                {
+                  //  Debug.Assert(false);
+                }
+               
                 // can't build if there is a city
 
                 if (building.BuildingState == BuildingState.City) continue;
@@ -1090,14 +1095,17 @@ namespace Catan3.Controller
                     continue;
 
                 }
-
-                Debug.Assert(building.BuildingState == BuildingState.Empty);
+                //
+                //  if they have bought an settlement entitlement they haven't used, it will be Highlighted
+                Debug.Assert(building.BuildingState == BuildingState.Empty || building.BuildingState == BuildingState.Highlighted);
                 Debug.Assert(building.OwnerId is null);
-
-                if (building.BuildingKey.Equals(test))
+                if (building.BuildingState == BuildingState.Highlighted)
                 {
-                    //Debug.Assert(false);
+                    //
+                    // hide the highlighted buildings
+                    building.BuildingState = BuildingState.Empty;
                 }
+
 
                 // for this empty building, look at the buildings next to it
 
