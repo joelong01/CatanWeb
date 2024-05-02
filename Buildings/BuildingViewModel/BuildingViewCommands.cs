@@ -51,7 +51,7 @@ namespace Catan3.Models
         private void MouseEnter()
         {
             if (!Building.Buildable) return;
-            // this.TraceMessage($"CurrentPlayer={this.CurrentPlayer}");
+       
             _oldState = Building.BuildingState;
             if (Building.BuildingState == BuildingState.Empty)
             {

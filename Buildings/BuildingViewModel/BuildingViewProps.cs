@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI;
 using System.Text.Json.Serialization;
 using System;
+using Microsoft.UI.Xaml;
 
 namespace Catan3.Models
 {
@@ -23,9 +24,8 @@ namespace Catan3.Models
         [ObservableProperty]
         private double _top;
 
-        [ObservableProperty]
-        private int _stars = 0;
-
+       
+     
 
         [JsonIgnore]
         [ObservableProperty]

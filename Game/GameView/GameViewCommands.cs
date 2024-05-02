@@ -51,9 +51,9 @@ namespace Catan3.Models
             foreach (var building in Buildings)
             {
                 if (building.Building.OwnerId is not null) continue;
-                int buildingStars = GameModel.BuildingStars(building.Building.BuildingKey);
                
-                if (buildingStars >= stars)
+               
+                if (building.Building.Stars >= stars)
                 {
 
                          building.Building.BuildingState = BuildingState.Stars;
@@ -63,6 +63,8 @@ namespace Catan3.Models
                 {
                      building.Building.BuildingState = BuildingState.Empty;
                 }
+
+                building.Update();
 
             }
 

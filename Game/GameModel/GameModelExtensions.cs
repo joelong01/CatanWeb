@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using ABI.Windows.Gaming.Preview.GamesEnumeration;
@@ -10,14 +11,41 @@ namespace Catan3.Models
     {
         public static bool AllocationPhase(this GameModel gameModel)
         {
-            return ( gameModel.GameState == GameState.AllocateResourceForward || gameModel.GameState == GameState.AllocateResourceReverse || 
+            return ( gameModel.GameState == GameState.AllocateResourceForward || gameModel.GameState == GameState.AllocateResourceReverse ||
                      gameModel.GameState == GameState.WaitingForRollForOrder || gameModel.GameState == GameState.FinishedRollOrder ||
-                     gameModel.GameState == GameState.BeginResourceAllocation || gameModel.GameState == GameState.PickingBoard);
+                     gameModel.GameState == GameState.BeginResourceAllocation || gameModel.GameState == GameState.PickingBoard );
         }
 
-        public static bool BuildPhase(this GameModel gameModel)
+        public static GamePhase Phase(this GameModel gameModel)
         {
-            return gameModel.GameState == GameState.WaitingForNext || gameModel.GameState == GameState.Supplemental;
+            switch (gameModel.GameState)
+            {
+                case GameState.Uninitialized:
+                case GameState.WaitingForNewGame:
+                case GameState.BeginResourceAllocation:
+                case GameState.WaitingForPlayers:
+                    return GamePhase.Starting;
+                case GameState.PickingBoard:
+                case GameState.WaitingForRollForOrder:
+                case GameState.FinishedRollOrder:
+                    return GamePhase.PickingBoard;
+                case GameState.AllocateResourceForward:
+                case GameState.AllocateResourceReverse:
+                case GameState.DoneResourceAllocation:
+                    return GamePhase.PickingResources;
+                case GameState.WaitingForRoll:
+                    return GamePhase.Rolling;
+                case GameState.WaitingForNext:
+                case GameState.Supplemental:
+                    return GamePhase.Purchase;
+                case GameState.MustMoveBaron:
+                case GameState.TooManyCards:
+                case GameState.MustDestroyCity:
+                    return GamePhase.ActionRequired;
+                default:
+                    return GamePhase.Unspecified;
+            }
+            
         }
 
         public static EntitlementPurchaseModel PurchaseModel(this GameModel gameModel, Entitlement entitlement)
@@ -150,6 +178,31 @@ namespace Catan3.Models
 
             // Set the current player ID
             gameModel.CurrentPlayerId = newPlayer.Id;
+        }
+
+        /// <summary>
+        ///     given a BuildingKey, return the list of tiles that the Building connects to
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public static List<TileModel> TilesForBuildings(this GameModel gameModel, BuildingKey key)
+        {
+            List<TileModel> tiles = [];
+            // get the tile
+            var tileModel = gameModel.Tiles.TileFromCoords(key.HexCoordinates);
+            Debug.Assert(tileModel is not null, "Bad HexCoordinates");
+            tiles.Add(tileModel);
+            // get the aliases
+            var aliases = key.Aliases();
+            foreach ((_, Direction direction) in aliases)
+            {
+                var neighbor = gameModel.Tiles.TileFromCoords(tileModel.TileKey.GetAdjacentTile(direction));
+                if (neighbor is not null)
+                {
+                    tiles.Add(neighbor);
+                }
+            }
+            return tiles;
         }
 
         public static PlayerModel CurrentPlayer(this GameModel gameModel)

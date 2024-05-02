@@ -127,7 +127,7 @@ namespace Catan3.Models
             ResourceRules = ResourceRules.Default;
         }
         /// <summary>
-        ///     Add up all the stars for the given resource top
+        ///     Add up all the stars for the given resource type
         /// </summary>
         /// <param name="tileType"></param>
         /// <returns></returns>
@@ -139,42 +139,8 @@ namespace Catan3.Models
             return total;
         }
 
-        /// <summary>
-        ///     Data that joins 2 or more collections is implemented here instead of as extension methods to the collection
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        public List<TileModel> TilesForBuildings(BuildingKey key)
-        {
-            List<TileModel> tiles = [];
-            // get the tile
-            var tileModel = Tiles.TileFromCoords(key.HexCoordinates);
-            Debug.Assert(tileModel is not null, "Bad HexCoordinates");
-            tiles.Add(tileModel);
-            // get the aliases
-            var aliases = key.Aliases();
-            foreach ((_, Direction direction) in aliases)
-            {
-                var neighbor = Tiles.TileFromCoords(tileModel.TileKey.GetAdjacentTile(direction));
-                if (neighbor is not null)
-                {
-                    tiles.Add(neighbor);
-                }
-            }
-            return tiles;
-        }
-        /// <summary>
-        ///     Given a building key, get the count of stars for that building
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-
-        public int BuildingStars(BuildingKey key)
-        {
-            var adjacentTiles = TilesForBuildings(key);
-            var stars = adjacentTiles.Stars();
-            return stars;
-        }
+       
+     
 
         public string Serialize()
         {

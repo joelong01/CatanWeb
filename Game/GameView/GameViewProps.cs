@@ -105,9 +105,17 @@ namespace Catan3.Models
         /// <param name="value"></param>
         partial void OnShownStarsChanged(int value)
         {
-            //this.TraceMessage($"New Shown Stars: {value}");
+         //   this.TraceMessage($"New Shown Stars: {value}");
             ShowStarValues(value);
+            
         }
+
+        //public string StarValue(BuildingModel buildingModel, int showStars)
+        //{
+        //    if (buildingModel.BuildingState == BuildingState.Stars && buildingModel.Stars >= showStars) return buildingModel.Stars.ToString();
+
+        //    return string.Empty;
+        //}
 
         partial void OnCurrentPlayerChanged(PlayerViewModel? oldValue, PlayerViewModel newValue)
         {

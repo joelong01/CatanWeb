@@ -117,6 +117,8 @@ namespace Catan3.Models
         PickSupplementalPlayers
     };
 
+    public enum GamePhase { Starting, PickingBoard, PickingResources, Rolling, Purchase, ActionRequired, Unspecified }
+
     public enum SpecialDice { Trade=0, Politics=1, Science=2, Pirate=3, None=-1 };
     public enum ValidCatanRoll { Two=2, Three=3, Four=4, Five=5, Six=6, Seven=7, Eight=8, Nine=9, Ten=10, Eleven=11, Twelve=12, None=-1 };
 

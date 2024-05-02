@@ -122,7 +122,7 @@ namespace Catan3.Models
                 this.TurnRollViewModel.TurnRollModel = new();
             }
 
-            if (gameModel.GameState == GameState.AllocateResourceForward || gameModel.GameState == GameState.AllocateResourceReverse || gameModel.GameState == GameState.PickingBoard)
+            if (gameModel.Phase() == GamePhase.PickingBoard || gameModel.Phase() == GamePhase.PickingResources)
             {
                 // OnPropertyChanged(nameof(ShownStars));
                 var currentStars = ShownStars;
@@ -323,18 +323,7 @@ namespace Catan3.Models
         /// </summary>
         public void SetStars()
         {
-            foreach (var building in Buildings)
-            {
-                if (building.Building.Buildable)
-                {
-                    building.Stars = TilesForBuildings(building.Building.BuildingKey).Stars();
-                }
-                else
-                {
-                    building.Stars = 0;
-                    this.TraceMessage($"{GameModel.GameState} Building {building} not buildable");
-                }
-            }
+            
 
 
             var resourceModel = new ResourcesModel();

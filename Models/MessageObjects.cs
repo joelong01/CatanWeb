@@ -110,12 +110,16 @@ namespace Catan3.Models
         public Entitlement Entitlement { get; } = entitlement;
     }
 
-    public class ErrorMessage(string message, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
+    public enum ErrorLevel { Information, Protection, Critical}
+
+    public class ErrorMessage(string message, ErrorLevel errorLevel, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
     {
         public string Message { get; } = message;
         public string CallerMemberName { get; } = cmb;
         public string CallerLineNumber { get; } = cln.ToString();
         public string CallerFilePath { get; } = cfp;
+        public ErrorLevel ErrorLevel { get; } = errorLevel;
+        
     }
 
 }

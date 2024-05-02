@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -8,6 +9,7 @@ using Catan3.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.UI.Xaml.Data;
 using Windows.Devices.PointOfService;
 
 namespace Catan3.Controller
@@ -78,7 +80,7 @@ namespace Catan3.Controller
                     }
                     catch (GameException e)
                     {
-                        SendErrorMessage(e.Message);
+                        SendErrorMessage(e.Message, e.ErrorLevel);
                     }
                 });
 
@@ -93,7 +95,7 @@ namespace Catan3.Controller
                 }
                 catch (GameException e)
                 {
-                    SendErrorMessage(e.Message);
+                    SendErrorMessage(e.Message, e.ErrorLevel);
                 }
             });
             Messenger.Register<RoadPurchaseMessage>(this, (recipient, message) =>
@@ -106,7 +108,7 @@ namespace Catan3.Controller
                     }
                     catch (GameException e)
                     {
-                        SendErrorMessage(e.Message);
+                        SendErrorMessage(e.Message, e.ErrorLevel);
                     }
                 });
 
@@ -121,7 +123,7 @@ namespace Catan3.Controller
                  }
                  catch (GameException e)
                  {
-                     SendErrorMessage(e.Message);
+                     SendErrorMessage(e.Message, e.ErrorLevel);
                  }
              });
             Messenger.Register<NewGameMessage>(this, (recipient, message) =>
@@ -134,7 +136,7 @@ namespace Catan3.Controller
                 }
                 catch (GameException e)
                 {
-                    SendErrorMessage(e.Message);
+                    SendErrorMessage(e.Message, e.ErrorLevel);
                 }
             });
             Messenger.Register<RollMessage>(this, (recipient, message) =>
@@ -147,7 +149,7 @@ namespace Catan3.Controller
                 }
                 catch (GameException e)
                 {
-                    SendErrorMessage(e.Message);
+                    SendErrorMessage(e.Message, e.ErrorLevel);
                 }
 
             });
@@ -162,7 +164,7 @@ namespace Catan3.Controller
                 }
                 catch (GameException e)
                 {
-                    SendErrorMessage(e.Message);
+                    SendErrorMessage(e.Message, e.ErrorLevel);
                 }
 
             });
@@ -174,10 +176,10 @@ namespace Catan3.Controller
 
         }
 
-        private void SendErrorMessage(string message, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
+        private void SendErrorMessage(string message, ErrorLevel errorLevel, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
         {
-            this.TraceMessage(message, indentLevel, cmb, cln, cfp);
-            Messenger.Send(new ErrorMessage(message, cmb, cln, cfp));
+            this.TraceMessage(errorLevel.ToString() + ": "+ message, indentLevel, cmb, cln, cfp);
+            Messenger.Send(new ErrorMessage(message, errorLevel, cmb, cln, cfp));
         }
 
         private GameModel OnPurchase(PurchaseMessage message)
@@ -651,6 +653,7 @@ namespace Catan3.Controller
         private GameModel BuildingUpgrade(BuildingUpgradeMessage message)
         {
             GameModel gameModel = Log.CopyCurrent();
+            
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse]);
 
             BuildingKey buildingKey = message.BuildingKey;
@@ -805,6 +808,11 @@ namespace Catan3.Controller
             }
         }
 
+        private static bool WrongStateCheck(GameState currentState, GameState[] validStates)
+        {
+            return validStates.Contains(currentState);
+        }
+
         /// <summary>
         /// Validates if a given player ID exists in the provided list of players.
         /// </summary>
@@ -956,7 +964,7 @@ namespace Catan3.Controller
             List<RoadModel> buildableRoads = [];
 
 
-            if (!gameModel.AllocationPhase()) // during allocation we can only build next to the settlment
+            if (gameModel.Phase() == GamePhase.Purchase) // during allocation we can only build next to the settlment
             {
                 foreach (var road in gameModel.Roads)
                 {
@@ -978,7 +986,7 @@ namespace Catan3.Controller
             {
                 if (building.OwnerId == gameModel.CurrentPlayerId)
                 {
-                    if (gameModel.AllocationPhase())
+                    if (gameModel.Phase() == GamePhase.PickingResources)
                     {
                         var ownedRoads = gameModel.AdjacentRoads(building.BuildingKey).Where(r => r.OwnerId == gameModel.CurrentPlayerId).ToList();
                         if (ownedRoads.Count == 0)
@@ -1014,9 +1022,7 @@ namespace Catan3.Controller
             //
             //  we have at least one road we can build
 
-            gameModel.PurchaseModel(Entitlement.Road).Enabled = gameModel.BuildPhase();
-
-            if (gameModel.AllocationPhase()) Debug.Assert(gameModel.PurchaseModel(Entitlement.Road).Enabled == false);
+            gameModel.PurchaseModel(Entitlement.Road).Enabled = gameModel.Phase() == GamePhase.Purchase;
 
             if (gameModel.CurrentPlayer().UnspentEntitlements.Contains(Entitlement.Road))
             {
@@ -1040,6 +1046,7 @@ namespace Catan3.Controller
             {
                 building.Buildable = false;
                 building.BuildIndex = 0;
+                building.Stars = -1;
             }
 
         }
@@ -1052,7 +1059,7 @@ namespace Catan3.Controller
             bool hasSettlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.Settlement);
 
 
-            int buildIndex = 0;
+            int buildIndex = 1;
 
             List<BuildingModel> buildableCities = [];
             List<BuildingModel> buildableSettlements = [];
@@ -1098,9 +1105,9 @@ namespace Catan3.Controller
 
                 if (ownedAdjacentBuildings.Count == 0)
                 {
-                    if (building.OwnerId is null && gameModel.AllocationPhase())
+                    if (building.OwnerId is null && (gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard) )
                     {
-                        // during allocation, you can place a building as long as you aren't next to another building
+                        // during picking resources, you can place a building as long as you aren't next to another building
                         buildableSettlements.Add(building);
                         continue;
                     }
@@ -1123,10 +1130,15 @@ namespace Catan3.Controller
 
             }
 
-            if (buildableCities.Count > 0)
+            if (buildableCities.Count > 0 && gameModel.Phase() == GamePhase.Purchase && AllowPurchase(gameModel, Entitlement.City))
             {
-                // we never allow purchases during Allocation phase
-                gameModel.PurchaseModel(Entitlement.City).Enabled = gameModel.BuildPhase();
+                // if we can build a city, allow it when we allow purchases
+                gameModel.PurchaseModel(Entitlement.City).Enabled = true;
+            }
+            else
+            {
+                // don't allow purchase
+                gameModel.PurchaseModel(Entitlement.City).Enabled = false;
             }
 
             if (hasCity)
@@ -1137,19 +1149,50 @@ namespace Catan3.Controller
                     c.BuildIndex = buildIndex++;
                 }
             }
+            int unspentSettlements = currentPlayer.UnspentEntitlements.Count(e => e == Entitlement.Settlement);
 
-            if (buildableSettlements.Count > 0)
+            if (buildableSettlements.Count > unspentSettlements && gameModel.Phase() == GamePhase.Purchase && AllowPurchase(gameModel, Entitlement.Settlement))
             {
-                gameModel.PurchaseModel(Entitlement.Settlement).Enabled = gameModel.BuildPhase();
+                gameModel.PurchaseModel(Entitlement.Settlement).Enabled = true;
+            }
+            else
+            {
+                gameModel.PurchaseModel(Entitlement.Settlement).Enabled = false;
+
             }
 
-            if (hasSettlement || gameModel.AllocationPhase())
+            if (hasSettlement || gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard)
             {
                 foreach (var s in buildableSettlements)
                 {
                     s.Buildable = true;
                     s.BuildIndex = buildIndex++;
+                    s.Stars = gameModel.TilesForBuildings(s.BuildingKey).Stars();
+                    s.BuildingState = hasSettlement ? BuildingState.Highlighted : BuildingState.Empty;
                 }
+            }
+
+            
+        }
+
+        private static bool AllowPurchase(GameModel gameModel, Entitlement entitlement)
+        {
+            var currentPlayer = gameModel.CurrentPlayer();
+
+            int total = currentPlayer.SpentEntitlementsThisGame.Count(e => e==entitlement) +
+                        currentPlayer.UnspentEntitlements.Count(e => e == entitlement);
+            switch (entitlement)
+            {
+                case Entitlement.Road:
+                    return ( total < gameModel.ResourceRules.MaxRoads );
+                case Entitlement.Settlement:
+                    return ( total < gameModel.ResourceRules.MaxSettlements );
+                case Entitlement.City:
+                    return ( total < gameModel.ResourceRules.MaxCities );
+                case Entitlement.MoveBaronWithKnight:
+                    return true;
+                default:
+                    throw new Exception($"TODO: add support for {entitlement} to AllowPurchase");
             }
         }
 

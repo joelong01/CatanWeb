@@ -29,15 +29,15 @@
 
         <Ellipse Width="10" Height="10" Fill="Green" Visibility="Collapsed" />
         <Viewbox Stretch="Uniform" Height="20" HorizontalAlignment="Left"
-                VerticalAlignment="Top"
+                VerticalAlignment="Top" IsHitTestVisible="False"
                 Canvas.Left="{x:Bind ViewModel.RoadCenter.X, Mode=OneWay}"
                 Canvas.Top="{x:Bind ViewModel.RoadCenter.Y, Mode=OneWay}">
-            <Grid Background="Black" Height="20" Width="20" CornerRadius="5"
+            <Grid Background="Black" Height="20" Width="20" CornerRadius="5" IsHitTestVisible="False"
                     HorizontalAlignment="Left" VerticalAlignment="Top"
                     Visibility="{x:Bind ViewModel.ShowBuildIndex(ViewModel.Road.BuildIndex), Mode=OneWay}">
                 <TextBlock
                         Text="{x:Bind ViewModel.BuildIndex(ViewModel.Road.BuildIndex), Mode=OneWay}"
-                        FontSize="16" HorizontalAlignment="Center" TextLineBounds="Tight"
+                        FontSize="16" HorizontalAlignment="Center" TextLineBounds="Tight" IsHitTestVisible="False"
                         VerticalAlignment="Center" Foreground="White" />
             </Grid>
         </Viewbox>

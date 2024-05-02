@@ -140,15 +140,24 @@ namespace Catan3
                 // Check if the current thread has access to the UI thread
                 if (Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().HasThreadAccess)
                 {
-                    // If already on UI thread, show dialog directly
-                    await ShowMessageDialog(MainPageModel.GameViewModel.ErrorMessage.Message, "Catan Error");
+                    if (MainPageModel.GameViewModel.ErrorMessage.ErrorLevel == ErrorLevel.Critical)
+                    {
+                        // If already on UI thread, show dialog directly
+                        await ShowMessageDialog(MainPageModel.GameViewModel.ErrorMessage.Message, "Catan Error");
+                    }
+                    this.TraceMessage(MainPageModel.GameViewModel.ErrorMessage.Message);
                 }
                 else
                 {
                     // If not on UI thread, use DispatcherQueue to run on the UI thread
                     Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(async () =>
                     {
-                        await ShowMessageDialog(MainPageModel.GameViewModel.ErrorMessage.Message, "Catan Error");
+                        if (MainPageModel.GameViewModel.ErrorMessage.ErrorLevel == ErrorLevel.Critical)
+                        {
+                            // If already on UI thread, show dialog directly
+                            await ShowMessageDialog(MainPageModel.GameViewModel.ErrorMessage.Message, "Catan Error");
+                        }
+                        this.TraceMessage(MainPageModel.GameViewModel.ErrorMessage.Message);
                     });
                 }
             }

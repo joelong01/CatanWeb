@@ -1,12 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.UI.Xaml.Data;
 
 namespace Catan3.Models
 {
@@ -27,6 +21,7 @@ namespace Catan3.Models
         private BuildingKey _buildingKey;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(Stars))]
         private BuildingState _buildingState;
 
         [ObservableProperty]
@@ -44,6 +39,10 @@ namespace Catan3.Models
         [ObservableProperty]
         private int _buildIndex = 0;
 
+        [ObservableProperty]
+        private int _stars = 0;
+
+
         public static BuildingModel Default { get; } = new();
 
         public int CompareTo(BuildingModel? other)
@@ -52,7 +51,7 @@ namespace Catan3.Models
             
             return BuildingKey.CompareTo(other.BuildingKey);
         }
-        public override string? ToString() => $"{BuildingKey}-{BuildingState}-{OwnerId}";
+        public override string? ToString() => $"{BuildingKey}-{BuildingState}-{OwnerId}-S={Stars} B={Buildable}";
 
        
     }
