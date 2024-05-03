@@ -88,13 +88,13 @@
                                 </u:FlipperCtrl.Back>
                             </u:FlipperCtrl>
                         </Viewbox>
-                        <Grid Background="Black" HorizontalAlignment="Center"
+                        <Grid  Name="GRID_TileCoordinates" Background="Black" HorizontalAlignment="Center"
                                 VerticalAlignment="Bottom"
                                 Margin="{x:Bind CooordinateTextMargin(TileViewModel.Layout.TileGap, TileViewModel.Layout.InnerHexStrokeThickness), Mode=OneWay}"
-                                Height="32">
+                                Height="16">
                             <Viewbox Stretch="Uniform">
                                 <StackPanel HorizontalAlignment="Stretch">
-                                    <TextBlock
+                                    <TextBlock Visibility="Collapsed"
                                             Text="{x:Bind TileViewModel.Index, Mode=OneWay}"
                                             HorizontalAlignment="Center"
                                             Foreground="White" />

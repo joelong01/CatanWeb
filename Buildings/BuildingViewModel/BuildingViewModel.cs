@@ -142,6 +142,9 @@ namespace Catan3.Models
                 case BuildingState.Knight:
                     glyph = CatanFont.Knight;
                     break;
+                case BuildingState.Metropolis:
+                    glyph = CatanFont.Metro;
+                    break;
                 default:
                     throw new GameException("Did you add a state w/o setting a glyph?", ErrorLevel.Critical);
             }
@@ -165,13 +168,13 @@ namespace Catan3.Models
         public Brush BIND_Foreground(BuildingVisualState visualState, string? ownerId, PlayerViewModel currentPlayer)
         {
 
-            return GetBrush( visualState, ownerId, currentPlayer, visualState != BuildingVisualState.Highlighted);
+            return GetBrush(visualState, ownerId, currentPlayer, visualState != BuildingVisualState.Highlighted);
 
         }
 
         public Brush BIND_Background(BuildingVisualState visualState, string? ownerId, PlayerViewModel currentPlayer)
         {
-            return GetBrush( visualState, ownerId, currentPlayer, visualState == BuildingVisualState.Highlighted);
+            return GetBrush(visualState, ownerId, currentPlayer, visualState == BuildingVisualState.Highlighted);
         }
 
         private static Brush GetBrush(BuildingVisualState visualState, string? ownerId, PlayerViewModel currentPlayer, bool foreground)
@@ -189,7 +192,7 @@ namespace Catan3.Models
                 //
                 //  if there is an owner, always use the owner color
                 Debug.Assert(ownerId is not null);
-               
+
                 PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
                 if (foreground)
                 {
@@ -217,7 +220,7 @@ namespace Catan3.Models
 
         public Visibility BIND_BuildIndexVisibility(BuildingVisualState state)
         {
-           
+
             if (state == BuildingVisualState.Highlighted) return Visibility.Visible;
 
             return Visibility.Collapsed;

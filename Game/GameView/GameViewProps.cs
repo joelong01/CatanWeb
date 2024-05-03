@@ -12,7 +12,7 @@ namespace Catan3.Models
     public static class GameViewModelStatics
     {
         public static ResourceType[] StarsTrackResourceList =  [ResourceType.Sheep, ResourceType.Wheat, ResourceType.Wood, ResourceType.Brick, ResourceType.Ore];
-        public static ResourceType[] PlayerTrackResourceList =  [..StarsTrackResourceList, ResourceType.GoldMine];
+        public static ResourceType[] PlayerTrackResourceList =  [..StarsTrackResourceList, ResourceType.GoldMine, ResourceType.Robber];
     }
     public partial class GameViewModel : ObservableRecipient
     {

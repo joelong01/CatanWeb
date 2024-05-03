@@ -230,21 +230,7 @@ namespace Catan3.Converters
             throw new NotImplementedException();
         }
     }
-    public class MetroToScaleConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, string language)
-        {
-            if (value is bool isMetropolis)
-            {
-                return isMetropolis ? 0.6 : 1.0;
-            }
-            return 1.0; // Default scale when value is null or not a boolean
-        }
-        public object ConvertBack(object value, Type targetType, object parameter, string language)
-        {
-            throw new NotImplementedException();
-        }
-    }
+   
     public class ScaleConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)

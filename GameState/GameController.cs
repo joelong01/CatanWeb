@@ -312,9 +312,26 @@ namespace Catan3.Controller
                 foreach (BuildingModel building in buildings)
                 {
                     Debug.Assert(building.OwnerId is not null, "OwnedBuildings should only return Owned buildings...");
-                    var effectiveType = tile.TemporarilyGold ? ResourceType.GoldMine : tile.ResourceTileType;
+                    ResourceType effectiveType = tile.ResourceTileType;
+                    if (tile.TemporarilyGold) effectiveType = ResourceType.GoldMine;
+                    if (tile.TileKey == gameModel.Robber.Coordinates)
+                    {
+                        effectiveType = ResourceType.Robber;
+                    }
+
+
                     ResourcesModel resources = building.Resources(effectiveType);
+                    
+
                     playerResources[building.OwnerId].Add(resources);
+
+                    if (effectiveType == ResourceType.Robber)
+                    {
+                        var owner = gameModel.Players.PlayerFromId(building.OwnerId) ?? throw new GameException($"Can't find {building.OwnerId}, Owner of building {building}", ErrorLevel.Critical);
+                        owner.ResourcesLostToRobber += resources.Count;
+                        gameModel.Robber.ResourcesStolen += resources.Count;
+                    }
+
                 }
             }
             // now fix up the underlying resource models in the same way as if we loading it from disk or got it back from a service
@@ -1066,7 +1083,7 @@ namespace Catan3.Controller
 
             foreach (var building in gameModel.Buildings)
             {
-             
+
                 if (building.BuildingKey.Equals(test))
                 {
                     //  Debug.Assert(false);
@@ -1091,7 +1108,7 @@ namespace Catan3.Controller
                     continue;
 
                 }
-               
+
 
 
                 // for this empty building, look at the buildings next to it
@@ -1136,7 +1153,7 @@ namespace Catan3.Controller
                 gameModel.PurchaseModel(Entitlement.City).Enabled = false;
             }
 
-            
+
             int unspentSettlements = currentPlayer.UnspentEntitlements.Count(e => e == Entitlement.Settlement);
 
             if (buildableSettlements.Count > unspentSettlements && gameModel.Phase() == GamePhase.Purchase && AllowPurchase(gameModel, Entitlement.Settlement))
@@ -1152,7 +1169,7 @@ namespace Catan3.Controller
             if (hasSettlement || gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard)
             {
                 buildableSettlements.ForEach(building => { building.BuildingState = BuildingState.PossibleSettlement; });
-               
+
             }
 
 

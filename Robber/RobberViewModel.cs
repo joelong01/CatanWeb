@@ -1,6 +1,7 @@
 ﻿
 
 using System;
+using System.Diagnostics;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
@@ -69,6 +70,12 @@ namespace Catan3.Models
             {
                 return BrushCache.GetSolidColorBrush(Colors.Red);
             }
+        }
+
+        public string BIND_ResourcesStolen(RobberModel robberModel, int stolen)
+        {
+            Debug.Assert(robberModel.ResourcesStolen == stolen);
+            return stolen.ToString();
         }
 
         public override string ToString()

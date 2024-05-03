@@ -46,6 +46,9 @@ namespace Catan3.Models
         private int _noResourceCount = 0;
 
         [ObservableProperty]
+        private int _resourcesLostToRobber = 0;
+
+        [ObservableProperty]
         private int _pips = 0;
 
         [ObservableProperty]

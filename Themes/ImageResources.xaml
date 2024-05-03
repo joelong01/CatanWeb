@@ -93,6 +93,9 @@
     <ImageBrush x:Key="ResourceCard.VictoryPoint"
             ImageSource="../Assets/ResourceCards/victorypoint.png"
             Stretch="UniformToFill" />
+    <ImageBrush x:Key="ResourceCard.Robber"
+        ImageSource="../Assets/ResourceCards/robber.png"
+        Stretch="UniformToFill" />
 
     <ImageBrush x:Key="ResourceCard.Invasion"
             ImageSource="../Assets\Tiles\gpt invasion.png" Stretch="Fill" />

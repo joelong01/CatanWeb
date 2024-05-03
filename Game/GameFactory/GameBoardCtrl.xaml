@@ -159,8 +159,8 @@
                     Orientation="{x:Bind GameViewModel.RobberViewModel.Orientation, Mode=OneWay}">
                 <u:FlipperCtrl.Front>
                     <Grid Opacity=".75">
-                        <TextBlock FontFamily="Catan" FontSize="100"
-                                Text="&#xE925;"
+                        <TextBlock FontFamily="{StaticResource CatanFont}"
+                                FontSize="100" Text="&#xE925;"
                                 Foreground="{x:Bind GameViewModel.RobberViewModel.Background(GameViewModel.RobberViewModel.RobberModel, GameViewModel.RobberViewModel.RobberModel.MovedBy), Mode=OneWay}"
                                 HorizontalAlignment="Center"
                                 TextAlignment="Center" />
@@ -168,6 +168,12 @@
                                 Text="&#xE90C;"
                                 Foreground="{x:Bind GameViewModel.RobberViewModel.Foreground(GameViewModel.RobberViewModel.RobberModel, GameViewModel.RobberViewModel.RobberModel.MovedBy), Mode=OneWay}"
                                 HorizontalAlignment="Center"
+                                TextAlignment="Center" />
+                        <TextBlock FontFamily="Segoe UI" FontSize="22"
+                                Text="{x:Bind GameViewModel.RobberViewModel.BIND_ResourcesStolen(GameViewModel.RobberViewModel.RobberModel, GameViewModel.RobberViewModel.RobberModel.ResourcesStolen), Mode=OneWay}"
+                                Foreground="{x:Bind GameViewModel.RobberViewModel.Foreground(GameViewModel.RobberViewModel.RobberModel, GameViewModel.RobberViewModel.RobberModel.MovedBy), Mode=OneWay}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Bottom"
                                 TextAlignment="Center" />
                     </Grid>
                 </u:FlipperCtrl.Front>

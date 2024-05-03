@@ -24,6 +24,7 @@ namespace Catan3.Utility
         public static readonly string FancySheild = "\uE927";
         public static readonly string Knight = "\uE930";
         public static readonly string Road = "\uE909";
+        public static readonly string Metro = "\uE90F";
 
         public static readonly Dictionary<Entitlement, string> EntitlementGlyph = new()
         {
@@ -33,12 +34,7 @@ namespace Catan3.Utility
             {Entitlement.Road, Road }
         };
 
-        public static readonly Dictionary<BuildingState, string> RoadStateGlyph = new()
-        {
-            {BuildingState.Settlement, Settlement },
-            {BuildingState.City, City },
-            {BuildingState.Knight, Knight }
-        };
+        
 
 
     }

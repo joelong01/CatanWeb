@@ -10,7 +10,6 @@
     <converters:NumberToPipsForegroundConverter
             x:Key="NumberToPipsForegroundConverter" />
     <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-    <converters:MetroToScaleConverter x:Key="MetroToScaleConverter" />
     <converters:ScaleConverter x:Key="ScaleConverter" />
     <converters:BuildingPositionToFillConverter
             x:Key="BuildingPositionToFillConverter" />

@@ -4,49 +4,55 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan10.Models
 {
+    /// <summary>
+    ///     Should contain all the resources used to track rolls.  if you add one, add it everywhere...
+    /// </summary>
     public partial class ResourcesModel : ObservableObject
     {
         [ObservableProperty]
-        private int brick;
+        private int _brick;
 
         [ObservableProperty]
-        private int goldMine;
+        private int _goldMine;
 
         [ObservableProperty]
-        private int ore;
+        private int _ore;
 
         [ObservableProperty]
-        private int sheep;
+        private int _sheep;
 
         [ObservableProperty]
-        private int wheat;
+        private int _wheat;
 
         [ObservableProperty]
-        private int wood;
+        private int _wood;
 
         [ObservableProperty]
-        private int paper;
+        private int _paper;
 
         [ObservableProperty]
-        private int cloth;
+        private int _cloth;
 
         [ObservableProperty]
-        private int coin;
+        private int _coin;
 
         [ObservableProperty]
-        private int politics;
+        private int _politics;
 
         [ObservableProperty]
-        private int trade;
+        private int _trade;
 
         [ObservableProperty]
-        private int science;
+        private int _science;
 
         [ObservableProperty]
-        private int victoryPoint;
+        private int _victoryPoint;
 
         [ObservableProperty]
-        private int anyDevCard;
+        private int _anyDevCard;
+
+        [ObservableProperty]
+        private int _robber;
 
         public ResourcesModel() { }
 
@@ -67,15 +73,16 @@ namespace Catan10.Models
             Science = tradeResources.Science;
             VictoryPoint = tradeResources.VictoryPoint;
             AnyDevCard = tradeResources.AnyDevCard;
+            Robber = tradeResources.Robber;
         }
 
         [JsonIgnore]
-        public int Count => Wheat + Wood + Brick + Ore + Sheep + GoldMine + Cloth + Coin + Paper + VictoryPoint + Politics + Science + Trade + AnyDevCard;
+        public int Count => Wheat + Wood + Brick + Ore + Sheep + GoldMine + Cloth + Coin + Paper + VictoryPoint + Politics + Science + Trade + AnyDevCard + Robber;
 
 
         public override string ToString()
         {
-            return $"[Count={Count}][Ore={Ore}][Brick={Brick}][Wheat={Wheat}][Wood={Wood}][Sheep={Sheep}][Gold={GoldMine}][Coin={Coin}][Cloth={Cloth}][Paper={Paper}]";
+            return $"[Count={Count}][Robber={Robber}][Ore={Ore}][Brick={Brick}][Wheat={Wheat}][Wood={Wood}][Sheep={Sheep}][Gold={GoldMine}][Coin={Coin}][Cloth={Cloth}][Paper={Paper}]";
         }
 
         public int CountForResource(ResourceType resourceCardType)
@@ -83,6 +90,9 @@ namespace Catan10.Models
             int count = 0;
             switch (resourceCardType)
             {
+                case ResourceType.Robber:
+                    count = Robber;
+                    break;
                 case ResourceType.Sheep:
                     count = Sheep;
                     break;
@@ -101,7 +111,7 @@ namespace Catan10.Models
                 case ResourceType.GoldMine:
                     count = GoldMine;
                     break;
-              
+
                 case ResourceType.Coin:
                     count = Coin;
                     break;

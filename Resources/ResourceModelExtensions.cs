@@ -17,19 +17,20 @@ namespace Catan3.Models
         {
 
             a.Wheat += b.Wheat;
-            a.Wood += b.Wood; 
-            a.Ore += b.Ore; 
+            a.Wood += b.Wood;
+            a.Ore += b.Ore;
             a.Sheep += b.Sheep;
             a.Brick += b.Brick;
             a.GoldMine += b.GoldMine;
-            a.Coin += b.Coin; 
+            a.Coin += b.Coin;
             a.Paper += b.Paper;
-            a.Cloth += b.Cloth; 
+            a.Cloth += b.Cloth;
             a.Politics += b.Politics;
             a.Trade += b.Trade;
             a.Science += b.Science;
             a.VictoryPoint += b.VictoryPoint;
             a.AnyDevCard += b.AnyDevCard;
+            a.Robber += b.Robber;
 
         }
 
@@ -85,6 +86,9 @@ namespace Catan3.Models
                 case ResourceType.GoldMine:
                     tr.GoldMine += 2;
                     break;
+                case ResourceType.Robber:
+                    tr.Robber += 2;
+                    break;
                 default:
                     break;
             }
@@ -117,6 +121,9 @@ namespace Catan3.Models
 
                 case ResourceType.GoldMine:
                     model.GoldMine += toAdd;
+                    break;
+                case ResourceType.Robber:
+                    model.Robber += toAdd;
                     break;
                 //case ResourceTileType.Cloth:
                 //    model.Cloth += toAdd;

@@ -31,12 +31,7 @@
                             FontFamily="{StaticResource CatanFont}"
                             Margin="-1,0,0,1" RenderTransformOrigin="0.5 0.5"
                             TextAlignment="Center"
-                             Foreground="{x:Bind BuildingViewModel.BIND_Foreground(BuildingViewModel.VisualState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}">
-                        <TextBlock.RenderTransform>
-                            <ScaleTransform
-                                    ScaleX="{x:Bind BuildingViewModel.Building.Metropolis, Converter={StaticResource MetroToScaleConverter}, Mode=OneWay}"
-                                    ScaleY="{x:Bind BuildingViewModel.Building.Metropolis, Converter={StaticResource MetroToScaleConverter}, Mode=OneWay}" />
-                        </TextBlock.RenderTransform>
+                            Foreground="{x:Bind BuildingViewModel.BIND_Foreground(BuildingViewModel.VisualState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}">
                     </TextBlock>
                 </Viewbox>
                 <Viewbox HorizontalAlignment="Right" VerticalAlignment="Center"
@@ -46,17 +41,7 @@
                             Text="{x:Bind BuildingViewModel.BuildIndex, Mode=OneWay}"
                             Visibility="{x:Bind BuildingViewModel.BIND_BuildIndexVisibility(BuildingViewModel.VisualState), Mode=OneWay}" />
                 </Viewbox>
-                <TextBlock Text="{x:Bind LaurelGlyph}"
-                         Foreground="{x:Bind BuildingViewModel.BIND_Foreground(BuildingViewModel.VisualState, BuildingViewModel.Building.OwnerId, BuildingViewModel.CurrentPlayer), Mode=OneWay}"
-                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                        RenderTransformOrigin=".5 .5"
-                        FontFamily="{StaticResource CatanFont}"
-                        FontWeight="Bold" TextAlignment="Center"
-                        Visibility="{x:Bind BuildingViewModel.Building.Metropolis,Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock.RenderTransform>
-                        <ScaleTransform ScaleX="1.25" ScaleY="1.25" />
-                    </TextBlock.RenderTransform>
-                </TextBlock>
+
             </Grid>
         </Viewbox>
 
