@@ -81,9 +81,6 @@ namespace Catan3.Models
         [Description("Supplemental")]
         Supplemental,
 
-        [Description("Move Baron")]
-        MustMoveBaron,
-
         [Description("Discard Cards")]
         TooManyCards,
 
@@ -114,7 +111,7 @@ namespace Catan3.Models
         UpgradeToMetro,
         [Description("Test Checkpoint")]
         TestCheckpoint,
-        [Description("Move Knight")]
+        [Description("Move Robber")]
         MustMoveRobber,
         [Description("DnD Agressor on Victim")]
         DisplaceVictimKnight,
@@ -160,7 +157,7 @@ namespace Catan3.Models
         [Description("Activate")]
         ActivateKnight,
 
-        [Description("Move Robber")]
+        [Description("Play Soldier")]
         Soldier,
 
         [Description("Politics")]
@@ -196,7 +193,8 @@ namespace Catan3.Models
         [Description("Metropolis")]
         UpgradeToMetro,
         KnightDisplacementMoveKnightOutOfTheWay,
-        MoveBaronWithKnight,
+        [Description("Rolled Seven")]
+        RolledSeven,
     }
 
 }

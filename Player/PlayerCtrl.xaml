@@ -25,77 +25,21 @@
                     <GridView.ItemTemplate>
                         <DataTemplate x:DataType="models:PlayerStatsViewModel">
                             <Viewbox Stretch="Uniform">
-                                <c:PlayerCounterCtrl
-                                        Glyph="{x:Bind Glyph, Mode=OneWay}"
-                                        Count="{x:Bind Count, Mode=OneWay}"
-                                        Foreground="{Binding ElementName=Player_Picture, Path=Stroke, Mode=OneWay}"
-                                        Background="{Binding ElementName=Player_Picture, Path=Fill, Mode=OneWay}" />
+                                <c:PlayerStatsCtrl
+                                        ViewModel="{x:Bind Mode=OneWay}" />
                             </Viewbox>
                         </DataTemplate>
                     </GridView.ItemTemplate>
                     <GridView.ItemContainerStyle>
                         <Style TargetType="GridViewItem">
-
-                            <Setter Property="FontFamily"
-                                    Value="{StaticResource CatanFont}" />
-                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="1,0,0,0" />
                             <Setter Property="Width" Value="40" />
                             <Setter Property="Height" Value="40" />
 
                         </Style>
                     </GridView.ItemContainerStyle>
                 </GridView>
-                <!--<c:PlayerCounterCtrl
-                        Count="{x:Bind PlayerViewModel.Player.Score, Mode=OneWay}"
-                        TextImage="&#xE907;"
-                        FontFamily="{StaticResource CatanFont}"
-                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
-                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
-                <c:PlayerCounterCtrl
-                        Count="{x:Bind PlayerViewModel.Player.RoadsPlayed, Mode=OneWay}"
-                        TextImage="&#xE909;"
-                        FontFamily="{StaticResource CatanFont}"
-                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
-                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
-                <c:PlayerCounterCtrl
-                        Count="{x:Bind PlayerViewModel.Player.SettlementsPlayed, Mode=OneWay}"
-                        TextImage="&#xE90E;"
-                        FontFamily="{StaticResource CatanFont}"
-                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
-                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
-                <c:PlayerCounterCtrl
-                        Count="{x:Bind PlayerViewModel.Player.CitiesPlayed, Mode=OneWay}"
-                        TextImage="&#xE900;"
-                        FontFamily="{StaticResource CatanFont}"
-                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
-                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
-                <c:PlayerCounterCtrl
-                        Count="{x:Bind PlayerViewModel.Player.KnightsPlayed, Mode=OneWay}"
-                        TextImage="&#xE930;"
-                        FontFamily="{StaticResource CatanFont}"
-                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
-                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
-
-                <c:PlayerCounterCtrl
-                        Count="{x:Bind PlayerViewModel.Player.ResourcesThisGame.Count, Mode=OneWay}"
-                        TextImage="&#xE910;" FontFamily="Catan"
-                        CountHorizontalAlignment="Right"
-                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
-                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
-
-                <c:PlayerCounterCtrl
-                        Count="{x:Bind PlayerViewModel.Player.ResourcesLostToRobber, Mode=OneWay}"
-                        TextImage="&#xE90C;" CountHorizontalAlignment="Left"
-                        FontFamily="{StaticResource CatanFont}"
-                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
-                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
-                <c:PlayerCounterCtrl
-                        Count="{x:Bind PlayerViewModel.Player.TimesTargeted, Mode=OneWay}"
-                        TextImage="&#xF272;" CountHorizontalAlignment="Center"
-                        CountVerticalAlignment="Bottom"
-                        FontFamily="Segoe MDL2 Assets"
-                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
-                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />-->
 
             </StackPanel>
             <StackPanel Name="SP_SecondRow" HorizontalAlignment="Stretch"

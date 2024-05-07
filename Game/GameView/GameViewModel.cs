@@ -54,35 +54,73 @@ namespace Catan3.Models
             }
 
 
-            MergeGameModel(gameModel);
+            this.GameModel = gameModel; // triggers OnGameModelChanged
 
 
         }
 
 
-
-        public void MergeGameModel(GameModel gameModel)
+        partial void OnGameModelChanged(GameModel? oldValue, GameModel newValue)
         {
-            if (gameModel.GameType != this.GameType) throw new Exception("Create new one instead of updating this one");
-            if (BoardInfo is null) throw new Exception("Board Info can't be null");
-            CreateOrUpdateTiles(gameModel);
-            MergeBuildings(gameModel);
-            MergeHarbors(gameModel);
-            MergeRoads(gameModel);
-            MergeRobber(gameModel);
-            MergePlayers(gameModel);
-            MergeRolls(gameModel);
-            MergeResources(gameModel);
-            MergePurchaseModel(gameModel);
+            if (newValue.GameType != this.GameType) throw new GameException("Create new one instead of updating this one");
+            if (BoardInfo is null) throw new GameException("Board Info can't be null");
+            MergeTiles(newValue);
+            MergeBuildings(newValue);
+            MergeHarbors(newValue);
+            MergeRoads(newValue);
+            MergeRobber(newValue);
+            MergePlayers(newValue);
+            MergeRolls(newValue);
+            MergeResources(newValue);
+            MergePurchaseModel(newValue);
 
-            GameModel = gameModel;
+            GameModel = newValue;
 
 
 
             SetGameStars();
-            FixupState(gameModel);
+            FixupState(newValue);
+            SetPlayerStars();
 
         }
+        /// <summary>
+        ///     This is calculated based on state in GameModel, but stored int the ViewModel
+        ///     call *after* MergeBuildings, as that calculates buildings.Stars
+        /// </summary>
+        private void SetPlayerStars()
+        {
+            var stars = new Dictionary<string, int>();
+            var ownedBuildings = Buildings.Where(b => b.Building.OwnerId is not null).ToList();
+            int factor = 1;
+            foreach (var building in ownedBuildings)
+            {
+                // this.TraceMessage($"{tile} Stars={tile.Stars}");
+                switch (building.Building.BuildingState)
+                {
+                    case BuildingState.Settlement:
+                        factor = 1;
+                        break;
+                    case BuildingState.City:
+                        factor = 2;
+                        break;
+                    default:
+                        factor = 0;
+                        break;
+                }
+              
+                int starValue = building.Stars * factor;
+                Debug.Assert(building.Building.OwnerId is not null); //filtered out above
+                stars[building.Building.OwnerId] = stars.GetValueOrDefault(building.Building.OwnerId, 0) + starValue;
+
+            }
+
+            foreach (var player in Players)
+            {
+                player.StatDictionary[StatName.Stars].Count = stars.GetValueOrDefault(player.Id, 0);
+
+            }
+        }
+
         /// <summary>
         ///     If we haven't done it yet, create the right view models
         ///     if the view model count is wrong for some reason -- maybe the board is the same, but an option 
@@ -149,37 +187,8 @@ namespace Catan3.Models
 
             this.GameResources.ResourceModel = gameModel.GameResourcesModel;
 
-
-
-
         }
 
-        //public static void CopyData<TViewModel, TModel>(
-        //    IList<TViewModel> viewModels,
-        //    IList<TModel> models,
-        //    Action<TViewModel, TModel> copyAction,
-        //    Func<TViewModel, TModel, bool> matchPredicate)
-        //{
-        //    if (viewModels.Count != models.Count)
-        //    {
-        //        throw new ArgumentException("The collections must be of the same size.");
-        //    }
-
-        //    for (int i = 0; i < viewModels.Count; i++)
-        //    {
-        //        var viewModel = viewModels[i];
-        //        var model = models[i];
-
-        //        // Check if the current items match based on the provided predicate
-        //        if (!matchPredicate(viewModel, model))
-        //        {
-        //            throw new InvalidOperationException("Mismatched elements at position " + i);
-        //        }
-
-        //        // Perform the custom action
-        //        copyAction(viewModel, model);
-        //    }
-        //}
 
 
         private void MergeRolls(GameModel gameModel)
@@ -212,31 +221,20 @@ namespace Catan3.Models
 
             for (int i = 0; i < Players.Count; i++)
             {
-                var playerViewModel = Players[i];
-                Debug.Assert(playerViewModel is not null);
-                var playerModel = gameModel.Players[i];
-                Debug.Assert(playerViewModel.Id == playerModel.Id);
-                playerViewModel.Player = playerModel;
-                playerViewModel.ResourcesThisTurn.ResourceModel = playerModel.ResourcesThisTurn;
-                playerViewModel.ResourcesThisGame.ResourceModel = playerModel.ResourcesThisGame;
-                if (playerModel.Id == gameModel.CurrentPlayerId) { this.CurrentPlayer = playerViewModel; }
+                Players[i].Player = gameModel.Players[i]; // triggers PlayerViewModel.PlayerChanged
 
-                playerViewModel.StatDictionary[StatName.Score].Count = playerModel.Score;
-                playerViewModel.StatDictionary[StatName.RoadsPlayed].Count = playerModel.SpentEntitlementsThisGame.Count(e => e == Entitlement.Road);
-                playerViewModel.StatDictionary[StatName.CitiesPlayed].Count = playerModel.SpentEntitlementsThisGame.Count(e => e == Entitlement.City);
-                playerViewModel.StatDictionary[StatName.SoldierPlayed].Count = playerModel.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier);
-                playerViewModel.StatDictionary[StatName.ResourcesLostToRobber].Count = playerModel.ResourcesThisGame.Robber;
-                playerViewModel.StatDictionary[StatName.TimesTargetted].Count = playerModel.TimesTargeted;
-                playerViewModel.StatDictionary[StatName.TotalResources].Count = playerModel.ResourcesThisGame.Count;
+                Debug.Assert(Players[i].Id == gameModel.Players[i].Id);
+
+                if (gameModel.Players[i].Id == gameModel.CurrentPlayerId)
+                {
+                    this.CurrentPlayer = Players[i]; // triggers OnCurrentPlayerChanged
+                }
             }
-
-
-            Messenger.Send(new CurrentPlayerChanged(this.CurrentPlayer));
 
         }
 
 
-        private void CreateOrUpdateTiles(GameModel gameModel)
+        private void MergeTiles(GameModel gameModel)
         {
             Contract.Assert(BoardInfo is not null);
             if (Tiles.Count == 0) // need to create them for the first time
@@ -246,12 +244,13 @@ namespace Catan3.Models
             }
             else
             {
+
                 Debug.Assert(Tiles.Count == gameModel.Tiles.Count);
                 for (int i = 0; i < gameModel.Tiles.Count; i++)
                 {
                     Contract.Assert(Tiles[i].Tile.TileKey == gameModel.Tiles[i].TileKey);
                     Tiles[i].Tile = gameModel.Tiles[i];
-
+                    Tiles[i].AllowTargetting = gameModel.GameState == GameState.MustMoveRobber;
                     Debug.Assert(Tiles[i].Tile == gameModel.Tiles[i]);
 
 

@@ -1,13 +1,10 @@
-﻿using System.Collections.ObjectModel;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
-using System.Security;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 namespace Catan3.Models
 {
@@ -74,7 +71,7 @@ namespace Catan3.Models
                 }
                 finally
                 {
-                    this.TraceMessage($"{this} unregistering for response");
+                   // this.TraceMessage($"{this} unregistering for response");
                     this.Messenger.Unregister<TileOwnersResponse>(this);
                 }
 
@@ -92,7 +89,7 @@ namespace Catan3.Models
         [RelayCommand]
         public void TargetPicked(string id)
         {
-            this.TraceMessage($"targetting {id}");
+         //   this.TraceMessage($"targetting {id}");
             this.Messenger.Send<MoveRobberMessage>(new MoveRobberMessage(this.Tile.TileKey, id));
         }
 

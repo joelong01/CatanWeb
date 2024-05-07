@@ -38,7 +38,7 @@ namespace Catan3.Models
                 case GameState.WaitingForNext:
                 case GameState.Supplemental:
                     return GamePhase.Purchase;
-                case GameState.MustMoveBaron:
+                case GameState.MustMoveRobber:
                 case GameState.TooManyCards:
                 case GameState.MustDestroyCity:
                     return GamePhase.ActionRequired;

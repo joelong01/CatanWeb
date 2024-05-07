@@ -34,7 +34,11 @@ namespace Catan3.Models
                 this.ErrorMessage = message;
             });
 
-            Messenger.Register<UpdateGameModel>(this, (recipient, message) => { MergeGameModel(message.GameModel); });
+            Messenger.Register<UpdateGameModel>(this, (recipient, message) => 
+            {
+                this.GameModel = message.GameModel; // OnGameModelChanged is triggered.
+              //  MergeGameModel(message.GameModel); 
+            });
 
             Messenger.Register<RequestTileOwners>(this, (recipient, message) =>
             {

@@ -80,7 +80,7 @@
 	  <Page Update="Controls\PurchaseCtrl.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
-	  <Page Update="Controls\PlayerCounterCtlr.xaml">
+	  <Page Update="Player\PlayerStatsCtrl.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
 	  <None Update="GenerateModels.tt">

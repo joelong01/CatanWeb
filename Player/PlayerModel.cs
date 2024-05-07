@@ -20,7 +20,10 @@ namespace Catan3.Models
         private int _goldRolls = 0;
 
         [ObservableProperty]
-        private bool _goodRoll = false;
+        private int _goodRolls = 0;
+
+        [ObservableProperty]
+        private int _badRolls = 0;
 
         [ObservableProperty]
         private bool _hasLongestRoad = false;
@@ -41,13 +44,13 @@ namespace Catan3.Models
         private int _noResourceCount = 0;
 
         [ObservableProperty]
-        private int _resourcesLostToRobber = 0;
-
-        [ObservableProperty]
-        private int _pips = 0;
+        private int _stars = 0;
 
         [ObservableProperty]
         private int _score;
+
+        [ObservableProperty]
+        private bool  _highestScore = false;
 
         [ObservableProperty]
         private int _timesTargeted;

@@ -20,16 +20,20 @@ namespace Catan3.Utility
         public static readonly string Pirate = "\uE90C";
         public static readonly string Ship = "\uE90D";
         public static readonly string SolidSheild = "\uE925";
-        public static readonly string Settlement = "\uE90E";
+        public static readonly string Settlement = "\uE926";
         public static readonly string FancySheild = "\uE927";
+        public static readonly string Soldier = "\uE90E";
         public static readonly string Knight = "\uE930";
         public static readonly string Road = "\uE909";
         public static readonly string Metro = "\uE90F";
-        public static readonly string LargestArmy = "\uE914";
-        public static readonly string LongestRoad = "\uE913";
+        public static readonly string LargestArmy = "\uE90E";
+        public static readonly string LongestRoad = "\uE915";
         public static readonly string Score = "\uE907";
-        public static readonly string Target = "\uE91A";
+        public static readonly string Target = "\uE916";
         public static readonly string Sum = "\uE910";
+        public static readonly string BadRoll = "\uE913";
+        public static readonly string GoodRoll = "\uE914";
+        public static readonly string Star = "\uE911";
 
 
         public static readonly Dictionary<Entitlement, string> EntitlementGlyph = new()

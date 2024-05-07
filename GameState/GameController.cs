@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -10,7 +9,6 @@ using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Xaml.Data;
-using Windows.Devices.PointOfService;
 
 namespace Catan3.Controller
 {
@@ -190,6 +188,7 @@ namespace Catan3.Controller
             {
                 // the entitlements you can get before rolling -- right now only the right to move the knight
                 ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.WaitingForRoll]);
+                gameModel.GameState = GameState.MustMoveRobber;
             }
             else
             {
@@ -323,14 +322,12 @@ namespace Catan3.Controller
 
 
                     ResourcesModel resources = building.Resources(effectiveType);
-                    
+
 
                     playerResources[building.OwnerId].Add(resources);
 
                     if (effectiveType == ResourceType.Robber)
                     {
-                        var owner = gameModel.Players.PlayerFromId(building.OwnerId) ?? throw new GameException($"Can't find {building.OwnerId}, Owner of building {building}", ErrorLevel.Critical);
-                        owner.ResourcesLostToRobber += resources.Count;
                         gameModel.Robber.ResourcesStolen += resources.Count;
                     }
 
@@ -344,7 +341,24 @@ namespace Catan3.Controller
                 player.ResourcesThisTurn = newResources;
                 player.ResourcesThisGame.Add(newResources);
                 gameModel.GameResourcesModel.Add(newResources);
+                if (player.ResourcesThisTurn.Count > player.ResourcesThisTurn.Robber)
+                {
+                    player.GoodRolls++;
+                }
+                else
+                {
+                    player.BadRolls++;
+                }
 
+            }
+
+            //
+            //  if they rolled 7...
+
+            if (msg.Roll.NormalRoll == ValidCatanRoll.Seven)
+            {
+                gameModel.CurrentPlayer().UnspentEntitlements.Add(Entitlement.RolledSeven);
+                gameModel.GameState = GameState.MustMoveRobber;
             }
 
             // save our changes to the GameModel to the log
@@ -507,7 +521,7 @@ namespace Catan3.Controller
                     break;
                 case GameState.Supplemental:
                     break;
-                case GameState.MustMoveBaron:
+                case GameState.MustMoveRobber:
                     break;
                 case GameState.TooManyCards:
                     break;
@@ -535,8 +549,7 @@ namespace Catan3.Controller
                     break;
                 case GameState.TestCheckpoint:
                     break;
-                case GameState.MustMoveRobber:
-                    break;
+
                 case GameState.DisplaceVictimKnight:
                     break;
                 case GameState.DisplaceKnightMoveVictim:
@@ -573,7 +586,7 @@ namespace Catan3.Controller
         {
             GameModel gameModel = Log.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse]);
-            ThrowIfNoEntitlement(gameModel, Entitlement.Road);
+            ThrowIfNoEntitlement(gameModel, [Entitlement.Road]);
             var roadKey = message.RoadKey;
             // Retrieve the road model corresponding to the road key.
             var roadModel = gameModel.Roads.FirstOrDefault(r => r.RoadKey == roadKey);
@@ -624,12 +637,13 @@ namespace Catan3.Controller
             MarkBuildableBuildings(gameModel);
             SetActionFlags(gameModel);
             SetPlaySoldierAccess(gameModel);
+           
             gameModel.ActionFlags.RedoEnabled = false;
             Log.Done(gameModel);
         }
 
 
-
+      
 
 
         private void SetPlaySoldierAccess(GameModel gameModel)
@@ -652,14 +666,16 @@ namespace Catan3.Controller
             moveRobber.Enabled = true;
         }
 
-        private void ThrowIfNoEntitlement(GameModel gameModel, Entitlement entitlement)
+        private void ThrowIfNoEntitlement(GameModel gameModel, Entitlement[] entitlements)
         {
             var currentPlayer = gameModel.CurrentPlayer();
-            if (!gameModel.CurrentPlayer().UnspentEntitlements.Contains(entitlement))
+            // Check if at least one entitlement is not in the unspent entitlements.
+            if (!entitlements.Any(e => currentPlayer.UnspentEntitlements.Contains(e)))
             {
-                throw new GameException($"{currentPlayer.Id} does not have a {entitlement}");
+                throw new GameException($"{currentPlayer.Id} does not have the required entitlement.");
             }
         }
+
 
         /// <summary>
         /// Upgrades a building based on its current state.
@@ -690,25 +706,25 @@ namespace Catan3.Controller
             {
                 case BuildingState.PossibleSettlement:
 
-                    ThrowIfNoEntitlement(gameModel, Entitlement.Settlement);
+                    ThrowIfNoEntitlement(gameModel, [Entitlement.Settlement]);
                     building.BuildingState = BuildingState.Settlement;
                     building.OwnerId = gameModel.CurrentPlayerId;
-             
+
                     ConsumeEntitlement(gameModel, Entitlement.Settlement);
                     break;
 
                 case BuildingState.Settlement:
-                    ThrowIfNoEntitlement(gameModel, Entitlement.City);
+                    ThrowIfNoEntitlement(gameModel, [Entitlement.City]);
                     if (building.OwnerId != gameModel.CurrentPlayerId)
                     {
                         throw new GameException($"Don't try to upgrade somebody else's building: {building.OwnerId}");
                     }
                     building.BuildingState = BuildingState.City;
-         
+
                     ConsumeEntitlement(gameModel, Entitlement.City);
                     break;
                 case BuildingState.City:
-                    ThrowIfNoEntitlement(gameModel, Entitlement.BuyKnight);
+                    ThrowIfNoEntitlement(gameModel, [Entitlement.BuyKnight]);
                     // Ensure the building is owned by the current player before upgrading.
                     if (building.OwnerId != gameModel.CurrentPlayerId)
                     {
@@ -717,7 +733,7 @@ namespace Catan3.Controller
                     // Upgrade settlement to city, and city potentially to knight.
 
                     building.BuildingState = BuildingState.Knight;
-              
+
                     ConsumeEntitlement(gameModel, Entitlement.BuyKnight);
 
                     break;
@@ -757,12 +773,15 @@ namespace Catan3.Controller
         /// <param name="gameModel">The game model containing the players whose scores need updating.</param>
         private void UpdateScore(GameModel gameModel)
         {
+            int maxScore = 0;
             // Iterate through all players to update their scores
             foreach (var player in gameModel.Players)
             {
+                player.HighestScore = false;
 
                 int citiesPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.City);
                 int settlementsPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.Settlement);
+                int knightsPlayed = player.SpentEntitlementsThisGame.Count(e=> e== Entitlement.Soldier);
 
                 // Calculate base score from cities and settlements
                 int score = citiesPlayed * 2 + settlementsPlayed;
@@ -781,6 +800,12 @@ namespace Catan3.Controller
 
                 // Update the player's score
                 player.Score = score;
+                if (maxScore < player.Score) maxScore = player.Score;
+            }
+
+            foreach (var player in gameModel.Players)
+            {
+                player.HighestScore = ( player.Score == maxScore );
             }
         }
 
@@ -796,15 +821,34 @@ namespace Catan3.Controller
             GameModel gameModel = Log.CopyCurrent();
 
             // Validate the current game state
-            ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.WaitingForRoll]);
+            ThrowIfWrongState(gameModel.GameState, [GameState.MustMoveRobber]);
             ThrowIfBadPlayer(gameModel.CurrentPlayerId, gameModel.Players);
-            ThrowIfNoEntitlement(gameModel, Entitlement.Soldier); //TODO: fix this move knight state machine/entitlements
+            ThrowIfNoEntitlement(gameModel, [Entitlement.Soldier, Entitlement.RolledSeven]);
 
             // Update the robber's position and the player who moved it
             gameModel.Robber.Coordinates = moveRobber.Coordinates;
             gameModel.Robber.MovedBy = gameModel.CurrentPlayerId;
+            if (moveRobber.TargetPlayerId is not null)
+            {
+                var target = gameModel.Players.PlayerFromId(moveRobber.TargetPlayerId) ?? throw new GameException($"TargetPlayerId {moveRobber.TargetPlayerId} is invalid");
+                target.TimesTargeted++;
+            }
+            //
+            //  remove the entitlement that allowed the user to move the baron.
+            //  if there is soldier, there can't be a rolled seven.
+            if (gameModel.CurrentPlayer().UnspentEntitlements.Contains(Entitlement.Soldier))
+            {
+                Debug.Assert(gameModel.CurrentPlayer().UnspentEntitlements.Contains(Entitlement.RolledSeven) == false);
+                ConsumeEntitlement(gameModel, Entitlement.Soldier);
+                gameModel.GameState = gameModel.PreviousGameState;
+            }
+            else
+            {
+                Debug.Assert(gameModel.CurrentPlayer().UnspentEntitlements.Contains(Entitlement.RolledSeven));
+                ConsumeEntitlement(gameModel, Entitlement.RolledSeven);
+                gameModel.GameState = GameState.WaitingForNext;
+            }
 
-            ConsumeEntitlement(gameModel, Entitlement.Soldier);
             LogDone(gameModel);
             return gameModel;
         }
@@ -1192,7 +1236,7 @@ namespace Catan3.Controller
                     return ( total < gameModel.ResourceRules.MaxSettlements );
                 case Entitlement.City:
                     return ( total < gameModel.ResourceRules.MaxCities );
-                case Entitlement.MoveBaronWithKnight:
+                case Entitlement.Soldier:
                     return true;
                 default:
                     throw new Exception($"TODO: add support for {entitlement} to AllowPurchase");

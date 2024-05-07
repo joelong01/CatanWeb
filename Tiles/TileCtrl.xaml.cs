@@ -125,6 +125,8 @@ namespace Catan3.Controls
 
         private void OnRightClicked(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs e)
         {
+            if (!TileViewModel.AllowTargetting) return;
+
             this.TileViewModel.TargetCommand.Execute(null);
      //       Debug.Assert(TileViewModel.Targets.Count != 0);
             var flyout = new MenuFlyout();

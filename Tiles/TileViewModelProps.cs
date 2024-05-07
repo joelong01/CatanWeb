@@ -26,6 +26,8 @@ namespace Catan3.Models
         [ObservableProperty]
         private CatanOrientation _orientation = CatanOrientation.FaceUp;
 
+        [ObservableProperty]
+        private bool _allowTargetting = false;
 
         public static TileViewModel Default { get; } = new(TileModel.Default, BoardLayout.Default);
 

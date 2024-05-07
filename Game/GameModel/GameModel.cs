@@ -91,7 +91,13 @@ namespace Catan3.Models
         [ObservableProperty]
         private ResourcesModel _gameResourcesModel = new();
 
+        [ObservableProperty]
+        private GameState _previousGameState = GameState.Uninitialized;
 
+        partial void OnGameStateChanged(GameState oldValue, GameState newValue)
+        {
+            PreviousGameState = oldValue;
+        }
 
         public override string ToString()
         {

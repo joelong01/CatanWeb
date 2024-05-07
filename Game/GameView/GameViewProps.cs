@@ -102,8 +102,7 @@ namespace Catan3.Models
         partial void OnCurrentPlayerChanged(PlayerViewModel? oldValue, PlayerViewModel newValue)
         {
             if (newValue is null) return;
-            //   this.TraceMessage($"Current Player: {oldValue} -> {newValue}");
-            this.GameModel.CurrentPlayerId = newValue.Id;
+          
             Messenger.Send(new CurrentPlayerChanged(newValue));
         }
 
