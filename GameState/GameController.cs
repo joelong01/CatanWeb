@@ -186,7 +186,7 @@ namespace Catan3.Controller
         {
             GameModel gameModel = Log.CopyCurrent();
             Entitlement entitlement = message.Entitlement;
-            if (entitlement == Entitlement.PlayKnight)
+            if (entitlement == Entitlement.Soldier)
             {
                 // the entitlements you can get before rolling -- right now only the right to move the knight
                 ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.WaitingForRoll]);
@@ -212,25 +212,25 @@ namespace Catan3.Controller
         {
             switch (entitlement)
             {
-                case Entitlement.PlayKnight:
+                case Entitlement.Soldier:
                     if (gameModel.CurrentPlayer().SpentEntitlementsThisTurn.Contains(entitlement)) return false;
                     if (gameModel.CurrentPlayer().UnspentEntitlements.Contains(entitlement)) return false;
                     return true;
 
                 case Entitlement.City:
                     int unspentCities = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
-                    if (unspentCities + gameModel.CurrentPlayer().CitiesPlayed > gameModel.ResourceRules.MaxCities) return false;
+                    if (unspentCities + gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement) > gameModel.ResourceRules.MaxCities) return false;
 
                     return true;
 
                 case Entitlement.Settlement:
                     int unspentSettlement = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
-                    if (unspentSettlement + gameModel.CurrentPlayer().SettlementsPlayed > gameModel.ResourceRules.MaxSettlements) return false;
+                    if (unspentSettlement + gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement) > gameModel.ResourceRules.MaxSettlements) return false;
                     return true;
 
                 case Entitlement.Road:
                     int unspentRoads = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
-                    if (unspentRoads + gameModel.CurrentPlayer().RoadsPlayed > gameModel.ResourceRules.MaxRoads) return false;
+                    if (unspentRoads + gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement) > gameModel.ResourceRules.MaxRoads) return false;
 
                     return true;
 
@@ -239,6 +239,8 @@ namespace Catan3.Controller
             }
 
         }
+
+
 
         public GameModel NewGame(GameType selectedGame, List<string> playerIds)
         {
@@ -533,7 +535,7 @@ namespace Catan3.Controller
                     break;
                 case GameState.TestCheckpoint:
                     break;
-                case GameState.MustMoveKnight:
+                case GameState.MustMoveRobber:
                     break;
                 case GameState.DisplaceVictimKnight:
                     break;
@@ -601,7 +603,6 @@ namespace Catan3.Controller
             roadModel.OwnerId = gameModel.CurrentPlayerId;
             roadModel.RoadState = RoadState.Road;
             var currentPlayerModel = gameModel.CurrentPlayer();
-            currentPlayerModel.RoadsPlayed++;
             ConsumeEntitlement(gameModel, Entitlement.Road);
 
 
@@ -622,7 +623,7 @@ namespace Catan3.Controller
             MarkBuildableRoads(gameModel);
             MarkBuildableBuildings(gameModel);
             SetActionFlags(gameModel);
-            SetPlayKnightAccess(gameModel);
+            SetPlaySoldierAccess(gameModel);
             gameModel.ActionFlags.RedoEnabled = false;
             Log.Done(gameModel);
         }
@@ -631,9 +632,9 @@ namespace Catan3.Controller
 
 
 
-        private void SetPlayKnightAccess(GameModel gameModel)
+        private void SetPlaySoldierAccess(GameModel gameModel)
         {
-            var moveRobber = gameModel.PurchaseModel(Entitlement.PlayKnight );
+            var moveRobber = gameModel.PurchaseModel(Entitlement.Soldier );
             if (gameModel.GameState != GameState.WaitingForNext && gameModel.GameState != GameState.WaitingForRoll)
             {
                 moveRobber.Enabled = false;
@@ -643,7 +644,7 @@ namespace Catan3.Controller
             // can buy it only once
             PlayerModel currentPlayer = gameModel.CurrentPlayer();
 
-            if (currentPlayer.SpentEntitlementsThisTurn.Contains(Entitlement.PlayKnight) || currentPlayer.UnspentEntitlements.Contains(Entitlement.PlayKnight))
+            if (currentPlayer.SpentEntitlementsThisTurn.Contains(Entitlement.Soldier) || currentPlayer.UnspentEntitlements.Contains(Entitlement.Soldier))
             {
                 moveRobber.Enabled = false;
                 return;
@@ -692,7 +693,7 @@ namespace Catan3.Controller
                     ThrowIfNoEntitlement(gameModel, Entitlement.Settlement);
                     building.BuildingState = BuildingState.Settlement;
                     building.OwnerId = gameModel.CurrentPlayerId;
-                    currentPlayerModel.SettlementsPlayed++;
+             
                     ConsumeEntitlement(gameModel, Entitlement.Settlement);
                     break;
 
@@ -703,8 +704,7 @@ namespace Catan3.Controller
                         throw new GameException($"Don't try to upgrade somebody else's building: {building.OwnerId}");
                     }
                     building.BuildingState = BuildingState.City;
-                    currentPlayerModel.SettlementsPlayed--;
-                    currentPlayerModel.CitiesPlayed++;
+         
                     ConsumeEntitlement(gameModel, Entitlement.City);
                     break;
                 case BuildingState.City:
@@ -717,8 +717,7 @@ namespace Catan3.Controller
                     // Upgrade settlement to city, and city potentially to knight.
 
                     building.BuildingState = BuildingState.Knight;
-                    currentPlayerModel.KnightsPlayed++;
-                    currentPlayerModel.CitiesPlayed--;
+              
                     ConsumeEntitlement(gameModel, Entitlement.BuyKnight);
 
                     break;
@@ -761,8 +760,12 @@ namespace Catan3.Controller
             // Iterate through all players to update their scores
             foreach (var player in gameModel.Players)
             {
+
+                int citiesPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.City);
+                int settlementsPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.Settlement);
+
                 // Calculate base score from cities and settlements
-                int score = player.CitiesPlayed * 2 + player.SettlementsPlayed;
+                int score = citiesPlayed * 2 + settlementsPlayed;
 
                 // Add bonus points for having the longest road
                 if (player.HasLongestRoad)
@@ -795,13 +798,13 @@ namespace Catan3.Controller
             // Validate the current game state
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.WaitingForRoll]);
             ThrowIfBadPlayer(gameModel.CurrentPlayerId, gameModel.Players);
-            ThrowIfNoEntitlement(gameModel, Entitlement.PlayKnight); //TODO: fix this move knight state machine/entitlements
+            ThrowIfNoEntitlement(gameModel, Entitlement.Soldier); //TODO: fix this move knight state machine/entitlements
 
             // Update the robber's position and the player who moved it
             gameModel.Robber.Coordinates = moveRobber.Coordinates;
             gameModel.Robber.MovedBy = gameModel.CurrentPlayerId;
 
-            ConsumeEntitlement(gameModel, Entitlement.PlayKnight);
+            ConsumeEntitlement(gameModel, Entitlement.Soldier);
             LogDone(gameModel);
             return gameModel;
         }

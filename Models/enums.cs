@@ -115,7 +115,7 @@ namespace Catan3.Models
         [Description("Test Checkpoint")]
         TestCheckpoint,
         [Description("Move Knight")]
-        MustMoveKnight,
+        MustMoveRobber,
         [Description("DnD Agressor on Victim")]
         DisplaceVictimKnight,
         [Description("Move Target Knight")]
@@ -161,7 +161,7 @@ namespace Catan3.Models
         ActivateKnight,
 
         [Description("Move Robber")]
-        PlayKnight,
+        Soldier,
 
         [Description("Politics")]
         PoliticsUpgrade,

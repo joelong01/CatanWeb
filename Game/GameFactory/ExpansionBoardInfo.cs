@@ -115,7 +115,7 @@ namespace Catan3.Models
                 new EntitlementPurchaseModel(Entitlement.City),
                 new EntitlementPurchaseModel(Entitlement.Settlement),
                 new EntitlementPurchaseModel(Entitlement.Road),
-                new EntitlementPurchaseModel(Entitlement.PlayKnight),
+                new EntitlementPurchaseModel(Entitlement.Soldier),
             ];
     }
 }

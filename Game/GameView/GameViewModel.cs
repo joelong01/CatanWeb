@@ -220,6 +220,14 @@ namespace Catan3.Models
                 playerViewModel.ResourcesThisTurn.ResourceModel = playerModel.ResourcesThisTurn;
                 playerViewModel.ResourcesThisGame.ResourceModel = playerModel.ResourcesThisGame;
                 if (playerModel.Id == gameModel.CurrentPlayerId) { this.CurrentPlayer = playerViewModel; }
+
+                playerViewModel.StatDictionary[StatName.Score].Count = playerModel.Score;
+                playerViewModel.StatDictionary[StatName.RoadsPlayed].Count = playerModel.SpentEntitlementsThisGame.Count(e => e == Entitlement.Road);
+                playerViewModel.StatDictionary[StatName.CitiesPlayed].Count = playerModel.SpentEntitlementsThisGame.Count(e => e == Entitlement.City);
+                playerViewModel.StatDictionary[StatName.SoldierPlayed].Count = playerModel.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier);
+                playerViewModel.StatDictionary[StatName.ResourcesLostToRobber].Count = playerModel.ResourcesThisGame.Robber;
+                playerViewModel.StatDictionary[StatName.TimesTargetted].Count = playerModel.TimesTargeted;
+                playerViewModel.StatDictionary[StatName.TotalResources].Count = playerModel.ResourcesThisGame.Count;
             }
 
 

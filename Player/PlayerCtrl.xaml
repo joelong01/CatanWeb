@@ -7,26 +7,110 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
 
-    <Grid Margin="25">
-        <Grid BorderBrush="Black" BorderThickness="2" Height="200">
+    <Grid Background="DarkGray" BorderBrush="DarkGray" BorderThickness="2">
+        <StackPanel>
+            <StackPanel Name="SP_FirstRow" Height="50" Orientation="Horizontal"
+                    HorizontalAlignment="Stretch" Background="DarkGray">
+                <Ellipse Name="Player_Picture" HorizontalAlignment="Left"
+                        VerticalAlignment="Top" Width="50" Height="50"
+                        Stroke="{x:Bind PlayerViewModel.GetBrush(PlayerViewModel.Foreground, x:True), Mode=OneWay}"
+                        Fill="{x:Bind PlayerViewModel.GetBrush(PlayerViewModel.Background, x:False), Mode=OneWay}" />
+                <GridView
+                        ItemsSource="{x:Bind PlayerViewModel.PlayerStats, Mode=OneWay}">
+                    <GridView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <ItemsWrapGrid Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </GridView.ItemsPanel>
+                    <GridView.ItemTemplate>
+                        <DataTemplate x:DataType="models:PlayerStatsViewModel">
+                            <Viewbox Stretch="Uniform">
+                                <c:PlayerCounterCtrl
+                                        Glyph="{x:Bind Glyph, Mode=OneWay}"
+                                        Count="{x:Bind Count, Mode=OneWay}"
+                                        Foreground="{Binding ElementName=Player_Picture, Path=Stroke, Mode=OneWay}"
+                                        Background="{Binding ElementName=Player_Picture, Path=Fill, Mode=OneWay}" />
+                            </Viewbox>
+                        </DataTemplate>
+                    </GridView.ItemTemplate>
+                    <GridView.ItemContainerStyle>
+                        <Style TargetType="GridViewItem">
 
-            <StackPanel HorizontalAlignment="Stretch" Background="DarkKhaki">
-                <StackPanel HorizontalAlignment="Stretch"
-                        Orientation="Horizontal" Background="AliceBlue"
-                        Height="50">
+                            <Setter Property="FontFamily"
+                                    Value="{StaticResource CatanFont}" />
+                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="Width" Value="40" />
+                            <Setter Property="Height" Value="40" />
 
-                </StackPanel>
-                <c:TrackedResourcesCtrl ResourcesViewModel="{x:Bind PlayerViewModel.ResourcesThisTurn, Mode=OneWay}"/>
-                <StackPanel HorizontalAlignment="Stretch"
-                        Orientation="Horizontal" Background="AliceBlue"
-                        Height="50">
+                        </Style>
+                    </GridView.ItemContainerStyle>
+                </GridView>
+                <!--<c:PlayerCounterCtrl
+                        Count="{x:Bind PlayerViewModel.Player.Score, Mode=OneWay}"
+                        TextImage="&#xE907;"
+                        FontFamily="{StaticResource CatanFont}"
+                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
+                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
+                <c:PlayerCounterCtrl
+                        Count="{x:Bind PlayerViewModel.Player.RoadsPlayed, Mode=OneWay}"
+                        TextImage="&#xE909;"
+                        FontFamily="{StaticResource CatanFont}"
+                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
+                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
+                <c:PlayerCounterCtrl
+                        Count="{x:Bind PlayerViewModel.Player.SettlementsPlayed, Mode=OneWay}"
+                        TextImage="&#xE90E;"
+                        FontFamily="{StaticResource CatanFont}"
+                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
+                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
+                <c:PlayerCounterCtrl
+                        Count="{x:Bind PlayerViewModel.Player.CitiesPlayed, Mode=OneWay}"
+                        TextImage="&#xE900;"
+                        FontFamily="{StaticResource CatanFont}"
+                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
+                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
+                <c:PlayerCounterCtrl
+                        Count="{x:Bind PlayerViewModel.Player.KnightsPlayed, Mode=OneWay}"
+                        TextImage="&#xE930;"
+                        FontFamily="{StaticResource CatanFont}"
+                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
+                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
 
-                </StackPanel>
+                <c:PlayerCounterCtrl
+                        Count="{x:Bind PlayerViewModel.Player.ResourcesThisGame.Count, Mode=OneWay}"
+                        TextImage="&#xE910;" FontFamily="Catan"
+                        CountHorizontalAlignment="Right"
+                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
+                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
+
+                <c:PlayerCounterCtrl
+                        Count="{x:Bind PlayerViewModel.Player.ResourcesLostToRobber, Mode=OneWay}"
+                        TextImage="&#xE90C;" CountHorizontalAlignment="Left"
+                        FontFamily="{StaticResource CatanFont}"
+                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
+                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />
+                <c:PlayerCounterCtrl
+                        Count="{x:Bind PlayerViewModel.Player.TimesTargeted, Mode=OneWay}"
+                        TextImage="&#xF272;" CountHorizontalAlignment="Center"
+                        CountVerticalAlignment="Bottom"
+                        FontFamily="Segoe MDL2 Assets"
+                        Foreground="{x:Bind PlayerViewModel.ForegroundBrush}"
+                        Background="{x:Bind PlayerViewModel.BackgroundBrush}" />-->
+
+            </StackPanel>
+            <StackPanel Name="SP_SecondRow" HorizontalAlignment="Stretch"
+                    Orientation="Horizontal" Background="DarkKhaki">
+
+                <c:TrackedResourcesCtrl Height="100"
+                        ResourcesViewModel="{x:Bind PlayerViewModel.ResourcesThisTurn, Mode=OneWay}" />
             </StackPanel>
 
-            <Ellipse HorizontalAlignment="Left" VerticalAlignment="Top"
-                    Width="50" Height="50" Margin="-25, -25, 0, 0"
-                    Fill="{x:Bind PlayerViewModel.GetBrush(PlayerViewModel.Background, x:False), Mode=OneWay}" />
-        </Grid>
+            <StackPanel Name="SP_ThirdRow" HorizontalAlignment="Stretch"
+                    Orientation="Horizontal" Background="DarkGray" Height="50">
+
+            </StackPanel>
+
+        </StackPanel>
     </Grid>
+
 </UserControl>

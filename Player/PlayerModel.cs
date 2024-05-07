@@ -15,11 +15,6 @@ namespace Catan3.Models
         [ObservableProperty]
         private string _id ;
 
-        [ObservableProperty]
-        private int _citiesPlayed;
-
-        [ObservableProperty]
-        private int _knightsPlayed = 0;
 
         [ObservableProperty]
         private int _goldRolls = 0;
@@ -52,16 +47,7 @@ namespace Catan3.Models
         private int _pips = 0;
 
         [ObservableProperty]
-        private int _roadsPlayed;
-
-        [ObservableProperty]
         private int _score;
-
-        [ObservableProperty]
-        private int _settlementsPlayed;
-
-        [ObservableProperty]
-        private int _shipsPlayed;
 
         [ObservableProperty]
         private int _timesTargeted;

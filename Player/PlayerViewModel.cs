@@ -1,18 +1,50 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Linq;
 using System.Text.Json.Serialization;
+using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
+using Windows.UI.Core;
 
 namespace Catan3.Models
 {
+    public enum StatName
+    {
+        Score,
+        RoadsPlayed,
+        SettlementsPlayed,
+        CitiesPlayed,
+        SoldierPlayed,
+        ResourcesLostToRobber,
+        TimesTargetted,
+        TotalResources
+    }
+
+
+
     //
     //  this has all the data about the player that the service doesn't care about
     //  e.g. how to display information about the player -- colors, picutre, etc.
     public partial class PlayerViewModel : ObservableObject
     {
+
+        private static List<(StatName statName, string glyph)> Stats = [
+            (StatName.Score, CatanFont.Score),
+            (StatName.RoadsPlayed, CatanFont.Road) ,
+            (StatName.CitiesPlayed, CatanFont.City) ,
+            (StatName.SettlementsPlayed, CatanFont.Settlement),
+            (StatName.SoldierPlayed, CatanFont.Knight),
+            (StatName.ResourcesLostToRobber, CatanFont.Pirate),
+            (StatName.TimesTargetted, CatanFont.Target) ,
+            (StatName.TotalResources, CatanFont.Sum)
+
+            ];
+
         [ObservableProperty]
         private string _id = string.Empty;
 
@@ -37,9 +69,15 @@ namespace Catan3.Models
         [ObservableProperty]
         private ResourcesViewModel _resourcesThisGame = new(GameViewModelStatics.PlayerTrackResourceList);
 
-        public PlayerViewModel() : this("Nameless", Colors.White, Colors.HotPink) { 
-        
-            
+        [ObservableProperty]
+        private ObservableCollection<PlayerStatsViewModel> _playerStats = [];
+
+        public Dictionary<StatName, PlayerStatsViewModel> StatDictionary { get; } = [];
+
+        public PlayerViewModel() : this("Nameless", Colors.White, Colors.HotPink)
+        {
+
+
         }
 
 
@@ -53,8 +91,18 @@ namespace Catan3.Models
             Background = background;
             Id = name + "-0001";
 
-       
+            foreach (var stat in Stats)
+            {
+                StatDictionary[stat.statName] = new PlayerStatsViewModel(stat.glyph);
+            }
+
+           
+
+            PlayerStats.AddRange([.. StatDictionary.Values]);
         }
+
+
+
         public override string ToString()
         {
             return $"{Name}";

@@ -15,6 +15,7 @@
 		<StartupObject></StartupObject>
 	</PropertyGroup>
 	<ItemGroup>
+		<None Remove="Controls\PlayerCounterCtlr.xaml" />
 		<None Remove="Controls\PurchaseCtrl.xaml" />
 		<None Remove="FlipperCtrl.xaml" />
 		<None Remove="GameButtons.xaml" />
@@ -77,6 +78,9 @@
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
 	  <Page Update="Controls\PurchaseCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Controls\PlayerCounterCtlr.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
 	  <None Update="GenerateModels.tt">

@@ -210,5 +210,7 @@ namespace Catan3.Models
             return gameModel.Players.PlayerFromId(gameModel.CurrentPlayerId) ?? throw new GameException($"Can't find player {gameModel.CurrentPlayerId}");
         }
 
+       
+
     }
 }

@@ -209,18 +209,23 @@
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel HorizontalAlignment="Stretch"
-                                Margin="10,0,0,0" Padding="0" />
+                               
+                                Padding="0" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemContainerStyle>
                     <Style TargetType="ContentPresenter">
-                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Padding" Value="2" />
+                        <Setter Property="BorderBrush" Value="Black" />
+                        <Setter Property="BorderThickness" Value="1" />
 
                     </Style>
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="models:PlayerViewModel">
-                        <c:PlayerCtrl PlayerViewModel="{x:Bind Mode=OneWay}" />
+                       
+                            <c:PlayerCtrl PlayerViewModel="{x:Bind Mode=OneWay}"/>
+                      
                     </DataTemplate>
 
                 </ItemsControl.ItemTemplate>
