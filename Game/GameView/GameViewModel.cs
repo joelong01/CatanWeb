@@ -107,7 +107,7 @@ namespace Catan3.Models
                         factor = 0;
                         break;
                 }
-              
+
                 int starValue = building.Stars * factor;
                 Debug.Assert(building.Building.OwnerId is not null); //filtered out above
                 stars[building.Building.OwnerId] = stars.GetValueOrDefault(building.Building.OwnerId, 0) + starValue;
@@ -117,7 +117,8 @@ namespace Catan3.Models
             foreach (var player in Players)
             {
                 player.StatDictionary[StatName.Stars].Count = stars.GetValueOrDefault(player.Id, 0);
-
+                player.StatDictionary[StatName.LongestRoad].Highlighted = player.Player.HasLongestRoad;
+                player.StatDictionary[StatName.SoldierPlayed].Highlighted = player.Player.LargestArmy;
             }
         }
 
@@ -148,6 +149,8 @@ namespace Catan3.Models
             {
                 var unspent = currentPlayer.UnspentEntitlements.Count( e => e == gameModel.EntitlementPurchaseModel[i].Entitlement );
                 this.PurchasableEntitlements[i].Merge(gameModel.EntitlementPurchaseModel[i], unspent, this.CurrentPlayer.ForegroundBrush, this.CurrentPlayer.BackgroundBrush);
+
+                
             }
         }
 

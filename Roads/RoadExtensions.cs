@@ -1,10 +1,43 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using Catan3.Controls;
 using Catan3.Utility;
+using Windows.Services.Maps.OfflineMaps;
 namespace Catan3.Models
 {
     public static class RoadExtensions
     {
+        public static List<RoadModel> OwnedAdjacentRoadsNotCounted(this GameModel gameModel, RoadModel road, List<RoadModel> owned, RoadModel? blockedFork, out bool adjacentFork)
+        {
+            List<RoadModel> list = [];
+            var ownedAdjacentRoads = gameModel.Roads.AdjacentRoads(road.RoadKey).Where(r=> r.OwnerId == road.OwnerId).ToList();
+            foreach (RoadModel r in ownedAdjacentRoads)
+            {
+                Debug.Assert(r.OwnerId == road.OwnerId);
+                var buildingBetween = gameModel.BuildingBetweenRoads(road.RoadKey, r.RoadKey);
+              
+                if (buildingBetween is not null && buildingBetween.OwnerId is not null && buildingBetween.OwnerId != r.OwnerId) continue; // if there is a building we don't own there, we stop looking
+
+                
+
+                // dont' add it twice
+                if (!owned.Contains(r))
+                {
+                    list.Add(r);
+                }
+            }
+
+
+            adjacentFork = false;
+            if (blockedFork is not null && list.Contains(blockedFork))
+            {
+                list.Remove(blockedFork);
+                adjacentFork = true;
+            }
+
+            return list;
+        }
 
         public static List<RoadModel> AdjacentRoads(this IEnumerable<RoadModel> roads, RoadKey key)
         {
@@ -88,9 +121,9 @@ namespace Catan3.Models
             {
                 case HexSide.TopRight:
                     directions.Add((HexSide.BottomLeft, Direction.NorthEast));
-                   
+
                     break;
-              
+
                 case HexSide.BottomRight:
                     directions.Add((HexSide.TopLeft, Direction.SouthEast));
                     break;
@@ -109,5 +142,7 @@ namespace Catan3.Models
             }
             return directions;
         }
+
+
     }
 }

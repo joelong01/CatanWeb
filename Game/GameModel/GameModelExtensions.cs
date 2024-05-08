@@ -45,7 +45,7 @@ namespace Catan3.Models
                 default:
                     return GamePhase.Unspecified;
             }
-            
+
         }
 
         public static EntitlementPurchaseModel PurchaseModel(this GameModel gameModel, Entitlement entitlement)
@@ -105,6 +105,61 @@ namespace Catan3.Models
             }
 
             return result;
+        }
+
+        // given a road, what buildings are next to it?
+        public static List<BuildingModel> AdjacentBuildings(this GameModel gameModel, RoadKey roadKey)
+        {
+            var result = new List<BuildingModel>();
+            switch (roadKey.HexSide)
+            {
+                case HexSide.None:
+                    throw new GameException($"Invalid Side for road key {roadKey}");
+                case HexSide.Top:
+                    result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.TopLeft)));
+                    result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.TopRight)));
+                    break;
+                case HexSide.TopRight:
+                    result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.TopRight)));
+                    result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.Right)));
+                    break;
+                case HexSide.BottomRight:
+                    result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.Right)));
+                    result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.BottomRight)));
+                    break;
+                case HexSide.Bottom:
+                    result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.BottomRight)));
+                    result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.BottomLeft)));
+                    break;
+                case HexSide.BottomLeft:
+                    result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.BottomLeft)));
+                    result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.Left)));
+
+                    break;
+                case HexSide.TopLeft:
+                    result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.Left)));
+                    result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.TopLeft)));
+                    break;
+            }
+
+            return result;
+        }
+        /// <summary>
+        ///     return the building between the 2 road keys.  Works by getting the building adjacent to each of the roads
+        ///     and then finding what the intersection is.  is must be only 0 or 1 roads.
+        /// </summary>
+        /// 
+        /// <returns></returns>
+
+        public static BuildingModel? BuildingBetweenRoads(this GameModel gameModel, RoadKey road1, RoadKey road2)
+        {
+            var buildings1 = gameModel.AdjacentBuildings(road1);
+            var buildings2 = gameModel.AdjacentBuildings(road2);
+
+            var result = buildings1.Intersect(buildings2).ToList();
+            Debug.Assert(result.Count <= 1);
+            return result[0];
+
         }
 
         public static bool BuildableLocation(this GameModel gameModel, BuildingKey buildingKey)
@@ -210,7 +265,7 @@ namespace Catan3.Models
             return gameModel.Players.PlayerFromId(gameModel.CurrentPlayerId) ?? throw new GameException($"Can't find player {gameModel.CurrentPlayerId}");
         }
 
-       
+
 
     }
 }

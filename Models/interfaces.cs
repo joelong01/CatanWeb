@@ -26,6 +26,68 @@ namespace Catan3.Models
         public int MaxPlayers { get; set; } = maxPlayers;
         [JsonIgnore]
         public static ResourceRules Default { get; set; } = new();
+
+        public int MaxEntitlementCount(Entitlement entitlement)
+        {
+            int result = 0;
+            switch (entitlement)
+            {
+                case Entitlement.Undefined:
+                    break;
+                case Entitlement.DevCard:
+                    break;
+                case Entitlement.Settlement:
+                    result = MaxSettlements;
+                    break;
+                case Entitlement.City:
+                    result = MaxCities;
+                    break;
+                case Entitlement.Road:
+                    result = MaxRoads;
+                    break;
+                case Entitlement.Ship:
+                    break;
+                case Entitlement.BuyKnight:
+                    break;
+                case Entitlement.UpgradeKnight:
+                    break;
+                case Entitlement.ActivateKnight:
+                    break;
+                case Entitlement.Soldier:
+                    break;
+                case Entitlement.PoliticsUpgrade:
+                    break;
+                case Entitlement.ScienceUpgrade:
+                    break;
+                case Entitlement.TradeUpgrade:
+                    break;
+                case Entitlement.Wall:
+                    break;
+                case Entitlement.DestroyCity:
+                    break;
+                case Entitlement.Bishop:
+                    break;
+                case Entitlement.Deserter:
+                    break;
+                case Entitlement.Inventor:
+                    break;
+                case Entitlement.Intrigue:
+                    break;
+                case Entitlement.Diplomat:
+                    break;
+                case Entitlement.Merchant:
+                    break;
+                case Entitlement.KnightDisplacement:
+                    break;
+                case Entitlement.UpgradeToMetro:
+                    break;
+                case Entitlement.KnightDisplacementMoveKnightOutOfTheWay:
+                    break;
+                case Entitlement.RolledSeven:
+                    break;
+            }
+            return result;
+        }
     }
 
     public interface IGameMetadata

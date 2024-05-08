@@ -141,6 +141,12 @@ namespace Catan3.Models
             }
             return building;
         }
+
+        public static BuildingModel GetBuildingOrThrow(this IEnumerable<BuildingModel> buildings, BuildingKey key)
+        {
+            return buildings.FindBuildingModel(key) ?? throw new GameException($"Building {key} not found");
+        }
+        
         /// <summary>
         ///     e.g. GameViewModel.GameModel.Buildings.BuildingsInTile(new HexCoordinates(0,0,0)) returns all the buildings in the center tile
         /// </summary>

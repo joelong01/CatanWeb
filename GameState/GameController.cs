@@ -4,11 +4,13 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Catan10.Models;
+using Catan3.Controls;
 using Catan3.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Documents;
 
 namespace Catan3.Controller
 {
@@ -201,6 +203,7 @@ namespace Catan3.Controller
             }
 
             gameModel.CurrentPlayer().UnspentEntitlements.Add(entitlement);
+        
 
             LogDone(gameModel);
             return gameModel;
@@ -218,18 +221,19 @@ namespace Catan3.Controller
 
                 case Entitlement.City:
                     int unspentCities = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
-                    if (unspentCities + gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement) > gameModel.ResourceRules.MaxCities) return false;
+                    if (unspentCities + gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement) >= gameModel.ResourceRules.MaxCities) return false;
 
                     return true;
 
                 case Entitlement.Settlement:
                     int unspentSettlement = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
-                    if (unspentSettlement + gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement) > gameModel.ResourceRules.MaxSettlements) return false;
+                    if (unspentSettlement + gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement) >= gameModel.ResourceRules.MaxSettlements) return false;
                     return true;
 
                 case Entitlement.Road:
                     int unspentRoads = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
-                    if (unspentRoads + gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement) > gameModel.ResourceRules.MaxRoads) return false;
+                    int spentroads = gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement);
+                    if (unspentRoads +  spentroads >= gameModel.ResourceRules.MaxRoads) return false;
 
                     return true;
 
@@ -637,14 +641,29 @@ namespace Catan3.Controller
             MarkBuildableBuildings(gameModel);
             SetActionFlags(gameModel);
             SetPlaySoldierAccess(gameModel);
-           
+
             gameModel.ActionFlags.RedoEnabled = false;
+            UpdatePurchaseUi(gameModel);
             Log.Done(gameModel);
         }
 
 
-      
 
+        private void UpdatePurchaseUi(GameModel gameModel)
+        {
+            var currentPlayer = gameModel.CurrentPlayer();
+            foreach (var epm in gameModel.EntitlementPurchaseModel)
+            {
+                var spent = currentPlayer.SpentEntitlementsThisGame.Count(e => e == epm.Entitlement );
+                var unspent = currentPlayer.UnspentEntitlements.Count( e => e == epm.Entitlement );
+
+                if (spent + unspent == gameModel.ResourceRules.MaxEntitlementCount(epm.Entitlement))
+                {
+
+                    epm.Enabled = false;
+                }
+            }
+        }
 
         private void SetPlaySoldierAccess(GameModel gameModel)
         {
@@ -774,6 +793,7 @@ namespace Catan3.Controller
         private void UpdateScore(GameModel gameModel)
         {
             int maxScore = 0;
+            CalculateLongestRoad(gameModel);
             // Iterate through all players to update their scores
             foreach (var player in gameModel.Players)
             {
@@ -787,6 +807,7 @@ namespace Catan3.Controller
                 int score = citiesPlayed * 2 + settlementsPlayed;
 
                 // Add bonus points for having the longest road
+              
                 if (player.HasLongestRoad)
                 {
                     score += 2;
@@ -1241,6 +1262,175 @@ namespace Catan3.Controller
                 default:
                     throw new Exception($"TODO: add support for {entitlement} to AllowPurchase");
             }
+        }
+
+        public void CalculateLongestRoad(GameModel gameModel)
+        {
+            var longestRoadAllPlayers = 0;
+            
+            // calculate the longest road for each player
+            foreach (var player in gameModel.Players)
+            {
+                // get the roads onwned by this player
+                var playerRoads = gameModel.Roads.Where(r => r.OwnerId == player.Id).ToList();
+                int max = 0;
+                foreach (var startRoad in playerRoads)
+                {
+
+                    int count = CalculateLongestRoad(gameModel, startRoad, [], null);
+                    if (count > max)
+                    {
+                        max = count;
+
+                        if (max == gameModel.Roads.Count) // the most roads you can have…only count once
+                        {
+                            break;
+                        }
+                    }
+
+                }
+
+                player.LongestRoad = max;
+                if (max > longestRoadAllPlayers)
+                {
+                    longestRoadAllPlayers = max;
+                }
+            }
+
+            var playerWithLongestRoad = gameModel.Players.FirstOrDefault(p => p.HasLongestRoad);
+            
+
+            foreach (var player in gameModel.Players)
+            {
+                if (player.LongestRoad < 5)
+                {
+                    player.HasLongestRoad = false;
+                    continue; // never enough to get longest road
+                }
+                if (player.LongestRoad < longestRoadAllPlayers)
+                {
+                    player.HasLongestRoad = false;
+                    continue;
+                }
+                if (player.LongestRoad == longestRoadAllPlayers && playerWithLongestRoad is null)
+                {
+                    player.HasLongestRoad = true;
+                    playerWithLongestRoad = player;
+                    continue;
+                }
+                if (player.LongestRoad == longestRoadAllPlayers && playerWithLongestRoad is not null && playerWithLongestRoad.LongestRoad < player.LongestRoad)
+                {
+                    player.HasLongestRoad = true;
+                    playerWithLongestRoad.HasLongestRoad = false;
+                    playerWithLongestRoad = player;
+                }
+            }
+            
+        }
+        //
+        //  Start is just any old road you want to start counting from
+        //  counted are all the roads that have been counted so far -- presumably starts with .Count = 0
+        //  blockedFork roads is set when we recurse so that we can pick a direction.  we need it in case of closed loops
+        private int CalculateLongestRoad(GameModel gameModel, RoadModel start, List<RoadModel> counted, RoadModel? blockedFork)
+        {
+            int count = 1;
+            int max = 1;
+            counted.Add(start); // it is counted in the "max=1" above
+            RoadModel next = start;
+            List<RoadModel> ownedAdjacentNotCounted = gameModel.OwnedAdjacentRoadsNotCounted(next, counted,  blockedFork, out bool adjacentFork);
+            do
+            {
+                switch (ownedAdjacentNotCounted.Count)
+                {
+                    case 0:
+                        return max;
+
+                    case 1:
+                        {
+                            count++;
+                            next = ownedAdjacentNotCounted[0];
+                            counted.Add(next);                  // we counted it, add it to the counted list.
+
+                            if (count > max)
+                            {
+                                max = count;
+                            }
+
+                            ownedAdjacentNotCounted = gameModel.OwnedAdjacentRoadsNotCounted(next, counted, blockedFork, out adjacentFork);
+                            if (adjacentFork)
+                            {
+                                //ah...the loop
+                                count++;
+                                counted.Add(next); // we shouldn't have to do this more than once
+                                if (count > max)
+                                {
+                                    max = count;
+                                }
+
+                                return max;
+                            }
+                        }
+                        //
+                        //  loop to the next road to see if it terminates, forks, or just continues...
+                        break;
+
+                    default:
+
+                        //
+                        //   general strategy:  for each fork in the road, pretend that all but one of the forks are already counted
+                        //                      then count the remaining one.  after that, pick another to be counted
+                        //                      because we "count" the entered line, there are only ever 2 forks in the road
+
+                        // ownedAdjacentNotCounted.Count > 1
+                        //  usually there means there is a fork like this
+
+                        //                           /
+                        //                          /    <=== fork1
+                        //                         /
+                        //                  ------     <=== always counted
+                        //                         \
+                        //                          \   <=== Fork 2
+                        //                           \
+
+                        //  if we ever get this or the equivalent:
+                        //
+                        //                           /
+                        //                          /    <=== fork1
+                        //                         /
+                        //                  ------     <=== always counted
+                        //                /        \
+                        //   Fork 3 -->  /          \   <=== Fork 2
+                        //              /            \
+                        //
+                        //  e.g the adjacent count is > 2 then the road with all the forks around it (the horizontal in ascii art) doesn't have to be counted because we'll count all the
+                        //  roads coming into that fork
+
+                        List<RoadModel> forks = new List<RoadModel>();
+                        forks.AddRange(ownedAdjacentNotCounted);
+                        if (forks.Count > 2)
+                        {
+                            //
+                            //  if the fork count is not 2 then that means we are in a middle segment, and we don't need to start there
+                            return max;
+                        }
+                        foreach (RoadModel road in ownedAdjacentNotCounted)
+                        {
+                            forks.Remove(road);// now the list has everything except this one road...so we've effectively picked a direction
+                            int forkCount = CalculateLongestRoad(gameModel, road, counted, forks[0]); // --> only one element in the forks list at this point
+
+                            if (count + forkCount > max)
+                            {
+                                max = count + forkCount;
+                            }
+
+                            forks.Add(road); // put fork back so we can count that fork
+                        }
+
+                        return max;
+                }
+            } while (ownedAdjacentNotCounted.Count != 0);
+
+            return max;
         }
 
     }

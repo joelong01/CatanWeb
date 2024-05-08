@@ -134,6 +134,7 @@ namespace Catan3.Models
             StatDictionary[StatName.GoodRolls].Count = value.GoodRolls;
             StatDictionary[StatName.BadRolls].Count = value.BadRolls;
             StatDictionary[StatName.Stars].Count = value.Stars;
+            StatDictionary[StatName.LongestRoad].Count = value.LongestRoad;
         }
 
 
