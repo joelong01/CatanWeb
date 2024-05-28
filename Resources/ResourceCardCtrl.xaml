@@ -19,9 +19,9 @@
                     Background="{x:Bind ViewModel.FrontImage(ViewModel.Resource), Mode=OneWay}"
                     Style="{StaticResource Grid_ResourceCard}">
                <Viewbox Stretch="Uniform" Height="20"
-                        HorizontalAlignment="Center" VerticalAlignment="Bottom">
+                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,5">
                     <Grid Background="Black">
-                        <TextBlock Text="{x:Bind ViewModel.Count, Mode=OneWay}"
+                        <TextBlock Text="{x:Bind ViewModel.Count, Mode=OneWay}" TextLineBounds="Tight"
                                 Visibility="Visible" />
                     </Grid>
                 </Viewbox>

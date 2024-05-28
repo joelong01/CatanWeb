@@ -43,7 +43,7 @@
 
             </StackPanel>
             <StackPanel Name="SP_SecondRow" HorizontalAlignment="Stretch"
-                    Orientation="Horizontal" Background="DarkKhaki">
+                    Orientation="Horizontal" Background="Transparent">
 
                 <c:TrackedResourcesCtrl Height="100"
                         ResourcesViewModel="{x:Bind PlayerViewModel.ResourcesThisTurn, Mode=OneWay}" />

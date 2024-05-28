@@ -640,10 +640,11 @@ namespace Catan3.Controller
             MarkBuildableRoads(gameModel);
             MarkBuildableBuildings(gameModel);
             SetActionFlags(gameModel);
-            SetPlaySoldierAccess(gameModel);
+          
 
             gameModel.ActionFlags.RedoEnabled = false;
             UpdatePurchaseUi(gameModel);
+            SetPlaySoldierAccess(gameModel);
             Log.Done(gameModel);
         }
 
