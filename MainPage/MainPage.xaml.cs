@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Catan.Utility;
 using Catan3.Models;
+using Catan3.Player;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Xaml;
@@ -200,6 +201,15 @@ namespace Catan3
             MainPageModel.GameViewModel.BoardInfo.Layout.OuterHexSize++;
             MainPageModel.GameViewModel.BoardInfo.Layout.OuterHexSize--;
             //  MainPageModel.GameViewModel.UpdateLayout();
+        }
+
+        private void OnEditPlayers(object sender, RoutedEventArgs e)
+        {
+            PlayerEditorWindow window = new()
+            {
+                ViewModel = new(PlayerDatabase.AvailablePlayers)
+            };
+            window.Activate();
         }
     }
 }

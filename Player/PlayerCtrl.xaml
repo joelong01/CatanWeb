@@ -5,7 +5,7 @@
         xmlns:c="using:Catan3.Controls" xmlns:models="using:Catan3.Models"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d">
+         mc:Ignorable="d">
 
     <Grid Background="DarkGray" BorderBrush="DarkGray" BorderThickness="2">
         <StackPanel>
@@ -13,8 +13,13 @@
                     HorizontalAlignment="Stretch" Background="DarkGray">
                 <Ellipse Name="Player_Picture" HorizontalAlignment="Left"
                         VerticalAlignment="Top" Width="50" Height="50"
-                        Stroke="{x:Bind PlayerViewModel.GetBrush(PlayerViewModel.Foreground, x:True), Mode=OneWay}"
-                        Fill="{x:Bind PlayerViewModel.GetBrush(PlayerViewModel.Background, x:False), Mode=OneWay}" />
+                        Stroke="{x:Bind PlayerViewModel.PlayerColors.ForegroundBrush, Mode=OneWay}">
+                    <Ellipse.Fill>
+                        <ImageBrush
+                                ImageSource="{x:Bind PlayerViewModel.ImageSource, Mode=OneWay}" />
+                    </Ellipse.Fill>
+                </Ellipse>
+
                 <GridView
                         ItemsSource="{x:Bind PlayerViewModel.PlayerStats, Mode=OneWay}">
                     <GridView.ItemsPanel>

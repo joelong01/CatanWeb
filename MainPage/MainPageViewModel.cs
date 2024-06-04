@@ -70,23 +70,7 @@ namespace Catan3.Models
         }
     }
 
-    public static class PlayerDatabase
-    {
-        public static List<PlayerViewModel> AvailablePlayers { get; } =
-            [
-                new ("Dodgy", Colors.White, Colors.Red),
-                new ("Joe", Colors.White, Colors.Blue),
-                new ("Doug", Colors.White, Colors.Green),
-                new ("Chris", Colors.White, Colors.Black),
-                new ("Adrian", Colors.White, Colors.Purple),
-                new ("Ryan", Colors.White, Colors.DarkGray)
-            ];
-
-        public static PlayerViewModel? FromId(string id)
-        {
-            return AvailablePlayers.FirstOrDefault(x => x.Id == id);
-        }
-    }
+   
 
 
 }

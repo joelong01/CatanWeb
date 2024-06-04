@@ -47,11 +47,12 @@ namespace Catan3.Models
         /// <exception cref="Exception"></exception>
         public Brush Background(RobberModel robberModel, string playerId)
         {
-            
+
             if (playerId is not null)
             {
                 PlayerViewModel owner = PlayerDatabase.FromId(playerId) ?? throw new Exception($"Bad PlayerId: {playerId}");
-                return BrushCache.GetGradientBrush(owner.Background, Colors.Black);
+
+                return owner.PlayerColors.BackgroundBrush;
             }
             else
             {
@@ -64,7 +65,8 @@ namespace Catan3.Models
             if (playerId is not null)
             {
                 PlayerViewModel owner = PlayerDatabase.FromId(playerId) ?? throw new Exception($"Bad PlayerId: {playerId}");
-                return BrushCache.GetSolidColorBrush(owner.Foreground);
+                return owner.PlayerColors.ForegroundBrush;
+              
             }
             else
             {

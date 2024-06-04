@@ -196,22 +196,22 @@ namespace Catan3.Models
                 PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
                 if (foreground)
                 {
-                    return BrushCache.GetSolidColorBrush(owner.Foreground);
+                    return owner.PlayerColors.ForegroundBrush;
                 }
                 else
                 {
-                    return BrushCache.GetGradientBrush(owner.Background, Colors.Black);
+                    return owner.PlayerColors.BackgroundBrush;
                 }
             }
             else
             {
                 if (foreground)
                 {
-                    return BrushCache.GetSolidColorBrush(currentPlayer.Foreground);
+                    return currentPlayer.PlayerColors.BackgroundBrush;
                 }
                 else
                 {
-                    return BrushCache.GetGradientBrush(currentPlayer.Background, Colors.Black);
+                    return currentPlayer.PlayerColors.BackgroundBrush;
                 }
             }
         }

@@ -139,7 +139,7 @@ namespace Catan3.Models
                 this.PurchasableEntitlements = [];
                 foreach (var dataModel in gameModel.EntitlementPurchaseModel)
                 {
-                    EntitlementPurchaseViewModel viewModel = new(PurchaseCommand, dataModel, this.CurrentPlayer.ForegroundBrush, this.CurrentPlayer.BackgroundBrush);
+                    EntitlementPurchaseViewModel viewModel = new(PurchaseCommand, dataModel, this.CurrentPlayer.PlayerColors.ForegroundBrush, this.CurrentPlayer.PlayerColors.BackgroundBrush);
                     this.PurchasableEntitlements.Add(viewModel);
                 }
                 return;
@@ -148,7 +148,7 @@ namespace Catan3.Models
             for (int i = 0; i < gameModel.EntitlementPurchaseModel.Count; i++)
             {
                 var unspent = currentPlayer.UnspentEntitlements.Count( e => e == gameModel.EntitlementPurchaseModel[i].Entitlement );
-                this.PurchasableEntitlements[i].Merge(gameModel.EntitlementPurchaseModel[i], unspent, this.CurrentPlayer.ForegroundBrush, this.CurrentPlayer.BackgroundBrush);
+                this.PurchasableEntitlements[i].Merge(gameModel.EntitlementPurchaseModel[i], unspent, this.CurrentPlayer.PlayerColors.ForegroundBrush, this.CurrentPlayer.PlayerColors.BackgroundBrush);
 
                 
             }

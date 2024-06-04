@@ -47,32 +47,32 @@ namespace Catan3.Models
         private bool _highlighted = false;
 
         [ObservableProperty]
-        private Brush _foreground = BrushCache.GetSolidColorBrush(Colors.White);
-
-        [ObservableProperty]
-        private Brush _background = BrushCache.GetSolidColorBrush(Colors.Black);
+        private PlayerColorViewModel _playerColors = new(Colors.White, Colors.HotPink, Colors.HotPink);
 
         [ObservableProperty]
         private HorizontalAlignment _horizontalAlignment = horizontalAlignment;
         [ObservableProperty]
         private VerticalAlignment _verticalAlignment = verticalAlignment;
 
-        public PlayerStatsViewModel(PlayerStatsViewModel model) : this(model.Name, model.Glyph, model.HorizontalAlignment, model.VerticalAlignment) { }
+        public PlayerStatsViewModel(PlayerStatsViewModel model, PlayerColorViewModel playerColors) : this(model.Name, model.Glyph, model.HorizontalAlignment, model.VerticalAlignment)
+        {
+            PlayerColors = playerColors;
+        }
 
         public Brush GetForeground(bool highlighted)
         {
-            return highlighted ? Background : Foreground;
+            return highlighted ? PlayerColors.BackgroundBrush : PlayerColors.ForegroundBrush;
         }
 
         public Brush GetBackground(bool highlighted)
         {
-            return highlighted ? Foreground : Background;
+            return highlighted ? PlayerColors.ForegroundBrush : PlayerColors.BackgroundBrush;
         }
 
 
         public static List<PlayerStatsViewModel> StatsTemplate { get; } = [
 
-            new PlayerStatsViewModel(StatName.Score, CatanFont.Score, HorizontalAlignment.Center, VerticalAlignment.Center),
+            new PlayerStatsViewModel(StatName.Score, CatanFont.Score,  HorizontalAlignment.Center, VerticalAlignment.Center),
             new PlayerStatsViewModel(StatName.RoadsPlayed, CatanFont.Road) ,
             new PlayerStatsViewModel(StatName.CitiesPlayed, CatanFont.City) ,
             new PlayerStatsViewModel(StatName.SettlementsPlayed, CatanFont.Settlement),

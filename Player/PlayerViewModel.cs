@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.UI;
 using Windows.UI.Core;
 
@@ -32,19 +33,15 @@ namespace Catan3.Models
         private string _name = "Nameless";
 
         [ObservableProperty]
-        private Color _foreground = Colors.White;
+        private PlayerColorViewModel _playerColors;
 
         [ObservableProperty]
-        private Color _background = Colors.HotPink;
+        private string _imageUri = "ms-appx:///Assets/guest.jpg";
 
+        [JsonIgnore]
         [ObservableProperty]
-        private Brush _foregroundBrush = BrushCache.GetSolidColorBrush(Colors.White);
+        BitmapImage _imageSource;
 
-        [ObservableProperty]
-        private Brush _backgroundBrush = BrushCache.GetSolidColorBrush(Colors.Black);
-
-        [ObservableProperty]
-        private string _imageFileName = "ms-appx:///Assets/guest.jpg";
         [JsonIgnore]
         [ObservableProperty]
         private PlayerModel _player = PlayerModel.Default;
@@ -60,35 +57,23 @@ namespace Catan3.Models
 
         public Dictionary<StatName, PlayerStatsViewModel> StatDictionary { get; } = [];
 
-        public PlayerViewModel() : this("Nameless", Colors.White, Colors.HotPink)
+        public PlayerViewModel() : this("Nameless", "ms-appx:///Assets/guest.jpg", new PlayerColorViewModel(Colors.White, Colors.HotPink, Colors.HotPink))
         {
-
+            ImageSource = new BitmapImage(new System.Uri(ImageUri));
 
         }
 
-        partial void OnForegroundChanged(Color value)
+        partial void OnImageUriChanging(string? oldValue, string newValue)
         {
-            ForegroundBrush = BrushCache.GetSolidColorBrush(value);
-            foreach (var stat in PlayerStats)
-            {
-
-                stat.Foreground = ForegroundBrush;
-            }
+            ImageSource = new BitmapImage(new System.Uri(newValue));
         }
 
-        partial void OnBackgroundChanged(Color value)
-        {
-            BackgroundBrush = BrushCache.GetGradientBrush(value, Colors.Black);
-            foreach (var stat in PlayerStats)
-            {
-                stat.Background = BackgroundBrush;
-            }
-        }
+
 
         [JsonIgnore]
         public static PlayerViewModel Default { get; } = new();
 
-        public PlayerViewModel(string name, Color foreground, Color background)
+        public PlayerViewModel(string name, string imageUri, PlayerColorViewModel playerColors)
         {
             Name = name;
             Id = name + "-0001";
@@ -98,7 +83,9 @@ namespace Catan3.Models
             //  to make it easy to update them.
             foreach (var stat in PlayerStatsViewModel.StatsTemplate)
             {
-                StatDictionary[stat.Name] = new PlayerStatsViewModel(stat);
+
+                StatDictionary[stat.Name] = new PlayerStatsViewModel(stat, playerColors);
+
             }
 
             //
@@ -108,8 +95,10 @@ namespace Catan3.Models
 
             //
             //  set these last so that the PlayerStats get their colors
-            Foreground = foreground;
-            Background = background;
+            this.PlayerColors = playerColors;
+
+            ImageUri = imageUri;
+            ImageSource = new BitmapImage(new System.Uri(ImageUri));
         }
         /// <summary>
         ///     the MVVM notification when the model gets updated -- we set the per person data and update the stats

@@ -40,6 +40,8 @@
 
                 <TextBlock FontSize="20"
                         Text="{x:Bind MainPageModel.GameViewModel.Id, Mode=OneWay}" />
+                <Button Content="Edit Players" Click="OnEditPlayers"
+                        Background="Black" Foreground="White" />
                 <Button Content="New Game" Click="OnNewGame" Background="Black"
                         Foreground="White" />
                 <Button Content="Shuffle"
@@ -84,7 +86,7 @@
                 <!--Rolls-->
 
                 <StackPanel HorizontalAlignment="Left"
-                        Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.GetBrush(MainPageModel.GameViewModel.CurrentPlayer.Background, x:False), Mode=OneWay}"
+                        Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}"
                         CornerRadius="5">
                     <Viewbox Height="120" Stretch="Uniform"
                             HorizontalAlignment="Left">
@@ -176,7 +178,7 @@
                 <Viewbox Stretch="Uniform" Height="400"
                         VerticalAlignment="Bottom">
                     <Border BorderBrush="Black" BorderThickness="2"
-                            Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.GetBrush(MainPageModel.GameViewModel.CurrentPlayer.Background, x:False), Mode=OneWay}">
+                            Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}">
                         <c:BoardMeasurementCtrl
                                 GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" />
                     </Border>

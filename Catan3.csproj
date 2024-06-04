@@ -23,6 +23,8 @@
 		<None Remove="Harbors\HarborCtrl.xaml" />
 		<None Remove="MainPage.xaml" />
 		<None Remove="Player\PlayerCtrl.xaml" />
+		<None Remove="Player\PlayerEditorPage.xaml" />
+		<None Remove="Player\PlayerEditorWindow.xaml" />
 		<None Remove="Resources\BoardMeasurementCtrl.xaml" />
 		<None Remove="Resources\ResourceCardCtrl.xaml" />
 		<None Remove="Resources\TrackedResourcesCtrl.xaml" />
@@ -49,8 +51,8 @@
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
 		<PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
-		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240404000" />
-		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.3233" />
+		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240428000" />
+		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1" />
 		<PackageReference Include="System.Text.Encodings.Web" Version="8.0.0" />
 		<PackageReference Include="System.Text.Json" Version="8.0.3" />
 		<Manifest Include="$(ApplicationManifest)" />
@@ -96,6 +98,12 @@
 	    <Generator>TextTemplatingFileGenerator</Generator>
 	    <LastGenOutput>models.cs</LastGenOutput>
 	  </None>
+	  <Page Update="Player\PlayerEditorWindow.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Player\PlayerEditorPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	  <Page Update="Resources\TrackedResourcesCtrl.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
