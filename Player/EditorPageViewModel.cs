@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
@@ -20,6 +21,9 @@ namespace Catan3.Models
         Color _background = background;
         [ObservableProperty]
         Color _foreground = foreground;
+
+        [ObservableProperty]
+        bool _selected = false;
 
         public Brush GetBrush(Color color)
         {
@@ -80,18 +84,28 @@ namespace Catan3.Models
         //  Note that the last onw ( EditPlayerColors[2]) is used to update the colors.
         //  in order to see the binding of the text, we make the Foreground the PrimaryBackground and
         //  the Background equal to the Foreground.
-        partial void OnSelectedPlayerChanged(PlayerViewModel value)
+        partial void OnSelectedPlayerChanged(PlayerViewModel? oldValue, PlayerViewModel newValue)
         {
 
-            EditPlayerColors[0].Background = SelectedPlayer.PlayerColors.PrimaryBackground;
-            EditPlayerColors[1].Background = SelectedPlayer.PlayerColors.SecondaryBackground;
-            EditPlayerColors[2].Background = SelectedPlayer.PlayerColors.Foreground;
+            EditPlayerColors[0].Background = newValue.PlayerColors.PrimaryBackground;
+            EditPlayerColors[1].Background = newValue.PlayerColors.SecondaryBackground;
+            EditPlayerColors[2].Background = newValue.PlayerColors.Foreground;
 
-            EditPlayerColors[0].Foreground = SelectedPlayer.PlayerColors.Foreground;
-            EditPlayerColors[1].Foreground = SelectedPlayer.PlayerColors.Foreground;
-            EditPlayerColors[2].Foreground = SelectedPlayer.PlayerColors.PrimaryBackground;
+            EditPlayerColors[0].Foreground = newValue.PlayerColors.Foreground;
+            EditPlayerColors[1].Foreground = newValue.PlayerColors.Foreground;
+            EditPlayerColors[2].Foreground = newValue.PlayerColors.PrimaryBackground;
 
+            if (oldValue is not null) oldValue.Selected = false;
 
+            newValue.Selected = true;
+
+        }
+
+        partial void OnCurrentColorSettingChanged(EditPlayerColors? oldValue, EditPlayerColors newValue)
+        {
+            if (oldValue is not null) oldValue.Selected = false;
+
+            newValue.Selected = true;
         }
 
         public Brush GetBrush(ColorName playerColor)
@@ -143,6 +157,16 @@ namespace Catan3.Models
                 default:
                     throw new System.Exception("Did you forget this switch when you added a configured color?");
             }
+        }
+
+        /// <summary>
+        ///     Used by XAML binding to show a checkbox when the player is selected
+        /// </summary>
+        /// <param name="player"></param>
+        /// <returns></returns>
+        public Visibility ShowCheck(PlayerViewModel player)
+        {
+            return player.Id == SelectedPlayer.Id ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 }

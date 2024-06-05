@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.UI;
@@ -93,6 +94,12 @@ namespace Catan3.Models
         [JsonIgnore]
         [ObservableProperty]
         BitmapImage _imageSource;
+
+
+        //  used in the edit player UI
+        [JsonIgnore]
+        [ObservableProperty]
+        private bool _selected = false;
 
         [JsonIgnore]
         [ObservableProperty]
@@ -216,7 +223,7 @@ namespace Catan3.Models
                 return BrushCache.GetGradientBrush(color, Colors.Black);
         }
 
-
+       
 
 
 
