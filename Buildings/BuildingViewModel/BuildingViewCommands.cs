@@ -24,6 +24,16 @@ namespace Catan3.Models
             {
                 Messenger.UnregisterAll(this);
             });
+            //
+            //  if the owner's colors changed, we update them
+            Messenger.Register<PlayerColorChanged>(this, (recipient, message) =>
+            {
+                if (message.Player.Id == Building.OwnerId)
+                {
+                    OnPropertyChanged(nameof(BIND_Foreground));
+                    OnPropertyChanged(nameof(BIND_Background));
+                }
+            });
         }
         /// <summary>
         ///     We recieve a message from MainPageViewModel that the current player has changed.

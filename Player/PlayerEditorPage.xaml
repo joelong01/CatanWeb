@@ -26,6 +26,18 @@
 
             </StackPanel>
         </DataTemplate>
+        <DataTemplate x:Key="ColorSettingTemplate"
+                x:DataType="m:EditPlayerColors">
+            <Grid BorderBrush="{x:Bind GetBrush(Foreground), Mode=OneWay}"
+                    Background="{x:Bind GetBrush(Background), Mode=OneWay}"
+                    CornerRadius="5" Width="300" Height="50">
+
+                <TextBlock Text="{x:Bind DisplayName(ColorName)}" HorizontalAlignment="Center"
+                        Foreground="{x:Bind GetBrush(Foreground), Mode=OneWay}"
+                        Margin="10" FontSize="20" />
+
+            </Grid>
+        </DataTemplate>
     </Page.Resources>
 
     <StackPanel HorizontalAlignment="Stretch" Orientation="Horizontal"
@@ -55,22 +67,33 @@
             <c:PlayerCtrl
                     PlayerViewModel="{x:Bind ViewModel.SelectedPlayer, Mode=OneWay}" />
             <StackPanel Orientation="Horizontal">
-                <StackPanel Margin="0,0,10,0">
-                    <RadioButton Content="Primary Background" IsChecked="True" />
-                    <Rectangle HorizontalAlignment="Stretch" Stroke="{x:Bind ViewModel.SelectedPlayer.PlayerColors.ForegroundBrush, Mode=OneWay}" StrokeThickness="2"
-                               Fill="{x:Bind ViewModel.SelectedPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}"
-                            VerticalAlignment="Top" Height="50" />
-                    <RadioButton Content="Secondary Background"  IsChecked="True" />
-                    <RadioButton Content="Foreground" />
-                </StackPanel>
-                <ColorPicker ColorSpectrumShape="Box"
-                        IsMoreButtonVisible="False"
+                <ListView HorizontalAlignment="Left" VerticalAlignment="Top"
+                        SelectedItem="{x:Bind ViewModel.CurrentColorSetting, Mode=TwoWay}"
+                        ItemsSource="{x:Bind ViewModel.EditPlayerColors, Mode=OneTime}"
+                        ItemTemplate="{StaticResource ColorSettingTemplate}">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="BorderBrush"
+                                    Value="{x:Bind Foreground, Mode=OneWay}" />
+                            <Setter Property="BorderThickness" Value="1" />
+                            <Setter Property="HorizontalAlignment"
+                                    Value="Stretch" />
+                            <Setter Property="Margin" Value="0" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                </ListView>
+                <ColorPicker
+                        Color="{x:Bind ViewModel.GetColor(ViewModel.CurrentColorSetting.ColorName, ViewModel.SelectedPlayer), Mode=OneWay}"
+                        ColorChanged="{x:Bind ViewModel.SetColor}"
+                        ColorSpectrumShape="Box" IsMoreButtonVisible="False"
                         HorizontalAlignment="Stretch"
                         IsColorSliderVisible="True"
                         IsColorChannelTextInputVisible="False"
                         IsHexInputVisible="False" IsAlphaEnabled="False"
                         IsAlphaSliderVisible="False"
                         IsAlphaTextInputVisible="False" />
+
             </StackPanel>
         </StackPanel>
     </StackPanel>

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System.Security;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -57,6 +58,21 @@ namespace Catan3.Models
         public PlayerStatsViewModel(PlayerStatsViewModel model, PlayerColorViewModel playerColors) : this(model.Name, model.Glyph, model.HorizontalAlignment, model.VerticalAlignment)
         {
             PlayerColors = playerColors;
+            playerColors.PropertyChanged += PlayerColors_PropertyChanged;
+        }
+
+        private void PlayerColors_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            switch (e.PropertyName)
+            {
+                case "BackgroundBrush":
+                case "ForegroundBrush":
+                    OnPropertyChanged(nameof(Highlighted)); // this forces the rebinding of the StatsCtrl
+                    break;
+                default:
+                    break;
+
+            }
         }
 
         public Brush GetForeground(bool highlighted)

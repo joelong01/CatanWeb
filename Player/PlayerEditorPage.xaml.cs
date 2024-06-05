@@ -14,6 +14,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using System.Collections.ObjectModel;
 using Catan3.Models;
+using System.Runtime.CompilerServices;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -27,7 +28,16 @@ namespace Catan3.Player
     /// </summary>
     public sealed partial class PlayerEditorPage : Page
     {
-        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(EditPlayerViewModel), typeof(PlayerEditorPage), new PropertyMetadata(null));
+        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(EditPlayerViewModel), typeof(PlayerEditorPage), new PropertyMetadata(null, ViewModelChanged));
+
+        private static void ViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is PlayerEditorPage page)
+            {
+                page.DataContext = e.NewValue as EditPlayerViewModel;
+            }
+        }
+
         public EditPlayerViewModel ViewModel
         {
             get => ( EditPlayerViewModel )GetValue(ViewModelProperty);

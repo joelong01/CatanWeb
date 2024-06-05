@@ -53,6 +53,14 @@ namespace Catan3.Models
             {
                 Messenger.UnregisterAll(this);
             });
+            Messenger.Register<PlayerColorChanged>(this, (recipient, message) =>
+            {
+                if (message.Player.Id == Road.OwnerId)
+                {
+                    OnPropertyChanged(nameof(GetForegroundBrush));
+                    OnPropertyChanged(nameof(GetBackgroundBrush));
+                }
+            });
 
 
             if (Layout is not null && Layout is BoardLayout rbl)

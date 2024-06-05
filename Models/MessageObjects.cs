@@ -122,4 +122,18 @@ namespace Catan3.Models
         
     }
 
+    // 
+    // we can update the player colors "on the fly".  Normally, we would subscribe to the change notification event an update the bindings
+    // e.g. the the BuildingViewModel, we'd subscribe to changes tothe PlayerColorViewModel and update the color of buildings that are 
+    // owned by the player whose colors have changed. The problem is that if you create a building, subscribe to change notification events,
+    // and then Undo, the event remains subscribed.  that is ok (the function binding knows to check for the owner)...but we will have 
+    // leaked the event because we will resubscribe the next time the building is bought).  To work around this, we'll use the MVVM messaging
+    // system and publish an event that says the players colors changed.
+
+    public class PlayerColorChanged(PlayerViewModel player)
+    {
+        public PlayerViewModel Player { get; } = player;
+      
+    }
+
 }

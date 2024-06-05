@@ -1,28 +1,79 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
+using System.ComponentModel;
 using System.Linq;
 using System.Text.Json.Serialization;
-using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.UI;
-using Windows.UI.Core;
 
 namespace Catan3.Models
 {
+    public enum ColorName { PrimaryBackground, SecondaryBackground, Foreground }
 
+   
+
+    /// <summary>
+    ///     this keeps the player's colors/brushes straight.
+    ///     This is serializable
+    /// </summary>
+    public partial class PlayerColorViewModel : ObservableObject
+    {
+        public PlayerColorViewModel(Color foreground, Color primary, Color secondary)
+        {
+            _primaryBackground = primary;
+            _secondaryBackground = secondary;
+            _foreground = foreground;
+
+            OnPrimaryBackgroundChanged(primary);
+            OnSecondaryBackgroundChanged(secondary);
+            OnForegroundChanged(foreground);
+        }
+
+        [ObservableProperty]
+        private Color _primaryBackground;
+
+        [ObservableProperty]
+        private Color _secondaryBackground;
+
+        
+        [ObservableProperty]
+        private Color _foreground;
+
+        [JsonIgnore]
+        [ObservableProperty]
+        private Brush _foregroundBrush = BrushCache.GetSolidColorBrush(Colors.White);
+
+        [JsonIgnore]
+        [ObservableProperty]
+        private Brush _backgroundBrush = BrushCache.GetSolidColorBrush(Colors.Black);
+
+        partial void OnPrimaryBackgroundChanged(Color value)
+        {
+            BackgroundBrush = BrushCache.GetGradientBrush(value, SecondaryBackground);
+           
+        }
+
+        partial void OnSecondaryBackgroundChanged(Color value)
+        {
+            BackgroundBrush = BrushCache.GetGradientBrush(PrimaryBackground, value);
+        }
+
+        partial void OnForegroundChanged(Color value)
+        {
+            ForegroundBrush = BrushCache.GetSolidColorBrush(value);
+        }
+    }
 
 
 
     //
     //  this has all the data about the player that the service doesn't care about
     //  e.g. how to display information about the player -- colors, picutre, etc.
-    public partial class PlayerViewModel : ObservableObject
+    public partial class PlayerViewModel : ObservableRecipient
     {
 
 
@@ -35,6 +86,7 @@ namespace Catan3.Models
         [ObservableProperty]
         private PlayerColorViewModel _playerColors;
 
+       
         [ObservableProperty]
         private string _imageUri = "ms-appx:///Assets/guest.jpg";
 
@@ -99,7 +151,29 @@ namespace Catan3.Models
 
             ImageUri = imageUri;
             ImageSource = new BitmapImage(new System.Uri(ImageUri));
+
+            //
+            // subscribe to color changes to notify the rest of the models
+            playerColors.PropertyChanged += PlayerColors_PropertyChanged;
         }
+
+       
+        private void PlayerColors_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            switch (e.PropertyName)
+            {
+                case "BackgroundBrush":
+                case "ForegroundBrush":
+                    Messenger.Send(new PlayerColorChanged(this));
+                    break;
+                default:
+                    break;
+
+            }
+
+           
+        }
+
         /// <summary>
         ///     the MVVM notification when the model gets updated -- we set the per person data and update the stats
         /// </summary>

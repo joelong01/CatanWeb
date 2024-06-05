@@ -37,6 +37,9 @@ namespace Catan3.Models
             {
                 Layout = BoardLayout.Default;
             }
+
+           
+
             UpdateLayout();
         }
 

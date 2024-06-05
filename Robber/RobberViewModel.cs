@@ -31,6 +31,14 @@ namespace Catan3.Models
             {
                 Messenger.UnregisterAll(this);
             });
+            Messenger.Register<PlayerColorChanged>(this, (recipient, message) =>
+            {
+                if (message.Player.Id == RobberModel.MovedBy)
+                {
+                    OnPropertyChanged(nameof(Foreground));
+                    OnPropertyChanged(nameof(Background));
+                }
+            });
         }
 
         public static RobberViewModel Default { get; } = new RobberViewModel(new());
