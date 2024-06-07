@@ -11,9 +11,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Catan3.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
-
-
-
 namespace Catan3.Utility
 {
     /// <summary>
@@ -25,15 +22,12 @@ namespace Catan3.Utility
     //  
     public class SerializableLog
     {
-
         public List<string> DoneStack { get; set; } = [];
         public List<string> RedoStack { get; set; } = [];
         public GameType GameType { get; set; } = GameType.Regular;
         public int DoneCount { get; set; } = 0;
         public int RedoCount { get; set; } = 0;
-
     }
-
     public interface ILog
     {
         GameType GameType { get; set; }
@@ -46,15 +40,10 @@ namespace Catan3.Utility
         GameModel? Undo();
         GameModel? Redo();
     }
-
-
     public partial class Log<T> : ObservableRecipient, ILog
     {
-
         private ObservableCollection<T> DoneStack { get; set; } = [];
-
         private ObservableCollection<T> RedoStack { get; set; } = [];
-
         public GameType GameType { get; set; } = GameType.Regular;
         [JsonConstructor]
         public Log()
@@ -64,13 +53,10 @@ namespace Catan3.Utility
         }
         public Log(GameType gameType) : this()
         {
-
             GameType = gameType;
         }
-
         public int DoneCount => DoneStack.Count;
         public int RedoCount => RedoStack.Count;
-
         /// <summary>
         /// Retrieves a GameModel from the provided data, handling different types of input.
         /// If the input is already a GameModel, it returns it directly. If it is a byte byte_array, it assumes
@@ -80,15 +66,12 @@ namespace Catan3.Utility
         /// <param name="data">The data input which can be of type GameModel, byte[], or string.</param>
         /// <returns>A GameModel instance deserialized from the provided data or directly returned if already a GameModel.</returns>
         /// <exception cref="InvalidOperationException">Thrown when the input data type is not supported or if deserialization fails.</exception>
-
         private static GameModel? ToGameModel(T data)
         {
             // Directly return the data if it is already a GameModel.
             if (data is GameModel model)
                 return CopyGameModel(model);
-
             string? json = null;
-
             // Handle compressed data.
             if (data is byte[] compressedData)
             {
@@ -101,11 +84,9 @@ namespace Catan3.Utility
                     throw new InvalidOperationException("Failed to decompress data.", ex);
                 }
             }
-
             // Handle string data assumed to be JSON.
             if (data is string jsonString)
                 json = jsonString;
-
             // Deserialize JSON to GameModel if possible.
             if (json is not null)
             {
@@ -118,17 +99,14 @@ namespace Catan3.Utility
                     throw new InvalidOperationException("Failed to deserialize JSON to GameModel.", ex);
                 }
             }
-
             // Throw an exception if none of the expected types are provided.
             throw new InvalidOperationException($"Unsupported type of T: {data?.GetType()}");
         }
-
         private static GameModel CopyGameModel(GameModel model)
         {
             string json = JsonSerializer.Serialize(model) ?? throw new Exception("GameModel must serialize!)");
             return JsonSerializer.Deserialize<GameModel>(json) ?? throw new Exception("GameModel must Deserialize!");
         }
-
         /// <summary>
         /// Converts a GameModel instance into a specified type T. The type T can be a GameModel,
         /// a string (JSON representation), or a byte byte_array (compressed JSON). This method assumes
@@ -141,8 +119,6 @@ namespace Catan3.Utility
         private static T FromGameModel(GameModel model)
         {
             Type type = typeof(T);
-
-
             string? json = JsonSerializer.Serialize(model) ?? throw new InvalidOperationException("Unable to serialize GameModel.");
             if (type == typeof(string)) return ( T )( object )json;
             if (type == typeof(byte[]))
@@ -152,16 +128,12 @@ namespace Catan3.Utility
             }
             if (type == typeof(GameModel))
             {
-
                 object? o = JsonSerializer.Deserialize<GameModel>(json);
                 Debug.Assert(o is not null);
                 return ( T )( object )o;
-
             }
             throw new InvalidOperationException($"Conversion from GameModel to type {typeof(T)} is not supported.");
-
         }
-
         /// <summary>
         /// Converts data of type T to its JSON string representation. Supports string, GameModel, and byte[] types.
         /// </summary>
@@ -171,24 +143,20 @@ namespace Catan3.Utility
         private static string ToJson(T data)
         {
             if (data is null) throw new InvalidOperationException("Data cannot be null.");
-
             Type type = typeof(T);
             // Return directly if the data is already a string
             if (type == typeof(string)) return ( string )( object )data;
-
             // Handle serialization for GameModel instances
             if (type == typeof(GameModel))
             {
                 // Cast is necessary to ensure the serializer accesses GameModel properties correctly
                 return JsonSerializer.Serialize(( GameModel )( object )data) ?? throw new InvalidOperationException("Unable to serialize GameModel.");
             }
-
             // Decompress byte array to JSON string assuming the byte array is compressed JSON
             if (data is byte[] byte_array)
             {
                 return SerializationHelper.Decompress(byte_array);
             }
-
             // Throw an exception if the data type is not one of the expected types
             throw new InvalidOperationException("Unsupported type for JSON conversion.");
         }
@@ -206,37 +174,29 @@ namespace Catan3.Utility
         /// Thrown when the JSON string is null, or if the conversion fails (e.g., deserialization issues,
         /// or attempting to convert to an unsupported type).
         /// </exception>
-
         private static T ToT(string json)
         {
             if (json is null)
                 throw new InvalidOperationException("Json cannot be null.");
-
             Type type = typeof(T);
-
             // Return directly if T is string
             if (type == typeof(string))
                 return ( T )( object )json;
-
             // Deserialize JSON into a GameModel if T is GameModel
             if (type == typeof(GameModel))
             {
                 var deserialized = SerializationHelper.JsonDeserialize<GameModel>(json) ?? throw new InvalidOperationException("Unable to Deserialize GameModel.");
                 return ( T )( object )deserialized;
             }
-
             // Compress JSON into a byte array if T is byte[]
             if (type == typeof(byte[]))
             {
                 byte[] compressed = SerializationHelper.Compress(json);
                 return ( T )( object )compressed;
             }
-
             // Throw an exception if T is not one of the expected types
             throw new InvalidOperationException($"Unsupported type for JSON conversion: {type.Name}.");
         }
-
-
         /// <summary>
         /// Creates a serializable version of the current log, converting all entries in the Done and Redo stacks
         /// from their current types to JSON strings. This facilitates efficient compression and storage.
@@ -257,13 +217,11 @@ namespace Catan3.Utility
                 var json = ToJson(RedoStack[i]);
                 log.RedoStack.Add(json);
             }
-
             log.GameType = GameType;
             log.DoneCount = DoneStack.Count;
             log.RedoCount = RedoStack.Count;
             return log;
         }
-
         /// <summary>
         /// Rehydrates a SerializableLog into a Log<T> instance, converting serialized JSON strings 
         /// back into their original data types and preserving the LIFO order of operations as 
@@ -287,13 +245,9 @@ namespace Catan3.Utility
                 var data = ToT(json);  // Deserialize and convert back to T
                 log.RedoStack.Add(data);  // Corrected to add to RedoStack
             }
-
             log.GameType = sLog.GameType;  // Assign game type from SerializableLog
-
             return log;
         }
-
-
         private void RedoStack_ListChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             if (sender is not null and ObservableCollection<T> list)
@@ -302,7 +256,6 @@ namespace Catan3.Utility
                 //  this.TraceMessage($"Redo Depth {list.Count} size={GetStackSize(list)}");
             }
         }
-
         private void DoneStack_ListChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             if (sender is not null and ObservableCollection<T> list)
@@ -311,7 +264,6 @@ namespace Catan3.Utility
                                                // this.TraceMessage($"Done Depth {list.Count}  size={GetStackSize(list)}");
             }
         }
-
         /// <summary>
         /// Serializes the provided GameModel and pushes the serialized version onto the DoneStack.
         /// Also clears the RedoStack to prepare for new operations.
@@ -322,7 +274,6 @@ namespace Catan3.Utility
         public void Done(GameModel model)
         {
             if (model == null) throw new ArgumentNullException(nameof(model), "Provided GameModel cannot be null.");
-
             T val;
             try
             {
@@ -333,11 +284,9 @@ namespace Catan3.Utility
                 // Consider logging the exception if appropriate
                 throw new InvalidOperationException("Failed to serialize the GameModel.", ex);
             }
-
             DoneStack.Push(val);
             RedoStack.Clear();
         }
-
         /// <summary>
         /// Performs an undo operation by restoring the state immediately preceding the current state
         /// This is achieved by moving the current state to the RedoStack and applying the previous state to the given viewModel.
@@ -347,17 +296,14 @@ namespace Catan3.Utility
         {
             if (!CanUndo)
                 return null;
-
             try
             {
                 // Move the current state to the RedoStack
                 var currentState = DoneStack.Pop();
                 RedoStack.Push(currentState);
-
                 // Retrieve and deserialize the previous state
                 var previousState = DoneStack.Peek();
                 var newGameModel = ToGameModel(previousState) ?? throw new InvalidOperationException("Failed to deserialize the undo state.");
-
                 return newGameModel;
             }
             catch (Exception ex)
@@ -366,9 +312,6 @@ namespace Catan3.Utility
                 return null;
             }
         }
-
-
-
         /// <summary>
         /// Restores the game state from the redo stack, pushing the current state onto the undo stack.
         /// This method pops the top state from the RedoStack, pushes the current state back to the DoneStack, and
@@ -377,20 +320,15 @@ namespace Catan3.Utility
         /// <returns>True if the redo operation was successful; false otherwise.</returns>
         public GameModel? Redo()
         {
-
-
             if (!CanRedo)  // Check if there is a state to redo
                 return null;
-
             try
             {
                 // Pop the top state from the RedoStack and push it to the DoneStack
                 var redoState = RedoStack.Pop();
                 DoneStack.Push(redoState);
-
                 // Deserialize the redo state and apply it to the viewModel
                 var model = ToGameModel(redoState) ?? throw new InvalidOperationException("Failed to deserialize the redo state.");
-
                 return model;
             }
             catch (Exception ex)
@@ -400,22 +338,18 @@ namespace Catan3.Utility
                 return null;
             }
         }
-
-
         /// <summary>
         ///     Updating via notifcation when the UndoStack changes
         /// </summary>
         [JsonIgnore]
         [ObservableProperty]
         private bool _canUndo = false;
-
         /// <summary>
         ///  Updated via notification when the RedoStack changes
         /// </summary>
         [ObservableProperty]
         [JsonIgnore]
         private bool _canRedo = false;
-
         /// <summary>
         /// Retrieves the current game state from the top of the DoneStack.
         /// </summary>
@@ -425,16 +359,13 @@ namespace Catan3.Utility
         {
             if (DoneStack.Count == 0)
                 throw new InvalidOperationException("DoneStack is empty, no data to retrieve.");
-
             if (DoneStack.Peek() is T data)
             {
                 return ToGameModel(data) ?? throw new InvalidOperationException("Failed to convert the top of DoneStack to GameModel.");
             }
-
             // This code should theoretically never be reached because of the above check, but it's a safeguard.
             throw new InvalidOperationException("Unexpected type in DoneStack, cannot convert to GameModel");
         }
-
         public GameModel CopyCurrent()
         {
             if (DoneStack.Count == 0)
@@ -453,26 +384,19 @@ namespace Catan3.Utility
                         throw new InvalidOperationException("Failed to decompress data.", ex);
                     }
                 }
-
                 // Handle string data assumed to be JSON.
                 if (data is string jsonString)
                     json = jsonString;
-
                 if (data is GameModel gameModel)
                 {
                     json = SerializationHelper.JsonSerialize(gameModel);
                 }
-
                 GameModel copy = SerializationHelper.JsonDeserialize<GameModel>(json) ?? throw new InvalidOperationException("Unabled to deserialize GameModel");
                 return copy;
-
             }
-
             // This code should theoretically never be reached because of the above check, but it's a safeguard.
             throw new InvalidOperationException("Unexpected type in DoneStack, cannot convert to GameModel");
         }
-
-
         public static int GetStackSize(IList<T> data)
         {
             // Calculate the total size for byte[] and string types using LINQ
@@ -484,48 +408,39 @@ namespace Catan3.Utility
             });
         }
     }
-
     public static class LogExtensions
     {
         public static T Peek<T>(this IList<T> collection)
         {
             return ( T )collection[^1];
         }
-
         public static T Pop<T>(this IList<T> collection)
         {
             T item = collection[^1];
             collection.RemoveAt(collection.Count - 1);
             return item;
         }
-
         public static void Push<T>(this IList<T> collection, T item)
         {
             collection.Add(item);
         }
     }
-
     public class SerializationHelper
     {
-
         public static string JsonSerialize<T>(T obj)
         {
             return JsonSerializer.Serialize(obj, JsonOptions);
         }
-
         public static T? JsonDeserialize<T>(string json)
         {
             return JsonSerializer.Deserialize<T>(json, JsonOptions);
         }
-
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = false,
             Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
         };
-
-
         public static byte[] Compress(string text)
         {
             var buffer = Encoding.UTF8.GetBytes(text);
@@ -536,7 +451,6 @@ namespace Catan3.Utility
             }
             return memoryStream.ToArray();
         }
-
         public static string Decompress(byte[] data)
         {
             using var compressedStream = new MemoryStream(data);
@@ -547,5 +461,3 @@ namespace Catan3.Utility
         }
     }
 }
-
-

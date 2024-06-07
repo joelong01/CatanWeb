@@ -15,7 +15,6 @@
             <DoubleAnimation Storyboard.TargetName="VB_Robber"
                     Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransfrom.TranslateY)"
                     Duration="0:0:0.250" To="100" />
-
         </Storyboard>
         <Storyboard x:Name="SB_AnimateOpacity">
             <DoubleAnimation x:Name="DA_AnimateOpacity"
@@ -24,12 +23,10 @@
                     Duration="0:0:0.250" From="0.0" To="1.0" />
         </Storyboard>
     </UserControl.Resources>
-
     <Canvas Background="Transparent" HorizontalAlignment="Right"
             VerticalAlignment="Top"
             Height="{x:Bind GameViewModel.BoardInfo.Layout.BoardHeight, Mode=OneWay}"
             Width="{x:Bind GameViewModel.BoardInfo.Layout.BoardWidth, Mode=OneWay}">
-
         <!--Harbors-->
         <ItemsControl x:Name="IC_Harbors"
                 ItemsSource="{x:Bind GameViewModel.Harbors, Mode=OneWay}">
@@ -41,7 +38,6 @@
             <ItemsControl.ItemContainerStyle>
                 <Style TargetType="ContentPresenter">
                     <Setter Property="Canvas.ZIndex" Value="-1" />
-
                 </Style>
             </ItemsControl.ItemContainerStyle>
             <ItemsControl.ItemTemplate>
@@ -54,7 +50,6 @@
                                     TranslateY="{x:Bind Top, Mode=OneWay}" />
                         </c:HarborCtrl.RenderTransform>
                     </c:HarborCtrl>
-
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
@@ -69,7 +64,6 @@
             <ItemsControl.ItemContainerStyle>
                 <Style TargetType="ContentPresenter">
                     <Setter Property="Canvas.ZIndex" Value="10" />
-
                 </Style>
             </ItemsControl.ItemContainerStyle>
             <ItemsControl.ItemTemplate>
@@ -98,7 +92,6 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemContainerStyle>
                 <Style TargetType="ContentPresenter">
-
                     <Setter Property="Canvas.ZIndex" Value="20" />
                 </Style>
             </ItemsControl.ItemContainerStyle>
@@ -126,7 +119,6 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemContainerStyle>
                 <Style TargetType="ContentPresenter">
-
                     <Setter Property="Canvas.ZIndex" Value="30" />
                 </Style>
             </ItemsControl.ItemContainerStyle>
@@ -141,9 +133,7 @@
                                     TranslateX="{x:Bind Left, Mode=OneWay}"
                                     TranslateY="{x:Bind Top, Mode=OneWay}" />
                         </c:BuildingCtrl.RenderTransform>
-
                     </c:BuildingCtrl>
-
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
@@ -181,9 +171,6 @@
                     <Grid Opacity="0" />
                 </u:FlipperCtrl.Back>
             </u:FlipperCtrl>
-
         </Viewbox>
-
     </Canvas>
-
 </UserControl>

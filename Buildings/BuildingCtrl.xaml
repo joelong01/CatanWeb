@@ -6,7 +6,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
-
     <Grid Name="LayoutRoot" HorizontalAlignment="Left" VerticalAlignment="Top"
             CornerRadius="20" BorderThickness="0"
             Width="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}"
@@ -18,7 +17,6 @@
         <Ellipse Width="10" HorizontalAlignment="Center"
                 VerticalAlignment="Center" Height="10" Fill="Red" Opacity=".75"
                 Visibility="Collapsed" />
-
         <Viewbox Stretch="Uniform" HorizontalAlignment="Center"
                 VerticalAlignment="Center" Margin="5">
             <Grid Margin="1"
@@ -41,16 +39,13 @@
                             Text="{x:Bind BuildingViewModel.BuildIndex, Mode=OneWay}"
                             Visibility="{x:Bind BuildingViewModel.BIND_BuildIndexVisibility(BuildingViewModel.VisualState), Mode=OneWay}" />
                 </Viewbox>
-
             </Grid>
         </Viewbox>
-
         <Grid Visibility="Collapsed">
             <Rectangle Stroke="Red" Width="3" HorizontalAlignment="Center"
                     VerticalAlignment="Stretch" Fill="Red" />
             <Rectangle Stroke="Red" Height="3" HorizontalAlignment="Stretch"
                     VerticalAlignment="Center" Fill="Red" />
         </Grid>
-
     </Grid>
 </UserControl>

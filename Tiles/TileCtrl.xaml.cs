@@ -1,15 +1,9 @@
-using System;
-using System.ComponentModel;
-using System.Diagnostics;
 using Catan3.Models;
-using Catan3.Utility;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
-using CatanOrientation = Catan3.Models.CatanOrientation;
 namespace Catan3.Controls
 {
     /// <summary>
@@ -20,7 +14,6 @@ namespace Catan3.Controls
         public TileCtrl()
         {
             this.InitializeComponent();
-
         }
         public static readonly DependencyProperty TileViewModelProperty = DependencyProperty.Register("TileViewModel", typeof(TileViewModel), typeof(TileCtrl), new PropertyMetadata(null, TileViewModelChanged));
         public TileViewModel TileViewModel
@@ -37,14 +30,8 @@ namespace Catan3.Controls
         private void SetTileViewModel(TileViewModel newModel, TileViewModel? oldModel)
         {
            
-
         }
-
     
-
-
-
-
         private Visibility PipsVisibility(int tileNumber, int pipIndex)
         {
             Visibility visibility = Visibility.Collapsed;
@@ -75,7 +62,6 @@ namespace Catan3.Controls
             }
             return visibility;
         }
-
         public SolidColorBrush GetPipsForeground(int number)
         {
             if (number == 6 || number == 8)
@@ -84,14 +70,12 @@ namespace Catan3.Controls
             }
             return StaticBrushes.WhiteBrush;
         }
-
         /// <summary>
         ///     DataBinding function to scale the CatanNumber in XAML
         ///     The default size of a tile is 100, so as it gets bigger, the scale to the bigger number
         /// </summary>
         /// <param name="size"></param>
         /// <returns></returns>
-
         private double NumberScale(double size)
         {
             //if (this.TileViewModel.Tile.HexCoordinates == CenterKey)
@@ -106,7 +90,6 @@ namespace Catan3.Controls
         /// <param name="tileGap"></param>
         /// <param name="hexStroke"></param>
         /// <returns></returns>
-
         private double NumberTop(double tileGap, double hexStroke)
         {
             return tileGap + hexStroke + 5; // 5 is an arbitrary number that just "looks good"
@@ -122,15 +105,12 @@ namespace Catan3.Controls
         {
             return new Thickness(0, 0, 0, hexStroke + tileGap);
         }
-
         private void OnRightClicked(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs e)
         {
             if (!TileViewModel.AllowTargetting) return;
-
             this.TileViewModel.TargetCommand.Execute(null);
      //       Debug.Assert(TileViewModel.Targets.Count != 0);
             var flyout = new MenuFlyout();
-
             foreach (var target in TileViewModel.Targets)
             {
                 var menuItem = new MenuFlyoutItem
@@ -141,10 +121,8 @@ namespace Catan3.Controls
                 };
                 flyout.Items.Add(menuItem);
             }
-
             // Add a separator
             flyout.Items.Add(new MenuFlyoutSeparator());
-
             // Add a "Cancel" menu item
             var cancelItem = new MenuFlyoutItem
             {
@@ -152,14 +130,12 @@ namespace Catan3.Controls
                 Command = new RelayCommand(() => {})
             };
             flyout.Items.Add(cancelItem);
-
             flyout.ShowAt(sender as FrameworkElement, new FlyoutShowOptions
             {
                 Position = e.GetPosition(sender as UIElement),
                 Placement = FlyoutPlacementMode.RightEdgeAlignedTop,
                 ShowMode = FlyoutShowMode.Transient
             });
-
             e.Handled = true;
         }
     }

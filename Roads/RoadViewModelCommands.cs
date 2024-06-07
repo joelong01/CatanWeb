@@ -1,13 +1,11 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.UI;
 namespace Catan3.Models
 {
     public partial class RoadViewModel : ObservableRecipient
     {
        
-
         [RelayCommand]
         private void MouseClicked()
         {
@@ -16,6 +14,5 @@ namespace Catan3.Models
                 Messenger.Send(new RoadPurchaseMessage(Road.RoadKey));
             }
         }
-
     }
 }

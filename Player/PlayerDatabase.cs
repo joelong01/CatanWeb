@@ -2,7 +2,6 @@
 using System.Linq;
 using Catan3.Models;
 using Microsoft.UI;
-
 namespace Catan3
 {
     public static class PlayerDatabase
@@ -16,7 +15,6 @@ namespace Catan3
                 new ("Adrian",  "ms-appx:///Assets/DefaultPlayers/Adrian.jpg", new PlayerColorViewModel(Colors.White, Colors.Purple, Colors.Black)),
                 new ("Ryan",    "ms-appx:///Assets/DefaultPlayers/Ryan.jpg", new PlayerColorViewModel(Colors.White, Colors.DarkGray, Colors.Black))
             ];
-
         public static PlayerViewModel? FromId(string id)
         {
             return AvailablePlayers.FirstOrDefault(x => x.Id == id);

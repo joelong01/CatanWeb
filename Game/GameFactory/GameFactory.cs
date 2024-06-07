@@ -1,16 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text.Json;
 using Catan3.Utility;
-using Microsoft.UI.Xaml;
-
 namespace Catan3.Models
 {
-
     public static class GameFactory
     {
         public static GameModel CreateGame(GameType gameType, List<string> players)
@@ -28,7 +22,6 @@ namespace Catan3.Models
             {
                 throw new NotImplementedException();
             }
-
             Debug.Assert(( gameInfo.TileKeys.Count == gameInfo.Numbers.Count ) && ( gameInfo.TileKeys.Count == gameInfo.Resources.Count ));
             List<PlayerModel> playerModels = players.Select(Id => new PlayerModel(Id)).ToList();
             if (players.Count < gameInfo.ResourceRules.MinPlayers  || players.Count > gameInfo.ResourceRules.MaxPlayers )
@@ -36,7 +29,6 @@ namespace Catan3.Models
                 throw new GameException($"{gameInfo.Description} must have players between {gameInfo.ResourceRules.MinPlayers} and {gameInfo.ResourceRules.MaxPlayers}. You gave {players.Count}");
             }
             GameModel game = new(gameInfo, playerModels);
-
             for (int i = 0; i < gameInfo.TileKeys.Count; i++)
             {
                 var tile = new TileModel()
@@ -47,13 +39,10 @@ namespace Catan3.Models
                 };
                 game.Tiles.InsertSorted(tile);
             }
-
-
             foreach (var tile in game.Tiles)
             {
                 foreach (HexPosition buildingPosition in Enum.GetValues(typeof(HexPosition)))
                 {
-
                     if (buildingPosition == HexPosition.None) continue;
                     BuildingKey buildingKey = new(tile.TileKey, buildingPosition);
                     var building = game.Buildings.FindBuildingModel(buildingKey);
@@ -72,23 +61,18 @@ namespace Catan3.Models
                     if (road is null)
                     {
                         road = new RoadModel(roadKey);
-
                         game.Roads.InsertSorted(road);
                     }
-
                 }
             }
-
             foreach (var harbor in gameInfo.Harbors)
             {
                 game.Harbors.InsertSorted(harbor);
             }
-
             
            
             game.Shuffle();
          
-
             return game;
         }
         /// <summary>
@@ -97,7 +81,6 @@ namespace Catan3.Models
         /// </summary>
         public static void Shuffle(this GameModel game)
         {
-
             Random random = new();
             int count = game.Tiles.Count;
             do
@@ -105,26 +88,19 @@ namespace Catan3.Models
                 ShuffleList<TileModel, ResourceType>(game.Tiles, random,
                      tile => tile.ResourceTileType,
                      (tile, type) => tile.ResourceTileType = type);
-
                 ShuffleList<TileModel, int>(game.Tiles, random,
                     tile => tile.Number,
                     (tile, number) => tile.Number = number);
-
                 ShuffleList<HarborModel, HarborType>(game.Harbors, random,
                    harbor => harbor.HarborType,
                    (harbor, type) => harbor.HarborType = type);
-
                 // Correct the placement of the number 7 on desert tiles
                 EnsureDesertSeven(game);
             } while (!ValidateGame(game));
-
             // Place the robber on the first desert tile found
             game.Robber.Coordinates = game.Tiles.FirstOrDefault(tile => tile.ResourceTileType == ResourceType.Desert)?.TileKey ?? throw new Exception("there must be a desert tile for the game to work");
             
-
         }
-
-
         private static void ShuffleList<T, TValue>(IList<T> list, Random random, Func<T, TValue> valueSelector, Action<T, TValue> valueSetter)
         {
             int count = list.Count;
@@ -136,14 +112,11 @@ namespace Catan3.Models
                 valueSetter(list[i], temp);
             }
         }
-
         private static void EnsureDesertSeven(GameModel game)
         {
             var deserts = game.Tiles.Where(t => t.ResourceTileType == ResourceType.Desert).ToList();
             var sevens = game.Tiles.Where(t => t.Number == 7).ToList();
-
             Debug.Assert(deserts.Count == sevens.Count, "Mismatch between deserts and tiles with number 7");
-
             for (int i = 0; i < deserts.Count; i++)
             {
                 if (deserts[i].Number != 7)
@@ -153,7 +126,6 @@ namespace Catan3.Models
                 }
             }
         }
-
         private static bool ValidateGame(this GameModel Game)
         {
             foreach (var tile in Game.Tiles.TilesWithNumber(6))

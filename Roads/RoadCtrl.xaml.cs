@@ -1,12 +1,7 @@
-using System;
-using System.Diagnostics;
-using System.Diagnostics.Contracts;
-using System.Runtime.CompilerServices;
 using Catan3.Models;
 using Catan3.Utility;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-
 namespace Catan3.Controls
 {
     public delegate void RoadClicked(RoadViewModel viewModel);
@@ -35,7 +30,6 @@ namespace Catan3.Controls
         {
             DataContext = value;
         }
-
         /// <summary>
         ///     This is not bound in XAML because you can't bind to commands on Polygon mouse envents in XAML in winui3
         /// </summary>

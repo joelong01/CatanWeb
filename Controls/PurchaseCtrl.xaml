@@ -6,7 +6,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" x:Name="CTRL_Purchase">
-
     <UserControl.Resources>
         <Storyboard x:Name="SB_AnimatePush">
             <DoubleAnimation Storyboard.TargetName="ScaleTransform"
@@ -25,7 +24,6 @@
                     AutoReverse="False" Duration="0:0:0.1" />
         </Storyboard>
     </UserControl.Resources>
-
     <u:FlipperCtrl Orientation="{x:Bind ViewModel.Orientation, Mode=OneWay}"
             Width="100" Height="100">
         <u:FlipperCtrl.RenderTransform>
@@ -37,7 +35,6 @@
                     VerticalAlignment="Stretch" />
         </u:FlipperCtrl.Back>
         <u:FlipperCtrl.Front>
-
             <Grid x:Name="GRID_Front" HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
                     PointerEntered="OnPointerEntered" CornerRadius="10"
@@ -48,25 +45,19 @@
                 <Grid.RenderTransform>
                     <ScaleTransform x:Name="ScaleTransform" />
                 </Grid.RenderTransform>
-
                 <TextBlock HorizontalAlignment="Left" FontSize="22"
                         Margin="5,0,0,0" VerticalAlignment="Top"
                         Text="{x:Bind ViewModel.Unspent, Mode=OneWay}"
                         Foreground="{Binding ElementName=CTRL_Purchase, Path=Foreground, Mode=OneWay}" />
-
                 <TextBlock HorizontalAlignment="Center"
                         VerticalAlignment="Center" FontSize="44"
                         Text="{x:Bind ViewModel.Glyph, Mode=OneWay}"
                         FontFamily="{StaticResource CatanFont}"
                         Foreground="{Binding ElementName=CTRL_Purchase, Path=Foreground, Mode=OneWay}" />
-
                 <TextBlock HorizontalAlignment="Center" FontSize="12"
                         Margin="0,0,0,10" VerticalAlignment="Bottom"
                         Text="{x:Bind ViewModel.Description, Mode=OneWay}" />
-
             </Grid>
-
         </u:FlipperCtrl.Front>
     </u:FlipperCtrl>
-
 </UserControl>

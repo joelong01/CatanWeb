@@ -6,7 +6,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         x:Name="UserControl" mc:Ignorable="d">
-
     <Grid Height="50" Width="50"
             Background="{x:Bind ViewModel.GetBackground(ViewModel.Highlighted), Mode=OneWay}"
             CornerRadius="10">
@@ -16,7 +15,6 @@
                     FontFamily="{StaticResource CatanFont}"
                     Text="{x:Bind ViewModel.Glyph, Mode=OneWay}"
                     Foreground="{x:Bind ViewModel.GetForeground(ViewModel.Highlighted), Mode=OneWay}" />
-
         </Viewbox>
         <Viewbox Height="20"
                 HorizontalAlignment="{x:Bind ViewModel.HorizontalAlignment, Mode=OneWay}"
@@ -25,11 +23,9 @@
             <Grid
                     Background="{x:Bind ViewModel.GetBackground(ViewModel.Highlighted), Mode=OneWay}"
                     CornerRadius="10" Margin="0">
-
                 <TextBlock Text="{x:Bind ViewModel.Count, Mode=OneWay}"
                         Foreground="{x:Bind ViewModel.GetForeground(ViewModel.Highlighted), Mode=OneWay}"
                         Margin="2" TextLineBounds="Tight" />
-
             </Grid>
         </Viewbox>
     </Grid>

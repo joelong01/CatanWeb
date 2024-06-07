@@ -12,7 +12,6 @@
         d:DataContext="{d:DesignInstance Type=models:GameViewModel}">
     <Page.Resources>
         <Style TargetType="Rectangle" x:Key="RECT_ResourceCard">
-
             <Setter Property="Width" Value="67" />
             <Setter Property="Height" Value="100" />
             <Setter Property="Stretch" Value="Fill" />
@@ -20,7 +19,6 @@
             <Setter Property="RadiusY" Value="5" />
             <Setter Property="Margin" Value="1" />
         </Style>
-
     </Page.Resources>
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
             Background="DarkGray">
@@ -31,13 +29,11 @@
             <ColumnDefinition Width="Auto" MinWidth="5" />
             <ColumnDefinition Width="25*" />
         </Grid.ColumnDefinitions>
-
         <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto"
                 Background="LightGray" HorizontalScrollBarVisibility="Auto"
                 VerticalAlignment="Top" HorizontalAlignment="Stretch">
             <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center"
                     Margin="10">
-
                 <TextBlock FontSize="20"
                         Text="{x:Bind MainPageModel.GameViewModel.Id, Mode=OneWay}" />
                 <Button Content="Edit Players" Click="OnEditPlayers"
@@ -47,9 +43,7 @@
                 <Button Content="Shuffle"
                         Command="{x:Bind MainPageModel.GameViewModel.ShuffleCommand, Mode=OneWay}"
                         Background="Black" Foreground="White" />
-
                 <Button Content="Update Layout" Click="OnUpdateLayout" />
-
                 <!--Current Player (and Playing Players)-->
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Current Player" Foreground="Black" />
@@ -58,7 +52,6 @@
                             SelectedItem="{x:Bind MainPageModel.GameViewModel.CurrentPlayer, Mode=OneWay}"
                             DisplayMemberPath="Name" Foreground="Black"
                             HorizontalAlignment="Left" VerticalAlignment="Top">
-
                     </ComboBox>
                 </StackPanel>
                 <!--Purchase-->
@@ -78,13 +71,11 @@
                                 <Setter Property="Margin" Value="0" />
                                 <Setter Property="Width" Value="100" />
                                 <Setter Property="Height" Value="100" />
-
                             </Style>
                         </GridView.ItemContainerStyle>
                     </GridView>
                 </Viewbox>
                 <!--Rolls-->
-
                 <StackPanel HorizontalAlignment="Left"
                         Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}"
                         CornerRadius="5">
@@ -150,7 +141,6 @@
                                     TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
                         </StackPanel>
                     </Viewbox>
-
                 </StackPanel>
                 <Button
                         Command="{x:Bind MainPageModel.GameViewModel.NextPlayerCommand, Mode=OneWay}"
@@ -161,7 +151,6 @@
                         SelectedItem="{x:Bind SelectedGame, Mode=TwoWay}"
                         Foreground="Black" HorizontalAlignment="Left"
                         VerticalAlignment="Top" Width="200" />
-
                 <Button Content="Flip Orientation"
                         Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}"
                         Background="Black" Foreground="White" />
@@ -174,7 +163,6 @@
                         Command="{x:Bind MainPageModel.SaveAsCommand, Mode=OneWay}" />
                 <Button Content="Open..." Background="Black" Foreground="White"
                         Command="{x:Bind MainPageModel.OpenCommand, Mode=OneWay}" />
-
                 <Viewbox Stretch="Uniform" Height="400"
                         VerticalAlignment="Bottom">
                     <Border BorderBrush="Black" BorderThickness="2"
@@ -183,15 +171,11 @@
                                 GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" />
                     </Border>
                 </Viewbox>
-
             </StackPanel>
-
         </ScrollViewer>
-
         <c:GameControls ViewModel="{x:Bind MainPageModel, Mode=OneWay}"
                 Grid.Column="2" Canvas.ZIndex="9999" HorizontalAlignment="Left"
                 VerticalAlignment="Top" />
-
         <Border BorderBrush="Blue" BorderThickness="0" Grid.Column="2"
                 HorizontalAlignment="Left" VerticalAlignment="Top"
                 Grid.ColumnSpan="1">
@@ -200,7 +184,6 @@
                         GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" />
             </Viewbox>
         </Border>
-
         <!--The far right column that has the total resources for the game and a list of player information-->
         <StackPanel Grid.Column="4" HorizontalAlignment="Stretch"
                 Background="DarkOliveGreen">
@@ -220,7 +203,6 @@
                         <Setter Property="Padding" Value="2" />
                         <Setter Property="BorderBrush" Value="Black" />
                         <Setter Property="BorderThickness" Value="1" />
-
                     </Style>
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
@@ -229,12 +211,9 @@
                             <c:PlayerCtrl PlayerViewModel="{x:Bind Mode=OneWay}"/>
                       
                     </DataTemplate>
-
                 </ItemsControl.ItemTemplate>
-
             </ItemsControl>
         </StackPanel>
-
         <toolkit:GridSplitter Grid.Column="1" Width="5"
                 HorizontalAlignment="Stretch" Background="Gray">
             <toolkit:GridSplitter.RenderTransform>

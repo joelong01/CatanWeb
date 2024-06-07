@@ -3,7 +3,6 @@ using System.Diagnostics;
 using Catan3.Utility;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
@@ -19,7 +18,6 @@ namespace Catan3.Converters
             }
             return Colors.Transparent; // Default to transparent if not applicable
         }
-
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             if (value is Color color)
@@ -31,7 +29,6 @@ namespace Catan3.Converters
 #pragma warning restore CS8603 // Possible null reference return.
         }
     }
-
     public class DoubleToThickness : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -46,10 +43,8 @@ namespace Catan3.Converters
             {
                 return new Thickness(val);
             }
-
             throw new ArgumentException($"{value} is not a double");
         }
-
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             if (value is Thickness thickness)
@@ -59,7 +54,6 @@ namespace Catan3.Converters
             throw new ArgumentException($"{value} is not a Thickness");
         }
     }
-
     public class NullToDefaultValueConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -71,7 +65,6 @@ namespace Catan3.Converters
             }
             return value;
         }
-
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
@@ -84,7 +77,6 @@ namespace Catan3.Converters
             Color color= Colors.Red;
             if (value is HexPosition position)
             {
-
                 switch (position)
                 {
                     case HexPosition.TopLeft:
@@ -114,9 +106,6 @@ namespace Catan3.Converters
             }
             return BrushCache.GetSolidColorBrush(color);
         }
-
-
-
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();

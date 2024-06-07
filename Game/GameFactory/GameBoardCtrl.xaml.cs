@@ -1,8 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
 using Catan3.Models;
-using Catan3.Utility;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -18,24 +16,17 @@ namespace Catan3.Controls
     /// </summary>
     public partial class GameBoardCtrl : UserControl
     {
-
         public event TileRightMouseClicked? TileRightMouseClicked;
-
-
         public GameBoardCtrl()
         {
             InitializeComponent();
             VB_Robber.Loaded += VB_Robber_Loaded;
-
-
         }
-
         private void VB_Robber_Loaded(object sender, RoutedEventArgs e)
         {
             UpdateRobberTileLocation();
             VB_Robber.Loaded -= VB_Robber_Loaded;
         }
-
         public static readonly DependencyProperty GameViewModelProperty = DependencyProperty.Register("GameViewModel", typeof(GameViewModel), typeof(GameBoardCtrl), new PropertyMetadata(null, GameViewModelChanged));
         public GameViewModel? GameViewModel
         {
@@ -45,8 +36,6 @@ namespace Catan3.Controls
         private static void GameViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as GameBoardCtrl;
-
-
             depPropClass?.SetGameViewModel(( GameViewModel )e.OldValue, ( GameViewModel )e.NewValue);
         }
         private void SetGameViewModel(GameViewModel? oldValue, GameViewModel? newValue)
@@ -82,7 +71,6 @@ namespace Catan3.Controls
               
             }
             UpdateRobberTileLocation();
-
             //
             // WinUI3 does send property changed notifications when the collection changes, only when the contents of the collection change
             // this will force rebind to the new collections
@@ -90,25 +78,19 @@ namespace Catan3.Controls
             IC_Buildings.ItemsSource = newValue?.Buildings;
             IC_Tiles.ItemsSource = newValue?.Tiles;
             IC_Harbors.ItemsSource = newValue?.Harbors;
-
-
-
             //
             //  we use Binding in some places where it is convinient and x:Bind in others. Binding needs data context, so set it here
             this.DataContext = newValue;
         }
     
-
         private void RobberModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
            
             if (e.PropertyName == nameof(GameViewModel.RobberViewModel.RobberModel.Coordinates) )
             {
-
                 UpdateRobberTileLocation();
             }
         }
-
         private void RobberViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (GameViewModel is null) return;
@@ -119,7 +101,6 @@ namespace Catan3.Controls
                 UpdateRobberTileLocation();
             }
         }
-
         /// <summary>
         ///     When the geometry of the board changes, we have to update the location of the Robber
         /// </summary>
@@ -129,24 +110,15 @@ namespace Catan3.Controls
         {
             UpdateRobberTileLocation();
         }
-
         private void GameViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-
-
-
         }
-
-
-
         private void UpdateRobberTileLocation()
         {
-
             if (this.Resources["MoveRobberAnimation"] is Storyboard storyboard && GameViewModel is not null)
             {
                 Debug.Assert(GameViewModel.RobberViewModel.RobberModel is not null);
              //   this.TraceMessage($"Moving Robber to {GameViewModel.RobberViewModel.RobberModel.Coordinates}");
-
                 // Assuming the first two children are the X and Y animations
                 if (storyboard.Children[0] is DoubleAnimation animationX && storyboard.Children[1] is DoubleAnimation animationY)
                 {
@@ -161,9 +133,6 @@ namespace Catan3.Controls
                 }
             }
         }
-
-
-
         private void Tile_RightMouseDown(object sender, RightTappedRoutedEventArgs e)
         {
             if (sender is TileCtrl Tile)
@@ -171,13 +140,11 @@ namespace Catan3.Controls
                 TileRightMouseClicked?.Invoke(Tile, e);
             }
         }
-
         private double RobberHeight(double hexSize)
         {
             if (GameViewModel is null || GameViewModel.BoardInfo is null) return 80;
             var result =  hexSize * .8;
             if (result < 10) return 10;
-
             return result;
         }
     }

@@ -1,5 +1,4 @@
 ﻿
-
 using System;
 using System.Diagnostics;
 using System.Text.Json.Serialization;
@@ -7,7 +6,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
-
 namespace Catan3.Models
 {
     public partial class RobberViewModel : ObservableRecipient
@@ -15,11 +13,8 @@ namespace Catan3.Models
         [JsonIgnore]
         [ObservableProperty]
         private RobberModel _robberModel;
-
         [ObservableProperty]
         private CatanOrientation _orientation = CatanOrientation.FaceUp;
-
-
         public RobberViewModel(RobberModel robberModel)
         {
             _robberModel = robberModel;
@@ -40,7 +35,6 @@ namespace Catan3.Models
                 }
             });
         }
-
         public static RobberViewModel Default { get; } = new RobberViewModel(new());
         /// <summary>
         ///     Binding function for calculated lproperty Background (the color of the shield)
@@ -55,11 +49,9 @@ namespace Catan3.Models
         /// <exception cref="Exception"></exception>
         public Brush Background(RobberModel robberModel, string playerId)
         {
-
             if (playerId is not null)
             {
                 PlayerViewModel owner = PlayerDatabase.FromId(playerId) ?? throw new Exception($"Bad PlayerId: {playerId}");
-
                 return owner.PlayerColors.BackgroundBrush;
             }
             else
@@ -67,7 +59,6 @@ namespace Catan3.Models
                 return BrushCache.GetGradientBrush(Colors.White, Colors.Black);
             }
         }
-
         public Brush Foreground(RobberModel robberModel, string playerId)
         {
             if (playerId is not null)
@@ -81,13 +72,11 @@ namespace Catan3.Models
                 return BrushCache.GetSolidColorBrush(Colors.Red);
             }
         }
-
         public string BIND_ResourcesStolen(RobberModel robberModel, int stolen)
         {
             Debug.Assert(robberModel.ResourcesStolen == stolen);
             return stolen.ToString();
         }
-
         public override string ToString()
         {
             return RobberModel.ToString();

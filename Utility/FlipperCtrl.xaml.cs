@@ -4,7 +4,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
-
 namespace Catan3.Utility
 {
     public sealed partial class FlipperCtrl : Control
@@ -39,29 +38,23 @@ namespace Catan3.Utility
                 FlipToFaceDown(Back, Front);
             }
         }
-
         public void FlipToFaceUp(FrameworkElement back, FrameworkElement front)
         {
-
             // Animate CANVAS_FaceDown to 90 degrees
             AnimateRotation(back, 0, 90, () =>
             {
                 AnimateRotation(front, -90, 0, null); // No further action on completion
             });
         }
-
         public void FlipToFaceDown(FrameworkElement back, FrameworkElement front)
         {
-
             // Animate CANVAS_FaceUp to 90 degrees
             AnimateRotation(front, 0, 90, () =>
             {
-
                 // Once CANVAS_FaceUp is flipped, start animating CANVAS_FaceDown from -90 to 0 degrees
                 AnimateRotation(back, -90, 0, null); // No further action on completion
             });
         }
-
         private static void AnimateRotation(FrameworkElement element, double from, double to, Action? onAnimationCompleted)
         {
 //            element.TraceMessage($"From:{from} To:{to} for:{element.Name}");
@@ -69,7 +62,6 @@ namespace Catan3.Utility
             {
                 element.Projection = new PlaneProjection();
             }
-
             var da = new DoubleAnimation
             {
                 From = from,
@@ -80,16 +72,12 @@ namespace Catan3.Utility
             storyboard.Children.Add(da);
             Storyboard.SetTarget(da, element.Projection);
             Storyboard.SetTargetProperty(da, "RotationY");
-
             if (onAnimationCompleted != null)
             {
                 storyboard.Completed += (s, e) => onAnimationCompleted();
             }
-
             storyboard.Begin();
         }
-
-
         public static readonly DependencyProperty FrontProperty = DependencyProperty.Register("Front", typeof(FrameworkElement), typeof(FlipperCtrl), new PropertyMetadata(null, FrontChanged));
         public FrameworkElement Front
         {
@@ -114,7 +102,6 @@ namespace Catan3.Utility
                 projection.RotationY = ( this.Orientation == CatanOrientation.FaceDown ) ? -90 : 0;
             }
         }
-
         public static readonly DependencyProperty BackProperty = DependencyProperty.Register("Back", typeof(FrameworkElement), typeof(FlipperCtrl), new PropertyMetadata(null, BackChanged));
         public FrameworkElement Back
         {
@@ -134,15 +121,10 @@ namespace Catan3.Utility
                 if (back.Projection is not PlaneProjection projection)
                 {
                     projection = new PlaneProjection();
-
                     back.Projection = projection;
-
                 }
                 projection.RotationY = ( this.Orientation == CatanOrientation.FaceDown ) ? 0 : 90;
-
             }
         }
-
-
     }
 }

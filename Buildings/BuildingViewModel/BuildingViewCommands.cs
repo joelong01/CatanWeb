@@ -1,10 +1,6 @@
-﻿using System;
-using System.Diagnostics;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.UI;
-
 namespace Catan3.Models
 {
     public partial class BuildingViewModel : ObservableRecipient
@@ -44,19 +40,16 @@ namespace Catan3.Models
         {
             CurrentPlayer = newCurrentPlayer;
            
-
         }
         //
         //  used for MouseEnter/Mouse leave log
         private BuildingVisualState _oldState = BuildingVisualState.Hidden;
-
         [RelayCommand]
         private void Upgrade()
         {
             if (Building.BuildingState == BuildingState.NotBuildable) return;
             Messenger.Send(new BuildingUpgradeMessage(Building.BuildingKey));
         }
-
         //
         /// <summary>
         ///  this is useful in the beginning of the game when picking board and resources -- if the stars 
@@ -66,16 +59,12 @@ namespace Catan3.Models
         private void MouseEnter()
         {
             if (Building.BuildingState == BuildingState.NotBuildable) return;
-
             _oldState = VisualState;
             if ( VisualState == BuildingVisualState.Hidden)
             {
-
                 VisualState = BuildingVisualState.Stars;
-
             }
         }
-
         [RelayCommand]
         private void MouseExit()
         {
@@ -85,7 +74,5 @@ namespace Catan3.Models
                 VisualState = BuildingVisualState.Hidden;
             }
         }
-
     }
 }
-

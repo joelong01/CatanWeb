@@ -3,10 +3,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
-
 namespace Catan3.Controls
 {
     public sealed partial class PurchaseCtrl : UserControl
@@ -15,19 +13,15 @@ namespace Catan3.Controls
         {
             this.InitializeComponent();
         }
-
         public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(EntitlementPurchaseViewModel), typeof(PurchaseCtrl), new PropertyMetadata(null));
         public EntitlementPurchaseViewModel ViewModel
         {
             get => ( EntitlementPurchaseViewModel )GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
-
         private void Viewbox_Holding(object sender, Microsoft.UI.Xaml.Input.HoldingRoutedEventArgs e)
         {
-
         }
-
         private void OnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             if (!ViewModel.EntitlementPurchaseModel.Enabled) return;
@@ -36,7 +30,6 @@ namespace Catan3.Controls
                 grid.BorderThickness = new Thickness(1);
             }
         }
-
         private void OnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             if (!ViewModel.EntitlementPurchaseModel.Enabled) return;
@@ -62,19 +55,16 @@ namespace Catan3.Controls
                         var point = origE.GetCurrentPoint(releasedGrid).Position;
                         bool isInside = point.X >= 0 && point.X <= releasedGrid.ActualWidth &&
                                 point.Y >= 0 && point.Y <= releasedGrid.ActualHeight;
-
                         if (( PointerEventHandler? )pointerReleasedHandler is not null)
                         {
                             releasedGrid.PointerReleased -= pointerReleasedHandler;
                         }
                         releasedGrid.ReleasePointerCapture(origE.Pointer);
                         isPointerCaptured = false;
-
                         SwapColors(grid);
                         if (isInside)
                         {
                             ViewModel.Command.Execute(ViewModel.EntitlementPurchaseModel.Entitlement);
-
                         }
                         else
                         {
@@ -83,15 +73,12 @@ namespace Catan3.Controls
                         }
                     }
                 }
-
                 grid.CapturePointer(e.Pointer);
                 isPointerCaptured = true;
                 grid.PointerReleased += pointerReleasedHandler;
-
                 SwapColors(grid);
             }
         }
-
         private void SwapColors(Grid grid)
         {
             Brush? temp = null;
@@ -106,7 +93,6 @@ namespace Catan3.Controls
                 }
             }
             grid.Background = temp;
-
         }
     }
 }

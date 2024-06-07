@@ -1,21 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Security.AccessControl;
-using System.Text;
-using System.Threading.Tasks;
-using Catan10.Models;
-using Microsoft.UI.Xaml.Documents;
-using Microsoft.UI.Xaml.Shapes;
-
+﻿using Catan10.Models;
 namespace Catan3.Models
 {
     public static class ResourcesModelExtensions
     {
         public static void Add(this ResourcesModel a, ResourcesModel b)
         {
-
             a.Wheat += b.Wheat;
             a.Wood += b.Wood;
             a.Ore += b.Ore;
@@ -31,9 +20,7 @@ namespace Catan3.Models
             a.VictoryPoint += b.VictoryPoint;
             a.AnyDevCard += b.AnyDevCard;
             a.Robber += b.Robber;
-
         }
-
         public static ResourcesModel TradeResourcesModelForRedDie(SpecialDice roll)
         {
             ResourcesModel tr = new();
@@ -55,11 +42,9 @@ namespace Catan3.Models
             }
             return tr;
         }
-
         public static ResourcesModel TradeResourcesModelForCity(ResourceType resourceType, bool pirates)
         {
             ResourcesModel tr = new ResourcesModel();
-
             switch (resourceType)
             {
                 case ResourceType.Sheep:
@@ -94,7 +79,6 @@ namespace Catan3.Models
             }
             return tr;
         }
-
         public static void AddResource(this ResourcesModel model, ResourceType resourceType, int toAdd)
         {
             switch (resourceType)
@@ -102,23 +86,18 @@ namespace Catan3.Models
                 case ResourceType.Sheep:
                     model.Sheep += toAdd;
                     break;
-
                 case ResourceType.Wood:
                     model.Wood += toAdd;
                     break;
-
                 case ResourceType.Ore:
                     model.Ore += toAdd;
                     break;
-
                 case ResourceType.Wheat:
                     model.Wheat += toAdd;
                     break;
-
                 case ResourceType.Brick:
                     model.Brick += toAdd;
                     break;
-
                 case ResourceType.GoldMine:
                     model.GoldMine += toAdd;
                     break;
@@ -152,17 +131,13 @@ namespace Catan3.Models
                 //    AnyDevCard += toAdd;
                 //    break;
                 case ResourceType.Back:
-
                 case ResourceType.None:
-
                 case ResourceType.Sea:
-
                 default:
                     model.TraceMessage($"{resourceType} passed to Add()");
                     break;
             }
         }
-
         public static ResourcesModel TradeResourcesModelForBuilding(BuildingState buildingState, ResourceType resourceType, bool pirates)
         {
             var tr = new ResourcesModel();
@@ -174,7 +149,6 @@ namespace Catan3.Models
                 case BuildingState.City:
                     return TradeResourcesModelForCity(resourceType, pirates);
             }
-
             return tr;
         }
     }

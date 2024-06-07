@@ -1,5 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using Catan3.Utility;
+﻿using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 namespace Catan3.Models
 {
@@ -7,14 +6,11 @@ namespace Catan3.Models
     {
         [ObservableProperty]
         private HexCoordinates _tileKey = HexCoordinates.Default;
-
         [ObservableProperty]
         private ResourceType _resourceTileType = ResourceType.None;
-
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(Stars))]
         private int _number = 0;
-
         [ObservableProperty]
         private bool _temporarilyGold = false;
         /// <summary>

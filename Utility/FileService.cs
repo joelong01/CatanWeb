@@ -20,14 +20,12 @@ namespace Catan.Utility
         Task<byte[]?> OpenFileAsync();
         string? FileName { get; }
 }
-
 /// <summary>
 /// Implements file operations for opening and saving files on disk, utilizing the Windows Storage API.
 /// </summary>
 public class FileService : IFileService
 {
     private StorageFile? _file = null;  // Holds a reference to the currently selected file
-
     /// <summary>
     ///     returns the name of the file that the user picked
     /// </summary>
@@ -36,7 +34,6 @@ public class FileService : IFileService
         get
         {
             if (_file is null) return null;
-
             return _file.Name;
         }
     }
@@ -54,14 +51,11 @@ public class FileService : IFileService
                 SuggestedStartLocation = PickerLocationId.DocumentsLibrary
             };
             openPicker.FileTypeFilter.Add(".catan");
-
             var window = (Application.Current as App)?.MainWindow as MainWindow;
             IntPtr hwnd = WindowNative.GetWindowHandle(window);
             InitializeWithWindow.Initialize(openPicker, hwnd);
-
             StorageFile file = await openPicker.PickSingleFileAsync();
             if (file == null) return null;
-
             var compressedData = await FileIO.ReadBufferAsync(file);
             return compressedData.ToArray();
         }
@@ -71,7 +65,6 @@ public class FileService : IFileService
             return null;
         }
     }
-
     /// <summary>
     /// Saves the provided byte array to a file chosen by the user with a suggested filename.
     /// </summary>
@@ -84,7 +77,6 @@ public class FileService : IFileService
         if (_file == null) return false;
         return await WriteToDisk(data);
     }
-
     /// <summary>
     /// Saves the provided byte array to the previously used file, or prompts the user to select a file if none is set.
     /// </summary>
@@ -104,7 +96,6 @@ public class FileService : IFileService
             return false;
         }
     }
-
     /// <summary>
     /// Writes the given byte array data to the disk using the currently set StorageFile.
     /// </summary>
@@ -118,7 +109,6 @@ public class FileService : IFileService
         FileUpdateStatus status = await CachedFileManager.CompleteUpdatesAsync(_file);
         return status == FileUpdateStatus.Complete;
     }
-
     /// <summary>
     /// Prompts the user to pick a file for saving. This function initializes a FileSavePicker and returns the selected file.
     /// </summary>
@@ -132,13 +122,10 @@ public class FileService : IFileService
         };
         savePicker.FileTypeChoices.Add("Catan File", new List<string> { ".catan" });
         savePicker.SuggestedFileName = defaultFileName;
-
         var window = (Application.Current as App)?.MainWindow as MainWindow;
         IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         InitializeWithWindow.Initialize(savePicker, hwnd);
-
         return await savePicker.PickSaveFileAsync();
     }
 }
-
 }

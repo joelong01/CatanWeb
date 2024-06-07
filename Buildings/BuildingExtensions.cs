@@ -9,7 +9,6 @@ namespace Catan3.Models
     /// <summary>
     ///     this order needs to match the CalculateHexGeometry PointCollection order
     /// </summary>
-
     public static class BuildingModelExtensions
     {
         public static List<(HexPosition position, Direction direction)> Aliases(this BuildingKey key)
@@ -95,10 +94,8 @@ namespace Catan3.Models
                 building = collection.FindBuildingModel(buildingKey);
                 if (building is not null) result.Add(building);
             }
-
             return result;
         }
-
         public static BuildingViewModel? FindBuildingViewModel(this IEnumerable<BuildingViewModel> buildings, BuildingKey key)
         {
             if (buildings is null || !buildings.Any()) return null;
@@ -116,7 +113,6 @@ namespace Catan3.Models
                         return building;
                     }
                 }
-
                 return null;
             }
             return building;
@@ -141,7 +137,6 @@ namespace Catan3.Models
             }
             return building;
         }
-
         public static BuildingModel GetBuildingOrThrow(this IEnumerable<BuildingModel> buildings, BuildingKey key)
         {
             return buildings.FindBuildingModel(key) ?? throw new GameException($"Building {key} not found");
@@ -164,18 +159,14 @@ namespace Catan3.Models
                 {
                     result.Add(building);
                 }
-
             }
-
             return result;
         }
-
         /// <summary>
         ///     returns the list of buildings that are owned in the tile
         /// </summary>
         /// <param name="tile"></param>
         /// <returns></returns>
-
         public static List<BuildingModel> OwnedBuildings(this IList<BuildingModel> collection, HexCoordinates coordinates)
         {
             List<BuildingModel> result = [];
@@ -187,14 +178,10 @@ namespace Catan3.Models
                 {
                     result.Add(building);
                 }
-
             }
-
             return result;
-
         }
         ///
-
         public static ResourcesModel Resources(this BuildingModel model, ResourceType resource)
         {
             ResourcesModel result = new ResourcesModel();
@@ -210,20 +197,15 @@ namespace Catan3.Models
             {
                 Debug.Assert(false, "haven't implemented something yet...");
             }
-
             return result;
         }
-
     }
-
     public partial class BuildingKey
     {
-
         public override string ToString()
         {
             return $"[{this.HexCoordinates}-{Position}]";
         }
-
         public override bool Equals(object? obj)
         {
             return obj is not null && obj is BuildingKey key &&

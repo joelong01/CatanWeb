@@ -1,25 +1,17 @@
 ﻿using System;
 using System.Diagnostics;
-
 namespace Catan3.Utility
 {
     public class FunctionTimer : IDisposable
     {
         #region Delegates + Fields + Events + Enums
-
         private string? message;
         private Stopwatch? watch = null;
-
         #endregion Delegates + Fields + Events + Enums
-
         #region Properties
-
         public static bool Enabled { get; set; } = false;
-
         #endregion Properties
-
         #region Constructors + Destructors
-
         // a global flag to turn off all timing
         public FunctionTimer(string msg, bool enableOverride = false)
         {
@@ -28,11 +20,8 @@ namespace Catan3.Utility
             message = msg;
             watch.Start();
         }
-
         #endregion Constructors + Destructors
-
         #region Methods
-
         public void Dispose()
         {
             if (watch == null) return;
@@ -40,7 +29,6 @@ namespace Catan3.Utility
             double elapsedMs = watch.ElapsedMilliseconds;
             this.TraceMessage($"{message}: {elapsedMs}ms");
         }
-
         public static void CallTimedFunction(string description, Action action)
         {
             using (new FunctionTimer(description))
@@ -48,7 +36,6 @@ namespace Catan3.Utility
                 action();
             }
         }
-
         #endregion Methods
     }
 }

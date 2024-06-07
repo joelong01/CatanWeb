@@ -5,7 +5,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
-
 namespace Catan3.Models
 {
     /// <summary>
@@ -21,15 +20,12 @@ namespace Catan3.Models
         Color _background = background;
         [ObservableProperty]
         Color _foreground = foreground;
-
         [ObservableProperty]
         bool _selected = false;
-
         public Brush GetBrush(Color color)
         {
             return BrushCache.GetSolidColorBrush(color);
         }
-
         public string DisplayName(ColorName name)
         {
             switch (name)
@@ -42,39 +38,28 @@ namespace Catan3.Models
                     return "Foreground";
                 default:
                     throw new System.Exception("You forgot to update here when you added a new color");
-
             }
         }
     }
-
-
     public partial class EditPlayerViewModel : ObservableObject
     {
-
         [ObservableProperty]
         private EditPlayerColors _currentColorSetting;
-
         [ObservableProperty]
         private ObservableCollection<PlayerViewModel> _players;
         [ObservableProperty]
         ObservableCollection<EditPlayerColors> _editPlayerColors;
-
         [ObservableProperty]
         private PlayerViewModel _selectedPlayer;
-
         public EditPlayerViewModel(IList<PlayerViewModel> players)
         {
             Players = [.. players];
-
             EditPlayerColors =
             [
                     new (ColorName.PrimaryBackground, players[0].PlayerColors.PrimaryBackground, players[0].PlayerColors.Foreground),
                     new (ColorName.SecondaryBackground, players[0].PlayerColors.SecondaryBackground, players[0].PlayerColors.Foreground),
                     new (ColorName.Foreground, players[0].PlayerColors.Foreground, players[0].PlayerColors.Foreground),
-
              ];
-
-
             CurrentColorSetting = EditPlayerColors[0];
             SelectedPlayer = players[0];
         }
@@ -86,28 +71,20 @@ namespace Catan3.Models
         //  the Background equal to the Foreground.
         partial void OnSelectedPlayerChanged(PlayerViewModel? oldValue, PlayerViewModel newValue)
         {
-
             EditPlayerColors[0].Background = newValue.PlayerColors.PrimaryBackground;
             EditPlayerColors[1].Background = newValue.PlayerColors.SecondaryBackground;
             EditPlayerColors[2].Background = newValue.PlayerColors.Foreground;
-
             EditPlayerColors[0].Foreground = newValue.PlayerColors.Foreground;
             EditPlayerColors[1].Foreground = newValue.PlayerColors.Foreground;
             EditPlayerColors[2].Foreground = newValue.PlayerColors.PrimaryBackground;
-
             if (oldValue is not null) oldValue.Selected = false;
-
             newValue.Selected = true;
-
         }
-
         partial void OnCurrentColorSettingChanged(EditPlayerColors? oldValue, EditPlayerColors newValue)
         {
             if (oldValue is not null) oldValue.Selected = false;
-
             newValue.Selected = true;
         }
-
         public Brush GetBrush(ColorName playerColor)
         {
             switch (playerColor)
@@ -122,14 +99,12 @@ namespace Catan3.Models
                     throw new System.Exception("Forget to add to this switch?");
             }
         }
-
         public Color GetColor(ColorName playerColor, PlayerViewModel player)
         {
             switch (playerColor)
             {
                 case ColorName.PrimaryBackground:
                     return player.PlayerColors.PrimaryBackground;
-
                 case ColorName.SecondaryBackground:
                     return player.PlayerColors.SecondaryBackground;
                 case ColorName.Foreground:
@@ -138,7 +113,6 @@ namespace Catan3.Models
                     throw new System.Exception("Did you forget this switch when you added a configured color?");
             }
         }
-
         public void SetColor(ColorPicker sender, ColorChangedEventArgs args)
         {
            
@@ -158,7 +132,6 @@ namespace Catan3.Models
                     throw new System.Exception("Did you forget this switch when you added a configured color?");
             }
         }
-
         /// <summary>
         ///     Used by XAML binding to show a checkbox when the player is selected
         /// </summary>

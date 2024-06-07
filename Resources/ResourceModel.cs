@@ -1,7 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 using Catan3.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
-
 namespace Catan10.Models
 {
     /// <summary>
@@ -11,51 +10,35 @@ namespace Catan10.Models
     {
         [ObservableProperty]
         private int _brick;
-
         [ObservableProperty]
         private int _goldMine;
-
         [ObservableProperty]
         private int _ore;
-
         [ObservableProperty]
         private int _sheep;
-
         [ObservableProperty]
         private int _wheat;
-
         [ObservableProperty]
         private int _wood;
-
         [ObservableProperty]
         private int _paper;
-
         [ObservableProperty]
         private int _cloth;
-
         [ObservableProperty]
         private int _coin;
-
         [ObservableProperty]
         private int _politics;
-
         [ObservableProperty]
         private int _trade;
-
         [ObservableProperty]
         private int _science;
-
         [ObservableProperty]
         private int _victoryPoint;
-
         [ObservableProperty]
         private int _anyDevCard;
-
         [ObservableProperty]
         private int _robber;
-
         public ResourcesModel() { }
-
         public ResourcesModel(ResourcesModel tradeResources)
         {
             Wheat = tradeResources.Wheat;
@@ -67,7 +50,6 @@ namespace Catan10.Models
             Cloth = tradeResources.Cloth;
             Coin = tradeResources.Coin;
             Paper = tradeResources.Paper;
-
             Politics = tradeResources.Politics;
             Trade = tradeResources.Trade;
             Science = tradeResources.Science;
@@ -75,16 +57,12 @@ namespace Catan10.Models
             AnyDevCard = tradeResources.AnyDevCard;
             Robber = tradeResources.Robber;
         }
-
         [JsonIgnore]
         public int Count => Wheat + Wood + Brick + Ore + Sheep + GoldMine + Cloth + Coin + Paper + VictoryPoint + Politics + Science + Trade + AnyDevCard + Robber;
-
-
         public override string ToString()
         {
             return $"[Count={Count}][Robber={Robber}][Ore={Ore}][Brick={Brick}][Wheat={Wheat}][Wood={Wood}][Sheep={Sheep}][Gold={GoldMine}][Coin={Coin}][Cloth={Cloth}][Paper={Paper}]";
         }
-
         public int CountForResource(ResourceType resourceCardType)
         {
             int count = 0;
@@ -111,7 +89,6 @@ namespace Catan10.Models
                 case ResourceType.GoldMine:
                     count = GoldMine;
                     break;
-
                 case ResourceType.Coin:
                     count = Coin;
                     break;
@@ -140,7 +117,6 @@ namespace Catan10.Models
                     count = 0;
                     break;
             }
-
             return count;
         }
     }

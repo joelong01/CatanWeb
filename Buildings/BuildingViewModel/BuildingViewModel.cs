@@ -4,10 +4,8 @@ using System.Diagnostics;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI;
-using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
-
 namespace Catan3.Models
 {
     /// <summary>
@@ -20,13 +18,10 @@ namespace Catan3.Models
     /// </summary>
     public partial class BuildingViewModel : ObservableRecipient
     {
-
-
         public BuildingViewModel(BuildingModel building, BoardLayout layout) : this()
         {
             Building = building;
             Layout = layout;
-
             IsActive = true;
             if (Layout is not null && Layout is BoardLayout rbl)
             {
@@ -37,12 +32,9 @@ namespace Catan3.Models
             {
                 Layout = BoardLayout.Default;
             }
-
            
-
             UpdateLayout();
         }
-
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (sender is BoardLayout layout)
@@ -82,16 +74,11 @@ namespace Catan3.Models
             left += center.X;
             return left;
         }
-
         public void Update()
         {
             OnBuildingChanged(this.Building);
         }
-
-
-
         BuildingKey TestKey = new BuildingKey(new HexCoordinates(-1, 1, 0), HexPosition.BottomRight);
-
         /// <summary>
         ///     Bound to UI control
         ///     return the proper way to represent the BuildingState.  This is a function instead of a property
@@ -105,12 +92,9 @@ namespace Catan3.Models
         /// <param name="state"></param>
         /// <returns></returns>
         /// <exception cref="System.Exception"></exception>
-
         public string BIND_StateGlyph(BuildingState state, BuildingVisualState visualState)
         {
-
             string glyph;
-
             switch (state)
             {
                 case BuildingState.PossibleSettlement:
@@ -137,11 +121,9 @@ namespace Catan3.Models
                 case BuildingState.City:
                     glyph = CatanFont.City;
                     break;
-
                 case BuildingState.NotBuildable:
                     glyph = String.Empty;
                     break;
-
                 case BuildingState.Knight:
                     glyph = CatanFont.Knight;
                     break;
@@ -151,9 +133,7 @@ namespace Catan3.Models
                 default:
                     throw new GameException("Did you add a state w/o setting a glyph?", ErrorLevel.Critical);
             }
-
             return glyph;
-
         }
         /// <summary>
         ///     if the state is empty, be transparent
@@ -170,16 +150,12 @@ namespace Catan3.Models
         /// <exception cref="Exception"></exception>
         public Brush BIND_Foreground(BuildingVisualState visualState, string? ownerId, PlayerViewModel currentPlayer)
         {
-
             return GetBrush(visualState, ownerId, currentPlayer, visualState != BuildingVisualState.Highlighted);
-
         }
-
         public Brush BIND_Background(BuildingVisualState visualState, string? ownerId, PlayerViewModel currentPlayer)
         {
             return GetBrush(visualState, ownerId, currentPlayer, visualState == BuildingVisualState.Highlighted);
         }
-
         private static Brush GetBrush(BuildingVisualState visualState, string? ownerId, PlayerViewModel currentPlayer, bool foreground)
         {
             //
@@ -189,13 +165,11 @@ namespace Catan3.Models
                 Debug.Assert(ownerId is null);
                 return BrushCache.GetSolidColorBrush(Colors.Transparent);
             }
-
             if (ownerId is not null)
             {
                 //
                 //  if there is an owner, always use the owner color
                 Debug.Assert(ownerId is not null);
-
                 PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
                 if (foreground)
                 {
@@ -218,24 +192,15 @@ namespace Catan3.Models
                 }
             }
         }
-
-
-
         public Visibility BIND_BuildIndexVisibility(BuildingVisualState state)
         {
-
             if (state == BuildingVisualState.Highlighted) return Visibility.Visible;
-
             return Visibility.Collapsed;
         }
-
         private void BreakOnKey(BuildingKey key)
         {
             Debug.Assert(key != this.Building.BuildingKey);
         }
-
         public override string? ToString() => $"B={Building} VS={VisualState} S={Stars} I={BuildIndex}";
-
     }
 }
-

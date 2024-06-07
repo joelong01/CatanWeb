@@ -1,10 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using ABI.Windows.Gaming.Preview.GamesEnumeration;
 using Catan3.Utility;
-
 namespace Catan3.Models
 {
     public static class GameModelExtensions
@@ -15,7 +12,6 @@ namespace Catan3.Models
                      gameModel.GameState == GameState.WaitingForRollForOrder || gameModel.GameState == GameState.FinishedRollOrder ||
                      gameModel.GameState == GameState.BeginResourceAllocation || gameModel.GameState == GameState.PickingBoard );
         }
-
         public static GamePhase Phase(this GameModel gameModel)
         {
             switch (gameModel.GameState)
@@ -45,9 +41,7 @@ namespace Catan3.Models
                 default:
                     return GamePhase.Unspecified;
             }
-
         }
-
         public static EntitlementPurchaseModel PurchaseModel(this GameModel gameModel, Entitlement entitlement)
         {
             var model = gameModel.EntitlementPurchaseModel.First( m => m.Entitlement == entitlement ) ?? throw new GameException($"{entitlement} not found in Purchasable Entitlements!");
@@ -94,7 +88,6 @@ namespace Catan3.Models
                 case HexPosition.None:
                     break;
             }
-
             foreach (var key in roadKeys)
             {
                 var road = gameModel.Roads.FindRoad(key);
@@ -103,10 +96,8 @@ namespace Catan3.Models
                     result.Add(road);
                 }
             }
-
             return result;
         }
-
         // given a road, what buildings are next to it?
         public static List<BuildingModel> AdjacentBuildings(this GameModel gameModel, RoadKey roadKey)
         {
@@ -134,14 +125,12 @@ namespace Catan3.Models
                 case HexSide.BottomLeft:
                     result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.BottomLeft)));
                     result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.Left)));
-
                     break;
                 case HexSide.TopLeft:
                     result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.Left)));
                     result.Add(gameModel.Buildings.GetBuildingOrThrow(new BuildingKey(roadKey.TileKey, HexPosition.TopLeft)));
                     break;
             }
-
             return result;
         }
         /// <summary>
@@ -150,28 +139,19 @@ namespace Catan3.Models
         /// </summary>
         /// 
         /// <returns></returns>
-
         public static BuildingModel? BuildingBetweenRoads(this GameModel gameModel, RoadKey road1, RoadKey road2)
         {
             var buildings1 = gameModel.AdjacentBuildings(road1);
             var buildings2 = gameModel.AdjacentBuildings(road2);
-
             var result = buildings1.Intersect(buildings2).ToList();
             Debug.Assert(result.Count <= 1);
             return result[0];
-
         }
-
         public static bool BuildableLocation(this GameModel gameModel, BuildingKey buildingKey)
         {
             var currentPlayer = gameModel.CurrentPlayer();
-
-
-
-
             return false;
         }
-
         /// <summary>
         /// Calculates the player ID that is a specified number of positions away from a given start player ID.
         /// </summary>
@@ -185,23 +165,18 @@ namespace Catan3.Models
             // Validate and find the starting player
             var startPlayer = gameModel.Players.PlayerFromId(startPlayerId) ??
             throw new GameException($"Invalid id: {startPlayerId}");
-
             int idx = gameModel.Players.IndexOf(startPlayer);
             if (idx == -1)
                 throw new GameException("The player must be in the game!");
-
             int count = gameModel.Players.Count;
-
             // Calculate the index of the next player, wrapping around if necessary
             int newPlayerIndex = (idx + numberOfPositions) % count;
             if (newPlayerIndex < 0)
                 newPlayerIndex += count;
-
             // Retrieve the new player's ID
             var newPlayer = gameModel.Players[newPlayerIndex];
             return newPlayer.Id;
         }
-
         /// <summary>
         /// Changes the current player to the player a specified number of positions forward.
         /// </summary>
@@ -213,12 +188,10 @@ namespace Catan3.Models
             // Ensure the current player ID is valid
             if (string.IsNullOrEmpty(gameModel.CurrentPlayerId))
                 throw new GameException("Current player ID must not be null or empty.");
-
             // Get the next player ID and change to it
             var id = NextPlayerId(gameModel, gameModel.CurrentPlayerId, numberOfPositions);
             gameModel.ChangePlayerTo(id);
         }
-
         /// <summary>
         /// Sets the current player to the specified player ID.
         /// </summary>
@@ -230,11 +203,9 @@ namespace Catan3.Models
             // Validate and find the new player
             var newPlayer = gameModel.Players.PlayerFromId(playerId) ??
             throw new GameException($"Invalid id: {playerId}");
-
             // Set the current player ID
             gameModel.CurrentPlayerId = newPlayer.Id;
         }
-
         /// <summary>
         ///     given a BuildingKey, return the list of tiles that the Building connects to
         /// </summary>
@@ -259,13 +230,9 @@ namespace Catan3.Models
             }
             return tiles;
         }
-
         public static PlayerModel CurrentPlayer(this GameModel gameModel)
         {
             return gameModel.Players.PlayerFromId(gameModel.CurrentPlayerId) ?? throw new GameException($"Can't find player {gameModel.CurrentPlayerId}");
         }
-
-
-
     }
 }

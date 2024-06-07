@@ -1,21 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.UI.Xaml;
-
+﻿using System.Collections.ObjectModel;
 namespace Catan3.Models
 {
     public partial class GameViewModel
     {
-
         public string StateMessage(GameModel _, GameState gameState)
         {
             return gameState.Description();
         }
-
         public string BIND_StarCount(int stars, ObservableCollection<TileModel> _tiles)
         {
             int count = 0;
@@ -23,11 +14,9 @@ namespace Catan3.Models
             {
                 var tiles = TilesForBuildings(building.BuildingKey);
                 if (tiles.Stars() == stars) count++;
-
             }
             return count.ToString();
         }
-
     
      
     }

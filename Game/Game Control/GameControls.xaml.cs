@@ -1,10 +1,8 @@
 using Catan3.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
-
 namespace Catan3.Controls
 {
     public sealed partial class GameControls : UserControl
@@ -13,7 +11,6 @@ namespace Catan3.Controls
         {
             this.InitializeComponent();
         }
-
         public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(MainPageViewModel), typeof(GameControls), new PropertyMetadata(null, ViewModelChanged));
         public MainPageViewModel ViewModel
         {
@@ -30,6 +27,5 @@ namespace Catan3.Controls
         {
           // this.TraceMessage($"{value.GetHashCode()}");
         }
-
     }
 }

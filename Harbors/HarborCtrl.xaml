@@ -38,7 +38,6 @@
                             Fill="{x:Bind Bind_HarborImage(ViewModel.Harbor.HarborType), Mode=OneWay}" />
                 </u:FlipperCtrl.Front>
             </u:FlipperCtrl>
-
         </Canvas>
     </Border>
 </UserControl>

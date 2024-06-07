@@ -1,14 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Net.Http.Headers;
 using Catan3.Utility;
 using Microsoft.UI.Xaml.Media;
-
 using Windows.Foundation;
 namespace Catan3.Models
 {
-
     /// <summary>
     /// This class is responsible for calculating the geometry of an inner hexagon placed within an outer hexagon. 
     /// The dimensions and placement are determined based on the size of the outer hexagon, the desired gap between the 
@@ -32,13 +29,9 @@ namespace Catan3.Models
     public partial class BoardLayout
     {
         private BoardLayout() { }
-
         //
         //  this is used in the DependencyProperties so that there is a reasonable non-null default
         public static BoardLayout Default { get; } = new BoardLayout();
-
-
-
         /// <summary>
         ///     return the top based on the geometry of a Regular Flat Topped Hexagon
         ///     see https://www.redblobgames.com/grids/hexagons/
@@ -49,7 +42,6 @@ namespace Catan3.Models
         /// <returns></returns>
         public double Top(HexCoordinates key)
         {
-
             var top =  (key.Q / 2.0 +  key.R)*OuterHexSize*Math.Sqrt(3) ;
             top += TileYOffset;
             return Math.Round(top, 2);
@@ -86,20 +78,14 @@ namespace Catan3.Models
         {
             get
             {
-
-
                 // Calculate the horizontal difference after accounting for the stroke
                 double sizeDiff = (OuterHexSize - InnerHexSize);
-
                 // The inner hexagon needs to be positioned such that the gap is equal on all sides.
-
                 double verticalAdjustment = (sizeDiff ) * .86;
                 double horizontalAdjustment = (sizeDiff )  ;
-
                 return HexGeometry.FlatTopHexPoints(InnerHexSize, horizontalAdjustment, verticalAdjustment);
             }
         }
-
         /// <summary>
         ///     A Hex that is not normally visible whose width is the width of the full control
         /// </summary>
@@ -111,9 +97,6 @@ namespace Catan3.Models
                 return HexGeometry.FlatTopHexPoints(OuterHexSize, 0, 0);
             }
         }
-
-
-
         public PointCollection PointyHexPoints
         {
             get
@@ -122,16 +105,9 @@ namespace Catan3.Models
                 return HexGeometry.PointyTopHexPoints(OuterHexSize, ControlWidth / 2.0, ControlHeight / 2.0);
             }
         }
-
-
         public double ControlWidth => HexGeometry.Width(this.OuterHexSize);
-
         public double ControlHeight => HexGeometry.Height(this.OuterHexSize);
-
-
-
     }
-
     public static class LayoutExtensions
     {
         /// <summary>
@@ -168,7 +144,6 @@ namespace Catan3.Models
         {
             // Ensure that the points collection has exactly 6 points
             Debug.Assert(points.Count == 6);
-
             var pointyTopDictionary = new Dictionary<HexSide, Point>
             { // The point indices are adjusted to match the flat-top hexagon's sides.
               // The mapping is done by rotating the pointy-top hexagon's points to align with the flat-top's sides.
@@ -178,12 +153,8 @@ namespace Catan3.Models
                 [HexSide.Bottom] = points[2], // Right of pointy-top is the bottom of flat-top
                 [HexSide.BottomLeft] = points[3], // Bottom-right of pointy-top is the bottom-left of flat-top
                 [HexSide.TopLeft] = points[4], // Bottom of pointy-top is the top-left of flat-top
-
             };
-
             return pointyTopDictionary;
         }
-
-
     }
 }

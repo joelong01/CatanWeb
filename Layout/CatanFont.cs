@@ -1,7 +1,6 @@
 ﻿
 using System.Collections.Generic;
 using Catan3.Models;
-
 namespace Catan3.Utility
 {
     public static class CatanFont
@@ -34,8 +33,6 @@ namespace Catan3.Utility
         public static readonly string BadRoll = "\uE913";
         public static readonly string GoodRoll = "\uE914";
         public static readonly string Star = "\uE911";
-
-
         public static readonly Dictionary<Entitlement, string> EntitlementGlyph = new()
         {
             {Entitlement.Settlement, Settlement },
@@ -43,9 +40,6 @@ namespace Catan3.Utility
             {Entitlement.Soldier, Pirate },
             {Entitlement.Road, Road }
         };
-
         
-
-
     }
 }

@@ -14,16 +14,13 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Foundation;
 using Windows.UI;
-
 namespace Catan3
 {
     public static class EnumExtensions
     {
         #region Methods
-
         public static string Description(this Enum instance)
         {
-
             string output = "";
             Type type = instance.GetType();
             if (type is null) return String.Empty;
@@ -36,9 +33,6 @@ namespace Catan3
             }
             return output;
         }
-
-
-
         #endregion Methods
     }
     public static class AnimationHelpers
@@ -49,31 +43,26 @@ namespace Catan3
             AnimateRotation(faceDown, 0, 90, () =>
             {
                 //  CANVAS_FaceDown.Visibility = Visibility.Collapsed;
-
                 // Once CANVAS_FaceDown is flipped, start animating CANVAS_FaceUp from -90 to 0 degrees
                 //  CANVAS_FaceUp.Visibility = Visibility.Visible;
                 AnimateRotation(faceUp, -90, 0, null); // No further action on completion
             });
         }
-
         public static void FlipToFaceDown(FrameworkElement faceDown, FrameworkElement faceUp)
         {
             // Animate CANVAS_FaceUp to 90 degrees
             AnimateRotation(faceUp, 0, 90, () =>
             {
-
                 // Once CANVAS_FaceUp is flipped, start animating CANVAS_FaceDown from -90 to 0 degrees
                 AnimateRotation(faceDown, -90, 0, null); // No further action on completion
             });
         }
-
         private static void AnimateRotation(FrameworkElement element, double from, double to, Action? onAnimationCompleted)
         {
             if (element.Projection == null)
             {
                 element.Projection = new PlaneProjection();
             }
-
             var da = new DoubleAnimation
             {
                 From = from,
@@ -84,16 +73,13 @@ namespace Catan3
             storyboard.Children.Add(da);
             Storyboard.SetTarget(da, element.Projection);
             Storyboard.SetTargetProperty(da, "RotationY");
-
             if (onAnimationCompleted != null)
             {
                 storyboard.Completed += (s, e) => onAnimationCompleted();
             }
-
             storyboard.Begin();
         }
     }
-
     public static class PointExtensions
     {
         public static Point Offset(this Point point, double x, double y)
@@ -101,7 +87,6 @@ namespace Catan3
             return new Point(point.X + x, point.Y + y);
         }
     }
-
     public static class StaticBrushes
     {
         public static readonly SolidColorBrush RedBrush = new(Colors.Red);
@@ -123,7 +108,6 @@ namespace Catan3
             s += list.ElementAt(c - 1)?.ToString();
             return s;
         }
-
         public static PointCollection Clone(this PointCollection points)
         {
             var clonedPoints = new PointCollection();
@@ -133,15 +117,12 @@ namespace Catan3
             }
             return clonedPoints;
         }
-
-
         public static void InsertSorted<T>(this IList<T> collection, T item) where T : IComparable<T>
         {
             if (collection == null)
                 throw new ArgumentNullException(nameof(collection));
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
-
             int index = 0;
             while (index < collection.Count && collection[index].CompareTo(item) < 0)
             {
@@ -149,7 +130,6 @@ namespace Catan3
             }
             collection.Insert(index, item);
         }
-
     }
     public static class BrushCache
     {
@@ -160,7 +140,6 @@ namespace Catan3
             if (!solidBrushes.TryGetValue(color, out var brush))
             {
                 brush = new SolidColorBrush(color);
-
                 solidBrushes[color] = brush;
             }
             return brush;
@@ -176,7 +155,6 @@ namespace Catan3
                     new GradientStop { Color = startColor, Offset = 0.0 },
                     new GradientStop { Color = endColor, Offset = 1.0 }
                 ];
-
                 // Create the LinearGradientBrush
                 brush = new LinearGradientBrush
                 {
@@ -184,12 +162,10 @@ namespace Catan3
                     StartPoint = new Point(0, 0),
                     EndPoint = new Point(1, 1)
                 };
-
                 gradientBrushes[key] = brush;
             }
             return brush;
         }
-
         public static ImageBrush ResourceCardImage(ResourceType resourceType)
         {
             try
@@ -205,7 +181,6 @@ namespace Catan3
                 resourceType.TraceMessage($"{ex.Message}");
                 return ( ImageBrush )Application.Current.Resources["ResourceCard.None"];
             }
-
         }
     }
     public static class Extensions
@@ -228,8 +203,6 @@ namespace Catan3
     {
         public event SimulatedButtonClick? SimulatedClick;
         private bool isPointerCaptured = false;
-
-
         public ButtonLookAndFeel(Grid grid)
         {
           
@@ -245,7 +218,6 @@ namespace Catan3
                 grid.BorderThickness = new Thickness(1);
             }
         }
-
         private void OnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             
@@ -271,19 +243,16 @@ namespace Catan3
                         var point = origE.GetCurrentPoint(releasedGrid).Position;
                         bool isInside = point.X >= 0 && point.X <= releasedGrid.ActualWidth &&
                                 point.Y >= 0 && point.Y <= releasedGrid.ActualHeight;
-
                         if (( PointerEventHandler? )pointerReleasedHandler is not null)
                         {
                             releasedGrid.PointerReleased -= pointerReleasedHandler;
                         }
                         releasedGrid.ReleasePointerCapture(origE.Pointer);
                         isPointerCaptured = false;
-
                         SwapColors(grid);
                         if (isInside)
                         {
                             SimulatedClick?.Invoke();
-
                         }
                         else
                         {
@@ -292,15 +261,12 @@ namespace Catan3
                         }
                     }
                 }
-
                 grid.CapturePointer(e.Pointer);
                 isPointerCaptured = true;
                 grid.PointerReleased += pointerReleasedHandler;
-
                 SwapColors(grid);
             }
         }
-
         private void SwapColors(Grid grid)
         {
             Brush? temp = null;
@@ -311,13 +277,9 @@ namespace Catan3
                 {
                     temp = tb.Foreground;
                     tb.Foreground = grid.Background;
-
                 }
             }
             grid.Background = temp;
-
         }
     }
-
-
 }

@@ -3,7 +3,6 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="using:Catan3.Converters">
-
     <converters:ResourceTypeToImageBrush x:Key="ResourceTypeToImageBrush" />
     <converters:NumberToPipsVisibility x:Key="NumberToPipsVisibility" />
     <converters:NumberToVisibilityConverter x:Key="NumberToVisibilityConverter" />
@@ -13,10 +12,7 @@
     <converters:ScaleConverter x:Key="ScaleConverter" />
     <converters:BuildingPositionToFillConverter
             x:Key="BuildingPositionToFillConverter" />
-
     <converters:NullToDefaultValueConverter x:Key="NullToDefaultValueConverter" />
-
     <converters:DoubleToThickness x:Key="DoubleToThickness" />
     <converters:BrushToColorConverter x:Key="BrushToColorConverter" />
-
 </ResourceDictionary>

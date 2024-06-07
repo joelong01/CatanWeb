@@ -18,16 +18,12 @@ namespace Catan3.Models
         {
             Tile = tile;
             Layout = layout;
-
             IsActive = true;
             if (Layout is not null && Layout is BoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
-
             }
-
             UpdateLayout();
-
             Messenger.Register<UpdateOrientation>(this, (recipient, message) =>
             {
                 this.Orientation = message.Orientation;
@@ -37,11 +33,9 @@ namespace Catan3.Models
                 Messenger.UnregisterAll(this);
             });
            
-
            
         }
        
-
         private void RegisterTargetMessageResponse()
         {
             if (this.Messenger.IsRegistered<TileOwnersResponse>(this))
@@ -74,10 +68,8 @@ namespace Catan3.Models
                    // this.TraceMessage($"{this} unregistering for response");
                     this.Messenger.Unregister<TileOwnersResponse>(this);
                 }
-
             });
         }
-
         [RelayCommand]
         public void Target()
         {
@@ -85,19 +77,16 @@ namespace Catan3.Models
             RegisterTargetMessageResponse();
             Messenger.Send(new RequestTileOwners(this)); ;
         }
-
         [RelayCommand]
         public void TargetPicked(string id)
         {
          //   this.TraceMessage($"targetting {id}");
             this.Messenger.Send<MoveRobberMessage>(new MoveRobberMessage(this.Tile.TileKey, id));
         }
-
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (sender is not null && sender is BoardLayout layout)
             {
-
                 // this.TraceMessage($"{e.PropertyName} changed for tile {Tile.HexCoordinates}");
                 Layout = layout;
                 UpdateLayout();
@@ -107,7 +96,6 @@ namespace Catan3.Models
                     OnPropertyChanged(nameof(Layout.OuterHexPoints)); // Notify the UI to reevaluate this path
                     OnPropertyChanged(nameof(Layout.ControlHeight));
                     OnPropertyChanged(nameof(Layout.ControlWidth));
-
                 }
             }
         }
@@ -130,7 +118,6 @@ namespace Catan3.Models
                 this.TraceMessage($"[{Tile}]:[Left={Left}][top={Top}]");
             }
         }
-
         public CatanOrientation TempGoldOrientation(TileModel _, bool tempGold)
         {
             Debug.Assert(tempGold == this.Tile.TemporarilyGold);
@@ -154,7 +141,6 @@ namespace Catan3.Models
             var brush =  ( ImageBrush )Application.Current.Resources[key];
             return ( Brush )brush;
         }
-
         public Brush GetTileBorderBrush(TileModel _, bool highlighted)
         {
             if (!highlighted)
@@ -173,7 +159,5 @@ namespace Catan3.Models
            
             return result;
         }
-
-
     }
 }

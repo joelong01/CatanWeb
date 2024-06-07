@@ -4,35 +4,25 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Catan10.Models;
-using Catan3.Controls;
 using Catan3.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Documents;
-
 namespace Catan3.Controller
 {
     public class GameController : ObservableRecipient
     {
         private Log<string> Log = new();
         private  GameType GameType = GameType.Unset;
-
-
-
         public GameController()
         {
             RegisterMessages();
         }
         public int DoneCount => Log.DoneCount;
-
         private void RegisterMessages()
         {
-
             Debug.Assert(Messenger is not null);
             IsActive = true;
-
             Messenger.Register<DoAction>(this, (recipient, message) =>
                 {
                     try
@@ -67,31 +57,24 @@ namespace Catan3.Controller
                         this.TraceMessage($"Exception doing Action {message.Action}. Message: {e}");
                     }
                 });
-
-
             Messenger.Register<BuildingUpgradeMessage>(this, (recipient, message) =>
                 {
-
                     try
                     {
                         var model = BuildingUpgrade(message);
                         Messenger.Send(new UpdateGameModel(model));
-
                     }
                     catch (GameException e)
                     {
                         SendErrorMessage(e.Message, e.ErrorLevel);
                     }
                 });
-
             Messenger.Register<SetPlayerOrderMessage>(this, (recipient, message) =>
             {
-
                 try
                 {
                     var model = SetPlayerOrder(message.PlayerIds);
                     Messenger.Send(new UpdateGameModel(model));
-
                 }
                 catch (GameException e)
                 {
@@ -104,22 +87,18 @@ namespace Catan3.Controller
                     {
                         var model = RoadPurchase(message);
                         Messenger.Send(new UpdateGameModel(model));
-
                     }
                     catch (GameException e)
                     {
                         SendErrorMessage(e.Message, e.ErrorLevel);
                     }
                 });
-
-
             Messenger.Register<MoveRobberMessage>(this, (recipient, message) =>
              {
                  try
                  {
                      var model = MoveRobber(message);
                      Messenger.Send(new UpdateGameModel(model));
-
                  }
                  catch (GameException e)
                  {
@@ -132,7 +111,6 @@ namespace Catan3.Controller
                 {
                     var model = NewGame(message.GameType, message.PlayerIds);
                     Messenger.Send(new UpdateGameModel(model));
-
                 }
                 catch (GameException e)
                 {
@@ -145,43 +123,34 @@ namespace Catan3.Controller
                 {
                     var model = OnRoll(message);
                     Messenger.Send(new UpdateGameModel(model));
-
                 }
                 catch (GameException e)
                 {
                     SendErrorMessage(e.Message, e.ErrorLevel);
                 }
-
             });
-
             Messenger.Register<PurchaseMessage>(this, (recipient, message) =>
             {
                 try
                 {
                     var model = OnPurchase(message);
                     Messenger.Send(new UpdateGameModel(model));
-
                 }
                 catch (GameException e)
                 {
                     SendErrorMessage(e.Message, e.ErrorLevel);
                 }
-
             });
-
             Messenger.Register<EndGame>(this, (recipient, message) =>
             {
                 Messenger.UnregisterAll(this);
             });
-
         }
-
         private void SendErrorMessage(string message, ErrorLevel errorLevel, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
         {
             this.TraceMessage(errorLevel.ToString() + ": " + message, indentLevel, cmb, cln, cfp);
             Messenger.Send(new ErrorMessage(message, errorLevel, cmb, cln, cfp));
         }
-
         private GameModel OnPurchase(PurchaseMessage message)
         {
             GameModel gameModel = Log.CopyCurrent();
@@ -196,20 +165,15 @@ namespace Catan3.Controller
             {
                 ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext]);
             }
-
             if (!ValidatePurchase(gameModel, entitlement))
             {
                 throw new GameException($"cannot buy {entitlement} in state {gameModel.GameState}");
             }
-
             gameModel.CurrentPlayer().UnspentEntitlements.Add(entitlement);
         
-
             LogDone(gameModel);
             return gameModel;
-
         }
-
         private bool ValidatePurchase(GameModel gameModel, Entitlement entitlement)
         {
             switch (entitlement)
@@ -218,47 +182,32 @@ namespace Catan3.Controller
                     if (gameModel.CurrentPlayer().SpentEntitlementsThisTurn.Contains(entitlement)) return false;
                     if (gameModel.CurrentPlayer().UnspentEntitlements.Contains(entitlement)) return false;
                     return true;
-
                 case Entitlement.City:
                     int unspentCities = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
                     if (unspentCities + gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement) >= gameModel.ResourceRules.MaxCities) return false;
-
                     return true;
-
                 case Entitlement.Settlement:
                     int unspentSettlement = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
                     if (unspentSettlement + gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement) >= gameModel.ResourceRules.MaxSettlements) return false;
                     return true;
-
                 case Entitlement.Road:
                     int unspentRoads = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
                     int spentroads = gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement);
                     if (unspentRoads +  spentroads >= gameModel.ResourceRules.MaxRoads) return false;
-
                     return true;
-
                 default:
                     return false;
             }
-
         }
-
-
-
         public GameModel NewGame(GameType selectedGame, List<string> playerIds)
         {
             var gameModel = GameFactory.CreateGame(selectedGame, playerIds);
             Log.GameType = selectedGame;
-
             gameModel.GameType = selectedGame;
             gameModel.GameState = GameState.PickingBoard;
-
             LogDone(gameModel);
-
-
             return gameModel;
         }
-
         /// <summary>
         ///     when a roll comes in 
         ///     . make sure that we are ready for a roll
@@ -271,19 +220,14 @@ namespace Catan3.Controller
         /// <exception cref="GameException"></exception>
         private GameModel OnRoll(RollMessage msg)
         {
-
             GameModel gameModel = Log.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForRoll]);
             TurnRollModel roll = msg.Roll;
-
             // update the global counts for rolls
             gameModel.GameRollModel.RollCounts[( int )roll.NormalRoll - 2]++;
             gameModel.GameRollModel.TotalRolls++;
-
-
             // update the state
             gameModel.GameState = GameState.WaitingForNext;
-
             // highlight the tiles and build a list of tiles that have this number
             List<TileModel> highlightedTiles = [];
             foreach (TileModel tile in gameModel.Tiles)
@@ -292,12 +236,10 @@ namespace Catan3.Controller
                 {
                     highlightedTiles.Add(tile);
                     tile.Highlighted = true;
-
                 }
                 else
                 {
                     tile.Highlighted = false;
-
                 }
             }
             //
@@ -323,18 +265,12 @@ namespace Catan3.Controller
                     {
                         effectiveType = ResourceType.Robber;
                     }
-
-
                     ResourcesModel resources = building.Resources(effectiveType);
-
-
                     playerResources[building.OwnerId].Add(resources);
-
                     if (effectiveType == ResourceType.Robber)
                     {
                         gameModel.Robber.ResourcesStolen += resources.Count;
                     }
-
                 }
             }
             // now fix up the underlying resource models in the same way as if we loading it from disk or got it back from a service
@@ -353,21 +289,16 @@ namespace Catan3.Controller
                 {
                     player.BadRolls++;
                 }
-
             }
-
             //
             //  if they rolled 7...
-
             if (msg.Roll.NormalRoll == ValidCatanRoll.Seven)
             {
                 gameModel.CurrentPlayer().UnspentEntitlements.Add(Entitlement.RolledSeven);
                 gameModel.GameState = GameState.MustMoveRobber;
             }
-
             // save our changes to the GameModel to the log
             LogDone(gameModel);
-
             return gameModel;
         }
         /// <summary>
@@ -383,16 +314,12 @@ namespace Catan3.Controller
             gameModel.ActionFlags.NextEnabled = AllowNext(gameModel);
             gameModel.ActionFlags.RollsEnabled = gameModel.GameState == GameState.WaitingForRoll;
         }
-
         private bool AllowNext(GameModel gameModel)
         {
             if (gameModel.GameState == GameState.WaitingForRoll) return false;
-
             if (gameModel.CurrentPlayer().UnspentEntitlements.Count > 0) return false;
-
             return true;
         }
-
         /// <summary>
         /// Reorders the players in the game model to match a specified order of player IDs.
         /// </summary>
@@ -416,12 +343,8 @@ namespace Catan3.Controller
         private GameModel SetPlayerOrder(IList<string> playerIds)
         {
             GameModel gameModel = Log.CopyCurrent();
-
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForRollForOrder]);
-
-
             var playerLookup = gameModel.Players.ToDictionary(p => p.Id);
-
             // Using LINQ to order players according to playerIds
             List<PlayerModel> orderedPlayers = playerIds
                 .Select(id =>
@@ -433,13 +356,11 @@ namespace Catan3.Controller
                     return player;
                 })
                 .ToList();
-
             gameModel.Players = orderedPlayers;
             gameModel.CurrentPlayerId = gameModel.Players[0].Id;
             LogDone(gameModel);
             return gameModel;
         }
-
         /// <summary>
         ///     This function should allow the transition to the next valid state based on the current state.  returns null if the player isn't ready to transition.
         /// </summary>
@@ -448,7 +369,6 @@ namespace Catan3.Controller
         {
             GameModel gameModel = Log.CopyCurrent();
             if (!CanTransitionToNext(gameModel)) throw new GameException("Cannot transition to Next state at this time");
-
             switch (gameModel.GameState)
             {
                 case GameState.Uninitialized:
@@ -471,7 +391,6 @@ namespace Catan3.Controller
                     gameModel.GameState = GameState.BeginResourceAllocation;
                     break;
                 case GameState.AllocateResourceForward:
-
                     if (gameModel.Players.Last().Score == 1)
                     {
                         gameModel.GameState = GameState.AllocateResourceReverse;
@@ -479,7 +398,6 @@ namespace Catan3.Controller
                     }
                     else
                     {
-
                         // move to the next player
                         gameModel.ChangePlayer(1);
                         GrantAllocationResources(gameModel);
@@ -488,32 +406,25 @@ namespace Catan3.Controller
                 case GameState.AllocateResourceReverse:
                     if (gameModel.CurrentPlayerId == gameModel.Players[0].Id)
                     {
-
                         gameModel.GameState = GameState.DoneResourceAllocation;
-
                     }
                     else
                     {
-
                         gameModel.ChangePlayer(-1);
                         GrantAllocationResources(gameModel);
-
                     }
                     break;
                 case GameState.DoneResourceAllocation:
                     SetTempGoldTiles(gameModel);
                     gameModel.GameState = GameState.WaitingForRoll;
-
                     break;
                 case GameState.WaitingForRoll:
                     // GameState.WaitingForRoll is not controlled by the Next button.
                     // it is controlled by hitting a roll UI
                     break;
                 case GameState.WaitingForNext:
-
                     gameModel.ChangePlayer(1);
                     gameModel.TurnRollModel = new();
-
                     gameModel.Players.ForEach(p =>
                     {
                         p.ResourcesThisTurn = new();
@@ -553,7 +464,6 @@ namespace Catan3.Controller
                     break;
                 case GameState.TestCheckpoint:
                     break;
-
                 case GameState.DisplaceVictimKnight:
                     break;
                 case GameState.DisplaceKnightMoveVictim:
@@ -578,7 +488,6 @@ namespace Catan3.Controller
             currentPlayer.UnspentEntitlements.Add(Entitlement.Settlement);
             currentPlayer.UnspentEntitlements.Add(Entitlement.Road);
         }
-
         /// <summary>
         /// Attempts to purchase a road for the current player based on the given road key.
         /// </summary>
@@ -594,38 +503,28 @@ namespace Catan3.Controller
             var roadKey = message.RoadKey;
             // Retrieve the road model corresponding to the road key.
             var roadModel = gameModel.Roads.FirstOrDefault(r => r.RoadKey == roadKey);
-
             if (roadModel == null)
             {
                 string roadKeyMsg = $"Invalid RoadKey {roadKey}";
                 throw new GameException(roadKeyMsg);
             }
-
             if (roadModel.RoadState != RoadState.Buildable)
             {
                 throw new GameException($"Road {roadModel} is not buildable!");
             }
-
-
             // Ensure the road is not already owned.
-
             if (roadModel.OwnerId != null)
             {
                 string ownerMsg = $"Don't try to buy other people's roads! Owner: {roadModel.OwnerId}";
                 throw new GameException(ownerMsg);
             }
-
-
             // Set the owner of the road to the current player and update the road state to "Road".
             roadModel.OwnerId = gameModel.CurrentPlayerId;
             roadModel.RoadState = RoadState.Road;
             var currentPlayerModel = gameModel.CurrentPlayer();
             ConsumeEntitlement(gameModel, Entitlement.Road);
-
-
             // Log the completed change.
             LogDone(gameModel);
-
             return gameModel;
         }
         /// <summary>
@@ -633,7 +532,6 @@ namespace Catan3.Controller
         ///     
         /// </summary>
         /// <param name="gameModel"></param>
-
         private void LogDone(GameModel gameModel)
         {
             UpdateScore(gameModel);
@@ -641,15 +539,11 @@ namespace Catan3.Controller
             MarkBuildableBuildings(gameModel);
             SetActionFlags(gameModel);
           
-
             gameModel.ActionFlags.RedoEnabled = false;
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
             Log.Done(gameModel);
         }
-
-
-
         private void UpdatePurchaseUi(GameModel gameModel)
         {
             var currentPlayer = gameModel.CurrentPlayer();
@@ -657,15 +551,12 @@ namespace Catan3.Controller
             {
                 var spent = currentPlayer.SpentEntitlementsThisGame.Count(e => e == epm.Entitlement );
                 var unspent = currentPlayer.UnspentEntitlements.Count( e => e == epm.Entitlement );
-
                 if (spent + unspent == gameModel.ResourceRules.MaxEntitlementCount(epm.Entitlement))
                 {
-
                     epm.Enabled = false;
                 }
             }
         }
-
         private void SetPlaySoldierAccess(GameModel gameModel)
         {
             var moveRobber = gameModel.PurchaseModel(Entitlement.Soldier );
@@ -674,10 +565,8 @@ namespace Catan3.Controller
                 moveRobber.Enabled = false;
                 return;
             }
-
             // can buy it only once
             PlayerModel currentPlayer = gameModel.CurrentPlayer();
-
             if (currentPlayer.SpentEntitlementsThisTurn.Contains(Entitlement.Soldier) || currentPlayer.UnspentEntitlements.Contains(Entitlement.Soldier))
             {
                 moveRobber.Enabled = false;
@@ -685,7 +574,6 @@ namespace Catan3.Controller
             }
             moveRobber.Enabled = true;
         }
-
         private void ThrowIfNoEntitlement(GameModel gameModel, Entitlement[] entitlements)
         {
             var currentPlayer = gameModel.CurrentPlayer();
@@ -695,8 +583,6 @@ namespace Catan3.Controller
                 throw new GameException($"{currentPlayer.Id} does not have the required entitlement.");
             }
         }
-
-
         /// <summary>
         /// Upgrades a building based on its current state.
         /// </summary>
@@ -707,32 +593,24 @@ namespace Catan3.Controller
         private GameModel BuildingUpgrade(BuildingUpgradeMessage message)
         {
             GameModel gameModel = Log.CopyCurrent();
-
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse]);
-
             BuildingKey buildingKey = message.BuildingKey;
             var building = gameModel.Buildings.FindBuildingModel(buildingKey)
                     ?? throw new GameException($"Invalid BuildingKey: {buildingKey}");
-
             if (building.BuildingState == BuildingState.NotBuildable)
             {
                 throw new GameException($"{building} is not buildingable.");
             }
-
             var currentPlayerModel = gameModel.CurrentPlayer();
-
             // Process the building upgrade based on its current state.
             switch (building.BuildingState)
             {
                 case BuildingState.PossibleSettlement:
-
                     ThrowIfNoEntitlement(gameModel, [Entitlement.Settlement]);
                     building.BuildingState = BuildingState.Settlement;
                     building.OwnerId = gameModel.CurrentPlayerId;
-
                     ConsumeEntitlement(gameModel, Entitlement.Settlement);
                     break;
-
                 case BuildingState.Settlement:
                     ThrowIfNoEntitlement(gameModel, [Entitlement.City]);
                     if (building.OwnerId != gameModel.CurrentPlayerId)
@@ -740,7 +618,6 @@ namespace Catan3.Controller
                         throw new GameException($"Don't try to upgrade somebody else's building: {building.OwnerId}");
                     }
                     building.BuildingState = BuildingState.City;
-
                     ConsumeEntitlement(gameModel, Entitlement.City);
                     break;
                 case BuildingState.City:
@@ -751,20 +628,14 @@ namespace Catan3.Controller
                         throw new GameException($"Don't try to upgrade somebody else's building: {building.OwnerId}");
                     }
                     // Upgrade settlement to city, and city potentially to knight.
-
                     building.BuildingState = BuildingState.Knight;
-
                     ConsumeEntitlement(gameModel, Entitlement.BuyKnight);
-
                     break;
-
                 case BuildingState.Knight:
                     // Knights cannot be upgraded further.
                     throw new GameException("Knights cannot be upgraded further.");
                     // No action needed if knights cannot be upgraded.
-
             }
-
             LogDone(gameModel);
             return gameModel;
         }
@@ -783,10 +654,6 @@ namespace Catan3.Controller
             currentPlayer.SpentEntitlementsThisTurn.Add(entitlement);
             currentPlayer.SpentEntitlementsThisGame.Add(entitlement);
         }
-
-
-
-
         /// <summary>
         /// Updates the scores of all players in the given game model based on current game state.
         /// </summary>
@@ -799,38 +666,31 @@ namespace Catan3.Controller
             foreach (var player in gameModel.Players)
             {
                 player.HighestScore = false;
-
                 int citiesPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.City);
                 int settlementsPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.Settlement);
                 int knightsPlayed = player.SpentEntitlementsThisGame.Count(e=> e== Entitlement.Soldier);
-
                 // Calculate base score from cities and settlements
                 int score = citiesPlayed * 2 + settlementsPlayed;
-
                 // Add bonus points for having the longest road
               
                 if (player.HasLongestRoad)
                 {
                     score += 2;
                 }
-
                 // Add bonus points for having the largest army
                 if (player.LargestArmy)
                 {
                     score += 2;
                 }
-
                 // Update the player's score
                 player.Score = score;
                 if (maxScore < player.Score) maxScore = player.Score;
             }
-
             foreach (var player in gameModel.Players)
             {
                 player.HighestScore = ( player.Score == maxScore );
             }
         }
-
         /// <summary>
         /// Moves the robber to a new location based on input from a player.
         /// </summary>
@@ -841,12 +701,10 @@ namespace Catan3.Controller
         private GameModel MoveRobber(MoveRobberMessage moveRobber)
         {
             GameModel gameModel = Log.CopyCurrent();
-
             // Validate the current game state
             ThrowIfWrongState(gameModel.GameState, [GameState.MustMoveRobber]);
             ThrowIfBadPlayer(gameModel.CurrentPlayerId, gameModel.Players);
             ThrowIfNoEntitlement(gameModel, [Entitlement.Soldier, Entitlement.RolledSeven]);
-
             // Update the robber's position and the player who moved it
             gameModel.Robber.Coordinates = moveRobber.Coordinates;
             gameModel.Robber.MovedBy = gameModel.CurrentPlayerId;
@@ -870,12 +728,9 @@ namespace Catan3.Controller
                 ConsumeEntitlement(gameModel, Entitlement.RolledSeven);
                 gameModel.GameState = GameState.WaitingForNext;
             }
-
             LogDone(gameModel);
             return gameModel;
         }
-
-
         /// <summary>
         /// Validates the current game state against a list of acceptable states.
         /// </summary>
@@ -890,12 +745,10 @@ namespace Catan3.Controller
                 throw new GameException($"{currentState} is invalid. Must be in this set: [{validStatesList}]");
             }
         }
-
         private static bool WrongStateCheck(GameState currentState, GameState[] validStates)
         {
             return validStates.Contains(currentState);
         }
-
         /// <summary>
         /// Validates if a given player ID exists in the provided list of players.
         /// </summary>
@@ -910,24 +763,17 @@ namespace Catan3.Controller
                 throw new GameException($"Bad CurrentPlayerId: {playerId}");
             }
         }
-
-
         private bool CanTransitionToNext(GameModel gameModel)
         {
             //GameModel gameModel = Log.CurrentState();
             //var currentPlayer = CurrentPlayer(gameModel);
-
             //
             //  when entitlement are added make sure they don't have any
-
             //switch (gameModel.GameState)
             //{
-
             //}
-
             return true;
         }
-
         /// <summary>
         /// Marks a random set of tiles as temporarily gold, avoiding desert tiles and duplicates.
         /// </summary>
@@ -938,13 +784,11 @@ namespace Catan3.Controller
             {
                 // Exit early if no gold tiles need to be set.
                 if (gameModel.HouseRules.GoldTiles == 0) return;
-
                 // Reset the TemporarilyGold property for all tiles.
                 foreach (var tile in gameModel.Tiles)
                 {
                     tile.TemporarilyGold = false;
                 }
-
                 // Initialize a random number generator.
                 var rand = new Random();
                 HashSet<int> usedIndices = [];
@@ -952,13 +796,11 @@ namespace Catan3.Controller
                 {
                     int index = rand.Next(gameModel.Tiles.Count);
                     var tileModel = gameModel.Tiles[index];
-
                     // Ensure the tile is not null and meets the criteria for becoming a gold tile.
                     if (tileModel.ResourceTileType != ResourceType.Desert && !tileModel.TemporarilyGold)
                     {
                         tileModel.TemporarilyGold = true;
                         usedIndices.Add(index);  // Keep track of used indices to avoid duplicates.
-
                         // Log a trace message if needed.
                         this.TraceMessage($"GoldTile: {gameModel.CurrentPlayerId}={tileModel}");
                     }
@@ -973,7 +815,6 @@ namespace Catan3.Controller
 #endif
             }
         }
-
         private GameModel ShuffleCurrentGame()
         {
             //
@@ -985,27 +826,20 @@ namespace Catan3.Controller
             LogDone(gameModel);
             return gameModel;
         }
-
         public SerializableLog GetSerializableLog()
         {
             return Log.GetSerializableLog();
         }
-
         public GameModel OpenSerializableLog(byte[] compressedBytes)
         {
             var decompressedJson = SerializationHelper.Decompress(compressedBytes);
-
             // Deserialize the JSON back into your Log or relevant data structure
-
             var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) ?? throw new GameException("Error: Failed to load the game data.");
             Log<string> log =  Log<string>.FromSerializableLog(savedLog);
             this.Log = log;
             this.GameType = savedLog.GameType;
             return Log.CurrentState();
-
         }
-
-
         private GameModel? Undo()
         {
             GameModel result =  ( ( ILog )Log ).Undo() ?? throw new GameException("Undo cannot be done");
@@ -1031,7 +865,6 @@ namespace Catan3.Controller
                 }
                 road.BuildIndex = 0;
             }
-
         }
         /// <summary>
         ///     A Road is "Buildable" if 
@@ -1043,10 +876,7 @@ namespace Catan3.Controller
         private void MarkBuildableRoads(GameModel gameModel)
         {
             ResetBuildableRoads(gameModel);
-
             List<RoadModel> buildableRoads = [];
-
-
             if (gameModel.Phase() == GamePhase.Purchase) // during allocation we can only build next to the settlment
             {
                 foreach (var road in gameModel.Roads)
@@ -1064,7 +894,6 @@ namespace Catan3.Controller
                     }
                 }
             }
-
             foreach (var building in gameModel.Buildings)
             {
                 if (building.OwnerId == gameModel.CurrentPlayerId)
@@ -1079,11 +908,8 @@ namespace Catan3.Controller
                         continue;
                         // in allocation phase you have to build next to the building you just built -- whichi is 
                         // the one with no roads next to it.
-
                     }
-
                     var roads = gameModel.AdjacentRoads(building.BuildingKey);
-
                     foreach (var adjacentRoad in roads)
                     {
                         if (adjacentRoad.OwnerId is null && !buildableRoads.Contains(adjacentRoad))
@@ -1093,10 +919,8 @@ namespace Catan3.Controller
                     }
                 }
             }
-
             //
             // can't build any roads, don't allow the user to buy them
-
             if (buildableRoads.Count == 0)
             {
                 gameModel.PurchaseModel(Entitlement.Road).Enabled = false;
@@ -1104,28 +928,21 @@ namespace Catan3.Controller
             }
             //
             //  we have at least one road we can build
-
             gameModel.PurchaseModel(Entitlement.Road).Enabled = gameModel.Phase() == GamePhase.Purchase;
-
             if (gameModel.CurrentPlayer().UnspentEntitlements.Contains(Entitlement.Road))
             {
-
                 for (int i = 0; i < buildableRoads.Count; i++)
                 {
                     var road=buildableRoads[i];
                     road.RoadState = RoadState.Buildable;
                     road.BuildIndex = i + 1;
-
                 }
             }
-
         }
-
         /// <summary>
         ///     Go through each building and determine the correct building state for it
         /// </summary>
         /// <param name="gameModel"></param>
-
         private void MarkBuildableBuildings(GameModel gameModel)
         {
             //
@@ -1135,31 +952,21 @@ namespace Catan3.Controller
                      .Where(b => b.BuildingState == BuildingState.PossibleSettlement)
                      .ToList()
                      .ForEach(b => b.BuildingState = BuildingState.NotBuildable);
-
-
-
             var currentPlayer = gameModel.CurrentPlayer();
             bool hasCity = currentPlayer.UnspentEntitlements.Contains(Entitlement.City);
             bool hasSettlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.Settlement);
-
             List<BuildingModel> buildableCities = [];
             List<BuildingModel> buildableSettlements = [];
-
             var test = new BuildingKey(new HexCoordinates(-3, 2, 1), HexPosition.Right);
-
             //
             // to be buildable, the location has to be adjacent to an owned road and cannot be within one road of another building
-
             foreach (var building in gameModel.Buildings)
             {
-
                 if (building.BuildingKey.Equals(test))
                 {
                     //  Debug.Assert(false);
                 }
-
                 // can't build if there is a city
-
                 if (building.BuildingState == BuildingState.City) continue;
                 //
                 //  all settlements, in theory, are upgradable
@@ -1170,20 +977,12 @@ namespace Catan3.Controller
                         // as long as it is yours...
                         buildableCities.Add(building);
                     }
-
                     // if the building is already a settlement, then there is no way to build on it
                     // other than a city upgrade
-
                     continue;
-
                 }
-
-
-
                 // for this empty building, look at the buildings next to it
-
                 var ownedAdjacentBuildings = gameModel.Buildings.AdjacentBuildings(building.BuildingKey).Where(b => b.OwnerId != null).ToList();
-
                 if (ownedAdjacentBuildings.Count == 0)
                 {
                     if (building.OwnerId is null && ( gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard ))
@@ -1198,19 +997,14 @@ namespace Catan3.Controller
                     var adjacentRoads = gameModel.AdjacentRoads(building.BuildingKey);
                     foreach (var road in adjacentRoads)
                     {
-
                         if (road.OwnerId == currentPlayer.Id && building.OwnerId == null)
                         {
                             buildableSettlements.Add(building);
                             break;
                         }
                     }
-
-
                 }
-
             }
-
             if (buildableCities.Count > 0 && gameModel.Phase() == GamePhase.Purchase && AllowPurchase(gameModel, Entitlement.City))
             {
                 // if we can build a city, allow it when we allow purchases
@@ -1221,10 +1015,7 @@ namespace Catan3.Controller
                 // don't allow purchase
                 gameModel.PurchaseModel(Entitlement.City).Enabled = false;
             }
-
-
             int unspentSettlements = currentPlayer.UnspentEntitlements.Count(e => e == Entitlement.Settlement);
-
             if (buildableSettlements.Count > unspentSettlements && gameModel.Phase() == GamePhase.Purchase && AllowPurchase(gameModel, Entitlement.Settlement))
             {
                 gameModel.PurchaseModel(Entitlement.Settlement).Enabled = true;
@@ -1232,22 +1023,15 @@ namespace Catan3.Controller
             else
             {
                 gameModel.PurchaseModel(Entitlement.Settlement).Enabled = false;
-
             }
-
             if (hasSettlement || gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard)
             {
                 buildableSettlements.ForEach(building => { building.BuildingState = BuildingState.PossibleSettlement; });
-
             }
-
-
         }
-
         private static bool AllowPurchase(GameModel gameModel, Entitlement entitlement)
         {
             var currentPlayer = gameModel.CurrentPlayer();
-
             int total = currentPlayer.SpentEntitlementsThisGame.Count(e => e==entitlement) +
                         currentPlayer.UnspentEntitlements.Count(e => e == entitlement);
             switch (entitlement)
@@ -1264,7 +1048,6 @@ namespace Catan3.Controller
                     throw new Exception($"TODO: add support for {entitlement} to AllowPurchase");
             }
         }
-
         public void CalculateLongestRoad(GameModel gameModel)
         {
             var longestRoadAllPlayers = 0;
@@ -1277,30 +1060,24 @@ namespace Catan3.Controller
                 int max = 0;
                 foreach (var startRoad in playerRoads)
                 {
-
                     int count = CalculateLongestRoad(gameModel, startRoad, [], null);
                     if (count > max)
                     {
                         max = count;
-
                         if (max == gameModel.Roads.Count) // the most roads you can have…only count once
                         {
                             break;
                         }
                     }
-
                 }
-
                 player.LongestRoad = max;
                 if (max > longestRoadAllPlayers)
                 {
                     longestRoadAllPlayers = max;
                 }
             }
-
             var playerWithLongestRoad = gameModel.Players.FirstOrDefault(p => p.HasLongestRoad);
             
-
             foreach (var player in gameModel.Players)
             {
                 if (player.LongestRoad < 5)
@@ -1345,18 +1122,15 @@ namespace Catan3.Controller
                 {
                     case 0:
                         return max;
-
                     case 1:
                         {
                             count++;
                             next = ownedAdjacentNotCounted[0];
                             counted.Add(next);                  // we counted it, add it to the counted list.
-
                             if (count > max)
                             {
                                 max = count;
                             }
-
                             ownedAdjacentNotCounted = gameModel.OwnedAdjacentRoadsNotCounted(next, counted, blockedFork, out adjacentFork);
                             if (adjacentFork)
                             {
@@ -1367,24 +1141,19 @@ namespace Catan3.Controller
                                 {
                                     max = count;
                                 }
-
                                 return max;
                             }
                         }
                         //
                         //  loop to the next road to see if it terminates, forks, or just continues...
                         break;
-
                     default:
-
                         //
                         //   general strategy:  for each fork in the road, pretend that all but one of the forks are already counted
                         //                      then count the remaining one.  after that, pick another to be counted
                         //                      because we "count" the entered line, there are only ever 2 forks in the road
-
                         // ownedAdjacentNotCounted.Count > 1
                         //  usually there means there is a fork like this
-
                         //                           /
                         //                          /    <=== fork1
                         //                         /
@@ -1392,7 +1161,6 @@ namespace Catan3.Controller
                         //                         \
                         //                          \   <=== Fork 2
                         //                           \
-
                         //  if we ever get this or the equivalent:
                         //
                         //                           /
@@ -1405,7 +1173,6 @@ namespace Catan3.Controller
                         //
                         //  e.g the adjacent count is > 2 then the road with all the forks around it (the horizontal in ascii art) doesn't have to be counted because we'll count all the
                         //  roads coming into that fork
-
                         List<RoadModel> forks = new List<RoadModel>();
                         forks.AddRange(ownedAdjacentNotCounted);
                         if (forks.Count > 2)
@@ -1418,22 +1185,16 @@ namespace Catan3.Controller
                         {
                             forks.Remove(road);// now the list has everything except this one road...so we've effectively picked a direction
                             int forkCount = CalculateLongestRoad(gameModel, road, counted, forks[0]); // --> only one element in the forks list at this point
-
                             if (count + forkCount > max)
                             {
                                 max = count + forkCount;
                             }
-
                             forks.Add(road); // put fork back so we can count that fork
                         }
-
                         return max;
                 }
             } while (ownedAdjacentNotCounted.Count != 0);
-
             return max;
         }
-
     }
-
 }

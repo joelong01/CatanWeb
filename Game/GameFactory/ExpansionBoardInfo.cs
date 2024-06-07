@@ -1,10 +1,7 @@
 ﻿using Catan3.Utility;
-using Microsoft.UI.Xaml.Controls;
 using System.Collections.Generic;
-
 namespace Catan3.Models
 {
-
     public partial class ExpansionBoardInfo : IGameMetadata
     {
         public GameType GameType { get; } = GameType.Expansion;
@@ -28,7 +25,6 @@ namespace Catan3.Models
                 new(-2, 1, 1),
                 new(-2, 2, 0),
                 new(-2, 3, -1),
-
                 //column 3
                 new(-1, -1, 2),
                 new(-1, 0, 1),
@@ -36,7 +32,6 @@ namespace Catan3.Models
                 new(-1, 2, -1),
                 new(-1, 3, -2),
                 
-
                 // mid column (4)
                 new(0, -2, 2),
                 new(0, -1, 1),
@@ -107,10 +102,8 @@ namespace Catan3.Models
             new HarborModel(new HexCoordinates(-3, 3, 0), HarborType.ThreeForOne, HexSide.BottomLeft),
             new HarborModel(new HexCoordinates(-3, 2, 1), HarborType.ThreeForOne, HexSide.TopLeft),
             new HarborModel(new HexCoordinates(3, -1, -2), HarborType.ThreeForOne, HexSide.TopRight),
-
             ];
         public List<int> Numbers { get; } = [7, 7, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 8, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12];
-
         public List<EntitlementPurchaseModel> PurchaseableEntitlements { get; } = [
                 new EntitlementPurchaseModel(Entitlement.City),
                 new EntitlementPurchaseModel(Entitlement.Settlement),

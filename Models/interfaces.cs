@@ -4,8 +4,6 @@ using System.Text.Json.Serialization;
 using Catan3.Utility;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
-
-
 namespace Catan3.Models
 {
     /// <summary>
@@ -26,7 +24,6 @@ namespace Catan3.Models
         public int MaxPlayers { get; set; } = maxPlayers;
         [JsonIgnore]
         public static ResourceRules Default { get; set; } = new();
-
         public int MaxEntitlementCount(Entitlement entitlement)
         {
             int result = 0;
@@ -89,7 +86,6 @@ namespace Catan3.Models
             return result;
         }
     }
-
     public interface IGameMetadata
     {
         GameType GameType { get; }
@@ -103,7 +99,6 @@ namespace Catan3.Models
         public HouseRules HouseRules { get; }
         public ResourceRules ResourceRules { get; }
         public List<EntitlementPurchaseModel> PurchaseableEntitlements { get; }
-
     }
     public interface IBoardLayout
     {

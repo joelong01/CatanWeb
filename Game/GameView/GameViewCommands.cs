@@ -1,10 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-
 namespace Catan3.Models
 {
-
     public partial class GameViewModel : ObservableRecipient
     {
       
@@ -19,7 +17,6 @@ namespace Catan3.Models
         {
            Messenger.Send(new DoAction(GameAction.Shuffle));
         }
-
         [RelayCommand]
         public void Undo()  
         {
@@ -30,15 +27,12 @@ namespace Catan3.Models
         {
             Messenger.Send(new DoAction(GameAction.Redo));
         }
-
         [RelayCommand]
         public void NextPlayer()
         {
             Messenger.Send(new DoAction(GameAction.Next));
           
         }
-
-
         /// <summary>
         ///     this is not undoable, client only ... so we can implement this here instead
         ///     of with a message.
@@ -49,7 +43,6 @@ namespace Catan3.Models
         {
             throw new System.Exception("shouldn't be called");
             
-
         }
         /// <summary>
         ///     this has the side effect of broadcasting a UpdateOrientation command
@@ -59,13 +52,11 @@ namespace Catan3.Models
         {
             Orientation = Orientation == CatanOrientation.FaceUp ? CatanOrientation.FaceDown : CatanOrientation.FaceUp;
         }
-
         [RelayCommand]
         public void Purchase(Entitlement entitlement)
         {
             Messenger.Send(new PurchaseMessage(entitlement));
         }
-
        
     }
 }

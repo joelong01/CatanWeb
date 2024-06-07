@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Text.Json.Serialization;
-using Catan3.Utility;
-using CommunityToolkit.Mvvm.ComponentModel;
 namespace Catan3.Models
 {
     public partial class TileModel : IComparable<TileModel>
@@ -12,22 +10,17 @@ namespace Catan3.Models
         {
             return $"({ResourceTileType}, {Number}, {TileKey}, [Gold={TemporarilyGold})][Highlighted={Highlighted}])";
         }
-
         public int CompareTo(TileModel? other)
         {
             if (other is null) return 1;
             return TileKey.CompareTo(other.TileKey);
         }
-
        
-
         public override int GetHashCode()
         {
             return HashCode.Combine(TileKey, ResourceTileType, Number, TemporarilyGold, Highlighted);
         }
-
        
-
         [JsonIgnore]
         public int Stars
         {

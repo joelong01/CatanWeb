@@ -10,21 +10,16 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using WinRT.Interop;
-
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
-
 namespace Catan3.Player
 {
-
-
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
     public sealed partial class PlayerEditorPage : Page
     {
         public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(EditPlayerViewModel), typeof(PlayerEditorPage), new PropertyMetadata(null, ViewModelChanged));
-
         private static void ViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is PlayerEditorPage page)
@@ -32,25 +27,19 @@ namespace Catan3.Player
                 page.DataContext = e.NewValue as EditPlayerViewModel;
             }
         }
-
         public EditPlayerViewModel ViewModel
         {
             get => ( EditPlayerViewModel )GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
-
-
         public PlayerEditorPage()
         {
             this.InitializeComponent();
         }
-
-
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
             PlayerEditorWindow.EditorWindow?.Close();
         }
-
         
         private void ImageCropper_DragOver(object sender, DragEventArgs e)
         {
@@ -71,13 +60,11 @@ namespace Catan3.Player
                 }
             }
         }
-
         private async Task LoadImage(StorageFile file)
         {
             if (ImageCropper is null) return;
             using IRandomAccessStream fileStream = await file.OpenAsync(FileAccessMode.Read);
             await ImageCropper.LoadImageFromFile(file);
-
             ImageCropper.AspectRatio = ImageCropper.ActualWidth / ImageCropper.ActualHeight;
         }
         private async Task Load()
@@ -85,7 +72,6 @@ namespace Catan3.Player
             var file = await StorageFile.GetFileFromApplicationUriAsync(new Uri("ms-appx:///Assets/Owl.jpg"));
             await ImageCropper.LoadImageFromFile(file);
         }
-
         private async Task PickImage()
         {
            
@@ -106,7 +92,6 @@ namespace Catan3.Player
                 await ImageCropper.LoadImageFromFile(file);
             }
         }
-
         private async Task SaveCroppedImage()
         {
             var savePicker = new FileSavePicker
@@ -137,11 +122,9 @@ namespace Catan3.Player
                         bitmapFileFormat = BitmapFileFormat.Png;
                         break;
                 }
-
                 using var fileStream = await imageFile.OpenAsync(FileAccessMode.ReadWrite, StorageOpenOptions.None);
                 try
                 {
-
                     await ImageCropper.SaveAsync(fileStream, bitmapFileFormat);
                 }
                 catch (Exception ex)
@@ -150,21 +133,17 @@ namespace Catan3.Player
                 }
             }
         }
-
         private async void PickButton_Click(object sender, RoutedEventArgs e)
         {
             await PickImage();
         }
-
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             await SaveCroppedImage();
         }
-
         private void ResetButton_Click(object sender, RoutedEventArgs e)
         {
             ImageCropper.Reset();
         }
     }
 }
-

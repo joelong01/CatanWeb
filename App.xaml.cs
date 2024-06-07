@@ -2,7 +2,6 @@
 #nullable disable
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
-
 namespace Catan3
 {
     /// <summary>
@@ -18,7 +17,6 @@ namespace Catan3
         {
             this.InitializeComponent();
         }
-
         /// <summary>
         /// Invoked when the application is launched.
         /// </summary>
@@ -28,9 +26,7 @@ namespace Catan3
             m_window = new MainWindow();
             m_window.Activate();
         }
-
         public Window m_window;
-
         public Window MainWindow => m_window;
     }
 }

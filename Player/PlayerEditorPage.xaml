@@ -9,13 +9,11 @@
         xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
         mc:Ignorable="d" Name="EditPage"
         Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-
     <Page.Resources>
         <DataTemplate x:Key="EditPlayerDataTemplate"
                 x:DataType="m:PlayerViewModel">
             <Grid HorizontalAlignment="Stretch" Height="120"
                     Background="{x:Bind PlayerColors.BackgroundBrush, Mode=OneWay}">
-
                 <Ellipse Name="Player_Picture" HorizontalAlignment="Center"
                         VerticalAlignment="Top" Width="100" Height="100"
                         Stroke="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}">
@@ -32,7 +30,6 @@
                         TextLineBounds="Tight" />
                 <TextBlock Text="{x:Bind Name, Mode=OneWay}"
                         HorizontalAlignment="Center" VerticalAlignment="Bottom" />
-
             </Grid>
         </DataTemplate>
         <DataTemplate x:Key="ColorSettingTemplate"
@@ -40,7 +37,6 @@
             <Grid BorderBrush="{x:Bind GetBrush(Foreground), Mode=OneWay}"
                     Background="{x:Bind GetBrush(Background), Mode=OneWay}"
                     CornerRadius="5" Width="300" Height="50">
-
                 <TextBlock Text="{x:Bind DisplayName(ColorName)}"
                         HorizontalAlignment="Center"
                         Foreground="{x:Bind GetBrush(Foreground), Mode=OneWay}"
@@ -51,14 +47,11 @@
                         Visibility="{x:Bind Selected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                         VerticalAlignment="Top" FontSize="20" FontWeight="Bold"
                         Margin="2" TextLineBounds="Tight" />
-
             </Grid>
         </DataTemplate>
     </Page.Resources>
-
     <StackPanel HorizontalAlignment="Stretch" Orientation="Horizontal"
             VerticalAlignment="Stretch">
-
         <ListView Margin="10" HorizontalAlignment="Left" Width="110"
                 SelectionMode="Single" VerticalAlignment="Top"
                 Background="Transparent"
@@ -76,7 +69,6 @@
                 </Style>
             </ListView.ItemContainerStyle>
         </ListView>
-
         <StackPanel>
             <c:PlayerCtrl
                     PlayerViewModel="{x:Bind ViewModel.SelectedPlayer, Mode=OneWay}" />
@@ -116,7 +108,6 @@
                         IsHexInputVisible="False" IsAlphaEnabled="False"
                         IsAlphaSliderVisible="False"
                         IsAlphaTextInputVisible="False" />
-
             </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <controls:ImageCropper x:Name="ImageCropper" AllowDrop="True"  Source="{x:Bind ViewModel.SelectedPlayer.CropperImageSource, Mode=OneWay}"
@@ -135,5 +126,4 @@
             </StackPanel>
         </StackPanel>
     </StackPanel>
-
 </Page>

@@ -6,12 +6,9 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
-
     <Grid Width="65" Height="65">
-
         <Ellipse Fill="#FF2F6999" Stroke="White" StrokeThickness=".5"
                 Opacity=".75" />
-
         <TextBlock FontFamily="Segoe UI" FontWeight="Bold"
                 Text="{x:Bind Number, Mode=OneWay}"
                 Foreground="{x:Bind BIND_StarForeground(Number), Mode=OneWay}"
@@ -21,7 +18,5 @@
                 HorizontalAlignment="Center" VerticalAlignment="Center"
                 Text="{x:Bind Stars,Mode=OneWay}"
                 Foreground="{x:Bind BIND_StarForeground(Number), Mode=OneWay}" />
-
     </Grid>
-
 </UserControl>

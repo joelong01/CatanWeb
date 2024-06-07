@@ -94,29 +94,24 @@ namespace Catan3.Models
         {
             return collection.Where(t => t.Number == 6 || t.Number == 8).ToList();
         }
-
         public static List<TileViewModel> FirstColumn(this IEnumerable<TileViewModel> collection)
         {
             if (collection == null || !collection.Any())
             {
                 throw new ArgumentException("List cannot be empty");
             }
-
             var minQ = collection.Min(tile => tile.Tile.TileKey.Q);
             return collection.Where(tile => tile.Tile.TileKey.Q == minQ).ToList();
         }
-
         public static List<TileViewModel> LastColumn(this IEnumerable<TileViewModel> collection)
         {
             if (collection == null || !collection.Any())
             {
                 throw new ArgumentException("List cannot be empty");
             }
-
             var minQ = collection.Max(tile => tile.Tile.TileKey.Q);
             return collection.Where(tile => tile.Tile.TileKey.Q == minQ).ToList();
         }
-
         public static TileViewModel TopTile(this IEnumerable<TileViewModel> collection)
         {
             return collection
@@ -124,17 +119,13 @@ namespace Catan3.Models
              .OrderBy(tile => tile.Tile.TileKey.R)
              .First();
         }
-
         public static TileViewModel BottomTile(this IEnumerable<TileViewModel> collection)
         {
-
             return collection
                 .Where(tile => tile.Tile.TileKey.Q == 0) // Include this line if you're still filtering by Q == 0
                 .OrderByDescending(tile => tile.Tile.TileKey.R)
                 .First();
-
         }
-
         public static ResourceType ToResourceCardType(this ResourceType tileType)
         {
             switch (tileType)
@@ -160,7 +151,6 @@ namespace Catan3.Models
                 case ResourceType.Sea:
                     return ResourceType.Sea;
             }
-
             throw new ArgumentException("did you forget to update this?", nameof(tileType));
         }
     }

@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Text.Json.Serialization;
-using Catan3.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Windows.Foundation;
 namespace Catan3.Utility
 {
-
     public enum HexSide { None = -1, Top = 0, TopRight = 1, BottomRight = 2, Bottom = 3, BottomLeft = 4, TopLeft = 5 };
     public enum Direction
     {
@@ -18,18 +15,14 @@ namespace Catan3.Utility
         SouthWest,
         NorthWest
     }
-
     public partial class HexCoordinates(int q, int r, int s) : ObservableObject, IComparable<HexCoordinates>
     {
         [ObservableProperty]
         private int _q = q;
-
         [ObservableProperty]
         private int _r = r;
-
         [ObservableProperty]
         private int _s = s;
-
         [JsonIgnore]
         public static
                 Dictionary<Direction, HexCoordinates> Directions
@@ -42,7 +35,6 @@ namespace Catan3.Utility
                         { Direction.SouthWest, new HexCoordinates(-1, 1, 0) },
                         { Direction.NorthWest, new HexCoordinates(-1, 0, 1) }
                     };
-
         public override string ToString()
         {
             return $"({Q},{R},{S})";
@@ -81,15 +73,12 @@ namespace Catan3.Utility
         }
         public override int GetHashCode() => HashCode.Combine(Q, R, S);
         public static HexCoordinates Default => new(-10, -10, -10);
-
-
         public static Point MidPoint(double left, double top, double size, HexSide side)
         {
             double height = Math.Sqrt(3) * size;
             double width = 2 * size; // Full width from left vertex to right vertex
             double sideLength = (Math.Sqrt(3)/2) * size; // Horizontal length of a side
             double horizontalMargin = (size - sideLength) / 2; // Distance from bounding box to hexagon side
-
             switch (side)
             {
                 case HexSide.Top:
@@ -108,11 +97,9 @@ namespace Catan3.Utility
                     throw new ArgumentOutOfRangeException(nameof(side), $"Invalid hex side: {side}");
             }
         }
-
         public int CompareTo(HexCoordinates? other)
         {
             if (other is null) return 1;
-
             if (Q.CompareTo(other.Q) != 0)
             {
                 return Q.CompareTo(other.Q);
@@ -127,7 +114,6 @@ namespace Catan3.Utility
                 return -S.CompareTo(other.S);
             }
         }
-
         // Override == and != operators to use CompareTo for consistency
         public static bool operator ==(HexCoordinates left, HexCoordinates right)
         {
@@ -141,13 +127,9 @@ namespace Catan3.Utility
             }
             return left.CompareTo(right) == 0;
         }
-
         public static bool operator !=(HexCoordinates left, HexCoordinates right)
         {
             return !( left == right );
         }
-
-
-
     }
 }

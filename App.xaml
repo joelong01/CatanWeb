@@ -13,7 +13,6 @@
                 <ResourceDictionary
                         Source="ValueConverters/ConverterDictionary.xaml" />
             </ResourceDictionary.MergedDictionaries>
-
         </ResourceDictionary>
     </Application.Resources>
 </Application>

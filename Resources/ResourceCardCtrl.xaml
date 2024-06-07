@@ -6,7 +6,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
-
     <u:FlipperCtrl Name="LayoutRoot" Orientation="{x:Bind ViewModel.GetOrientation(ViewModel.Count), Mode=OneWay}" >
         <u:FlipperCtrl.Back>
             <Grid x:Name="GRID_Back"

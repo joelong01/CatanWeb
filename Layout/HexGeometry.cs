@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
-
 namespace Catan3.Utility
 {
     /// <summary>
@@ -20,13 +19,11 @@ namespace Catan3.Utility
         TopRight = 5,
         None = -1,
     }
-
     /// <summary>
     ///     this is a static class for the Geometry of a Regular Flat top Hexagon.  Points assume (0,0) as the origin
     /// </summary>
     public static class HexGeometry
     {
-
         /// <summary>
         ///     we have an OuterHex and an InnerHex in the game. we'll cache 2 PointCollections so that we aren't constantly
         ///     recalculating them.  the bool is "IsFlatTop", because we use the same size for the pointer hex to get the 
@@ -49,7 +46,6 @@ namespace Catan3.Utility
             {
                 if (points is not null)
                 {
-
                     if (points is not null)
                     {
                         Debug.Assert(points.Count > 0);
@@ -64,10 +60,8 @@ namespace Catan3.Utility
             // Calculate the width and height for positioning adjustments
   
             double height = Math.Sqrt(3) * size;
-
             // The angle between vertices in a hexagon in radians, starting from the horizontal right (for a flat top)
             double angleRadians = Math.PI / 3;
-
             // Calculate each vertex position, assuming the rightmost point should be at (0, height / 2)
             for (int i = 0; i < 6; i++)
             {
@@ -75,19 +69,15 @@ namespace Catan3.Utility
                 // Original x and y based on the center at (0,0)
                 double originalX = Math.Round(size * Math.Cos(angle), 2);
                 double originalY = Math.Round(size * Math.Sin(angle), 2);
-
                 // Adjust x to align the rightmost point at x=0 and y to center vertically in the parent control
                 double adjustedX = originalX + size; // Translate x to move the hexagon's rightmost point to x=0
                 double adjustedY = originalY + (height / 2); // Translate y to center the hexagon vertically
-
                 adjustedX += deltaX;
                 adjustedY += deltaY;
-
                 HexCache[(size, true)] = points;
                 var newPoint = new Point(Math.Round(adjustedX, 2), Math.Round(adjustedY, 2));
                 points.Add(newPoint);
             }
-
             return points;
         }
         /// <summary>
@@ -111,49 +101,36 @@ namespace Catan3.Utility
             if (HexCache.Count > 2) HexCache.Clear();
             CacheMiss++;
             points = [];
-
             //      // for future reference
             // double width = 2 * size;
             // double height = Math.Sqrt(3) / 2 * width;
-
             // The angle between vertices in a hexagon in radians, starting from the top (for a pointy top)
             double angleRadians = Math.PI / 3;
-
             // Calculate each vertex position, assuming the topmost point should be at (0, 0)
             for (int i = 0; i < 6; i++)
             {
                 double angle = i * angleRadians - Math.PI / 6; // Start from the top vertex
-
                 // Original x and y based on the center at (0,0)
                 double originalX = Math.Round(size * Math.Cos(angle), 2);
                 double originalY = Math.Round(size * Math.Sin(angle), 2);
-
                 // Adjust x and y to align the topmost point at (deltaX, deltaY)
                 double adjustedX = originalX + deltaX;
                 double adjustedY = originalY + deltaY;
-
                 points.Add(new Point(Math.Round(adjustedX, 2), Math.Round(adjustedY, 2)));
             }
-
             HexCache[(size, false)] = points;
             return points;
         }
-
         
-
-
         /// <summary>
         /// Calculates the height of a regular hexagon given its size.
         /// </summary>
         /// <param name="size">The size of the hexagon, defined as the distance from its center to any vertex.</param>
         /// <returns>The height of the hexagon, which is the vertical distance from one flat side to the opposite flat side.</returns>
-
         public static double Height(double size)
         {
             return Math.Round(size * Math.Sqrt(3), 2);
-
         }
-
         /// <summary>
         /// Calculates the width of a regular hexagon given its size.
         /// </summary>
@@ -180,7 +157,6 @@ namespace Catan3.Utility
             // These calculations assume the hexagon's orientation is such that one side is horizontal at the top.
             return new Point(Math.Round(Math.Sqrt(3) / 2.0 * size, 2), Math.Round(size / 2.0, 2));
         }
-
         /// <summary>
         /// Calculates the size of a regular hexagon based on its height.
         /// </summary>
@@ -191,17 +167,14 @@ namespace Catan3.Utility
         {
             return Math.Round(height / Math.Sqrt(3), 2);
         }
-
         public static HexCoordinates HexSubtract(HexCoordinates a, HexCoordinates b)
         {
             return new HexCoordinates(a.Q - b.Q, a.R - b.R, a.S - b.S);
         }
-
         public static double Distance(HexCoordinates a, HexCoordinates b)
         {
             var vec = HexSubtract(a, b);
             return ( Math.Abs(vec.Q) + Math.Abs(vec.R) + Math.Abs(vec.S) ) / 2.0;
         }
-
     }
 }

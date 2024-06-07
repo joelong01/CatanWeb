@@ -7,17 +7,14 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
-
     <Grid>
         <GridView ItemsSource="{x:Bind ResourcesViewModel.ResourceCounters, Mode=OneWay}">
             <GridView.ItemContainerStyle>
                 <Style TargetType="GridViewItem">
                     <Setter Property="Padding" Value="3" />
                     <Setter Property="Margin" Value="0" />
-
                 </Style>
             </GridView.ItemContainerStyle>
-
             <GridView.ItemTemplate>
                 <DataTemplate x:DataType="models:ResourceCounterViewModel">
                     <c:ResourceCardCtrl ViewModel="{x:Bind Mode=OneWay}"  />

@@ -8,8 +8,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 namespace Catan3.Models
@@ -19,31 +17,24 @@ namespace Catan3.Models
         [JsonIgnore]
         [ObservableProperty]
         private RoadModel _road;
-
         [ObservableProperty]
         private BoardLayout _layout;
-
         [ObservableProperty]
         private Point _roadCenter = new Point(0,0);
-
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(RoadPolygon))]
         private double _left;
-
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(RoadPolygon))]
         private double _top;
-
         [ObservableProperty]
         private double _index;
         [ObservableProperty]
         private PlayerViewModel _currentPlayer  = PlayerViewModel.Default;
-
         public RoadViewModel(RoadModel road, BoardLayout layout)
         {
             Road = road;
             Layout = layout;
-
             IsActive = true;
             Messenger.Register<CurrentPlayerChanged>(this, (recipient, message) =>
             {
@@ -61,17 +52,12 @@ namespace Catan3.Models
                     OnPropertyChanged(nameof(GetBackgroundBrush));
                 }
             });
-
-
             if (Layout is not null && Layout is BoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
-
             }
             UpdateLayout();
         }
-
-
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (sender is BoardLayout layout)
@@ -80,11 +66,9 @@ namespace Catan3.Models
                 UpdateLayout();
             }
         }
-
         private void HandleCurrentPlayerChanged(PlayerViewModel newCurrentPlayer)
         {
             CurrentPlayer = newCurrentPlayer;
-
         }
         private void UpdateLayout()
         {
@@ -92,22 +76,16 @@ namespace Catan3.Models
             Top = Layout.Top(Road.RoadKey.TileKey);
             Left = Layout.Left(Road.RoadKey.TileKey);
             GetRoadPoints(Road.RoadKey.HexSide, Road.RoadKey.TileKey, Layout);
-
             //
             //  buildable roads get a BuildIndex to make it easy to say "Build Road #2"
             //  they go in the middle of the road, which is set by the pointy top hex.
             //  the position is centered halfway between the OuterHexSize and the InnerHexSize
             //  BUILD_INDEX_TEXT_SIZE is set in RoadCtrl.xaml as the Width/Height of the Grid that holds the TextBlock.
-
             double offset = Layout.OuterHexSize - Layout.InnerHexSize;
             var pointyTopHexPoints = HexGeometry.PointyTopHexPoints(Layout.InnerHexSize - offset / 2.0, Layout.ControlWidth / 2.0, Layout.ControlHeight / 2.0).PointyTopListToDictionary(); ;
             RoadCenter = new Point(pointyTopHexPoints[this.Road.RoadKey.HexSide].X - BUILD_INDEX_TEXT_SIZE / 2.0, pointyTopHexPoints[this.Road.RoadKey.HexSide].Y - BUILD_INDEX_TEXT_SIZE / 2.0);
-
             OnPropertyChanged(nameof(RoadPolygon));
         }
-
-
-
         /// <summary>
         ///     keep this around if you want to put the road position in the roads for debugging purposes
         /// </summary>
@@ -120,7 +98,6 @@ namespace Catan3.Models
                 string s=$"{Index}:";
                 return this.Road.RoadKey.HexSide switch
                 {
-
                     HexSide.BottomRight => s + "BR",
                     HexSide.BottomLeft => s + "BL",
                     HexSide.TopLeft => s + "TL",
@@ -132,12 +109,10 @@ namespace Catan3.Models
                 };
             }
         }
-
         public PointCollection RoadPolygon
         {
             get
             {
-
                 if (Layout is null) return [];
                 var points =  GetRoadPoints(Road.RoadKey.HexSide, Road.RoadKey.TileKey, Layout);
                 //leaving comment here in case the cache is looked at again.
@@ -146,12 +121,8 @@ namespace Catan3.Models
                 //    this.TraceMessage($"[CacheHit={cacheHit}][cacheMiss={cacheMiss}][cacheSize={RoadCache.Count}]");
                 //}
                 return points;
-
             }
         }
-
-
-
         private static int cacheHit;
         private static int cacheMiss;
         private static readonly Dictionary<(double size, double tilegap, double stroke), Dictionary<HexSide, PointCollection>> RoadCache = [];
@@ -190,7 +161,6 @@ namespace Catan3.Models
             Debug.Assert(sideDictionary is not null);
             var points = PointsForSide(side, tileKey, layout);
             cacheMiss++;
-
             sideDictionary[side] = points;
             return points;
         }
@@ -207,7 +177,6 @@ namespace Catan3.Models
             if (layout is null) return points;
             var outerHexPoints = layout.OuterHexPoints.FlatTopListToDictionary();
             var innerHexPoints =  layout.InnerHexPoints.FlatTopListToDictionary();
-
             Point delta;
             switch (side)
             {
@@ -219,7 +188,6 @@ namespace Catan3.Models
                     {
                         points.Add(new Point(point.X, point.Y - layout.ControlHeight));
                     }
-
                     break;
                 case HexSide.TopRight:
                     delta = GapBetweenTiles(tileKey, Direction.NorthEast, layout);
@@ -230,7 +198,6 @@ namespace Catan3.Models
                     points.Add(new Point(innerHexPoints[HexPosition.BottomLeft].X + delta.X,
                                         innerHexPoints[HexPosition.BottomRight].Y + delta.Y));
                     points.Add(new Point(innerHexPoints[HexPosition.Left].X + delta.X, innerHexPoints[HexPosition.Left].Y + delta.Y));
-
                     break;
                 case HexSide.BottomRight:
                     delta = GapBetweenTiles(tileKey, Direction.SouthEast, layout);
@@ -240,7 +207,6 @@ namespace Catan3.Models
                     points.Add(new Point(innerHexPoints[HexPosition.TopLeft].X + delta.X, innerHexPoints[HexPosition.TopLeft].Y + delta.Y));
                     points.Add(outerHexPoints[HexPosition.Right]);
                     points.Add(innerHexPoints[HexPosition.Right]);
-
                     break;
                 case HexSide.Bottom:
                     points.Add(outerHexPoints[HexPosition.BottomLeft]);
@@ -254,19 +220,14 @@ namespace Catan3.Models
                     delta = GapBetweenTiles(tileKey, Direction.SouthWest, layout);
                     points.Add(innerHexPoints[HexPosition.BottomLeft]);
                     points.Add(outerHexPoints[HexPosition.BottomLeft]);
-
-
                     points.Add(new Point(innerHexPoints[HexPosition.Right].X + delta.X,
                                         innerHexPoints[HexPosition.Right].Y + delta.Y));
-
                     points.Add(new Point(innerHexPoints[HexPosition.TopRight].X + delta.X,
                                          innerHexPoints[HexPosition.TopRight].Y + delta.Y));
-
                     points.Add(outerHexPoints[HexPosition.Left]);
                     points.Add(innerHexPoints[HexPosition.Left]);
                     break;
                 case HexSide.TopLeft:
-
                     delta = GapBetweenTiles(tileKey, Direction.NorthWest, layout);
                     points.Add(innerHexPoints[HexPosition.TopLeft]);
                     points.Add(outerHexPoints[HexPosition.TopLeft]);
@@ -274,12 +235,9 @@ namespace Catan3.Models
                     points.Add(new Point(innerHexPoints[HexPosition.BottomRight].X + delta.X, innerHexPoints[HexPosition.BottomRight].Y + delta.Y));
                     points.Add(outerHexPoints[HexPosition.Left]);
                     points.Add(innerHexPoints[HexPosition.Left]);
-
                     break;
                 default:
                     break;
-
-
             }
             return points;
         }
@@ -297,15 +255,12 @@ namespace Catan3.Models
         ///     all brushes are cached.
         public Brush GetForegroundBrush(RoadState state, string ownerId, PlayerViewModel currentPlayer)
         {
-
             if (state == RoadState.Unowned && ownerId is null)
             {
                 return BrushCache.GetSolidColorBrush(Colors.Transparent);
             }
-
             if (ownerId is not null)
             {
-
                 PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
                 return owner.PlayerColors.ForegroundBrush;
             }
@@ -313,10 +268,7 @@ namespace Catan3.Models
             {
                 return currentPlayer.PlayerColors.ForegroundBrush;
             }
-
-
         }
-
         /// <summary>
         ///     if the state is empty, be transparent
         ///     if their is an owner, use their color
@@ -332,7 +284,6 @@ namespace Catan3.Models
         /// <exception cref="Exception"></exception>
         public Brush GetBackgroundBrush(RoadState state, string ownerId, PlayerViewModel currentPlayer)
         {
-
             if (state == RoadState.Unowned && ownerId is null && state != RoadState.Buildable)
             {
                 return BrushCache.GetSolidColorBrush(Colors.Transparent);
@@ -347,33 +298,25 @@ namespace Catan3.Models
                 return currentPlayer.PlayerColors.BackgroundBrush;
             }
         }
-
         public double Opacity(RoadModel model, RoadState state)
         {
             if (state == RoadState.Buildable) return 0.5;
-
           
             if (model.OwnerId is not null) { return 1.0; }
-
             return 0.0;
         }
-
         public string BuildIndex(int index)
         {
             if (index > 0) return index.ToString();
-
             return "";
         }
-
         public Visibility ShowBuildIndex(int index)
         {
             return index > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
-
         public override string ToString()
         {
             return $"{Road}";
         }
-
     }
 }

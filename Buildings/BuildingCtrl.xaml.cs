@@ -2,11 +2,8 @@ using Catan3.Models;
 using Catan3.Utility;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Data;
-
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
-
 namespace Catan3.Controls
 {
     public sealed partial class BuildingCtrl : UserControl
@@ -37,16 +34,12 @@ namespace Catan3.Controls
         {
             return isMetropolis ? 0.6 : 1.0;
         }
-
         private string LaurelGlyph => CatanFont.Laurel;
-
         
-
         private void OnPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             BuildingViewModel.UpgradeCommand.Execute(BuildingViewModel);
         }
-
         private void OnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             if (sender is Grid grid)
@@ -55,7 +48,6 @@ namespace Catan3.Controls
             }
             BuildingViewModel.MouseExitCommand.Execute(BuildingViewModel);
         }
-
         private void OnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             if (sender is Grid grid)

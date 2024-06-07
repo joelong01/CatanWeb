@@ -6,7 +6,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
          mc:Ignorable="d">
-
     <Grid Background="DarkGray" BorderBrush="DarkGray" BorderThickness="2">
         <StackPanel>
             <StackPanel Name="SP_FirstRow" Height="50" Orientation="Horizontal"
@@ -19,7 +18,6 @@
                                 ImageSource="{x:Bind PlayerViewModel.ImageSource, Mode=OneWay}" />
                     </Ellipse.Fill>
                 </Ellipse>
-
                 <GridView
                         ItemsSource="{x:Bind PlayerViewModel.PlayerStats, Mode=OneWay}">
                     <GridView.ItemsPanel>
@@ -41,25 +39,18 @@
                             <Setter Property="Margin" Value="1,0,0,0" />
                             <Setter Property="Width" Value="40" />
                             <Setter Property="Height" Value="40" />
-
                         </Style>
                     </GridView.ItemContainerStyle>
                 </GridView>
-
             </StackPanel>
             <StackPanel Name="SP_SecondRow" HorizontalAlignment="Stretch"
                     Orientation="Horizontal" Background="Transparent">
-
                 <c:TrackedResourcesCtrl Height="100"
                         ResourcesViewModel="{x:Bind PlayerViewModel.ResourcesThisTurn, Mode=OneWay}" />
             </StackPanel>
-
             <StackPanel Name="SP_ThirdRow" HorizontalAlignment="Stretch"
                     Orientation="Horizontal" Background="DarkGray" Height="50">
-
             </StackPanel>
-
         </StackPanel>
     </Grid>
-
 </UserControl>
