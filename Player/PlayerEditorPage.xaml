@@ -5,7 +5,9 @@
         xmlns:c="using:Catan3.Controls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:m="using:Catan3.Models" mc:Ignorable="d" Name="EditPage"
+        xmlns:m="using:Catan3.Models"
+        xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+        mc:Ignorable="d" Name="EditPage"
         Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Page.Resources>
@@ -26,7 +28,7 @@
                         Foreground="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}"
                         FontFamily="Segoe MDL2 Assets"
                         Visibility="{x:Bind Selected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                        VerticalAlignment="Top" FontSize="16" FontWeight="Bold" 
+                        VerticalAlignment="Top" FontSize="16" FontWeight="Bold"
                         TextLineBounds="Tight" />
                 <TextBlock Text="{x:Bind Name, Mode=OneWay}"
                         HorizontalAlignment="Center" VerticalAlignment="Bottom" />
@@ -47,8 +49,8 @@
                         Foreground="{x:Bind GetBrush(Foreground), Mode=OneWay}"
                         FontFamily="Segoe MDL2 Assets"
                         Visibility="{x:Bind Selected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                        VerticalAlignment="Top" FontSize="20" FontWeight="Bold" Margin="2" 
-                        TextLineBounds="Tight" />
+                        VerticalAlignment="Top" FontSize="20" FontWeight="Bold"
+                        Margin="2" TextLineBounds="Tight" />
 
             </Grid>
         </DataTemplate>
@@ -105,6 +107,7 @@
                 </StackPanel>
                 <ColorPicker
                         Color="{x:Bind ViewModel.GetColor(ViewModel.CurrentColorSetting.ColorName, ViewModel.SelectedPlayer), Mode=OneWay}"
+                       
                         ColorChanged="{x:Bind ViewModel.SetColor}"
                         ColorSpectrumShape="Box" IsMoreButtonVisible="False"
                         HorizontalAlignment="Stretch"
@@ -114,6 +117,21 @@
                         IsAlphaSliderVisible="False"
                         IsAlphaTextInputVisible="False" />
 
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <controls:ImageCropper x:Name="ImageCropper" AllowDrop="True"  Source="{x:Bind ViewModel.SelectedPlayer.CropperImageSource, Mode=OneWay}"
+                        CropShape="Circular" Width="300" Height="300"
+                        Drop="ImageCropper_Drop"
+                        DragOver="ImageCropper_DragOver" />
+                <StackPanel Grid.Row="1" HorizontalAlignment="Center"
+                        Spacing="8">
+                    <Button Click="PickButton_Click" Content="Pick image"
+                            Style="{StaticResource AccentButtonStyle}" />
+                    <Button Click="SaveButton_Click" Content="Save"
+                            Style="{StaticResource AccentButtonStyle}" />
+                    <Button Click="ResetButton_Click" Content="Reset"
+                            Style="{StaticResource AccentButtonStyle}" />
+                </StackPanel>
             </StackPanel>
         </StackPanel>
     </StackPanel>
