@@ -184,7 +184,7 @@ namespace Catan3.Models
             {
                 if (foreground)
                 {
-                    return currentPlayer.PlayerColors.BackgroundBrush;
+                    return currentPlayer.PlayerColors.ForegroundBrush;
                 }
                 else
                 {

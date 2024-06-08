@@ -47,7 +47,7 @@ namespace Catan3
             var newFileName = $"{parts[0]}_{parts[1]}_{newSalt}.png";
             var newFqn = Path.Combine(folderPath, newFileName);
 
-        
+
 
             return newFqn;
         }
@@ -55,13 +55,13 @@ namespace Catan3
         public static List<PlayerViewModel> AvailablePlayers { get; private set; } = [];
         public static List<PlayerViewModel> DefaultPlayers { get; } =
             [
-                new ("Dodgy",   "ms-appx:///Assets/DefaultPlayers/Dodgy.png", "ms-appx:///Assets/DefaultPlayers/Dodgy.png", new PlayerColorViewModel(Colors.White, Colors.Red, Colors.Black)),
-                new ("Joe",     "ms-appx:///Assets/DefaultPlayers/Joe.jpg", "ms-appx:///Assets/DefaultPlayers/Joe.jpg",     new PlayerColorViewModel(Colors.White, Colors.Blue, Colors.Black)),
-                new ("Doug",    "ms-appx:///Assets/DefaultPlayers/Doug.jpg", "ms-appx:///Assets/DefaultPlayers/Doug.jpg",    new PlayerColorViewModel(Colors.White, Colors.Green, Colors.Black)),
-                new ("Chris",   "ms-appx:///Assets/DefaultPlayers/Chris.jpg", "ms-appx:///Assets/DefaultPlayers/Chris.jpg",  new PlayerColorViewModel(Colors.White, Colors.Black, Colors.Black)),
-                new ("Adrian",  "ms-appx:///Assets/DefaultPlayers/Adrian.jpg", "ms-appx:///Assets/DefaultPlayers/Adrian.jpg", new PlayerColorViewModel(Colors.White, Colors.Purple, Colors.Black)),
-                new ("Ryan",    "ms-appx:///Assets/DefaultPlayers/Ryan.jpg", "ms-appx:///Assets/DefaultPlayers/Ryan.jpg",     new PlayerColorViewModel(Colors.White, Colors.DarkGray, Colors.Black))
-            ];
+                new ("Dodgy-001",  "Dodgy",   "ms-appx:///Assets/DefaultPlayers/Dodgy.png",  "ms-appx:///Assets/DefaultPlayers/Dodgy.png",  Colors.Red),
+                new ("Joe-001",    "Joe",     "ms-appx:///Assets/DefaultPlayers/Joe.jpg",    "ms-appx:///Assets/DefaultPlayers/Joe.jpg",    Colors.Blue),
+                new ("Doug-001",   "Doug",    "ms-appx:///Assets/DefaultPlayers/Doug.jpg",   "ms-appx:///Assets/DefaultPlayers/Doug.jpg",   Colors.Green),
+                new ("Ryan-001",   "Ryan",    "ms-appx:///Assets/DefaultPlayers/Ryan.jpg",   "ms-appx:///Assets/DefaultPlayers/Ryan.jpg",   Colors.DarkGray),
+                new ("Adrian-001", "Adrian",  "ms-appx:///Assets/DefaultPlayers/Adrian.jpg", "ms-appx:///Assets/DefaultPlayers/Adrian.jpg", Colors.Purple),
+                new ("Chris-001",  "Chris",   "ms-appx:///Assets/DefaultPlayers/Chris.jpg",  "ms-appx:///Assets/DefaultPlayers/Chris.jpg",  Colors.Black)
+                    ];
         public static PlayerViewModel? FromId(string id)
         {
             return AvailablePlayers.FirstOrDefault(x => x.Id == id);
@@ -155,7 +155,7 @@ namespace Catan3
             var folder = await KnownFolders.DocumentsLibrary.CreateFolderAsync(PlayerFolder, CreationCollisionOption.OpenIfExists);
             var databaseFile = await folder.CreateFileAsync(PlayersFileName, CreationCollisionOption.ReplaceExisting);
             await FileIO.WriteTextAsync(databaseFile, json);
-            
+
         }
 
         private static async Task CopyResourceFile(StorageFolder folder, string resourceUri, string destination)

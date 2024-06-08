@@ -28,13 +28,13 @@ namespace Catan3.Models
         [ObservableProperty]
         private string _croppedImageUri ="ms-appx:///Assets/guest.jpg";
 
-     
-       
+
+
 
         [property: JsonIgnore]
         [ObservableProperty]
         private bool _selected = false;
-       
+
         [property: JsonIgnore]
         [ObservableProperty]
         private PlayerModel _player = PlayerModel.Default;
@@ -50,69 +50,50 @@ namespace Catan3.Models
         [property: JsonIgnore]
         [ObservableProperty]
         private ObservableCollection<PlayerStatsViewModel> _playerStats = [];
-        
+
         [JsonIgnore]
         public Dictionary<StatName, PlayerStatsViewModel> StatDictionary { get; } = [];
 
         [JsonIgnore]
-        public static PlayerViewModel Default { get; } = new();
+        public static PlayerViewModel Default { get; } = new("Nameless-001", "Nameless", "ms-appx:///Assets/guest.jpg", "ms-appx:///Assets/guest.jpg", Colors.HotPink);
 
-        public PlayerViewModel() : this("Nameless", "ms-appx:///Assets/guest.jpg", "ms-appx:///Assets/guest.jpg", new PlayerColorViewModel(Colors.White, Colors.HotPink, Colors.HotPink))
-        {
-          
-          
-        }
+
 
 
         public void InitializeAfterDeserialization()
         {
-            PlayerStats.Clear();
-            foreach (var stat in PlayerStatsViewModel.StatsTemplate)
-            {
-                var vm = new PlayerStatsViewModel(stat, PlayerColors);
-                StatDictionary[stat.Name] = vm;
-                PlayerStats.Add(vm);
-            }
 
         }
-       
-        
-        public PlayerViewModel(string name, string imageUri, string croppedImageUri,  PlayerColorViewModel playerColors)
+        /// <summary>
+        ///     thisis the ctor that the JsonSerializer should use when it deserializes the saved player state.
+        /// </summary>
+        [JsonConstructor]
+        public PlayerViewModel(string id, string name, string imageUri, string croppedImageUri, PlayerColorViewModel playerColors, bool isActive=false)
         {
+            Id = id;
             Name = name;
-            Id = name + "-0001";
-            //
-            //  each view model needs its own instance of the stats - we put into a dictionary
-            //  to make it easy to update them.
-            foreach (var stat in PlayerStatsViewModel.StatsTemplate)
+            ImageUri = imageUri;
+            CroppedImageUri = croppedImageUri;
+            PlayerColors = playerColors;
+            IsActive = isActive;
+            CreateStats();
+        }
+
+        public PlayerViewModel(string id, string name, string imageUri, string croppedImageUri, Color primaryBackground) : 
+                this(id, name, imageUri, croppedImageUri, new PlayerColorViewModel(id, Colors.White, primaryBackground, Colors.Black)) { }
+       
+
+        private void CreateStats()
+        {
+            foreach (var stat in StatTemplate.PlayerStats)
             {
-                StatDictionary[stat.Name] = new PlayerStatsViewModel(stat, playerColors);
+                StatDictionary[stat.Name] = new PlayerStatsViewModel(Id, stat, PlayerColors);
             }
             //
             //  the list of stats to bind to
             PlayerStats.AddRange([.. StatDictionary.Values.ToList()]);
-            //
-            //  set these last so that the PlayerStats get their colors
-            this.PlayerColors = playerColors;
-            ImageUri = imageUri;
-            CroppedImageUri = croppedImageUri;
-          
-            //
-            // subscribe to color changes to notify the rest of the models
-            playerColors.PropertyChanged += PlayerColors_PropertyChanged;
         }
-        private void PlayerColors_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            switch (e.PropertyName)
-            {
-                case "BackgroundBrush":
-                case "ForegroundBrush":
-                    Messenger.Send(new PlayerColorChanged(this));
-                    break;
-                default:
-                    break;
-            }
-        }
+
         /// <summary>
         ///     the MVVM notification when the model gets updated -- we set the per person data and update the stats
         /// </summary>
@@ -154,64 +135,9 @@ namespace Catan3.Models
             var uri = CroppedImageUri;
             CroppedImageUri = "ms-appx:///Assets/guest.jpg";
             CroppedImageUri = uri;
-         // OnPropertyChanged(nameof(CroppedImageUri));
+            // OnPropertyChanged(nameof(CroppedImageUri));
         }
     }
     public enum ColorName { PrimaryBackground, SecondaryBackground, Foreground }
-    /// <summary>
-    ///     this keeps the player's colors/brushes straight.
-    ///     This is serializable
-    /// </summary>
-    public partial class PlayerColorViewModel : ObservableObject
-    {
-       
-        public PlayerColorViewModel(Color foreground, Color primaryBackground, Color secondaryBackground)
-        {
-            _primaryBackground = primaryBackground;
-            _secondaryBackground = secondaryBackground;
-            _foreground = foreground;
-            OnPrimaryBackgroundChanged(primaryBackground);
-            OnSecondaryBackgroundChanged(secondaryBackground);
-            OnForegroundChanged(foreground);
-        }
-        [ObservableProperty]
-        private Color _primaryBackground;
-        [ObservableProperty]
-        private Color _secondaryBackground;
-        [ObservableProperty]
-        private Color _foreground;
-       
-       
-        [ObservableProperty]
-        [property: JsonIgnore]
-        private Brush _foregroundBrush = BrushCache.GetSolidColorBrush(Colors.White);
-        
 
-        [ObservableProperty]
-        [property: JsonIgnore]
-        private Brush _backgroundBrush = BrushCache.GetSolidColorBrush(Colors.Black);
-        
-        partial void OnPrimaryBackgroundChanged(Color value)
-        {
-            BackgroundBrush = BrushCache.GetGradientBrush(value, SecondaryBackground);
-        }
-        partial void OnSecondaryBackgroundChanged(Color value)
-        {
-            BackgroundBrush = BrushCache.GetGradientBrush(PrimaryBackground, value);
-        }
-        partial void OnForegroundChanged(Color value)
-        {
-            ForegroundBrush = BrushCache.GetSolidColorBrush(value);
-        }
-
-        internal void Initialize()
-        {
-            OnPropertyChanged(nameof(PrimaryBackground));
-            OnPropertyChanged(nameof(SecondaryBackground));
-            OnPropertyChanged(nameof(ForegroundBrush));
-            OnPrimaryBackgroundChanged(PrimaryBackground);
-            OnSecondaryBackgroundChanged(SecondaryBackground);
-            OnForegroundChanged(Foreground);
-        }
-    }
 }

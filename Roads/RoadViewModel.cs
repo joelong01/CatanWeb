@@ -46,7 +46,7 @@ namespace Catan3.Models
             });
             Messenger.Register<PlayerColorChanged>(this, (recipient, message) =>
             {
-                if (message.Player.Id == Road.OwnerId)
+                if (message.PlayerColors.PlayerId == Road.OwnerId)
                 {
                     OnPropertyChanged(nameof(GetForegroundBrush));
                     OnPropertyChanged(nameof(GetBackgroundBrush));

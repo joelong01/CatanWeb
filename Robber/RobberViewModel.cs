@@ -28,7 +28,7 @@ namespace Catan3.Models
             });
             Messenger.Register<PlayerColorChanged>(this, (recipient, message) =>
             {
-                if (message.Player.Id == RobberModel.MovedBy)
+                if (message.PlayerColors.PlayerId == RobberModel.MovedBy)
                 {
                     OnPropertyChanged(nameof(Foreground));
                     OnPropertyChanged(nameof(Background));

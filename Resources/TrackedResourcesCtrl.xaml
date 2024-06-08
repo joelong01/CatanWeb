@@ -7,8 +7,9 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
-    <Grid>
-        <GridView ItemsSource="{x:Bind ResourcesViewModel.ResourceCounters, Mode=OneWay}">
+    <Grid Height="{Binding ElementName=CTRL_BoardMeasurement, Path=Height, Mode=OneWay}">
+        <GridView
+                ItemsSource="{x:Bind ResourcesViewModel.ResourceCounters, Mode=OneWay}">
             <GridView.ItemContainerStyle>
                 <Style TargetType="GridViewItem">
                     <Setter Property="Padding" Value="3" />
@@ -17,7 +18,9 @@
             </GridView.ItemContainerStyle>
             <GridView.ItemTemplate>
                 <DataTemplate x:DataType="models:ResourceCounterViewModel">
-                    <c:ResourceCardCtrl ViewModel="{x:Bind Mode=OneWay}"  />
+                    <Viewbox Stretch="Uniform" Height="120">
+                        <c:ResourceCardCtrl ViewModel="{x:Bind Mode=OneWay}" />
+                    </Viewbox>
                 </DataTemplate>
             </GridView.ItemTemplate>
         </GridView>

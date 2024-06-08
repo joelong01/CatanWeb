@@ -8,10 +8,10 @@
          mc:Ignorable="d">
     <Grid Background="DarkGray" BorderBrush="DarkGray" BorderThickness="2">
         <StackPanel>
-            <StackPanel Name="SP_FirstRow" Height="50" Orientation="Horizontal"
+            <StackPanel Name="SP_FirstRow" Height="45" Orientation="Horizontal"
                     HorizontalAlignment="Stretch" Background="DarkGray">
                 <Ellipse Name="Player_Picture" HorizontalAlignment="Left"
-                        VerticalAlignment="Top" Width="50" Height="50"
+                        VerticalAlignment="Top" Width="45" Height="45"
                         Stroke="{x:Bind PlayerViewModel.PlayerColors.ForegroundBrush, Mode=OneWay}">
                     <Ellipse.Fill>
                         <ImageBrush
@@ -37,19 +37,19 @@
                         <Style TargetType="GridViewItem">
                             <Setter Property="Padding" Value="0" />
                             <Setter Property="Margin" Value="1,0,0,0" />
-                            <Setter Property="Width" Value="40" />
-                            <Setter Property="Height" Value="40" />
+                            <Setter Property="Width" Value="45" />
+                            <Setter Property="Height" Value="45" />
                         </Style>
                     </GridView.ItemContainerStyle>
                 </GridView>
             </StackPanel>
             <StackPanel Name="SP_SecondRow" HorizontalAlignment="Stretch"
                     Orientation="Horizontal" Background="Transparent">
-                <c:TrackedResourcesCtrl Height="100"
+                <c:TrackedResourcesCtrl Height="120"
                         ResourcesViewModel="{x:Bind PlayerViewModel.ResourcesThisTurn, Mode=OneWay}" />
             </StackPanel>
-            <StackPanel Name="SP_ThirdRow" HorizontalAlignment="Stretch"
-                    Orientation="Horizontal" Background="DarkGray" Height="50">
+            <StackPanel Name="SP_ThirdRow" HorizontalAlignment="Stretch" Visibility="Collapsed"
+                    Orientation="Horizontal" Background="DarkGray" Height="45">
             </StackPanel>
         </StackPanel>
     </Grid>

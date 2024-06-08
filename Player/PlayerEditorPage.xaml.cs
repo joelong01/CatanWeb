@@ -142,7 +142,6 @@ namespace Catan3.Player
         {
             try
             {
-                this.TraceMessage($"attempting to load {ViewModel.SelectedPlayer.ImageUri}");
                 await ImageCropper.LoadImageFromFile(ViewModel.SelectedPlayer.ImageUri);
             }
             catch (Exception ex)

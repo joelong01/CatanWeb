@@ -102,9 +102,11 @@ namespace Catan3.Models
     // and then Undo, the event remains subscribed.  that is ok (the function binding knows to check for the owner)...but we will have 
     // leaked the event because we will resubscribe the next time the building is bought).  To work around this, we'll use the MVVM messaging
     // system and publish an event that says the players colors changed.
-    public class PlayerColorChanged(PlayerViewModel player)
+    public class PlayerColorChanged(PlayerColorViewModel colors)
     {
-        public PlayerViewModel Player { get; } = player;
+    
+        public PlayerColorViewModel PlayerColors { get; } = colors;
+       
       
     }
 }
