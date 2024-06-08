@@ -122,12 +122,15 @@ namespace Catan3.Models
             {
                 case ColorName.PrimaryBackground:
                     SelectedPlayer.PlayerColors.PrimaryBackground = newColor;
+                    EditPlayerColors[0].Background = newColor;
                     break;
                 case ColorName.SecondaryBackground:
                     SelectedPlayer.PlayerColors.SecondaryBackground = newColor;
+                    EditPlayerColors[1].Background = newColor;
                     break;
                 case ColorName.Foreground:
                     SelectedPlayer.PlayerColors.Foreground = newColor;
+                    EditPlayerColors[2].Background = newColor;
                     break;
                 default:
                     throw new System.Exception("Did you forget this switch when you added a configured color?");
