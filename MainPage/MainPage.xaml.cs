@@ -29,19 +29,21 @@ namespace Catan3
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        private ObservableCollection<SelectPlayerModel> AvailablePlayers { get; set; }
+        private ObservableCollection<SelectPlayerModel> AvailablePlayers { get; set; } = [];
         public MainPage()
         {
             this.InitializeComponent();
-            AvailablePlayers = new ObservableCollection<SelectPlayerModel>(
-                PlayerDatabase.AvailablePlayers.Select(player => new SelectPlayerModel(player.Name, player.Id, false)));
+        
             Games.Add(GameType.Expansion);
             Games.Add(GameType.Regular);
             SelectedGame = GameType.Expansion;
-            
-            NewGame();
-          
+
+
+
         }
+
+
+
         public static readonly DependencyProperty SelectedGameProperty = DependencyProperty.Register("SelectedGame", typeof(GameType), typeof(MainPage), new PropertyMetadata(GameType.Regular));
         public GameType SelectedGame
         {
@@ -147,7 +149,7 @@ namespace Catan3
         private void OnHitMe(object sender, RoutedEventArgs rea)
         {
             if (MainPageModel.GameViewModel is null) return;
-         
+
         }
         private void OnUpdateLayout(object sender, RoutedEventArgs e)
         {
@@ -166,6 +168,14 @@ namespace Catan3
                 ViewModel = new(PlayerDatabase.AvailablePlayers)
             };
             window.Activate();
+        }
+
+        private async void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            await PlayerDatabase.LoadPlayerDatabase();
+            AvailablePlayers = new ObservableCollection<SelectPlayerModel>(
+            PlayerDatabase.AvailablePlayers.Select(player => new SelectPlayerModel(player.Name, player.Id, false)));
+            NewGame();
         }
     }
 }

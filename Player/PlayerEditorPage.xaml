@@ -19,7 +19,7 @@
                         Stroke="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}">
                     <Ellipse.Fill>
                         <ImageBrush
-                                ImageSource="{x:Bind ImageSource, Mode=OneWay}" />
+                                ImageSource="{x:Bind CroppedImageUri, Mode=OneWay}" />
                     </Ellipse.Fill>
                 </Ellipse>
                 <TextBlock Text="" HorizontalAlignment="Right"
@@ -56,6 +56,7 @@
                 SelectionMode="Single" VerticalAlignment="Top"
                 Background="Transparent"
                 SelectedItem="{x:Bind ViewModel.SelectedPlayer, Mode=TwoWay}"
+                SelectionChanged="OnSelectedPlayerChanged"
                 ItemsSource="{x:Bind ViewModel.Players, Mode=OneWay}"
                 ItemTemplate="{StaticResource EditPlayerDataTemplate}">
             <ListView.ItemContainerStyle>
@@ -110,7 +111,7 @@
                         IsAlphaTextInputVisible="False" />
             </StackPanel>
             <StackPanel Orientation="Horizontal">
-                <controls:ImageCropper x:Name="ImageCropper" AllowDrop="True"  Source="{x:Bind ViewModel.SelectedPlayer.CropperImageSource, Mode=OneWay}"
+                <controls:ImageCropper x:Name="ImageCropper" AllowDrop="True"  
                         CropShape="Circular" Width="300" Height="300"
                         Drop="ImageCropper_Drop"
                         DragOver="ImageCropper_DragOver" />
@@ -122,6 +123,8 @@
                             Style="{StaticResource AccentButtonStyle}" />
                     <Button Click="ResetButton_Click" Content="Reset"
                             Style="{StaticResource AccentButtonStyle}" />
+                     <Button Click="ReloadButton_Click" Content="Reload"
+         Style="{StaticResource AccentButtonStyle}" />
                 </StackPanel>
             </StackPanel>
         </StackPanel>

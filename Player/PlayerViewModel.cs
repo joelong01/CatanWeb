@@ -2,18 +2,13 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Windows.Graphics.Imaging;
-using Windows.Storage.Streams;
 using Windows.UI;
 namespace Catan3.Models
 {
@@ -30,65 +25,59 @@ namespace Catan3.Models
         private PlayerColorViewModel _playerColors;
         [ObservableProperty]
         private string _imageUri = "ms-appx:///Assets/guest.jpg";
-        [JsonIgnore]
         [ObservableProperty]
-        private WriteableBitmap _cropperImageSource = new (100, 100);
-        [JsonIgnore]
-        [ObservableProperty]
-        BitmapImage _imageSource;
-        //  used in the edit player UI
-        [JsonIgnore]
+        private string _croppedImageUri ="ms-appx:///Assets/guest.jpg";
+
+     
+       
+
+        [property: JsonIgnore]
         [ObservableProperty]
         private bool _selected = false;
-        [JsonIgnore]
+       
+        [property: JsonIgnore]
         [ObservableProperty]
         private PlayerModel _player = PlayerModel.Default;
+
+        [property: JsonIgnore]
         [ObservableProperty]
         private ResourcesViewModel _resourcesThisTurn = new(GameViewModelStatics.PlayerTrackResourceList);
+
+        [property: JsonIgnore]
         [ObservableProperty]
         private ResourcesViewModel _resourcesThisGame = new(GameViewModelStatics.PlayerTrackResourceList);
+
+        [property: JsonIgnore]
         [ObservableProperty]
         private ObservableCollection<PlayerStatsViewModel> _playerStats = [];
+        
+        [JsonIgnore]
         public Dictionary<StatName, PlayerStatsViewModel> StatDictionary { get; } = [];
-        public PlayerViewModel() : this("Nameless", "ms-appx:///Assets/guest.jpg", new PlayerColorViewModel(Colors.White, Colors.HotPink, Colors.HotPink))
-        {
-            ImageSource = new BitmapImage(new System.Uri(ImageUri));
-            CropperImageSource = ConvertToWriteableBitmap(ImageSource).GetAwaiter().GetResult();
-        }
-        partial void OnImageUriChanging(string? oldValue, string newValue)
-        {
-            ImageSource = new BitmapImage(new System.Uri(newValue));
-            this.TraceMessage($"{ImageSource.PixelHeight}");
-            CropperImageSource = ConvertToWriteableBitmap(ImageSource).GetAwaiter().GetResult();
-        }
-        private async Task<WriteableBitmap> ConvertToWriteableBitmap(BitmapImage bitmapImage)
-        {
-            if (bitmapImage.PixelHeight * bitmapImage.PixelWidth == 0) return new WriteableBitmap(100, 100);
-            // Create a WriteableBitmap with the same dimensions as the BitmapImage
-            WriteableBitmap writeableBitmap = new WriteableBitmap(bitmapImage.PixelWidth, bitmapImage.PixelHeight);
-            using (Stream stream = writeableBitmap.PixelBuffer.AsStream())
-            {
-                // Retrieve the pixels from the BitmapImage
-                byte[] pixels = await GetPixelsFromBitmapImage(bitmapImage);
-                // Write the pixels into the WriteableBitmap
-                await stream.WriteAsync(pixels, 0, pixels.Length);
-            }
-            return writeableBitmap;
-        }
-        private async Task<byte[]> GetPixelsFromBitmapImage(BitmapImage bitmapImage)
-        {
-            WriteableBitmap tempBitmap = new WriteableBitmap(bitmapImage.PixelWidth, bitmapImage.PixelHeight);
-            using (IRandomAccessStream stream = new InMemoryRandomAccessStream())
-            {
-                await tempBitmap.SetSourceAsync(stream);
-                var decoder = await BitmapDecoder.CreateAsync(stream);
-                var pixelData = await decoder.GetPixelDataAsync();
-                return pixelData.DetachPixelData();
-            }
-        }
+
         [JsonIgnore]
         public static PlayerViewModel Default { get; } = new();
-        public PlayerViewModel(string name, string imageUri, PlayerColorViewModel playerColors)
+
+        public PlayerViewModel() : this("Nameless", "ms-appx:///Assets/guest.jpg", "ms-appx:///Assets/guest.jpg", new PlayerColorViewModel(Colors.White, Colors.HotPink, Colors.HotPink))
+        {
+          
+          
+        }
+
+
+        public void InitializeAfterDeserialization()
+        {
+            PlayerStats.Clear();
+            foreach (var stat in PlayerStatsViewModel.StatsTemplate)
+            {
+                var vm = new PlayerStatsViewModel(stat, PlayerColors);
+                StatDictionary[stat.Name] = vm;
+                PlayerStats.Add(vm);
+            }
+
+        }
+       
+        
+        public PlayerViewModel(string name, string imageUri, string croppedImageUri,  PlayerColorViewModel playerColors)
         {
             Name = name;
             Id = name + "-0001";
@@ -106,7 +95,8 @@ namespace Catan3.Models
             //  set these last so that the PlayerStats get their colors
             this.PlayerColors = playerColors;
             ImageUri = imageUri;
-            ImageSource = new BitmapImage(new System.Uri(ImageUri));
+            CroppedImageUri = croppedImageUri;
+          
             //
             // subscribe to color changes to notify the rest of the models
             playerColors.PropertyChanged += PlayerColors_PropertyChanged;
@@ -157,6 +147,15 @@ namespace Catan3.Models
             else
                 return BrushCache.GetGradientBrush(color, Colors.Black);
         }
+
+        internal void ReloadCroppedImage()
+        {
+
+            var uri = CroppedImageUri;
+            CroppedImageUri = "ms-appx:///Assets/guest.jpg";
+            CroppedImageUri = uri;
+         // OnPropertyChanged(nameof(CroppedImageUri));
+        }
     }
     public enum ColorName { PrimaryBackground, SecondaryBackground, Foreground }
     /// <summary>
@@ -165,13 +164,14 @@ namespace Catan3.Models
     /// </summary>
     public partial class PlayerColorViewModel : ObservableObject
     {
-        public PlayerColorViewModel(Color foreground, Color primary, Color secondary)
+       
+        public PlayerColorViewModel(Color foreground, Color primaryBackground, Color secondaryBackground)
         {
-            _primaryBackground = primary;
-            _secondaryBackground = secondary;
+            _primaryBackground = primaryBackground;
+            _secondaryBackground = secondaryBackground;
             _foreground = foreground;
-            OnPrimaryBackgroundChanged(primary);
-            OnSecondaryBackgroundChanged(secondary);
+            OnPrimaryBackgroundChanged(primaryBackground);
+            OnSecondaryBackgroundChanged(secondaryBackground);
             OnForegroundChanged(foreground);
         }
         [ObservableProperty]
@@ -180,12 +180,17 @@ namespace Catan3.Models
         private Color _secondaryBackground;
         [ObservableProperty]
         private Color _foreground;
-        [JsonIgnore]
+       
+       
         [ObservableProperty]
+        [property: JsonIgnore]
         private Brush _foregroundBrush = BrushCache.GetSolidColorBrush(Colors.White);
-        [JsonIgnore]
+        
+
         [ObservableProperty]
+        [property: JsonIgnore]
         private Brush _backgroundBrush = BrushCache.GetSolidColorBrush(Colors.Black);
+        
         partial void OnPrimaryBackgroundChanged(Color value)
         {
             BackgroundBrush = BrushCache.GetGradientBrush(value, SecondaryBackground);
@@ -197,6 +202,16 @@ namespace Catan3.Models
         partial void OnForegroundChanged(Color value)
         {
             ForegroundBrush = BrushCache.GetSolidColorBrush(value);
+        }
+
+        internal void Initialize()
+        {
+            OnPropertyChanged(nameof(PrimaryBackground));
+            OnPropertyChanged(nameof(SecondaryBackground));
+            OnPropertyChanged(nameof(ForegroundBrush));
+            OnPrimaryBackgroundChanged(PrimaryBackground);
+            OnSecondaryBackgroundChanged(SecondaryBackground);
+            OnForegroundChanged(Foreground);
         }
     }
 }

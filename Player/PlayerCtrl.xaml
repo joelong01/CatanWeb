@@ -15,7 +15,7 @@
                         Stroke="{x:Bind PlayerViewModel.PlayerColors.ForegroundBrush, Mode=OneWay}">
                     <Ellipse.Fill>
                         <ImageBrush
-                                ImageSource="{x:Bind PlayerViewModel.ImageSource, Mode=OneWay}" />
+                                ImageSource="{x:Bind PlayerViewModel.CroppedImageUri, Mode=OneWay}" />
                     </Ellipse.Fill>
                 </Ellipse>
                 <GridView

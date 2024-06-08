@@ -9,6 +9,7 @@
         mc:Ignorable="d" RightTapped="OnRightButtonTapped" KeyUp="OnKeyUp"
         xmlns:c="using:Catan3.Controls" Background="DarkGray"
         xmlns:models="using:Catan3.Models"
+        Loaded="OnLoaded"
         d:DataContext="{d:DesignInstance Type=models:GameViewModel}">
     <Page.Resources>
         <Style TargetType="Rectangle" x:Key="RECT_ResourceCard">

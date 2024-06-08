@@ -341,14 +341,14 @@ namespace Catan3.Utility
         /// <summary>
         ///     Updating via notifcation when the UndoStack changes
         /// </summary>
-        [JsonIgnore]
+        [property: JsonIgnore]
         [ObservableProperty]
         private bool _canUndo = false;
         /// <summary>
         ///  Updated via notification when the RedoStack changes
         /// </summary>
         [ObservableProperty]
-        [JsonIgnore]
+        [property: JsonIgnore]
         private bool _canRedo = false;
         /// <summary>
         /// Retrieves the current game state from the top of the DoneStack.

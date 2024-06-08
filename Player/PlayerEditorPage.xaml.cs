@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Catan3.Models;
 using CommunityToolkit.WinUI.UI.Controls;
@@ -7,6 +8,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
+using System.IO;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using WinRT.Interop;
@@ -22,11 +24,14 @@ namespace Catan3.Player
         public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(EditPlayerViewModel), typeof(PlayerEditorPage), new PropertyMetadata(null, ViewModelChanged));
         private static void ViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is PlayerEditorPage page)
+            if (d is PlayerEditorPage page && e.NewValue is EditPlayerViewModel viewModel)
             {
-                page.DataContext = e.NewValue as EditPlayerViewModel;
+                page.DataContext = viewModel;
+
             }
         }
+
+
         public EditPlayerViewModel ViewModel
         {
             get => ( EditPlayerViewModel )GetValue(ViewModelProperty);
@@ -40,7 +45,7 @@ namespace Catan3.Player
         {
             PlayerEditorWindow.EditorWindow?.Close();
         }
-        
+
         private void ImageCropper_DragOver(object sender, DragEventArgs e)
         {
             e.AcceptedOperation = DataPackageOperation.Copy;
@@ -74,7 +79,7 @@ namespace Catan3.Player
         }
         private async Task PickImage()
         {
-           
+
             var filePicker = new FileOpenPicker
             {
                 ViewMode = PickerViewMode.Thumbnail,
@@ -94,45 +99,32 @@ namespace Catan3.Player
         }
         private async Task SaveCroppedImage()
         {
-            var savePicker = new FileSavePicker
+            // Ensure the filename is correctly assigned to the property
+            var filePath = PlayerDatabase.GetNextCroppedFileName(ViewModel.SelectedPlayer.Id);
+            string fileName = Path.GetFileName(filePath);
+            
+           
+            var folder = await KnownFolders.DocumentsLibrary.CreateFolderAsync(Path.Join("Catan Saved Games", "Players"), CreationCollisionOption.OpenIfExists);
+            var imageFile = await folder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
+
+            using (IRandomAccessStream fileStream = await imageFile.OpenAsync(FileAccessMode.ReadWrite))
             {
-                SuggestedStartLocation = PickerLocationId.PicturesLibrary,
-                SuggestedFileName = "Cropped_Image",
-                FileTypeChoices =
-                {
-                    { "PNG Picture", new List<string> { ".png" } },
-                    { "JPEG Picture", new List<string> { ".jpg" } }
-                }
-            };
-            IntPtr hwnd = WindowNative.GetWindowHandle(PlayerEditorWindow.EditorWindow);
-            InitializeWithWindow.Initialize(savePicker, hwnd);
-            var imageFile = await savePicker.PickSaveFileAsync();
-            if (imageFile != null)
-            {
-                BitmapFileFormat bitmapFileFormat;
-                switch (imageFile.FileType.ToLower())
-                {
-                    case ".png":
-                        bitmapFileFormat = BitmapFileFormat.Png;
-                        break;
-                    case ".jpg":
-                        bitmapFileFormat = BitmapFileFormat.Jpeg;
-                        break;
-                    default:
-                        bitmapFileFormat = BitmapFileFormat.Png;
-                        break;
-                }
-                using var fileStream = await imageFile.OpenAsync(FileAccessMode.ReadWrite, StorageOpenOptions.None);
                 try
                 {
-                    await ImageCropper.SaveAsync(fileStream, bitmapFileFormat);
+                    await ImageCropper.SaveAsync(fileStream, BitmapFileFormat.Png);
+                    StorageFile file = await StorageFile.GetFileFromPathAsync(ViewModel.SelectedPlayer.CroppedImageUri);
+                    await file.DeleteAsync();
+                    ViewModel.SelectedPlayer.CroppedImageUri = filePath;
+                    await PlayerDatabase.SavePlayers();
                 }
                 catch (Exception ex)
                 {
-                    this.TraceMessage($"{ex}");
+                    // Handle the exception as needed
+                    System.Diagnostics.Debug.WriteLine($"Exception saving cropped image: {ex}");
                 }
             }
         }
+
         private async void PickButton_Click(object sender, RoutedEventArgs e)
         {
             await PickImage();
@@ -144,6 +136,24 @@ namespace Catan3.Player
         private void ResetButton_Click(object sender, RoutedEventArgs e)
         {
             ImageCropper.Reset();
+        }
+
+        private async void OnSelectedPlayerChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                this.TraceMessage($"attempting to load {ViewModel.SelectedPlayer.ImageUri}");
+                await ImageCropper.LoadImageFromFile(ViewModel.SelectedPlayer.ImageUri);
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Error loading {ViewModel.SelectedPlayer.ImageUri}.  Exception: {ex}");
+            }
+        }
+
+        private void ReloadButton_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.SelectedPlayer.ReloadCroppedImage();
         }
     }
 }

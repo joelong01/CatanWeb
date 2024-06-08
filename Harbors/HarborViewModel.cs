@@ -12,7 +12,7 @@ namespace Catan3.Models
 {
     public partial class HarborViewModel : ObservableRecipient
     {
-        [JsonIgnore]
+        [property: JsonIgnore]
         [ObservableProperty]
         private HarborModel _harbor;
         [ObservableProperty]

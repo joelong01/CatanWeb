@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
@@ -141,5 +142,7 @@ namespace Catan3.Models
         {
             return player.Id == SelectedPlayer.Id ? Visibility.Visible : Visibility.Collapsed;
         }
+
+        
     }
 }
