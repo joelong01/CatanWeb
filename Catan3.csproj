@@ -87,19 +87,7 @@
 	  <Page Update="Player\PlayerStatsCtrl.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
-	  <None Update="GenerateModels.tt">
-	    <Generator>TextTemplatingFileGenerator</Generator>
-	    <LastGenOutput>GenerateModels.txt</LastGenOutput>
-	  </None>
-	  <None Update="GenerateModels.txt">
-	    <DesignTime>True</DesignTime>
-	    <AutoGen>True</AutoGen>
-	    <DependentUpon>GenerateModels.tt</DependentUpon>
-	  </None>
-	  <None Update="Models\ModelGeneration\models.tt">
-	    <Generator>TextTemplatingFileGenerator</Generator>
-	    <LastGenOutput>models.cs</LastGenOutput>
-	  </None>
+	 
 	  <Page Update="Player\PlayerEditorWindow.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
@@ -165,13 +153,7 @@
 	<ItemGroup>
 	  <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
 	</ItemGroup>
-	<ItemGroup>
-	  <Compile Update="Models\ModelGeneration\models.cs">
-	    <DesignTime>True</DesignTime>
-	    <AutoGen>True</AutoGen>
-	    <DependentUpon>models.tt</DependentUpon>
-	  </Compile>
-	</ItemGroup>
+	
 	<ItemGroup>
 	  <Folder Include="Assets\DefaultPlayers\" />
 	  <Folder Include="Game\GameFactory\" />

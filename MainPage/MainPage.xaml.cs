@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Catan.Utility;
+using Catan3.Controls;
 using Catan3.Models;
 using Catan3.Player;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -161,13 +162,26 @@ namespace Catan3
             MainPageModel.GameViewModel.BoardInfo.Layout.OuterHexSize--;
             //  MainPageModel.GameViewModel.UpdateLayout();
         }
-        private void OnEditPlayers(object sender, RoutedEventArgs e)
+        private async void OnEditPlayers(object sender, RoutedEventArgs e)
+
         {
-            PlayerEditorWindow window = new()
+            PlayerSettingsDialog playerSettingsDialog = new PlayerSettingsDialog();
+            var result = await playerSettingsDialog.ShowAsync();
+
+            if (result == ContentDialogResult.Primary)
             {
-                ViewModel = new(PlayerDatabase.AvailablePlayers)
-            };
-            window.Activate();
+                // Handle Close button click
+            }
+            else if (result == ContentDialogResult.Secondary)
+            {
+                // Handle Cancel button click
+            }
+
+            //PlayerEditorWindow window = new()
+            //{
+            //    ViewModel = new(PlayerDatabase.AvailablePlayers)
+            //};
+            //window.Activate();
         }
 
         private async void OnLoaded(object sender, RoutedEventArgs e)

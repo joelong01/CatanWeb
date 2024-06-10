@@ -1,47 +1,53 @@
 using System;
-using Catan3.Models;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
+using Catan3.Models;
+using Catan3.Player;
 using CommunityToolkit.WinUI.UI.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Navigation;
 using Windows.ApplicationModel.DataTransfer;
-using Windows.Storage;
-using System.IO;
+using Windows.Foundation;
+using Windows.Foundation.Collections;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
+using Windows.Storage;
 using WinRT.Interop;
+
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
-namespace Catan3.Player
+
+namespace Catan3.Controls
 {
-    /// <summary>
-    /// An empty page that can be used on its own or navigated to within a Frame.
-    /// </summary>
-    public sealed partial class PlayerEditorPage : Page
+    public sealed partial class PlayerSettings : UserControl
     {
-        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(EditPlayerViewModel), typeof(PlayerEditorPage), new PropertyMetadata(null, ViewModelChanged));
-        private static void ViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        public PlayerSettings()
         {
-            if (d is PlayerEditorPage page && e.NewValue is EditPlayerViewModel viewModel)
-            {
-                page.DataContext = viewModel;
-
-            }
+            this.InitializeComponent();
         }
-
-
+        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(EditPlayerViewModel), typeof(PlayerSettings), new PropertyMetadata(null, ViewModelChanged));
         public EditPlayerViewModel ViewModel
         {
             get => ( EditPlayerViewModel )GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
-        public PlayerEditorPage()
+        private static void ViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            this.InitializeComponent();
+            var depPropClass = d as PlayerSettings;
+            var depPropValue = (EditPlayerViewModel)e.NewValue;
+            depPropClass?.SetViewModel(depPropValue);
         }
-        private void CancelButton_Click(object sender, RoutedEventArgs e)
+        private void SetViewModel(EditPlayerViewModel value)
         {
-            PlayerEditorWindow.EditorWindow?.Close();
+
         }
 
         private void ImageCropper_DragOver(object sender, DragEventArgs e)
@@ -65,15 +71,15 @@ namespace Catan3.Player
         }
         private async Task LoadImage(StorageFile file)
         {
-            if (ImageCropper is null) return;
+            if (this.CTRL_ImageCropper is null) return;
             using IRandomAccessStream fileStream = await file.OpenAsync(FileAccessMode.Read);
-            await ImageCropper.LoadImageFromFile(file);
-            ImageCropper.AspectRatio = ImageCropper.ActualWidth / ImageCropper.ActualHeight;
+            await this.CTRL_ImageCropper.LoadImageFromFile(file);
+            this.CTRL_ImageCropper.AspectRatio = this.CTRL_ImageCropper.ActualWidth / this.CTRL_ImageCropper.ActualHeight;
         }
         private async Task Load()
         {
             var file = await StorageFile.GetFileFromApplicationUriAsync(new Uri("ms-appx:///Assets/Owl.jpg"));
-            await ImageCropper.LoadImageFromFile(file);
+            await this.CTRL_ImageCropper.LoadImageFromFile(file);
         }
         private async Task PickImage()
         {
@@ -90,9 +96,9 @@ namespace Catan3.Player
             IntPtr hwnd = WindowNative.GetWindowHandle(PlayerEditorWindow.EditorWindow);
             InitializeWithWindow.Initialize(filePicker, hwnd);
             var file = await filePicker.PickSingleFileAsync();
-            if (file != null && ImageCropper != null)
+            if (file != null && CTRL_ImageCropper != null)
             {
-                await ImageCropper.LoadImageFromFile(file);
+                await this.CTRL_ImageCropper.LoadImageFromFile(file);
             }
         }
         private async Task SaveCroppedImage()
@@ -100,8 +106,8 @@ namespace Catan3.Player
             // Ensure the filename is correctly assigned to the property
             var filePath = PlayerDatabase.GetNextCroppedFileName(ViewModel.SelectedPlayer.Id);
             string fileName = Path.GetFileName(filePath);
-            
-           
+
+
             var folder = await KnownFolders.DocumentsLibrary.CreateFolderAsync(Path.Join("Catan Saved Games", "Players"), CreationCollisionOption.OpenIfExists);
             var imageFile = await folder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
 
@@ -109,7 +115,7 @@ namespace Catan3.Player
             {
                 try
                 {
-                    await ImageCropper.SaveAsync(fileStream, BitmapFileFormat.Png);
+                    await this.CTRL_ImageCropper.SaveAsync(fileStream, BitmapFileFormat.Png);
                     StorageFile file = await StorageFile.GetFileFromPathAsync(ViewModel.SelectedPlayer.CroppedImageUri);
                     await file.DeleteAsync();
                     ViewModel.SelectedPlayer.CroppedImageUri = filePath;
@@ -133,14 +139,14 @@ namespace Catan3.Player
         }
         private void ResetButton_Click(object sender, RoutedEventArgs e)
         {
-            ImageCropper.Reset();
+            this.CTRL_ImageCropper.Reset();
         }
 
         private async void OnSelectedPlayerChanged(object sender, SelectionChangedEventArgs e)
         {
             try
             {
-                await ImageCropper.LoadImageFromFile(ViewModel.SelectedPlayer.ImageUri);
+                await this.CTRL_ImageCropper.LoadImageFromFile(ViewModel.SelectedPlayer.ImageUri);
             }
             catch (Exception ex)
             {
