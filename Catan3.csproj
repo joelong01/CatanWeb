@@ -14,39 +14,6 @@
 		<SupportedOSPlatformVersion>10.0.22621.0</SupportedOSPlatformVersion>
 		<StartupObject></StartupObject>
 	</PropertyGroup>
-	<ItemGroup>
-		<None Remove="Controls\PlayerCounterCtlr.xaml" />
-		<None Remove="Controls\PurchaseCtrl.xaml" />
-		<None Remove="FlipperCtrl.xaml" />
-		<None Remove="GameButtons.xaml" />
-		<None Remove="Game\Game Control\GameControls.xaml" />
-		<None Remove="Harbors\HarborCtrl.xaml" />
-		<None Remove="MainPage.xaml" />
-		<None Remove="Player\PlayerCtrl.xaml" />
-		<None Remove="Player\PlayerEditorPage.xaml" />
-		<None Remove="Player\PlayerEditorWindow.xaml" />
-		<None Remove="Resources\BoardMeasurementCtrl.xaml" />
-		<None Remove="Resources\ResourceCardCtrl.xaml" />
-		<None Remove="Resources\TrackedResourcesCtrl.xaml" />
-		<None Remove="Rolls\SingleRoll.xaml" />
-		<None Remove="Themes\Generic.xaml" />
-		<None Remove="Themes\ImageResources.xaml" />
-		<None Remove="Themes\StyleResourceDictionary.xaml" />
-		<None Remove="Themes\Styles.xaml" />
-		<None Remove="ValueConverters\ConverterDictionary.xaml" />
-	</ItemGroup>
-	<ItemGroup>
-	  <Page Remove="Themes\Styles.xaml" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<Content Include="Assets\SplashScreen.scale-200.png" />
-		<Content Include="Assets\LockScreenLogo.scale-200.png" />
-		<Content Include="Assets\Square150x150Logo.scale-200.png" />
-		<Content Include="Assets\Square44x44Logo.scale-200.png" />
-		<Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
-		<Content Include="Assets\Wide310x150Logo.scale-200.png" />
-	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
@@ -59,7 +26,6 @@
 		<PackageReference Include="System.Text.Json" Version="8.0.3" />
 		<Manifest Include="$(ApplicationManifest)" />
 	</ItemGroup>
-
 	<!-- 
     Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
     Tools extension to be activated for this project even if the Windows App SDK Nuget
@@ -69,95 +35,143 @@
 		<ProjectCapability Include="Msix" />
 	</ItemGroup>
 	<ItemGroup>
-	  <Page Update="Harbors\HarborCtrl.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="FlipperCtrl.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="GameButtons.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="Game\Game Control\GameControls.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="Controls\PurchaseCtrl.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="Player\PlayerStatsCtrl.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	 
-	  <Page Update="Player\PlayerEditorWindow.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="Player\PlayerEditorPage.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="Resources\TrackedResourcesCtrl.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="Player\PlayerCtrl.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="Rolls\SingleRoll.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="Tiles\CatanNumber.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="ValueConverters\ConverterDictionary.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="Themes\ImageResources.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="Themes\StyleResourceDictionary.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="Themes\Generic.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="ResourceCard\BoardMeasurementCtrl.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="ResourceCard\ResourceCardCtrl.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	</ItemGroup>
-	<ItemGroup>
-	  <Page Update="Controls\TileCtrl.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	</ItemGroup>
-	<ItemGroup>
-	  <Page Update="Controls\RoadCtrl.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	</ItemGroup>
-	<ItemGroup>
-	  <Page Update="Controls\GameBoardCtrl.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	</ItemGroup>
-	<ItemGroup>
-		<Page Update="MainPage.xaml">
+
+		<Page Update="Buildings\BuildingCtrl.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="Controls\PurchaseCtrl.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="Harbors\HarborCtrl.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="Utility\FlipperCtrl.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+
+		<Page Update="Game\Game Control\GameControls.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+
+		<Page Update="Player\PlayerStatsCtrl.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+
+		<Page Update="Player\PlayerEditorWindow.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="Player\PlayerEditorPage.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="Resources\TrackedResourcesCtrl.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="Player\PlayerCtrl.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="Rolls\SingleRoll.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="Tiles\CatanNumber.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="ValueConverters\ConverterDictionary.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="Themes\ImageResources.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="Themes\StyleResourceDictionary.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="Themes\Generic.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="ResourceCard\BoardMeasurementCtrl.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="ResourceCard\ResourceCardCtrl.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</Page>
 	</ItemGroup>
 	<ItemGroup>
-		<Page Update="Controls\BuildingCtrl.xaml">
+		<Page Update="Tiles\TileCtrl.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</Page>
 	</ItemGroup>
 	<ItemGroup>
-	  <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+		<Page Update="Roads\RoadCtrl.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
 	</ItemGroup>
-	
 	<ItemGroup>
-	  <Folder Include="Assets\DefaultPlayers\" />
-	  <Folder Include="Game\GameFactory\" />
+		<Page Update="Game\GameFactory\GameBoardCtrl.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
 	</ItemGroup>
+	<ItemGroup>
+		<Page Update="MainPage\MainPage.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+	</ItemGroup>
+
+
+	<ItemGroup>
+		<Resource Include="Assets\cherry.jpg" />
+		<Resource Include="Assets\LargeTile.scale-100.png" />
+		<Resource Include="Assets\LargeTile.scale-125.png" />
+		<Resource Include="Assets\LargeTile.scale-150.png" />
+		<Resource Include="Assets\LargeTile.scale-200.png" />
+		<Resource Include="Assets\LargeTile.scale-400.png" />
+		<Resource Include="Assets\maple.jpg" />
+		<Resource Include="Assets\SmallTile.scale-100.png" />
+		<Resource Include="Assets\SmallTile.scale-125.png" />
+		<Resource Include="Assets\SmallTile.scale-150.png" />
+		<Resource Include="Assets\SmallTile.scale-200.png" />
+		<Resource Include="Assets\SmallTile.scale-400.png" />
+		<Resource Include="Assets\SplashScreen.scale-100.png" />
+		<Resource Include="Assets\SplashScreen.scale-125.png" />
+		<Resource Include="Assets\SplashScreen.scale-150.png" />
+		<Resource Include="Assets\SplashScreen.scale-400.png" />
+		<Resource Include="Assets\square 71x71 logo.scale-100.png" />
+		<Resource Include="Assets\square 71x71 logo.scale-200.png" />
+		<Resource Include="Assets\Square150x150Logo.scale-100.png" />
+		<Resource Include="Assets\Square150x150Logo.scale-125.png" />
+		<Resource Include="Assets\Square150x150Logo.scale-150.png" />
+		<Resource Include="Assets\Square150x150Logo.scale-400.png" />
+		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-16.png" />
+		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-24.png" />
+		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-256.png" />
+		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-32.png" />
+		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-48.png" />
+		<Resource Include="Assets\Square44x44Logo.altform-unplated_targetsize-16.png" />
+		<Resource Include="Assets\Square44x44Logo.altform-unplated_targetsize-256.png" />
+		<Resource Include="Assets\Square44x44Logo.altform-unplated_targetsize-32.png" />
+		<Resource Include="Assets\Square44x44Logo.altform-unplated_targetsize-48.png" />
+		<Resource Include="Assets\Square44x44Logo.scale-100.png" />
+		<Resource Include="Assets\Square44x44Logo.scale-125.png" />
+		<Resource Include="Assets\Square44x44Logo.scale-150.png" />
+		<Resource Include="Assets\Square44x44Logo.scale-400.png" />
+		<Resource Include="Assets\Square44x44Logo.targetsize-16.png" />
+		<Resource Include="Assets\Square44x44Logo.targetsize-24.png" />
+		<Resource Include="Assets\Square44x44Logo.targetsize-256.png" />
+		<Resource Include="Assets\Square44x44Logo.targetsize-32.png" />
+		<Resource Include="Assets\Square44x44Logo.targetsize-48.png" />
+		<Resource Include="Assets\StoreLogo.backup.png" />
+		<Resource Include="Assets\StoreLogo.scale-100.png" />
+		<Resource Include="Assets\StoreLogo.scale-125.png" />
+		<Resource Include="Assets\StoreLogo.scale-150.png" />
+		<Resource Include="Assets\StoreLogo.scale-200.png" />
+		<Resource Include="Assets\StoreLogo.scale-400.png" />
+		<Resource Include="Assets\water.png" />
+		<Resource Include="Assets\Wide310x150Logo.scale-100.png" />
+		<Resource Include="Assets\Wide310x150Logo.scale-125.png" />
+		<Resource Include="Assets\Wide310x150Logo.scale-150.png" />
+		<Resource Include="Assets\Wide310x150Logo.scale-400.png" />
+	</ItemGroup>
+
+
+
 
 	<!-- 
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution 
@@ -166,7 +180,11 @@
   -->
 	<PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
 		<HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
-	
+
 	</PropertyGroup>
-	<ProjectExtensions><VisualStudio><UserProperties /></VisualStudio></ProjectExtensions>
+	<ProjectExtensions>
+		<VisualStudio>
+			<UserProperties />
+		</VisualStudio>
+	</ProjectExtensions>
 </Project>
