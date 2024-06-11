@@ -114,10 +114,7 @@ namespace Catan3.Controls
             }
         }
 
-        private async void PickButton_Click(object sender, RoutedEventArgs e)
-        {
-            await PickImage();
-        }
+       
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             await SaveCroppedImage();
@@ -127,11 +124,6 @@ namespace Catan3.Controls
             this.CTRL_ImageCropper.Reset();
         }
 
-       
 
-        private void ReloadButton_Click(object sender, RoutedEventArgs e)
-        {
-            ViewModel.SelectedPlayer.ReloadCroppedImage();
-        }
     }
 }

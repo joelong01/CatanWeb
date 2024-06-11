@@ -186,6 +186,12 @@ namespace Catan3.Models
                 OriginalImage = await LoadImageFromFileAsync(file);
             }
         }
+        [RelayCommand]
+        public async Task ReloadCroppedImage()
+        {
+            await LoadImageFromFilePathAsync(SelectedPlayer.CroppedImageUri);
+          
+        }
         private async Task<WriteableBitmap> LoadImageFromFilePathAsync(string filePath)
         {
 

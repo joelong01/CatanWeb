@@ -129,14 +129,7 @@ namespace Catan3.Models
                 return BrushCache.GetGradientBrush(color, Colors.Black);
         }
 
-        internal void ReloadCroppedImage()
-        {
-
-            var uri = CroppedImageUri;
-            CroppedImageUri = "ms-appx:///Assets/guest.jpg";
-            CroppedImageUri = uri;
-            // OnPropertyChanged(nameof(CroppedImageUri));
-        }
+        
     }
     public enum ColorName { PrimaryBackground, SecondaryBackground, Foreground }
 
