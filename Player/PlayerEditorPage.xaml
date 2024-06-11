@@ -9,140 +9,17 @@
         xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
         mc:Ignorable="d" Name="EditPage"
         Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-    <Page.Resources>
-        <DataTemplate x:Key="EditPlayerDataTemplate"
-                x:DataType="m:PlayerViewModel">
-            <Grid HorizontalAlignment="Stretch" Height="120"
-                    Background="{x:Bind PlayerColors.BackgroundBrush, Mode=OneWay}">
-                <Ellipse Name="Player_Picture" HorizontalAlignment="Center"
-                        VerticalAlignment="Top" Width="100" Height="100"
-                        Stroke="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}">
-                    <Ellipse.Fill>
-                        <ImageBrush
-                                ImageSource="{x:Bind CroppedImageUri, Mode=OneWay}" />
-                    </Ellipse.Fill>
-                </Ellipse>
-                <TextBlock Text="" HorizontalAlignment="Right"
-                        Foreground="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}"
-                        FontFamily="Segoe MDL2 Assets"
-                        Visibility="{x:Bind Selected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                        VerticalAlignment="Top" FontSize="16" FontWeight="Bold"
-                        TextLineBounds="Tight" />
-                <TextBlock Text="{x:Bind Name, Mode=OneWay}"
-                        HorizontalAlignment="Center" VerticalAlignment="Bottom" />
-            </Grid>
-        </DataTemplate>
-        <DataTemplate x:Key="ColorSettingTemplate"
-                x:DataType="m:EditPlayerColors">
-            <Grid BorderBrush="{x:Bind GetBrush(Foreground), Mode=OneWay}"
-                    Background="{x:Bind GetBrush(Background), Mode=OneWay}"
-                    CornerRadius="5" Width="300" Height="50">
-                <TextBlock Text="{x:Bind DisplayName(ColorName)}"
-                        HorizontalAlignment="Center"
-                        Foreground="{x:Bind GetBrush(Foreground), Mode=OneWay}"
-                        Margin="10" FontSize="20" />
-                <TextBlock Text="" HorizontalAlignment="Right"
-                        Foreground="{x:Bind GetBrush(Foreground), Mode=OneWay}"
-                        FontFamily="Segoe MDL2 Assets"
-                        Visibility="{x:Bind Selected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                        VerticalAlignment="Top" FontSize="20" FontWeight="Bold"
-                        Margin="2" TextLineBounds="Tight" />
-            </Grid>
-        </DataTemplate>
-    </Page.Resources>
-    <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch">
-        <StackPanel HorizontalAlignment="Left" Orientation="Horizontal"
-                Margin="10" Width="791" BorderBrush="White" BorderThickness="1"
-                VerticalAlignment="Top">
-            <ListView Margin="10" HorizontalAlignment="Left" Width="110"
-                    SelectionMode="Single" VerticalAlignment="Top"
-                    Background="Transparent"
-                    SelectedItem="{x:Bind ViewModel.SelectedPlayer, Mode=TwoWay}"
-                    SelectionChanged="OnSelectedPlayerChanged"
-                    ItemsSource="{x:Bind ViewModel.Players, Mode=OneWay}"
-                    ItemTemplate="{StaticResource EditPlayerDataTemplate}">
-                <ListView.ItemContainerStyle>
-                    <Style TargetType="ListViewItem">
-                        <Setter Property="Padding" Value="3" />
-                        <Setter Property="BorderBrush"
-                                Value="{x:Bind Foreground, Mode=OneWay}" />
-                        <Setter Property="BorderThickness" Value="1" />
-                        <Setter Property="HorizontalAlignment" Value="Stretch" />
-                        <Setter Property="Margin" Value="0" />
-                    </Style>
-                </ListView.ItemContainerStyle>
-            </ListView>
-            <StackPanel Margin="10">
-                <c:PlayerCtrl
-                        PlayerViewModel="{x:Bind ViewModel.SelectedPlayer, Mode=OneWay}" />
-                <StackPanel Orientation="Horizontal" Margin="0,10,0,10">
-                    <TextBlock Text="Name:" VerticalAlignment="Center" />
-                    <TextBox Width="255" VerticalAlignment="Center"
-                            Margin="5,0,0,0"
-                            Text="{x:Bind ViewModel.SelectedPlayer.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" BorderBrush="White"
-                        BorderThickness="2">
+    <Grid HorizontalAlignment="Left" VerticalAlignment="Top">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-                    <StackPanel Margin="10,10">
-                        <ListView HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
-                                SelectedItem="{x:Bind ViewModel.CurrentColorSetting, Mode=TwoWay}"
-                                ItemsSource="{x:Bind ViewModel.EditPlayerColors, Mode=OneTime}"
-                                ItemTemplate="{StaticResource ColorSettingTemplate}">
-                            <ListView.ItemContainerStyle>
-                                <Style TargetType="ListViewItem">
-                                    <Setter Property="Padding" Value="0" />
-                                    <Setter Property="BorderBrush"
-                                            Value="{x:Bind Foreground, Mode=OneWay}" />
-                                    <Setter Property="BorderThickness" Value="1" />
-                                    <Setter Property="HorizontalAlignment"
-                                            Value="Stretch" />
-                                    <Setter Property="Margin" Value="0" />
-                                </Style>
-                            </ListView.ItemContainerStyle>
-                        </ListView>
+        <!-- PlayerSettings Control -->
+        <c:PlayerSettingsCtrl x:Name="PlayerSettingsControl"
+                ViewModel="{x:Bind ViewModel, Mode=OneWay}" Grid.Row="1" />
+        <Button Content="Close" Click="CloseButton_Click" Grid.Row="2" HorizontalAlignment="Right" Margin="0,10,10,10" />
 
-                    </StackPanel>
-
-                    <ColorPicker
-                            Color="{x:Bind ViewModel.GetColor(ViewModel.CurrentColorSetting.ColorName, ViewModel.SelectedPlayer), Mode=OneWay}"
-                            ColorChanged="{x:Bind ViewModel.SetColor}"
-                            ColorSpectrumShape="Box" IsMoreButtonVisible="False"
-                            HorizontalAlignment="Stretch"
-                            IsColorSliderVisible="True"
-                            IsColorChannelTextInputVisible="False"
-                            IsHexInputVisible="False" IsAlphaEnabled="False"
-                            IsAlphaSliderVisible="False"
-                            IsAlphaTextInputVisible="False" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <StackPanel Grid.Row="1" HorizontalAlignment="Left"
-                            Margin="10,10,10,0" Orientation="Vertical"
-                            Spacing="8">
-                        <Button Click="PickButton_Click" Content="Pick image"
-                                Style="{StaticResource AccentButtonStyle}" />
-                        <Button Click="SaveButton_Click" Content="Save"
-                                Style="{StaticResource AccentButtonStyle}" />
-                        <Button Click="ResetButton_Click" Content="Reset"
-                                Style="{StaticResource AccentButtonStyle}" />
-
-                    </StackPanel>
-                    <controls:ImageCropper x:Name="ImageCropper"
-                            Margin="0,10,0,0" AllowDrop="True"
-                            CropShape="Circular" Width="300" Height="300"
-                            Drop="ImageCropper_Drop"
-                            DragOver="ImageCropper_DragOver" />
-                    <Grid Background="Beige" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                        <Button Content="Save and Close"
-                                Style="{StaticResource AccentButtonStyle}" />
-                    </Grid>
-
-                </StackPanel>
-
-            </StackPanel>
-
-        </StackPanel>
-    </Viewbox>
+    </Grid>
 </Page>

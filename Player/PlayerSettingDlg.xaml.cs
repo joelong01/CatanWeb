@@ -1,4 +1,5 @@
-﻿using Microsoft.UI.Xaml;
+﻿using Catan3.Models;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 
@@ -6,37 +7,59 @@ namespace Catan3.Controls
 {
     public class PlayerSettingsDialog : ContentDialog
     {
-        public PlayerSettingsDialog()
+        public PlayerSettingsDialog(EditPlayerViewModel model)
         {
+            
             this.Title = "Player Settings";
             this.PrimaryButtonText = "Close";
-            this.SecondaryButtonText = "Cancel";
+
             this.DefaultButton = ContentDialogButton.Primary;
+            this.Style = ( Style )Application.Current.Resources["ConfigurableWidthContentDialogStyle"];
+            this.DialogWidth = 850; // Set desired width here
 
             // Load the custom content
-            this.Content = new PlayerSettingsDialogContent();
+            var content = new PlayerSettingsDialogCtrl(model);
 
+            this.Content = content;
             // Handle button clicks
             this.PrimaryButtonClick += PlayerSettingsDialog_PrimaryButtonClick;
-            this.SecondaryButtonClick += PlayerSettingsDialog_SecondaryButtonClick;
+          
+        }
+
+        public static readonly DependencyProperty DialogWidthProperty =
+        DependencyProperty.Register(
+            nameof(DialogWidth),
+            typeof(double),
+            typeof(PlayerSettingsDialog),
+            new PropertyMetadata(500)); // Default width
+
+        public double DialogWidth
+        {
+            get => ( double )GetValue(DialogWidthProperty);
+            set => SetValue(DialogWidthProperty, value);
         }
 
         private void PlayerSettingsDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
         {
-            // Handle Close button click
+            this.Hide();
         }
 
-        private void PlayerSettingsDialog_SecondaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-        {
-            // Handle Cancel button click
-        }
+      
     }
 
-    public sealed partial class PlayerSettingsDialogContent : UserControl
+    public sealed partial class PlayerSettingsDialogCtrl : UserControl
     {
-        public PlayerSettingsDialogContent()
+        public PlayerSettingsDialogCtrl(EditPlayerViewModel model)
         {
+            ViewModel = model;
             this.InitializeComponent();
+        }
+
+        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(EditPlayerViewModel), typeof(PlayerSettingsDialogCtrl), new PropertyMetadata(null));
+        public EditPlayerViewModel ViewModel
+        {
+            get => ( EditPlayerViewModel )GetValue(ViewModelProperty);
+            set => SetValue(ViewModelProperty, value);
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)

@@ -34,7 +34,7 @@ namespace Catan3
         public MainPage()
         {
             this.InitializeComponent();
-        
+
             Games.Add(GameType.Expansion);
             Games.Add(GameType.Regular);
             SelectedGame = GameType.Expansion;
@@ -162,26 +162,27 @@ namespace Catan3
             MainPageModel.GameViewModel.BoardInfo.Layout.OuterHexSize--;
             //  MainPageModel.GameViewModel.UpdateLayout();
         }
-        private async void OnEditPlayers(object sender, RoutedEventArgs e)
+        private void OnEditPlayers(object sender, RoutedEventArgs e)
 
         {
-            PlayerSettingsDialog playerSettingsDialog = new PlayerSettingsDialog();
-            var result = await playerSettingsDialog.ShowAsync();
+            //PlayerSettingsDialog playerSettingsDialog = new (new EditPlayerViewModel(PlayerDatabase.AvailablePlayers));
+            //playerSettingsDialog.XamlRoot = this.XamlRoot;
+            //var result = await playerSettingsDialog.ShowAsync();
 
-            if (result == ContentDialogResult.Primary)
-            {
-                // Handle Close button click
-            }
-            else if (result == ContentDialogResult.Secondary)
-            {
-                // Handle Cancel button click
-            }
-
-            //PlayerEditorWindow window = new()
+            //if (result == ContentDialogResult.Primary)
             //{
-            //    ViewModel = new(PlayerDatabase.AvailablePlayers)
-            //};
-            //window.Activate();
+            //    // Handle Close button click
+            //}
+            //else if (result == ContentDialogResult.Secondary)
+            //{
+            //    // Handle Cancel button click
+            //}
+
+            PlayerEditorWindow window = new()
+            {
+                ViewModel = new(PlayerDatabase.AvailablePlayers)
+            };
+            window.Activate();
         }
 
         private async void OnLoaded(object sender, RoutedEventArgs e)

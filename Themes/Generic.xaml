@@ -1,6 +1,7 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:u="using:Catan3.Utility">
+<ResourceDictionary
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:u="using:Catan3.Utility" xmlns:controls="using:Catan3.Controls">
     <Style TargetType="u:FlipperCtrl">
         <Setter Property="Template">
             <Setter.Value>
@@ -12,13 +13,62 @@
                             <ContentPresenter x:Name="BackPresenter"
                                     Content="{TemplateBinding Back}" />
                             <ContentPresenter x:Name="FrontPresenter"
-                                              Content="{TemplateBinding Front}"/>
+                                    Content="{TemplateBinding Front}" />
                         </Grid>
                     </Border>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
+    <Style TargetType="TextBlock" x:Key="ContentDialogTitleTextStyle">
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Margin" Value="0,0,0,15" />
+    </Style>
+    <Style TargetType="controls:PlayerSettingsDialog"
+            x:Key="ConfigurableWidthContentDialogStyle">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="controls:PlayerSettingsDialog">
+                    <Grid x:Name="BackgroundElement"
+                            Background="{TemplateBinding Background}"
+                            Width="{TemplateBinding DialogWidth}">
+                        <Grid.Resources>
+                            <!-- Add your resources here -->
+                        </Grid.Resources>
 
-   
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <ContentControl x:Name="Title"
+                                Content="{TemplateBinding Title}"
+                                Style="{StaticResource ContentDialogTitleTextStyle}" />
+
+                        <ContentPresenter x:Name="ContentPresenter" Grid.Row="1"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                Content="{TemplateBinding Content}"
+                                Margin="{TemplateBinding Padding}"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+
+                        <StackPanel x:Name="ButtonPanel" Grid.Row="2"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right">
+                            <Button x:Name="PrimaryButton"
+                                    Content="{TemplateBinding PrimaryButtonText}"
+                                    Command="{TemplateBinding PrimaryButtonCommand}" />
+                            <Button x:Name="SecondaryButton"
+                                    Content="{TemplateBinding SecondaryButtonText}"
+                                    Command="{TemplateBinding SecondaryButtonCommand}" />
+                        </StackPanel>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

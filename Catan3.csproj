@@ -14,6 +14,16 @@
 		<SupportedOSPlatformVersion>10.0.22621.0</SupportedOSPlatformVersion>
 		<StartupObject></StartupObject>
 	</PropertyGroup>
+	<ItemGroup>
+	  <None Remove="Buildings\BuildingCtrl.xaml" />
+	  <None Remove="Controls\PurchaseCtrl.xaml" />
+	  <None Remove="Game\Game Control\GameControls.xaml" />
+	  <None Remove="Game\GameFactory\GameBoardCtrl.xaml" />
+	  <None Remove="MainPage\MainPage.xaml" />
+	  <None Remove="Player\PlayerSettingDlg.xaml" />
+	  <None Remove="Player\PlayerSettingsCtrl.xaml" />
+	</ItemGroup>
+
 
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
@@ -35,21 +45,10 @@
 		<ProjectCapability Include="Msix" />
 	</ItemGroup>
 	<ItemGroup>
-
-		<Page Update="Buildings\BuildingCtrl.xaml">
-			<Generator>MSBuild:Compile</Generator>
-		</Page>
-		<Page Update="Controls\PurchaseCtrl.xaml">
-			<Generator>MSBuild:Compile</Generator>
-		</Page>
 		<Page Update="Harbors\HarborCtrl.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</Page>
 		<Page Update="Utility\FlipperCtrl.xaml">
-			<Generator>MSBuild:Compile</Generator>
-		</Page>
-
-		<Page Update="Game\Game Control\GameControls.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</Page>
 
@@ -64,6 +63,9 @@
 			<Generator>MSBuild:Compile</Generator>
 		</Page>
 		<Page Update="Resources\TrackedResourcesCtrl.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</Page>
+		<Page Update="Player\PlayerCtrl.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</Page>
 		<Page Update="Player\PlayerCtrl.xaml">
@@ -101,16 +103,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Page Update="Roads\RoadCtrl.xaml">
-			<Generator>MSBuild:Compile</Generator>
-		</Page>
-	</ItemGroup>
-	<ItemGroup>
-		<Page Update="Game\GameFactory\GameBoardCtrl.xaml">
-			<Generator>MSBuild:Compile</Generator>
-		</Page>
-	</ItemGroup>
-	<ItemGroup>
-		<Page Update="MainPage\MainPage.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</Page>
 	</ItemGroup>
@@ -168,6 +160,43 @@
 		<Resource Include="Assets\Wide310x150Logo.scale-125.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-150.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-400.png" />
+	</ItemGroup>
+
+
+	<ItemGroup>
+	  <Page Update="Player\PlayerSettingsCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	</ItemGroup>
+
+
+	<ItemGroup>
+	  <Page Update="MainPage\MainPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	</ItemGroup>
+
+
+	<ItemGroup>
+	  <Page Update="Game\GameFactory\GameBoardCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	</ItemGroup>
+
+
+	<ItemGroup>
+	  <Page Update="Buildings\BuildingCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Controls\PurchaseCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Game\Game Control\GameControls.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Player\PlayerSettingDlg.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	</ItemGroup>
 
 
