@@ -1,11 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Catan3.Services;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Storage;
+using Windows.Storage.Streams;
 using Windows.UI;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI.Dispatching;
+using System.Diagnostics;
+using WinUIEx;
 namespace Catan3.Models
 {
     /// <summary>
@@ -23,6 +32,7 @@ namespace Catan3.Models
         Color _foreground = foreground;
         [ObservableProperty]
         bool _selected = false;
+
         public Brush GetBrush(Color color)
         {
             return BrushCache.GetSolidColorBrush(color);
@@ -52,8 +62,16 @@ namespace Catan3.Models
         ObservableCollection<EditPlayerColors> _editPlayerColors;
         [ObservableProperty]
         private PlayerViewModel _selectedPlayer;
-        public PlayerSettingsViewModel(IList<PlayerViewModel> players)
+        [ObservableProperty]
+        private WriteableBitmap? _originalImage;
+
+        private readonly  DispatcherQueue _dispatcherQueue;
+        private readonly WindowEx _parentWindow;
+
+        public PlayerSettingsViewModel(WindowEx parent, IList<PlayerViewModel> players)
         {
+            _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+            _parentWindow = parent;
             Players = [.. players];
             EditPlayerColors =
             [
@@ -78,8 +96,18 @@ namespace Catan3.Models
             EditPlayerColors[0].Foreground = newValue.PlayerColors.Foreground;
             EditPlayerColors[1].Foreground = newValue.PlayerColors.Foreground;
             EditPlayerColors[2].Foreground = newValue.PlayerColors.PrimaryBackground;
+            LoadImageOnSelectedPlayerChanged(newValue.ImageUri);
             if (oldValue is not null) oldValue.Selected = false;
             newValue.Selected = true;
+        }
+        private void LoadImageOnSelectedPlayerChanged(string imageUri)
+        {
+            Task.Run(async () =>
+            {
+                var bitmap = await LoadImageFromFilePathAsync(imageUri);
+                // Update the ImageSource property on the UI thread
+                _dispatcherQueue.TryEnqueue(() => OriginalImage = bitmap);
+            });
         }
         partial void OnCurrentColorSettingChanged(EditPlayerColors? oldValue, EditPlayerColors newValue)
         {
@@ -116,7 +144,7 @@ namespace Catan3.Models
         }
         public void SetColor(ColorPicker sender, ColorChangedEventArgs args)
         {
-           
+
             var newColor = args.NewColor;
             switch (CurrentColorSetting.ColorName)
             {
@@ -146,6 +174,55 @@ namespace Catan3.Models
             return player.Id == SelectedPlayer.Id ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        
+        [RelayCommand]
+        public async Task LoadImageAsync()
+        {
+            var filters = new List<string> { ".jpg", ".png" };
+            var fileServiceHelper = new FileServiceHelper();
+            StorageFile? file = await fileServiceHelper.GetFileAsync(_parentWindow, filters);
+
+            if (file is not null)
+            {
+                OriginalImage = await LoadImageFromFileAsync(file);
+            }
+        }
+        private async Task<WriteableBitmap> LoadImageFromFilePathAsync(string filePath)
+        {
+
+            StorageFile file = await StorageFile.GetFileFromPathAsync(filePath);
+            return await LoadImageFromFileAsync(file);
+        }
+
+
+        private async Task<WriteableBitmap> LoadImageFromFileAsync(StorageFile file)
+        {
+            // Ensure the execution happens on the UI thread
+            var tcs = new TaskCompletionSource<WriteableBitmap>();
+            Debug.Assert(_dispatcherQueue is not null);
+            _dispatcherQueue.TryEnqueue(async () =>
+            {
+                try
+                {
+                    using (IRandomAccessStream fileStream = await file.OpenAsync(FileAccessMode.Read))
+                    {
+                        var bitmapImage = new BitmapImage();
+                        await bitmapImage.SetSourceAsync(fileStream);
+
+                        var result = new WriteableBitmap(bitmapImage.PixelWidth, bitmapImage.PixelHeight);
+                        fileStream.Seek(0);
+                        await result.SetSourceAsync(fileStream);
+                        tcs.SetResult(result);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            });
+
+            return await tcs.Task;
+        }
+
+
     }
 }

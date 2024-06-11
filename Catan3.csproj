@@ -20,6 +20,7 @@
 	  <None Remove="Game\Game Control\GameControls.xaml" />
 	  <None Remove="Game\GameFactory\GameBoardCtrl.xaml" />
 	  <None Remove="MainPage\MainPage.xaml" />
+	  <None Remove="MainPage\MainWindow.xaml" />
 	  <None Remove="Player\PlayerSettingDlg.xaml" />
 	  <None Remove="Player\PlayerSettingsCtrl.xaml" />
 	  <None Remove="Player\PlayerSettings\PlayerEditorPage.xaml" />
@@ -165,6 +166,13 @@
 		<Resource Include="Assets\Wide310x150Logo.scale-125.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-150.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-400.png" />
+	</ItemGroup>
+
+
+	<ItemGroup>
+	  <Page Update="MainPage\MainWindow.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	</ItemGroup>
 
 

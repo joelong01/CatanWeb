@@ -2,6 +2,9 @@
 using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
 using Catan3.Utility;
+using CommunityToolkit.Mvvm.Messaging.Messages;
+using Windows.Storage;
+using WinUIEx;
 namespace Catan3.Models
 {
     public class SetPlayerOrderMessage(IList<string> playerIds)
@@ -85,7 +88,7 @@ namespace Catan3.Models
     {
         public Entitlement Entitlement { get; } = entitlement;
     }
-    public enum ErrorLevel { Information, Protection, Critical}
+    public enum ErrorLevel { Information, Protection, Critical }
     public class ErrorMessage(string message, ErrorLevel errorLevel, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
     {
         public string Message { get; } = message;
@@ -93,7 +96,7 @@ namespace Catan3.Models
         public string CallerLineNumber { get; } = cln.ToString();
         public string CallerFilePath { get; } = cfp;
         public ErrorLevel ErrorLevel { get; } = errorLevel;
-        
+
     }
     // 
     // we can update the player colors "on the fly".  Normally, we would subscribe to the change notification event an update the bindings
@@ -104,9 +107,20 @@ namespace Catan3.Models
     // system and publish an event that says the players colors changed.
     public class PlayerColorChanged(PlayerColorViewModel colors)
     {
-    
+
         public PlayerColorViewModel PlayerColors { get; } = colors;
-       
-      
     }
+
+    // Message to request opening a file with specified filters
+    public class OpenFileRequestMessage(WindowEx parent, IList<string> filters)
+    {
+        public IList<string> Filters { get;  } = filters;
+        public WindowEx Parent { get; } = parent;
+    }
+    // Message to respond with the opened file
+    public class OpenFileResponseMessage(StorageFile? file)
+    {
+        public StorageFile? File { get; } = file;
+    }
+
 }

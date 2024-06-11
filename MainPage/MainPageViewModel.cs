@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Catan.Utility;
+using Catan.Services;
 using Catan3.Controller;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -33,17 +33,26 @@ namespace Catan3.Models
         {
             Debug.Assert(Messenger is not null);
             IsActive = true;
-           
+
             Messenger.Register<EndGame>(this, (recipient, message) =>
             {
                 Messenger.UnregisterAll(this);
             });
+
+            Messenger.Register<OpenFileRequestMessage>(this, async (recipient, message) =>
+            {
+                if (_fileService is null) throw new GameException("File Service is null and it should not be");
+
+                var result =  await _fileService.GetFileAsync(message.Parent, message.Filters);
+                Messenger.Send(new OpenFileResponseMessage(result));
+
+            });
         }
-     
+
         public void EndGame()
         {
             Messenger.Send(new EndGame());
         }
     }
-   
+
 }

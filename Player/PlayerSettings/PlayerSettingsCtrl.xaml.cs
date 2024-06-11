@@ -66,11 +66,6 @@ namespace Catan3.Controls
             await this.CTRL_ImageCropper.LoadImageFromFile(file);
             this.CTRL_ImageCropper.AspectRatio = this.CTRL_ImageCropper.ActualWidth / this.CTRL_ImageCropper.ActualHeight;
         }
-        private async Task Load()
-        {
-            var file = await StorageFile.GetFileFromApplicationUriAsync(new Uri("ms-appx:///Assets/Owl.jpg"));
-            await this.CTRL_ImageCropper.LoadImageFromFile(file);
-        }
         private async Task PickImage()
         {
 
@@ -132,17 +127,7 @@ namespace Catan3.Controls
             this.CTRL_ImageCropper.Reset();
         }
 
-        private async void OnSelectedPlayerChanged(object sender, SelectionChangedEventArgs e)
-        {
-            try
-            {
-                await this.CTRL_ImageCropper.LoadImageFromFile(ViewModel.SelectedPlayer.ImageUri);
-            }
-            catch (Exception ex)
-            {
-                this.TraceMessage($"Error loading {ViewModel.SelectedPlayer.ImageUri}.  Exception: {ex}");
-            }
-        }
+       
 
         private void ReloadButton_Click(object sender, RoutedEventArgs e)
         {

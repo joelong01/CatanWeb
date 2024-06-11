@@ -4,8 +4,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Catan.Utility;
-using Catan3.Controls;
+using Catan.Services;
 using Catan3.Models;
 using Catan3.Player;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -163,25 +162,14 @@ namespace Catan3
             //  MainPageModel.GameViewModel.UpdateLayout();
         }
         private void OnEditPlayers(object sender, RoutedEventArgs e)
-
         {
-            //PlayerSettingsDialog playerSettingsDialog = new (new EditPlayerViewModel(PlayerDatabase.AvailablePlayers));
-            //playerSettingsDialog.XamlRoot = this.XamlRoot;
-            //var result = await playerSettingsDialog.ShowAsync();
+           
 
-            //if (result == ContentDialogResult.Primary)
-            //{
-            //    // Handle Close button click
-            //}
-            //else if (result == ContentDialogResult.Secondary)
-            //{
-            //    // Handle Cancel button click
-            //}
+            PlayerEditorWindow window = new();
+            PlayerSettingsViewModel viewModel = new(window, PlayerDatabase.AvailablePlayers);
+            window.ViewModel = viewModel;
 
-            PlayerEditorWindow window = new()
-            {
-                ViewModel = new(PlayerDatabase.AvailablePlayers)
-            };
+
             window.Activate();
         }
 
