@@ -7,7 +7,7 @@ namespace Catan3.Controls
 {
     public class PlayerSettingsDialog : ContentDialog
     {
-        public PlayerSettingsDialog(EditPlayerViewModel model)
+        public PlayerSettingsDialog(PlayerSettingsViewModel model)
         {
             
             this.Title = "Player Settings";
@@ -49,16 +49,16 @@ namespace Catan3.Controls
 
     public sealed partial class PlayerSettingsDialogCtrl : UserControl
     {
-        public PlayerSettingsDialogCtrl(EditPlayerViewModel model)
+        public PlayerSettingsDialogCtrl(PlayerSettingsViewModel model)
         {
             ViewModel = model;
             this.InitializeComponent();
         }
 
-        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(EditPlayerViewModel), typeof(PlayerSettingsDialogCtrl), new PropertyMetadata(null));
-        public EditPlayerViewModel ViewModel
+        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(PlayerSettingsViewModel), typeof(PlayerSettingsDialogCtrl), new PropertyMetadata(null));
+        public PlayerSettingsViewModel ViewModel
         {
-            get => ( EditPlayerViewModel )GetValue(ViewModelProperty);
+            get => ( PlayerSettingsViewModel )GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
 

@@ -33,7 +33,7 @@ namespace Catan3.Player
         /// <summary>
         ///     Allow the Page's view model to be set when you have a reference to the Window
         /// </summary>
-        public EditPlayerViewModel ViewModel
+        public PlayerSettingsViewModel ViewModel
         {
             get => PlayerEditorPage.ViewModel;
             set => PlayerEditorPage.ViewModel = value;

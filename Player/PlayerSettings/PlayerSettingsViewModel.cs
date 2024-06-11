@@ -42,7 +42,7 @@ namespace Catan3.Models
             }
         }
     }
-    public partial class EditPlayerViewModel : ObservableObject
+    public partial class PlayerSettingsViewModel : ObservableObject
     {
         [ObservableProperty]
         private EditPlayerColors _currentColorSetting;
@@ -52,7 +52,7 @@ namespace Catan3.Models
         ObservableCollection<EditPlayerColors> _editPlayerColors;
         [ObservableProperty]
         private PlayerViewModel _selectedPlayer;
-        public EditPlayerViewModel(IList<PlayerViewModel> players)
+        public PlayerSettingsViewModel(IList<PlayerViewModel> players)
         {
             Players = [.. players];
             EditPlayerColors =

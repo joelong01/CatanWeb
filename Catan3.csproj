@@ -22,6 +22,10 @@
 	  <None Remove="MainPage\MainPage.xaml" />
 	  <None Remove="Player\PlayerSettingDlg.xaml" />
 	  <None Remove="Player\PlayerSettingsCtrl.xaml" />
+	  <None Remove="Player\PlayerSettings\PlayerEditorPage.xaml" />
+	  <None Remove="Player\PlayerSettings\PlayerEditorWindow.xaml" />
+	  <None Remove="Player\PlayerSettings\PlayerSettingDlg.xaml" />
+	  <None Remove="Player\PlayerSettings\PlayerSettingsCtrl.xaml" />
 	</ItemGroup>
 
 
@@ -161,6 +165,22 @@
 		<Resource Include="Assets\Wide310x150Logo.scale-125.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-150.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-400.png" />
+	</ItemGroup>
+
+
+	<ItemGroup>
+	  <Page Update="Player\PlayerSettings\PlayerEditorPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Player\PlayerSettings\PlayerEditorWindow.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Player\PlayerSettings\PlayerSettingDlg.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	  <Page Update="Player\PlayerSettings\PlayerSettingsCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	</ItemGroup>
 
 

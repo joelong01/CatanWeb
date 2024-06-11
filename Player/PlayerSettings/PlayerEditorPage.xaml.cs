@@ -19,10 +19,10 @@ namespace Catan3.Player
     /// </summary>
     public sealed partial class PlayerEditorPage : Page
     {
-        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(EditPlayerViewModel), typeof(PlayerEditorPage), new PropertyMetadata(null, ViewModelChanged));
+        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(PlayerSettingsViewModel), typeof(PlayerEditorPage), new PropertyMetadata(null, ViewModelChanged));
         private static void ViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is PlayerEditorPage page && e.NewValue is EditPlayerViewModel viewModel)
+            if (d is PlayerEditorPage page && e.NewValue is PlayerSettingsViewModel viewModel)
             {
                 page.DataContext = viewModel;
 
@@ -32,9 +32,9 @@ namespace Catan3.Player
         }
 
 
-        public EditPlayerViewModel ViewModel
+        public PlayerSettingsViewModel ViewModel
         {
-            get => ( EditPlayerViewModel )GetValue(ViewModelProperty);
+            get => ( PlayerSettingsViewModel )GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
         public PlayerEditorPage()

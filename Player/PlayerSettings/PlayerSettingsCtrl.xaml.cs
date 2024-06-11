@@ -23,19 +23,19 @@ namespace Catan3.Controls
         {
             this.InitializeComponent();
         }
-        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(EditPlayerViewModel), typeof(PlayerSettingsCtrl), new PropertyMetadata(null, ViewModelChanged));
-        public EditPlayerViewModel ViewModel
+        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(PlayerSettingsViewModel), typeof(PlayerSettingsCtrl), new PropertyMetadata(null, ViewModelChanged));
+        public PlayerSettingsViewModel ViewModel
         {
-            get => ( EditPlayerViewModel )GetValue(ViewModelProperty);
+            get => ( PlayerSettingsViewModel )GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
         private static void ViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as PlayerSettingsCtrl;
-            var depPropValue = (EditPlayerViewModel)e.NewValue;
+            var depPropValue = (PlayerSettingsViewModel)e.NewValue;
             depPropClass?.SetViewModel(depPropValue);
         }
-        private void SetViewModel(EditPlayerViewModel value)
+        private void SetViewModel(PlayerSettingsViewModel value)
         {
 
         }
