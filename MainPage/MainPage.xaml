@@ -45,16 +45,7 @@
                         Command="{x:Bind MainPageModel.GameViewModel.ShuffleCommand, Mode=OneWay}"
                         Background="Black" Foreground="White" />
                 <Button Content="Update Layout" Click="OnUpdateLayout" />
-                <!--Current Player (and Playing Players)-->
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Current Player" Foreground="Black" />
-                    <ComboBox
-                            ItemsSource="{x:Bind MainPageModel.GameViewModel.Players, Mode=OneWay}"
-                            SelectedItem="{x:Bind MainPageModel.GameViewModel.CurrentPlayer, Mode=OneWay}"
-                            DisplayMemberPath="Name" Foreground="Black"
-                            HorizontalAlignment="Left" VerticalAlignment="Top">
-                    </ComboBox>
-                </StackPanel>
+                  
                 <!--Purchase-->
                 <Viewbox Stretch="Uniform" HorizontalAlignment="Left"
                         Width="300">
@@ -148,10 +139,7 @@
                         Content="Next Player" />
                 <!--Game Type-->
                 <TextBlock Text="Game Type" Foreground="Black" />
-                <ComboBox ItemsSource="{x:Bind Games, Mode=OneWay}"
-                        SelectedItem="{x:Bind SelectedGame, Mode=TwoWay}"
-                        Foreground="Black" HorizontalAlignment="Left"
-                        VerticalAlignment="Top" Width="200" />
+              
                 <Button Content="Flip Orientation"
                         Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}"
                         Background="Black" Foreground="White" />

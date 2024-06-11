@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="Catan3.Controls.NewGameCtrl"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Catan3.Controls" xmlns:m="using:Catan3.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d">
+    <UserControl.Resources>
+        <DataTemplate x:Key="EditPlayerDataTemplate"
+                x:DataType="m:PlayerViewModel">
+            <Grid HorizontalAlignment="Stretch" Height="120"
+                    Background="{x:Bind PlayerColors.BackgroundBrush, Mode=OneWay}">
+                <Ellipse Name="Player_Picture" HorizontalAlignment="Center"
+                        VerticalAlignment="Top" Width="100" Height="100"
+                        Stroke="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}">
+                    <Ellipse.Fill>
+                        <ImageBrush
+                                ImageSource="{x:Bind CroppedImageUri, Mode=OneWay}" />
+                    </Ellipse.Fill>
+                </Ellipse>
+                <TextBlock Text="" HorizontalAlignment="Right"
+                        Foreground="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}"
+                        FontFamily="Segoe MDL2 Assets"
+                        Visibility="{x:Bind Selected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                        VerticalAlignment="Top" FontSize="16" FontWeight="Bold"
+                        TextLineBounds="Tight" />
+                <TextBlock Text="{x:Bind Name, Mode=OneWay}"
+                        HorizontalAlignment="Center" VerticalAlignment="Bottom" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+    <StackPanel Background="Gray" HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+        <GridView Margin="10" HorizontalAlignment="Stretch" Width="800"
+                x:Name="ListView_Players" SelectionMode="Multiple"
+                VerticalAlignment="Top" Background="Transparent"
+                SelectionChanged="{x:Bind ViewModel.Players_SelectionChanged}"
+                ItemsSource="{x:Bind ViewModel.Players, Mode=OneWay}"
+                ItemTemplate="{StaticResource EditPlayerDataTemplate}">
+            <GridView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapGrid MaximumRowsOrColumns="4" Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </GridView.ItemsPanel>
+            <GridView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="Padding" Value="3" />
+                    <Setter Property="BorderBrush"
+                            Value="{x:Bind Foreground, Mode=OneWay}" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="HorizontalAlignment" Value="Stretch" />
+                    <Setter Property="Margin" Value="0" />
+                </Style>
+            </GridView.ItemContainerStyle>
+        </GridView>
+        <!--Game Type-->
+        <TextBlock Text="Game Type:" Foreground="White" FontSize="22"
+                Margin="10" />
+        <ComboBox ItemsSource="{x:Bind ViewModel.Games, Mode=OneWay}"
+                SelectedItem="{x:Bind ViewModel.SelectedGame, Mode=OneWay}"
+                SelectionChanged="{x:Bind ViewModel.Game_SelectionChanged}"
+                SelectionChangedTrigger="Always"
+                HorizontalAlignment="Left" FontSize="22" Foreground="White"
+                VerticalAlignment="Top" Width="200" />
+    </StackPanel>
+</UserControl>

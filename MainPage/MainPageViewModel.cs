@@ -15,7 +15,7 @@ namespace Catan3.Models
         private GameController GameController { get; set; }
         private readonly IFileService _fileService;
         public IMessenger MessageService => this.Messenger;
-        public MainPageViewModel(IFileService fileService, GameType selectedGame, List<PlayerViewModel> playingPlayers)
+        public MainPageViewModel(IFileService fileService, GameType selectedGame, IList<PlayerViewModel> playingPlayers)
         {
             FunctionTimer.Enabled = false;
             _fileService = fileService;

@@ -19,6 +19,7 @@
 	  <None Remove="Controls\PurchaseCtrl.xaml" />
 	  <None Remove="Game\Game Control\GameControls.xaml" />
 	  <None Remove="Game\GameFactory\GameBoardCtrl.xaml" />
+	  <None Remove="Game\NewGameDlg\NewGameCtrl.xaml" />
 	  <None Remove="MainPage\MainPage.xaml" />
 	  <None Remove="MainPage\MainWindow.xaml" />
 	  <None Remove="Player\PlayerSettingDlg.xaml" />
@@ -166,6 +167,13 @@
 		<Resource Include="Assets\Wide310x150Logo.scale-125.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-150.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-400.png" />
+	</ItemGroup>
+
+
+	<ItemGroup>
+	  <Page Update="Game\NewGameDlg\NewGameCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	</ItemGroup>
 
 
