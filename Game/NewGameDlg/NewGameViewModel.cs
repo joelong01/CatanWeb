@@ -28,7 +28,7 @@ namespace Catan3.Models
         {
             foreach (PlayerViewModel player in e.AddedItems)
             {
-                this.TraceMessage($"adding {player.Name}");
+              
                 PlayingPlayers.Add(player);
             }
 

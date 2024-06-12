@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Catan10.Models;
 using Catan3.Models;
@@ -145,6 +146,20 @@ namespace Catan3.Controller
             {
                 Messenger.UnregisterAll(this);
             });
+            Messenger.Register<GoFirstMessage>(this, (recipient, message) =>
+            {
+                GameModel gameModel = Log.CopyCurrent();
+                if (gameModel.GameState != GameState.FinishedRollOrder) return;
+                while (gameModel.Players[0].Id != message.PlayerId)
+                {
+                    var player = gameModel.Players[0];
+                    gameModel.Players.RemoveAt(0);
+                    gameModel.Players.Add(player);
+                }
+                gameModel.CurrentPlayerId = gameModel.Players[0].Id;
+                LogDone(gameModel);
+                Messenger.Send(new UpdateGameModel(gameModel));
+            });
         }
         private void SendErrorMessage(string message, ErrorLevel errorLevel, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
         {
@@ -170,7 +185,7 @@ namespace Catan3.Controller
                 throw new GameException($"cannot buy {entitlement} in state {gameModel.GameState}");
             }
             gameModel.CurrentPlayer().UnspentEntitlements.Add(entitlement);
-        
+
             LogDone(gameModel);
             return gameModel;
         }
@@ -193,7 +208,7 @@ namespace Catan3.Controller
                 case Entitlement.Road:
                     int unspentRoads = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
                     int spentroads = gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement);
-                    if (unspentRoads +  spentroads >= gameModel.ResourceRules.MaxRoads) return false;
+                    if (unspentRoads + spentroads >= gameModel.ResourceRules.MaxRoads) return false;
                     return true;
                 default:
                     return false;
@@ -538,7 +553,7 @@ namespace Catan3.Controller
             MarkBuildableRoads(gameModel);
             MarkBuildableBuildings(gameModel);
             SetActionFlags(gameModel);
-          
+
             gameModel.ActionFlags.RedoEnabled = false;
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
@@ -668,11 +683,12 @@ namespace Catan3.Controller
                 player.HighestScore = false;
                 int citiesPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.City);
                 int settlementsPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.Settlement);
+                settlementsPlayed -= citiesPlayed; // you can't play a city unless you played a settlement
                 int knightsPlayed = player.SpentEntitlementsThisGame.Count(e=> e== Entitlement.Soldier);
                 // Calculate base score from cities and settlements
                 int score = citiesPlayed * 2 + settlementsPlayed;
                 // Add bonus points for having the longest road
-              
+
                 if (player.HasLongestRoad)
                 {
                     score += 2;
@@ -1051,7 +1067,7 @@ namespace Catan3.Controller
         public void CalculateLongestRoad(GameModel gameModel)
         {
             var longestRoadAllPlayers = 0;
-            
+
             // calculate the longest road for each player
             foreach (var player in gameModel.Players)
             {
@@ -1077,7 +1093,7 @@ namespace Catan3.Controller
                 }
             }
             var playerWithLongestRoad = gameModel.Players.FirstOrDefault(p => p.HasLongestRoad);
-            
+
             foreach (var player in gameModel.Players)
             {
                 if (player.LongestRoad < 5)
@@ -1103,7 +1119,7 @@ namespace Catan3.Controller
                     playerWithLongestRoad = player;
                 }
             }
-            
+
         }
         //
         //  Start is just any old road you want to start counting from

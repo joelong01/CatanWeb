@@ -172,12 +172,29 @@ namespace Catan3.Models
         ///     all per player state should be merged here -- including the player resources
         ///     
         ///     Note that this also updates the per-player data like total Resources
+        ///     Note that it is possible for the GameModel.Player order to be different than the GameViewModel.Players
+        ///     when the GameState is in GameState.WaitingForPlayerOrder
         /// </summary>
         /// <param name="gameModel"></param>
         private void MergePlayers(GameModel gameModel)
         {
             Debug.Assert(this.Players.Count == gameModel.Players.Count);
             Debug.Assert(this.Players.Count > 0);
+            if (gameModel.GameState == GameState.FinishedRollOrder)
+            {
+                List<PlayerViewModel> orderedPlayerList =[];
+                //
+                // make the GameViewModel.Players collection match the order of the GameModel.Players
+                for (int order=0; order<gameModel.Players.Count; order++)
+                {
+                    
+                    var playerViewModel = Players.First((p)=> p.Id == gameModel.Players[order].Id) ?? throw new GameException($"Cannot find PlayerId {gameModel.Players[order].Id} in the playing players.  bad. very bad.");
+                    orderedPlayerList.Add(playerViewModel);
+                }
+
+                Players.Clear();
+                Players.AddRange(orderedPlayerList);
+            }
             for (int i = 0; i < Players.Count; i++)
             {
                 Players[i].Player = gameModel.Players[i]; // triggers PlayerViewModel.PlayerChanged

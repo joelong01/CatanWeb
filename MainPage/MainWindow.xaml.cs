@@ -8,10 +8,7 @@ namespace Catan3
         public MainWindow()
         {
             this.InitializeComponent();
-            var windowManger = WindowManager.Get(this);
-            windowManger.IsMaximizable = true;
-            windowManger.IsResizable = true;
-            windowManger.PersistenceId = "Catan_WinUi";
+           
             this.Content = new MainPage(); // Set MainPage as the content of MainWindow
            
         }

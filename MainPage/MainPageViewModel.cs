@@ -12,6 +12,13 @@ namespace Catan3.Models
     {
         [ObservableProperty]
         GameViewModel _gameViewModel;
+
+        /// <summary>
+        ///     Bound to the SplitView.IsPaneOpen flag in MainPage.xaml
+        /// </summary>
+        [ObservableProperty]
+        bool _showCommands = false;
+
         private GameController GameController { get; set; }
         private readonly IFileService _fileService;
         public IMessenger MessageService => this.Messenger;
@@ -33,26 +40,22 @@ namespace Catan3.Models
         {
             Debug.Assert(Messenger is not null);
             IsActive = true;
-
             Messenger.Register<EndGame>(this, (recipient, message) =>
             {
                 Messenger.UnregisterAll(this);
             });
-
             Messenger.Register<OpenFileRequestMessage>(this, async (recipient, message) =>
             {
                 if (_fileService is null) throw new GameException("File Service is null and it should not be");
-
                 var result =  await _fileService.GetFileAsync(message.Parent, message.Filters);
                 Messenger.Send(new OpenFileResponseMessage(result));
-
             });
-        }
 
+          
+        }
         public void EndGame()
         {
             Messenger.Send(new EndGame());
         }
     }
-
 }

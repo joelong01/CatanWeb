@@ -123,4 +123,11 @@ namespace Catan3.Models
         public StorageFile? File { get; } = file;
     }
 
+    //
+    // message to make a player go first
+    public class GoFirstMessage(string playerId)
+    {
+        public string PlayerId { get; } = playerId;
+    }
+
 }

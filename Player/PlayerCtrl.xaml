@@ -5,20 +5,33 @@
         xmlns:c="using:Catan3.Controls" xmlns:models="using:Catan3.Models"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-         mc:Ignorable="d">
-    <Grid Background="DarkGray" BorderBrush="DarkGray" BorderThickness="2">
+        mc:Ignorable="d">
+    <Grid Background="{StaticResource bmMaple}" CornerRadius="5" Margin="5">
         <StackPanel>
-            <StackPanel Name="SP_FirstRow" Height="45" Orientation="Horizontal"
-                    HorizontalAlignment="Stretch" Background="DarkGray">
-                <Ellipse Name="Player_Picture" HorizontalAlignment="Left"
-                        VerticalAlignment="Top" Width="45" Height="45"
-                        Stroke="{x:Bind PlayerViewModel.PlayerColors.ForegroundBrush, Mode=OneWay}">
-                    <Ellipse.Fill>
-                        <ImageBrush
-                                ImageSource="{x:Bind PlayerViewModel.CroppedImageUri, Mode=OneWay}" />
-                    </Ellipse.Fill>
-                </Ellipse>
-                <GridView
+            <StackPanel Name="SP_FirstRow" Height="45" Orientation="Horizontal" Margin="0,5, 0, 0"
+                    HorizontalAlignment="Stretch" Background="Transparent">
+                <Viewbox Stretch="Uniform">
+                    <Button HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch" Width="100" Margin="-10"
+                            Height="100"
+                            Command="{x:Bind PlayerViewModel.GoFirstCommand, Mode=OneWay}">
+                        <Button.Content>
+                            <Grid CornerRadius="50"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    BorderBrush="{x:Bind PlayerViewModel.PlayerColors.ForegroundBrush, Mode=OneWay}"
+                                    BorderThickness="1">
+
+                                <Grid.Background>
+                                    <ImageBrush
+                                            ImageSource="{x:Bind PlayerViewModel.CroppedImageUri, Mode=OneWay}" />
+                                </Grid.Background>
+
+                            </Grid>
+                        </Button.Content>
+                    </Button>
+                </Viewbox>
+                <GridView Height="45"
                         ItemsSource="{x:Bind PlayerViewModel.PlayerStats, Mode=OneWay}">
                     <GridView.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -45,11 +58,8 @@
             </StackPanel>
             <StackPanel Name="SP_SecondRow" HorizontalAlignment="Stretch"
                     Orientation="Horizontal" Background="Transparent">
-                <c:TrackedResourcesCtrl Height="120"
+                <c:TrackedResourcesCtrl Height="130"
                         ResourcesViewModel="{x:Bind PlayerViewModel.ResourcesThisTurn, Mode=OneWay}" />
-            </StackPanel>
-            <StackPanel Name="SP_ThirdRow" HorizontalAlignment="Stretch" Visibility="Collapsed"
-                    Orientation="Horizontal" Background="DarkGray" Height="45">
             </StackPanel>
         </StackPanel>
     </Grid>

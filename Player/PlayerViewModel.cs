@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
@@ -129,6 +130,12 @@ namespace Catan3.Models
                 return BrushCache.GetGradientBrush(color, Colors.Black);
         }
 
+        [RelayCommand]
+        void GoFirst()
+        {
+          
+            WeakReferenceMessenger.Default.Send(new GoFirstMessage(this.Id));
+        }
         
     }
     public enum ColorName { PrimaryBackground, SecondaryBackground, Foreground }

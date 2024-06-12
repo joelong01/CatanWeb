@@ -5,6 +5,7 @@ using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.UI.Xaml;
 namespace Catan3.Models
 {
     public partial class MainPageViewModel : ObservableRecipient
@@ -12,18 +13,40 @@ namespace Catan3.Models
         [RelayCommand]
         private async Task Save()
         {
-            var uncompressedLog = GameController.GetSerializableLog(); // this always comes back the same
-            var json = SerializationHelper.JsonSerialize(uncompressedLog);
-            var compressedBytes = SerializationHelper.Compress(json);
-            await _fileService.SaveFileAsync(compressedBytes);
+            try
+            {
+                var uncompressedLog = GameController.GetSerializableLog(); // this always comes back the same
+                var json = SerializationHelper.JsonSerialize(uncompressedLog);
+                var compressedBytes = SerializationHelper.Compress(json);
+                await _fileService.SaveFileAsync(compressedBytes);
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Failed SaveAs: {ex.Message}");
+            }
+            finally
+            {
+                ShowCommands = false;
+            }
         }
         [RelayCommand]
         private async Task SaveAs()
         {
-            var uncompressedLog = GameController.GetSerializableLog(); // this always comes back the same
-            var json = SerializationHelper.JsonSerialize(uncompressedLog);
-            var compressedBytes = SerializationHelper.Compress(json);
-            await _fileService.SaveFileAsAsync($"GameModel DoneDepth={GameController.DoneCount}", compressedBytes);
+            try
+            {
+                var uncompressedLog = GameController.GetSerializableLog(); // this always comes back the same
+                var json = SerializationHelper.JsonSerialize(uncompressedLog);
+                var compressedBytes = SerializationHelper.Compress(json);
+                await _fileService.SaveFileAsAsync($"GameModel DoneDepth={GameController.DoneCount}", compressedBytes);
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Failed SaveAs: {ex.Message}");
+            }
+            finally
+            {
+                ShowCommands = false;
+            }
         }
         [RelayCommand]
         private async Task Open()
@@ -48,6 +71,16 @@ namespace Catan3.Models
             {
                 this.TraceMessage($"Failed to deserialize or apply the game data: {ex.Message}");
             }
+            finally
+            {
+                ShowCommands = false;
+            }
+        }
+
+        [RelayCommand]
+        private void ToggleShowCommands()
+        {
+            ShowCommands = !ShowCommands;
         }
     }
 }

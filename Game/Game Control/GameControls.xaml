@@ -7,7 +7,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
     <Grid>
-        <Viewbox Width="200" Stretch="Uniform">
+        <Viewbox Width="400" Stretch="Uniform">
             <StackPanel BorderBrush="{StaticResource bmCherry}"
                     BorderThickness="2"
                     Background="{x:Bind ViewModel.GameViewModel.CurrentPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}"

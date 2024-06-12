@@ -37,10 +37,7 @@ namespace Catan3
             this.InitializeComponent();
 
 
-
-
         }
-
 
         public static readonly DependencyProperty MainPageModelProperty = DependencyProperty.Register("MainPageModel", typeof(MainPageViewModel), typeof(MainPage), new PropertyMetadata(null, MainPageModelChanged));
         public MainPageViewModel MainPageModel
@@ -57,7 +54,6 @@ namespace Catan3
         private void SetMainPageModel(MainPageViewModel value)
         {
         }
-
         private void OnRightButtonTapped(object sender, RightTappedRoutedEventArgs e)
         {
         }
@@ -71,7 +67,6 @@ namespace Catan3
                 MainPageModel.EndGame();
                 MainPageModel.GameViewModel.PropertyChanged -= GameViewModel_PropertyChanged;
             }
-
 
             MainPageModel = new MainPageViewModel(new FileService(), gameType, players);
             MainPageModel.GameViewModel.PropertyChanged += GameViewModel_PropertyChanged;
@@ -119,11 +114,9 @@ namespace Catan3
         }
         private async void OnNewGame(object sender, RoutedEventArgs e)
         {
-            
             NewGameViewModel viewModel = new(PlayerDatabase.AvailablePlayers);
             NewGameContentDialog dialog = new(viewModel)
             {
-
                 XamlRoot = this.XamlRoot
             };
             var result = await dialog.ShowAsync();
@@ -143,6 +136,7 @@ namespace Catan3
         {
             if (MainPageModel.GameViewModel is null) return;
 
+            MainPageModel.ShowCommands = false;
         }
         private void OnUpdateLayout(object sender, RoutedEventArgs e)
         {
@@ -157,15 +151,12 @@ namespace Catan3
         private void OnEditPlayers(object sender, RoutedEventArgs e)
         {
 
-
             PlayerEditorWindow window = new();
             PlayerSettingsViewModel viewModel = new(window, PlayerDatabase.AvailablePlayers);
             window.ViewModel = viewModel;
 
-
             window.Activate();
         }
-
         private async void OnLoaded(object sender, RoutedEventArgs e)
         {
             await PlayerDatabase.LoadPlayerDatabase();
@@ -180,11 +171,16 @@ namespace Catan3
                 {
                     NewGame(GameType.Expansion, players);
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     this.TraceMessage($"{ex}");
                 }
             }
+        }
+        private void HamburgerButton_Click(object sender, RoutedEventArgs e)
+        {
+
+            MySplitView.IsPaneOpen = !MySplitView.IsPaneOpen;
         }
     }
 }
