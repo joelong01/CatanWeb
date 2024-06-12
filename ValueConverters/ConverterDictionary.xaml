@@ -15,4 +15,6 @@
     <converters:NullToDefaultValueConverter x:Key="NullToDefaultValueConverter" />
     <converters:DoubleToThickness x:Key="DoubleToThickness" />
     <converters:BrushToColorConverter x:Key="BrushToColorConverter" />
+    <converters:GameStateToTemplateConverter
+            x:Key="GameStateToTemplateConverter" />
 </ResourceDictionary>

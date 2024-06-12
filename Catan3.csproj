@@ -22,12 +22,14 @@
 	  <None Remove="Game\NewGameDlg\NewGameCtrl.xaml" />
 	  <None Remove="MainPage\MainPage.xaml" />
 	  <None Remove="MainPage\MainWindow.xaml" />
+	  <None Remove="Player\PlayerOrder\SetPlayerOrderCtrl.xaml" />
 	  <None Remove="Player\PlayerSettingDlg.xaml" />
 	  <None Remove="Player\PlayerSettingsCtrl.xaml" />
 	  <None Remove="Player\PlayerSettings\PlayerEditorPage.xaml" />
 	  <None Remove="Player\PlayerSettings\PlayerEditorWindow.xaml" />
 	  <None Remove="Player\PlayerSettings\PlayerSettingDlg.xaml" />
 	  <None Remove="Player\PlayerSettings\PlayerSettingsCtrl.xaml" />
+	  <None Remove="Player\SetPlayerOrderCtrl.xaml" />
 	</ItemGroup>
 
 
@@ -171,6 +173,13 @@
 
 
 	<ItemGroup>
+	  <Page Update="Player\SetPlayerOrderCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	</ItemGroup>
+
+
+	<ItemGroup>
 	  <Page Update="Game\NewGameDlg\NewGameCtrl.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
@@ -232,6 +241,13 @@
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
 	  <Page Update="Player\PlayerSettingDlg.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	</ItemGroup>
+
+
+	<ItemGroup>
+	  <Page Update="Player\PlayerOrder\SetPlayerOrderCtrl.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
 	</ItemGroup>

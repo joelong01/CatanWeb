@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Catan.Services;
@@ -51,11 +52,40 @@ namespace Catan3.Models
                 Messenger.Send(new OpenFileResponseMessage(result));
             });
 
-          
+
         }
         public void EndGame()
         {
             Messenger.Send(new EndGame());
+        }
+        /// <summary>
+        ///     called when the users are reordered with drag and drop.
+        /// </summary>
+        /// <exception cref="NotImplementedException"></exception>
+        public void SetPlayerOrder()
+        {
+
+            List<string> viewModelPlayerIds = GameViewModel.Players.Select(player => player.Id).ToList();
+            List<string> gameModelPlayerIds = GameViewModel.GameModel.Players.Select(player => player.Id).ToList();
+
+            if (!viewModelPlayerIds.SequenceEqual(gameModelPlayerIds))
+            {
+                if (GameViewModel.GameModel.GameState == GameState.FinishedRollOrder)
+                {
+                    // in this state, make the GameModel match the GameViewModel, but we need to tell
+                    // the GameController that there is a new order -- it will be logged, etc.
+                    Messenger.Send(new SetPlayerOrderMessage(viewModelPlayerIds));
+                }
+                else
+                {
+                    //
+                    //  we are in the wrong state, set the GameViewModel to match what is in the GameModel
+                    GameViewModel.SetPlayerOrder(GameViewModel.GameModel);
+                }
+            }
+
+
+
         }
     }
 }

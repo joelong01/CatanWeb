@@ -7,8 +7,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" RightTapped="OnRightButtonTapped" KeyUp="OnKeyUp"
-        xmlns:c="using:Catan3.Controls" 
-        xmlns:models="using:Catan3.Models" Loaded="OnLoaded"
+        xmlns:c="using:Catan3.Controls" xmlns:models="using:Catan3.Models"
+        Loaded="OnLoaded"
         d:DataContext="{d:DesignInstance Type=models:GameViewModel}">
     <Page.Resources>
         <Style TargetType="Rectangle" x:Key="RECT_ResourceCard">
@@ -19,13 +19,39 @@
             <Setter Property="RadiusY" Value="5" />
             <Setter Property="Margin" Value="1" />
         </Style>
+        <local:GameStateTemplateSelector x:Key="GameStateTemplateSelector"
+                RollOrderTemplate="{StaticResource RollOrderTemplate}"
+                PlayerStatsTemplate="{StaticResource PlayerStatsTemplate}" />
+        <DataTemplate x:Key="PlayerStatsTemplate"
+                x:DataType="models:PlayerViewModel">
+            <c:PlayerCtrl PlayerViewModel="{x:Bind Mode=OneWay}" />
+        </DataTemplate>
+        <DataTemplate x:Key="RollOrderTemplate"
+                x:DataType="models:PlayerViewModel">
+
+            <StackPanel CornerRadius="5" IsHitTestVisible="True" HorizontalAlignment="Stretch"
+                    BorderBrush="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}" Background="{x:Bind PlayerColors.BackgroundBrush, Mode=OneWay}"
+                    BorderThickness="1">
+
+                <Button Content="Go First" Margin="10" VerticalAlignment="Top"
+                        HorizontalAlignment="Center" Command="{x:Bind GoFirstCommand, Mode=OneWay}" />
+                <Ellipse Width="75" Height="75" Margin="10">
+                    <Ellipse.Fill>
+                        <ImageBrush
+                                ImageSource="{x:Bind CroppedImageUri, Mode=OneWay}" />
+                    </Ellipse.Fill>
+                </Ellipse>
+                <TextBlock Text="{x:Bind Name}" Foreground="White" Margin="10"
+                        HorizontalAlignment="Center" VerticalAlignment="Bottom" />
+            </StackPanel>
+        </DataTemplate>
     </Page.Resources>
     <SplitView x:Name="MySplitView" OpenPaneLength="75" CompactPaneLength="0"
             PanePlacement="Left"
             IsPaneOpen="{x:Bind MainPageModel.ShowCommands, Mode=OneWay}"
             DisplayMode="CompactOverlay">
-        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="{Binding ElementName=PAGE_MainPage, Path=Height, Mode=OneWay}"
-               >
+        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Top"
+                Height="{Binding ElementName=PAGE_MainPage, Path=Height, Mode=OneWay}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -147,12 +173,15 @@
                         GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" />
             </Viewbox>
             <!--The far right column that has the total resources for the game and a list of player information-->
-            <StackPanel Grid.Column="2" HorizontalAlignment="Right" 
+            <StackPanel Grid.Column="2" HorizontalAlignment="Right"
                     Background="Transparent">
                 <c:TrackedResourcesCtrl
                         ResourcesViewModel="{x:Bind MainPageModel.GameViewModel.GameResources, Mode=OneWay}" />
-                <ListView CanReorderItems="True" CanDragItems="True" AllowDrop="True" CornerRadius="5"
-                        ItemsSource="{x:Bind MainPageModel.GameViewModel.Players, Mode=OneWay}">
+                <ListView x:Name="ListView_Players" CanReorderItems="True"
+                        CanDragItems="True" AllowDrop="True" CornerRadius="5"
+                        DragItemsCompleted="ListView_DragItemsCompleted"
+                        ItemsSource="{x:Bind MainPageModel.GameViewModel.Players, Mode=OneWay}"
+                        ItemTemplate="{x:Bind StateToItemTemplate(MainPageModel.GameViewModel.GameModel.GameState), Mode=OneWay}">
                     <ListView.ItemsPanel>
                         <ItemsPanelTemplate>
                             <StackPanel HorizontalAlignment="Stretch"
@@ -162,15 +191,10 @@
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
                             <Setter Property="Padding" Value="0" />
-                        
-                           
+
                         </Style>
                     </ListView.ItemContainerStyle>
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="models:PlayerViewModel">
-                            <c:PlayerCtrl PlayerViewModel="{x:Bind Mode=OneWay}" />
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
+
                 </ListView>
             </StackPanel>
         </Grid>

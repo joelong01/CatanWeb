@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,18 +19,33 @@ using WinUIEx.Messaging;
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 namespace Catan3
 {
-    public partial class SelectPlayerModel(string name, string id, bool selected) : ObservableObject
+    public class GameStateTemplateSelector : DataTemplateSelector
     {
-        [ObservableProperty]
-        private string _name = name;
-        [ObservableProperty]
-        private bool _playing = selected;
-        [ObservableProperty]
-        private string _id = id;
+        public DataTemplate? RollOrderTemplate { get; set; } = null;
+        public DataTemplate? PlayerStatsTemplate { get; set; } = null;
+
+        protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
+        {
+            Debug.Assert(container is not null);
+
+          
+
+            if (container is not null && container is MainPage page)
+            {
+                switch (page.MainPageModel.GameViewModel.GameModel.GameState)
+                {
+                    case GameState.FinishedRollOrder:
+                        return RollOrderTemplate ?? base.SelectTemplateCore(item, container); ;
+                  
+                    default:
+                        return PlayerStatsTemplate ?? base.SelectTemplateCore(item, container); ;
+                }
+            }
+
+            return  base.SelectTemplateCore(item, container); 
+        }
     }
-    /// <summary>
-    /// An empty page that can be used on its own or navigated to within a Frame.
-    /// </summary>
+
     public sealed partial class MainPage : Page
     {
         public MainPage()
@@ -38,6 +54,25 @@ namespace Catan3
 
 
         }
+
+        public DataTemplate? StateToItemTemplate(GameState gameState)
+        {
+            if (gameState != GameState.FinishedRollOrder)
+            {
+                if (this.Resources.TryGetValue("PlayerStatsTemplate", out var playerStatsTemplate))
+                {
+                    return playerStatsTemplate as DataTemplate;
+                }
+            }
+
+            if (this.Resources.TryGetValue("RollOrderTemplate", out var rollOrderTemplate))
+            {
+                return rollOrderTemplate as DataTemplate;
+            }
+
+            return null;
+        }
+
 
         public static readonly DependencyProperty MainPageModelProperty = DependencyProperty.Register("MainPageModel", typeof(MainPageViewModel), typeof(MainPage), new PropertyMetadata(null, MainPageModelChanged));
         public MainPageViewModel MainPageModel
@@ -66,12 +101,31 @@ namespace Catan3
             {
                 MainPageModel.EndGame();
                 MainPageModel.GameViewModel.PropertyChanged -= GameViewModel_PropertyChanged;
+                MainPageModel.GameViewModel.GameModel.PropertyChanged -= GameModel_PropertyChanged;
             }
 
             MainPageModel = new MainPageViewModel(new FileService(), gameType, players);
             MainPageModel.GameViewModel.PropertyChanged += GameViewModel_PropertyChanged;
+            MainPageModel.GameViewModel.GameModel.PropertyChanged += GameModel_PropertyChanged;
+         
             this.DataContext = MainPageModel.GameViewModel;
         }
+        /// <summary>
+        ///     We need to track the GameModel property changes to update the ui.  in particular, ListView.ReorderMode is dependent
+        ///     on GameState, but we can't bind ListView.ReorderMode because it isn't a DependencyProperty
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        /// <exception cref="NotImplementedException"></exception>
+        private void GameModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            //if (e.PropertyName == nameof(GameModel.GameState))
+            //{
+
+            //    this.TraceMessage($"ListView_Players.ReorderMode = {ListView_Players.ReorderMode}");
+            //}
+        }
+
         private async void GameViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(GameViewModel.ErrorMessage) && MainPageModel.GameViewModel.ErrorMessage is not null)
@@ -99,6 +153,44 @@ namespace Catan3
                         this.TraceMessage(MainPageModel.GameViewModel.ErrorMessage.Message);
                     });
                 }
+            }
+            //if (MainPageModel.GameViewModel.GameModel.GameState == GameState.FinishedRollOrder)
+            //{
+            //    Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(async () =>
+            //    {
+            //        await SetPlayerOrder();
+            //    });
+            //}
+            
+        }
+        private static bool showingDialog = false;
+        private async Task SetPlayerOrder()
+        {
+            if (showingDialog) return;
+            try
+            {
+                showingDialog = true;
+
+                SetPlayerOrderCtrl ctrl = new (MainPageModel.GameViewModel.Players);
+              
+                ContentDialog dialog = new()
+                {
+                    Title = "Set Player Order",
+                    Content = ctrl,
+                    CloseButtonText = "Confirm Order",
+                    XamlRoot = this.XamlRoot
+
+
+                };
+                await dialog.ShowAsync();
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"{ex}");
+            }
+            finally
+            {
+                showingDialog = false;
             }
         }
         private async Task ShowMessageDialog(string message, string title)
@@ -181,6 +273,15 @@ namespace Catan3
         {
 
             MySplitView.IsPaneOpen = !MySplitView.IsPaneOpen;
+        }
+
+        private void ListView_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
+        {
+
+            if (MainPageModel is not null)
+            {
+                MainPageModel.SetPlayerOrder();
+            }
         }
     }
 }

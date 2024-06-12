@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using Catan3.Models;
 using Catan3.Utility;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
@@ -8,6 +9,31 @@ using Microsoft.UI.Xaml.Media;
 using Windows.UI;
 namespace Catan3.Converters
 {
+    public class GameStateToTemplateConverter : IValueConverter
+    {
+        public DataTemplate? RollOrderTemplate { get; set; }
+        public DataTemplate? PlayerStatsTemplate { get; set; }
+
+        public object? Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is GameState gameState)
+            {
+                return gameState switch
+                {
+                    GameState.FinishedRollOrder => RollOrderTemplate,
+                    _ => PlayerStatsTemplate,
+                };
+            }
+
+            return PlayerStatsTemplate;
+        }
+
+        public object? ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     public class BrushToColorConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)

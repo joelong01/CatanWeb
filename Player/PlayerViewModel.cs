@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -9,7 +8,6 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.UI;
 namespace Catan3.Models
 {
@@ -69,7 +67,7 @@ namespace Catan3.Models
         ///     thisis the ctor that the JsonSerializer should use when it deserializes the saved player state.
         /// </summary>
         [JsonConstructor]
-        public PlayerViewModel(string id, string name, string imageUri, string croppedImageUri, PlayerColorViewModel playerColors, bool isActive=false)
+        public PlayerViewModel(string id, string name, string imageUri, string croppedImageUri, PlayerColorViewModel playerColors, bool isActive = false)
         {
             Id = id;
             Name = name;
@@ -80,9 +78,10 @@ namespace Catan3.Models
             CreateStats();
         }
 
-        public PlayerViewModel(string id, string name, string imageUri, string croppedImageUri, Color primaryBackground) : 
-                this(id, name, imageUri, croppedImageUri, new PlayerColorViewModel(id, Colors.White, primaryBackground, Colors.Black)) { }
-       
+        public PlayerViewModel(string id, string name, string imageUri, string croppedImageUri, Color primaryBackground) :
+                this(id, name, imageUri, croppedImageUri, new PlayerColorViewModel(id, Colors.White, primaryBackground, Colors.Black))
+        { }
+
 
         private void CreateStats()
         {
@@ -133,10 +132,10 @@ namespace Catan3.Models
         [RelayCommand]
         void GoFirst()
         {
-          
+
             WeakReferenceMessenger.Default.Send(new GoFirstMessage(this.Id));
         }
-        
+
     }
     public enum ColorName { PrimaryBackground, SecondaryBackground, Foreground }
 

@@ -6,12 +6,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
-    <Grid Background="{StaticResource bmMaple}" CornerRadius="5" Margin="5">
+    <Grid Background="{StaticResource bmMaple}" CornerRadius="5" Margin="5" IsHitTestVisible="False">
         <StackPanel>
             <StackPanel Name="SP_FirstRow" Height="45" Orientation="Horizontal" Margin="0,5, 0, 0"
                     HorizontalAlignment="Stretch" Background="Transparent">
                 <Viewbox Stretch="Uniform">
-                    <Button HorizontalContentAlignment="Stretch"
+                    <Button HorizontalContentAlignment="Stretch" IsHitTestVisible="True"
                             VerticalContentAlignment="Stretch" Width="100" Margin="-10"
                             Height="100"
                             Command="{x:Bind PlayerViewModel.GoFirstCommand, Mode=OneWay}">
