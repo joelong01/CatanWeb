@@ -51,7 +51,7 @@ namespace Catan3.Models
                     Targets.Clear();
                     if (message.Owners.Count == 0)
                     {
-                        Targets.Add(new TargetViewModel("Nobody. How Nice!", "Nameless-001"));
+                        Targets.Add(new TargetViewModel("Nobody. How Nice!", null));
                         return;
                     }
                     foreach (var owner in message.Owners)
@@ -78,7 +78,7 @@ namespace Catan3.Models
             Messenger.Send(new RequestTileOwners(this)); ;
         }
         [RelayCommand]
-        public void TargetPicked(string id)
+        public void TargetPicked(string? id)
         {
          //   this.TraceMessage($"targetting {id}");
             this.Messenger.Send<MoveRobberMessage>(new MoveRobberMessage(this.Tile.TileKey, id));

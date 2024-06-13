@@ -37,10 +37,7 @@ namespace Catan3.Player
         public PlayerEditorPage()
         {
             this.InitializeComponent();
-            this.SizeChanged += (object sender, SizeChangedEventArgs e) =>
-            {
-                this.TraceMessage($"W={e.NewSize.Width} H={e.NewSize.Height}");
-            };
+           
         }
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {

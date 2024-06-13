@@ -23,6 +23,13 @@ namespace Catan3
         /// <param name="args">Details about the launch request and process.</param>
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
+#if DEBUG
+            DebugSettings.BindingFailed += (sender, e) =>
+            {
+                System.Diagnostics.Debug.WriteLine(e.Message);
+            };
+#endif
+
             m_window = new MainWindow();
             m_window.Activate();
         }

@@ -52,10 +52,10 @@ namespace Catan3.Models
     {
         public IList<PlayerViewModel> Owners { get; } = players;
     }
-    public class MoveRobberMessage(HexCoordinates coordinates, string targetPlayerId)
+    public class MoveRobberMessage(HexCoordinates coordinates, string? targetPlayerId)
     {
         public HexCoordinates Coordinates { get; } = coordinates;
-        public string TargetPlayerId { get; } = targetPlayerId;
+        public string? TargetPlayerId { get; } = targetPlayerId;
     }
     public class UpdateOrientation(CatanOrientation newOrientation)
     {

@@ -17,11 +17,6 @@ namespace Catan3.Player
             EditorWindow = this;
 
            
-            var windowManger = WindowManager.Get(this);
-            windowManger.IsMaximizable = false;
-            windowManger.IsResizable = false;
-            windowManger.AppWindow.Resize(new SizeInt32(975, 1200));
-            windowManger.PersistenceId = "Catan_Player_Editor";
             
         }
 

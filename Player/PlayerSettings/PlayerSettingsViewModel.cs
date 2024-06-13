@@ -82,7 +82,7 @@ namespace Catan3.Models
         //
         //  update the Colors that the EditPlayer UI binds to when the selected player changes
         //  this is for the part of the UI that is used to pick which color is being modified
-        //  Note that the last onw ( EditPlayerColors[2]) is used to update the colors.
+        //  Note that the last one ( EditPlayerColors[2]) is used to update the colors.
         //  in order to see the binding of the text, we make the Foreground the PrimaryBackground and
         //  the Background equal to the Foreground.
         partial void OnSelectedPlayerChanged(PlayerViewModel? oldValue, PlayerViewModel newValue)

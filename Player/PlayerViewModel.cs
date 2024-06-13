@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -48,6 +49,19 @@ namespace Catan3.Models
         [JsonIgnore]
         public static PlayerViewModel Default { get; } = new("Nameless-001", "Nameless", "ms-appx:///Assets/guest.jpg", "ms-appx:///Assets/guest.jpg", Colors.HotPink);
 
+        partial void OnCroppedImageUriChanged(string? oldValue, string newValue)
+        {
+           
+            this.TraceMessage($"CroppedImageUri. Old={oldValue} new={newValue}");
+            if (newValue is null)
+            {
+                this.TraceMessage("null image uri!");
+            }
+            if (newValue == "ms-appx:///Assets/DefaultPlayers/Joe.jpg")
+            {
+                this.TraceMessage("huh?");
+            }
+        }
 
         public void InitializeAfterDeserialization()
         {
@@ -65,6 +79,7 @@ namespace Catan3.Models
             PlayerColors = playerColors;
             IsActive = isActive;
             CreateStats();
+            OnPropertyChanged(nameof(CroppedImageUri));
         }
         public PlayerViewModel(string id, string name, string imageUri, string croppedImageUri, Color primaryBackground) :
                 this(id, name, imageUri, croppedImageUri, new PlayerColorViewModel(id, Colors.White, primaryBackground, Colors.Black))

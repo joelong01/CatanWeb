@@ -25,15 +25,14 @@ namespace Catan3.Models
     }
     public partial class TargetViewModel : ObservableObject, IEquatable<TargetViewModel?>
     {
-        // Auto-generated properties by CommunityToolkit MVVM source generators.
         [ObservableProperty]
         private string name;
         [ObservableProperty]
-        private string id;
-        public TargetViewModel(string name, string playerid)
+        private string? id;
+        public TargetViewModel(string name, string? playerid)
         {
             Name = $"Target: {name}" ?? throw new ArgumentNullException(nameof(name), "Name cannot be null.");
-            Id = playerid ?? throw new ArgumentNullException(nameof(playerid), "Player ID cannot be null.");
+            Id = playerid;
         }
         public override bool Equals(object? obj)
         {
@@ -46,6 +45,7 @@ namespace Catan3.Models
         }
         public override int GetHashCode()
         {
+            if (Id is null) return 0;
             // Use the property; ensures we're using the correct getter
             return Id.GetHashCode();
         }

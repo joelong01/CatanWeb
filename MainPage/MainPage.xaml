@@ -59,7 +59,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <AppBarButton Icon="GlobalNavigationButton"
-                    Command="{x:Bind MainPageModel.ToggleShowCommandsCommand, Mode=OneWay}"
+                    Click="OnShowMenu"
                     HorizontalAlignment="Left" VerticalAlignment="Top" />
             <Viewbox Stretch="Uniform" HorizontalAlignment="Left"
                     Grid.Column="0" Width="400" VerticalAlignment="Top"

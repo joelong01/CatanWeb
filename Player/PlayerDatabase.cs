@@ -49,15 +49,18 @@ namespace Catan3
             return newFqn;
         }
         public static List<PlayerViewModel> AvailablePlayers { get; private set; } = [];
-        public static List<PlayerViewModel> DefaultPlayers { get; } =
+        public static List<PlayerViewModel> DefaultPlayers()
+        {
+            return
             [
-                new ("Joe-001",    "Joe",     "ms-appx:///Assets/DefaultPlayers/Joe.jpg",    "ms-appx:///Assets/DefaultPlayers/Joe.jpg",    Colors.Blue),
-                new ("Dodgy-001",  "Dodgy",   "ms-appx:///Assets/DefaultPlayers/Dodgy.png",  "ms-appx:///Assets/DefaultPlayers/Dodgy.png",  Colors.Red),
-                new ("Doug-001",   "Doug",    "ms-appx:///Assets/DefaultPlayers/Doug.jpg",   "ms-appx:///Assets/DefaultPlayers/Doug.jpg",   Colors.Green),
-                new ("Ryan-001",   "Ryan",    "ms-appx:///Assets/DefaultPlayers/Ryan.jpg",   "ms-appx:///Assets/DefaultPlayers/Ryan.jpg",   Colors.DarkGray),
-                new ("Adrian-001", "Adrian",  "ms-appx:///Assets/DefaultPlayers/Adrian.jpg", "ms-appx:///Assets/DefaultPlayers/Adrian.jpg", Colors.Purple),
-                new ("Chris-001",  "Chris",   "ms-appx:///Assets/DefaultPlayers/Chris.jpg",  "ms-appx:///Assets/DefaultPlayers/Chris.jpg",  Colors.Black)
+                new("Joe-001", "Joe", "ms-appx:///Assets/DefaultPlayers/Joe.jpg", "ms-appx:///Assets/DefaultPlayers/Joe.jpg", Colors.Blue),
+                new("Dodgy-001", "Dodgy", "ms-appx:///Assets/DefaultPlayers/Dodgy.png", "ms-appx:///Assets/DefaultPlayers/Dodgy.png", Colors.Red),
+                new("Doug-001", "Doug", "ms-appx:///Assets/DefaultPlayers/Doug.jpg", "ms-appx:///Assets/DefaultPlayers/Doug.jpg", Colors.Green),
+                new("Ryan-001", "Ryan", "ms-appx:///Assets/DefaultPlayers/Ryan.jpg", "ms-appx:///Assets/DefaultPlayers/Ryan.jpg", Colors.DarkGray),
+                new("Adrian-001", "Adrian", "ms-appx:///Assets/DefaultPlayers/Adrian.jpg", "ms-appx:///Assets/DefaultPlayers/Adrian.jpg", Colors.Purple),
+                new("Chris-001", "Chris", "ms-appx:///Assets/DefaultPlayers/Chris.jpg", "ms-appx:///Assets/DefaultPlayers/Chris.jpg", Colors.Black)
                     ];
+        }
         public static PlayerViewModel? FromId(string id)
         {
             return AvailablePlayers.FirstOrDefault(x => x.Id == id);
@@ -91,15 +94,25 @@ namespace Catan3
             }
             catch (UnauthorizedAccessException ex)
             {
-                Debug.WriteLine($"Access denied: {ex}");
+                App.Current.TraceMessage($"Access denied: {ex}");
             }
             catch (IOException ex)
             {
-                Debug.WriteLine($"I/O error: {ex}");
+                App.Current.TraceMessage($"I/O error: {ex}");
             }
             catch (Exception ex)
             {
-                PlayersFileName.TraceMessage($"Exception: {ex}");
+                // Log detailed information about the exception
+                App.Current.TraceMessage($"Exception: {ex.Message}");
+                App.Current.TraceMessage($"Stack Trace: {ex.StackTrace}");
+
+                // If the exception is a Win32Exception, you can log specific details
+                if (ex.InnerException is System.ComponentModel.Win32Exception win32Exception)
+                {
+                    App.Current.TraceMessage($"Win32 Error Code: {win32Exception.ErrorCode}");
+                    App.Current.TraceMessage($"Win32 Message: {win32Exception.Message}");
+                }
+
             }
 
         }
@@ -113,7 +126,7 @@ namespace Catan3
             try
             {
                 List<PlayerViewModel> result = [];
-                foreach (var player in DefaultPlayers)
+                foreach (var player in DefaultPlayers())
                 {
                     await CopyResourceFile(folder, player.CroppedImageUri, $"{player.Id}_cropped.png");
                     await CopyResourceFile(folder, player.ImageUri, $"{player.Id}_image.png");

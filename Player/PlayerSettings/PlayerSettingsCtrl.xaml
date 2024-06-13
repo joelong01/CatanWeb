@@ -10,13 +10,14 @@
     <UserControl.Resources>
         <DataTemplate x:Key="EditPlayerDataTemplate"
                 x:DataType="m:PlayerViewModel">
-            <Grid HorizontalAlignment="Stretch" Height="120"
+            <Grid HorizontalAlignment="Stretch" Height="120" IsHitTestVisible="True"
                     Background="{x:Bind PlayerColors.BackgroundBrush, Mode=OneWay}">
-                <Ellipse Name="Player_Picture" HorizontalAlignment="Center"
+                <Ellipse Name="Player_Picture" HorizontalAlignment="Center" PointerPressed="OnPlayerPicturePointerPressed"
                         VerticalAlignment="Top" Width="100" Height="100"
                         Stroke="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}">
                     <Ellipse.Fill>
-                        <ImageBrush
+                        <ImageBrush ImageOpened="OnImageOpened"
+                                ImageFailed="OnImageFailed"
                                 ImageSource="{x:Bind CroppedImageUri, Mode=OneWay}" />
                     </Ellipse.Fill>
                 </Ellipse>
@@ -26,7 +27,7 @@
                         Visibility="{x:Bind Selected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                         VerticalAlignment="Top" FontSize="16" FontWeight="Bold"
                         TextLineBounds="Tight" />
-                <TextBlock Text="{x:Bind Name, Mode=OneWay}"
+                <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontSize="22" Margin="0,0,0,-5"
                         HorizontalAlignment="Center" VerticalAlignment="Bottom" />
             </Grid>
         </DataTemplate>
@@ -48,12 +49,12 @@
             </Grid>
         </DataTemplate>
     </UserControl.Resources>
-    <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch"
+    <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch" 
             VerticalAlignment="Stretch">
-        <StackPanel HorizontalAlignment="Left" Orientation="Horizontal"
-                Margin="10" Width="791" BorderBrush="White" BorderThickness="1"
+        <StackPanel HorizontalAlignment="Left" Orientation="Horizontal" Width="800" Margin="15,10,0,0"
+                BorderBrush="White" BorderThickness="1"
                 VerticalAlignment="Top">
-            <ListView Margin="10" HorizontalAlignment="Left" Width="110"
+            <ListView  HorizontalAlignment="Left" Width="110"
                     SelectionMode="Single" VerticalAlignment="Top"
                     Background="Transparent"
                     SelectedItem="{x:Bind ViewModel.SelectedPlayer, Mode=TwoWay}"
@@ -71,11 +72,10 @@
                 </ListView.ItemContainerStyle>
             </ListView>
             <StackPanel Margin="10">
-                <c:PlayerCtrl
-                        PlayerViewModel="{x:Bind ViewModel.SelectedPlayer, Mode=OneWay}" />
+             
                 <StackPanel Orientation="Horizontal" Margin="0,10,0,10">
-                    <TextBlock Text="Name:" VerticalAlignment="Center" />
-                    <TextBox Width="255" VerticalAlignment="Center"
+                    <TextBlock Text="Name:" VerticalAlignment="Center" FontSize="22" />
+                    <TextBox Width="255" VerticalAlignment="Center" FontSize="22"
                             Margin="5,0,0,0"
                             Text="{x:Bind ViewModel.SelectedPlayer.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
@@ -115,8 +115,9 @@
                     <StackPanel Grid.Row="1" HorizontalAlignment="Left"
                             Margin="0,10,10,0" Orientation="Vertical"
                             Spacing="8">
-                        <Button Command="{x:Bind ViewModel.LoadImageCommand}" Content="Pick image"
-                                Width="200" Height="50" FontSize="22" />
+                        <Button Command="{x:Bind ViewModel.LoadImageCommand}"
+                                Content="Pick image" Width="200" Height="50"
+                                FontSize="22" />
                         <Button Click="SaveButton_Click" Content="Save"
                                 Width="200" Height="50" FontSize="22" />
                         <Button Click="ResetButton_Click" Content="Reset"

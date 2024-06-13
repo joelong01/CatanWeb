@@ -1,11 +1,14 @@
 using System;
-using System.IO;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using Catan3.Models;
 using Catan3.Player;
 using CommunityToolkit.WinUI.UI.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Shapes;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -30,12 +33,43 @@ namespace Catan3.Controls
         private static void ViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as PlayerSettingsCtrl;
-            var depPropValue = (PlayerSettingsViewModel)e.NewValue;
-            depPropClass?.SetViewModel(depPropValue);
+
+            depPropClass?.SetViewModel(( PlayerSettingsViewModel )e.OldValue, ( PlayerSettingsViewModel )e.NewValue);
         }
-        private void SetViewModel(PlayerSettingsViewModel value)
+        private void SetViewModel(PlayerSettingsViewModel? oldViewModel, PlayerSettingsViewModel? newViewModel)
         {
+            if (oldViewModel is not null)
+            {
+                oldViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            }
+            if (newViewModel is not null)
+            {
+                newViewModel.PropertyChanged += ViewModel_PropertyChanged;
+            }
         }
+
+        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(PlayerSettingsViewModel.SelectedPlayer))
+            {
+                if (ViewModel.SelectedPlayer != null)
+                {
+                    string tempUri = ViewModel.SelectedPlayer.CroppedImageUri ;
+
+
+                    // Force reload by setting DecodePixelWidth
+                    //BitmapImage bitmapImage = new BitmapImage
+                    //{
+                    //    UriSource = new Uri(tempUri),
+                    //    DecodePixelWidth = 100 // or any value appropriate for your application
+                    //};
+
+                    ViewModel.SelectedPlayer.CroppedImageUri = "ms-appx:///Assets/guest.jpg";
+                    ViewModel.SelectedPlayer.CroppedImageUri = tempUri; // Reset to original value to trigger binding update
+                }
+            }
+        }
+
         private void ImageCropper_DragOver(object sender, DragEventArgs e)
         {
             e.AcceptedOperation = DataPackageOperation.Copy;
@@ -85,9 +119,9 @@ namespace Catan3.Controls
         {
             // Ensure the filename is correctly assigned to the property
             var filePath = PlayerDatabase.GetNextCroppedFileName(ViewModel.SelectedPlayer.Id);
-            string fileName = Path.GetFileName(filePath);
+            string fileName = System.IO.Path.GetFileName(filePath);
 
-            var folder = await KnownFolders.DocumentsLibrary.CreateFolderAsync(Path.Join("Catan Saved Games", "Players"), CreationCollisionOption.OpenIfExists);
+            var folder = await KnownFolders.DocumentsLibrary.CreateFolderAsync(System.IO.Path.Join("Catan Saved Games", "Players"), CreationCollisionOption.OpenIfExists);
             var imageFile = await folder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
             using (IRandomAccessStream fileStream = await imageFile.OpenAsync(FileAccessMode.ReadWrite))
             {
@@ -106,7 +140,7 @@ namespace Catan3.Controls
                 }
             }
         }
-       
+
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             await SaveCroppedImage();
@@ -116,5 +150,53 @@ namespace Catan3.Controls
             this.CTRL_ImageCropper.Reset();
         }
 
+        private void OnImageOpened(object sender, RoutedEventArgs e)
+        {
+            if (sender is ImageBrush brush)
+            {
+                if (brush.ImageSource is BitmapImage bitmapImage)
+                {
+                    // Get the URI of the image
+                    var uri = bitmapImage.UriSource;
+
+                    // Log or handle the URI
+                    this.TraceMessage($"Image Loaded: {uri}");
+                }
+            }
+        }
+
+        private void OnImageFailed(object sender, ExceptionRoutedEventArgs e)
+        {
+            if (sender is ImageBrush brush)
+            {
+                if (brush.ImageSource is BitmapImage bitmapImage)
+                {
+                    // Get the URI of the image
+                    var uri = bitmapImage.UriSource;
+
+                    // Log or handle the URI
+                    this.TraceMessage($"Failed to Load: {uri}");
+                }
+            }
+        }
+
+        private void OnPlayerPicturePointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            //if (ViewModel.SelectedPlayer != null)
+            //{
+            //    string tempUri = ViewModel.SelectedPlayer.CroppedImageUri ;
+       
+
+            //    // Force reload by setting DecodePixelWidth
+            //    //BitmapImage bitmapImage = new BitmapImage
+            //    //{
+            //    //    UriSource = new Uri(tempUri),
+            //    //    DecodePixelWidth = 100 // or any value appropriate for your application
+            //    //};
+
+            //    ViewModel.SelectedPlayer.CroppedImageUri = "ms-appx:///Assets/guest.jpg";
+            //    ViewModel.SelectedPlayer.CroppedImageUri = tempUri; // Reset to original value to trigger binding update
+            //}
+        }
     }
 }

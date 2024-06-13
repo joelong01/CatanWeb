@@ -1,23 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Catan.Services;
 using Catan3.Controls;
 using Catan3.Models;
 using Catan3.Player;
-using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Windows.Security.Cryptography.Core;
-using WinUIEx;
-using WinUIEx.Messaging;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 namespace Catan3
@@ -91,21 +84,32 @@ namespace Catan3
                 ToggleTitleBar();
                 e.Handled = true;
             }
+            if (e.Key == Windows.System.VirtualKey.Escape)
+            {
+                HideMenu();
+            }
         }
         private void NewGame(GameType gameType, IList<PlayerViewModel> players)
         {
-            if (MainPageModel is not null)
+            try
             {
-                MainPageModel.EndGame();
-                MainPageModel.GameViewModel.PropertyChanged -= GameViewModel_PropertyChanged;
-             
+                if (MainPageModel is not null)
+                {
+                    MainPageModel.EndGame();
+                    MainPageModel.GameViewModel.PropertyChanged -= GameViewModel_PropertyChanged;
+
+                }
+                MainPageModel = new MainPageViewModel(new FileService(), gameType, players);
+                MainPageModel.GameViewModel.PropertyChanged += GameViewModel_PropertyChanged;
+
+                this.DataContext = MainPageModel.GameViewModel;
             }
-            MainPageModel = new MainPageViewModel(new FileService(), gameType, players);
-            MainPageModel.GameViewModel.PropertyChanged += GameViewModel_PropertyChanged;
-        
-            this.DataContext = MainPageModel.GameViewModel;
+            finally
+            {
+                HideMenu();
+            }
         }
-      
+
         private async void GameViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(GameViewModel.ErrorMessage) && MainPageModel.GameViewModel.ErrorMessage is not null)
@@ -134,9 +138,9 @@ namespace Catan3
                     });
                 }
             }
-           
+
         }
-        
+
         private async Task ShowMessageDialog(string message, string title)
         {
             ContentDialog dialog = new()
@@ -166,12 +170,16 @@ namespace Catan3
                 {
                     this.TraceMessage($"{ex}");
                 }
+                finally
+                {
+                    HideMenu();
+                }
             }
         }
         private void OnHitMe(object sender, RoutedEventArgs rea)
         {
             if (MainPageModel.GameViewModel is null) return;
-            MainPageModel.ShowCommands = false;
+            HideMenu();
         }
 
         private void OnEditPlayers(object sender, RoutedEventArgs e)
@@ -180,11 +188,12 @@ namespace Catan3
             PlayerSettingsViewModel viewModel = new(window, PlayerDatabase.AvailablePlayers);
             window.ViewModel = viewModel;
             window.Activate();
+            HideMenu();
         }
         private async void OnLoaded(object sender, RoutedEventArgs e)
         {
             await PlayerDatabase.LoadPlayerDatabase();
-           
+
             //  
             //  Uncomment if you want to have the game launched with a game started
 
@@ -193,7 +202,7 @@ namespace Catan3
             //{
             //    players.RemoveAt(players.Count - 1);
             //}
-     
+
             //if (players.Count > 0)
             //{
             //    try
@@ -206,13 +215,14 @@ namespace Catan3
             //    }
             //}
         }
-       
+
         private void ListView_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
         {
             MainPageModel?.SetPlayerOrder();
         }
         private async void OnRunTests(object sender, RoutedEventArgs e)
         {
+            HideMenu();
             try
             {
                 var json = JsonSerializer.Serialize(PlayerDatabase.AvailablePlayers[0]);
@@ -245,7 +255,7 @@ namespace Catan3
         {
             ToggleTitleBar();
         }
-        private static void ToggleTitleBar()
+        private void ToggleTitleBar()
         {
             if (MainWindow.Instance is not null)
             {
@@ -257,6 +267,41 @@ namespace Catan3
                 {
                     MainWindow.Instance.PresenterKind = AppWindowPresenterKind.Overlapped;
                 }
+            }
+            HideMenu();
+        }
+        /// <summary>
+        ///     When you fist startup, there is no MainPageModel, so we bind to a click event
+        ///     if their is a MainPageModel, then we set the property so that the menu is shown
+        ///     if there isn't we show the menu.  this way setting the flag in the model will
+        ///     properly open and close the menu so we'll be able to close it after a command
+        /// </summary>
+        private void OnShowMenu(object sender, RoutedEventArgs e)
+        {
+            ShowMenu();
+        }
+
+        private void ShowMenu()
+        {
+            if (MainPageModel is not null)
+            {
+                MainPageModel.ShowCommands = true ;
+            }
+            else
+            {
+                MySplitView.IsPaneOpen = true;
+            }
+        }
+
+        private void HideMenu()
+        {
+            if (MainPageModel is not null)
+            {
+                MainPageModel.ShowCommands = false;
+            }
+            else
+            {
+                MySplitView.IsPaneOpen = false;
             }
         }
     }
