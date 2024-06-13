@@ -47,8 +47,6 @@ namespace Catan3.Models
             this.GameModel = gameModel; // triggers OnGameModelChanged
         }
 
-
-
         partial void OnGameModelChanged(GameModel? oldValue, GameModel newValue)
         {
             if (newValue.GameType != this.GameType) throw new GameException("Create new one instead of updating this one");
@@ -126,7 +124,6 @@ namespace Catan3.Models
             {
                 var unspent = currentPlayer.UnspentEntitlements.Count( e => e == gameModel.EntitlementPurchaseModel[i].Entitlement );
                 this.PurchasableEntitlements[i].Merge(gameModel.EntitlementPurchaseModel[i], unspent, this.CurrentPlayer.PlayerColors.ForegroundBrush, this.CurrentPlayer.PlayerColors.BackgroundBrush);
-
             }
         }
         private void FixupState(GameModel gameModel)
@@ -184,9 +181,7 @@ namespace Catan3.Models
         {
             Debug.Assert(this.Players.Count == gameModel.Players.Count);
             Debug.Assert(this.Players.Count > 0);
-
             SetPlayerOrder(gameModel);
-
             for (int i = 0; i < Players.Count; i++)
             {
                 Players[i].Player = gameModel.Players[i]; // triggers PlayerViewModel.PlayerChanged
@@ -204,11 +199,9 @@ namespace Catan3.Models
             // make the GameViewModel.Players collection match the order of the GameModel.Players
             for (int order = 0; order < gameModel.Players.Count; order++)
             {
-
                 var playerViewModel = Players.First((p)=> p.Id == gameModel.Players[order].Id) ?? throw new GameException($"Cannot find PlayerId {gameModel.Players[order].Id} in the playing players.  bad. very bad.");
                 orderedPlayerList.Add(playerViewModel);
             }
-
             for (int i = 0; i < Players.Count; ++i)
             {
                 if (Players[i].Id != gameModel.Players[i].Id)
@@ -217,9 +210,7 @@ namespace Catan3.Models
                 }
             }
 
-
         }
-
         private void MergeTiles(GameModel gameModel)
         {
             Contract.Assert(BoardInfo is not null);

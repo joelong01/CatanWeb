@@ -21,12 +21,10 @@
                                     VerticalAlignment="Stretch"
                                     BorderBrush="{x:Bind PlayerViewModel.PlayerColors.ForegroundBrush, Mode=OneWay}"
                                     BorderThickness="1">
-
                                 <Grid.Background>
                                     <ImageBrush
                                             ImageSource="{x:Bind PlayerViewModel.CroppedImageUri, Mode=OneWay}" />
                                 </Grid.Background>
-
                             </Grid>
                         </Button.Content>
                     </Button>

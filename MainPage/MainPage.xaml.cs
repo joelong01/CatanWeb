@@ -4,16 +4,19 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Catan.Services;
 using Catan3.Controls;
 using Catan3.Models;
 using Catan3.Player;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.Security.Cryptography.Core;
+using WinUIEx;
 using WinUIEx.Messaging;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -23,12 +26,9 @@ namespace Catan3
     {
         public DataTemplate? RollOrderTemplate { get; set; } = null;
         public DataTemplate? PlayerStatsTemplate { get; set; } = null;
-
         protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
         {
             Debug.Assert(container is not null);
-
-          
 
             if (container is not null && container is MainPage page)
             {
@@ -36,25 +36,20 @@ namespace Catan3
                 {
                     case GameState.FinishedRollOrder:
                         return RollOrderTemplate ?? base.SelectTemplateCore(item, container); ;
-                  
                     default:
                         return PlayerStatsTemplate ?? base.SelectTemplateCore(item, container); ;
                 }
             }
-
-            return  base.SelectTemplateCore(item, container); 
+            return base.SelectTemplateCore(item, container);
         }
     }
-
     public sealed partial class MainPage : Page
     {
         public MainPage()
         {
             this.InitializeComponent();
 
-
         }
-
         public DataTemplate? StateToItemTemplate(GameState gameState)
         {
             if (gameState != GameState.FinishedRollOrder)
@@ -64,15 +59,12 @@ namespace Catan3
                     return playerStatsTemplate as DataTemplate;
                 }
             }
-
             if (this.Resources.TryGetValue("RollOrderTemplate", out var rollOrderTemplate))
             {
                 return rollOrderTemplate as DataTemplate;
             }
-
             return null;
         }
-
 
         public static readonly DependencyProperty MainPageModelProperty = DependencyProperty.Register("MainPageModel", typeof(MainPageViewModel), typeof(MainPage), new PropertyMetadata(null, MainPageModelChanged));
         public MainPageViewModel MainPageModel
@@ -94,6 +86,11 @@ namespace Catan3
         }
         private void OnKeyUp(object sender, KeyRoutedEventArgs e)
         {
+            if (e.Key == Windows.System.VirtualKey.F11)
+            {
+                ToggleTitleBar();
+                e.Handled = true;
+            }
         }
         private void NewGame(GameType gameType, IList<PlayerViewModel> players)
         {
@@ -101,31 +98,14 @@ namespace Catan3
             {
                 MainPageModel.EndGame();
                 MainPageModel.GameViewModel.PropertyChanged -= GameViewModel_PropertyChanged;
-                MainPageModel.GameViewModel.GameModel.PropertyChanged -= GameModel_PropertyChanged;
+             
             }
-
             MainPageModel = new MainPageViewModel(new FileService(), gameType, players);
             MainPageModel.GameViewModel.PropertyChanged += GameViewModel_PropertyChanged;
-            MainPageModel.GameViewModel.GameModel.PropertyChanged += GameModel_PropertyChanged;
-         
+        
             this.DataContext = MainPageModel.GameViewModel;
         }
-        /// <summary>
-        ///     We need to track the GameModel property changes to update the ui.  in particular, ListView.ReorderMode is dependent
-        ///     on GameState, but we can't bind ListView.ReorderMode because it isn't a DependencyProperty
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        /// <exception cref="NotImplementedException"></exception>
-        private void GameModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            //if (e.PropertyName == nameof(GameModel.GameState))
-            //{
-
-            //    this.TraceMessage($"ListView_Players.ReorderMode = {ListView_Players.ReorderMode}");
-            //}
-        }
-
+      
         private async void GameViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(GameViewModel.ErrorMessage) && MainPageModel.GameViewModel.ErrorMessage is not null)
@@ -154,45 +134,9 @@ namespace Catan3
                     });
                 }
             }
-            //if (MainPageModel.GameViewModel.GameModel.GameState == GameState.FinishedRollOrder)
-            //{
-            //    Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(async () =>
-            //    {
-            //        await SetPlayerOrder();
-            //    });
-            //}
-            
+           
         }
-        private static bool showingDialog = false;
-        private async Task SetPlayerOrder()
-        {
-            if (showingDialog) return;
-            try
-            {
-                showingDialog = true;
-
-                SetPlayerOrderCtrl ctrl = new (MainPageModel.GameViewModel.Players);
-              
-                ContentDialog dialog = new()
-                {
-                    Title = "Set Player Order",
-                    Content = ctrl,
-                    CloseButtonText = "Confirm Order",
-                    XamlRoot = this.XamlRoot
-
-
-                };
-                await dialog.ShowAsync();
-            }
-            catch (Exception ex)
-            {
-                this.TraceMessage($"{ex}");
-            }
-            finally
-            {
-                showingDialog = false;
-            }
-        }
+        
         private async Task ShowMessageDialog(string message, string title)
         {
             ContentDialog dialog = new()
@@ -227,60 +171,92 @@ namespace Catan3
         private void OnHitMe(object sender, RoutedEventArgs rea)
         {
             if (MainPageModel.GameViewModel is null) return;
-
             MainPageModel.ShowCommands = false;
         }
-        private void OnUpdateLayout(object sender, RoutedEventArgs e)
-        {
-            if (MainPageModel is null) return;
-            if (MainPageModel.GameViewModel is null) return;
-            Debug.Assert(MainPageModel.GameViewModel.BoardInfo is not null);
-            Debug.Assert(MainPageModel.GameViewModel.BoardInfo.Layout is not null);
-            MainPageModel.GameViewModel.BoardInfo.Layout.OuterHexSize++;
-            MainPageModel.GameViewModel.BoardInfo.Layout.OuterHexSize--;
-            //  MainPageModel.GameViewModel.UpdateLayout();
-        }
+
         private void OnEditPlayers(object sender, RoutedEventArgs e)
         {
-
             PlayerEditorWindow window = new();
             PlayerSettingsViewModel viewModel = new(window, PlayerDatabase.AvailablePlayers);
             window.ViewModel = viewModel;
-
             window.Activate();
         }
         private async void OnLoaded(object sender, RoutedEventArgs e)
         {
             await PlayerDatabase.LoadPlayerDatabase();
-            List<PlayerViewModel> players = [..PlayerDatabase.AvailablePlayers];
-            while (players.Count > 0 && players.Count > 5)
-            {
-                players.RemoveAt(players.Count - 1);
-            }
-            if (players.Count > 0)
-            {
-                try
-                {
-                    NewGame(GameType.Expansion, players);
-                }
-                catch (Exception ex)
-                {
-                    this.TraceMessage($"{ex}");
-                }
-            }
-        }
-        private void HamburgerButton_Click(object sender, RoutedEventArgs e)
-        {
+           
+            //  
+            //  Uncomment if you want to have the game launched with a game started
 
-            MySplitView.IsPaneOpen = !MySplitView.IsPaneOpen;
+            //List<PlayerViewModel> players = [..PlayerDatabase.AvailablePlayers];
+            //while (players.Count > 0 && players.Count > 5)
+            //{
+            //    players.RemoveAt(players.Count - 1);
+            //}
+     
+            //if (players.Count > 0)
+            //{
+            //    try
+            //    {
+            //        NewGame(GameType.Expansion, players);
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        this.TraceMessage($"{ex}");
+            //    }
+            //}
         }
-
+       
         private void ListView_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
         {
-
-            if (MainPageModel is not null)
+            MainPageModel?.SetPlayerOrder();
+        }
+        private async void OnRunTests(object sender, RoutedEventArgs e)
+        {
+            try
             {
-                MainPageModel.SetPlayerOrder();
+                var json = JsonSerializer.Serialize(PlayerDatabase.AvailablePlayers[0]);
+                var cpy = JsonSerializer.Deserialize<PlayerViewModel>(json);
+                if (cpy is null)
+                {
+                    this.TraceMessage("FAILED to deserialize PlayerViewModel");
+                    return;
+                }
+                this.TraceMessage($"{cpy.Id}");
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"FAILED to deserialize PlayerViewModel: {ex}");
+            }
+            try
+            {
+                await PlayerDatabase.LoadPlayerDatabase();
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"FAILED ayerDatabase.LoadPlayerDatabase(): {ex}");
+            }
+        }
+        private void OnClose(object sender, RoutedEventArgs e)
+        {
+            App.Current.Exit();
+        }
+        private void OnToggleTitleBar(object sender, RoutedEventArgs e)
+        {
+            ToggleTitleBar();
+        }
+        private static void ToggleTitleBar()
+        {
+            if (MainWindow.Instance is not null)
+            {
+                if (MainWindow.Instance.PresenterKind != AppWindowPresenterKind.FullScreen)
+                {
+                    MainWindow.Instance.PresenterKind = AppWindowPresenterKind.FullScreen;
+                }
+                else
+                {
+                    MainWindow.Instance.PresenterKind = AppWindowPresenterKind.Overlapped;
+                }
             }
         }
     }

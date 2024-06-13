@@ -5,8 +5,10 @@ namespace Catan3
 {
     public partial class MainWindow : WindowEx
     {
+        public static MainWindow? Instance { get; private set; } = null;
         public MainWindow()
         {
+            Instance = this;
             this.InitializeComponent();
            
             this.Content = new MainPage(); // Set MainPage as the content of MainWindow

@@ -96,7 +96,6 @@ namespace Catan3.Models
         public string CallerLineNumber { get; } = cln.ToString();
         public string CallerFilePath { get; } = cfp;
         public ErrorLevel ErrorLevel { get; } = errorLevel;
-
     }
     // 
     // we can update the player colors "on the fly".  Normally, we would subscribe to the change notification event an update the bindings
@@ -107,10 +106,8 @@ namespace Catan3.Models
     // system and publish an event that says the players colors changed.
     public class PlayerColorChanged(PlayerColorViewModel colors)
     {
-
         public PlayerColorViewModel PlayerColors { get; } = colors;
     }
-
     // Message to request opening a file with specified filters
     public class OpenFileRequestMessage(WindowEx parent, IList<string> filters)
     {
@@ -122,14 +119,11 @@ namespace Catan3.Models
     {
         public StorageFile? File { get; } = file;
     }
-
     //
     // message to make a player go first
     public class GoFirstMessage(string playerId)
     {
         public string PlayerId { get; } = playerId;
     }
-
-
 
 }

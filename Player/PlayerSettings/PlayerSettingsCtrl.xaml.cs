@@ -11,10 +11,8 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using WinRT.Interop;
-
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
-
 namespace Catan3.Controls
 {
     public sealed partial class PlayerSettingsCtrl : UserControl
@@ -37,9 +35,7 @@ namespace Catan3.Controls
         }
         private void SetViewModel(PlayerSettingsViewModel value)
         {
-
         }
-
         private void ImageCropper_DragOver(object sender, DragEventArgs e)
         {
             e.AcceptedOperation = DataPackageOperation.Copy;
@@ -68,7 +64,6 @@ namespace Catan3.Controls
         }
         private async Task PickImage()
         {
-
             var filePicker = new FileOpenPicker
             {
                 ViewMode = PickerViewMode.Thumbnail,
@@ -92,10 +87,8 @@ namespace Catan3.Controls
             var filePath = PlayerDatabase.GetNextCroppedFileName(ViewModel.SelectedPlayer.Id);
             string fileName = Path.GetFileName(filePath);
 
-
             var folder = await KnownFolders.DocumentsLibrary.CreateFolderAsync(Path.Join("Catan Saved Games", "Players"), CreationCollisionOption.OpenIfExists);
             var imageFile = await folder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
-
             using (IRandomAccessStream fileStream = await imageFile.OpenAsync(FileAccessMode.ReadWrite))
             {
                 try
@@ -113,7 +106,6 @@ namespace Catan3.Controls
                 }
             }
         }
-
        
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
@@ -123,7 +115,6 @@ namespace Catan3.Controls
         {
             this.CTRL_ImageCropper.Reset();
         }
-
 
     }
 }

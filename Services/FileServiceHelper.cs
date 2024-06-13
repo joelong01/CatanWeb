@@ -6,7 +6,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Windows.Storage;
 using WinUIEx;
-
 namespace Catan3.Services
 {
     /// <summary>
@@ -22,18 +21,14 @@ namespace Catan3.Services
         public async Task<StorageFile?> GetFileAsync(WindowEx parent, IList<string> filters)
         {
             var tcs = new TaskCompletionSource<StorageFile?>();
-
             void MessageHandler(object recipient, OpenFileResponseMessage message)
             {
                 tcs.SetResult(message.File);
                 WeakReferenceMessenger.Default.Unregister<OpenFileResponseMessage>(this);
             }
-
             WeakReferenceMessenger.Default.Register<OpenFileResponseMessage>(this, MessageHandler);
-
             // Send the request message
             WeakReferenceMessenger.Default.Send(new OpenFileRequestMessage(parent, filters));
-
             return await tcs.Task;
         }
     }

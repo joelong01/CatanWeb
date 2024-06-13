@@ -4,6 +4,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        IsTitleBarVisible="False" IsResizable="True" PersistenceId="Catan_WinUi"
+        IsTitleBarVisible="True" IsResizable="True" PersistenceId="Catan_WinUi"
         IsMaximizable="True" mc:Ignorable="d">
 </winex:WindowEx>

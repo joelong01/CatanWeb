@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
-
 namespace Catan3.Models
 {
     /// <summary>
@@ -13,7 +12,6 @@ namespace Catan3.Models
     /// </summary>
     public partial class PlayerColorViewModel : ObservableRecipient
     {
-
         public PlayerColorViewModel(string playerId, Color foreground, Color primaryBackground, Color secondaryBackground)
         {
             _primaryBackground = primaryBackground;
@@ -32,21 +30,17 @@ namespace Catan3.Models
         private Color _foreground;
         [ObservableProperty]
         private string _playerId;
-
         [ObservableProperty]
         [property: JsonIgnore]
         private Brush _foregroundBrush = BrushCache.GetSolidColorBrush(Colors.White);
 
-
         [ObservableProperty]
         [property: JsonIgnore]
         private Brush _backgroundBrush = BrushCache.GetSolidColorBrush(Colors.Black);
-
         partial void OnPrimaryBackgroundChanged(Color value)
         {
             BackgroundBrush = BrushCache.GetGradientBrush(value, SecondaryBackground);
             Messenger.Send(new PlayerColorChanged(this));
-
         }
         partial void OnSecondaryBackgroundChanged(Color value)
         {
@@ -58,7 +52,6 @@ namespace Catan3.Models
             ForegroundBrush = BrushCache.GetSolidColorBrush(value);
             Messenger.Send(new PlayerColorChanged(this));
         }
-
         
     }
 }

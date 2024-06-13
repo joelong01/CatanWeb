@@ -185,7 +185,6 @@ namespace Catan3.Controller
                 throw new GameException($"cannot buy {entitlement} in state {gameModel.GameState}");
             }
             gameModel.CurrentPlayer().UnspentEntitlements.Add(entitlement);
-
             LogDone(gameModel);
             return gameModel;
         }
@@ -553,7 +552,6 @@ namespace Catan3.Controller
             MarkBuildableRoads(gameModel);
             MarkBuildableBuildings(gameModel);
             SetActionFlags(gameModel);
-
             gameModel.ActionFlags.RedoEnabled = false;
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
@@ -688,7 +686,6 @@ namespace Catan3.Controller
                 // Calculate base score from cities and settlements
                 int score = citiesPlayed * 2 + settlementsPlayed;
                 // Add bonus points for having the longest road
-
                 if (player.HasLongestRoad)
                 {
                     score += 2;
@@ -1067,7 +1064,6 @@ namespace Catan3.Controller
         public void CalculateLongestRoad(GameModel gameModel)
         {
             var longestRoadAllPlayers = 0;
-
             // calculate the longest road for each player
             foreach (var player in gameModel.Players)
             {
@@ -1093,7 +1089,6 @@ namespace Catan3.Controller
                 }
             }
             var playerWithLongestRoad = gameModel.Players.FirstOrDefault(p => p.HasLongestRoad);
-
             foreach (var player in gameModel.Players)
             {
                 if (player.LongestRoad < 5)
@@ -1119,7 +1114,6 @@ namespace Catan3.Controller
                     playerWithLongestRoad = player;
                 }
             }
-
         }
         //
         //  Start is just any old road you want to start counting from

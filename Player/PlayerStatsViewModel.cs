@@ -43,16 +43,13 @@ namespace Catan3.Models
             Glyph = glyph;
             Name = name;
             PlayerId = playerId;
-
             RegisterMessages();
         }
-
         private void RegisterMessages()
         {
             Messenger.Register<PlayerColorChanged>(this, (recipient, message) =>
             {
                 if (message.PlayerColors.PlayerId == "Nameless-001") return;
-
                 if (message.PlayerColors.PlayerId == this.PlayerId)
                 {
                   //  this.TraceMessage($"updating colors for {message.PlayerColors.PlayerId}");
@@ -61,7 +58,6 @@ namespace Catan3.Models
                 }
             });
         }
-
         public StatName Name { get; }
         public string PlayerId { get; }
         [ObservableProperty]
@@ -81,9 +77,7 @@ namespace Catan3.Models
         {
             PlayerColors = playerColors;
             PlayerId = playerId;
-
         }
-
         public Brush GetForeground(bool highlighted)
         {
             return highlighted ? PlayerColors.BackgroundBrush : PlayerColors.ForegroundBrush;
@@ -92,9 +86,7 @@ namespace Catan3.Models
         {
             return highlighted ? PlayerColors.ForegroundBrush : PlayerColors.BackgroundBrush;
         }
-
     }
-
     public class StatTemplate(StatName name, string glyph, HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left,
                                               VerticalAlignment verticalAlignment = VerticalAlignment.Top)
     {

@@ -32,7 +32,6 @@ namespace Catan3.Models
         Color _foreground = foreground;
         [ObservableProperty]
         bool _selected = false;
-
         public Brush GetBrush(Color color)
         {
             return BrushCache.GetSolidColorBrush(color);
@@ -64,10 +63,8 @@ namespace Catan3.Models
         private PlayerViewModel _selectedPlayer;
         [ObservableProperty]
         private WriteableBitmap? _originalImage;
-
         private readonly  DispatcherQueue _dispatcherQueue;
         private readonly WindowEx _parentWindow;
-
         public PlayerSettingsViewModel(WindowEx parent, IList<PlayerViewModel> players)
         {
             _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
@@ -144,7 +141,6 @@ namespace Catan3.Models
         }
         public void SetColor(ColorPicker sender, ColorChangedEventArgs args)
         {
-
             var newColor = args.NewColor;
             switch (CurrentColorSetting.ColorName)
             {
@@ -173,14 +169,12 @@ namespace Catan3.Models
         {
             return player.Id == SelectedPlayer.Id ? Visibility.Visible : Visibility.Collapsed;
         }
-
         [RelayCommand]
         public async Task LoadImageAsync()
         {
             var filters = new List<string> { ".jpg", ".png" };
             var fileServiceHelper = new FileServiceHelper();
             StorageFile? file = await fileServiceHelper.GetFileAsync(_parentWindow, filters);
-
             if (file is not null)
             {
                 OriginalImage = await LoadImageFromFileAsync(file);
@@ -194,11 +188,9 @@ namespace Catan3.Models
         }
         private async Task<WriteableBitmap> LoadImageFromFilePathAsync(string filePath)
         {
-
             StorageFile file = await StorageFile.GetFileFromPathAsync(filePath);
             return await LoadImageFromFileAsync(file);
         }
-
 
         private async Task<WriteableBitmap> LoadImageFromFileAsync(StorageFile file)
         {
@@ -213,7 +205,6 @@ namespace Catan3.Models
                     {
                         var bitmapImage = new BitmapImage();
                         await bitmapImage.SetSourceAsync(fileStream);
-
                         var result = new WriteableBitmap(bitmapImage.PixelWidth, bitmapImage.PixelHeight);
                         fileStream.Seek(0);
                         await result.SetSourceAsync(fileStream);
@@ -225,10 +216,8 @@ namespace Catan3.Models
                     tcs.SetException(ex);
                 }
             });
-
             return await tcs.Task;
         }
-
 
     }
 }

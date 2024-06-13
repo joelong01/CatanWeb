@@ -18,6 +18,5 @@ namespace Catan3.Controls
             set => SetValue(PlayerViewModelProperty, value);
         }
 
-
     }
 }

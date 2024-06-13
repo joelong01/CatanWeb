@@ -16,7 +16,6 @@ namespace Catan3.Player
             this.InitializeComponent();
             EditorWindow = this;
 
-
            
             var windowManger = WindowManager.Get(this);
             windowManger.IsMaximizable = false;
@@ -25,7 +24,6 @@ namespace Catan3.Player
             windowManger.PersistenceId = "Catan_Player_Editor";
             
         }
-
 
         /// <summary>
         ///     Allow the Page's view model to be set when you have a reference to the Window

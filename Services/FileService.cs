@@ -21,7 +21,6 @@ namespace Catan.Services
         Task<bool> SaveFileAsAsync(string defaultFileName, byte[] data);
         Task<byte[]?> OpenFileAsync();
         string? FileName { get; }
-
         Task<StorageFile?> GetFileAsync(WindowEx parent, IList<string> filters);
        
     }
@@ -70,7 +69,6 @@ namespace Catan.Services
                 return null;
             }
         }
-
         public async Task<StorageFile?> GetFileAsync(WindowEx parent, IList<string> filters)
         {
             try
@@ -97,7 +95,6 @@ namespace Catan.Services
         }
    
         
-
             /// <summary>
             /// Saves the provided byte array to a file chosen by the user with a suggested filename.
             /// </summary>

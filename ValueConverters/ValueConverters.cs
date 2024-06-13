@@ -13,7 +13,6 @@ namespace Catan3.Converters
     {
         public DataTemplate? RollOrderTemplate { get; set; }
         public DataTemplate? PlayerStatsTemplate { get; set; }
-
         public object? Convert(object value, Type targetType, object parameter, string language)
         {
             if (value is GameState gameState)
@@ -24,16 +23,13 @@ namespace Catan3.Converters
                     _ => PlayerStatsTemplate,
                 };
             }
-
             return PlayerStatsTemplate;
         }
-
         public object? ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
         }
     }
-
     public class BrushToColorConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)

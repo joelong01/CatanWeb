@@ -13,13 +13,11 @@ namespace Catan3.Models
     {
         [ObservableProperty]
         GameViewModel _gameViewModel;
-
         /// <summary>
         ///     Bound to the SplitView.IsPaneOpen flag in MainPage.xaml
         /// </summary>
         [ObservableProperty]
         bool _showCommands = false;
-
         private GameController GameController { get; set; }
         private readonly IFileService _fileService;
         public IMessenger MessageService => this.Messenger;
@@ -52,7 +50,6 @@ namespace Catan3.Models
                 Messenger.Send(new OpenFileResponseMessage(result));
             });
 
-
         }
         public void EndGame()
         {
@@ -64,10 +61,8 @@ namespace Catan3.Models
         /// <exception cref="NotImplementedException"></exception>
         public void SetPlayerOrder()
         {
-
             List<string> viewModelPlayerIds = GameViewModel.Players.Select(player => player.Id).ToList();
             List<string> gameModelPlayerIds = GameViewModel.GameModel.Players.Select(player => player.Id).ToList();
-
             if (!viewModelPlayerIds.SequenceEqual(gameModelPlayerIds))
             {
                 if (GameViewModel.GameModel.GameState == GameState.FinishedRollOrder)
@@ -83,8 +78,6 @@ namespace Catan3.Models
                     GameViewModel.SetPlayerOrder(GameViewModel.GameModel);
                 }
             }
-
-
 
         }
     }

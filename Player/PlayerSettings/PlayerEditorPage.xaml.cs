@@ -25,12 +25,9 @@ namespace Catan3.Player
             if (d is PlayerEditorPage page && e.NewValue is PlayerSettingsViewModel viewModel)
             {
                 page.DataContext = viewModel;
-
             }
-
          
         }
-
 
         public PlayerSettingsViewModel ViewModel
         {
@@ -49,7 +46,6 @@ namespace Catan3.Player
         {
             PlayerEditorWindow.EditorWindow?.Close();
         }
-
         
     }
 }

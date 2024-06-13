@@ -15,6 +15,15 @@
 		<StartupObject></StartupObject>
 	</PropertyGroup>
 	<ItemGroup>
+	  <Compile Remove="Player\PlayerOrder\**" />
+	  <EmbeddedResource Remove="Player\PlayerOrder\**" />
+	  <None Remove="Player\PlayerOrder\**" />
+	  <Page Remove="Player\PlayerOrder\**" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Compile Remove="Player\PlayerOrderModel.cs" />
+	</ItemGroup>
+	<ItemGroup>
 	  <None Remove="Buildings\BuildingCtrl.xaml" />
 	  <None Remove="Controls\PurchaseCtrl.xaml" />
 	  <None Remove="Game\Game Control\GameControls.xaml" />
@@ -22,7 +31,6 @@
 	  <None Remove="Game\NewGameDlg\NewGameCtrl.xaml" />
 	  <None Remove="MainPage\MainPage.xaml" />
 	  <None Remove="MainPage\MainWindow.xaml" />
-	  <None Remove="Player\PlayerOrder\SetPlayerOrderCtrl.xaml" />
 	  <None Remove="Player\PlayerSettingDlg.xaml" />
 	  <None Remove="Player\PlayerSettingsCtrl.xaml" />
 	  <None Remove="Player\PlayerSettings\PlayerEditorPage.xaml" />
@@ -38,7 +46,7 @@
 		<PackageReference Include="CommunityToolkit.WinUI" Version="7.1.2" />
 		<PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
 		<PackageReference Include="Microsoft.Graphics.Win2D" Version="1.2.0" />
-		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240428000" />
+		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240607001" />
 		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1" />
 		<PackageReference Include="System.Text.Encodings.Web" Version="8.0.0" />
 		<PackageReference Include="System.Text.Json" Version="8.0.3" />
@@ -246,13 +254,6 @@
 	</ItemGroup>
 
 
-	<ItemGroup>
-	  <Page Update="Player\PlayerOrder\SetPlayerOrderCtrl.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	</ItemGroup>
-
-
 
 
 	<!-- 
@@ -269,4 +270,7 @@
 			<UserProperties />
 		</VisualStudio>
 	</ProjectExtensions>
+	<ItemGroup>
+	  <PRIResource Remove="Player\PlayerOrder\**" />
+	</ItemGroup>
 </Project>

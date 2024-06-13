@@ -37,24 +37,20 @@
                         <Grid.Resources>
                             <!-- Add your resources here -->
                         </Grid.Resources>
-
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-
                         <ContentControl x:Name="Title"
                                 Content="{TemplateBinding Title}"
                                 Style="{StaticResource ContentDialogTitleTextStyle}" />
-
                         <ContentPresenter x:Name="ContentPresenter" Grid.Row="1"
                                 ContentTemplate="{TemplateBinding ContentTemplate}"
                                 Content="{TemplateBinding Content}"
                                 Margin="{TemplateBinding Padding}"
                                 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                 VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-
                         <StackPanel x:Name="ButtonPanel" Grid.Row="2"
                                 Orientation="Horizontal"
                                 HorizontalAlignment="Right">
@@ -70,5 +66,4 @@
             </Setter.Value>
         </Setter>
     </Style>
-
 </ResourceDictionary>

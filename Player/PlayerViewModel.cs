@@ -28,40 +28,29 @@ namespace Catan3.Models
         private string _croppedImageUri ="ms-appx:///Assets/guest.jpg";
 
 
-
-
         [property: JsonIgnore]
         [ObservableProperty]
         private bool _selected = false;
-
         [property: JsonIgnore]
         [ObservableProperty]
         private PlayerModel _player = PlayerModel.Default;
-
         [property: JsonIgnore]
         [ObservableProperty]
         private ResourcesViewModel _resourcesThisTurn = new(GameViewModelStatics.PlayerTrackResourceList);
-
         [property: JsonIgnore]
         [ObservableProperty]
         private ResourcesViewModel _resourcesThisGame = new(GameViewModelStatics.PlayerTrackResourceList);
-
         [property: JsonIgnore]
         [ObservableProperty]
         private ObservableCollection<PlayerStatsViewModel> _playerStats = [];
-
         [JsonIgnore]
         public Dictionary<StatName, PlayerStatsViewModel> StatDictionary { get; } = [];
-
         [JsonIgnore]
         public static PlayerViewModel Default { get; } = new("Nameless-001", "Nameless", "ms-appx:///Assets/guest.jpg", "ms-appx:///Assets/guest.jpg", Colors.HotPink);
 
 
-
-
         public void InitializeAfterDeserialization()
         {
-
         }
         /// <summary>
         ///     thisis the ctor that the JsonSerializer should use when it deserializes the saved player state.
@@ -77,11 +66,9 @@ namespace Catan3.Models
             IsActive = isActive;
             CreateStats();
         }
-
         public PlayerViewModel(string id, string name, string imageUri, string croppedImageUri, Color primaryBackground) :
                 this(id, name, imageUri, croppedImageUri, new PlayerColorViewModel(id, Colors.White, primaryBackground, Colors.Black))
         { }
-
 
         private void CreateStats()
         {
@@ -93,7 +80,6 @@ namespace Catan3.Models
             //  the list of stats to bind to
             PlayerStats.AddRange([.. StatDictionary.Values.ToList()]);
         }
-
         /// <summary>
         ///     the MVVM notification when the model gets updated -- we set the per person data and update the stats
         /// </summary>
@@ -128,15 +114,14 @@ namespace Catan3.Models
             else
                 return BrushCache.GetGradientBrush(color, Colors.Black);
         }
-
+        /// <summary>
+        ///     Sends a messsage that makes this Player go first in the game.  Preserves the order of players.
+        /// </summary>
         [RelayCommand]
         void GoFirst()
         {
-
             WeakReferenceMessenger.Default.Send(new GoFirstMessage(this.Id));
         }
-
     }
     public enum ColorName { PrimaryBackground, SecondaryBackground, Foreground }
-
 }
