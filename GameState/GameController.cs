@@ -358,7 +358,7 @@ namespace Catan3.Controller
         private GameModel SetPlayerOrder(IList<string> playerIds)
         {
             GameModel gameModel = Log.CopyCurrent();
-            ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForRollForOrder]);
+            ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForRollForOrder, GameState.FinishedRollOrder]);
             var playerLookup = gameModel.Players.ToDictionary(p => p.Id);
             // Using LINQ to order players according to playerIds
             List<PlayerModel> orderedPlayers = playerIds
