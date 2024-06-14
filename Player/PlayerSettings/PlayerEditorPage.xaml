@@ -9,15 +9,17 @@
         xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
         mc:Ignorable="d" Name="EditPage"
         Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
     <Grid HorizontalAlignment="Left" VerticalAlignment="Top">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
+            
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <!-- PlayerSettings Control -->
         <c:PlayerSettingsCtrl x:Name="PlayerSettingsControl"
-                ViewModel="{x:Bind ViewModel, Mode=OneWay}" Grid.Row="1" />
-        <Button Content="Close" Click="CloseButton_Click" Grid.Row="2" HorizontalAlignment="Right" Margin="0,10,10,10" />
+                ViewModel="{x:Bind ViewModel, Mode=OneWay}" Grid.Row="0" Margin="0"/>
+        <Button Content="Close" Click="CloseButton_Click" Grid.Row="1" HorizontalAlignment="Right" Margin="10" />
     </Grid>
+
 </Page>

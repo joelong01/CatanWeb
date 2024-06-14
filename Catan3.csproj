@@ -24,6 +24,7 @@
 	  <Compile Remove="Player\PlayerOrderModel.cs" />
 	</ItemGroup>
 	<ItemGroup>
+	  <None Remove="Assets\AppIcon.png" />
 	  <None Remove="Buildings\BuildingCtrl.xaml" />
 	  <None Remove="Controls\PurchaseCtrl.xaml" />
 	  <None Remove="Game\Game Control\GameControls.xaml" />
@@ -35,7 +36,6 @@
 	  <None Remove="Player\PlayerSettingsCtrl.xaml" />
 	  <None Remove="Player\PlayerSettings\PlayerEditorPage.xaml" />
 	  <None Remove="Player\PlayerSettings\PlayerEditorWindow.xaml" />
-	  <None Remove="Player\PlayerSettings\PlayerSettingDlg.xaml" />
 	  <None Remove="Player\PlayerSettings\PlayerSettingsCtrl.xaml" />
 	  <None Remove="Player\SetPlayerOrderCtrl.xaml" />
 	</ItemGroup>
@@ -148,6 +148,7 @@
 		<Resource Include="Assets\Square150x150Logo.scale-125.png" />
 		<Resource Include="Assets\Square150x150Logo.scale-150.png" />
 		<Resource Include="Assets\Square150x150Logo.scale-400.png" />
+		<Resource Include="Assets\AppIcon.png" />
 		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-16.png" />
 		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-24.png" />
 		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-256.png" />
@@ -206,9 +207,6 @@
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
 	  <Page Update="Player\PlayerSettings\PlayerEditorWindow.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="Player\PlayerSettings\PlayerSettingDlg.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Page>
 	  <Page Update="Player\PlayerSettings\PlayerSettingsCtrl.xaml">
@@ -272,5 +270,8 @@
 	</ProjectExtensions>
 	<ItemGroup>
 	  <PRIResource Remove="Player\PlayerOrder\**" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Content Remove="Assets\AppIcon.png" />
 	</ItemGroup>
 </Project>

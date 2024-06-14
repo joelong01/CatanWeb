@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<winex:WindowEx xmlns:winex="using:WinUIEx" Width="975" Height="1000"
+<winex:WindowEx xmlns:winex="using:WinUIEx" 
         x:Class="Catan3.Player.PlayerEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:Catan3.Player"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        IsMaximizable="false" IsResizable="false" PersistenceId="Catan_Player_Editor"
-                 
+        IsMaximizable="false" IsResizable="True" PersistenceId="Catan_Player_Editor"
+                 Width="1000" Height="1000"
+               
         Title="Player Editor" mc:Ignorable="d"> 
     <local:PlayerEditorPage x:Name="PlayerEditorPage" />
 </winex:WindowEx>

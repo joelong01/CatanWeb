@@ -8,7 +8,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Microsoft.UI.Xaml.Shapes;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -50,24 +49,24 @@ namespace Catan3.Controls
 
         private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(PlayerSettingsViewModel.SelectedPlayer))
-            {
-                if (ViewModel.SelectedPlayer != null)
-                {
-                    string tempUri = ViewModel.SelectedPlayer.CroppedImageUri ;
+            //    if (e.PropertyName == nameof(PlayerSettingsViewModel.SelectedPlayer))
+            //    {
+            //        if (ViewModel.SelectedPlayer != null)
+            //        {
+            //            string tempUri = ViewModel.SelectedPlayer.CroppedImageUri ;
 
 
-                    // Force reload by setting DecodePixelWidth
-                    //BitmapImage bitmapImage = new BitmapImage
-                    //{
-                    //    UriSource = new Uri(tempUri),
-                    //    DecodePixelWidth = 100 // or any value appropriate for your application
-                    //};
+            //            // Force reload by setting DecodePixelWidth
+            //            //BitmapImage bitmapImage = new BitmapImage
+            //            //{
+            //            //    UriSource = new Uri(tempUri),
+            //            //    DecodePixelWidth = 100 // or any value appropriate for your application
+            //            //};
 
-                    ViewModel.SelectedPlayer.CroppedImageUri = "ms-appx:///Assets/guest.jpg";
-                    ViewModel.SelectedPlayer.CroppedImageUri = tempUri; // Reset to original value to trigger binding update
-                }
-            }
+            //            ViewModel.SelectedPlayer.CroppedImageUri = PlayerDatabase.DefaultImageUri;
+            //            ViewModel.SelectedPlayer.CroppedImageUri = tempUri; // Reset to original value to trigger binding update
+            //        }
+            //    }
         }
 
         private void ImageCropper_DragOver(object sender, DragEventArgs e)
@@ -152,17 +151,17 @@ namespace Catan3.Controls
 
         private void OnImageOpened(object sender, RoutedEventArgs e)
         {
-            if (sender is ImageBrush brush)
-            {
-                if (brush.ImageSource is BitmapImage bitmapImage)
-                {
-                    // Get the URI of the image
-                    var uri = bitmapImage.UriSource;
+            //if (sender is ImageBrush brush)
+            //{
+            //    if (brush.ImageSource is BitmapImage bitmapImage)
+            //    {
+            //        // Get the URI of the image
+            //        var uri = bitmapImage.UriSource;
 
-                    // Log or handle the URI
-                    this.TraceMessage($"Image Loaded: {uri}");
-                }
-            }
+            //        // Log or handle the URI
+            //        this.TraceMessage($"Image Loaded: {uri}");
+            //    }
+            //}
         }
 
         private void OnImageFailed(object sender, ExceptionRoutedEventArgs e)
@@ -180,23 +179,6 @@ namespace Catan3.Controls
             }
         }
 
-        private void OnPlayerPicturePointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-        {
-            //if (ViewModel.SelectedPlayer != null)
-            //{
-            //    string tempUri = ViewModel.SelectedPlayer.CroppedImageUri ;
-       
 
-            //    // Force reload by setting DecodePixelWidth
-            //    //BitmapImage bitmapImage = new BitmapImage
-            //    //{
-            //    //    UriSource = new Uri(tempUri),
-            //    //    DecodePixelWidth = 100 // or any value appropriate for your application
-            //    //};
-
-            //    ViewModel.SelectedPlayer.CroppedImageUri = "ms-appx:///Assets/guest.jpg";
-            //    ViewModel.SelectedPlayer.CroppedImageUri = tempUri; // Reset to original value to trigger binding update
-            //}
-        }
     }
 }

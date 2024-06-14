@@ -15,6 +15,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
 using System.Diagnostics;
 using WinUIEx;
+using Microsoft.UI;
 namespace Catan3.Models
 {
     /// <summary>
@@ -65,6 +66,13 @@ namespace Catan3.Models
         private WriteableBitmap? _originalImage;
         private readonly  DispatcherQueue _dispatcherQueue;
         private readonly WindowEx _parentWindow;
+        [RelayCommand]
+        void AddPlayer()
+        {
+            var player = new PlayerViewModel("", "Nameless", PlayerDatabase.DefaultImageUri, PlayerDatabase.DefaultImageUri, Colors.HotPink);
+            Players.Add(player);
+            SelectedPlayer = player;
+        }
         public PlayerSettingsViewModel(WindowEx parent, IList<PlayerViewModel> players)
         {
             _dispatcherQueue = DispatcherQueue.GetForCurrentThread();

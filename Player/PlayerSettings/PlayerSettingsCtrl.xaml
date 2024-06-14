@@ -6,19 +6,29 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
         xmlns:m="using:Catan3.Models" mc:Ignorable="d">
     <UserControl.Resources>
+        <Style TargetType="AppBarButton" x:Key="MyAppBarButtonStyle">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Width" Value="50" />
+
+        </Style>
         <DataTemplate x:Key="EditPlayerDataTemplate"
                 x:DataType="m:PlayerViewModel">
-            <Grid HorizontalAlignment="Stretch" Height="120" IsHitTestVisible="True"
+
+            <Grid HorizontalAlignment="Stretch" Height="120"
                     Background="{x:Bind PlayerColors.BackgroundBrush, Mode=OneWay}">
-                <Ellipse Name="Player_Picture" HorizontalAlignment="Center" PointerPressed="OnPlayerPicturePointerPressed"
+                <Ellipse Name="Player_Picture" HorizontalAlignment="Center"
                         VerticalAlignment="Top" Width="100" Height="100"
                         Stroke="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}">
                     <Ellipse.Fill>
-                        <ImageBrush ImageOpened="OnImageOpened"
+                        <ImageBrush Stretch="Uniform"
+                                ImageOpened="OnImageOpened"
                                 ImageFailed="OnImageFailed"
-                                ImageSource="{x:Bind CroppedImageUri, Mode=OneWay}" />
+                                ImageSource="{x:Bind CroppedBitmapImage, Mode=OneWay}" />
                     </Ellipse.Fill>
                 </Ellipse>
                 <TextBlock Text="" HorizontalAlignment="Right"
@@ -27,15 +37,18 @@
                         Visibility="{x:Bind Selected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                         VerticalAlignment="Top" FontSize="16" FontWeight="Bold"
                         TextLineBounds="Tight" />
-                <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontSize="22" Margin="0,0,0,-5"
-                        HorizontalAlignment="Center" VerticalAlignment="Bottom" />
+                <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontSize="22"
+                        Margin="0" HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom" />
             </Grid>
+
         </DataTemplate>
         <DataTemplate x:Key="ColorSettingTemplate"
                 x:DataType="m:EditPlayerColors">
             <Grid BorderBrush="{x:Bind GetBrush(Foreground), Mode=OneWay}"
+                    BorderThickness="2" Width="250" Height="50"
                     Background="{x:Bind GetBrush(Background), Mode=OneWay}"
-                    CornerRadius="5" Width="300" Height="50">
+                    CornerRadius="5">
                 <TextBlock Text="{x:Bind DisplayName(ColorName)}"
                         HorizontalAlignment="Center"
                         Foreground="{x:Bind GetBrush(Foreground), Mode=OneWay}"
@@ -49,39 +62,58 @@
             </Grid>
         </DataTemplate>
     </UserControl.Resources>
-    <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch" 
-            VerticalAlignment="Stretch">
-        <StackPanel HorizontalAlignment="Left" Orientation="Horizontal" Width="800" Margin="15,10,0,0"
-                BorderBrush="White" BorderThickness="1"
-                VerticalAlignment="Top">
-            <ListView  HorizontalAlignment="Left" Width="110"
-                    SelectionMode="Single" VerticalAlignment="Top"
-                    Background="Transparent"
+    <SplitView x:Name="MySplitView" OpenPaneLength="100" CompactPaneLength="50"
+            IsPaneOpen="False" PanePlacement="Left" DisplayMode="CompactOverlay">
+        <SplitView.Pane>
+            <StackPanel Orientation="Vertical">
+
+                <AppBarButton Label="Add " Icon="AddFriend"
+                        Command="{x:Bind ViewModel.AddPlayerCommand, Mode=OneWay}"
+                        Style="{StaticResource MyAppBarButtonStyle}" />
+                <AppBarButton Label="Delete " Icon="Delete"
+                        Style="{StaticResource MyAppBarButtonStyle}" />
+                <AppBarButton Label="Load" Icon="OpenFile"
+                        Style="{StaticResource MyAppBarButtonStyle}" />
+                <AppBarButton Label="Save" Icon="SaveLocal"
+                        Style="{StaticResource MyAppBarButtonStyle}" />
+                <AppBarButton Label="Reset" Icon="Refresh"
+                        Style="{StaticResource MyAppBarButtonStyle}" />
+            </StackPanel>
+        </SplitView.Pane>
+
+        <StackPanel HorizontalAlignment="Left" Orientation="Horizontal"
+                CornerRadius="5"
+                ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="5"
+                BorderBrush="White" BorderThickness="2" VerticalAlignment="Top">
+            <ListView SelectionMode="Single" Background="Transparent"
                     SelectedItem="{x:Bind ViewModel.SelectedPlayer, Mode=TwoWay}"
                     ItemsSource="{x:Bind ViewModel.Players, Mode=OneWay}"
                     ItemTemplate="{StaticResource EditPlayerDataTemplate}">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
-                        <Setter Property="Padding" Value="3" />
+                        <Setter Property="Padding" Value="2" />
                         <Setter Property="BorderBrush"
                                 Value="{x:Bind Foreground, Mode=OneWay}" />
                         <Setter Property="BorderThickness" Value="1" />
-                        <Setter Property="HorizontalAlignment" Value="Stretch" />
-                        <Setter Property="Margin" Value="0" />
+
+                        <Setter Property="Margin" Value="2" />
+
                     </Style>
                 </ListView.ItemContainerStyle>
             </ListView>
-            <StackPanel Margin="10">
-             
-                <StackPanel Orientation="Horizontal" Margin="0,10,0,10">
-                    <TextBlock Text="Name:" VerticalAlignment="Center" FontSize="22" />
-                    <TextBox Width="255" VerticalAlignment="Center" FontSize="22"
-                            Margin="5,0,0,0"
+            <StackPanel Margin="0">
+
+                <StackPanel Orientation="Horizontal" Margin="5">
+                    <TextBlock Text="Name:" VerticalAlignment="Center"
+                            FontSize="22" />
+                    <TextBox Width="300" VerticalAlignment="Center" HorizontalAlignment="Stretch"
+                            FontSize="22" Margin="5,0,0,0"
                             Text="{x:Bind ViewModel.SelectedPlayer.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" BorderBrush="White"
-                        BorderThickness="2">
-                    <StackPanel Margin="10,10">
+                <StackPanel Orientation="Horizontal" Margin="5"
+                        BorderBrush="White"
+                        CornerRadius="5" BorderThickness="1">
+                    <StackPanel Margin="5">
                         <ListView HorizontalAlignment="Left"
                                 VerticalAlignment="Top"
                                 SelectedItem="{x:Bind ViewModel.CurrentColorSetting, Mode=TwoWay}"
@@ -96,41 +128,40 @@
                                     <Setter Property="HorizontalAlignment"
                                             Value="Stretch" />
                                     <Setter Property="Margin" Value="0" />
+                                    <Setter Property="Width" Value="300" />
                                 </Style>
                             </ListView.ItemContainerStyle>
                         </ListView>
                     </StackPanel>
-                    <ColorPicker
-                            Color="{x:Bind ViewModel.GetColor(ViewModel.CurrentColorSetting.ColorName, ViewModel.SelectedPlayer), Mode=OneWay}"
-                            ColorChanged="{x:Bind ViewModel.SetColor}"
-                            ColorSpectrumShape="Box" IsMoreButtonVisible="False"
-                            HorizontalAlignment="Stretch"
-                            IsColorSliderVisible="True"
-                            IsColorChannelTextInputVisible="False"
-                            IsHexInputVisible="False" IsAlphaEnabled="False"
-                            IsAlphaSliderVisible="False"
-                            IsAlphaTextInputVisible="False" />
+                    <Viewbox Stretch="Uniform" Height="200" >
+                        <Border BorderBrush="White" BorderThickness="1" CornerRadius="5" Margin="5"
+                                 >
+                            <ColorPicker
+                                    Color="{x:Bind ViewModel.GetColor(ViewModel.CurrentColorSetting.ColorName, ViewModel.SelectedPlayer), Mode=OneWay}"
+                                    Margin="5"
+                                    ColorChanged="{x:Bind ViewModel.SetColor}"
+                                    ColorSpectrumShape="Box"
+                                    IsMoreButtonVisible="False"
+                                    HorizontalAlignment="Stretch"
+                                    IsColorSliderVisible="True"
+                                    IsColorChannelTextInputVisible="False"
+                                    IsHexInputVisible="False"
+                                    IsAlphaEnabled="False"
+                                    IsAlphaSliderVisible="False"
+                                    IsAlphaTextInputVisible="False" />
+                        </Border>
+                    </Viewbox>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <StackPanel Grid.Row="1" HorizontalAlignment="Left"
-                            Margin="0,10,10,0" Orientation="Vertical"
-                            Spacing="8">
-                        <Button Command="{x:Bind ViewModel.LoadImageCommand}"
-                                Content="Pick image" Width="200" Height="50"
-                                FontSize="22" />
-                        <Button Click="SaveButton_Click" Content="Save"
-                                Width="200" Height="50" FontSize="22" />
-                        <Button Click="ResetButton_Click" Content="Reset"
-                                Width="200" Height="50" FontSize="22" />
-                    </StackPanel>
-                    <controls:ImageCropper x:Name="CTRL_ImageCropper"
-                            Margin="0,10,0,0" AllowDrop="True"
-                            CropShape="Circular" Width="300" Height="300"
-                            Source="{x:Bind ViewModel.OriginalImage, Mode=OneWay}"
-                            Drop="ImageCropper_Drop"
-                            DragOver="ImageCropper_DragOver" />
-                </StackPanel>
+                <Viewbox Width="300" Stretch="Uniform" Margin="4" HorizontalAlignment="Center" VerticalAlignment="Top">
+                <controls:ImageCropper x:Name="CTRL_ImageCropper" 
+                         AllowDrop="True" CropShape="Circular"
+                        Source="{x:Bind ViewModel.OriginalImage, Mode=OneWay}"
+                        Drop="ImageCropper_Drop"
+                        DragOver="ImageCropper_DragOver" />
+                </Viewbox>
+
             </StackPanel>
         </StackPanel>
-    </Viewbox>
+
+    </SplitView>
 </UserControl>

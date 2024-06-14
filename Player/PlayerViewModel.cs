@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.UI;
 namespace Catan3.Models
 {
@@ -24,10 +25,13 @@ namespace Catan3.Models
         [ObservableProperty]
         private PlayerColorViewModel _playerColors;
         [ObservableProperty]
-        private string _imageUri = "ms-appx:///Assets/guest.jpg";
+        private string _imageUri = PlayerDatabase.DefaultImageUri;
         [ObservableProperty]
-        private string _croppedImageUri ="ms-appx:///Assets/guest.jpg";
+        private string _croppedImageUri = PlayerDatabase.DefaultImageUri;
 
+        [property:JsonIgnore]
+        [ObservableProperty]
+        private BitmapImage _croppedBitmapImage;
 
         [property: JsonIgnore]
         [ObservableProperty]
@@ -47,20 +51,43 @@ namespace Catan3.Models
         [JsonIgnore]
         public Dictionary<StatName, PlayerStatsViewModel> StatDictionary { get; } = [];
         [JsonIgnore]
-        public static PlayerViewModel Default { get; } = new("Nameless-001", "Nameless", "ms-appx:///Assets/guest.jpg", "ms-appx:///Assets/guest.jpg", Colors.HotPink);
+        public static PlayerViewModel Default { get; } = new("Nameless-001", "Nameless", PlayerDatabase.DefaultImageUri, PlayerDatabase.DefaultImageUri, Colors.HotPink);
 
         partial void OnCroppedImageUriChanged(string? oldValue, string newValue)
         {
-           
-            this.TraceMessage($"CroppedImageUri. Old={oldValue} new={newValue}");
-            if (newValue is null)
+            if (newValue is not null)
             {
-                this.TraceMessage("null image uri!");
+                CroppedBitmapImage = CreateBitmapImage(newValue);
             }
-            if (newValue == "ms-appx:///Assets/DefaultPlayers/Joe.jpg")
+
+
+        }
+
+        partial void OnNameChanged(string value)
+        {
+
+            int count=1;
+            while (true)
             {
-                this.TraceMessage("huh?");
+                string id = $"{value}-{count}";
+                var player = PlayerDatabase.AvailablePlayers.Select(p => p.Id == id)?.FirstOrDefault();
+                if (player is false)
+                {
+                    Id = id;
+                    break;
+                }
+                count++;
             }
+        }
+
+        private BitmapImage CreateBitmapImage(string uri)
+        {
+            return new BitmapImage
+            {
+                UriSource = new Uri(uri),
+                DecodePixelHeight = 200,
+                DecodePixelWidth = 200
+            };
         }
 
         public void InitializeAfterDeserialization()
@@ -78,8 +105,9 @@ namespace Catan3.Models
             CroppedImageUri = croppedImageUri;
             PlayerColors = playerColors;
             IsActive = isActive;
+            CroppedBitmapImage = CreateBitmapImage(CroppedImageUri);
             CreateStats();
-            OnPropertyChanged(nameof(CroppedImageUri));
+
         }
         public PlayerViewModel(string id, string name, string imageUri, string croppedImageUri, Color primaryBackground) :
                 this(id, name, imageUri, croppedImageUri, new PlayerColorViewModel(id, Colors.White, primaryBackground, Colors.Black))

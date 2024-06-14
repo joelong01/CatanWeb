@@ -19,6 +19,9 @@ namespace Catan3
 
     public static class PlayerDatabase
     {
+
+        public static string DefaultImageUri { get; } = "ms-appx:///Assets/guest.jpg";
+
         /// <summary>
         ///     Fully qualified path to the location that should be used to store the cropped image.
         ///     The filename is in "My Documents\Catan Saved Games\Players\<player_id>_cropped_<salt>.png"

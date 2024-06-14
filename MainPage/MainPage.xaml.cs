@@ -285,11 +285,11 @@ namespace Catan3
         {
             if (MainPageModel is not null)
             {
-                MainPageModel.ShowCommands = true ;
+                MainPageModel.ShowCommands = !MainPageModel.ShowCommands ;
             }
             else
             {
-                MySplitView.IsPaneOpen = true;
+                MySplitView.IsPaneOpen = !MySplitView.IsPaneOpen;
             }
         }
 

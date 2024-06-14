@@ -26,44 +26,5 @@
         <Setter Property="TextWrapping" Value="Wrap" />
         <Setter Property="Margin" Value="0,0,0,15" />
     </Style>
-    <Style TargetType="controls:PlayerSettingsDialog"
-            x:Key="ConfigurableWidthContentDialogStyle">
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="controls:PlayerSettingsDialog">
-                    <Grid x:Name="BackgroundElement"
-                            Background="{TemplateBinding Background}"
-                            Width="{TemplateBinding DialogWidth}">
-                        <Grid.Resources>
-                            <!-- Add your resources here -->
-                        </Grid.Resources>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <ContentControl x:Name="Title"
-                                Content="{TemplateBinding Title}"
-                                Style="{StaticResource ContentDialogTitleTextStyle}" />
-                        <ContentPresenter x:Name="ContentPresenter" Grid.Row="1"
-                                ContentTemplate="{TemplateBinding ContentTemplate}"
-                                Content="{TemplateBinding Content}"
-                                Margin="{TemplateBinding Padding}"
-                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                        <StackPanel x:Name="ButtonPanel" Grid.Row="2"
-                                Orientation="Horizontal"
-                                HorizontalAlignment="Right">
-                            <Button x:Name="PrimaryButton"
-                                    Content="{TemplateBinding PrimaryButtonText}"
-                                    Command="{TemplateBinding PrimaryButtonCommand}" />
-                            <Button x:Name="SecondaryButton"
-                                    Content="{TemplateBinding SecondaryButtonText}"
-                                    Command="{TemplateBinding SecondaryButtonCommand}" />
-                        </StackPanel>
-                    </Grid>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
+   
 </ResourceDictionary>

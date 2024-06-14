@@ -1,4 +1,8 @@
+using System;
 using Catan3.Models;
+using ColorCode.Compilation.Languages;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics;
 using WinUIEx;
 // To learn more about WinUI, the WinUI project structure,
@@ -16,8 +20,10 @@ namespace Catan3.Player
             this.InitializeComponent();
             EditorWindow = this;
 
-           
-            
+
+            // Set the icon for the title bar
+            this.SetIcon("ms-appx:///Assets/AppIcon.ico");
+
         }
 
         /// <summary>

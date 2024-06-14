@@ -1,15 +1,6 @@
-using System;
 using Catan3.Models;
-using System.Threading.Tasks;
-using CommunityToolkit.WinUI.UI.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Windows.ApplicationModel.DataTransfer;
-using Windows.Storage;
-using System.IO;
-using Windows.Storage.Pickers;
-using Windows.Storage.Streams;
-using WinRT.Interop;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 namespace Catan3.Player

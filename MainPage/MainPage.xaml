@@ -51,15 +51,13 @@
             PanePlacement="Left"
             IsPaneOpen="{x:Bind MainPageModel.ShowCommands, Mode=OneWay}"
             DisplayMode="CompactOverlay">
-        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Top"
-                Height="{Binding ElementName=PAGE_MainPage, Path=Height, Mode=OneWay}">
+        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Top">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <AppBarButton Icon="GlobalNavigationButton"
-                    Click="OnShowMenu"
+            <AppBarButton Icon="GlobalNavigationButton" Click="OnShowMenu"
                     HorizontalAlignment="Left" VerticalAlignment="Top" />
             <Viewbox Stretch="Uniform" HorizontalAlignment="Left"
                     Grid.Column="0" Width="400" VerticalAlignment="Top"
@@ -196,35 +194,22 @@
         </Grid>
         <SplitView.Pane>
             <StackPanel>
-                <AppBarButton Label="New Game" Click="OnNewGame"
-                        Background="Black" Foreground="White">
-                    <AppBarButton.Icon>
-                        <SymbolIcon Symbol="Add" />
-                    </AppBarButton.Icon>
-                </AppBarButton>
-                <AppBarButton Label="Open..." Background="Black"
-                        Foreground="White" Icon="OpenLocal"
+                <AppBarButton Label="Close" Click="OnShowMenu" Icon="ClosePane" />
+                <AppBarButton Label="New Game" Click="OnNewGame" Icon="Add" />
+                <AppBarButton Label="Open..." Icon="OpenLocal"
                         Command="{x:Bind MainPageModel.OpenCommand, Mode=OneWay}" />
-                <AppBarButton Label="Save" Background="Black" Foreground="White"
-                        Icon="SaveLocal"
+                <AppBarButton Label="Save" Icon="SaveLocal"
                         Command="{x:Bind MainPageModel.SaveCommand, Mode=OneWay}" />
-                <AppBarButton Label="Save As..." Background="Black" Icon="Save"
-                        Foreground="White"
+                <AppBarButton Label="Save As..." Icon="Save"
                         Command="{x:Bind MainPageModel.SaveAsCommand, Mode=OneWay}" />
                 <AppBarButton Label="Edit Players" Click="OnEditPlayers"
-                        Icon="People" Background="Black" Foreground="White" />
+                        Icon="People" />
                 <AppBarButton Label="Flip Orientation" Icon="Clear"
-                        Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}"
-                        Background="Black" Foreground="White" />
-                <AppBarButton Label="Do Misc" Click="OnHitMe" Background="Black"
-                        Icon="Admin" Foreground="White" />
-                <AppBarButton Label="Toggle Titlebar" Click="OnToggleTitleBar"
-                        Background="Black" Foreground="White" Icon="Pin" />
-                <AppBarButton Label="Close" Click="OnClose" Background="Black"
-                        Margin="0,0,0,0" Icon="ClosePane" Foreground="White" />
-                <AppBarButton Label="Run Tests" Click="OnRunTests"
-                        Background="Black" Margin="0,40,0,0" Icon="Flag"
-                        Foreground="White" />
+                        Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}" />
+                <AppBarButton Label="Do Misc" Click="OnHitMe" Icon="Admin" />
+                <AppBarButton Label="Toggle Titlebar" Click="OnToggleTitleBar" Icon="Pin" />
+                <AppBarButton Label="Close" Click="OnClose" Margin="0,0,0,0" Icon="ClosePane" />
+                <AppBarButton Label="Run Tests" Click="OnRunTests" Margin="0,40,0,0" Icon="Flag" />
             </StackPanel>
         </SplitView.Pane>
     </SplitView>
