@@ -259,9 +259,9 @@ namespace Catan3.Models
             {
                 return BrushCache.GetSolidColorBrush(Colors.Transparent);
             }
-            if (ownerId is not null)
+            if (ownerId is not null  && PlayerDatabase.Instance is not null)
             {
-                PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
+                PlayerViewModel owner = PlayerDatabase.Instance.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
                 return owner.PlayerColors.ForegroundBrush;
             }
             else
@@ -288,9 +288,9 @@ namespace Catan3.Models
             {
                 return BrushCache.GetSolidColorBrush(Colors.Transparent);
             }
-            if (ownerId is not null)
+            if (ownerId is not null && PlayerDatabase.Instance is not null)
             {
-                PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
+                PlayerViewModel owner = PlayerDatabase.Instance.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
                 return owner.PlayerColors.BackgroundBrush;
             }
             else

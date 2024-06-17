@@ -38,10 +38,38 @@ namespace Catan3
     }
     public sealed partial class MainPage : Page
     {
+        IPlayerDatabase _playerDatabase; // set in Loaded
         public MainPage()
         {
+            _playerDatabase = new PlayerDatabase();
             this.InitializeComponent();
 
+        }
+        private async void OnLoaded(object sender, RoutedEventArgs e)
+        {
+ 
+            await _playerDatabase.LoadPlayerDatabase();
+
+            //  
+            //  Uncomment if you want to have the game launched with a game started
+
+            //List<PlayerViewModel> players = [..PlayerDatabase.AllPlayers];
+            //while (players.Count > 0 && players.Count > 5)
+            //{
+            //    players.RemoveAt(players.Count - 1);
+            //}
+
+            //if (players.Count > 0)
+            //{
+            //    try
+            //    {
+            //        NewGame(GameType.Expansion, players);
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        this.TraceMessage($"{ex}");
+            //    }
+            //}
         }
         public DataTemplate? StateToItemTemplate(GameState gameState)
         {
@@ -99,7 +127,8 @@ namespace Catan3
                     MainPageModel.GameViewModel.PropertyChanged -= GameViewModel_PropertyChanged;
 
                 }
-                MainPageModel = new MainPageViewModel(new FileService(), gameType, players);
+                Debug.Assert(_playerDatabase is not null);
+                MainPageModel = new MainPageViewModel(new FileService(), _playerDatabase, gameType, players);
                 MainPageModel.GameViewModel.PropertyChanged += GameViewModel_PropertyChanged;
 
                 this.DataContext = MainPageModel.GameViewModel;
@@ -154,7 +183,7 @@ namespace Catan3
         }
         private async void OnNewGame(object sender, RoutedEventArgs e)
         {
-            NewGameViewModel viewModel = new(PlayerDatabase.AvailablePlayers);
+            NewGameViewModel viewModel = new(_playerDatabase.AllPlayers);
             NewGameContentDialog dialog = new(viewModel)
             {
                 XamlRoot = this.XamlRoot
@@ -185,36 +214,12 @@ namespace Catan3
         private void OnEditPlayers(object sender, RoutedEventArgs e)
         {
             PlayerEditorWindow window = new();
-            PlayerSettingsViewModel viewModel = new(window, PlayerDatabase.AvailablePlayers);
+            PlayerSettingsViewModel viewModel = new(window,  _playerDatabase);
             window.ViewModel = viewModel;
             window.Activate();
             HideMenu();
         }
-        private async void OnLoaded(object sender, RoutedEventArgs e)
-        {
-            await PlayerDatabase.LoadPlayerDatabase();
-
-            //  
-            //  Uncomment if you want to have the game launched with a game started
-
-            //List<PlayerViewModel> players = [..PlayerDatabase.AvailablePlayers];
-            //while (players.Count > 0 && players.Count > 5)
-            //{
-            //    players.RemoveAt(players.Count - 1);
-            //}
-
-            //if (players.Count > 0)
-            //{
-            //    try
-            //    {
-            //        NewGame(GameType.Expansion, players);
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        this.TraceMessage($"{ex}");
-            //    }
-            //}
-        }
+      
 
         private void ListView_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
         {
@@ -225,7 +230,7 @@ namespace Catan3
             HideMenu();
             try
             {
-                var json = JsonSerializer.Serialize(PlayerDatabase.AvailablePlayers[0]);
+                var json = JsonSerializer.Serialize(_playerDatabase.AllPlayers[0]);
                 var cpy = JsonSerializer.Deserialize<PlayerViewModel>(json);
                 if (cpy is null)
                 {
@@ -240,7 +245,7 @@ namespace Catan3
             }
             try
             {
-                await PlayerDatabase.LoadPlayerDatabase();
+                await _playerDatabase.LoadPlayerDatabase();
             }
             catch (Exception ex)
             {

@@ -8,7 +8,6 @@ using System.Linq;
 using Catan10.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.UI.Xaml.Controls;
 namespace Catan3.Models
 {
     public partial class GameViewModel : ObservableRecipient
@@ -23,7 +22,7 @@ namespace Catan3.Models
         ///     the default ctor is in ./GameViewMessages.cs
         /// </summary>
         /// <exception cref="NotImplementedException"></exception>
-        public GameViewModel(GameModel gameModel) : this() // in GameViewModel() we RegisterMessages
+        public GameViewModel(GameModel gameModel, IPlayerDatabase database) : this() // in GameViewModel() we RegisterMessages
         {
             GameType = gameModel.GameType;
             if (GameType == GameType.Regular)
@@ -41,7 +40,7 @@ namespace Catan3.Models
             Debug.Assert(gameModel.Players.Count > 0);
             foreach (var player in gameModel.Players)
             {
-                var playerViewModel = PlayerDatabase.FromId(player.Id) ?? throw new Exception($"Bad PlayerId: {player.Id}");
+                var playerViewModel = database.FromId(player.Id) ?? throw new Exception($"Bad PlayerId: {player.Id}");
                 Players.Add(playerViewModel);
             }
             this.GameModel = gameModel; // triggers OnGameModelChanged

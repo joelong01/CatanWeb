@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -63,22 +62,7 @@ namespace Catan3.Models
 
         }
 
-        partial void OnNameChanged(string value)
-        {
-
-            int count=1;
-            while (true)
-            {
-                string id = $"{value}-{count}";
-                var player = PlayerDatabase.AvailablePlayers.Select(p => p.Id == id)?.FirstOrDefault();
-                if (player is false)
-                {
-                    Id = id;
-                    break;
-                }
-                count++;
-            }
-        }
+        
 
         private BitmapImage CreateBitmapImage(string uri)
         {

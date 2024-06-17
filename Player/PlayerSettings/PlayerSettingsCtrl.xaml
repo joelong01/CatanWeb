@@ -22,7 +22,7 @@
             <Grid HorizontalAlignment="Stretch" Height="120"
                     Background="{x:Bind PlayerColors.BackgroundBrush, Mode=OneWay}">
                 <Ellipse Name="Player_Picture" HorizontalAlignment="Center"
-                        VerticalAlignment="Top" Width="100" Height="100"
+                        VerticalAlignment="Top" Width="100" Height="100" Margin="0,0,0,10"
                         Stroke="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}">
                     <Ellipse.Fill>
                         <ImageBrush Stretch="Uniform"
@@ -70,13 +70,13 @@
                 <AppBarButton Label="Add " Icon="AddFriend"
                         Command="{x:Bind ViewModel.AddPlayerCommand, Mode=OneWay}"
                         Style="{StaticResource MyAppBarButtonStyle}" />
-                <AppBarButton Label="Delete " Icon="Delete"
+                <AppBarButton Label="Delete " Icon="Delete" Command="{x:Bind ViewModel.DeletePlayerCommand, Mode=OneWay}"
                         Style="{StaticResource MyAppBarButtonStyle}" />
-                <AppBarButton Label="Load" Icon="OpenFile"
+                <AppBarButton Label="Load" Icon="OpenFile" Click="OnPickImage"
                         Style="{StaticResource MyAppBarButtonStyle}" />
-                <AppBarButton Label="Save" Icon="SaveLocal"
+                <AppBarButton Label="Save" Icon="SaveLocal" Click="SaveButton_Click"
                         Style="{StaticResource MyAppBarButtonStyle}" />
-                <AppBarButton Label="Reset" Icon="Refresh"
+                <AppBarButton Label="Reset" Icon="Refresh" Click="ResetButton_Click"
                         Style="{StaticResource MyAppBarButtonStyle}" />
             </StackPanel>
         </SplitView.Pane>
@@ -87,7 +87,7 @@
                 BorderBrush="White" BorderThickness="2" VerticalAlignment="Top">
             <ListView SelectionMode="Single" Background="Transparent"
                     SelectedItem="{x:Bind ViewModel.SelectedPlayer, Mode=TwoWay}"
-                    ItemsSource="{x:Bind ViewModel.Players, Mode=OneWay}"
+                    ItemsSource="{x:Bind ViewModel.PlayerDatabase.AllPlayers, Mode=OneWay}"
                     ItemTemplate="{StaticResource EditPlayerDataTemplate}">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">

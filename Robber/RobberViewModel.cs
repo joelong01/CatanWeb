@@ -49,9 +49,9 @@ namespace Catan3.Models
         /// <exception cref="Exception"></exception>
         public Brush Background(RobberModel robberModel, string playerId)
         {
-            if (playerId is not null)
+            if (playerId is not null  && PlayerDatabase.Instance is not null)
             {
-                PlayerViewModel owner = PlayerDatabase.FromId(playerId) ?? throw new Exception($"Bad PlayerId: {playerId}");
+                PlayerViewModel owner = PlayerDatabase.Instance.FromId(playerId) ?? throw new Exception($"Bad PlayerId: {playerId}");
                 return owner.PlayerColors.BackgroundBrush;
             }
             else
@@ -61,9 +61,9 @@ namespace Catan3.Models
         }
         public Brush Foreground(RobberModel robberModel, string playerId)
         {
-            if (playerId is not null)
+            if (playerId is not null && PlayerDatabase.Instance is not null)
             {
-                PlayerViewModel owner = PlayerDatabase.FromId(playerId) ?? throw new Exception($"Bad PlayerId: {playerId}");
+                PlayerViewModel owner = PlayerDatabase.Instance.FromId(playerId) ?? throw new Exception($"Bad PlayerId: {playerId}");
                 return owner.PlayerColors.ForegroundBrush;
               
             }

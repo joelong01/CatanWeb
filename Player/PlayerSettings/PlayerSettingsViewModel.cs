@@ -16,6 +16,8 @@ using Microsoft.UI.Dispatching;
 using System.Diagnostics;
 using WinUIEx;
 using Microsoft.UI;
+using System.IO;
+using System.Linq;
 namespace Catan3.Models
 {
     /// <summary>
@@ -56,8 +58,7 @@ namespace Catan3.Models
     {
         [ObservableProperty]
         private EditPlayerColors _currentColorSetting;
-        [ObservableProperty]
-        private ObservableCollection<PlayerViewModel> _players;
+
         [ObservableProperty]
         ObservableCollection<EditPlayerColors> _editPlayerColors;
         [ObservableProperty]
@@ -66,26 +67,43 @@ namespace Catan3.Models
         private WriteableBitmap? _originalImage;
         private readonly  DispatcherQueue _dispatcherQueue;
         private readonly WindowEx _parentWindow;
+
+        [ObservableProperty]
+        private IPlayerDatabase _playerDatabase;
+
         [RelayCommand]
         void AddPlayer()
         {
-            var player = new PlayerViewModel("", "Nameless", PlayerDatabase.DefaultImageUri, PlayerDatabase.DefaultImageUri, Colors.HotPink);
-            Players.Add(player);
-            SelectedPlayer = player;
+
+            PlayerDatabase.AddPlayer();
+            SelectedPlayer = PlayerDatabase.AllPlayers.Last();
         }
-        public PlayerSettingsViewModel(WindowEx parent, IList<PlayerViewModel> players)
+        [RelayCommand]
+        void DeletePlayer()
         {
+            int index = PlayerDatabase.AllPlayers.IndexOf(SelectedPlayer);
+            if (index < PlayerDatabase.AllPlayers.Count - 1) 
+                index++;
+            else
+                index--;
+            PlayerDatabase.DeletePlayer(SelectedPlayer);
+            SelectedPlayer = PlayerDatabase.AllPlayers[index];
+        }
+        
+        public PlayerSettingsViewModel(WindowEx parent, IPlayerDatabase playerDatabase)
+        {
+            _playerDatabase = playerDatabase;
             _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
             _parentWindow = parent;
-            Players = [.. players];
+
             EditPlayerColors =
             [
-                    new (ColorName.PrimaryBackground, players[0].PlayerColors.PrimaryBackground, players[0].PlayerColors.Foreground),
-                    new (ColorName.SecondaryBackground, players[0].PlayerColors.SecondaryBackground, players[0].PlayerColors.Foreground),
-                    new (ColorName.Foreground, players[0].PlayerColors.Foreground, players[0].PlayerColors.Foreground),
+                    new (ColorName.PrimaryBackground, PlayerDatabase.AllPlayers[0].PlayerColors.PrimaryBackground, PlayerDatabase.AllPlayers[0].PlayerColors.Foreground),
+                    new (ColorName.SecondaryBackground, PlayerDatabase.AllPlayers[0].PlayerColors.SecondaryBackground, PlayerDatabase.AllPlayers[0].PlayerColors.Foreground),
+                    new (ColorName.Foreground, PlayerDatabase.AllPlayers[0].PlayerColors.Foreground, PlayerDatabase.AllPlayers[0].PlayerColors.Foreground),
              ];
             CurrentColorSetting = EditPlayerColors[0];
-            SelectedPlayer = players[0];
+            SelectedPlayer = PlayerDatabase.AllPlayers[0];
         }
         //
         //  update the Colors that the EditPlayer UI binds to when the selected player changes
@@ -95,6 +113,7 @@ namespace Catan3.Models
         //  the Background equal to the Foreground.
         partial void OnSelectedPlayerChanged(PlayerViewModel? oldValue, PlayerViewModel newValue)
         {
+            if (newValue == null) return;
             EditPlayerColors[0].Background = newValue.PlayerColors.PrimaryBackground;
             EditPlayerColors[1].Background = newValue.PlayerColors.SecondaryBackground;
             EditPlayerColors[2].Background = newValue.PlayerColors.Foreground;
@@ -192,7 +211,7 @@ namespace Catan3.Models
         public async Task ReloadCroppedImage()
         {
             await LoadImageFromFilePathAsync(SelectedPlayer.CroppedImageUri);
-          
+
         }
         private async Task<WriteableBitmap> LoadImageFromFilePathAsync(string filePath)
         {
@@ -227,5 +246,12 @@ namespace Catan3.Models
             return await tcs.Task;
         }
 
+        internal async Task SaveCroppedImage(MemoryStream memoryStream)
+        {
+            if (PlayerDatabase is null) return;
+            await PlayerDatabase.SaveCroppedImage(SelectedPlayer, memoryStream);
+
+
+        }
     }
 }

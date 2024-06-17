@@ -1,8 +1,8 @@
-﻿using System.Text.Json.Serialization;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
+using System.Text.Json.Serialization;
 using Windows.UI;
 namespace Catan3.Models
 {

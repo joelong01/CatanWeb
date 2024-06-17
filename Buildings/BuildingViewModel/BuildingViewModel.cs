@@ -165,12 +165,12 @@ namespace Catan3.Models
                 Debug.Assert(ownerId is null);
                 return BrushCache.GetSolidColorBrush(Colors.Transparent);
             }
-            if (ownerId is not null)
+            if (ownerId is not null && PlayerDatabase.Instance is not null)
             {
                 //
                 //  if there is an owner, always use the owner color
                 Debug.Assert(ownerId is not null);
-                PlayerViewModel owner = PlayerDatabase.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
+                PlayerViewModel owner = PlayerDatabase.Instance.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
                 if (foreground)
                 {
                     return owner.PlayerColors.ForegroundBrush;

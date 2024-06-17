@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.IO;
 using System.Threading.Tasks;
 using Catan3.Models;
 using Catan3.Player;
@@ -114,31 +115,28 @@ namespace Catan3.Controls
                 await this.CTRL_ImageCropper.LoadImageFromFile(file);
             }
         }
+        private async Task<MemoryStream> SaveToStream()
+        {
+            var memoryStream = new MemoryStream();
+
+            using (var randomAccessStream = new InMemoryRandomAccessStream())
+            {
+                await this.CTRL_ImageCropper.SaveAsync(randomAccessStream, BitmapFileFormat.Png);
+                randomAccessStream.Seek(0);
+                await randomAccessStream.AsStreamForRead().CopyToAsync(memoryStream);
+            }
+
+            memoryStream.Seek(0, SeekOrigin.Begin);
+            return memoryStream;
+        }
+
         private async Task SaveCroppedImage()
         {
-            // Ensure the filename is correctly assigned to the property
-            var filePath = PlayerDatabase.GetNextCroppedFileName(ViewModel.SelectedPlayer.Id);
-            string fileName = System.IO.Path.GetFileName(filePath);
-
-            var folder = await KnownFolders.DocumentsLibrary.CreateFolderAsync(System.IO.Path.Join("Catan Saved Games", "Players"), CreationCollisionOption.OpenIfExists);
-            var imageFile = await folder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
-            using (IRandomAccessStream fileStream = await imageFile.OpenAsync(FileAccessMode.ReadWrite))
-            {
-                try
-                {
-                    await this.CTRL_ImageCropper.SaveAsync(fileStream, BitmapFileFormat.Png);
-                    StorageFile file = await StorageFile.GetFileFromPathAsync(ViewModel.SelectedPlayer.CroppedImageUri);
-                    await file.DeleteAsync();
-                    ViewModel.SelectedPlayer.CroppedImageUri = filePath;
-                    await PlayerDatabase.SavePlayers();
-                }
-                catch (Exception ex)
-                {
-                    // Handle the exception as needed
-                    System.Diagnostics.Debug.WriteLine($"Exception saving cropped image: {ex}");
-                }
-            }
+            MemoryStream memoryStream = await SaveToStream();
+            await ViewModel.SaveCroppedImage(memoryStream);
+          
         }
+
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
@@ -179,6 +177,9 @@ namespace Catan3.Controls
             }
         }
 
-
+        private async void OnPickImage(object sender, RoutedEventArgs e)
+        {
+            await PickImage();
+        }
     }
 }

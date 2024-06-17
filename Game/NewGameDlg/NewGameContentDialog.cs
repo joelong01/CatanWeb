@@ -1,5 +1,4 @@
-﻿using System;
-using Catan3.Models;
+﻿using Catan3.Models;
 using Microsoft.UI.Xaml.Controls;
 namespace Catan3.Controls
 {

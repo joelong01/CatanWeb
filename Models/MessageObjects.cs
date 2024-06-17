@@ -2,7 +2,6 @@
 using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
 using Catan3.Utility;
-using CommunityToolkit.Mvvm.Messaging.Messages;
 using Windows.Storage;
 using WinUIEx;
 namespace Catan3.Models
@@ -124,6 +123,16 @@ namespace Catan3.Models
     public class GoFirstMessage(string playerId)
     {
         public string PlayerId { get; } = playerId;
+    }
+
+    public class GetPlayerMessage(string playerId)
+    {
+        public string PlayerId { get; } = playerId;
+    }
+
+    public class GetPlayerResponse(PlayerViewModel? model)
+    {
+        public PlayerViewModel? Player { get; } = model;
     }
 
 }

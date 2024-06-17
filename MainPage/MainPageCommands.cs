@@ -5,7 +5,6 @@ using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.UI.Xaml;
 namespace Catan3.Models
 {
     public partial class MainPageViewModel : ObservableRecipient
@@ -63,7 +62,7 @@ namespace Catan3.Models
                 GameController = new GameController();
                 RegisterMessages();
                 var gameModel = GameController.OpenSerializableLog(compressedBytes);
-                this.GameViewModel = new GameViewModel(gameModel);
+                this.GameViewModel = new GameViewModel(gameModel, _playerDatabase);
                 GameViewModel.UpdateLayout();
                 GameViewModel.SetGameStars();
             }

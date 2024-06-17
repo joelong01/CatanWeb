@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using Catan.Services;
 using Catan3.Controller;
 using Catan3.Utility;
@@ -21,16 +22,21 @@ namespace Catan3.Models
         private GameController GameController { get; set; }
         private readonly IFileService _fileService;
         public IMessenger MessageService => this.Messenger;
-        public MainPageViewModel(IFileService fileService, GameType selectedGame, IList<PlayerViewModel> playingPlayers)
+        private readonly IPlayerDatabase _playerDatabase;
+
+        public IPlayerDatabase PlayerDatabase => _playerDatabase;
+
+        public MainPageViewModel(IFileService fileService, IPlayerDatabase playerDatabase, GameType selectedGame, IList<PlayerViewModel> playingPlayers)
         {
             FunctionTimer.Enabled = false;
             _fileService = fileService;
+            _playerDatabase = playerDatabase;
             GameController = new GameController();
             RegisterMessages();
             // create a new GameModel - this would usually come from the service
             List<string> playerIds = playingPlayers.Select( p => p.Id ).ToList();
             var gameModel = GameController.NewGame(selectedGame, playerIds);
-            var gvm = new GameViewModel(gameModel);
+            var gvm = new GameViewModel(gameModel, playerDatabase);
             this.GameViewModel = gvm;
             GameViewModel.UpdateLayout();
             GameViewModel.SetGameStars();

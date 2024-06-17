@@ -273,5 +273,6 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <Content Remove="Assets\AppIcon.png" />
+	  <Content Remove="Assets\Guest.png" />
 	</ItemGroup>
 </Project>
