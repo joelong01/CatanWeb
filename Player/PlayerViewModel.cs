@@ -144,7 +144,9 @@ namespace Catan3.Models
         /// <summary>
         ///     Sends a messsage that makes this Player go first in the game.  Preserves the order of players.
         /// </summary>
+       
         [RelayCommand]
+        [property: JsonIgnore]
         void GoFirst()
         {
             WeakReferenceMessenger.Default.Send(new GoFirstMessage(this.Id));

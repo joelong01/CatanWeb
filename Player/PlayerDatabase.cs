@@ -264,11 +264,6 @@ namespace Catan3
         {
             var saltedCroppedUri = GetNexCroppedImageName(player, player.CroppedImageUri);
             var saltedImageUri = GetNextImageName(player, player.ImageUri);
-
-            //var oldCroppedImageUri = player.CroppedImageUri;
-            //var oldImageUri = player.ImageUri;
-
-
             await CopyResourceFile(folder, player.CroppedImageUri, saltedCroppedUri);
             await CopyResourceFile(folder, player.ImageUri, saltedImageUri);
             player.CroppedImageUri = Path.Combine(folder.Path, saltedImageUri);
@@ -336,6 +331,8 @@ namespace Catan3
                 }
             }
             var player = new PlayerViewModel(id, name, DefaultImageUri, DefaultImageUri, Colors.HotPink);
+            var folder = await KnownFolders.DocumentsLibrary.CreateFolderAsync(PlayerFolder, CreationCollisionOption.OpenIfExists);
+            await SavePlayerLocally(folder, player);
             AllPlayers.Add(player);
             await SavePlayers();
         }

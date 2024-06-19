@@ -18,7 +18,7 @@ namespace Catan3.Utility
             Random.NextBytes(randomBytes);
 
             // Convert timestamp to Base62
-            string timestampBase62 = Base62Encode(timestamp);
+            string timestampBase62 = Base62Encode((ulong)timestamp);
 
             // Convert random component to Base62
             string randomBase62 = Base62Encode(randomBytes);
@@ -27,11 +27,14 @@ namespace Catan3.Utility
             return $"{timestampBase62}{randomBase62}";
         }
 
-        private static string Base62Encode(long value)
+        private static string Base62Encode(ulong value)
         {
             var sb = new StringBuilder();
             do
             {
+                int index = (int) value % 62;
+                System.Diagnostics.Debug.Assert(index >= 0);
+                System.Diagnostics.Debug.Assert(index < Base62Chars.Length);
                 sb.Insert(0, Base62Chars[( int )( value % 62 )]);
                 value /= 62;
             } while (value > 0);
@@ -43,7 +46,7 @@ namespace Catan3.Utility
             // Pad the byte array to ensure it is at least 8 bytes long
             var paddedBytes = PadToLong(bytes);
             var value = BitConverter.ToUInt64(paddedBytes, 0);
-            return Base62Encode(( long )value);
+            return Base62Encode(( ulong )value);
         }
         private static byte[] PadToLong(byte[] bytes)
         {
