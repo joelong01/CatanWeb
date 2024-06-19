@@ -19,6 +19,7 @@ namespace Catan3
     {
         public DataTemplate? RollOrderTemplate { get; set; } = null;
         public DataTemplate? PlayerStatsTemplate { get; set; } = null;
+        public DataTemplate? PickSupplementalPlayersTemplate { get; set; } = null;
         protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
         {
             Debug.Assert(container is not null);
@@ -28,7 +29,9 @@ namespace Catan3
                 switch (page.MainPageModel.GameViewModel.GameModel.GameState)
                 {
                     case GameState.FinishedRollOrder:
-                        return RollOrderTemplate ?? base.SelectTemplateCore(item, container); ;
+                        return RollOrderTemplate ?? base.SelectTemplateCore(item, container);
+                    case GameState.PickSupplementalPlayers:
+                        return PickSupplementalPlayersTemplate ?? base.SelectTemplate(item, container);
                     default:
                         return PlayerStatsTemplate ?? base.SelectTemplateCore(item, container); ;
                 }
@@ -63,18 +66,31 @@ namespace Catan3
 
         public DataTemplate? StateToItemTemplate(GameState gameState)
         {
-            if (gameState != GameState.FinishedRollOrder)
+            switch (gameState)
             {
-                if (this.Resources.TryGetValue("PlayerStatsTemplate", out var playerStatsTemplate))
-                {
-                    return playerStatsTemplate as DataTemplate;
-                }
+                case GameState.FinishedRollOrder:
+                    if (this.Resources.TryGetValue("RollOrderTemplate", out var rollOrderTemplate))
+                    {
+                        return rollOrderTemplate as DataTemplate;
+                    }
+                    break;
+                case GameState.PickSupplementalPlayers:
+                    if (this.Resources.TryGetValue("PickSupplementalPlayersTemplate", out var pickSupplementalPlayers))
+                    {
+                        return pickSupplementalPlayers as DataTemplate;
+                    }
+                    break;
+                 default:
+                    if (this.Resources.TryGetValue("PlayerStatsTemplate", out var playerStatsTemplate))
+                    {
+                        return playerStatsTemplate as DataTemplate;
+                    }
+                    break;
+
             }
-            if (this.Resources.TryGetValue("RollOrderTemplate", out var rollOrderTemplate))
-            {
-                return rollOrderTemplate as DataTemplate;
-            }
+
             return null;
+
         }
 
         public static readonly DependencyProperty MainPageModelProperty = DependencyProperty.Register("MainPageModel", typeof(MainPageViewModel), typeof(MainPage), new PropertyMetadata(null, MainPageModelChanged));

@@ -57,7 +57,8 @@
         </GridView>
 
         <StackPanel Orientation="Horizontal">
-            <TextBlock Text="Game Type:" Foreground="White" FontSize="22" VerticalAlignment="Center" TextLineBounds="Tight"
+            <TextBlock Text="Game Type:" Foreground="White" FontSize="22"
+                    VerticalAlignment="Center" TextLineBounds="Tight"
                     HorizontalAlignment="Left" Margin="10" />
 
             <ComboBox ItemsSource="{x:Bind ViewModel.Games, Mode=OneWay}"
@@ -69,12 +70,14 @@
         </StackPanel>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
                 Width="{Binding ElementName=LayoutRoot, Path=Width}">
-            <Button Content="Manage Players" Width="125" Margin="5" Click="OnManagePlayers"/>
+            <Button Content="Manage Players" Width="125" Margin="5"
+                    Click="OnManagePlayers" />
+            <Button Content="Open" Width="125" Margin="5"
+                    Click="OnOpen" />
 
-            <Button Content="Cancel" Width="100" Click="OnCancel"
-                    Margin="5"
+            <Button Content="Cancel" Width="100" Click="OnCancel" Margin="5"
                     Visibility="{x:Bind Frame.CanGoBack, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-            <Button Content="Start" Width="100" Click="OnStart"  Margin="5"
+            <Button Content="Start" Width="100" Click="OnStart" Margin="5"
                     HorizontalAlignment="Right" />
         </StackPanel>
 

@@ -46,6 +46,7 @@ namespace Catan3.Models
         private bool _hasSupplementalBuildPhase = false;
         [ObservableProperty]
         private List<PlayerModel> _players = [];
+      
         [ObservableProperty]
         private ObservableCollection<TileModel> _tiles = [];
         [ObservableProperty]
@@ -64,6 +65,10 @@ namespace Catan3.Models
         private string _currentPlayerId = string.Empty;
         [ObservableProperty]
         private GameRollModel _gameRollModel = new();
+
+        // keep track of the player who goes when there is nobody left to do supplemental
+        [ObservableProperty]
+        private string _nextPlayerToRollAfterSupplemental = "";
         //
         //  keep track of the total resources ever generated in the game by everyone
         [ObservableProperty]
@@ -114,8 +119,8 @@ namespace Catan3.Models
                 .Sum(tile => tile.Stars);
             return total;
         }
-       
-     
+
+
         public string Serialize()
         {
             string gameModelJson = String.Empty;

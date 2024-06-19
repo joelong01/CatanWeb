@@ -56,5 +56,10 @@ namespace Catan3
             window.ViewModel = viewModel;
             window.Activate();
         }
+
+        private void OnOpen(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 }

@@ -41,8 +41,30 @@
                                 ImageSource="{x:Bind CroppedImageUri, Mode=OneWay}" />
                     </Ellipse.Fill>
                 </Ellipse>
-                <TextBlock Text="{x:Bind Name}" Foreground="White" Margin="10"
+                <TextBlock Text="{x:Bind Name, Mode=OneWay}" Foreground="White" Margin="10"
                         HorizontalAlignment="Center" VerticalAlignment="Bottom" />
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="PickSupplementalPlayersTemplate"
+                x:DataType="models:PlayerViewModel">
+            <StackPanel CornerRadius="5" IsHitTestVisible="True" Width="400"
+                    HorizontalAlignment="Center"
+                    BorderBrush="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}"
+                    Background="{x:Bind PlayerColors.BackgroundBrush, Mode=OneWay}"
+                    BorderThickness="1">
+                <CheckBox Content="Doing Supplemental" Margin="10"
+                        VerticalAlignment="Top" HorizontalAlignment="Center"
+                        IsEnabled="{x:Bind CanParticipateInSupplemental(IsCurrentPlayer), Mode=OneWay}"
+                        IsChecked="{x:Bind PartipatingInSupplemental, Mode=TwoWay}" />
+                <Ellipse Width="75" Height="75" Margin="10">
+                    <Ellipse.Fill>
+                        <ImageBrush
+                                ImageSource="{x:Bind CroppedImageUri, Mode=OneWay}" />
+                    </Ellipse.Fill>
+                </Ellipse>
+                <TextBlock Text="{x:Bind Name, Mode=OneWay}" Foreground="White"
+                        Margin="10" HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom" />
             </StackPanel>
         </DataTemplate>
     </Page.Resources>
@@ -206,9 +228,12 @@
                 <AppBarButton Label="Flip Orientation" Icon="Clear"
                         Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}" />
                 <AppBarButton Label="Do Misc" Click="OnHitMe" Icon="Admin" />
-                <AppBarButton Label="Toggle Titlebar" Click="OnToggleTitleBar" Icon="Pin" />
-                <AppBarButton Label="Close" Click="OnClose" Margin="0,0,0,0" Icon="ClosePane" />
-                <AppBarButton Label="Run Tests" Click="OnRunTests" Margin="0,40,0,0" Icon="Flag" />
+                <AppBarButton Label="Toggle Titlebar" Click="OnToggleTitleBar"
+                        Icon="Pin" />
+                <AppBarButton Label="Close" Click="OnClose" Margin="0,0,0,0"
+                        Icon="ClosePane" />
+                <AppBarButton Label="Run Tests" Click="OnRunTests"
+                        Margin="0,40,0,0" Icon="Flag" />
             </StackPanel>
         </SplitView.Pane>
     </SplitView>

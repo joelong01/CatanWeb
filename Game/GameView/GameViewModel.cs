@@ -63,7 +63,7 @@ namespace Catan3.Models
             SetGameStars();
             FixupState(newValue);
             SetPlayerStars();
-        }
+     }
         /// <summary>
         ///     This is calculated based on state in GameModel, but stored int the ViewModel
         ///     call *after* MergeBuildings, as that calculates buildings.Stars
@@ -185,10 +185,14 @@ namespace Catan3.Models
             {
                 Players[i].Player = gameModel.Players[i]; // triggers PlayerViewModel.PlayerChanged
                 Debug.Assert(Players[i].Id == gameModel.Players[i].Id);
-                if (gameModel.Players[i].Id == gameModel.CurrentPlayerId)
+                Players[i].IsCurrentPlayer = ( gameModel.Players[i].Id == gameModel.CurrentPlayerId );
+                if (Players[i].IsCurrentPlayer)
                 {
                     this.CurrentPlayer = Players[i]; // triggers OnCurrentPlayerChanged
+
                 }
+                Players[i].PartipatingInSupplemental = gameModel.Players[i].ParticipatingInSupplemental;
+
             }
         }
         public void SetPlayerOrder(GameModel gameModel)

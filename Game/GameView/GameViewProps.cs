@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using static Catan3.Models.TurnRollViewModel;
@@ -9,6 +10,7 @@ namespace Catan3.Models
         public static ResourceType[] StarsTrackResourceList =  [ResourceType.Sheep, ResourceType.Wheat, ResourceType.Wood, ResourceType.Brick, ResourceType.Ore];
         public static ResourceType[] PlayerTrackResourceList =  [..StarsTrackResourceList, ResourceType.GoldMine, ResourceType.Robber];
     }
+    
     public partial class GameViewModel : ObservableRecipient
     {
         /// <summary>
@@ -35,6 +37,8 @@ namespace Catan3.Models
         private ObservableCollection<BuildingViewModel> _buildings = [];
         [ObservableProperty]
         private ObservableCollection<PlayerViewModel> _players = [];
+        [ObservableProperty]
+        private ObservableCollection<PlayerViewModel> _supplementalPlayers = [];
         [ObservableProperty]
         private ObservableCollection<RoadViewModel> _roads = [];
         [ObservableProperty]

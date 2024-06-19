@@ -29,7 +29,7 @@
                             HorizontalAlignment="Left" VerticalAlignment="Top"
                             Width="100" Height="100">
                         <Button Content="&#xE101;"
-                                Command="{x:Bind ViewModel.GameViewModel.NextPlayerCommand, Mode=OneWay}"
+                                Command="{x:Bind ViewModel.GameViewModel.NextActionCommand, Mode=OneWay}"
                                 IsEnabled="{x:Bind ViewModel.GameViewModel.GameModel.ActionFlags.NextEnabled, Mode=OneWay}"
                                 Style="{StaticResource GameControllerStyle}"
                                 Background="Transparent" Foreground="White" />

@@ -1,11 +1,12 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System.Collections.Generic;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 namespace Catan3.Models
 {
     public partial class GameViewModel : ObservableRecipient
     {
-      
+
         /// <summary>
         ///     This method is called as an ICommand by controls that bind to GameViewModel
         ///     It requires coordination across the GameViewModel (e.g. needs Undo/Redo)
@@ -15,10 +16,10 @@ namespace Catan3.Models
         [RelayCommand]
         public void Shuffle()
         {
-           Messenger.Send(new DoAction(GameAction.Shuffle));
+            Messenger.Send(new DoAction(GameAction.Shuffle));
         }
         [RelayCommand]
-        public void Undo()  
+        public void Undo()
         {
             Messenger.Send(new DoAction(GameAction.Undo));
         }
@@ -28,10 +29,22 @@ namespace Catan3.Models
             Messenger.Send(new DoAction(GameAction.Redo));
         }
         [RelayCommand]
-        public void NextPlayer()
+        public void NextAction()
         {
+            if (GameModel.GameState == GameState.PickSupplementalPlayers)
+            {
+                List<string> supplementalPlayers = [];
+                foreach (var player in Players)
+                {
+                    if (player.PartipatingInSupplemental) supplementalPlayers.Add(player.Id);
+                }
+                Messenger.Send(new PlayersDoingSupplemental(supplementalPlayers));
+                
+ 
+            }
+
             Messenger.Send(new DoAction(GameAction.Next));
-          
+
         }
         /// <summary>
         ///     this is not undoable, client only ... so we can implement this here instead
@@ -42,7 +55,7 @@ namespace Catan3.Models
         public void ShowStarValues(int stars)
         {
             throw new System.Exception("shouldn't be called");
-            
+
         }
         /// <summary>
         ///     this has the side effect of broadcasting a UpdateOrientation command
@@ -57,6 +70,6 @@ namespace Catan3.Models
         {
             Messenger.Send(new PurchaseMessage(entitlement));
         }
-       
+
     }
 }

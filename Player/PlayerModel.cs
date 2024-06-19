@@ -40,6 +40,8 @@ namespace Catan3.Models
         private bool  _highestScore = false;
         [ObservableProperty]
         private int _timesTargeted;
+        [ObservableProperty]
+        private bool _participatingInSupplemental;
         /// <summary>
         ///  how many resources did the player get this turn?  re-created when the
         ///  GameState transitions to WaitingForRoll

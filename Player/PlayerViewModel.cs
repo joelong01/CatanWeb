@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Devices.Bluetooth.Advertisement;
 using Windows.UI;
 namespace Catan3.Models
 {
@@ -27,6 +28,13 @@ namespace Catan3.Models
         private string _imageUri = PlayerDatabase.DefaultImageUri;
         [ObservableProperty]
         private string _croppedImageUri = PlayerDatabase.DefaultImageUri;
+
+        //  needed for the PickSupplementalPlayers UI
+        [ObservableProperty]
+        bool _partipatingInSupplemental = false;
+        //  needed for the PickSupplementalPlayers UI
+        [ObservableProperty]
+        bool _isCurrentPlayer = false;
 
         [property:JsonIgnore]
         [ObservableProperty]
@@ -47,6 +55,9 @@ namespace Catan3.Models
         [property: JsonIgnore]
         [ObservableProperty]
         private ObservableCollection<PlayerStatsViewModel> _playerStats = [];
+
+
+
         [JsonIgnore]
         public Dictionary<StatName, PlayerStatsViewModel> StatDictionary { get; } = [];
         [JsonIgnore]
@@ -62,7 +73,10 @@ namespace Catan3.Models
 
         }
 
-        
+        public bool CanParticipateInSupplemental(bool isCurrentPlayer)
+        {
+            return !isCurrentPlayer;
+        }
 
         private BitmapImage CreateBitmapImage(string uri)
         {
@@ -152,6 +166,10 @@ namespace Catan3.Models
         {
             WeakReferenceMessenger.Default.Send(new GoFirstMessage(this.Id));
         }
+
+       
+
+     
     }
     public enum ColorName { PrimaryBackground, SecondaryBackground, Foreground }
 }

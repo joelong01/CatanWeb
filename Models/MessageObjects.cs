@@ -135,4 +135,9 @@ namespace Catan3.Models
         public PlayerViewModel? Player { get; } = model;
     }
 
+    public class PlayersDoingSupplemental(IList<string> playerIds)
+    {
+        public IList<string> PlayerIds { get; } = playerIds;
+    }
+
 }

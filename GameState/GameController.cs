@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Catan10.Models;
 using Catan3.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.UI.Xaml.Controls;
 namespace Catan3.Controller
 {
     public class GameController : ObservableRecipient
@@ -141,6 +143,30 @@ namespace Catan3.Controller
                     SendErrorMessage(e.Message, e.ErrorLevel);
                 }
             });
+
+            Messenger.Register<PlayersDoingSupplemental>(this, (recipient, message) =>
+            {
+
+                try
+                {
+                    GameModel gameModel = Log.CopyCurrent();
+                    if (gameModel.GameState != GameState.PickSupplementalPlayers) return;
+                    //
+                    //  optimize away the case when there are supplemental players
+                    foreach (var player in gameModel.Players)
+                    {
+                        player.ParticipatingInSupplemental = message.PlayerIds.Contains(player.Id);  // this makes the flag explicity false if it is not in the list
+                    }
+
+                    LogDone(gameModel); //undo puts us back to this state
+
+                    Messenger.Send(new UpdateGameModel(gameModel));
+                }
+                catch (GameException e)
+                {
+                    SendErrorMessage(e.Message, e.ErrorLevel);
+                }
+            });
             Messenger.Register<EndGame>(this, (recipient, message) =>
             {
                 Messenger.UnregisterAll(this);
@@ -177,7 +203,7 @@ namespace Catan3.Controller
             }
             else
             {
-                ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext]);
+                ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.Supplemental]);
             }
             if (!ValidatePurchase(gameModel, entitlement))
             {
@@ -329,8 +355,17 @@ namespace Catan3.Controller
         }
         private bool AllowNext(GameModel gameModel)
         {
-            if (gameModel.GameState == GameState.WaitingForRoll) return false;
+            //
+            //  there are some states where the transition out of the state is not done via clicking on Next.
+            //  in these cases, Next shoudl be disabled.  If you invent a new one, add it to this list.
+            List<GameState> NonNextStates = [GameState.WaitingForRoll, GameState.MustMoveRobber];
+
+
+            if (NonNextStates.Contains(gameModel.GameState)) return false;
+
+            // you can't hit next if you have bought something, but not played it.
             if (gameModel.CurrentPlayer().UnspentEntitlements.Count > 0) return false;
+
             return true;
         }
         /// <summary>
@@ -436,19 +471,73 @@ namespace Catan3.Controller
                     // it is controlled by hitting a roll UI
                     break;
                 case GameState.WaitingForNext:
-                    gameModel.ChangePlayer(1);
-                    gameModel.TurnRollModel = new();
-                    gameModel.Players.ForEach(p =>
+                    if (gameModel.HasSupplementalBuildPhase)
                     {
-                        p.ResourcesThisTurn = new();
-                        p.SpentEntitlementsThisTurn = [];
-                    });
-                    SetTempGoldTiles(gameModel);
-                    gameModel.GameState = GameState.WaitingForRoll;
-                    ResetBuildableRoads(gameModel);
+
+                        gameModel.GameState = GameState.PickSupplementalPlayers;
+
+                        gameModel.Players.ForEach(p =>
+                        {
+                            p.ParticipatingInSupplemental = false;
+
+                        });
+
+                        gameModel.NextPlayerToRollAfterSupplemental = gameModel.NextPlayerId(gameModel.CurrentPlayerId, 1);
+
+                    }
+                    else
+                    {
+                        gameModel.ChangePlayer(1);
+                        UpdateStateOnNextPlayer(gameModel);
+                    }
                     break;
+                case GameState.PickSupplementalPlayers:
+                    {
+                        //
+                        //  are there any supplemental players?
+                        var p = gameModel.Players.Find(p => p.ParticipatingInSupplemental);
+                        if (p is not null)
+                        {
+                            // we have at least one -- set the game state to supplemental
+                            gameModel.GameState = GameState.Supplemental;
+
+                            // change to that player
+                            gameModel.ChangePlayerTo(p.Id);
+
+                            // set the flag so we don't find them again
+                            p.ParticipatingInSupplemental = false;
+                        }
+                        else
+                        {
+                            gameModel.ChangePlayerTo(gameModel.NextPlayerToRollAfterSupplemental);
+                            UpdateStateOnNextPlayer(gameModel);
+
+                        }
+
+                        break;
+                    }
                 case GameState.Supplemental:
-                    break;
+                    {
+                        var p = gameModel.Players.Find(p => p.ParticipatingInSupplemental);
+                        if (p is not null)
+                        {
+                            // we have at least one -- set the game state to supplemental
+                            gameModel.GameState = GameState.Supplemental;
+
+                            // change to that player
+                            gameModel.ChangePlayerTo(p.Id);
+
+                            // set the flag so we don't find them again
+                            p.ParticipatingInSupplemental = false;
+                        }
+                        else
+                        {
+                            gameModel.GameState = GameState.WaitingForNext;
+                            gameModel.ChangePlayerTo(gameModel.NextPlayerToRollAfterSupplemental);
+                            UpdateStateOnNextPlayer(gameModel);
+                        }
+                        break;
+                    }
                 case GameState.MustMoveRobber:
                     break;
                 case GameState.TooManyCards:
@@ -483,12 +572,25 @@ namespace Catan3.Controller
                     break;
                 case GameState.ClickOnKnight:
                     break;
-                case GameState.PickSupplementalPlayers:
-                    break;
+
             }
             LogDone(gameModel);
             return gameModel;
         }
+
+        private void UpdateStateOnNextPlayer(GameModel gameModel)
+        {
+            gameModel.TurnRollModel = new();
+            gameModel.Players.ForEach(p =>
+            {
+                p.ResourcesThisTurn = new();
+                p.SpentEntitlementsThisTurn = [];
+            });
+            SetTempGoldTiles(gameModel);
+            gameModel.GameState = GameState.WaitingForRoll;
+            ResetBuildableRoads(gameModel);
+        }
+
         /// <summary>
         ///     during the allocation phase in the normal game, we give a Settlement and a Road.  Later on, some expansions give other resources
         ///     (e.g.  a City on the second reverse allocation).
@@ -511,7 +613,7 @@ namespace Catan3.Controller
         private GameModel RoadPurchase(RoadPurchaseMessage message)
         {
             GameModel gameModel = Log.CopyCurrent();
-            ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse]);
+            ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse, GameState.Supplemental]);
             ThrowIfNoEntitlement(gameModel, [Entitlement.Road]);
             var roadKey = message.RoadKey;
             // Retrieve the road model corresponding to the road key.
@@ -571,6 +673,7 @@ namespace Catan3.Controller
         }
         private void SetPlaySoldierAccess(GameModel gameModel)
         {
+
             var moveRobber = gameModel.PurchaseModel(Entitlement.Soldier );
             if (gameModel.GameState != GameState.WaitingForNext && gameModel.GameState != GameState.WaitingForRoll)
             {
@@ -605,7 +708,7 @@ namespace Catan3.Controller
         private GameModel BuildingUpgrade(BuildingUpgradeMessage message)
         {
             GameModel gameModel = Log.CopyCurrent();
-            ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse]);
+            ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse, GameState.Supplemental]);
             BuildingKey buildingKey = message.BuildingKey;
             var building = gameModel.Buildings.FindBuildingModel(buildingKey)
                     ?? throw new GameException($"Invalid BuildingKey: {buildingKey}");
