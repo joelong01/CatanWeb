@@ -29,7 +29,7 @@
 	  <None Remove="Controls\PurchaseCtrl.xaml" />
 	  <None Remove="Game\Game Control\GameControls.xaml" />
 	  <None Remove="Game\GameFactory\GameBoardCtrl.xaml" />
-	  <None Remove="Game\NewGameDlg\NewGameCtrl.xaml" />
+	  <None Remove="Game\NewGame\NewGamePage.xaml" />
 	  <None Remove="MainPage\MainPage.xaml" />
 	  <None Remove="MainPage\MainWindow.xaml" />
 	  <None Remove="Player\PlayerSettingDlg.xaml" />
@@ -274,5 +274,10 @@
 	<ItemGroup>
 	  <Content Remove="Assets\AppIcon.png" />
 	  <Content Remove="Assets\Guest.png" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Page Update="Game\NewGame\NewGamePage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	</ItemGroup>
 </Project>

@@ -70,7 +70,8 @@ namespace Catan3.Models
             {
                 UriSource = new Uri(uri),
                 DecodePixelHeight = 200,
-                DecodePixelWidth = 200
+                DecodePixelWidth = 200,
+                CreateOptions = BitmapCreateOptions.IgnoreImageCache
             };
         }
 

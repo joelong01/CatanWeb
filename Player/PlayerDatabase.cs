@@ -88,7 +88,7 @@ namespace Catan3
         /// <param name="playerId">The PlayerId of the player to update.  Will throw if the playerId is bad.</param>
         /// <returns>The fully qualified path to the location that should be used to store the cropped image.</returns>
         /// <exception cref="GameException"></exception>
-        public string GetNextImageName(string fqn)
+        public string GetNextImageName(string fqn, string root)
         {
             var folderPath = Path.GetDirectoryName(fqn) ?? throw new GameException($"Invalid Directory Name in PlayerDatabase {fqn}");
             if (folderPath == string.Empty)
@@ -102,7 +102,7 @@ namespace Catan3
                 currentSalt = 0; // If there's no salt or it's invalid, start from 0
             }
             var newSalt = currentSalt + 1;
-            var newFileName = $"{parts[0]}_{parts[1]}_{newSalt}.png";
+            var newFileName = $"{parts[0]}_{root}_{newSalt}.png";
             var newFqn = Path.Combine(folderPath, newFileName);
 
             return newFqn;
@@ -123,7 +123,7 @@ namespace Catan3
 
             }
 
-            return GetNextImageName(fqn);
+            return GetNextImageName(fqn, "cropped");
         }
 
         private string GetNextImageName(PlayerViewModel player, string fqn)
@@ -133,7 +133,7 @@ namespace Catan3
                 return $"{player.Id}_image_001.png";
             }
 
-            return GetNextImageName(fqn);
+            return GetNextImageName(fqn, "image");
         }
 
         /// <summary>
@@ -266,7 +266,7 @@ namespace Catan3
             var saltedImageUri = GetNextImageName(player, player.ImageUri);
             await CopyResourceFile(folder, player.CroppedImageUri, saltedCroppedUri);
             await CopyResourceFile(folder, player.ImageUri, saltedImageUri);
-            player.CroppedImageUri = Path.Combine(folder.Path, saltedImageUri);
+            player.CroppedImageUri = Path.Combine(folder.Path, saltedCroppedUri);
             player.ImageUri = Path.Combine(folder.Path, saltedImageUri);
             string playerJson = JsonSerializer.Serialize(player, PlayerDatabase.JsonSerializerOptions);
             PlayerViewModel? playerCopy = JsonSerializer.Deserialize<PlayerViewModel>(playerJson,  PlayerDatabase.JsonSerializerOptions);
@@ -285,13 +285,6 @@ namespace Catan3
         [RelayCommand]
         public async Task SavePlayers()
         {
-            foreach (var p in AllPlayers)
-            {
-                if (p.Id.Contains("Nameless"))
-                {
-                    p.Id = GenerateId(p.Name);
-                }
-            }
             string json = JsonSerializer.Serialize(AllPlayers);
             var folder = await KnownFolders.DocumentsLibrary.CreateFolderAsync(PlayerFolder, CreationCollisionOption.OpenIfExists);
             var databaseFile = await folder.CreateFileAsync(PlayersFileName, CreationCollisionOption.ReplaceExisting);

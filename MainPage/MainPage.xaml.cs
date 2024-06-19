@@ -4,13 +4,13 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Catan.Services;
-using Catan3.Controls;
 using Catan3.Models;
 using Catan3.Player;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Navigation;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 namespace Catan3
@@ -38,39 +38,29 @@ namespace Catan3
     }
     public sealed partial class MainPage : Page
     {
-        IPlayerDatabase _playerDatabase; // set in Loaded
+
         public MainPage()
         {
-            _playerDatabase = new PlayerDatabase();
+
             this.InitializeComponent();
 
         }
-        private async void OnLoaded(object sender, RoutedEventArgs e)
+        protected override void OnNavigatedTo(NavigationEventArgs e)
         {
- 
-            await _playerDatabase.LoadPlayerDatabase();
+            base.OnNavigatedTo(e);
+            if (e.NavigationMode == NavigationMode.Back)
+            {
+                Debug.Assert(MainWindow.CurrentGame is not null);
+                MainPageModel = MainWindow.CurrentGame;
+                return;
+            }
 
-            //  
-            //  Uncomment if you want to have the game launched with a game started
-
-            //List<PlayerViewModel> players = [..PlayerDatabase.AllPlayers];
-            //while (players.Count > 0 && players.Count > 5)
-            //{
-            //    players.RemoveAt(players.Count - 1);
-            //}
-
-            //if (players.Count > 0)
-            //{
-            //    try
-            //    {
-            //        NewGame(GameType.Expansion, players);
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        this.TraceMessage($"{ex}");
-            //    }
-            //}
+            if (e.NavigationMode == NavigationMode.New && e.Parameter is NewGameViewModel newGameViewModel)
+            {
+                NewGame(newGameViewModel.SelectedGame, newGameViewModel.PlayingPlayers);
+            }
         }
+
         public DataTemplate? StateToItemTemplate(GameState gameState)
         {
             if (gameState != GameState.FinishedRollOrder)
@@ -127,10 +117,10 @@ namespace Catan3
                     MainPageModel.GameViewModel.PropertyChanged -= GameViewModel_PropertyChanged;
 
                 }
-                Debug.Assert(_playerDatabase is not null);
-                MainPageModel = new MainPageViewModel(new FileService(), _playerDatabase, gameType, players);
-                MainPageModel.GameViewModel.PropertyChanged += GameViewModel_PropertyChanged;
 
+                MainPageModel = new MainPageViewModel(new FileService(), MainWindow.PlayerDatabase, gameType, players);
+                MainPageModel.GameViewModel.PropertyChanged += GameViewModel_PropertyChanged;
+                MainWindow.CurrentGame = MainPageModel;
                 this.DataContext = MainPageModel.GameViewModel;
             }
             finally
@@ -181,29 +171,24 @@ namespace Catan3
             };
             await dialog.ShowAsync();
         }
-        private async void OnNewGame(object sender, RoutedEventArgs e)
+        private void OnNewGame(object sender, RoutedEventArgs e)
         {
-            NewGameViewModel viewModel = new(_playerDatabase.AllPlayers);
-            NewGameContentDialog dialog = new(viewModel)
+
+            try
             {
-                XamlRoot = this.XamlRoot
-            };
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
-            {
-                try
-                {
-                    NewGame(viewModel.SelectedGame, viewModel.PlayingPlayers);
-                }
-                catch (Exception ex)
-                {
-                    this.TraceMessage($"{ex}");
-                }
-                finally
-                {
-                    HideMenu();
-                }
+
+                NewGameViewModel viewModel = new(MainWindow.PlayerDatabase.AllPlayers);
+                Frame.Navigate(typeof(NewGamePage), viewModel);
             }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"{ex}");
+            }
+            finally
+            {
+                HideMenu();
+            }
+
         }
         private void OnHitMe(object sender, RoutedEventArgs rea)
         {
@@ -214,12 +199,12 @@ namespace Catan3
         private void OnEditPlayers(object sender, RoutedEventArgs e)
         {
             PlayerEditorWindow window = new();
-            PlayerSettingsViewModel viewModel = new(window,  _playerDatabase);
+            PlayerSettingsViewModel viewModel = new(window,  MainWindow.PlayerDatabase);
             window.ViewModel = viewModel;
             window.Activate();
             HideMenu();
         }
-      
+
 
         private void ListView_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
         {
@@ -230,7 +215,7 @@ namespace Catan3
             HideMenu();
             try
             {
-                var json = JsonSerializer.Serialize(_playerDatabase.AllPlayers[0]);
+                var json = JsonSerializer.Serialize(MainWindow.PlayerDatabase.AllPlayers[0]);
                 var cpy = JsonSerializer.Deserialize<PlayerViewModel>(json);
                 if (cpy is null)
                 {
@@ -245,7 +230,7 @@ namespace Catan3
             }
             try
             {
-                await _playerDatabase.LoadPlayerDatabase();
+                await MainWindow.PlayerDatabase.LoadPlayerDatabase();
             }
             catch (Exception ex)
             {
@@ -290,7 +275,7 @@ namespace Catan3
         {
             if (MainPageModel is not null)
             {
-                MainPageModel.ShowCommands = !MainPageModel.ShowCommands ;
+                MainPageModel.ShowCommands = !MainPageModel.ShowCommands;
             }
             else
             {

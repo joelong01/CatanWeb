@@ -6,4 +6,5 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         IsTitleBarVisible="True" IsResizable="True" PersistenceId="Catan_WinUi"
         IsMaximizable="True" mc:Ignorable="d">
+    <Frame Name="MainFrame" Loaded="OnLoaded" />
 </winex:WindowEx>

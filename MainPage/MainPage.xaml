@@ -8,7 +8,6 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" RightTapped="OnRightButtonTapped" KeyUp="OnKeyUp"
         xmlns:c="using:Catan3.Controls" xmlns:models="using:Catan3.Models"
-        Loaded="OnLoaded"
         d:DataContext="{d:DesignInstance Type=models:GameViewModel}">
     <Page.Resources>
         <Style TargetType="Rectangle" x:Key="RECT_ResourceCard">

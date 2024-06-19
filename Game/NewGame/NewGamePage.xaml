@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<UserControl x:Class="Catan3.Controls.NewGameCtrl"
+<Page x:Class="Catan3.NewGamePage"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="using:Catan3.Controls" xmlns:m="using:Catan3.Models"
+        xmlns:local="using:Catan3" xmlns:m="using:Catan3.Models"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d">
-    <UserControl.Resources>
-        <DataTemplate x:Key="EditPlayerDataTemplate"
-                x:DataType="m:PlayerViewModel">
+        mc:Ignorable="d"
+        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Page.Resources>
+        <DataTemplate x:Key="PlayerDataTemplate" x:DataType="m:PlayerViewModel">
             <Grid HorizontalAlignment="Stretch" Height="120"
                     Background="{x:Bind PlayerColors.BackgroundBrush, Mode=OneWay}">
                 <Ellipse Name="Player_Picture" HorizontalAlignment="Center"
@@ -29,18 +30,18 @@
                         HorizontalAlignment="Center" VerticalAlignment="Bottom" />
             </Grid>
         </DataTemplate>
-    </UserControl.Resources>
-    <StackPanel Background="Gray" HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch">
-        <GridView Margin="10" HorizontalAlignment="Stretch" Width="800"
+    </Page.Resources>
+    <StackPanel Name="LayoutRoot" HorizontalAlignment="Center"
+            VerticalAlignment="Center">
+        <GridView Margin="10" HorizontalAlignment="Stretch" Width="624"
                 x:Name="ListView_Players" SelectionMode="Multiple"
                 VerticalAlignment="Top" Background="Transparent"
                 SelectionChanged="{x:Bind ViewModel.Players_SelectionChanged}"
                 ItemsSource="{x:Bind ViewModel.Players, Mode=OneWay}"
-                ItemTemplate="{StaticResource EditPlayerDataTemplate}">
+                ItemTemplate="{StaticResource PlayerDataTemplate}">
             <GridView.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <WrapGrid MaximumRowsOrColumns="4" Orientation="Horizontal" />
+                    <WrapGrid MaximumRowsOrColumns="6" Orientation="Horizontal" />
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
             <GridView.ItemContainerStyle>
@@ -54,14 +55,28 @@
                 </Style>
             </GridView.ItemContainerStyle>
         </GridView>
-        <!--Game Type-->
-        <TextBlock Text="Game Type:" Foreground="White" FontSize="22"
-                Margin="10" />
-        <ComboBox ItemsSource="{x:Bind ViewModel.Games, Mode=OneWay}"
-                SelectedItem="{x:Bind ViewModel.SelectedGame, Mode=OneWay}"
-                SelectionChanged="{x:Bind ViewModel.Game_SelectionChanged}"
-                SelectionChangedTrigger="Always"
-                HorizontalAlignment="Left" FontSize="22" Foreground="White"
-                VerticalAlignment="Top" Width="200" />
+
+        <StackPanel Orientation="Horizontal">
+            <TextBlock Text="Game Type:" Foreground="White" FontSize="22" VerticalAlignment="Center" TextLineBounds="Tight"
+                    HorizontalAlignment="Left" Margin="10" />
+
+            <ComboBox ItemsSource="{x:Bind ViewModel.Games, Mode=OneWay}"
+                    SelectedItem="{x:Bind ViewModel.SelectedGame, Mode=OneWay}"
+                    SelectionChanged="{x:Bind ViewModel.Game_SelectionChanged}"
+                    SelectionChangedTrigger="Always" HorizontalAlignment="Right"
+                    FontSize="22" Foreground="White" VerticalAlignment="Top"
+                    Width="200" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                Width="{Binding ElementName=LayoutRoot, Path=Width}">
+            <Button Content="Manage Players" Width="125" Margin="5" Click="OnManagePlayers"/>
+
+            <Button Content="Cancel" Width="100" Click="OnCancel"
+                    Margin="5"
+                    Visibility="{x:Bind Frame.CanGoBack, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+            <Button Content="Start" Width="100" Click="OnStart"  Margin="5"
+                    HorizontalAlignment="Right" />
+        </StackPanel>
+
     </StackPanel>
-</UserControl>
+</Page>
