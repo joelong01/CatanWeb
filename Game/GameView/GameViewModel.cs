@@ -63,7 +63,7 @@ namespace Catan3.Models
             SetGameStars();
             FixupState(newValue);
             SetPlayerStars();
-     }
+        }
         /// <summary>
         ///     This is calculated based on state in GameModel, but stored int the ViewModel
         ///     call *after* MergeBuildings, as that calculates buildings.Stars
@@ -276,6 +276,7 @@ namespace Catan3.Models
             //  if they have a City entitlement, highlight and mark each Settlement
             bool hasCityEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.City);
             bool hasSettlementEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.Settlement);
+            DumpBuildingVisualState(gameModel);
             for (int i = 0; i < gameModel.Buildings.Count; i++)
             {
                 Contract.Assert(Buildings[i].Building.BuildingKey == gameModel.Buildings[i].BuildingKey);
@@ -289,9 +290,13 @@ namespace Catan3.Models
                             Buildings[i].VisualState = BuildingVisualState.Highlighted;
                             Buildings[i].BuildIndex = buildingIndex++;
                         }
-                        else if (Buildings[i].Stars >= this.ShownStars)
+                        else if (Buildings[i].Stars >= this.ShownStars && hasSettlementEntitlement)
                         {
                             Buildings[i].VisualState = BuildingVisualState.Stars;
+                        }
+                        else
+                        {
+                            Buildings[i].VisualState = BuildingVisualState.Hidden;
                         }
                         break;
                     case BuildingState.NotBuildable:
@@ -315,7 +320,18 @@ namespace Catan3.Models
                         break;
                 }
             }
+            DumpBuildingVisualState(gameModel);
         }
+
+        private void DumpBuildingVisualState(GameModel gameModel)
+        {
+            foreach (var  building in Buildings)
+            {
+                if (building.VisualState == BuildingVisualState.Stars)
+                this.TraceMessage($"{ building}");
+            }
+        }
+
         private void MergeHarbors(GameModel gameModel)
         {
             Contract.Assert(BoardInfo is not null, "BoardInfo cannot be null.");

@@ -84,7 +84,8 @@ namespace Catan3.Models
                 if (building.Building.OwnerId is not null) continue;
                 if (building.Building.BuildingState == BuildingState.NotBuildable) continue;
                 if (building.VisualState == BuildingVisualState.Highlighted) continue;
-                if (building.Stars >= value)
+                bool hasEntitlement = CurrentPlayer.Player.UnspentEntitlements.Contains(Entitlement.Settlement);
+                if (building.Stars >= value && hasEntitlement)
                 {
                     building.VisualState = BuildingVisualState.Stars;
                 }
