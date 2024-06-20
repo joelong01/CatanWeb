@@ -1,3 +1,4 @@
+using Catan.Services;
 using Catan3.Models;
 using WinUIEx;
 // To learn more about WinUI, the WinUI project structure,
@@ -7,6 +8,7 @@ namespace Catan3
     public partial class MainWindow : WindowEx
     {
         public static PlayerDatabase PlayerDatabase { get; private set; } = new();
+        public static FileService FileService { get; private set; } = new();
         public static MainPageViewModel? CurrentGame { get; set; } = null;
         public static MainWindow? Instance { get; private set; } = null;
         public MainWindow()

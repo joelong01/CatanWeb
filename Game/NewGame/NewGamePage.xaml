@@ -68,7 +68,7 @@
                     FontSize="22" Foreground="White" VerticalAlignment="Top"
                     Width="200" />
         </StackPanel>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Padding="20"
                 Width="{Binding ElementName=LayoutRoot, Path=Width}">
             <Button Content="Manage Players" Width="125" Margin="5"
                     Click="OnManagePlayers" />

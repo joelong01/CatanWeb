@@ -1,9 +1,15 @@
 using System.Diagnostics;
+using Catan.Services;
+using System.Security.AccessControl;
 using Catan3.Models;
 using Catan3.Player;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using Catan3.Controller;
+using CommunityToolkit.Mvvm.Messaging;
+using System;
+using System.Threading.Tasks;
 
 
 namespace Catan3
@@ -24,10 +30,31 @@ namespace Catan3
             set => SetValue(ViewModelProperty, value);
         }
 
-        private void OnStart(object sender, RoutedEventArgs e)
+        private async void OnStart(object sender, RoutedEventArgs e)
         {
-            Frame.Navigate(typeof(MainPage), ViewModel);
-            Frame.BackStack.Clear();
+            try
+            {
+                var mainPageModel = new MainPageViewModel(MainWindow.FileService, MainWindow.PlayerDatabase, ViewModel.SelectedGame, ViewModel.PlayingPlayers);
+                Frame.Navigate(typeof(MainPage), mainPageModel);
+                Frame.BackStack.Clear();
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorDialog(ex.Message);
+            }
+
+        }
+        public async Task ShowErrorDialog(string errorMessage)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Error",
+                Content = errorMessage,
+                CloseButtonText = "Ok",
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            await dialog.ShowAsync();
         }
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
@@ -57,8 +84,27 @@ namespace Catan3
             window.Activate();
         }
 
-        private void OnOpen(object sender, RoutedEventArgs e)
+        private async void OnOpen(object sender, RoutedEventArgs e)
         {
+            try
+            {
+                var compressedBytes = await MainWindow.FileService.OpenFileAsync();
+                if (compressedBytes is null)
+                {
+                    this.TraceMessage("Unable to open file");
+                    return;
+                }
+
+                MainPageViewModel mpViewModel = new ( compressedBytes, MainWindow.FileService, MainWindow.PlayerDatabase);
+                Frame.Navigate(typeof(MainPage), mpViewModel);
+                Frame.BackStack.Clear();
+
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorDialog(ex.Message);
+            }
+
 
         }
     }

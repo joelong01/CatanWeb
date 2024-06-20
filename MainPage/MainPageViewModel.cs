@@ -41,6 +41,26 @@ namespace Catan3.Models
             GameViewModel.UpdateLayout();
             GameViewModel.SetGameStars();
         }
+
+        public MainPageViewModel(byte[] compressedBytes, IFileService fileService, IPlayerDatabase playerDatabase)
+        {
+
+            FunctionTimer.Enabled = false;
+            _fileService = fileService;
+            _playerDatabase = playerDatabase;
+            GameController = new GameController();
+            RegisterMessages();
+
+            Messenger.Send(new EndGame());
+            GameController = new GameController();
+            RegisterMessages();
+            var gameModel = GameController.OpenSerializableLog(compressedBytes);
+            this.GameViewModel = new GameViewModel(gameModel, playerDatabase);
+            GameViewModel.UpdateLayout();
+            GameViewModel.SetGameStars();
+
+        }
+
         private void RegisterMessages()
         {
             Debug.Assert(Messenger is not null);

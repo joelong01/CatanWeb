@@ -47,6 +47,9 @@ namespace Catan3.Models
                 ShowCommands = false;
             }
         }
+
+      
+
         [RelayCommand]
         private async Task Open()
         {

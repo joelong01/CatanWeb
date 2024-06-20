@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Catan.Services;
 using Catan3.Models;
 using Catan3.Player;
 using Microsoft.UI.Windowing;
@@ -57,11 +55,11 @@ namespace Catan3
                 MainPageModel = MainWindow.CurrentGame;
                 return;
             }
-
-            if (e.NavigationMode == NavigationMode.New && e.Parameter is NewGameViewModel newGameViewModel)
+            if (e.Parameter is MainPageViewModel mainPageModel)
             {
-                NewGame(newGameViewModel.SelectedGame, newGameViewModel.PlayingPlayers);
+                MainPageModel = mainPageModel;
             }
+
         }
 
         public DataTemplate? StateToItemTemplate(GameState gameState)
@@ -80,7 +78,7 @@ namespace Catan3
                         return pickSupplementalPlayers as DataTemplate;
                     }
                     break;
-                 default:
+                default:
                     if (this.Resources.TryGetValue("PlayerStatsTemplate", out var playerStatsTemplate))
                     {
                         return playerStatsTemplate as DataTemplate;
@@ -102,14 +100,29 @@ namespace Catan3
         private static void MainPageModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as MainPage;
-            var depPropValue = (MainPageViewModel)e.NewValue;
-            depPropClass?.SetMainPageModel(depPropValue);
+            depPropClass?.SetMainPageModel(( MainPageViewModel )e.OldValue, ( MainPageViewModel )e.NewValue);
         }
-        private void SetMainPageModel(MainPageViewModel value)
+        private void SetMainPageModel(MainPageViewModel oldValue, MainPageViewModel newValue)
         {
+
+            if (oldValue is not null)
+            {
+                oldValue.EndGame();
+                oldValue.GameViewModel.PropertyChanged -= GameViewModel_PropertyChanged;
+            }
+
+
+            newValue.GameViewModel.PropertyChanged += GameViewModel_PropertyChanged;
+            MainWindow.CurrentGame = newValue;
+            this.DataContext = newValue;
+
+
         }
         private void OnRightButtonTapped(object sender, RightTappedRoutedEventArgs e)
         {
+            ToggleTitleBar();
+            HideMenu();
+            e.Handled = true;
         }
         private void OnKeyUp(object sender, KeyRoutedEventArgs e)
         {
@@ -123,27 +136,7 @@ namespace Catan3
                 HideMenu();
             }
         }
-        private void NewGame(GameType gameType, IList<PlayerViewModel> players)
-        {
-            try
-            {
-                if (MainPageModel is not null)
-                {
-                    MainPageModel.EndGame();
-                    MainPageModel.GameViewModel.PropertyChanged -= GameViewModel_PropertyChanged;
 
-                }
-
-                MainPageModel = new MainPageViewModel(new FileService(), MainWindow.PlayerDatabase, gameType, players);
-                MainPageModel.GameViewModel.PropertyChanged += GameViewModel_PropertyChanged;
-                MainWindow.CurrentGame = MainPageModel;
-                this.DataContext = MainPageModel.GameViewModel;
-            }
-            finally
-            {
-                HideMenu();
-            }
-        }
 
         private async void GameViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
