@@ -1,15 +1,14 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using Catan10.Models;
 using Catan3.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.UI.Xaml.Controls;
 namespace Catan3.Controller
 {
     public class GameController : ObservableRecipient
@@ -167,6 +166,23 @@ namespace Catan3.Controller
                     SendErrorMessage(e.Message, e.ErrorLevel);
                 }
             });
+            Messenger.Register<BalanceBoardMessage>(this, (recipient, message) =>
+            {
+                try
+                {
+                    GameModel gameModel = Log.CopyCurrent();
+                    if (BalanceBoard(gameModel))
+                    {
+                        LogDone(gameModel);
+
+                        Messenger.Send(new UpdateGameModel(gameModel));
+                    }
+                }
+                catch (GameException e)
+                {
+                    SendErrorMessage(e.Message, e.ErrorLevel);
+                }
+            });
             Messenger.Register<EndGame>(this, (recipient, message) =>
             {
                 Messenger.UnregisterAll(this);
@@ -213,6 +229,50 @@ namespace Catan3.Controller
             LogDone(gameModel);
             return gameModel;
         }
+
+        private bool BalanceBoard(GameModel gameModel)
+        {
+
+            ThrowIfWrongState(gameModel.GameState, [GameState.PickingBoard]);
+
+            ResourceCounterViewModel min = new(50, ResourceType.None);
+            ResourceCounterViewModel max = new(0, ResourceType.None);
+
+            var resourceToCountDictionary =   gameModel.Tiles.GroupBy(tile => tile.ResourceTileType)
+            .ToDictionary(group => group.Key, group => group.Sum(tile => tile.Stars));
+
+            resourceToCountDictionary.Remove(ResourceType.Desert);
+
+            var minResourceType = resourceToCountDictionary.Aggregate((l, r) => l.Value < r.Value ? l : r).Key;
+            var maxResourceType = resourceToCountDictionary.Aggregate((l, r) => l.Value > r.Value ? l : r).Key;
+            var minTile =  gameModel.Tiles.Where(tileModel => tileModel.ResourceTileType == minResourceType)
+                                                            .OrderBy(t => t.Stars)
+                                                            .First();
+
+            var maxTiles = gameModel.Tiles.Where(tileModel => tileModel.ResourceTileType == maxResourceType)
+                                                            .OrderByDescending(t => t.Stars)
+                                                            .ToList();
+
+            this.TraceMessage($"Min Tile: {minTile}");
+
+            minTile.ResourceTileType = maxResourceType;
+           
+            foreach (var tile in maxTiles)
+            {
+                tile.ResourceTileType = minResourceType;
+                if (gameModel.ValidateGame())
+                {
+                    this.TraceMessage($"max Tile: {tile}");
+                    return true;
+                }
+
+            }
+
+            this.TraceMessage("Unable to swap");
+            minTile.ResourceTileType = minResourceType;
+            return false;
+        }
+
         private bool ValidatePurchase(GameModel gameModel, Entitlement entitlement)
         {
             switch (entitlement)

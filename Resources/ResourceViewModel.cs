@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Linq;
 using Catan10.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 namespace Catan3.Models
 {
@@ -35,6 +37,42 @@ namespace Catan3.Models
         private IList<ResourceType> TrackedResourceList = trackedResourceList;
         [ObservableProperty]
         private ObservableCollection<ResourceCounterViewModel> _resourceCounters = [];
+        [ObservableProperty]
+        private ObservableCollection<ResourceCounterViewModel> _selectedResources = [];
+      
+      
+
+        public void Resources_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is GridView gridView)
+            {
+             
+
+                foreach (ResourceCounterViewModel model in e.AddedItems.Cast<ResourceCounterViewModel>())
+                {
+                    SelectedResources.Add(model);
+                }
+                foreach (ResourceCounterViewModel model in e.RemovedItems.Cast<ResourceCounterViewModel>())
+                {
+                    SelectedResources.Remove(model);
+                }
+
+                if (SelectedResources.Count > 3)
+                {
+                    var itemToRemove = SelectedResources[0];
+                    SelectedResources.RemoveAt(0);
+
+                    // Deselect the item in the GridView
+                    gridView.SelectedItems.Remove(itemToRemove);
+                }
+
+                var queryList = SelectedResources.Select(x => x.Resource).ToList();
+                Messenger.Send(new QueryResourcesMessage(queryList));
+            }
+        }
+
+
+
         /// <summary>
         ///     When the underlying GameModel changes, the ResourceModel updates. We go through and update
         ///     the ViewModel to represent the new data.  Note that we *do not* recreate the collection
@@ -48,7 +86,7 @@ namespace Catan3.Models
             {
                 Debug.Assert(newValue is not null);
             }
-          
+
             Debug.Assert(TrackedResourceList.Count > 0);
             foreach (var resource in this.TrackedResourceList)
             {
@@ -59,9 +97,9 @@ namespace Catan3.Models
                     ResourceCounters.Add(rcvm);
                 }
                 rcvm.Count = newValue.CountForResource(resource);
-               
+
             }
         }
-       
+
     }
 }

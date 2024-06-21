@@ -1,18 +1,21 @@
 ﻿using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
 namespace Catan3.Models
 {
-    public partial class QueryResourceModel : ObservableObject
+    public partial class QueryResourceModel : ObservableRecipient
     {
-       
+
         [ObservableProperty]
         ResourceType _resourceType;
         [ObservableProperty]
         ImageBrush _background;
+        [ObservableProperty]
+        int  _count=0;
 
         public QueryResourceModel(ResourceType resourceType)
         {
@@ -24,7 +27,7 @@ namespace Catan3.Models
 
     }
 
-    public partial class QueryBuilderModel : ObservableObject
+    public partial class QueryBuilderModel : ObservableRecipient
     {
 
         [ObservableProperty]
@@ -33,18 +36,35 @@ namespace Catan3.Models
         [ObservableProperty]
         private ObservableCollection<QueryResourceModel> _selectedResources = [];
 
+      
+
         public void Resources_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            foreach (QueryResourceModel model in e.AddedItems.Cast<QueryResourceModel>())
+            if (sender is GridView gridView)
             {
+             
+                foreach (QueryResourceModel model in e.AddedItems.Cast<QueryResourceModel>())
+                {
+                    SelectedResources.Add(model);
+                }
+                foreach (QueryResourceModel model in e.RemovedItems.Cast<QueryResourceModel>())
+                {
+                    SelectedResources.Remove(model);
+                }
 
-                SelectedResources.Add(model);
-            }
-            foreach (QueryResourceModel model in e.RemovedItems.Cast<QueryResourceModel>())
-            {
+                if (SelectedResources.Count > 3)
+                {
+                    var itemToRemove = SelectedResources[0];
+                    SelectedResources.RemoveAt(0);
 
-                SelectedResources.Remove(model);
+                    // Deselect the item in the GridView
+                    gridView.SelectedItems.Remove(itemToRemove);
+                }
+
+                var queryList = SelectedResources.Select(x => x.ResourceType).ToList();
+                Messenger.Send(new QueryResourcesMessage(queryList));
             }
         }
+
     }
 }

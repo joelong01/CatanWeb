@@ -126,7 +126,7 @@ namespace Catan3.Models
                 }
             }
         }
-        private static bool ValidateGame(this GameModel Game)
+        public static bool ValidateGame(this GameModel Game)
         {
             foreach (var tile in Game.Tiles.TilesWithNumber(6))
             {

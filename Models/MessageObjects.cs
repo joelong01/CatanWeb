@@ -140,4 +140,13 @@ namespace Catan3.Models
         public IList<string> PlayerIds { get; } = playerIds;
     }
 
+    public class QueryResourcesMessage(IList<ResourceType> resources)
+    {
+        public IList<ResourceType> Resources { get; } = resources;
+    }
+
+    public class BalanceBoardMessage
+    {
+       
+    }
 }

@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Catan3.Models;
 using Catan3.Player;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -59,6 +60,10 @@ namespace Catan3
             if (e.Parameter is MainPageViewModel mainPageModel)
             {
                 MainPageModel = mainPageModel;
+                if (MainWindow.Instance is not null)
+                {
+                    MainWindow.Instance.PresenterKind = AppWindowPresenterKind.FullScreen;
+                }
             }
 
         }
@@ -202,32 +207,10 @@ namespace Catan3
         }
         private void OnHitMe(object sender, RoutedEventArgs rea)
         {
-            HideMenu();
-            if (MainPageModel.GameViewModel is null) return;
+            if (MainPageModel is null) return;
+            MainPageModel.ShowCommands = false;
+            MainPageModel.MessageService.Send(new BalanceBoardMessage());
 
-            ResourceType[] resources = [ResourceType.Sheep, ResourceType.Ore, ResourceType.Wheat];
-          //  ResourceType[] resources = [ResourceType.Wood, ResourceType.Brick];
-
-            foreach (var building in MainPageModel.GameViewModel.Buildings)
-            {
-                building.VisualState = BuildingVisualState.Hidden;
-                var tiles = MainPageModel.GameViewModel.TilesForBuildings(building.Building.BuildingKey);
-
-                var tileResourceTypes = tiles.Select(tile => tile.ResourceTileType).ToArray();
-
-                // Check if tileResourceTypes contain all resource types in resources
-                bool containsAllResources = resources.All(resource => tileResourceTypes.Contains(resource));
-
-                if (containsAllResources)
-                {
-                    if (building.Building.BuildingState == BuildingState.PossibleSettlement)
-                    {
-                        building.VisualState = BuildingVisualState.Stars;
-                    }
-                }
-
-
-            }
         }
 
         private void OnEditPlayers(object sender, RoutedEventArgs e)

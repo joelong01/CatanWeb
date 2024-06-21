@@ -277,7 +277,7 @@ namespace Catan3.Models
             //  if they have a City entitlement, highlight and mark each Settlement
             bool hasCityEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.City);
             bool hasSettlementEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.Settlement);
-            DumpBuildingVisualState(gameModel);
+            
             for (int i = 0; i < gameModel.Buildings.Count; i++)
             {
                 Contract.Assert(Buildings[i].Building.BuildingKey == gameModel.Buildings[i].BuildingKey);
@@ -321,16 +321,7 @@ namespace Catan3.Models
                         break;
                 }
             }
-            DumpBuildingVisualState(gameModel);
-        }
-
-        private void DumpBuildingVisualState(GameModel gameModel)
-        {
-            foreach (var  building in Buildings)
-            {
-                if (building.VisualState == BuildingVisualState.Stars)
-                this.TraceMessage($"{ building}");
-            }
+         
         }
 
         private void MergeHarbors(GameModel gameModel)
@@ -507,19 +498,27 @@ namespace Catan3.Models
         {
             var resources = this.QueryBuilder.SelectedResources
                     .Select(m => m.ResourceType)
-                    .ToArray();
-            if (resources.Length > 3 || resources.Length == 0) return;
+                    .ToList();
+            if (resources.Count > 3 || resources.Count == 0) return;
+            ExecuteQuery(resources);            
+        }
 
-           //  ResourceType[] resources = [ResourceType.Sheep, ResourceType.Ore, ResourceType.Wheat];
-            //  ResourceType[] resources = [ResourceType.Wood, ResourceType.Brick];
-
+        void ExecuteQuery(IList<ResourceType> resources)
+        {
+            if (resources.Count == 0)
+            {
+                OnShownStarsChanged(ShownStars);
+                return;
+            }
             foreach (var building in Buildings)
             {
                 building.VisualState = BuildingVisualState.Hidden;
+               
+
                 var tiles = TilesForBuildings(building.Building.BuildingKey);
 
                 List<ResourceType> tileResources = tiles.Select(tile => tile.ResourceTileType).ToList();
-                if (tileResources is null || tileResources.Count < resources.Length) continue;
+                if (tileResources is null || tileResources.Count < resources.Count) continue;
 
                 // Check if tileResourceTypes contain all resource types in resources
                 bool containsAllResources = resources.All(resource => tileResources.Contains(resource));

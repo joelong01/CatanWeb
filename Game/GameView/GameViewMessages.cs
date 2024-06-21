@@ -29,6 +29,10 @@ namespace Catan3.Models
             {
                 OnRequestTileOwners(message.TileViewModel);
             });
+            Messenger.Register<QueryResourcesMessage>(this, (recipient, message) =>
+            {
+                ExecuteQuery(message.Resources);
+            });
          
         }
         private void OnRequestTileOwners(TileViewModel tileViewModel)

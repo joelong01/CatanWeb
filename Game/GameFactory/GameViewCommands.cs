@@ -71,5 +71,11 @@ namespace Catan3.Models
             Messenger.Send(new PurchaseMessage(entitlement));
         }
 
+        [RelayCommand]
+        public void Balance()
+        {
+            Messenger.Send(new BalanceBoardMessage());
+        }
+
     }
 }

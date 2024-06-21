@@ -1,3 +1,5 @@
+using System;
+using System.ComponentModel;
 using Catan3.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -23,11 +25,29 @@ namespace Catan3.Controls
         {
             var depPropClass = d as BoardMeasurementCtrl;
             var depPropValue = (GameViewModel)e.NewValue;
-            depPropClass?.SetGameViewModel(depPropValue);
+            depPropClass?.SetGameViewModel(( GameViewModel )e.OldValue, ( GameViewModel )e.NewValue);
         }
-        private void SetGameViewModel(GameViewModel value)
+        private void SetGameViewModel(GameViewModel old, GameViewModel newGameViewModel) 
         {
-            this.DataContext = value;
+            if (old is not null)
+            {
+                old.PropertyChanged -= GameViewModel_PropertyChanged;
+            }
+            if ( newGameViewModel is not null)
+            {
+                newGameViewModel.PropertyChanged += GameViewModel_PropertyChanged;
+            }
+            this.DataContext = newGameViewModel;
         }
+
+        private void GameViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(GameViewModel.ShownStars))
+            {
+                GridView_Resources.SelectedItems.Clear();
+            }
+        }
+
+       
     }
 }

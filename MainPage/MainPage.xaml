@@ -184,34 +184,6 @@
                         </Border>
                     </Viewbox>
 
-                    <StackPanel Margin="10"
-                            Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}"
-                            BorderBrush="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.ForegroundBrush, Mode=OneWay}"
-                            BorderThickness="2">
-                        <Grid HorizontalAlignment="Center" Margin="5">
-                            <GridView SelectionMode="Multiple"
-                                    Foreground="White"
-                                    SelectionChanged="{x:Bind MainPageModel.GameViewModel.QueryBuilder.Resources_SelectionChanged, Mode=OneWay}"
-                                    ItemsSource="{x:Bind MainPageModel.GameViewModel.QueryBuilder.QueryResources, Mode=OneWay}">
-
-                                <GridView.ItemTemplate>
-                                    <DataTemplate
-                                            x:DataType="models:QueryResourceModel">
-                                        <Grid HorizontalAlignment="Stretch"
-                                                Height="100" Width="67"
-                                                Background="{x:Bind Background, Mode=OneWay}">
-
-                                        </Grid>
-                                    </DataTemplate>
-                                </GridView.ItemTemplate>
-                            </GridView>
-                        </Grid>
-
-                        <Button Content="Query"
-                                Foreground="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.ForegroundBrush, Mode=OneWay}"
-                                Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.ColorToBrush(MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.PrimaryBackground), Mode=OneWay}"
-                                Command="{x:Bind MainPageModel.GameViewModel.ExecuteQueryCommand, Mode=OneWay}" />
-                    </StackPanel>
                 </StackPanel>
             </Viewbox>
             <Viewbox Stretch="Uniform" Margin="2" Grid.Column="1">
@@ -256,9 +228,15 @@
                         Icon="People" />
                 <AppBarButton Label="Flip Orientation" Icon="Clear"
                         Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}" />
-                <AppBarButton Label="Do Misc" Click="OnHitMe" Icon="Admin" />
+
+                <AppBarButton Label="Flip Orientation" Icon="Clear"
+                        Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}" />
+
+                <AppBarButton Label="Balance"
+                        Command="{x:Bind MainPageModel.GameViewModel.BalanceCommand, Mode=OneWay}"
+                        Icon="Repair" />
                 <AppBarButton Label="Toggle Titlebar" Click="OnToggleTitleBar"
-                        Icon="Pin" />
+                        Icon="FullScreen" />
                 <AppBarButton Label="Quit" Click="OnClose" Margin="0,0,0,0"
                         Icon="ClosePane" />
                 <AppBarButton Label="Run Tests" Click="OnRunTests"
