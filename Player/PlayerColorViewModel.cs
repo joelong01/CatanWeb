@@ -52,6 +52,11 @@ namespace Catan3.Models
             ForegroundBrush = BrushCache.GetSolidColorBrush(value);
             Messenger.Send(new PlayerColorChanged(this));
         }
+
+        public Brush ColorToBrush(Color color)
+        {
+            return BrushCache.GetSolidColorBrush(color);
+        }
         
     }
 }

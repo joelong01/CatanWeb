@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Catan3.Models;
@@ -201,8 +202,32 @@ namespace Catan3
         }
         private void OnHitMe(object sender, RoutedEventArgs rea)
         {
-            if (MainPageModel.GameViewModel is null) return;
             HideMenu();
+            if (MainPageModel.GameViewModel is null) return;
+
+            ResourceType[] resources = [ResourceType.Sheep, ResourceType.Ore, ResourceType.Wheat];
+          //  ResourceType[] resources = [ResourceType.Wood, ResourceType.Brick];
+
+            foreach (var building in MainPageModel.GameViewModel.Buildings)
+            {
+                building.VisualState = BuildingVisualState.Hidden;
+                var tiles = MainPageModel.GameViewModel.TilesForBuildings(building.Building.BuildingKey);
+
+                var tileResourceTypes = tiles.Select(tile => tile.ResourceTileType).ToArray();
+
+                // Check if tileResourceTypes contain all resource types in resources
+                bool containsAllResources = resources.All(resource => tileResourceTypes.Contains(resource));
+
+                if (containsAllResources)
+                {
+                    if (building.Building.BuildingState == BuildingState.PossibleSettlement)
+                    {
+                        building.VisualState = BuildingVisualState.Stars;
+                    }
+                }
+
+
+            }
         }
 
         private void OnEditPlayers(object sender, RoutedEventArgs e)

@@ -20,12 +20,7 @@
                                 ImageSource="{x:Bind CroppedImageUri, Mode=OneWay}" />
                     </Ellipse.Fill>
                 </Ellipse>
-                <TextBlock Text="" HorizontalAlignment="Right"
-                        Foreground="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}"
-                        FontFamily="Segoe MDL2 Assets"
-                        Visibility="{x:Bind Selected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                        VerticalAlignment="Top" FontSize="16" FontWeight="Bold"
-                        TextLineBounds="Tight" />
+               
                 <TextBlock Text="{x:Bind Name, Mode=OneWay}"
                         HorizontalAlignment="Center" VerticalAlignment="Bottom" />
             </Grid>
@@ -44,16 +39,7 @@
                     <WrapGrid MaximumRowsOrColumns="6" Orientation="Horizontal" />
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
-            <GridView.ItemContainerStyle>
-                <Style TargetType="ListViewItem">
-                    <Setter Property="Padding" Value="3" />
-                    <Setter Property="BorderBrush"
-                            Value="{x:Bind Foreground, Mode=OneWay}" />
-                    <Setter Property="BorderThickness" Value="1" />
-                    <Setter Property="HorizontalAlignment" Value="Stretch" />
-                    <Setter Property="Margin" Value="0" />
-                </Style>
-            </GridView.ItemContainerStyle>
+           
         </GridView>
 
         <StackPanel Orientation="Horizontal">

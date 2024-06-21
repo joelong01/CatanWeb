@@ -8,6 +8,7 @@ using System.Linq;
 using Catan10.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 namespace Catan3.Models
 {
     public partial class GameViewModel : ObservableRecipient
@@ -498,6 +499,40 @@ namespace Catan3.Models
                     BoardInfo.Layout.BoardWidth = right;
                     return;
                 }
+            }
+        }
+
+        [RelayCommand]
+        void ExecuteQuery()
+        {
+            var resources = this.QueryBuilder.SelectedResources
+                    .Select(m => m.ResourceType)
+                    .ToArray();
+            if (resources.Length > 3 || resources.Length == 0) return;
+
+           //  ResourceType[] resources = [ResourceType.Sheep, ResourceType.Ore, ResourceType.Wheat];
+            //  ResourceType[] resources = [ResourceType.Wood, ResourceType.Brick];
+
+            foreach (var building in Buildings)
+            {
+                building.VisualState = BuildingVisualState.Hidden;
+                var tiles = TilesForBuildings(building.Building.BuildingKey);
+
+                List<ResourceType> tileResources = tiles.Select(tile => tile.ResourceTileType).ToList();
+                if (tileResources is null || tileResources.Count < resources.Length) continue;
+
+                // Check if tileResourceTypes contain all resource types in resources
+                bool containsAllResources = resources.All(resource => tileResources.Contains(resource));
+
+                if (containsAllResources)
+                {
+                    if (building.Building.BuildingState == BuildingState.PossibleSettlement)
+                    {
+                        building.VisualState = BuildingVisualState.Stars;
+                    }
+                }
+
+
             }
         }
     }

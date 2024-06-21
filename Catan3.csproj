@@ -38,6 +38,7 @@
 	  <None Remove="Player\PlayerSettings\PlayerEditorWindow.xaml" />
 	  <None Remove="Player\PlayerSettings\PlayerSettingsCtrl.xaml" />
 	  <None Remove="Player\SetPlayerOrderCtrl.xaml" />
+	  <None Remove="Resources\BoardMeasurementCtrl.xaml" />
 	</ItemGroup>
 
 
@@ -274,6 +275,11 @@
 	<ItemGroup>
 	  <Content Remove="Assets\AppIcon.png" />
 	  <Content Remove="Assets\Guest.png" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Page Update="Resources\BoardMeasurementCtrl.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	</ItemGroup>
 	<ItemGroup>
 	  <Page Update="Game\NewGame\NewGamePage.xaml">

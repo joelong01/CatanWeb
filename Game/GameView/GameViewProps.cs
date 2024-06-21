@@ -10,7 +10,7 @@ namespace Catan3.Models
         public static ResourceType[] StarsTrackResourceList =  [ResourceType.Sheep, ResourceType.Wheat, ResourceType.Wood, ResourceType.Brick, ResourceType.Ore];
         public static ResourceType[] PlayerTrackResourceList =  [..StarsTrackResourceList, ResourceType.GoldMine, ResourceType.Robber];
     }
-    
+
     public partial class GameViewModel : ObservableRecipient
     {
         /// <summary>
@@ -63,6 +63,10 @@ namespace Catan3.Models
         private ResourcesViewModel _starsResourceViewModel = new(GameViewModelStatics.StarsTrackResourceList);
         [ObservableProperty]
         private ErrorMessage? _errorMessage;
+
+        [ObservableProperty]
+        private QueryBuilderModel _queryBuilder = new();
+
         /// <summary>
         ///     this broadcasts to all things that are looking for the global orientation that causes things like Tiles and Harbors to flip
         /// </summary>
@@ -74,7 +78,7 @@ namespace Catan3.Models
         partial void OnCurrentPlayerChanged(PlayerViewModel? oldValue, PlayerViewModel newValue)
         {
             if (newValue is null) return;
-          
+
             Messenger.Send(new CurrentPlayerChanged(newValue));
         }
         partial void OnShownStarsChanged(int value)

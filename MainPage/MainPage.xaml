@@ -41,8 +41,9 @@
                                 ImageSource="{x:Bind CroppedImageUri, Mode=OneWay}" />
                     </Ellipse.Fill>
                 </Ellipse>
-                <TextBlock Text="{x:Bind Name, Mode=OneWay}" Foreground="White" Margin="10"
-                        HorizontalAlignment="Center" VerticalAlignment="Bottom" />
+                <TextBlock Text="{x:Bind Name, Mode=OneWay}" Foreground="White"
+                        Margin="10" HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom" />
             </StackPanel>
         </DataTemplate>
         <DataTemplate x:Key="PickSupplementalPlayersTemplate"
@@ -72,7 +73,7 @@
             PanePlacement="Left"
             IsPaneOpen="{x:Bind MainPageModel.ShowCommands, Mode=OneWay}"
             DisplayMode="CompactOverlay">
-        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Top">
+        <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -175,14 +176,42 @@
                             </Viewbox>
                         </StackPanel>
                     </Viewbox>
-                    <Viewbox Stretch="Uniform" Height="400"
-                            VerticalAlignment="Bottom">
+                    <Viewbox Stretch="Uniform">
                         <Border BorderBrush="Black" BorderThickness="2"
                                 Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}">
                             <c:BoardMeasurementCtrl
                                     GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" />
                         </Border>
                     </Viewbox>
+
+                    <StackPanel Margin="10"
+                            Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}"
+                            BorderBrush="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.ForegroundBrush, Mode=OneWay}"
+                            BorderThickness="2">
+                        <Grid HorizontalAlignment="Center" Margin="5">
+                            <GridView SelectionMode="Multiple"
+                                    Foreground="White"
+                                    SelectionChanged="{x:Bind MainPageModel.GameViewModel.QueryBuilder.Resources_SelectionChanged, Mode=OneWay}"
+                                    ItemsSource="{x:Bind MainPageModel.GameViewModel.QueryBuilder.QueryResources, Mode=OneWay}">
+
+                                <GridView.ItemTemplate>
+                                    <DataTemplate
+                                            x:DataType="models:QueryResourceModel">
+                                        <Grid HorizontalAlignment="Stretch"
+                                                Height="100" Width="67"
+                                                Background="{x:Bind Background, Mode=OneWay}">
+
+                                        </Grid>
+                                    </DataTemplate>
+                                </GridView.ItemTemplate>
+                            </GridView>
+                        </Grid>
+
+                        <Button Content="Query"
+                                Foreground="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.ForegroundBrush, Mode=OneWay}"
+                                Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.ColorToBrush(MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.PrimaryBackground), Mode=OneWay}"
+                                Command="{x:Bind MainPageModel.GameViewModel.ExecuteQueryCommand, Mode=OneWay}" />
+                    </StackPanel>
                 </StackPanel>
             </Viewbox>
             <Viewbox Stretch="Uniform" Margin="2" Grid.Column="1">
@@ -215,7 +244,7 @@
         </Grid>
         <SplitView.Pane>
             <StackPanel>
-                <AppBarButton Label="Close" Click="OnShowMenu" Icon="ClosePane" />
+                <AppBarButton Label="Hide" Click="OnShowMenu" Icon="ClosePane" />
                 <AppBarButton Label="New Game" Click="OnNewGame" Icon="Add" />
                 <AppBarButton Label="Open..." Icon="OpenLocal"
                         Command="{x:Bind MainPageModel.OpenCommand, Mode=OneWay}" />
@@ -230,7 +259,7 @@
                 <AppBarButton Label="Do Misc" Click="OnHitMe" Icon="Admin" />
                 <AppBarButton Label="Toggle Titlebar" Click="OnToggleTitleBar"
                         Icon="Pin" />
-                <AppBarButton Label="Close" Click="OnClose" Margin="0,0,0,0"
+                <AppBarButton Label="Quit" Click="OnClose" Margin="0,0,0,0"
                         Icon="ClosePane" />
                 <AppBarButton Label="Run Tests" Click="OnRunTests"
                         Margin="0,40,0,0" Icon="Flag" />
