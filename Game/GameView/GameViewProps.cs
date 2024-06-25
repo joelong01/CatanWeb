@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
@@ -44,7 +45,7 @@ namespace Catan3.Models
         [ObservableProperty]
         private ObservableCollection<HarborViewModel> _harbors = [];
         [ObservableProperty]
-        public GameModel _gameModel = new();
+        public GameModel? _gameModel;
         [ObservableProperty]
         private int _shownStars = 13; // stars are visible above this number
         [ObservableProperty]
@@ -83,6 +84,7 @@ namespace Catan3.Models
         }
         partial void OnShownStarsChanged(int value)
         {
+            Debug.Assert(GameModel is not null);
             foreach (var building in Buildings)
             {
                 if (building.Building.OwnerId is not null) continue;

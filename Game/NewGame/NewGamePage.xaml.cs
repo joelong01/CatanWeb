@@ -10,6 +10,11 @@ using Catan3.Controller;
 using CommunityToolkit.Mvvm.Messaging;
 using System;
 using System.Threading.Tasks;
+using Catan3.Utility;
+using System.IO;
+using Windows.Storage;
+using System.Collections.Generic;
+using System.Linq;
 
 
 namespace Catan3
@@ -34,7 +39,8 @@ namespace Catan3
         {
             try
             {
-                var mainPageModel = new MainPageViewModel(MainWindow.FileService, MainWindow.PlayerDatabase, ViewModel.SelectedGame, ViewModel.PlayingPlayers);
+                List<string> playerIds = ViewModel.PlayingPlayers.Select( p => p.Id ).ToList();
+                var mainPageModel = new MainPageViewModel(MainWindow.FileService, MainWindow.PlayerDatabase, ViewModel.SelectedGame, playerIds, GameName);
                 Frame.Navigate(typeof(MainPage), mainPageModel);
                 Frame.BackStack.Clear();
             }
@@ -44,6 +50,17 @@ namespace Catan3
             }
 
         }
+
+        private string GameName
+        {
+            get
+            {
+                var myDocuments = KnownFolders.DocumentsLibrary;
+                var fileName= $"{ViewModel.SelectedGame}-{UniqueIdGenerator.GenerateUniqueId()}";
+                return Path.Join(myDocuments.Path, "Catan Saved Games", fileName);
+            }
+        }
+
         public async Task ShowErrorDialog(string errorMessage)
         {
             var dialog = new ContentDialog
@@ -88,16 +105,15 @@ namespace Catan3
         {
             try
             {
-                var compressedBytes = await MainWindow.FileService.OpenFileAsync();
-                if (compressedBytes is null)
+                Debug.Assert(MainWindow.Instance is not null);
+                var filePath = await MainWindow.FileService.PickFile(MainWindow.Instance, [".catan"]);
+                if (filePath is not null && filePath != "")
                 {
-                    this.TraceMessage("Unable to open file");
-                    return;
+                    
+                    MainPageViewModel mpViewModel = new ( MainWindow.FileService, MainWindow.PlayerDatabase, GameType.SavedGame, [], filePath);
+                    Frame.Navigate(typeof(MainPage), mpViewModel);
+                    Frame.BackStack.Clear();
                 }
-
-                MainPageViewModel mpViewModel = new ( compressedBytes, MainWindow.FileService, MainWindow.PlayerDatabase);
-                Frame.Navigate(typeof(MainPage), mpViewModel);
-                Frame.BackStack.Clear();
 
             }
             catch (Exception ex)

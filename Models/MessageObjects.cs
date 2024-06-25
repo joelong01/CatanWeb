@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
 using Catan3.Utility;
+using Windows.Services.Maps.LocalSearch;
 using Windows.Storage;
 using WinUIEx;
 namespace Catan3.Models
@@ -14,11 +15,18 @@ namespace Catan3.Models
     {
         public GameModel GameModel { get; set; } = model;
     }
-    public class NewGameMessage(GameType selectedGame, List<string> playerIds)
+    public class NewGameMessage(GameType selectedGame, IList<string> playerIds, string localFile)
     {
         public GameType GameType= selectedGame;
-        public List<string> PlayerIds { get; set; } = playerIds;
+        public IList<string> PlayerIds { get; set; } = playerIds;
+        public string LocalFile { get; set; } = localFile;
     }
+
+    public class LoadGameMessage(string localFile)
+    {
+        public string LocalFile { get; set; } = localFile;
+    }
+
     public class DoAction(GameAction action)
     {
         public GameAction Action { get; } = action;
@@ -114,10 +122,12 @@ namespace Catan3.Models
         public WindowEx Parent { get; } = parent;
     }
     // Message to respond with the opened file
-    public class OpenFileResponseMessage(StorageFile? file)
+    public class OpenFileResponseMessage(string? file)
     {
-        public StorageFile? File { get; } = file;
+        public string? FilePath { get; } = file;
     }
+
+
     //
     // message to make a player go first
     public class GoFirstMessage(string playerId)
@@ -148,5 +158,13 @@ namespace Catan3.Models
     public class BalanceBoardMessage
     {
        
+    }
+
+    public enum LocalPersistActions { Save, SaveAs, Open}
+
+    public class PersistGameMessage(LocalPersistActions action, string location)
+    {
+        public LocalPersistActions Action { get; set; } = action;
+        public string Location { get; set; } = location;
     }
 }

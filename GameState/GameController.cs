@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using Catan.Services;
 using Catan10.Models;
 using Catan3.Models;
 using Catan3.Utility;
@@ -13,13 +15,16 @@ namespace Catan3.Controller
 {
     public class GameController : ObservableRecipient
     {
-        private Log<string> Log = new();
-        private  GameType GameType = GameType.Unset;
-        public GameController()
+        private Log<string> Log;
+ 
+        private IPersistanceService MyPersistanceService { get; set; }
+        public GameController(IPersistanceService persistanceService, string localSaveFile)
         {
+            Log = new Log<string>(persistanceService, localSaveFile);
+            MyPersistanceService = persistanceService;
             RegisterMessages();
         }
-        public int DoneCount => Log.DoneCount;
+        public int DoneCount =>  Log.DoneCount;
         private void RegisterMessages()
         {
             Debug.Assert(Messenger is not null);
@@ -118,6 +123,18 @@ namespace Catan3.Controller
                     SendErrorMessage(e.Message, e.ErrorLevel);
                 }
             });
+            Messenger.Register<LoadGameMessage>(this, async (recipient, message) =>
+            {
+                try
+                {
+                    var model = await LoadGame(message.LocalFile);
+                    Messenger.Send(new UpdateGameModel(model));
+                }
+                catch (GameException e)
+                {
+                    SendErrorMessage(e.Message, e.ErrorLevel);
+                }
+            });
             Messenger.Register<RollMessage>(this, (recipient, message) =>
             {
                 try
@@ -185,6 +202,8 @@ namespace Catan3.Controller
             });
             Messenger.Register<EndGame>(this, (recipient, message) =>
             {
+                MyPersistanceService.CloseFile(this.Log.FilePath);
+                this.Log.IsActive = false;
                 Messenger.UnregisterAll(this);
             });
             Messenger.Register<GoFirstMessage>(this, (recipient, message) =>
@@ -200,6 +219,21 @@ namespace Catan3.Controller
                 gameModel.CurrentPlayerId = gameModel.Players[0].Id;
                 LogDone(gameModel);
                 Messenger.Send(new UpdateGameModel(gameModel));
+            });
+
+            Messenger.Register<PersistGameMessage>(this, async (recipient, message) =>
+            {
+                switch (message.Action)
+                {
+                    case LocalPersistActions.Save:
+                        await Log.SaveAsync();
+                        break;
+                    case LocalPersistActions.SaveAs:
+                        break;
+                    case LocalPersistActions.Open:
+                        break;
+                }
+
             });
         }
         private void SendErrorMessage(string message, ErrorLevel errorLevel, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
@@ -256,7 +290,7 @@ namespace Catan3.Controller
             this.TraceMessage($"Min Tile: {minTile}");
 
             minTile.ResourceTileType = maxResourceType;
-           
+
             foreach (var tile in maxTiles)
             {
                 tile.ResourceTileType = minResourceType;
@@ -298,7 +332,7 @@ namespace Catan3.Controller
                     return false;
             }
         }
-        public GameModel NewGame(GameType selectedGame, List<string> playerIds)
+        public GameModel NewGame(GameType selectedGame, IList<string> playerIds)
         {
             var gameModel = GameFactory.CreateGame(selectedGame, playerIds);
             Log.GameType = selectedGame;
@@ -306,6 +340,20 @@ namespace Catan3.Controller
             gameModel.GameState = GameState.PickingBoard;
             LogDone(gameModel);
             return gameModel;
+        }
+        public async Task<GameModel> LoadGame(string filePath)
+        {
+            var compressedBytes = await MyPersistanceService.OpenAsync(filePath) ?? throw new GameException($"Unable to open file {filePath}");
+
+            var decompressedJson = SerializationHelper.Decompress(compressedBytes);
+            // Deserialize the JSON back into your Log or relevant data structure
+            var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) ?? throw new GameException("Error: Failed to load the game data.");
+            Log<string> log =  Log<string>.FromSerializableLog(savedLog, MyPersistanceService, filePath);
+            this.Log = log;
+
+            return Log.CurrentState();
+
+           
         }
         /// <summary>
         ///     when a roll comes in 
@@ -976,8 +1024,7 @@ namespace Catan3.Controller
                     {
                         tileModel.TemporarilyGold = true;
                         usedIndices.Add(index);  // Keep track of used indices to avoid duplicates.
-                        // Log a trace message if needed.
-                        this.TraceMessage($"GoldTile: {gameModel.CurrentPlayerId}={tileModel}");
+                        // this.TraceMessage($"GoldTile: {gameModel.CurrentPlayerId}={tileModel}");
                     }
                 }
             }
@@ -1005,16 +1052,17 @@ namespace Catan3.Controller
         {
             return Log.GetSerializableLog();
         }
-        public GameModel OpenSerializableLog(byte[] compressedBytes)
-        {
-            var decompressedJson = SerializationHelper.Decompress(compressedBytes);
-            // Deserialize the JSON back into your Log or relevant data structure
-            var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) ?? throw new GameException("Error: Failed to load the game data.");
-            Log<string> log =  Log<string>.FromSerializableLog(savedLog);
-            this.Log = log;
-            this.GameType = savedLog.GameType;
-            return Log.CurrentState();
-        }
+        //public GameModel OpenSerializableLog(byte[] compressedBytes)
+        //{
+         
+        //    var decompressedJson = SerializationHelper.Decompress(compressedBytes);
+        //    // Deserialize the JSON back into your Log or relevant data structure
+        //    var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) ?? throw new GameException("Error: Failed to load the game data.");
+        //    Log<string> log =  Log<string>.FromSerializableLog(savedLog, MyPersistanceService);
+        //    this.Log = log;
+           
+        //    return Log.CurrentState();
+        //}
         private GameModel? Undo()
         {
             GameModel result =  ( ( ILog )Log ).Undo() ?? throw new GameException("Undo cannot be done");
@@ -1368,5 +1416,6 @@ namespace Catan3.Controller
             } while (ownedAdjacentNotCounted.Count != 0);
             return max;
         }
+
     }
 }

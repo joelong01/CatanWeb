@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
 namespace Catan3.Models
 {
     public partial class GameViewModel
@@ -9,6 +10,7 @@ namespace Catan3.Models
         }
         public string BIND_StarCount(int stars, ObservableCollection<TileModel> _tiles)
         {
+            Debug.Assert(GameModel is not null);
             int count = 0;
             foreach (var building in GameModel.Buildings)
             {

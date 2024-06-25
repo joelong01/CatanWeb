@@ -1,23 +1,22 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Catan3.Controller;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.UI.Xaml.Controls;
 namespace Catan3.Models
 {
     public partial class MainPageViewModel : ObservableRecipient
     {
         [RelayCommand]
-        private async Task Save()
+        private void Save()
         {
             try
             {
-                var uncompressedLog = GameController.GetSerializableLog(); // this always comes back the same
-                var json = SerializationHelper.JsonSerialize(uncompressedLog);
-                var compressedBytes = SerializationHelper.Compress(json);
-                await _fileService.SaveFileAsync(compressedBytes);
+                Messenger.Send(new PersistGameMessage(LocalPersistActions.Save, ""));
             }
             catch (Exception ex)
             {
@@ -36,7 +35,7 @@ namespace Catan3.Models
                 var uncompressedLog = GameController.GetSerializableLog(); // this always comes back the same
                 var json = SerializationHelper.JsonSerialize(uncompressedLog);
                 var compressedBytes = SerializationHelper.Compress(json);
-                await _fileService.SaveFileAsAsync($"GameModel DoneDepth={GameController.DoneCount}", compressedBytes);
+                await _fileService.SaveAsync($"GameModel DoneDepth={GameController.DoneCount}", compressedBytes);
             }
             catch (Exception ex)
             {
@@ -55,19 +54,27 @@ namespace Catan3.Models
         {
             try
             {
-                var compressedBytes = await _fileService.OpenFileAsync();
-                if (compressedBytes is null)
+                Debug.Assert(MainWindow.Instance is not null);
+                var filePath = await MainWindow.FileService.PickFile(MainWindow.Instance, [".catan"]);
+                if (filePath is not null && filePath != "")
                 {
-                    this.TraceMessage("Unable to open file");
-                    return;
+                    var compressedBytes = await MainWindow.FileService.OpenAsync(filePath);
+
+                    if (compressedBytes is null)
+                    {
+                        this.TraceMessage("Unable to open file");
+                        return;
+                    }
+
+                    Messenger.Send(new EndGame());
+                    GameController = new GameController(_fileService, filePath);
+                    RegisterMessages();
+                    throw new NotImplementedException("implement this with message passing");
+                    //var gameModel = GameController.OpenSerializableLog(compressedBytes);
+                    //this.GameViewModel = new GameViewModel(gameModel, _playerDatabase);
+                    //GameViewModel.UpdateLayout();
+                    //GameViewModel.SetGameStars();
                 }
-                Messenger.Send(new EndGame());
-                GameController = new GameController();
-                RegisterMessages();
-                var gameModel = GameController.OpenSerializableLog(compressedBytes);
-                this.GameViewModel = new GameViewModel(gameModel, _playerDatabase);
-                GameViewModel.UpdateLayout();
-                GameViewModel.SetGameStars();
             }
             catch (Exception ex)
             {

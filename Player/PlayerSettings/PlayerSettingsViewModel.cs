@@ -201,7 +201,7 @@ namespace Catan3.Models
         {
             var filters = new List<string> { ".jpg", ".png" };
             var fileServiceHelper = new FileServiceHelper();
-            StorageFile? file = await fileServiceHelper.GetFileAsync(_parentWindow, filters);
+            StorageFile? file = await fileServiceHelper.GetStorageFileAsync(_parentWindow, filters);
             if (file is not null)
             {
                 OriginalImage = await LoadImageFromFileAsync(file);

@@ -18,13 +18,32 @@ namespace Catan3.Services
         /// </summary>
         /// <param name="filters">A list of file type filters to apply.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains the selected StorageFile.</returns>
-        public async Task<StorageFile?> GetFileAsync(WindowEx parent, IList<string> filters)
+        public async Task<StorageFile?> GetStorageFileAsync(WindowEx parent, IList<string> filters)
         {
             var tcs = new TaskCompletionSource<StorageFile?>();
-            void MessageHandler(object recipient, OpenFileResponseMessage message)
+            async void MessageHandler(object recipient, OpenFileResponseMessage message)
             {
-                tcs.SetResult(message.File);
-                WeakReferenceMessenger.Default.Unregister<OpenFileResponseMessage>(this);
+                try
+                {
+                    if (message.FilePath != null)
+                    {
+                        StorageFile storageFile = await StorageFile.GetFileFromPathAsync(message.FilePath);
+                        tcs.SetResult(storageFile);
+                    }
+                    else
+                    {
+                        tcs.SetResult(null);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"An error occurred: {ex.Message}");
+                    tcs.SetResult(null);
+                }
+                finally
+                {
+                    WeakReferenceMessenger.Default.Unregister<OpenFileResponseMessage>(this);
+                }
             }
             WeakReferenceMessenger.Default.Register<OpenFileResponseMessage>(this, MessageHandler);
             // Send the request message

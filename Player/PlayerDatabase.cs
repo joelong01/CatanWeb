@@ -330,21 +330,7 @@ namespace Catan3
             await SavePlayers();
         }
 
-        private string GenerateId(string name)
-        {
-            int count = 1;
-            while (true)
-            {
-                string id = $"{name}-{count:D4}";
-                var player = FromId(id);
-                if (player is null)
-                {
-                    this.TraceMessage($"Assigning {name} id {id}");
-                    return id;
-                }
-                count++;
-            }
-        }
+       
 
         public async Task<string> SaveCroppedImage(PlayerViewModel player, MemoryStream memoryStream)
         {

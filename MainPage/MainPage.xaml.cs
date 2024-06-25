@@ -26,7 +26,7 @@ namespace Catan3
 
             if (container is not null && container is MainPage page)
             {
-                switch (page.MainPageModel.GameViewModel.GameModel.GameState)
+                switch (page.MainPageModel.GameViewModel.GameModel?.GameState)
                 {
                     case GameState.FinishedRollOrder:
                         return RollOrderTemplate ?? base.SelectTemplateCore(item, container);

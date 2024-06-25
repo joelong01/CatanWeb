@@ -31,7 +31,7 @@ namespace Catan3.Models
         [RelayCommand]
         public void NextAction()
         {
-            if (GameModel.GameState == GameState.PickSupplementalPlayers)
+            if (GameModel?.GameState == GameState.PickSupplementalPlayers)
             {
                 List<string> supplementalPlayers = [];
                 foreach (var player in Players)

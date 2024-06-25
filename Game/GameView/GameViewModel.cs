@@ -9,23 +9,25 @@ using Catan10.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 namespace Catan3.Models
 {
     public partial class GameViewModel : ObservableRecipient
     {
         private GameType GameType { get; set; } = GameType.Unset;
+        private IPlayerDatabase PlayerDatabaseService { get; set; }
         //
         // 
         /// <summary>
         ///     Send messages to *viewmodels* after creating them that has information they need
         ///     that you don't want to pass as parameters. this should be static config per gametype
         ///     
-        ///     the default ctor is in ./GameViewMessages.cs
         /// </summary>
         /// <exception cref="NotImplementedException"></exception>
-        public GameViewModel(GameModel gameModel, IPlayerDatabase database) : this() // in GameViewModel() we RegisterMessages
+        public GameViewModel(GameModel gameModel, IPlayerDatabase database) : this(database) // in GameViewModel() we RegisterMessages
         {
             GameType = gameModel.GameType;
+            PlayerDatabaseService = database;
             if (GameType == GameType.Regular)
             {
                 BoardInfo = RegularBoardInfo.Default;
@@ -46,11 +48,82 @@ namespace Catan3.Models
             }
             this.GameModel = gameModel; // triggers OnGameModelChanged
         }
-
-        partial void OnGameModelChanged(GameModel? oldValue, GameModel newValue)
+        public GameViewModel(IPlayerDatabase database)
         {
-            if (newValue.GameType != this.GameType) throw new GameException("Create new one instead of updating this one");
-            if (BoardInfo is null) throw new GameException("Board Info can't be null");
+            PlayerDatabaseService = database;
+            IsActive = true;
+            Id = GetHashCode().ToString();
+            RegisterMessages();
+        }
+
+        private void RegisterMessages()
+        {
+
+
+            Messenger.Register<EndGame>(this, (recipient, message) =>
+            {
+                Messenger.UnregisterAll(this);
+            });
+            Messenger.Register<ErrorMessage>(this, (recipient, message) =>
+            {
+                this.ErrorMessage = message;
+            });
+            Messenger.Register<UpdateGameModel>(this, (recipient, message) =>
+            {
+                this.GameModel = message.GameModel; // OnGameModelChanged is triggered.
+                                                    //  MergeGameModel(message.GameModel); 
+            });
+            Messenger.Register<RequestTileOwners>(this, (recipient, message) =>
+            {
+                OnRequestTileOwners(message.TileViewModel);
+            });
+            Messenger.Register<QueryResourcesMessage>(this, (recipient, message) =>
+            {
+                ExecuteQuery(message.Resources);
+            });
+        }
+        partial void OnGameModelChanged(GameModel? oldValue, GameModel? newValue)
+        {
+            if ( newValue is null)
+            {
+                // ending game?
+                return;
+            }
+
+            if (oldValue is null)
+            {
+                GameType = newValue.GameType;
+                if (Players.Count != newValue.Players.Count)
+                {
+                    Players = [];
+                    foreach (var player in newValue.Players)
+                    {
+                        var playerViewModel = PlayerDatabaseService.FromId(player.Id) ?? throw new Exception($"Bad PlayerId: {player.Id}");
+                        Players.Add(playerViewModel);
+                    }
+                }
+               
+                if (BoardInfo is null)
+                {
+                    if (newValue.GameType == GameType.Regular)
+                    {
+                        BoardInfo = RegularBoardInfo.Default;
+
+                    }
+                    else if (newValue.GameType == GameType.Expansion)
+                    {
+                        BoardInfo = ExpansionBoardInfo.Default;
+                    }
+                    else
+                    {
+                        throw new ArgumentException($"invalid boardsize");
+                    }
+
+                }
+            }
+
+            //if (newValue.GameType != this.GameType) throw new GameException("Create new one instead of updating this one");
+            //if (BoardInfo is null) throw new GameException("Board Info can't be null");
             MergeTiles(newValue);
             MergeBuildings(newValue);
             MergeHarbors(newValue);
@@ -64,6 +137,9 @@ namespace Catan3.Models
             SetGameStars();
             FixupState(newValue);
             SetPlayerStars();
+
+            if (oldValue is null) UpdateLayout();
+
         }
         /// <summary>
         ///     This is calculated based on state in GameModel, but stored int the ViewModel
@@ -128,6 +204,7 @@ namespace Catan3.Models
         }
         private void FixupState(GameModel gameModel)
         {
+            Debug.Assert(GameModel is not null);
             // do things here that the game state requires
             if (gameModel.GameState == GameState.WaitingForRoll)
             {
@@ -277,7 +354,7 @@ namespace Catan3.Models
             //  if they have a City entitlement, highlight and mark each Settlement
             bool hasCityEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.City);
             bool hasSettlementEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.Settlement);
-            
+
             for (int i = 0; i < gameModel.Buildings.Count; i++)
             {
                 Contract.Assert(Buildings[i].Building.BuildingKey == gameModel.Buildings[i].BuildingKey);
@@ -321,7 +398,7 @@ namespace Catan3.Models
                         break;
                 }
             }
-         
+
         }
 
         private void MergeHarbors(GameModel gameModel)
@@ -350,6 +427,7 @@ namespace Catan3.Models
         /// </summary>
         public void SetGameStars()
         {
+            Debug.Assert(GameModel is not null);
             var resourceModel = new ResourcesModel();
             foreach (var resource in GameViewModelStatics.StarsTrackResourceList)
             {
@@ -500,7 +578,7 @@ namespace Catan3.Models
                     .Select(m => m.ResourceType)
                     .ToList();
             if (resources.Count > 3 || resources.Count == 0) return;
-            ExecuteQuery(resources);            
+            ExecuteQuery(resources);
         }
 
         void ExecuteQuery(IList<ResourceType> resources)
@@ -512,8 +590,9 @@ namespace Catan3.Models
             }
             foreach (var building in Buildings)
             {
+                if (building.Building.OwnerId is not null) continue;
                 building.VisualState = BuildingVisualState.Hidden;
-               
+
 
                 var tiles = TilesForBuildings(building.Building.BuildingKey);
 

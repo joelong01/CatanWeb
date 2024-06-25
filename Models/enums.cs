@@ -27,7 +27,9 @@ namespace Catan3.Models
         Stars, 
         Normal
     }
-    public enum GameType { Regular, Expansion, Unset }
+    public enum GameType { Regular, Expansion, Unset,
+        SavedGame
+    }
     public enum RoadState { Unowned, Road, Ship, Buildable };
     public enum HarborType { Sheep, Wood, Ore, Wheat, Brick, ThreeForOne, None };
     public enum CatanOrientation { FaceUp, FaceDown }

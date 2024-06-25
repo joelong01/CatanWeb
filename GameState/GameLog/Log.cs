@@ -9,8 +9,13 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+using Catan.Services;
+using Catan3.Controller;
 using Catan3.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml.Shapes;
+using Windows.Storage;
 namespace Catan3.Utility
 {
     /// <summary>
@@ -42,19 +47,42 @@ namespace Catan3.Utility
     }
     public partial class Log<T> : ObservableRecipient, ILog
     {
+        private IPersistanceService PersistService { get; set; }  
+        public string FilePath { get; private set; }
         private ObservableCollection<T> DoneStack { get; set; } = [];
         private ObservableCollection<T> RedoStack { get; set; } = [];
         public GameType GameType { get; set; } = GameType.Regular;
         [JsonConstructor]
-        public Log()
+        public Log(IPersistanceService persistanceService, string localSaveFile)
         {
+            PersistService = persistanceService;
             DoneStack.CollectionChanged += DoneStack_ListChanged;
             RedoStack.CollectionChanged += RedoStack_ListChanged;
+            FilePath = localSaveFile; 
+           
         }
-        public Log(GameType gameType) : this()
+
+        public async Task<bool> InitializeAsync(string path)
         {
-            GameType = gameType;
+            try
+            {
+                StorageFile file = await StorageFile.GetFileFromPathAsync(path);
+                
+
+                return true;
+            }
+            catch (FileNotFoundException)
+            {
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking file existence: {ex.Message}");
+                return false;
+            }
         }
+
+
         public int DoneCount => DoneStack.Count;
         public int RedoCount => RedoStack.Count;
         /// <summary>
@@ -230,9 +258,9 @@ namespace Catan3.Utility
         /// <param name="sLog">The SerializableLog instance to convert.</param>
         /// <returns>A new Log<T> instance populated with the data from the SerializableLog's stacks and game type.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the JSON deserialization fails or if the JSON format is not compatible with type T.</exception>
-        public static Log<T> FromSerializableLog(SerializableLog sLog)
+        public static Log<T> FromSerializableLog(SerializableLog sLog, IPersistanceService persistanceService, string filePath)
         {
-            var log = new Log<T>();
+            var log = new Log<T>(persistanceService, filePath);
             for (int i = sLog.DoneStack.Count - 1; i >= 0; i--)
             {
                 var json = sLog.DoneStack[i];
@@ -406,6 +434,26 @@ namespace Catan3.Utility
                 string str => str.Length,         // Sum lengths of strings (in characters, not bytes)
                 _ => 0                            // If it's a GameModel or any unsupported type, contribute 0 to the sum
             });
+        }
+
+        /// <summary>
+        ///     Calls the FileService.Save passing in the full serialized stack.
+        ///     the name of the file that is saved owned by the FileService
+        /// </summary>
+        /// <returns></returns>
+        public async Task SaveAsync()
+        {
+            try
+            {
+                var uncompressedLog = GetSerializableLog(); // this always comes back the same
+                var json = SerializationHelper.JsonSerialize(uncompressedLog);
+                var compressedBytes = SerializationHelper.Compress(json);
+                await PersistService.SaveAsync(FilePath, compressedBytes);
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Failed SaveAs: {ex.Message}");
+            }
         }
     }
     public static class LogExtensions

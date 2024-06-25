@@ -19,47 +19,34 @@ namespace Catan3.Models
         [ObservableProperty]
         bool _showCommands = false;
         private GameController GameController { get; set; }
-        private readonly IFileService _fileService;
+        private readonly IPersistanceService _fileService;
         public IMessenger MessageService => this.Messenger;
         private readonly IPlayerDatabase _playerDatabase;
 
         public IPlayerDatabase PlayerDatabase => _playerDatabase;
 
-        public MainPageViewModel(IFileService fileService, IPlayerDatabase playerDatabase, GameType selectedGame, IList<PlayerViewModel> playingPlayers)
+        public MainPageViewModel(IPersistanceService fileService, IPlayerDatabase playerDatabase, GameType selectedGame, IList<string> playingPlayerIds, string filePath)
         {
             FunctionTimer.Enabled = false;
+            WeakReferenceMessenger.Default.Send(new EndGame());
             _fileService = fileService;
             _playerDatabase = playerDatabase;
-            GameController = new GameController();
             RegisterMessages();
-            // create a new GameModel - this would usually come from the service
-            List<string> playerIds = playingPlayers.Select( p => p.Id ).ToList();
-            var gameModel = GameController.NewGame(selectedGame, playerIds);
-            var gvm = new GameViewModel(gameModel, playerDatabase);
-            this.GameViewModel = gvm;
-            GameViewModel.UpdateLayout();
-            GameViewModel.SetGameStars();
+            GameViewModel = new GameViewModel(playerDatabase);
+            GameController = new GameController(_fileService, filePath);
+            if (selectedGame == GameType.SavedGame)
+            {
+                Messenger.Send(new LoadGameMessage(filePath));
+            }
+            else
+            {
+
+                Messenger.Send(new NewGameMessage(selectedGame, playingPlayerIds, filePath));
+            }
+            
         }
 
-        public MainPageViewModel(byte[] compressedBytes, IFileService fileService, IPlayerDatabase playerDatabase)
-        {
-
-            FunctionTimer.Enabled = false;
-            _fileService = fileService;
-            _playerDatabase = playerDatabase;
-            GameController = new GameController();
-            RegisterMessages();
-
-            Messenger.Send(new EndGame());
-            GameController = new GameController();
-            RegisterMessages();
-            var gameModel = GameController.OpenSerializableLog(compressedBytes);
-            this.GameViewModel = new GameViewModel(gameModel, playerDatabase);
-            GameViewModel.UpdateLayout();
-            GameViewModel.SetGameStars();
-
-        }
-
+        
         private void RegisterMessages()
         {
             Debug.Assert(Messenger is not null);
@@ -71,7 +58,7 @@ namespace Catan3.Models
             Messenger.Register<OpenFileRequestMessage>(this, async (recipient, message) =>
             {
                 if (_fileService is null) throw new GameException("File Service is null and it should not be");
-                var result =  await _fileService.GetFileAsync(message.Parent, message.Filters);
+                var result =  await _fileService.PickFile(message.Parent, message.Filters);
                 Messenger.Send(new OpenFileResponseMessage(result));
             });
 
@@ -86,6 +73,7 @@ namespace Catan3.Models
         /// <exception cref="NotImplementedException"></exception>
         public void SetPlayerOrder()
         {
+            Debug.Assert(GameViewModel.GameModel is not null);
             List<string> viewModelPlayerIds = GameViewModel.Players.Select(player => player.Id).ToList();
             List<string> gameModelPlayerIds = GameViewModel.GameModel.Players.Select(player => player.Id).ToList();
             if (!viewModelPlayerIds.SequenceEqual(gameModelPlayerIds))

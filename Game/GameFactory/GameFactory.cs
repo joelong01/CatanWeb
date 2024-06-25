@@ -7,7 +7,7 @@ namespace Catan3.Models
 {
     public static class GameFactory
     {
-        public static GameModel CreateGame(GameType gameType, List<string> players)
+        public static GameModel CreateGame(GameType gameType, IList<string> players)
         {
             IGameMetadata gameInfo;
             if (gameType == GameType.Regular)

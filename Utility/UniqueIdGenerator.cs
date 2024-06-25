@@ -32,7 +32,7 @@ namespace Catan3.Utility
             var sb = new StringBuilder();
             do
             {
-                int index = (int) value % 62;
+                uint index = (uint) value % 62;
                 System.Diagnostics.Debug.Assert(index >= 0);
                 System.Diagnostics.Debug.Assert(index < Base62Chars.Length);
                 sb.Insert(0, Base62Chars[( int )( value % 62 )]);
