@@ -1,6 +1,8 @@
 using System;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppLifecycle;
 namespace Catan3.Models
 {
     public partial class TileViewModel : ObservableRecipient
@@ -16,13 +18,20 @@ namespace Catan3.Models
         [ObservableProperty]
         private int _index = -1;
         [ObservableProperty]
+        private bool _dimmed = false;
+        [ObservableProperty]
         private CatanOrientation _orientation = CatanOrientation.FaceUp;
         [ObservableProperty]
         private bool _allowTargetting = false;
         public static TileViewModel Default { get; } = new(TileModel.Default, BoardLayout.Default);
         [ObservableProperty]
         public ObservableCollection<TargetViewModel> _targets = [];
+
+       
     }
+
+  
+
     public partial class TargetViewModel : ObservableObject, IEquatable<TargetViewModel?>
     {
         [ObservableProperty]

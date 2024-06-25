@@ -7,6 +7,18 @@
         xmlns:u="using:Catan3.Utility" xmlns:m="using:Catan3.Models"
         xmlns:c="using:Catan3.Controls"
         d:DataContext="{d:DesignInstance Type=m:TileViewModel}" mc:Ignorable="d">
+
+    <Control.Resources>
+        <Storyboard x:Name="DimAnimation">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity" Storyboard.TargetName="CANVAS_LayoutRoot" To="0.5"
+                    Duration="0:0:0.5" AutoReverse="False" />
+        </Storyboard>
+        <Storyboard x:Name="RevertAnimation">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Storyboard.TargetName="CANVAS_LayoutRoot"
+                    Duration="0:0:0.5" AutoReverse="False" />
+        </Storyboard>
+    </Control.Resources>
+
     <Canvas Name="CANVAS_LayoutRoot"
             Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
             Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}">
@@ -26,11 +38,13 @@
                 </Canvas>
             </u:FlipperCtrl.Back>
             <u:FlipperCtrl.Front>
-                <Canvas Name="C_Front" HorizontalAlignment="Left"
+                <Canvas Name="C_Front" HorizontalAlignment="Left" 
                         VerticalAlignment="Top"
                         Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
                         Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}"
                         RightTapped="OnRightClicked">
+
+
                     <Canvas.Projection>
                         <PlaneProjection RotationY="0" />
                     </Canvas.Projection>
@@ -68,19 +82,21 @@
                             <u:FlipperCtrl
                                     Orientation="{x:Bind TileViewModel.TempGoldOrientation(TileViewModel.Tile, TileViewModel.Tile.TemporarilyGold), Mode=OneWay}">
                                 <u:FlipperCtrl.Front>
-                                    <Border CornerRadius="5"  Width="67" Height="100"
-                                            BorderThickness=".5">
+                                    <Border CornerRadius="5" Width="67"
+                                            Height="100" BorderThickness=".5">
                                         <Rectangle RadiusX="1" RadiusY="1"
                                                 Fill="{x:Bind TileViewModel.GetResourceImage(TileViewModel.Tile, TileViewModel.Tile.ResourceTileType), Mode=OneWay}" />
                                     </Border>
                                 </u:FlipperCtrl.Front >
                                 <u:FlipperCtrl.Back>
-                                    <Grid Opacity="0" Background="Black" Width="67" Height="100"
+                                    <Grid Opacity="0" Background="Black"
+                                            Width="67" Height="100"
                                             CornerRadius="5" />
                                 </u:FlipperCtrl.Back>
                             </u:FlipperCtrl>
                         </Viewbox>
-                        <Grid  Name="GRID_TileCoordinates" Background="Black" HorizontalAlignment="Center"
+                        <Grid Name="GRID_TileCoordinates" Background="Black"
+                                HorizontalAlignment="Center"
                                 VerticalAlignment="Bottom"
                                 Margin="{x:Bind CooordinateTextMargin(TileViewModel.Layout.TileGap, TileViewModel.Layout.InnerHexStrokeThickness), Mode=OneWay}"
                                 Height="16">

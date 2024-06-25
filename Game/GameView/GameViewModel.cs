@@ -10,12 +10,15 @@ using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.UI.Xaml;
 namespace Catan3.Models
 {
     public partial class GameViewModel : ObservableRecipient
     {
         private GameType GameType { get; set; } = GameType.Unset;
         private IPlayerDatabase PlayerDatabaseService { get; set; }
+        private DispatcherTimer DimTileTimer { get; } = new();
+        private static readonly TimeSpan TILE_DIM_TIME = TimeSpan.FromSeconds(2);
         //
         // 
         /// <summary>
@@ -54,6 +57,18 @@ namespace Catan3.Models
             IsActive = true;
             Id = GetHashCode().ToString();
             RegisterMessages();
+            DimTileTimer.Interval = TILE_DIM_TIME;
+            DimTileTimer.Tick += DimTileTimer_Tick;
+        }
+
+        private void DimTileTimer_Tick(object? sender, object e)
+        {
+            DimTileTimer.Stop();
+            foreach (var tile in Tiles)
+            {
+                tile.Dimmed = false;
+            }
+           
         }
 
         private void RegisterMessages()
@@ -202,6 +217,7 @@ namespace Catan3.Models
                 this.PurchasableEntitlements[i].Merge(gameModel.EntitlementPurchaseModel[i], unspent, this.CurrentPlayer.PlayerColors.ForegroundBrush, this.CurrentPlayer.PlayerColors.BackgroundBrush);
             }
         }
+        
         private void FixupState(GameModel gameModel)
         {
             Debug.Assert(GameModel is not null);
@@ -218,6 +234,17 @@ namespace Catan3.Models
                 ShownStars = currentStars;
                 Debug.Assert(CurrentPlayer != null);
                 this.Id = GameModel.GetHashCode().ToString();
+            }
+
+            if (gameModel.GameState ==GameState.WaitingForNext) // e.g. just did a roll
+            {
+                foreach (var tile in Tiles)
+                {
+                    Debug.Assert(gameModel.TurnRollModel is not null);
+                    tile.Dimmed =  tile.Tile.Number != (int)gameModel.TurnRollModel.NormalRoll;
+                }
+
+                DimTileTimer.Start();
             }
         }
         /// <summary>

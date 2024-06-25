@@ -29,9 +29,35 @@ namespace Catan3.Controls
         }
         private void SetTileViewModel(TileViewModel newModel, TileViewModel? oldModel)
         {
-           
+            if (oldModel is not null)
+            {
+                oldModel.PropertyChanged -= ViewModel_PropertyChanged;
+            }
+
+           if (newModel is not null)
+            {
+                newModel.PropertyChanged += ViewModel_PropertyChanged;
+            }
         }
-    
+
+        private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+           
+            if (e.PropertyName == nameof(TileViewModel.Dimmed))
+            {
+              
+                if (TileViewModel.Dimmed)
+                {
+                    DimAnimation.Begin();
+                }
+                else
+                {
+                    RevertAnimation.Begin();
+                }
+            }
+          
+        }
+
         private Visibility PipsVisibility(int tileNumber, int pipIndex)
         {
             Visibility visibility = Visibility.Collapsed;

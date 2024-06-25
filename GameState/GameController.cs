@@ -369,17 +369,18 @@ namespace Catan3.Controller
         {
             GameModel gameModel = Log.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForRoll]);
-            TurnRollModel roll = msg.Roll;
+            gameModel.TurnRollModel = msg.Roll;
             // update the global counts for rolls
-            gameModel.GameRollModel.RollCounts[( int )roll.NormalRoll - 2]++;
+            gameModel.GameRollModel.RollCounts[( int )gameModel.TurnRollModel.NormalRoll - 2]++;
             gameModel.GameRollModel.TotalRolls++;
+         
             // update the state
             gameModel.GameState = GameState.WaitingForNext;
             // highlight the tiles and build a list of tiles that have this number
             List<TileModel> highlightedTiles = [];
             foreach (TileModel tile in gameModel.Tiles)
             {
-                if (tile.Number == ( int )roll.NormalRoll)
+                if (tile.Number == ( int )gameModel.TurnRollModel.NormalRoll)
                 {
                     highlightedTiles.Add(tile);
                     tile.Highlighted = true;
