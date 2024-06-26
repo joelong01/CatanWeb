@@ -99,14 +99,14 @@
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Bottom"
                                 Margin="{x:Bind CooordinateTextMargin(TileViewModel.Layout.TileGap, TileViewModel.Layout.InnerHexStrokeThickness), Mode=OneWay}"
-                                Height="16">
+                                Height="15">
                             <Viewbox Stretch="Uniform">
                                 <StackPanel HorizontalAlignment="Stretch">
-                                    <TextBlock Visibility="Collapsed"
+                                    <TextBlock Visibility="Visible" TextLineBounds="Tight"
                                             Text="{x:Bind TileViewModel.Index, Mode=OneWay}"
                                             HorizontalAlignment="Center"
                                             Foreground="White" />
-                                    <TextBlock
+                                    <TextBlock  Visibility="Collapsed"
                                             Text="{x:Bind TileViewModel.Tile.TileKey}"
                                             HorizontalAlignment="Center"
                                             Foreground="White" />
