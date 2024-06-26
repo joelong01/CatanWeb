@@ -49,42 +49,7 @@ namespace Catan3.Models
 
       
 
-        [RelayCommand]
-        private async Task Open()
-        {
-            try
-            {
-                Debug.Assert(MainWindow.Instance is not null);
-                var filePath = await MainWindow.FileService.PickFile(MainWindow.Instance, [".catan"]);
-                if (filePath is not null && filePath != "")
-                {
-                    var compressedBytes = await MainWindow.FileService.OpenAsync(filePath);
-
-                    if (compressedBytes is null)
-                    {
-                        this.TraceMessage("Unable to open file");
-                        return;
-                    }
-
-                    Messenger.Send(new EndGame());
-                    GameController = new GameController(_fileService, filePath);
-                    RegisterMessages();
-                    throw new NotImplementedException("implement this with message passing");
-                    //var gameModel = GameController.OpenSerializableLog(compressedBytes);
-                    //this.GameViewModel = new GameViewModel(gameModel, _playerDatabase);
-                    //GameViewModel.UpdateLayout();
-                    //GameViewModel.SetGameStars();
-                }
-            }
-            catch (Exception ex)
-            {
-                this.TraceMessage($"Failed to deserialize or apply the game data: {ex.Message}");
-            }
-            finally
-            {
-                ShowCommands = false;
-            }
-        }
+       
         [RelayCommand]
         private void ToggleShowCommands()
         {

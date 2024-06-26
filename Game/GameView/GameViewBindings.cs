@@ -6,17 +6,22 @@ namespace Catan3.Models
 {
     public partial class GameViewModel
     {
-        public string StateMessage(GameModel _, GameState gameState)
+        public string StateMessage(GameModel gameModel, GameState gameState)
         {
-            if (this.GameModel is null) throw new Exception("can't have a game without a game model");
-            var player = GameModel.CurrentPlayer();
-            if (player.UnspentEntitlements.Count > 0)
+          
+            var player = gameModel.CurrentPlayer();
+            int count = player.UnspentEntitlements.Count;
+            if (count == 0)
             {
-                return $"{gameState.Description()} [{player.UnspentEntitlements.Count} Entitlement(s)]";
+                return $"{gameState.Description()}";
+            }
+            else if (count == 1)
+            {
+                return $"[{count} Unspent Entitlement]";
             }
             else
             {
-                return $"{gameState.Description()}";
+                return $"[{count} Unspent Entitlements]";
             }
 
         }

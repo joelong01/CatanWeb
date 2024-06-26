@@ -219,7 +219,7 @@
                 <AppBarButton Label="Hide" Click="OnShowMenu" Icon="ClosePane" />
                 <AppBarButton Label="New Game" Click="OnNewGame" Icon="Add" />
                 <AppBarButton Label="Open..." Icon="OpenLocal"
-                        Command="{x:Bind MainPageModel.OpenCommand, Mode=OneWay}" />
+                        Click="OnNewGame" />
                 <AppBarButton Label="Save" Icon="SaveLocal"
                         Command="{x:Bind MainPageModel.SaveCommand, Mode=OneWay}" />
                 <AppBarButton Label="Save As..." Icon="Save"

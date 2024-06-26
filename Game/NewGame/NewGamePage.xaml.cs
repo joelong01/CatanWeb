@@ -52,8 +52,9 @@ namespace Catan3
             get
             {
                 var myDocuments = KnownFolders.DocumentsLibrary;
-                var fileName= $"{ViewModel.SelectedGame}-{UniqueIdGenerator.GenerateUniqueId()}";
-                return Path.Join(myDocuments.Path, "Catan Saved Games", fileName, ".catan");
+                var fileName= $"{ViewModel.SelectedGame}-{UniqueIdGenerator.GenerateUniqueId()}.catan";
+                
+                return Path.Join(myDocuments.Path, "Catan Saved Games", fileName);
             }
         }
 
