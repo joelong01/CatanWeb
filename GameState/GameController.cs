@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -11,6 +10,8 @@ using Catan3.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using CommunityToolkit.WinUI;
+using Microsoft.UI.Dispatching;
 namespace Catan3.Controller
 {
     public class GameController : ObservableRecipient
@@ -766,6 +767,20 @@ namespace Catan3.Controller
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
             Log.Done(gameModel);
+
+            DispatcherQueue.GetForCurrentThread().EnqueueAsync(async () =>
+            {
+                try
+                {
+                    await Log.SaveAsync();
+                }
+                catch (Exception ex)
+                {
+                    // Handle the exception (e.g., log it, show a message to the user, etc.)
+                    this.TraceMessage($"Error saving log: {ex.Message}");
+                }
+            });
+
         }
         private void UpdatePurchaseUi(GameModel gameModel)
         {

@@ -314,6 +314,9 @@ namespace Catan3.Utility
             }
             DoneStack.Push(val);
             RedoStack.Clear();
+
+            
+            
         }
         /// <summary>
         /// Performs an undo operation by restoring the state immediately preceding the current state

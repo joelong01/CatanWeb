@@ -6,10 +6,14 @@ using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using Catan3;
+using Catan3.Utility;
+using CommunityToolkit.WinUI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Provider;
+using Windows.UI.Core;
 using WinRT.Interop;
 using WinUIEx;
 namespace Catan.Services
@@ -35,27 +39,59 @@ namespace Catan.Services
     public class FileHandler : IDisposable
     {
         public string FilePath { get; private set; }
-        private FileStream _fileStream;
+        private FileStream? _fileStream;
 
         /// <summary>
         /// Initializes a new instance of the FileHandler class and opens the file for read/write operations.
         /// </summary>
-        /// <param name="filePath">The path to the file.</param>
+        /// <param name="relativeFilePath">The path to the file, reletive to "My Documents".</param>
         /// <exception cref="ArgumentNullException">Thrown when filePath is null.</exception>
         /// <exception cref="ArgumentException">Thrown when filePath is an empty string, contains only white spaces, or contains invalid characters.</exception>
         /// <exception cref="UnauthorizedAccessException">Thrown when access to filePath is denied.</exception>
         /// <exception cref="DirectoryNotFoundException">Thrown when the specified path is invalid.</exception>
         /// <exception cref="IOException">Thrown when an I/O error occurs.</exception>
-        public FileHandler(string filePath)
+        public FileHandler(string relativeFilePath)
         {
-            if (string.IsNullOrEmpty(filePath))
+            if (string.IsNullOrEmpty(relativeFilePath))
             {
-                throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
+                throw new ArgumentException("File path cannot be null or empty.", nameof(relativeFilePath));
             }
 
-            FilePath = filePath;
-            _fileStream = new FileStream(FilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            FilePath = relativeFilePath;
+
+           
         }
+
+        public async Task<FileStream> InitializeFileHandlerAsync(string path)
+        {
+            try
+            {
+                string fullPath;
+
+                if (Path.IsPathRooted(path))
+                {
+                    // If the path is a fully qualified name (FQN)
+                    fullPath = path;
+                }
+                else
+                {
+                    // If the path is a relative path
+                    StorageFolder documentsFolder = KnownFolders.DocumentsLibrary;
+                    StorageFile storageFile = await documentsFolder.CreateFileAsync(path, CreationCollisionOption.OpenIfExists);
+                    fullPath = storageFile.Path;
+                }
+
+                var result = new FileStream(fullPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                return result;
+            }
+            catch (Exception e)
+            {
+                this.TraceMessage($"{e}");
+                throw;
+            }
+        }
+
+
 
         /// <summary>
         /// Writes the specified byte array content to the file asynchronously.
@@ -68,6 +104,7 @@ namespace Catan.Services
         {
             try
             {
+                _fileStream ??= await InitializeFileHandlerAsync(FilePath);
                 // Clear the file content and set the file position to the beginning
                 _fileStream.SetLength(0);
                 _fileStream.Seek(0, SeekOrigin.Begin);
@@ -96,6 +133,7 @@ namespace Catan.Services
         {
             try
             {
+                _fileStream ??= await InitializeFileHandlerAsync(FilePath);
                 // Set the file position to the beginning
                 _fileStream.Seek(0, SeekOrigin.Begin);
 
@@ -119,6 +157,7 @@ namespace Catan.Services
         {
             try
             {
+                if (_fileStream is null) return;
                 _fileStream.Close();
                 FilePath = string.Empty;
                 this.TraceMessage("File closed.");
@@ -135,7 +174,10 @@ namespace Catan.Services
         /// </summary>
         public void Dispose()
         {
-            _fileStream?.Dispose();
+            if (_fileStream is not null)
+            {
+                _fileStream?.Dispose();
+            }
         }
 
 
@@ -205,9 +247,9 @@ namespace Catan.Services
                 {
                     ViewMode = PickerViewMode.Thumbnail,
                     SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
-                
+
                 };
-              
+
 
                 IntPtr hwnd = WindowNative.GetWindowHandle(parent);
                 InitializeWithWindow.Initialize(openPicker, hwnd);
@@ -238,7 +280,7 @@ namespace Catan.Services
         {
             try
             {
-                if (FileHandler is not null )
+                if (FileHandler is not null)
                 {
                     if (FileHandler.FilePath == location)
                     {
@@ -252,7 +294,7 @@ namespace Catan.Services
                 Debug.Assert(FileHandler is null);
                 FileHandler = new FileHandler(location);
                 await FileHandler.WriteContentAsync(data);
-                
+
                 return true;
             }
             catch (Exception ex)
@@ -261,7 +303,7 @@ namespace Catan.Services
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Prompts the user to pick a file for saving. This function initializes a FileSavePicker and returns the selected file.
         /// </summary>
