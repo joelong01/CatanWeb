@@ -1,20 +1,16 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
-using Catan.Services;
-using System.Security.AccessControl;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using Catan3.Models;
 using Catan3.Player;
+using Catan3.Utility;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
-using Catan3.Controller;
-using CommunityToolkit.Mvvm.Messaging;
-using System;
-using System.Threading.Tasks;
-using Catan3.Utility;
-using System.IO;
 using Windows.Storage;
-using System.Collections.Generic;
-using System.Linq;
 
 
 namespace Catan3

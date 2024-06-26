@@ -2,18 +2,11 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using Catan3;
-using Catan3.Utility;
-using CommunityToolkit.WinUI;
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Windows.Storage;
 using Windows.Storage.Pickers;
-using Windows.Storage.Provider;
-using Windows.UI.Core;
 using WinRT.Interop;
 using WinUIEx;
 namespace Catan.Services
@@ -111,7 +104,8 @@ namespace Catan.Services
 
                 await _fileStream.WriteAsync(content, 0, content.Length);
                 await _fileStream.FlushAsync(); // Ensure all data is written to the file
-                this.TraceMessage("Content written to file.");
+              //  this.TraceMessage("Content written to file.");
+                CloseFile();
                 return true;
             }
             catch (Exception ex)
@@ -139,7 +133,7 @@ namespace Catan.Services
 
                 byte[] content = new byte[_fileStream.Length];
                 await _fileStream.ReadAsync(content, 0, content.Length);
-
+                CloseFile();
                 return content;
             }
             catch (Exception ex)
@@ -160,7 +154,7 @@ namespace Catan.Services
                 if (_fileStream is null) return;
                 _fileStream.Close();
                 FilePath = string.Empty;
-                this.TraceMessage("File closed.");
+               // this.TraceMessage("File closed.");
             }
             catch (Exception ex)
             {
