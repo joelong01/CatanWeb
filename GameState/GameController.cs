@@ -54,7 +54,7 @@ namespace Catan3.Controller
                         }
                         if (gameModel is not null)
                         {
-                            
+
                             Messenger.Send(new UpdateGameModel(gameModel));
                         }
                         else
@@ -380,10 +380,10 @@ namespace Catan3.Controller
         {
             GameModel gameModel = Log.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForRoll]);
-            gameModel.TurnRollModel = msg.Roll;
+            gameModel.RollModel.TurnRollModel = msg.Roll;
             // update the global counts for rolls
-            gameModel.GameRollModel.RollCounts[( int )gameModel.TurnRollModel.NormalRoll - 2]++;
-            gameModel.GameRollModel.TotalRolls++;
+            gameModel.RollModel.GameRollModel.RollCounts[( int )gameModel.RollModel.TurnRollModel.NormalRoll - 2]++;
+            gameModel.RollModel.GameRollModel.TotalRolls++;
 
             // update the state
             gameModel.GameState = GameState.WaitingForNext;
@@ -391,7 +391,7 @@ namespace Catan3.Controller
             List<TileModel> highlightedTiles = [];
             foreach (TileModel tile in gameModel.Tiles)
             {
-                if (tile.Number == ( int )gameModel.TurnRollModel.NormalRoll)
+                if (tile.Number == ( int )gameModel.RollModel.TurnRollModel.NormalRoll)
                 {
                     highlightedTiles.Add(tile);
                     tile.Highlighted = true;
@@ -696,7 +696,7 @@ namespace Catan3.Controller
 
         private void UpdateStateOnNextPlayer(GameModel gameModel)
         {
-            gameModel.TurnRollModel = new();
+            gameModel.RollModel.TurnRollModel = new();
             gameModel.Players.ForEach(p =>
             {
                 p.ResourcesThisTurn = new();
@@ -763,9 +763,6 @@ namespace Catan3.Controller
         /// <param name="gameModel"></param>
         private void LogGameModel(GameModel gameModel)
         {
-
-            this.TraceMessage($"{gameModel.GameState}: {gameModel.GameRollModel.TotalRolls}={gameModel.GameRollModel.RollCounts.ListToCsv()}");
-
             UpdateScore(gameModel);
             MarkBuildableRoads(gameModel);
             MarkBuildableBuildings(gameModel);
@@ -908,14 +905,43 @@ namespace Catan3.Controller
         {
             int maxScore = 0;
             CalculateLongestRoad(gameModel);
+
+            // Get the maximum count of soldiers played by any player
+            int maxSoldierCount = gameModel.Players
+                .Select(player => player.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier))
+                .DefaultIfEmpty(0)
+                .Max();
+
+            if (maxSoldierCount <= 2) maxSoldierCount = 2;
+
+            var playerWithLargestArmy = gameModel.Players.FirstOrDefault(player => player.LargestArmy);
+
             // Iterate through all players to update their scores
             foreach (var player in gameModel.Players)
             {
                 player.HighestScore = false;
+
+
                 int citiesPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.City);
                 int settlementsPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.Settlement);
                 settlementsPlayed -= citiesPlayed; // you can't play a city unless you played a settlement
                 int knightsPlayed = player.SpentEntitlementsThisGame.Count(e=> e== Entitlement.Soldier);
+                if (knightsPlayed == maxSoldierCount && playerWithLargestArmy is null)
+                {
+                    player.LargestArmy = true;
+                    playerWithLargestArmy = player;
+                }
+                else if (playerWithLargestArmy is not null && knightsPlayed > playerWithLargestArmy.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier))
+                {
+                    playerWithLargestArmy.LargestArmy = false;
+                    player.LargestArmy = true;
+                    playerWithLargestArmy = player;
+                }
+                else
+                {
+                    player.LargestArmy = false;
+                }
+
                 // Calculate base score from cities and settlements
                 int score = citiesPlayed * 2 + settlementsPlayed;
                 // Add bonus points for having the longest road

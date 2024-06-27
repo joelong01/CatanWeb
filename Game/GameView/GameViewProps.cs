@@ -52,10 +52,11 @@ namespace Catan3.Models
         private int _shuffleCount = 0;
         [ObservableProperty]
         private CatanOrientation _orientation = CatanOrientation.FaceUp;
+        
+        // keeps track of the rolls for both the game and for the turn
         [ObservableProperty]
-        private GameRollViewModel _gameRollViewModel = new();
-        [ObservableProperty]
-        private TurnRollViewModel  _turnRollViewModel = new();
+        private RollViewModel _rollViewModel = new();
+        
         // total resoruces allocated for the game
         [ObservableProperty]
         private ResourcesViewModel _gameResources = new(GameViewModelStatics.PlayerTrackResourceList);
@@ -67,6 +68,9 @@ namespace Catan3.Models
 
         [ObservableProperty]
         private QueryBuilderModel _queryBuilder = new();
+
+        [ObservableProperty]
+        ObservableCollection<UiRollModel> _validRolls = [];
 
         /// <summary>
         ///     this broadcasts to all things that are looking for the global orientation that causes things like Tiles and Harbors to flip

@@ -59,6 +59,13 @@ namespace Catan3.Models
             RegisterMessages();
             DimTileTimer.Interval = TILE_DIM_TIME;
             DimTileTimer.Tick += DimTileTimer_Tick;
+
+            foreach(ValidCatanRoll roll in Enum.GetValues(typeof(ValidCatanRoll)))
+            {
+                if (roll == ValidCatanRoll.None) continue;
+               
+                ValidRolls.Add(new UiRollModel(this.RollViewModel, (int)roll));
+            }
         }
 
         private void DimTileTimer_Tick(object? sender, object e)
@@ -224,7 +231,7 @@ namespace Catan3.Models
             // do things here that the game state requires
             if (gameModel.GameState == GameState.WaitingForRoll)
             {
-                this.TurnRollViewModel.TurnRollModel = new();
+                this.RollViewModel.TurnRollViewModel.TurnRollModel = new();
             }
             if (gameModel.Phase() == GamePhase.PickingBoard || gameModel.Phase() == GamePhase.PickingResources)
             {
@@ -240,8 +247,8 @@ namespace Catan3.Models
             {
                 foreach (var tile in Tiles)
                 {
-                    Debug.Assert(gameModel.TurnRollModel is not null);
-                    tile.Dimmed =  tile.Tile.Number != (int)gameModel.TurnRollModel.NormalRoll;
+                    Debug.Assert(gameModel.RollModel.TurnRollModel is not null);
+                    tile.Dimmed =  tile.Tile.Number != (int)gameModel.RollModel.TurnRollModel.NormalRoll;
                 }
 
                 DimTileTimer.Start();
@@ -263,7 +270,7 @@ namespace Catan3.Models
         }
         private void MergeRolls(GameModel gameModel)
         {
-            this.GameRollViewModel.GameRollModel = gameModel.GameRollModel;
+            this.RollViewModel.GameRollViewModel.GameRollModel = gameModel.RollModel.GameRollModel;
         }
         private void MergeRobber(GameModel gameModel)
         {

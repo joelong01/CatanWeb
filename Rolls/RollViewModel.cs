@@ -1,10 +1,36 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using static Catan3.Models.TurnRollViewModel;
 namespace Catan3.Models
 {
+    public partial class RollViewModel : ObservableObject
+    {
+        [ObservableProperty]
+        GameRollViewModel _gameRollViewModel = new();
+
+        [ObservableProperty]
+        TurnRollViewModel _turnRollViewModel = new();
+
+
+    }
+
+    public partial class UiRollModel : ObservableObject
+    {
+        [ObservableProperty]
+        RollViewModel _rollViewModel;
+        [ObservableProperty]
+        int _roll;
+
+        public UiRollModel(RollViewModel rollViewModel, int roll)
+        {
+            _rollViewModel = rollViewModel;
+            _roll = roll;
+        }
+    }
     public partial class TurnRollViewModel : ObservableRecipient
     {
         [ObservableProperty]
@@ -34,7 +60,8 @@ namespace Catan3.Models
         [RelayCommand]
         private void NormalRoll(ValidCatanRoll roll)
         {
-            Debug.Assert(TurnRollModel is not null, "Turn roll model is null.  probably a bug in NextPlayer"); 
+            
+
             if (roll == ValidCatanRoll.None) return;
             if (TurnRollModel is null) return;
       
@@ -64,5 +91,7 @@ namespace Catan3.Models
                 return result;
             }
         }
+
+       
     }
 }

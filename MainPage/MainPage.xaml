@@ -111,72 +111,30 @@
                     </Viewbox>
                     <!--Rolls-->
                     <Viewbox Stretch="Uniform" HorizontalAlignment="Left"
-                            Margin="0,0,0,0">
-                        <StackPanel
+                            Width="300" Margin="0,0,0,0">
+                        <GridView
                                 Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}"
-                                Margin="0, 0, 0, 20" CornerRadius="5">
-                            <Viewbox Height="120" Stretch="Uniform"
-                                    HorizontalAlignment="Left">
-                                <StackPanel Orientation="Horizontal">
-                                    <c:SingleRoll Number="2" IsEnabled="True"
-                                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                                    <c:SingleRoll Number="3"
-                                            IsEnabled="{x:Bind MainPageModel.GameViewModel.GameModel.ActionFlags.RollsEnabled, Mode=OneWay}"
-                                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                                    <c:SingleRoll Number="4"
-                                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                                    <c:SingleRoll Number="5"
-                                            IsEnabled="{x:Bind MainPageModel.GameViewModel.GameModel.ActionFlags.RollsEnabled, Mode=OneWay}"
-                                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                                    <c:SingleRoll Number="6"
-                                            IsEnabled="{x:Bind MainPageModel.GameViewModel.GameModel.ActionFlags.RollsEnabled, Mode=OneWay}"
-                                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-
-                                </StackPanel>
-                            </Viewbox>
-                            <Viewbox Height="120" Stretch="Uniform"
-                                    HorizontalAlignment="Center">
-                                <c:SingleRoll Number="7"
-                                        IsEnabled="{x:Bind MainPageModel.GameViewModel.GameModel.ActionFlags.RollsEnabled, Mode=OneWay}"
-                                        GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                                        TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                            </Viewbox>
-                            <Viewbox Height="120" Stretch="Uniform"
-                                    HorizontalAlignment="Left">
-                                <StackPanel Orientation="Horizontal"
-                                        HorizontalAlignment="Left">
-
-                                    <c:SingleRoll Number="8"
-                                            IsEnabled="{x:Bind MainPageModel.GameViewModel.GameModel.ActionFlags.RollsEnabled, Mode=OneWay}"
-                                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                                    <c:SingleRoll Number="9"
-                                            IsEnabled="{x:Bind MainPageModel.GameViewModel.GameModel.ActionFlags.RollsEnabled, Mode=OneWay}"
-                                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                                    <c:SingleRoll Number="10"
-                                            IsEnabled="{x:Bind MainPageModel.GameViewModel.GameModel.ActionFlags.RollsEnabled, Mode=OneWay}"
-                                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-
-                                    <c:SingleRoll Number="11"
-                                            IsEnabled="{x:Bind MainPageModel.GameViewModel.GameModel.ActionFlags.RollsEnabled, Mode=OneWay}"
-                                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                                    <c:SingleRoll Number="12"
-                                            IsEnabled="{x:Bind MainPageModel.GameViewModel.GameModel.ActionFlags.RollsEnabled, Mode=OneWay}"
-                                            GameRolls="{x:Bind MainPageModel.GameViewModel.GameRollViewModel, Mode=OneWay}"
-                                            TurnRoll="{x:Bind MainPageModel.GameViewModel.TurnRollViewModel, Mode=OneWay}" />
-                                </StackPanel>
-                            </Viewbox>
-                        </StackPanel>
+                                Foreground="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.ForegroundBrush, Mode=OneWay}"
+                                Margin="0, 0, 0, 20" CornerRadius="5"
+                                SelectionMode="None" VerticalAlignment="Top"
+                                ItemsSource="{x:Bind MainPageModel.GameViewModel.ValidRolls, Mode=OneWay}">
+                            <GridView.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapGrid MaximumRowsOrColumns="3"
+                                            Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </GridView.ItemsPanel>
+                            <GridView.ItemTemplate>
+                                <DataTemplate x:DataType="models:UiRollModel">
+                                    <c:SingleRoll Number="{x:Bind Roll}"
+                                            GameRolls="{x:Bind RollViewModel.GameRollViewModel, Mode=OneWay}"
+                                            TurnRoll="{x:Bind RollViewModel.TurnRollViewModel, Mode=OneWay}" />
+                                </DataTemplate>
+                            </GridView.ItemTemplate>
+                        </GridView>
+                        
                     </Viewbox>
-                    <Viewbox Stretch="Uniform">
+                    <Viewbox Stretch="Uniform" Width="450">
                         <Border BorderBrush="Black" BorderThickness="2"
                                 Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}">
                             <c:BoardMeasurementCtrl
@@ -218,8 +176,7 @@
             <StackPanel>
                 <AppBarButton Label="Hide" Click="OnShowMenu" Icon="ClosePane" />
                 <AppBarButton Label="New Game" Click="OnNewGame" Icon="Add" />
-                <AppBarButton Label="Open..." Icon="OpenLocal"
-                        Click="OnNewGame" />
+                <AppBarButton Label="Open..." Icon="OpenLocal" Click="OnNewGame" />
                 <AppBarButton Label="Save" Icon="SaveLocal"
                         Command="{x:Bind MainPageModel.SaveCommand, Mode=OneWay}" />
                 <AppBarButton Label="Save As..." Icon="Save"

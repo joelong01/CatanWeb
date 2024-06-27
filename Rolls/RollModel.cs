@@ -26,4 +26,13 @@ namespace Catan3.Models
        
     }
 
+    public partial class RollModel : ObservableObject
+    {
+        [ObservableProperty]
+        TurnRollModel? _turnRollModel; // nullable as it gets set to null when the turn is over and the new one is created when the turn is started
+
+        [ObservableProperty]
+        GameRollModel _gameRollModel = new();
+    }
+
 }

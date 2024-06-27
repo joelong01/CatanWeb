@@ -13,22 +13,25 @@
             <Setter Property="FontSize" Value="20" />
         </Style>
     </UserControl.Resources>
-<Viewbox Stretch="Uniform" Height="100">
-    <Button Command="{x:Bind TurnRoll.NormalRollCommand, Mode=OneWay}" Style="{x:Null}" PointerEntered="OnPointerEntered" PointerExited="OnPointerExited" BorderBrush="White" BorderThickness="0"
-            CommandParameter="{x:Bind ValidCatanRoll, Mode=OneWay}">
-        <Button.Content>
-            <StackPanel>
-                <TextBlock
-                        Text="{x:Bind GameRolls.GetRollCount(GameRolls.GameRollModel, ValidCatanRoll), Mode=OneWay}"
-                        Style="{StaticResource RollTextStyle}" />
-                <Viewbox Stretch="Uniform" Height="80">
-                    <local:CatanNumber Number="{x:Bind Number, Mode=OneWay}" />
-                </Viewbox>
-                <TextBlock
-                        Text="{x:Bind GameRolls.GetRollPercent(GameRolls.GameRollModel, ValidCatanRoll), Mode=OneWay}"
-                        Style="{StaticResource RollTextStyle}" />
-            </StackPanel>
-        </Button.Content>
-    </Button>
-   </Viewbox>
+    <Viewbox Stretch="Uniform" Height="100">
+        <Button Command="{x:Bind TurnRoll.NormalRollCommand, Mode=OneWay}"
+                Style="{x:Null}" PointerEntered="OnPointerEntered"
+                PointerExited="OnPointerExited" BorderBrush="White"
+                BorderThickness="0"
+                CommandParameter="{x:Bind ValidCatanRoll, Mode=OneWay}">
+            <Button.Content>
+                <StackPanel>
+                    <TextBlock
+                            Text="{x:Bind GameRolls.GetRollCount(GameRolls.GameRollModel, ValidCatanRoll), Mode=OneWay}"
+                            Style="{StaticResource RollTextStyle}" />
+                    <Viewbox Stretch="Uniform" Height="80">
+                        <local:CatanNumber Number="{x:Bind Number, Mode=OneWay}" />
+                    </Viewbox>
+                    <TextBlock
+                            Text="{x:Bind GameRolls.GetRollPercent(GameRolls.GameRollModel, ValidCatanRoll), Mode=OneWay}"
+                            Style="{StaticResource RollTextStyle}" />
+                </StackPanel>
+            </Button.Content>
+        </Button>
+    </Viewbox>
 </UserControl>

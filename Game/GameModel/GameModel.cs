@@ -36,9 +36,7 @@ namespace Catan3.Models
         private ObservableCollection<EntitlementPurchaseModel> _entitlementPurchaseModel = [];
         [ObservableProperty]
         private ActionFlags _actionFlags = new();
-        [ObservableProperty]
-        private TurnRollModel? _turnRollModel = null; // nullable as it gets set to null when the turn is over and the new one is created when the turn is started
-        [ObservableProperty]
+       [ObservableProperty]
         private GameType _gameType = GameType.Regular;
         [ObservableProperty]
         private GameState _gameState = GameState.WaitingForNewGame;
@@ -64,7 +62,7 @@ namespace Catan3.Models
         [ObservableProperty]
         private string _currentPlayerId = string.Empty;
         [ObservableProperty]
-        private GameRollModel _gameRollModel = new();
+        private RollModel _rollModel = new();
 
         // keep track of the player who goes when there is nobody left to do supplemental
         [ObservableProperty]
