@@ -17,7 +17,7 @@ namespace Catan3.Controller
     public class GameController : ObservableRecipient
     {
         private Log<string> Log;
- 
+
         private IPersistanceService MyPersistanceService { get; set; }
         public GameController(IPersistanceService persistanceService, string localSaveFile)
         {
@@ -25,7 +25,7 @@ namespace Catan3.Controller
             MyPersistanceService = persistanceService;
             RegisterMessages();
         }
-        public int DoneCount =>  Log.DoneCount;
+        public int DoneCount => Log.DoneCount;
         private void RegisterMessages()
         {
             Debug.Assert(Messenger is not null);
@@ -39,19 +39,22 @@ namespace Catan3.Controller
                         {
                             case GameAction.Shuffle:
                                 gameModel = ShuffleCurrentGame();
+                                LogGameModel(gameModel);
                                 break;
                             case GameAction.Undo:
-                                gameModel = Undo();
+                                gameModel = Undo(); // NOTE: Undo does not call LogGameMode!
                                 break;
                             case GameAction.Redo:
-                                gameModel = Redo();
+                                gameModel = Redo();  // NOTE: Redo does not call LogGameMode!
                                 break;
                             case GameAction.Next:
                                 gameModel = NextState();
+                                LogGameModel(gameModel);
                                 break;
                         }
                         if (gameModel is not null)
                         {
+                            
                             Messenger.Send(new UpdateGameModel(gameModel));
                         }
                         else
@@ -68,8 +71,9 @@ namespace Catan3.Controller
                 {
                     try
                     {
-                        var model = BuildingUpgrade(message);
-                        Messenger.Send(new UpdateGameModel(model));
+                        var gameModel = BuildingUpgrade(message);
+                        LogGameModel(gameModel);
+                        Messenger.Send(new UpdateGameModel(gameModel));
                     }
                     catch (GameException e)
                     {
@@ -80,8 +84,9 @@ namespace Catan3.Controller
             {
                 try
                 {
-                    var model = SetPlayerOrder(message.PlayerIds);
-                    Messenger.Send(new UpdateGameModel(model));
+                    var gameModel = SetPlayerOrder(message.PlayerIds);
+                    LogGameModel(gameModel);
+                    Messenger.Send(new UpdateGameModel(gameModel));
                 }
                 catch (GameException e)
                 {
@@ -93,7 +98,9 @@ namespace Catan3.Controller
                     try
                     {
                         var model = RoadPurchase(message);
+                        LogGameModel(model);
                         Messenger.Send(new UpdateGameModel(model));
+
                     }
                     catch (GameException e)
                     {
@@ -105,6 +112,7 @@ namespace Catan3.Controller
                  try
                  {
                      var model = MoveRobber(message);
+                     LogGameModel(model);
                      Messenger.Send(new UpdateGameModel(model));
                  }
                  catch (GameException e)
@@ -117,6 +125,7 @@ namespace Catan3.Controller
                 try
                 {
                     var model = NewGame(message.GameType, message.PlayerIds);
+                    LogGameModel(model);
                     Messenger.Send(new UpdateGameModel(model));
                 }
                 catch (GameException e)
@@ -129,6 +138,7 @@ namespace Catan3.Controller
                 try
                 {
                     var model = await LoadGame(message.LocalFile);
+                    LogGameModel(model);
                     Messenger.Send(new UpdateGameModel(model));
                 }
                 catch (GameException e)
@@ -141,6 +151,7 @@ namespace Catan3.Controller
                 try
                 {
                     var model = OnRoll(message);
+                    LogGameModel(model);
                     Messenger.Send(new UpdateGameModel(model));
                 }
                 catch (GameException e)
@@ -153,6 +164,7 @@ namespace Catan3.Controller
                 try
                 {
                     var model = OnPurchase(message);
+                    LogGameModel(model);
                     Messenger.Send(new UpdateGameModel(model));
                 }
                 catch (GameException e)
@@ -175,7 +187,7 @@ namespace Catan3.Controller
                         player.ParticipatingInSupplemental = message.PlayerIds.Contains(player.Id);  // this makes the flag explicity false if it is not in the list
                     }
 
-                    LogDone(gameModel); //undo puts us back to this state
+                    LogGameModel(gameModel); //undo puts us back to this state
 
                     Messenger.Send(new UpdateGameModel(gameModel));
                 }
@@ -191,7 +203,7 @@ namespace Catan3.Controller
                     GameModel gameModel = Log.CopyCurrent();
                     if (BalanceBoard(gameModel))
                     {
-                        LogDone(gameModel);
+                        LogGameModel(gameModel);
 
                         Messenger.Send(new UpdateGameModel(gameModel));
                     }
@@ -218,7 +230,7 @@ namespace Catan3.Controller
                     gameModel.Players.Add(player);
                 }
                 gameModel.CurrentPlayerId = gameModel.Players[0].Id;
-                LogDone(gameModel);
+                LogGameModel(gameModel);
                 Messenger.Send(new UpdateGameModel(gameModel));
             });
 
@@ -261,7 +273,6 @@ namespace Catan3.Controller
                 throw new GameException($"cannot buy {entitlement} in state {gameModel.GameState}");
             }
             gameModel.CurrentPlayer().UnspentEntitlements.Add(entitlement);
-            LogDone(gameModel);
             return gameModel;
         }
 
@@ -339,7 +350,6 @@ namespace Catan3.Controller
             Log.GameType = selectedGame;
             gameModel.GameType = selectedGame;
             gameModel.GameState = GameState.PickingBoard;
-            LogDone(gameModel);
             return gameModel;
         }
         public async Task<GameModel> LoadGame(string filePath)
@@ -354,7 +364,7 @@ namespace Catan3.Controller
 
             return Log.CurrentState();
 
-           
+
         }
         /// <summary>
         ///     when a roll comes in 
@@ -374,7 +384,7 @@ namespace Catan3.Controller
             // update the global counts for rolls
             gameModel.GameRollModel.RollCounts[( int )gameModel.TurnRollModel.NormalRoll - 2]++;
             gameModel.GameRollModel.TotalRolls++;
-         
+
             // update the state
             gameModel.GameState = GameState.WaitingForNext;
             // highlight the tiles and build a list of tiles that have this number
@@ -446,8 +456,6 @@ namespace Catan3.Controller
                 gameModel.CurrentPlayer().UnspentEntitlements.Add(Entitlement.RolledSeven);
                 gameModel.GameState = GameState.MustMoveRobber;
             }
-            // save our changes to the GameModel to the log
-            LogDone(gameModel);
             return gameModel;
         }
         /// <summary>
@@ -516,7 +524,6 @@ namespace Catan3.Controller
                 .ToList();
             gameModel.Players = orderedPlayers;
             gameModel.CurrentPlayerId = gameModel.Players[0].Id;
-            LogDone(gameModel);
             return gameModel;
         }
         /// <summary>
@@ -684,7 +691,6 @@ namespace Catan3.Controller
                     break;
 
             }
-            LogDone(gameModel);
             return gameModel;
         }
 
@@ -748,8 +754,6 @@ namespace Catan3.Controller
             roadModel.RoadState = RoadState.Road;
             var currentPlayerModel = gameModel.CurrentPlayer();
             ConsumeEntitlement(gameModel, Entitlement.Road);
-            // Log the completed change.
-            LogDone(gameModel);
             return gameModel;
         }
         /// <summary>
@@ -757,8 +761,11 @@ namespace Catan3.Controller
         ///     
         /// </summary>
         /// <param name="gameModel"></param>
-        private void LogDone(GameModel gameModel)
+        private void LogGameModel(GameModel gameModel)
         {
+
+            this.TraceMessage($"{gameModel.GameState}: {gameModel.GameRollModel.TotalRolls}={gameModel.GameRollModel.RollCounts.ListToCsv()}");
+
             UpdateScore(gameModel);
             MarkBuildableRoads(gameModel);
             MarkBuildableBuildings(gameModel);
@@ -875,7 +882,7 @@ namespace Catan3.Controller
                     throw new GameException("Knights cannot be upgraded further.");
                     // No action needed if knights cannot be upgraded.
             }
-            LogDone(gameModel);
+
             return gameModel;
         }
         /// <summary>
@@ -967,7 +974,6 @@ namespace Catan3.Controller
                 ConsumeEntitlement(gameModel, Entitlement.RolledSeven);
                 gameModel.GameState = GameState.WaitingForNext;
             }
-            LogDone(gameModel);
             return gameModel;
         }
         /// <summary>
@@ -1061,24 +1067,13 @@ namespace Catan3.Controller
             GameModel gameModel = Log.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [GameState.PickingBoard]);
             gameModel.Shuffle();
-            LogDone(gameModel);
             return gameModel;
         }
         public SerializableLog GetSerializableLog()
         {
             return Log.GetSerializableLog();
         }
-        //public GameModel OpenSerializableLog(byte[] compressedBytes)
-        //{
-         
-        //    var decompressedJson = SerializationHelper.Decompress(compressedBytes);
-        //    // Deserialize the JSON back into your Log or relevant data structure
-        //    var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) ?? throw new GameException("Error: Failed to load the game data.");
-        //    Log<string> log =  Log<string>.FromSerializableLog(savedLog, MyPersistanceService);
-        //    this.Log = log;
-           
-        //    return Log.CurrentState();
-        //}
+
         private GameModel? Undo()
         {
             GameModel result =  ( ( ILog )Log ).Undo() ?? throw new GameException("Undo cannot be done");

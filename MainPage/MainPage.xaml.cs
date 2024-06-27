@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Catan3.Models;
 using Catan3.Player;
+using Catan3.Tests;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -209,7 +210,19 @@ namespace Catan3
         {
             if (MainPageModel is null) return;
             MainPageModel.ShowCommands = false;
-            MainPageModel.MessageService.Send(new BalanceBoardMessage());
+
+            var gameRollModel = new GameRollModel();
+            gameRollModel.TotalRolls++;
+            gameRollModel.RollCounts[0]++;
+
+            var json = JsonSerializer.Serialize(gameRollModel);
+
+            GameRollModel? grm = JsonSerializer.Deserialize<GameRollModel>(json);
+            if (grm is not null)
+            {
+                this.TraceMessage($"{grm.TotalRolls}={grm.RollCounts.ListToCsv()}");
+            }
+
 
         }
 
@@ -230,29 +243,11 @@ namespace Catan3
         private async void OnRunTests(object sender, RoutedEventArgs e)
         {
             HideMenu();
-            try
-            {
-                var json = JsonSerializer.Serialize(MainWindow.PlayerDatabase.AllPlayers[0]);
-                var cpy = JsonSerializer.Deserialize<PlayerViewModel>(json);
-                if (cpy is null)
-                {
-                    this.TraceMessage("FAILED to deserialize PlayerViewModel");
-                    return;
-                }
-                this.TraceMessage($"{cpy.Id}");
-            }
-            catch (Exception ex)
-            {
-                this.TraceMessage($"FAILED to deserialize PlayerViewModel: {ex}");
-            }
-            try
-            {
-                await MainWindow.PlayerDatabase.LoadPlayerDatabase();
-            }
-            catch (Exception ex)
-            {
-                this.TraceMessage($"FAILED ayerDatabase.LoadPlayerDatabase(): {ex}");
-            }
+
+
+            var test = new CatanTests();
+            await test.RunAll();
+            
         }
         private void OnClose(object sender, RoutedEventArgs e)
         {

@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 namespace Catan3.Models
 {
     public partial class TurnRollModel : ObservableRecipient
     {
+        [property: JsonIgnore]
         public static TurnRollModel Default => new();
         [ObservableProperty]
         private int _redRoll = -1;
@@ -17,10 +19,11 @@ namespace Catan3.Models
     }
     public partial class GameRollModel : ObservableObject
     {
-        public int[] RollCounts { get; } = new int[11];  // Indexes 0 to 10, corresponding to rolls 2 to 12.  Do not bind here.
+        [property:JsonPropertyName("RollCounts")]
+        public int[] RollCounts { get; set; } = new int[11];  // Indexes 0 to 10, corresponding to rolls 2 to 12.  Do not bind here.
         [ObservableProperty]
         private int _totalRolls = 0;
        
     }
-    
+
 }
