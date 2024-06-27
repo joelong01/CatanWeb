@@ -269,10 +269,16 @@ namespace Catan3
                 if (MainWindow.Instance.PresenterKind != AppWindowPresenterKind.FullScreen)
                 {
                     MainWindow.Instance.PresenterKind = AppWindowPresenterKind.FullScreen;
+                    MainWindow.Instance.IsTitleBarVisible = false;
+                    MainWindow.Instance.ExtendsContentIntoTitleBar = true;
+
+
                 }
                 else
                 {
                     MainWindow.Instance.PresenterKind = AppWindowPresenterKind.Overlapped;
+                    MainWindow.Instance.IsTitleBarVisible = true;
+                    MainWindow.Instance.ExtendsContentIntoTitleBar = false;
                 }
             }
             HideMenu();
