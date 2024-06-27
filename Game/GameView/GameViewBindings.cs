@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+
 using Microsoft.UI.Xaml.Controls;
 namespace Catan3.Models
 {
@@ -8,22 +9,27 @@ namespace Catan3.Models
     {
         public string StateMessage(GameModel gameModel, GameState gameState)
         {
-          
-            var player = gameModel.CurrentPlayer();
-            int count = player.UnspentEntitlements.Count;
-            if (count == 0)
+
+
+            if (gameState == GameState.WaitingForNext || gameState == GameState.AllocateResourceForward || gameState == GameState.AllocateResourceReverse)
             {
-                return $"{gameState.Description()}";
-            }
-            else if (count == 1)
-            {
-                return $"[{count} Unspent Entitlement]";
-            }
-            else
-            {
-                return $"[{count} Unspent Entitlements]";
+                var player = gameModel.CurrentPlayer();
+                int count = player.UnspentEntitlements.Count;
+                if (count == 0)
+                {
+                    return $"{gameState.Description()}";
+                }
+                else if (count == 1)
+                {
+                    return $"[{count} Unspent Entitlement]";
+                }
+                else
+                {
+                    return $"[{count} Unspent Entitlements]";
+                }
             }
 
+            return $"{gameState.Description()}";
         }
         public string BIND_StarCount(int stars, ObservableCollection<TileModel> _tiles)
         {
