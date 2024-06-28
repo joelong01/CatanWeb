@@ -133,6 +133,7 @@ namespace Catan3.Controls
         }
         private void OnRightClicked(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs e)
         {
+            e.Handled = true;
             if (!TileViewModel.AllowTargetting) return;
             this.TileViewModel.TargetCommand.Execute(null);
      //       Debug.Assert(TileViewModel.Targets.Count != 0);
@@ -162,7 +163,7 @@ namespace Catan3.Controls
                 Placement = FlyoutPlacementMode.RightEdgeAlignedTop,
                 ShowMode = FlyoutShowMode.Transient
             });
-            e.Handled = true;
+            
         }
     }
 }
