@@ -31,13 +31,9 @@ namespace Catan3.Models
     /// </summary>
     public partial class PlayerStatsViewModel : ObservableRecipient
     {
-        public PlayerStatsViewModel(string playerId, StatName name,
-                                              string glyph,
-                                              HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left,
-                                              VerticalAlignment verticalAlignment = VerticalAlignment.Top) : base()
+        public PlayerStatsViewModel(string playerId, StatName name, string glyph)
+                                               : base()
         {
-            HorizontalAlignment = horizontalAlignment;
-            VerticalAlignment = verticalAlignment;
             Glyph = glyph;
             Name = name;
             PlayerId = playerId;
@@ -50,7 +46,7 @@ namespace Catan3.Models
                 if (message.PlayerColors.PlayerId == "Nameless-001") return;
                 if (message.PlayerColors.PlayerId == this.PlayerId)
                 {
-                  //  this.TraceMessage($"updating colors for {message.PlayerColors.PlayerId}");
+                    //  this.TraceMessage($"updating colors for {message.PlayerColors.PlayerId}");
                     PlayerColors = message.PlayerColors;
                     OnPropertyChanged(nameof(Highlighted)); // this forces the rebinding of the StatsCtrl
                 }
@@ -66,12 +62,9 @@ namespace Catan3.Models
         private bool _highlighted = false;
         [ObservableProperty]
         private PlayerColorViewModel _playerColors = new("Nameless-001", Colors.White, Colors.HotPink, Colors.HotPink);
-        [ObservableProperty]
-        private HorizontalAlignment _horizontalAlignment ;
-        [ObservableProperty]
-        private VerticalAlignment _verticalAlignment;
-        public PlayerStatsViewModel(string playerId, StatTemplate template, PlayerColorViewModel playerColors) : 
-                                    this(playerId, template.Name, template.Glyph, template.HorizontalAlignment, template.VerticalAlignment)
+
+        public PlayerStatsViewModel(string playerId, StatTemplate template, PlayerColorViewModel playerColors) :
+                                    this(playerId, template.Name, template.Glyph)
         {
             PlayerColors = playerColors;
             PlayerId = playerId;
@@ -85,27 +78,26 @@ namespace Catan3.Models
             return highlighted ? PlayerColors.ForegroundBrush : PlayerColors.BackgroundBrush;
         }
     }
-    public class StatTemplate(StatName name, string glyph, HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left,
-                                              VerticalAlignment verticalAlignment = VerticalAlignment.Top)
+    public class StatTemplate(StatName name, string glyph)
     {
         public StatName Name { get; } = name;
         public string Glyph { get; } = glyph;
-        public HorizontalAlignment HorizontalAlignment { get; } = horizontalAlignment;
-        public VerticalAlignment VerticalAlignment { get; } = verticalAlignment;
+
+
         /// <summary>
-        ///     We give the PlayerStatsViewModel a PlayerId so it can recieve the PlaorColorsChanged message and update colors when
+        ///     We give the PlayerStatsViewModel a PlayerId so it can recieve the PlayerColorsChanged message and update colors when
         ///     the owner's colors change.  This collection just has the list of stats we track in the UI. if we add a new one, add
         ///     it here.  the PlayerId must be updated when the actual stat is created.
         /// </summary>
         public static List<StatTemplate> PlayerStats { get; } = [
-            new StatTemplate(StatName.Score, CatanFont.Score,  HorizontalAlignment.Center, VerticalAlignment.Center),
+            new StatTemplate(StatName.Score, CatanFont.Score),
             new StatTemplate(StatName.RoadsPlayed, CatanFont.Road) ,
             new StatTemplate(StatName.CitiesPlayed, CatanFont.City) ,
             new StatTemplate(StatName.SettlementsPlayed, CatanFont.Settlement),
             new StatTemplate(StatName.SoldierPlayed, CatanFont.Soldier),
             new StatTemplate(StatName.ResourcesLostToRobber, CatanFont.Pirate),
             new StatTemplate(StatName.TimesTargetted, CatanFont.Target) ,
-            new StatTemplate(StatName.TotalResources, CatanFont.Sum, HorizontalAlignment.Left, VerticalAlignment.Center),
+            new StatTemplate(StatName.TotalResources, CatanFont.Sum),
             new StatTemplate(StatName.LongestRoad, CatanFont.LongestRoad) ,
             new StatTemplate(StatName.GoodRolls, CatanFont.GoodRoll) ,
             new StatTemplate(StatName.BadRolls, CatanFont.BadRoll) ,

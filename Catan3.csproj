@@ -71,10 +71,6 @@
 			<Generator>MSBuild:Compile</Generator>
 		</Page>
 
-		<Page Update="Player\PlayerStatsCtrl.xaml">
-			<Generator>MSBuild:Compile</Generator>
-		</Page>
-
 		<Page Update="Player\PlayerEditorWindow.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</Page>
