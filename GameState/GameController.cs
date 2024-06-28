@@ -580,6 +580,7 @@ namespace Catan3.Controller
                     }
                     break;
                 case GameState.DoneResourceAllocation:
+                    UpdateStateOnNextPlayer(gameModel);
                     SetTempGoldTiles(gameModel);
                     gameModel.GameState = GameState.WaitingForRoll;
                     break;
@@ -844,7 +845,6 @@ namespace Catan3.Controller
             {
                 throw new GameException($"{building} is not buildingable.");
             }
-            var currentPlayerModel = gameModel.CurrentPlayer();
             // Process the building upgrade based on its current state.
             switch (building.BuildingState)
             {
@@ -878,6 +878,16 @@ namespace Catan3.Controller
                     // Knights cannot be upgraded further.
                     throw new GameException("Knights cannot be upgraded further.");
                     // No action needed if knights cannot be upgraded.
+            }
+
+            if (gameModel.GameState == GameState.AllocateResourceReverse)
+            {
+                var currentPlayerModel = gameModel.CurrentPlayer();
+                foreach (var tile in gameModel.TilesForBuildings(building.BuildingKey))
+                {
+                    ResourcesModel resources = building.Resources(tile.ResourceTileType);
+                    currentPlayerModel.ResourcesThisTurn.Add(resources);
+                }
             }
 
             return gameModel;
