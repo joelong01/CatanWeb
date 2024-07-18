@@ -862,6 +862,9 @@ namespace Catan3.Controller
                     }
                     building.BuildingState = BuildingState.City;
                     ConsumeEntitlement(gameModel, Entitlement.City);
+                    //
+                    //  7/11/2024:  when you make a City, you "unmake" a settlement
+                    gameModel.CurrentPlayer().SpentEntitlementsThisGame.Remove(Entitlement.Settlement);
                     break;
                 case BuildingState.City:
                     ThrowIfNoEntitlement(gameModel, [Entitlement.BuyKnight]);
@@ -872,7 +875,7 @@ namespace Catan3.Controller
                     }
                     // Upgrade settlement to city, and city potentially to knight.
                     building.BuildingState = BuildingState.Knight;
-                    ConsumeEntitlement(gameModel, Entitlement.BuyKnight);
+                    ConsumeEntitlement(gameModel, Entitlement.BuyKnight);           
                     break;
                 case BuildingState.Knight:
                     // Knights cannot be upgraded further.
