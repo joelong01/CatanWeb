@@ -4,13 +4,18 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+
 using Catan.Services;
+
 using Catan10.Models;
+
 using Catan3.Models;
 using Catan3.Utility;
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI;
+
 using Microsoft.UI.Dispatching;
 namespace Catan3.Controller
 {
@@ -382,7 +387,7 @@ namespace Catan3.Controller
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForRoll]);
             gameModel.RollModel.TurnRollModel = msg.Roll;
             // update the global counts for rolls
-            gameModel.RollModel.GameRollModel.RollCounts[( int )gameModel.RollModel.TurnRollModel.NormalRoll - 2]++;
+            gameModel.RollModel.GameRollModel.RollCounts[(int)gameModel.RollModel.TurnRollModel.NormalRoll - 2]++;
             gameModel.RollModel.GameRollModel.TotalRolls++;
 
             // update the state
@@ -391,7 +396,7 @@ namespace Catan3.Controller
             List<TileModel> highlightedTiles = [];
             foreach (TileModel tile in gameModel.Tiles)
             {
-                if (tile.Number == ( int )gameModel.RollModel.TurnRollModel.NormalRoll)
+                if (tile.Number == (int)gameModel.RollModel.TurnRollModel.NormalRoll)
                 {
                     highlightedTiles.Add(tile);
                     tile.Highlighted = true;
@@ -875,7 +880,7 @@ namespace Catan3.Controller
                     }
                     // Upgrade settlement to city, and city potentially to knight.
                     building.BuildingState = BuildingState.Knight;
-                    ConsumeEntitlement(gameModel, Entitlement.BuyKnight);           
+                    ConsumeEntitlement(gameModel, Entitlement.BuyKnight);
                     break;
                 case BuildingState.Knight:
                     // Knights cannot be upgraded further.
@@ -937,7 +942,6 @@ namespace Catan3.Controller
 
                 int citiesPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.City);
                 int settlementsPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.Settlement);
-                settlementsPlayed -= citiesPlayed; // you can't play a city unless you played a settlement
                 int knightsPlayed = player.SpentEntitlementsThisGame.Count(e=> e== Entitlement.Soldier);
                 if (knightsPlayed == maxSoldierCount && playerWithLargestArmy is null)
                 {
@@ -973,7 +977,7 @@ namespace Catan3.Controller
             }
             foreach (var player in gameModel.Players)
             {
-                player.HighestScore = ( player.Score == maxScore );
+                player.HighestScore = (player.Score == maxScore);
             }
         }
         /// <summary>
@@ -1258,7 +1262,7 @@ namespace Catan3.Controller
                 var ownedAdjacentBuildings = gameModel.Buildings.AdjacentBuildings(building.BuildingKey).Where(b => b.OwnerId != null).ToList();
                 if (ownedAdjacentBuildings.Count == 0)
                 {
-                    if (building.OwnerId is null && ( gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard ))
+                    if (building.OwnerId is null && (gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard))
                     {
                         // during picking resources, you can place a building as long as you aren't next to another building
                         buildableSettlements.Add(building);
@@ -1310,11 +1314,11 @@ namespace Catan3.Controller
             switch (entitlement)
             {
                 case Entitlement.Road:
-                    return ( total < gameModel.ResourceRules.MaxRoads );
+                    return (total < gameModel.ResourceRules.MaxRoads);
                 case Entitlement.Settlement:
-                    return ( total < gameModel.ResourceRules.MaxSettlements );
+                    return (total < gameModel.ResourceRules.MaxSettlements);
                 case Entitlement.City:
-                    return ( total < gameModel.ResourceRules.MaxCities );
+                    return (total < gameModel.ResourceRules.MaxCities);
                 case Entitlement.Soldier:
                     return true;
                 default:
