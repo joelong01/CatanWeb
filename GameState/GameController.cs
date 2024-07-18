@@ -943,16 +943,23 @@ namespace Catan3.Controller
                 int citiesPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.City);
                 int settlementsPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.Settlement);
                 int knightsPlayed = player.SpentEntitlementsThisGame.Count(e=> e== Entitlement.Soldier);
-                if (knightsPlayed == maxSoldierCount && playerWithLargestArmy is null)
+                if (maxSoldierCount > 2)
                 {
-                    player.LargestArmy = true;
-                    playerWithLargestArmy = player;
-                }
-                else if (playerWithLargestArmy is not null && knightsPlayed > playerWithLargestArmy.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier))
-                {
-                    playerWithLargestArmy.LargestArmy = false;
-                    player.LargestArmy = true;
-                    playerWithLargestArmy = player;
+                    if (knightsPlayed == maxSoldierCount && playerWithLargestArmy is null)
+                    {
+                        player.LargestArmy = true;
+                        playerWithLargestArmy = player;
+                    }
+                    else if (playerWithLargestArmy is not null && knightsPlayed > playerWithLargestArmy.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier))
+                    {
+                        playerWithLargestArmy.LargestArmy = false;
+                        player.LargestArmy = true;
+                        playerWithLargestArmy = player;
+                    }
+                    else
+                    {
+                        player.LargestArmy = false;
+                    }
                 }
                 else
                 {
