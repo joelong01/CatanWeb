@@ -272,6 +272,7 @@ namespace Catan.Services
         /// <returns>True if the file was successfully saved, false otherwise.</returns>
         public async Task<bool> SaveAsync(string location, byte[] data)
         {
+            return false;
             try
             {
                 if (FileHandler is not null)

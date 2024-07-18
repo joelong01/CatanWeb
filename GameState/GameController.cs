@@ -947,12 +947,14 @@ namespace Catan3.Controller
                 {
                     if (knightsPlayed == maxSoldierCount && playerWithLargestArmy is null)
                     {
+                        this.TraceMessage($"{player} has largest army");
                         player.LargestArmy = true;
                         playerWithLargestArmy = player;
                     }
                     else if (playerWithLargestArmy is not null && knightsPlayed > playerWithLargestArmy.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier))
                     {
-                        playerWithLargestArmy.LargestArmy = false;
+                        this.TraceMessage($"{player} took largest army from {playerWithLargestArmy}");
+                        playerWithLargestArmy.LargestArmy = false; 
                         player.LargestArmy = true;
                         playerWithLargestArmy = player;
                     }
