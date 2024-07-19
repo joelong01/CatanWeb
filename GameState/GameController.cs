@@ -945,6 +945,10 @@ namespace Catan3.Controller
                 int knightsPlayed = player.SpentEntitlementsThisGame.Count(e=> e== Entitlement.Soldier);
                 if (maxSoldierCount > 2)
                 {
+                    //  largest army rules:
+                    //      1. you have to have 3 or more knights played
+                    //      2. if two players have more than 3 knights, whoever gets to the hightest count first
+                    //         gets the largest army
                     if (knightsPlayed == maxSoldierCount && playerWithLargestArmy is null)
                     {
                         this.TraceMessage($"{player} has largest army");
@@ -953,10 +957,15 @@ namespace Catan3.Controller
                     }
                     else if (playerWithLargestArmy is not null && knightsPlayed > playerWithLargestArmy.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier))
                     {
+                        // new layer steals it
                         this.TraceMessage($"{player} took largest army from {playerWithLargestArmy}");
                         playerWithLargestArmy.LargestArmy = false;
                         player.LargestArmy = true;
                         playerWithLargestArmy = player;
+                    }
+                    if (playerWithLargestArmy?.Id == player.Id)
+                    {
+                        player.LargestArmy = true;
                     }
                     else
                     {
