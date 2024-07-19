@@ -99,10 +99,13 @@
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Bottom"
                                 Margin="{x:Bind CooordinateTextMargin(TileViewModel.Layout.TileGap, TileViewModel.Layout.InnerHexStrokeThickness), Mode=OneWay}"
-                                Height="15">
+                                Height="25">
+                            <Grid.RenderTransform>
+                                <TranslateTransform Y="10" />
+                            </Grid.RenderTransform>
                             <Viewbox Stretch="Uniform">
                                 <StackPanel HorizontalAlignment="Stretch">
-                                    <TextBlock Visibility="Visible" TextLineBounds="Tight"
+                                    <TextBlock Visibility="{x:Bind TileViewModel.TileIndexVisability, Mode=OneWay}" TextLineBounds="Tight"
                                             Text="{x:Bind TileViewModel.Index, Mode=OneWay}"
                                             HorizontalAlignment="Center"
                                             Foreground="White" />

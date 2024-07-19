@@ -1,5 +1,6 @@
 ﻿using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml;
 namespace Catan3.Models
 {
     public partial class TileModel : ObservableObject
@@ -20,6 +21,8 @@ namespace Catan3.Models
         /// </summary>
         [ObservableProperty]
         private bool _highlighted = false;
-       
+
+        
+
     }
 }

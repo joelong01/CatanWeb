@@ -160,6 +160,11 @@ namespace Catan3.Models
             FixupState(newValue);
             SetPlayerStars();
 
+            //
+            //  some components might update views based on GameState and need to know it.
+            //  as of 7/19/2024, TileViewModel needs this to update the visibility of the Index
+            Messenger.Send(new GameStateChanged(newValue.GameState));
+
             if (oldValue is null) UpdateLayout();
 
         }

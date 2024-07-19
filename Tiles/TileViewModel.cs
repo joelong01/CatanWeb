@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
+using Windows.ApplicationModel.Activation;
 namespace Catan3.Models
 {
     /// <summary>
@@ -32,8 +33,21 @@ namespace Catan3.Models
             {
                 Messenger.UnregisterAll(this);
             });
-           
-           
+            Messenger.Register<GameStateChanged>(this, (recipient, message) =>
+            {
+               switch (message.State)
+                {
+                    case GameState.AllocateResourceForward:
+                    case GameState.AllocateResourceReverse:
+                    case GameState.MustMoveRobber:
+                        TileIndexVisability = Visibility.Visible;
+                        break;
+                    default:
+                        TileIndexVisability = Visibility.Collapsed;
+                        break;
+                }
+            });
+
         }
        
         private void RegisterTargetMessageResponse()
@@ -45,7 +59,7 @@ namespace Catan3.Models
             }
             this.Messenger.Register<TileOwnersResponse>(this, (recipient, message) =>
             {
-                this.TraceMessage($"{this} response recieved ");
+                this.TraceMessage($"{this} response received ");
                 try
                 {
                     Targets.Clear();

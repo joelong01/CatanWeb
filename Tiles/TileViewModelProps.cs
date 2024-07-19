@@ -27,7 +27,10 @@ namespace Catan3.Models
         [ObservableProperty]
         public ObservableCollection<TargetViewModel> _targets = [];
 
-       
+        [ObservableProperty]
+        private Visibility _tileIndexVisability = Visibility.Collapsed;
+
+
     }
 
   
