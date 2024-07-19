@@ -1,13 +1,91 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Catan3.Controller;
 using Catan3.Models;
+using Catan3.Utility;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
+using Windows.Storage;
+
 
 namespace Catan3.Tests
 {
+
+
+
+    public class TestProxy : ObservableRecipient, IDisposable
+    {
+        public GameController GameController { get; internal set; }
+        private TaskCompletionSource<GameModel>? _tcs;
+
+        public TestProxy(string filename)
+        {
+            GameController = new GameController(MainWindow.FileService, GenerateSavedFileName(filename));
+            Messenger.Register<UpdateGameModel>(this, UpdateGameModel);
+        }
+
+        void UpdateGameModel(object recipient, UpdateGameModel updateMessage)
+        {
+            Debug.Assert(_tcs is not null);
+            Debug.Assert(_tcs.Task.IsCompleted == false);
+            _tcs?.TrySetResult(updateMessage.GameModel);
+        }
+
+        public Task<GameModel> NewGame(GameType gameType, IList<string> playerIds, string savedFileName)
+        {
+            if (_tcs is not null)
+            {
+                Debug.Assert(_tcs.Task.IsCompleted == true);
+            }
+            _tcs = new TaskCompletionSource<GameModel>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Messenger.Send(new NewGameMessage(gameType, playerIds, savedFileName)); ;
+            return _tcs.Task;
+        }
+
+        public Task<GameModel> LoadGame(string filePath)
+        {
+
+            if (_tcs is not null)
+            {
+                Debug.Assert(_tcs.Task.IsCompleted == true);
+            }
+            _tcs = new TaskCompletionSource<GameModel>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Messenger.Send(new LoadGameMessage(filePath)); ;
+            return _tcs.Task;
+        }
+        public Task<GameModel> SaveAs(string filePath)
+        {
+
+            if (_tcs is not null)
+            {
+                Debug.Assert(_tcs.Task.IsCompleted == true);
+            }
+            _tcs = new TaskCompletionSource<GameModel>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Messenger.Send(new PersistGameMessage(LocalPersistActions.SaveAs, filePath));
+            return _tcs.Task;
+        }
+
+        public void Dispose()
+        {
+            Messenger.UnregisterAll(this);
+            Messenger.Send(new EndGame());
+        }
+
+
+        public static string GenerateSavedFileName(string testName)
+        {
+
+            return Path.Join(KnownFolders.DocumentsLibrary.Path, "Catan Saved Games", "Tests", testName);
+
+        }
+    }
+
+
     class CatanTests
     {
 
@@ -18,6 +96,24 @@ namespace Catan3.Tests
             TestFunctions.Add(TestGameRollModelSerialization);
             TestFunctions.Add(TestPlayerDatabaseSerialization);
 
+        }
+
+        public async Task TestScore()
+        {
+            using var proxy = new TestProxy("Score Test");
+            //List<string> playerIds = [];
+
+            //for (int i = 0; i < 3; i++)
+            //{
+            //    playerIds.Add(MainWindow.PlayerDatabase.AllPlayers.ElementAt(i).Id);
+            //}
+
+            //var gameModel = await proxy.NewGame(GameType.Regular, playerIds, TestProxy.GenerateSavedFileName("Score Test2"));
+            string appxPath = "ms-appx:///Assets/Test Files/Score Test.catan";
+            var gameModel = await proxy.LoadGame(appxPath);
+            gameModel = await proxy.SaveAs(TestProxy.GenerateSavedFileName("Score Test.catan"));
+            this.TraceMessage($"Game Started. {gameModel.Players.Count} players");
+            Debug.Assert(gameModel.Players.Count == 3);
         }
 
         public async Task RunAll()
@@ -96,8 +192,8 @@ namespace Catan3.Tests
                 this.TraceMessage($"FAILED ayerDatabase.LoadPlayerDatabase(): {ex}");
                 return;
             }
-           
-               
+
+
             this.TraceMessage("passed");
         }
     }

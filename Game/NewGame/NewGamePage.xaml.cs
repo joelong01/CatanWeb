@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Catan3.Models;
 using Catan3.Player;
+using Catan3.Tests;
 using Catan3.Utility;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -103,7 +104,7 @@ namespace Catan3
             try
             {
                 Debug.Assert(MainWindow.Instance is not null);
-                var filePath = await MainWindow.FileService.PickFile(MainWindow.Instance, [".catan"]);
+                var filePath = await MainWindow.FileService.OpenFileAsync(MainWindow.Instance, [".catan"]);
                 if (filePath is not null && filePath != "")
                 {
                     
@@ -119,6 +120,12 @@ namespace Catan3
             }
 
 
+        }
+
+        private async void OnRunTests(object sender, RoutedEventArgs e)
+        {
+            var test = new CatanTests();
+            await test.TestScore();
         }
     }
 }

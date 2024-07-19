@@ -20,7 +20,8 @@ namespace Catan.Services
         Task<byte[]?> OpenAsync(string location);
         void CloseFile(string location);
         string? Location { get; }
-        Task<string?> PickFile(WindowEx parent, IList<string> filters);
+        Task<string?> OpenFileAsync(WindowEx parent, IList<string> filters);
+        Task<string> PickSaveFileAsync(string defaultFileName);
 
     }
 
@@ -65,6 +66,13 @@ namespace Catan.Services
                 {
                     // If the path is a fully qualified name (FQN)
                     fullPath = path;
+                }
+                else if (path.StartsWith("ms-appx:///"))
+                {
+                    // If the path is an ms-appx URI
+                    var uri = new Uri(path);
+                    StorageFile storageFile = await StorageFile.GetFileFromApplicationUriAsync(uri);
+                    fullPath = storageFile.Path;
                 }
                 else
                 {
@@ -233,7 +241,7 @@ namespace Catan.Services
             }
         }
 
-        public async Task<string?> PickFile(WindowEx parent, IList<string> filters)
+        public async Task<string?> OpenFileAsync(WindowEx parent, IList<string> filters)
         {
             try
             {
@@ -272,7 +280,6 @@ namespace Catan.Services
         /// <returns>True if the file was successfully saved, false otherwise.</returns>
         public async Task<bool> SaveAsync(string location, byte[] data)
         {
-            return false;
             try
             {
                 if (FileHandler is not null)
@@ -304,18 +311,23 @@ namespace Catan.Services
         /// </summary>
         /// <param name="defaultFileName">The default filename to suggest in the picker.</param>
         /// <returns>The picked StorageFile, or null if no file was selected.</returns>
-        private async Task<StorageFile> PickFile(string defaultFileName)
+        public async Task<string> PickSaveFileAsync(string defaultFileName)
         {
             var savePicker = new FileSavePicker
             {
                 SuggestedStartLocation = PickerLocationId.DocumentsLibrary
             };
-            savePicker.FileTypeChoices.Add("Catan File", new List<string> { ".catan" });
+            savePicker.FileTypeChoices.Add("Catan File", [".catan"]);
             savePicker.SuggestedFileName = defaultFileName;
             var window = (Application.Current as App)?.MainWindow as MainWindow;
             IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
             InitializeWithWindow.Initialize(savePicker, hwnd);
-            return await savePicker.PickSaveFileAsync();
+            var file =  await savePicker.PickSaveFileAsync();
+            if (file is not null)
+            {
+                return file.Path;
+            }
+            return "";
         }
     }
 }

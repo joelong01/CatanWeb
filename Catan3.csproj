@@ -25,6 +25,7 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <None Remove="Assets\AppIcon.png" />
+	  <None Remove="Assets\Test Files\Score Test.catan" />
 	  <None Remove="Buildings\BuildingCtrl.xaml" />
 	  <None Remove="Controls\PurchaseCtrl.xaml" />
 	  <None Remove="Game\Game Control\GameControls.xaml" />

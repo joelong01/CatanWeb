@@ -246,7 +246,8 @@ namespace Catan3
 
 
             var test = new CatanTests();
-            await test.RunAll();
+            await test.TestScore();
+            //await test.RunAll();
             
         }
         private void OnClose(object sender, RoutedEventArgs e)

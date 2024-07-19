@@ -32,10 +32,11 @@ namespace Catan3.Models
         {
             try
             {
-                var uncompressedLog = GameController.GetSerializableLog(); // this always comes back the same
-                var json = SerializationHelper.JsonSerialize(uncompressedLog);
-                var compressedBytes = SerializationHelper.Compress(json);
-                await _fileService.SaveAsync($"GameModel DoneDepth={GameController.DoneCount}", compressedBytes);
+                var path = await _fileService.PickSaveFileAsync("");
+                if (path != "")
+                {
+                    Messenger.Send(new PersistGameMessage(LocalPersistActions.SaveAs, path));
+                }
             }
             catch (Exception ex)
             {

@@ -58,7 +58,7 @@ namespace Catan3.Models
             Messenger.Register<OpenFileRequestMessage>(this, async (recipient, message) =>
             {
                 if (_fileService is null) throw new GameException("File Service is null and it should not be");
-                var result =  await _fileService.PickFile(message.Parent, message.Filters);
+                var result =  await _fileService.OpenFileAsync(message.Parent, message.Filters);
                 Messenger.Send(new OpenFileResponseMessage(result));
             });
 

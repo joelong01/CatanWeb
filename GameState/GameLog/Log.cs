@@ -47,19 +47,19 @@ namespace Catan3.Utility
     }
     public partial class Log<T> : ObservableRecipient, ILog
     {
-        private IPersistanceService PersistService { get; set; }  
+        private IPersistanceService? PersistService { get; set; }
         public string FilePath { get; private set; }
         private ObservableCollection<T> DoneStack { get; set; } = [];
         private ObservableCollection<T> RedoStack { get; set; } = [];
         public GameType GameType { get; set; } = GameType.Regular;
         [JsonConstructor]
-        public Log(IPersistanceService persistanceService, string localSaveFile)
+        public Log(IPersistanceService? persistanceService, string localSaveFile)
         {
             PersistService = persistanceService;
             DoneStack.CollectionChanged += DoneStack_ListChanged;
             RedoStack.CollectionChanged += RedoStack_ListChanged;
-            FilePath = localSaveFile; 
-           
+            FilePath = localSaveFile;
+
         }
 
         public async Task<bool> InitializeAsync(string path)
@@ -67,7 +67,7 @@ namespace Catan3.Utility
             try
             {
                 StorageFile file = await StorageFile.GetFileFromPathAsync(path);
-                
+
 
                 return true;
             }
@@ -315,8 +315,8 @@ namespace Catan3.Utility
             DoneStack.Push(val);
             RedoStack.Clear();
 
-            
-            
+
+
         }
         /// <summary>
         /// Performs an undo operation by restoring the state immediately preceding the current state
@@ -446,6 +446,8 @@ namespace Catan3.Utility
         /// <returns></returns>
         public async Task SaveAsync()
         {
+            if (PersistService is null) return;
+
             try
             {
                 var uncompressedLog = GetSerializableLog(); // this always comes back the same
@@ -456,6 +458,21 @@ namespace Catan3.Utility
             catch (Exception ex)
             {
                 this.TraceMessage($"Failed SaveAs: {ex.Message}");
+            }
+        }
+
+        public async Task SaveAsAsync(string filePath)
+        {
+            try
+            {
+                PersistService?.CloseFile(this.FilePath);
+                this.FilePath = filePath;
+                await SaveAsync();
+            }
+            catch (Exception e)
+            {
+
+                throw;
             }
         }
     }

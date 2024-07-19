@@ -23,8 +23,8 @@ namespace Catan3.Controller
     {
         private Log<string> Log;
 
-        private IPersistanceService MyPersistanceService { get; set; }
-        public GameController(IPersistanceService persistanceService, string localSaveFile)
+        private IPersistanceService? MyPersistanceService { get; set; }
+        public GameController(IPersistanceService? persistanceService, string localSaveFile)
         {
             Log = new Log<string>(persistanceService, localSaveFile);
             MyPersistanceService = persistanceService;
@@ -220,7 +220,8 @@ namespace Catan3.Controller
             });
             Messenger.Register<EndGame>(this, (recipient, message) =>
             {
-                MyPersistanceService.CloseFile(this.Log.FilePath);
+
+                MyPersistanceService?.CloseFile(this.Log.FilePath);
                 this.Log.IsActive = false;
                 Messenger.UnregisterAll(this);
             });
@@ -247,6 +248,7 @@ namespace Catan3.Controller
                         await Log.SaveAsync();
                         break;
                     case LocalPersistActions.SaveAs:
+                        await Log.SaveAsAsync(message.Location);
                         break;
                     case LocalPersistActions.Open:
                         break;
@@ -359,6 +361,8 @@ namespace Catan3.Controller
         }
         public async Task<GameModel> LoadGame(string filePath)
         {
+            if (MyPersistanceService is null) throw new GameException("no persistance service was set");
+
             var compressedBytes = await MyPersistanceService.OpenAsync(filePath) ?? throw new GameException($"Unable to open file {filePath}");
 
             var decompressedJson = SerializationHelper.Decompress(compressedBytes);
@@ -387,7 +391,7 @@ namespace Catan3.Controller
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForRoll]);
             gameModel.RollModel.TurnRollModel = msg.Roll;
             // update the global counts for rolls
-            gameModel.RollModel.GameRollModel.RollCounts[(int)gameModel.RollModel.TurnRollModel.NormalRoll - 2]++;
+            gameModel.RollModel.GameRollModel.RollCounts[( int )gameModel.RollModel.TurnRollModel.NormalRoll - 2]++;
             gameModel.RollModel.GameRollModel.TotalRolls++;
 
             // update the state
@@ -396,7 +400,7 @@ namespace Catan3.Controller
             List<TileModel> highlightedTiles = [];
             foreach (TileModel tile in gameModel.Tiles)
             {
-                if (tile.Number == (int)gameModel.RollModel.TurnRollModel.NormalRoll)
+                if (tile.Number == ( int )gameModel.RollModel.TurnRollModel.NormalRoll)
                 {
                     highlightedTiles.Add(tile);
                     tile.Highlighted = true;
@@ -930,16 +934,12 @@ namespace Catan3.Controller
                 .DefaultIfEmpty(0)
                 .Max();
 
-            if (maxSoldierCount <= 2) maxSoldierCount = 2;
-
             var playerWithLargestArmy = gameModel.Players.FirstOrDefault(player => player.LargestArmy);
 
             // Iterate through all players to update their scores
             foreach (var player in gameModel.Players)
             {
                 player.HighestScore = false;
-
-
                 int citiesPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.City);
                 int settlementsPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.Settlement);
                 int knightsPlayed = player.SpentEntitlementsThisGame.Count(e=> e== Entitlement.Soldier);
@@ -954,7 +954,7 @@ namespace Catan3.Controller
                     else if (playerWithLargestArmy is not null && knightsPlayed > playerWithLargestArmy.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier))
                     {
                         this.TraceMessage($"{player} took largest army from {playerWithLargestArmy}");
-                        playerWithLargestArmy.LargestArmy = false; 
+                        playerWithLargestArmy.LargestArmy = false;
                         player.LargestArmy = true;
                         playerWithLargestArmy = player;
                     }
@@ -986,7 +986,7 @@ namespace Catan3.Controller
             }
             foreach (var player in gameModel.Players)
             {
-                player.HighestScore = (player.Score == maxScore);
+                player.HighestScore = ( player.Score == maxScore );
             }
         }
         /// <summary>
@@ -1271,7 +1271,7 @@ namespace Catan3.Controller
                 var ownedAdjacentBuildings = gameModel.Buildings.AdjacentBuildings(building.BuildingKey).Where(b => b.OwnerId != null).ToList();
                 if (ownedAdjacentBuildings.Count == 0)
                 {
-                    if (building.OwnerId is null && (gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard))
+                    if (building.OwnerId is null && ( gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard ))
                     {
                         // during picking resources, you can place a building as long as you aren't next to another building
                         buildableSettlements.Add(building);
@@ -1323,11 +1323,11 @@ namespace Catan3.Controller
             switch (entitlement)
             {
                 case Entitlement.Road:
-                    return (total < gameModel.ResourceRules.MaxRoads);
+                    return ( total < gameModel.ResourceRules.MaxRoads );
                 case Entitlement.Settlement:
-                    return (total < gameModel.ResourceRules.MaxSettlements);
+                    return ( total < gameModel.ResourceRules.MaxSettlements );
                 case Entitlement.City:
-                    return (total < gameModel.ResourceRules.MaxCities);
+                    return ( total < gameModel.ResourceRules.MaxCities );
                 case Entitlement.Soldier:
                     return true;
                 default:
