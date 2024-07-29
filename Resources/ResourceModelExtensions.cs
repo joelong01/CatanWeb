@@ -104,6 +104,8 @@ namespace Catan3.Models
                 case ResourceType.Robber:
                     model.Robber += toAdd;
                     break;
+                case ResourceType.Desert:
+                    break;
                 //case ResourceTileType.Cloth:
                 //    model.Cloth += toAdd;
                 //    break;

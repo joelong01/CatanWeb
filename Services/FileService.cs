@@ -112,12 +112,12 @@ namespace Catan.Services
 
                 await _fileStream.WriteAsync(content, 0, content.Length);
                 await _fileStream.FlushAsync(); // Ensure all data is written to the file
-              //  this.TraceMessage("Content written to file.");
                 CloseFile();
                 return true;
             }
             catch (Exception ex)
             {
+                
                 this.TraceMessage($"An error occurred while writing to the file: {ex.Message}");
                 throw;
             }

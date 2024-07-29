@@ -469,7 +469,7 @@ namespace Catan3.Utility
                 this.FilePath = filePath;
                 await SaveAsync();
             }
-            catch (Exception e)
+            catch
             {
 
                 throw;

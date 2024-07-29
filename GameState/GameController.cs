@@ -620,19 +620,34 @@ namespace Catan3.Controller
                     break;
                 case GameState.PickSupplementalPlayers:
                     {
-                        //
-                        //  are there any supplemental players?
-                        var p = gameModel.Players.Find(p => p.ParticipatingInSupplemental);
-                        if (p is not null)
+                        // find current player index
+                        int currentPlayerIndex = gameModel.Players.FindIndex(p => p.Id == gameModel.CurrentPlayerId);
+                        // Initialize the player found as null
+                        PlayerModel? participatingPlayer = null;
+
+                        // Loop through the players starting from the current player and wrap around
+                        for (int i = 0; i < gameModel.Players.Count; i++)
+                        {
+                            int index = (currentPlayerIndex + i) % gameModel.Players.Count;
+                            if (index == currentPlayerIndex) continue;
+                            var player = gameModel.Players[index];
+                            if (player.ParticipatingInSupplemental)
+                            {
+                                participatingPlayer = player;
+                                break;
+                            }
+                        }
+
+                        if (participatingPlayer is not null)
                         {
                             // we have at least one -- set the game state to supplemental
                             gameModel.GameState = GameState.Supplemental;
 
                             // change to that player
-                            gameModel.ChangePlayerTo(p.Id);
+                            gameModel.ChangePlayerTo(participatingPlayer.Id);
 
                             // set the flag so we don't find them again
-                            p.ParticipatingInSupplemental = false;
+                            participatingPlayer.ParticipatingInSupplemental = false;
                         }
                         else
                         {
