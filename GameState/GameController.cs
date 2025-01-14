@@ -391,7 +391,7 @@ namespace Catan3.Controller
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForRoll]);
             gameModel.RollModel.TurnRollModel = msg.Roll;
             // update the global counts for rolls
-            gameModel.RollModel.GameRollModel.RollCounts[( int )gameModel.RollModel.TurnRollModel.NormalRoll - 2]++;
+            gameModel.RollModel.GameRollModel.RollCounts[(int)gameModel.RollModel.TurnRollModel.NormalRoll - 2]++;
             gameModel.RollModel.GameRollModel.TotalRolls++;
 
             // update the state
@@ -400,7 +400,7 @@ namespace Catan3.Controller
             List<TileModel> highlightedTiles = [];
             foreach (TileModel tile in gameModel.Tiles)
             {
-                if (tile.Number == ( int )gameModel.RollModel.TurnRollModel.NormalRoll)
+                if (tile.Number == (int)gameModel.RollModel.TurnRollModel.NormalRoll)
                 {
                     highlightedTiles.Add(tile);
                     tile.Highlighted = true;
@@ -1010,7 +1010,7 @@ namespace Catan3.Controller
             }
             foreach (var player in gameModel.Players)
             {
-                player.HighestScore = ( player.Score == maxScore );
+                player.HighestScore = (player.Score == maxScore);
             }
         }
         /// <summary>
@@ -1099,7 +1099,8 @@ namespace Catan3.Controller
             return true;
         }
         /// <summary>
-        /// Marks a random set of tiles as temporarily gold, avoiding desert tiles and duplicates.
+        /// Marks a random set of tiles as temporarily gold, avoiding desert tiles, duplicates, and ensure
+        /// that they are different each turn.
         /// </summary>
         /// <param name="gameModel">The game model containing the tiles and house rules.</param>
         private void SetTempGoldTiles(GameModel gameModel)
@@ -1108,25 +1109,52 @@ namespace Catan3.Controller
             {
                 // Exit early if no gold tiles need to be set.
                 if (gameModel.HouseRules.GoldTiles == 0) return;
-                // Reset the TemporarilyGold property for all tiles.
+
+                // Ensure the Tiles collection is not null.
+                if (gameModel.Tiles is null) throw new GameException("Tiles is null");
+
+                // Reset the TemporarilyGold property for all tiles and keep a list of the tiles that were previously gold.
+                HashSet<HexCoordinates> previouslyGoldTiles = new();
                 foreach (var tile in gameModel.Tiles)
                 {
-                    tile.TemporarilyGold = false;
+                    if (tile.TemporarilyGold)
+                    {
+                        previouslyGoldTiles.Add(tile.TileKey);
+                        tile.TemporarilyGold = false;
+                    }
                 }
+
                 // Initialize a random number generator.
                 var rand = new Random();
-                HashSet<int> usedIndices = [];
+                HashSet<int> usedIndices = new();
+
+                // Set new gold tiles while avoiding desert tiles, duplicates, and previously gold tiles.
                 while (usedIndices.Count < gameModel.HouseRules.GoldTiles)
                 {
                     int index = rand.Next(gameModel.Tiles.Count);
                     var tileModel = gameModel.Tiles[index];
-                    // Ensure the tile is not null and meets the criteria for becoming a gold tile.
-                    if (tileModel.ResourceTileType != ResourceType.Desert && !tileModel.TemporarilyGold)
+
+                    if (previouslyGoldTiles.Contains(tileModel.TileKey))
                     {
-                        tileModel.TemporarilyGold = true;
-                        usedIndices.Add(index);  // Keep track of used indices to avoid duplicates.
-                        // this.TraceMessage($"GoldTile: {gameModel.CurrentPlayerId}={tileModel}");
+                        this.TraceMessage($"Tile {tileModel.TileKey} was previously gold, skipping.");
+                        continue;
                     }
+
+                    if (tileModel.ResourceTileType == ResourceType.Desert)
+                    {
+                        this.TraceMessage($"Tile {tileModel.TileKey} is a desert tile, skipping.");
+                        continue;
+                    }
+
+                    if (usedIndices.Contains(index))
+                    {
+                        this.TraceMessage($"Tile {tileModel.TileKey} was already selected, skipping.");
+                        continue;
+                    }
+
+                    tileModel.TemporarilyGold = true;
+                    usedIndices.Add(index);  // Keep track of used indices to avoid duplicates.
+
                 }
             }
             finally
@@ -1138,6 +1166,7 @@ namespace Catan3.Controller
 #endif
             }
         }
+
         private GameModel ShuffleCurrentGame()
         {
             //
@@ -1298,7 +1327,7 @@ namespace Catan3.Controller
                 var ownedAdjacentBuildings = gameModel.Buildings.AdjacentBuildings(building.BuildingKey).Where(b => b.OwnerId != null).ToList();
                 if (ownedAdjacentBuildings.Count == 0)
                 {
-                    if (building.OwnerId is null && ( gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard ))
+                    if (building.OwnerId is null && (gameModel.Phase() == GamePhase.PickingResources || gameModel.Phase() == GamePhase.PickingBoard))
                     {
                         // during picking resources, you can place a building as long as you aren't next to another building
                         buildableSettlements.Add(building);
@@ -1349,9 +1378,9 @@ namespace Catan3.Controller
                         currentPlayer.UnspentEntitlements.Count(e => e == entitlement);
             return entitlement switch
             {
-                Entitlement.Road => ( total < gameModel.ResourceRules.MaxRoads ),
-                Entitlement.Settlement => ( total < gameModel.ResourceRules.MaxSettlements ),
-                Entitlement.City => ( total < gameModel.ResourceRules.MaxCities ),
+                Entitlement.Road => (total < gameModel.ResourceRules.MaxRoads),
+                Entitlement.Settlement => (total < gameModel.ResourceRules.MaxSettlements),
+                Entitlement.City => (total < gameModel.ResourceRules.MaxCities),
                 Entitlement.Soldier => true,
                 _ => throw new Exception($"TODO: add support for {entitlement} to AllowPurchase"),
             };

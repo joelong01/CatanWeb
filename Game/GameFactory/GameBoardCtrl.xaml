@@ -23,7 +23,7 @@
                     Duration="0:0:0.250" From="0.0" To="1.0" />
         </Storyboard>
     </UserControl.Resources>
-    <Canvas Background="Transparent" HorizontalAlignment="Right"
+    <Canvas Background="Transparent" HorizontalAlignment="Center"
             VerticalAlignment="Top"
             Height="{x:Bind GameViewModel.BoardInfo.Layout.BoardHeight, Mode=OneWay}"
             Width="{x:Bind GameViewModel.BoardInfo.Layout.BoardWidth, Mode=OneWay}">

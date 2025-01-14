@@ -75,9 +75,9 @@
             DisplayMode="CompactOverlay">
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="25*" />
+                <ColumnDefinition Width="60*" />
+                <ColumnDefinition Width="26*" />
             </Grid.ColumnDefinitions>
             <AppBarButton Icon="GlobalNavigationButton" Click="OnShowMenu"
                     HorizontalAlignment="Left" VerticalAlignment="Top" />
@@ -132,7 +132,7 @@
                                 </DataTemplate>
                             </GridView.ItemTemplate>
                         </GridView>
-                        
+
                     </Viewbox>
                     <Viewbox Stretch="Uniform" Width="450">
                         <Border BorderBrush="Black" BorderThickness="2"
@@ -149,28 +149,31 @@
                         GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" />
             </Viewbox>
             <!--The far right column that has the total resources for the game and a list of player information-->
-            <StackPanel Grid.Column="2" HorizontalAlignment="Right"
-                    Background="Transparent">
-                <c:TrackedResourcesCtrl
-                        ResourcesViewModel="{x:Bind MainPageModel.GameViewModel.GameResources, Mode=OneWay}" />
-                <ListView x:Name="ListView_Players" CanReorderItems="True"
-                        CanDragItems="True" AllowDrop="True" CornerRadius="5"
-                        DragItemsCompleted="ListView_DragItemsCompleted"
-                        ItemsSource="{x:Bind MainPageModel.GameViewModel.Players, Mode=OneWay}"
-                        ItemTemplate="{x:Bind StateToItemTemplate(MainPageModel.GameViewModel.GameModel.GameState), Mode=OneWay}">
-                    <ListView.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel HorizontalAlignment="Stretch"
-                                    Padding="0" />
-                        </ItemsPanelTemplate>
-                    </ListView.ItemsPanel>
-                    <ListView.ItemContainerStyle>
-                        <Style TargetType="ListViewItem">
-                            <Setter Property="Padding" Value="0" />
-                        </Style>
-                    </ListView.ItemContainerStyle>
-                </ListView>
-            </StackPanel>
+            <Viewbox Stretch="Uniform" Grid.Column="2"
+                    HorizontalAlignment="Right">
+                <StackPanel Background="Transparent">
+                    <c:TrackedResourcesCtrl
+                            ResourcesViewModel="{x:Bind MainPageModel.GameViewModel.GameResources, Mode=OneWay}" />
+                    <ListView x:Name="ListView_Players" CanReorderItems="True"
+                            CanDragItems="True" AllowDrop="True"
+                            CornerRadius="5"
+                            DragItemsCompleted="ListView_DragItemsCompleted"
+                            ItemsSource="{x:Bind MainPageModel.GameViewModel.Players, Mode=OneWay}"
+                            ItemTemplate="{x:Bind StateToItemTemplate(MainPageModel.GameViewModel.GameModel.GameState), Mode=OneWay}">
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel HorizontalAlignment="Stretch"
+                                        Padding="0" />
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Padding" Value="0" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                    </ListView>
+                </StackPanel>
+            </Viewbox>
         </Grid>
         <SplitView.Pane>
             <StackPanel>
