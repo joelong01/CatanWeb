@@ -13,71 +13,135 @@ using Windows.Devices.Bluetooth.Advertisement;
 using Windows.UI;
 namespace Catan3.Models
 {
-    //
-    //  this has all the data about the player that the service doesn't care about
-    //  e.g. how to display information about the player -- colors, picutre, etc.
+    /// <summary>
+    /// Represents the view model for a player, including player details, colors, images, and resources.
+    /// </summary>
     public partial class PlayerViewModel : ObservableRecipient
     {
+        /// <summary>
+        /// Gets or sets the player ID.
+        /// </summary>
         [ObservableProperty]
-        private string _id = string.Empty;
-        [ObservableProperty]
-        private string _name = "Nameless";
-        [ObservableProperty]
-        private PlayerColorViewModel _playerColors;
-        [ObservableProperty]
-        private string _imageUri = PlayerDatabase.DefaultImageUri;
-        [ObservableProperty]
-        private string _croppedImageUri = PlayerDatabase.DefaultImageUri;
+        public partial string Id { get; set; } = string.Empty;
 
-        //  needed for the PickSupplementalPlayers UI
+        /// <summary>
+        /// Gets or sets the player name.
+        /// </summary>
         [ObservableProperty]
-        bool _partipatingInSupplemental = false;
-        //  needed for the PickSupplementalPlayers UI
-        [ObservableProperty]
-        bool _isCurrentPlayer = false;
+        public partial string Name { get; set; } = "Nameless";
 
-        [property:JsonIgnore]
+        /// <summary>
+        /// Gets or sets the player colors.
+        /// </summary>
         [ObservableProperty]
-        private BitmapImage _croppedBitmapImage;
+        public partial PlayerColorViewModel PlayerColors { get; set; }
 
+        /// <summary>
+        /// Gets or sets the image URI.
+        /// </summary>
+        [ObservableProperty]
+        public partial string ImageUri { get; set; } = PlayerDatabase.DefaultImageUri;
+
+        /// <summary>
+        /// Gets or sets the cropped image URI.
+        /// </summary>
+        [ObservableProperty]
+        public partial string CroppedImageUri { get; set; } = PlayerDatabase.DefaultImageUri;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the player is participating in the supplemental phase.
+        /// </summary>
+        [ObservableProperty]
+        public partial bool PartipatingInSupplemental { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the player is the current player.
+        /// </summary>
+        [ObservableProperty]
+        public partial bool IsCurrentPlayer { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the cropped bitmap image. This property is not serialized.
+        /// </summary>
+        [ObservableProperty]
         [property: JsonIgnore]
-        [ObservableProperty]
-        private bool _selected = false;
-        [property: JsonIgnore]
-        [ObservableProperty]
-        private PlayerModel _player = PlayerModel.Default;
-        [property: JsonIgnore]
-        [ObservableProperty]
-        private ResourcesViewModel _resourcesThisTurn = new(GameViewModelStatics.PlayerTrackResourceList);
-        [property: JsonIgnore]
-        [ObservableProperty]
-        private ResourcesViewModel _resourcesThisGame = new(GameViewModelStatics.PlayerTrackResourceList);
-        [property: JsonIgnore]
-        [ObservableProperty]
-        private ObservableCollection<PlayerStatsViewModel> _playerStats = [];
+        public partial BitmapImage CroppedBitmapImage { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether the player is selected. This property is not serialized.
+        /// </summary>
+        [ObservableProperty]
+        [property: JsonIgnore]
+        public partial bool Selected { get; set; } = false;
 
+        /// <summary>
+        /// Gets or sets the player model. This property is not serialized.
+        /// </summary>
+        [ObservableProperty]
+        [property: JsonIgnore]
+        public partial PlayerModel Player { get; set; } = PlayerModel.Default;
 
+        /// <summary>
+        /// Gets or sets the resources for this turn. This property is not serialized.
+        /// </summary>
+        [ObservableProperty]
+        [property: JsonIgnore]
+        public partial ResourcesViewModel ResourcesThisTurn { get; set; } = new(GameViewModelStatics.PlayerTrackResourceList);
+
+        /// <summary>
+        /// Gets or sets the resources for this game. This property is not serialized.
+        /// </summary>
+        [ObservableProperty]
+        [property: JsonIgnore]
+        public partial ResourcesViewModel ResourcesThisGame { get; set; } = new(GameViewModelStatics.PlayerTrackResourceList);
+
+        /// <summary>
+        /// Gets or sets the player stats. This property is not serialized.
+        /// </summary>
+        [ObservableProperty]
+        [property: JsonIgnore]
+        public partial ObservableCollection<PlayerStatsViewModel> PlayerStats { get; set; } = new();
+
+        /// <summary>
+        /// Gets the dictionary of player stats.
+        /// </summary>
         [JsonIgnore]
-        public Dictionary<StatName, PlayerStatsViewModel> StatDictionary { get; } = [];
+        public Dictionary<StatName, PlayerStatsViewModel> StatDictionary { get; } = new();
+
+        /// <summary>
+        /// Gets the default instance of the PlayerViewModel class.
+        /// </summary>
         [JsonIgnore]
         public static PlayerViewModel Default { get; } = new("Nameless-001", "Nameless", PlayerDatabase.DefaultImageUri, PlayerDatabase.DefaultImageUri, Colors.HotPink);
 
-        partial void OnCroppedImageUriChanged(string? oldValue, string newValue)
+        /// <summary>
+        /// Handles changes to the cropped image URI.
+        /// </summary>
+        /// <param name="oldValue">The old cropped image URI.</param>
+        /// <param name="newValue">The new cropped image URI.</param>
+        partial void OnCroppedImageUriChanged(string oldValue, string newValue)
         {
             if (newValue is not null)
             {
                 CroppedBitmapImage = CreateBitmapImage(newValue);
             }
-
-
         }
 
+        /// <summary>
+        /// Determines whether the player can participate in the supplemental phase.
+        /// </summary>
+        /// <param name="isCurrentPlayer">A value indicating whether the player is the current player.</param>
+        /// <returns>True if the player can participate in the supplemental phase; otherwise, false.</returns>
         public bool CanParticipateInSupplemental(bool isCurrentPlayer)
         {
             return !isCurrentPlayer;
         }
 
+        /// <summary>
+        /// Creates a BitmapImage from the specified URI.
+        /// </summary>
+        /// <param name="uri">The URI of the image.</param>
+        /// <returns>A BitmapImage created from the specified URI.</returns>
         private BitmapImage CreateBitmapImage(string uri)
         {
             return new BitmapImage
@@ -89,12 +153,23 @@ namespace Catan3.Models
             };
         }
 
+        /// <summary>
+        /// Initializes the player view model after deserialization.
+        /// </summary>
         public void InitializeAfterDeserialization()
         {
         }
+
         /// <summary>
-        ///     thisis the ctor that the JsonSerializer should use when it deserializes the saved player state.
+        /// Initializes a new instance of the PlayerViewModel class with the specified parameters.
+        /// This constructor is used by the JsonSerializer when deserializing the saved player state.
         /// </summary>
+        /// <param name="id">The player ID.</param>
+        /// <param name="name">The player name.</param>
+        /// <param name="imageUri">The image URI.</param>
+        /// <param name="croppedImageUri">The cropped image URI.</param>
+        /// <param name="playerColors">The player colors.</param>
+        /// <param name="isActive">A value indicating whether the player is active.</param>
         [JsonConstructor]
         public PlayerViewModel(string id, string name, string imageUri, string croppedImageUri, PlayerColorViewModel playerColors, bool isActive = false)
         {
@@ -106,26 +181,37 @@ namespace Catan3.Models
             IsActive = isActive;
             CroppedBitmapImage = CreateBitmapImage(CroppedImageUri);
             CreateStats();
-
         }
+
+        /// <summary>
+        /// Initializes a new instance of the PlayerViewModel class with the specified parameters.
+        /// </summary>
+        /// <param name="id">The player ID.</param>
+        /// <param name="name">The player name.</param>
+        /// <param name="imageUri">The image URI.</param>
+        /// <param name="croppedImageUri">The cropped image URI.</param>
+        /// <param name="primaryBackground">The primary background color.</param>
         public PlayerViewModel(string id, string name, string imageUri, string croppedImageUri, Color primaryBackground) :
                 this(id, name, imageUri, croppedImageUri, new PlayerColorViewModel(id, Colors.White, primaryBackground, Colors.Black))
         { }
 
+        /// <summary>
+        /// Creates the player stats.
+        /// </summary>
         private void CreateStats()
         {
             foreach (var stat in StatTemplate.PlayerStats)
             {
                 StatDictionary[stat.Name] = new PlayerStatsViewModel(Id, stat, PlayerColors);
             }
-            //
-            //  the list of stats to bind to
+            // the list of stats to bind to
             PlayerStats.AddRange([.. StatDictionary.Values.ToList()]);
         }
+
         /// <summary>
-        ///     the MVVM notification when the model gets updated -- we set the per person data and update the stats
+        /// Handles changes to the player model.
         /// </summary>
-        /// <param name="value"></param>
+        /// <param name="value">The new player model value.</param>
         partial void OnPlayerChanged(PlayerModel value)
         {
             ResourcesThisTurn.ResourceModel = value.ResourcesThisTurn;
@@ -145,10 +231,22 @@ namespace Catan3.Models
             StatDictionary[StatName.Stars].Count = value.Stars;
             StatDictionary[StatName.LongestRoad].Count = value.LongestRoad;
         }
+
+        /// <summary>
+        /// Returns a string representation of the player view model.
+        /// </summary>
+        /// <returns>A string representing the player view model.</returns>
         public override string ToString()
         {
             return $"{Name}";
         }
+
+        /// <summary>
+        /// Gets a brush for the specified color.
+        /// </summary>
+        /// <param name="color">The color.</param>
+        /// <param name="foreground">A value indicating whether the brush is for the foreground.</param>
+        /// <returns>A Brush representing the specified color.</returns>
         public Brush GetBrush(Color color, bool foreground)
         {
             if (foreground)
@@ -156,20 +254,19 @@ namespace Catan3.Models
             else
                 return BrushCache.GetGradientBrush(color, Colors.Black);
         }
+
         /// <summary>
-        ///     Sends a messsage that makes this Player go first in the game.  Preserves the order of players.
+        /// Sends a message that makes this player go first in the game. Preserves the order of players.
         /// </summary>
-       
         [RelayCommand]
         [property: JsonIgnore]
         void GoFirst()
         {
             WeakReferenceMessenger.Default.Send(new GoFirstMessage(this.Id));
         }
-
-       
-
-     
     }
+    /// <summary>
+    /// Represents the names of colors used in the player view model.
+    /// </summary>
     public enum ColorName { PrimaryBackground, SecondaryBackground, Foreground }
 }

@@ -9,45 +9,85 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 namespace Catan3.Models
 {
+    /// <summary>
+    /// Represents a view model for a resource counter, including the count and resource type.
+    /// </summary>
     public partial class ResourceCounterViewModel(int count, ResourceType resource) : ObservableObject
     {
+        /// <summary>
+        /// Gets or sets the count of the resource.
+        /// </summary>
         [ObservableProperty]
-        private int _count = count;
+        public partial int Count { get; set; } = count;
+
+        /// <summary>
+        /// Gets or sets the type of the resource.
+        /// </summary>
         [ObservableProperty]
-        private ResourceType _resource = resource;
+        public partial ResourceType Resource { get; set; } = resource;
+
+        /// <summary>
+        /// Gets the default instance of the ResourceCounterViewModel class.
+        /// </summary>
         public static ResourceCounterViewModel Default { get; } = new ResourceCounterViewModel(0, ResourceType.None);
+
+        /// <summary>
+        /// Gets the orientation based on the count.
+        /// </summary>
+        /// <param name="count">The count of the resource.</param>
+        /// <returns>The orientation of the resource counter.</returns>
         public CatanOrientation GetOrientation(int count)
         {
             return count > 0 ? CatanOrientation.FaceUp : CatanOrientation.FaceDown;
         }
+
+        /// <summary>
+        /// Gets the front image brush for the specified resource type.
+        /// </summary>
+        /// <param name="resourceCardType">The type of the resource card.</param>
+        /// <returns>An ImageBrush representing the front image of the resource card.</returns>
         public ImageBrush FrontImage(ResourceType resourceCardType)
         {
             return BrushCache.ResourceCardImage(resourceCardType);
         }
     }
     /// <summary>
-    ///     this class needs to convert a ResourceModel -- simple counters of ResourceTypes to an observable
-    ///     collection that can be bound in XAML
+    /// Represents a view model for resources, converting a ResourceModel to an observable collection that can be bound in XAML.
     /// </summary>
     public partial class ResourcesViewModel(IList<ResourceType> trackedResourceList) : ObservableRecipient
     {
+        /// <summary>
+        /// Gets or sets the resource model.
+        /// </summary>
         [ObservableProperty]
-        private ResourcesModel _resourceModel = new();
-        // not an ObservableProperty 
-        private IList<ResourceType> TrackedResourceList = trackedResourceList;
-        [ObservableProperty]
-        private ObservableCollection<ResourceCounterViewModel> _resourceCounters = [];
-        [ObservableProperty]
-        private ObservableCollection<ResourceCounterViewModel> _selectedResources = [];
-      
-      
+        public partial ResourcesModel ResourceModel { get; set; } = new();
 
+        /// <summary>
+        /// Gets or sets the collection of resource counters.
+        /// </summary>
+        [ObservableProperty]
+        public partial ObservableCollection<ResourceCounterViewModel> ResourceCounters { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets the collection of selected resources.
+        /// </summary>
+        [ObservableProperty]
+        public partial ObservableCollection<ResourceCounterViewModel> SelectedResources { get; set; } = new();
+
+        /// <summary>
+        /// The list of tracked resource types.
+        /// </summary>
+        private IList<ResourceType> TrackedResourceList { get; } = trackedResourceList;
+
+        /// <summary>
+        /// Handles the selection changed event for resources.
+        /// </summary>
+        /// <param name="sender">The sender of the event.</param>
+        /// <param name="e">The event arguments.</param>
         public void Resources_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (sender is GridView gridView)
             {
-             
-
                 foreach (ResourceCounterViewModel model in e.AddedItems.Cast<ResourceCounterViewModel>())
                 {
                     SelectedResources.Add(model);
@@ -71,16 +111,12 @@ namespace Catan3.Models
             }
         }
 
-
-
         /// <summary>
-        ///     When the underlying GameModel changes, the ResourceModel updates. We go through and update
-        ///     the ViewModel to represent the new data.  Note that we *do not* recreate the collection
-        ///     because it makes the UI flash.
+        /// Updates the view model to represent the new data when the underlying ResourceModel changes.
         /// </summary>
-        /// <param name="oldValue"></param>
-        /// <param name="newValue"></param>
-        partial void OnResourceModelChanging(ResourcesModel? oldValue, ResourcesModel newValue)
+        /// <param name="oldValue">The old ResourceModel value.</param>
+        /// <param name="newValue">The new ResourceModel value.</param>
+        partial void OnResourceModelChanging(ResourcesModel oldValue, ResourcesModel newValue)
         {
             if (newValue is null)
             {
@@ -97,9 +133,7 @@ namespace Catan3.Models
                     ResourceCounters.Add(rcvm);
                 }
                 rcvm.Count = newValue.CountForResource(resource);
-
             }
         }
-
     }
 }

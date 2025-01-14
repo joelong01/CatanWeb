@@ -10,32 +10,67 @@ using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 namespace Catan3.Models
 {
+    /// <summary>
+    /// Represents the view model for a harbor, including its layout, position, and orientation.
+    /// </summary>
     public partial class HarborViewModel : ObservableRecipient
     {
+        /// <summary>
+        /// Gets or sets the harbor model.
+        /// </summary>
         [property: JsonIgnore]
         [ObservableProperty]
-        private HarborModel _harbor;
+        public partial HarborModel Harbor { get; set; }
+
+        /// <summary>
+        /// Gets or sets the board layout.
+        /// </summary>
         [ObservableProperty]
-        private BoardLayout _layout;
+        public partial BoardLayout Layout { get; set; }
+
+        /// <summary>
+        /// Gets or sets the left position of the harbor.
+        /// </summary>
         [ObservableProperty]
-        private double _left;
+        public partial double Left { get; set; }
+
+        /// <summary>
+        /// Gets or sets the top position of the harbor.
+        /// </summary>
         [ObservableProperty]
-        private double _top;
+        public partial double Top { get; set; }
+
+        /// <summary>
+        /// Gets or sets the orientation of the harbor.
+        /// </summary>
         [ObservableProperty]
-        private CatanOrientation _orientation = CatanOrientation.FaceUp;
+        public partial CatanOrientation Orientation { get; set; } = CatanOrientation.FaceUp;
+
+        /// <summary>
+        /// Initializes a new instance of the HarborViewModel class with the specified harbor model and layout.
+        /// </summary>
+        /// <param name="harbor">The harbor model.</param>
+        /// <param name="layout">The board layout.</param>
         public HarborViewModel(HarborModel harbor, BoardLayout layout)
         {
             Harbor = harbor;
             Layout = layout;
             Init();
         }
+
+        /// <summary>
+        /// Gets the default instance of the HarborViewModel class.
+        /// </summary>
         public static HarborViewModel Default => new(HarborModel.Default, BoardLayout.Default);
+
+        /// <summary>
+        /// Initializes the view model by setting up property change listeners and updating the layout.
+        /// </summary>
         void Init()
         {
             if (Layout is not null && Layout is BoardLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
-              
             }
             else
             {
@@ -52,6 +87,12 @@ namespace Catan3.Models
                 Messenger.UnregisterAll(this);
             });
         }
+
+        /// <summary>
+        /// Handles property changes in the layout and updates the layout accordingly.
+        /// </summary>
+        /// <param name="sender">The sender of the event.</param>
+        /// <param name="e">The event arguments.</param>
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (sender is BoardLayout layout)
@@ -60,6 +101,10 @@ namespace Catan3.Models
                 UpdateLayout();
             }
         }
+
+        /// <summary>
+        /// Updates the layout of the harbor based on its coordinates and side.
+        /// </summary>
         private void UpdateLayout()
         {
             var point = GetLeftTop(Layout, Harbor.HexCoordinates, Harbor.Side);
@@ -67,6 +112,14 @@ namespace Catan3.Models
             Top = point.Y;
             OnPropertyChanged(nameof(HarborPoints));
         }
+
+        /// <summary>
+        /// Calculates the left and top position of the harbor based on the layout, coordinates, and side.
+        /// </summary>
+        /// <param name="Layout">The board layout.</param>
+        /// <param name="coordinates">The coordinates of the harbor.</param>
+        /// <param name="side">The side of the hexagon where the harbor is located.</param>
+        /// <returns>A Point representing the left and top position of the harbor.</returns>
         public static Point GetLeftTop(BoardLayout Layout, HexCoordinates coordinates, HexSide side)
         {
             double top = Layout.Top(coordinates);
@@ -78,7 +131,7 @@ namespace Catan3.Models
             // Adjust top and left to position the center of the harbor on the vertex
             top += vertexPoint.Y - size / 2.0; // Center vertically
             left += vertexPoint.X - size / 2.0; // Center horizontally
-            // Calculate the edge offset for the harbor's new center position
+                                                // Calculate the edge offset for the harbor's new center position
             double edgeOffset = size / 2.0; // Harbor's radius
             double horizontalOffset = edgeOffset * Math.Sqrt(3) / 2;
             double verticalOffset = edgeOffset / 2;
@@ -114,11 +167,15 @@ namespace Catan3.Models
             }
             return new Point(left, top);
         }
+
+        /// <summary>
+        /// Gets the points representing the harbor's shape.
+        /// </summary>
         public PointCollection HarborPoints
         {
             get
             {
-                PointCollection points = [];
+                PointCollection points = new();
                 double size = Layout.BuildingSize; // Assuming this is the diameter of the harbor circle
                 var flatTopDictionary = Layout.OuterHexPoints.FlatTopListToDictionary();
                 var tileTop = Layout.Top(Harbor.HexCoordinates);
@@ -180,17 +237,39 @@ namespace Catan3.Models
                 return points;
             }
         }
+
+        /// <summary>
+        /// Returns a string representation of the harbor view model.
+        /// </summary>
+        /// <returns>A string representation of the harbor view model.</returns>
         public override string? ToString()
         {
             return Harbor.ToString();
         }
     }
+    /// <summary>
+    /// Provides extension methods for collections of HarborViewModel instances.
+    /// </summary>
     public static class HarborExtensions
     {
+        /// <summary>
+        /// Finds a harbor in the collection with the specified coordinates and side.
+        /// </summary>
+        /// <param name="collection">The collection of HarborViewModel instances.</param>
+        /// <param name="coords">The coordinates of the harbor.</param>
+        /// <param name="side">The side of the hexagon where the harbor is located.</param>
+        /// <returns>The HarborViewModel instance if found; otherwise, null.</returns>
         public static HarborViewModel? FindHarbor(this IEnumerable<HarborViewModel> collection, HexCoordinates coords, HexSide side)
         {
             return collection.FirstOrDefault(h => h.Harbor.HexCoordinates == coords && h.Harbor.Side == side);
         }
+
+        /// <summary>
+        /// Finds any harbors in the collection with the specified coordinates.
+        /// </summary>
+        /// <param name="collection">The collection of HarborViewModel instances.</param>
+        /// <param name="coords">The coordinates of the harbors.</param>
+        /// <returns>A list of HarborViewModel instances if found; otherwise, an empty list.</returns>
         public static List<HarborViewModel>? FindAnyHarbor(this IEnumerable<HarborViewModel> collection, HexCoordinates coords)
         {
             return collection.Where(h => h.Harbor.HexCoordinates == coords).ToList();

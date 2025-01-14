@@ -2,19 +2,45 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 namespace Catan3.Models
 {
+    /// <summary>
+    /// Represents the house rules for the game, including various settings and options.
+    /// </summary>
     public partial class HouseRules : ObservableObject
     {
+        /// <summary>
+        /// Gets or sets the number of gold tiles.
+        /// </summary>
         [ObservableProperty]
-        private int _goldTiles = 1;
+        public partial int GoldTiles { get; set; } = 1;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether walls protect cities.
+        /// </summary>
         [ObservableProperty]
-        private bool _wallsProtectCities = true;
+        public partial bool WallsProtectCities { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to hide the baron before invasion.
+        /// </summary>
         [ObservableProperty]
-        private bool _hideBaronBeforeInvasion = false;
+        public partial bool HideBaronBeforeInvasion { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether a knight moves the baron before the roll.
+        /// </summary>
         [ObservableProperty]
-        private bool _knightMovesBaronBeforeRoll = true;
+        public partial bool KnightMovesBaronBeforeRoll { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to hide the robber before invasion.
+        /// </summary>
         [ObservableProperty]
-        private bool _hideRobberBeforeInvasion =  false;
+        public partial bool HideRobberBeforeInvasion { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether a knight moves the robber before the roll.
+        /// </summary>
         [ObservableProperty]
-        private bool _knightMovesRobberBeforeRoll = false;
+        public partial bool KnightMovesRobberBeforeRoll { get; set; } = false;
     }
 }

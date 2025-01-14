@@ -1344,19 +1344,14 @@ namespace Catan3.Controller
             var currentPlayer = gameModel.CurrentPlayer();
             int total = currentPlayer.SpentEntitlementsThisGame.Count(e => e==entitlement) +
                         currentPlayer.UnspentEntitlements.Count(e => e == entitlement);
-            switch (entitlement)
+            return entitlement switch
             {
-                case Entitlement.Road:
-                    return ( total < gameModel.ResourceRules.MaxRoads );
-                case Entitlement.Settlement:
-                    return ( total < gameModel.ResourceRules.MaxSettlements );
-                case Entitlement.City:
-                    return ( total < gameModel.ResourceRules.MaxCities );
-                case Entitlement.Soldier:
-                    return true;
-                default:
-                    throw new Exception($"TODO: add support for {entitlement} to AllowPurchase");
-            }
+                Entitlement.Road => ( total < gameModel.ResourceRules.MaxRoads ),
+                Entitlement.Settlement => ( total < gameModel.ResourceRules.MaxSettlements ),
+                Entitlement.City => ( total < gameModel.ResourceRules.MaxCities ),
+                Entitlement.Soldier => true,
+                _ => throw new Exception($"TODO: add support for {entitlement} to AllowPurchase"),
+            };
         }
         public void CalculateLongestRoad(GameModel gameModel)
         {
@@ -1480,8 +1475,7 @@ namespace Catan3.Controller
                         //
                         //  e.g the adjacent count is > 2 then the road with all the forks around it (the horizontal in ascii art) doesn't have to be counted because we'll count all the
                         //  roads coming into that fork
-                        List<RoadModel> forks = new List<RoadModel>();
-                        forks.AddRange(ownedAdjacentNotCounted);
+                        List<RoadModel> forks = [.. ownedAdjacentNotCounted];
                         if (forks.Count > 2)
                         {
                             //

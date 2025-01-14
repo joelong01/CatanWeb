@@ -105,7 +105,7 @@
                             </Grid.RenderTransform>
                             <Viewbox Stretch="Uniform">
                                 <StackPanel HorizontalAlignment="Stretch">
-                                    <TextBlock Visibility="{x:Bind TileViewModel.TileIndexVisability, Mode=OneWay}" TextLineBounds="Tight"
+                                    <TextBlock Visibility="{x:Bind TileViewModel.TileIndexVisibility, Mode=OneWay}" TextLineBounds="Tight"
                                             Text="{x:Bind TileViewModel.Index, Mode=OneWay}"
                                             HorizontalAlignment="Center"
                                             Foreground="White" />

@@ -9,36 +9,52 @@ namespace Catan10.Models
     public partial class ResourcesModel : ObservableObject
     {
         [ObservableProperty]
-        private int _brick;
+        public partial int Brick { get; set; }
+
         [ObservableProperty]
-        private int _goldMine;
+        public partial int GoldMine { get; set; }
+
         [ObservableProperty]
-        private int _ore;
+        public partial int Ore { get; set; }
+
         [ObservableProperty]
-        private int _sheep;
+        public partial int Sheep { get; set; }
+
         [ObservableProperty]
-        private int _wheat;
+        public partial int Wheat { get; set; }
+
         [ObservableProperty]
-        private int _wood;
+        public partial int Wood { get; set; }
+
         [ObservableProperty]
-        private int _paper;
+        public partial int Paper { get; set; }
+
         [ObservableProperty]
-        private int _cloth;
+        public partial int Cloth { get; set; }
+
         [ObservableProperty]
-        private int _coin;
+        public partial int Coin { get; set; }
+
         [ObservableProperty]
-        private int _politics;
+        public partial int Politics { get; set; }
+
         [ObservableProperty]
-        private int _trade;
+        public partial int Trade { get; set; }
+
         [ObservableProperty]
-        private int _science;
+        public partial int Science { get; set; }
+
         [ObservableProperty]
-        private int _victoryPoint;
+        public partial int VictoryPoint { get; set; }
+
         [ObservableProperty]
-        private int _anyDevCard;
+        public partial int AnyDevCard { get; set; }
+
         [ObservableProperty]
-        private int _robber;
+        public partial int Robber { get; set; }
+
         public ResourcesModel() { }
+
         public ResourcesModel(ResourcesModel tradeResources)
         {
             Wheat = tradeResources.Wheat;
@@ -57,12 +73,15 @@ namespace Catan10.Models
             AnyDevCard = tradeResources.AnyDevCard;
             Robber = tradeResources.Robber;
         }
+
         [JsonIgnore]
         public int Count => Wheat + Wood + Brick + Ore + Sheep + GoldMine + Cloth + Coin + Paper + VictoryPoint + Politics + Science + Trade + AnyDevCard + Robber;
+
         public override string ToString()
         {
             return $"[Count={Count}][Robber={Robber}][Ore={Ore}][Brick={Brick}][Wheat={Wheat}][Wood={Wood}][Sheep={Sheep}][Gold={GoldMine}][Coin={Coin}][Cloth={Cloth}][Paper={Paper}]";
         }
+
         public int CountForResource(ResourceType resourceCardType)
         {
             int count = 0;

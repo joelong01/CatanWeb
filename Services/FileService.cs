@@ -22,7 +22,6 @@ namespace Catan.Services
         string? Location { get; }
         Task<string?> OpenFileAsync(WindowEx parent, IList<string> filters);
         Task<string> PickSaveFileAsync(string defaultFileName);
-
     }
 
 
@@ -34,11 +33,12 @@ namespace Catan.Services
     {
         public string FilePath { get; private set; }
         private FileStream? _fileStream;
+        private bool _disposed;
 
         /// <summary>
         /// Initializes a new instance of the FileHandler class and opens the file for read/write operations.
         /// </summary>
-        /// <param name="relativeFilePath">The path to the file, reletive to "My Documents".</param>
+        /// <param name="relativeFilePath">The path to the file, relative to "My Documents".</param>
         /// <exception cref="ArgumentNullException">Thrown when filePath is null.</exception>
         /// <exception cref="ArgumentException">Thrown when filePath is an empty string, contains only white spaces, or contains invalid characters.</exception>
         /// <exception cref="UnauthorizedAccessException">Thrown when access to filePath is denied.</exception>
@@ -52,8 +52,6 @@ namespace Catan.Services
             }
 
             FilePath = relativeFilePath;
-
-           
         }
 
         public async Task<FileStream> InitializeFileHandlerAsync(string path)
@@ -92,8 +90,6 @@ namespace Catan.Services
             }
         }
 
-
-
         /// <summary>
         /// Writes the specified byte array content to the file asynchronously.
         /// </summary>
@@ -110,18 +106,16 @@ namespace Catan.Services
                 _fileStream.SetLength(0);
                 _fileStream.Seek(0, SeekOrigin.Begin);
 
-                await _fileStream.WriteAsync(content, 0, content.Length);
+                await _fileStream.WriteAsync(content.AsMemory(0, content.Length));
                 await _fileStream.FlushAsync(); // Ensure all data is written to the file
                 CloseFile();
                 return true;
             }
             catch (Exception ex)
             {
-                
                 this.TraceMessage($"An error occurred while writing to the file: {ex.Message}");
                 throw;
             }
-
         }
 
         /// <summary>
@@ -140,7 +134,16 @@ namespace Catan.Services
                 _fileStream.Seek(0, SeekOrigin.Begin);
 
                 byte[] content = new byte[_fileStream.Length];
-                await _fileStream.ReadAsync(content, 0, content.Length);
+                int bytesRead = 0;
+                while (bytesRead < content.Length)
+                {
+                    int read = await _fileStream.ReadAsync(content.AsMemory(bytesRead, content.Length - bytesRead));
+                    if (read == 0)
+                    {
+                        break;
+                    }
+                    bytesRead += read;
+                }
                 CloseFile();
                 return content;
             }
@@ -162,7 +165,7 @@ namespace Catan.Services
                 if (_fileStream is null) return;
                 _fileStream.Close();
                 FilePath = string.Empty;
-               // this.TraceMessage("File closed.");
+                // this.TraceMessage("File closed.");
             }
             catch (Exception ex)
             {
@@ -176,13 +179,21 @@ namespace Catan.Services
         /// </summary>
         public void Dispose()
         {
-            if (_fileStream is not null)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed) return;
+
+            if (disposing)
             {
                 _fileStream?.Dispose();
             }
+
+            _disposed = true;
         }
-
-
     }
 
 
@@ -193,8 +204,9 @@ namespace Catan.Services
     public class FileService : IPersistanceService
     {
         private FileHandler? FileHandler { get; set; }
+
         /// <summary>
-        ///     returns the name of the file that the user picked
+        /// Returns the name of the file that the user picked.
         /// </summary>
         public string? Location
         {
@@ -202,10 +214,9 @@ namespace Catan.Services
             {
                 if (FileHandler is null) return null;
                 return FileHandler.FilePath;
-
-
             }
         }
+
         /// <summary>
         /// Opens a file selected by the user and reads its bytes asynchronously.
         /// </summary>
@@ -222,8 +233,6 @@ namespace Catan.Services
 
                 FileHandler = new FileHandler(location);
                 return await FileHandler.ReadContentsAsync();
-
-
             }
             catch (Exception ex)
             {
@@ -249,9 +258,7 @@ namespace Catan.Services
                 {
                     ViewMode = PickerViewMode.Thumbnail,
                     SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
-
                 };
-
 
                 IntPtr hwnd = WindowNative.GetWindowHandle(parent);
                 InitializeWithWindow.Initialize(openPicker, hwnd);
@@ -259,7 +266,7 @@ namespace Catan.Services
                 {
                     openPicker.FileTypeFilter.Add(f);
                 }
-                var folder= await openPicker.PickSingleFileAsync();
+                var folder = await openPicker.PickSingleFileAsync();
                 if (folder is null) return null;
 
                 return folder.Path;
@@ -270,8 +277,6 @@ namespace Catan.Services
                 return null;
             }
         }
-
-
 
         /// <summary>
         /// Saves the provided byte array to the previously used file, or prompts the user to select a file if none is set.
@@ -317,17 +322,17 @@ namespace Catan.Services
             {
                 SuggestedStartLocation = PickerLocationId.DocumentsLibrary
             };
-            savePicker.FileTypeChoices.Add("Catan File", [".catan"]);
+            savePicker.FileTypeChoices.Add("Catan File", new List<string> { ".catan" });
             savePicker.SuggestedFileName = defaultFileName;
             var window = (Application.Current as App)?.MainWindow as MainWindow;
             IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
             InitializeWithWindow.Initialize(savePicker, hwnd);
-            var file =  await savePicker.PickSaveFileAsync();
+            var file = await savePicker.PickSaveFileAsync();
             if (file is not null)
             {
                 return file.Path;
             }
-            return "";
+            return string.Empty;
         }
     }
 }

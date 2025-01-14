@@ -6,21 +6,28 @@ namespace Catan3.Models
     {
         [JsonIgnore]
         [ObservableProperty]
-        private BuildingModel _building = BuildingModel.Default;
+        public partial BuildingModel Building { get; set; } = BuildingModel.Default;
+
         [ObservableProperty]
-        private BoardLayout _layout = BoardLayout.Default;
+        public partial BoardLayout Layout { get; set; } = BoardLayout.Default;
+
         [ObservableProperty]
-        private double _left;
+        public partial double Left { get; set; }
+
         [ObservableProperty]
-        private double _top;
+        public partial double Top { get; set; }
+
         [ObservableProperty]
-        private BuildingVisualState _visualState = BuildingVisualState.Hidden;
+        public partial BuildingVisualState VisualState { get; set; } = BuildingVisualState.Hidden;
+
         [JsonIgnore]
         [ObservableProperty]
-        private PlayerViewModel _currentPlayer = PlayerViewModel.Default;
+        public partial PlayerViewModel CurrentPlayer { get; set; } = PlayerViewModel.Default;
+
         [ObservableProperty]
-        private int _buildIndex = 0;
+        public partial int BuildIndex { get; set; } = 0;
+
         [ObservableProperty]
-        private int _stars = -2;
+        public partial int Stars { get; set; } = -2;
     }
 }

@@ -7,42 +7,68 @@ using Microsoft.UI.Xaml.Media;
 
 namespace Catan3.Models
 {
-    public partial class QueryResourceModel : ObservableRecipient
+    /// <summary>
+    /// Represents a model for querying resources, including the resource type, background image, and count.
+    /// </summary>
+    /// <remarks>
+    /// Initializes a new instance of the QueryResourceModel class with the specified resource type.
+    /// </remarks>
+    /// <param name="resourceType">The type of the resource.</param>
+    public partial class QueryResourceModel(ResourceType resourceType) : ObservableRecipient
     {
 
+        /// <summary>
+        /// Gets or sets the type of the resource.
+        /// </summary>
         [ObservableProperty]
-        ResourceType _resourceType;
+        public partial ResourceType ResourceType { get; set; } = resourceType;
+
+        /// <summary>
+        /// Gets or sets the background image brush for the resource.
+        /// </summary>
         [ObservableProperty]
-        ImageBrush _background;
+        public partial ImageBrush Background { get; set; } = BrushCache.ResourceCardImage(resourceType);
+
+        /// <summary>
+        /// Gets or sets the count of the resource.
+        /// </summary>
         [ObservableProperty]
-        int  _count=0;
-
-        public QueryResourceModel(ResourceType resourceType)
-        {
-            _resourceType = resourceType;
-            _background = BrushCache.ResourceCardImage(resourceType);
-
-        }
-
-
+        public partial int Count { get; set; } = 0;
     }
 
+    /// <summary>
+    /// Represents a model for building resource queries, including collections of query resources and selected resources.
+    /// </summary>
     public partial class QueryBuilderModel : ObservableRecipient
     {
-
+        /// <summary>
+        /// Gets or sets the collection of query resources.
+        /// </summary>
         [ObservableProperty]
-        private ObservableCollection<QueryResourceModel> _queryResources = [new(ResourceType.Ore), new(ResourceType.Wheat), new(ResourceType.Sheep), new (ResourceType.Wood), new (ResourceType.Brick)];
+        public partial ObservableCollection<QueryResourceModel> QueryResources { get; set; } = new()
+            {
+                new(ResourceType.Ore),
+                new(ResourceType.Wheat),
+                new(ResourceType.Sheep),
+                new(ResourceType.Wood),
+                new(ResourceType.Brick)
+            };
 
+        /// <summary>
+        /// Gets or sets the collection of selected resources.
+        /// </summary>
         [ObservableProperty]
-        private ObservableCollection<QueryResourceModel> _selectedResources = [];
+        public partial ObservableCollection<QueryResourceModel> SelectedResources { get; set; } = new();
 
-      
-
+        /// <summary>
+        /// Handles the selection changed event for resources.
+        /// </summary>
+        /// <param name="sender">The sender of the event.</param>
+        /// <param name="e">The event arguments.</param>
         public void Resources_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (sender is GridView gridView)
             {
-             
                 foreach (QueryResourceModel model in e.AddedItems.Cast<QueryResourceModel>())
                 {
                     SelectedResources.Add(model);
@@ -65,6 +91,5 @@ namespace Catan3.Models
                 Messenger.Send(new QueryResourcesMessage(queryList));
             }
         }
-
     }
 }

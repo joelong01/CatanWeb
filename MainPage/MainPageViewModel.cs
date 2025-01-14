@@ -9,22 +9,56 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 namespace Catan3.Models
 {
+    /// <summary>
+    /// Represents the view model for the main page, including game view model, commands visibility, and game controller.
+    /// </summary>
     public partial class MainPageViewModel : ObservableRecipient
     {
-        [ObservableProperty]
-        GameViewModel _gameViewModel;
         /// <summary>
-        ///     Bound to the SplitView.IsPaneOpen flag in MainPage.xaml
+        /// Gets or sets the game view model.
         /// </summary>
         [ObservableProperty]
-        bool _showCommands = false;
+        public partial GameViewModel GameViewModel { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to show commands.
+        /// </summary>
+        [ObservableProperty]
+        public partial bool ShowCommands { get; set; } = false;
+
+        /// <summary>
+        /// Gets the game controller.
+        /// </summary>
         private GameController GameController { get; set; }
+
+        /// <summary>
+        /// Gets the file service.
+        /// </summary>
         private readonly IPersistanceService _fileService;
+
+        /// <summary>
+        /// Gets the message service.
+        /// </summary>
         public IMessenger MessageService => this.Messenger;
+
+        /// <summary>
+        /// Gets the player database.
+        /// </summary>
         private readonly IPlayerDatabase _playerDatabase;
 
+        /// <summary>
+        /// Gets the player database.
+        /// </summary>
         public IPlayerDatabase PlayerDatabase => _playerDatabase;
 
+        /// <summary>
+        /// Initializes a new instance of the MainPageViewModel class with the specified file service, player database, selected game, playing player IDs, and file path.
+        /// </summary>
+        /// <param name="fileService">The file service.</param>
+        /// <param name="playerDatabase">The player database.</param>
+        /// <param name="selectedGame">The selected game type.</param>
+        /// <param name="playingPlayerIds">The list of playing player IDs.</param>
+        /// <param name="filePath">The file path.</param>
         public MainPageViewModel(IPersistanceService fileService, IPlayerDatabase playerDatabase, GameType selectedGame, IList<string> playingPlayerIds, string filePath)
         {
             FunctionTimer.Enabled = false;
@@ -40,13 +74,13 @@ namespace Catan3.Models
             }
             else
             {
-
                 Messenger.Send(new NewGameMessage(selectedGame, playingPlayerIds, filePath));
             }
-            
         }
 
-        
+        /// <summary>
+        /// Registers messages for the view model.
+        /// </summary>
         private void RegisterMessages()
         {
             Debug.Assert(Messenger is not null);
@@ -58,17 +92,21 @@ namespace Catan3.Models
             Messenger.Register<OpenFileRequestMessage>(this, async (recipient, message) =>
             {
                 if (_fileService is null) throw new GameException("File Service is null and it should not be");
-                var result =  await _fileService.OpenFileAsync(message.Parent, message.Filters);
+                var result = await _fileService.OpenFileAsync(message.Parent, message.Filters);
                 Messenger.Send(new OpenFileResponseMessage(result));
             });
-
         }
+
+        /// <summary>
+        /// Ends the game by sending an EndGame message.
+        /// </summary>
         public void EndGame()
         {
             Messenger.Send(new EndGame());
         }
+
         /// <summary>
-        ///     called when the users are reordered with drag and drop.
+        /// Called when the users are reordered with drag and drop.
         /// </summary>
         /// <exception cref="NotImplementedException"></exception>
         public void SetPlayerOrder()
@@ -86,12 +124,10 @@ namespace Catan3.Models
                 }
                 else
                 {
-                    //
-                    //  we are in the wrong state, set the GameViewModel to match what is in the GameModel
+                    // we are in the wrong state, set the GameViewModel to match what is in the GameModel
                     GameViewModel.SetPlayerOrder(GameViewModel.GameModel);
                 }
             }
-
         }
     }
 }

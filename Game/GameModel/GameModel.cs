@@ -14,13 +14,17 @@ namespace Catan3.Models
     public partial class ActionFlags : ObservableObject
     {
         [ObservableProperty]
-        private bool _undoEnabled = false;
+        public partial bool UndoEnabled { get; set; } = false;
+
         [ObservableProperty]
-        private bool _redoEnabled = false;
+        public partial bool RedoEnabled { get; set; } = false;
+
         [ObservableProperty]
-        private bool _nextEnabled = false;
+        public partial bool NextEnabled { get; set; } = false;
+
         [ObservableProperty]
-        private bool _rollsEnabled = false;
+        public partial bool RollsEnabled { get; set; } = false;
+
         public override string ToString()
         {
             return $"UndoEnabled: {UndoEnabled} RedoEnabled={RedoEnabled} NextEnabled={NextEnabled}";
@@ -33,54 +37,72 @@ namespace Catan3.Models
         ///     at this time?
         /// </summary>
         [ObservableProperty]
-        private ObservableCollection<EntitlementPurchaseModel> _entitlementPurchaseModel = [];
+        public partial ObservableCollection<EntitlementPurchaseModel> EntitlementPurchaseModel { get; set; } = new();
+
         [ObservableProperty]
-        private ActionFlags _actionFlags = new();
-       [ObservableProperty]
-        private GameType _gameType = GameType.Regular;
+        public partial ActionFlags ActionFlags { get; set; } = new();
+
         [ObservableProperty]
-        private GameState _gameState = GameState.WaitingForNewGame;
+        public partial GameType GameType { get; set; } = GameType.Regular;
+
         [ObservableProperty]
-        private bool _hasSupplementalBuildPhase = false;
+        public partial GameState GameState { get; set; } = GameState.WaitingForNewGame;
+
         [ObservableProperty]
-        private List<PlayerModel> _players = [];
-      
+        public partial bool HasSupplementalBuildPhase { get; set; } = false;
+
         [ObservableProperty]
-        private ObservableCollection<TileModel> _tiles = [];
+        public partial List<PlayerModel> Players { get; set; } = new();
+
         [ObservableProperty]
-        private ObservableCollection<BuildingModel> _buildings = [];
+        public partial ObservableCollection<TileModel> Tiles { get; set; } = new();
+
         [ObservableProperty]
-        private ObservableCollection<RoadModel> _roads = [];
+        public partial ObservableCollection<BuildingModel> Buildings { get; set; } = new();
+
         [ObservableProperty]
-        private ObservableCollection<HarborModel> _harbors = [];
+        public partial ObservableCollection<RoadModel> Roads { get; set; } = new();
+
         [ObservableProperty]
-        private RobberModel _robber = new();
+        public partial ObservableCollection<HarborModel> Harbors { get; set; } = new();
+
         [ObservableProperty]
-        private HouseRules _houseRules = new();
+        public partial RobberModel Robber { get; set; } = new();
+
         [ObservableProperty]
-        private ResourceRules _resourceRules;
+        public partial HouseRules HouseRules { get; set; } = new();
+
         [ObservableProperty]
-        private string _currentPlayerId = string.Empty;
+        public partial ResourceRules ResourceRules { get; set; }
+
         [ObservableProperty]
-        private RollModel _rollModel = new();
+        public partial string CurrentPlayerId { get; set; } = string.Empty;
+
+        [ObservableProperty]
+        public partial RollModel RollModel { get; set; } = new();
 
         // keep track of the player who goes when there is nobody left to do supplemental
         [ObservableProperty]
-        private string _nextPlayerToRollAfterSupplemental = "";
+        public partial string NextPlayerToRollAfterSupplemental { get; set; } = "";
+
         //
         //  keep track of the total resources ever generated in the game by everyone
         [ObservableProperty]
-        private ResourcesModel _gameResourcesModel = new();
+        public partial ResourcesModel GameResourcesModel { get; set; } = new();
+
         [ObservableProperty]
-        private GameState _previousGameState = GameState.Uninitialized;
+        public partial GameState PreviousGameState { get; set; } = GameState.Uninitialized;
+
         partial void OnGameStateChanged(GameState oldValue, GameState newValue)
         {
             PreviousGameState = oldValue;
         }
+
         public override string ToString()
         {
             return $"State={GameState} CurrentPlayer={CurrentPlayerId}";
         }
+
         /// <summary>
         ///     called by the GameFactory when a new game is created.  All data that the game needs
         ///     should be created here.
@@ -98,14 +120,16 @@ namespace Catan3.Models
             CurrentPlayerId = players[0].Id;
             EntitlementPurchaseModel.AddRange(gameInfo.PurchaseableEntitlements);
         }
+
         [JsonConstructor]
         public GameModel()
         {
-            Players = [];
+            Players = new();
             GameType = GameType.Regular;
             HasSupplementalBuildPhase = false;
             ResourceRules = ResourceRules.Default;
         }
+
         /// <summary>
         ///     Add up all the stars for the given resource type
         /// </summary>
@@ -114,10 +138,9 @@ namespace Catan3.Models
         public int StarCount(ResourceType tileType)
         {
             var total = this.Tiles.Where(tile => tile.ResourceTileType == tileType)
-                .Sum(tile => tile.Stars);
+                    .Sum(tile => tile.Stars);
             return total;
         }
-
 
         public string Serialize()
         {

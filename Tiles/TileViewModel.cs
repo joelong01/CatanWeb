@@ -40,10 +40,10 @@ namespace Catan3.Models
                     case GameState.AllocateResourceForward:
                     case GameState.AllocateResourceReverse:
                     case GameState.MustMoveRobber:
-                        TileIndexVisability = Visibility.Visible;
+                        TileIndexVisibility = Visibility.Visible;
                         break;
                     default:
-                        TileIndexVisability = Visibility.Collapsed;
+                        TileIndexVisibility = Visibility.Collapsed;
                         break;
                 }
             });

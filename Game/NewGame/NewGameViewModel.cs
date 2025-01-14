@@ -8,21 +8,22 @@ namespace Catan3.Models
     public partial class NewGameViewModel : ObservableObject
     {
         [ObservableProperty]
-        private ObservableCollection<PlayerViewModel> _players = [];
+        public partial ObservableCollection<PlayerViewModel> Players { get; set; } = [];
         public List<PlayerViewModel> PlayingPlayers { get; internal set; } = [];
         [ObservableProperty]
-        private ObservableCollection<GameType> _games  = [GameType.Regular, GameType.Expansion];
+        public partial ObservableCollection<GameType> Games { get; private set; } = [GameType.Regular, GameType.Expansion];
         [ObservableProperty]
-        private GameType _selectedGame = GameType.Expansion;
+        public partial GameType SelectedGame { get; set; } = GameType.Expansion;
         public NewGameViewModel(IList<PlayerViewModel> players)
         {
-            _players.AddRange(players);
+
+            Players.AddRange(players);
         }
         public void Players_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             foreach (PlayerViewModel player in e.AddedItems)
             {
-              
+
                 PlayingPlayers.Add(player);
             }
             foreach (PlayerViewModel player in e.RemovedItems)

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -12,29 +13,68 @@ using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 namespace Catan3.Models
 {
+    /// <summary>
+    /// Represents the view model for a road, including its layout, position, and related properties.
+    /// </summary>
     public partial class RoadViewModel : ObservableRecipient
     {
+        /// <summary>
+        /// Gets or sets the road model.
+        /// </summary>
         [JsonIgnore]
         [ObservableProperty]
-        private RoadModel _road;
+        public partial RoadModel Road { get; set; }
+
+        /// <summary>
+        /// Gets or sets the board layout.
+        /// </summary>
         [ObservableProperty]
-        private BoardLayout _layout;
+        public partial BoardLayout Layout { get; set; } = BoardLayout.Default;
+
+        /// <summary>
+        /// Gets or sets the center point of the road.
+        /// </summary>
         [ObservableProperty]
-        private Point _roadCenter = new Point(0,0);
+        public partial Point RoadCenter { get; set; } = new Point(0, 0);
+
+        /// <summary>
+        /// Gets or sets the left position of the road.
+        /// </summary>
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(RoadPolygon))]
-        private double _left;
+        public partial double Left { get; set; }
+
+        /// <summary>
+        /// Gets or sets the top position of the road.
+        /// </summary>
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(RoadPolygon))]
-        private double _top;
+        public partial double Top { get; set; }
+
+        /// <summary>
+        /// Gets or sets the index of the road.
+        /// </summary>
         [ObservableProperty]
-        private double _index;
+        public partial double Index { get; set; }
+
+        /// <summary>
+        /// Gets or sets the current player.
+        /// </summary>
         [ObservableProperty]
-        private PlayerViewModel _currentPlayer  = PlayerViewModel.Default;
+        public partial PlayerViewModel CurrentPlayer { get; set; } = PlayerViewModel.Default;
+
+        public RoadViewModel() { throw new NotImplementedException("This constructor should never be called."); }
+
+        /// <summary>
+        /// Initializes a new instance of the RoadViewModel class.
+        /// </summary>
+        /// <param name="road">The road model.</param>
+        /// <param name="layout">The board layout.</param>
+        [SetsRequiredMembers]
         public RoadViewModel(RoadModel road, BoardLayout layout)
         {
-            Road = road;
-            Layout = layout;
+            Road = road ?? throw new ArgumentNullException(nameof(road), "road cannot be null"); ;
+            Layout = layout ?? throw new ArgumentNullException(nameof(layout), "Layout cannot be null");
             IsActive = true;
             Messenger.Register<CurrentPlayerChanged>(this, (recipient, message) =>
             {
@@ -58,6 +98,12 @@ namespace Catan3.Models
             }
             UpdateLayout();
         }
+
+        /// <summary>
+        /// Handles the PropertyChanged event for the layout.
+        /// </summary>
+        /// <param name="sender">The sender of the event.</param>
+        /// <param name="e">The event arguments.</param>
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (sender is BoardLayout layout)
@@ -66,36 +112,40 @@ namespace Catan3.Models
                 UpdateLayout();
             }
         }
+
+        /// <summary>
+        /// Handles the current player change event.
+        /// </summary>
+        /// <param name="newCurrentPlayer">The new current player.</param>
         private void HandleCurrentPlayerChanged(PlayerViewModel newCurrentPlayer)
         {
             CurrentPlayer = newCurrentPlayer;
         }
+
+        /// <summary>
+        /// Updates the layout of the road.
+        /// </summary>
         private void UpdateLayout()
         {
             const double BUILD_INDEX_TEXT_SIZE = 20;
             Top = Layout.Top(Road.RoadKey.TileKey);
             Left = Layout.Left(Road.RoadKey.TileKey);
             GetRoadPoints(Road.RoadKey.HexSide, Road.RoadKey.TileKey, Layout);
-            //
-            //  buildable roads get a BuildIndex to make it easy to say "Build Road #2"
-            //  they go in the middle of the road, which is set by the pointy top hex.
-            //  the position is centered halfway between the OuterHexSize and the InnerHexSize
-            //  BUILD_INDEX_TEXT_SIZE is set in RoadCtrl.xaml as the Width/Height of the Grid that holds the TextBlock.
+
             double offset = Layout.OuterHexSize - Layout.InnerHexSize;
-            var pointyTopHexPoints = HexGeometry.PointyTopHexPoints(Layout.InnerHexSize - offset / 2.0, Layout.ControlWidth / 2.0, Layout.ControlHeight / 2.0).PointyTopListToDictionary(); ;
+            var pointyTopHexPoints = HexGeometry.PointyTopHexPoints(Layout.InnerHexSize - offset / 2.0, Layout.ControlWidth / 2.0, Layout.ControlHeight / 2.0).PointyTopListToDictionary();
             RoadCenter = new Point(pointyTopHexPoints[this.Road.RoadKey.HexSide].X - BUILD_INDEX_TEXT_SIZE / 2.0, pointyTopHexPoints[this.Road.RoadKey.HexSide].Y - BUILD_INDEX_TEXT_SIZE / 2.0);
             OnPropertyChanged(nameof(RoadPolygon));
         }
+
         /// <summary>
-        ///     keep this around if you want to put the road position in the roads for debugging purposes
+        /// Gets a short name for the road position, useful for debugging.
         /// </summary>
-        /// <param name="position"></param>
-        /// <returns></returns>
         public string PositionShortName
         {
             get
             {
-                string s=$"{Index}:";
+                string s = $"{Index}:";
                 return this.Road.RoadKey.HexSide switch
                 {
                     HexSide.BottomRight => s + "BR",
@@ -109,33 +159,31 @@ namespace Catan3.Models
                 };
             }
         }
+
+        /// <summary>
+        /// Gets the polygon points for the road.
+        /// </summary>
         public PointCollection RoadPolygon
         {
             get
             {
                 if (Layout is null) return [];
-                var points =  GetRoadPoints(Road.RoadKey.HexSide, Road.RoadKey.TileKey, Layout);
-                //leaving comment here in case the cache is looked at again.
-                //if (Road.RoadKey.HexCoordinates == new HexCoordinates(2, 0, -2) && Road.RoadKey.HexSide == HexSide.Bottom)
-                //{
-                //    this.TraceMessage($"[CacheHit={cacheHit}][cacheMiss={cacheMiss}][cacheSize={RoadCache.Count}]");
-                //}
+                var points = GetRoadPoints(Road.RoadKey.HexSide, Road.RoadKey.TileKey, Layout);
                 return points;
             }
         }
+
         private static int cacheHit;
         private static int cacheMiss;
         private static readonly Dictionary<(double size, double tilegap, double stroke), Dictionary<HexSide, PointCollection>> RoadCache = [];
+
         /// <summary>
-        ///  Every tile has the same PointsCollection.   the collection must be unique per control because of the way x:Bind works...but the 
-        ///  values are all the same.  So we cache them in a dictionary so that we only do the calculations once per side for any particular
-        ///  layout.  for a regular board, we should see something like this: [CacheHit=66][cacheMiss=6][cacheSize=1]
-        ///  
+        /// Gets the points for the road based on the side, tile key, and layout.
         /// </summary>
-        /// <param name="side"></param>
-        /// <param name="tileKey"></param>
-        /// <param name="layout"></param>
-        /// <returns></returns>
+        /// <param name="side">The side of the hexagon.</param>
+        /// <param name="tileKey">The tile key.</param>
+        /// <param name="layout">The board layout.</param>
+        /// <returns>The points for the road.</returns>
         private static PointCollection GetRoadPoints(HexSide side, HexCoordinates tileKey, BoardLayout layout)
         {
             Dictionary<HexSide, PointCollection>? sideDictionary;
@@ -164,25 +212,26 @@ namespace Catan3.Models
             sideDictionary[side] = points;
             return points;
         }
-        /// 
-        ///                  / 1 -------------------- 2 \
-        ///                 /                            \
-        ///                0                              3
-        ///                 \                            /
-        ///                  \ 5 ------------------- 4  / 
-        ///        
+
+        /// <summary>
+        /// Gets the points for a specific side of the hexagon.
+        /// </summary>
+        /// <param name="side">The side of the hexagon.</param>
+        /// <param name="tileKey">The tile key.</param>
+        /// <param name="layout">The board layout.</param>
+        /// <returns>The points for the specified side.</returns>
         private static PointCollection PointsForSide(HexSide side, HexCoordinates tileKey, BoardLayout layout)
         {
             PointCollection points = [];
             if (layout is null) return points;
             var outerHexPoints = layout.OuterHexPoints.FlatTopListToDictionary();
-            var innerHexPoints =  layout.InnerHexPoints.FlatTopListToDictionary();
+            var innerHexPoints = layout.InnerHexPoints.FlatTopListToDictionary();
             Point delta;
             switch (side)
             {
                 case HexSide.None:
                     break;
-                case HexSide.Top: // this is exactly the same as the bottom, just offset by the height
+                case HexSide.Top:
                     PointCollection bottom = PointsForSide(HexSide.Bottom, tileKey, layout);
                     foreach (var point in bottom)
                     {
@@ -195,8 +244,7 @@ namespace Catan3.Models
                     points.Add(innerHexPoints[HexPosition.TopRight]);
                     points.Add(innerHexPoints[HexPosition.Right]);
                     points.Add(outerHexPoints[HexPosition.Right]);
-                    points.Add(new Point(innerHexPoints[HexPosition.BottomLeft].X + delta.X,
-                                        innerHexPoints[HexPosition.BottomRight].Y + delta.Y));
+                    points.Add(new Point(innerHexPoints[HexPosition.BottomLeft].X + delta.X, innerHexPoints[HexPosition.BottomRight].Y + delta.Y));
                     points.Add(new Point(innerHexPoints[HexPosition.Left].X + delta.X, innerHexPoints[HexPosition.Left].Y + delta.Y));
                     break;
                 case HexSide.BottomRight:
@@ -220,10 +268,8 @@ namespace Catan3.Models
                     delta = GapBetweenTiles(tileKey, Direction.SouthWest, layout);
                     points.Add(innerHexPoints[HexPosition.BottomLeft]);
                     points.Add(outerHexPoints[HexPosition.BottomLeft]);
-                    points.Add(new Point(innerHexPoints[HexPosition.Right].X + delta.X,
-                                        innerHexPoints[HexPosition.Right].Y + delta.Y));
-                    points.Add(new Point(innerHexPoints[HexPosition.TopRight].X + delta.X,
-                                         innerHexPoints[HexPosition.TopRight].Y + delta.Y));
+                    points.Add(new Point(innerHexPoints[HexPosition.Right].X + delta.X, innerHexPoints[HexPosition.Right].Y + delta.Y));
+                    points.Add(new Point(innerHexPoints[HexPosition.TopRight].X + delta.X, innerHexPoints[HexPosition.TopRight].Y + delta.Y));
                     points.Add(outerHexPoints[HexPosition.Left]);
                     points.Add(innerHexPoints[HexPosition.Left]);
                     break;
@@ -241,25 +287,36 @@ namespace Catan3.Models
             }
             return points;
         }
+
+        /// <summary>
+        /// Calculates the gap between tiles based on the direction and layout.
+        /// </summary>
+        /// <param name="key">The hex coordinates of the tile.</param>
+        /// <param name="direction">The direction to the adjacent tile.</param>
+        /// <param name="layout">The board layout.</param>
+        /// <returns>The gap between the tiles as a Point.</returns>
         private static Point GapBetweenTiles(HexCoordinates key, Direction direction, BoardLayout layout)
         {
-            var adjacentKey  = key.GetAdjacentTile(direction);
-            double  xGap = layout.Left(adjacentKey) - layout.Left(key);
-            double  yGap = layout.Top(adjacentKey) - layout.Top(key);
+            var adjacentKey = key.GetAdjacentTile(direction);
+            double xGap = layout.Left(adjacentKey) - layout.Left(key);
+            double yGap = layout.Top(adjacentKey) - layout.Top(key);
             return new Point(xGap, yGap);
         }
-        ///     if the state is empty, be transparent
-        ///     if their is an owner, use their color
-        ///     otherwise, use the color of the current player
-        /// 
-        ///     all brushes are cached.
+
+        /// <summary>
+        /// Gets the foreground brush for the road based on its state, owner, and current player.
+        /// </summary>
+        /// <param name="state">The state of the road.</param>
+        /// <param name="ownerId">The owner ID of the road.</param>
+        /// <param name="currentPlayer">The current player.</param>
+        /// <returns>The foreground brush for the road.</returns>
         public Brush GetForegroundBrush(RoadState state, string ownerId, PlayerViewModel currentPlayer)
         {
             if (state == RoadState.Unowned && ownerId is null)
             {
                 return BrushCache.GetSolidColorBrush(Colors.Transparent);
             }
-            if (ownerId is not null  && PlayerDatabase.Instance is not null)
+            if (ownerId is not null && PlayerDatabase.Instance is not null)
             {
                 PlayerViewModel owner = PlayerDatabase.Instance.FromId(ownerId) ?? throw new Exception($"Bad PlayerId: {ownerId}");
                 return owner.PlayerColors.ForegroundBrush;
@@ -269,19 +326,15 @@ namespace Catan3.Models
                 return currentPlayer.PlayerColors.ForegroundBrush;
             }
         }
+
         /// <summary>
-        ///     if the state is empty, be transparent
-        ///     if their is an owner, use their color
-        ///     otherwise, use the color of the current player
-        /// 
-        ///     all brushes are cached.
-        /// 
+        /// Gets the background brush for the road based on its state, owner, and current player.
         /// </summary>
-        /// <param name="state"></param>
-        /// <param name="ownerId"></param>
-        /// <param name="currentPlayer"></param>
-        /// <returns></returns>
-        /// <exception cref="Exception"></exception>
+        /// <param name="state">The state of the road.</param>
+        /// <param name="ownerId">The owner ID of the road.</param>
+        /// <param name="currentPlayer">The current player.</param>
+        /// <returns>The background brush for the road.</returns>
+        /// <exception cref="Exception">Thrown when the player ID is invalid.</exception>
         public Brush GetBackgroundBrush(RoadState state, string ownerId, PlayerViewModel currentPlayer)
         {
             if (state == RoadState.Unowned && ownerId is null && state != RoadState.Buildable)
@@ -298,22 +351,45 @@ namespace Catan3.Models
                 return currentPlayer.PlayerColors.BackgroundBrush;
             }
         }
+
+        /// <summary>
+        /// Gets the opacity for the road based on its model and state.
+        /// </summary>
+        /// <param name="model">The road model.</param>
+        /// <param name="state">The state of the road.</param>
+        /// <returns>The opacity for the road.</returns>
         public double Opacity(RoadModel model, RoadState state)
         {
             if (state == RoadState.Buildable) return 0.5;
-          
             if (model.OwnerId is not null) { return 1.0; }
             return 0.0;
         }
+
+        /// <summary>
+        /// Gets the build index as a string.
+        /// </summary>
+        /// <param name="index">The build index.</param>
+        /// <returns>The build index as a string.</returns>
         public string BuildIndex(int index)
         {
             if (index > 0) return index.ToString();
             return "";
         }
+
+        /// <summary>
+        /// Gets the visibility for the build index.
+        /// </summary>
+        /// <param name="index">The build index.</param>
+        /// <returns>The visibility for the build index.</returns>
         public Visibility ShowBuildIndex(int index)
         {
             return index > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
+
+        /// <summary>
+        /// Returns a string representation of the RoadViewModel.
+        /// </summary>
+        /// <returns>A string representation of the RoadViewModel.</returns>
         public override string ToString()
         {
             return $"{Road}";

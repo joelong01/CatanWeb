@@ -142,7 +142,7 @@ namespace Catan3
         ///     players. But that can be done later.
         /// </summary>
         [ObservableProperty]
-        ObservableCollection<PlayerViewModel> _allPlayers  = [];
+        public partial ObservableCollection<PlayerViewModel> AllPlayers { get; set; } =  [];
 
         public static List<PlayerViewModel> DefaultPlayers()
         {

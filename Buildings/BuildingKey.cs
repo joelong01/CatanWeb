@@ -6,9 +6,9 @@ namespace Catan3.Models
     public partial class BuildingKey(HexCoordinates hexcoordinates, HexPosition position) : ObservableObject, IComparable<BuildingKey>
     {
         [ObservableProperty]
-        private HexCoordinates _hexCoordinates = hexcoordinates;
+        public partial HexCoordinates HexCoordinates { get; set; } = hexcoordinates;
         [ObservableProperty]
-        private HexPosition _position = position;
+        public partial HexPosition Position { get; set; } = position;
         public int CompareTo(BuildingKey? other)
         {
             if (other is null) return 1;
@@ -22,6 +22,6 @@ namespace Catan3.Models
             // Since HexPosition is an enum, we can directly compare their underlying integer values
             return Position.CompareTo(other.Position);
         }
-       
+
     }
 }
