@@ -97,9 +97,9 @@ namespace Catan3.Models
                 // Correct the placement of the number 7 on desert tiles
                 EnsureDesertSeven(game);
             } while (!ValidateGame(game));
-            // Place the robber on the first desert tile found
-            game.Robber.Coordinates = game.Tiles.FirstOrDefault(tile => tile.ResourceTileType == ResourceType.Desert)?.TileKey ?? throw new Exception("there must be a desert tile for the game to work");
-            
+
+            // 1/14/2025: Robber starts off the board so the first move can be to a desert tile, so do NOT put the robber on a desert tile
+
         }
         private static void ShuffleList<T, TValue>(IList<T> list, Random random, Func<T, TValue> valueSelector, Action<T, TValue> valueSetter)
         {
