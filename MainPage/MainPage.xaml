@@ -149,7 +149,7 @@
                         GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" />
             </Viewbox>
             <!--The far right column that has the total resources for the game and a list of player information-->
-            <Viewbox Stretch="Uniform" Grid.Column="2"
+            <Viewbox Stretch="Uniform" Grid.Column="2" VerticalAlignment="Top"
                     HorizontalAlignment="Right">
                 <StackPanel Background="Transparent">
                     <c:TrackedResourcesCtrl
