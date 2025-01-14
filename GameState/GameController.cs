@@ -1050,6 +1050,9 @@ namespace Catan3.Controller
                 ConsumeEntitlement(gameModel, Entitlement.RolledSeven);
                 gameModel.GameState = GameState.WaitingForNext;
             }
+
+            // 1/14/2024:  if the robber is moved, reset the count of resources stolen
+            gameModel.Robber.ResourcesStolen = 0;
             return gameModel;
         }
         /// <summary>
