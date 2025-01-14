@@ -660,26 +660,42 @@ namespace Catan3.Controller
                     }
                 case GameState.Supplemental:
                     {
-                        var p = gameModel.Players.Find(p => p.ParticipatingInSupplemental);
-                        if (p is not null)
+                        // Find the index of the player who is set to roll after the supplemental phase
+                        int startIndex = gameModel.Players.FindIndex(p => p.Id == gameModel.NextPlayerToRollAfterSupplemental);
+                        // Initialize the player found as null
+                        PlayerModel? participatingPlayer = null;
+
+                        // Loop through the players starting from the next player after NextPlayerToRollAfterSupplemental and wrap around
+                        for (int i = 1; i < gameModel.Players.Count; i++)
                         {
-                            // we have at least one -- set the game state to supplemental
+                            int index = (startIndex + i) % gameModel.Players.Count;
+                            var player = gameModel.Players[index];
+                            if (player.ParticipatingInSupplemental)
+                            {
+                                participatingPlayer = player;
+                                break;
+                            }
+                        }
+
+                        if (participatingPlayer is not null)
+                        {
+                            // We have at least one -- set the game state to supplemental
                             gameModel.GameState = GameState.Supplemental;
 
-                            // change to that player
-                            gameModel.ChangePlayerTo(p.Id);
+                            // Change to that player
+                            gameModel.ChangePlayerTo(participatingPlayer.Id);
 
-                            // set the flag so we don't find them again
-                            p.ParticipatingInSupplemental = false;
+                            // Set the flag so we don't find them again
+                            participatingPlayer.ParticipatingInSupplemental = false;
                         }
                         else
                         {
-                            gameModel.GameState = GameState.WaitingForNext;
                             gameModel.ChangePlayerTo(gameModel.NextPlayerToRollAfterSupplemental);
                             UpdateStateOnNextPlayer(gameModel);
                         }
                         break;
                     }
+
                 case GameState.MustMoveRobber:
                     break;
                 case GameState.TooManyCards:

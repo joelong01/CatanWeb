@@ -69,11 +69,11 @@
             </StackPanel>
         </DataTemplate>
     </Page.Resources>
-    <SplitView x:Name="MySplitView" OpenPaneLength="75" CompactPaneLength="0"
+    <SplitView x:Name="MySplitView" OpenPaneLength="75" CompactPaneLength="0" Margin="0"
             PanePlacement="Left"
             IsPaneOpen="{x:Bind MainPageModel.ShowCommands, Mode=OneWay}"
             DisplayMode="CompactOverlay">
-        <Grid>
+        <Grid Background="Transparent">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="25*" />
                 <ColumnDefinition Width="60*" />
@@ -144,8 +144,8 @@
 
                 </StackPanel>
             </Viewbox>
-            <Viewbox Stretch="Uniform" Margin="2" Grid.Column="1">
-                <c:GameBoardCtrl
+            <Viewbox Stretch="Uniform" Margin="0,0,0,0"  Grid.Column="1">
+                <c:GameBoardCtrl Margin="0,0,20,0"
                         GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" />
             </Viewbox>
             <!--The far right column that has the total resources for the game and a list of player information-->
