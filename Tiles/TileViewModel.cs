@@ -63,19 +63,19 @@ namespace Catan3.Models
                 try
                 {
                     Targets.Clear();
-                    if (message.Owners.Count == 0)
+                    if (this.Tile.ResourceTileType != ResourceType.Desert) // 1/14/2025: Desert tiles never target
                     {
-                        Targets.Add(new TargetViewModel("Nobody. How Nice!", null));
-                        return;
-                    }
-                    foreach (var owner in message.Owners)
-                    {
-                        var target = new TargetViewModel(owner.Name, owner.Id);
-                        if (!Targets.Contains(target))
+                        foreach (var owner in message.Owners)
                         {
-                            Targets.Add(target);
+                            var target = new TargetViewModel(owner.Name, owner.Id);
+                            if (!Targets.Contains(target))
+                            {
+                                Targets.Add(target);
+                            }
                         }
                     }
+                    // 1/14/2025: Always add an option to not target somebody
+                    Targets.Add(new TargetViewModel("Nobody. Hatred Deffered.", null));
                 }
                 finally
                 {
