@@ -225,7 +225,8 @@ namespace Catan3.Models
             StatDictionary[StatName.SoldierPlayed].Highlighted = value.LargestArmy;
             StatDictionary[StatName.ResourcesLostToRobber].Count = value.ResourcesThisGame.Robber;
             StatDictionary[StatName.TimesTargetted].Count = value.TimesTargeted;
-            StatDictionary[StatName.TotalResources].Count = value.ResourcesThisGame.Count;
+            // 1/15/2025: do not count resources lost to robber in total resources
+            StatDictionary[StatName.TotalResources].Count = value.ResourcesThisGame.Count - value.ResourcesThisGame.Robber;
             StatDictionary[StatName.GoodRolls].Count = value.GoodRolls;
             StatDictionary[StatName.BadRolls].Count = value.BadRolls;
             StatDictionary[StatName.Stars].Count = value.Stars;
