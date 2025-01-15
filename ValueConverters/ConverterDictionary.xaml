@@ -17,4 +17,6 @@
     <converters:BrushToColorConverter x:Key="BrushToColorConverter" />
     <converters:GameStateToTemplateConverter
             x:Key="GameStateToTemplateConverter" />
+    <converters:GameStateToCollapsedConverter
+            x:Key="GameStateToCollapsedConverter" />
 </ResourceDictionary>

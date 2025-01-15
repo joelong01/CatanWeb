@@ -233,7 +233,7 @@ namespace Catan3.Converters
     }
 
     /// <summary>
-    /// Converts a GameState to Visibility.
+    /// Converts a GameState to Visibility, when the state matches, it returns Visibility.Visible   
     /// </summary>
     public class GameStateToVisibilityConverter : IValueConverter
     {
@@ -255,7 +255,29 @@ namespace Catan3.Converters
             throw new NotImplementedException();
         }
     }
+    /// <summary>
+    /// Converts a GameState to Visibility.  When the gamestate matches it returns Visibility.Collapsed
+    /// </summary>
+    public class GameStateToCollapsedConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is GameState currentState)
+            {
+                if (parameter is string param && Enum.TryParse(param, out GameState desiredState))
+                {
+                    return currentState == desiredState ? Visibility.Collapsed : Visibility.Visible;
+                }
+                throw new ArgumentException("Parameter must be a string that holds a valid GameState.", nameof(parameter));
+            }
+            throw new ArgumentException("Value must be of type GameState.", nameof(value));
+        }
 
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
 
 
     /// <summary>

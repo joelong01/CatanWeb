@@ -111,7 +111,9 @@
                     </Viewbox>
                     <!--Rolls-->
                     <Viewbox Stretch="Uniform" HorizontalAlignment="Left"
-                            Width="300" Margin="0,0,0,0">
+                            Visibility="{x:Bind MainPageModel.GameViewModel.GameModel.GameState, Mode=OneWay, 
+                                Converter={StaticResource GameStateToCollapsedConverter}, ConverterParameter=Supplemental}" 
+                    Width="300" Margin="0,0,0,0">
                         <GridView
                                 Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}"
                                 Foreground="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.ForegroundBrush, Mode=OneWay}"
