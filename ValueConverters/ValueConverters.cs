@@ -9,10 +9,14 @@ using Microsoft.UI.Xaml.Media;
 using Windows.UI;
 namespace Catan3.Converters
 {
+    /// <summary>
+    /// Converts GameState to the appropriate DataTemplate.
+    /// </summary>
     public class GameStateToTemplateConverter : IValueConverter
     {
         public DataTemplate? RollOrderTemplate { get; set; }
         public DataTemplate? PlayerStatsTemplate { get; set; }
+
         public object? Convert(object value, Type targetType, object parameter, string language)
         {
             if (value is GameState gameState)
@@ -25,11 +29,15 @@ namespace Catan3.Converters
             }
             return PlayerStatsTemplate;
         }
+
         public object? ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
         }
     }
+    /// <summary>
+    /// Converts a SolidColorBrush to a Color and vice versa.
+    /// </summary>
     public class BrushToColorConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -40,33 +48,34 @@ namespace Catan3.Converters
             }
             return Colors.Transparent; // Default to transparent if not applicable
         }
+
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             if (value is Color color)
             {
                 return new SolidColorBrush(color);
             }
-#pragma warning disable CS8603 // Possible null reference return.
-            return null;
-#pragma warning restore CS8603 // Possible null reference return.
+            return Colors.Transparent; // Default to transparent if not applicable
         }
     }
+    /// <summary>
+    /// Converts a double or string to a Thickness and vice versa.
+    /// </summary>
     public class DoubleToThickness : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            if (value is string d)
+            if (value is string d && double.TryParse(d, out double n))
             {
-                var n = Double.Parse(d);
                 return new Thickness(n);
-               
             }
             if (value is double val)
             {
                 return new Thickness(val);
             }
-            throw new ArgumentException($"{value} is not a double");
+            throw new ArgumentException($"{value} is not a double or a valid string representation of a double");
         }
+
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             if (value is Thickness thickness)
@@ -76,111 +85,104 @@ namespace Catan3.Converters
             throw new ArgumentException($"{value} is not a Thickness");
         }
     }
+    /// <summary>
+    /// Converts null values to a default value.
+    /// </summary>
     public class NullToDefaultValueConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            if (value == null)
-            {
-                // Return a default value or use the parameter to specify one
-                return parameter ?? 0; // Example default value
-            }
-            return value;
+            return value ?? parameter ?? 0; // Example default value
         }
+
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
         }
     }
+    /// <summary>
+    /// Converts a HexPosition to a SolidColorBrush.
+    /// </summary>
     public class BuildingPositionToFillConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            Color color= Colors.Red;
+            Color color = Colors.Red;
             if (value is HexPosition position)
             {
-                switch (position)
+                color = position switch
                 {
-                    case HexPosition.TopLeft:
-                        color = Colors.Red;
-                        break;
-                    case HexPosition.TopRight:
-                        color = Colors.Blue;
-                        break;
-                    case HexPosition.Right:
-                        color = Colors.Green;
-                        break;
-                    case HexPosition.BottomRight:
-                        color = Colors.Yellow;
-                        break;
-                    case HexPosition.BottomLeft:
-                        color = Colors.Purple;
-                        break;
-                    case HexPosition.Left:
-                        color = Colors.Black;
-                        break;
-                    case HexPosition.None:
-                        color = Colors.White;
-                        break;
-                    default:
-                        break;
-                }
+                    HexPosition.TopLeft => Colors.Red,
+                    HexPosition.TopRight => Colors.Blue,
+                    HexPosition.Right => Colors.Green,
+                    HexPosition.BottomRight => Colors.Yellow,
+                    HexPosition.BottomLeft => Colors.Purple,
+                    HexPosition.Left => Colors.Black,
+                    HexPosition.None => Colors.White,
+                    _ => Colors.Red,
+                };
             }
             return BrushCache.GetSolidColorBrush(color);
         }
+
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
         }
     }
+    /// <summary>
+    /// Converts a ResourceType to an ImageBrush.
+    /// </summary>
     public class ResourceTypeToImageBrush : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
             string key = $"ResourceTileType.{value}";
-            return ( ImageBrush )Application.Current.Resources[key];
+            return (ImageBrush)Application.Current.Resources[key];
         }
+
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
         }
     }
     /// <summary>
-    ///     used to hide the Number on the desert
+    /// Converts a number to Visibility, hiding the number 7.
     /// </summary>
     public class NumberToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            if (( int )value == 7) return Visibility.Collapsed;
+            if ((int)value == 7) return Visibility.Collapsed;
             return Visibility.Visible;
         }
+
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
         }
     }
     /// <summary>
-    ///    used to set the pips on 6 and 8 red, otherwise black.
+    /// Converts a number to a Brush, setting the pips on 6 and 8 to red, otherwise white.
     /// </summary>
     public class NumberToPipsForegroundConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            if (value is int intValue && ( intValue == 6 || intValue == 8 ))
+            if (value is int intValue && (intValue == 6 || intValue == 8))
             {
                 return StaticBrushes.RedBrush;
             }
             return StaticBrushes.WhiteBrush;
         }
+
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
         }
     }
     /// <summary>
-    ///     value is the number
-    ///     parameter is the pip index (0-5)
+    /// Converts a number to Visibility for pips, based on the pip index.
     /// </summary>
     public class NumberToPipsVisibility : IValueConverter
     {
@@ -189,37 +191,25 @@ namespace Catan3.Converters
             int n = (int)value;
             if (n == 7) return Visibility.Collapsed;
             int pipIndex = Int32.Parse((string)parameter);
-            switch (n)
+            return n switch
             {
-                case 2:
-                case 12:
-                    if (pipIndex < 1) return Visibility.Visible;
-                    break;
-                case 3:
-                case 11:
-                    if (pipIndex < 2) return Visibility.Visible;
-                    break;
-                case 4:
-                case 10:
-                    if (pipIndex < 3) return Visibility.Visible;
-                    break;
-                case 5:
-                case 9:
-                    if (pipIndex < 4) return Visibility.Visible;
-                    break;
-                case 6:
-                case 8:
-                    return Visibility.Visible;
-                default:
-                    throw new Exception("bad parameter in binding");
-            }
-            return Visibility.Collapsed;
+                2 or 12 => pipIndex < 1 ? Visibility.Visible : Visibility.Collapsed,
+                3 or 11 => pipIndex < 2 ? Visibility.Visible : Visibility.Collapsed,
+                4 or 10 => pipIndex < 3 ? Visibility.Visible : Visibility.Collapsed,
+                5 or 9 => pipIndex < 4 ? Visibility.Visible : Visibility.Collapsed,
+                6 or 8 => Visibility.Visible,
+                _ => throw new Exception("bad parameter in binding"),
+            };
         }
+
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
         }
     }
+    /// <summary>
+    /// Converts a boolean to Visibility.
+    /// </summary>
     public class BoolToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -227,34 +217,63 @@ namespace Catan3.Converters
             if (value is bool vis)
             {
                 bool toCheck = true; // Default to true, adjust based on your needs
-                if (parameter is string param)
+                if (parameter is string param && bool.TryParse(param, out bool parsedParam))
                 {
-                    // Convert the string parameter to bool
-                    toCheck = bool.Parse(param);
+                    toCheck = parsedParam;
                 }
-                return ( vis == toCheck ) ? Visibility.Visible : Visibility.Collapsed;
+                return (vis == toCheck) ? Visibility.Visible : Visibility.Collapsed;
             }
             return Visibility.Collapsed;
         }
+
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
         }
     }
-   
+
+    /// <summary>
+    /// Converts a GameState to Visibility.
+    /// </summary>
+    public class GameStateToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is GameState currentState)
+            {
+                if (parameter is string param && Enum.TryParse(param, out GameState desiredState))
+                {
+                    return currentState == desiredState ? Visibility.Visible : Visibility.Collapsed;
+                }
+                throw new ArgumentException("Parameter must be a string that holds a valid GameState.", nameof(parameter));
+            }
+            throw new ArgumentException("Value must be of type GameState.", nameof(value));
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+
+
+    /// <summary>
+    /// Scales a double value by a specified factor.
+    /// </summary>
     public class ScaleConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            if (value is double original && parameter is string param)
+            if (value is double original && parameter is string param && double.TryParse(param, out double scale))
             {
-                double scale = Double.Parse(param);
                 return original * scale;
             }
             if (parameter is null) return 1.0;
-            Debug.Assert(false, "Value should be a double");
+            Debug.Assert(false, "Value should be a double and parameter should be a valid double string");
             return 1.0;
         }
+
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
