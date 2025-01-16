@@ -207,12 +207,10 @@ namespace Catan.Services
     /// </summary>
     public class FileService : IPersistanceService
     {
-        private string? _location;
-
         /// <summary>
         /// Returns the name of the file that the user picked.
         /// </summary>
-        public string? Location => _location;
+        public string? Location { get; private set; }
 
         /// <summary>
         /// Opens a file selected by the user and reads its bytes asynchronously.
@@ -223,7 +221,7 @@ namespace Catan.Services
         {
             try
             {
-                _location = location;
+                Location = location;
                 using var fileStream = new FileStream(location, FileMode.Open, FileAccess.Read, FileShare.Read);
                 byte[] content = new byte[fileStream.Length];
                 await fileStream.ReadAsync(content.AsMemory(0, (int)fileStream.Length));
@@ -279,11 +277,23 @@ namespace Catan.Services
             const int maxRetries = 3;
             const int delayMilliseconds = 1000;
 
+            // Verify the path
+            if (!Path.IsPathRooted(location))
+            {
+                var documentsFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                location = Path.Combine(documentsFolder, location);
+            }
+
+            var directory = Path.GetDirectoryName(location);
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
             for (int attempt = 0; attempt < maxRetries; attempt++)
             {
                 try
                 {
-                    _location = location;
                     using var fileStream = new FileStream(location, FileMode.Create, FileAccess.Write, FileShare.None);
                     await fileStream.WriteAsync(data.AsMemory(0, data.Length));
                     await fileStream.FlushAsync(); // Ensure all data is written to the file
