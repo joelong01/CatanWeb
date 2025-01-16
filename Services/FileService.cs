@@ -278,13 +278,19 @@ namespace Catan.Services
             const int delayMilliseconds = 1000;
 
             // Verify the path
+            if (location.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            {
+                this.TraceMessage($"Error: Invalid file path '{location}'");
+                return false;
+            }
+
             if (!Path.IsPathRooted(location))
             {
                 var documentsFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 location = Path.Combine(documentsFolder, location);
             }
 
-            var directory = Path.GetDirectoryName(location);
+            var directory = Path.GetDirectoryName(location) ?? throw new Exception("this really shouldn't be null!");
             if (!Directory.Exists(directory))
             {
                 Directory.CreateDirectory(directory);

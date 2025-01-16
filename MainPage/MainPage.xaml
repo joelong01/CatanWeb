@@ -83,13 +83,13 @@
             <AppBarButton Icon="GlobalNavigationButton" Click="OnShowMenu"
                     HorizontalAlignment="Left" VerticalAlignment="Top" />
             <Viewbox Stretch="Uniform" HorizontalAlignment="Left"
-                    Grid.Column="0" Width="400" VerticalAlignment="Top"
-                    Margin="50,40, 0, 0">
+                    Grid.Column="0" VerticalAlignment="Top"
+                    Margin="50,40,20, 0">
                 <StackPanel>
                     <c:GameControls Margin="0,20,0,0"
                             ViewModel="{x:Bind MainPageModel, Mode=OneWay}"
                             HorizontalAlignment="Center" VerticalAlignment="Top" />
-                    <Viewbox Stretch="Uniform" HorizontalAlignment="Left"
+                    <Viewbox Stretch="Uniform" HorizontalAlignment="Center"
                             Margin="0,20,0,20">
                         <GridView HorizontalAlignment="Left"
                                 ItemsSource="{x:Bind MainPageModel.GameViewModel.PurchasableEntitlements, Mode=OneWay}">
@@ -111,10 +111,10 @@
                         </GridView>
                     </Viewbox>
                     <!--Rolls-->
-                    <Viewbox Stretch="Uniform" HorizontalAlignment="Left"
+                    <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch"
                             Visibility="{x:Bind MainPageModel.GameViewModel.GameModel.GameState, Mode=OneWay, 
                                 Converter={StaticResource GameStateToCollapsedConverter}, ConverterParameter=Supplemental}"
-                            Width="300" Margin="0,0,0,0">
+                             Margin="0,0,0,0">
                         <GridView
                                 Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}"
                                 Foreground="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.ForegroundBrush, Mode=OneWay}"
@@ -137,7 +137,7 @@
                         </GridView>
 
                     </Viewbox>
-                    <Viewbox Stretch="Uniform" Width="450">
+                    <Viewbox Stretch="Uniform" Visibility="{x:Bind MainPageModel.BIND_ShowBoardMeasurements(MainPageModel.GameViewModel.GameModel.GameState), Mode=OneWay}">
                         <Border BorderBrush="Black" BorderThickness="2"
                                 Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}">
                             <c:BoardMeasurementCtrl

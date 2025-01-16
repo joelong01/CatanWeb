@@ -7,6 +7,7 @@ using Catan3.Controller;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.UI.Xaml;
 namespace Catan3.Models
 {
     /// <summary>
@@ -128,6 +129,23 @@ namespace Catan3.Models
                     GameViewModel.SetPlayerOrder(GameViewModel.GameModel);
                 }
             }
+        }
+
+        public Visibility BIND_ShowBoardMeasurements(GameState currentState)
+        {
+            if (GameViewModel.GameModel is null) return Visibility.Collapsed;
+            return this.GameViewModel.GameModel.AllocationPhase() ? Visibility.Visible : Visibility.Collapsed;
+            //return currentState switch
+            //{
+            //    GameState.PickingBoard or
+            //    GameState.AllocateResourceReverse or
+            //    GameState.BeginResourceAllocation or
+            //    GameState.DoneResourceAllocation or
+            //    GameState.FinishedRollOrder or
+            //    GameState.WaitingForRollForOrder 
+            //      => Visibility.Visible,
+            //    _ => Visibility.Collapsed,
+            //};
         }
     }
 }
