@@ -36,7 +36,11 @@ namespace Catan3.Models
                 List<string> supplementalPlayers = [];
                 foreach (var player in Players)
                 {
-                    if (player.PartipatingInSupplemental) supplementalPlayers.Add(player.Id);
+                    if (player.PartipatingInSupplemental)
+                    {
+                      //  this.TraceMessage($"Adding {player} to suppl list");
+                        supplementalPlayers.Add(player.Id);
+                    }
                 }
                 Messenger.Send(new PlayersDoingSupplemental(supplementalPlayers));
                 

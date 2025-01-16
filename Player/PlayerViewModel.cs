@@ -54,6 +54,11 @@ namespace Catan3.Models
         [ObservableProperty]
         public partial bool PartipatingInSupplemental { get; set; } = false;
 
+        partial void OnPartipatingInSupplementalChanged(bool oldValue, bool newValue)
+        {
+          // this.TraceMessage($"Player {Name} is {(newValue ? "" : "not ")}participating in the supplemental phase.");
+        }
+
         /// <summary>
         /// Gets or sets a value indicating whether the player is the current player.
         /// </summary>

@@ -23,7 +23,8 @@
                 PlayerStatsTemplate="{StaticResource PlayerStatsTemplate}" />
         <DataTemplate x:Key="PlayerStatsTemplate"
                 x:DataType="models:PlayerViewModel">
-            <c:PlayerCtrl PlayerViewModel="{x:Bind Mode=OneWay}" />
+            <c:PlayerCtrl PlayerViewModel="{x:Bind Mode=OneWay}"
+                    GameState="{Binding ElementName=PAGE_MainPage, Path=MainPageModel.GameViewModel.GameModel.GameState, Mode=OneWay}" />
         </DataTemplate>
         <DataTemplate x:Key="RollOrderTemplate"
                 x:DataType="models:PlayerViewModel">
@@ -69,8 +70,8 @@
             </StackPanel>
         </DataTemplate>
     </Page.Resources>
-    <SplitView x:Name="MySplitView" OpenPaneLength="75" CompactPaneLength="0" Margin="0"
-            PanePlacement="Left"
+    <SplitView x:Name="MySplitView" OpenPaneLength="75" CompactPaneLength="0"
+            Margin="0" PanePlacement="Left"
             IsPaneOpen="{x:Bind MainPageModel.ShowCommands, Mode=OneWay}"
             DisplayMode="CompactOverlay">
         <Grid Background="Transparent">
@@ -112,8 +113,8 @@
                     <!--Rolls-->
                     <Viewbox Stretch="Uniform" HorizontalAlignment="Left"
                             Visibility="{x:Bind MainPageModel.GameViewModel.GameModel.GameState, Mode=OneWay, 
-                                Converter={StaticResource GameStateToCollapsedConverter}, ConverterParameter=Supplemental}" 
-                    Width="300" Margin="0,0,0,0">
+                                Converter={StaticResource GameStateToCollapsedConverter}, ConverterParameter=Supplemental}"
+                            Width="300" Margin="0,0,0,0">
                         <GridView
                                 Background="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.BackgroundBrush, Mode=OneWay}"
                                 Foreground="{x:Bind MainPageModel.GameViewModel.CurrentPlayer.PlayerColors.ForegroundBrush, Mode=OneWay}"
@@ -146,7 +147,7 @@
 
                 </StackPanel>
             </Viewbox>
-            <Viewbox Stretch="Uniform" Margin="0,0,0,0"  Grid.Column="1">
+            <Viewbox Stretch="Uniform" Margin="0,0,0,0" Grid.Column="1">
                 <c:GameBoardCtrl Margin="0,0,20,0"
                         GameViewModel="{x:Bind MainPageModel.GameViewModel, Mode=OneWay}" />
             </Viewbox>

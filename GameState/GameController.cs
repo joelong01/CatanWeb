@@ -221,7 +221,6 @@ namespace Catan3.Controller
             Messenger.Register<EndGame>(this, (recipient, message) =>
             {
 
-                MyPersistanceService?.CloseFile(this.Log.FilePath);
                 this.Log.IsActive = false;
                 Messenger.UnregisterAll(this);
             });
@@ -647,7 +646,7 @@ namespace Catan3.Controller
                             gameModel.ChangePlayerTo(participatingPlayer.Id);
 
                             // set the flag so we don't find them again
-                            participatingPlayer.ParticipatingInSupplemental = false;
+                            //participatingPlayer.ParticipatingInSupplemental = false;
                         }
                         else
                         {
@@ -677,7 +676,7 @@ namespace Catan3.Controller
                             }
                         }
 
-                        if (participatingPlayer is not null)
+                        if (participatingPlayer is not null && participatingPlayer.Id != gameModel.CurrentPlayerId)
                         {
                             // We have at least one -- set the game state to supplemental
                             gameModel.GameState = GameState.Supplemental;
@@ -686,7 +685,7 @@ namespace Catan3.Controller
                             gameModel.ChangePlayerTo(participatingPlayer.Id);
 
                             // Set the flag so we don't find them again
-                            participatingPlayer.ParticipatingInSupplemental = false;
+                           // participatingPlayer.ParticipatingInSupplemental = false;
                         }
                         else
                         {

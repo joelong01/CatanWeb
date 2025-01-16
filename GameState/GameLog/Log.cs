@@ -465,7 +465,6 @@ namespace Catan3.Utility
         {
             try
             {
-                PersistService?.CloseFile(this.FilePath);
                 this.FilePath = filePath;
                 await SaveAsync();
             }
