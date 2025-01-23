@@ -145,7 +145,8 @@ namespace Catan3.Models
             var buildings2 = gameModel.AdjacentBuildings(road2);
             var result = buildings1.Intersect(buildings2).ToList();
             Debug.Assert(result.Count <= 1);
-            return result[0];
+            if (result.Count == 0) return null;
+            return result is null ? null : result[0];
         }
         public static bool BuildableLocation(this GameModel gameModel, BuildingKey buildingKey)
         {
