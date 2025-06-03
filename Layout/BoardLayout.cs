@@ -28,6 +28,17 @@ namespace Catan3.Models
     /// </summary>
     public partial class BoardLayout
     {
+        // --- Hex Layout Constants ---
+        /// <summary>
+        /// The vertical adjustment factor for centering a regular hexagon (flat-topped) is sqrt(3)/2.
+        /// This is the ratio of the height of an equilateral triangle to its side.
+        /// </summary>
+        private static readonly double HEX_VERTICAL_ADJUSTMENT = Math.Sqrt(3) / 2.0;
+        /// <summary>
+        /// The horizontal adjustment factor for centering a regular hexagon (flat-topped) is 1.0.
+        /// </summary>
+        private static readonly double HEX_HORIZONTAL_ADJUSTMENT = 1.0;
+
         private BoardLayout() { }
         //
         //  this is used in the DependencyProperties so that there is a reasonable non-null default
@@ -63,7 +74,7 @@ namespace Catan3.Models
             {
                 // Adjust the inner hex size to exclude the stroke thickness from the hex itself.
                 // The outer hex size is reduced by the TileGap and the 1/2 stroke thickness 
-                double adjustedSize = OuterHexSize - TileGap - InnerHexStrokeThickness * .5;
+                double adjustedSize = OuterHexSize - TileGap - InnerHexStrokeThickness * 0.5;
                 return adjustedSize;
             }
         }
@@ -81,8 +92,8 @@ namespace Catan3.Models
                 // Calculate the horizontal difference after accounting for the stroke
                 double sizeDiff = (OuterHexSize - InnerHexSize);
                 // The inner hexagon needs to be positioned such that the gap is equal on all sides.
-                double verticalAdjustment = (sizeDiff ) * .86;
-                double horizontalAdjustment = (sizeDiff )  ;
+                double verticalAdjustment = sizeDiff * HEX_VERTICAL_ADJUSTMENT;
+                double horizontalAdjustment = sizeDiff * HEX_HORIZONTAL_ADJUSTMENT;
                 return HexGeometry.FlatTopHexPoints(InnerHexSize, horizontalAdjustment, verticalAdjustment);
             }
         }

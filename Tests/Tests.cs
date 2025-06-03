@@ -10,6 +10,9 @@ using Catan3.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 using Windows.Storage;
 
 
@@ -164,6 +167,8 @@ namespace Catan3.Tests
 
         }
 
+        
+
 
         public async Task TestPlayerDatabaseSerialization()
         {
@@ -195,6 +200,127 @@ namespace Catan3.Tests
 
 
             this.TraceMessage("passed");
+        }
+    }
+
+    [TestClass]
+    public class HexGeometryTests
+    {
+        [TestMethod]
+        public void FlatTopHexPoints_ReturnsSixPoints()
+        {
+            double size = 10.0;
+            var points = HexGeometry.FlatTopHexPoints(size, 0, 0);
+            Assert.AreEqual(6, points.Count, "FlatTopHexPoints should return 6 points.");
+        }
+
+        [TestMethod]
+        public void FlatTopHexPoints_KnownPositions()
+        {
+            double size = 10.0;
+            var points = HexGeometry.FlatTopHexPoints(size, 0, 0);
+            double expectedX = 2 * size;
+            double expectedY = Math.Round(Math.Sqrt(3) * size / 2, 2);
+            Assert.AreEqual(expectedX, points[0].X, 0.01, "First point X should be at rightmost.");
+            Assert.AreEqual(expectedY, points[0].Y, 0.01, "First point Y should be at vertical center.");
+        }
+
+        [TestMethod]
+        public void FlatTopHexPoints_CacheWorks()
+        {
+            double size = 12.0;
+            int initialHit = HexGeometry.CacheHit;
+            int initialMiss = HexGeometry.CacheMiss;
+            var points1 = HexGeometry.FlatTopHexPoints(size, 0, 0);
+            var points2 = HexGeometry.FlatTopHexPoints(size, 0, 0);
+            Assert.IsTrue(HexGeometry.CacheHit > initialHit, "CacheHit should increase on repeated call.");
+            Assert.IsTrue(HexGeometry.CacheMiss > initialMiss, "CacheMiss should increase on first call.");
+        }
+
+        [TestMethod]
+        public void PointyTopHexPoints_ReturnsSixPoints()
+        {
+            double size = 10.0;
+            var points = HexGeometry.PointyTopHexPoints(size, 0, 0);
+            Assert.AreEqual(6, points.Count, "PointyTopHexPoints should return 6 points.");
+        }
+
+        [TestMethod]
+        public void PointyTopHexPoints_KnownPositions()
+        {
+            double size = 10.0;
+            var points = HexGeometry.PointyTopHexPoints(size, 0, 0);
+            double expectedX = Math.Round(size * Math.Cos(-Math.PI / 6), 2);
+            double expectedY = Math.Round(size * Math.Sin(-Math.PI / 6), 2);
+            Assert.AreEqual(expectedX, points[0].X, 0.01, "First point X should match expected.");
+            Assert.AreEqual(expectedY, points[0].Y, 0.01, "First point Y should match expected.");
+        }
+
+        [TestMethod]
+        public void PointyTopHexPoints_CacheWorks()
+        {
+            double size = 15.0;
+            int initialHit = HexGeometry.CacheHit;
+            int initialMiss = HexGeometry.CacheMiss;
+            var points1 = HexGeometry.PointyTopHexPoints(size, 0, 0);
+            var points2 = HexGeometry.PointyTopHexPoints(size, 0, 0);
+            Assert.IsTrue(HexGeometry.CacheHit > initialHit, "CacheHit should increase on repeated call.");
+            Assert.IsTrue(HexGeometry.CacheMiss > initialMiss, "CacheMiss should increase on first call.");
+        }
+
+        [TestMethod]
+        public void Height_ReturnsCorrectValue()
+        {
+            double size = 7.0;
+            double expected = Math.Round(size * Math.Sqrt(3), 2);
+            Assert.AreEqual(expected, HexGeometry.Height(size), 0.001, "Height should be size * sqrt(3).");
+        }
+
+        [TestMethod]
+        public void Width_ReturnsCorrectValue()
+        {
+            double size = 7.0;
+            double expected = Math.Round(2 * size, 2);
+            Assert.AreEqual(expected, HexGeometry.Width(size), 0.001, "Width should be 2 * size.");
+        }
+
+        [TestMethod]
+        public void BisectingPoint_ReturnsCorrectMidpoint()
+        {
+            double size = 8.0;
+            var point = HexGeometry.BisectingPoint(size);
+            double expectedX = Math.Round(Math.Sqrt(3) / 2.0 * size, 2);
+            double expectedY = Math.Round(size / 2.0, 2);
+            Assert.AreEqual(expectedX, point.X, 0.001, "BisectingPoint X should match.");
+            Assert.AreEqual(expectedY, point.Y, 0.001, "BisectingPoint Y should match.");
+        }
+
+        [TestMethod]
+        public void SizeFromHeight_ReturnsCorrectSize()
+        {
+            double height = 17.32; // 10 * sqrt(3)
+            double expected = Math.Round(height / Math.Sqrt(3), 2);
+            Assert.AreEqual(expected, HexGeometry.SizeFromHeight(height), 0.001, "SizeFromHeight should be height / sqrt(3).");
+        }
+
+        [TestMethod]
+        public void HexSubtract_SubtractsCoordinatesCorrectly()
+        {
+            var a = new HexCoordinates(3, 2, -5);
+            var b = new HexCoordinates(1, 1, -2);
+            var result = HexGeometry.HexSubtract(a, b);
+            Assert.AreEqual(2, result.Q);
+            Assert.AreEqual(1, result.R);
+            Assert.AreEqual(-3, result.S);
+        }
+
+        [TestMethod]
+        public void Distance_ReturnsCorrectHexDistance()
+        {
+            var a = new HexCoordinates(0, 0, 0);
+            var b = new HexCoordinates(2, -1, -1);
+            double expected = (Math.Abs(2) + Math.Abs(-1) + Math.Abs(-1)) / 2.0;
+            Assert.AreEqual(expected, HexGeometry.Distance(a, b), 0.001, "Distance should be correct for cube coordinates.");
         }
     }
 }
