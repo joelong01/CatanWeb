@@ -645,8 +645,7 @@ namespace Catan3.Controller
                             // change to that player
                             gameModel.ChangePlayerTo(participatingPlayer.Id);
 
-                            // set the flag so we don't find them again
-                            //participatingPlayer.ParticipatingInSupplemental = false;
+                         
                         }
                         else
                         {
@@ -660,14 +659,14 @@ namespace Catan3.Controller
                 case GameState.Supplemental:
                     {
                         // Find the index of the player who is set to roll after the supplemental phase
-                        int startIndex = gameModel.Players.FindIndex(p => p.Id == gameModel.NextPlayerToRollAfterSupplemental);
+                        int startIndex = gameModel.Players.FindIndex(p => p.Id == gameModel.CurrentPlayerId);
                         // Initialize the player found as null
                         PlayerModel? participatingPlayer = null;
 
                         // Loop through the players starting from the next player after NextPlayerToRollAfterSupplemental and wrap around
-                        for (int i = 1; i < gameModel.Players.Count; i++)
+                        for (int i = startIndex + 1 ; i < gameModel.Players.Count; i++)
                         {
-                            int index = (startIndex + i) % gameModel.Players.Count;
+                            int index = i % gameModel.Players.Count;
                             var player = gameModel.Players[index];
                             if (player.ParticipatingInSupplemental)
                             {
