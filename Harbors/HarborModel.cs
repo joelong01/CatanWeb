@@ -1,7 +1,11 @@
-﻿
-using System;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace Catan3.Models
 {
     /// <summary>
@@ -59,6 +63,11 @@ namespace Catan3.Models
         {
         }
 
+        public override string ToString()
+        {
+            return $"HarborModel: {HexCoordinates} {HarborType} {Side} Owner={Owner?.Id ?? "None"}";
+        }
+
         /// <summary>
         /// Compares the current HarborModel with another HarborModel.
         /// </summary>
@@ -76,6 +85,95 @@ namespace Catan3.Models
             // If HexCoordinates are the same, then compare by HexPosition
             // Since HexPosition is an enum, we can directly compare their underlying integer values
             return Side.CompareTo(other.Side);
+        }
+
+        /// <summary>
+        /// Maps each HexSide to the two adjacent HexPositions (vertices).
+        /// </summary>
+        private static readonly Dictionary<HexSide, (HexPosition, HexPosition)> SideToVertices = new()
+        {
+            { HexSide.Top, (HexPosition.TopLeft, HexPosition.TopRight) },
+            { HexSide.TopRight, (HexPosition.TopRight, HexPosition.Right) },
+            { HexSide.BottomRight, (HexPosition.Right, HexPosition.BottomRight) },
+            { HexSide.Bottom, (HexPosition.BottomRight, HexPosition.BottomLeft) },
+            { HexSide.BottomLeft, (HexPosition.BottomLeft, HexPosition.Left) },
+            { HexSide.TopLeft, (HexPosition.Left, HexPosition.TopLeft) },
+        };
+
+        /// <summary>
+        /// Maps each HexPosition (vertex) to the two adjacent HexSides.
+        /// </summary>
+        private static readonly Dictionary<HexPosition, List<HexSide>> VertexToSides = new()
+        {
+            { HexPosition.TopLeft,    new() { HexSide.Top, HexSide.TopLeft } },
+            { HexPosition.TopRight,   new() { HexSide.Top, HexSide.TopRight } },
+            { HexPosition.Right,      new() { HexSide.TopRight, HexSide.BottomRight } },
+            { HexPosition.BottomRight,new() { HexSide.BottomRight, HexSide.Bottom } },
+            { HexPosition.BottomLeft, new() { HexSide.Bottom, HexSide.BottomLeft } },
+            { HexPosition.Left,       new() { HexSide.BottomLeft, HexSide.TopLeft } },
+        };
+
+        /// <summary>
+        /// Determines if this harbor is adjacent to the given building.
+        /// </summary>
+        public bool IsAdjacentToBuilding(BuildingKey buildingKey)
+        {
+            if (!HexCoordinates.Equals(buildingKey.HexCoordinates))
+                return false;
+
+            if (!SideToVertices.TryGetValue(Side, out var vertices))
+                return false;
+
+            return buildingKey.Position == vertices.Item1 || buildingKey.Position == vertices.Item2;
+        }
+
+        /// <summary>
+        /// Sets the owner of any harbor in the collection that is adjacent to the given building.
+        /// </summary>
+        public static bool SetOwnerIfAdjacent(IEnumerable<HarborModel> harbors, BuildingKey buildingKey, PlayerModel owner)
+        {
+            foreach (var (hex, side) in GetAdjacentHarborLocations(buildingKey))
+            {
+                foreach (var harbor in harbors)
+                {
+                    if (harbor.HexCoordinates.Equals(hex) && harbor.Side == side)
+                    {
+                        harbor.TraceMessage($"Setting Harbor ownership for {harbor} to {owner} because of buildingKey {buildingKey}");
+                        harbor.Owner = owner;
+                        return true;
+                    }
+                }
+            }
+            harbors.TraceMessage($"{buildingKey} has no harbor");
+            return false;
+        }
+
+        /// <summary>
+        /// Gets all (hex, side) pairs for harbors adjacent to the given building key, including all aliases.
+        /// </summary>
+        public static IEnumerable<(HexCoordinates hex, HexSide side)> GetAdjacentHarborLocations(BuildingKey buildingKey)
+        {
+            // Helper to yield all (hex, side) pairs for a given (hex, vertex)
+            static IEnumerable<(HexCoordinates, HexSide)> HarborLocationsForVertex(HexCoordinates hex, HexPosition pos)
+            {
+                if (VertexToSides.TryGetValue(pos, out var sides))
+                {
+                    foreach (var side in sides)
+                        yield return (hex, side);
+                }
+            }
+
+            // Include the original key
+            foreach (var loc in HarborLocationsForVertex(buildingKey.HexCoordinates, buildingKey.Position))
+                yield return loc;
+
+            // Include all aliases
+            foreach (var (aliasPos, dir) in buildingKey.Aliases())
+            {
+                var aliasHex = buildingKey.HexCoordinates.GetAdjacentTile(dir);
+                foreach (var loc in HarborLocationsForVertex(aliasHex, aliasPos))
+                    yield return loc;
+            }
         }
     }
 }

@@ -891,6 +891,7 @@ namespace Catan3.Controller
                     building.BuildingState = BuildingState.Settlement;
                     building.OwnerId = gameModel.CurrentPlayerId;
                     ConsumeEntitlement(gameModel, Entitlement.Settlement);
+                    HarborModel.SetOwnerIfAdjacent(gameModel.Harbors, building.BuildingKey, gameModel.Players.First(p => p.Id == building.OwnerId));
                     break;
                 case BuildingState.Settlement:
                     ThrowIfNoEntitlement(gameModel, [Entitlement.City]);
@@ -930,6 +931,8 @@ namespace Catan3.Controller
                     currentPlayerModel.ResourcesThisTurn.Add(resources);
                 }
             }
+
+           
 
             return gameModel;
         }
