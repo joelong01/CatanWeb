@@ -24,8 +24,17 @@
                     <Grid Background="Black">
                         <TextBlock Text="{x:Bind ViewModel.Count, Mode=OneWay}"
                                 TextLineBounds="Tight" Visibility="Visible" />
+
                     </Grid>
                 </Viewbox>
+                <Grid Background="Black" Width="30" Height="30" CornerRadius="15" Visibility="{x:Bind ViewModel.HarborVisibility, Mode=OneWay}"
+                        HorizontalAlignment="Right" VerticalAlignment="Top">
+                    <Viewbox Width="20" Height="20">
+                        <TextBlock Text="" FontSize="32" FontFamily="/Assets/Fonts/Catan.ttf#Catan" />
+                    </Viewbox>
+
+                </Grid>
+
             </Grid>
         </u:FlipperCtrl.Front>
     </u:FlipperCtrl>

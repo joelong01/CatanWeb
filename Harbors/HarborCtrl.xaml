@@ -35,7 +35,7 @@
                     <Ellipse
                             Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
                             Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
-                            Fill="{x:Bind Bind_HarborImage(ViewModel.Harbor.HarborType), Mode=OneWay}">
+                            Fill="{x:Bind Bind_HarborImage(ViewModel.Harbor.HarborKey.HarborType), Mode=OneWay}">
                         <Ellipse.RenderTransform>
                             <CompositeTransform ScaleX="1.5" ScaleY="1.5" CenterX="0.5" CenterY="0.5" TranslateX="-10" TranslateY="-10" />
                         </Ellipse.RenderTransform>

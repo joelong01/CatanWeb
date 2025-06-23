@@ -224,7 +224,7 @@ namespace Catan.Services
                 Location = location;
                 using var fileStream = new FileStream(location, FileMode.Open, FileAccess.Read, FileShare.Read);
                 byte[] content = new byte[fileStream.Length];
-                await fileStream.ReadAsync(content.AsMemory(0, (int)fileStream.Length));
+                await fileStream.ReadExactlyAsync(content.AsMemory(0, (int)fileStream.Length));
                 return content;
             }
             catch (Exception ex)

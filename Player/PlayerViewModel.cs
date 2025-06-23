@@ -7,10 +7,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Windows.Devices.Bluetooth.Advertisement;
 using Windows.UI;
+
 namespace Catan3.Models
 {
     /// <summary>
@@ -220,6 +221,26 @@ namespace Catan3.Models
         partial void OnPlayerChanged(PlayerModel value)
         {
             ResourcesThisTurn.ResourceModel = value.ResourcesThisTurn;
+
+            foreach (var rcvm in ResourcesThisTurn.ResourceCounters)
+            {
+                rcvm.HarborVisibility = Visibility.Collapsed;
+            }
+
+            foreach (var harborKey in value.OwnedHarbors)
+            {
+                var resource = harborKey.HarborType.ToResourceType();
+                if (resource != ResourceType.None)
+                {
+                    var rcvm = ResourcesThisTurn.ResourceCounters.FirstOrDefault(r => r.Resource == resource);
+                    if (rcvm != null)
+                    {
+                        this.TraceMessage($"Setting {resource} harbor to visible for {value}");
+                        rcvm.HarborVisibility = Visibility.Visible;
+                    }
+                }
+            }
+
             ResourcesThisGame.ResourceModel = value.ResourcesThisGame;
             StatDictionary[StatName.Score].Count = value.Score;
             StatDictionary[StatName.Score].Highlighted = value.HighestScore;

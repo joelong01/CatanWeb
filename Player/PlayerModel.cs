@@ -132,6 +132,12 @@ namespace Catan3.Models
         public partial ObservableCollection<Entitlement> SpentEntitlementsThisTurn { get; set; } = [];
 
         /// <summary>
+        /// Gets or sets the collection of Harbors owned by the player.
+        /// </summary>
+        [ObservableProperty]
+        public partial ObservableCollection<HarborKey> OwnedHarbors { get; set; } = [];
+
+        /// <summary>
         /// Gets the default instance of the PlayerModel class.
         /// </summary>
         public static PlayerModel Default { get; } = new PlayerModel("Nameless-001");

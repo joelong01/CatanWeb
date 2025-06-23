@@ -92,8 +92,8 @@ namespace Catan3.Models
                     tile => tile.Number,
                     (tile, number) => tile.Number = number);
                 ShuffleList<HarborModel, HarborType>(game.Harbors, random,
-                   harbor => harbor.HarborType,
-                   (harbor, type) => harbor.HarborType = type);
+                   harbor => harbor.HarborKey.HarborType,
+                   (harbor, type) => harbor.HarborKey.HarborType = type);
                 // Correct the placement of the number 7 on desert tiles
                 EnsureDesertSeven(game);
             } while (!ValidateGame(game));

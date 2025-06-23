@@ -290,14 +290,14 @@ namespace Catan3.Controller
             ResourceCounterViewModel min = new(50, ResourceType.None);
             ResourceCounterViewModel max = new(0, ResourceType.None);
 
-            var resourceToCountDictionary =   gameModel.Tiles.GroupBy(tile => tile.ResourceTileType)
+            var resourceToCountDictionary = gameModel.Tiles.GroupBy(tile => tile.ResourceTileType)
             .ToDictionary(group => group.Key, group => group.Sum(tile => tile.Stars));
 
             resourceToCountDictionary.Remove(ResourceType.Desert);
 
             var minResourceType = resourceToCountDictionary.Aggregate((l, r) => l.Value < r.Value ? l : r).Key;
             var maxResourceType = resourceToCountDictionary.Aggregate((l, r) => l.Value > r.Value ? l : r).Key;
-            var minTile =  gameModel.Tiles.Where(tileModel => tileModel.ResourceTileType == minResourceType)
+            var minTile = gameModel.Tiles.Where(tileModel => tileModel.ResourceTileType == minResourceType)
                                                             .OrderBy(t => t.Stars)
                                                             .First();
 
@@ -334,15 +334,15 @@ namespace Catan3.Controller
                     if (gameModel.CurrentPlayer().UnspentEntitlements.Contains(entitlement)) return false;
                     return true;
                 case Entitlement.City:
-                    int unspentCities = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
+                    int unspentCities = gameModel.CurrentPlayer().UnspentEntitlements.Count(e => e == entitlement);
                     if (unspentCities + gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement) >= gameModel.ResourceRules.MaxCities) return false;
                     return true;
                 case Entitlement.Settlement:
-                    int unspentSettlement = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
+                    int unspentSettlement = gameModel.CurrentPlayer().UnspentEntitlements.Count(e => e == entitlement);
                     if (unspentSettlement + gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement) >= gameModel.ResourceRules.MaxSettlements) return false;
                     return true;
                 case Entitlement.Road:
-                    int unspentRoads = gameModel.CurrentPlayer().UnspentEntitlements.Count( e => e == entitlement );
+                    int unspentRoads = gameModel.CurrentPlayer().UnspentEntitlements.Count(e => e == entitlement);
                     int spentroads = gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement);
                     if (unspentRoads + spentroads >= gameModel.ResourceRules.MaxRoads) return false;
                     return true;
@@ -367,7 +367,7 @@ namespace Catan3.Controller
             var decompressedJson = SerializationHelper.Decompress(compressedBytes);
             // Deserialize the JSON back into your Log or relevant data structure
             var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) ?? throw new GameException("Error: Failed to load the game data.");
-            Log<string> log =  Log<string>.FromSerializableLog(savedLog, MyPersistanceService, filePath);
+            Log<string> log = Log<string>.FromSerializableLog(savedLog, MyPersistanceService, filePath);
             this.Log = log;
 
             return Log.CurrentState();
@@ -440,11 +440,17 @@ namespace Catan3.Controller
                     }
                 }
             }
+
+            //
+            // set the property that shows the harbor when they have 2:1 harbro and they recieved that resource
+            // this turn
+
+
             // now fix up the underlying resource models in the same way as if we loading it from disk or got it back from a service
             // -- e.g. create new data objects and stick the full object into the model
             foreach (var player in gameModel.Players)
             {
-                var newResources =  playerResources[player.Id];
+                var newResources = playerResources[player.Id];
                 player.ResourcesThisTurn = newResources;
                 player.ResourcesThisGame.Add(newResources);
                 gameModel.GameResourcesModel.Add(newResources);
@@ -645,7 +651,7 @@ namespace Catan3.Controller
                             // change to that player
                             gameModel.ChangePlayerTo(participatingPlayer.Id);
 
-                         
+
                         }
                         else
                         {
@@ -664,7 +670,7 @@ namespace Catan3.Controller
                         PlayerModel? participatingPlayer = null;
 
                         // Loop through the players starting from the next player after NextPlayerToRollAfterSupplemental and wrap around
-                        for (int i = startIndex + 1 ; i < gameModel.Players.Count; i++)
+                        for (int i = startIndex + 1; i < gameModel.Players.Count; i++)
                         {
                             int index = i % gameModel.Players.Count;
                             var player = gameModel.Players[index];
@@ -684,7 +690,7 @@ namespace Catan3.Controller
                             gameModel.ChangePlayerTo(participatingPlayer.Id);
 
                             // Set the flag so we don't find them again
-                           // participatingPlayer.ParticipatingInSupplemental = false;
+                            // participatingPlayer.ParticipatingInSupplemental = false;
                         }
                         else
                         {
@@ -830,8 +836,8 @@ namespace Catan3.Controller
             var currentPlayer = gameModel.CurrentPlayer();
             foreach (var epm in gameModel.EntitlementPurchaseModel)
             {
-                var spent = currentPlayer.SpentEntitlementsThisGame.Count(e => e == epm.Entitlement );
-                var unspent = currentPlayer.UnspentEntitlements.Count( e => e == epm.Entitlement );
+                var spent = currentPlayer.SpentEntitlementsThisGame.Count(e => e == epm.Entitlement);
+                var unspent = currentPlayer.UnspentEntitlements.Count(e => e == epm.Entitlement);
                 if (spent + unspent == gameModel.ResourceRules.MaxEntitlementCount(epm.Entitlement))
                 {
                     epm.Enabled = false;
@@ -841,7 +847,7 @@ namespace Catan3.Controller
         private void SetPlaySoldierAccess(GameModel gameModel)
         {
 
-            var moveRobber = gameModel.PurchaseModel(Entitlement.Soldier );
+            var moveRobber = gameModel.PurchaseModel(Entitlement.Soldier);
             if (gameModel.GameState != GameState.WaitingForNext && gameModel.GameState != GameState.WaitingForRoll)
             {
                 moveRobber.Enabled = false;
@@ -891,7 +897,18 @@ namespace Catan3.Controller
                     building.BuildingState = BuildingState.Settlement;
                     building.OwnerId = gameModel.CurrentPlayerId;
                     ConsumeEntitlement(gameModel, Entitlement.Settlement);
-                    HarborModel.SetOwnerIfAdjacent(gameModel.Harbors, building.BuildingKey, gameModel.Players.First(p => p.Id == building.OwnerId));
+                    HarborModel? adjacentHarbor = gameModel.FindAdjacentHarbor(building.BuildingKey);
+                    if (adjacentHarbor is not null)
+                    {
+                        var currentPlayer = gameModel.CurrentPlayer();
+                        // If the building is adjacent to a harbor, set the owner of the harbor to the current player.
+                        adjacentHarbor.Owner = currentPlayer;
+
+                        // set the PlayerModel to have owned this harbor
+
+                        currentPlayer.OwnedHarbors.Add(adjacentHarbor.HarborKey);
+                        this.TraceMessage($"{adjacentHarbor} now owned by {currentPlayer}");
+                    }
                     break;
                 case BuildingState.Settlement:
                     ThrowIfNoEntitlement(gameModel, [Entitlement.City]);
@@ -931,8 +948,6 @@ namespace Catan3.Controller
                     currentPlayerModel.ResourcesThisTurn.Add(resources);
                 }
             }
-
-           
 
             return gameModel;
         }
@@ -974,7 +989,7 @@ namespace Catan3.Controller
                 player.HighestScore = false;
                 int citiesPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.City);
                 int settlementsPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.Settlement);
-                int knightsPlayed = player.SpentEntitlementsThisGame.Count(e=> e== Entitlement.Soldier);
+                int knightsPlayed = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier);
                 if (maxSoldierCount > 2)
                 {
                     //  largest army rules:
@@ -1201,14 +1216,14 @@ namespace Catan3.Controller
 
         private GameModel? Undo()
         {
-            GameModel result =  ( ( ILog )Log ).Undo() ?? throw new GameException("Undo cannot be done");
+            GameModel result = ((ILog)Log).Undo() ?? throw new GameException("Undo cannot be done");
             SetActionFlags(result);
             result.ActionFlags.RedoEnabled = true;
             return result;
         }
         private GameModel? Redo()
         {
-            GameModel result =  ( ( ILog )Log ).Redo() ?? throw new GameException("Redo cannot be done");
+            GameModel result = ((ILog)Log).Redo() ?? throw new GameException("Redo cannot be done");
             SetActionFlags(result);
             return result;
         }
@@ -1292,7 +1307,7 @@ namespace Catan3.Controller
             {
                 for (int i = 0; i < buildableRoads.Count; i++)
                 {
-                    var road=buildableRoads[i];
+                    var road = buildableRoads[i];
                     road.RoadState = RoadState.Buildable;
                     road.BuildIndex = i + 1;
                 }
@@ -1391,7 +1406,7 @@ namespace Catan3.Controller
         private static bool AllowPurchase(GameModel gameModel, Entitlement entitlement)
         {
             var currentPlayer = gameModel.CurrentPlayer();
-            int total = currentPlayer.SpentEntitlementsThisGame.Count(e => e==entitlement) +
+            int total = currentPlayer.SpentEntitlementsThisGame.Count(e => e == entitlement) +
                         currentPlayer.UnspentEntitlements.Count(e => e == entitlement);
             return entitlement switch
             {
@@ -1466,7 +1481,7 @@ namespace Catan3.Controller
             int max = 1;
             counted.Add(start); // it is counted in the "max=1" above
             RoadModel next = start;
-            List<RoadModel> ownedAdjacentNotCounted = gameModel.OwnedAdjacentRoadsNotCounted(next, counted,  blockedFork, out bool adjacentFork);
+            List<RoadModel> ownedAdjacentNotCounted = gameModel.OwnedAdjacentRoadsNotCounted(next, counted, blockedFork, out bool adjacentFork);
             do
             {
                 switch (ownedAdjacentNotCounted.Count)

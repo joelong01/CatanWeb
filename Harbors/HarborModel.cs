@@ -8,15 +8,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Models
 {
-    /// <summary>
-    /// Represents a harbor model in the game, including its coordinates, type, side, and ownership information.
-    /// Implements IComparable for sorting and comparison purposes.
-    /// </summary>
-    public partial class HarborModel : ObservableObject, IComparable<HarborModel>
+
+    public partial class HarborKey : ObservableObject, IComparable<HarborKey>
     {
-        /// <summary>
-        /// Gets or sets the coordinates of the harbor.
-        /// </summary>
         [ObservableProperty]
         public partial HexCoordinates HexCoordinates { get; set; } = new(0, 0, 0);
 
@@ -33,23 +27,12 @@ namespace Catan3.Models
         public partial HexSide Side { get; set; } = HexSide.Bottom;
 
         /// <summary>
-        /// Gets or sets the owner of the harbor.
-        /// </summary>
-        [ObservableProperty]
-        public partial PlayerModel? Owner { get; set; } = null;
-
-        /// <summary>
-        /// Gets the default instance of the HarborModel class.
-        /// </summary>
-        public static HarborModel Default => new();
-
-        /// <summary>
-        /// Initializes a new instance of the HarborModel class with the specified coordinates, type, and side.
+        /// Initializes a new instance of the HarborKey class with the specified coordinates, type, and side.
         /// </summary>
         /// <param name="tilekey">The coordinates of the harbor.</param>
         /// <param name="harbortype">The type of the harbor.</param>
         /// <param name="position">The side of the hexagon where the harbor is located.</param>
-        public HarborModel(HexCoordinates tilekey, HarborType harbortype, HexSide position)
+        public HarborKey(HexCoordinates tilekey, HarborType harbortype, HexSide position)
         {
             this.HexCoordinates = tilekey;
             this.HarborType = harbortype;
@@ -57,23 +40,23 @@ namespace Catan3.Models
         }
 
         /// <summary>
-        /// Initializes a new instance of the HarborModel class with default values.
+        /// Initializes a new instance of the HarborKey class with default values.
         /// </summary>
-        public HarborModel()
+        public HarborKey()
         {
         }
 
         public override string ToString()
         {
-            return $"HarborModel: {HexCoordinates} {HarborType} {Side} Owner={Owner?.Id ?? "None"}";
+            return $"HarborKey: {HexCoordinates} {HarborType} {Side}";
         }
 
         /// <summary>
-        /// Compares the current HarborModel with another HarborModel.
+        /// Compares the current HarborKey with another HarborKey.
         /// </summary>
-        /// <param name="other">The HarborModel to compare with the current HarborModel.</param>
-        /// <returns>A value that indicates the relative order of the HarborModels being compared.</returns>
-        public int CompareTo(HarborModel? other)
+        /// <param name="other">The HarborKey to compare with the current HarborKey.</param>
+        /// <returns>A value that indicates the relative order of the HarborKeys being compared.</returns>
+        public int CompareTo(HarborKey? other)
         {
             if (other is null) return 1;
             // First, compare by HexCoordinates
@@ -85,6 +68,117 @@ namespace Catan3.Models
             // If HexCoordinates are the same, then compare by HexPosition
             // Since HexPosition is an enum, we can directly compare their underlying integer values
             return Side.CompareTo(other.Side);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is null || GetType() != obj.GetType())
+            {
+                return false;
+            }
+
+            HarborKey? other = obj as HarborKey;
+            if (other is null) return false; // Should not happen due to GetType check
+
+            return HexCoordinates.Equals(other.HexCoordinates) &&
+                   HarborType == other.HarborType &&
+                   Side == other.Side;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(HexCoordinates, HarborType, Side);
+        }
+
+        public static bool operator ==(HarborKey? left, HarborKey? right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+            if (left is null || right is null)
+            {
+                return false;
+            }
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(HarborKey? left, HarborKey? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    /// <summary>
+    /// Represents a harbor model in the game, including its key and ownership information.
+    /// Implements IComparable for sorting and comparison purposes.
+    /// </summary>
+    public partial class HarborModel : ObservableObject, IComparable<HarborModel>
+    {
+        /// <summary>
+        /// Gets or sets the key of the harbor.
+        /// </summary>
+        [ObservableProperty]
+        public partial HarborKey HarborKey { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets the owner of the harbor.
+        /// </summary>
+        [ObservableProperty]
+        public partial PlayerModel? Owner { get; set; } = null;
+
+        /// <summary>
+        /// Gets the default instance of the HarborModel class.
+        /// </summary>
+        public static HarborModel Default => new();
+
+        /// <summary>
+        /// Initializes a new instance of the HarborModel class with the specified key.
+        /// </summary>
+        /// <param name="key">The key of the harbor.</param>
+        public HarborModel(HarborKey key)
+        {
+            this.HarborKey = key;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the HarborModel class with the specified coordinates, type, and side.
+        /// </summary>
+        /// <param name="tilekey">The coordinates of the harbor.</param>
+        /// <param name="harbortype">The type of the harbor.</param>
+        /// <param name="position">The side of the hexagon where the harbor is located.</param>
+        public HarborModel(HexCoordinates tilekey, HarborType harbortype, HexSide position)
+        {
+            this.HarborKey = new HarborKey(tilekey, harbortype, position);
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the HarborModel class with default values.
+        /// </summary>
+        public HarborModel()
+        {
+        }
+
+        public override string ToString()
+        {
+            return $"HarborModel: {HarborKey.HexCoordinates} {HarborKey.HarborType} {HarborKey.Side} Owner={Owner?.Id ?? "None"}";
+        }
+
+        /// <summary>
+        /// Compares the current HarborModel with another HarborModel.
+        /// </summary>
+        /// <param name="other">The HarborModel to compare with the current HarborModel.</param>
+        /// <returns>A value that indicates the relative order of the HarborModels being compared.</returns>
+        public int CompareTo(HarborModel? other)
+        {
+            if (other is null) return 1;
+            // Compare by HarborKey
+            int keyCompare = HarborKey.CompareTo(other.HarborKey);
+            if (keyCompare != 0)
+            {
+                return keyCompare;
+            }
+            return 0;
         }
 
         /// <summary>
@@ -118,34 +212,13 @@ namespace Catan3.Models
         /// </summary>
         public bool IsAdjacentToBuilding(BuildingKey buildingKey)
         {
-            if (!HexCoordinates.Equals(buildingKey.HexCoordinates))
+            if (!HarborKey.HexCoordinates.Equals(buildingKey.HexCoordinates))
                 return false;
 
-            if (!SideToVertices.TryGetValue(Side, out var vertices))
+            if (!SideToVertices.TryGetValue(HarborKey.Side, out var vertices))
                 return false;
 
             return buildingKey.Position == vertices.Item1 || buildingKey.Position == vertices.Item2;
-        }
-
-        /// <summary>
-        /// Sets the owner of any harbor in the collection that is adjacent to the given building.
-        /// </summary>
-        public static bool SetOwnerIfAdjacent(IEnumerable<HarborModel> harbors, BuildingKey buildingKey, PlayerModel owner)
-        {
-            foreach (var (hex, side) in GetAdjacentHarborLocations(buildingKey))
-            {
-                foreach (var harbor in harbors)
-                {
-                    if (harbor.HexCoordinates.Equals(hex) && harbor.Side == side)
-                    {
-                        harbor.TraceMessage($"Setting Harbor ownership for {harbor} to {owner} because of buildingKey {buildingKey}");
-                        harbor.Owner = owner;
-                        return true;
-                    }
-                }
-            }
-            harbors.TraceMessage($"{buildingKey} has no harbor");
-            return false;
         }
 
         /// <summary>

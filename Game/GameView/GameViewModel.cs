@@ -29,6 +29,7 @@ namespace Catan3.Models
         /// <exception cref="NotImplementedException"></exception>
         public GameViewModel(GameModel gameModel, IPlayerDatabase database) : this(database) // in GameViewModel() we RegisterMessages
         {
+            ArgumentNullException.ThrowIfNull(gameModel);
             GameType = gameModel.GameType;
             PlayerDatabaseService = database;
             if (GameType == GameType.Regular)
@@ -47,6 +48,8 @@ namespace Catan3.Models
             foreach (var player in gameModel.Players)
             {
                 var playerViewModel = database.FromId(player.Id) ?? throw new Exception($"Bad PlayerId: {player.Id}");
+                ArgumentNullException.ThrowIfNull(Players);
+                ArgumentNullException.ThrowIfNull(playerViewModel);
                 Players.Add(playerViewModel);
             }
             this.GameModel = gameModel; // triggers OnGameModelChanged
@@ -454,8 +457,7 @@ namespace Catan3.Models
                 Debug.Assert(Harbors.Count == gameModel.Harbors.Count, "Harbor count mismatch.");
                 for (int i = 0; i < gameModel.Harbors.Count; i++)
                 {
-                    Contract.Assert(Harbors[i].Harbor.HexCoordinates == gameModel.Harbors[i].HexCoordinates, "Harbor key mismatch.");
-                    Contract.Assert(Harbors[i].Harbor.Side == gameModel.Harbors[i].Side, "Harbor key mismatch.");
+                    Contract.Assert(Harbors[i].Harbor.HarborKey == gameModel.Harbors[i].HarborKey, "Harbor key mismatch.");
                     Harbors[i].Harbor = gameModel.Harbors[i];
                 }
             }
@@ -602,7 +604,7 @@ namespace Catan3.Models
                 if (harbors is null) continue;
                 foreach (HarborViewModel h in harbors)
                 {
-                    if (h.Harbor.Side == HexSide.Top || h.Harbor.Side == HexSide.Bottom) continue;
+                    if (h.Harbor.HarborKey.Side == HexSide.Top || h.Harbor.HarborKey.Side == HexSide.Bottom) continue;
                     var right = h.Left + harborSize;
                     BoardInfo.Layout.BoardWidth = right;
                     return;

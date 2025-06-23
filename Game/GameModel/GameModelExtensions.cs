@@ -235,5 +235,25 @@ namespace Catan3.Models
         {
             return gameModel.Players.PlayerFromId(gameModel.CurrentPlayerId) ?? throw new GameException($"Can't find player {gameModel.CurrentPlayerId}");
         }
+
+        /// <summary>
+        ///     return the harbor that is adjacent to the given building key.
+        /// </summary>
+        /// <param name="gameModel"></param>
+        /// <param name="buidingKey"></param>
+        /// <returns>the adjacent Harbor or null if it has none</returns>
+
+        public static HarborModel? FindAdjacentHarbor(this GameModel gameModel, BuildingKey buildingKey)
+        {
+            foreach (var (hex, side) in HarborModel.GetAdjacentHarborLocations(buildingKey))
+            {
+                var harbor = gameModel.Harbors.FirstOrDefault(h => h.HarborKey.HexCoordinates.Equals(hex) && h.HarborKey.Side == side);
+                if (harbor is not null)
+                    return harbor;
+            }
+            return null;
+        }
+
+      
     }
 }

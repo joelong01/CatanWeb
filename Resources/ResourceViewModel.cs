@@ -2,9 +2,13 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Security;
+
 using Catan10.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 namespace Catan3.Models
@@ -25,6 +29,13 @@ namespace Catan3.Models
         /// </summary>
         [ObservableProperty]
         public partial ResourceType Resource { get; set; } = resource;
+
+        ///<summary>
+        /// set if the player owns the 2:1 harbor for this resource
+        /// </summary>
+        /// 
+        [ObservableProperty]
+        public partial Visibility HarborVisibility { get; set; } = Visibility.Collapsed;
 
         /// <summary>
         /// Gets the default instance of the ResourceCounterViewModel class.

@@ -107,7 +107,7 @@ namespace Catan3.Models
         /// </summary>
         private void UpdateLayout()
         {
-            var point = GetLeftTop(Layout, Harbor.HexCoordinates, Harbor.Side);
+            var point = GetLeftTop(Layout, Harbor.HarborKey.HexCoordinates, Harbor.HarborKey.Side);
             Left = point.X;
             Top = point.Y;
             OnPropertyChanged(nameof(HarborPoints));
@@ -163,7 +163,7 @@ namespace Catan3.Models
                     top -= verticalOffset; // Move up (edge of the circle)
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(Harbor.Side), $"Invalid hex side: {side}");
+                    throw new ArgumentOutOfRangeException(nameof(Harbor.HarborKey.Side), $"Invalid hex side: {side}");
             }
             return new Point(left, top);
         }
@@ -178,8 +178,8 @@ namespace Catan3.Models
                 PointCollection points = new();
                 double size = Layout.BuildingSize; // Assuming this is the diameter of the harbor circle
                 var flatTopDictionary = Layout.OuterHexPoints.FlatTopListToDictionary();
-                var tileTop = Layout.Top(Harbor.HexCoordinates);
-                var tileLeft = Layout.Left(Harbor.HexCoordinates);
+                var tileTop = Layout.Top(Harbor.HarborKey.HexCoordinates);
+                var tileLeft = Layout.Left(Harbor.HarborKey.HexCoordinates);
                 var yOffset = Math.Abs(tileTop - Top);
                 var xOffset = Math.Abs(Left - tileLeft);
                 // Calculate the coordinates of the triangle relative to the UserControl's coordinates
@@ -187,7 +187,7 @@ namespace Catan3.Models
                 double centerX = size / 2.0; // X coordinate of the center of the harbor within the UserControl
                 double centerY = size / 2.0; // Y coordinate of the center of the harbor within the UserControl
                 Point topRight, topLeft, bottomRight, bottomLeft, left, right;
-                switch (Harbor.Side)
+                switch (Harbor.HarborKey.Side)
                 {
                     case HexSide.Top:
                         topLeft = flatTopDictionary[HexPosition.TopLeft];
@@ -232,7 +232,7 @@ namespace Catan3.Models
                         points.Add(left.Offset(xOffset, -yOffset));
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(Harbor.Side), $"Invalid hex side: {Harbor.Side}");
+                        throw new ArgumentOutOfRangeException(nameof(Harbor.HarborKey.Side), $"Invalid hex side: {Harbor.HarborKey.Side}");
                 }
                 return points;
             }
@@ -261,7 +261,7 @@ namespace Catan3.Models
         /// <returns>The HarborViewModel instance if found; otherwise, null.</returns>
         public static HarborViewModel? FindHarbor(this IEnumerable<HarborViewModel> collection, HexCoordinates coords, HexSide side)
         {
-            return collection.FirstOrDefault(h => h.Harbor.HexCoordinates == coords && h.Harbor.Side == side);
+            return collection.FirstOrDefault(h => h.Harbor.HarborKey.HexCoordinates == coords && h.Harbor.HarborKey.Side == side);
         }
 
         /// <summary>
@@ -272,7 +272,20 @@ namespace Catan3.Models
         /// <returns>A list of HarborViewModel instances if found; otherwise, an empty list.</returns>
         public static List<HarborViewModel>? FindAnyHarbor(this IEnumerable<HarborViewModel> collection, HexCoordinates coords)
         {
-            return collection.Where(h => h.Harbor.HexCoordinates == coords).ToList();
+            return collection.Where(h => h.Harbor.HarborKey.HexCoordinates == coords).ToList();
+        }
+
+        public static ResourceType ToResourceType(this HarborType harborType)
+        {
+            return harborType switch
+            {
+                HarborType.Brick => ResourceType.Brick,
+                HarborType.Ore => ResourceType.Ore,
+                HarborType.Sheep => ResourceType.Sheep,
+                HarborType.Wheat => ResourceType.Wheat,
+                HarborType.Wood => ResourceType.Wood,
+                _ => ResourceType.None,
+            };
         }
     }
 }
