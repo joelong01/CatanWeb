@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Catan3;
 using Microsoft.UI.Xaml;
@@ -10,6 +11,7 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 using WinUIEx;
+
 namespace Catan.Services
 {
     /// <summary>
@@ -23,8 +25,6 @@ namespace Catan.Services
         Task<string?> OpenFileAsync(WindowEx parent, IList<string> filters);
         Task<string> PickSaveFileAsync(string defaultFileName);
     }
-
-
 
     /// <summary>
     /// The FileHandler class provides methods to open, read, write, and close a file using a cached FileStream.
@@ -199,8 +199,6 @@ namespace Catan.Services
             _disposed = true;
         }
     }
-
-
 
     /// <summary>
     /// Implements file operations for opening and saving files on disk, utilizing the Windows Storage API.

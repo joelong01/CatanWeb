@@ -101,6 +101,14 @@ namespace Catan3.Models
         [ObservableProperty]
         public partial bool ParticipatingInSupplemental { get; set; }
 
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the player has completed their supplmentmental turn.
+        /// This is used to know when to end the s  
+        /// </summary>
+        [ObservableProperty]
+        public partial bool FinishedSuplemental { get; set; }
+
         /// <summary>
         /// Gets or sets the resources obtained by the player this turn.
         /// </summary>

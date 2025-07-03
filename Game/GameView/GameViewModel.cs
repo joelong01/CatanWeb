@@ -457,7 +457,7 @@ namespace Catan3.Models
                 Debug.Assert(Harbors.Count == gameModel.Harbors.Count, "Harbor count mismatch.");
                 for (int i = 0; i < gameModel.Harbors.Count; i++)
                 {
-                    Contract.Assert(Harbors[i].Harbor.HarborKey == gameModel.Harbors[i].HarborKey, "Harbor key mismatch.");
+                    Contract.Assert(Harbors[i].Harbor.HarborKey.HexCoordinates == gameModel.Harbors[i].HarborKey.HexCoordinates, "Harbor key mismatch.");
                     Harbors[i].Harbor = gameModel.Harbors[i];
                 }
             }

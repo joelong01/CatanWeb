@@ -631,6 +631,26 @@ namespace Catan3.Controller
                         PlayerModel? participatingPlayer = null;
 
                         // Loop through the players starting from the current player and wrap around
+                        // and set the flag for FinishedSuplemental and ParticipatingInSupplemental
+                        // we have two flags because ParticipatingInSupplemental drives the UI to show who has a suplemental turn
+                        // and FinishedSupplemental is used to determine if we have any players left to play supplemental
+                        for (int i = 0; i < gameModel.Players.Count; i++)
+                        {
+                            int index = (currentPlayerIndex + i) % gameModel.Players.Count;
+                           
+                            if (index == currentPlayerIndex)
+                            {
+                                continue;
+                            }
+                            var player = gameModel.Players[index];
+
+                            if (player.ParticipatingInSupplemental)
+                            {
+                                player.FinishedSuplemental = false;
+                            }
+                        }
+                        //
+                        //  find the first player who is participating in supplemental
                         for (int i = 0; i < gameModel.Players.Count; i++)
                         {
                             int index = (currentPlayerIndex + i) % gameModel.Players.Count;
@@ -648,7 +668,7 @@ namespace Catan3.Controller
                             // we have at least one -- set the game state to supplemental
                             gameModel.GameState = GameState.Supplemental;
 
-                            // change to that player
+                            // change to the first player
                             gameModel.ChangePlayerTo(participatingPlayer.Id);
 
 
@@ -665,16 +685,16 @@ namespace Catan3.Controller
                 case GameState.Supplemental:
                     {
                         // Find the index of the player who is set to roll after the supplemental phase
-                        int startIndex = gameModel.Players.FindIndex(p => p.Id == gameModel.CurrentPlayerId);
+                        int currentPlayerIndex = gameModel.Players.FindIndex(p => p.Id == gameModel.CurrentPlayerId);
                         // Initialize the player found as null
                         PlayerModel? participatingPlayer = null;
-
-                        // Loop through the players starting from the next player after NextPlayerToRollAfterSupplemental and wrap around
-                        for (int i = startIndex + 1; i < gameModel.Players.Count; i++)
+                        // look for the next player to play supplemental - we start with the current player and "wrap around"
+                        for (int i = 0; i < gameModel.Players.Count; i++)
                         {
-                            int index = i % gameModel.Players.Count;
+                            int index = (currentPlayerIndex + i) % gameModel.Players.Count;
+                            if (index == currentPlayerIndex) continue;
                             var player = gameModel.Players[index];
-                            if (player.ParticipatingInSupplemental)
+                            if (player.ParticipatingInSupplemental && !player.FinishedSuplemental)
                             {
                                 participatingPlayer = player;
                                 break;
@@ -685,12 +705,18 @@ namespace Catan3.Controller
                         {
                             // We have at least one -- set the game state to supplemental
                             gameModel.GameState = GameState.Supplemental;
+                            if (gameModel.Players[currentPlayerIndex].ParticipatingInSupplemental)
+                            {
+                                // if the current player is participating, then we need to set the flag to false
+                                // so that they don't get picked again
+                                gameModel.Players[currentPlayerIndex].FinishedSuplemental = true;
+                            }
+                           
 
                             // Change to that player
                             gameModel.ChangePlayerTo(participatingPlayer.Id);
 
-                            // Set the flag so we don't find them again
-                            // participatingPlayer.ParticipatingInSupplemental = false;
+                         
                         }
                         else
                         {
