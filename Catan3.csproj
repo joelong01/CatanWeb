@@ -17,9 +17,21 @@
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 	<ItemGroup>
+		<Compile Remove="Catan3.GameService\**" />
+		<Compile Remove="Catan3.Shared\**" />
+		<Compile Remove="CatanGameService\**" />
 		<Compile Remove="Player\PlayerOrder\**" />
+		<EmbeddedResource Remove="Catan3.GameService\**" />
+		<EmbeddedResource Remove="Catan3.Shared\**" />
+		<EmbeddedResource Remove="CatanGameService\**" />
 		<EmbeddedResource Remove="Player\PlayerOrder\**" />
+		<None Remove="Catan3.GameService\**" />
+		<None Remove="Catan3.Shared\**" />
+		<None Remove="CatanGameService\**" />
 		<None Remove="Player\PlayerOrder\**" />
+		<Page Remove="Catan3.GameService\**" />
+		<Page Remove="Catan3.Shared\**" />
+		<Page Remove="CatanGameService\**" />
 		<Page Remove="Player\PlayerOrder\**" />
 	</ItemGroup>
 	<ItemGroup>
@@ -285,5 +297,14 @@
 		<Page Update="Game\NewGame\NewGamePage.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</Page>
+	</ItemGroup>
+	<ItemGroup>
+	  <PRIResource Remove="Catan3.GameService\**" />
+	</ItemGroup>
+	<ItemGroup>
+	  <PRIResource Remove="Catan3.Shared\**" />
+	</ItemGroup>
+	<ItemGroup>
+	  <PRIResource Remove="CatanGameService\**" />
 	</ItemGroup>
 </Project>
