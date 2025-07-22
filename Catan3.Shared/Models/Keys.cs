@@ -9,8 +9,8 @@ namespace Catan3.Shared.Models
     /// </summary>
     public class RoadKey : IComparable<RoadKey>
     {
-        public HexCoordinates TileKey { get; set; }
-        public HexSide HexSide { get; set; }
+        public HexCoordinates TileKey { get; set; } = HexCoordinates.Default;
+        public HexSide HexSide { get; set; } = HexSide.Bottom;
 
         public RoadKey(HexCoordinates tileKey, HexSide side)
         {
@@ -55,8 +55,8 @@ namespace Catan3.Shared.Models
     /// </summary>
     public class BuildingKey : IComparable<BuildingKey>
     {
-        public HexCoordinates HexCoordinates { get; set; }
-        public HexPosition Position { get; set; }
+        public HexCoordinates HexCoordinates { get; set; } = HexCoordinates.Default;
+        public HexPosition Position { get; set; } = HexPosition.None;
 
         public BuildingKey(HexCoordinates hexcoordinates, HexPosition position)
         {
@@ -89,45 +89,4 @@ namespace Catan3.Shared.Models
         public static BuildingKey Default => new(HexCoordinates.Default, HexPosition.None);
     }
 
-    /// <summary>
-    /// Represents a key for a harbor.
-    /// </summary>
-    public class HarborKey : IComparable<HarborKey>
-    {
-        public HexCoordinates HexCoordinates { get; set; } = HexCoordinates.Default;
-        public HexSide HexSide { get; set; } = HexSide.None;
-
-        public HarborKey(HexCoordinates hexCoordinates, HexSide hexSide)
-        {
-            HexCoordinates = hexCoordinates;
-            HexSide = hexSide;
-        }
-
-        [JsonConstructor]
-        public HarborKey() { }
-
-        public override string ToString() => $"{HexCoordinates}-{HexSide}";
-
-        public override bool Equals(object? obj)
-        {
-            return obj is not null && obj is HarborKey key &&
-                   key.HexSide == this.HexSide &&
-                   key.HexCoordinates == this.HexCoordinates;
-        }
-
-        public override int GetHashCode() => HashCode.Combine(HexCoordinates, HexSide);
-
-        /// <summary>
-        /// Compares the current HarborKey with another HarborKey.
-        /// </summary>
-        /// <param name="other">The HarborKey to compare with the current HarborKey.</param>
-        /// <returns>A value that indicates the relative order of the HarborKeys being compared.</returns>
-        public int CompareTo(HarborKey? other)
-        {
-            if (other is null) return 1;
-            int hexCompare = HexCoordinates.CompareTo(other.HexCoordinates);
-            if (hexCompare != 0) return hexCompare;
-            return HexSide.CompareTo(other.HexSide);
-        }
-    }
 }

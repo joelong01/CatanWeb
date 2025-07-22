@@ -118,10 +118,22 @@ Game Service -> GameController -> UpdateGameModel -> HTTP Response -> All Client
 - Graceful fallback on network issues
 - **Universal browser compatibility**
 
-## API Design
+## Game Service REST API Documentation
 
-### Discovery Protocol (UDP)// Broadcast message every 5 seconds
-{
+### Base URL
+- **Local Development**: `http://localhost:8080`
+- **Network Deployment**: `http://[service-ip]:8080`
+
+### Authentication
+- Currently uses **trust-based security** for local network deployment
+- Player identity verified through `playerId` parameter in requests
+- Game session isolation via `gameId` parameter
+
+---
+
+### Discovery Protocol (UDP)
+
+**UDP Broadcast Message (Port 8765)**{
   "gameId": "guid",
   "gameName": "Catan Game",
   "playerCount": 4,
@@ -131,59 +143,196 @@ Game Service -> GameController -> UpdateGameModel -> HTTP Response -> All Client
   "roomCode": "1234",
   "timestamp": "2024-01-01T12:00:00Z"
 }
-### REST API Endpoints (Game Service)
+---
+
+### Web Interface Endpoints
 
 #### GET /companion
-Serve web companion interface<!-- Simple responsive HTML page with embedded JavaScript -->
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Catan Companion</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- Bootstrap or simple CSS for mobile-friendly UI -->
-</head>
-<body>
-    <!-- Player selection, game state display, action buttons -->
-</body>
-</html>
+**Description**: Serve the responsive web companion interface for mobile devices
+
+**Sample URL**: `http://localhost:8080/companion?gameId=abc123`
+
+**Query Parameters**:
+- `gameId` (optional): Specific game session to connect to
+
+**Response**: HTML page with embedded CSS and JavaScript
+- **Content-Type**: `text/html`
+- **Size**: < 50KB (optimized for mobile)
+- **Features**: Responsive design, real-time updates, offline detection
+
+**Example Response Headers**:Content-Type: text/html; charset=utf-8
+Cache-Control: no-cache
+---
+
+### Game Management Endpoints
+
+#### POST /api/game/register
+**Description**: Register a new game session for testing/development
+
+**Sample URL**: `http://localhost:8080/api/game/register`
+
+**Request Body**:{
+  "gameId": "abc123"
+}
+**Response**:
+{
+  "success": true,
+  "message": "Game registered successfully"
+}
+**Error Responses**:
+- `400 Bad Request`: Missing gameId
+- `500 Internal Server Error`: Game creation failed
+
+---
+
+### Player Management Endpoints
+
 #### GET /api/players/{gameId}
-Get list of players for selection{
-  "gameId": "guid",
+**Description**: Get list of players in a game session for player selection
+
+**Sample URL**: `http://localhost:8080/api/players/abc123`
+
+**Path Parameters**:
+- `gameId` (required): Unique identifier for the game session
+
+**Response**:{
+  "gameId": "abc123",
   "players": [
     {
       "id": "player1",
       "name": "Alice",
       "isCurrentPlayer": true
+    },
+    {
+      "id": "player2", 
+      "name": "Bob",
+      "isCurrentPlayer": false
+    },
+    {
+      "id": "player3",
+      "name": "Charlie", 
+      "isCurrentPlayer": false
+    },
+    {
+      "id": "player4",
+      "name": "Diana",
+      "isCurrentPlayer": false
     }
   ]
 }
+**Error Responses**:
+- `404 Not Found`: Game session not found
+- `500 Internal Server Error`: Server error retrieving players
+
+---
+
+### Game Action Endpoints
+
 #### POST /api/game/action
-Execute game actions from web interface// Request
-{
-  "gameId": "guid",
+**Description**: Execute game actions from any client (desktop or mobile)
+
+**Sample URL**: `http://localhost:8080/api/game/action`
+
+**Request Headers**:Content-Type: application/json
+**Request Body Structure**:{
+  "gameId": "abc123",
+  "playerId": "player1", 
+  "messageType": "DoAction|PurchaseMessage|RoadPurchaseMessage|BuildingUpgradeMessage",
+  "messageData": { /* varies by messageType */ },
+  "timestamp": "2024-01-01T12:00:00Z"
+}
+#### DoAction Message Type
+**Description**: Execute basic game actions (Next, Undo, Redo, Shuffle)
+
+**Sample Request**:{
+  "gameId": "abc123",
   "playerId": "player1",
-  "messageType": "DoAction" | "PurchaseMessage",
+  "messageType": "DoAction",
   "messageData": {
-    "action": "Next" | "Undo" | "Redo",
-    "entitlement": "Settlement" | "City" | "Road" | "Soldier"
+    "action": "Next"
   },
   "timestamp": "2024-01-01T12:00:00Z"
 }
+**Available Actions**:
+- `Next`: Advance to next game state/player
+- `Undo`: Undo last action
+- `Redo`: Redo previously undone action  
+- `Shuffle`: Randomize board layout (during setup)
 
-// Response
-{
+#### PurchaseMessage Message Type
+**Description**: Purchase game entitlements (buildings, cards, upgrades)
+
+**Sample Request**:{
+  "gameId": "abc123",
+  "playerId": "player1", 
+  "messageType": "PurchaseMessage",
+  "messageData": {
+    "entitlement": "Settlement"
+  },
+  "timestamp": "2024-01-01T12:00:00Z"
+}
+**Available Entitlements**:
+- **Basic Game**: `Settlement`, `City`, `Road`, `Soldier`
+- **Expansion Game**: `BuyKnight`, `UpgradeKnight`, `ActivateKnight`, `PoliticsUpgrade`, `ScienceUpgrade`, `TradeUpgrade`, `Wall`, `DestroyCity`, `Bishop`, `Deserter`, `Inventor`, `Intrigue`, `Diplomat`, `Merchant`, `KnightDisplacement`, `UpgradeToMetro`
+
+#### RoadPurchaseMessage Message Type
+**Description**: Purchase and place roads on specific board locations
+
+**Sample Request** (Implementation Pending):{
+  "gameId": "abc123",
+  "playerId": "player1",
+  "messageType": "RoadPurchaseMessage", 
+  "messageData": {
+    "roadKey": {
+      "tileKey": { "q": 0, "r": 0, "s": 0 },
+      "hexSide": "Top"
+    }
+  },
+  "timestamp": "2024-01-01T12:00:00Z"
+}
+#### BuildingUpgradeMessage Message Type
+**Description**: Upgrade buildings on specific board locations
+
+**Sample Request** (Implementation Pending):{
+  "gameId": "abc123",
+  "playerId": "player1",
+  "messageType": "BuildingUpgradeMessage",
+  "messageData": {
+    "buildingKey": {
+      "hexCoordinates": { "q": 0, "r": 0, "s": 0 },
+      "position": "TopRight"
+    }
+  },
+  "timestamp": "2024-01-01T12:00:00Z"
+}
+**Action Response**:{
   "success": true,
   "gameStateVersion": 43,
   "message": "Action executed successfully"
 }
+**Error Responses**:
+- `400 Bad Request`: Missing required fields or invalid message type
+- `500 Internal Server Error`: Game logic error or server error
+
+---
+
+### Game State Endpoints
+
 #### GET /api/gamestate/{gameId}
-Get current game state for web interface{
-  "gameId": "guid",
+**Description**: Get current game state snapshot
+
+**Sample URL**: `http://localhost:8080/api/gamestate/abc123`
+
+**Path Parameters**:
+- `gameId` (required): Unique identifier for the game session
+
+**Response**:{
+  "gameId": "abc123",
   "currentPlayerId": "player1",
   "gameState": "WaitingForNext",
   "actionFlags": {
     "nextEnabled": true,
-    "undoEnabled": false,
+    "undoEnabled": false, 
     "rollsEnabled": false
   },
   "availableEntitlements": [
@@ -192,18 +341,118 @@ Get current game state for web interface{
       "enabled": true
     },
     {
-      "entitlement": "Road", 
+      "entitlement": "Road",
+      "enabled": true
+    },
+    {
+      "entitlement": "City", 
+      "enabled": false
+    },
+    {
+      "entitlement": "Soldier",
       "enabled": true
     }
   ],
   "version": 42,
-  "timestamp": "2024-01-01T12:00:00Z"
+  "timestamp": "2024-01-01T12:00:00.000Z"
 }
-#### GET /api/gamestate/{gameId}/listen?playerId=player1&version=42
-Hanging GET for real-time updates (used by web interface JavaScript)
-- Same as above but waits for changes
-- Web interface polls this endpoint continuously
-- JavaScript handles reconnection and error recovery
+**Game States** (key states for companion interface):
+- `WaitingForNewGame`: Game not started
+- `PickingBoard`: Selecting board layout
+- `WaitingForRollForOrder`: Determining player order
+- `AllocateResourceForward`/`AllocateResourceReverse`: Initial resource placement
+- `WaitingForRoll`: Player needs to roll dice
+- `WaitingForNext`: Turn complete, ready for next player
+- `Supplemental`: Supplemental building phase
+- `MustMoveRobber`: Player must move robber after rolling 7
+
+**Error Responses**:
+- `404 Not Found`: Game session not found
+- `500 Internal Server Error`: Server error retrieving game state
+
+#### GET /api/gamestate/{gameId}/listen
+**Description**: Long-polling endpoint for real-time game state updates
+
+**Sample URL**: `http://localhost:8080/api/gamestate/abc123/listen?playerId=player1&version=42`
+
+**Path Parameters**:
+- `gameId` (required): Unique identifier for the game session
+
+**Query Parameters**:
+- `playerId` (optional): Client player identifier for tracking
+- `version` (optional): Client's current game state version
+
+**Behavior**:
+- **If client version < server version**: Returns immediately with latest state
+- **If client version = server version**: Waits up to 30 seconds for changes
+- **On timeout**: Returns current state anyway
+- **On game state change**: Returns new state immediately
+
+**Response**: Same format as `/api/gamestate/{gameId}`
+
+**Usage Pattern**:async function listenForUpdates() {
+  const response = await fetch(`/api/gamestate/${gameId}/listen?playerId=${playerId}&version=${currentVersion}`);
+  const gameState = await response.json();
+  
+  updateUI(gameState);
+  currentVersion = gameState.version;
+  
+  // Immediately start listening for next update
+  setTimeout(listenForUpdates, 100);
+}
+**Error Responses**:
+- `404 Not Found`: Game session not found  
+- `500 Internal Server Error`: Server error in update mechanism
+
+---
+
+### Data Models
+
+#### HexCoordinates{
+  "q": 0,
+  "r": 0, 
+  "s": 0
+}
+#### RoadKey{
+  "tileKey": { "q": 0, "r": 0, "s": 0 },
+  "hexSide": "Top|TopRight|BottomRight|Bottom|BottomLeft|TopLeft"
+}
+#### BuildingKey  {
+  "hexCoordinates": { "q": 0, "r": 0, "s": 0 },
+  "position": "Top|TopRight|BottomRight|Bottom|BottomLeft|TopLeft|Right|Left|Center"
+}
+---
+
+### Error Handling
+
+**Standard Error Response Format**:{
+  "error": "Error message description",
+  "details": "Additional error details",
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+**HTTP Status Codes**:
+- `200 OK`: Request successful
+- `400 Bad Request`: Invalid request format or parameters
+- `404 Not Found`: Resource not found (game/player)
+- `500 Internal Server Error`: Server-side error
+
+**Retry Strategy**: Clients should implement exponential backoff for 5xx errors
+
+---
+
+### Rate Limiting & Performance
+
+**Current Limits**:
+- No explicit rate limiting implemented
+- Hanging GET timeout: 30 seconds
+- Concurrent connections: Limited by ASP.NET Core defaults
+
+**Performance Considerations**:
+- Game state updates are in-memory (not persistent)
+- Single game service instance supports multiple game sessions
+- Real-time updates use efficient notification system
+
+---
 
 ## Implementation Plan
 
@@ -222,8 +471,6 @@ Hanging GET for real-time updates (used by web interface JavaScript)
 2. ? **Copy** (don't move) common models, enums, and message types to shared project - verify that this works
 3. ? Ensure `Catan3.Shared` compiles independently 
 
-
-
 **Files to Copy to Catan3.Shared:**
 - `Models/MessageObjects.cs` ? `Catan3.Shared/Models/MessageObjects.cs`
 - `Models/enums.cs` ? `Catan3.Shared/Models/GameEnums.cs`
@@ -231,15 +478,20 @@ Hanging GET for real-time updates (used by web interface JavaScript)
 - `Player/PlayerModel.cs` ? `Catan3.Shared/Models/PlayerModel.cs`
 - Related model files that don't depend on UI (TileModel, BuildingModel, etc.)
 
-### Stage 2: ASP.NET Core Game Service with Web Companion ? NEXT
-1. Create `Catan3.GameService` ASP.NET Core project in same directory (DONE!)
-2. Add reference to `Catan3.Shared`
-3. **Copy** (don't move) `GameController.cs` to service project
-4. **Copy** required services and utilities for GameController to work
-5. Create REST API endpoints for game actions
-6. **Create simple web companion interface at `/companion`**
-7. **Implement player selection and basic action buttons**
-8. **Add JavaScript for hanging GET and real-time updates**
+### Stage 2: ASP.NET Core Game Service with Web Companion ? CURRENT
+1. ? Create `Catan3.GameService` ASP.NET Core project in same directory (DONE!)
+2. ? Add reference to `Catan3.Shared`
+3. ? **Copy** (don't move) `GameController.cs` to service project
+4. ? **Copy** required services and utilities for GameController to work
+5. ? Create REST API endpoints for game actions --    
+    a. ? all MVVM messages should be converted to REST API calls
+    b. ? there should be no dependencies on any of the MVVM UI framework
+    c. ? the logic of the GameController should remain the same
+    d. tests should be added to fully test the GameController
+     
+6. ? **Create simple web companion interface at `/companion`**
+7. ? **Implement player selection and basic action buttons**
+8. ? **Add JavaScript for hanging GET and real-time updates**
 9. Add service discovery broadcasting with web URL
 10. Ensure `Catan3.GameService` compiles and runs independently
 11. Test web interface works on mobile devices
@@ -457,7 +709,6 @@ Hanging GET for real-time updates (used by web interface JavaScript)
 ?   ??? Program.cs
 ??? Services/
 ?   ??? GameControllerProxy.cs          # Client proxy for game service
-?   ??? Companion/                      # Legacy - can be removed
 ??? companion.md                        # This design document
 ## Conclusion
 

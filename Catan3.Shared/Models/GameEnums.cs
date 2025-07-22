@@ -9,7 +9,7 @@ namespace Catan3.Shared.Models
     }
     public enum ResourceType
     {
-        Sheep, Wood, Ore, Wheat, Brick, GoldMine, Desert,
+        Sheep, Wood, Ore, Wheat, Brick, GoldMine, Desert, Fish,
         Back, None, Sea, Coin, Cloth, Paper, Politics, Trade, Science, AnyDevCard, VictoryPoint, Invasion, Robber
     };
     public enum BuildingState
@@ -156,4 +156,26 @@ namespace Catan3.Shared.Models
 
     public enum ErrorLevel { Information, Protection, Critical }
     public enum LocalPersistActions { Save, SaveAs, Open}
+    
+    // Hex positioning enums
+    public enum HexPosition
+    {
+        Top, TopRight, BottomRight, Bottom, BottomLeft, TopLeft, Right, Left, Center, None
+    }
+
+    public enum HexSide
+    {
+        Top, TopRight, BottomRight, Bottom, BottomLeft, TopLeft, None
+    }
+
+
+    public enum Direction
+    {
+        North,
+        NorthEast,
+        SouthEast,
+        South,
+        SouthWest,
+        NorthWest
+    }
 }

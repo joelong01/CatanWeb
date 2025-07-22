@@ -47,15 +47,6 @@ namespace Catan3.Shared.Models
         public IList<string> PlayerIds { get; set; } = playerIds;
     }
 
-    // Placeholder for GameModel - will be added once we copy it
-    public class GameModel
-    {
-        public string? CurrentPlayerId { get; set; }
-        public GameState GameState { get; set; }
-        public List<object> Players { get; set; } = new();
-        public object? ActionFlags { get; set; }
-    }
-
     public class UpdateGameModel(GameModel model)
     {
         public GameModel GameModel { get; set; } = model;
@@ -92,5 +83,10 @@ namespace Catan3.Shared.Models
     {
         public LocalPersistActions Action { get; set; } = action;
         public string Location { get; set; } = location;
+    }
+
+    public class LoadGameMessage(string localFile)
+    {
+        public string LocalFile { get; } = localFile;
     }
 }

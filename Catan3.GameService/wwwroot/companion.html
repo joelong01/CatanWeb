@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Catan Companion</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2em;
+            font-weight: 300;
+        }
+
+        .game-info {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4299e1;
+        }
+
+        .player-select {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #4299e1;
+        }
+
+        .status {
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .status.connected {
+            background: #f0fff4;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+
+        .status.disconnected {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+
+        .current-player {
+            font-weight: bold;
+            color: #22543d;
+            font-size: 1.1em;
+        }
+
+        .action-buttons {
+            margin-top: 25px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+            box-shadow: 0 4px 15px rgba(66, 153, 225, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #3182ce, #2c5282);
+            box-shadow: 0 6px 20px rgba(66, 153, 225, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #ed8936, #dd6b20);
+            color: white;
+            box-shadow: 0 4px 15px rgba(237, 137, 54, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #dd6b20, #c05621);
+            box-shadow: 0 6px 20px rgba(237, 137, 54, 0.4);
+        }
+
+        .btn-purchase {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+        }
+
+        .btn-purchase:hover {
+            background: linear-gradient(135deg, #38a169, #2f855a);
+            box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+        }
+
+        .btn:disabled {
+            background: #e2e8f0 !important;
+            color: #a0aec0 !important;
+            cursor: not-allowed !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        .purchase-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .purchase-title {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            color: #718096;
+            font-style: italic;
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #fc8181;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 1.5em;
+            }
+            
+            .btn {
+                padding: 12px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>?? Catan Companion</h1>
+        
+        <div id="status" class="status disconnected">
+            Connecting to game...
+        </div>
+
+        <div class="player-select">
+            <label for="playerSelect">Select Your Player:</label>
+            <select id="playerSelect">
+                <option value="">Choose your player...</option>
+            </select>
+        </div>
+
+        <div class="game-info" id="gameInfo" style="display: none;">
+            <div><strong>Current Player:</strong> <span id="currentPlayer" class="current-player">-</span></div>
+            <div><strong>Game State:</strong> <span id="gameState">-</span></div>
+        </div>
+
+        <div class="action-buttons" id="actionButtons" style="display: none;">
+            <button id="nextBtn" class="btn btn-primary" onclick="doAction('Next')">
+                ?? Next Turn
+            </button>
+            <button id="undoBtn" class="btn btn-secondary" onclick="doAction('Undo')">
+                ? Undo
+            </button>
+            
+            <div class="purchase-section">
+                <div class="purchase-title">Purchase Items</div>
+                <div id="purchaseButtons">
+                    <button class="btn btn-purchase" onclick="purchaseItem('Settlement')">
+                        ??? Settlement
+                    </button>
+                    <button class="btn btn-purchase" onclick="purchaseItem('Road')">
+                        ??? Road
+                    </button>
+                    <button class="btn btn-purchase" onclick="purchaseItem('City')">
+                        ??? City
+                    </button>
+                    <button class="btn btn-purchase" onclick="purchaseItem('Soldier')">
+                        ?? Soldier
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorContainer"></div>
+    </div>
+
+    <script>
+        // Global variables
+        let gameId = 'default';
+        let selectedPlayerId = null;
+        let currentVersion = 0;
+        let isListening = false;
+        let retryCount = 0;
+        const maxRetries = 5;
+
+        // Initialize the companion
+        document.addEventListener('DOMContentLoaded', function() {
+            // Extract gameId from URL if provided
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlGameId = urlParams.get('gameId');
+            if (urlGameId) {
+                gameId = urlGameId;
+            }
+
+            initializeCompanion();
+        });
+
+        async function initializeCompanion() {
+            try {
+                updateStatus('Connecting to game...', false);
+                await loadPlayers();
+                await loadGameState();
+                startListening();
+                updateStatus('Connected to game', true);
+            } catch (error) {
+                console.error('Failed to initialize companion:', error);
+                updateStatus('Failed to connect to game', false);
+                showError('Failed to connect to game. Please refresh the page.');
+            }
+        }
+
+        async function loadPlayers() {
+            try {
+                const response = await fetch(`/api/players/${gameId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const playerSelect = document.getElementById('playerSelect');
+                
+                // Clear existing options except the first one
+                playerSelect.innerHTML = '<option value="">Choose your player...</option>';
+                
+                data.players.forEach(player => {
+                    const option = document.createElement('option');
+                    option.value = player.id;
+                    option.textContent = player.name;
+                    if (player.isCurrentPlayer) {
+                        option.textContent += ' (Current Player)';
+                    }
+                    playerSelect.appendChild(option);
+                });
+
+                // Set up player selection handler
+                playerSelect.onchange = function() {
+                    selectedPlayerId = this.value;
+                    if (selectedPlayerId) {
+                        document.getElementById('actionButtons').style.display = 'block';
+                        updateActionButtons();
+                    } else {
+                        document.getElementById('actionButtons').style.display = 'none';
+                    }
+                };
+
+            } catch (error) {
+                console.error('Error loading players:', error);
+                throw error;
+            }
+        }
+
+        async function loadGameState() {
+            try {
+                const response = await fetch(`/api/gamestate/${gameId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const gameState = await response.json();
+                updateGameInfo(gameState);
+                currentVersion = gameState.version;
+            } catch (error) {
+                console.error('Error loading game state:', error);
+                throw error;
+            }
+        }
+
+        function updateGameInfo(gameState) {
+            document.getElementById('currentPlayer').textContent = gameState.currentPlayerId || 'Unknown';
+            document.getElementById('gameState').textContent = gameState.gameState || 'Unknown';
+            document.getElementById('gameInfo').style.display = 'block';
+            
+            if (selectedPlayerId) {
+                updateActionButtons(gameState);
+            }
+        }
+
+        function updateActionButtons(gameState = null) {
+            if (!selectedPlayerId) return;
+
+            const nextBtn = document.getElementById('nextBtn');
+            const undoBtn = document.getElementById('undoBtn');
+            
+            if (gameState) {
+                const isCurrentPlayer = selectedPlayerId === gameState.currentPlayerId;
+                const actionFlags = gameState.actionFlags || {};
+
+                nextBtn.disabled = !isCurrentPlayer || !actionFlags.nextEnabled;
+                undoBtn.disabled = !isCurrentPlayer || !actionFlags.undoEnabled;
+
+                // Update purchase buttons based on available entitlements
+                const purchaseButtons = document.querySelectorAll('#purchaseButtons button');
+                purchaseButtons.forEach(btn => {
+                    btn.disabled = !isCurrentPlayer;
+                });
+            }
+        }
+
+        async function startListening() {
+            if (isListening) return;
+            isListening = true;
+
+            while (isListening) {
+                try {
+                    const response = await fetch(`/api/gamestate/${gameId}/listen?playerId=${selectedPlayerId || ''}&version=${currentVersion}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const gameState = await response.json();
+                    updateGameInfo(gameState);
+                    currentVersion = gameState.version;
+                    retryCount = 0; // Reset retry count on success
+
+                } catch (error) {
+                    console.error('Error in listening loop:', error);
+                    retryCount++;
+                    
+                    if (retryCount >= maxRetries) {
+                        updateStatus('Connection lost. Please refresh the page.', false);
+                        isListening = false;
+                        break;
+                    }
+
+                    // Wait before retrying (exponential backoff)
+                    const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        async function doAction(action) {
+            if (!selectedPlayerId) {
+                showError('Please select your player first');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/game/action', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        gameId: gameId,
+                        playerId: selectedPlayerId,
+                        messageType: 'DoAction',
+                        messageData: {
+                            action: action
+                        },
+                        timestamp: new Date().toISOString()
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Action executed successfully, the listening loop will update the UI
+                    clearError();
+                } else {
+                    showError(result.message || 'Action failed');
+                }
+
+            } catch (error) {
+                console.error('Error executing action:', error);
+                showError('Failed to execute action. Please try again.');
+            }
+        }
+
+        async function purchaseItem(entitlement) {
+            if (!selectedPlayerId) {
+                showError('Please select your player first');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/game/action', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        gameId: gameId,
+                        playerId: selectedPlayerId,
+                        messageType: 'PurchaseMessage',
+                        messageData: {
+                            entitlement: entitlement
+                        },
+                        timestamp: new Date().toISOString()
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    clearError();
+                } else {
+                    showError(result.message || 'Purchase failed');
+                }
+
+            } catch (error) {
+                console.error('Error purchasing item:', error);
+                showError('Failed to purchase item. Please try again.');
+            }
+        }
+
+        function updateStatus(message, isConnected) {
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = message;
+            statusElement.className = `status ${isConnected ? 'connected' : 'disconnected'}`;
+        }
+
+        function showError(message) {
+            const errorContainer = document.getElementById('errorContainer');
+            errorContainer.innerHTML = `<div class="error">${message}</div>`;
+            
+            // Auto-clear error after 5 seconds
+            setTimeout(clearError, 5000);
+        }
+
+        function clearError() {
+            const errorContainer = document.getElementById('errorContainer');
+            errorContainer.innerHTML = '';
+        }
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                isListening = false;
+            } else {
+                if (!isListening) {
+                    startListening();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
