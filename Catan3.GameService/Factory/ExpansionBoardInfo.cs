@@ -4,60 +4,113 @@ using Catan3.Shared.Utility;
 
 namespace Catan3.GameService.Factory
 {
-    public class ExpansionBoardInfo : IGameMetadata
+    public partial class ExpansionBoardInfo : IGameMetadata
     {
+        public GameType GameType { get; } = GameType.Expansion;
+        public string Description { get; } = "Expansion Game";
+        public HouseRules HouseRules { get; } = new HouseRules() { GoldTiles = 2, HideBaronBeforeInvasion = false, KnightMovesBaronBeforeRoll = true, WallsProtectCities = true };
         public static ExpansionBoardInfo Default { get; } = new ExpansionBoardInfo();
-        public GameType GameType => GameType.Expansion;
-        public string Description => "Expansion 4-player board with Cities & Knights";
-        public HouseRules HouseRules => HouseRules.Default;
-        public ResourceRules ResourceRules => new ResourceRules(4, 5, 15, 3, 4);
+        public ResourceRules ResourceRules { get; } = new ResourceRules(4, 5, 15, 3, 6);
+        private ExpansionBoardInfo() => Layout = BoardLayout.Default;
+        public BoardLayout Layout { get; private set; }
         public bool HasSupplemental => true;
-        public BoardLayout BoardLayout => BoardLayout.Default;
-        
-        public List<HexCoordinates> TileKeys => new List<HexCoordinates>
-        {
-            new HexCoordinates(-2, 0, 2), new HexCoordinates(-2, 1, 1), new HexCoordinates(-2, 2, 0),
-            new HexCoordinates(-1, -1, 2), new HexCoordinates(-1, 0, 1), new HexCoordinates(-1, 1, 0), new HexCoordinates(-1, 2, -1),
-            new HexCoordinates(0, -2, 2), new HexCoordinates(0, -1, 1), new HexCoordinates(0, 0, 0), new HexCoordinates(0, 1, -1), new HexCoordinates(0, 2, -2),
-            new HexCoordinates(1, -2, 1), new HexCoordinates(1, -1, 0), new HexCoordinates(1, 0, -1), new HexCoordinates(1, 1, -2),
-            new HexCoordinates(2, -2, 0), new HexCoordinates(2, -1, -1), new HexCoordinates(2, 0, -2)
-        };
-
-        public List<ResourceType> Resources => new List<ResourceType>
-        {
-            ResourceType.Desert, ResourceType.Ore, ResourceType.Sheep,
-            ResourceType.Wheat, ResourceType.Brick, ResourceType.Wood, ResourceType.Sheep,
-            ResourceType.Wheat, ResourceType.Wood, ResourceType.Wheat, ResourceType.Ore, ResourceType.Sheep,
-            ResourceType.Brick, ResourceType.Ore, ResourceType.Wheat, ResourceType.Wood,
-            ResourceType.Brick, ResourceType.Wood, ResourceType.Sheep
-        };
-
-        public List<int> Numbers => new List<int>
-        {
-            7, 10, 2,
-            9, 12, 6, 4,
-            10, 9, 11, 3, 8,
-            8, 3, 4, 5,
-            5, 6, 11
-        };
-
-        public List<HarborModel> Harbors => new List<HarborModel>
-        {
-            // Add harbor definitions
-        };
-
-        public List<EntitlementPurchaseModel> PurchaseableEntitlements => new List<EntitlementPurchaseModel>
-        {
-            new EntitlementPurchaseModel(Entitlement.Settlement),
-            new EntitlementPurchaseModel(Entitlement.City),
-            new EntitlementPurchaseModel(Entitlement.Road),
-            new EntitlementPurchaseModel(Entitlement.Soldier),
-            new EntitlementPurchaseModel(Entitlement.BuyKnight),
-            new EntitlementPurchaseModel(Entitlement.UpgradeKnight),
-            new EntitlementPurchaseModel(Entitlement.ActivateKnight),
-            new EntitlementPurchaseModel(Entitlement.PoliticsUpgrade),
-            new EntitlementPurchaseModel(Entitlement.ScienceUpgrade),
-            new EntitlementPurchaseModel(Entitlement.TradeUpgrade)
-        };
+        public List<HexCoordinates> TileKeys { get; } =
+             [
+                // column 1
+            
+                new(-3, 1, 2),
+                new(-3, 2, 1),
+                new(-3, 3, 0),
+                //column 2
+            
+                new(-2, 0, 2),
+                new(-2, 1, 1),
+                new(-2, 2, 0),
+                new(-2, 3, -1),
+                //column 3
+                new(-1, -1, 2),
+                new(-1, 0, 1),
+                new(-1, 1, 0),
+                new(-1, 2, -1),
+                new(-1, 3, -2),
+                
+                // mid column (4)
+                new(0, -2, 2),
+                new(0, -1, 1),
+                new(0, 0, 0),
+                new(0, 1, -1),
+                new(0, 2, -2),
+                new(0, 3, -3),
+                // column 5
+              
+                new(1, -2, 1),
+                new(1, -1, 0),
+                new(1, 0, -1),
+                new(1, 1, -2),
+                new(1, 2, -3),
+                //column 6
+               
+                new(2, -2, 0),
+                new(2, -1, -1),
+                new(2, 0, -2),
+                new(2, 1, -3),
+                // column 7
+            
+                new(3, -2, -1),
+                new(3, -1, -2),
+                new(3, 0, -3),
+             ];
+        public List<ResourceType> Resources { get; } = [
+                ResourceType.Desert,
+                ResourceType.Desert,
+                ResourceType.Brick,
+                ResourceType.Brick,
+                ResourceType.Brick,
+                ResourceType.Brick,
+                ResourceType.Brick,
+                ResourceType.Brick,
+                ResourceType.Ore,
+                ResourceType.Ore,
+                ResourceType.Ore,
+                ResourceType.Ore,
+                ResourceType.Ore,
+                ResourceType.Sheep,
+                ResourceType.Sheep,
+                ResourceType.Sheep,
+                ResourceType.Sheep,
+                ResourceType.Sheep,
+                ResourceType.Sheep,
+                ResourceType.Wheat,
+                ResourceType.Wheat,
+                ResourceType.Wheat,
+                ResourceType.Wheat,
+                ResourceType.Wheat,
+                ResourceType.Wood,
+                ResourceType.Wood,
+                ResourceType.Wood,
+                ResourceType.Wood,
+                ResourceType.Wood,
+                ResourceType.Wood
+            ];
+        public List<HarborModel> Harbors { get; } = [
+            new HarborModel(new HexCoordinates(-2, 0, 2), HarborType.Ore, HexSide.TopLeft),
+            new HarborModel(new HexCoordinates(0, -2, 2), HarborType.Wheat, HexSide.Top),
+            new HarborModel(new HexCoordinates(1, -2, 1), HarborType.Wood, HexSide.TopRight),
+            new HarborModel(new HexCoordinates(2, -2, 0), HarborType.Brick, HexSide.TopRight),
+            new HarborModel(new HexCoordinates(3, 0, -3), HarborType.Sheep, HexSide.BottomRight),
+            new HarborModel(new HexCoordinates(2, 1, -3), HarborType.ThreeForOne, HexSide.Bottom),
+            new HarborModel(new HexCoordinates(1, 2, -3), HarborType.ThreeForOne, HexSide.Bottom),
+            new HarborModel(new HexCoordinates(-1,3,-2), HarborType.ThreeForOne, HexSide.Bottom),
+            new HarborModel(new HexCoordinates(-3, 3, 0), HarborType.ThreeForOne, HexSide.BottomLeft),
+            new HarborModel(new HexCoordinates(-3, 2, 1), HarborType.ThreeForOne, HexSide.TopLeft),
+            new HarborModel(new HexCoordinates(3, -1, -2), HarborType.ThreeForOne, HexSide.TopRight),
+            ];
+        public List<int> Numbers { get; } = [7, 7, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 8, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12];
+        public List<EntitlementPurchaseModel> PurchaseableEntitlements { get; } = [
+                new EntitlementPurchaseModel(Entitlement.City),
+                new EntitlementPurchaseModel(Entitlement.Settlement),
+                new EntitlementPurchaseModel(Entitlement.Road),
+                new EntitlementPurchaseModel(Entitlement.Soldier),
+            ];
     }
 }

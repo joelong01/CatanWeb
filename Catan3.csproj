@@ -21,18 +21,22 @@
 		<Compile Remove="Catan3.Shared\**" />
 		<Compile Remove="CatanGameService\**" />
 		<Compile Remove="Player\PlayerOrder\**" />
+		<Compile Remove="Tests.GameService\**" />
 		<EmbeddedResource Remove="Catan3.GameService\**" />
 		<EmbeddedResource Remove="Catan3.Shared\**" />
 		<EmbeddedResource Remove="CatanGameService\**" />
 		<EmbeddedResource Remove="Player\PlayerOrder\**" />
+		<EmbeddedResource Remove="Tests.GameService\**" />
 		<None Remove="Catan3.GameService\**" />
 		<None Remove="Catan3.Shared\**" />
 		<None Remove="CatanGameService\**" />
 		<None Remove="Player\PlayerOrder\**" />
+		<None Remove="Tests.GameService\**" />
 		<Page Remove="Catan3.GameService\**" />
 		<Page Remove="Catan3.Shared\**" />
 		<Page Remove="CatanGameService\**" />
 		<Page Remove="Player\PlayerOrder\**" />
+		<Page Remove="Tests.GameService\**" />
 	</ItemGroup>
 	<ItemGroup>
 		<Compile Remove="Player\PlayerOrderModel.cs" />
@@ -306,5 +310,8 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <PRIResource Remove="CatanGameService\**" />
+	</ItemGroup>
+	<ItemGroup>
+	  <PRIResource Remove="Tests.GameService\**" />
 	</ItemGroup>
 </Project>

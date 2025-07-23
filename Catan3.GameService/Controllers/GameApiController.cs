@@ -49,7 +49,7 @@ namespace Catan3.GameService.Controllers
         }
 
         [HttpPost("game/action")]
-        public async Task<IActionResult> ExecuteGameAction([FromBody] JsonElement request)
+        public IActionResult ExecuteGameAction([FromBody] JsonElement request)
         {
             try
             {

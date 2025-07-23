@@ -15,7 +15,7 @@ namespace Catan3.GameService.Factory
         public ResourceRules ResourceRules => new ResourceRules(5, 5, 15, 3, 4);
         public static RegularBoardInfo Default { get; } = new RegularBoardInfo();
         public bool HasSupplemental => false;
-        public BoardLayout BoardLayout => BoardLayout.Default;
+        public BoardLayout Layout => BoardLayout.Default;
         public List<HexCoordinates> TileKeys => new List<HexCoordinates>
              {
                  new(-2, 0, 2),
