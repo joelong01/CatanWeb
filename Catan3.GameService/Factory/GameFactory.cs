@@ -182,4 +182,4 @@ namespace Catan3.GameService.Factory
             return true;
         }
     }
-}}
+}

@@ -146,22 +146,7 @@ namespace Catan3.Shared.Models
         }
     }
 
-    /// <summary>
-    /// Provides extension methods for the PlayerModel class.
-    /// </summary>
-    public static class PlayerModelExtensions
-    {
-        /// <summary>
-        /// Retrieves a PlayerModel from the collection by its ID.
-        /// </summary>
-        /// <param name="collection">The collection of PlayerModel instances.</param>
-        /// <param name="id">The ID of the player to retrieve.</param>
-        /// <returns>The PlayerModel with the specified ID, or null if not found.</returns>
-        public static PlayerModel? PlayerFromId(this IList<PlayerModel> collection, string id)
-        {
-            return collection.FirstOrDefault((p) => p.Id == id);
-        }
-    }
+   
 
    
 }

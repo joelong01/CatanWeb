@@ -6,10 +6,11 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 using Catan3.Shared.Models;
-using Catan3.Shared.Utility;
-using Catan3.GameService.Utility;
+using Catan3.Shared.Extensions;
 using Catan3.GameService.Services;
-using Catan3.GameService.Extensions;
+using Catan3.GameService.Factory;
+using Catan3.GameService.Utility;
+using Catan3.Shared.Utility;
 
 namespace Catan3.GameService.Controllers
 {
@@ -22,13 +23,13 @@ namespace Catan3.GameService.Controllers
     {
         private Log<string> Log;
         private IPersistanceService? MyPersistanceService { get; set; }
-        
+
         public GameStateMachine(IPersistanceService? persistanceService, string localSaveFile)
         {
             Log = new Log<string>(persistanceService, localSaveFile);
             MyPersistanceService = persistanceService;
         }
-        
+
         public int DoneCount => Log.DoneCount;
 
         // Simplified message handling without MVVM
@@ -54,17 +55,17 @@ namespace Catan3.GameService.Controllers
                         LogGameModel(gameModel);
                         break;
                 }
-                
+
                 if (gameModel is not null)
                 {
                     return gameModel;
                 }
                 else
                 {
-                    throw new GameException($"Unable to do action {message}");
+                    throw new Catan3.Shared.Utility.GameException($"Unable to do action {message}");
                 }
             }
-            catch (GameException e)
+            catch (Catan3.Shared.Utility.GameException e)
             {
                 TraceMessage($"Exception doing Action {message.Action}. Message: {e}");
                 throw;
@@ -79,7 +80,7 @@ namespace Catan3.GameService.Controllers
                 LogGameModel(gameModel);
                 return gameModel;
             }
-            catch (GameException e)
+            catch (Catan3.Shared.Utility.GameException e)
             {
                 TraceMessage($"Exception purchasing {message.Entitlement}. Message: {e}");
                 throw;
@@ -94,7 +95,7 @@ namespace Catan3.GameService.Controllers
                 LogGameModel(gameModel);
                 return gameModel;
             }
-            catch (GameException e)
+            catch (Catan3.Shared.Utility.GameException e)
             {
                 TraceMessage($"Exception upgrading building. Message: {e}");
                 throw;
@@ -109,7 +110,7 @@ namespace Catan3.GameService.Controllers
                 LogGameModel(model);
                 return model;
             }
-            catch (GameException e)
+            catch (Catan3.Shared.Utility.GameException e)
             {
                 TraceMessage($"Exception purchasing road. Message: {e}");
                 throw;
@@ -124,7 +125,7 @@ namespace Catan3.GameService.Controllers
                 LogGameModel(model);
                 return model;
             }
-            catch (GameException e)
+            catch (Catan3.Shared.Utility.GameException e)
             {
                 TraceMessage($"Exception moving robber. Message: {e}");
                 throw;
@@ -139,7 +140,7 @@ namespace Catan3.GameService.Controllers
                 LogGameModel(model);
                 return model;
             }
-            catch (GameException e)
+            catch (Catan3.Shared.Utility.GameException e)
             {
                 TraceMessage($"Exception creating new game. Message: {e}");
                 throw;
@@ -154,7 +155,7 @@ namespace Catan3.GameService.Controllers
                 LogGameModel(model);
                 return model;
             }
-            catch (GameException e)
+            catch (Catan3.Shared.Utility.GameException e)
             {
                 TraceMessage($"Exception loading game. Message: {e}");
                 throw;
@@ -169,7 +170,7 @@ namespace Catan3.GameService.Controllers
                 LogGameModel(model);
                 return model;
             }
-            catch (GameException e)
+            catch (Catan3.Shared.Utility.GameException e)
             {
                 TraceMessage($"Exception handling roll. Message: {e}");
                 throw;
@@ -184,7 +185,7 @@ namespace Catan3.GameService.Controllers
                 LogGameModel(gameModel);
                 return gameModel;
             }
-            catch (GameException e)
+            catch (Catan3.Shared.Utility.GameException e)
             {
                 TraceMessage($"Exception setting player order. Message: {e}");
                 throw;
@@ -196,9 +197,9 @@ namespace Catan3.GameService.Controllers
             try
             {
                 GameModel gameModel = Log.CopyCurrent();
-                if (gameModel.GameState != GameState.PickSupplementalPlayers) 
-                    throw new GameException("Cannot set supplemental players in current state");
-                
+                if (gameModel.GameState != GameState.PickSupplementalPlayers)
+                    throw new Catan3.Shared.Utility.GameException("Cannot set supplemental players in current state");
+
                 foreach (var player in gameModel.Players)
                 {
                     player.ParticipatingInSupplemental = message.PlayerIds.Contains(player.Id);
@@ -207,7 +208,7 @@ namespace Catan3.GameService.Controllers
                 LogGameModel(gameModel);
                 return gameModel;
             }
-            catch (GameException e)
+            catch (Catan3.Shared.Utility.GameException e)
             {
                 TraceMessage($"Exception setting supplemental players. Message: {e}");
                 throw;
@@ -224,9 +225,9 @@ namespace Catan3.GameService.Controllers
                     LogGameModel(gameModel);
                     return gameModel;
                 }
-                throw new GameException("Unable to balance board");
+                throw new Catan3.Shared.Utility.GameException("Unable to balance board");
             }
-            catch (GameException e)
+            catch (Catan3.Shared.Utility.GameException e)
             {
                 TraceMessage($"Exception balancing board. Message: {e}");
                 throw;
@@ -238,9 +239,9 @@ namespace Catan3.GameService.Controllers
             try
             {
                 GameModel gameModel = Log.CopyCurrent();
-                if (gameModel.GameState != GameState.FinishedRollOrder) 
-                    throw new GameException("Cannot go first in current state");
-                
+                if (gameModel.GameState != GameState.FinishedRollOrder)
+                    throw new Catan3.Shared.Utility.GameException("Cannot go first in current state");
+
                 while (gameModel.Players[0].Id != message.PlayerId)
                 {
                     var player = gameModel.Players[0];
@@ -251,7 +252,7 @@ namespace Catan3.GameService.Controllers
                 LogGameModel(gameModel);
                 return gameModel;
             }
-            catch (GameException e)
+            catch (Catan3.Shared.Utility.GameException e)
             {
                 TraceMessage($"Exception setting go first. Message: {e}");
                 throw;
@@ -303,7 +304,7 @@ namespace Catan3.GameService.Controllers
             }
             if (!ValidatePurchase(gameModel, entitlement))
             {
-                throw new GameException($"cannot buy {entitlement} in state {gameModel.GameState}");
+                throw new Catan3.Shared.Utility.GameException($"cannot buy {entitlement} in state {gameModel.GameState}");
             }
             gameModel.CurrentPlayer().UnspentEntitlements.Add(entitlement);
             return gameModel;
@@ -383,11 +384,11 @@ namespace Catan3.GameService.Controllers
 
         public async Task<GameModel> LoadGame(string filePath)
         {
-            if (MyPersistanceService is null) throw new GameException("no persistance service was set");
+            if (MyPersistanceService is null) throw new Catan3.Shared.Utility.GameException("no persistance service was set");
 
-            var compressedBytes = await MyPersistanceService.OpenAsync(filePath) ?? throw new GameException($"Unable to open file {filePath}");
+            var compressedBytes = await MyPersistanceService.OpenAsync(filePath) ?? throw new Catan3.Shared.Utility.GameException($"Unable to open file {filePath}");
             var decompressedJson = SerializationHelper.Decompress(compressedBytes);
-            var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) ?? throw new GameException("Error: Failed to load the game data.");
+            var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) ?? throw new Catan3.Shared.Utility.GameException("Error: Failed to load the game data.");
             Log<string> log = Log<string>.FromSerializableLog(savedLog, MyPersistanceService, filePath);
             this.Log = log;
             return Log.CurrentState();
@@ -492,7 +493,7 @@ namespace Catan3.GameService.Controllers
                 {
                     if (!playerLookup.TryGetValue(id, out PlayerModel? player))
                     {
-                        throw new GameException($"Invalid playerId {id} found.");
+                        throw new Catan3.Shared.Utility.GameException($"Invalid playerId {id} found.");
                     }
                     return player;
                 })
@@ -505,8 +506,8 @@ namespace Catan3.GameService.Controllers
         private GameModel NextState()
         {
             GameModel gameModel = Log.CopyCurrent();
-            if (!CanTransitionToNext(gameModel)) throw new GameException("Cannot transition to Next state at this time");
-            
+            if (!CanTransitionToNext(gameModel)) throw new Catan3.Shared.Utility.GameException("Cannot transition to Next state at this time");
+
             switch (gameModel.GameState)
             {
                 case GameState.Uninitialized:
@@ -570,9 +571,9 @@ namespace Catan3.GameService.Controllers
                     }
                     break;
                 default:
-                    throw new GameException($"NextState not implemented for {gameModel.GameState}");
+                    throw new Catan3.Shared.Utility.GameException($"NextState not implemented for {gameModel.GameState}");
             }
-            
+
             return gameModel;
         }
 
@@ -606,15 +607,15 @@ namespace Catan3.GameService.Controllers
             var roadModel = gameModel.Roads.FirstOrDefault(r => r.RoadKey == roadKey);
             if (roadModel == null)
             {
-                throw new GameException($"Invalid RoadKey {roadKey}");
+                throw new Catan3.Shared.Utility.GameException($"Invalid RoadKey {roadKey}");
             }
             if (roadModel.RoadState != RoadState.Buildable)
             {
-                throw new GameException($"Road {roadModel} is not buildable!");
+                throw new Catan3.Shared.Utility.GameException($"Road {roadModel} is not buildable!");
             }
             if (roadModel.OwnerId != null)
             {
-                throw new GameException($"Don't try to buy other people's roads! Owner: {roadModel.OwnerId}");
+                throw new Catan3.Shared.Utility.GameException($"Don't try to buy other people's roads! Owner: {roadModel.OwnerId}");
             }
             roadModel.OwnerId = gameModel.CurrentPlayerId;
             roadModel.RoadState = RoadState.Road;
@@ -670,7 +671,7 @@ namespace Catan3.GameService.Controllers
             var currentPlayer = gameModel.CurrentPlayer();
             if (!entitlements.Any(e => currentPlayer.UnspentEntitlements.Contains(e)))
             {
-                throw new GameException($"{currentPlayer.Id} does not have the required entitlement.");
+                throw new Catan3.Shared.Utility.GameException($"{currentPlayer.Id} does not have the required entitlement.");
             }
         }
 
@@ -680,10 +681,10 @@ namespace Catan3.GameService.Controllers
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse, GameState.Supplemental]);
             BuildingKey buildingKey = message.BuildingKey;
             var building = gameModel.Buildings.FindBuildingModel(buildingKey)
-                    ?? throw new GameException($"Invalid BuildingKey: {buildingKey}");
+                    ?? throw new Catan3.Shared.Utility.GameException($"Invalid BuildingKey: {buildingKey}");
             if (building.BuildingState == BuildingState.NotBuildable)
             {
-                throw new GameException($"{building} is not buildingable.");
+                throw new Catan3.Shared.Utility.GameException($"{building} is not buildingable.");
             }
 
             switch (building.BuildingState)
@@ -706,7 +707,7 @@ namespace Catan3.GameService.Controllers
                     ThrowIfNoEntitlement(gameModel, [Entitlement.City]);
                     if (building.OwnerId != gameModel.CurrentPlayerId)
                     {
-                        throw new GameException($"Don't try to upgrade somebody else's building: {building.OwnerId}");
+                        throw new Catan3.Shared.Utility.GameException($"Don't try to upgrade somebody else's building: {building.OwnerId}");
                     }
                     building.BuildingState = BuildingState.City;
                     ConsumeEntitlement(gameModel, Entitlement.City);
@@ -716,13 +717,13 @@ namespace Catan3.GameService.Controllers
                     ThrowIfNoEntitlement(gameModel, [Entitlement.BuyKnight]);
                     if (building.OwnerId != gameModel.CurrentPlayerId)
                     {
-                        throw new GameException($"Don't try to upgrade somebody else's building: {building.OwnerId}");
+                        throw new Catan3.Shared.Utility.GameException($"Don't try to upgrade somebody else's building: {building.OwnerId}");
                     }
                     building.BuildingState = BuildingState.Knight;
                     ConsumeEntitlement(gameModel, Entitlement.BuyKnight);
                     break;
                 case BuildingState.Knight:
-                    throw new GameException("Knights cannot be upgraded further.");
+                    throw new Catan3.Shared.Utility.GameException("Knights cannot be upgraded further.");
             }
 
             if (gameModel.GameState == GameState.AllocateResourceReverse)
@@ -817,12 +818,12 @@ namespace Catan3.GameService.Controllers
             ThrowIfWrongState(gameModel.GameState, [GameState.MustMoveRobber]);
             ThrowIfBadPlayer(gameModel.CurrentPlayerId, gameModel.Players);
             ThrowIfNoEntitlement(gameModel, [Entitlement.Soldier, Entitlement.RolledSeven]);
-            
+
             gameModel.Robber.Coordinates = moveRobber.Coordinates;
             gameModel.Robber.MovedBy = gameModel.CurrentPlayerId;
             if (moveRobber.TargetPlayerId is not null)
             {
-                var target = gameModel.Players.PlayerFromId(moveRobber.TargetPlayerId) ?? throw new GameException($"TargetPlayerId {moveRobber.TargetPlayerId} is invalid");
+                var target = gameModel.Players.PlayerFromId(moveRobber.TargetPlayerId) ?? throw new Catan3.Shared.Utility.GameException($"TargetPlayerId {moveRobber.TargetPlayerId} is invalid");
                 target.TimesTargeted++;
             }
 
@@ -848,7 +849,7 @@ namespace Catan3.GameService.Controllers
             if (!validStates.Contains(currentState))
             {
                 string validStatesList = string.Join(", ", validStates.Select(vs => vs.ToString()));
-                throw new GameException($"{currentState} is invalid. Must be in this set: [{validStatesList}]");
+                throw new Catan3.Shared.Utility.GameException($"{currentState} is invalid. Must be in this set: [{validStatesList}]");
             }
         }
 
@@ -856,7 +857,7 @@ namespace Catan3.GameService.Controllers
         {
             if (!players.Any(p => p.Id == playerId))
             {
-                throw new GameException($"Bad CurrentPlayerId: {playerId}");
+                throw new Catan3.Shared.Utility.GameException($"Bad CurrentPlayerId: {playerId}");
             }
         }
 
@@ -870,7 +871,7 @@ namespace Catan3.GameService.Controllers
             try
             {
                 if (gameModel.HouseRules.GoldTiles == 0) return;
-                if (gameModel.Tiles is null) throw new GameException("Tiles is null");
+                if (gameModel.Tiles is null) throw new Catan3.Shared.Utility.GameException("Tiles is null");
 
                 HashSet<HexCoordinates> previouslyGoldTiles = new();
                 foreach (var tile in gameModel.Tiles)
@@ -925,7 +926,7 @@ namespace Catan3.GameService.Controllers
 
         private GameModel? Undo()
         {
-            GameModel result = Log.Undo() ?? throw new GameException("Undo cannot be done");
+            GameModel result = Log.Undo() ?? throw new Catan3.Shared.Utility.GameException("Undo cannot be done");
             SetActionFlags(result);
             result.ActionFlags.RedoEnabled = true;
             return result;
@@ -933,7 +934,7 @@ namespace Catan3.GameService.Controllers
 
         private GameModel? Redo()
         {
-            GameModel result = Log.Redo() ?? throw new GameException("Redo cannot be done");
+            GameModel result = Log.Redo() ?? throw new Catan3.Shared.Utility.GameException("Redo cannot be done");
             SetActionFlags(result);
             return result;
         }
@@ -1151,7 +1152,7 @@ namespace Catan3.GameService.Controllers
         {
             int count = 1;
             int max = 1;
-            counted.Add(start);
+            counted.Add(start); // it is counted in the "max=1" above
             RoadModel next = start;
             List<RoadModel> ownedAdjacentNotCounted = gameModel.OwnedAdjacentRoadsNotCounted(next, counted, blockedFork, out bool adjacentFork);
             do
@@ -1164,7 +1165,7 @@ namespace Catan3.GameService.Controllers
                         {
                             count++;
                             next = ownedAdjacentNotCounted[0];
-                            counted.Add(next);
+                            counted.Add(next);                  // we counted it, add it to the counted list.
                             if (count > max)
                             {
                                 max = count;
@@ -1172,8 +1173,9 @@ namespace Catan3.GameService.Controllers
                             ownedAdjacentNotCounted = gameModel.OwnedAdjacentRoadsNotCounted(next, counted, blockedFork, out adjacentFork);
                             if (adjacentFork)
                             {
+                                //ah...the loop
                                 count++;
-                                counted.Add(next);
+                                counted.Add(next); // we shouldn't have to do this more than once
                                 if (count > max)
                                 {
                                     max = count;
@@ -1181,22 +1183,51 @@ namespace Catan3.GameService.Controllers
                                 return max;
                             }
                         }
+                        //
+                        //  loop to the next road to see if it terminates, forks, or just continues...
                         break;
                     default:
+                        //
+                        //   general strategy:  for each fork in the road, pretend that all but one of the forks are already counted
+                        //                      then count the remaining one.  after that, pick another to be counted
+                        //                      because we "count" the entered line, there are only ever 2 forks in the road
+                        // ownedAdjacentNotCounted.Count > 1
+                        //  usually there means there is a fork like this
+                        //                           /
+                        //                          /    <=== fork1
+                        //                         /
+                        //                  ------     <=== always counted
+                        //                         \
+                        //                          \   <=== Fork 2
+                        //                           \
+                        //  if we ever get this or the equivalent:
+                        //
+                        //                           /
+                        //                          /    <=== fork1
+                        //                         /
+                        //                  ------     <=== always counted
+                        //                /        \
+                        //   Fork 3 -->  /          \   <=== Fork 2
+                        //              /            \
+                        //
+                        //  e.g the adjacent count is > 2 then the road with all the forks around it (the horizontal in ascii art) doesn't have to be counted because we'll count all the
+                        //  roads coming into that fork
                         List<RoadModel> forks = [.. ownedAdjacentNotCounted];
                         if (forks.Count > 2)
                         {
+                            //
+                            //  if the fork count is not 2 then that means we are in a middle segment, and we don't need to start there
                             return max;
                         }
                         foreach (RoadModel road in ownedAdjacentNotCounted)
                         {
-                            forks.Remove(road);
-                            int forkCount = CalculateLongestRoad(gameModel, road, counted, forks[0]);
+                            forks.Remove(road);// now the list has everything except this one road...so we've effectively picked a direction
+                            int forkCount = CalculateLongestRoad(gameModel, road, counted, forks[0]); // --> only one element in the forks list at this point
                             if (count + forkCount > max)
                             {
                                 max = count + forkCount;
                             }
-                            forks.Add(road);
+                            forks.Add(road); // put fork back so we can count that fork
                         }
                         return max;
                 }

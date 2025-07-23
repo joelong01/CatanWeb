@@ -137,5 +137,27 @@ namespace Catan3.Shared.Extensions
             }
             return directions;
         }
+
+        /// <summary>
+        /// Inserts an item into a sorted list maintaining sort order
+        /// </summary>
+        /// <typeparam name="T">Type that implements IComparable</typeparam>
+        /// <param name="list">The sorted list to insert into</param>
+        /// <param name="item">The item to insert</param>
+        public static void InsertSorted<T>(this IList<T> list, T item) where T : IComparable<T>
+        {
+            if (list.Count == 0)
+            {
+                list.Add(item);
+                return;
+            }
+
+            int index = 0;
+            while (index < list.Count && list[index].CompareTo(item) < 0)
+            {
+                index++;
+            }
+            list.Insert(index, item);
+        }
     }
 }

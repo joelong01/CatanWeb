@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Catan3.Shared.Utility;
+using Catan3.Shared.Extensions;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Shared.Models
