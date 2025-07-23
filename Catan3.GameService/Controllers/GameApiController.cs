@@ -169,15 +169,15 @@ namespace Catan3.GameService.Controllers
                 var key = $"{gameId}_{playerId}_{Guid.NewGuid()}";
                 _pendingUpdates[key] = tcs;
 
-                // Set up timeout (30 seconds)
-                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
+                // Set up timeout (15 minutes for local game scenarios where players might think for a while)
+                var timeoutTask = Task.Delay(TimeSpan.FromMinutes(15));
                 var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
 
                 _pendingUpdates.Remove(key);
 
                 if (completedTask == timeoutTask)
                 {
-                    // Timeout - return current state anyway
+                    // Timeout - return current state anyway (but this should be very rare with 15-minute timeout)
                     if (_gameStates.TryGetValue(gameId, out var timeoutGame))
                     {
                         var result = CreateGameStateResponse(gameId, timeoutGame);

@@ -17,12 +17,23 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Register GameStateMachine as a singleton (renamed from GameController)
+// Configure Discovery Service
+builder.Services.Configure<DiscoveryServiceOptions>(options =>
+{
+    options.BroadcastPort = 8765;
+    options.BroadcastInterval = 5000; // 5 seconds
+    options.Enabled = true;
+});
+
+// Register services
 builder.Services.AddSingleton<GameStateMachine>(provider => 
 {
     // For now, create with null services - will be updated when we integrate fully
     return new GameStateMachine(null, "temp_save.json");
 });
+
+builder.Services.AddSingleton<IDiscoveryService, UdpDiscoveryService>();
+builder.Services.AddHostedService(provider => (UdpDiscoveryService)provider.GetRequiredService<IDiscoveryService>());
 
 var app = builder.Build();
 
@@ -72,9 +83,38 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
 
-Console.WriteLine("Catan3 Game Service starting...");
-Console.WriteLine("Web Companion interface available at: /companion");
-Console.WriteLine("API endpoints available at: /api/*");
-Console.WriteLine("Game State Machine ready for REST API calls");
+// Start discovery service and announce availability
+var discoveryService = app.Services.GetRequiredService<IDiscoveryService>();
+
+Console.WriteLine("=================================");
+Console.WriteLine("?? Catan3 Game Service Starting");
+Console.WriteLine("=================================");
+Console.WriteLine();
+Console.WriteLine("?? Network Discovery:");
+Console.WriteLine("  • UDP Broadcast Port: 8765");
+Console.WriteLine("  • Broadcasting every 5 seconds");
+Console.WriteLine();
+Console.WriteLine("?? Web API Endpoints:");
+Console.WriteLine("  • Game Actions: /api/game/action");
+Console.WriteLine("  • Game State: /api/gamestate/{gameId}");
+Console.WriteLine("  • Players: /api/players/{gameId}");
+Console.WriteLine("  • Real-time Updates: /api/gamestate/{gameId}/listen");
+Console.WriteLine();
+Console.WriteLine("?? Mobile Companion:");
+Console.WriteLine("  • Interface URL: /companion");
+Console.WriteLine("  • Mobile devices can connect via browser");
+Console.WriteLine("  • Real-time updates via hanging GET");
+Console.WriteLine();
+Console.WriteLine("?? Service Status:");
+Console.WriteLine("  • Game State Machine: Ready");
+Console.WriteLine("  • REST API: Available");
+Console.WriteLine("  • Web Companion: Available");
+Console.WriteLine("  • UDP Discovery: Broadcasting");
+Console.WriteLine();
+Console.WriteLine("Ready for connections! ??");
+Console.WriteLine("=================================");
+
+// Update discovery with initial game info
+discoveryService.UpdateGameInfo("default", "WaitingForNewGame", 0, "");
 
 app.Run();
