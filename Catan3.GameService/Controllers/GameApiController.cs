@@ -231,9 +231,24 @@ namespace Catan3.GameService.Controllers
         {
             try
             {
-                var gameId = request.GetProperty("gameId").GetString();
-                var gameTypeStr = request.GetProperty("gameType").GetString();
-                var playerIdsElement = request.GetProperty("playerIds");
+                // Check if required properties exist
+                if (!request.TryGetProperty("gameId", out var gameIdElement))
+                {
+                    return BadRequest("Missing required fields: gameId, gameType");
+                }
+
+                if (!request.TryGetProperty("gameType", out var gameTypeElement))
+                {
+                    return BadRequest("Missing required fields: gameId, gameType");
+                }
+
+                if (!request.TryGetProperty("playerIds", out var playerIdsElement))
+                {
+                    return BadRequest("Missing required fields: gameId, gameType, playerIds");
+                }
+
+                var gameId = gameIdElement.GetString();
+                var gameTypeStr = gameTypeElement.GetString();
 
                 if (string.IsNullOrEmpty(gameId) || string.IsNullOrEmpty(gameTypeStr))
                 {

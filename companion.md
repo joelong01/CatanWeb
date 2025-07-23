@@ -5,6 +5,199 @@ This document outlines the design for a phone companion app that allows players 
 
 **MAJOR ARCHITECTURE UPDATE**: The system is being redesigned to extract the GameController into a dedicated ASP.NET Core service with a web-based mobile companion interface, enabling better separation of concerns, testability, and potential for distributed gameplay.
 
+## Testing Roadmap & Implementation Status ??
+
+### **? COMPLETED** - Testing Infrastructure & Core Components:
+
+#### **Test Phase 1: Board Layout & Game Factory** ? **COMPLETE**
+**Status**: Fully implemented in `Tests.GameService/UnitTest1.cs` (renamed to `GameFactoryTests`)
+- ? Game creation with valid player counts
+- ? Board layout validation (Regular vs Expansion)
+- ? Tile count verification (19 for Regular, 30 for Expansion)
+- ? Player initialization and setup
+- ? Game component validation (Buildings, Roads, Harbors)
+- ? Board shuffling integrity tests
+- ? Error handling for invalid player counts
+- ? Game validation after creation and shuffling
+
+#### **Test Phase 2: Network Discovery Service** ? **COMPLETE**
+**Status**: Comprehensive tests in `Tests.GameService/DiscoveryServiceTests.cs`
+- ? Service initialization and configuration
+- ? UDP broadcast message format validation
+- ? Network service start/stop lifecycle
+- ? Game info updates and broadcasting
+- ? JSON serialization/deserialization
+- ? Cancellation and error handling
+- ? Real UDP message reception testing
+- ? Service options and defaults validation
+
+### **?? NEXT PHASES** - Sequential Test Implementation Plan:
+
+#### **Test Phase 3: GameStateMachine Core Logic** ?? **NEXT PRIORITY**
+**Target File**: `Tests.GameService/GameStateMachineTests.cs`
+**Components to Test**:
+- ?? Game state transitions (WaitingForNewGame ? Playing ? Finished)
+- ?? Player turn management and current player tracking
+- ?? Action validation (Next, Undo, Redo)
+- ?? Game state version tracking and updates
+- ?? Purchase entitlements and resource management
+- ?? Building and road placement validation
+- ?? Robber movement and dice rolling
+- ?? Score calculation and win conditions
+- ?? Undo/Redo stack management
+- ?? Game persistence and loading
+
+**Estimated Test Count**: 15-20 comprehensive tests
+
+#### **Test Phase 4: REST API Controller** ?? **PENDING**
+**Target File**: `Tests.GameService/GameApiControllerTests.cs`
+**Components to Test**:
+- ?? API endpoint responses and status codes
+- ?? JSON request/response serialization
+- ?? Game action execution via REST
+- ?? Player management endpoints
+- ?? Game state retrieval and formatting
+- ?? Error handling and validation responses
+- ?? Authentication and authorization
+- ?? CORS and cross-origin request handling
+- ?? Request routing and parameter binding
+
+**Estimated Test Count**: 12-15 integration tests
+
+#### **Test Phase 5: Real-time Updates (Hanging GET)** ?? **PENDING**
+**Target File**: `Tests.GameService/HangingGetTests.cs`
+**Components to Test**:
+- ?? Long-polling request lifecycle
+- ?? Client version tracking and comparison
+- ?? Immediate response for outdated clients
+- ?? Request queuing and notification system
+- ?? Timeout handling (30-second limit)
+- ?? Concurrent client management
+- ?? Game state change notifications
+- ?? Connection cleanup and resource management
+- ?? Error scenarios and recovery
+
+**Estimated Test Count**: 10-12 async/concurrency tests
+
+#### **Test Phase 6: Web Companion Interface** ?? **PENDING**
+**Target File**: `Tests.GameService/WebCompanionTests.cs`
+**Components to Test**:
+- ?? Static file serving (`/companion` endpoint)
+- ?? HTML content delivery and MIME types
+- ?? CSS and JavaScript asset loading
+- ?? Responsive design validation
+- ?? Mobile compatibility testing
+- ?? JavaScript functionality (mocking browser environment)
+- ?? Error page handling (404, 500)
+- ?? Security headers and content policies
+
+**Estimated Test Count**: 8-10 web integration tests
+
+#### **Test Phase 7: Integration Testing** ?? **PENDING**
+**Target File**: `Tests.GameService/IntegrationTests.cs`
+**Components to Test**:
+- ?? Full service startup and configuration
+- ?? End-to-end API workflows
+- ?? Multiple concurrent clients
+- ?? Service discovery + REST API integration
+- ?? Web companion + API integration
+- ?? Real network traffic simulation
+- ?? Memory leaks and resource cleanup
+- ?? Performance under load
+- ?? Error recovery and resilience
+
+**Estimated Test Count**: 8-12 comprehensive integration tests
+
+#### **Test Phase 8: Performance & Load Testing** ?? **PENDING**
+**Target File**: `Tests.GameService/PerformanceTests.cs`
+**Components to Test**:
+- ?? Concurrent user simulation (10+ simultaneous connections)
+- ?? Memory usage profiling
+- ?? Response time benchmarks
+- ?? WebSocket connection limits
+- ?? Game state update throughput
+- ?? Large game session handling
+- ?? Network bandwidth utilization
+- ?? Database/persistence performance
+- ?? Background service efficiency
+
+**Estimated Test Count**: 6-8 performance benchmarks
+
+### **?? Testing Strategy & Implementation Approach**:
+
+#### **One Phase at a Time**:
+1. **Complete one full test phase** before moving to the next
+2. **Validate all tests pass** and maintain green build status
+3. **Document any issues found** and fix them immediately
+4. **Update this roadmap** with actual implementation results
+
+#### **Test Naming Convention**:
+- `[Component]_[Scenario]_[ExpectedOutcome]`
+- Example: `GameStateMachine_WhenPlayerPurchasesRoad_ShouldUpdateGameStateAndResources`
+
+#### **Test Categories**:
+- **Unit Tests**: Individual component testing in isolation
+- **Integration Tests**: Component interaction and API testing
+- **Performance Tests**: Load, stress, and benchmark testing
+- **Web Tests**: Browser compatibility and UI validation
+
+#### **Continuous Integration**:
+- ? All tests must pass before commits
+- ? Automated test execution on build
+- ? Test coverage reporting
+- ? Performance regression detection
+
+### **?? Current Test Coverage Status**:
+
+```
+Component                    | Tests | Status     | Coverage
+---------------------------- | ----- | ---------- | --------
+GameFactory                  | 6     | ? Complete | ~90%
+UdpDiscoveryService         | 10    | ? Complete | ~95%
+GameStateMachine            | 0     | ?? Next     | 0%
+GameApiController           | 0     | ?? Pending  | 0%
+Hanging GET System          | 0     | ?? Pending  | 0%
+Web Companion Interface     | 0     | ?? Pending  | 0%
+Integration Scenarios       | 0     | ?? Pending  | 0%
+Performance Benchmarks      | 0     | ?? Pending  | 0%
+---------------------------- | ----- | ---------- | --------
+TOTAL                       | 16    | 25% Complete| ~30%
+```
+
+### **?? Implementation Instructions**:
+
+To continue testing implementation:
+
+1. **Run Current Tests**:
+   ```bash
+   cd Tests.GameService
+   dotnet test --logger "console;verbosity=detailed"
+   ```
+
+2. **Start Phase 3** (GameStateMachine):
+   - Create `GameStateMachineTests.cs`
+   - Begin with basic state transition tests
+   - Add player management tests
+   - Include action validation tests
+
+3. **Validate Phase Completion**:
+   - All tests pass ?
+   - Coverage analysis complete
+   - Documentation updated
+   - Integration verified
+
+4. **Move to Next Phase**:
+   - Update this roadmap with results
+   - Begin implementation of next test phase
+   - Maintain green build status throughout
+
+This sequential approach ensures:
+- **Systematic Coverage**: Every component thoroughly tested
+- **Early Issue Detection**: Problems found and fixed immediately  
+- **Maintainable Test Suite**: Clean, organized, well-documented tests
+- **Continuous Progress**: Clear milestones and completion criteria
+- **Quality Assurance**: Robust testing foundation for future development
+
 ## Current Implementation Status
 
 ### ? **COMPLETED** (Stage 1 & 2):
@@ -52,13 +245,13 @@ This document outlines the design for a phone companion app that allows players 
 - ? Removed duplicate `GameController.cs` (kept only `GameStateMachine.cs`)
 - ? All extension methods in correct locations
 
-### ? **PENDING** (Stage 3):
-6. **Client Proxy Layer**: ? **NOT STARTED**
-   - ? GameControllerProxy in main WinUI3 client
-   - ? HTTP client for REST calls
-   - ? Hanging GET client for real-time updates
-   - ? Feature flag to switch between local/remote GameController
-   - ? QR code generation for easy mobile access
+### ?? **PENDING** (Stage 3):
+6. **Client Proxy Layer**: ?? **NOT STARTED**
+   - ?? GameControllerProxy in main WinUI3 client
+   - ?? HTTP client for REST calls
+   - ?? Hanging GET client for real-time updates
+   - ?? Feature flag to switch between local/remote GameController
+   - ?? QR code generation for easy mobile access
 
 ## Architecture Overview
 
@@ -439,7 +632,7 @@ Catan3/
 
 ## Testing Instructions
 
-### **Ready for Testing** ?
+### **Ready for Testing** ? 
 
 To test the completed web companion interface:
 

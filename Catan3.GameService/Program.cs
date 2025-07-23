@@ -16,6 +16,10 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader();
     });
 });
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(8080); // ? allows access from LAN
+});
 
 // Configure Discovery Service
 builder.Services.Configure<DiscoveryServiceOptions>(options =>
@@ -118,3 +122,6 @@ Console.WriteLine("=================================");
 discoveryService.UpdateGameInfo("default", "WaitingForNewGame", 0, "");
 
 app.Run();
+
+// Make the implicit Program class public so it can be referenced in tests
+public partial class Program { }
