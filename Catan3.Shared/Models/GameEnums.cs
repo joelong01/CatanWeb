@@ -4,7 +4,7 @@ namespace Catan3.Shared.Models
 {
     public enum GameAction
     {
-        Shuffle, Undo, Redo,
+        Shuffle, Undo, Redo, Balance,
         Next
     }
     public enum ResourceType

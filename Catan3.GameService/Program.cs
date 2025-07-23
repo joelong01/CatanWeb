@@ -65,12 +65,19 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
+    // Only use HTTPS redirection in production when HTTPS is properly configured
+    app.UseHttpsRedirection();
+}
+else
+{
+    // In development, we're using HTTP only on port 8080 for local network access
+    // Skip HTTPS redirection to avoid the "Failed to determine https port" warning
+    app.UseDeveloperExceptionPage();
 }
 
 // Enable CORS
 app.UseCors("AllowLocalhost");
 
-app.UseHttpsRedirection();
 app.UseRouting();
 
 app.UseAuthorization();
@@ -127,7 +134,15 @@ Console.WriteLine("  • Interface URL: /companion");
 Console.WriteLine("  • Mobile devices can connect via browser");
 Console.WriteLine("  • Real-time updates via hanging GET");
 Console.WriteLine();
-Console.WriteLine("?? Service Status:");
+if (app.Environment.IsDevelopment())
+{
+    Console.WriteLine("?? Development Mode:");
+    Console.WriteLine("  • HTTP only (port 8080)");
+    Console.WriteLine("  • HTTPS redirection disabled");
+    Console.WriteLine("  • CORS enabled for all origins");
+    Console.WriteLine();
+}
+Console.WriteLine("? Service Status:");
 Console.WriteLine("  • Game State Machine: Ready");
 Console.WriteLine("  • REST API: Available");
 Console.WriteLine("  • Web Companion: Available");

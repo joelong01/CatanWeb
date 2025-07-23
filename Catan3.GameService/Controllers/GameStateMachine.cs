@@ -50,6 +50,10 @@ namespace Catan3.GameService.Controllers
                     case GameAction.Redo:
                         gameModel = Redo();  // NOTE: Redo does not call LogGameMode!
                         break;
+                    case GameAction.Balance:
+                        gameModel = BalanceBoardAction();
+                        LogGameModel(gameModel);
+                        break;
                     case GameAction.Next:
                         gameModel = NextState();
                         LogGameModel(gameModel);
@@ -917,6 +921,16 @@ namespace Catan3.GameService.Controllers
             ThrowIfWrongState(gameModel.GameState, [GameState.PickingBoard]);
             gameModel.Shuffle();
             return gameModel;
+        }
+
+        private GameModel BalanceBoardAction()
+        {
+            GameModel gameModel = Log.CopyCurrent();
+            if (BalanceBoard(gameModel))
+            {
+                return gameModel;
+            }
+            throw new Catan3.Shared.Utility.GameException("Unable to balance board");
         }
 
         public SerializableLog GetSerializableLog()
