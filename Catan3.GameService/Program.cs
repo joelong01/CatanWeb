@@ -29,6 +29,24 @@ builder.Services.Configure<DiscoveryServiceOptions>(options =>
     options.Enabled = true;
 });
 
+// Configure Game API options
+builder.Services.Configure<GameApiOptions>(options =>
+{
+    // Default to 15 minutes for production
+    options.HangingGetTimeout = TimeSpan.FromMinutes(15);
+    
+    // Override with shorter timeout for testing if in Development environment
+    if (builder.Environment.IsDevelopment())
+    {
+        // You can also configure this via appsettings.json or environment variables
+        var testTimeoutSeconds = builder.Configuration.GetValue<int?>("GameApi:HangingGetTimeoutSeconds");
+        if (testTimeoutSeconds.HasValue)
+        {
+            options.HangingGetTimeout = TimeSpan.FromSeconds(testTimeoutSeconds.Value);
+        }
+    }
+});
+
 // Register services
 builder.Services.AddSingleton<GameStateMachine>(provider => 
 {

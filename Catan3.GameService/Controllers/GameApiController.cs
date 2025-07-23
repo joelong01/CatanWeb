@@ -1,22 +1,33 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using System.Text.Json;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
 
 namespace Catan3.GameService.Controllers
 {
+    public class GameApiOptions
+    {
+        /// <summary>
+        /// Timeout for hanging GET requests. Default is 15 minutes for production, should be much shorter for tests.
+        /// </summary>
+        public TimeSpan HangingGetTimeout { get; set; } = TimeSpan.FromMinutes(15);
+    }
+
     [ApiController]
     [Route("api")]
     public class GameApiController : ControllerBase
     {
         private readonly GameStateMachine _gameStateMachine;
+        private readonly GameApiOptions _options;
         private static readonly Dictionary<string, GameModel> _gameStates = new();
         private static readonly Dictionary<string, TaskCompletionSource<GameModel>> _pendingUpdates = new();
         private static int _currentVersion = 0;
 
-        public GameApiController(GameStateMachine gameStateMachine)
+        public GameApiController(GameStateMachine gameStateMachine, IOptions<GameApiOptions> options)
         {
             _gameStateMachine = gameStateMachine;
+            _options = options.Value;
         }
 
         [HttpGet("players/{gameId}")]
@@ -169,8 +180,8 @@ namespace Catan3.GameService.Controllers
                 var key = $"{gameId}_{playerId}_{Guid.NewGuid()}";
                 _pendingUpdates[key] = tcs;
 
-                // Set up timeout (15 minutes for local game scenarios where players might think for a while)
-                var timeoutTask = Task.Delay(TimeSpan.FromMinutes(15));
+                // Set up timeout using configurable timeout (15 minutes for production, shorter for tests)
+                var timeoutTask = Task.Delay(_options.HangingGetTimeout);
                 var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
 
                 _pendingUpdates.Remove(key);

@@ -1,6 +1,7 @@
-using Xunit;
+﻿using Xunit;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using System.Text;
 using System.Text.Json;
 using Catan3.GameService.Controllers;
@@ -19,9 +20,453 @@ namespace Tests.GameService
 
         public GameApiControllerTests(WebApplicationFactory<Program> factory)
         {
-            _factory = factory;
+            // Configure the factory with test-specific settings
+            _factory = factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureAppConfiguration((context, config) =>
+                {
+                    config.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        // Set short timeout for tests - 5 seconds instead of 15 minutes
+                        ["GameApi:HangingGetTimeoutSeconds"] = "5"
+                    });
+                });
+            });
             _client = _factory.CreateClient();
         }
+
+        // ========================================
+        // HANGING GET SYSTEM TESTS - CRITICAL FOR COMPANION INTERFACE
+        // ========================================
+
+        [Fact]
+        public async Task HangingGet_WithClientBehindVersion_ShouldReturnImmediately()
+        {
+            // Arrange - Create a game and get its initial state
+            var gameId = "hanging-get-version-test-" + Guid.NewGuid().ToString();
+            var gameType = "Regular";
+            var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
+
+            var newGameRequestBody = new
+            {
+                gameId = gameId,
+                gameType = gameType,
+                playerIds = playerIds
+            };
+
+            var newGameJson = JsonSerializer.Serialize(newGameRequestBody);
+            var newGameContent = new StringContent(newGameJson, Encoding.UTF8, "application/json");
+
+            // Create the game
+            var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
+            Assert.True(createGameResponse.IsSuccessStatusCode);
+
+            // Get current game state to know the current version
+            var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
+            Assert.True(gameStateResponse.IsSuccessStatusCode);
+
+            var gameStateBody = await gameStateResponse.Content.ReadAsStringAsync();
+            var gameState = JsonSerializer.Deserialize<JsonElement>(gameStateBody);
+            var currentVersion = gameState.GetProperty("version").GetInt32();
+
+            // Act - Make hanging GET request with old version (should return immediately)
+            var oldVersion = currentVersion - 1;
+            var startTime = DateTime.UtcNow;
+            var hangingGetResponse = await _client.GetAsync($"/api/gamestate/{gameId}/listen?version={oldVersion}&playerId=Alice");
+            var endTime = DateTime.UtcNow;
+
+            // Assert - Should return immediately (within 1 second)
+            var responseTime = endTime - startTime;
+            Assert.True(responseTime.TotalSeconds < 1, $"Should return immediately for old version, took {responseTime.TotalSeconds} seconds");
+            Assert.True(hangingGetResponse.IsSuccessStatusCode);
+
+            var hangingGetBody = await hangingGetResponse.Content.ReadAsStringAsync();
+            var hangingGetResult = JsonSerializer.Deserialize<JsonElement>(hangingGetBody);
+
+            // Verify we got the current game state
+            Assert.True(hangingGetResult.TryGetProperty("gameId", out var returnedGameId));
+            Assert.Equal(gameId, returnedGameId.GetString());
+            Assert.True(hangingGetResult.TryGetProperty("version", out var returnedVersion));
+            Assert.Equal(currentVersion, returnedVersion.GetInt32());
+        }
+
+        [Fact]
+        public async Task HangingGet_WithMultipleClients_ShouldNotifyAllClients()
+        {
+            // Arrange - Create a game first
+            var gameId = "hanging-get-multi-client-test-" + Guid.NewGuid().ToString();
+            var gameType = "Regular";
+            var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
+
+            var newGameRequestBody = new
+            {
+                gameId = gameId,
+                gameType = gameType,
+                playerIds = playerIds
+            };
+
+            var newGameJson = JsonSerializer.Serialize(newGameRequestBody);
+            var newGameContent = new StringContent(newGameJson, Encoding.UTF8, "application/json");
+
+            // Create the game
+            var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
+            Assert.True(createGameResponse.IsSuccessStatusCode);
+
+            // Get current game state to know the current version
+            var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
+            Assert.True(gameStateResponse.IsSuccessStatusCode);
+
+            var gameStateBody = await gameStateResponse.Content.ReadAsStringAsync();
+            var gameState = JsonSerializer.Deserialize<JsonElement>(gameStateBody);
+            var currentVersion = gameState.GetProperty("version").GetInt32();
+
+            // Act - Start multiple hanging GET requests (simulating multiple clients)
+            var client1Task = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={currentVersion}&playerId=Alice");
+            var client2Task = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={currentVersion}&playerId=Bob");
+            var client3Task = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={currentVersion}&playerId=Charlie");
+
+            // Wait a moment to ensure all hanging GET requests are established
+            await Task.Delay(500);
+
+            // Trigger a game state change by executing a game action
+            var actionRequestBody = new
+            {
+                gameId = gameId,
+                playerId = "Alice",
+                messageType = "DoAction",
+                messageData = new { action = "Next" }
+            };
+
+            var actionJson = JsonSerializer.Serialize(actionRequestBody);
+            var actionContent = new StringContent(actionJson, Encoding.UTF8, "application/json");
+
+            var actionResponse = await _client.PostAsync("/api/game/action", actionContent);
+            Assert.True(actionResponse.IsSuccessStatusCode, "Game action should succeed");
+
+            // Wait for all hanging GET requests to complete
+            var startTime = DateTime.UtcNow;
+            var results = await Task.WhenAll(client1Task, client2Task, client3Task);
+            var endTime = DateTime.UtcNow;
+
+            // Assert - All clients should have received the update quickly (within 5 seconds)
+            var responseTime = endTime - startTime;
+            Assert.True(responseTime.TotalSeconds < 5, $"All clients should receive updates quickly, took {responseTime.TotalSeconds} seconds");
+
+            // Verify all responses are successful
+            foreach (var response in results)
+            {
+                Assert.True(response.IsSuccessStatusCode, $"Hanging GET response should be successful, got {response.StatusCode}");
+
+                var responseBody = await response.Content.ReadAsStringAsync();
+                var responseData = JsonSerializer.Deserialize<JsonElement>(responseBody);
+
+                // Verify the response contains updated game state
+                Assert.True(responseData.TryGetProperty("gameId", out var returnedGameId));
+                Assert.Equal(gameId, returnedGameId.GetString());
+
+                Assert.True(responseData.TryGetProperty("version", out var returnedVersion));
+                Assert.True(returnedVersion.GetInt32() > currentVersion, "Version should be incremented after action");
+            }
+        }
+
+        [Fact]
+        public async Task HangingGet_WithTimeout_ShouldTimeoutCorrectly()
+        {
+            // This test verifies that the configurable timeout works correctly
+            // We've configured a 5-second timeout for tests instead of 15 minutes
+            
+            // Arrange - Create a game
+            var gameId = "hanging-get-timeout-test-" + Guid.NewGuid().ToString();
+            var gameType = "Regular";
+            var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
+
+            var newGameRequestBody = new
+            {
+                gameId = gameId,
+                gameType = gameType,
+                playerIds = playerIds
+            };
+
+            var newGameJson = JsonSerializer.Serialize(newGameRequestBody);
+            var newGameContent = new StringContent(newGameJson, Encoding.UTF8, "application/json");
+
+            // Create the game
+            var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
+            Assert.True(createGameResponse.IsSuccessStatusCode);
+
+            // Get current game state to know the current version
+            var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
+            Assert.True(gameStateResponse.IsSuccessStatusCode);
+
+            var gameStateBody = await gameStateResponse.Content.ReadAsStringAsync();
+            var gameState = JsonSerializer.Deserialize<JsonElement>(gameStateBody);
+            var currentVersion = gameState.GetProperty("version").GetInt32();
+
+            // Act - Make hanging GET request and let it timeout (should take ~5 seconds, not 15 minutes)
+            var startTime = DateTime.UtcNow;
+            var hangingGetResponse = await _client.GetAsync($"/api/gamestate/{gameId}/listen?version={currentVersion}&playerId=Alice");
+            var endTime = DateTime.UtcNow;
+
+            // Assert - Should timeout after ~5 seconds (with some tolerance)
+            var responseTime = endTime - startTime;
+            Assert.True(responseTime.TotalSeconds >= 4.5, $"Should wait at least 4.5 seconds for configured timeout, took {responseTime.TotalSeconds} seconds");
+            Assert.True(responseTime.TotalSeconds <= 7, $"Should timeout within 7 seconds (5s + tolerance), took {responseTime.TotalSeconds} seconds");
+            Assert.True(hangingGetResponse.IsSuccessStatusCode, "Should return successfully even on timeout");
+
+            var hangingGetBody = await hangingGetResponse.Content.ReadAsStringAsync();
+            var hangingGetResult = JsonSerializer.Deserialize<JsonElement>(hangingGetBody);
+
+            // Verify we got the current game state (timeout returns current state)
+            Assert.True(hangingGetResult.TryGetProperty("gameId", out var returnedGameId));
+            Assert.Equal(gameId, returnedGameId.GetString());
+            Assert.True(hangingGetResult.TryGetProperty("version", out var returnedVersion));
+            Assert.Equal(currentVersion, returnedVersion.GetInt32());
+        }
+
+        [Fact]
+        public async Task HangingGet_ReturnsBeforeTimeout_WhenTriggered()
+        {
+            // This test verifies hanging GET returns quickly when triggered, not waiting for timeout
+            
+            // Arrange - Create a game
+            var gameId = "hanging-get-trigger-test-" + Guid.NewGuid().ToString();
+            var gameType = "Regular";
+            var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
+
+            var newGameRequestBody = new
+            {
+                gameId = gameId,
+                gameType = gameType,
+                playerIds = playerIds
+            };
+
+            var newGameJson = JsonSerializer.Serialize(newGameRequestBody);
+            var newGameContent = new StringContent(newGameJson, Encoding.UTF8, "application/json");
+
+            // Create the game
+            var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
+            Assert.True(createGameResponse.IsSuccessStatusCode);
+
+            // Get current game state to know the current version
+            var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
+            Assert.True(gameStateResponse.IsSuccessStatusCode);
+
+            var gameStateBody = await gameStateResponse.Content.ReadAsStringAsync();
+            var gameState = JsonSerializer.Deserialize<JsonElement>(gameStateBody);
+            var currentVersion = gameState.GetProperty("version").GetInt32();
+
+            // Act - Start hanging GET request
+            var hangingGetTask = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={currentVersion}&playerId=Alice");
+
+            // Wait a moment to ensure hanging GET request is established
+            await Task.Delay(500);
+
+            // Trigger an action after 2 seconds (well before the 5-second timeout)
+            await Task.Delay(2000);
+            
+            var actionRequestBody = new
+            {
+                gameId = gameId,
+                playerId = "Alice",
+                messageType = "DoAction",
+                messageData = new { action = "Next" }
+            };
+
+            var actionJson = JsonSerializer.Serialize(actionRequestBody);
+            var actionContent = new StringContent(actionJson, Encoding.UTF8, "application/json");
+
+            var actionStartTime = DateTime.UtcNow;
+            var actionResponse = await _client.PostAsync("/api/game/action", actionContent);
+            var hangingGetResponse = await hangingGetTask;
+            var actionEndTime = DateTime.UtcNow;
+
+            // Assert - Should complete quickly due to trigger, not timeout
+            var responseTime = actionEndTime - actionStartTime;
+            Assert.True(responseTime.TotalSeconds < 2, $"Should complete quickly when triggered, took {responseTime.TotalSeconds} seconds");
+            Assert.True(actionResponse.IsSuccessStatusCode, "Game action should succeed");
+            Assert.True(hangingGetResponse.IsSuccessStatusCode, "Hanging GET should receive notification");
+
+            var hangingGetBody = await hangingGetResponse.Content.ReadAsStringAsync();
+            var hangingGetResult = JsonSerializer.Deserialize<JsonElement>(hangingGetBody);
+
+            // Verify we got updated game state
+            Assert.True(hangingGetResult.TryGetProperty("gameId", out var returnedGameId));
+            Assert.Equal(gameId, returnedGameId.GetString());
+            Assert.True(hangingGetResult.TryGetProperty("version", out var returnedVersion));
+            Assert.True(returnedVersion.GetInt32() > currentVersion, "Version should be incremented after action");
+        }
+
+        [Fact]
+        public async Task HangingGet_AfterGameAction_ShouldNotifyWaitingClients()
+        {
+            // This test verifies the core hanging GET workflow that the companion interface depends on
+            
+            // Arrange - Create a game
+            var gameId = "hanging-get-action-notify-test-" + Guid.NewGuid().ToString();
+            var gameType = "Regular";
+            var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
+
+            var newGameRequestBody = new
+            {
+                gameId = gameId,
+                gameType = gameType,
+                playerIds = playerIds
+            };
+
+            var newGameJson = JsonSerializer.Serialize(newGameRequestBody);
+            var newGameContent = new StringContent(newGameJson, Encoding.UTF8, "application/json");
+
+            // Create the game
+            var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
+            Assert.True(createGameResponse.IsSuccessStatusCode);
+
+            // Get current game state
+            var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
+            Assert.True(gameStateResponse.IsSuccessStatusCode);
+
+            var gameStateBody = await gameStateResponse.Content.ReadAsStringAsync();
+            var gameState = JsonSerializer.Deserialize<JsonElement>(gameStateBody);
+            var initialVersion = gameState.GetProperty("version").GetInt32();
+
+            // Act - Start hanging GET request (simulating companion interface waiting for updates)
+            var hangingGetTask = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={initialVersion}&playerId=Bob");
+
+            // Wait a moment to ensure hanging GET request is established
+            await Task.Delay(500);
+
+            // Execute a game action (simulating another client taking an action)
+            var actionRequestBody = new
+            {
+                gameId = gameId,
+                playerId = "Alice",
+                messageType = "DoAction",
+                messageData = new { action = "Next" }
+            };
+
+            var actionJson = JsonSerializer.Serialize(actionRequestBody);
+            var actionContent = new StringContent(actionJson, Encoding.UTF8, "application/json");
+
+            var actionStartTime = DateTime.UtcNow;
+            var actionResponse = await _client.PostAsync("/api/game/action", actionContent);
+            var hangingGetResponse = await hangingGetTask;
+            var actionEndTime = DateTime.UtcNow;
+
+            // Assert
+            Assert.True(actionResponse.IsSuccessStatusCode, "Game action should succeed");
+            Assert.True(hangingGetResponse.IsSuccessStatusCode, "Hanging GET should receive notification");
+
+            // Verify the hanging GET client received the update quickly
+            var responseTime = actionEndTime - actionStartTime;
+            Assert.True(responseTime.TotalSeconds < 3, $"Hanging GET should be notified quickly after action, took {responseTime.TotalSeconds} seconds");
+
+            // Verify the action response
+            var actionResponseBody = await actionResponse.Content.ReadAsStringAsync();
+            var actionResult = JsonSerializer.Deserialize<JsonElement>(actionResponseBody);
+            Assert.True(actionResult.GetProperty("success").GetBoolean());
+            var newVersion = actionResult.GetProperty("gameStateVersion").GetInt32();
+            Assert.True(newVersion > initialVersion, "Game version should increment after action");
+
+            // Verify the hanging GET response
+            var hangingGetResponseBody = await hangingGetResponse.Content.ReadAsStringAsync();
+            var hangingGetResult = JsonSerializer.Deserialize<JsonElement>(hangingGetResponseBody);
+
+            Assert.True(hangingGetResult.TryGetProperty("gameId", out var returnedGameId));
+            Assert.Equal(gameId, returnedGameId.GetString());
+
+            Assert.True(hangingGetResult.TryGetProperty("version", out var hangingGetVersion));
+            Assert.Equal(newVersion, hangingGetVersion.GetInt32());
+
+            // Verify game state structure that companion interface expects
+            Assert.True(hangingGetResult.TryGetProperty("currentPlayerId", out _));
+            Assert.True(hangingGetResult.TryGetProperty("gameState", out _));
+            Assert.True(hangingGetResult.TryGetProperty("actionFlags", out _));
+            Assert.True(hangingGetResult.TryGetProperty("availableEntitlements", out _));
+            Assert.True(hangingGetResult.TryGetProperty("timestamp", out _));
+        }
+
+        [Fact]
+        public async Task HangingGet_WithNonExistentGame_ShouldReturnNotFound()
+        {
+            // Arrange
+            var nonExistentGameId = "non-existent-hanging-get-game";
+
+            // Act
+            var response = await _client.GetAsync($"/api/gamestate/{nonExistentGameId}/listen?version=1&playerId=TestPlayer");
+
+            // Assert
+            Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task HangingGet_ConcurrentClientsWithSamePlayer_ShouldBothReceiveUpdates()
+        {
+            // This test verifies that multiple clients for the same player both get updates
+            // (e.g., same player using companion on phone and tablet)
+            
+            // Arrange - Create a game
+            var gameId = "hanging-get-same-player-test-" + Guid.NewGuid().ToString();
+            var gameType = "Regular";
+            var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
+
+            var newGameRequestBody = new
+            {
+                gameId = gameId,
+                gameType = gameType,
+                playerIds = playerIds
+            };
+
+            var newGameJson = JsonSerializer.Serialize(newGameRequestBody);
+            var newGameContent = new StringContent(newGameJson, Encoding.UTF8, "application/json");
+
+            // Create the game
+            var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
+            Assert.True(createGameResponse.IsSuccessStatusCode);
+
+            // Get current version
+            var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
+            var gameStateBody = await gameStateResponse.Content.ReadAsStringAsync();
+            var gameState = JsonSerializer.Deserialize<JsonElement>(gameStateBody);
+            var currentVersion = gameState.GetProperty("version").GetInt32();
+
+            // Act - Start multiple hanging GET requests for the same player (different devices)
+            var phone = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={currentVersion}&playerId=Bob");
+            var tablet = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={currentVersion}&playerId=Bob");
+
+            await Task.Delay(500); // Let hanging GETs establish
+
+            // Trigger action
+            var actionRequestBody = new
+            {
+                gameId = gameId,
+                playerId = "Alice",
+                messageType = "DoAction",
+                messageData = new { action = "Next" }
+            };
+
+            var actionJson = JsonSerializer.Serialize(actionRequestBody);
+            var actionContent = new StringContent(actionJson, Encoding.UTF8, "application/json");
+            var actionResponse = await _client.PostAsync("/api/game/action", actionContent);
+
+            // Wait for both to complete
+            var results = await Task.WhenAll(phone, tablet);
+
+            // Assert - Both devices should receive the update
+            Assert.True(actionResponse.IsSuccessStatusCode);
+            
+            foreach (var result in results)
+            {
+                Assert.True(result.IsSuccessStatusCode);
+                var responseBody = await result.Content.ReadAsStringAsync();
+                var responseData = JsonSerializer.Deserialize<JsonElement>(responseBody);
+
+                Assert.True(responseData.TryGetProperty("version", out var version));
+                Assert.True(version.GetInt32() > currentVersion);
+            }
+        }
+
+        // ========================================
+        // EXISTING TESTS (keeping all the previous tests)
+        // ========================================
 
         [Fact]
         public async Task NewGameWithUdpDiscovery_ShouldDiscoverCompanionUrlAndAccessGame()
@@ -87,7 +532,7 @@ namespace Tests.GameService
                 
                 serviceScope.Dispose();
             }
-            catch (Exception ex)
+            catch
             {
                 // If UDP discovery fails in test environment, fall back to constructing the URL
                 // This simulates what would happen if a client discovered the URL via UDP
@@ -172,11 +617,11 @@ namespace Tests.GameService
 
             // Final verification: ensure the discovered flow works end-to-end
             // The mobile client should be able to:
-            // 1. ? Discover the companion URL via UDP (simulated)
-            // 2. ? Load the companion interface from the discovered URL
-            // 3. ? Call the players API to get game participants
-            // 4. ? Call the game state API to get current game information
-            // 5. ? See consistent data across all API endpoints
+            // 1. ✅ Discover the companion URL via UDP (simulated)
+            // 2. ✅ Load the companion interface from the discovered URL
+            // 3. ✅ Call the players API to get game participants
+            // 4. ✅ Call the game state API to get current game information
+            // 5. ✅ See consistent data across all API endpoints
             
             Assert.Contains(currentPlayerId, playerIds);
             Assert.True(currentPlayerId == "Alice" || currentPlayerId == "Bob" || currentPlayerId == "Charlie",
