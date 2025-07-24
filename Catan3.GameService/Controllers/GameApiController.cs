@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using System.Collections.Concurrent;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
+using Catan3.GameService.Services;
 
 namespace Catan3.GameService.Controllers
 {
@@ -35,7 +36,13 @@ namespace Catan3.GameService.Controllers
         private readonly ConcurrentDictionary<string, GameStateMachine> _gameStateMachines = new();
         private readonly Dictionary<string, TaskCompletionSource<GameModel>> _pendingUpdates = new();
         private readonly object _pendingUpdatesLock = new();
+        private readonly IPersistanceService _persistanceService;
         private int _currentVersion = 0;
+
+        public GameStateMachineService(IPersistanceService persistanceService)
+        {
+            _persistanceService = persistanceService;
+        }
 
         /// <summary>
         /// Gets an existing GameStateMachine for the specified gameId
@@ -56,8 +63,8 @@ namespace Catan3.GameService.Controllers
         /// </summary>
         private GameStateMachine CreateGameStateMachine(string gameId)
         {
-            var saveFile = $"game_{gameId}.json";
-            var gameStateMachine = new GameStateMachine(null, saveFile);
+            var saveFile = Path.Combine(Path.GetTempPath(), "Catan3Games", $"game_{gameId}.catan");
+            var gameStateMachine = new GameStateMachine(_persistanceService, saveFile);
             _gameStateMachines[gameId] = gameStateMachine;
             return gameStateMachine;
         }
@@ -100,6 +107,23 @@ namespace Catan3.GameService.Controllers
             
             // Execute the new game action to initialize the game state
             var result = createGameAction(gameStateMachine);
+            
+            Interlocked.Increment(ref _currentVersion);
+            NotifyPendingUpdates(gameId, result);
+            
+            return result;
+        }
+
+        /// <summary>
+        /// Creates a new game with the specified gameId and returns the initial game state (async version)
+        /// </summary>
+        public async Task<GameModel> CreateNewGameAsync(string gameId, Func<GameStateMachine, Task<GameModel>> createGameAction)
+        {
+            // Create the GameStateMachine first
+            var gameStateMachine = CreateGameStateMachine(gameId);
+            
+            // Execute the new game action to initialize the game state
+            var result = await createGameAction(gameStateMachine);
             
             Interlocked.Increment(ref _currentVersion);
             NotifyPendingUpdates(gameId, result);
@@ -434,7 +458,9 @@ namespace Catan3.GameService.Controllers
                 }
 
                 var loadGameMessage = new LoadGameMessage(filePath);
-                var gameModel = await _gameStateMachineService.ExecuteActionAsync(gameId, async gsm => await gsm.HandleLoadGame(loadGameMessage));
+                
+                // Create a new GameStateMachine and load the game into it
+                var gameModel = await _gameStateMachineService.CreateNewGameAsync(gameId, async gsm => await gsm.HandleLoadGame(loadGameMessage));
 
                 return Ok(new
                 {

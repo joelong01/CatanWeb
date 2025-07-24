@@ -973,7 +973,7 @@ namespace Tests.GameService
                     }
                     else
                     {
-                        Assert.True(false, $"Purchase of {invalidEntitlement} should have failed but succeeded");
+                        Assert.Fail($"Purchase of {invalidEntitlement} should have failed but succeeded");
                     }
                 }
                 catch (InvalidOperationException ex)

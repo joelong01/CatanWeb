@@ -210,6 +210,18 @@ namespace Tests.GameService
         }
 
         /// <summary>
+        /// Convenience method overload: Creates a game with specific gameId in PickingBoard state.
+        /// </summary>
+        /// <param name="gameId">The specific gameId to use</param>
+        /// <param name="client">HttpClient for API calls</param>
+        /// <param name="playerIds">Optional player list, defaults to Alice, Bob, Charlie</param>
+        /// <returns>The gameId of the created game</returns>
+        public static async Task<string> CreateGameInPickingBoardState(string gameId, HttpClient client, List<string>? playerIds = null)
+        {
+            return await CreateGame(client, gameId, playerIds);
+        }
+
+        /// <summary>
         /// Convenience method: Creates a game and advances it to WaitingForRollForOrder state.
         /// </summary>
         /// <param name="client">HttpClient for API calls</param>

@@ -582,6 +582,52 @@ namespace Catan3.GameService.Controllers
                         UpdateStateOnNextPlayer(gameModel);
                     }
                     break;
+                case GameState.PickSupplementalPlayers:
+                    {
+                        // Get list of players participating in supplemental phase
+                        var participatingPlayers = gameModel.Players
+                            .Where(p => p.ParticipatingInSupplemental)
+                            .ToList();
+
+                        if (participatingPlayers.Count > 0)
+                        {
+                            // Advance to Supplemental state with first participating player
+                            gameModel.GameState = GameState.Supplemental;
+                            gameModel.CurrentPlayerId = participatingPlayers[0].Id;
+                        }
+                        else
+                        {
+                            // No players participating, skip to next player's turn
+                            gameModel.CurrentPlayerId = gameModel.NextPlayerToRollAfterSupplemental ?? 
+                                gameModel.NextPlayerId(gameModel.CurrentPlayerId, 1);
+                            UpdateStateOnNextPlayer(gameModel);
+                        }
+                    }
+                    break;
+                case GameState.Supplemental:
+                    {
+                        // Get list of players participating in supplemental phase
+                        var participatingPlayers = gameModel.Players
+                            .Where(p => p.ParticipatingInSupplemental)
+                            .ToList();
+
+                        // Find current player index in the participating list
+                        var currentPlayerIndex = participatingPlayers.FindIndex(p => p.Id == gameModel.CurrentPlayerId);
+                        
+                        if (currentPlayerIndex >= 0 && currentPlayerIndex < participatingPlayers.Count - 1)
+                        {
+                            // Move to next participating player
+                            gameModel.CurrentPlayerId = participatingPlayers[currentPlayerIndex + 1].Id;
+                        }
+                        else
+                        {
+                            // All supplemental players have finished, return to regular game flow
+                            gameModel.CurrentPlayerId = gameModel.NextPlayerToRollAfterSupplemental ?? 
+                                gameModel.NextPlayerId(gameModel.CurrentPlayerId, 1);
+                            UpdateStateOnNextPlayer(gameModel);
+                        }
+                    }
+                    break;
                 default:
                     throw new Catan3.Shared.Utility.GameException($"NextState not implemented for {gameModel.GameState}");
             }

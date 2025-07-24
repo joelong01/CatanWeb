@@ -47,6 +47,9 @@ builder.Services.Configure<GameApiOptions>(options =>
     }
 });
 
+// Register persistence service for save/load functionality
+builder.Services.AddSingleton<IPersistanceService, GameServicePersistanceService>();
+
 // Register GameStateMachineService as Singleton to ensure shared state across all requests
 // This ensures that games created in one request can be retrieved in subsequent requests
 builder.Services.AddSingleton<GameStateMachineService>();
