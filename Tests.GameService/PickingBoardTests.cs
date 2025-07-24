@@ -45,29 +45,6 @@ namespace Tests.GameService
             _client = _factory.CreateClient();
         }
 
-        // Helper method to create a game in PickingBoard state
-        private async Task<string> CreateGameInPickingBoardState()
-        {
-            var gameId = "picking-board-test-" + Guid.NewGuid().ToString();
-            var gameType = "Regular";
-            var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
-
-            var newGameRequestBody = new
-            {
-                gameId = gameId,
-                gameType = gameType,
-                playerIds = playerIds
-            };
-
-            var newGameJson = JsonSerializer.Serialize(newGameRequestBody);
-            var newGameContent = new StringContent(newGameJson, Encoding.UTF8, "application/json");
-
-            var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
-            Assert.True(createGameResponse.IsSuccessStatusCode, "Game creation should succeed");
-
-            return gameId;
-        }
-
         // Helper method to get game state info
         private async Task<GameStateInfo> GetGameStateInfo(string gameId)
         {
@@ -91,30 +68,6 @@ namespace Tests.GameService
             };
         }
 
-        // Helper method to execute a game action
-        private async Task<JsonElement> ExecuteGameAction(string gameId, string action, string playerId = "Alice")
-        {
-            var actionBody = new
-            {
-                gameId = gameId,
-                playerId = playerId,
-                messageType = "DoAction",
-                messageData = new { action = action }
-            };
-
-            var actionJson = JsonSerializer.Serialize(actionBody);
-            var actionContent = new StringContent(actionJson, Encoding.UTF8, "application/json");
-
-            var actionResponse = await _client.PostAsync("/api/game/action", actionContent);
-            Assert.True(actionResponse.IsSuccessStatusCode, $"{action} action should succeed");
-
-            var actionResponseBody = await actionResponse.Content.ReadAsStringAsync();
-            var actionResult = JsonSerializer.Deserialize<JsonElement>(actionResponseBody);
-            Assert.True(actionResult.GetProperty("success").GetBoolean(), $"{action} should return success");
-
-            return actionResult;
-        }
-
         [Fact]
         public async Task PickingBoard_ShuffleAction_ShouldSucceedAndIncrementVersion()
         {
@@ -122,14 +75,14 @@ namespace Tests.GameService
             // and triggers appropriate responses for the companion interface
 
             // Arrange - Create a game in PickingBoard state
-            var gameId = await CreateGameInPickingBoardState();
+            var gameId = await GamePhaseHelper.CreateGameInPickingBoardState(_client);
 
             // Get initial game state
             var initialState = await GetGameStateInfo(gameId);
             Assert.Equal("PickingBoard", initialState.GameState);
 
             // Act - Execute Shuffle action
-            var shuffleResult = await ExecuteGameAction(gameId, "Shuffle");
+            var shuffleResult = await GamePhaseHelper.ExecuteGameAction(_client, gameId, "Shuffle");
 
             // Get updated game state
             var updatedState = await GetGameStateInfo(gameId);
@@ -150,14 +103,14 @@ namespace Tests.GameService
             // This test verifies that Balance action works correctly via the API
 
             // Arrange - Create a game in PickingBoard state
-            var gameId = await CreateGameInPickingBoardState();
+            var gameId = await GamePhaseHelper.CreateGameInPickingBoardState(_client);
 
             // Get initial game state
             var initialState = await GetGameStateInfo(gameId);
             Assert.Equal("PickingBoard", initialState.GameState);
 
             // Act - Execute Balance action
-            var balanceResult = await ExecuteGameAction(gameId, "Balance");
+            var balanceResult = await GamePhaseHelper.ExecuteGameAction(_client, gameId, "Balance");
 
             // Get updated game state
             var updatedState = await GetGameStateInfo(gameId);
@@ -178,20 +131,20 @@ namespace Tests.GameService
             // This test verifies that Undo action works correctly after performing an action
 
             // Arrange - Create a game and perform an action to create history
-            var gameId = await CreateGameInPickingBoardState();
+            var gameId = await GamePhaseHelper.CreateGameInPickingBoardState(_client);
 
             // Get initial state
             var initialState = await GetGameStateInfo(gameId);
 
             // Perform a shuffle to create a new state in the log
-            await ExecuteGameAction(gameId, "Shuffle");
+            await GamePhaseHelper.ExecuteGameAction(_client, gameId, "Shuffle");
             var shuffledState = await GetGameStateInfo(gameId);
 
             // Verify we have different versions
             Assert.True(shuffledState.Version > initialState.Version, "Should have different versions after shuffle");
 
             // Act - Execute Undo action
-            var undoResult = await ExecuteGameAction(gameId, "Undo");
+            var undoResult = await GamePhaseHelper.ExecuteGameAction(_client, gameId, "Undo");
 
             // Get state after undo
             var undoState = await GetGameStateInfo(gameId);
@@ -213,15 +166,15 @@ namespace Tests.GameService
             // This test verifies that Redo action works correctly after performing undo
 
             // Arrange - Create a game, make changes, and undo to set up for redo
-            var gameId = await CreateGameInPickingBoardState();
+            var gameId = await GamePhaseHelper.CreateGameInPickingBoardState(_client);
 
             // Create some history: initial -> shuffle -> undo -> redo
-            await ExecuteGameAction(gameId, "Shuffle");
-            await ExecuteGameAction(gameId, "Undo");
+            await GamePhaseHelper.ExecuteGameAction(_client, gameId, "Shuffle");
+            await GamePhaseHelper.ExecuteGameAction(_client, gameId, "Undo");
             var beforeRedoState = await GetGameStateInfo(gameId);
 
             // Act - Execute Redo action
-            var redoResult = await ExecuteGameAction(gameId, "Redo");
+            var redoResult = await GamePhaseHelper.ExecuteGameAction(_client, gameId, "Redo");
 
             // Get state after redo
             var redoState = await GetGameStateInfo(gameId);
@@ -243,7 +196,7 @@ namespace Tests.GameService
             // with proper hanging GET notifications for all actions
 
             // Arrange - Create a game in PickingBoard state
-            var gameId = await CreateGameInPickingBoardState();
+            var gameId = await GamePhaseHelper.CreateGameInPickingBoardState(_client);
             var initialState = await GetGameStateInfo(gameId);
 
             // Test each action with real-time updates
@@ -261,7 +214,7 @@ namespace Tests.GameService
 
                 // Execute the action
                 var actionStartTime = DateTime.UtcNow;
-                var actionResult = await ExecuteGameAction(gameId, action);
+                var actionResult = await GamePhaseHelper.ExecuteGameAction(_client, gameId, action);
                 var newVersion = actionResult.GetProperty("gameStateVersion").GetInt32();
 
                 // Wait for hanging GET to receive notification
@@ -298,10 +251,10 @@ namespace Tests.GameService
             // This test verifies that Undo/Redo sequence works with real-time updates
 
             // Arrange - Create a game and perform initial action
-            var gameId = await CreateGameInPickingBoardState();
+            var gameId = await GamePhaseHelper.CreateGameInPickingBoardState(_client);
 
             // Create history with Shuffle
-            await ExecuteGameAction(gameId, "Shuffle");
+            await GamePhaseHelper.ExecuteGameAction(_client, gameId, "Shuffle");
             var shuffledState = await GetGameStateInfo(gameId);
 
             // Test Undo with real-time updates
@@ -309,7 +262,7 @@ namespace Tests.GameService
             await Task.Delay(500);
 
             var undoStartTime = DateTime.UtcNow;
-            var undoResult = await ExecuteGameAction(gameId, "Undo");
+            var undoResult = await GamePhaseHelper.ExecuteGameAction(_client, gameId, "Undo");
             var undoResponse = await undoHangingGetTask;
             var undoEndTime = DateTime.UtcNow;
 
@@ -322,7 +275,7 @@ namespace Tests.GameService
             await Task.Delay(500);
 
             var redoStartTime = DateTime.UtcNow;
-            var redoResult = await ExecuteGameAction(gameId, "Redo");
+            var redoResult = await GamePhaseHelper.ExecuteGameAction(_client, gameId, "Redo");
             var redoResponse = await redoHangingGetTask;
             var redoEndTime = DateTime.UtcNow;
 
@@ -346,12 +299,12 @@ namespace Tests.GameService
             // to the next state in the game flow
 
             // Arrange - Create a game in PickingBoard state
-            var gameId = await CreateGameInPickingBoardState();
+            var gameId = await GamePhaseHelper.CreateGameInPickingBoardState(_client);
             var initialState = await GetGameStateInfo(gameId);
             Assert.Equal("PickingBoard", initialState.GameState);
 
             // Act - Execute Next action to advance past PickingBoard
-            var nextResult = await ExecuteGameAction(gameId, "Next");
+            var nextResult = await GamePhaseHelper.ExecuteGameAction(_client, gameId, "Next");
 
             // Get updated game state
             var nextState = await GetGameStateInfo(gameId);

@@ -46,27 +46,7 @@ namespace Tests.GameService
         // Helper method to create a game in WaitingForRollForOrder state
         private async Task<string> CreateGameInWaitingForRollForOrderState()
         {
-            var gameId = "roll-for-order-test-" + Guid.NewGuid().ToString();
-            var gameType = "Regular";
-            var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
-
-            var newGameRequestBody = new
-            {
-                gameId = gameId,
-                gameType = gameType,
-                playerIds = playerIds
-            };
-
-            var newGameJson = JsonSerializer.Serialize(newGameRequestBody);
-            var newGameContent = new StringContent(newGameJson, Encoding.UTF8, "application/json");
-
-            var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
-            Assert.True(createGameResponse.IsSuccessStatusCode, "Game creation should succeed");
-
-            // Advance from PickingBoard to WaitingForRollForOrder
-            await ExecuteGameAction(gameId, "Next");
-
-            return gameId;
+            return await GamePhaseHelper.CreateGameInWaitingForRollForOrderState(_client);
         }
 
         // Helper method to create a game in FinishedRollOrder state
