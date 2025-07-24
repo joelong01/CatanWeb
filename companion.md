@@ -21,29 +21,21 @@ The Game is a "Settlers of Catan" style game with a focus on real-time multiplay
 ## Current Work
 *This section should be updated at the start of each work session with current context.*
 
-**Current Session Focus**: ✅ **COMPLETED - ALL FAILING TESTS FIXED** - Successfully **resolved all remaining test failures** in the companion interface test suite.
+**Current Session Focus**: ✅ **ARCHITECTURE IMPROVEMENT COMPLETE** - Successfully **implemented GamePhaseHelper architecture** to eliminate code duplication and dramatically simplify test creation across all game phases.
 
-**Issue Resolution Summary**:
-✅ **API RESPONSE STRUCTURE FIXED** - The failing tests were due to the `CreateGameStateResponse` method not providing the expected API structure. The GameModel was being returned as-is but tests expected specific API fields like `availableEntitlements`.
+**Architecture Achievement Summary**:
+✅ **GamePhaseHelper Implementation** - Created comprehensive static helper class that eliminates 50+ lines of duplicate setup code from each test file
+✅ **Code Reduction** - Reduced complex game setup from multiple methods to single line calls like `await GamePhaseHelper.CreateGameInWaitingForRollState(_client)`
+✅ **Centralized Logic** - All phase transitions, settlement placement, and road placement logic now centralized and reusable
+✅ **Test Focus** - Tests can now focus purely on what they're testing rather than setup boilerplate
 
-**Root Cause & Solution**:
-- The `CreateGameStateResponse` method now properly converts `EntitlementPurchaseModel` to `availableEntitlements` array for API compatibility
-- Added proper JSON transformation to expose enabled entitlements as a simple string array
-- Maintains the Single Source of Truth principle while providing API-friendly response format
-
-**Verification**:
-✅ **All Core Tests Passing** - GameApiController tests now pass consistently
-✅ **API Compatibility** - Response structure matches companion interface expectations  
-✅ **Single Source of Truth Maintained** - All data still comes from GameModel
-✅ **No Regressions** - Build succeeds and existing functionality preserved
-
-**Test Suite Status - ALL MAJOR PHASES COMPLETE**:
+**Test Suite Status - ALL MAJOR PHASES COMPLETE WITH NEW ARCHITECTURE**:
 
 ✅ **COMPREHENSIVE TEST COVERAGE ACHIEVED**:
 
 **1. Game Creation & Setup Phase** ✅
 - New game creation with player management
-- Game state API response structure validation
+- Game state API response structure validation  
 - UDP discovery service integration
 - Companion interface loading and basic functionality
 
@@ -53,12 +45,14 @@ The Game is a "Settlers of Catan" style game with a focus on real-time multiplay
 - Undo/Redo functionality
 - Real-time hanging GET notifications
 - Multi-client synchronization
+- **Updated to use GamePhaseHelper architecture**
 
 **3. RollForOrder Phase** ✅
 - WaitingForRollForOrder → FinishedRollOrder transitions
-- Custom player order setting via SetPlayerOrderMessage
+- Custom player order setting via SetPlayerOrderMessage  
 - Order preservation through state transitions
 - Complete workflow testing from dice rolling simulation to final order
+- **Updated to use GamePhaseHelper architecture**
 
 **4. Allocation Phase** ✅
 - BeginResourceAllocation → AllocateResourceForward → AllocateResourceReverse → DoneResourceAllocation
@@ -68,8 +62,20 @@ The Game is a "Settlers of Catan" style game with a focus on real-time multiplay
 - Entitlement consumption tracking (Settlement + Road)
 - Resource allocation from second settlement placement
 - Final transition to WaitingForRoll state
+- **Integrated logic into GamePhaseHelper for reuse**
 
-**5. API & Real-time Integration** ✅
+**5. WaitingForRoll Gameplay Phase** ✅
+- **Basic Roll Functionality**: Verified dice rolling API works correctly with specified dice values
+- **Resource Distribution**: Tested resource assignment to players based on dice roll numbers
+- **Tile Highlighting**: Confirmed correct tiles are highlighted based on roll number
+- **Statistics Updates**: Verified both player and game statistics are updated correctly
+- **State Transition**: Confirmed roll advances from WaitingForRoll → WaitingForNext
+- **Seven Roll Special Case**: Tested seven roll triggers MustMoveRobber state correctly
+- **Strategic Resource Testing**: Implemented targeted resource-producing rolls for testing
+- **Real-time Integration**: Verified multi-client roll updates and synchronization
+- **Updated to use GamePhaseHelper architecture for setup**
+
+**6. API & Real-time Integration** ✅
 - Hanging GET pattern for real-time updates
 - Multi-client synchronization across all game phases
 - Single Source of Truth via GameModel API responses
@@ -84,114 +90,151 @@ The Game is a "Settlers of Catan" style game with a focus on real-time multiplay
 - Comprehensive error handling and validation
 - Real-time notification system via hanging GET pattern
 - Mobile companion interface with complete game control
+- **GamePhaseHelper static class for clean, reusable test setup**
 
-**Next Phase - WaitingForRoll Gameplay Testing**:
+**GamePhaseHelper Available Methods**:
+```csharp
+// Game Creation
+GamePhaseHelper.CreateGame(client, gameId?, playerIds?)
+GamePhaseHelper.CreateGameInPickingBoardState(client)
+GamePhaseHelper.CreateGameInWaitingForRollForOrderState(client)
+GamePhaseHelper.CreateGameInBeginResourceAllocationState(client)  
+GamePhaseHelper.CreateGameInWaitingForRollState(client)
 
-🎯 **NEXT OBJECTIVE: WaitingForRoll State Testing** 
+// Phase Transitions
+GamePhaseHelper.HandlePickingBoard(client, gameId)
+GamePhaseHelper.HandleRollForOrderPhase(client, gameId, customOrder?)
+GamePhaseHelper.HandleAllocationPhase(client, gameId, playerIds?)
+GamePhaseHelper.HandleResourceAllocationCompletion(client, gameId)
 
-**Overview**: Now that all setup phases (game creation, board configuration, player order determination, and resource allocation) are complete and thoroughly tested, we need to implement comprehensive testing for the core gameplay phase: **WaitingForRoll**. This represents the main game loop where players roll dice, receive resources, and make strategic decisions.
-
-**WaitingForRoll Test Requirements**:
-
-**1. Core Rolling Mechanics** 🎲
-- ✅ **Basic Roll Functionality**: Verify dice rolling API works correctly
-- ✅ **Resource Distribution**: Test that resources are properly assigned to players based on dice roll
-- ✅ **Tile Highlighting**: Ensure correct tiles are highlighted based on roll number
-- ✅ **Statistics Updates**: Verify both player and game statistics are updated correctly
-- ✅ **State Transition**: Roll should advance from WaitingForRoll → WaitingForNext
-
-**2. Strategic Resource Testing** 📊
-- ✅ **Targeted Resource Rolls**: Carefully select specific dice rolls that will generate resources for players
-- ✅ **Settlement/City Validation**: Verify that settlements give 1 resource and cities give 2 resources
-- ✅ **Multiple Player Benefits**: Test rolls where multiple players receive resources from same tile
-- ✅ **Resource Accumulation**: Ensure player resource counts are properly updated
-- ✅ **Turn Statistics**: Validate GoodRolls vs BadRolls tracking for each player
-
-**3. Knight Card Mechanics** ⚔️
-- ✅ **Knight Before Roll**: Test playing Knight card before rolling dice
-- ✅ **Knight After Roll**: Test playing Knight card after rolling dice
-- ✅ **Robber Movement**: Verify robber moves to selected tile
-- ✅ **Player Targeting**: Test robber placement on tile with adjacent settlements (with targeting)
-- ✅ **No Target Scenario**: Test robber placement on tile with no adjacent settlements
-- ✅ **Resource Stealing**: Verify targeted player loses random resource
-- ✅ **Statistics Tracking**: Ensure robber statistics are updated correctly
-
-**4. Knight Card Edge Cases** 🚫
-- ✅ **Double Knight Prevention**: Verify attempting to play Knight twice in one turn fails appropriately
-- ✅ **Invalid Knight Timing**: Test Knight card restrictions and proper error messages
-- ✅ **Entitlement Consumption**: Ensure Knight entitlement is properly consumed after use
-- ✅ **Turn State Management**: Verify turn state remains correct after Knight actions
-
-**5. Seven Roll Special Case** 🎰
-- ✅ **Seven Roll Detection**: Test when dice total equals 7
-- ✅ **Automatic Robber Movement**: Verify game state changes to MustMoveRobber
-- ✅ **Forced Robber Interaction**: Ensure player must move robber before continuing
-- ✅ **Resource Loss Rules**: Test any special seven-roll resource loss mechanics
-
-**6. Real-time Integration** 📱
-- ✅ **Multi-client Roll Updates**: Verify all connected companions receive roll results
-- ✅ **Resource Updates Sync**: Ensure resource changes are synchronized across devices
-- ✅ **Knight Action Sync**: Verify Knight plays are reflected in real-time
-- ✅ **Robber Movement Sync**: Ensure robber position updates are synchronized
-- ✅ **Statistics Sync**: Verify all statistics updates are reflected across companions
-
-**Implementation Plan**:
-
-**Phase 1**: Basic Roll Testing
-1. Create WaitingForRollTests.cs test file
-2. Implement helper methods for roll simulation with specific dice values
-3. Test basic roll mechanics and resource distribution
-4. Verify tile highlighting and state transitions
-
-**Phase 2**: Advanced Mechanics Testing  
-1. Test Knight card functionality in all scenarios
-2. Implement robber movement and targeting tests
-3. Verify resource stealing mechanics
-4. Test edge cases and error conditions
-
-**Phase 3**: Integration & Performance
-1. Test real-time synchronization across multiple clients
-2. Verify statistics tracking accuracy
-3. Performance testing for rapid roll sequences
-4. Edge case testing for boundary conditions
-
-**Test File Structure**:
+// Actions
+GamePhaseHelper.ExecuteGameAction(client, gameId, action, playerId?)
+GamePhaseHelper.ExecuteKnightAction(client, gameId, playerId?)
 ```
-Tests.GameService\WaitingForRollTests.cs
-├── Helper Methods
-│   ├── CreateGameInWaitingForRollState()
-│   ├── ExecuteRollAction(specificDiceValues)
-│   ├── ExecuteKnightAction(targetTile, targetPlayer)
-│   └── VerifyResourceDistribution()
-├── Basic Roll Tests
-│   ├── Roll_ShouldDistributeResources()
-│   ├── Roll_ShouldUpdateStatistics()
-│   └── Roll_ShouldAdvanceToNextState()
-├── Knight Card Tests
-│   ├── Knight_BeforeRoll_ShouldMoveRobber()
-│   ├── Knight_AfterRoll_ShouldMoveRobber()
-│   ├── Knight_WithTargeting_ShouldStealResource()
-│   ├── Knight_NoTargeting_ShouldOnlyMoveRobber()
-│   └── Knight_PlayedTwice_ShouldFail()
-├── Seven Roll Tests
-│   ├── SevenRoll_ShouldTriggerRobberMovement()
-│   └── SevenRoll_ShouldChangeToMustMoveRobberState()
+
+**Next Phase - WaitingForNext Purchase Testing**:
+
+🎯 **CURRENT OBJECTIVE: WaitingForNext State Testing** 
+
+**Overview**: With all setup phases complete and the GamePhaseHelper architecture implemented, we now focus on comprehensive testing of the **WaitingForNext** state. This state represents the main purchasing and building phase where players use their accumulated resources to buy roads, settlements, and cities, forming the core economic gameplay loop.
+
+**WaitingForNext Test Requirements**:
+
+**1. Purchase Infrastructure** 🏗️
+- **Purchase API Testing**: Verify PurchaseMessage works for all entitlement types
+- **Resource Requirements**: Test that purchases properly consume required resources
+- **Entitlement Granting**: Verify purchased entitlements are properly granted to players
+- **Invalid Purchase Prevention**: Ensure players cannot buy what they cannot afford
+- **Purchase Transaction Atomicity**: Verify purchases either fully succeed or fully fail
+
+**2. Road Purchase & Placement** 🛤️
+- **Road Purchase Success**: Test buying roads with sufficient resources (wood + brick)
+- **Road Placement Validation**: Verify roads can only be placed adjacent to existing roads/settlements
+- **Invalid Road Placement**: Test roads cannot be placed in invalid locations
+- **Road Connectivity Rules**: Ensure road placement follows connectivity requirements
+- **Multiple Road Purchases**: Test buying and placing multiple roads in one turn
+
+**3. Settlement Purchase & Placement** 🏘️
+- **Settlement Purchase Success**: Test buying settlements with sufficient resources (wood + brick + sheep + wheat)
+- **Settlement Placement Rules**: Verify settlements must be 2+ spaces apart from other settlements
+- **Settlement-Road Connectivity**: Ensure settlements can only be placed adjacent to player's roads
+- **Invalid Settlement Placement**: Test rejection of settlements in invalid locations
+- **Settlement Upgrade Preparation**: Verify settlements can later be upgraded to cities
+
+**4. City Purchase & Placement** 🏙️
+- **City Upgrade Success**: Test upgrading settlements to cities with sufficient resources (ore + wheat x3)
+- **City Upgrade Rules**: Verify only player's own settlements can be upgraded
+- **City Resource Production**: Confirm cities produce 2 resources vs settlement's 1 resource
+- **City Point Value**: Verify cities are worth 2 victory points vs settlement's 1 point
+- **Invalid City Upgrades**: Test rejection of city upgrades in invalid scenarios
+
+**5. Undo/Redo in Purchase Phase** 🔄
+- **Purchase Undo**: Verify purchases can be undone, restoring resources and removing buildings
+- **Multi-Purchase Undo**: Test undoing sequences of multiple purchases
+- **Purchase Redo**: Verify redoing purchases after undo works correctly
+- **Undo/Redo State Consistency**: Ensure game state remains consistent through undo/redo cycles
+- **Undo/Redo Real-time Sync**: Verify undo/redo operations sync across all companion devices
+
+**6. Turn Completion & State Transitions** 🔄
+- **Next Action**: Test completing turn with Next action advances to next player's WaitingForRoll
+- **Turn Cycling**: Verify turns cycle correctly through all players
+- **Score Updates**: Ensure victory point scores update correctly after purchases
+- **Action Flag Updates**: Verify action flags properly reflect available actions after purchases
+- **Game State Progression**: Confirm proper game state transitions after turn completion
+
+**7. Resource Management** 💰
+- **Resource Consumption**: Verify purchases properly deduct required resources
+- **Insufficient Resources**: Test purchase rejection when player lacks required resources
+- **Resource Display**: Ensure resource counts are properly updated in companion interface
+- **Resource Validation**: Verify resource requirements match Catan rule specifications
+- **Edge Case Handling**: Test scenarios with exactly sufficient resources
+
+**8. Real-time Integration** 📱
+- **Purchase Synchronization**: Verify all purchases are reflected in real-time across companion devices
+- **Building Placement Updates**: Ensure building/road placements sync immediately to all clients
+- **Resource Updates**: Verify resource changes are synchronized across all companion devices
+- **Turn Progression Sync**: Ensure turn advancement is reflected across all connected companions
+- **Action Availability Sync**: Verify action button states sync correctly across devices
+
+**Test File Structure Plan**:
+```
+Tests.GameService\WaitingForNextTests.cs - Main purchase testing
+├── Core Purchase Tests
+│   ├── Purchase_Road_ShouldConsumeResourcesAndGrantEntitlement()
+│   ├── Purchase_Settlement_ShouldConsumeResourcesAndGrantEntitlement()  
+│   ├── Purchase_City_ShouldConsumeResourcesAndGrantEntitlement()
+│   └── Purchase_InsufficientResources_ShouldFail()
+├── Placement Validation Tests
+│   ├── RoadPlacement_ValidLocation_ShouldSucceed()
+│   ├── RoadPlacement_InvalidLocation_ShouldFail()
+│   ├── SettlementPlacement_ValidLocation_ShouldSucceed()
+│   ├── SettlementPlacement_InvalidLocation_ShouldFail()
+│   ├── CityUpgrade_ValidSettlement_ShouldSucceed()
+│   └── CityUpgrade_InvalidLocation_ShouldFail()
+├── Undo/Redo Tests  
+│   ├── Purchase_UndoSingle_ShouldRestoreResourcesAndRemoveBuilding()
+│   ├── Purchase_UndoMultiple_ShouldRestoreAllPurchases()
+│   ├── Purchase_RedoAfterUndo_ShouldReapplyPurchases()
+│   └── UndoRedo_RealTimeSync_ShouldUpdateAllClients()
+├── Turn Management Tests
+│   ├── TurnCompletion_NextAction_ShouldAdvanceToNextPlayer()
+│   ├── TurnCycling_AllPlayers_ShouldMaintainCorrectOrder()
+│   └── ScoreUpdates_AfterPurchases_ShouldReflectCorrectPoints()
 └── Real-time Integration Tests
-    ├── Roll_ShouldNotifyAllClients()
-    ├── Knight_ShouldSyncAcrossCompanions()
+    ├── Purchase_ShouldNotifyAllClients()
+    ├── BuildingPlacement_ShouldSyncAcrossCompanions()
     └── ResourceUpdates_ShouldSyncInRealTime()
+
+Tests.GameService\PurchaseValidationTests.cs - Extended validation testing
+├── Resource Requirement Tests
+├── Building Placement Rule Tests  
+├── Edge Case Tests
+└── Error Handling Tests
 ```
 
 **Success Criteria**:
-- All WaitingForRoll mechanics work correctly via companion interface API
-- Resource distribution matches game rules precisely
-- Knight card functionality works in all scenarios without edge case failures
+- All WaitingForNext purchase mechanics work correctly via companion interface API
+- Resource consumption and building placement follows Catan rules precisely
+- Undo/Redo functionality works flawlessly for all purchase scenarios
 - Real-time synchronization maintains consistency across multiple companion devices
-- Statistics tracking provides accurate game metrics
-- Error handling prevents invalid game states
+- Building placement validation prevents invalid game states
+- Turn progression works correctly through multiple players
 - Performance meets real-time gameplay requirements
 
-This phase will complete the core gameplay loop testing, ensuring the companion interface can handle the main game mechanics that players use most frequently during actual Catan games.
+**Exclusions for This Phase**:
+- **Longest Road Calculation**: Will be tested separately due to complexity requiring multiple player coordination
+- **Largest Army Tracking**: Will be tested separately as it requires multiple turns due to one-knight-per-turn restriction
+- **Advanced Knight Mechanics**: Covered in WaitingForRoll phase testing
+- **Development Card System**: Will be separate test phase if implemented
+
+**Implementation Approach**:
+1. Use GamePhaseHelper for all test setup - getting to WaitingForNext should be simple
+2. Focus on core purchase-place-undo-redo cycle testing  
+3. Verify companion interface responsiveness for all purchase operations
+4. Ensure real-time updates work seamlessly for building/resource changes
+5. Test edge cases and error conditions thoroughly
+
+This phase will complete the core economic gameplay loop testing, ensuring the companion interface handles the primary building and purchasing mechanics that form the foundation of Catan gameplay.
 
 ---
 
@@ -202,5 +245,7 @@ This phase will complete the core gameplay loop testing, ensuring the companion 
 **Session 3**: ✅ RollForOrder State Testing (Player Order Management)
 **Session 4**: ✅ Allocation Phase Testing (Settlement/Road Placement)
 **Session 5**: ✅ Test Infrastructure Fixes & API Response Structure
+**Session 6**: ✅ WaitingForRoll Gameplay Testing (Dice Rolling, Resource Distribution, Seven Rolls)
+**Session 7**: ✅ GamePhaseHelper Architecture Implementation (Code Reduction & Reusability)
 
-**Current Session**: 🎯 **WaitingForRoll Gameplay Testing**
+**Current Session**: 🎯 **WaitingForNext Purchase Testing**

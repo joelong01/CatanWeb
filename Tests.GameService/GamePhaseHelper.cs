@@ -49,6 +49,49 @@ namespace Tests.GameService
         }
 
         /// <summary>
+        /// Executes a game action via the API.
+        /// </summary>
+        /// <param name="client">HttpClient for API calls</param>
+        /// <param name="gameId">The game to execute the action on</param>
+        /// <param name="action">The action to execute (e.g., "Next", "Shuffle", "Undo")</param>
+        /// <param name="playerId">The player executing the action, defaults to "Alice"</param>
+        /// <returns>The JSON response from the action</returns>
+        public static async Task<JsonElement> ExecuteGameAction(HttpClient client, string gameId, string action, string playerId = "Alice")
+        {
+            var actionBody = new
+            {
+                gameId = gameId,
+                playerId = playerId,
+                messageType = "DoAction",
+                messageData = new { action = action }
+            };
+
+            var actionJson = JsonSerializer.Serialize(actionBody);
+            var actionContent = new StringContent(actionJson, Encoding.UTF8, "application/json");
+
+            var actionResponse = await client.PostAsync("/api/game/action", actionContent);
+            
+            if (!actionResponse.IsSuccessStatusCode)
+            {
+                var errorContent = await actionResponse.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"{action} action HTTP failed: {actionResponse.StatusCode} - {errorContent}");
+            }
+
+            var actionResponseBody = await actionResponse.Content.ReadAsStringAsync();
+            var actionResult = JsonSerializer.Deserialize<JsonElement>(actionResponseBody);
+            
+            if (!actionResult.GetProperty("success").GetBoolean())
+            {
+                var errorMessage = actionResult.TryGetProperty("message", out var msgElement) 
+                    ? msgElement.GetString() 
+                    : "Unknown error";
+                throw new InvalidOperationException($"{action} action failed: {errorMessage}. Full response: {actionResponseBody}");
+            }
+
+            return actionResult;
+        }
+
+        /// <summary>
         /// Advances a game from PickingBoard state to WaitingForRollForOrder state.
         /// </summary>
         /// <param name="client">HttpClient for API calls</param>
@@ -196,46 +239,69 @@ namespace Tests.GameService
         }
 
         /// <summary>
-        /// Executes a game action via the API.
+        /// Convenience method: Creates a game and advances it to WaitingForNext state.
+        /// This involves reaching WaitingForRoll state and then executing a dice roll.
         /// </summary>
         /// <param name="client">HttpClient for API calls</param>
-        /// <param name="gameId">The game to execute the action on</param>
-        /// <param name="action">The action to execute (e.g., "Next", "Shuffle", "Undo")</param>
-        /// <param name="playerId">The player executing the action, defaults to "Alice"</param>
-        /// <returns>The JSON response from the action</returns>
-        public static async Task<JsonElement> ExecuteGameAction(HttpClient client, string gameId, string action, string playerId = "Alice")
+        /// <param name="gameId">Optional gameId, will generate one if not provided</param>
+        /// <param name="playerIds">Optional player list, defaults to Alice, Bob, Charlie</param>
+        /// <param name="diceRoll">Optional dice total to roll, defaults to 6</param>
+        /// <returns>The gameId of the created game</returns>
+        public static async Task<string> CreateGameInWaitingForNextState(HttpClient client, string? gameId = null, List<string>? playerIds = null, int diceRoll = 6)
         {
-            var actionBody = new
+            gameId = await CreateGameInWaitingForRollState(client, gameId, playerIds);
+            await ExecuteRollAction(client, gameId, diceRoll);
+            return gameId;
+        }
+
+        /// <summary>
+        /// Executes a dice roll action to advance from WaitingForRoll to WaitingForNext.
+        /// </summary>
+        /// <param name="client">HttpClient for API calls</param>
+        /// <param name="gameId">The game to roll dice in</param>
+        /// <param name="totalRoll">The total dice value to roll (2-12)</param>
+        /// <param name="playerId">The player rolling the dice, defaults to "Alice"</param>
+        /// <returns>The JSON response from the roll action</returns>
+        public static async Task<JsonElement> ExecuteRollAction(HttpClient client, string gameId, int totalRoll, string playerId = "Alice")
+        {
+            var rollBody = new
             {
                 gameId = gameId,
                 playerId = playerId,
-                messageType = "DoAction",
-                messageData = new { action = action }
+                messageType = "RollMessage",
+                messageData = new
+                {
+                    roll = new
+                    {
+                        normalRoll = totalRoll.ToString(),
+                        specialDice = "None"
+                    }
+                }
             };
 
-            var actionJson = JsonSerializer.Serialize(actionBody);
-            var actionContent = new StringContent(actionJson, Encoding.UTF8, "application/json");
+            var rollJson = JsonSerializer.Serialize(rollBody);
+            var rollContent = new StringContent(rollJson, Encoding.UTF8, "application/json");
 
-            var actionResponse = await client.PostAsync("/api/game/action", actionContent);
+            var rollResponse = await client.PostAsync("/api/game/action", rollContent);
             
-            if (!actionResponse.IsSuccessStatusCode)
+            if (!rollResponse.IsSuccessStatusCode)
             {
-                var errorContent = await actionResponse.Content.ReadAsStringAsync();
-                throw new InvalidOperationException($"{action} action HTTP failed: {actionResponse.StatusCode} - {errorContent}");
+                var errorContent = await rollResponse.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"Roll action HTTP failed: {rollResponse.StatusCode} - {errorContent}");
             }
 
-            var actionResponseBody = await actionResponse.Content.ReadAsStringAsync();
-            var actionResult = JsonSerializer.Deserialize<JsonElement>(actionResponseBody);
+            var rollResponseBody = await rollResponse.Content.ReadAsStringAsync();
+            var rollResult = JsonSerializer.Deserialize<JsonElement>(rollResponseBody);
             
-            if (!actionResult.GetProperty("success").GetBoolean())
+            if (!rollResult.GetProperty("success").GetBoolean())
             {
-                var errorMessage = actionResult.TryGetProperty("message", out var msgElement) 
+                var errorMessage = rollResult.TryGetProperty("message", out var msgElement) 
                     ? msgElement.GetString() 
                     : "Unknown error";
-                throw new InvalidOperationException($"{action} action failed: {errorMessage}. Full response: {actionResponseBody}");
+                throw new InvalidOperationException($"Roll action failed: {errorMessage}. Full response: {rollResponseBody}");
             }
 
-            return actionResult;
+            return rollResult;
         }
 
         /// <summary>
@@ -561,68 +627,6 @@ namespace Tests.GameService
 
             var gameStateBody = await gameStateResponse.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<JsonElement>(gameStateBody);
-        }
-
-        /// <summary>
-        /// Executes a Knight card play via the API.
-        /// Note: This assumes the player has a Knight entitlement available.
-        /// </summary>
-        /// <param name="client">HttpClient for API calls</param>
-        /// <param name="gameId">The game to execute the action on</param>
-        /// <param name="playerId">The player playing the Knight, defaults to "Alice"</param>
-        /// <returns>The JSON response from the action</returns>
-        public static async Task<JsonElement> ExecuteKnightAction(HttpClient client, string gameId, string playerId = "Alice")
-        {
-            var knightBody = new
-            {
-                gameId = gameId,
-                playerId = playerId,
-                messageType = "PurchaseMessage",
-                messageData = new { entitlement = "Knight" }
-            };
-
-            var knightJson = JsonSerializer.Serialize(knightBody);
-            var knightContent = new StringContent(knightJson, Encoding.UTF8, "application/json");
-
-            var knightResponse = await client.PostAsync("/api/game/action", knightContent);
-            
-            if (!knightResponse.IsSuccessStatusCode)
-            {
-                var errorContent = await knightResponse.Content.ReadAsStringAsync();
-                throw new InvalidOperationException($"Knight action HTTP failed: {knightResponse.StatusCode} - {errorContent}");
-            }
-
-            var knightResponseBody = await knightResponse.Content.ReadAsStringAsync();
-            var knightResult = JsonSerializer.Deserialize<JsonElement>(knightResponseBody);
-            
-            if (!knightResult.GetProperty("success").GetBoolean())
-            {
-                var errorMessage = knightResult.TryGetProperty("message", out var msgElement) 
-                    ? msgElement.GetString() 
-                    : "Unknown error";
-                throw new InvalidOperationException($"Knight action failed: {errorMessage}. Full response: {knightResponseBody}");
-            }
-
-            return knightResult;
-        }
-
-        /// <summary>
-        /// Adds a Knight entitlement to a player for testing purposes.
-        /// This gives the player the ability to play a Knight card.
-        /// </summary>
-        /// <param name="client">HttpClient for API calls</param>
-        /// <param name="gameId">The game to modify</param>
-        /// <param name="playerId">The player to give the Knight entitlement to</param>
-        public static void GivePlayerKnightEntitlement(HttpClient client, string gameId, string playerId = "Alice")
-        {
-            // This would be a custom action to add entitlements for testing
-            // Implementation depends on how the game system handles entitlement management
-            // For now, we'll assume players start with some entitlements or earn them through gameplay
-            
-            // In a real implementation, this might call a test-specific API endpoint
-            // or manipulate the game state to ensure the player has Knight entitlements
-            // For this example, we'll document the requirement that tests should ensure 
-            // players have the needed entitlements before testing Knight functionality
         }
     }
 }
