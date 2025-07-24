@@ -69,7 +69,7 @@ namespace Catan3.GameService.Factory
                 foreach (HexPosition buildingPosition in Enum.GetValues(typeof(HexPosition)))
                 {
                     if (buildingPosition == HexPosition.None) continue;
-                    BuildingKey buildingKey = new BuildingKey { HexCoordinates = tile.TileKey, Position = buildingPosition };
+                    BuildingKey buildingKey = new BuildingKey(tile.TileKey, buildingPosition);
                     var building = game.Buildings.FindBuildingModel(buildingKey);
                     if (building is null)
                     {
@@ -85,7 +85,7 @@ namespace Catan3.GameService.Factory
                 foreach (HexSide roadPosition in Enum.GetValues(typeof(HexSide)))
                 {
                     if (roadPosition == HexSide.None) continue;
-                    var roadKey = new RoadKey { TileKey = tile.TileKey, HexSide = roadPosition };
+                    var roadKey = new RoadKey(tile.TileKey, roadPosition);
                     var road = game.Roads.FindRoad(roadKey);
                     if (road is null)
                     {

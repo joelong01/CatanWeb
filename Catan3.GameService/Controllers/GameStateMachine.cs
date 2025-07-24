@@ -32,6 +32,14 @@ namespace Catan3.GameService.Controllers
 
         public int DoneCount => Log.DoneCount;
 
+        /// <summary>
+        /// Gets the current game state from the log
+        /// </summary>
+        public GameModel GetCurrentState()
+        {
+            return Log.CurrentState();
+        }
+
         // Simplified message handling without MVVM
         public GameModel HandleDoAction(DoAction message)
         {
@@ -681,11 +689,24 @@ namespace Catan3.GameService.Controllers
 
         private GameModel BuildingUpgrade(BuildingUpgradeMessage message)
         {
+            Console.WriteLine($"[DEBUG] BuildingUpgrade called with BuildingKey: {message.BuildingKey}");
+            
             GameModel gameModel = Log.CopyCurrent();
+            Console.WriteLine($"[DEBUG] Current game state: {gameModel.GameState}");
+            Console.WriteLine($"[DEBUG] Current player: {gameModel.CurrentPlayerId}");
+            
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse, GameState.Supplemental]);
             BuildingKey buildingKey = message.BuildingKey;
-            var building = gameModel.Buildings.FindBuildingModel(buildingKey)
-                    ?? throw new Catan3.Shared.Utility.GameException($"Invalid BuildingKey: {buildingKey}");
+            
+            var building = gameModel.Buildings.FindBuildingModel(buildingKey);
+            if (building == null)
+            {
+                Console.WriteLine($"[DEBUG] Building not found for key: {buildingKey}");
+                throw new Catan3.Shared.Utility.GameException($"Invalid BuildingKey: {buildingKey}");
+            }
+            
+            Console.WriteLine($"[DEBUG] Found building: {building.BuildingKey}, State: {building.BuildingState}");
+            
             if (building.BuildingState == BuildingState.NotBuildable)
             {
                 throw new Catan3.Shared.Utility.GameException($"{building} is not buildingable.");
@@ -694,6 +715,7 @@ namespace Catan3.GameService.Controllers
             switch (building.BuildingState)
             {
                 case BuildingState.PossibleSettlement:
+                    Console.WriteLine($"[DEBUG] Upgrading PossibleSettlement to Settlement");
                     ThrowIfNoEntitlement(gameModel, [Entitlement.Settlement]);
                     building.BuildingState = BuildingState.Settlement;
                     building.OwnerId = gameModel.CurrentPlayerId;
@@ -730,16 +752,37 @@ namespace Catan3.GameService.Controllers
                     throw new Catan3.Shared.Utility.GameException("Knights cannot be upgraded further.");
             }
 
+            Console.WriteLine($"[DEBUG] About to check if gameModel.GameState == GameState.AllocateResourceReverse");
+            Console.WriteLine($"[DEBUG] gameModel.GameState = {gameModel.GameState}");
+            Console.WriteLine($"[DEBUG] GameState.AllocateResourceReverse = {GameState.AllocateResourceReverse}");
+            Console.WriteLine($"[DEBUG] Equality check: {gameModel.GameState == GameState.AllocateResourceReverse}");
+
             if (gameModel.GameState == GameState.AllocateResourceReverse)
             {
                 var currentPlayerModel = gameModel.CurrentPlayer();
-                foreach (var tile in gameModel.TilesForBuildings(building.BuildingKey))
+                Console.WriteLine($"[DEBUG] AllocateResourceReverse: Processing resources for {currentPlayerModel.Id}");
+                
+                var tilesForBuilding = gameModel.TilesForBuildings(building.BuildingKey);
+                Console.WriteLine($"[DEBUG] TilesForBuildings returned {tilesForBuilding.Count} tiles for building {building.BuildingKey}");
+                
+                foreach (var tile in tilesForBuilding)
                 {
+                    Console.WriteLine($"[DEBUG] Processing tile {tile.TileKey} with resource type {tile.ResourceTileType}");
                     ResourcesModel resources = building.Resources(tile.ResourceTileType);
+                    Console.WriteLine($"[DEBUG] Building.Resources({tile.ResourceTileType}) returned: Wheat={resources.Wheat}, Wood={resources.Wood}, Sheep={resources.Sheep}, Brick={resources.Brick}, Ore={resources.Ore}, GoldMine={resources.GoldMine}, Fish={resources.Fish}");
+                    
                     currentPlayerModel.ResourcesThisTurn.Add(resources);
+                    Console.WriteLine($"[DEBUG] After adding resources, player {currentPlayerModel.Id} ResourcesThisTurn: Wheat={currentPlayerModel.ResourcesThisTurn.Wheat}, Wood={currentPlayerModel.ResourcesThisTurn.Wood}, Sheep={currentPlayerModel.ResourcesThisTurn.Sheep}, Brick={currentPlayerModel.ResourcesThisTurn.Brick}, Ore={currentPlayerModel.ResourcesThisTurn.Ore}");
                 }
+                
+                Console.WriteLine($"[DEBUG] Final ResourcesThisTurn for {currentPlayerModel.Id}: Wheat={currentPlayerModel.ResourcesThisTurn.Wheat}, Wood={currentPlayerModel.ResourcesThisTurn.Wood}, Sheep={currentPlayerModel.ResourcesThisTurn.Sheep}, Brick={currentPlayerModel.ResourcesThisTurn.Brick}, Ore={currentPlayerModel.ResourcesThisTurn.Ore}");
+            }
+            else
+            {
+                Console.WriteLine($"[DEBUG] NOT in AllocateResourceReverse state, skipping resource allocation");
             }
 
+            Console.WriteLine($"[DEBUG] BuildingUpgrade completed successfully");
             return gameModel;
         }
 
@@ -867,7 +910,9 @@ namespace Catan3.GameService.Controllers
 
         private bool CanTransitionToNext(GameModel gameModel)
         {
-            return true; // Simplified for now
+            // Use the AllowNext method which contains the proper logic for determining
+            // if the Next action should be enabled for the current game state
+            return AllowNext(gameModel);
         }
 
         private void SetTempGoldTiles(GameModel gameModel)

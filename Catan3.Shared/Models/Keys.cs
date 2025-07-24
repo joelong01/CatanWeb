@@ -86,6 +86,16 @@ namespace Catan3.Shared.Models
             return Position.CompareTo(other.Position);
         }
 
+        public static bool operator ==(BuildingKey? left, BuildingKey? right)
+        {
+            if (left is null && right is null) return true;
+            if (left is null || right is null) return false;
+            if (ReferenceEquals(left, right)) return true;
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(BuildingKey? left, BuildingKey? right) => !(left == right);
+
         public static BuildingKey Default => new(HexCoordinates.Default, HexPosition.None);
     }
 

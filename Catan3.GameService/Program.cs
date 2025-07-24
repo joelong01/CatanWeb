@@ -47,12 +47,9 @@ builder.Services.Configure<GameApiOptions>(options =>
     }
 });
 
-// Register services
-builder.Services.AddSingleton<GameStateMachine>(provider => 
-{
-    // For now, create with null services - will be updated when we integrate fully
-    return new GameStateMachine(null, "temp_save.json");
-});
+// Register GameStateMachineService as Singleton to ensure shared state across all requests
+// This ensures that games created in one request can be retrieved in subsequent requests
+builder.Services.AddSingleton<GameStateMachineService>();
 
 builder.Services.AddSingleton<IDiscoveryService, UdpDiscoveryService>();
 builder.Services.AddHostedService(provider => (UdpDiscoveryService)provider.GetRequiredService<IDiscoveryService>());

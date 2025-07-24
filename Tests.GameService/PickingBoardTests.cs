@@ -72,7 +72,12 @@ namespace Tests.GameService
         private async Task<GameStateInfo> GetGameStateInfo(string gameId)
         {
             var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
-            Assert.True(gameStateResponse.IsSuccessStatusCode, "Should get game state successfully");
+            
+            if (!gameStateResponse.IsSuccessStatusCode)
+            {
+                var errorContent = await gameStateResponse.Content.ReadAsStringAsync();
+                throw new Exception($"GetGameState failed with {gameStateResponse.StatusCode}: {errorContent}");
+            }
 
             var gameStateBody = await gameStateResponse.Content.ReadAsStringAsync();
             var gameState = JsonSerializer.Deserialize<JsonElement>(gameStateBody);
