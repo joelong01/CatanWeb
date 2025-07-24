@@ -1257,7 +1257,7 @@ namespace Tests.GameService
             if (!createResponse.IsSuccessStatusCode)
             {
                 var createBody = await createResponse.Content.ReadAsStringAsync();
-                Assert.True(false, $"Game creation failed: {createResponse.StatusCode} - {createBody}");
+                Assert.Fail($"Game creation failed: {createResponse.StatusCode} - {createBody}");
             }
 
             // Act
@@ -1265,7 +1265,7 @@ namespace Tests.GameService
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync();
-                Assert.True(false, $"Game state retrieval failed: {response.StatusCode} - {errorBody}");
+                Assert.Fail($"Game state retrieval failed: {response.StatusCode} - {errorBody}");
             }
 
             var responseBody = await response.Content.ReadAsStringAsync();
@@ -1276,7 +1276,7 @@ namespace Tests.GameService
             }
             catch (Exception ex)
             {
-                Assert.True(false, $"JSON deserialization failed: {ex.Message}. Response: {responseBody}");
+                Assert.Fail($"JSON deserialization failed: {ex.Message}. Response: {responseBody}");
                 return;
             }
 
@@ -1319,7 +1319,7 @@ namespace Tests.GameService
             // Report all missing fields
             if (missingFields.Any())
             {
-                Assert.True(false, $"Missing fields: {string.Join(", ", missingFields)}. Full response: {responseBody}");
+                Assert.Fail($"Missing fields: {string.Join(", ", missingFields)}. Full response: {responseBody}");
             }
 
             // If we get here, all basic checks passed
@@ -1370,7 +1370,7 @@ namespace Tests.GameService
                 
                 if (!createResponse.IsSuccessStatusCode)
                 {
-                    Assert.True(false, $"Game creation failed with status {createResponse.StatusCode}: {createResponseBody}");
+                    Assert.Fail($"Game creation failed with status {createResponse.StatusCode}: {createResponseBody}");
                 }
 
                 // Step 2: Try to get the game state immediately
@@ -1379,7 +1379,7 @@ namespace Tests.GameService
                 
                 if (!gameStateResponse.IsSuccessStatusCode)
                 {
-                    Assert.True(false, $"Game state retrieval failed with status {gameStateResponse.StatusCode}: {gameStateBody}");
+                    Assert.Fail($"Game state retrieval failed with status {gameStateResponse.StatusCode}: {gameStateBody}");
                 }
 
                 // Step 3: Parse the game state response
@@ -1390,7 +1390,7 @@ namespace Tests.GameService
                 }
                 catch (Exception ex)
                 {
-                    Assert.True(false, $"Failed to parse game state JSON: {ex.Message}. Response body: {gameStateBody}");
+                    Assert.Fail($"Failed to parse game state JSON: {ex.Message}. Response body: {gameStateBody}");
                     return;
                 }
 
@@ -1431,7 +1431,7 @@ namespace Tests.GameService
             }
             catch (Exception ex)
             {
-                Assert.True(false, $"Diagnostic test failed with exception: {ex.Message}\nStack trace: {ex.StackTrace}");
+                Assert.Fail($"Diagnostic test failed with exception: {ex.Message}\nStack trace: {ex.StackTrace}");
             }
         }
     }
