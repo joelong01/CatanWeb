@@ -21,13 +21,16 @@ The Game is a "Settlers of Catan" style game with a focus on real-time multiplay
 ## Current Work
 *This section should be updated at the start of each work session with current context.*
 
-**Current Session Focus**: ✅ **ARCHITECTURE IMPROVEMENT COMPLETE** - Successfully **implemented GamePhaseHelper architecture** to eliminate code duplication and dramatically simplify test creation across all game phases.
+**Current Session Focus**: ✅ **WAITINGFORNEXT PURCHASE TESTING COMPLETE** - Successfully **implemented comprehensive purchase and placement testing** for the core economic gameplay loop.
 
-**Architecture Achievement Summary**:
-✅ **GamePhaseHelper Implementation** - Created comprehensive static helper class that eliminates 50+ lines of duplicate setup code from each test file
-✅ **Code Reduction** - Reduced complex game setup from multiple methods to single line calls like `await GamePhaseHelper.CreateGameInWaitingForRollState(_client)`
-✅ **Centralized Logic** - All phase transitions, settlement placement, and road placement logic now centralized and reusable
-✅ **Test Focus** - Tests can now focus purely on what they're testing rather than setup boilerplate
+**WaitingForNext Achievement Summary**:
+✅ **Complete Purchase Workflow Testing** - All road, settlement, and city purchase → placement workflows verified
+✅ **Real-time Synchronization** - Purchase and placement actions properly notify all connected companion devices
+✅ **Resource Management** - Proper handling of resource constraints and insufficient resource scenarios
+✅ **Undo/Redo Functionality** - Purchase undo/redo operations tested and working correctly
+✅ **Multi-purchase Support** - Multiple purchases in one turn verified and working
+✅ **Error Handling** - Invalid purchase types and edge cases handled gracefully
+✅ **Placement Validation** - Building and road placement rules enforced correctly
 
 **Test Suite Status - ALL MAJOR PHASES COMPLETE WITH NEW ARCHITECTURE**:
 
@@ -75,166 +78,126 @@ The Game is a "Settlers of Catan" style game with a focus on real-time multiplay
 - **Real-time Integration**: Verified multi-client roll updates and synchronization
 - **Updated to use GamePhaseHelper architecture for setup**
 
-**6. API & Real-time Integration** ✅
+**6. WaitingForNext Purchase & Placement Phase** ✅
+- **Complete Purchase Workflows**: Road, Settlement, and City purchase → placement → verification
+- **Resource Constraint Handling**: Proper validation of insufficient resource scenarios
+- **Multiple Purchase Support**: Multiple entitlements can be purchased in one turn
+- **Placement Validation**: Building and road placement follows Catan rules correctly
+- **Undo/Redo Functionality**: Purchase undo/redo operations work and sync across clients
+- **Real-time Synchronization**: All purchase/placement actions notify companion devices immediately
+- **Error Handling**: Invalid purchase types and edge cases handled gracefully
+- **Turn Completion**: Proper transition from WaitingForNext → next player's WaitingForRoll
+- **API Integration**: PurchaseMessage, RoadPurchaseMessage, and BuildingUpgradeMessage all verified
+
+**7. Complex Mechanics Testing** ✅
+- **Longest Road Calculation**: Multi-player road building and longest road award mechanics
+- **Largest Army Tracking**: Multi-turn knight accumulation with one-knight-per-turn restriction
+- **Knight Mechanics**: Knight purchase, robber movement, and largest army competition
+
+**8. API & Real-time Integration** ✅
 - Hanging GET pattern for real-time updates
 - Multi-client synchronization across all game phases
 - Single Source of Truth via GameModel API responses
 - Proper JSON serialization and API compatibility
 - Error handling and edge case coverage
 
-**Technical Implementation Complete**:
-✅ **Production-Ready Architecture**:
-- ASP.NET Core service with proper dependency injection
-- Thread-safe GameStateMachineService with concurrent game support
-- Configurable timeouts for testing vs production
-- Comprehensive error handling and validation
-- Real-time notification system via hanging GET pattern
-- Mobile companion interface with complete game control
-- **GamePhaseHelper static class for clean, reusable test setup**
+## Current Session
+🎯 **WaitingForNext Purchase Testing**
 
-**GamePhaseHelper Available Methods**:
-```csharp
-// Game Creation
-GamePhaseHelper.CreateGame(client, gameId?, playerIds?)
-GamePhaseHelper.CreateGameInPickingBoardState(client)
-GamePhaseHelper.CreateGameInWaitingForRollForOrderState(client)
-GamePhaseHelper.CreateGameInBeginResourceAllocationState(client)  
-GamePhaseHelper.CreateGameInWaitingForRollState(client)
+**Next Phase - Expansion Game Testing**:
 
-// Phase Transitions
-GamePhaseHelper.HandlePickingBoard(client, gameId)
-GamePhaseHelper.HandleRollForOrderPhase(client, gameId, customOrder?)
-GamePhaseHelper.HandleAllocationPhase(client, gameId, playerIds?)
-GamePhaseHelper.HandleResourceAllocationCompletion(client, gameId)
+🎯 **CURRENT OBJECTIVE: Expansion Game Type Testing** 
 
-// Actions
-GamePhaseHelper.ExecuteGameAction(client, gameId, action, playerId?)
-GamePhaseHelper.ExecuteKnightAction(client, gameId, playerId?)
-```
+**Overview**: With all Regular game phases comprehensively tested, we now focus on testing the **Expansion** game type. Expansion games require 5 players and introduce a unique **PickSupplementalPlayers** phase after WaitingForNext, where players can optionally purchase additional buildings/roads during a supplemental building phase.
 
-**Next Phase - WaitingForNext Purchase Testing**:
+**Expansion Game Flow Differences**:
+- **5 Players Required**: Expansion games must have exactly 5 players (vs 2-4 for Regular)
+- **Larger Board**: 30 tiles instead of 19 tiles for Regular games
+- **Standard Phases Identical**: PickingBoard, RollForOrder, Allocation phases work the same
+- **New Supplemental Phase**: After WaitingForNext → PickSupplementalPlayers → SupplementalBuild → back to WaitingForRoll
+- **Supplemental Build Order**: Players who chose supplemental build in natural game order
+- **Extended Gameplay**: Additional building opportunities beyond the standard turn
 
-🎯 **CURRENT OBJECTIVE: WaitingForNext State Testing** 
+**Expansion Test Requirements**:
 
-**Overview**: With all setup phases complete and the GamePhaseHelper architecture implemented, we now focus on comprehensive testing of the **WaitingForNext** state. This state represents the main purchasing and building phase where players use their accumulated resources to buy roads, settlements, and cities, forming the core economic gameplay loop.
+**1. Expansion Game Creation** 🎯
+- **5-Player Requirement**: Verify Expansion games require exactly 5 players
+- **Board Size Validation**: Confirm 30 tiles vs 19 for Regular games
+- **HasSupplementalBuildPhase**: Verify expansion flag is set correctly
+- **Game Type Persistence**: Ensure GameType.Expansion is maintained throughout game
+- **Standard Phase Compatibility**: PickingBoard, RollForOrder, Allocation work identically
 
-**WaitingForNext Test Requirements**:
+**2. PickSupplementalPlayers Phase** 🎯
+- **State Transition**: WaitingForNext → PickSupplementalPlayers for Expansion games
+- **Player Choice Mechanism**: Each player can choose to participate in supplemental building
+- **No Selection Scenario**: If no players choose supplemental → skip to WaitingForRoll
+- **Multiple Selection Scenario**: If 1+ players choose → advance to SupplementalBuild phase
+- **Selection Order**: Players make choices in natural game order
+- **Real-time Updates**: Choice selections sync across all companion devices
 
-**1. Purchase Infrastructure** 🏗️
-- **Purchase API Testing**: Verify PurchaseMessage works for all entitlement types
-- **Resource Requirements**: Test that purchases properly consume required resources
-- **Entitlement Granting**: Verify purchased entitlements are properly granted to players
-- **Invalid Purchase Prevention**: Ensure players cannot buy what they cannot afford
-- **Purchase Transaction Atomicity**: Verify purchases either fully succeed or fully fail
+**3. SupplementalBuild Phase** 🎯
+- **Build Order**: Players who selected supplemental build in natural game order
+- **Purchase Mechanics**: Same as WaitingForNext - roads, settlements, cities available
+- **Placement Rules**: Standard Catan placement rules apply
+- **Resource Consumption**: Players spend their own resources for supplemental builds
+- **Undo/Redo Support**: Supplemental purchases can be undone/redone
+- **Turn Progression**: Each supplemental player gets one supplemental turn
 
-**2. Road Purchase & Placement** 🛤️
-- **Road Purchase Success**: Test buying roads with sufficient resources (wood + brick)
-- **Road Placement Validation**: Verify roads can only be placed adjacent to existing roads/settlements
-- **Invalid Road Placement**: Test roads cannot be placed in invalid locations
-- **Road Connectivity Rules**: Ensure road placement follows connectivity requirements
-- **Multiple Road Purchases**: Test buying and placing multiple roads in one turn
+**4. Supplemental to Regular Transition** 🎯
+- **Completion Logic**: After all supplemental players complete → return to WaitingForRoll
+- **Turn Order Restoration**: Return to normal turn order after supplemental phase
+- **Game State Consistency**: Proper version incrementing and state management
+- **Real-time Sync**: State transitions notify all companion devices
 
-**3. Settlement Purchase & Placement** 🏘️
-- **Settlement Purchase Success**: Test buying settlements with sufficient resources (wood + brick + sheep + wheat)
-- **Settlement Placement Rules**: Verify settlements must be 2+ spaces apart from other settlements
-- **Settlement-Road Connectivity**: Ensure settlements can only be placed adjacent to player's roads
-- **Invalid Settlement Placement**: Test rejection of settlements in invalid locations
-- **Settlement Upgrade Preparation**: Verify settlements can later be upgraded to cities
-
-**4. City Purchase & Placement** 🏙️
-- **City Upgrade Success**: Test upgrading settlements to cities with sufficient resources (ore + wheat x3)
-- **City Upgrade Rules**: Verify only player's own settlements can be upgraded
-- **City Resource Production**: Confirm cities produce 2 resources vs settlement's 1 resource
-- **City Point Value**: Verify cities are worth 2 victory points vs settlement's 1 point
-- **Invalid City Upgrades**: Test rejection of city upgrades in invalid scenarios
-
-**5. Undo/Redo in Purchase Phase** 🔄
-- **Purchase Undo**: Verify purchases can be undone, restoring resources and removing buildings
-- **Multi-Purchase Undo**: Test undoing sequences of multiple purchases
-- **Purchase Redo**: Verify redoing purchases after undo works correctly
-- **Undo/Redo State Consistency**: Ensure game state remains consistent through undo/redo cycles
-- **Undo/Redo Real-time Sync**: Verify undo/redo operations sync across all companion devices
-
-**6. Turn Completion & State Transitions** 🔄
-- **Next Action**: Test completing turn with Next action advances to next player's WaitingForRoll
-- **Turn Cycling**: Verify turns cycle correctly through all players
-- **Score Updates**: Ensure victory point scores update correctly after purchases
-- **Action Flag Updates**: Verify action flags properly reflect available actions after purchases
-- **Game State Progression**: Confirm proper game state transitions after turn completion
-
-**7. Resource Management** 💰
-- **Resource Consumption**: Verify purchases properly deduct required resources
-- **Insufficient Resources**: Test purchase rejection when player lacks required resources
-- **Resource Display**: Ensure resource counts are properly updated in companion interface
-- **Resource Validation**: Verify resource requirements match Catan rule specifications
-- **Edge Case Handling**: Test scenarios with exactly sufficient resources
-
-**8. Real-time Integration** 📱
-- **Purchase Synchronization**: Verify all purchases are reflected in real-time across companion devices
-- **Building Placement Updates**: Ensure building/road placements sync immediately to all clients
-- **Resource Updates**: Verify resource changes are synchronized across all companion devices
-- **Turn Progression Sync**: Ensure turn advancement is reflected across all connected companions
-- **Action Availability Sync**: Verify action button states sync correctly across devices
+**5. Edge Cases & Error Handling** 🎯
+- **Invalid Player Counts**: Verify proper rejection of non-5-player Expansion games
+- **Mixed Game Types**: Ensure no interference between Regular and Expansion testing
+- **Supplemental Timeouts**: Handle scenarios where supplemental choices are not made
+- **Resource Constraints**: Supplemental building still respects resource limitations
+- **Network Interruptions**: Robust handling of connection issues during supplemental phases
 
 **Test File Structure Plan**:
 ```
-Tests.GameService\WaitingForNextTests.cs - Main purchase testing
-├── Core Purchase Tests
-│   ├── Purchase_Road_ShouldConsumeResourcesAndGrantEntitlement()
-│   ├── Purchase_Settlement_ShouldConsumeResourcesAndGrantEntitlement()  
-│   ├── Purchase_City_ShouldConsumeResourcesAndGrantEntitlement()
-│   └── Purchase_InsufficientResources_ShouldFail()
-├── Placement Validation Tests
-│   ├── RoadPlacement_ValidLocation_ShouldSucceed()
-│   ├── RoadPlacement_InvalidLocation_ShouldFail()
-│   ├── SettlementPlacement_ValidLocation_ShouldSucceed()
-│   ├── SettlementPlacement_InvalidLocation_ShouldFail()
-│   ├── CityUpgrade_ValidSettlement_ShouldSucceed()
-│   └── CityUpgrade_InvalidLocation_ShouldFail()
-├── Undo/Redo Tests  
-│   ├── Purchase_UndoSingle_ShouldRestoreResourcesAndRemoveBuilding()
-│   ├── Purchase_UndoMultiple_ShouldRestoreAllPurchases()
-│   ├── Purchase_RedoAfterUndo_ShouldReapplyPurchases()
-│   └── UndoRedo_RealTimeSync_ShouldUpdateAllClients()
-├── Turn Management Tests
-│   ├── TurnCompletion_NextAction_ShouldAdvanceToNextPlayer()
-│   ├── TurnCycling_AllPlayers_ShouldMaintainCorrectOrder()
-│   └── ScoreUpdates_AfterPurchases_ShouldReflectCorrectPoints()
-└── Real-time Integration Tests
-    ├── Purchase_ShouldNotifyAllClients()
-    ├── BuildingPlacement_ShouldSyncAcrossCompanions()
-    └── ResourceUpdates_ShouldSyncInRealTime()
-
-Tests.GameService\PurchaseValidationTests.cs - Extended validation testing
-├── Resource Requirement Tests
-├── Building Placement Rule Tests  
-├── Edge Case Tests
-└── Error Handling Tests
+Tests.GameService\ExpansionGameTests.cs - Main expansion testing
+├── Game Creation Tests
+│   ├── CreateExpansionGame_With5Players_ShouldSucceed()
+│   ├── CreateExpansionGame_WithWrongPlayerCount_ShouldFail()
+│   ├── ExpansionGame_ShouldHaveLargerBoard()
+│   └── ExpansionGame_StandardPhases_ShouldWorkIdentically()
+├── PickSupplementalPlayers Tests
+│   ├── PickSupplemental_NoPlayersChoose_ShouldSkipToWaitingForRoll()
+│   ├── PickSupplemental_SomePlayersChoose_ShouldAdvanceToSupplementalBuild()
+│   ├── PickSupplemental_AllPlayersChoose_ShouldProcessInOrder()
+│   └── PickSupplemental_RealTimeUpdates_ShouldNotifyAllClients()
+├── SupplementalBuild Tests
+│   ├── SupplementalBuild_PurchaseAndPlace_ShouldWorkLikeWaitingForNext()
+│   ├── SupplementalBuild_MultiplePlayersInOrder_ShouldProcessCorrectly()
+│   ├── SupplementalBuild_UndoRedo_ShouldWork()
+│   └── SupplementalBuild_ResourceConstraints_ShouldApply()
+└── Integration Tests
+    ├── ExpansionGame_CompleteWorkflow_ShouldHandleAllPhases()
+    ├── ExpansionGame_RealTimeSync_ShouldWorkAcrossAllPhases()
+    └── ExpansionGame_ErrorHandling_ShouldBeRobust()
 ```
 
 **Success Criteria**:
-- All WaitingForNext purchase mechanics work correctly via companion interface API
-- Resource consumption and building placement follows Catan rules precisely
-- Undo/Redo functionality works flawlessly for all purchase scenarios
-- Real-time synchronization maintains consistency across multiple companion devices
-- Building placement validation prevents invalid game states
-- Turn progression works correctly through multiple players
-- Performance meets real-time gameplay requirements
-
-**Exclusions for This Phase**:
-- **Longest Road Calculation**: Will be tested separately due to complexity requiring multiple player coordination
-- **Largest Army Tracking**: Will be tested separately as it requires multiple turns due to one-knight-per-turn restriction
-- **Advanced Knight Mechanics**: Covered in WaitingForRoll phase testing
-- **Development Card System**: Will be separate test phase if implemented
+- Expansion games with 5 players work correctly through all phases
+- PickSupplementalPlayers phase properly handles player choices and state transitions
+- SupplementalBuild phase provides same purchase/placement functionality as WaitingForNext
+- Proper transition back to regular gameplay after supplemental building
+- Real-time synchronization works correctly for all new expansion phases
+- Edge cases and error conditions are handled gracefully
+- GamePhaseHelper can be extended to support Expansion game setup
 
 **Implementation Approach**:
-1. Use GamePhaseHelper for all test setup - getting to WaitingForNext should be simple
-2. Focus on core purchase-place-undo-redo cycle testing  
-3. Verify companion interface responsiveness for all purchase operations
-4. Ensure real-time updates work seamlessly for building/resource changes
-5. Test edge cases and error conditions thoroughly
+1. Extend GamePhaseHelper to support Expansion game creation with 5 players
+2. Create comprehensive test for Expansion game flow through all standard phases
+3. Implement PickSupplementalPlayers phase testing with choice scenarios
+4. Test SupplementalBuild phase using existing purchase/placement test patterns
+5. Verify complete workflow integration and real-time synchronization
+6. Test edge cases and error handling specific to Expansion games
 
-This phase will complete the core economic gameplay loop testing, ensuring the companion interface handles the primary building and purchasing mechanics that form the foundation of Catan gameplay.
+This phase will complete testing for both Regular and Expansion game types, ensuring the companion interface handles all Catan3 gameplay scenarios correctly.
 
 ---
 
@@ -247,5 +210,4 @@ This phase will complete the core economic gameplay loop testing, ensuring the c
 **Session 5**: ✅ Test Infrastructure Fixes & API Response Structure
 **Session 6**: ✅ WaitingForRoll Gameplay Testing (Dice Rolling, Resource Distribution, Seven Rolls)
 **Session 7**: ✅ GamePhaseHelper Architecture Implementation (Code Reduction & Reusability)
-
-**Current Session**: 🎯 **WaitingForNext Purchase Testing**
+**Session 8**: ✅ WaitingForNext Purchase & Placement Testing (Complete Economic Gameplay Loop)
