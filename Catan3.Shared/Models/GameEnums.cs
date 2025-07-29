@@ -96,7 +96,9 @@ namespace Catan3.Shared.Models
         [Description("Select Knight")]
         ClickOnKnight,
         [Description("Pick Supplemental Players")]
-        PickSupplementalPlayers
+        PickSupplementalPlayers,
+        [Description("Game Over")]
+        GameOver
     };
     public enum GamePhase { Starting, PickingBoard, PickingResources, Rolling, Purchase, ActionRequired, Unspecified }
     public enum SpecialDice { Trade=0, Politics=1, Science=2, Pirate=3, None=-1 };

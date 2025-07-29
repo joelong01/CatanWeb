@@ -15,6 +15,12 @@ namespace Catan3.Shared.Models
         public string Id { get; set; } = string.Empty;
 
         /// <summary>
+        /// Gets the display name of the player extracted from the ID.
+        /// Follows Desktop app pattern: "Joe-001" ? "Joe"
+        /// </summary>
+        public string Name => ExtractNameFromId(Id);
+
+        /// <summary>
         /// Gets or sets the number of gold rolls.
         /// </summary>
         public int GoldRolls { get; set; } = 0;
@@ -143,6 +149,29 @@ namespace Catan3.Shared.Models
         public override string ToString()
         {
             return $"{Id}";
+        }
+
+        /// <summary>
+        /// Extracts display name from player ID following Desktop app pattern.
+        /// "Joe-001" ? "Joe"
+        /// </summary>
+        /// <param name="id">The player ID to extract the name from</param>
+        /// <returns>The extracted display name</returns>
+        private static string ExtractNameFromId(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return "Unknown";
+            
+            // Desktop app pattern: "Joe-001" -> "Joe"
+            if (id.Contains('-'))
+            {
+                var parts = id.Split('-');
+                if (parts.Length >= 2)
+                {
+                    return parts[0];
+                }
+            }
+            
+            return id;
         }
     }
 

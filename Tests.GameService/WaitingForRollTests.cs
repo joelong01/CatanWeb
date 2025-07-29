@@ -247,7 +247,6 @@ namespace Tests.GameService
             {
                 GameId = gameState.GetProperty("gameId").GetString() ?? "",
                 GameState = gameState.GetProperty("gameState").GetString() ?? "",
-                Version = gameState.GetProperty("version").GetInt32(),
                 CurrentPlayerId = gameState.GetProperty("currentPlayerId").GetString() ?? ""
             };
         }
@@ -293,10 +292,6 @@ namespace Tests.GameService
             // Get updated game state
             var updatedState = await GetGameStateInfo(gameId);
 
-            // Assert - Verify roll succeeded and state advanced
-            var newVersion = rollResult.GetProperty("gameStateVersion").GetInt32();
-            Assert.True(newVersion > initialState.Version, "Game version should increment after roll");
-            Assert.Equal(newVersion, updatedState.Version);
 
             // Verify game state advanced to WaitingForNext
             Assert.Equal("WaitingForNext", updatedState.GameState);
@@ -343,9 +338,6 @@ namespace Tests.GameService
             // Get updated game state
             var updatedState = await GetGameStateInfo(gameId);
 
-            // Assert - Verify roll succeeded and state changed to MustMoveRobber
-            var newVersion = rollResult.GetProperty("gameStateVersion").GetInt32();
-            Assert.True(newVersion > initialState.Version, "Game version should increment after seven roll");
 
             // Verify game state changed to MustMoveRobber (not WaitingForNext)
             Assert.Equal("MustMoveRobber", updatedState.GameState);
@@ -773,6 +765,6 @@ namespace Tests.GameService
         public string GameId { get; set; } = "";
         public string GameState { get; set; } = "";
         public string CurrentPlayerId { get; set; } = "";
-        public int Version { get; set; }
+
     }
 }

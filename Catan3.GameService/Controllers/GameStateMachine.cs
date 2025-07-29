@@ -18,16 +18,30 @@ namespace Catan3.GameService.Controllers
     /// Game State Machine - manages all game state transitions and logic
     /// Renamed from GameController to reflect that this is now a pure state machine
     /// without any MVVM/UI dependencies
+    /// 
+    /// Separation of Concerns: This class focuses solely on game state logic.
+    /// Real-time client notifications are handled by IClientNotification service.
     /// </summary>
     public class GameStateMachine
     {
         private Log<string> Log;
         private IPersistanceService? MyPersistanceService { get; set; }
+        private readonly IClientNotification _clientNotification;
+        
+        /// <summary>
+        /// Server-generated unique identifier for this game instance.
+        /// Generated in constructor to ensure GameId is always available for all GameModels.
+        /// </summary>
+        public string GameId { get; private set; }
 
-        public GameStateMachine(IPersistanceService? persistanceService, string localSaveFile)
+        public GameStateMachine(IPersistanceService? persistanceService, IClientNotification clientNotification, string localSaveFile)
         {
+            // Generate server-side GameId to ensure it's available for all GameModels
+            GameId = Guid.NewGuid().ToString();
+            
             Log = new Log<string>(persistanceService, localSaveFile);
             MyPersistanceService = persistanceService;
+            _clientNotification = clientNotification;
         }
 
         public int DoneCount => Log.DoneCount;
@@ -53,10 +67,22 @@ namespace Catan3.GameService.Controllers
                         LogGameModel(gameModel);
                         break;
                     case GameAction.Undo:
-                        gameModel = Undo(); // NOTE: Undo does not call LogGameMode!
+                        gameModel = Undo();
+                        if (gameModel != null)
+                        {
+                            // Undo/Redo don't call LogGameModel because they navigate through existing history,
+                            // not create new state. Instead call a special method that only notifies clients.
+                            NotifyUndoRedoResult(gameModel);
+                        }
                         break;
                     case GameAction.Redo:
-                        gameModel = Redo();  // NOTE: Redo does not call LogGameMode!
+                        gameModel = Redo();
+                        if (gameModel != null)
+                        {
+                            // Undo/Redo don't call LogGameModel because they navigate through existing history,
+                            // not create new state. Instead call a special method that only notifies clients.
+                            NotifyUndoRedoResult(gameModel);
+                        }
                         break;
                     case GameAction.Balance:
                         gameModel = BalanceBoardAction();
@@ -483,8 +509,12 @@ namespace Catan3.GameService.Controllers
         private void SetActionFlags(GameModel gameModel)
         {
             gameModel.ActionFlags.UndoEnabled = Log.CanUndo;
+            gameModel.ActionFlags.RedoEnabled = Log.CanRedo;
             gameModel.ActionFlags.NextEnabled = AllowNext(gameModel);
             gameModel.ActionFlags.RollsEnabled = gameModel.GameState == GameState.WaitingForRoll;
+            
+            // Debug logging to track undo/redo state
+            TraceMessage($"SetActionFlags: CanUndo={Log.CanUndo}, CanRedo={Log.CanRedo}, UndoEnabled={gameModel.ActionFlags.UndoEnabled}, RedoEnabled={gameModel.ActionFlags.RedoEnabled}");
         }
 
         private bool AllowNext(GameModel gameModel)
@@ -683,14 +713,37 @@ namespace Catan3.GameService.Controllers
 
         private void LogGameModel(GameModel gameModel)
         {
+            // Rule 7 Compliance: Ensure GameModel has the GameId from this GameStateMachine
+            gameModel.GameId = GameId;
+            gameModel.CreatedTime = gameModel.CreatedTime == default ? DateTime.UtcNow : gameModel.CreatedTime;
+            
+            // Version is a constant software version (1), representing GameStateMachine compatibility
+            // Version is STATIC for the lifetime of the GameStateMachine, not incremented per state change
+            gameModel.Version = 1;
+            
             UpdateScore(gameModel);
             MarkBuildableRoads(gameModel);
             MarkBuildableBuildings(gameModel);
             SetActionFlags(gameModel);
-            gameModel.ActionFlags.RedoEnabled = false;
+            // SetActionFlags now properly handles RedoEnabled based on Log.CanRedo - don't override it
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
             Log.Done(gameModel);
+
+            // Notify clients of state change asynchronously
+            // Fire and forget to avoid blocking game logic
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _clientNotification.NotifyAsync(GameId, gameModel);
+                }
+                catch (Exception ex)
+                {
+                    // Log error but don't let notification failures affect game logic
+                    TraceMessage($"Error notifying clients: {ex.Message}");
+                }
+            });
         }
 
         private void UpdatePurchaseUi(GameModel gameModel)
@@ -1031,16 +1084,17 @@ namespace Catan3.GameService.Controllers
 
         private GameModel? Undo()
         {
+            TraceMessage($"Undo called: CanUndo={Log.CanUndo}, CanRedo={Log.CanRedo}");
             GameModel result = Log.Undo() ?? throw new Catan3.Shared.Utility.GameException("Undo cannot be done");
-            SetActionFlags(result);
-            result.ActionFlags.RedoEnabled = true;
+            TraceMessage($"After Undo: CanUndo={Log.CanUndo}, CanRedo={Log.CanRedo}");
             return result;
         }
 
         private GameModel? Redo()
         {
+            TraceMessage($"Redo called: CanUndo={Log.CanUndo}, CanRedo={Log.CanRedo}");
             GameModel result = Log.Redo() ?? throw new Catan3.Shared.Utility.GameException("Redo cannot be done");
-            SetActionFlags(result);
+            TraceMessage($"After Redo: CanUndo={Log.CanUndo}, CanRedo={Log.CanRedo}");
             return result;
         }
 
@@ -1338,6 +1392,43 @@ namespace Catan3.GameService.Controllers
                 }
             } while (ownedAdjacentNotCounted.Count != 0);
             return max;
+        }
+
+        private void NotifyUndoRedoResult(GameModel gameModel)
+        {
+            // For Undo/Redo, we need to update the game model metadata and action flags
+            // but we don't call Log.Done() since we're navigating existing history, not creating new state
+            
+            // Rule 7 Compliance: Ensure GameModel has the GameId from this GameStateMachine
+            gameModel.GameId = GameId;
+            gameModel.CreatedTime = gameModel.CreatedTime == default ? DateTime.UtcNow : gameModel.CreatedTime;
+            
+            // Version is a constant software version (1), representing GameStateMachine compatibility
+            gameModel.Version = 1;
+            
+            UpdateScore(gameModel);
+            MarkBuildableRoads(gameModel);
+            MarkBuildableBuildings(gameModel);
+            SetActionFlags(gameModel);  // This will properly set UndoEnabled and RedoEnabled
+            UpdatePurchaseUi(gameModel);
+            SetPlaySoldierAccess(gameModel);
+            
+            // NOTE: We do NOT call Log.Done(gameModel) here because Undo/Redo navigate existing history
+
+            // Notify clients of state change asynchronously
+            // Fire and forget to avoid blocking game logic
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _clientNotification.NotifyAsync(GameId, gameModel);
+                }
+                catch (Exception ex)
+                {
+                    // Log error but don't let notification failures affect game logic
+                    TraceMessage($"Error notifying clients: {ex.Message}");
+                }
+            });
         }
     }
 }

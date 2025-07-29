@@ -1,23 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Catan Companion</title>
     <link rel="stylesheet" href="companion.css">
 </head>
+
 <body>
     <div class="container">
+        <!-- Enhanced Header -->
         <header>
-            <h1>🎲 Catan Companion</h1>
-            <div class="connection-status" id="connectionStatus">
-                <span class="status-dot"></span>
-                <span class="status-text">Connecting...</span>
+            <div class="header-title">
+                <h1>🎲 Catan Companion</h1>
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connecting...</span>
+                </div>
             </div>
         </header>
 
         <main>
-            <!-- Player Selection Section -->
+            <!-- Enhanced Player Selection Section -->
             <section class="player-section" id="playerSection">
                 <h2>Select Your Player</h2>
                 <select id="playerSelect" class="player-select">
@@ -25,13 +30,53 @@
                 </select>
             </section>
 
+            <!-- Enhanced Game Header -->
+            <section class="game-header" id="gameHeader">
+                <div class="player-list">
+                    <label>Players:</label>
+                    <div id="playerList" class="player-names">
+                        <!-- Player names will be populated here -->
+                    </div>
+                </div>
+                <div class="game-info">
+                    <div class="info-item">
+                        <label>Current Turn:</label>
+                        <span id="currentPlayer" class="current-player">-</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Waiting For:</label>
+                        <span id="waitingFor" class="waiting-for">-</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Always Available Actions -->
+            <section class="actions" id="actionsSection">
+                <h2>Game Controls</h2>
+                <div class="action-group">
+                    <button id="undoBtn" class="action-btn secondary" onclick="doAction('Undo')">
+                        <span class="btn-icon">⬅️</span>
+                        <span class="btn-text">Undo</span>
+                    </button>
+                    <button id="nextBtn" class="action-btn primary" onclick="doAction('Next')">
+                        <span class="btn-icon">▶️</span>
+                        <span class="btn-text">Next</span>
+                    </button>
+                    <button id="redoBtn" class="action-btn secondary" onclick="doAction('Redo')">
+                        <span class="btn-icon">➡️</span>
+                        <span class="btn-text">Redo</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- State-Specific Content Area -->
+            <section class="state-content" id="stateContent">
+                <!-- Dynamic content based on game state will be inserted here -->
+            </section>
+
             <!-- Game State Display -->
             <section class="game-state" id="gameState">
                 <div class="game-info">
-                    <div class="info-item">
-                        <label>Current Player:</label>
-                        <span id="currentPlayer" class="current-player">-</span>
-                    </div>
                     <div class="info-item">
                         <label>Game State:</label>
                         <span id="gameStateDisplay" class="game-state-text">-</span>
@@ -40,45 +85,6 @@
                         <label>Version:</label>
                         <span id="gameVersion" class="version">-</span>
                     </div>
-                </div>
-            </section>
-
-            <!-- Action Buttons -->
-            <section class="actions" id="actionsSection">
-                <h2>Available Actions</h2>
-                
-                <!-- Basic Actions -->
-                <div class="action-group">
-                    <h3>Game Flow</h3>
-                    <button id="nextBtn" class="action-btn primary" onclick="doAction('Next')">
-                        <span class="btn-icon">▶️</span>
-                        <span class="btn-text">Next</span>
-                    </button>
-                    <button id="undoBtn" class="action-btn secondary" onclick="doAction('Undo')">
-                        <span class="btn-icon">↩️</span>
-                        <span class="btn-text">Undo</span>
-                    </button>
-                    <button id="redoBtn" class="action-btn secondary" onclick="doAction('Redo')">
-                        <span class="btn-icon">↪️</span>
-                        <span class="btn-text">Redo</span>
-                    </button>
-                </div>
-
-                <!-- Purchase Actions -->
-                <div class="action-group">
-                    <h3>Purchases</h3>
-                    <div id="purchaseButtons" class="purchase-grid">
-                        <!-- Purchase buttons will be populated dynamically -->
-                    </div>
-                </div>
-
-                <!-- Roll Actions -->
-                <div class="action-group" id="rollSection" style="display: none;">
-                    <h3>Dice Roll</h3>
-                    <button id="rollBtn" class="action-btn roll" onclick="rollDice()">
-                        <span class="btn-icon">🎲</span>
-                        <span class="btn-text">Roll Dice</span>
-                    </button>
                 </div>
             </section>
 
@@ -109,4 +115,5 @@
 
     <script src="companion.js"></script>
 </body>
+
 </html>

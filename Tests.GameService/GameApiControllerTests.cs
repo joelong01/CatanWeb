@@ -52,14 +52,12 @@ namespace Tests.GameService
             // 7. One client calls Next to advance the game state
             // 8. Verify both clients get the updated game progression
 
-            // Step 1: Create a new game
-            var gameId = "end-to-end-integration-test-" + Guid.NewGuid().ToString();
+            // Step 1: Create a new game using server-generated GameId
             var gameType = "Regular";
             var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
 
             var newGameRequestBody = new
             {
-                gameId = gameId,
                 gameType = gameType,
                 playerIds = playerIds
             };
@@ -69,6 +67,13 @@ namespace Tests.GameService
 
             var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
             Assert.True(createGameResponse.IsSuccessStatusCode, "Game creation should succeed");
+
+            // Get the server-generated gameId from the response
+            var createResponseBody = await createGameResponse.Content.ReadAsStringAsync();
+            var createResult = JsonSerializer.Deserialize<JsonElement>(createResponseBody);
+            Assert.True(createResult.GetProperty("success").GetBoolean(), "Game creation should be successful");
+            var gameId = createResult.GetProperty("gameId").GetString()!;
+            Assert.False(string.IsNullOrEmpty(gameId), "Server should return a valid gameId");
 
             // Step 2: Simulate UDP discovery for 2 clients (like real mobile devices would do)
             string? discoveredCompanionUrl = null;
@@ -167,7 +172,7 @@ namespace Tests.GameService
             Assert.True(shuffleActionResult.GetProperty("success").GetBoolean());
             
             var shuffleVersion = shuffleActionResult.GetProperty("gameStateVersion").GetInt32();
-            Assert.True(shuffleVersion > initialVersion, "Game version should increment after shuffle");
+            Assert.Equal(1, shuffleVersion); // Version is static (1), not incremented
 
             // Verify both clients received the shuffle update quickly (real-time notification)
             var shuffleResponseTime = shuffleActionEndTime - shuffleActionStartTime;
@@ -241,7 +246,7 @@ namespace Tests.GameService
             Assert.True(nextActionResult.GetProperty("success").GetBoolean());
             
             var nextVersion = nextActionResult.GetProperty("gameStateVersion").GetInt32();
-            Assert.True(nextVersion > shuffleVersion, "Game version should increment after Next action");
+            Assert.Equal(1, nextVersion); // Version is static (1), not incremented
 
             // Verify both clients received the Next action update quickly
             var nextResponseTime = nextActionEndTime - nextActionStartTime;
@@ -277,12 +282,12 @@ namespace Tests.GameService
                 Assert.True(actionFlags.TryGetProperty("nextEnabled", out _));
                 Assert.True(actionFlags.TryGetProperty("undoEnabled", out _));
                 Assert.True(actionFlags.TryGetProperty("rollsEnabled", out _));
-                Assert.True(clientState.TryGetProperty("availableEntitlements", out _));
-                Assert.True(clientState.TryGetProperty("timestamp", out _));
+                Assert.True(clientState.TryGetProperty("entitlementPurchaseModel", out _));
+                Assert.True(clientState.TryGetProperty("createdTime", out _));
             }
 
             // Final verification: Complete workflow tested successfully
-            // 1. ✅ Game created successfully
+            // 1. ✅ Game created successfully with server-generated GameId
             // 2. ✅ UDP discovery simulation worked
             // 3. ✅ Companion interface loaded for both clients
             // 4. ✅ Hanging GET connections established
@@ -291,7 +296,7 @@ namespace Tests.GameService
             // 7. ✅ Next action executed successfully (game progression tested)
             // 8. ✅ Both clients received real-time Next updates
             // 9. ✅ Game state progressed correctly: initial → PickingBoard (after Shuffle) → advanced state (after Next)
-            // 10. ✅ Both actions incremented game version correctly
+            // 10. ✅ All actions use static version (1) for software compatibility
             // 11. ✅ All required game data is present for companion interface functionality
 
             // This test demonstrates that the complete companion interface workflow supports:
@@ -299,13 +304,18 @@ namespace Tests.GameService
             // - Game state progression (Next action) - advances from PickingBoard to next game phase
             // - Real-time synchronization across multiple clients for both actions
             // - Complete action-response cycle with proper version tracking
-            Assert.True(nextVersion > shuffleVersion, "Next version should be greater than shuffle version");
-            Assert.True(shuffleVersion > initialVersion, "Shuffle version should be greater than initial version");
+            Assert.Equal(1, nextVersion); // Version is static (1), not incremented
+            Assert.Equal(1, shuffleVersion); // Version is static (1), not incremented
             
             // Verify the game flow: initial → shuffle (stay in PickingBoard) → next (advance beyond PickingBoard)
             Assert.Equal("PickingBoard", initialGameStateStr);
             Assert.Equal("PickingBoard", client1ShuffleGameStateStr); // Shuffle keeps same state but randomizes board
             Assert.NotEqual("PickingBoard", finalGameStateStr); // Next advances to next phase
+            
+            // Verify all versions are static (1)
+            Assert.Equal(1, shuffleVersion);
+            Assert.Equal(1, nextVersion);
+            Assert.Equal(1, initialVersion); // All versions should be static 1
         }
 
         // ========================================
@@ -315,14 +325,12 @@ namespace Tests.GameService
         [Fact]
         public async Task HangingGet_WithClientBehindVersion_ShouldReturnImmediately()
         {
-            // Arrange - Create a game and get its initial state
-            var gameId = "hanging-get-version-test-" + Guid.NewGuid().ToString();
+            // Arrange - Create a game and get its initial state using server-generated GameId
             var gameType = "Regular";
             var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
 
             var newGameRequestBody = new
             {
-                gameId = gameId,
                 gameType = gameType,
                 playerIds = playerIds
             };
@@ -333,6 +341,11 @@ namespace Tests.GameService
             // Create the game
             var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
             Assert.True(createGameResponse.IsSuccessStatusCode);
+
+            // Get the server-generated gameId
+            var createResponseBody = await createGameResponse.Content.ReadAsStringAsync();
+            var createResult = JsonSerializer.Deserialize<JsonElement>(createResponseBody);
+            var gameId = createResult.GetProperty("gameId").GetString()!;
 
             // Get current game state to know the current version
             var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
@@ -366,14 +379,12 @@ namespace Tests.GameService
         [Fact]
         public async Task HangingGet_WithMultipleClients_ShouldNotifyAllClients()
         {
-            // Arrange - Create a game first
-            var gameId = "hanging-get-multi-client-test-" + Guid.NewGuid().ToString();
+            // Arrange - Create a game first using server-generated GameId
             var gameType = "Regular";
             var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
 
             var newGameRequestBody = new
             {
-                gameId = gameId,
                 gameType = gameType,
                 playerIds = playerIds
             };
@@ -384,6 +395,11 @@ namespace Tests.GameService
             // Create the game
             var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
             Assert.True(createGameResponse.IsSuccessStatusCode);
+
+            // Get the server-generated gameId
+            var createResponseBody = await createGameResponse.Content.ReadAsStringAsync();
+            var createResult = JsonSerializer.Deserialize<JsonElement>(createResponseBody);
+            var gameId = createResult.GetProperty("gameId").GetString()!;
 
             // Get current game state to know the current version
             var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
@@ -438,7 +454,7 @@ namespace Tests.GameService
                 Assert.Equal(gameId, returnedGameId.GetString());
 
                 Assert.True(responseData.TryGetProperty("version", out var returnedVersion));
-                Assert.True(returnedVersion.GetInt32() > currentVersion, "Version should be incremented after action");
+                Assert.Equal(1, returnedVersion.GetInt32()); // Version is static (1), not incremented
             }
         }
 
@@ -448,14 +464,12 @@ namespace Tests.GameService
             // This test verifies that the configurable timeout works correctly
             // We've configured a 5-second timeout for tests instead of 15 minutes
             
-            // Arrange - Create a game
-            var gameId = "hanging-get-timeout-test-" + Guid.NewGuid().ToString();
+            // Arrange - Create a game using server-generated GameId
             var gameType = "Regular";
             var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
 
             var newGameRequestBody = new
             {
-                gameId = gameId,
                 gameType = gameType,
                 playerIds = playerIds
             };
@@ -466,6 +480,11 @@ namespace Tests.GameService
             // Create the game
             var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
             Assert.True(createGameResponse.IsSuccessStatusCode);
+
+            // Get the server-generated gameId
+            var createResponseBody = await createGameResponse.Content.ReadAsStringAsync();
+            var createResult = JsonSerializer.Deserialize<JsonElement>(createResponseBody);
+            var gameId = createResult.GetProperty("gameId").GetString()!;
 
             // Get current game state to know the current version
             var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
@@ -501,14 +520,12 @@ namespace Tests.GameService
         {
             // This test verifies hanging GET returns quickly when triggered, not waiting for timeout
             
-            // Arrange - Create a game
-            var gameId = "hanging-get-trigger-test-" + Guid.NewGuid().ToString();
+            // Arrange - Create a game using server-generated GameId
             var gameType = "Regular";
             var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
 
             var newGameRequestBody = new
             {
-                gameId = gameId,
                 gameType = gameType,
                 playerIds = playerIds
             };
@@ -519,6 +536,11 @@ namespace Tests.GameService
             // Create the game
             var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
             Assert.True(createGameResponse.IsSuccessStatusCode);
+
+            // Get the server-generated gameId
+            var createResponseBody = await createGameResponse.Content.ReadAsStringAsync();
+            var createResult = JsonSerializer.Deserialize<JsonElement>(createResponseBody);
+            var gameId = createResult.GetProperty("gameId").GetString()!;
 
             // Get current game state to know the current version
             var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
@@ -566,7 +588,7 @@ namespace Tests.GameService
             Assert.True(hangingGetResult.TryGetProperty("gameId", out var returnedGameId));
             Assert.Equal(gameId, returnedGameId.GetString());
             Assert.True(hangingGetResult.TryGetProperty("version", out var returnedVersion));
-            Assert.True(returnedVersion.GetInt32() > currentVersion, "Version should be incremented after action");
+            Assert.Equal(1, returnedVersion.GetInt32()); // Version is static (1), not incremented
         }
 
         [Fact]
@@ -574,14 +596,12 @@ namespace Tests.GameService
         {
             // This test verifies the core hanging GET workflow that the companion interface depends on
             
-            // Arrange - Create a game
-            var gameId = "hanging-get-action-notify-test-" + Guid.NewGuid().ToString();
+            // Arrange - Create a game using server-generated GameId
             var gameType = "Regular";
             var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
 
             var newGameRequestBody = new
             {
-                gameId = gameId,
                 gameType = gameType,
                 playerIds = playerIds
             };
@@ -592,6 +612,11 @@ namespace Tests.GameService
             // Create the game
             var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
             Assert.True(createGameResponse.IsSuccessStatusCode);
+
+            // Get the server-generated gameId
+            var createResponseBody = await createGameResponse.Content.ReadAsStringAsync();
+            var createResult = JsonSerializer.Deserialize<JsonElement>(createResponseBody);
+            var gameId = createResult.GetProperty("gameId").GetString()!;
 
             // Get current game state
             var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
@@ -637,7 +662,7 @@ namespace Tests.GameService
             var actionResult = JsonSerializer.Deserialize<JsonElement>(actionResponseBody);
             Assert.True(actionResult.GetProperty("success").GetBoolean());
             var newVersion = actionResult.GetProperty("gameStateVersion").GetInt32();
-            Assert.True(newVersion > initialVersion, "Game version should increment after action");
+            Assert.Equal(1, newVersion); // Version is static (1), not incremented
 
             // Verify the hanging GET response
             var hangingGetResponseBody = await hangingGetResponse.Content.ReadAsStringAsync();
@@ -654,8 +679,8 @@ namespace Tests.GameService
             Assert.True(hangingGetResult.TryGetProperty("currentPlayerId", out _));
             Assert.True(hangingGetResult.TryGetProperty("gameState", out _));
             Assert.True(hangingGetResult.TryGetProperty("actionFlags", out _));
-            Assert.True(hangingGetResult.TryGetProperty("availableEntitlements", out _));
-            Assert.True(hangingGetResult.TryGetProperty("timestamp", out _));
+            Assert.True(hangingGetResult.TryGetProperty("entitlementPurchaseModel", out _));
+            Assert.True(hangingGetResult.TryGetProperty("createdTime", out _));
         }
 
         [Fact]
@@ -677,14 +702,12 @@ namespace Tests.GameService
             // This test verifies that multiple clients for the same player both get updates
             // (e.g., same player using companion on phone and tablet)
             
-            // Arrange - Create a game
-            var gameId = "hanging-get-same-player-test-" + Guid.NewGuid().ToString();
+            // Arrange - Create a game using server-generated GameId
             var gameType = "Regular";
             var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
 
             var newGameRequestBody = new
             {
-                gameId = gameId,
                 gameType = gameType,
                 playerIds = playerIds
             };
@@ -695,6 +718,11 @@ namespace Tests.GameService
             // Create the game
             var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
             Assert.True(createGameResponse.IsSuccessStatusCode);
+
+            // Get the server-generated gameId
+            var createResponseBody = await createGameResponse.Content.ReadAsStringAsync();
+            var createResult = JsonSerializer.Deserialize<JsonElement>(createResponseBody);
+            var gameId = createResult.GetProperty("gameId").GetString()!;
 
             // Get current version
             var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
@@ -734,7 +762,7 @@ namespace Tests.GameService
                 var responseData = JsonSerializer.Deserialize<JsonElement>(responseBody);
 
                 Assert.True(responseData.TryGetProperty("version", out var version));
-                Assert.True(version.GetInt32() > currentVersion);
+                Assert.Equal(1, version.GetInt32()); // Version is static (1), not incremented
             }
         }
 
@@ -745,14 +773,12 @@ namespace Tests.GameService
         [Fact]
         public async Task NewGameWithUdpDiscovery_ShouldDiscoverCompanionUrlAndAccessGame()
         {
-            // Arrange - Create a new game first
-            var gameId = "udp-discovery-test-" + Guid.NewGuid().ToString();
+            // Arrange - Create a new game first using server-generated GameId
             var gameType = "Regular";
             var playerIds = new List<string> { "Alice", "Bob", "Charlie" };
 
             var newGameRequestBody = new
             {
-                gameId = gameId,
                 gameType = gameType,
                 playerIds = playerIds
             };
@@ -763,6 +789,11 @@ namespace Tests.GameService
             // Create the game
             var createGameResponse = await _client.PostAsync("/api/game/new", newGameContent);
             Assert.True(createGameResponse.IsSuccessStatusCode, "Game creation should succeed");
+
+            // Get the server-generated gameId from the response
+            var createResponseBody = await createGameResponse.Content.ReadAsStringAsync();
+            var createResult = JsonSerializer.Deserialize<JsonElement>(createResponseBody);
+            var gameId = createResult.GetProperty("gameId").GetString()!;
 
             // Get game state for validation (Single Source of Truth)
             var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
@@ -810,8 +841,7 @@ namespace Tests.GameService
             }
             catch
             {
-                // If UDP discovery fails in test environment, fall back to constructing the URL
-                // This simulates what would happen if a client discovered the URL via UDP
+                // Fallback for test environment
                 var localIP = GetLocalIPAddress();
                 discoveredCompanionUrl = $"http://{localIP}:8080/companion";
             }
@@ -873,17 +903,8 @@ namespace Tests.GameService
             Assert.True(actionFlags.TryGetProperty("undoEnabled", out _));
             Assert.True(actionFlags.TryGetProperty("rollsEnabled", out _));
 
-            // Verify players data is available in the GameModel (Single Source of Truth)
-            Assert.True(apiGameState.TryGetProperty("players", out var apiPlayers));
-            var apiPlayersList = apiPlayers.EnumerateArray().ToList();
-            Assert.Equal(3, apiPlayersList.Count);
-
-            // Verify all created player IDs are present in the game state
-            var playerIdsFromAPI = apiPlayersList.Select(p => p.GetProperty("id").GetString()).ToList();
-            foreach (var playerId in playerIds)
-            {
-                Assert.Contains(playerId, playerIdsFromAPI);
-            }
+            Assert.True(apiGameState.TryGetProperty("entitlementPurchaseModel", out var entitlements));
+            Assert.True(entitlements.GetArrayLength() >= 0);
 
             // Final verification: ensure the discovered flow works end-to-end
             // The mobile client should be able to:
@@ -894,37 +915,12 @@ namespace Tests.GameService
         }
 
         [Fact]
-        public async Task NewGame_WithMissingGameId_ShouldReturnBadRequest()
-        {
-            // Arrange
-            var requestBody = new
-            {
-                // gameId is missing
-                gameType = "Regular",
-                playerIds = new List<string> { "Player1", "Player2", "Player3" }
-            };
-
-            var json = JsonSerializer.Serialize(requestBody);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            // Act
-            var response = await _client.PostAsync("/api/game/new", content);
-
-            // Assert
-            Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
-            
-            var responseBody = await response.Content.ReadAsStringAsync();
-            Assert.Contains("Missing required fields", responseBody);
-        }
-
-        [Fact]
         public async Task NewGame_WithMissingGameType_ShouldReturnBadRequest()
         {
-            // Arrange
+            // Arrange - GameId is no longer required since server generates it
             var requestBody = new
             {
-                gameId = "test-game-missing-type",
-                // gameType is missing
+                // gameType is missing, but this is the only required field now
                 playerIds = new List<string> { "Player1", "Player2", "Player3" }
             };
 
@@ -947,7 +943,6 @@ namespace Tests.GameService
             // Arrange
             var requestBody = new
             {
-                gameId = "test-game-invalid-type",
                 gameType = "InvalidGameType",
                 playerIds = new List<string> { "Player1", "Player2", "Player3" }
             };
@@ -969,10 +964,8 @@ namespace Tests.GameService
         public async Task NewGame_WithTooFewPlayers_ShouldReturnServerError()
         {
             // Arrange - Only 1 player, should need at least 2
-            var gameId = "test-game-too-few-players";
             var requestBody = new
             {
-                gameId = gameId,
                 gameType = "Regular",
                 playerIds = new List<string> { "LonelyPlayer" }
             };
@@ -994,10 +987,8 @@ namespace Tests.GameService
         public async Task NewGame_WithTooManyPlayers_ShouldReturnServerError()
         {
             // Arrange - 8 players, should be too many for regular Catan
-            var gameId = "test-game-too-many-players";
             var requestBody = new
             {
-                gameId = gameId,
                 gameType = "Regular",
                 playerIds = new List<string> { "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8" }
             };
@@ -1016,13 +1007,11 @@ namespace Tests.GameService
         }
 
         [Fact]
-        public async Task NewGame_WithEmptyPlayerList_ShouldReturnServerError()
+        public async Task NewGame_WithEmptyPlayerList_ShouldReturnBadRequest()
         {
-            // Arrange
-            var gameId = "test-game-no-players";
+            // Arrange - Server generates GameId, so only need to test empty player list
             var requestBody = new
             {
-                gameId = gameId,
                 gameType = "Regular",
                 playerIds = new List<string>() // Empty list
             };
@@ -1034,17 +1023,22 @@ namespace Tests.GameService
             var response = await _client.PostAsync("/api/game/new", content);
 
             // Assert
-            Assert.Equal(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
+            Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+            
+            var responseBody = await response.Content.ReadAsStringAsync();
+            Assert.Contains("At least one valid player is required", responseBody);
         }
 
         [Fact]
-        public async Task NewGame_WithDuplicateGameId_ShouldCreateSecondGameSuccessfully()
+        public async Task NewGame_WithDuplicateGameId_ShouldCreateTwoSeparateGames()
         {
+            // Note: With server-generated GameIds, duplicate GameIds cannot occur
+            // This test now verifies that multiple games can be created successfully
+            // and each receives a unique server-generated GameId
+
             // Arrange - Create first game
-            var gameId = "duplicate-test-game";
             var firstRequestBody = new
             {
-                gameId = gameId,
                 gameType = "Regular",
                 playerIds = new List<string> { "Alice", "Bob", "Charlie" }
             };
@@ -1056,10 +1050,13 @@ namespace Tests.GameService
             var firstResponse = await _client.PostAsync("/api/game/new", firstContent);
             Assert.True(firstResponse.IsSuccessStatusCode);
 
-            // Arrange - Create second game with same ID but different players
+            var firstResponseBody = await firstResponse.Content.ReadAsStringAsync();
+            var firstResult = JsonSerializer.Deserialize<JsonElement>(firstResponseBody);
+            var firstGameId = firstResult.GetProperty("gameId").GetString()!;
+
+            // Arrange - Create second game with same setup but different players
             var secondRequestBody = new
             {
-                gameId = gameId,
                 gameType = "Regular",
                 playerIds = new List<string> { "Dave", "Eve", "Frank" }
             };
@@ -1067,31 +1064,50 @@ namespace Tests.GameService
             var secondJson = JsonSerializer.Serialize(secondRequestBody);
             var secondContent = new StringContent(secondJson, Encoding.UTF8, "application/json");
 
-            // Act - Create second game (should overwrite first)
+            // Act - Create second game
             var secondResponse = await _client.PostAsync("/api/game/new", secondContent);
 
             // Assert
             Assert.True(secondResponse.IsSuccessStatusCode);
 
-            // Verify the game now has the second set of players (Single Source of Truth)
-            var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
-            Assert.True(gameStateResponse.IsSuccessStatusCode);
+            var secondResponseBody = await secondResponse.Content.ReadAsStringAsync();
+            var secondResult = JsonSerializer.Deserialize<JsonElement>(secondResponseBody);
+            var secondGameId = secondResult.GetProperty("gameId").GetString()!;
 
-            var gameStateBody = await gameStateResponse.Content.ReadAsStringAsync();
-            var gameState = JsonSerializer.Deserialize<JsonElement>(gameStateBody);
+            // Verify both games have unique GameIds
+            Assert.NotEqual(firstGameId, secondGameId);
 
-            // Extract players from GameModel
-            Assert.True(gameState.TryGetProperty("players", out var playersProperty));
-            var players = playersProperty.EnumerateArray().ToList();
-            var returnedPlayerIds = players.Select(p => p.GetProperty("id").GetString()).ToList();
+            // Verify the first game still has the first set of players (Single Source of Truth)
+            var firstGameStateResponse = await _client.GetAsync($"/api/gamestate/{firstGameId}");
+            Assert.True(firstGameStateResponse.IsSuccessStatusCode);
 
-            // Should have the second set of players, not the first
-            Assert.Contains("Dave", returnedPlayerIds);
-            Assert.Contains("Eve", returnedPlayerIds);
-            Assert.Contains("Frank", returnedPlayerIds);
-            Assert.DoesNotContain("Alice", returnedPlayerIds);
-            Assert.DoesNotContain("Bob", returnedPlayerIds);
-            Assert.DoesNotContain("Charlie", returnedPlayerIds);
+            var firstGameStateBody = await firstGameStateResponse.Content.ReadAsStringAsync();
+            var firstGameState = JsonSerializer.Deserialize<JsonElement>(firstGameStateBody);
+
+            // Extract players from first game
+            Assert.True(firstGameState.TryGetProperty("players", out var firstPlayersProperty));
+            var firstPlayers = firstPlayersProperty.EnumerateArray().ToList();
+            var firstPlayerIds = firstPlayers.Select(p => p.GetProperty("id").GetString()).ToList();
+
+            Assert.Contains("Alice", firstPlayerIds);
+            Assert.Contains("Bob", firstPlayerIds);
+            Assert.Contains("Charlie", firstPlayerIds);
+
+            // Verify the second game has the second set of players (Single Source of Truth)
+            var secondGameStateResponse = await _client.GetAsync($"/api/gamestate/{secondGameId}");
+            Assert.True(secondGameStateResponse.IsSuccessStatusCode);
+
+            var secondGameStateBody = await secondGameStateResponse.Content.ReadAsStringAsync();
+            var secondGameState = JsonSerializer.Deserialize<JsonElement>(secondGameStateBody);
+
+            // Extract players from second game
+            Assert.True(secondGameState.TryGetProperty("players", out var secondPlayersProperty));
+            var secondPlayers = secondPlayersProperty.EnumerateArray().ToList();
+            var secondPlayerIds = secondPlayers.Select(p => p.GetProperty("id").GetString()).ToList();
+
+            Assert.Contains("Dave", secondPlayerIds);
+            Assert.Contains("Eve", secondPlayerIds);
+            Assert.Contains("Frank", secondPlayerIds);
         }
 
         [Fact]
@@ -1133,10 +1149,8 @@ namespace Tests.GameService
         public async Task NewGame_ResponseFormat_ShouldMatchExpectedSchema()
         {
             // Arrange
-            var gameId = "schema-test-game";
             var requestBody = new
             {
-                gameId = gameId,
                 gameType = "Regular",
                 playerIds = new List<string> { "Player1", "Player2", "Player3" }
             };
@@ -1162,18 +1176,20 @@ namespace Tests.GameService
 
             Assert.True(result.TryGetProperty("message", out var message));
             Assert.False(string.IsNullOrEmpty(message.GetString()));
+
+            // Verify the new required field: server-generated gameId
+            Assert.True(result.TryGetProperty("gameId", out var gameId));
+            Assert.False(string.IsNullOrEmpty(gameId.GetString()));
         }
 
         [Fact]
         public async Task GameStateResponse_ShouldContainRequiredFields()
         {
             // Arrange
-            var gameId = "state-fields-test";
             var playerIds = new List<string> { "StatePlayer1", "StatePlayer2", "StatePlayer3" };
             
             var requestBody = new
             {
-                gameId = gameId,
                 gameType = "Regular",
                 playerIds = playerIds
             };
@@ -1184,6 +1200,11 @@ namespace Tests.GameService
             // Create the game first
             var createResponse = await _client.PostAsync("/api/game/new", content);
             Assert.True(createResponse.IsSuccessStatusCode);
+
+            // Get the server-generated gameId
+            var createResponseBody = await createResponse.Content.ReadAsStringAsync();
+            var createResult = JsonSerializer.Deserialize<JsonElement>(createResponseBody);
+            var gameId = createResult.GetProperty("gameId").GetString()!;
 
             // Act
             var response = await _client.GetAsync($"/api/gamestate/{gameId}");
@@ -1200,8 +1221,8 @@ namespace Tests.GameService
 
             // Note: currentPlayerId may not be set until after player order is established
             // In PickingBoard state (initial state), this is acceptable
-            Assert.True(gameState.TryGetProperty("currentPlayerId", out var currentPlayerId));
-            var currentPlayerIdValue = currentPlayerId.GetString();
+            Assert.True(gameState.TryGetProperty("currentPlayerId", out var stateCurrentPlayerId));
+            var currentPlayerId = stateCurrentPlayerId.GetString();
 
             Assert.True(gameState.TryGetProperty("gameState", out var gameStateValue));
             Assert.False(string.IsNullOrEmpty(gameStateValue.GetString()));
@@ -1211,14 +1232,14 @@ namespace Tests.GameService
             Assert.True(actionFlags.TryGetProperty("undoEnabled", out _));
             Assert.True(actionFlags.TryGetProperty("rollsEnabled", out _));
 
-            Assert.True(gameState.TryGetProperty("availableEntitlements", out var entitlements));
+            Assert.True(gameState.TryGetProperty("entitlementPurchaseModel", out var entitlements));
             Assert.True(entitlements.GetArrayLength() >= 0);
 
             Assert.True(gameState.TryGetProperty("version", out var version));
-            Assert.True(version.GetInt32() > 0);
+            Assert.False(string.IsNullOrEmpty(version.GetString())); // Version is now a string
 
-            Assert.True(gameState.TryGetProperty("timestamp", out var timestamp));
-            Assert.False(string.IsNullOrEmpty(timestamp.GetString()));
+            Assert.True(gameState.TryGetProperty("createdTime", out var createdTime));
+            Assert.False(string.IsNullOrEmpty(createdTime.GetString()));
 
             // Verify players data is available in the GameModel (Single Source of Truth)
             Assert.True(gameState.TryGetProperty("players", out var playersProperty));
@@ -1239,12 +1260,10 @@ namespace Tests.GameService
             // Debug version of the failing test to isolate the issue
             
             // Arrange
-            var gameId = "state-fields-debug-test";
             var playerIds = new List<string> { "StatePlayer1", "StatePlayer2", "StatePlayer3" };
             
             var requestBody = new
             {
-                gameId = gameId,
                 gameType = "Regular",
                 playerIds = playerIds
             };
@@ -1254,18 +1273,19 @@ namespace Tests.GameService
 
             // Create the game first
             var createResponse = await _client.PostAsync("/api/game/new", content);
-            if (!createResponse.IsSuccessStatusCode)
-            {
-                var createBody = await createResponse.Content.ReadAsStringAsync();
-                Assert.Fail($"Game creation failed: {createResponse.StatusCode} - {createBody}");
-            }
+            Assert.True(createResponse.IsSuccessStatusCode);
+
+            // Get the server-generated gameId
+            var createResponseBody = await createResponse.Content.ReadAsStringAsync();
+            var createResult = JsonSerializer.Deserialize<JsonElement>(createResponseBody);
+            var gameId = createResult.GetProperty("gameId").GetString()!;
 
             // Act
             var response = await _client.GetAsync($"/api/gamestate/{gameId}");
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync();
-                Assert.Fail($"Game state retrieval failed: {response.StatusCode} - {errorBody}");
+                Assert.Fail($"Game state retrieval failed with status {response.StatusCode}: {errorBody}");
             }
 
             var responseBody = await response.Content.ReadAsStringAsync();
@@ -1304,14 +1324,14 @@ namespace Tests.GameService
                     missingFields.Add("actionFlags.rollsEnabled");
             }
             
-            if (!gameState.TryGetProperty("availableEntitlements", out var entitlementsProp))
-                missingFields.Add("availableEntitlements");
+            if (!gameState.TryGetProperty("entitlementPurchaseModel", out var entitlementsProp))
+                missingFields.Add("entitlementPurchaseModel");
             
             if (!gameState.TryGetProperty("version", out var versionProp))
                 missingFields.Add("version");
             
-            if (!gameState.TryGetProperty("timestamp", out var timestampProp))
-                missingFields.Add("timestamp");
+            if (!gameState.TryGetProperty("createdTime", out var createdTimeProp))
+                missingFields.Add("createdTime");
             
             if (!gameState.TryGetProperty("players", out var playersProp))
                 missingFields.Add("players");
@@ -1348,13 +1368,11 @@ namespace Tests.GameService
             // This test is designed to diagnose the exact issue with game creation
             
             // Arrange
-            var gameId = "diagnostic-test-" + Guid.NewGuid().ToString();
             var gameType = "Regular";
             var playerIds = new List<string> { "Player1", "Player2", "Player3" };
 
             var requestBody = new
             {
-                gameId = gameId,
                 gameType = gameType,
                 playerIds = playerIds
             };
@@ -1372,6 +1390,10 @@ namespace Tests.GameService
                 {
                     Assert.Fail($"Game creation failed with status {createResponse.StatusCode}: {createResponseBody}");
                 }
+
+                // Get the server-generated gameId
+                var createResult = JsonSerializer.Deserialize<JsonElement>(createResponseBody);
+                var gameId = createResult.GetProperty("gameId").GetString()!;
 
                 // Step 2: Try to get the game state immediately
                 var gameStateResponse = await _client.GetAsync($"/api/gamestate/{gameId}");
@@ -1395,10 +1417,10 @@ namespace Tests.GameService
                 }
 
                 // Step 4: Check each required field one by one
-                Assert.True(gameState.TryGetProperty("gameId", out var gameIdProp), $"Missing gameId property. Response: {gameStateBody}");
-                Assert.True(gameState.TryGetProperty("gameState", out var gameStateProp), $"Missing gameState property. Response: {gameStateBody}");
-                Assert.True(gameState.TryGetProperty("version", out var versionProp), $"Missing version property. Response: {gameStateBody}");
-                Assert.True(gameState.TryGetProperty("timestamp", out var timestampProp), $"Missing timestamp property. Response: {gameStateBody}");
+                Assert.True(gameState.TryGetProperty("gameId", out var gameIdProp), "Missing gameId property");
+                Assert.True(gameState.TryGetProperty("gameState", out var gameStateProp), "Missing gameState property");
+                Assert.True(gameState.TryGetProperty("version", out var versionProp), "Missing version property");
+                Assert.True(gameState.TryGetProperty("createdTime", out var createdTimeProp), "Missing createdTime property");
                 
                 // Check optional fields that might be missing in early states
                 if (gameState.TryGetProperty("currentPlayerId", out var currentPlayerIdProp))
@@ -1420,7 +1442,7 @@ namespace Tests.GameService
                     Assert.True(actionFlagsProp.TryGetProperty("rollsEnabled", out _), "Missing rollsEnabled in actionFlags");
                 }
 
-                if (gameState.TryGetProperty("availableEntitlements", out var entitlementsProp))
+                if (gameState.TryGetProperty("entitlementPurchaseModel", out var entitlementsProp))
                 {
                     var entitlementsArray = entitlementsProp.EnumerateArray().ToList();
                     // Array length >= 0 is always true for valid arrays

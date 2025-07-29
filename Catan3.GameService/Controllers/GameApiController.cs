@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Collections.Concurrent;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
 using Catan3.GameService.Services;
@@ -26,194 +25,27 @@ namespace Catan3.GameService.Controllers
         }
     }
 
-    /// <summary>
-    /// Service for managing individual GameStateMachine instances per gameId
-    /// Each game gets its own GameStateMachine with its own log state
-    /// Thread-safe implementation for concurrent access
-    /// </summary>
-    public class GameStateMachineService
-    {
-        private readonly ConcurrentDictionary<string, GameStateMachine> _gameStateMachines = new();
-        private readonly Dictionary<string, TaskCompletionSource<GameModel>> _pendingUpdates = new();
-        private readonly object _pendingUpdatesLock = new();
-        private readonly IPersistanceService _persistanceService;
-        private int _currentVersion = 0;
-
-        public GameStateMachineService(IPersistanceService persistanceService)
-        {
-            _persistanceService = persistanceService;
-        }
-
-        /// <summary>
-        /// Gets an existing GameStateMachine for the specified gameId
-        /// Throws GameException if the game doesn't exist
-        /// </summary>
-        public GameStateMachine GetGameStateMachine(string gameId)
-        {
-            if (_gameStateMachines.TryGetValue(gameId, out var gameStateMachine))
-            {
-                return gameStateMachine;
-            }
-            throw new Catan3.Shared.Utility.GameException($"Game {gameId} not found");
-        }
-
-        /// <summary>
-        /// Creates a new GameStateMachine for the specified gameId
-        /// Only called when creating a new game, not for retrieving existing games
-        /// </summary>
-        private GameStateMachine CreateGameStateMachine(string gameId)
-        {
-            var saveFile = Path.Combine(Path.GetTempPath(), "Catan3Games", $"game_{gameId}.catan");
-            var gameStateMachine = new GameStateMachine(_persistanceService, saveFile);
-            _gameStateMachines[gameId] = gameStateMachine;
-            return gameStateMachine;
-        }
-
-        /// <summary>
-        /// Executes an action on the GameStateMachine for the specified gameId
-        /// </summary>
-        public GameModel ExecuteAction(string gameId, Func<GameStateMachine, GameModel> action)
-        {
-            var gameStateMachine = GetGameStateMachine(gameId);
-            var result = action(gameStateMachine);
-            
-            Interlocked.Increment(ref _currentVersion);
-            NotifyPendingUpdates(gameId, result);
-            
-            return result;
-        }
-
-        /// <summary>
-        /// Executes an async action on the GameStateMachine for the specified gameId
-        /// </summary>
-        public async Task<GameModel> ExecuteActionAsync(string gameId, Func<GameStateMachine, Task<GameModel>> action)
-        {
-            var gameStateMachine = GetGameStateMachine(gameId);
-            var result = await action(gameStateMachine);
-            
-            Interlocked.Increment(ref _currentVersion);
-            NotifyPendingUpdates(gameId, result);
-            
-            return result;
-        }
-
-        /// <summary>
-        /// Creates a new game with the specified gameId and returns the initial game state
-        /// </summary>
-        public GameModel CreateNewGame(string gameId, Func<GameStateMachine, GameModel> createGameAction)
-        {
-            // Create the GameStateMachine first
-            var gameStateMachine = CreateGameStateMachine(gameId);
-            
-            // Execute the new game action to initialize the game state
-            var result = createGameAction(gameStateMachine);
-            
-            Interlocked.Increment(ref _currentVersion);
-            NotifyPendingUpdates(gameId, result);
-            
-            return result;
-        }
-
-        /// <summary>
-        /// Creates a new game with the specified gameId and returns the initial game state (async version)
-        /// </summary>
-        public async Task<GameModel> CreateNewGameAsync(string gameId, Func<GameStateMachine, Task<GameModel>> createGameAction)
-        {
-            // Create the GameStateMachine first
-            var gameStateMachine = CreateGameStateMachine(gameId);
-            
-            // Execute the new game action to initialize the game state
-            var result = await createGameAction(gameStateMachine);
-            
-            Interlocked.Increment(ref _currentVersion);
-            NotifyPendingUpdates(gameId, result);
-            
-            return result;
-        }
-
-        public int GetCurrentVersion() => _currentVersion;
-
-        public void AddPendingUpdate(string key, TaskCompletionSource<GameModel> tcs)
-        {
-            lock (_pendingUpdatesLock)
-            {
-                _pendingUpdates[key] = tcs;
-            }
-        }
-
-        public void RemovePendingUpdate(string key)
-        {
-            lock (_pendingUpdatesLock)
-            {
-                _pendingUpdates.Remove(key);
-            }
-        }
-
-        private void NotifyPendingUpdates(string gameId, GameModel gameModel)
-        {
-            List<string> completedTasks;
-            
-            lock (_pendingUpdatesLock)
-            {
-                completedTasks = new List<string>();
-                foreach (var kvp in _pendingUpdates)
-                {
-                    if (kvp.Key.StartsWith(gameId + "_"))
-                    {
-                        kvp.Value.SetResult(gameModel);
-                        completedTasks.Add(kvp.Key);
-                    }
-                }
-
-                foreach (var key in completedTasks)
-                {
-                    _pendingUpdates.Remove(key);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets the current game state for the specified gameId
-        /// Returns null if the game doesn't exist
-        /// </summary>
-        public GameModel? GetCurrentGameState(string gameId)
-        {
-            if (_gameStateMachines.TryGetValue(gameId, out var gameStateMachine))
-            {
-                try
-                {
-                    return gameStateMachine.GetCurrentState();
-                }
-                catch (InvalidOperationException)
-                {
-                    // Game exists but has no state yet (empty log)
-                    return null;
-                }
-                catch
-                {
-                    return null;
-                }
-            }
-            return null;
-        }
-    }
-
     [ApiController]
     [Route("api")]
     public class GameApiController : ControllerBase
     {
         private readonly GameApiOptions _options;
         private readonly GameStateMachineService _gameStateMachineService;
+        private readonly ILogger<GameApiController> _logger;
 
-        public GameApiController(IOptions<GameApiOptions> options, GameStateMachineService gameStateMachineService)
+        public GameApiController(IOptions<GameApiOptions> options, GameStateMachineService gameStateMachineService, ILogger<GameApiController> logger)
         {
             _options = options.Value;
             _gameStateMachineService = gameStateMachineService;
+            _logger = logger;
         }
 
         [HttpPost("game/action")]
         public IActionResult ExecuteGameAction([FromBody] JsonElement request)
         {
+            var requestId = Guid.NewGuid().ToString("N")[..8];
+            _logger.LogInformation("[{RequestId}] POST /api/game/action - Processing game action request", requestId);
+            
             try
             {
                 var gameId = request.GetProperty("gameId").GetString();
@@ -221,14 +53,21 @@ namespace Catan3.GameService.Controllers
                 var messageType = request.GetProperty("messageType").GetString();
                 var messageData = request.GetProperty("messageData");
 
+                _logger.LogInformation("[{RequestId}] Action request - GameId: {GameId}, PlayerId: {PlayerId}, MessageType: {MessageType}", 
+                    requestId, gameId, playerId, messageType);
+
                 if (string.IsNullOrEmpty(gameId) || string.IsNullOrEmpty(playerId) || string.IsNullOrEmpty(messageType))
                 {
+                    _logger.LogWarning("[{RequestId}] Missing required fields: gameId={GameId}, playerId={PlayerId}, messageType={MessageType}", 
+                        requestId, gameId, playerId, messageType);
                     return BadRequest("Missing required fields: gameId, playerId, messageType");
                 }
 
                 // Process the action based on message type using the correct GameStateMachine
                 GameModel? updatedGameModel = null;
                 string message = "";
+
+                _logger.LogDebug("[{RequestId}] Processing message type: {MessageType}", requestId, messageType);
 
                 switch (messageType)
                 {
@@ -273,18 +112,26 @@ namespace Catan3.GameService.Controllers
                         message = "Go first set successfully";
                         break;
                     default:
+                        _logger.LogWarning("[{RequestId}] Unknown message type: {MessageType}", requestId, messageType);
                         return BadRequest($"Unknown message type: {messageType}");
                 }
 
-                return Ok(new
+                var currentVersion = updatedGameModel?.Version ?? 1;
+                var response = new
                 {
                     success = updatedGameModel != null,
-                    gameStateVersion = _gameStateMachineService.GetCurrentVersion(),
+                    gameStateVersion = currentVersion,
                     message
-                });
+                };
+
+                _logger.LogInformation("[{RequestId}] Action completed successfully - Success: {Success}, Version: {Version}, Message: {Message}", 
+                    requestId, response.success, currentVersion, message);
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "[{RequestId}] Error executing action", requestId);
                 return StatusCode(500, $"Error executing action: {ex.Message}");
             }
         }
@@ -292,73 +139,100 @@ namespace Catan3.GameService.Controllers
         [HttpGet("gamestate/{gameId}")]
         public IActionResult GetGameState(string gameId)
         {
+            var requestId = Guid.NewGuid().ToString("N")[..8];
+            _logger.LogInformation("[{RequestId}] GET /api/gamestate/{GameId} - Getting game state", requestId, gameId);
+            
             try
             {
                 var gameModel = _gameStateMachineService.GetCurrentGameState(gameId);
                 if (gameModel == null)
                 {
+                    _logger.LogWarning("[{RequestId}] Game not found: {GameId}", requestId, gameId);
                     return NotFound($"Game {gameId} not found");
                 }
 
                 var result = CreateGameStateResponse(gameId, gameModel);
+                
+                _logger.LogInformation("[{RequestId}] Game state retrieved successfully - GameId: {GameId}, State: {GameState}, Players: {PlayerCount}, Version: {Version}", 
+                    requestId, gameId, gameModel.GameState, gameModel.Players.Count, gameModel.Version);
+                
                 return Ok(result);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "[{RequestId}] Error getting game state for gameId: {GameId}", requestId, gameId);
                 return StatusCode(500, $"Error getting game state: {ex.Message}");
             }
         }
 
+        /// <summary>
+        /// API for listening to game state updates via hanging GET
+        /// Allows clients to receive live updates for game state changes
+        /// </summary>
         [HttpGet("gamestate/{gameId}/listen")]
         public async Task<IActionResult> ListenForUpdates(string gameId, [FromQuery] string? playerId = null, [FromQuery] int version = 0)
         {
+            var requestId = Guid.NewGuid().ToString("N")[..8];
+            _logger.LogInformation("[{RequestId}] GET /api/gamestate/{GameId}/listen - Listening for updates, PlayerId: {PlayerId}, Version: {Version}", 
+                requestId, gameId, playerId ?? "null", version);
+            
             try
             {
-                var currentVersion = _gameStateMachineService.GetCurrentVersion();
-                
-                // If client version is behind, return immediately
-                if (version < currentVersion)
+                // Check if game exists first
+                var currentGame = _gameStateMachineService.GetCurrentGameState(gameId);
+                if (currentGame == null)
                 {
-                    var currentGame = _gameStateMachineService.GetCurrentGameState(gameId);
-                    if (currentGame != null)
-                    {
-                        var result = CreateGameStateResponse(gameId, currentGame);
-                        return Ok(result);
-                    }
+                    _logger.LogWarning("[{RequestId}] Game not found: {GameId}", requestId, gameId);
+                    return NotFound($"Game {gameId} not found");
                 }
 
-                // Create a task that will complete when the game state changes
-                var tcs = new TaskCompletionSource<GameModel>();
-                var key = $"{gameId}_{playerId}_{Guid.NewGuid()}";
-                _gameStateMachineService.AddPendingUpdate(key, tcs);
+                // Get the ClientNotificationService from DI
+                var clientNotificationService = HttpContext.RequestServices.GetRequiredService<IClientNotification>();
+                
+                // Set the current game state so clients can get immediate current state
+                clientNotificationService.SetCurrentGameState(gameId, currentGame);
 
-                // Set up timeout using configurable timeout (15 minutes for production, shorter for tests)
-                var timeoutTask = Task.Delay(_options.HangingGetTimeout);
-                var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
+                // Use the ClientNotificationService to wait for updates
+                var clientId = $"{playerId ?? "anonymous"}_{requestId}";
+                var cancellationTokenSource = new CancellationTokenSource(_options.HangingGetTimeout);
+                
+                _logger.LogDebug("[{RequestId}] Starting hanging GET with timeout: {Timeout}ms, ClientId: {ClientId}, ClientVersion: {ClientVersion}", 
+                    requestId, _options.HangingGetTimeout.TotalMilliseconds, clientId, version);
 
-                _gameStateMachineService.RemovePendingUpdate(key);
-
-                if (completedTask == timeoutTask)
+                GameModel updatedGameModel;
+                try
                 {
-                    // Timeout - return current state anyway (but this should be very rare with 15-minute timeout)
+                    updatedGameModel = await clientNotificationService.WaitForNotificationAsync(
+                        gameId, 
+                        clientId, 
+                        version, 
+                        cancellationTokenSource.Token);
+                    
+                    _logger.LogInformation("[{RequestId}] Received live update - GameId: {GameId}", requestId, gameId);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogDebug("[{RequestId}] Hanging GET timed out after {Timeout}ms", requestId, _options.HangingGetTimeout.TotalMilliseconds);
+                    
+                    // Timeout - return current state
                     var timeoutGame = _gameStateMachineService.GetCurrentGameState(gameId);
                     if (timeoutGame != null)
                     {
                         var result = CreateGameStateResponse(gameId, timeoutGame);
+                        _logger.LogInformation("[{RequestId}] Returned timeout response - GameId: {GameId}", requestId, gameId);
                         return Ok(result);
                     }
                     return NotFound($"Game {gameId} not found");
                 }
-                else
-                {
-                    // Update received
-                    var updatedGame = await tcs.Task;
-                    var result = CreateGameStateResponse(gameId, updatedGame);
-                    return Ok(result);
-                }
+
+                // Return the updated game model
+                var response = CreateGameStateResponse(gameId, updatedGameModel);
+                _logger.LogInformation("[{RequestId}] Returned live update - GameId: {GameId}", requestId, gameId);
+                return Ok(response);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "[{RequestId}] Error listening for updates, GameId: {GameId}, PlayerId: {PlayerId}", requestId, gameId, playerId);
                 return StatusCode(500, $"Error listening for updates: {ex.Message}");
             }
         }
@@ -366,80 +240,99 @@ namespace Catan3.GameService.Controllers
         [HttpPost("game/register")]
         public IActionResult RegisterGame([FromBody] JsonElement request)
         {
-            try
-            {
-                var gameId = request.GetProperty("gameId").GetString();
-                if (string.IsNullOrEmpty(gameId))
-                {
-                    return BadRequest("Missing gameId");
-                }
-
-                // Create a test game using GameStateMachine
-                var playerIds = new List<string> { "player1", "player2", "player3", "player4" };
-                var newGameMessage = new NewGameMessage(GameType.Regular, playerIds);
-                
-                var gameModel = _gameStateMachineService.CreateNewGame(gameId, gsm => gsm.HandleNewGame(newGameMessage));
-
-                return Ok(new { success = true, message = "Game registered successfully" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Error registering game: {ex.Message}");
-            }
+            var requestId = Guid.NewGuid().ToString("N")[..8];
+            _logger.LogInformation("[{RequestId}] POST /api/game/register - This endpoint is deprecated, use /api/game/new instead", requestId);
+            
+            return BadRequest("This endpoint is deprecated. Use /api/game/new instead, which will return a server-generated gameId.");
         }
 
         [HttpPost("game/new")]
         public IActionResult NewGame([FromBody] JsonElement request)
         {
+            var requestId = Guid.NewGuid().ToString("N")[..8];
+            _logger.LogInformation("[{RequestId}] POST /api/game/new - Creating new game", requestId);
+            
             try
             {
-                // Check if required properties exist
-                if (!request.TryGetProperty("gameId", out var gameIdElement))
-                {
-                    return BadRequest("Missing required fields: gameId, gameType");
-                }
+                // Handle both old JSON format and new NewGameRequest format for backward compatibility
+                GameType gameType;
+                List<string> playerIds = new();
 
+                // Check for required gameType field
                 if (!request.TryGetProperty("gameType", out var gameTypeElement))
                 {
-                    return BadRequest("Missing required fields: gameId, gameType");
+                    _logger.LogWarning("[{RequestId}] Missing required field: gameType", requestId);
+                    return BadRequest("Missing required fields: gameType");
                 }
 
-                if (!request.TryGetProperty("playerIds", out var playerIdsElement))
+                var gameTypeStr = gameTypeElement.ValueKind switch
                 {
-                    return BadRequest("Missing required fields: gameId, gameType, playerIds");
-                }
-
-                var gameId = gameIdElement.GetString();
-                var gameTypeStr = gameTypeElement.GetString();
-
-                if (string.IsNullOrEmpty(gameId) || string.IsNullOrEmpty(gameTypeStr))
+                    JsonValueKind.String => gameTypeElement.GetString(),
+                    JsonValueKind.Number => ((GameType)gameTypeElement.GetInt32()).ToString(),
+                    _ => null
+                };
+                
+                if (string.IsNullOrEmpty(gameTypeStr) || !Enum.TryParse<GameType>(gameTypeStr, out gameType))
                 {
-                    return BadRequest("Missing required fields: gameId, gameType");
-                }
-
-                if (!Enum.TryParse<GameType>(gameTypeStr, out var gameType))
-                {
+                    _logger.LogWarning("[{RequestId}] Invalid game type: {GameType}", requestId, gameTypeStr ?? "null");
                     return BadRequest($"Invalid game type: {gameTypeStr}");
                 }
 
-                var playerIds = playerIdsElement.EnumerateArray()
-                    .Select(element => element.GetString())
-                    .Where(id => !string.IsNullOrEmpty(id))
-                    .Cast<string>()
-                    .ToList();
+                // Handle player data - can be either simple string array or complex objects with Id/Name
+                if (request.TryGetProperty("playerIds", out var playerIdsElement) && playerIdsElement.ValueKind == JsonValueKind.Array)
+                {
+                    // Simple string array format for backward compatibility
+                    playerIds = playerIdsElement.EnumerateArray()
+                        .Select(element => {
+                            return element.ValueKind switch
+                            {
+                                JsonValueKind.String => element.GetString(),
+                                JsonValueKind.Number => element.GetInt32().ToString(),
+                                _ => element.ToString()
+                            };
+                        })
+                        .Where(id => !string.IsNullOrEmpty(id))
+                        .Cast<string>()
+                        .ToList();
+                }
+                else if (request.TryGetProperty("players", out var playersElement) && playersElement.ValueKind == JsonValueKind.Array)
+                {
+                    // Complex object format following Desktop app pattern
+                    playerIds = playersElement.EnumerateArray()
+                        .Where(p => p.TryGetProperty("id", out var id) && 
+                                   (id.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(id.GetString())))
+                        .Select(p => p.GetProperty("id").GetString()!)
+                        .ToList();
+                }
+
+                if (playerIds.Count == 0)
+                {
+                    _logger.LogWarning("[{RequestId}] No valid players provided", requestId);
+                    return BadRequest("At least one valid player is required");
+                }
+
+                _logger.LogInformation("[{RequestId}] Creating new game - GameType: {GameType}, Players: [{Players}]", 
+                    requestId, gameType, string.Join(", ", playerIds));
 
                 var newGameMessage = new NewGameMessage(gameType, playerIds);
-                var gameModel = _gameStateMachineService.CreateNewGame(gameId, gsm => gsm.HandleNewGame(newGameMessage));
+                var (gameId, gameModel) = _gameStateMachineService.CreateNewGame(gsm => gsm.HandleNewGame(newGameMessage));
+
+                var currentVersion = gameModel.Version;
+
+                _logger.LogInformation("[{RequestId}] New game created successfully - GameId: {GameId}, Version: {Version}, State: {GameState}", 
+                    requestId, gameId, currentVersion, gameModel.GameState);
 
                 return Ok(new
                 {
                     success = true,
-                    gameStateVersion = _gameStateMachineService.GetCurrentVersion(),
+                    gameId = gameId,  // Return the server-generated GameId
+                    gameStateVersion = currentVersion,
                     message = "New game created successfully"
                 });
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "[{RequestId}] Error creating new game", requestId);
                 return StatusCode(500, $"Error creating new game: {ex.Message}");
             }
         }
@@ -447,30 +340,41 @@ namespace Catan3.GameService.Controllers
         [HttpPost("game/load")]
         public async Task<IActionResult> LoadGame([FromBody] JsonElement request)
         {
+            var requestId = Guid.NewGuid().ToString("N")[..8];
+            _logger.LogInformation("[{RequestId}] POST /api/game/load - Loading game", requestId);
+            
             try
             {
-                var gameId = request.GetProperty("gameId").GetString();
                 var filePath = request.GetProperty("filePath").GetString();
 
-                if (string.IsNullOrEmpty(gameId) || string.IsNullOrEmpty(filePath))
+                if (string.IsNullOrEmpty(filePath))
                 {
-                    return BadRequest("Missing required fields: gameId, filePath");
+                    _logger.LogWarning("[{RequestId}] Missing required fields - FilePath: {FilePath}", requestId, filePath ?? "null");
+                    return BadRequest("Missing required fields: filePath");
                 }
+
+                _logger.LogInformation("[{RequestId}] Loading game - FilePath: {FilePath}", requestId, filePath);
 
                 var loadGameMessage = new LoadGameMessage(filePath);
                 
                 // Create a new GameStateMachine and load the game into it
-                var gameModel = await _gameStateMachineService.CreateNewGameAsync(gameId, async gsm => await gsm.HandleLoadGame(loadGameMessage));
+                var (gameId, gameModel) = await _gameStateMachineService.CreateNewGameAsync(async gsm => await gsm.HandleLoadGame(loadGameMessage));
+
+                var currentVersion = gameModel.Version;
+
+                _logger.LogInformation("[{RequestId}] Game loaded successfully - GameId: {GameId}, Version: {Version}", requestId, gameId, currentVersion);
 
                 return Ok(new
                 {
                     success = true,
-                    gameStateVersion = _gameStateMachineService.GetCurrentVersion(),
+                    gameId = gameId,  // Return the server-generated GameId
+                    gameStateVersion = currentVersion,
                     message = "Game loaded successfully"
                 });
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "[{RequestId}] Error loading game", requestId);
                 return StatusCode(500, $"Error loading game: {ex.Message}");
             }
         }
@@ -478,6 +382,9 @@ namespace Catan3.GameService.Controllers
         [HttpPost("game/persist")]
         public async Task<IActionResult> PersistGame([FromBody] JsonElement request)
         {
+            var requestId = Guid.NewGuid().ToString("N")[..8];
+            _logger.LogInformation("[{RequestId}] POST /api/game/persist - Persisting game", requestId);
+            
             try
             {
                 var gameId = request.GetProperty("gameId").GetString();
@@ -491,17 +398,24 @@ namespace Catan3.GameService.Controllers
 
                 if (string.IsNullOrEmpty(gameId))
                 {
+                    _logger.LogWarning("[{RequestId}] Missing gameId in persist request", requestId);
                     return BadRequest("Missing gameId");
                 }
 
                 if (!Enum.TryParse<LocalPersistActions>(actionStr, out var action))
                 {
+                    _logger.LogWarning("[{RequestId}] Invalid persist action: {Action}", requestId, actionStr);
                     return BadRequest($"Invalid persist action: {actionStr}");
                 }
+
+                _logger.LogInformation("[{RequestId}] Persisting game - GameId: {GameId}, Action: {Action}, Location: {Location}", 
+                    requestId, gameId, action, location);
 
                 var persistMessage = new PersistGameMessage(action, location);
                 var gameStateMachine = _gameStateMachineService.GetGameStateMachine(gameId);
                 await gameStateMachine.HandlePersistGame(persistMessage);
+
+                _logger.LogInformation("[{RequestId}] Game persisted successfully - GameId: {GameId}, Action: {Action}", requestId, gameId, action);
 
                 return Ok(new
                 {
@@ -511,8 +425,58 @@ namespace Catan3.GameService.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "[{RequestId}] Error persisting game", requestId);
                 return StatusCode(500, $"Error persisting game: {ex.Message}");
             }
+        }
+
+        [HttpGet("companion/games")]
+        public IActionResult GetAvailableGames()
+        {
+            var requestId = Guid.NewGuid().ToString("N")[..8];
+            _logger.LogInformation("[{RequestId}] GET /api/companion/games - Getting available games", requestId);
+            
+            try
+            {
+                var availableGames = _gameStateMachineService.GetAvailableGames();
+                
+                _logger.LogInformation("[{RequestId}] Found {GameCount} available games", requestId, availableGames.Count);
+                
+                return Ok(new
+                {
+                    success = true,
+                    games = availableGames,
+                    count = availableGames.Count,
+                    timestamp = DateTime.UtcNow.ToString("O")
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[{RequestId}] Error getting available games", requestId);
+                return StatusCode(500, $"Error getting available games: {ex.Message}");
+            }
+        }
+
+        private object CreateGameStateResponse(string gameId, GameModel gameModel)
+        {
+            // Rule 7 Compliance: Return GameModel as-is since it contains all necessary data
+            // GameModel already has GameId, Version (incrementing with each change), and CreatedTime (as timestamp)
+            // No need to add API-specific metadata - GameModel is the single source of truth
+            
+            var gameModelJson = JsonSerializer.Serialize(gameModel, new JsonSerializerOptions 
+            { 
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = false,
+                Converters = { new JsonStringEnumConverter() } // Convert enums to strings for better API compatibility
+            });
+            
+            var gameModelObject = JsonSerializer.Deserialize<Dictionary<string, object>>(gameModelJson, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                Converters = { new JsonStringEnumConverter() }
+            });
+            
+            return gameModelObject!;
         }
 
         private GameModel ProcessDoAction(JsonElement messageData, GameStateMachine gameStateMachine)
@@ -668,58 +632,6 @@ namespace Catan3.GameService.Controllers
 
             var message = new GoFirstMessage(playerId);
             return gameStateMachine.HandleGoFirst(message);
-        }
-
-        private object CreateGameStateResponse(string gameId, GameModel gameModel)
-        {
-            // According to the design principle, we should return the full GameModel
-            // as the single source of truth for all client communication
-            // Add the gameId and version as additional metadata
-            var gameModelJson = JsonSerializer.Serialize(gameModel, new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = false,
-                Converters = { new JsonStringEnumConverter() } // Convert enums to strings for better API compatibility
-            });
-            
-            var gameModelObject = JsonSerializer.Deserialize<Dictionary<string, object>>(gameModelJson, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                Converters = { new JsonStringEnumConverter() }
-            });
-            
-            // Add API-specific metadata
-            gameModelObject!["gameId"] = gameId;
-            gameModelObject["version"] = _gameStateMachineService.GetCurrentVersion();
-            gameModelObject["timestamp"] = DateTime.UtcNow.ToString("O");
-            
-            // Convert EntitlementPurchaseModel to availableEntitlements array for API compatibility
-            if (gameModelObject.ContainsKey("entitlementPurchaseModel"))
-            {
-                var entitlementPurchaseModel = gameModelObject["entitlementPurchaseModel"];
-                if (entitlementPurchaseModel is JsonElement entitlementElement && entitlementElement.ValueKind == JsonValueKind.Array)
-                {
-                    var availableEntitlements = entitlementElement.EnumerateArray()
-                        .Where(e => e.TryGetProperty("enabled", out var enabled) && enabled.GetBoolean())
-                        .Select(e => e.GetProperty("entitlement").GetString())
-                        .Where(e => !string.IsNullOrEmpty(e))
-                        .ToArray();
-                    
-                    gameModelObject["availableEntitlements"] = availableEntitlements;
-                }
-                else
-                {
-                    // Fallback to empty array if conversion fails
-                    gameModelObject["availableEntitlements"] = new string[0];
-                }
-            }
-            else
-            {
-                // Fallback to empty array if property doesn't exist
-                gameModelObject["availableEntitlements"] = new string[0];
-            }
-            
-            return gameModelObject;
         }
     }
 }

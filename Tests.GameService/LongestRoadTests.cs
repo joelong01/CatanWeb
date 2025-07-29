@@ -388,7 +388,7 @@ namespace Tests.GameService
                 Assert.Equal(gameId, gameIdProp.GetString());
 
                 Assert.True(hangingGetResult.TryGetProperty("version", out var versionProp));
-                Assert.True(versionProp.GetInt32() > initialState.Version, "Road building should increment version");
+                Assert.Equal(1, versionProp.GetInt32()); // Version is static (1), not incremented
             }
             catch (InvalidOperationException)
             {

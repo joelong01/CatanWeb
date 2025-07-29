@@ -18,19 +18,18 @@ namespace Tests.GameService
         /// <summary>
         /// Creates a new game and returns the gameId.
         /// Game will be in PickingBoard state after creation.
+        /// Updated to handle server-generated GameIds.
         /// </summary>
         /// <param name="client">HttpClient for API calls</param>
-        /// <param name="gameId">Optional gameId, will generate one if not provided</param>
+        /// <param name="gameId">Ignored - server now generates GameIds</param>
         /// <param name="playerIds">Optional player list, defaults to Alice, Bob, Charlie</param>
-        /// <returns>The gameId of the created game</returns>
+        /// <returns>The server-generated gameId of the created game</returns>
         public static async Task<string> CreateGame(HttpClient client, string? gameId = null, List<string>? playerIds = null)
         {
-            gameId ??= "test-game-" + Guid.NewGuid().ToString();
             playerIds ??= new List<string> { "Alice", "Bob", "Charlie" };
 
             var newGameRequestBody = new
             {
-                gameId = gameId,
                 gameType = "Regular",
                 playerIds = playerIds
             };
@@ -45,7 +44,22 @@ namespace Tests.GameService
                 throw new InvalidOperationException($"Game creation failed: {createGameResponse.StatusCode} - {errorContent}");
             }
 
-            return gameId;
+            var responseBody = await createGameResponse.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<JsonElement>(responseBody);
+            
+            if (!result.GetProperty("success").GetBoolean())
+            {
+                var message = result.TryGetProperty("message", out var msgElement) ? msgElement.GetString() : "Unknown error";
+                throw new InvalidOperationException($"Game creation failed: {message}");
+            }
+
+            // Return the server-generated gameId from the response
+            if (!result.TryGetProperty("gameId", out var gameIdElement) || string.IsNullOrEmpty(gameIdElement.GetString()))
+            {
+                throw new InvalidOperationException("Server did not return a gameId");
+            }
+
+            return gameIdElement.GetString()!;
         }
 
         /// <summary>
@@ -459,7 +473,7 @@ namespace Tests.GameService
         /// <summary>
         /// Places the first available road for a player.
         /// </summary>
-        private static async Task PlaceFirstValidRoad(HttpClient client, string gameId, string playerId)
+        private static async Task PlaceFirstValidRoad(HttpClient client, String gameId, String playerId)
         {
             var gameModel = await GetCurrentFullGameModel(client, gameId);
 

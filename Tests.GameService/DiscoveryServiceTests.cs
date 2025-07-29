@@ -41,7 +41,7 @@ namespace Tests.GameService
             Assert.NotNull(service);
         }
 
-        [Fact]
+        [Fact(Skip = "UDP tests disabled - transitioning to web browser approach instead of smart client")]
         public async Task StartAsync_WhenEnabled_ShouldStartSuccessfully()
         {
             // Arrange
@@ -90,7 +90,7 @@ namespace Tests.GameService
             Assert.True(true);
         }
 
-        [Fact]
+        [Fact(Skip = "UDP tests disabled - transitioning to web browser approach instead of smart client")]
         public async Task StopAsync_ShouldStopServiceGracefully()
         {
             // Arrange
@@ -106,7 +106,7 @@ namespace Tests.GameService
             service.Dispose();
         }
 
-        [Fact]
+        [Fact(Skip = "UDP tests disabled - transitioning to web browser approach instead of smart client")]
         public async Task BroadcastMessage_ShouldHaveCorrectFormat()
         {
             // Arrange
@@ -254,7 +254,7 @@ namespace Tests.GameService
             Assert.Equal(message.RoomCode, deserialized.RoomCode);
         }
 
-        [Fact]
+        [Fact(Skip = "UDP tests disabled - transitioning to web browser approach instead of smart client")]
         public async Task Service_ShouldHandleCancellationGracefully()
         {
             // Arrange

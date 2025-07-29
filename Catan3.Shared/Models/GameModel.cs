@@ -52,6 +52,26 @@ namespace Catan3.Shared.Models
 
         public string CurrentPlayerId { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Gets or sets the unique identifier for this game instance.
+        /// This field supports Rule 7 (Single Source of Truth) by ensuring GameModel contains all game metadata.
+        /// </summary>
+        public string GameId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets when this game was created.
+        /// This field supports Rule 7 (Single Source of Truth) by ensuring GameModel contains all game metadata.
+        /// </summary>
+        public DateTime CreatedTime { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Gets or sets the software version number of the GameStateMachine.
+        /// This field represents the software version (hardcoded to 1) and does NOT change during gameplay.
+        /// Version represents GameStateMachine software compatibility, not game state changes.
+        /// This is used for client/server compatibility checks, not hanging GET version comparison.
+        /// </summary>
+        public int Version { get; set; } = 1;
+
         public RollModel RollModel { get; set; } = new();
 
         // keep track of the player who goes when there is nobody left to do supplemental
@@ -71,6 +91,10 @@ namespace Catan3.Shared.Models
             HouseRules = gameInfo.HouseRules ?? throw new GameException("House Rules cannot be null!");
             CurrentPlayerId = players.Count > 0 ? players[0].Id : string.Empty;
             EntitlementPurchaseModel.AddRange(GetDefaultPurchaseableEntitlements());
+            
+            // Initialize new fields for Rule 7 compliance
+            CreatedTime = DateTime.UtcNow;
+            Version = 1;
         }
 
         public GameModel()
@@ -79,6 +103,10 @@ namespace Catan3.Shared.Models
             GameType = GameType.Regular;
             HasSupplementalBuildPhase = false;
             ResourceRules = new ResourceRules();
+            
+            // Initialize new fields for Rule 7 compliance
+            CreatedTime = DateTime.UtcNow;
+            Version = 1;
         }
 
         /// <summary>
@@ -184,6 +212,119 @@ namespace Catan3.Shared.Models
                 new() { Entitlement = Entitlement.City, Enabled = true },
                 new() { Entitlement = Entitlement.Soldier, Enabled = true }
             };
+        }
+
+        // Rule 7 Compliance: Helper methods for computed fields that GameInfo needs
+        // These ensure GameModel is the single source of truth for all game information
+
+        /// <summary>
+        /// Extracts display name from player ID following Desktop app pattern.
+        /// "Joe-001" ? "Joe"
+        /// </summary>
+        public static string ExtractNameFromId(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return "Unknown";
+            
+            // Desktop app pattern: "Joe-001" -> "Joe"
+            if (id.Contains('-'))
+            {
+                var parts = id.Split('-');
+                if (parts.Length >= 2)
+                {
+                    return parts[0];
+                }
+            }
+            
+            return id;
+        }
+
+        /// <summary>
+        /// Gets a user-friendly display name for this game.
+        /// Format: "GameType - FirstPlayerName +AdditionalCount (Time)"
+        /// Example: "Regular - Alice +2 (17:10)"
+        /// </summary>
+        public string GetDisplayName()
+        {
+            var timeStr = CreatedTime.ToString("HH:mm");
+            var playersStr = Players.Count > 0 ? Players[0].Name : "Unknown";
+            if (Players.Count > 1)
+            {
+                playersStr += $" +{Players.Count - 1}";
+            }
+            
+            return $"{GameType} - {playersStr} ({timeStr})";
+        }
+
+        /// <summary>
+        /// Gets a user-friendly formatted game state string.
+        /// </summary>
+        public string GetFormattedGameState()
+        {
+            return GameState switch
+            {
+                GameState.PickingBoard => "Setting up board",
+                GameState.WaitingForRollForOrder => "Rolling for turn order",
+                GameState.FinishedRollOrder => "Setting turn order",
+                GameState.BeginResourceAllocation => "Starting placement",
+                GameState.AllocateResourceForward => "Initial placement ?",
+                GameState.AllocateResourceReverse => "Final placement ?",
+                GameState.DoneResourceAllocation => "Setup complete",
+                GameState.WaitingForRoll => "Waiting for dice roll",
+                GameState.WaitingForNext => "Player's turn",
+                GameState.PickSupplementalPlayers => "Choosing supplemental",
+                GameState.Supplemental => "Supplemental building",
+                GameState.MustMoveRobber => "Moving robber",
+                GameState.WaitingForNewGame => "Waiting to start",
+                _ => GameState.ToString()
+            };
+        }
+
+        /// <summary>
+        /// Gets the current player's display name.
+        /// </summary>
+        public string GetCurrentPlayerName()
+        {
+            var currentPlayer = Players.FirstOrDefault(p => p.Id == CurrentPlayerId);
+            return currentPlayer?.Name ?? "Unknown";
+        }
+
+        /// <summary>
+        /// Gets the creation time in display format.
+        /// Format: "Dec 25, 17:10"
+        /// </summary>
+        public string GetCreatedTimeDisplay()
+        {
+            return CreatedTime.ToString("MMM dd, HH:mm");
+        }
+
+        /// <summary>
+        /// Determines if the game is in an active state (not finished).
+        /// </summary>
+        public bool GetIsActive()
+        {
+            return GameState switch
+            {
+                GameState.WaitingForNewGame => false,
+                _ => true  // Consider all other states as active
+            };
+        }
+
+        /// <summary>
+        /// Gets a summary string for the game.
+        /// Format: "GameType • PlayerCount players • FormattedGameState"
+        /// Example: "Regular • 3 players • Setting up board"
+        /// </summary>
+        public string GetSummary()
+        {
+            return $"{GameType} • {Players.Count} players • {GetFormattedGameState()}";
+        }
+
+        /// <summary>
+        /// Gets a list of player names for API compatibility.
+        /// </summary>
+        public List<string> GetPlayerNames()
+        {
+            return Players.Select(p => p.Name).ToList();
         }
     }
 
