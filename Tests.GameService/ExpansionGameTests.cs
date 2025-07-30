@@ -101,7 +101,7 @@ namespace Tests.GameService
             {
                 GameId = gameState.GetProperty("gameId").GetString() ?? "",
                 GameState = gameState.GetProperty("gameState").GetString() ?? "",
-                Version = gameState.GetProperty("version").GetInt32(),
+                GameStateMachineVersion = gameState.GetProperty("gameStateMachineVersion").GetInt32(),
                 CurrentPlayerId = gameState.GetProperty("currentPlayerId").GetString() ?? "",
                 GameType = gameState.TryGetProperty("gameType", out var gameTypeElement) 
                     ? gameTypeElement.GetString() ?? "Unknown"
@@ -276,7 +276,7 @@ namespace Tests.GameService
             Assert.Equal("WaitingForRoll", afterAllocation.GameState);
 
             // Assert - Verify all standard phases completed successfully
-            Assert.Equal(1, afterAllocation.Version); // Version is static (1) for GameStateMachine compatibility
+            Assert.Equal(1, afterAllocation.GameStateMachineVersion); // GameStateMachineVersion is always 1 (constant software version)
             Assert.Equal("Expansion", afterAllocation.GameType);
             Assert.True(afterAllocation.HasSupplementalBuildPhase, "Should maintain expansion characteristics");
 
@@ -330,7 +330,7 @@ namespace Tests.GameService
                 // Document current behavior - likely transitions to next player's WaitingForRoll like Regular games
                 Console.WriteLine($"Expansion game currently transitions to: {afterNextState.GameState}");
                 Console.WriteLine("Future requirement: Should transition to PickSupplementalPlayers for Expansion games");
-                Assert.Equal(1, nextResult.GetProperty("gameStateVersion").GetInt32()); // Version is static (1), not incrementing
+                Assert.Equal(1, nextResult.GetProperty("gameStateVersion").GetInt32()); // GameStateMachineVersion is always 1 (constant software version)
             }
         }
 
@@ -502,7 +502,7 @@ namespace Tests.GameService
                         // Test road purchase in Supplemental
                         var purchaseResult = await ExecutePurchaseAction(gameId, "Road", currentPlayer);
                         var newVersion = purchaseResult.GetProperty("gameStateVersion").GetInt32();
-                        Assert.Equal(1, newVersion); // Version is static (1), not incremented
+                        Assert.Equal(1, newVersion); // GameStateMachineVersion is always 1 (constant software version)
                         
                         Console.WriteLine("✅ Road purchase works in Supplemental phase");
                         
@@ -654,7 +654,7 @@ namespace Tests.GameService
             var finalGameState = await GetGameStateInfo(gameId);
             Assert.Equal("Expansion", finalGameState.GameType);
             Assert.True(finalGameState.HasSupplementalBuildPhase);
-            Assert.Equal(1, finalGameState.Version); // Version is static (1) for GameStateMachine compatibility
+            Assert.Equal(1, finalGameState.GameStateMachineVersion); // GameStateMachineVersion is always 1 (constant software version)
             
             Console.WriteLine("🎉 Complete Expansion game workflow test completed successfully!");
             Console.WriteLine($"Final state: {finalGameState.GameState}, Player: {finalGameState.CurrentPlayerId}");
@@ -734,7 +734,7 @@ namespace Tests.GameService
 
             // Assert - Verify the API call succeeded
             Assert.True(setSupplementalResult.GetProperty("success").GetBoolean(), "PlayersDoingSupplemental should succeed");
-            Assert.Equal(1, setSupplementalResult.GetProperty("gameStateVersion").GetInt32()); // Version is static (1), not incremented
+            Assert.Equal(1, setSupplementalResult.GetProperty("gameStateVersion").GetInt32()); // GameStateMachineVersion is always 1 (constant software version)
 
             // Verify we're still in PickSupplementalPlayers state (setting flags doesn't advance state)
             Assert.Equal("PickSupplementalPlayers", updatedState.GameState);
@@ -899,7 +899,7 @@ namespace Tests.GameService
                 // The GameController implementation returns early if not in PickSupplementalPlayers state
                 // So the call should succeed but have no effect
                 Assert.Equal("PickingBoard", afterCallState.GameState);
-                Assert.Equal(initialState.Version, afterCallState.Version); // Version shouldn't change
+                Assert.Equal(initialState.GameStateMachineVersion, afterCallState.GameStateMachineVersion); // GameStateMachineVersion should remain the same (always 1)
                 
                 Console.WriteLine("✅ PlayersDoingSupplemental in wrong state returned early with no effect (following GameController pattern)");
             }
@@ -938,8 +938,8 @@ namespace Tests.GameService
             Assert.Equal("PickSupplementalPlayers", pickSupplementalState.GameState);
 
             // Set up hanging GET connections for multiple clients
-            var client1HangingGetTask = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={pickSupplementalState.Version}&playerId=Alice");
-            var client2HangingGetTask = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={pickSupplementalState.Version}&playerId=Bob");
+            var client1HangingGetTask = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={pickSupplementalState.GameStateMachineVersion}&playerId=Alice");
+            var client2HangingGetTask = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={pickSupplementalState.GameStateMachineVersion}&playerId=Bob");
             
             // Wait to ensure hanging GET requests are established
             await Task.Delay(500);
@@ -964,9 +964,9 @@ namespace Tests.GameService
             Assert.True(client1Response.IsSuccessStatusCode, "Client 1 should receive supplemental notification");
             Assert.True(client2Response.IsSuccessStatusCode, "Client 2 should receive supplemental notification");
 
-            // Verify clients have the updated version (always 1 for static version)
+            // Verify clients have the updated version (always 1 for constant software version)
             var newVersion = setSupplementalResult.GetProperty("gameStateVersion").GetInt32();
-            Assert.Equal(1, newVersion); // Version is static (1), not incremented
+            Assert.Equal(1, newVersion); // GameStateMachineVersion is always 1 (constant software version)
             
             foreach (var response in new[] { client1Response, client2Response })
             {
@@ -976,7 +976,7 @@ namespace Tests.GameService
                 Assert.True(responseData.TryGetProperty("gameId", out var gameIdProp));
                 Assert.Equal(gameId, gameIdProp.GetString());
 
-                Assert.True(responseData.TryGetProperty("version", out var versionProp));
+                Assert.True(responseData.TryGetProperty("gameStateMachineVersion", out var versionProp));
                 Assert.Equal(newVersion, versionProp.GetInt32());
 
                 Assert.True(responseData.TryGetProperty("gameState", out var gameStateProp));
@@ -993,7 +993,7 @@ namespace Tests.GameService
         public string GameId { get; set; } = "";
         public string GameState { get; set; } = "";
         public string CurrentPlayerId { get; set; } = "";
-        public int Version { get; set; }
+        public int GameStateMachineVersion { get; set; }
         public string GameType { get; set; } = "";
         public bool HasSupplementalBuildPhase { get; set; }
     }

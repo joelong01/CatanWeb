@@ -91,14 +91,16 @@ namespace Tests.GameService
             {
                 GameId = gameState.GetProperty("gameId").GetString() ?? "",
                 GameState = gameState.GetProperty("gameState").GetString() ?? "",
-                Version = gameState.GetProperty("version").GetInt32(),
+                GameStateMachineVersion = gameState.GetProperty("gameStateMachineVersion").GetInt32(),
                 CurrentPlayerId = gameState.GetProperty("currentPlayerId").GetString() ?? ""
             };
         }
 
         // Helper method to execute a game action
-        private async Task<JsonElement> ExecuteGameAction(string gameId, string action, string playerId = "Alice")
+        private async Task<JsonElement> ExecuteGameAction(string gameId, string action, int playerIndex = 0)
         {
+            var playerId = $"Player{playerIndex + 1}";
+
             var actionBody = new
             {
                 gameId = gameId,
@@ -341,7 +343,7 @@ namespace Tests.GameService
                 tileKey.TryGetProperty("q", out var tileQ) && tileQ.GetInt32() == q &&
                 tileKey.TryGetProperty("r", out var tileR) && tileR.GetInt32() == r &&
                 tileKey.TryGetProperty("s", out var tileS) && tileS.GetInt32() == s);
-            
+    
             if (tile.ValueKind != JsonValueKind.Undefined)
             {
                 adjacentTiles.Add(tile);
@@ -459,8 +461,8 @@ namespace Tests.GameService
             Assert.True(nextSuccess, $"Next action should succeed. Response: {actionResponseBody}");
 
             var newVersion = actionResult.GetProperty("gameStateVersion").GetInt32();
-            Assert.Equal(1, newVersion); // Version is static (1), not incremented
-            Assert.Equal(newVersion, forwardState.Version);
+            Assert.Equal(1, newVersion); // GameStateMachineVersion is static (1), not incremented
+            Assert.Equal(newVersion, forwardState.GameStateMachineVersion);
 
             // The state should advance to either AllocateResourceForward or some valid next state
             Assert.NotEqual(initialState.GameState, forwardState.GameState);
@@ -717,6 +719,6 @@ namespace Tests.GameService
         public string GameId { get; set; } = "";
         public string GameState { get; set; } = "";
         public string CurrentPlayerId { get; set; } = "";
-        public int Version { get; set; }
+        public int GameStateMachineVersion { get; set; }
     }
 }

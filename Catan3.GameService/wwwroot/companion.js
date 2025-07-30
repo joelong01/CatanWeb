@@ -1,6 +1,6 @@
 /**
- * Catan Companion JavaScript
- * Handles real-time communication with game service
+ * Catan Companion JavaScript - SignalR Edition
+ * Handles real-time communication with game service via SignalR
  */
 
 class CatanCompanion {
@@ -8,10 +8,9 @@ class CatanCompanion {
         // Configuration
         this.config = {
             apiBaseUrl: window.location.origin,
-            updateInterval: 100, // ms between update attempts
-            timeoutDuration: 900000, // 15 minutes (900,000 ms) for local games where players might think
-            maxRetries: 5,
-            retryDelay: 1000 // 1 second
+            signalRUrl: `${window.location.origin}/gameHub`,
+            reconnectDelay: 2000, // 2 seconds between reconnection attempts
+            maxReconnectAttempts: 10
         };
 
         // State
@@ -19,9 +18,12 @@ class CatanCompanion {
         this.selectedPlayerId = null;
         this.currentGameState = null;
         this.gameVersion = 0;
-        this.isListening = false;
-        this.retryCount = 0;
         this.connectionStatus = 'connecting';
+        this.reconnectAttempts = 0;
+        
+        // SignalR connection
+        this.connection = null;
+        this.pendingCommands = new Map(); // Track command completion
         
         // Demo mode support
         this.demoMode = window.DEMO_MODE || false;
@@ -73,6 +75,9 @@ class CatanCompanion {
             this.initDemoMode();
         } else {
             try {
+                // Initialize SignalR connection
+                await this.initializeSignalR();
+                
                 // First, check if a gameId was provided in URL
                 const urlGameId = this.getGameIdFromUrl();
                 if (urlGameId) {
@@ -86,13 +91,135 @@ class CatanCompanion {
                 }
                 
                 this.updateConnectionStatus('connected');
-                this.showMessage('Connected to game service', 'success');
+                this.showMessage('Connected to game service via SignalR', 'success');
             } catch (error) {
                 console.error('Initialization failed:', error);
                 this.updateConnectionStatus('error');
                 this.showError('Failed to connect to game service. Please ensure the game service is running and accessible.');
             }
         }
+    }
+
+    async initializeSignalR() {
+        console.log('[COMPANION] Initializing SignalR connection...');
+        
+        // Create SignalR connection
+        this.connection = new signalR.HubConnectionBuilder()
+            .withUrl(this.config.signalRUrl)
+            .withAutomaticReconnect([0, 2000, 10000, 30000]) // Automatic reconnection
+            .build();
+
+        // Setup event handlers
+        this.setupSignalRHandlers();
+
+        // Start connection
+        await this.connection.start();
+        console.log('[COMPANION] SignalR connection established');
+    }
+
+    setupSignalRHandlers() {
+        // Game state updates
+        this.connection.on("GameStateUpdated", (gameModel) => {
+            console.log('[COMPANION] Received game state update via SignalR:', {
+                gameId: gameModel.gameId,
+                gameState: gameModel.gameState,
+                version: gameModel.version,
+                currentPlayerId: gameModel.currentPlayerId
+            });
+            this.updateGameState(gameModel);
+        });
+
+        // Command completion
+        this.connection.on("CommandCompleted", (commandId, success, message) => {
+            console.log('[COMPANION] Command completed:', { commandId, success, message });
+            this.handleCommandCompletion(commandId, success, message);
+        });
+
+        // Command failure
+        this.connection.on("CommandFailed", (commandId, error) => {
+            console.log('[COMPANION] Command failed:', { commandId, error });
+            this.handleCommandFailure(commandId, error);
+        });
+
+        // Player presence
+        this.connection.on("PlayerPresenceChanged", (playerId, isOnline) => {
+            console.log('[COMPANION] Player presence changed:', { playerId, isOnline });
+            this.updatePlayerPresence(playerId, isOnline);
+        });
+
+        // Connection events
+        this.connection.onreconnecting(() => {
+            console.log('[COMPANION] SignalR reconnecting...');
+            this.updateConnectionStatus('connecting');
+            this.showMessage('Reconnecting to game service...', 'info');
+        });
+
+        this.connection.onreconnected(() => {
+            console.log('[COMPANION] SignalR reconnected');
+            this.updateConnectionStatus('connected');
+            this.showMessage('Reconnected to game service', 'success');
+            
+            // Rejoin the game if we were in one
+            if (this.gameId && this.selectedPlayerId) {
+                this.rejoinGame();
+            }
+        });
+
+        this.connection.onclose(() => {
+            console.log('[COMPANION] SignalR connection closed');
+            this.updateConnectionStatus('error');
+            this.showMessage('Lost connection to game service', 'error');
+        });
+    }
+
+    async rejoinGame() {
+        if (this.gameId && this.selectedPlayerId) {
+            try {
+                await this.connection.invoke("JoinGame", this.gameId, this.selectedPlayerId);
+                console.log('[COMPANION] Rejoined game after reconnection');
+            } catch (error) {
+                console.error('[COMPANION] Failed to rejoin game:', error);
+            }
+        }
+    }
+
+    handleCommandCompletion(commandId, success, message) {
+        const pendingCommand = this.pendingCommands.get(commandId);
+        if (pendingCommand) {
+            this.pendingCommands.delete(commandId);
+            
+            if (success) {
+                this.showMessage(message || 'Command completed successfully', 'success');
+            } else {
+                this.showMessage(message || 'Command failed', 'error');
+            }
+            
+            // Hide processing state
+            this.hideProcessingState(commandId);
+        }
+    }
+
+    handleCommandFailure(commandId, error) {
+        const pendingCommand = this.pendingCommands.get(commandId);
+        if (pendingCommand) {
+            this.pendingCommands.delete(commandId);
+            this.showMessage(`Command failed: ${error}`, 'error');
+            this.hideProcessingState(commandId);
+        }
+    }
+
+    showProcessingState(commandId, estimatedCompletionMs) {
+        this.pendingCommands.set(commandId, { startTime: Date.now(), estimatedCompletionMs });
+        this.showMessage('Processing command...', 'info');
+    }
+
+    hideProcessingState(commandId) {
+        // Could update UI to remove loading indicators if needed
+    }
+
+    updatePlayerPresence(playerId, isOnline) {
+        // Update UI to show player presence if needed
+        console.log(`[COMPANION] Player ${playerId} is now ${isOnline ? 'online' : 'offline'}`);
     }
     
     async connectToGame() {
@@ -105,11 +232,19 @@ class CatanCompanion {
         // Load initial game state
         await this.loadGameState();
         
-        // Start listening for updates
-        this.startListening();
+        // Join the SignalR game group
+        if (this.selectedPlayerId) {
+            await this.connection.invoke("JoinGame", this.gameId, this.selectedPlayerId);
+            console.log('[COMPANION] Joined SignalR game group');
+        }
         
         // Hide game selection and show game interface
         this.hideGameSelection();
+    }
+
+    getGameIdFromUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('gameId') || window.INITIAL_GAME_ID;
     }
 
     initDemoMode() {
@@ -179,12 +314,30 @@ class CatanCompanion {
 
     setupEventListeners() {
         // Player selection
-        this.elements.playerSelect.addEventListener('change', (e) => {
+        this.elements.playerSelect.addEventListener('change', async (e) => {
+            const oldPlayerId = this.selectedPlayerId;
             this.selectedPlayerId = e.target.value;
-            this.updateUI();
+            
             if (this.selectedPlayerId) {
                 this.showMessage(`Selected player: ${e.target.options[e.target.selectedIndex].text}`, 'info');
+                
+                // If we have a game and connection, join the game group
+                if (this.gameId && this.connection && !this.demoMode) {
+                    try {
+                        // Leave old game group if needed
+                        if (oldPlayerId) {
+                            await this.connection.invoke("LeaveGame", this.gameId, oldPlayerId);
+                        }
+                        
+                        // Join new game group
+                        await this.connection.invoke("JoinGame", this.gameId, this.selectedPlayerId);
+                    } catch (error) {
+                        console.error('Failed to update SignalR game group:', error);
+                    }
+                }
             }
+            
+            this.updateUI();
         });
 
         // Keyboard shortcuts
@@ -198,13 +351,6 @@ class CatanCompanion {
             } else if (e.key === 'y' && e.ctrlKey) {
                 e.preventDefault();
                 this.doAction('Redo');
-            }
-        });
-
-        // Handle visibility change (page focus/blur)
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && !this.isListening && !this.demoMode) {
-                this.startListening();
             }
         });
     }
@@ -366,92 +512,6 @@ class CatanCompanion {
         // The main UI will be populated by updateGameState
     }
 
-    async loadAvailableGames() {
-        try {
-            console.log(`[COMPANION] Loading available games`);
-            
-            const response = await fetch(`${this.config.apiBaseUrl}/api/games`);
-            
-            console.log(`[COMPANION] Available games response - Status: ${response.status} ${response.statusText}`);
-            console.log(`[COMPANION] Response headers:`, Object.fromEntries(response.headers.entries()));
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`[COMPANION] Available games request failed - Status: ${response.status}, Response: ${errorText}`);
-                throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-            }
-            
-            const games = await response.json();
-            console.log(`[COMPANION] Available games loaded successfully:`, games);
-            
-            this.availableGames = games;
-            
-            // Update UI to show game selection
-            this.updateGameSelectionUI();
-        } catch (error) {
-            console.error('[COMPANION] Failed to load available games:', error);
-            throw error;
-        }
-    }
-
-    updateGameSelectionUI() {
-        const select = this.elements.playerSelect;
-        
-        // Clear existing options
-        while (select.children.length > 0) {
-            select.removeChild(select.lastChild);
-        }
-        
-        // Add game options
-        if (this.availableGames && this.availableGames.length > 0) {
-            this.availableGames.forEach(game => {
-                const option = document.createElement('option');
-                option.value = game.gameId;
-                option.textContent = `Game ${game.gameId} - ${game.players.length} players`;
-                select.appendChild(option);
-            });
-        } else {
-            // Add a placeholder if no games are available
-            const option = document.createElement('option');
-            option.value = '';
-            option.textContent = 'No games available - start a game first';
-            option.disabled = true;
-            select.appendChild(option);
-        }
-        
-        // Show game selection section
-        this.elements.stateContent.innerHTML = `
-            <div class="state-section">
-                <h3>Select a Game</h3>
-                <p>Please select a game from the list above to join.</p>
-            </div>
-        `;
-        
-        this.showingGameSelection = true;
-    }
-
-    async joinGame(gameId, playerId) {
-        this.gameId = gameId;
-        this.selectedPlayerId = playerId;
-        
-        this.updateConnectionStatus('connecting');
-        
-        try {
-            // Load initial game state
-            await this.loadGameState();
-            
-            // Start listening for updates
-            this.startListening();
-            
-            this.updateConnectionStatus('connected');
-            this.showMessage(`Joined game ${gameId}`, 'success');
-        } catch (error) {
-            console.error('Failed to join game:', error);
-            this.updateConnectionStatus('error');
-            this.showError(`Failed to join game ${gameId}. Please try again later.`);
-        }
-    }
-
     updateConnectionStatus(status) {
         this.connectionStatus = status;
         const statusDot = this.elements.connectionStatus.querySelector('.status-dot');
@@ -462,7 +522,7 @@ class CatanCompanion {
         switch (status) {
             case 'connected':
                 statusDot.classList.add('connected');
-                statusText.textContent = this.demoMode ? 'Demo Mode' : 'Connected';
+                statusText.textContent = this.demoMode ? 'Demo Mode' : 'SignalR Connected';
                 break;
             case 'connecting':
                 statusText.textContent = 'Connecting...';
@@ -470,10 +530,6 @@ class CatanCompanion {
             case 'error':
                 statusDot.classList.add('error');
                 statusText.textContent = 'Connection Error';
-                break;
-            case 'listening':
-                statusDot.classList.add('connected');
-                statusText.textContent = 'Live Updates';
                 break;
         }
     }
@@ -493,7 +549,7 @@ class CatanCompanion {
                 console.error(`[COMPANION] Game state request failed - Status: ${response.status}, Response: ${errorText}`);
                 
                 if (response.status === 404) {
-                    throw new Error(`Game "${this.gameId}" not found. Please create a game first using the desktop app.");
+                    throw new Error(`Game "${this.gameId}" not found. Please create a game first using the desktop app.`);
                 }
                 throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
             }
@@ -562,91 +618,6 @@ class CatanCompanion {
             this.elements.playerList.innerHTML = playerElements.join(' ');
         } else if (this.elements.playerList) {
             this.elements.playerList.innerHTML = '<span class="player-name">No players</span>';
-        }
-    }
-
-    async startListening() {
-        if (this.isListening || this.demoMode) return;
-        
-        this.isListening = true;
-        this.updateConnectionStatus('listening');
-        
-        while (this.isListening) {
-            try {
-                await this.listenForUpdates();
-                this.retryCount = 0; // Reset retry count on success
-            } catch (error) {
-                console.error('Listen error:', error);
-                this.retryCount++;
-                
-                if (this.retryCount >= this.config.maxRetries) {
-                    this.updateConnectionStatus('error');
-                    this.showError('Lost connection to game service');
-                    this.isListening = false;
-                    break;
-                }
-                
-                // Exponential backoff
-                const delay = this.config.retryDelay * Math.pow(2, this.retryCount - 1);
-                await this.delay(delay);
-            }
-        }
-    }
-
-    async listenForUpdates() {
-        const url = `${this.config.apiBaseUrl}/api/gamestate/${this.gameId}/listen?version=${this.gameVersion}&playerId=${this.selectedPlayerId || ''}`;
-        
-        console.log(`[COMPANION] Starting hanging GET request - URL: ${url}`);
-        console.log(`[COMPANION] Request parameters - Version: ${this.gameVersion}, PlayerId: ${this.selectedPlayerId || 'none'}`);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-            console.log(`[COMPANION] Hanging GET timeout after ${this.config.timeoutDuration}ms`);
-            controller.abort();
-        }, this.config.timeoutDuration);
-        
-        try {
-            const startTime = Date.now();
-            const response = await fetch(url, {
-                signal: controller.signal,
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-            
-            clearTimeout(timeoutId);
-            const responseTime = Date.now() - startTime;
-            
-            console.log(`[COMPANION] Hanging GET response received - Status: ${response.status}, Time: ${responseTime}ms`);
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`[COMPANION] Hanging GET failed - Status: ${response.status}, Response: ${errorText}`);
-                throw new Error(`HTTP ${response.status} - ${errorText}`);
-            }
-            
-            const gameState = await response.json();
-            console.log(`[COMPANION] Hanging GET update received:`, {
-                gameId: gameState.gameId,
-                gameState: gameState.gameState,
-                version: gameState.version,
-                currentPlayerId: gameState.currentPlayerId,
-                responseTimeMs: responseTime
-            });
-            
-            this.updateGameState(gameState);
-            
-            // Small delay before next request
-            await this.delay(this.config.updateInterval);
-        } catch (error) {
-            clearTimeout(timeoutId);
-            if (error.name === 'AbortError') {
-                console.log(`[COMPANION] Hanging GET aborted (timeout or manual)`);
-                // Timeout - this is normal, just continue
-                return;
-            }
-            console.error(`[COMPANION] Hanging GET error:`, error);
-            throw error;
         }
     }
 
@@ -1054,15 +1025,11 @@ class CatanCompanion {
             
             const response = await this.sendGameAction('BuildingUpgradeMessage', { buildingKey });
             if (response.success) {
-                this.showMessage('Settlement placed successfully', 'success');
                 this.selectedVertex = null;
                 this.selectedTileIndex = null;
-            } else {
-                this.showMessage(response.message || 'Failed to place settlement', 'error');
             }
         } catch (error) {
             console.error('Failed to place settlement:', error);
-            this.showMessage('Failed to place settlement', 'error');
         }
     }
 
@@ -1090,14 +1057,10 @@ class CatanCompanion {
             });
             
             if (response.success) {
-                this.showMessage('Robber moved successfully', 'success');
                 this.selectedRobberTile = null;
-            } else {
-                this.showMessage(response.message || 'Failed to move robber', 'error');
             }
         } catch (error) {
             console.error('Failed to move robber:', error);
-            this.showMessage('Failed to move robber', 'error');
         }
     }
 
@@ -1136,16 +1099,8 @@ class CatanCompanion {
         try {
             const playerIds = doSupplemental ? [this.selectedPlayerId] : [];
             const response = await this.sendGameAction('PlayersDoingSupplemental', { playerIds });
-            
-            if (response.success) {
-                const action = doSupplemental ? 'accepted' : 'declined';
-                this.showMessage(`Supplemental ${action}`, 'success');
-            } else {
-                this.showMessage(response.message || 'Failed to set supplemental choice', 'error');
-            }
         } catch (error) {
             console.error('Failed to set supplemental choice:', error);
-            this.showMessage('Failed to set supplemental choice', 'error');
         }
     }
 
@@ -1186,14 +1141,10 @@ class CatanCompanion {
 
             const response = await this.sendGameAction('RollMessage', { roll: rollData });
             if (response.success) {
-                this.showMessage(`Rolled ${rollValue}`, 'success');
                 this.selectedRoll = null;
-            } else {
-                this.showMessage(response.message || 'Failed to roll dice', 'error');
             }
         } catch (error) {
             console.error('Failed to roll dice:', error);
-            this.showMessage('Failed to roll dice', 'error');
         }
     }
 
@@ -1204,15 +1155,9 @@ class CatanCompanion {
         }
         
         try {
-            const response = await this.sendGameAction('PurchaseMessage', { entitlement: 'Soldier' });
-            if (response.success) {
-                this.showMessage('Knight played - move robber', 'success');
-            } else {
-                this.showMessage(response.message || 'Failed to play knight', 'error');
-            }
+            await this.sendGameAction('PurchaseMessage', { entitlement: 'Soldier' });
         } catch (error) {
             console.error('Failed to play knight:', error);
-            this.showMessage('Failed to play knight', 'error');
         }
     }
 
@@ -1264,15 +1209,9 @@ class CatanCompanion {
         }
 
         try {
-            const response = await this.sendGameAction('DoAction', { action });
-            if (response.success) {
-                this.showMessage(`${action} completed`, 'success');
-            } else {
-                this.showMessage(response.message || `Failed to ${action.toLowerCase()}`, 'error');
-            }
+            await this.sendGameAction('DoAction', { action });
         } catch (error) {
             console.error(`Failed to ${action}:`, error);
-            this.showMessage(`Failed to ${action.toLowerCase()}`, 'error');
         }
     }
 
@@ -1288,19 +1227,15 @@ class CatanCompanion {
         }
 
         try {
-            const response = await this.sendGameAction('PurchaseMessage', { entitlement });
-            if (response.success) {
-                this.showMessage(`Purchased ${this.getEntitlementName(entitlement)}`, 'success');
-            } else {
-                this.showMessage(response.message || `Failed to purchase ${entitlement}`, 'error');
-            }
+            await this.sendGameAction('PurchaseMessage', { entitlement });
         } catch (error) {
             console.error(`Failed to purchase ${entitlement}:`, error);
-            this.showMessage(`Failed to purchase ${entitlement}`, 'error');
         }
     }
 
     async sendGameAction(messageType, messageData) {
+        const commandId = this.generateCommandId();
+        
         const payload = {
             gameId: this.gameId,
             playerId: this.selectedPlayerId,
@@ -1309,9 +1244,10 @@ class CatanCompanion {
             timestamp: new Date().toISOString()
         };
 
-        console.log(`[COMPANION] Sending game action:`, {
+        console.log(`[COMPANION] Sending async game action:`, {
             url: `${this.config.apiBaseUrl}/api/game/action`,
             messageType: messageType,
+            commandId: commandId,
             gameId: this.gameId,
             playerId: this.selectedPlayerId,
             messageData: messageData
@@ -1327,7 +1263,7 @@ class CatanCompanion {
         });
 
         const responseTime = Date.now() - startTime;
-        console.log(`[COMPANION] Game action response - Status: ${response.status}, Time: ${responseTime}ms`);
+        console.log(`[COMPANION] Async game action response - Status: ${response.status}, Time: ${responseTime}ms`);
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -1338,12 +1274,22 @@ class CatanCompanion {
         const result = await response.json();
         console.log(`[COMPANION] Game action result:`, {
             success: result.success,
+            commandId: result.commandId,
             message: result.message,
-            gameStateVersion: result.gameStateVersion,
+            estimatedCompletionMs: result.estimatedCompletionMs,
             responseTimeMs: responseTime
         });
 
+        // Show processing state and wait for completion via SignalR
+        if (result.success && result.commandId) {
+            this.showProcessingState(result.commandId, result.estimatedCompletionMs);
+        }
+
         return result;
+    }
+
+    generateCommandId() {
+        return 'cmd_' + Math.random().toString(36).substr(2, 9);
     }
 
     showMessage(text, type = 'info') {

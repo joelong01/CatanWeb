@@ -101,7 +101,7 @@ namespace Tests.GameService
 
             //
             // TODO:    Verify that the shuffled game state is different from the original
-            //          this cannot be done with "Version" -- just check to make sure that
+            //          this cannot be done with "GameStateMachineVersion" -- just check to make sure that
             //          the harbors, resources, and numbers are assigned to different tiles
 
             // Load the original game state into a new game

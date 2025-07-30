@@ -21,7 +21,7 @@ namespace Catan3.Shared.Models
         public DateTime CreatedTime { get; set; }
         public string CreatedTimeDisplay { get; set; } = "";
         public bool IsActive { get; set; }
-        public int Version { get; set; }
+        public int GameStateMachineVersion { get; set; }
         public string Summary { get; set; } = "";
     }
 

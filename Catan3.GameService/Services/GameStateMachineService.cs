@@ -79,7 +79,7 @@ namespace Catan3.GameService.Services
             // Rule 7 Compliance: GameModel contains all truth including version
             // Client notification is handled automatically by GameStateMachine.LogGameModel()
             
-            _logger.LogDebug("Action executed, new version: {Version}, gameId: {GameId}", result.Version, gameId);
+            _logger.LogDebug("Action executed, version: {Version}, gameId: {GameId}", result.GameStateMachineVersion, gameId);
             
             return result;
         }
@@ -98,7 +98,7 @@ namespace Catan3.GameService.Services
             // Rule 7 Compliance: GameModel contains all truth including version
             // Client notification is handled automatically by GameStateMachine.LogGameModel()
             
-            _logger.LogDebug("Async action executed, new version: {Version}, gameId: {GameId}", result.Version, gameId);
+            _logger.LogDebug("Async action executed, version: {Version}, gameId: {GameId}", result.GameStateMachineVersion, gameId);
             
             return result;
         }
@@ -126,7 +126,7 @@ namespace Catan3.GameService.Services
             result.GameId = gameId;
             result.CreatedTime = result.CreatedTime == default ? DateTime.UtcNow : result.CreatedTime;
             
-            _logger.LogInformation("New game created successfully, gameId: {GameId}, version: {Version}", gameId, result.Version);
+            _logger.LogInformation("New game created successfully, gameId: {GameId}, version: {Version}", gameId, result.GameStateMachineVersion);
             
             // Client notification is handled automatically by GameStateMachine.LogGameModel()
             
@@ -156,7 +156,7 @@ namespace Catan3.GameService.Services
             result.GameId = gameId;
             result.CreatedTime = result.CreatedTime == default ? DateTime.UtcNow : result.CreatedTime;
             
-            _logger.LogInformation("New game created successfully async, gameId: {GameId}, version: {Version}", gameId, result.Version);
+            _logger.LogInformation("New game created successfully async, gameId: {GameId}, version: {Version}", gameId, result.GameStateMachineVersion);
             
             // Client notification is handled automatically by GameStateMachine.LogGameModel()
             
@@ -226,7 +226,7 @@ namespace Catan3.GameService.Services
                             PlayerNames = gameModel.GetPlayerNames(), // Use helper method that gets names from PlayerModel.Name
                             PlayerIds = gameModel.Players.Select(p => p.Id).ToList(),
                             CreatedTime = gameModel.CreatedTime,
-                            Version = gameModel.Version, // Get version from GameModel, not service
+                            GameStateMachineVersion = gameModel.GameStateMachineVersion, // Get version from GameModel, not service
                             
                             // Computed fields using GameModel helper methods (truth computed in GameModel)
                             DisplayName = gameModel.GetDisplayName(),
@@ -260,35 +260,12 @@ namespace Catan3.GameService.Services
         /// <summary>
         /// Gets the current version for the specified gameId from the GameModel
         /// Rule 7 Compliance: Version comes from GameModel, not service-level counter
+        /// Version is always 1 (constant software version)
         /// </summary>
         public int GetCurrentVersion(string? gameId = null)
         {
-            // If gameId is provided, get version from that specific game's GameModel
-            if (!string.IsNullOrEmpty(gameId))
-            {
-                var gameModel = GetCurrentGameState(gameId);
-                return gameModel?.Version ?? 1;
-            }
-            
-            // If no gameId provided, return the highest version across all games
-            // This maintains backward compatibility for existing API calls
-            var maxVersion = 1;
-            foreach (var kvp in _gameStateMachines)
-            {
-                try
-                {
-                    var gameModel = kvp.Value.GetCurrentState();
-                    if (gameModel != null && gameModel.Version > maxVersion)
-                    {
-                        maxVersion = gameModel.Version;
-                    }
-                }
-                catch
-                {
-                    // Skip games that have errors
-                }
-            }
-            return maxVersion;
+            // Version is always 1 for all games - it represents GameStateMachine software compatibility
+            return 1;
         }
     }
 }

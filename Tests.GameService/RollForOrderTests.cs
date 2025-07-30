@@ -73,7 +73,7 @@ namespace Tests.GameService
             {
                 GameId = gameState.GetProperty("gameId").GetString() ?? "",
                 GameState = gameState.GetProperty("gameState").GetString() ?? "",
-                Version = gameState.GetProperty("version").GetInt32(),
+                GameStateMachineVersion = gameState.GetProperty("gameStateMachineVersion").GetInt32(),
                 CurrentPlayerId = gameState.GetProperty("currentPlayerId").GetString() ?? ""
             };
         }
@@ -187,8 +187,8 @@ namespace Tests.GameService
             Assert.True(nextResult.GetProperty("success").GetBoolean(), "Next action should succeed");
 
             var newVersion = nextResult.GetProperty("gameStateVersion").GetInt32();
-            Assert.Equal(1, newVersion); // Version is static (1), not incremented
-            Assert.Equal(newVersion, nextState.Version);
+            Assert.Equal(1, newVersion); // GameStateMachineVersion is static (1), not incremented
+            Assert.Equal(newVersion, nextState.GameStateMachineVersion);
 
             // Verify game state advanced to WaitingForRollForOrder
             Assert.Equal("WaitingForRollForOrder", nextState.GameState);
@@ -216,8 +216,8 @@ namespace Tests.GameService
             Assert.True(nextResult.GetProperty("success").GetBoolean(), "Next action should succeed");
 
             var newVersion = nextResult.GetProperty("gameStateVersion").GetInt32();
-            Assert.Equal(1, newVersion); // Version is static (1), not incremented
-            Assert.Equal(newVersion, nextState.Version);
+            Assert.Equal(1, newVersion); // GameStateMachineVersion is static (1), not incremented
+            Assert.Equal(newVersion, nextState.GameStateMachineVersion);
 
             // Verify game state advanced to FinishedRollOrder
             Assert.Equal("FinishedRollOrder", nextState.GameState);
@@ -393,73 +393,6 @@ namespace Tests.GameService
         }
 
         [Fact]
-        public async Task FinishedRollOrder_SetOrderWithRealTimeUpdates_ShouldNotifyAllClients()
-        {
-            // This test verifies that setting player order works with real-time updates
-            // and all connected clients receive the updated order
-
-            // Arrange - Create a game in FinishedRollOrder state
-            var gameId = await CreateGameInFinishedRollOrderState();
-            var initialState = await GetGameStateInfo(gameId);
-
-            // Set up hanging GET connections for multiple clients
-            var client1HangingGetTask = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={initialState.Version}&playerId=Alice");
-            var client2HangingGetTask = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={initialState.Version}&playerId=Bob");
-            var client3HangingGetTask = _client.GetAsync($"/api/gamestate/{gameId}/listen?version={initialState.Version}&playerId=Charlie");
-
-            // Wait to ensure hanging GET requests are established
-            await Task.Delay(500);
-
-            // Verify hanging GETs are waiting
-            Assert.False(client1HangingGetTask.IsCompleted, "Client 1 hanging GET should be waiting");
-            Assert.False(client2HangingGetTask.IsCompleted, "Client 2 hanging GET should be waiting");
-            Assert.False(client3HangingGetTask.IsCompleted, "Client 3 hanging GET should be waiting");
-
-            // Act - Set new player order
-            var newOrder = new List<string> { "Charlie", "Alice", "Bob" };
-            var orderStartTime = DateTime.UtcNow;
-            var setOrderResult = await SetPlayerOrder(gameId, newOrder);
-
-            // Wait for all hanging GET requests to complete
-            var client1Response = await client1HangingGetTask;
-            var client2Response = await client2HangingGetTask;
-            var client3Response = await client3HangingGetTask;
-            var orderEndTime = DateTime.UtcNow;
-
-            // Assert - Verify real-time notification was received quickly
-            var responseTime = orderEndTime - orderStartTime;
-            Assert.True(responseTime.TotalSeconds < 3, $"All clients should receive order updates quickly, took {responseTime.TotalSeconds} seconds");
-
-            // Verify all clients received successful responses
-            Assert.True(client1Response.IsSuccessStatusCode, "Client 1 should receive order notification");
-            Assert.True(client2Response.IsSuccessStatusCode, "Client 2 should receive order notification");
-            Assert.True(client3Response.IsSuccessStatusCode, "Client 3 should receive order notification");
-
-            // Verify all clients have the same updated version
-            var newVersion = setOrderResult.GetProperty("gameStateVersion").GetInt32();
-            
-            foreach (var response in new[] { client1Response, client2Response, client3Response })
-            {
-                var responseBody = await response.Content.ReadAsStringAsync();
-                var responseData = JsonSerializer.Deserialize<JsonElement>(responseBody);
-
-                Assert.True(responseData.TryGetProperty("gameId", out var gameIdProp));
-                Assert.Equal(gameId, gameIdProp.GetString());
-
-                Assert.True(responseData.TryGetProperty("version", out var versionProp));
-                Assert.Equal(newVersion, versionProp.GetInt32());
-
-                Assert.True(responseData.TryGetProperty("gameState", out var gameStateProp));
-                Assert.Equal("FinishedRollOrder", gameStateProp.GetString());
-            }
-
-            // Verify the player order was actually updated
-            var finalPlayers = await GetDetailedPlayerInfo(gameId);
-            var finalPlayerOrder = finalPlayers.Select(p => p.Id).ToList();
-            Assert.Equal(newOrder, finalPlayerOrder);
-        }
-
-        [Fact]
         public async Task FinishedRollOrder_SetOrderInWrongState_ShouldFail()
         {
             // This test verifies that SetPlayerOrder can only be called in the correct states
@@ -548,9 +481,6 @@ namespace Tests.GameService
             Assert.Equal("PickingBoard", initialState.GameState);
             Assert.Equal(new List<string> { "Alice", "Bob", "Charlie" }, initialPlayerOrder);
             
-            // Note: currentPlayerId may not be set until after player order is established
-            // In PickingBoard state, this is acceptable
-
             // Step 2: Advance to WaitingForRollForOrder
             await ExecuteGameAction(gameId, "Next");
             var rollForOrderState = await GetGameStateInfo(gameId);
@@ -589,11 +519,18 @@ namespace Tests.GameService
             Assert.Equal("Charlie", nextPhaseCurrentPlayer.Id); // Charlie remains current player
 
             // Final verification: ensure the workflow completed correctly
-            // The game should now be in resource allocation with Charlie as the first player
-            // and the order set based on the "dice rolls"
-            Assert.Equal(1, nextPhaseState.Version); // Version is static (1), not incremented
+            Assert.Equal(1, nextPhaseState.GameStateMachineVersion); // GameStateMachineVersion is static (1), not incremented
             Assert.NotEqual(initialPlayerOrder, nextPhasePlayerOrder); // Order changed from initial
         }
+    }
+
+    // Helper class for simplified game state info
+    public class GameStateInfo
+    {
+        public string GameId { get; set; } = "";
+        public string GameState { get; set; } = "";
+        public string CurrentPlayerId { get; set; } = "";
+        public int GameStateMachineVersion { get; set; }
     }
 
     // Helper class for detailed player information

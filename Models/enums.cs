@@ -4,7 +4,7 @@ namespace Catan3.Models
     public enum GameAction
     {
         Shuffle, Undo, Redo,
-        Next
+        Next, Balance
     }
     public enum ResourceType
     {

@@ -1,15 +1,27 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Catan3.Shared\Catan3.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="wwwroot\mermaid-source\joining-game-flow.mmd" />
+    <Content Remove="wwwroot\mermaid-source\picking-game-flow.mmd" />
+    <Content Remove="wwwroot\mermaid-source\updating-game-flow.mmd" />
   </ItemGroup>
 
 </Project>

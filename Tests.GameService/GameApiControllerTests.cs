@@ -75,28 +75,17 @@ namespace Tests.GameService
             var gameId = createResult.GetProperty("gameId").GetString()!;
             Assert.False(string.IsNullOrEmpty(gameId), "Server should return a valid gameId");
 
-            // Step 2: Simulate UDP discovery for 2 clients (like real mobile devices would do)
+            // Step 2: Simulate discovery for 2 clients (like real mobile devices would do)
             string? discoveredCompanionUrl = null;
 
-            // Client 1 & Client 2 UDP Discovery Simulation
-            using var udpClient = new UdpClient();
+            // Client 1 & Client 2 Game Discovery Simulation
+            // In browser-based architecture, clients discover games via REST API
             try
             {
-                // Simulate UDP discovery by getting the discovery service and triggering an update
-                var serviceScope = _factory.Services.CreateScope();
-                var discoveryService = serviceScope.ServiceProvider.GetService<IDiscoveryService>();
-                
-                if (discoveryService != null)
-                {
-                    // Update the discovery service with our game info to trigger a broadcast
-                    discoveryService.UpdateGameInfo(gameId, "PickingBoard", 3, "TEST");
-                    
-                    // Construct the companion URL that would be discovered via UDP
-                    var localIP = GetLocalIPAddress();
-                    discoveredCompanionUrl = $"http://{localIP}:8080/companion";
-                }
-                
-                serviceScope.Dispose();
+                // For testing, we'll construct what the companion URL should be
+                // In a real scenario, this would come from the game discovery API at /api/companion/games
+                var localIP = GetLocalIPAddress();
+                discoveredCompanionUrl = $"http://{localIP}:8080/companion";
             }
             catch
             {
@@ -107,6 +96,7 @@ namespace Tests.GameService
 
             Assert.NotNull(discoveredCompanionUrl);
             Assert.Contains("companion", discoveredCompanionUrl);
+            Assert.Contains("8080", discoveredCompanionUrl);
 
             // Step 3: Both clients load the companion app (simulating loading companion interface)
             var companionPath = $"/companion?gameId={gameId}";
@@ -172,7 +162,7 @@ namespace Tests.GameService
             Assert.True(shuffleActionResult.GetProperty("success").GetBoolean());
             
             var shuffleVersion = shuffleActionResult.GetProperty("gameStateVersion").GetInt32();
-            Assert.Equal(1, shuffleVersion); // Version is static (1), not incremented
+            Assert.Equal(1, shuffleVersion); // GameStateMachineVersion is static (1), not incremented
 
             // Verify both clients received the shuffle update quickly (real-time notification)
             var shuffleResponseTime = shuffleActionEndTime - shuffleActionStartTime;
@@ -246,7 +236,7 @@ namespace Tests.GameService
             Assert.True(nextActionResult.GetProperty("success").GetBoolean());
             
             var nextVersion = nextActionResult.GetProperty("gameStateVersion").GetInt32();
-            Assert.Equal(1, nextVersion); // Version is static (1), not incremented
+            Assert.Equal(1, nextVersion); // GameStateMachineVersion is static (1), not incremented
 
             // Verify both clients received the Next action update quickly
             var nextResponseTime = nextActionEndTime - nextActionStartTime;
@@ -304,8 +294,8 @@ namespace Tests.GameService
             // - Game state progression (Next action) - advances from PickingBoard to next game phase
             // - Real-time synchronization across multiple clients for both actions
             // - Complete action-response cycle with proper version tracking
-            Assert.Equal(1, nextVersion); // Version is static (1), not incremented
-            Assert.Equal(1, shuffleVersion); // Version is static (1), not incremented
+            Assert.Equal(1, nextVersion); // GameStateMachineVersion is static (1), not incremented
+            Assert.Equal(1, shuffleVersion); // GameStateMachineVersion is static (1), not incremented
             
             // Verify the game flow: initial → shuffle (stay in PickingBoard) → next (advance beyond PickingBoard)
             Assert.Equal("PickingBoard", initialGameStateStr);
@@ -454,7 +444,7 @@ namespace Tests.GameService
                 Assert.Equal(gameId, returnedGameId.GetString());
 
                 Assert.True(responseData.TryGetProperty("version", out var returnedVersion));
-                Assert.Equal(1, returnedVersion.GetInt32()); // Version is static (1), not incremented
+                Assert.Equal(1, returnedVersion.GetInt32()); // GameStateMachineVersion is static (1), not incremented
             }
         }
 
@@ -588,7 +578,7 @@ namespace Tests.GameService
             Assert.True(hangingGetResult.TryGetProperty("gameId", out var returnedGameId));
             Assert.Equal(gameId, returnedGameId.GetString());
             Assert.True(hangingGetResult.TryGetProperty("version", out var returnedVersion));
-            Assert.Equal(1, returnedVersion.GetInt32()); // Version is static (1), not incremented
+            Assert.Equal(1, returnedVersion.GetInt32()); // GameStateMachineVersion is static (1), not incremented
         }
 
         [Fact]
@@ -662,7 +652,7 @@ namespace Tests.GameService
             var actionResult = JsonSerializer.Deserialize<JsonElement>(actionResponseBody);
             Assert.True(actionResult.GetProperty("success").GetBoolean());
             var newVersion = actionResult.GetProperty("gameStateVersion").GetInt32();
-            Assert.Equal(1, newVersion); // Version is static (1), not incremented
+            Assert.Equal(1, newVersion); // GameStateMachineVersion is static (1), not incremented
 
             // Verify the hanging GET response
             var hangingGetResponseBody = await hangingGetResponse.Content.ReadAsStringAsync();
@@ -762,7 +752,7 @@ namespace Tests.GameService
                 var responseData = JsonSerializer.Deserialize<JsonElement>(responseBody);
 
                 Assert.True(responseData.TryGetProperty("version", out var version));
-                Assert.Equal(1, version.GetInt32()); // Version is static (1), not incremented
+                Assert.Equal(1, version.GetInt32()); // GameStateMachineVersion is static (1), not incremented
             }
         }
 
@@ -771,7 +761,7 @@ namespace Tests.GameService
         // ========================================
 
         [Fact]
-        public async Task NewGameWithUdpDiscovery_ShouldDiscoverCompanionUrlAndAccessGame()
+        public async Task NewGameWithBrowserDiscovery_ShouldDiscoverCompanionUrlAndAccessGame()
         {
             // Arrange - Create a new game first using server-generated GameId
             var gameType = "Regular";
@@ -807,41 +797,31 @@ namespace Tests.GameService
             
             // Note: currentPlayerId may not be set until after player order is established
 
-            // Act - Simulate UDP discovery (like a real mobile client would do)
+            // Act - Simulate browser-based discovery (like a real mobile client would do)
             string? discoveredCompanionUrl = null;
-            var udpPort = 8765; // Default discovery port
-            var discoveryTimeout = TimeSpan.FromSeconds(10);
 
-            using var udpClient = new UdpClient();
-            udpClient.Client.ReceiveTimeout = (int)discoveryTimeout.TotalMilliseconds;
+            // In browser-based architecture, clients discover games via REST API
+            // Test the game discovery endpoint that mobile clients would use
+            var gamesDiscoveryResponse = await _client.GetAsync("/api/companion/games");
+            Assert.True(gamesDiscoveryResponse.IsSuccessStatusCode, "Game discovery API should work");
 
-            try
+            var gamesListBody = await gamesDiscoveryResponse.Content.ReadAsStringAsync();
+            var gamesList = JsonSerializer.Deserialize<JsonElement>(gamesListBody);
+            
+            // Verify our created game appears in the discovery list
+            Assert.True(gamesList.TryGetProperty("availableGames", out var availableGames));
+            var games = availableGames.EnumerateArray().ToList();
+            var ourGame = games.FirstOrDefault(g => g.GetProperty("gameId").GetString() == gameId);
+            Assert.True(ourGame.ValueKind != JsonValueKind.Undefined, "Our created game should appear in discovery list");
+
+            // Get the companion URL from the discovery response
+            if (ourGame.TryGetProperty("companionUrl", out var companionUrlProp))
             {
-                // Bind to the discovery port to listen for broadcasts
-                var localEndpoint = new IPEndPoint(IPAddress.Any, udpPort);
-                
-                // We need to simulate receiving a UDP broadcast
-                // Since we can't easily bind to the same port the service is using in the test,
-                // we'll get the discovery service from the DI container and trigger an update
-                var serviceScope = _factory.Services.CreateScope();
-                var discoveryService = serviceScope.ServiceProvider.GetService<IDiscoveryService>();
-                
-                if (discoveryService != null)
-                {
-                    // Update the discovery service with our game info to trigger a broadcast
-                    discoveryService.UpdateGameInfo(gameId, "Playing", 3, "TEST");
-                    
-                    // For testing, we'll construct what the companion URL should be
-                    // In a real scenario, this would come from the UDP broadcast
-                    var localIP = GetLocalIPAddress();
-                    discoveredCompanionUrl = $"http://{localIP}:8080/companion";
-                }
-                
-                serviceScope.Dispose();
+                discoveredCompanionUrl = companionUrlProp.GetString();
             }
-            catch
+            else
             {
-                // Fallback for test environment
+                // Fallback construction for test environment
                 var localIP = GetLocalIPAddress();
                 discoveredCompanionUrl = $"http://{localIP}:8080/companion";
             }
@@ -906,9 +886,9 @@ namespace Tests.GameService
             Assert.True(apiGameState.TryGetProperty("entitlementPurchaseModel", out var entitlements));
             Assert.True(entitlements.GetArrayLength() >= 0);
 
-            // Final verification: ensure the discovered flow works end-to-end
+            // Final verification: ensure the browser-based discovery flow works end-to-end
             // The mobile client should be able to:
-            // 1. ✅ Discover the companion URL via UDP (simulated)
+            // 1. ✅ Discover games via the /api/companion/games REST API
             // 2. ✅ Load the companion interface from the discovered URL
             // 3. ✅ Call the game state API to get all game information (Single Source of Truth)
             // 4. ✅ See consistent data across all game state properties
@@ -1236,7 +1216,7 @@ namespace Tests.GameService
             Assert.True(entitlements.GetArrayLength() >= 0);
 
             Assert.True(gameState.TryGetProperty("version", out var version));
-            Assert.False(string.IsNullOrEmpty(version.GetString())); // Version is now a string
+            Assert.False(string.IsNullOrEmpty(version.GetString())); // GameStateMachineVersion is now a string
 
             Assert.True(gameState.TryGetProperty("createdTime", out var createdTime));
             Assert.False(string.IsNullOrEmpty(createdTime.GetString()));
@@ -1441,7 +1421,7 @@ namespace Tests.GameService
                     Assert.True(actionFlagsProp.TryGetProperty("undoEnabled", out _), "Missing undoEnabled in actionFlags");
                     Assert.True(actionFlagsProp.TryGetProperty("rollsEnabled", out _), "Missing rollsEnabled in actionFlags");
                 }
-
+                
                 if (gameState.TryGetProperty("entitlementPurchaseModel", out var entitlementsProp))
                 {
                     var entitlementsArray = entitlementsProp.EnumerateArray().ToList();

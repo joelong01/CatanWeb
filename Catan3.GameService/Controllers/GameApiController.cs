@@ -41,98 +41,61 @@ namespace Catan3.GameService.Controllers
         }
 
         [HttpPost("game/action")]
-        public IActionResult ExecuteGameAction([FromBody] JsonElement request)
+        public Task<IActionResult> ExecuteGameAction([FromBody] JsonElement request)
         {
             var requestId = Guid.NewGuid().ToString("N")[..8];
-            _logger.LogInformation("[{RequestId}] POST /api/game/action - Processing game action request", requestId);
+            var commandId = Guid.NewGuid();
+            
+            _logger.LogInformation("[{RequestId}] POST /api/game/action - Processing async command {CommandId}", requestId, commandId);
             
             try
             {
                 var gameId = request.GetProperty("gameId").GetString();
                 var playerId = request.GetProperty("playerId").GetString();
                 var messageType = request.GetProperty("messageType").GetString();
-                var messageData = request.GetProperty("messageData");
 
-                _logger.LogInformation("[{RequestId}] Action request - GameId: {GameId}, PlayerId: {PlayerId}, MessageType: {MessageType}", 
-                    requestId, gameId, playerId, messageType);
+                _logger.LogInformation("[{RequestId}] Async command request - GameId: {GameId}, PlayerId: {PlayerId}, MessageType: {MessageType}, CommandId: {CommandId}", 
+                    requestId, gameId, playerId, messageType, commandId);
 
                 if (string.IsNullOrEmpty(gameId) || string.IsNullOrEmpty(playerId) || string.IsNullOrEmpty(messageType))
                 {
                     _logger.LogWarning("[{RequestId}] Missing required fields: gameId={GameId}, playerId={PlayerId}, messageType={MessageType}", 
                         requestId, gameId, playerId, messageType);
-                    return BadRequest("Missing required fields: gameId, playerId, messageType");
+                    return Task.FromResult<IActionResult>(BadRequest("Missing required fields: gameId, playerId, messageType"));
                 }
 
-                // Process the action based on message type using the correct GameStateMachine
-                GameModel? updatedGameModel = null;
-                string message = "";
-
-                _logger.LogDebug("[{RequestId}] Processing message type: {MessageType}", requestId, messageType);
-
-                switch (messageType)
+                // Verify game exists before processing
+                var currentGame = _gameStateMachineService.GetCurrentGameState(gameId);
+                if (currentGame == null)
                 {
-                    case "DoAction":
-                        updatedGameModel = _gameStateMachineService.ExecuteAction(gameId, gsm => ProcessDoAction(messageData, gsm));
-                        message = "Action executed successfully";
-                        break;
-                    case "PurchaseMessage":
-                        updatedGameModel = _gameStateMachineService.ExecuteAction(gameId, gsm => ProcessPurchaseMessage(messageData, gsm));
-                        message = "Purchase executed successfully";
-                        break;
-                    case "RoadPurchaseMessage":
-                        updatedGameModel = _gameStateMachineService.ExecuteAction(gameId, gsm => ProcessRoadPurchase(messageData, gsm));
-                        message = "Road purchase executed successfully";
-                        break;
-                    case "BuildingUpgradeMessage":
-                        updatedGameModel = _gameStateMachineService.ExecuteAction(gameId, gsm => ProcessBuildingUpgrade(messageData, gsm));
-                        message = "Building upgrade executed successfully";
-                        break;
-                    case "MoveRobberMessage":
-                        updatedGameModel = _gameStateMachineService.ExecuteAction(gameId, gsm => ProcessMoveRobber(messageData, gsm));
-                        message = "Robber moved successfully";
-                        break;
-                    case "RollMessage":
-                        updatedGameModel = _gameStateMachineService.ExecuteAction(gameId, gsm => ProcessRoll(messageData, gsm));
-                        message = "Roll processed successfully";
-                        break;
-                    case "SetPlayerOrderMessage":
-                        updatedGameModel = _gameStateMachineService.ExecuteAction(gameId, gsm => ProcessSetPlayerOrder(messageData, gsm));
-                        message = "Player order set successfully";
-                        break;
-                    case "PlayersDoingSupplemental":
-                        updatedGameModel = _gameStateMachineService.ExecuteAction(gameId, gsm => ProcessPlayersDoingSupplemental(messageData, gsm));
-                        message = "Supplemental players set successfully";
-                        break;
-                    case "BalanceBoardMessage":
-                        updatedGameModel = _gameStateMachineService.ExecuteAction(gameId, gsm => ProcessBalanceBoard(messageData, gsm));
-                        message = "Board balanced successfully";
-                        break;
-                    case "GoFirstMessage":
-                        updatedGameModel = _gameStateMachineService.ExecuteAction(gameId, gsm => ProcessGoFirst(messageData, gsm));
-                        message = "Go first set successfully";
-                        break;
-                    default:
-                        _logger.LogWarning("[{RequestId}] Unknown message type: {MessageType}", requestId, messageType);
-                        return BadRequest($"Unknown message type: {messageType}");
+                    _logger.LogWarning("[{RequestId}] Game not found: {GameId}", requestId, gameId);
+                    return Task.FromResult<IActionResult>(NotFound($"Game {gameId} not found"));
                 }
 
-                var currentVersion = updatedGameModel?.Version ?? 1;
+                // Get the async command processor from DI
+                var commandProcessor = HttpContext.RequestServices.GetRequiredService<AsyncCommandProcessor>();
+
+                // Fire-and-forget async processing
+                _ = commandProcessor.ProcessAsync(request, commandId);
+
+                // Return immediate response
                 var response = new
                 {
-                    success = updatedGameModel != null,
-                    gameStateVersion = currentVersion,
-                    message
+                    success = true,
+                    commandId = commandId,
+                    message = "Command accepted, processing...",
+                    estimatedCompletionMs = 100 // Most commands complete very quickly
                 };
 
-                _logger.LogInformation("[{RequestId}] Action completed successfully - Success: {Success}, Version: {Version}, Message: {Message}", 
-                    requestId, response.success, currentVersion, message);
+                _logger.LogInformation("[{RequestId}] Command accepted for async processing - CommandId: {CommandId}, GameId: {GameId}", 
+                    requestId, commandId, gameId);
 
-                return Ok(response);
+                return Task.FromResult<IActionResult>(Ok(response));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[{RequestId}] Error executing action", requestId);
-                return StatusCode(500, $"Error executing action: {ex.Message}");
+                _logger.LogError(ex, "[{RequestId}] Error accepting command for async processing - CommandId: {CommandId}", requestId, commandId);
+                return Task.FromResult<IActionResult>(StatusCode(500, $"Error accepting command: {ex.Message}"));
             }
         }
 
@@ -153,8 +116,8 @@ namespace Catan3.GameService.Controllers
 
                 var result = CreateGameStateResponse(gameId, gameModel);
                 
-                _logger.LogInformation("[{RequestId}] Game state retrieved successfully - GameId: {GameId}, State: {GameState}, Players: {PlayerCount}, Version: {Version}", 
-                    requestId, gameId, gameModel.GameState, gameModel.Players.Count, gameModel.Version);
+                _logger.LogInformation("[{RequestId}] Game state retrieved successfully - GameId: {GameId}, State: {GameState}, Players: {PlayerCount}, GameStateMachineVersion: {GameStateMachineVersion}", 
+                    requestId, gameId, gameModel.GameState, gameModel.Players.Count, gameModel.GameStateMachineVersion);
                 
                 return Ok(result);
             }
@@ -317,7 +280,7 @@ namespace Catan3.GameService.Controllers
                 var newGameMessage = new NewGameMessage(gameType, playerIds);
                 var (gameId, gameModel) = _gameStateMachineService.CreateNewGame(gsm => gsm.HandleNewGame(newGameMessage));
 
-                var currentVersion = gameModel.Version;
+                var currentVersion = gameModel.GameStateMachineVersion;
 
                 _logger.LogInformation("[{RequestId}] New game created successfully - GameId: {GameId}, Version: {Version}, State: {GameState}", 
                     requestId, gameId, currentVersion, gameModel.GameState);
@@ -360,7 +323,7 @@ namespace Catan3.GameService.Controllers
                 // Create a new GameStateMachine and load the game into it
                 var (gameId, gameModel) = await _gameStateMachineService.CreateNewGameAsync(async gsm => await gsm.HandleLoadGame(loadGameMessage));
 
-                var currentVersion = gameModel.Version;
+                var currentVersion = gameModel.GameStateMachineVersion;
 
                 _logger.LogInformation("[{RequestId}] Game loaded successfully - GameId: {GameId}, Version: {Version}", requestId, gameId, currentVersion);
 

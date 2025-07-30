@@ -119,15 +119,14 @@ namespace Catan3.GameService.Factory
             do
             {
                 ShuffleList<TileModel, ResourceType>(game.Tiles, random,
-                    tile => tile.ResourceTileType,
-                    (tile, type) => tile.ResourceTileType = type);
+                     tile => tile.ResourceTileType,
+                     (tile, type) => tile.ResourceTileType = type);
                 ShuffleList<TileModel, int>(game.Tiles, random,
                     tile => tile.Number,
                     (tile, number) => tile.Number = number);
                 ShuffleList<HarborModel, HarborType>(game.Harbors, random,
-                    harbor => harbor.HarborKey.HarborType,
-                    (harbor, type) => harbor.HarborKey.HarborType = type);
-                    
+                   harbor => harbor.HarborKey.HarborType,
+                   (harbor, type) => harbor.HarborKey.HarborType = type);
                 // Correct the placement of the number 7 on desert tiles
                 EnsureDesertSeven(game);
             } while (!ValidateGame(game));

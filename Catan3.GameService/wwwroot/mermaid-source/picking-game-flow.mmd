@@ -1,0 +1,70 @@
+graph TD
+    subgraph "Client (Browser)"
+        C1[Load Companion Interface]
+        C2[Request Available Games]
+        C3[Display Game List]
+        C4[User Selects Game]
+        C5[Initialize SignalR Connection]
+        C6[Join Game via SignalR]
+        C7[Receive Current Game State]
+    end
+    
+    subgraph "API Gateway"
+        AG1["companion endpoint"]
+        AG2["api/companion/games"]
+        AG3["gameHub SignalR"]
+    end
+    
+    subgraph "GameService"
+        GS1[Serve companion.html]
+        GS2[GameApiController.GetAvailableGames]
+        GS3[GameStateMachineService.GetAvailableGames]
+        GS4[GameHub.JoinGame]
+        GS5[SignalRNotificationService]
+        GS6[Add to Game Group]
+        GS7[Send Current State]
+    end
+    
+    subgraph "Data Storage"
+        DS1[In-Memory Game States]
+        DS2[Active Game Sessions]
+    end
+    
+    C1 --> AG1
+    AG1 --> GS1
+    GS1 --> C1
+    
+    C2 --> AG2
+    AG2 --> GS2
+    GS2 --> GS3
+    GS3 --> DS2
+    DS2 --> GS3
+    GS3 --> GS2
+    GS2 --> AG2
+    AG2 --> C3
+    
+    C4 --> C5
+    C5 --> AG3
+    AG3 --> GS4
+    GS4 --> GS6
+    GS6 --> GS5
+    GS5 --> DS1
+    DS1 --> GS7
+    GS7 --> C7
+
+    style C1 fill:#e1f5fe
+    style C2 fill:#e1f5fe
+    style C3 fill:#e1f5fe
+    style C4 fill:#e1f5fe
+    style C5 fill:#e1f5fe
+    style C6 fill:#e1f5fe
+    style C7 fill:#e1f5fe
+    style GS1 fill:#f3e5f5
+    style GS2 fill:#f3e5f5
+    style GS3 fill:#f3e5f5
+    style GS4 fill:#f3e5f5
+    style GS5 fill:#f3e5f5
+    style GS6 fill:#f3e5f5
+    style GS7 fill:#f3e5f5
+    style DS1 fill:#fff3e0
+    style DS2 fill:#fff3e0

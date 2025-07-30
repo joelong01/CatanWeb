@@ -1,0 +1,38 @@
+sequenceDiagram
+    participant C as Client Browser
+    participant SH as SignalR Hub
+    participant GS as GameStateMachineService
+    participant SN as SignalRNotificationService
+    participant GM as GameModel Storage
+    participant OC as Other Clients
+
+    Note over C,OC: Player Joining Game Flow
+    
+    C->>+SH: JoinGame(gameId, playerId)
+    Note right of C: Establish WebSocket connection
+    
+    SH->>+GS: GetCurrentGameState(gameId)
+    GS->>+GM: Retrieve game state
+    GM-->>-GS: Return GameModel
+    GS-->>-SH: Return current state
+    
+    SH->>SH: Groups.AddToGroupAsync(connectionId, gameId)
+    Note right of SH: Add client to game group
+    
+    SH->>+C: SendAsync("GameStateUpdated", gameModel)
+    Note right of SH: Send current state to new client
+    
+    SH->>+OC: SendAsync("PlayerPresenceChanged", playerId, true)
+    Note right of SH: Notify other players
+    
+    SH-->>-C: JoinGame complete
+    
+    Note over C,OC: Client Now Ready for Real-time Updates
+    
+    rect rgb(240, 248, 255)
+        Note over C,OC: Ongoing: Real-time Game Updates
+        GM->>SN: Game state changes
+        SN->>SH: NotifyAsync(gameId, gameModel)
+        SH->>C: SendAsync("GameStateUpdated", gameModel)
+        SH->>OC: SendAsync("GameStateUpdated", gameModel)
+    end

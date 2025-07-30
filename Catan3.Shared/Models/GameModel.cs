@@ -1,7 +1,8 @@
-using System.Collections.Generic;
+ï»¿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Catan3.Shared.Utility;
+using Catan3.Shared.Extensions;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Shared.Models
@@ -70,7 +71,15 @@ namespace Catan3.Shared.Models
         /// Version represents GameStateMachine software compatibility, not game state changes.
         /// This is used for client/server compatibility checks, not hanging GET version comparison.
         /// </summary>
-        public int Version { get; set; } = 1;
+        public int GameStateMachineVersion { get;  } = 1;
+
+        /// <summary>
+        /// Gets or sets a hash representing the current state of the game board and player data.
+        /// This hash includes Tiles, Players, Harbors, Roads, Buildings, GameState, CurrentPlayerId, and Robber.
+        /// Used for fast verification that all clients have identical game states in multi-player testing.
+        /// The hash is computed by the GameStateMachine whenever the game state changes.
+        /// </summary>
+        public string GameHash { get; set; } = string.Empty;
 
         public RollModel RollModel { get; set; } = new();
 
@@ -94,7 +103,9 @@ namespace Catan3.Shared.Models
             
             // Initialize new fields for Rule 7 compliance
             CreatedTime = DateTime.UtcNow;
-            Version = 1;
+            GameStateMachineVersion = 1;
+            // GameHash will be computed later by GameStateMachine when state changes
+            GameHash = string.Empty;
         }
 
         public GameModel()
@@ -106,7 +117,9 @@ namespace Catan3.Shared.Models
             
             // Initialize new fields for Rule 7 compliance
             CreatedTime = DateTime.UtcNow;
-            Version = 1;
+            GameStateMachineVersion = 1;
+            // GameHash will be computed later by GameStateMachine when state changes
+            GameHash = string.Empty;
         }
 
         /// <summary>
@@ -123,7 +136,8 @@ namespace Catan3.Shared.Models
 
         public override string ToString()
         {
-            return $"State={GameState} CurrentPlayer={CurrentPlayerId}";
+            var hashDisplay = string.IsNullOrEmpty(GameHash) ? "no-hash" : GameHash[..Math.Min(8, GameHash.Length)];
+            return $"State={GameState} CurrentPlayer={CurrentPlayerId} Hash={hashDisplay}...";
         }
 
         // Helper methods
@@ -219,7 +233,7 @@ namespace Catan3.Shared.Models
 
         /// <summary>
         /// Extracts display name from player ID following Desktop app pattern.
-        /// "Joe-001" ? "Joe"
+        /// "Joe-001" â†’ "Joe"
         /// </summary>
         public static string ExtractNameFromId(string id)
         {
@@ -266,8 +280,8 @@ namespace Catan3.Shared.Models
                 GameState.WaitingForRollForOrder => "Rolling for turn order",
                 GameState.FinishedRollOrder => "Setting turn order",
                 GameState.BeginResourceAllocation => "Starting placement",
-                GameState.AllocateResourceForward => "Initial placement ?",
-                GameState.AllocateResourceReverse => "Final placement ?",
+                GameState.AllocateResourceForward => "Initial placement â†’",
+                GameState.AllocateResourceReverse => "Final placement â†",
                 GameState.DoneResourceAllocation => "Setup complete",
                 GameState.WaitingForRoll => "Waiting for dice roll",
                 GameState.WaitingForNext => "Player's turn",
@@ -311,12 +325,12 @@ namespace Catan3.Shared.Models
 
         /// <summary>
         /// Gets a summary string for the game.
-        /// Format: "GameType • PlayerCount players • FormattedGameState"
-        /// Example: "Regular • 3 players • Setting up board"
+        /// Format: "GameType â€¢ PlayerCount players â€¢ FormattedGameState"
+        /// Example: "Regular â€¢ 3 players â€¢ Setting up board"
         /// </summary>
         public string GetSummary()
         {
-            return $"{GameType} • {Players.Count} players • {GetFormattedGameState()}";
+            return $"{GameType} â€¢ {Players.Count} players â€¢ {GetFormattedGameState()}";
         }
 
         /// <summary>

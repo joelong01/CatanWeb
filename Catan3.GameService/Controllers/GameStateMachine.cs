@@ -719,7 +719,7 @@ namespace Catan3.GameService.Controllers
             
             // Version is a constant software version (1), representing GameStateMachine compatibility
             // Version is STATIC for the lifetime of the GameStateMachine, not incremented per state change
-            gameModel.Version = 1;
+            // Note: GameModel.Version property is now read-only GameStateMachineVersion
             
             UpdateScore(gameModel);
             MarkBuildableRoads(gameModel);
@@ -728,6 +728,10 @@ namespace Catan3.GameService.Controllers
             // SetActionFlags now properly handles RedoEnabled based on Log.CanRedo - don't override it
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
+            
+            // Update GameHash after all game state modifications are complete
+            gameModel.UpdateGameHash();
+            
             Log.Done(gameModel);
 
             // Notify clients of state change asynchronously
@@ -1361,14 +1365,13 @@ namespace Catan3.GameService.Controllers
                         //                           \
                         //  if we ever get this or the equivalent:
                         //
-                        //                           /
-                        //                          /    <=== fork1
-                        //                         /
-                        //                  ------     <=== always counted
-                        //                /        \
-                        //   Fork 3 -->  /          \   <=== Fork 2
-                        //              /            \
-                        //
+                        //                           /             /
+                        //                          /             /    <=== fork1
+                        //                         /             /
+                        //                  ------              ------     <=== always counted
+                        //                /        \            /        \
+                        //   Fork 3 -->  /          \   <=== Fork 2          \
+                        //              /            \                    /
                         //  e.g the adjacent count is > 2 then the road with all the forks around it (the horizontal in ascii art) doesn't have to be counted because we'll count all the
                         //  roads coming into that fork
                         List<RoadModel> forks = [.. ownedAdjacentNotCounted];
@@ -1404,7 +1407,7 @@ namespace Catan3.GameService.Controllers
             gameModel.CreatedTime = gameModel.CreatedTime == default ? DateTime.UtcNow : gameModel.CreatedTime;
             
             // Version is a constant software version (1), representing GameStateMachine compatibility
-            gameModel.Version = 1;
+            // Note: GameModel.Version property is now read-only GameStateMachineVersion
             
             UpdateScore(gameModel);
             MarkBuildableRoads(gameModel);
@@ -1412,6 +1415,9 @@ namespace Catan3.GameService.Controllers
             SetActionFlags(gameModel);  // This will properly set UndoEnabled and RedoEnabled
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
+            
+            // Update GameHash after all game state modifications are complete
+            gameModel.UpdateGameHash();
             
             // NOTE: We do NOT call Log.Done(gameModel) here because Undo/Redo navigate existing history
 

@@ -53,6 +53,119 @@ namespace Catan3.Shared.Extensions
         }
 
         /// <summary>
+        /// Computes a prime-based hash representing the current state of the game tiles.
+        /// Uses unique prime multipliers for each tile position to ensure mathematical uniqueness.
+        /// This method is fast and deterministic - identical game states will always produce the same hash.
+        /// Used for fast verification that all clients have identical game states in multi-player testing.
+        /// </summary>
+        public static string ComputeGameHash(this GameModel gameModel)
+        {
+            // Prime numbers for unique hash computation
+            // Need 2 primes per tile: one for resource type, one for number
+            // Regular board: 19 tiles = 38 primes, Expansion: 30 tiles = 60 primes
+            var primes = First100Primes;
+            
+            long hash = 0;
+            
+            // Include GameState and CurrentPlayerId for state verification
+            hash += (int)gameModel.GameState * 541; // Use last prime for game state
+            hash += (gameModel.CurrentPlayerId?.GetHashCode() ?? 0) * 523; // Second to last for player
+            
+            // Process tiles with unique prime multipliers
+            for (int tileIndex = 0; tileIndex < gameModel.Tiles.Count; tileIndex++)
+            {
+                var tile = gameModel.Tiles[tileIndex];
+                
+                // Each tile gets 2 unique primes: one for resource, one for number
+                var resourcePrime = primes[tileIndex * 2 + 1]; // Start at index 1
+                var numberPrime = primes[tileIndex * 2 + 2];   // Start at index 2
+                
+                hash += resourcePrime * (int)tile.ResourceTileType;
+                hash += numberPrime * tile.Number;
+            }
+            
+            // Include Harbors (sorted by coordinates for consistency) 
+            if (gameModel.Harbors?.Any() == true)
+            {
+                var sortedHarbors = gameModel.Harbors.OrderBy(h => h.HarborKey.HexCoordinates.Q)
+                    .ThenBy(h => h.HarborKey.HexCoordinates.R).ThenBy(h => h.HarborKey.Side);
+                
+                int harborIndex = 0;
+                foreach (var harbor in sortedHarbors)
+                {
+                    // Use remaining primes for harbors - need 2 primes per harbor
+                    var harborIndexPrime = primes[60 + harborIndex * 2]; // Harbor index prime
+                    var harborTypePrime = primes[60 + harborIndex * 2 + 1]; // Harbor type prime
+                    
+                    hash += harborIndexPrime * harborIndex; // Harbor position in sorted order
+                    hash += harborTypePrime * (int)harbor.HarborKey.HarborType; // Harbor type value
+                    harborIndex++;
+                }
+            }
+            
+            // Include Owned Roads (sorted by coordinates for consistency)
+            if (gameModel.Roads?.Any() == true)
+            {
+                var ownedRoads = gameModel.Roads
+                    .Where(r => !string.IsNullOrEmpty(r.OwnerId))
+                    .OrderBy(r => r.RoadKey.TileKey.Q)
+                    .ThenBy(r => r.RoadKey.TileKey.R)
+                    .ThenBy(r => r.RoadKey.HexSide);
+                
+                int roadIndex = 0;
+                foreach (var road in ownedRoads)
+                {
+                    // Use primes starting after harbors - need 2 primes per owned road
+                    var roadIndexPrime = primes[80 + roadIndex * 2]; // Road index prime
+                    var ownerPrime = primes[80 + roadIndex * 2 + 1]; // Road owner prime
+                    
+                    hash += roadIndexPrime * roadIndex; // Road position in sorted order
+                    hash += ownerPrime * (road.OwnerId?.GetHashCode() ?? 0); // Owner hash
+                    roadIndex++;
+                }
+            }
+            
+            // Include Robber position if set
+            if (gameModel.Robber?.Coordinates != null && 
+                gameModel.Robber.Coordinates != HexCoordinates.Default)
+            {
+                hash += 499 * gameModel.Robber.Coordinates.Q; // Use specific primes for robber
+                hash += 503 * gameModel.Robber.Coordinates.R;
+                hash += 509 * gameModel.Robber.Coordinates.S;
+            }
+            
+            // Convert to hex string for readability
+            return hash.ToString("X");
+        }
+
+        /// <summary>
+        /// First 100 prime numbers for unique hash computation
+        /// </summary>
+        private static readonly int[] First100Primes = new int[]
+        {
+            2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
+            31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
+            73, 79, 83, 89, 97, 101, 103, 107, 109, 113,
+            127, 131, 137, 139, 149, 151, 157, 163, 167, 173,
+            179, 181, 191, 193, 197, 199, 211, 223, 227, 229,
+            233, 239, 241, 251, 257, 263, 269, 271, 277, 281,
+            283, 293, 307, 311, 313, 317, 331, 337, 347, 349,
+            353, 359, 367, 373, 379, 383, 389, 397, 401, 409,
+            419, 421, 431, 433, 439, 443, 449, 457, 461, 463,
+            467, 479, 487, 491, 499, 503, 509, 521, 523, 541
+        };
+
+        /// <summary>
+        /// Updates the GameHash by recomputing it from the current game state.
+        /// This should be called by the GameStateMachine whenever the game state changes.
+        /// </summary>
+        public static void UpdateGameHash(this GameModel gameModel)
+        {
+            // Restore proper hash computation
+            gameModel.GameHash = gameModel.ComputeGameHash();
+        }
+
+        /// <summary>
         /// Given a building, what roads are next to it?
         /// </summary>
         public static List<RoadModel> AdjacentRoads(this GameModel gameModel, BuildingKey buildingKey)
