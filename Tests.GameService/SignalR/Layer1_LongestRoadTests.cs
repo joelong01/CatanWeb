@@ -352,7 +352,7 @@ namespace Tests.GameService.SignalR
             var roadKey = new RoadKey(new HexCoordinates(0, 0, 0), HexSide.Top);
             var roadMessage = new RoadPurchaseMessage(roadKey);
             Assert.NotNull(roadMessage);
-            Assert.Equal(HexSide.Top, roadMessage.RoadKey.Side);
+            Assert.Equal(HexSide.Top, roadMessage.RoadKey.HexSide);
 
             LogEvent("MVVMTest", "? RoadPurchaseMessage and RoadKey MVVM objects verified");
 
