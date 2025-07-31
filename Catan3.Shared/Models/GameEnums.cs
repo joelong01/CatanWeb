@@ -158,11 +158,17 @@ namespace Catan3.Shared.Models
 
     public enum ErrorLevel { Information, Protection, Critical }
     public enum LocalPersistActions { Save, SaveAs, Open}
-    
+
     // Hex positioning enums
     public enum HexPosition
     {
-        Top, TopRight, BottomRight, Bottom, BottomLeft, TopLeft, Right, Left, Center, None
+        Right = 0,
+        BottomRight = 1,
+        BottomLeft = 2,
+        Left = 3,
+        TopLeft = 4,
+        TopRight = 5,
+        None = -1,
     }
 
     public enum HexSide

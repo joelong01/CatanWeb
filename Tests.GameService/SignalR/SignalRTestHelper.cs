@@ -249,6 +249,62 @@ namespace Tests.GameService.SignalR
         }
 
         /// <summary>
+        /// Executes a Building Upgrade command with automatic logging and completion tracking
+        /// </summary>
+        public async Task<GameModel?> ExecuteBuildingUpgradeAsync(string gameId, BuildingKey buildingKey, TimeSpan? timeout = null)
+        {
+            timeout ??= TimeSpan.FromSeconds(10);
+            var startTime = DateTime.UtcNow;
+
+            LogEvent("ExecuteBuildingUpgrade", $"{_playerId} placing building at {buildingKey} in game {gameId}");
+
+            try
+            {
+                var message = new BuildingUpgradeMessage(buildingKey);
+                await _connection.InvokeAsync("ExecuteBuildingUpgrade", gameId, _playerId, message);
+
+                // Wait for game state update (simplified - in production you'd track command completion)
+                await Task.Delay(100); // Brief delay to allow for state update
+                
+                LogEvent("ExecuteBuildingUpgrade", $"? {_playerId} Building Upgrade completed");
+                return LastGameState;
+            }
+            catch (Exception ex)
+            {
+                LogEvent("ExecuteBuildingUpgrade", $"? {_playerId} Building Upgrade failed: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Executes a Road Purchase command with automatic logging and completion tracking
+        /// </summary>
+        public async Task<GameModel?> ExecuteRoadPurchaseAsync(string gameId, RoadKey roadKey, TimeSpan? timeout = null)
+        {
+            timeout ??= TimeSpan.FromSeconds(10);
+            var startTime = DateTime.UtcNow;
+
+            LogEvent("ExecuteRoadPurchase", $"{_playerId} placing road at {roadKey} in game {gameId}");
+
+            try
+            {
+                var message = new RoadPurchaseMessage(roadKey);
+                await _connection.InvokeAsync("ExecuteRoadPurchase", gameId, _playerId, message);
+
+                // Wait for game state update (simplified - in production you'd track command completion)
+                await Task.Delay(100); // Brief delay to allow for state update
+                
+                LogEvent("ExecuteRoadPurchase", $"? {_playerId} Road Purchase completed");
+                return LastGameState;
+            }
+            catch (Exception ex)
+            {
+                LogEvent("ExecuteRoadPurchase", $"? {_playerId} Road Purchase failed: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
         /// Waits for a specific game state to be reached
         /// </summary>
         public async Task<GameModel> WaitForGameStateAsync(GameState expectedState, TimeSpan? timeout = null)
@@ -611,8 +667,13 @@ namespace Tests.GameService.SignalR
             GameState targetState = GameState.PickingBoard,
             string playerId = "Alice")
         {
-            // Use the proper StateProgression.AdvanceToState method which handles ALL states consistently
-            return await StateProgression.AdvanceToState(factory, targetState, new[] { playerId, "Bob", "Charlie" });
+            // Use StateProgression to advance to target state with realistic multi-client approach
+            await using var session = await StateProgression.AdvanceToStateWithAllPlayers(
+                factory, targetState, GameType.Regular, LogLevel.Silent);
+            
+            // Return the connection for the specified player
+            var client = session.GetClient(playerId);
+            return (session.GameId, client.Connection);
         }
 
         /// <summary>

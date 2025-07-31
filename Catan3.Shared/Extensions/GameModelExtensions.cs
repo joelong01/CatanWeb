@@ -125,9 +125,9 @@ namespace Catan3.Shared.Extensions
                 }
             }
             
-            // Include Robber position if set
-            if (gameModel.Robber?.Coordinates != null && 
-                gameModel.Robber.Coordinates != HexCoordinates.Default)
+            // Include Robber position if set - fixed nullable reference warning
+            if (gameModel.Robber?.Coordinates is not null && 
+                !gameModel.Robber.Coordinates.Equals(HexCoordinates.Default))
             {
                 hash += 499 * gameModel.Robber.Coordinates.Q; // Use specific primes for robber
                 hash += 503 * gameModel.Robber.Coordinates.R;

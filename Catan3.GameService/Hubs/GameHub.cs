@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 using Catan3.GameService.Services;
 using System.Text.Json;
 
@@ -121,7 +122,8 @@ namespace Catan3.GameService.Hubs
             {
                 _logger.LogError(ex, "Failed to execute DoAction {Action} for {PlayerId} in {GameId}", 
                     message.Action, playerId, gameId);
-                await Clients.Caller.SendAsync("CommandFailed", commandId, ex.Message);
+                var errorInfo = CreateDetailedErrorInfo(ex, "DoAction", $"{message.Action}");
+                await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }
 
@@ -154,7 +156,8 @@ namespace Catan3.GameService.Hubs
             {
                 _logger.LogError(ex, "Failed to execute Purchase {Entitlement} for {PlayerId} in {GameId}", 
                     message.Entitlement, playerId, gameId);
-                await Clients.Caller.SendAsync("CommandFailed", commandId, ex.Message);
+                var errorInfo = CreateDetailedErrorInfo(ex, "Purchase", $"{message.Entitlement}");
+                await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }
 
@@ -186,7 +189,8 @@ namespace Catan3.GameService.Hubs
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to execute Road Purchase for {PlayerId} in {GameId}", playerId, gameId);
-                await Clients.Caller.SendAsync("CommandFailed", commandId, ex.Message);
+                var errorInfo = CreateDetailedErrorInfo(ex, "RoadPurchase", $"{message.RoadKey}");
+                await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }
 
@@ -201,24 +205,40 @@ namespace Catan3.GameService.Hubs
             var commandId = Guid.NewGuid().ToString();
             try 
             {
-                _logger.LogInformation("SignalR Building Upgrade: {BuildingKey} for {PlayerId} in {GameId}", 
+                _logger.LogInformation("?? [DEBUG] SignalR Building Upgrade START: {BuildingKey} for {PlayerId} in {GameId}", 
                     message.BuildingKey, playerId, gameId);
                 
-                // Process synchronously for real-time response
-                var updatedGameModel = _gameService.ExecuteAction(gameId, gsm => gsm.HandleBuildingUpgrade(message));
+                _logger.LogInformation("?? [DEBUG] About to call _gameService.ExecuteAction...");
+                
+                // Process synchronously for real-time response (same pattern as working GameApiController)
+                var updatedGameModel = _gameService.ExecuteAction(gameId, gsm => {
+                    _logger.LogInformation("?? [DEBUG] Inside ExecuteAction lambda, about to call HandleBuildingUpgrade...");
+                    var result = gsm.HandleBuildingUpgrade(message);
+                    _logger.LogInformation("?? [DEBUG] HandleBuildingUpgrade completed successfully");
+                    return result;
+                });
+                
+                _logger.LogInformation("?? [DEBUG] ExecuteAction completed, about to notify clients...");
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 
+                _logger.LogInformation("?? [DEBUG] Clients notified, about to send CommandCompleted...");
+                
                 // Notify command completion to original client
                 await Clients.Caller.SendAsync("CommandCompleted", commandId, true, "Building placed successfully");
                 
-                _logger.LogDebug("Building upgrade completed successfully for game {GameId}", gameId);
+                _logger.LogInformation("?? [DEBUG] SignalR Building Upgrade COMPLETED successfully for game {GameId}", gameId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to execute Building Upgrade for {PlayerId} in {GameId}", playerId, gameId);
-                await Clients.Caller.SendAsync("CommandFailed", commandId, ex.Message);
+                _logger.LogError(ex, "?? [DEBUG] SignalR Building Upgrade FAILED for {PlayerId} in {GameId}: {Message}", 
+                    playerId, gameId, ex.Message);
+                _logger.LogError("?? [DEBUG] Exception Type: {ExceptionType}", ex.GetType().Name);
+                _logger.LogError("?? [DEBUG] Stack Trace: {StackTrace}", ex.StackTrace);
+                
+                var errorInfo = CreateDetailedErrorInfo(ex, "BuildingUpgrade", $"{message.BuildingKey}");
+                await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }
 
@@ -250,7 +270,8 @@ namespace Catan3.GameService.Hubs
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to execute Move Robber for {PlayerId} in {GameId}", playerId, gameId);
-                await Clients.Caller.SendAsync("CommandFailed", commandId, ex.Message);
+                var errorInfo = CreateDetailedErrorInfo(ex, "MoveRobber", $"{message.Coordinates}");
+                await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }
 
@@ -282,7 +303,8 @@ namespace Catan3.GameService.Hubs
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to execute Roll for {PlayerId} in {GameId}", playerId, gameId);
-                await Clients.Caller.SendAsync("CommandFailed", commandId, ex.Message);
+                var errorInfo = CreateDetailedErrorInfo(ex, "Roll", $"{message.Roll.NormalRoll}");
+                await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }
 
@@ -313,7 +335,8 @@ namespace Catan3.GameService.Hubs
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to execute Set Player Order for {PlayerId} in {GameId}", playerId, gameId);
-                await Clients.Caller.SendAsync("CommandFailed", commandId, ex.Message);
+                var errorInfo = CreateDetailedErrorInfo(ex, "SetPlayerOrder", "");
+                await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }
 
@@ -344,7 +367,8 @@ namespace Catan3.GameService.Hubs
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to execute Players Doing Supplemental for {PlayerId} in {GameId}", playerId, gameId);
-                await Clients.Caller.SendAsync("CommandFailed", commandId, ex.Message);
+                var errorInfo = CreateDetailedErrorInfo(ex, "PlayersDoingSupplemental", "");
+                await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }
 
@@ -375,7 +399,8 @@ namespace Catan3.GameService.Hubs
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to execute Balance Board for {PlayerId} in {GameId}", playerId, gameId);
-                await Clients.Caller.SendAsync("CommandFailed", commandId, ex.Message);
+                var errorInfo = CreateDetailedErrorInfo(ex, "BalanceBoard", "");
+                await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }
 
@@ -407,7 +432,8 @@ namespace Catan3.GameService.Hubs
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to execute Go First for {PlayerId} in {GameId}", playerId, gameId);
-                await Clients.Caller.SendAsync("CommandFailed", commandId, ex.Message);
+                var errorInfo = CreateDetailedErrorInfo(ex, "GoFirst", $"{message.PlayerId}");
+                await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }
 
@@ -425,6 +451,40 @@ namespace Catan3.GameService.Hubs
         {
             await Clients.Group(gameId).SendAsync(messageType, data);
             _logger.LogDebug("Broadcasted {MessageType} to all clients in game {GameId}", messageType, gameId);
+        }
+
+        /// <summary>
+        /// Creates detailed error information from exceptions for better client-side debugging
+        /// </summary>
+        /// <param name="ex">The exception that occurred</param>
+        /// <param name="operation">The operation that failed</param>
+        /// <param name="context">Additional context about the operation</param>
+        /// <returns>A detailed error object with debugging information</returns>
+        private object CreateDetailedErrorInfo(Exception ex, string operation, string context)
+        {
+            var errorInfo = new
+            {
+                message = ex.Message,
+                operation = operation,
+                context = context,
+                exceptionType = ex.GetType().Name,
+                timestamp = DateTime.UtcNow.ToString("O"),
+                // Include GameException-specific information if available
+                errorLevel = (ex is GameException gameEx) ? gameEx.ErrorLevel.ToString() : "Unknown",
+                // Include inner exception if present
+                innerException = ex.InnerException?.Message,
+                innerExceptionType = ex.InnerException?.GetType().Name,
+                // Include stack trace only in development for security
+                #if DEBUG
+                stackTrace = ex.StackTrace,
+                #endif
+            };
+
+            // Log the detailed error for server-side debugging
+            _logger.LogError(ex, "Detailed error for {Operation} with context {Context}: {ErrorInfo}", 
+                operation, context, JsonSerializer.Serialize(errorInfo));
+
+            return errorInfo;
         }
 
         #endregion

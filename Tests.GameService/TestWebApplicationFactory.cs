@@ -23,10 +23,7 @@ namespace Tests.GameService
                 {
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        // Test-specific timeouts
-                        ["GameApi:HangingGetTimeoutSeconds"] = "5",
-                        
-                        // Comprehensive logging suppression
+                        // Comprehensive logging suppression for clean test output
                         ["Logging:LogLevel:Default"] = "Error",
                         ["Logging:LogLevel:Microsoft"] = "Error",
                         ["Logging:LogLevel:Microsoft.AspNetCore"] = "Error",

@@ -46,30 +46,6 @@ namespace Tests.GameService.SignalR
         }
 
         /// <summary>
-        /// Legacy single-client method for backward compatibility
-        /// </summary>
-        public static async Task<(string gameId, HubConnection connection)> AdvanceToState(
-            WebApplicationFactory<Program> factory,
-            GameState targetState,
-            string[] playerIds = null!)
-        {
-            playerIds ??= new[] { "Alice", "Bob", "Charlie" }; // Fixed to use 3 players
-
-            if (targetState == GameState.PickingBoard)
-            {
-                // Create a new game (starts in PickingBoard)
-                var (gameId, client) = await SignalRTestHelper.CreateGameWithClientAsync(factory, playerIds[0]);
-                return (gameId, client.Connection);
-            }
-
-            Log("⚠️ Warning: Using legacy single-client StateProgression. Consider AdvanceToStateWithAllPlayers for better testing.", LogLevel.Summary);
-            
-            // Use the enhanced multi-client version but return only the first connection
-            var session = await AdvanceToStateWithAllPlayers(factory, targetState, GameType.Regular, LogLevel.Silent);
-            return (session.GameId, session.GetClient("Alice").Connection);
-        }
-
-        /// <summary>
         /// Internal method that implements the enhanced multi-client state progression
         /// </summary>
         private static async Task<MultiPlayerTestSession> AdvanceToStateInternal(

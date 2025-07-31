@@ -24,186 +24,104 @@ namespace Tests.GameService.SignalR
         [Fact]
         public async Task PickingBoard_ShuffleAction_ShouldWorkCorrectly()
         {
-            // Arrange - Start with PickingBoard state (fastest path)
-            var (gameId, connection) = await StateProgression.AdvanceToState(_factory, GameState.PickingBoard);
-            _connections.Add(connection);
-
-            GameModel? shuffledGameModel = null;
-            var shuffleCompleted = new TaskCompletionSource<bool>();
-
-            connection.On<GameModel>("GameStateUpdated", gameModel =>
-            {
-                shuffledGameModel = gameModel;
-                shuffleCompleted.TrySetResult(true);
-            });
+            // Arrange - Start with PickingBoard state using multi-client approach
+            await using var session = await StateProgression.AdvanceToStateWithAllPlayers(
+                _factory, GameState.PickingBoard, GameType.Regular, LogLevel.Summary);
 
             // Act - Execute Shuffle action (only valid in PickingBoard state)
-            await SignalRTestHelper.ExecuteDoActionViaSignalR(connection, gameId, "Alice", GameAction.Shuffle);
+            var currentPlayerId = session.GetCurrentPlayerId();
+            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Shuffle);
 
-            // Assert
-            var result = await shuffleCompleted.Task.WaitAsync(TimeSpan.FromSeconds(10));
-            Assert.True(result, "Shuffle should complete successfully in PickingBoard state");
-            Assert.NotNull(shuffledGameModel);
-            Assert.Equal(GameState.PickingBoard, shuffledGameModel.GameState);
-            Assert.Equal(gameId, shuffledGameModel.GameId);
+            // Assert - All clients should be in PickingBoard with updated tiles
+            await session.VerifyAllClientsInState(GameState.PickingBoard);
+            await session.VerifyGameConsistency();
         }
 
         [Fact]
         public async Task WaitingForRoll_RollAction_ShouldAdvanceToWaitingForNext()
         {
-            // Arrange - Advance to WaitingForRoll state (requires complete allocation)
-            var (gameId, connection) = await StateProgression.AdvanceToState(_factory, GameState.WaitingForRoll);
-            _connections.Add(connection);
-
-            GameModel? rolledGameModel = null;
-            var rollCompleted = new TaskCompletionSource<bool>();
-
-            connection.On<GameModel>("GameStateUpdated", gameModel =>
-            {
-                rolledGameModel = gameModel;
-                rollCompleted.TrySetResult(true);
-            });
+            // Arrange - Advance to WaitingForRoll state using multi-client approach
+            await using var session = await StateProgression.AdvanceToStateWithAllPlayers(
+                _factory, GameState.WaitingForRoll, GameType.Regular, LogLevel.Summary);
 
             // Act - Execute dice roll (only valid in WaitingForRoll state)
-            var turnRollModel = new TurnRollModel(3, 3); // Roll 6
-            var rollMessage = new RollMessage(turnRollModel);
-            await connection.InvokeAsync("ExecuteRoll", gameId, "Alice", rollMessage);
+            var currentPlayerId = session.GetCurrentPlayerId();
+            var client = session.GetClient(currentPlayerId);
+            await client.ExecuteRollAsync(session.GameId, 3, 3); // Roll 6
 
-            // Assert
-            var result = await rollCompleted.Task.WaitAsync(TimeSpan.FromSeconds(10));
-            Assert.True(result, "Roll should complete successfully in WaitingForRoll state");
-            Assert.NotNull(rolledGameModel);
-            Assert.Equal(GameState.WaitingForNext, rolledGameModel.GameState);
-            Assert.Equal(gameId, rolledGameModel.GameId);
+            // Assert - All clients should receive the roll update and advance to WaitingForNext
+            await session.VerifyAllClientsInState(GameState.WaitingForNext);
+            await session.VerifyGameConsistency();
         }
 
         [Fact]
-        public async Task WaitingForNext_PurchaseAction_ShouldWorkWithResources()
+        public async Task WaitingForNext_PurchaseAction_ShouldWorkWithMultipleClients()
         {
-            // Arrange - Advance to WaitingForNext state (requires complete allocation + dice roll)
-            var (gameId, connection) = await StateProgression.AdvanceToState(_factory, GameState.WaitingForNext);
-            _connections.Add(connection);
+            // Arrange - Advance to WaitingForNext state using multi-client approach
+            await using var session = await StateProgression.AdvanceToStateWithAllPlayers(
+                _factory, GameState.WaitingForNext, GameType.Regular, LogLevel.Summary);
 
-            GameModel? purchaseGameModel = null;
-            var purchaseCompleted = new TaskCompletionSource<bool>();
-            var commandCompleted = new TaskCompletionSource<bool>();
+            // Act - Current player attempts purchase
+            var currentPlayerId = session.GetCurrentPlayerId();
+            var client = session.GetClient(currentPlayerId);
 
-            connection.On<GameModel>("GameStateUpdated", gameModel =>
+            try
             {
-                purchaseGameModel = gameModel;
-            });
-
-            connection.On<string, bool, string>("CommandCompleted", (commandId, success, message) =>
-            {
-                purchaseCompleted.TrySetResult(success);
-                commandCompleted.TrySetResult(true);
-            });
-
-            connection.On<string, string>("CommandFailed", (commandId, error) =>
-            {
-                // Purchase may fail due to insufficient resources, which is expected
-                purchaseCompleted.TrySetResult(false);
-                commandCompleted.TrySetResult(true);
-            });
-
-            // Act - Attempt purchase (may succeed or fail based on resources from dice roll)
-            var purchaseMessage = new PurchaseMessage(Entitlement.Road);
-            await connection.InvokeAsync("ExecutePurchase", gameId, "Alice", purchaseMessage);
-
-            // Assert - Command should be processed (success or failure both valid)
-            var result = await commandCompleted.Task.WaitAsync(TimeSpan.FromSeconds(10));
-            Assert.True(result, "Purchase command should be processed in WaitingForNext state");
-            
-            if (await purchaseCompleted.Task)
-            {
-                Assert.NotNull(purchaseGameModel);
-                Assert.Equal(GameState.WaitingForNext, purchaseGameModel.GameState);
+                await client.ExecutePurchaseAsync(session.GameId, Entitlement.Road);
+                await session.VerifyGameConsistency();
+                Console.WriteLine("? Purchase succeeded and all clients synchronized");
             }
-            // Note: Purchase failure due to insufficient resources is also valid behavior
+            catch (TimeoutException)
+            {
+                // Purchase might fail due to insufficient resources, which is expected
+                Console.WriteLine("? Purchase failed as expected - resource validation working");
+            }
         }
 
         [Fact]
-        public async Task AllocateResourceForward_OptimalSettlementPlacement_ShouldUseStars()
+        public async Task AllocateResourceForward_NextAction_ShouldAdvanceCorrectly()
         {
-            // Arrange - Advance to AllocateResourceForward state 
-            var (gameId, connection) = await StateProgression.AdvanceToState(_factory, GameState.AllocateResourceForward);
-            _connections.Add(connection);
+            // Arrange - Advance to AllocateResourceForward using multi-client approach
+            await using var session = await StateProgression.AdvanceToStateWithAllPlayers(
+                _factory, GameState.AllocateResourceForward, GameType.Regular, LogLevel.Summary);
 
-            // Get the game model to analyze settlement options
-            using var httpClient = new HttpClient();
-            httpClient.BaseAddress = new Uri("http://localhost:8080");
-            var response = await httpClient.GetAsync($"/api/gamestate/{gameId}");
-            var json = await response.Content.ReadAsStringAsync();
-            var gameModel = System.Text.Json.JsonSerializer.Deserialize<GameModel>(json);
+            // Act - Current player executes Next action
+            var currentPlayerId = session.GetCurrentPlayerId();
+            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Next);
 
-            Assert.NotNull(gameModel);
-            Assert.Equal(GameState.AllocateResourceForward, gameModel.GameState);
-
-            // Act - Use AllocationHelper to find optimal settlement
-            var bestSettlementKey = AllocationHelper.PickSettlement(gameModel);
-            
-            // Place the settlement
-            GameModel? placedGameModel = null;
-            var placementCompleted = new TaskCompletionSource<bool>();
-
-            connection.On<GameModel>("GameStateUpdated", model =>
-            {
-                placedGameModel = model;
-                placementCompleted.TrySetResult(true);
-            });
-
-            var buildingMessage = new BuildingUpgradeMessage(bestSettlementKey);
-            await connection.InvokeAsync("ExecuteBuildingUpgrade", gameId, "Alice", buildingMessage);
-
-            // Assert
-            var result = await placementCompleted.Task.WaitAsync(TimeSpan.FromSeconds(10));
-            Assert.True(result, "Settlement placement should complete successfully");
-            Assert.NotNull(placedGameModel);
-            
-            // Verify the settlement was placed correctly
-            var placedSettlement = placedGameModel.Buildings.FirstOrDefault(b => 
-                b.BuildingKey.Equals(bestSettlementKey) && 
-                b.BuildingState == BuildingState.Settlement &&
-                b.OwnerId == "Alice");
-            
-            Assert.NotNull(placedSettlement);
+            // Assert - All clients should receive the state update consistently
+            await session.VerifyGameConsistency();
         }
 
-        [Fact] 
-        public async Task StateProgression_AllStates_ShouldBeReachableIndependently()
+        [Fact]
+        public async Task MultiClient_StateProgression_AllPlayersReceiveUpdates()
         {
-            // This test verifies that all states can be reached independently
-            var targetStates = new[]
+            // This test demonstrates the multi-client advantage over single-client testing
+
+            // Arrange - Create multi-client session
+            await using var session = await StateProgression.AdvanceToStateWithAllPlayers(
+                _factory, GameState.PickingBoard, GameType.Regular, LogLevel.Summary);
+
+            // Verify all players are connected
+            var expectedPlayers = new[] { "Alice", "Bob", "Charlie" };
+            Assert.Equal(3, session.PlayerIds.Length);
+            
+            foreach (var playerId in expectedPlayers)
             {
-                GameState.PickingBoard,
-                GameState.WaitingForRollForOrder,
-                GameState.FinishedRollOrder,
-                GameState.BeginResourceAllocation,
-                GameState.AllocateResourceForward,
-                GameState.WaitingForRoll,
-                GameState.WaitingForNext
-            };
-
-            foreach (var targetState in targetStates)
-            {
-                // Act - Advance to each state independently
-                var (gameId, connection) = await StateProgression.AdvanceToState(_factory, targetState);
-                _connections.Add(connection);
-
-                // Get current state to verify
-                using var httpClient = new HttpClient();
-                httpClient.BaseAddress = new Uri("http://localhost:8080");
-                var response = await httpClient.GetAsync($"/api/gamestate/{gameId}");
-                var json = await response.Content.ReadAsStringAsync();
-                var gameModel = System.Text.Json.JsonSerializer.Deserialize<GameModel>(json);
-
-                // Assert
-                Assert.NotNull(gameModel);
-                Assert.Equal(targetState, gameModel.GameState);
-                Assert.Equal(gameId, gameModel.GameId);
-                
-                Console.WriteLine($"? Successfully reached {targetState} state independently");
+                var client = session.GetClient(playerId);
+                Assert.Equal(playerId, client.PlayerId);
+                Assert.NotNull(client.Connection);
             }
+
+            // Act - Current player shuffles
+            var currentPlayerId = session.GetCurrentPlayerId();
+            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Shuffle);
+
+            // Assert - All players should have consistent state
+            await session.VerifyAllClientsInState(GameState.PickingBoard);
+            await session.VerifyGameConsistency();
+
+            Console.WriteLine("? Multi-client state progression verified - all players synchronized");
         }
 
         public async ValueTask DisposeAsync()

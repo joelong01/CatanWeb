@@ -144,18 +144,32 @@ namespace Tests.GameService.SignalR
         }
 
         [Fact]
-        public async Task BackwardCompatibility_LegacyMethod_StillWorks()
+        public async Task MultiClientOnly_NoLegacyMethods_AllTestsUseRealisticScenarios()
         {
-            // Arrange & Act - Test that legacy single-client method still works
-            var (gameId, connection) = await StateProgression.AdvanceToState(
-                _factory, GameState.WaitingForRollForOrder);
+            // This test documents that we've eliminated single-client testing
+            // All tests now use realistic multi-player scenarios with SignalR
 
-            // Assert - Should work but with warning about using legacy method
-            Assert.NotEmpty(gameId);
-            Assert.NotNull(connection);
+            // Arrange & Act - All state progression now uses multi-client
+            await using var session = await StateProgression.AdvanceToStateWithAllPlayers(
+                _factory, GameState.WaitingForRollForOrder, GameType.Regular, LogLevel.Summary);
+
+            // Assert - Should have multiple players connected
+            Assert.True(session.PlayerIds.Length >= 3, "Should have at least 3 players for realistic testing");
             
-            // Clean up
-            await SignalRTestHelper.DisposeConnection(connection);
+            // Verify all players are connected via SignalR
+            foreach (var playerId in session.PlayerIds)
+            {
+                var client = session.GetClient(playerId);
+                Assert.NotNull(client.Connection);
+                Assert.Equal(Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Connected, client.Connection.State);
+            }
+
+            // Verify realistic multi-player testing works
+            var currentPlayerId = session.GetCurrentPlayerId();
+            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Next);
+            await session.VerifyGameConsistency();
+
+            Console.WriteLine($"? Multi-client testing confirmed: {session.PlayerIds.Length} players connected via SignalR");
         }
 
         [Fact]

@@ -41,22 +41,10 @@ builder.WebHost.ConfigureKestrel(options =>
     options.ListenAnyIP(8080); // Allows access from LAN
 });
 
-// Configure Game API options
+// Configure Game API options - simplified since we no longer use hanging GET
 builder.Services.Configure<GameApiOptions>(options =>
 {
-    // Default to 15 minutes for production
-    options.HangingGetTimeout = TimeSpan.FromMinutes(15);
-    
-    // Override with shorter timeout for testing if in Development environment
-    if (builder.Environment.IsDevelopment())
-    {
-        // You can also configure this via appsettings.json or environment variables
-        var testTimeoutSeconds = builder.Configuration.GetValue<int?>("GameApi:HangingGetTimeoutSeconds");
-        if (testTimeoutSeconds.HasValue)
-        {
-            options.HangingGetTimeout = TimeSpan.FromSeconds(testTimeoutSeconds.Value);
-        }
-    }
+    // No hanging GET timeout needed - SignalR handles all real-time updates
 });
 
 // Register persistence service for save/load functionality

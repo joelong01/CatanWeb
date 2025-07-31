@@ -314,4 +314,7 @@
 	<ItemGroup>
 	  <PRIResource Remove="Tests.GameService\**" />
 	</ItemGroup>
+	<ItemGroup>
+	  <None Include="Catan3.CLI\Catan3.CLI.csproj" />
+	</ItemGroup>
 </Project>

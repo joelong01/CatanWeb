@@ -99,6 +99,10 @@ namespace Catan3.GameService.Controllers
             }
         }
 
+        /// <summary>
+        /// Gets the current game state for a game ID
+        /// SignalR should be used for real-time updates instead of hanging GET
+        /// </summary>
         [HttpGet("gamestate/{gameId}")]
         public IActionResult GetGameState(string gameId)
         {
@@ -125,78 +129,6 @@ namespace Catan3.GameService.Controllers
             {
                 _logger.LogError(ex, "[{RequestId}] Error getting game state for gameId: {GameId}", requestId, gameId);
                 return StatusCode(500, $"Error getting game state: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// API for listening to game state updates via hanging GET
-        /// Allows clients to receive live updates for game state changes
-        /// </summary>
-        [HttpGet("gamestate/{gameId}/listen")]
-        public async Task<IActionResult> ListenForUpdates(string gameId, [FromQuery] string? playerId = null, [FromQuery] int version = 0)
-        {
-            var requestId = Guid.NewGuid().ToString("N")[..8];
-            _logger.LogInformation("[{RequestId}] GET /api/gamestate/{GameId}/listen - Listening for updates, PlayerId: {PlayerId}, Version: {Version}", 
-                requestId, gameId, playerId ?? "null", version);
-            
-            try
-            {
-                // Check if game exists first
-                var currentGame = _gameStateMachineService.GetCurrentGameState(gameId);
-                if (currentGame == null)
-                {
-                    _logger.LogWarning("[{RequestId}] Game not found: {GameId}", requestId, gameId);
-                    return NotFound($"Game {gameId} not found");
-                }
-
-                // Get the ClientNotificationService from DI
-                var clientNotificationService = HttpContext.RequestServices.GetRequiredService<IClientNotification>();
-                
-                // Set the current game state so clients can get immediate current state
-                clientNotificationService.SetCurrentGameState(gameId, currentGame);
-
-                // Use the ClientNotificationService to wait for updates
-                var clientId = $"{playerId ?? "anonymous"}_{requestId}";
-                var cancellationTokenSource = new CancellationTokenSource(_options.HangingGetTimeout);
-                
-                _logger.LogDebug("[{RequestId}] Starting hanging GET with timeout: {Timeout}ms, ClientId: {ClientId}, ClientVersion: {ClientVersion}", 
-                    requestId, _options.HangingGetTimeout.TotalMilliseconds, clientId, version);
-
-                GameModel updatedGameModel;
-                try
-                {
-                    updatedGameModel = await clientNotificationService.WaitForNotificationAsync(
-                        gameId, 
-                        clientId, 
-                        version, 
-                        cancellationTokenSource.Token);
-                    
-                    _logger.LogInformation("[{RequestId}] Received live update - GameId: {GameId}", requestId, gameId);
-                }
-                catch (OperationCanceledException)
-                {
-                    _logger.LogDebug("[{RequestId}] Hanging GET timed out after {Timeout}ms", requestId, _options.HangingGetTimeout.TotalMilliseconds);
-                    
-                    // Timeout - return current state
-                    var timeoutGame = _gameStateMachineService.GetCurrentGameState(gameId);
-                    if (timeoutGame != null)
-                    {
-                        var result = CreateGameStateResponse(gameId, timeoutGame);
-                        _logger.LogInformation("[{RequestId}] Returned timeout response - GameId: {GameId}", requestId, gameId);
-                        return Ok(result);
-                    }
-                    return NotFound($"Game {gameId} not found");
-                }
-
-                // Return the updated game model
-                var response = CreateGameStateResponse(gameId, updatedGameModel);
-                _logger.LogInformation("[{RequestId}] Returned live update - GameId: {GameId}", requestId, gameId);
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[{RequestId}] Error listening for updates, GameId: {GameId}, PlayerId: {PlayerId}", requestId, gameId, playerId);
-                return StatusCode(500, $"Error listening for updates: {ex.Message}");
             }
         }
 
