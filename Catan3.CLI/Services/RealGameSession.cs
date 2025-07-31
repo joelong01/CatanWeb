@@ -43,7 +43,7 @@ public class RealGameSession : IAsyncDisposable
         GameId = await CreateGameViaRest();
         _logger.LogInformation("Game created with ID: {GameId}", GameId);
 
-        // Step 2: Connect all players via SignalR and wait for initial GameStateUpdated
+        // Step 2: Connect all players via SignalR - but don't wait for individual states
         var playerNames = _options.GetPlayerNames();
         var playerIds = _options.GetPlayerIds();
 
@@ -58,13 +58,8 @@ public class RealGameSession : IAsyncDisposable
             var hubUrl = _options.GetSignalRHubUrl();
             var proxy = new SignalRProxy(hubUrl, playerId, GameId);
             
-            // Connect to SignalR hub
+            // Connect to SignalR hub - this starts the continuous listening
             await proxy.ConnectAsync();
-            
-            // Wait for initial GameStateUpdated message (this is what was missing!)
-            _logger.LogDebug("Waiting for initial GameStateUpdated for {PlayerId}", playerId);
-            var initialGameState = await proxy.WaitForGameStateAsync(GameState.PickingBoard, TimeSpan.FromSeconds(10));
-            _logger.LogDebug("Player {PlayerId} received initial GameState: {GameState}", playerId, initialGameState.GameState);
             
             _proxies[playerId] = proxy;
             _logger.LogDebug("Player {PlayerId} connected successfully", playerId);
@@ -72,10 +67,47 @@ public class RealGameSession : IAsyncDisposable
 
         _logger.LogInformation("All {PlayerCount} players connected to game {GameId}", PlayerCount, GameId);
 
-        // Step 3: Verify initial game state
+        // Step 3: Wait for all proxies to receive their initial GameStateUpdated notification
+        // This implements the pattern you described - wait for all notification threads to signal completion
+        await WaitForAllProxiesToReceiveInitialUpdate();
+        
+        // Step 4: Verify initial game state consistency
         await VerifyGameConsistency();
         var currentState = GetCurrentState();
         _logger.LogInformation("Game initialized in state: {GameState}", currentState);
+    }
+
+    /// <summary>
+    /// Waits for all proxies to receive their initial GameStateUpdated notification
+    /// Implements the async notification pattern with Task.WaitAll equivalent
+    /// </summary>
+    private async Task WaitForAllProxiesToReceiveInitialUpdate()
+    {
+        var timeout = TimeSpan.FromSeconds(10);
+        var waitStart = DateTime.UtcNow;
+        
+        _logger.LogDebug("Waiting for all {ProxyCount} proxies to receive initial GameStateUpdated", _proxies.Count);
+
+        while (DateTime.UtcNow - waitStart < timeout)
+        {
+            // Check if all proxies have received a GameStateUpdated notification
+            var proxiesWithGameState = _proxies.Values
+                .Where(proxy => proxy.LastGameState != null)
+                .ToList();
+
+            _logger.LogDebug("Proxies with GameState: {Count}/{Total}", proxiesWithGameState.Count, _proxies.Count);
+
+            if (proxiesWithGameState.Count == _proxies.Count)
+            {
+                _logger.LogDebug("All proxies have received initial GameStateUpdated notification");
+                return;
+            }
+
+            // Brief delay before checking again
+            await Task.Delay(100);
+        }
+
+        throw new TimeoutException($"Timeout waiting for all proxies to receive initial GameStateUpdated after {timeout.TotalSeconds} seconds");
     }
 
     /// <summary>
@@ -170,7 +202,16 @@ public class RealGameSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// Executes a DoAction command using the current player
+    /// Gets the player IDs for this session
+    /// </summary>
+    public List<string> GetPlayerIds()
+    {
+        return _options.GetPlayerIds();
+    }
+
+    /// <summary>
+    /// Executes a DoAction command using the current player and waits for all proxies to receive updates
+    /// Implements the async notification pattern where action triggers GameModel updates to all clients
     /// </summary>
     public async Task ExecuteAction(GameAction action)
     {
@@ -179,6 +220,12 @@ public class RealGameSession : IAsyncDisposable
         
         _logger.LogDebug("Executing {Action} for player {PlayerId}", action, currentPlayerId);
         
+        // Capture the current GameHash from all proxies before the action
+        var preActionHashes = _proxies.Values
+            .Where(p => p.LastGameState != null)
+            .ToDictionary(p => p.PlayerId, p => p.LastGameState!.GameHash);
+        
+        // Execute the action
         var result = await proxy.ExecuteDoActionAsync(GameId, action);
         
         if (!result.Success)
@@ -186,10 +233,63 @@ public class RealGameSession : IAsyncDisposable
             throw new InvalidOperationException($"Action {action} failed: {result.Message}");
         }
         
-        // Verify all proxies received updates
-        await VerifyAllProxiesReceivedUpdate();
+        // Wait for all proxies to receive the updated GameModel
+        // This implements your described pattern: action triggers updates, wait for all notification threads
+        await WaitForAllProxiesToReceiveActionUpdate(preActionHashes, action);
         
-        _logger.LogDebug("Action {Action} completed successfully", action);
+        _logger.LogDebug("Action {Action} completed successfully with all proxies updated", action);
+    }
+
+    /// <summary>
+    /// Waits for all proxies to receive GameStateUpdated after an action
+    /// Implements the notification pattern: main thread waits while notification threads signal completion
+    /// </summary>
+    private async Task WaitForAllProxiesToReceiveActionUpdate(Dictionary<string, string> preActionHashes, GameAction action)
+    {
+        var timeout = TimeSpan.FromSeconds(10);
+        var waitStart = DateTime.UtcNow;
+        
+        _logger.LogDebug("Waiting for all proxies to receive GameStateUpdated after {Action}", action);
+
+        while (DateTime.UtcNow - waitStart < timeout)
+        {
+            // Check if all proxies have received updated GameModel (hash changed or action completed)
+            var proxiesWithUpdatedState = 0;
+            
+            foreach (var proxy in _proxies.Values)
+            {
+                if (proxy.LastGameState != null)
+                {
+                    // Check if this proxy's GameHash has changed from before the action
+                    if (preActionHashes.TryGetValue(proxy.PlayerId, out var preActionHash))
+                    {
+                        if (proxy.LastGameState.GameHash != preActionHash)
+                        {
+                            proxiesWithUpdatedState++;
+                        }
+                    }
+                    else
+                    {
+                        // Proxy didn't have a hash before, but has one now - counts as updated
+                        proxiesWithUpdatedState++;
+                    }
+                }
+            }
+
+            _logger.LogDebug("Proxies with updated state after {Action}: {Count}/{Total}", 
+                action, proxiesWithUpdatedState, _proxies.Count);
+
+            if (proxiesWithUpdatedState == _proxies.Count)
+            {
+                _logger.LogDebug("All proxies received updated GameModel after {Action}", action);
+                return;
+            }
+
+            // Brief delay before checking again - this allows notification threads to process
+            await Task.Delay(50);
+        }
+
+        throw new TimeoutException($"Timeout waiting for all proxies to receive GameStateUpdated after {action} - {timeout.TotalSeconds} seconds");
     }
 
     /// <summary>

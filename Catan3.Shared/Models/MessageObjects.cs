@@ -15,14 +15,14 @@ namespace Catan3.Shared.Models
         public Entitlement Entitlement { get; } = entitlement;
     }
 
-    public class RoadPurchaseMessage(RoadKey key)
+    public class RoadPurchaseMessage(RoadKey roadKey)
     {
-        public RoadKey RoadKey { get; } = key;
+        public RoadKey RoadKey { get; } = roadKey;
     }
 
-    public class BuildingUpgradeMessage(BuildingKey key)
+    public class BuildingUpgradeMessage(BuildingKey buildingKey)
     {
-        public BuildingKey BuildingKey { get; } = key;
+        public BuildingKey BuildingKey { get; } = buildingKey;
     }
 
     public class MoveRobberMessage(HexCoordinates coordinates, string? targetPlayerId)
@@ -36,9 +36,9 @@ namespace Catan3.Shared.Models
         public TurnRollModel Roll { get; } = roll;
     }
 
-    public class NewGameMessage(GameType selectedGame, IList<string> playerIds)
+    public class NewGameMessage(GameType gameType, IList<string> playerIds)
     {
-        public GameType GameType = selectedGame;
+        public GameType GameType = gameType;
         public IList<string> PlayerIds { get; set; } = playerIds;
     }
 
@@ -47,9 +47,9 @@ namespace Catan3.Shared.Models
         public IList<string> PlayerIds { get; set; } = playerIds;
     }
 
-    public class UpdateGameModel(GameModel model)
+    public class UpdateGameModel(GameModel gameModel)
     {
-        public GameModel GameModel { get; set; } = model;
+        public GameModel GameModel { get; set; } = gameModel;
     }
 
     public class PlayersDoingSupplemental(IList<string> playerIds)
