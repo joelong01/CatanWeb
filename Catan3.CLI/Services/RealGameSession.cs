@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Catan3.CLI.Commands;
 using Catan3.Shared.Models;
 using Catan3.Shared.Services;
+using Catan3.Shared.Utility;
 using System.Text.Json;
 
 namespace Catan3.CLI.Services;
