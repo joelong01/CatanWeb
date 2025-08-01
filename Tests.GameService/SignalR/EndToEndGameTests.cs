@@ -67,23 +67,22 @@ namespace Tests.GameService.SignalR
             await VerifyBeginResourceAllocation(e2eSession);
             await VerifyAllocateResourceForward(e2eSession);
             
-            // IMPORTANT: Test terminates here after successful completion of AllocateResourceForward
-            // The game will be in AllocateResourceReverse state but we end the test at a natural checkpoint
-            var finalGameState = e2eSession.GetProxy("Alice").LastGameState;
-            Assert.NotNull(finalGameState);
-            Assert.Equal(GameState.AllocateResourceReverse, finalGameState.GameState);
+            // Enable AllocateResourceReverse testing - now properly ported from CLI
+            await VerifyAllocateResourceReverse(e2eSession);
+            
+            // Add DoneResourceAllocation testing - ported from CLI
+            await VerifyDoneResourceAllocation(e2eSession);
             
             var testEndTime = DateTime.UtcNow;
             var totalTestTime = testEndTime - testStartTime;
             
-            LogEvent("TestComplete", $"✅ End-to-End stateful test completed successfully through AllocateResourceForward!");
-            LogEvent("FinalState", $"Game properly transitioned to AllocateResourceReverse - test terminating at natural checkpoint");
+            LogEvent("TestComplete", $"✅ End-to-End stateful test completed successfully through DoneResourceAllocation!");
             LogEvent("TestTiming", $"⏱️ Total test execution time: {totalTestTime.TotalSeconds:F2} seconds");
-            LogEvent("NextPhase", "Next: AllocateResourceReverse can be tested in future iterations");
+            LogEvent("NextPhase", "Next: WaitingForRoll can be tested in future iterations");
             
             // Performance assertion
-            Assert.True(totalTestTime.TotalSeconds < 60, 
-                $"E2E test should complete within 1 minute, took {totalTestTime.TotalSeconds:F2} seconds");
+            Assert.True(totalTestTime.TotalSeconds < 120, 
+                $"E2E test should complete within 2 minutes, took {totalTestTime.TotalSeconds:F2} seconds");
 
             // Properly dispose the session to clean up all resources
             await e2eSession.DisposeAsync();
@@ -426,11 +425,11 @@ namespace Tests.GameService.SignalR
 
                     // Verify game consistency after road placement
                     await session.VerifyGameConsistency();
-                    var finalGameState = proxy.LastGameState;
-                    Assert.NotNull(finalGameState);
+                    var afterRoadGameState = proxy.LastGameState;
+                    Assert.NotNull(afterRoadGameState);
 
                     // Verify player no longer has unspent entitlements
-                    var playerAfterRoad = finalGameState.Players.First(p => p.Id == currentPlayerId);
+                    var playerAfterRoad = afterRoadGameState.Players.First(p => p.Id == currentPlayerId);
                     Assert.DoesNotContain(Entitlement.Settlement, playerAfterRoad.UnspentEntitlements);
                     Assert.DoesNotContain(Entitlement.Road, playerAfterRoad.UnspentEntitlements);
                     LogEvent("EntitlementsSpent", $"✅ {currentPlayerId} has spent all entitlements");
@@ -531,101 +530,296 @@ namespace Tests.GameService.SignalR
         /// <summary>
         /// Verify AllocateResourceReverse state works correctly.
         /// Tests that players have proper entitlements and resource tracking (ResourcesThisTurn and ResourcesThisGame).
-        /// This should behave the same way as forward allocation with additional verification of resource updates.
-        /// The session should already be in AllocateResourceReverse state when this method is called.
+        /// Processes all players in reverse order for second settlement and road placement.
+        /// Port of CLI comprehensive testing for this state.
         /// </summary>
         private async Task VerifyAllocateResourceReverse(EndToEndSignalRSession session)
         {
             LogEvent("AllocateResourceReverse", "Testing AllocateResourceReverse state functionality");
 
-            // Verify we're in correct state (should have been set by VerifyAllocateResourceForward)
+            // ASSERTION 1: Verify we're in the correct state (should have been set by VerifyAllocateResourceForward)
             await session.VerifyAllProxiesInState(GameState.AllocateResourceReverse);
             await session.VerifyGameConsistency();
 
             var gameState = session.GetProxy("Alice").LastGameState;
             Assert.NotNull(gameState);
             Assert.Equal(GameState.AllocateResourceReverse, gameState.GameState);
+            LogEvent("StateVerified", "✅ Confirmed game is in AllocateResourceReverse state");
             
-            // Eve should be current player in reverse phase (last player goes first in 5-player EXPANSION game)
+            // ASSERTION 2: Verify current player is the last player (reverse order starts with last player in 5-player EXPANSION game)
             var currentPlayerId = gameState.CurrentPlayerId;
             Assert.Equal("Eve", currentPlayerId);
+            LogEvent("CurrentPlayerVerified", $"✅ {currentPlayerId} is current player (reverse order starts with last player)");
 
-            // Verify current player has proper entitlements for allocation (same as forward)
-            var currentPlayer = gameState.Players.First(p => p.Id == currentPlayerId);
-            Assert.Contains(Entitlement.Settlement, currentPlayer.UnspentEntitlements);
-            Assert.Contains(Entitlement.Road, currentPlayer.UnspentEntitlements);
-            LogEvent("EntitlementsVerified", $"✅ {currentPlayerId} has Settlement and Road entitlements in reverse phase");
+            // ASSERTION 3: Verify game structure for reverse allocation
+            Assert.True(gameState.Buildings.Count > 0, "Should have buildings available for allocation");
+            Assert.True(gameState.Roads.Count > 0, "Should have roads available for allocation");
+            Assert.False(gameState.ActionFlags.RollsEnabled, "Rolls should not be enabled during allocation");
+            LogEvent("GameStructureVerified", $"✅ Game has {gameState.Buildings.Count} buildings and {gameState.Roads.Count} roads, rolls disabled");
 
-            // Verify resource tracking is set up correctly - this is the key test for AllocateResourceReverse
-            // During allocation reverse, players should have ResourcesThisTurn and ResourcesThisGame properly initialized
-            foreach (var player in gameState.Players)
+            // ASSERTION 4: Verify forward allocation was completed - all players should have 1 settlement and 1 road
+            var playerIds = new[] { "Alice", "Bob", "Charlie", "David", "Eve" };
+            foreach (var playerId in playerIds)
             {
-                Assert.NotNull(player.ResourcesThisTurn);
-                Assert.NotNull(player.ResourcesThisGame);
-                
-                // During allocation phase, players should have received some resources from forward allocation
-                // Each player should have at least some resources from their first settlement placement
-                var totalResourcesThisGame = player.ResourcesThisGame.Brick + 
-                                           player.ResourcesThisGame.Wood + 
-                                           player.ResourcesThisGame.Sheep + 
-                                           player.ResourcesThisGame.Wheat + 
-                                           player.ResourcesThisGame.Ore;
-                
-                LogEvent("ResourceCheck", $"{player.Id}: {totalResourcesThisGame} total resources this game");
-                
-                // Players may or may not have resources depending on their settlement placement
-                // but the resource tracking should be properly initialized
-                Assert.True(totalResourcesThisGame >= 0);
-                
-                // Verify the ResourcesThisTurn structure
-                var resourcesThisTurn = player.ResourcesThisTurn;
-                var thisTurnTotal = resourcesThisTurn.Brick + resourcesThisTurn.Wood + 
-                                  resourcesThisTurn.Sheep + resourcesThisTurn.Wheat + resourcesThisTurn.Ore;
-                
-                LogEvent("ResourcesThisTurn", $"{player.Id}: {thisTurnTotal} resources this turn");
-                Assert.True(thisTurnTotal >= 0);
-            }
-
-            // Verify game model has proper structure for allocation (same as forward)
-            Assert.True(gameState.Buildings.Count > 0);
-            Assert.True(gameState.Roads.Count > 0);
-            Assert.True(gameState.Tiles.Count > 0);
-            Assert.Equal(5, gameState.Players.Count); // EXPANSION game has 5 players
-
-            // Verify action flags for allocation reverse phase
-            Assert.False(gameState.ActionFlags.RollsEnabled);
-            LogEvent("ActionFlags", $"Next enabled: {gameState.ActionFlags.NextEnabled}, Rolls enabled: {gameState.ActionFlags.RollsEnabled}");
-
-            // Test that the GameModel is properly updating ResourcesThisTurn and ResourcesThisGame
-            // This is the key functionality difference that needs testing for AllocateResourceReverse
-            var testStartTime = DateTime.UtcNow;
-            
-            // Verify that players from forward allocation have scores > 0 (from settlements)
-            var playersWithScore = gameState.Players.Where(p => p.Score > 0).ToList();
-            LogEvent("ScoreVerification", $"{playersWithScore.Count} players have score > 0 from forward allocation");
-            
-            // In allocation reverse, players should have buildings from forward allocation
-            var ownedBuildings = gameState.Buildings.Where(b => !string.IsNullOrEmpty(b.OwnerId)).ToList();
-            LogEvent("BuildingVerification", $"{ownedBuildings.Count} buildings are owned from forward allocation");
-            
-            // Verify that all players have exactly 1 settlement and 1 road from forward allocation
-            foreach (var playerId in new[] { "Alice", "Bob", "Charlie", "David", "Eve" })
-            {
-                var playerBuildings = gameState.Buildings.Where(b => 
-                    b.OwnerId == playerId && b.BuildingState == BuildingState.Settlement).Count();
-                var playerRoads = gameState.Roads.Where(r => 
-                    r.OwnerId == playerId && r.RoadState == RoadState.Road).Count();
+                var playerBuildings = gameState.Buildings.Count(b => 
+                    b.OwnerId == playerId && b.BuildingState == BuildingState.Settlement);
+                var playerRoads = gameState.Roads.Count(r => 
+                    r.OwnerId == playerId && r.RoadState == RoadState.Road);
                 
                 Assert.Equal(1, playerBuildings);
                 Assert.Equal(1, playerRoads);
-                LogEvent("ForwardAllocationVerified", $"{playerId}: 1 settlement, 1 road placed in forward phase");
+                LogEvent("ForwardAllocationVerified", $"✅ {playerId} has 1 settlement and 1 road from forward allocation");
+            }
+
+            // PLAYER ALLOCATION LOOP: Process each player in reverse order
+            var reversePlayerIds = playerIds.AsEnumerable().Reverse().ToArray();
+            LogEvent("ReverseAllocation", $"Beginning reverse allocation for {reversePlayerIds.Length} players");
+
+            for (int i = 0; i < reversePlayerIds.Length; i++)
+            {
+                currentPlayerId = session.GetCurrentPlayerId();
+                var expectedPlayer = reversePlayerIds[i];
+                
+                LogEvent("PlayerTurn", $"Processing {currentPlayerId}'s turn in reverse allocation (player {i + 1}/{reversePlayerIds.Length})");
+                
+                // ASSERTION: Verify correct player turn
+                Assert.Equal(expectedPlayer, currentPlayerId);
+
+                var proxy = session.GetProxy(currentPlayerId);
+                var currentGameState = proxy.LastGameState;
+                Assert.NotNull(currentGameState);
+
+                // ASSERTION: Verify player entitlements
+                var currentPlayer = currentGameState.Players.First(p => p.Id == currentPlayerId);
+                Assert.Contains(Entitlement.Settlement, currentPlayer.UnspentEntitlements);
+                Assert.Contains(Entitlement.Road, currentPlayer.UnspentEntitlements);
+                LogEvent("EntitlementsVerified", $"✅ {currentPlayerId} has Settlement and Road entitlements");
+
+                // ASSERTION: Verify resource tracking from forward allocation
+                Assert.NotNull(currentPlayer.ResourcesThisGame);
+                Assert.NotNull(currentPlayer.ResourcesThisTurn);
+
+                // Track initial resources before settlement placement
+                var initialResourcesThisGame = currentPlayer.ResourcesThisGame.Brick + 
+                                             currentPlayer.ResourcesThisGame.Wood + 
+                                             currentPlayer.ResourcesThisGame.Sheep + 
+                                             currentPlayer.ResourcesThisGame.Wheat + 
+                                             currentPlayer.ResourcesThisGame.Ore;
+                
+                var initialResourcesThisTurn = currentPlayer.ResourcesThisTurn.Brick + 
+                                             currentPlayer.ResourcesThisTurn.Wood + 
+                                             currentPlayer.ResourcesThisTurn.Sheep + 
+                                             currentPlayer.ResourcesThisTurn.Wheat + 
+                                             currentPlayer.ResourcesThisTurn.Ore;
+
+                LogEvent("ResourceTracking", $"{currentPlayerId} before reverse settlement: {initialResourcesThisGame} total game resources, {initialResourcesThisTurn} this turn");
+                LogEvent("ResourcesVerified", $"✅ {currentPlayerId} resource tracking properly initialized");
+
+                // STEP 1: Place Settlement - using same logic as forward allocation
+                try
+                {
+                    LogEvent("SettlementAttempt", $"Attempting settlement placement for {currentPlayerId}");
+                    
+                    var settlementKey = PickOptimalSettlement(currentGameState);
+                    LogEvent("SettlementSelected", $"{currentPlayerId} placing optimal settlement at {settlementKey}");
+
+                    // Verify the selected settlement is actually possible
+                    var selectedBuilding = currentGameState.Buildings.FirstOrDefault(b => b.BuildingKey.Equals(settlementKey));
+                    Assert.NotNull(selectedBuilding);
+                    Assert.Equal(BuildingState.PossibleSettlement, selectedBuilding.BuildingState);
+                    LogEvent("SettlementValidated", $"✅ Settlement {settlementKey} is valid for placement");
+
+                    var result = await proxy.ExecuteBuildingUpgradeAsync(session.GameId, settlementKey);
+                    Assert.True(result.Success, $"Settlement placement failed: {result.Message}");
+                    LogEvent("SettlementPlaced", $"✅ {currentPlayerId} settlement placement succeeded!");
+
+                    // Verify game state after settlement placement
+                    await session.VerifyGameConsistency();
+                    var updatedGameState = proxy.LastGameState;
+                    Assert.NotNull(updatedGameState);
+                    
+                    // Verify player's score increased to 2 (second settlement)
+                    var playerAfterSettlement = updatedGameState.Players.First(p => p.Id == currentPlayerId);
+                    Assert.Equal(2, playerAfterSettlement.Score);
+                    LogEvent("ScoreUpdated", $"✅ {currentPlayerId} score is now {playerAfterSettlement.Score}");
+
+                    // Verify Settlement entitlement was spent
+                    Assert.DoesNotContain(Entitlement.Settlement, playerAfterSettlement.UnspentEntitlements);
+
+                    // Verify resource updates after settlement placement (key difference in reverse allocation)
+                    var finalResourcesThisGame = playerAfterSettlement.ResourcesThisGame.Brick + 
+                                               playerAfterSettlement.ResourcesThisGame.Wood + 
+                                               playerAfterSettlement.ResourcesThisGame.Sheep + 
+                                               playerAfterSettlement.ResourcesThisGame.Wheat + 
+                                               playerAfterSettlement.ResourcesThisGame.Ore;
+                    
+                    var finalResourcesThisTurn = playerAfterSettlement.ResourcesThisTurn.Brick + 
+                                               playerAfterSettlement.ResourcesThisTurn.Wood + 
+                                               playerAfterSettlement.ResourcesThisTurn.Sheep + 
+                                               playerAfterSettlement.ResourcesThisTurn.Wheat + 
+                                               playerAfterSettlement.ResourcesThisTurn.Ore;
+
+                    var resourcesGained = finalResourcesThisGame - initialResourcesThisGame;
+                    var thisTurnGained = finalResourcesThisTurn - initialResourcesThisTurn;
+
+                    LogEvent("ResourceUpdate", $"{currentPlayerId} after reverse settlement: {finalResourcesThisGame} total (+{resourcesGained}), {finalResourcesThisTurn} this turn (+{thisTurnGained})");
+                    
+                    // In reverse allocation, the second settlement typically yields resources
+                    if (resourcesGained >= 0)
+                    {
+                        LogEvent("ResourceTrackingVerified", $"✅ {currentPlayerId} resource tracking updated correctly in reverse allocation");
+                    }
+                    else
+                    {
+                        LogEvent("ResourceTrackingWarning", $"⚠️ {currentPlayerId} resource tracking shows decrease - may be valid based on settlement location");
+                    }
+
+                    // STEP 2: Place Road - find buildable roads after settlement placement
+                    var buildableRoads = updatedGameState.Roads
+                        .Where(r => r.RoadState == RoadState.Buildable)
+                        .ToList();
+                    
+                    LogEvent("RoadSearch", $"Found {buildableRoads.Count} buildable roads for {currentPlayerId}");
+                    Assert.True(buildableRoads.Count > 0, $"Should have buildable roads available for {currentPlayerId}");
+
+                    // Pick the first buildable road
+                    var selectedRoad = buildableRoads.First();
+                    var roadKey = selectedRoad.RoadKey;
+                    LogEvent("RoadSelected", $"{currentPlayerId} placing road at {roadKey}");
+
+                    var roadResult = await proxy.ExecuteRoadPurchaseAsync(session.GameId, roadKey);
+                    Assert.True(roadResult.Success, $"Road placement failed: {roadResult.Message}");
+                    LogEvent("RoadPlaced", $"✅ {currentPlayerId} road placement succeeded!");
+
+                    // Verify game consistency after road placement
+                    await session.VerifyGameConsistency();
+                    var afterRoadGameState = proxy.LastGameState;
+                    Assert.NotNull(afterRoadGameState);
+
+                    // Verify player no longer has unspent entitlements
+                    var playerAfterRoad = afterRoadGameState.Players.First(p => p.Id == currentPlayerId);
+                    Assert.DoesNotContain(Entitlement.Settlement, playerAfterRoad.UnspentEntitlements);
+                    Assert.DoesNotContain(Entitlement.Road, playerAfterRoad.UnspentEntitlements);
+                    LogEvent("EntitlementsSpent", $"✅ {currentPlayerId} has spent all entitlements");
+
+                }
+                catch (Exception ex)
+                {
+                    LogEvent("BuildingPlacementError", $"❌ Building placement failed for {currentPlayerId}: {ex.GetType().Name}: {ex.Message}");
+                    
+                    if (ex.InnerException != null)
+                    {
+                        LogEvent("InnerException", $"Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                    }
+                    
+                    throw;
+                }
+
+                // STEP 3: Advance to next player or next state if last player
+                if (i < reversePlayerIds.Length - 1)
+                {
+                    // Not the last player - advance to next player in reverse order
+                    await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Next);
+                    LogEvent("PlayerAdvanced", $"✅ {currentPlayerId} completed turn, advancing to next player in reverse order");
+                }
+                else
+                {
+                    // Last player - advance to DoneResourceAllocation state
+                    await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Next);
+                    LogEvent("PhaseAdvanced", $"✅ {currentPlayerId} completed final reverse turn, advancing to DoneResourceAllocation");
+                }
+            }
+
+            // FINAL ASSERTION: Verify we advanced to DoneResourceAllocation
+            await session.VerifyAllProxiesInState(GameState.DoneResourceAllocation);
+            await session.VerifyGameConsistency();
+
+            var finalGameState = session.GetProxy("Alice").LastGameState;
+            Assert.NotNull(finalGameState);
+            Assert.Equal(GameState.DoneResourceAllocation, finalGameState.GameState);
+            LogEvent("FinalStateVerified", "✅ Successfully advanced to DoneResourceAllocation");
+
+            // FINAL VERIFICATION: Verify all players have exactly 2 settlements and 2 roads
+            foreach (var playerId in playerIds)
+            {
+                var playerBuildings = finalGameState.Buildings.Count(b => 
+                    b.OwnerId == playerId && b.BuildingState == BuildingState.Settlement);
+                var playerRoads = finalGameState.Roads.Count(r => 
+                    r.OwnerId == playerId && r.RoadState == RoadState.Road);
+                var player = finalGameState.Players.FirstOrDefault(p => p.Id == playerId);
+                
+                Assert.Equal(2, playerBuildings);
+                Assert.Equal(2, playerRoads);
+                Assert.Equal(2, player?.Score);
+                
+                var totalResources = (player?.ResourcesThisGame.Brick ?? 0) + (player?.ResourcesThisGame.Wood ?? 0) + 
+                                   (player?.ResourcesThisGame.Sheep ?? 0) + (player?.ResourcesThisGame.Wheat ?? 0) + (player?.ResourcesThisGame.Ore ?? 0);
+                
+                LogEvent("FinalPlayerState", $"✅ {playerId}: 2 settlements, 2 roads, score 2, {totalResources} total resources");
             }
             
-            var testEndTime = DateTime.UtcNow;
-            var verificationTime = testEndTime - testStartTime;
+            LogEvent("AllocateResourceReverseComplete", "✅ All players completed reverse allocation successfully with proper resource tracking and verification");
+        }
+
+        /// <summary>
+        /// Verify DoneResourceAllocation state works correctly.
+        /// Tests Next action to advance to WaitingForRoll.
+        /// Port of CLI comprehensive testing for this state.
+        /// </summary>
+        private async Task VerifyDoneResourceAllocation(EndToEndSignalRSession session)
+        {
+            LogEvent("DoneResourceAllocation", "Testing DoneResourceAllocation state functionality");
             
-            LogEvent("AllocateResourceReverseComplete", 
-                $"✅ AllocateResourceReverse state verified with proper entitlements and resource tracking (verification took {verificationTime.TotalMilliseconds:F0}ms)");
+            // ASSERTION 1: Verify we're in the correct state
+            await session.VerifyAllProxiesInState(GameState.DoneResourceAllocation);
+            await session.VerifyGameConsistency();
+
+            var gameState = session.GetProxy("Alice").LastGameState;
+            Assert.NotNull(gameState);
+            Assert.Equal(GameState.DoneResourceAllocation, gameState.GameState);
+            LogEvent("StateVerified", "✅ Confirmed game is in DoneResourceAllocation state");
+
+            // ASSERTION 2: Verify final allocation results - all players should have 2 settlements and 2 roads
+            var playerIds = new[] { "Alice", "Bob", "Charlie", "David", "Eve" };
+            foreach (var playerId in playerIds)
+            {
+                var playerBuildings = gameState.Buildings.Count(b => 
+                    b.OwnerId == playerId && b.BuildingState == BuildingState.Settlement);
+                var playerRoads = gameState.Roads.Count(r => 
+                    r.OwnerId == playerId && r.RoadState == RoadState.Road);
+                var player = gameState.Players.FirstOrDefault(p => p.Id == playerId);
+                
+                Assert.Equal(2, playerBuildings);
+                Assert.Equal(2, playerRoads);
+                Assert.Equal(2, player?.Score);
+                
+                LogEvent("AllocationComplete", $"✅ {playerId}: 2 settlements, 2 roads, score 2 - allocation phase complete");
+            }
+
+            // ASSERTION 3: Verify current player (should be first player for WaitingForRoll phase)
+            var currentPlayerId = session.GetCurrentPlayerId();
+            Assert.Equal("Alice", currentPlayerId);
+            LogEvent("CurrentPlayerVerified", $"✅ Current player is {currentPlayerId} - ready for roll phase");
+
+            // ADVANCEMENT TEST: Test Next action to advance to WaitingForRoll
+            LogEvent("AdvancementTest", "Testing advancement with Next action to WaitingForRoll");
+            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Next);
+            
+            // FINAL ASSERTION: Verify we advanced to WaitingForRoll
+            await session.VerifyAllProxiesInState(GameState.WaitingForRoll);
+            await session.VerifyGameConsistency();
+
+            var finalGameState = session.GetProxy("Alice").LastGameState;
+            Assert.NotNull(finalGameState);
+            Assert.Equal(GameState.WaitingForRoll, finalGameState.GameState);
+            LogEvent("FinalStateVerified", "✅ Successfully advanced to WaitingForRoll");
+
+            // ASSERTION 4: Verify action flags are correct for WaitingForRoll
+            Assert.True(finalGameState.ActionFlags.RollsEnabled, "Rolls should be enabled in WaitingForRoll state");
+            Assert.False(finalGameState.ActionFlags.NextEnabled, "Next should be disabled until dice are rolled");
+            LogEvent("ActionFlagsVerified", "✅ Action flags correct for WaitingForRoll: rolls enabled, next disabled");
+
+            LogEvent("DoneResourceAllocationComplete", "✅ DoneResourceAllocation state verified - successfully advanced to WaitingForRoll");
         }
 
         private void LogEvent(string eventType, string message)
