@@ -19,21 +19,25 @@
 	<ItemGroup>
 		<Compile Remove="Catan3.GameService\**" />
 		<Compile Remove="Catan3.Shared\**" />
+		<Compile Remove="Catan3.CLI\**" />
 		<Compile Remove="CatanGameService\**" />
 		<Compile Remove="Player\PlayerOrder\**" />
 		<Compile Remove="Tests.GameService\**" />
 		<EmbeddedResource Remove="Catan3.GameService\**" />
 		<EmbeddedResource Remove="Catan3.Shared\**" />
+		<EmbeddedResource Remove="Catan3.CLI\**" />
 		<EmbeddedResource Remove="CatanGameService\**" />
 		<EmbeddedResource Remove="Player\PlayerOrder\**" />
 		<EmbeddedResource Remove="Tests.GameService\**" />
 		<None Remove="Catan3.GameService\**" />
 		<None Remove="Catan3.Shared\**" />
+		<None Remove="Catan3.CLI\**" />
 		<None Remove="CatanGameService\**" />
 		<None Remove="Player\PlayerOrder\**" />
 		<None Remove="Tests.GameService\**" />
 		<Page Remove="Catan3.GameService\**" />
 		<Page Remove="Catan3.Shared\**" />
+		<Page Remove="Catan3.CLI\**" />
 		<Page Remove="CatanGameService\**" />
 		<Page Remove="Player\PlayerOrder\**" />
 		<Page Remove="Tests.GameService\**" />
@@ -287,6 +291,11 @@
 	</ProjectExtensions>
 	<ItemGroup>
 		<PRIResource Remove="Player\PlayerOrder\**" />
+		<PRIResource Remove="Catan3.GameService\**" />
+		<PRIResource Remove="Catan3.Shared\**" />
+		<PRIResource Remove="Catan3.CLI\**" />
+		<PRIResource Remove="CatanGameService\**" />
+		<PRIResource Remove="Tests.GameService\**" />
 	</ItemGroup>
 	<ItemGroup>
 		<Content Remove="Assets\AppIcon.png" />
@@ -301,18 +310,6 @@
 		<Page Update="Game\NewGame\NewGamePage.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</Page>
-	</ItemGroup>
-	<ItemGroup>
-	  <PRIResource Remove="Catan3.GameService\**" />
-	</ItemGroup>
-	<ItemGroup>
-	  <PRIResource Remove="Catan3.Shared\**" />
-	</ItemGroup>
-	<ItemGroup>
-	  <PRIResource Remove="CatanGameService\**" />
-	</ItemGroup>
-	<ItemGroup>
-	  <PRIResource Remove="Tests.GameService\**" />
 	</ItemGroup>
 	<ItemGroup>
 	  <None Include="Catan3.CLI\Catan3.CLI.csproj" />

@@ -243,8 +243,8 @@ public class RealGameSession : IAsyncDisposable
             if (state.CurrentPlayerId != referenceState.CurrentPlayerId)
                 inconsistencies.Add($"{proxyState.Proxy}: CurrentPlayer {state.CurrentPlayerId} vs {referenceState.CurrentPlayerId}");
                 
-            if (state.Version != referenceState.Version)
-                inconsistencies.Add($"{proxyState.Proxy}: Version {state.Version} vs {referenceState.Version}");
+            if (state.GameStateMachineVersion != referenceState.GameStateMachineVersion)
+                inconsistencies.Add($"{proxyState.Proxy}: GameStateMachineVersion {state.GameStateMachineVersion} vs {referenceState.GameStateMachineVersion}");
             
             // GameHash verification for board consistency
             if (!string.IsNullOrEmpty(state.GameHash) && !string.IsNullOrEmpty(referenceState.GameHash))

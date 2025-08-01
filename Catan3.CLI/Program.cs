@@ -27,13 +27,18 @@ public class Program
         // Add game type commands
         var expansionCommand = new Command("expansion", "Start an Expansion game (5 players)");
         var regularCommand = new Command("regular", "Start a Regular game (3-4 players)");
+        var testCommand = new Command("test", "Run various CLI tests");
 
-        // Add common options to both commands
+        // Add common options to both game commands
         AddGameOptions(expansionCommand, host, Catan3.Shared.Models.GameType.Expansion);
         AddGameOptions(regularCommand, host, Catan3.Shared.Models.GameType.Regular);
 
+        // Add test command options
+        AddTestOptions(testCommand, host);
+
         rootCommand.AddCommand(expansionCommand);
         rootCommand.AddCommand(regularCommand);
+        rootCommand.AddCommand(testCommand);
 
         // Execute the command
         return await rootCommand.InvokeAsync(args);
@@ -105,6 +110,37 @@ public class Program
         }, playerCountOption, runToOption, completeOption, noExitOption, logLevelOption, uriOption);
     }
 
+    private static void AddTestOptions(Command command, IHost host)
+    {
+        // Add test-specific options
+        var mvvmObjectsOption = new Option<bool>(
+            "--mvvm-objects",
+            "Test serialization/deserialization of all MVVM message objects");
+
+        command.AddOption(mvvmObjectsOption);
+
+        command.SetHandler(async (mvvmObjects) =>
+        {
+            try
+            {
+                if (mvvmObjects)
+                {
+                    var tester = host.Services.GetRequiredService<MvvmObjectTester>();
+                    await tester.TestAllMvvmObjectsAsync();
+                }
+                else
+                {
+                    Console.WriteLine("No test options specified. Use --mvvm-objects to test MVVM message objects.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"? Test Error: {ex.Message}");
+                Environment.Exit(1);
+            }
+        }, mvvmObjectsOption);
+    }
+
     private static IHost CreateHost()
     {
         return Host.CreateDefaultBuilder()
@@ -112,6 +148,7 @@ public class Program
             {
                 services.AddSingleton<GameRunner>();
                 services.AddSingleton<GameSessionManager>();
+                services.AddSingleton<MvvmObjectTester>();
                 services.AddLogging(builder =>
                 {
                     builder.AddConsole();

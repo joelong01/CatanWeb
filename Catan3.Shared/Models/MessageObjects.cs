@@ -31,15 +31,15 @@ namespace Catan3.Shared.Models
         public string? TargetPlayerId { get; } = targetPlayerId;
     }
 
-    public class RollMessage(TurnRollModel roll)
+    public class RollMessage(TurnRollModel Roll)
     {
-        public TurnRollModel Roll { get; } = roll;
+        public TurnRollModel Roll { get; } = Roll;
     }
 
-    public class NewGameMessage(GameType gameType, IList<string> playerIds)
+    public class NewGameMessage(GameType GameType, IList<string> PlayerIds)
     {
-        public GameType GameType = gameType;
-        public IList<string> PlayerIds { get; set; } = playerIds;
+        public GameType GameType { get; } = GameType;
+        public IList<string> PlayerIds { get; set; } = PlayerIds;
     }
 
     public class SetPlayerOrderMessage(IList<string> playerIds)
@@ -70,13 +70,13 @@ namespace Catan3.Shared.Models
     {
     }
 
-    public class ErrorMessage(string message, ErrorLevel errorLevel, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
+    public class ErrorMessage(string Message, ErrorLevel ErrorLevel, [CallerMemberName] string CallerMemberName = "", [CallerLineNumber] int CallerLineNumber = 0, [CallerFilePath] string CallerFilePath = "")
     {
-        public string Message { get; } = message;
-        public string CallerMemberName { get; } = cmb;
-        public string CallerLineNumber { get; } = cln.ToString();
-        public string CallerFilePath { get; } = cfp;
-        public ErrorLevel ErrorLevel { get; } = errorLevel;
+        public string Message { get; } = Message;
+        public string CallerMemberName { get; } = CallerMemberName;
+        public int CallerLineNumber { get; } = CallerLineNumber;
+        public string CallerFilePath { get; } = CallerFilePath;
+        public ErrorLevel ErrorLevel { get; } = ErrorLevel;
     }
 
     public class PersistGameMessage(LocalPersistActions action, string location)
