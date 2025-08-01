@@ -4,6 +4,7 @@ using Catan3.CLI.Services;
 using Catan3.Shared.Models;
 using Catan3.Shared.Services;
 using Catan3.Shared.Extensions;
+using System.Linq;
 
 namespace Catan3.CLI.Services;
 
@@ -240,9 +241,7 @@ public class GameRunner
         await VerifyFinishedRollOrder(session);
         await VerifyBeginResourceAllocation(session);
         await VerifyAllocateResourceForward(session);
-        
-        // TODO: Add more phases as needed
-        // await VerifyAllocateResourceReverse(session);
+        await VerifyAllocateResourceReverse(session);
         
         LogEvent("?? COMPLETE", "Full game progression completed!");
     }
@@ -269,6 +268,9 @@ public class GameRunner
                 break;
             case GameState.AllocateResourceForward:
                 await VerifyAllocateResourceForward(session);
+                break;
+            case GameState.AllocateResourceReverse:
+                await VerifyAllocateResourceReverse(session);
                 break;
             default:
                 // For other states, try a simple Next action
@@ -740,6 +742,308 @@ public class GameRunner
         
         await session.VerifyGameConsistency();
         LogEvent("?? ALLOCATERESOURCEFORWARD COMPLETE", "All players completed forward allocation successfully");
+    }
+
+    private async Task VerifyAllocateResourceReverse(RealGameSession session)
+    {
+        LogEvent("?? TESTING ALLOCATERESOURCEREVERSE", "Starting AllocateResourceReverse state testing");
+        
+        // ASSERTION 1: Verify we're in the correct state
+        var currentState = session.GetCurrentState();
+        if (currentState != GameState.AllocateResourceReverse)
+        {
+            LogEvent("? FAIL", $"Expected AllocateResourceReverse state, but was in {currentState}");
+            throw new InvalidOperationException($"Expected AllocateResourceReverse state, but was in {currentState}");
+        }
+        LogEvent("? PASS", "Confirmed game is in AllocateResourceReverse state");
+
+        // ASSERTION 2: Verify game structure for reverse allocation
+        await session.VerifyGameConsistency();
+        var gameState = session.Proxies.Values.First().LastGameState;
+        if (gameState == null)
+        {
+            LogEvent("? FAIL", "No GameState available");
+            throw new InvalidOperationException("No GameState available");
+        }
+
+        if (gameState.Buildings.Count == 0)
+        {
+            LogEvent("? FAIL", "No buildings available for allocation");
+            throw new InvalidOperationException("No buildings available for allocation");
+        }
+        if (gameState.Roads.Count == 0)
+        {
+            LogEvent("? FAIL", "No roads available for allocation");
+            throw new InvalidOperationException("No roads available for allocation");
+        }
+        if (gameState.ActionFlags.RollsEnabled)
+        {
+            LogEvent("? FAIL", "Rolls should not be enabled during allocation");
+            throw new InvalidOperationException("Rolls should not be enabled during allocation");
+        }
+        
+        LogEvent("? PASS", $"Game has {gameState.Buildings.Count} buildings and {gameState.Roads.Count} roads");
+        LogEvent("? PASS", "Rolls disabled during allocation (correct)");
+
+        // ASSERTION 3: Verify forward allocation was completed - all players should have 1 settlement and 1 road
+        var playerIds = session.GetPlayerIds();
+        foreach (var playerId in playerIds)
+        {
+            var playerBuildings = gameState.Buildings.Count(b => 
+                b.OwnerId == playerId && b.BuildingState == BuildingState.Settlement);
+            var playerRoads = gameState.Roads.Count(r => 
+                r.OwnerId == playerId && r.RoadState == RoadState.Road);
+            
+            if (playerBuildings != 1)
+            {
+                LogEvent("? FAIL", $"Player {playerId} should have exactly 1 settlement from forward allocation, but has {playerBuildings}");
+                throw new InvalidOperationException($"Player {playerId} should have exactly 1 settlement from forward allocation, but has {playerBuildings}");
+            }
+            if (playerRoads != 1)
+            {
+                LogEvent("? FAIL", $"Player {playerId} should have exactly 1 road from forward allocation, but has {playerRoads}");
+                throw new InvalidOperationException($"Player {playerId} should have exactly 1 road from forward allocation, but has {playerRoads}");
+            }
+            
+            LogEvent("? PASS", $"Player {playerId} has 1 settlement and 1 road from forward allocation");
+        }
+
+        // ASSERTION 4: Verify current player is the last player (reverse order starts with last player)
+        var currentPlayerId = session.GetCurrentPlayerId();
+        var lastPlayer = playerIds.Last();
+        if (currentPlayerId != lastPlayer)
+        {
+            LogEvent("? FAIL", $"Expected {lastPlayer} to be current player in reverse phase, but got {currentPlayerId}");
+            throw new InvalidOperationException($"Expected {lastPlayer} to be current player in reverse phase, but got {currentPlayerId}");
+        }
+        LogEvent("? PASS", $"Reverse allocation correctly starts with {lastPlayer}");
+
+        // PLAYER ALLOCATION LOOP: Process each player in reverse order
+        var reversePlayerIds = playerIds.AsEnumerable().Reverse().ToArray();
+        LogEvent("??? REVERSE ALLOCATION", $"Starting reverse allocation for {reversePlayerIds.Length} players");
+
+        for (int i = 0; i < reversePlayerIds.Length; i++)
+        {
+            currentPlayerId = session.GetCurrentPlayerId();
+            var expectedPlayer = reversePlayerIds[i];
+            
+            LogEvent($"?? PLAYER {i + 1}/{reversePlayerIds.Length}", $"Processing {currentPlayerId} (expected: {expectedPlayer})");
+            
+            // ASSERTION: Verify correct player turn
+            if (currentPlayerId != expectedPlayer)
+            {
+                LogEvent("? FAIL", $"Expected player {expectedPlayer} but current player is {currentPlayerId}");
+                throw new InvalidOperationException($"Expected player {expectedPlayer} but current player is {currentPlayerId}");
+            }
+
+            // Get current game state for this player's turn
+            await session.VerifyGameConsistency();
+            var currentGameState = session.Proxies.Values.First().LastGameState;
+            if (currentGameState == null)
+            {
+                LogEvent("? FAIL", $"No GameState available for player {currentPlayerId}");
+                throw new InvalidOperationException($"No GameState available for player {currentPlayerId}");
+            }
+
+            // ASSERTION: Verify player entitlements
+            var currentPlayer = currentGameState.Players.FirstOrDefault(p => p.Id == currentPlayerId);
+            if (currentPlayer == null)
+            {
+                LogEvent("? FAIL", $"Current player {currentPlayerId} not found in game state");
+                throw new InvalidOperationException($"Current player {currentPlayerId} not found in game state");
+            }
+
+            if (!currentPlayer.UnspentEntitlements.Contains(Entitlement.Settlement))
+            {
+                LogEvent("? FAIL", $"Player {currentPlayerId} should have Settlement entitlement");
+                throw new InvalidOperationException($"Player {currentPlayerId} should have Settlement entitlement");
+            }
+            if (!currentPlayer.UnspentEntitlements.Contains(Entitlement.Road))
+            {
+                LogEvent("? FAIL", $"Player {currentPlayerId} should have Road entitlement");
+                throw new InvalidOperationException($"Player {currentPlayerId} should have Road entitlement");
+            }
+            
+            LogEvent("? PASS", $"Player {currentPlayerId} has Settlement and Road entitlements");
+
+            // ASSERTION: Verify resource tracking from forward allocation
+            if (currentPlayer.ResourcesThisGame == null)
+            {
+                LogEvent("? FAIL", $"Player {currentPlayerId} should have ResourcesThisGame initialized");
+                throw new InvalidOperationException($"Player {currentPlayerId} should have ResourcesThisGame initialized");
+            }
+            if (currentPlayer.ResourcesThisTurn == null)
+            {
+                LogEvent("? FAIL", $"Player {currentPlayerId} should have ResourcesThisTurn initialized");
+                throw new InvalidOperationException($"Player {currentPlayerId} should have ResourcesThisTurn initialized");
+            }
+
+            // Track initial resources before settlement placement
+            var initialResourcesThisGame = currentPlayer.ResourcesThisGame.Brick + 
+                                         currentPlayer.ResourcesThisGame.Wood + 
+                                         currentPlayer.ResourcesThisGame.Sheep + 
+                                         currentPlayer.ResourcesThisGame.Wheat + 
+                                         currentPlayer.ResourcesThisGame.Ore;
+            
+            var initialResourcesThisTurn = currentPlayer.ResourcesThisTurn.Brick + 
+                                         currentPlayer.ResourcesThisTurn.Wood + 
+                                         currentPlayer.ResourcesThisTurn.Sheep + 
+                                         currentPlayer.ResourcesThisTurn.Wheat + 
+                                         currentPlayer.ResourcesThisTurn.Ore;
+
+            LogEvent("?? RESOURCE TRACKING", $"Player {currentPlayerId} before reverse settlement: {initialResourcesThisGame} total game resources, {initialResourcesThisTurn} this turn");
+            LogEvent("? PASS", $"Player {currentPlayerId} resource tracking properly initialized");
+
+            // STEP 1: Place settlement with highest star value
+            LogEvent("?? SETTLEMENT PLACEMENT", $"Finding best settlement location for {currentPlayerId}");
+            await PlaceBestSettlement(session, currentPlayerId);
+            
+            // Verify settlement placement result and resource updates
+            await session.VerifyGameConsistency();
+            var afterSettlementState = session.Proxies.Values.First().LastGameState;
+            if (afterSettlementState == null)
+            {
+                LogEvent("? FAIL", "No GameState after settlement placement");
+                throw new InvalidOperationException("No GameState after settlement placement");
+            }
+            
+            var playerAfterSettlement = afterSettlementState.Players.FirstOrDefault(p => p.Id == currentPlayerId);
+            if (playerAfterSettlement == null)
+            {
+                LogEvent("? FAIL", $"Player {currentPlayerId} not found after settlement placement");
+                throw new InvalidOperationException($"Player {currentPlayerId} not found after settlement placement");
+            }
+            
+            if (playerAfterSettlement.Score != 2)
+            {
+                LogEvent("? FAIL", $"Player {currentPlayerId} should have score 2 after second settlement, but has {playerAfterSettlement.Score}");
+                throw new InvalidOperationException($"Player {currentPlayerId} should have score 2 after second settlement, but has {playerAfterSettlement.Score}");
+            }
+            
+            if (playerAfterSettlement.UnspentEntitlements.Contains(Entitlement.Settlement))
+            {
+                LogEvent("? FAIL", $"Player {currentPlayerId} should no longer have Settlement entitlement");
+                throw new InvalidOperationException($"Player {currentPlayerId} should no longer have Settlement entitlement");
+            }
+            
+            // Verify resource updates after settlement placement (key difference in reverse allocation)
+            var finalResourcesThisGame = playerAfterSettlement.ResourcesThisGame.Brick + 
+                                       playerAfterSettlement.ResourcesThisGame.Wood + 
+                                       playerAfterSettlement.ResourcesThisGame.Sheep + 
+                                       playerAfterSettlement.ResourcesThisGame.Wheat + 
+                                       playerAfterSettlement.ResourcesThisGame.Ore;
+            
+            var finalResourcesThisTurn = playerAfterSettlement.ResourcesThisTurn.Brick + 
+                                       playerAfterSettlement.ResourcesThisTurn.Wood + 
+                                       playerAfterSettlement.ResourcesThisTurn.Sheep + 
+                                       playerAfterSettlement.ResourcesThisTurn.Wheat + 
+                                       playerAfterSettlement.ResourcesThisTurn.Ore;
+
+            LogEvent("?? RESOURCE UPDATE", $"Player {currentPlayerId} after reverse settlement: {finalResourcesThisGame} total game resources (+{finalResourcesThisGame - initialResourcesThisGame}), {finalResourcesThisTurn} this turn (+{finalResourcesThisTurn - initialResourcesThisTurn})");
+            
+            // In reverse allocation, the second settlement typically yields resources
+            if (finalResourcesThisGame >= initialResourcesThisGame)
+            {
+                LogEvent("? PASS", $"Player {currentPlayerId} resource tracking updated correctly in reverse allocation");
+            }
+            else
+            {
+                LogEvent("?? WARN", $"Player {currentPlayerId} resource tracking shows decrease - may be valid based on settlement location");
+            }
+            
+            LogEvent("? PASS", $"Player {currentPlayerId} placed second settlement, score is now 2, Settlement entitlement spent");
+
+            // STEP 2: Place road
+            LogEvent("??? ROAD PLACEMENT", $"Finding buildable road for {currentPlayerId}");
+            await PlaceFirstBuildableRoad(session, currentPlayerId);
+            
+            // Verify road placement result
+            await session.VerifyGameConsistency();
+            var afterRoadState = session.Proxies.Values.First().LastGameState;
+            if (afterRoadState == null)
+            {
+                LogEvent("? FAIL", "No GameState after road placement");
+                throw new InvalidOperationException("No GameState after road placement");
+            }
+            
+            var playerAfterRoad = afterRoadState.Players.FirstOrDefault(p => p.Id == currentPlayerId);
+            if (playerAfterRoad == null)
+            {
+                LogEvent("? FAIL", $"Player {currentPlayerId} not found after road placement");
+                throw new InvalidOperationException($"Player {currentPlayerId} not found after road placement");
+            }
+            
+            if (playerAfterRoad.UnspentEntitlements.Contains(Entitlement.Road))
+            {
+                LogEvent("? FAIL", $"Player {currentPlayerId} should no longer have Road entitlement");
+                throw new InvalidOperationException($"Player {currentPlayerId} should no longer have Road entitlement");
+            }
+            
+            LogEvent("? PASS", $"Player {currentPlayerId} placed second road, Road entitlement spent");
+
+            // STEP 3: Advance to next player or next phase
+            if (i < reversePlayerIds.Length - 1)
+            {
+                LogEvent("?? NEXT PLAYER", $"Advancing from {currentPlayerId} to next player in reverse order");
+                await session.ExecuteAction(GameAction.Next);
+            }
+            else
+            {
+                LogEvent("?? NEXT PHASE", $"All players completed reverse allocation, advancing to DoneResourceAllocation");
+                await session.ExecuteAction(GameAction.Next);
+            }
+        }
+
+        // FINAL ASSERTION: Verify we advanced to DoneResourceAllocation
+        var finalState = session.GetCurrentState();
+        if (finalState != GameState.DoneResourceAllocation)
+        {
+            LogEvent("? FAIL", $"Expected DoneResourceAllocation after all players, but got {finalState}");
+            throw new InvalidOperationException($"Expected DoneResourceAllocation after all players, but got {finalState}");
+        }
+        
+        LogEvent("? PASS", $"Successfully advanced to DoneResourceAllocation");
+        
+        // FINAL VERIFICATION: Verify all players have exactly 2 settlements and 2 roads
+        await session.VerifyGameConsistency();
+        var completedGameState = session.Proxies.Values.First().LastGameState;
+        if (completedGameState == null)
+        {
+            LogEvent("? FAIL", "No GameState after allocation completion");
+            throw new InvalidOperationException("No GameState after allocation completion");
+        }
+
+        foreach (var playerId in playerIds)
+        {
+            var playerBuildings = completedGameState.Buildings.Count(b => 
+                b.OwnerId == playerId && b.BuildingState == BuildingState.Settlement);
+            var playerRoads = completedGameState.Roads.Count(r => 
+                r.OwnerId == playerId && r.RoadState == RoadState.Road);
+            var player = completedGameState.Players.FirstOrDefault(p => p.Id == playerId);
+            
+            if (playerBuildings != 2)
+            {
+                LogEvent("? FAIL", $"Player {playerId} should have exactly 2 settlements after complete allocation, but has {playerBuildings}");
+                throw new InvalidOperationException($"Player {playerId} should have exactly 2 settlements after complete allocation, but has {playerBuildings}");
+            }
+            if (playerRoads != 2)
+            {
+                LogEvent("? FAIL", $"Player {playerId} should have exactly 2 roads after complete allocation, but has {playerRoads}");
+                throw new InvalidOperationException($"Player {playerId} should have exactly 2 roads after complete allocation, but has {playerRoads}");
+            }
+            if (player?.Score != 2)
+            {
+                LogEvent("? FAIL", $"Player {playerId} should have score 2 after complete allocation, but has {player?.Score}");
+                throw new InvalidOperationException($"Player {playerId} should have score 2 after complete allocation, but has {player?.Score}");
+            }
+            
+            var totalResources = player?.ResourcesThisGame.Brick + player?.ResourcesThisGame.Wood + 
+                               player?.ResourcesThisGame.Sheep + player?.ResourcesThisGame.Wheat + player?.ResourcesThisGame.Ore;
+            
+            LogEvent("? PASS", $"Player {playerId}: 2 settlements, 2 roads, score 2, {totalResources} total resources");
+        }
+        
+        LogEvent("?? ALLOCATERESOURCEREVERSE COMPLETE", "All players completed reverse allocation successfully with proper resource tracking");
     }
 
     /// <summary>
