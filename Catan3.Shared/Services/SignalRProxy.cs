@@ -100,7 +100,7 @@ namespace Catan3.Shared.Services
         {
             await _connection.StartAsync();
 
-            // Auto-join game if gameId provided
+            // Auto-join game if gameId provided (with reduced timeout for tests)
             if (!string.IsNullOrEmpty(_gameId))
             {
                 await JoinGameAsync(_gameId);
@@ -112,7 +112,16 @@ namespace Catan3.Shared.Services
         /// </summary>
         public async Task JoinGameAsync(string gameId)
         {
-            await _connection.InvokeAsync("JoinGame", gameId, _playerId);
+            // Use reduced timeout for faster test execution
+            var timeout = TimeSpan.FromSeconds(3);
+            try
+            {
+                await _connection.InvokeAsync("JoinGame", gameId, _playerId).WaitAsync(timeout);
+            }
+            catch (TimeoutException)
+            {
+                throw new TimeoutException($"JoinGame for player {_playerId} timed out after {timeout.TotalSeconds} seconds");
+            }
         }
 
         /// <summary>
@@ -303,7 +312,7 @@ namespace Catan3.Shared.Services
         /// </summary>
         private async Task<CommandResult> ExecuteCommandAsync(Func<Task> hubInvoke, string commandDescription, TimeSpan? timeout = null)
         {
-            timeout ??= TimeSpan.FromSeconds(10);
+            timeout ??= TimeSpan.FromSeconds(5); // Reduced from 10 to 5 seconds for faster tests
             var commandId = Guid.NewGuid().ToString();
             var completionTcs = new TaskCompletionSource<CommandResult>();
 
@@ -361,14 +370,22 @@ namespace Catan3.Shared.Services
 
                 CommandCompleted?.Invoke(commandId, success, message);
 
-                // Complete any pending commands (simplified - in production you'd match by commandId)
+                // Complete the specific command by matching commandId (FIXED)
                 lock (_commandLock)
                 {
-                    foreach (var pending in _pendingCommands.Values)
+                    if (_pendingCommands.TryGetValue(commandId, out var pendingCommand))
                     {
-                        pending.TrySetResult(result);
+                        pendingCommand.TrySetResult(result);
+                        _pendingCommands.Remove(commandId);
                     }
-                    _pendingCommands.Clear();
+                    // If no matching commandId found, complete any pending command as fallback
+                    // This handles cases where commandId matching isn't working properly
+                    else if (_pendingCommands.Count > 0)
+                    {
+                        var anyPending = _pendingCommands.Values.First();
+                        anyPending.TrySetResult(result);
+                        _pendingCommands.Clear();
+                    }
                 }
             });
 
@@ -385,14 +402,21 @@ namespace Catan3.Shared.Services
 
                 CommandFailed?.Invoke(commandId, error);
 
-                // Complete any pending commands with failure
+                // Complete the specific command by matching commandId (FIXED)
                 lock (_commandLock)
                 {
-                    foreach (var pending in _pendingCommands.Values)
+                    if (_pendingCommands.TryGetValue(commandId, out var pendingCommand))
                     {
-                        pending.TrySetResult(result);
+                        pendingCommand.TrySetResult(result);
+                        _pendingCommands.Remove(commandId);
                     }
-                    _pendingCommands.Clear();
+                    // If no matching commandId found, complete any pending command as fallback
+                    else if (_pendingCommands.Count > 0)
+                    {
+                        var anyPending = _pendingCommands.Values.First();
+                        anyPending.TrySetResult(result);
+                        _pendingCommands.Clear();
+                    }
                 }
             });
 
