@@ -110,5 +110,16 @@ namespace Catan3.Shared.Extensions
             }
             throw new ArgumentException("Did you forget to update this?", nameof(tileType));
         }
+        /// <summary>
+        ///     Add up all the Stars for the tiles in the list
+        /// </summary>
+        /// <param name="list"></param>
+        /// <returns></returns>
+
+        public static int Stars(this List<TileModel> list)
+        {
+            ArgumentNullException.ThrowIfNull(list);
+            return list.Sum(tile => tile.Stars);
+        }
     }
 }

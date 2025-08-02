@@ -4,6 +4,7 @@ using System.Text.Json;
 using Catan3.Shared.Models;
 using Catan3.Shared.Services;
 using Catan3.Shared.Utility;
+using Catan3.Shared.Extensions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
@@ -66,18 +67,37 @@ namespace Tests.GameService.SignalR
         [Fact]
         public async Task EndToEndStatefulTest()
         {
+            // Enable function timing for this test
+            FunctionTimer.Enabled = true;
+
             var testStartTime = DateTime.UtcNow;
 
-
             // Progress through all game states sequentially
-            var session = await VerifyGameCreationAndJoin();
+            EndToEndSignalRSession session;
+            using (new FunctionTimer("VerifyGameCreationAndJoin", enableOverride: true))
+            {
+                session = await VerifyGameCreationAndJoin();
+            }
 
-            await VerifyPickingBoard(session);
-            await VerifyWaitingForRollForOrder(session);
-            await VerifyFinishedRollOrder(session);
-            await VerifyBeginResourceAllocation(session);
-            await VerifyAllocationPhase(session);
-            await VerifyDoneResourceAllocation(session);
+            // Array of test functions with their names for timing
+            var testFunctions = new (string Name, Func<EndToEndSignalRSession, Task> Function)[]
+            {
+                ("VerifyPickingBoard", VerifyPickingBoard),
+                ("VerifyWaitingForRollForOrder", VerifyWaitingForRollForOrder),
+                ("VerifyFinishedRollOrder", VerifyFinishedRollOrder),
+                ("VerifyBeginResourceAllocation", VerifyBeginResourceAllocation),
+                ("VerifyAllocationPhase", VerifyAllocationPhase),
+                ("VerifyDoneResourceAllocation", VerifyDoneResourceAllocation)
+            };
+
+            // Execute each test function in sequence with timing
+            foreach (var (name, testFunction) in testFunctions)
+            {
+                using (new FunctionTimer(name, enableOverride: true, writeToConsole: true))
+                {
+                    await testFunction(session);
+                }
+            }
 
             var testEndTime = DateTime.UtcNow;
             var totalTestTime = testEndTime - testStartTime;
@@ -93,6 +113,9 @@ namespace Tests.GameService.SignalR
             // Properly dispose the session to clean up all resources
             await session.DisposeAsync();
             LogEvent(null, "CleanupComplete", "✅ All test resources properly disposed");
+
+            // Disable function timing after test completes
+            FunctionTimer.Enabled = false;
         }
 
         /// <summary>
@@ -344,13 +367,6 @@ namespace Tests.GameService.SignalR
                 Assert.NotNull(currentPlayer.ResourcesThisTurn);
                 Assert.NotNull(currentPlayer.ResourcesThisGame);
 
-                var totalResourcesThisGame = currentPlayer.ResourcesThisGame.Brick +
-                                           currentPlayer.ResourcesThisGame.Wood +
-                                           currentPlayer.ResourcesThisGame.Sheep +
-                                           currentPlayer.ResourcesThisGame.Wheat +
-                                           currentPlayer.ResourcesThisGame.Ore;
-
-
                 // STEP 1: Place Settlement
                 try
                 {
@@ -457,38 +473,23 @@ namespace Tests.GameService.SignalR
                 throw new InvalidOperationException("No possible settlements available");
             }
 
-            // DO NOT Use AllocationHelper to pick the best settlement location - isolate the e2e stateful tests to this file
-            // Simple heuristic: calculate a basic score based on building position coordinates
+            // find the building that is buildable and has the most stars
             var settlementOptions = possibleSettlements
                 .Select(building => new
                 {
-                    building = building,
-                    score = CalculateSimpleSettlementScore(building),
+                    stars = gameModel.TilesForBuildings(building.BuildingKey).Stars(),
                     buildingKey = building.BuildingKey
                 })
                 .ToList();
 
-            var maxScore = settlementOptions.Max(s => s.score);
-            var bestSettlement = settlementOptions.First(s => s.score == maxScore);
+            var maxStars = settlementOptions.Max(s => s.stars);
+            var bestSettlement = settlementOptions.First(s => s.stars == maxStars);
 
 
             return bestSettlement.buildingKey;
         }
 
-        /// <summary>
-        /// Simple scoring algorithm for settlement placement that doesn't rely on external helpers
-        /// </summary>
-        private int CalculateSimpleSettlementScore(BuildingModel building)
-        {
-            // Use a simple heuristic based on coordinates - prefer positions closer to center
-            var coords = building.BuildingKey.HexCoordinates;
-            var distanceFromCenter = Math.Abs(coords.Q) + Math.Abs(coords.R) + Math.Abs(coords.S);
 
-            // Prefer settlements closer to center of board (lower distance = higher score)
-            // Add some variation based on position to avoid ties
-            var positionBonus = (int)building.BuildingKey.Position;
-            return 100 - distanceFromCenter + positionBonus;
-        }
 
         /// <summary>
         /// Verify DoneResourceAllocation state works correctly.
@@ -534,60 +535,60 @@ namespace Tests.GameService.SignalR
             //  check that the resources for each player is correct
             //  to do this, we will look through the players in the current players GameModel (which we've already shown is the same 
             //  as everybody elses). then we will look at each building they have and calculate what resources they should have
-            //  then we will look at the ResourcesThisGame and ResourcesThisTurn for each player and verify that they match
+            //  then we will look at ResourcesThisTurn for each player and verify that they match.  ResourcesThisGame are all 0 since that
+            //  is only added to after rolls, not during the AllocationPhase of the game
 
             foreach (var player in gameModel.Players)
             {
                 var playerBuildings = gameModel.Buildings.Where(b => b.OwnerId == player.Id && b.BuildingState == BuildingState.Settlement).ToList();
                 var playerRoads = gameModel.Roads.Where(r => r.OwnerId == player.Id && r.RoadState == RoadState.Road).ToList();
+                LogEvent(session, "Resource Verification", $"ResourcesThisTurn={player.ResourcesThisTurn}");
                 // Calculate expected resources based on settlements - for settlement, we have to use the extension methods to find the tiles
                 // associated with that settlement and then calculate the resources based on the tiles
                 ResourcesModel  expectedResources = new ResourcesModel();
-                var ownedBuildings =   gameModel.Buildings.Where(b => b.OwnerId == player.Id).ToList();
-                Debug.Assert(ownedBuildings.Count == 2);
-                foreach (var building in ownedBuildings)
+                var lastBuilding =   gameModel.Buildings.Where(b => b.OwnerId == player.Id).ToList().Last();
+
+                var tiles = gameModel.TilesForBuildings (lastBuilding.BuildingKey);
+                foreach (var tile in tiles)
                 {
-                    var tiles = gameModel.TilesForBuildings (building.BuildingKey);
-                    foreach (var tile in tiles)
+                    var resource = tile.ResourceTileType;
+                    switch (resource)
                     {
-                        var resource = tile.ResourceTileType;
-                        switch (resource)
-                        {
-                            case ResourceType.Brick:
-                                expectedResources.Brick++;
-                                break;
-                            case ResourceType.Wood:
-                                expectedResources.Wood++;
-                                break;
-                            case ResourceType.Sheep:
-                                expectedResources.Sheep++;
-                                break;
-                            case ResourceType.Wheat:
-                                expectedResources.Wheat++;
-                                break;
-                            case ResourceType.Ore:
-                                expectedResources.Ore++;
-                                break;
-                            default:
-                                Debug.Assert(false, $"Unexpected resource type {resource} for building {building.BuildingKey}");
-                                break;
-                        }
+                        case ResourceType.Brick:
+                            expectedResources.Brick++;
+                            break;
+                        case ResourceType.Wood:
+                            expectedResources.Wood++;
+                            break;
+                        case ResourceType.Sheep:
+                            expectedResources.Sheep++;
+                            break;
+                        case ResourceType.Wheat:
+                            expectedResources.Wheat++;
+                            break;
+                        case ResourceType.Ore:
+                            expectedResources.Ore++;
+                            break;
+                        default:
+                            Debug.Assert(false, $"Unexpected resource type {resource} for building {lastBuilding.BuildingKey}");
+                            break;
                     }
                 }
 
-                // now the values for the ResourceTypes in expectedResources should match the ResourcesThisGame and ResourcesThisTurn
+
+                // now the values for the ResourceTypes in expectedResources should match the ResourcesThisTurn
                 foreach (var resourceType in Enum.GetValues<ResourceType>())
                 {
                     var expectedValue = expectedResources.CountForResource(resourceType);
-                    var actualValueThisGame = player.ResourcesThisGame.CountForResource(resourceType);
+                    LogEvent(session, "ResourceVerification", $"{player.Id} expected {expectedValue} for {resourceType}");
+
                     var actualValueThisTurn = player.ResourcesThisTurn.CountForResource(resourceType);
-                    Assert.Equal(expectedValue, actualValueThisGame);
+
                     Assert.Equal(expectedValue, actualValueThisTurn);
 
                 }
 
 
-                LogEvent(session, "ResourceVerification", $"{player.Id} has {player.ResourcesThisGame} resources this game)");
                 LogEvent(session, "ResourceVerification", $"{player.Id} has {player.ResourcesThisTurn} resources this turn)");
                 foreach (var resourceType in Enum.GetValues<ResourceType>())
                 {

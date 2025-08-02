@@ -1,8 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
-using Catan3.Shared.Utility;
 using Catan3.Shared.Extensions;
+using Catan3.Shared.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Shared.Models
@@ -211,11 +212,7 @@ namespace Catan3.Shared.Models
             return Harbors.FirstOrDefault();
         }
 
-        public List<TileModel> TilesForBuildings(BuildingKey buildingKey)
-        {
-            // Simplified implementation - return empty list for now
-            return new List<TileModel>();
-        }
+      
 
         private List<EntitlementPurchaseModel> GetDefaultPurchaseableEntitlements()
         {
