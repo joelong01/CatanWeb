@@ -374,5 +374,23 @@ namespace Catan3.Shared.Extensions
             }
             return null;
         }
+
+        /// <summary>
+        ///  an extension method to GameModel that takes a BuildingKey and returns a ResourceModel of all the resources you would get for that building
+        /// </summary>
+        /// 
+        public static ResourcesModel ResourcesForBuilding(this GameModel gameModel, BuildingModel building)
+        {
+            var resources = new     ResourcesModel();
+            // Get the building model from the game model
+            int count = building.BuildingState == BuildingState.City ? 2 : 1;
+            var tiles = gameModel.TilesForBuildings (building.BuildingKey);
+            foreach (var tile in tiles)
+            {
+                resources.AddResource(tile.ResourceTileType, count);
+            }
+
+            return resources;
+        }
     }
 }

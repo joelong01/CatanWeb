@@ -31,6 +31,13 @@ namespace Tests.GameService.SignalR
     public class EndToEndGameTests : IClassFixture<WebApplicationFactory<Program>>
     {
         private readonly WebApplicationFactory<Program> _factory;
+        //
+        // during the allocation phase, we update the Buildings in GameModel.  the order of the Buildings is fixed
+        // and the BuildingState is updated without worrying about order. But we need to know what the last building picked
+        //  was so we can verify the resources.  we'll do that by just keeping a simnple map of playerId -> Building because
+        //  these tests are statful...
+
+        private readonly Dictionary<string, BuildingModel> _lastBuildingPicked = [];
 
         public EndToEndGameTests(WebApplicationFactory<Program> factory)
         {
@@ -374,15 +381,18 @@ namespace Tests.GameService.SignalR
                     LogEvent(session, "SettlementAttempt", $"Attempting settlement placement for {currentPlayerId}");
 
                     // Use the local method instead of AllocationHelper
-                    var settlementKey = PickOptimalSettlement(gameModel);
-                    LogEvent(session, "SettlementSelected", $"{currentPlayerId} placing optimal settlement at {settlementKey}");
+                    var bestBuilding = PickOptimalSettlement(gameModel);
+                    LogEvent(session, "SettlementSelected", $"{currentPlayerId} placing optimal settlement at {bestBuilding}");
 
                     // rely on service logic to validate settlement placement
 
-                    var result = await proxy.ExecuteBuildingUpgradeAsync(session.GameId, settlementKey);
+                    var result = await proxy.ExecuteBuildingUpgradeAsync(session.GameId, bestBuilding.BuildingKey);
                     Assert.True(result.Success, $"Settlement placement failed: {result.Message}"); // if this worked, the PickOmptimalSettlement worked
                     LogEvent(session, "SettlementPlaced", $"✅ {currentPlayerId} settlement placement succeeded!.  GameState={gameModel.GameState}");
-
+                    if (gameModel.GameState == GameState.AllocateResourceReverse)
+                    {
+                        _lastBuildingPicked[gameModel.CurrentPlayerId] = bestBuilding;
+                    }
                     // Verify game state after settlement placement
                     await session.VerifyGameConsistency();
                     var updatedGameState = proxy.GameModel;
@@ -462,7 +472,7 @@ namespace Tests.GameService.SignalR
         ///<summary>
         /// e2e helper that picks a settlement 
         ///</summary>
-        private BuildingKey PickOptimalSettlement(GameModel gameModel)
+        private BuildingModel PickOptimalSettlement(GameModel gameModel)
         {
             // Get the current game state for the player
             var possibleSettlements = gameModel.Buildings
@@ -479,15 +489,14 @@ namespace Tests.GameService.SignalR
                 .Select(building => new
                 {
                     stars = gameModel.TilesForBuildings(building.BuildingKey).Stars(),
-                    buildingKey = building.BuildingKey
+                    building = building
                 })
                 .ToList();
 
             var maxStars = settlementOptions.Max(s => s.stars);
             var bestSettlement = settlementOptions.First(s => s.stars == maxStars);
 
-
-            return bestSettlement.buildingKey;
+            return bestSettlement.building;
         }
 
 
@@ -541,64 +550,25 @@ namespace Tests.GameService.SignalR
 
             foreach (var player in gameModel.Players)
             {
-                var lastBuilding = gameModel.Buildings.Where(b => b.OwnerId == player.Id && b.BuildingState == BuildingState.Settlement).ToList().Last();
+
+
+                var lastBuilding = _lastBuildingPicked.GetValueOrDefault(player.Id);
+                Assert.NotNull(lastBuilding);
                 LogEvent(session, "Resource Verification", $"player {player.Name} expected ResourcesThisTurn={player.ResourcesThisTurn}");
-                ResourcesModel  expectedResources = new ResourcesModel();
+                LogEvent(session, "Last Building Resources: ", $"{lastBuilding.BuildingKey} Resources={gameModel.ResourcesForBuilding(lastBuilding)}");
+                ResourcesModel  expectedResources = gameModel.ResourcesForBuilding(lastBuilding);
 
-
-                var tiles = gameModel.TilesForBuildings (lastBuilding.BuildingKey);
-                foreach (var tile in tiles)
-                {
-                    var resource = tile.ResourceTileType;
-                    switch (resource)
-                    {
-                        case ResourceType.Brick:
-                            expectedResources.Brick++;
-                            break;
-                        case ResourceType.Wood:
-                            expectedResources.Wood++;
-                            break;
-                        case ResourceType.Sheep:
-                            expectedResources.Sheep++;
-                            break;
-                        case ResourceType.Wheat:
-                            expectedResources.Wheat++;
-                            break;
-                        case ResourceType.Ore:
-                            expectedResources.Ore++;
-                            break;
-                        default:
-                            Debug.Assert(false, $"Unexpected resource type {resource} for building {lastBuilding.BuildingKey}");
-                            break;
-                    }
-                }
-
-
-                // now the values for the ResourceTypes in expectedResources should match the ResourcesThisTurn
                 foreach (var resourceType in Enum.GetValues<ResourceType>())
                 {
                     var expectedValue = expectedResources.CountForResource(resourceType);
-                    var actualValueThisTurn = player.ResourcesThisTurn.CountForResource(resourceType);
-                    if (expectedValue != actualValueThisTurn)
+                    var actualThisTurn = player.ResourcesThisTurn.CountForResource(resourceType);
+                    if (expectedValue != actualThisTurn)
                     {
-                        LogEvent(session, "ResourceInconsistency", $"{player.Name} expected {expectedValue} or {resourceType} but got {actualValueThisTurn}");
+                        LogEvent(session, "ResourceInconsistency", $"{player.Name} expected {expectedValue} of {resourceType} but got {actualThisTurn}");
                     }
-                   // Assert.Equal(expectedValue, actualValueThisTurn);
-
+                    Assert.Equal(expectedValue, actualThisTurn);
                 }
-
-
-                //LogEvent(session, "ResourceVerification", $"{player.Id} has {player.ResourcesThisTurn} resources this turn)");
-                //foreach (var resourceType in Enum.GetValues<ResourceType>())
-                //{
-                //    Assert.Equal(expectedResources.CountForResource(resourceType), player.ResourcesThisTurn.CountForResource(resourceType));
-
-                //}
-
-
                 Assert.Equal(GameState.DoneResourceAllocation, gameModel.GameState);
-
-
             }
 
             // ADVANCEMENT TEST: Test Next action to advance to WaitingForRoll
@@ -696,7 +666,7 @@ namespace Tests.GameService.SignalR
                     _proxies[playerId] = proxy;
                 }
             });
-            
+
             // Wait for all connections to complete in parallel
             await Task.WhenAll(connectTasks);
             LogEvent("ParallelConnectionsComplete", $"All {_playerIds.Length} players connected in parallel");
