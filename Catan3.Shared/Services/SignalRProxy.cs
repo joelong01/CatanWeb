@@ -21,7 +21,7 @@ namespace Catan3.Shared.Services
         public HubConnection Connection => _connection;
         public string PlayerId => _playerId;
         public string? GameId => _gameId;
-        public GameModel? LastGameState { get; private set; }
+        public GameModel? GameModel { get; private set; }
 
         // Events for game state updates and command results
         public event Action<GameModel>? GameStateUpdated;
@@ -270,9 +270,9 @@ namespace Catan3.Shared.Services
             timeout ??= TimeSpan.FromSeconds(10);
 
             // Check if we already have the expected state
-            if (LastGameState?.GameState == expectedState)
+            if (GameModel?.GameState == expectedState)
             {
-                return LastGameState;
+                return GameModel;
             }
 
             var stateReachedTcs = new TaskCompletionSource<GameModel>();
@@ -344,7 +344,7 @@ namespace Catan3.Shared.Services
             // Game state updates
             _connection.On<GameModel>("GameStateUpdated", gameModel =>
             {
-                LastGameState = gameModel;
+                GameModel = gameModel;
                 GameStateUpdated?.Invoke(gameModel);
             });
 

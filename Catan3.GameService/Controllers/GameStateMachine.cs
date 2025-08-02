@@ -548,7 +548,8 @@ namespace Catan3.GameService.Controllers
         private GameModel NextState()
         {
             GameModel gameModel = Log.CopyCurrent();
-            if (!CanTransitionToNext(gameModel)) throw new Catan3.Shared.Utility.GameException("Cannot transition to Next state at this time");
+            Debug.Assert(gameModel != null);
+            if (!CanTransitionToNext(gameModel)) throw new Catan3.Shared.Utility.GameException($"Cannot transition to Next state at this time.  current state={gameModel.GameState}");
 
             switch (gameModel.GameState)
             {

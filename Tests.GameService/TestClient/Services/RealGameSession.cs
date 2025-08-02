@@ -129,7 +129,7 @@ public class RealGameSession : IAsyncDisposable
     public string GetCurrentPlayerId()
     {
         var anyProxy = _proxies.Values.First();
-        var currentPlayerId = anyProxy.LastGameState?.CurrentPlayerId;
+        var currentPlayerId = anyProxy.GameModel?.CurrentPlayerId;
         
         if (string.IsNullOrEmpty(currentPlayerId))
         {
@@ -146,7 +146,7 @@ public class RealGameSession : IAsyncDisposable
     public GameState GetCurrentState()
     {
         var anyProxy = _proxies.Values.First();
-        return anyProxy.LastGameState?.GameState ?? GameState.Uninitialized;
+        return anyProxy.GameModel?.GameState ?? GameState.Uninitialized;
     }
 
     /// <summary>
@@ -196,9 +196,9 @@ public class RealGameSession : IAsyncDisposable
         // Brief delay to allow for state propagation
         await Task.Delay(50);
         
-        // Check that all proxies have consistent LastGameState and GameHash
+        // Check that all proxies have consistent GameModel and GameHash
         var gameStates = _proxies.Values
-            .Select(p => new { Proxy = p.PlayerId, State = p.LastGameState?.GameState, Hash = p.LastGameState?.GameHash })
+            .Select(p => new { Proxy = p.PlayerId, State = p.GameModel?.GameState, Hash = p.GameModel?.GameHash })
             .Where(x => x.State.HasValue)
             .ToList();
         
@@ -223,7 +223,7 @@ public class RealGameSession : IAsyncDisposable
         await Task.Delay(50); // Brief delay for state propagation
         
         var proxyStates = _proxies.Values
-            .Select(p => new { Proxy = p.PlayerId, GameState = p.LastGameState })
+            .Select(p => new { Proxy = p.PlayerId, GameState = p.GameModel })
             .Where(x => x.GameState != null)
             .ToList();
         
