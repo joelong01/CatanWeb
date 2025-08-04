@@ -23,24 +23,28 @@
 		<Compile Remove="CatanGameService\**" />
 		<Compile Remove="Player\PlayerOrder\**" />
 		<Compile Remove="Tests.GameService\**" />
+		<Compile Remove="Tests.Shared\**" />
 		<EmbeddedResource Remove="Catan3.GameService\**" />
 		<EmbeddedResource Remove="Catan3.Shared\**" />
 		<EmbeddedResource Remove="Catan3.CLI\**" />
 		<EmbeddedResource Remove="CatanGameService\**" />
 		<EmbeddedResource Remove="Player\PlayerOrder\**" />
 		<EmbeddedResource Remove="Tests.GameService\**" />
+		<EmbeddedResource Remove="Tests.Shared\**" />
 		<None Remove="Catan3.GameService\**" />
 		<None Remove="Catan3.Shared\**" />
 		<None Remove="Catan3.CLI\**" />
 		<None Remove="CatanGameService\**" />
 		<None Remove="Player\PlayerOrder\**" />
 		<None Remove="Tests.GameService\**" />
+		<None Remove="Tests.Shared\**" />
 		<Page Remove="Catan3.GameService\**" />
 		<Page Remove="Catan3.Shared\**" />
 		<Page Remove="Catan3.CLI\**" />
 		<Page Remove="CatanGameService\**" />
 		<Page Remove="Player\PlayerOrder\**" />
 		<Page Remove="Tests.GameService\**" />
+		<Page Remove="Tests.Shared\**" />
 	</ItemGroup>
 	<ItemGroup>
 		<Compile Remove="Player\PlayerOrderModel.cs" />
@@ -74,7 +78,7 @@
 		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
 		<PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="2.0.9" />
 		<PackageReference Include="System.Text.Encodings.Web" Version="9.0.0" />
-		<PackageReference Include="System.Text.Json" Version="9.0.0" />
+		<PackageReference Include="System.Text.Json" Version="9.0.7" />
 		<PackageReference Include="WinUIEx" Version="2.5.0" />
 		<Manifest Include="$(ApplicationManifest)" />
 	</ItemGroup>

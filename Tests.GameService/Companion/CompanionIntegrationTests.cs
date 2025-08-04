@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Xunit;
 using Catan3.Shared.Models;
 using Catan3.Shared.Services;
@@ -94,7 +95,8 @@ namespace Tests.GameService.Companion
                 var content = await response.Content.ReadAsStringAsync();
                 var gamesResponse = JsonSerializer.Deserialize<CompanionGamesResponse>(content, new JsonSerializerOptions 
                 { 
-                    PropertyNameCaseInsensitive = true 
+                    PropertyNameCaseInsensitive = true,
+                    Converters = { new JsonStringEnumConverter() }
                 });
 
                 Assert.NotNull(gamesResponse);
@@ -132,10 +134,7 @@ namespace Tests.GameService.Companion
                     $"Game state API should succeed. Status: {response.StatusCode}");
 
                 var content = await response.Content.ReadAsStringAsync();
-                var gameModel = JsonSerializer.Deserialize<GameModel>(content, new JsonSerializerOptions 
-                { 
-                    PropertyNameCaseInsensitive = true 
-                });
+                var gameModel = JsonHelper.Deserialize<GameModel>(content);
 
                 Assert.NotNull(gameModel);
                 Assert.Equal(gameSession.GameId, gameModel.GameId);
@@ -348,10 +347,7 @@ namespace Tests.GameService.Companion
                 Assert.True(gamesResponse.IsSuccessStatusCode);
 
                 var content = await gamesResponse.Content.ReadAsStringAsync();
-                var gamesData = JsonSerializer.Deserialize<CompanionGamesResponse>(content, new JsonSerializerOptions 
-                { 
-                    PropertyNameCaseInsensitive = true 
-                });
+                var gamesData = JsonHelper.Deserialize<CompanionGamesResponse>(content);
 
                 Assert.NotNull(gamesData);
                 Assert.NotNull(gamesData.Games);
@@ -400,10 +396,7 @@ namespace Tests.GameService.Companion
             Assert.True(response.IsSuccessStatusCode);
 
             var content = await response.Content.ReadAsStringAsync();
-            var gamesResponse = JsonSerializer.Deserialize<CompanionGamesResponse>(content, new JsonSerializerOptions 
-            { 
-                PropertyNameCaseInsensitive = true 
-            });
+            var gamesResponse = JsonHelper.Deserialize<CompanionGamesResponse>(content);
 
             Assert.NotNull(gamesResponse);
             Assert.Contains(gamesResponse.Games, g => g.GameId == expectedGameId);
@@ -416,10 +409,7 @@ namespace Tests.GameService.Companion
             Assert.True(response.IsSuccessStatusCode);
 
             var content = await response.Content.ReadAsStringAsync();
-            var gameModel = JsonSerializer.Deserialize<GameModel>(content, new JsonSerializerOptions 
-            { 
-                PropertyNameCaseInsensitive = true 
-            });
+            var gameModel = JsonHelper.Deserialize<GameModel>(content);
 
             Assert.NotNull(gameModel);
             Assert.Equal(gameId, gameModel.GameId);
@@ -430,10 +420,7 @@ namespace Tests.GameService.Companion
             var httpClient = _factory.CreateClient();
             var response = await httpClient.GetAsync($"/api/gamestate/{gameId}");
             var content = await response.Content.ReadAsStringAsync();
-            var gameModel = JsonSerializer.Deserialize<GameModel>(content, new JsonSerializerOptions 
-            { 
-                PropertyNameCaseInsensitive = true 
-            });
+            var gameModel = JsonHelper.Deserialize<GameModel>(content);
 
             Assert.NotNull(gameModel);
             Assert.True(gameModel.Players.Count > 0);

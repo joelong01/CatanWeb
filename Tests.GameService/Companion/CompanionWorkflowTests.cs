@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Xunit;
 using Catan3.Shared.Models;
 using Catan3.Shared.Services;
@@ -168,10 +169,7 @@ namespace Tests.GameService.Companion
                 var emptyGamesResponse = await httpClient.GetAsync("/api/companion/games");
                 Assert.True(emptyGamesResponse.IsSuccessStatusCode);
                 var emptyContent = await emptyGamesResponse.Content.ReadAsStringAsync();
-                var emptyGamesData = JsonSerializer.Deserialize<CompanionGamesResponse>(emptyContent, new JsonSerializerOptions 
-                { 
-                    PropertyNameCaseInsensitive = true 
-                });
+                var emptyGamesData = JsonHelper.Deserialize<CompanionGamesResponse>(emptyContent);
                 Assert.NotNull(emptyGamesData);
                 Console.WriteLine("? Empty games list handled correctly");
 
@@ -303,10 +301,7 @@ namespace Tests.GameService.Companion
             Assert.True(response.IsSuccessStatusCode, $"Games discovery should succeed. Status: {response.StatusCode}");
 
             var content = await response.Content.ReadAsStringAsync();
-            var gamesResponse = JsonSerializer.Deserialize<CompanionGamesResponse>(content, new JsonSerializerOptions 
-            { 
-                PropertyNameCaseInsensitive = true 
-            });
+            var gamesResponse = JsonHelper.Deserialize<CompanionGamesResponse>(content);
 
             Assert.NotNull(gamesResponse);
             Assert.NotNull(gamesResponse.Games);
@@ -322,10 +317,7 @@ namespace Tests.GameService.Companion
             Assert.True(response.IsSuccessStatusCode, $"Game selection should succeed. Status: {response.StatusCode}");
 
             var content = await response.Content.ReadAsStringAsync();
-            var gameModel = JsonSerializer.Deserialize<GameModel>(content, new JsonSerializerOptions 
-            { 
-                PropertyNameCaseInsensitive = true 
-            });
+            var gameModel = JsonHelper.Deserialize<GameModel>(content);
 
             Assert.NotNull(gameModel);
             Assert.Equal(gameId, gameModel.GameId);

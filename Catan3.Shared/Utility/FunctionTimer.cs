@@ -33,9 +33,9 @@ namespace Catan3.Shared.Utility
             // Use Console.WriteLine for test visibility instead of this.TraceMessage
             Console.WriteLine($"[TIMER] {message}: {elapsedMs}ms");
         }
-        public static void CallTimedFunction(string description, Action action, bool console=false)
+        public static void CallTimedFunction(string description, Action action, bool enableOverride = false, bool console=false)
         {
-            using (new FunctionTimer(description, console))
+            using (new FunctionTimer(description, enableOverride, console))
             {
                 action();
             }

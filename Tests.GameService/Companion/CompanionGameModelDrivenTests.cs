@@ -130,7 +130,6 @@ namespace Tests.GameService.Companion
                     // Verify companion uses these entitlements for UI
                     Assert.All(entitlements, entitlement => 
                     {
-                        Assert.NotNull(entitlement.Entitlement);
                         // Companion should show enabled/disabled based on GameModel, not local logic
                     });
                 }

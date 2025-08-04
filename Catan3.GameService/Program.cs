@@ -1,6 +1,7 @@
 using Catan3.GameService.Controllers;
 using Catan3.GameService.Services;
 using Catan3.GameService.Hubs;
+using Catan3.Shared.Utility;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -19,7 +20,11 @@ if (builder.Environment.EnvironmentName == "Testing")
 }
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews()
+    .AddJsonOptions(options =>
+    {
+        JsonHelper.ConfigureOptions(options.JsonSerializerOptions);
+    });
 
 // Add CORS for local development
 builder.Services.AddCors(options =>
@@ -33,7 +38,11 @@ builder.Services.AddCors(options =>
 });
 
 // Add SignalR for real-time communication
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        JsonHelper.ConfigureOptions(options.PayloadSerializerOptions);
+    });
 
 // Configure to listen on all interfaces on port 8080
 builder.WebHost.ConfigureKestrel(options =>

@@ -66,17 +66,14 @@ namespace Tests.GameService.Companion
                 Assert.True(gameStateResponse.IsSuccessStatusCode);
 
                 var gameStateContent = await gameStateResponse.Content.ReadAsStringAsync();
-                var gameModel = JsonSerializer.Deserialize<GameModel>(gameStateContent, new JsonSerializerOptions 
-                { 
-                    PropertyNameCaseInsensitive = true 
-                });
+                var selectedGameModel = JsonHelper.Deserialize<GameModel>(gameStateContent);
 
-                Assert.NotNull(gameModel);
-                Assert.Equal(selectedGameId, gameModel.GameId);
-                Assert.True(gameModel.Players.Count > 0);
+                Assert.NotNull(selectedGameModel);
+                Assert.Equal(selectedGameId, selectedGameModel.GameId);
+                Assert.True(selectedGameModel.Players.Count > 0);
 
                 // 4. Verify player information is available for selection
-                Assert.All(gameModel.Players, player => 
+                Assert.All(selectedGameModel.Players, player => 
                 {
                     Assert.NotEmpty(player.Id);
                     Assert.NotEmpty(player.Name);
@@ -176,10 +173,7 @@ namespace Tests.GameService.Companion
                 var httpClient = _factory.CreateClient();
                 var gameStateResponse = await httpClient.GetAsync($"/api/gamestate/{gameId}");
                 var gameStateContent = await gameStateResponse.Content.ReadAsStringAsync();
-                var gameModel = JsonSerializer.Deserialize<GameModel>(gameStateContent, new JsonSerializerOptions 
-                { 
-                    PropertyNameCaseInsensitive = true 
-                });
+                var gameModel = JsonHelper.Deserialize<GameModel>(gameStateContent);
 
                 Assert.NotNull(gameModel);
                 
@@ -208,10 +202,7 @@ namespace Tests.GameService.Companion
                 // Test PickingBoard state (initial state)
                 var gameStateResponse = await httpClient.GetAsync($"/api/gamestate/{gameId}");
                 var gameStateContent = await gameStateResponse.Content.ReadAsStringAsync();
-                var gameModel = JsonSerializer.Deserialize<GameModel>(gameStateContent, new JsonSerializerOptions 
-                { 
-                    PropertyNameCaseInsensitive = true 
-                });
+                var gameModel = JsonHelper.Deserialize<GameModel>(gameStateContent);
 
                 Assert.NotNull(gameModel);
                 Assert.Equal(GameState.PickingBoard, gameModel.GameState);
@@ -377,7 +368,7 @@ namespace Tests.GameService.Companion
                 playerIds = playerIds
             };
 
-            var newGameJson = JsonSerializer.Serialize(newGameRequest);
+            var newGameJson = JsonHelper.Serialize(newGameRequest);
             var newGameContent = new StringContent(newGameJson, Encoding.UTF8, "application/json");
 
             var newGameResponse = await httpClient.PostAsync("/api/game/new", newGameContent);
@@ -387,9 +378,9 @@ namespace Tests.GameService.Companion
             }
 
             var newGameBody = await newGameResponse.Content.ReadAsStringAsync();
-            var newGameResult = JsonSerializer.Deserialize<JsonElement>(newGameBody);
+            var newGameResult = JsonHelper.Deserialize<JsonElement>(newGameBody);
 
-            if (!newGameResult.TryGetProperty("gameId", out var gameIdElement))
+            if (newGameResult == null || !newGameResult.Value.TryGetProperty("gameId", out var gameIdElement))
             {
                 throw new InvalidOperationException("Game creation did not return gameId");
             }

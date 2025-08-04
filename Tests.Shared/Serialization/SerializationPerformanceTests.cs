@@ -6,6 +6,7 @@ using Xunit;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
 
+
 namespace Tests.Shared.Serialization
 {
     /// <summary>
@@ -31,12 +32,12 @@ namespace Tests.Shared.Serialization
         [Fact]
         public void GameModel_SerializationPerformance_ShouldBeFast()
         {
-            using (new FunctionTimer("GameModel_Serialization_Performance", enableOverride: true, writeToConsole: true))
+            using (new FunctionTimer("GameModel_Serialization_Performance", enableOverride: false, writeToConsole: true))
             {
                 const int iterations = 1000;
                 var gameModel = CreateLargeGameModel();
                 var results = new ConcurrentBag<TimeSpan>();
-                
+
                 // Warmup
                 for (int i = 0; i < 10; i++)
                 {
@@ -49,9 +50,9 @@ namespace Tests.Shared.Serialization
                     var stopwatch = Stopwatch.StartNew();
                     var json = JsonSerializer.Serialize(gameModel, _jsonOptions);
                     stopwatch.Stop();
-                    
+
                     results.Add(stopwatch.Elapsed);
-                    
+
                     // Verify we got valid JSON
                     Assert.True(json.Length > 0);
                 });
@@ -76,13 +77,13 @@ namespace Tests.Shared.Serialization
         [Fact]
         public void GameModel_DeserializationPerformance_ShouldBeFast()
         {
-            using (new FunctionTimer("GameModel_Deserialization_Performance", enableOverride: true, writeToConsole: true))
+            using (new FunctionTimer("GameModel_Deserialization_Performance", enableOverride: false, writeToConsole: true))
             {
                 const int iterations = 1000;
                 var gameModel = CreateLargeGameModel();
                 var json = JsonSerializer.Serialize(gameModel, _jsonOptions);
                 var results = new ConcurrentBag<TimeSpan>();
-                
+
                 // Warmup
                 for (int i = 0; i < 10; i++)
                 {
@@ -95,9 +96,9 @@ namespace Tests.Shared.Serialization
                     var stopwatch = Stopwatch.StartNew();
                     var deserialized = JsonSerializer.Deserialize<GameModel>(json, _jsonOptions);
                     stopwatch.Stop();
-                    
+
                     results.Add(stopwatch.Elapsed);
-                    
+
                     // Verify we got valid object
                     Assert.NotNull(deserialized);
                     Assert.Equal(gameModel.GameId, deserialized.GameId);
@@ -123,11 +124,11 @@ namespace Tests.Shared.Serialization
         [Fact]
         public void RealTimeUpdate_SimulationPerformance_ShouldHandleLoad()
         {
-            using (new FunctionTimer("RealTime_Update_Simulation", enableOverride: true, writeToConsole: true))
+            using (new FunctionTimer("RealTime_Update_Simulation", enableOverride: false, writeToConsole: true))
             {
                 const int simultaneousClients = 10;
                 const int updatesPerClient = 100;
-                
+
                 var gameModel = CreateLargeGameModel();
                 var results = new ConcurrentBag<(int ClientId, TimeSpan SerializeTime, TimeSpan DeserializeTime)>();
 
@@ -160,7 +161,7 @@ namespace Tests.Shared.Serialization
                 // Analyze results
                 var allResults = results.ToList();
                 var totalOperations = allResults.Count * 2; // serialize + deserialize
-                
+
                 var avgSerialize = TimeSpan.FromTicks((long)allResults.Average(r => r.SerializeTime.Ticks));
                 var avgDeserialize = TimeSpan.FromTicks((long)allResults.Average(r => r.DeserializeTime.Ticks));
                 var avgTotal = TimeSpan.FromTicks(avgSerialize.Ticks + avgDeserialize.Ticks);
@@ -172,7 +173,7 @@ namespace Tests.Shared.Serialization
                 Console.WriteLine($"  Avg total per update: {avgTotal.TotalMilliseconds:F2}ms");
 
                 // Performance assertions for real-time scenarios
-                Assert.True(avgTotal.TotalMilliseconds < 150, 
+                Assert.True(avgTotal.TotalMilliseconds < 150,
                     $"Total update time should be under 150ms for real-time feel, was {avgTotal.TotalMilliseconds:F2}ms");
                 Assert.Equal(simultaneousClients * updatesPerClient, allResults.Count);
             }
@@ -181,10 +182,10 @@ namespace Tests.Shared.Serialization
         [Fact]
         public void JsonSize_ShouldBeReasonable_ForNetworkTransfer()
         {
-            using (new FunctionTimer("JSON_Size_Analysis", enableOverride: true, writeToConsole: true))
+            using (new FunctionTimer("JSON_Size_Analysis", enableOverride: false, writeToConsole: true))
             {
                 var gameModel = CreateLargeGameModel();
-                
+
                 // Test different serialization options
                 var compactOptions = new JsonSerializerOptions
                 {
@@ -253,7 +254,7 @@ namespace Tests.Shared.Serialization
                 {
                     var s = -q - r;
                     var coords = new HexCoordinates(q, r, s);
-                    
+
                     // Add tile
                     tiles.Add(new TileModel
                     {

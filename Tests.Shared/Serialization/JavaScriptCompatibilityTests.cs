@@ -32,7 +32,7 @@ namespace Tests.Shared.Serialization
         [Fact]
         public async Task GameModel_ShouldBeParseableByJavaScript()
         {
-            using (new FunctionTimer("JavaScript_GameModel_Parsing", enableOverride: true))
+            using (new FunctionTimer("JavaScript_GameModel_Parsing", enableOverride: false))
             {
                 var gameModel = CreateTestGameModel();
                 var json = JsonSerializer.Serialize(gameModel, _jsonOptions);
@@ -54,7 +54,7 @@ namespace Tests.Shared.Serialization
         [Fact]
         public async Task AllEnums_ShouldBeJavaScriptCompatible()
         {
-            using (new FunctionTimer("JavaScript_Enum_Compatibility", enableOverride: true))
+            using (new FunctionTimer("JavaScript_Enum_Compatibility", enableOverride: false))
             {
                 var enumTypes = new[]
                 {
@@ -73,7 +73,7 @@ namespace Tests.Shared.Serialization
         [Fact]
         public async Task CompanionRequiredModels_ShouldBeJavaScriptReady()
         {
-            using (new FunctionTimer("JavaScript_Companion_Models", enableOverride: true))
+            using (new FunctionTimer("JavaScript_Companion_Models", enableOverride: false))
             {
                 // Test models that companion.js specifically needs
                 var models = new object[]
