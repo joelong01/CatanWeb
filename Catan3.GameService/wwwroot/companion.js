@@ -1,6 +1,7 @@
 /**
- * Catan Companion JavaScript - SignalR Edition
- * Handles real-time communication with game service via SignalR
+ * Catan Companion JavaScript - Pure SignalR Edition
+ * Real-time communication with game service via SignalR following the Desktop app patterns
+ * GameModel is the single source of truth - companion maintains minimal state
  */
 
 class CatanCompanion {
@@ -9,33 +10,28 @@ class CatanCompanion {
         this.config = {
             apiBaseUrl: window.location.origin,
             signalRUrl: `${window.location.origin}/gameHub`,
-            reconnectDelay: 2000, // 2 seconds between reconnection attempts
+            reconnectDelay: 2000,
             maxReconnectAttempts: 10
         };
 
-        // State
-        this.gameId = null; // Will be set when user selects a game
+        // Core state - minimal, only what's needed for connection/UI
+        this.gameId = null;
         this.selectedPlayerId = null;
-        this.currentGameState = null;
-        this.gameVersion = 0;
+        this.currentGameState = null; // Read-only GameModel from SignalR
         this.connectionStatus = 'connecting';
-        this.reconnectAttempts = 0;
         
-        // SignalR connection
+        // SignalR connection state
         this.connection = null;
-        this.pendingCommands = new Map(); // Track command completion
+        this.pendingCommands = new Map();
         
         // Demo mode support
         this.demoMode = window.DEMO_MODE || false;
         this.demoState = window.DEMO_STATE || null;
         
-        // UI state for new features
-        this.selectedVertex = null;
-        this.selectedTileIndex = null;
-        this.supplementalTimer = null;
-        this.selectedRoll = null;
+        // UI interaction state (not game state)
         this.availableGames = [];
         this.showingGameSelection = true;
+        this.supplementalTimer = null;
 
         // DOM elements
         this.elements = {
@@ -51,12 +47,7 @@ class CatanCompanion {
             nextBtn: document.getElementById('nextBtn'),
             undoBtn: document.getElementById('undoBtn'),
             redoBtn: document.getElementById('redoBtn'),
-            // State-specific sections
             stateContent: document.getElementById('stateContent'),
-            // Will be created dynamically
-            shuffleBtn: null,
-            rollButtons: null,
-            purchaseButtons: document.getElementById('purchaseButtons'),
             messageContainer: document.getElementById('messageContainer'),
             errorModal: document.getElementById('errorModal'),
             errorMessage: document.getElementById('errorMessage')
@@ -67,25 +58,20 @@ class CatanCompanion {
 
     async init() {
         this.updateConnectionStatus('connecting');
-        
-        // Setup event listeners
         this.setupEventListeners();
         
         if (this.demoMode) {
             this.initDemoMode();
         } else {
             try {
-                // Initialize SignalR connection
                 await this.initializeSignalR();
                 
-                // First, check if a gameId was provided in URL
                 const urlGameId = this.getGameIdFromUrl();
                 if (urlGameId) {
                     this.gameId = urlGameId;
                     this.showingGameSelection = false;
                     await this.connectToGame();
                 } else {
-                    // Show game selection interface
                     await this.loadAvailableGames();
                     this.showGameSelection();
                 }
@@ -103,24 +89,20 @@ class CatanCompanion {
     async initializeSignalR() {
         console.log('[COMPANION] Initializing SignalR connection...');
         
-        // Create SignalR connection
         this.connection = new signalR.HubConnectionBuilder()
             .withUrl(this.config.signalRUrl)
-            .withAutomaticReconnect([0, 2000, 10000, 30000]) // Automatic reconnection
+            .withAutomaticReconnect([0, 2000, 10000, 30000])
             .build();
 
-        // Setup event handlers
         this.setupSignalRHandlers();
-
-        // Start connection
         await this.connection.start();
         console.log('[COMPANION] SignalR connection established');
     }
 
     setupSignalRHandlers() {
-        // Game state updates
+        // Game state updates - instant push notifications
         this.connection.on("GameStateUpdated", (gameModel) => {
-            console.log('[COMPANION] Received game state update via SignalR:', {
+            console.log('[COMPANION] Received real-time game state update:', {
                 gameId: gameModel.gameId,
                 gameState: gameModel.gameState,
                 version: gameModel.version,
@@ -129,25 +111,25 @@ class CatanCompanion {
             this.updateGameState(gameModel);
         });
 
-        // Command completion
+        // Command completion - async command pattern
         this.connection.on("CommandCompleted", (commandId, success, message) => {
             console.log('[COMPANION] Command completed:', { commandId, success, message });
             this.handleCommandCompletion(commandId, success, message);
         });
 
-        // Command failure
+        // Command failure - error handling
         this.connection.on("CommandFailed", (commandId, error) => {
             console.log('[COMPANION] Command failed:', { commandId, error });
             this.handleCommandFailure(commandId, error);
         });
 
-        // Player presence
+        // Player presence - real-time updates
         this.connection.on("PlayerPresenceChanged", (playerId, isOnline) => {
             console.log('[COMPANION] Player presence changed:', { playerId, isOnline });
             this.updatePlayerPresence(playerId, isOnline);
         });
 
-        // Connection events
+        // Connection lifecycle events
         this.connection.onreconnecting(() => {
             console.log('[COMPANION] SignalR reconnecting...');
             this.updateConnectionStatus('connecting');
@@ -159,7 +141,6 @@ class CatanCompanion {
             this.updateConnectionStatus('connected');
             this.showMessage('Reconnected to game service', 'success');
             
-            // Rejoin the game if we were in one
             if (this.gameId && this.selectedPlayerId) {
                 this.rejoinGame();
             }
@@ -194,7 +175,6 @@ class CatanCompanion {
                 this.showMessage(message || 'Command failed', 'error');
             }
             
-            // Hide processing state
             this.hideProcessingState(commandId);
         }
     }
@@ -214,11 +194,10 @@ class CatanCompanion {
     }
 
     hideProcessingState(commandId) {
-        // Could update UI to remove loading indicators if needed
+        // Update UI to remove loading indicators if needed
     }
 
     updatePlayerPresence(playerId, isOnline) {
-        // Update UI to show player presence if needed
         console.log(`[COMPANION] Player ${playerId} is now ${isOnline ? 'online' : 'offline'}`);
     }
     
@@ -229,16 +208,15 @@ class CatanCompanion {
         
         this.elements.gameId.textContent = this.gameId;
         
-        // Load initial game state
+        // Load initial game state via REST API
         await this.loadGameState();
         
-        // Join the SignalR game group
+        // Join the SignalR game group for real-time updates
         if (this.selectedPlayerId) {
             await this.connection.invoke("JoinGame", this.gameId, this.selectedPlayerId);
             console.log('[COMPANION] Joined SignalR game group');
         }
         
-        // Hide game selection and show game interface
         this.hideGameSelection();
     }
 
@@ -251,11 +229,8 @@ class CatanCompanion {
         this.updateConnectionStatus('connected');
         this.showMessage('Demo Mode - UI Preview Only', 'info');
         
-        // Create mock game state for demo
         const mockGameState = this.createMockGameState(this.demoState);
         this.updateGameState(mockGameState);
-        
-        // Add demo header
         this.addDemoHeader();
     }
 
@@ -275,7 +250,7 @@ class CatanCompanion {
             `;
             demoNotice.innerHTML = `
                 ?? DEMO MODE - UI Preview Only 
-                <a href="/demo" style="color: white; text-decoration: underline; margin-left: 1rem;">? Back to Demo Hub</a>
+                <a href="/demo" style="color: white; text-decoration: underline; margin-left: 1rem;">?? Back to Demo Hub</a>
             `;
             header.appendChild(demoNotice);
         }
@@ -298,7 +273,8 @@ class CatanCompanion {
                 undoEnabled: true,
                 redoEnabled: false
             },
-            availableEntitlements: [
+            entitlementPurchaseModel: [
+                { entitlement: 'DevCard', enabled: true },
                 { entitlement: 'Settlement', enabled: true },
                 { entitlement: 'City', enabled: false },
                 { entitlement: 'Road', enabled: true },
@@ -306,9 +282,7 @@ class CatanCompanion {
             ]
         };
 
-        // Set selected player to first player for demo
         this.selectedPlayerId = 'player1';
-
         return baseState;
     }
 
@@ -321,15 +295,11 @@ class CatanCompanion {
             if (this.selectedPlayerId) {
                 this.showMessage(`Selected player: ${e.target.options[e.target.selectedIndex].text}`, 'info');
                 
-                // If we have a game and connection, join the game group
                 if (this.gameId && this.connection && !this.demoMode) {
                     try {
-                        // Leave old game group if needed
                         if (oldPlayerId) {
                             await this.connection.invoke("LeaveGame", this.gameId, oldPlayerId);
                         }
-                        
-                        // Join new game group
                         await this.connection.invoke("JoinGame", this.gameId, this.selectedPlayerId);
                     } catch (error) {
                         console.error('Failed to update SignalR game group:', error);
@@ -361,17 +331,12 @@ class CatanCompanion {
             
             const response = await fetch(`${this.config.apiBaseUrl}/api/companion/games`);
             
-            console.log(`[COMPANION] Available games response - Status: ${response.status} ${response.statusText}`);
-            
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`[COMPANION] Failed to load available games - Status: ${response.status}, Response: ${errorText}`);
                 throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
             }
             
             const data = await response.json();
-            console.log(`[COMPANION] Loaded ${data.games.length} available games:`, data.games);
-            
             this.availableGames = data.games;
             
         } catch (error) {
@@ -399,7 +364,6 @@ class CatanCompanion {
             </div>
         `;
         
-        // Setup event listeners
         this.setupGameSelectionEvents();
     }
     
@@ -455,7 +419,6 @@ class CatanCompanion {
     }
     
     setupGameSelectionEvents() {
-        // Refresh games button
         const refreshBtn = document.getElementById('refreshGamesBtn');
         if (refreshBtn) {
             refreshBtn.onclick = async () => {
@@ -474,7 +437,6 @@ class CatanCompanion {
             };
         }
         
-        // Join game buttons
         const joinButtons = document.querySelectorAll('.join-game-btn');
         joinButtons.forEach(btn => {
             btn.onclick = async () => {
@@ -501,7 +463,6 @@ class CatanCompanion {
             console.error('[COMPANION] Failed to select game:', error);
             this.showError(`Failed to connect to game: ${error.message}`);
             
-            // Reset state
             this.gameId = null;
             this.showingGameSelection = true;
         }
@@ -509,7 +470,6 @@ class CatanCompanion {
     
     hideGameSelection() {
         this.showingGameSelection = false;
-        // The main UI will be populated by updateGameState
     }
 
     updateConnectionStatus(status) {
@@ -537,16 +497,11 @@ class CatanCompanion {
     async loadGameState() {
         try {
             console.log(`[COMPANION] Loading game state for gameId: ${this.gameId}`);
-            console.log(`[COMPANION] API URL: ${this.config.apiBaseUrl}/api/gamestate/${this.gameId}`);
             
             const response = await fetch(`${this.config.apiBaseUrl}/api/gamestate/${this.gameId}`);
             
-            console.log(`[COMPANION] Game state response - Status: ${response.status} ${response.statusText}`);
-            console.log(`[COMPANION] Response headers:`, Object.fromEntries(response.headers.entries()));
-            
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`[COMPANION] Game state request failed - Status: ${response.status}, Response: ${errorText}`);
                 
                 if (response.status === 404) {
                     throw new Error(`Game "${this.gameId}" not found. Please create a game first using the desktop app.`);
@@ -573,18 +528,15 @@ class CatanCompanion {
     populatePlayerSelect(players) {
         const select = this.elements.playerSelect;
         
-        // Clear existing options except the first one
         while (select.children.length > 1) {
             select.removeChild(select.lastChild);
         }
         
-        // Add player options from GameModel.players
         if (players && players.length > 0) {
             players.forEach(player => {
                 const option = document.createElement('option');
                 option.value = player.id;
                 option.textContent = player.name || player.id;
-                // Auto-select first player in demo mode
                 if (this.demoMode && player.id === players[0].id) {
                     option.selected = true;
                     this.selectedPlayerId = player.id;
@@ -592,7 +544,6 @@ class CatanCompanion {
                 select.appendChild(option);
             });
         } else {
-            // Add a placeholder if no players are available
             const option = document.createElement('option');
             option.value = '';
             option.textContent = 'No players available - start a game first';
@@ -602,7 +553,6 @@ class CatanCompanion {
     }
 
     updatePlayerList(players, currentPlayerId) {
-        // Update the player list in header if element exists
         if (this.elements.playerList && players && players.length > 0) {
             const playerElements = players.map(player => {
                 const isCurrentPlayer = player.id === currentPlayerId;
@@ -623,15 +573,12 @@ class CatanCompanion {
 
     updateGameState(gameState) {
         this.currentGameState = gameState;
-        this.gameVersion = gameState.version || 0;
         
-        // Update player information from GameModel.players (single source of truth)
         if (gameState.players) {
             this.populatePlayerSelect(gameState.players);
             this.updatePlayerList(gameState.players, gameState.currentPlayerId);
         }
         
-        // Update UI elements
         const currentPlayer = gameState.players?.find(p => p.id === gameState.currentPlayerId);
         this.elements.currentPlayer.textContent = currentPlayer?.name || gameState.currentPlayerId || '-';
         
@@ -640,13 +587,12 @@ class CatanCompanion {
         }
         
         this.elements.gameStateDisplay.textContent = this.formatGameState(gameState.gameState);
-        this.elements.gameVersion.textContent = this.gameVersion;
+        this.elements.gameVersion.textContent = gameState.version || 0;
         this.elements.lastUpdate.textContent = new Date().toLocaleTimeString();
         
         this.updateActionButtons(gameState);
         this.updateStateSpecificUI(gameState);
         
-        // If showing game selection, refresh the available games list
         if (this.showingGameSelection) {
             this.loadAvailableGames();
         }
@@ -686,20 +632,13 @@ class CatanCompanion {
         const actionFlags = gameState.actionFlags || {};
         const isCurrentPlayer = this.selectedPlayerId === gameState.currentPlayerId;
         
-        // Basic action buttons
         this.elements.nextBtn.disabled = !actionFlags.nextEnabled || !isCurrentPlayer;
         this.elements.undoBtn.disabled = !actionFlags.undoEnabled || !isCurrentPlayer;
         this.elements.redoBtn.disabled = !actionFlags.redoEnabled || !isCurrentPlayer;
         
-        // In demo mode, enable some buttons for interaction
         if (this.demoMode) {
             this.elements.nextBtn.disabled = false;
             this.elements.undoBtn.disabled = false;
-        }
-        
-        // Special handling for WaitingForRoll state
-        if (gameState.gameState === 'WaitingForRoll' && !this.selectedRoll && !this.demoMode) {
-            this.elements.nextBtn.disabled = true; // Always disabled until roll selected
         }
     }
 
@@ -707,7 +646,6 @@ class CatanCompanion {
         const stateContent = this.elements.stateContent;
         if (!stateContent) return;
         
-        // Clear previous state-specific content
         stateContent.innerHTML = '';
         
         const isCurrentPlayer = this.selectedPlayerId === gameState.currentPlayerId || this.demoMode;
@@ -733,7 +671,6 @@ class CatanCompanion {
                 this.createMoveRobberUI(stateContent, isCurrentPlayer);
                 break;
             default:
-                // Default state - show current state info
                 stateContent.innerHTML = `
                     <div class="state-info">
                         <h3>${this.formatGameState(gameState.gameState)}</h3>
@@ -759,9 +696,9 @@ class CatanCompanion {
             </div>
         `;
         
-        this.elements.shuffleBtn = document.getElementById('shuffleBtn');
-        if (isCurrentPlayer) {
-            this.elements.shuffleBtn.onclick = () => this.doAction('Shuffle');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        if (isCurrentPlayer && shuffleBtn) {
+            shuffleBtn.onclick = () => this.doAction('Shuffle');
         }
     }
 
@@ -771,7 +708,7 @@ class CatanCompanion {
                 <h3>Settlement Placement</h3>
                 <div class="hex-selector">
                     <div class="hex-container">
-                        <div class="hex-tile">?</div>
+                        <div class="hex-tile">??</div>
                         <div class="vertex-buttons">
                             <button class="vertex-btn" data-vertex="TopLeft">?</button>
                             <button class="vertex-btn" data-vertex="TopRight">?</button>
@@ -798,29 +735,133 @@ class CatanCompanion {
         `;
         
         if (isCurrentPlayer) {
-            // Setup vertex selection
+            // Get buildable locations from GameModel
+            const buildableBuildings = this.getBuildableBuildings(gameState);
+            
             const vertexButtons = container.querySelectorAll('.vertex-btn');
             vertexButtons.forEach(btn => {
-                btn.onclick = () => this.selectVertex(btn.dataset.vertex, vertexButtons);
+                btn.onclick = () => this.selectVertex(btn.dataset.vertex, vertexButtons, buildableBuildings);
             });
             
-            // Setup tile selection
             const tileSelect = document.getElementById('tileSelect');
-            // Populate with available tiles (would come from game state in real implementation)
-            for (let i = 1; i <= 19; i++) {
-                const option = document.createElement('option');
-                option.value = i;
-                option.textContent = `Tile ${i}`;
-                tileSelect.appendChild(option);
-            }
+            // Populate available tiles from GameModel buildings
+            this.populateTileOptions(tileSelect, buildableBuildings);
             
             tileSelect.onchange = () => {
-                this.selectedTileIndex = tileSelect.value;
-                this.updatePlaceSettlementButton();
+                this.updatePlaceSettlementButton(tileSelect.value, buildableBuildings);
             };
             
-            // Setup place settlement button
-            document.getElementById('placeSettlementBtn').onclick = () => this.placeSettlement();
+            document.getElementById('placeSettlementBtn').onclick = () => this.placeSettlement(tileSelect.value, buildableBuildings);
+        }
+    }
+
+    // Helper method to get buildable buildings from GameModel
+    getBuildableBuildings(gameState) {
+        // In a real implementation, this would come from the GameModel
+        // For now, return placeholder data that would come from gameState.possibleBuildings or similar
+        if (this.demoMode) {
+            return [
+                { hexCoordinates: { q: 0, r: 0, s: 0 }, position: 'TopLeft' },
+                { hexCoordinates: { q: 1, r: -1, s: 0 }, position: 'TopRight' },
+                { hexCoordinates: { q: -1, r: 1, s: 0 }, position: 'BottomLeft' }
+            ];
+        }
+        
+        // TODO: Get from gameState.buildings or gameState.possibleBuildingLocations
+        // This is where the GameModel would provide the valid building locations
+        return gameState.possibleBuildings || [];
+    }
+
+    // Helper method to populate tile options from buildable buildings
+    populateTileOptions(tileSelect, buildableBuildings) {
+        // Get unique tiles from buildable buildings
+        const availableTiles = [...new Set(buildableBuildings.map(building => {
+            const coords = building.hexCoordinates;
+            return `${coords.q},${coords.r},${coords.s}`;
+        }))];
+        
+        availableTiles.forEach(tileCoords => {
+            const option = document.createElement('option');
+            option.value = tileCoords;
+            option.textContent = `Tile (${tileCoords})`;
+            tileSelect.appendChild(option);
+        });
+    }
+
+    selectVertex(vertex, vertexButtons, buildableBuildings) {
+        vertexButtons.forEach(btn => btn.classList.remove('selected'));
+        
+        const selectedBtn = Array.from(vertexButtons).find(btn => btn.dataset.vertex === vertex);
+        selectedBtn.classList.add('selected');
+        
+        if (this.demoMode) {
+            this.showMessage(`Selected vertex: ${vertex}`, 'info');
+        }
+        
+        // Update button state based on valid combinations
+        this.updatePlaceSettlementButton(document.getElementById('tileSelect').value, buildableBuildings);
+    }
+
+    updatePlaceSettlementButton(selectedTileCoords, buildableBuildings) {
+        const btn = document.getElementById('placeSettlementBtn');
+        const selectedVertex = document.querySelector('.vertex-btn.selected')?.dataset.vertex;
+        
+        if (btn && selectedVertex && selectedTileCoords) {
+            // Check if this combination is valid from GameModel
+            const isValidCombination = buildableBuildings.some(building => {
+                const coords = building.hexCoordinates;
+                const tileCoords = `${coords.q},${coords.r},${coords.s}`;
+                return tileCoords === selectedTileCoords && building.position === selectedVertex;
+            });
+            
+            btn.disabled = !isValidCombination;
+        } else if (btn) {
+            btn.disabled = true;
+        }
+    }
+
+    async placeSettlement(selectedTileCoords, buildableBuildings) {
+        const selectedVertex = document.querySelector('.vertex-btn.selected')?.dataset.vertex;
+        
+        if (!selectedVertex || !selectedTileCoords) {
+            this.showMessage('Please select both a vertex and tile', 'error');
+            return;
+        }
+        
+        if (this.demoMode) {
+            this.showMessage(`Demo: Would place settlement at ${selectedVertex} on tile ${selectedTileCoords}`, 'success');
+            document.querySelectorAll('.vertex-btn').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById('tileSelect').value = '';
+            return;
+        }
+        
+        try {
+            // Find the matching building from GameModel
+            const building = buildableBuildings.find(b => {
+                const coords = b.hexCoordinates;
+                const tileCoords = `${coords.q},${coords.r},${coords.s}`;
+                return tileCoords === selectedTileCoords && b.position === selectedVertex;
+            });
+            
+            if (!building) {
+                throw new Error('Invalid building location');
+            }
+            
+            const message = {
+                buildingKey: {
+                    hexCoordinates: building.hexCoordinates,
+                    position: building.position
+                }
+            };
+            
+            await this.connection.invoke("ExecuteBuildingUpgrade", this.gameId, this.selectedPlayerId, message);
+            
+            // Clear selection
+            document.querySelectorAll('.vertex-btn').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById('tileSelect').value = '';
+        } catch (error) {
+            console.error('Failed to place settlement:', error);
+            this.showMessage(`Failed to place settlement: ${error.message}`, 'error');
         }
     }
 
@@ -829,7 +870,7 @@ class CatanCompanion {
             <div class="state-section">
                 <h3>Supplemental Building</h3>
                 <div class="timer-display">
-                    <span id="countdownTimer">?? Choose in 10 seconds...</span>
+                    <span id="countdownTimer">? Choose in 10 seconds...</span>
                 </div>
                 <div class="supplemental-buttons">
                     <button id="doSupplementalBtn" class="action-btn primary" ${!isCurrentPlayer ? 'disabled' : ''}>
@@ -849,8 +890,6 @@ class CatanCompanion {
         if (isCurrentPlayer) {
             document.getElementById('doSupplementalBtn').onclick = () => this.doSupplemental(true);
             document.getElementById('declineSupplementalBtn').onclick = () => this.doSupplemental(false);
-            
-            // Start countdown timer
             this.startSupplementalTimer();
         }
     }
@@ -874,19 +913,17 @@ class CatanCompanion {
         `;
         
         if (isCurrentPlayer) {
-            // Setup dice buttons
             const diceButtons = container.querySelectorAll('.dice-btn');
             diceButtons.forEach(btn => {
                 btn.onclick = () => this.selectRoll(parseInt(btn.dataset.roll), diceButtons);
             });
             
-            // Setup knight button
             document.getElementById('knightBtn').onclick = () => this.playKnight();
         }
     }
 
     createPurchaseUI(container, isCurrentPlayer, gameState) {
-        const entitlements = gameState.availableEntitlements || [];
+        const entitlements = gameState.entitlementPurchaseModel || [];
         
         container.innerHTML = `
             <div class="state-section">
@@ -947,44 +984,21 @@ class CatanCompanion {
         `;
         
         if (isCurrentPlayer) {
-            // Setup tile selection
             const tileButtons = container.querySelectorAll('.tile-btn');
             tileButtons.forEach(btn => {
                 btn.onclick = () => this.selectRobberTile(btn.dataset.tile, tileButtons);
             });
             
-            // Setup move robber button
             document.getElementById('moveRobberBtn').onclick = () => this.moveRobber();
         }
     }
 
-    selectVertex(vertex, vertexButtons) {
-        // Clear previous selection
-        vertexButtons.forEach(btn => btn.classList.remove('selected'));
-        
-        // Select new vertex
-        const selectedBtn = Array.from(vertexButtons).find(btn => btn.dataset.vertex === vertex);
-        selectedBtn.classList.add('selected');
-        
-        this.selectedVertex = vertex;
-        this.updatePlaceSettlementButton();
-        
-        if (this.demoMode) {
-            this.showMessage(`Selected vertex: ${vertex}`, 'info');
-        }
-    }
-
     selectRobberTile(tileId, tileButtons) {
-        // Clear previous selection
         tileButtons.forEach(btn => btn.classList.remove('selected'));
         
-        // Select new tile
         const selectedBtn = Array.from(tileButtons).find(btn => btn.dataset.tile === tileId);
         selectedBtn.classList.add('selected');
         
-        this.selectedRobberTile = tileId;
-        
-        // Enable move robber button
         const moveBtn = document.getElementById('moveRobberBtn');
         if (moveBtn) {
             moveBtn.disabled = false;
@@ -995,55 +1009,20 @@ class CatanCompanion {
         }
     }
 
-    updatePlaceSettlementButton() {
-        const btn = document.getElementById('placeSettlementBtn');
-        if (btn) {
-            btn.disabled = !this.selectedVertex || !this.selectedTileIndex;
-        }
-    }
-
-    async placeSettlement() {
-        if (!this.selectedVertex || !this.selectedTileIndex) {
-            this.showMessage('Please select both a vertex and tile', 'error');
-            return;
-        }
-        
-        if (this.demoMode) {
-            this.showMessage(`Demo: Would place settlement at ${this.selectedVertex} on tile ${this.selectedTileIndex}`, 'success');
-            this.selectedVertex = null;
-            this.selectedTileIndex = null;
-            this.updatePlaceSettlementButton();
-            return;
-        }
-        
-        try {
-            // Create building key for API
-            const buildingKey = {
-                hexCoordinates: { q: 0, r: 0, s: 0 }, // Would be calculated from tile index
-                position: this.selectedVertex
-            };
-            
-            const response = await this.sendGameAction('BuildingUpgradeMessage', { buildingKey });
-            if (response.success) {
-                this.selectedVertex = null;
-                this.selectedTileIndex = null;
-            }
-        } catch (error) {
-            console.error('Failed to place settlement:', error);
-        }
-    }
-
     async moveRobber() {
-        if (!this.selectedRobberTile) {
+        const selectedTileBtn = document.querySelector('.tile-btn.selected');
+        if (!selectedTileBtn) {
             this.showMessage('Please select a tile for the robber', 'error');
             return;
         }
         
+        const selectedRobberTile = selectedTileBtn.dataset.tile;
+        
         if (this.demoMode) {
             const targetSelect = document.getElementById('targetPlayerSelect');
             const target = targetSelect ? targetSelect.value : '';
-            this.showMessage(`Demo: Would move robber to tile ${this.selectedRobberTile}${target ? ` and target ${target}` : ''}`, 'success');
-            this.selectedRobberTile = null;
+            this.showMessage(`Demo: Would move robber to tile ${selectedRobberTile}${target ? ` and target ${target}` : ''}`, 'success');
+            selectedTileBtn.classList.remove('selected');
             return;
         }
         
@@ -1051,16 +1030,17 @@ class CatanCompanion {
             const targetSelect = document.getElementById('targetPlayerSelect');
             const targetPlayerId = targetSelect ? targetSelect.value : null;
             
-            const response = await this.sendGameAction('MoveRobberMessage', { 
-                coordinates: { q: 0, r: 0, s: 0 }, // Would be calculated from tile
-                targetPlayerId 
-            });
+            const message = {
+                coordinates: { q: 0, r: 0, s: 0 }, // TODO: Calculate from tile ID
+                targetPlayerId: targetPlayerId
+            };
             
-            if (response.success) {
-                this.selectedRobberTile = null;
-            }
+            await this.connection.invoke("ExecuteMoveRobber", this.gameId, this.selectedPlayerId, message);
+            
+            selectedTileBtn.classList.remove('selected');
         } catch (error) {
             console.error('Failed to move robber:', error);
+            this.showMessage(`Failed to move robber: ${error.message}`, 'error');
         }
     }
 
@@ -1071,14 +1051,14 @@ class CatanCompanion {
         this.supplementalTimer = setInterval(() => {
             timeLeft--;
             if (timerElement) {
-                timerElement.textContent = `?? Choose in ${timeLeft} seconds...`;
+                timerElement.textContent = `? Choose in ${timeLeft} seconds...`;
             }
             
             if (timeLeft <= 0) {
                 if (this.demoMode) {
                     this.showMessage('Demo: Timer expired - would auto-decline', 'info');
                 } else {
-                    this.doSupplemental(false); // Auto-decline
+                    this.doSupplemental(false);
                 }
                 clearInterval(this.supplementalTimer);
             }
@@ -1098,33 +1078,30 @@ class CatanCompanion {
         
         try {
             const playerIds = doSupplemental ? [this.selectedPlayerId] : [];
-            const response = await this.sendGameAction('PlayersDoingSupplemental', { playerIds });
+            const message = { playerIds: playerIds };
+            
+            await this.connection.invoke("ExecutePlayersDoingSupplemental", this.gameId, this.selectedPlayerId, message);
         } catch (error) {
             console.error('Failed to set supplemental choice:', error);
+            this.showMessage(`Failed to set supplemental choice: ${error.message}`, 'error');
         }
     }
 
     selectRoll(rollValue, diceButtons) {
-        // Clear previous selection
         diceButtons.forEach(btn => btn.classList.remove('selected'));
         
-        // Select new roll
         const selectedBtn = Array.from(diceButtons).find(btn => parseInt(btn.dataset.roll) === rollValue);
         selectedBtn.classList.add('selected');
-        
-        this.selectedRoll = rollValue;
         
         if (this.demoMode) {
             this.showMessage(`Demo: Selected roll ${rollValue}`, 'success');
         } else {
-            // Make the roll
             this.makeRoll(rollValue);
         }
     }
 
     async makeRoll(rollValue) {
         try {
-            // Calculate individual dice that sum to rollValue
             let die1, die2;
             if (rollValue <= 7) {
                 die1 = Math.min(rollValue - 1, 6);
@@ -1134,17 +1111,10 @@ class CatanCompanion {
                 die2 = rollValue - die1;
             }
             
-            const rollData = {
-                normalRoll: rollValue.toString(),
-                specialDice: 'None'
-            };
-
-            const response = await this.sendGameAction('RollMessage', { roll: rollData });
-            if (response.success) {
-                this.selectedRoll = null;
-            }
+            await this.connection.invoke("ExecuteRoll", this.gameId, this.selectedPlayerId, die1, die2);
         } catch (error) {
             console.error('Failed to roll dice:', error);
+            this.showMessage(`Failed to roll dice: ${error.message}`, 'error');
         }
     }
 
@@ -1155,29 +1125,30 @@ class CatanCompanion {
         }
         
         try {
-            await this.sendGameAction('PurchaseMessage', { entitlement: 'Soldier' });
+            const message = { entitlement: 'Soldier' };
+            await this.connection.invoke("ExecutePurchase", this.gameId, this.selectedPlayerId, message);
         } catch (error) {
             console.error('Failed to play knight:', error);
+            this.showMessage(`Failed to play knight: ${error.message}`, 'error');
         }
     }
 
     getEntitlementIcon(entitlement) {
-        // Using Catan font Unicode characters from CatanFont.cs
         const icons = {
-            'Settlement': '\uE926',  // Catan.Settlement
-            'City': '\uE900',        // Catan.City
-            'Road': '\uE909',        // Catan.Road
-            'Soldier': '\uE90E',     // Catan.Soldier
-            'Knight': '\uE930',      // Catan.Knight
-            'BuyKnight': '\uE930',   // Catan.Knight
-            'UpgradeKnight': '\uE930', // Catan.Knight
-            'Wall': '\uE903',        // Catan.Gate
-            'Bishop': '\uE906',      // Catan.Inventor (closest match)
-            'Inventor': '\uE906',    // Catan.Inventor
-            'Merchant': '\uE908',    // Catan.Merchant
-            'Diplomat': '\uE902'     // Catan.Diplomat
+            'Settlement': '\uE926',
+            'City': '\uE900',
+            'Road': '\uE909',
+            'Soldier': '\uE90E',
+            'Knight': '\uE930',
+            'BuyKnight': '\uE930',
+            'UpgradeKnight': '\uE930',
+            'Wall': '\uE903',
+            'Bishop': '\uE906',
+            'Inventor': '\uE906',
+            'Merchant': '\uE908',
+            'Diplomat': '\uE902'
         };
-        return icons[entitlement] || '?';
+        return icons[entitlement] || '??';
     }
 
     getEntitlementName(entitlement) {
@@ -1209,9 +1180,11 @@ class CatanCompanion {
         }
 
         try {
-            await this.sendGameAction('DoAction', { action });
+            const message = { action: action };
+            await this.connection.invoke("ExecuteDoAction", this.gameId, this.selectedPlayerId, message);
         } catch (error) {
             console.error(`Failed to ${action}:`, error);
+            this.showMessage(`Failed to ${action}: ${error.message}`, 'error');
         }
     }
 
@@ -1227,69 +1200,12 @@ class CatanCompanion {
         }
 
         try {
-            await this.sendGameAction('PurchaseMessage', { entitlement });
+            const message = { entitlement: entitlement };
+            await this.connection.invoke("ExecutePurchase", this.gameId, this.selectedPlayerId, message);
         } catch (error) {
             console.error(`Failed to purchase ${entitlement}:`, error);
+            this.showMessage(`Failed to purchase ${entitlement}: ${error.message}`, 'error');
         }
-    }
-
-    async sendGameAction(messageType, messageData) {
-        const commandId = this.generateCommandId();
-        
-        const payload = {
-            gameId: this.gameId,
-            playerId: this.selectedPlayerId,
-            messageType: messageType,
-            messageData: messageData,
-            timestamp: new Date().toISOString()
-        };
-
-        console.log(`[COMPANION] Sending async game action:`, {
-            url: `${this.config.apiBaseUrl}/api/game/action`,
-            messageType: messageType,
-            commandId: commandId,
-            gameId: this.gameId,
-            playerId: this.selectedPlayerId,
-            messageData: messageData
-        });
-
-        const startTime = Date.now();
-        const response = await fetch(`${this.config.apiBaseUrl}/api/game/action`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
-
-        const responseTime = Date.now() - startTime;
-        console.log(`[COMPANION] Async game action response - Status: ${response.status}, Time: ${responseTime}ms`);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[COMPANION] Game action failed - Status: ${response.status}, Response: ${errorText}`);
-            throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-        }
-
-        const result = await response.json();
-        console.log(`[COMPANION] Game action result:`, {
-            success: result.success,
-            commandId: result.commandId,
-            message: result.message,
-            estimatedCompletionMs: result.estimatedCompletionMs,
-            responseTimeMs: responseTime
-        });
-
-        // Show processing state and wait for completion via SignalR
-        if (result.success && result.commandId) {
-            this.showProcessingState(result.commandId, result.estimatedCompletionMs);
-        }
-
-        return result;
-    }
-
-    generateCommandId() {
-        return 'cmd_' + Math.random().toString(36).substr(2, 9);
     }
 
     showMessage(text, type = 'info') {
@@ -1299,14 +1215,12 @@ class CatanCompanion {
         
         this.elements.messageContainer.appendChild(message);
         
-        // Auto-remove after 5 seconds
         setTimeout(() => {
             if (message.parentNode) {
                 message.parentNode.removeChild(message);
             }
         }, 5000);
         
-        // Scroll to bottom
         this.elements.messageContainer.scrollTop = this.elements.messageContainer.scrollHeight;
     }
 
@@ -1320,10 +1234,6 @@ class CatanCompanion {
             this.updateActionButtons(this.currentGameState);
             this.updateStateSpecificUI(this.currentGameState);
         }
-    }
-
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
 
