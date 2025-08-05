@@ -102,9 +102,6 @@ namespace Catan3.Shared.Models
                 case ResourceType.GoldMine:
                     resources.GoldMine = BuildingState == BuildingState.City ? 2 : 1;
                     break;
-                case ResourceType.Fish:
-                    resources.Fish = BuildingState == BuildingState.City ? 2 : 1;
-                    break;
                 case ResourceType.Robber:
                     resources.Robber = BuildingState == BuildingState.City ? 2 : 1;
                     break;

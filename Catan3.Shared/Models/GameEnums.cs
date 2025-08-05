@@ -9,7 +9,7 @@ namespace Catan3.Shared.Models
     }
     public enum ResourceType
     {
-        Sheep, Wood, Ore, Wheat, Brick, GoldMine, Desert, Fish,
+        Sheep, Wood, Ore, Wheat, Brick, GoldMine, Desert,
         Back, None, Sea, Coin, Cloth, Paper, Politics, Trade, Science, AnyDevCard, VictoryPoint, Invasion, Robber
     };
     public enum BuildingState

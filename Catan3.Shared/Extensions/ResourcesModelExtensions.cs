@@ -22,7 +22,6 @@ namespace Catan3.Shared.Extensions
             a.VictoryPoint += b.VictoryPoint;
             a.AnyDevCard += b.AnyDevCard;
             a.Robber += b.Robber;
-            a.Fish += b.Fish;
         }
 
         public static ResourcesModel TradeResourcesModelForRedDie(SpecialDice roll)
@@ -76,9 +75,6 @@ namespace Catan3.Shared.Extensions
                 case ResourceType.GoldMine:
                     tr.GoldMine += 2;
                     break;
-                case ResourceType.Fish:
-                    tr.Fish += 2;
-                    break;
                 case ResourceType.Robber:
                     tr.Robber += 2;
                     break;
@@ -112,9 +108,6 @@ namespace Catan3.Shared.Extensions
                     break;
                 case ResourceType.Robber:
                     model.Robber += toAdd;
-                    break;
-                case ResourceType.Fish:
-                    model.Fish += toAdd;
                     break;
                 case ResourceType.Cloth:
                     model.Cloth += toAdd;

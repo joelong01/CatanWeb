@@ -22,7 +22,6 @@ namespace Catan3.Shared.Models
         public int VictoryPoint { get; set; }
         public int AnyDevCard { get; set; }
         public int Robber { get; set; }
-        public int Fish { get; set; }
 
         public ResourcesModel() { }
 
@@ -43,15 +42,14 @@ namespace Catan3.Shared.Models
             VictoryPoint = tradeResources.VictoryPoint;
             AnyDevCard = tradeResources.AnyDevCard;
             Robber = tradeResources.Robber;
-            Fish = tradeResources.Fish;
         }
 
         [JsonIgnore]
-        public int Count => Wheat + Wood + Brick + Ore + Sheep + GoldMine + Cloth + Coin + Paper + VictoryPoint + Politics + Science + Trade + AnyDevCard + Robber + Fish;
+        public int Count => Wheat + Wood + Brick + Ore + Sheep + GoldMine + Cloth + Coin + Paper + VictoryPoint + Politics + Science + Trade + AnyDevCard + Robber;
 
         public override string ToString()
         {
-            return $"[Count={Count}][Robber={Robber}][Ore={Ore}][Brick={Brick}][Wheat={Wheat}][Wood={Wood}][Sheep={Sheep}][Gold={GoldMine}][Coin={Coin}][Cloth={Cloth}][Paper={Paper}][Fish={Fish}]";
+            return $"[Count={Count}][Robber={Robber}][Ore={Ore}][Brick={Brick}][Wheat={Wheat}][Wood={Wood}][Sheep={Sheep}][Gold={GoldMine}][Coin={Coin}][Cloth={Cloth}][Paper={Paper}]";
         }
 
         public int CountForResource(ResourceType resourceCardType)
@@ -103,9 +101,6 @@ namespace Catan3.Shared.Models
                     break;
                 case ResourceType.VictoryPoint:
                     count = VictoryPoint;
-                    break;
-                case ResourceType.Fish:
-                    count = Fish;
                     break;
                 default:
                     count = 0;

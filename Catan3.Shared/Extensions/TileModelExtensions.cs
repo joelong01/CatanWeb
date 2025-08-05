@@ -103,8 +103,6 @@ namespace Catan3.Shared.Extensions
                     return ResourceType.None;
                 case ResourceType.Sea:
                     return ResourceType.Sea;
-                case ResourceType.Fish:
-                    return ResourceType.Fish;
                 case ResourceType.Robber:
                     return ResourceType.Robber;
             }
