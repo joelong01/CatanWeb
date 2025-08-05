@@ -8,14 +8,22 @@ namespace Tests.GameService
 {
     /// <summary>
     /// Base factory configuration for all tests with comprehensive logging suppression
+    /// When running tests normally, logs are suppressed for clean output.
+    /// When debugging (Debugger.IsAttached), Information level logging is enabled for the GameService components.
+    /// This allows developers to see detailed server-side logging during test debugging without cluttering normal test runs.
     /// </summary>
     public static class TestWebApplicationFactory
     {
         /// <summary>
         /// Creates a properly configured WebApplicationFactory with logging suppressed for tests
+        /// When debugging, enables Information level logging for better visibility
         /// </summary>
         public static WebApplicationFactory<Program> Create()
         {
+            // Enable more verbose logging when debugging
+            var logLevel = System.Diagnostics.Debugger.IsAttached ? "Information" : "Error";
+            var gameServiceLogLevel = System.Diagnostics.Debugger.IsAttached ? "Information" : "Error";
+            
             return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             {
                 // Configure application settings for tests
@@ -23,9 +31,9 @@ namespace Tests.GameService
                 {
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        // Comprehensive logging suppression for clean test output
-                        ["Logging:LogLevel:Default"] = "Error",
-                        ["Logging:LogLevel:Microsoft"] = "Error",
+                        // Comprehensive logging suppression for clean test output (unless debugging)
+                        ["Logging:LogLevel:Default"] = logLevel,
+                        ["Logging:LogLevel:Microsoft"] = "Error", // Keep Microsoft logs quiet
                         ["Logging:LogLevel:Microsoft.AspNetCore"] = "Error",
                         ["Logging:LogLevel:Microsoft.AspNetCore.Hosting"] = "Error",
                         ["Logging:LogLevel:Microsoft.AspNetCore.Mvc"] = "Error",
@@ -35,20 +43,20 @@ namespace Tests.GameService
                         ["Logging:LogLevel:Microsoft.Extensions.Hosting"] = "Error",
                         ["Logging:LogLevel:Microsoft.Hosting.Lifetime"] = "Error",
                         
-                        // Suppress application-specific logging
-                        ["Logging:LogLevel:Catan3"] = "Error",
-                        ["Logging:LogLevel:Catan3.GameService"] = "Error",
-                        ["Logging:LogLevel:Catan3.GameService.Controllers"] = "Error",
-                        ["Logging:LogLevel:Catan3.GameService.Controllers.GameApiController"] = "Error",
-                        ["Logging:LogLevel:Catan3.GameService.Services"] = "Error",
-                        ["Logging:LogLevel:Catan3.GameService.Services.GameStateMachineService"] = "Error",
-                        ["Logging:LogLevel:Catan3.GameService.Services.AsyncCommandProcessor"] = "Error",
-                        ["Logging:LogLevel:Catan3.GameService.Hubs"] = "Error",
-                        ["Logging:LogLevel:Catan3.GameService.Hubs.GameHub"] = "Error",
+                        // Enable application-specific logging when debugging
+                        ["Logging:LogLevel:Catan3"] = gameServiceLogLevel,
+                        ["Logging:LogLevel:Catan3.GameService"] = gameServiceLogLevel,
+                        ["Logging:LogLevel:Catan3.GameService.Controllers"] = gameServiceLogLevel,
+                        ["Logging:LogLevel:Catan3.GameService.Controllers.GameApiController"] = gameServiceLogLevel,
+                        ["Logging:LogLevel:Catan3.GameService.Services"] = gameServiceLogLevel,
+                        ["Logging:LogLevel:Catan3.GameService.Services.GameStateMachineService"] = gameServiceLogLevel,
+                        ["Logging:LogLevel:Catan3.GameService.Services.AsyncCommandProcessor"] = gameServiceLogLevel,
+                        ["Logging:LogLevel:Catan3.GameService.Hubs"] = gameServiceLogLevel,
+                        ["Logging:LogLevel:Catan3.GameService.Hubs.GameHub"] = gameServiceLogLevel,
                         
-                        // Console output suppression
-                        ["Logging:Console:LogLevel:Default"] = "Error",
-                        ["Console:LogLevel:Default"] = "Error"
+                        // Console output configuration
+                        ["Logging:Console:LogLevel:Default"] = logLevel,
+                        ["Console:LogLevel:Default"] = logLevel
                     });
                 });
                 
@@ -56,18 +64,32 @@ namespace Tests.GameService
                 builder.ConfigureServices(services =>
                 {
                     // Configure logging services directly through dependency injection
+                    var minLogLevel = System.Diagnostics.Debugger.IsAttached ? LogLevel.Information : LogLevel.Error;
+                    
                     services.Configure<LoggerFilterOptions>(options =>
                     {
-                        options.MinLevel = LogLevel.Error;
+                        options.MinLevel = minLogLevel;
                         
                         // Add filters for specific categories
-                        options.AddFilter("Microsoft", LogLevel.Error);
+                        options.AddFilter("Microsoft", LogLevel.Error); // Keep Microsoft quiet
                         options.AddFilter("Microsoft.AspNetCore", LogLevel.Error);
                         options.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Error);
-                        options.AddFilter("Catan3.GameService", LogLevel.Error);
-                        options.AddFilter("Catan3.GameService.Controllers", LogLevel.Error);
-                        options.AddFilter("Catan3.GameService.Services", LogLevel.Error);
-                        options.AddFilter("Catan3.GameService.Hubs", LogLevel.Error);
+                        
+                        // Enable our application logging when debugging
+                        if (System.Diagnostics.Debugger.IsAttached)
+                        {
+                            options.AddFilter("Catan3.GameService", LogLevel.Information);
+                            options.AddFilter("Catan3.GameService.Controllers", LogLevel.Information);
+                            options.AddFilter("Catan3.GameService.Services", LogLevel.Information);
+                            options.AddFilter("Catan3.GameService.Hubs", LogLevel.Information);
+                        }
+                        else
+                        {
+                            options.AddFilter("Catan3.GameService", LogLevel.Error);
+                            options.AddFilter("Catan3.GameService.Controllers", LogLevel.Error);
+                            options.AddFilter("Catan3.GameService.Services", LogLevel.Error);
+                            options.AddFilter("Catan3.GameService.Hubs", LogLevel.Error);
+                        }
                     });
                     
                     // Override any specific service configurations for testing if needed

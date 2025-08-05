@@ -126,7 +126,7 @@ namespace Tests.GameService.Companion
                 }
 
                 // Test that all companions see the same game state
-                await TestGameStateSynchronization(companions, gameId);
+                TestGameStateSynchronization(companions, gameId);
                 Console.WriteLine("? All companions synchronized correctly");
 
                 // Test that actions from one companion update all others
@@ -272,7 +272,7 @@ namespace Tests.GameService.Companion
                 playerIds = playerIds
             };
 
-            var newGameJson = JsonSerializer.Serialize(newGameRequest);
+            var newGameJson = JsonHelper.Serialize(newGameRequest);
             var newGameContent = new StringContent(newGameJson, Encoding.UTF8, "application/json");
 
             var newGameResponse = await httpClient.PostAsync("/api/game/new", newGameContent);
@@ -283,7 +283,7 @@ namespace Tests.GameService.Companion
             }
 
             var newGameBody = await newGameResponse.Content.ReadAsStringAsync();
-            var newGameResult = JsonSerializer.Deserialize<JsonElement>(newGameBody);
+            var newGameResult = JsonHelper.Deserialize<JsonElement>(newGameBody);
 
             if (!newGameResult.TryGetProperty("gameId", out var gameIdElement))
             {
@@ -408,7 +408,7 @@ namespace Tests.GameService.Companion
             }
         }
 
-        private async Task TestGameStateSynchronization(List<SignalRProxy> companions, string gameId)
+        private void TestGameStateSynchronization(List<SignalRProxy> companions, string gameId)
         {
             // Verify all companions see the same game state
             var gameModels = companions.Select(c => c.GameModel).Where(gm => gm != null).ToList();

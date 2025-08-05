@@ -33,6 +33,15 @@ public class RealGameSession : IAsyncDisposable
         _httpClient = new HttpClient { BaseAddress = new Uri(_options.GetRestApiUrl()) };
     }
 
+    public GameModel? CurrentGameModel
+    {
+        get
+        {
+            // Return the GameModel from any proxy - they should all be consistent
+            return _proxies.Values.FirstOrDefault()?.GameModel;
+        }
+    }
+
     /// <summary>
     /// Initializes the session by creating a game and connecting all players via SignalR
     /// </summary>
@@ -54,14 +63,14 @@ public class RealGameSession : IAsyncDisposable
             var playerName = playerNames[i];
 
             _logger.LogDebug("Connecting player {PlayerId} ({PlayerName}) via SignalR", playerId, playerName);
-            
+
             // Create SignalR proxy for real service (not test factory)
             var hubUrl = _options.GetSignalRHubUrl();
             var proxy = new SignalRProxy(hubUrl, playerId, GameId);
-            
+
             // Connect to SignalR hub - this starts the continuous listening
             await proxy.ConnectAsync();
-            
+
             _proxies[playerId] = proxy;
             _logger.LogDebug("Player {PlayerId} connected successfully", playerId);
         }
@@ -71,10 +80,10 @@ public class RealGameSession : IAsyncDisposable
         // Step 3: Wait for all proxies to receive their initial GameStateUpdated notification
         // This implements the pattern you described - wait for all notification threads to signal completion
         await WaitForAllProxiesToReceiveInitialUpdate();
-        
+
         // Step 4: Verify initial game state consistency
         await VerifyGameConsistency();
-        var currentState = GetCurrentState();
+        var currentState = GetCurrentGameState();
         _logger.LogInformation("Game initialized in state: {GameState}", currentState);
     }
 
@@ -86,14 +95,14 @@ public class RealGameSession : IAsyncDisposable
     {
         var timeout = TimeSpan.FromSeconds(10);
         var waitStart = DateTime.UtcNow;
-        
+
         _logger.LogDebug("Waiting for all {ProxyCount} proxies to receive initial GameStateUpdated", _proxies.Count);
 
         while (DateTime.UtcNow - waitStart < timeout)
         {
             // Check if all proxies have received a GameStateUpdated notification
             var proxiesWithGameState = _proxies.Values
-                .Where(proxy => proxy.LastGameState != null)
+                .Where(proxy => proxy.GameModel != null)
                 .ToList();
 
             _logger.LogDebug("Proxies with GameState: {Count}/{Total}", proxiesWithGameState.Count, _proxies.Count);
@@ -132,8 +141,8 @@ public class RealGameSession : IAsyncDisposable
         });
 
         var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-        
-        _logger.LogDebug("Creating {GameType} game via REST API at {BaseAddress}", 
+
+        _logger.LogDebug("Creating {GameType} game via REST API at {BaseAddress}",
             _options.GameType, _httpClient.BaseAddress);
 
         var response = await _httpClient.PostAsync("/api/game/new", content);
@@ -152,7 +161,7 @@ public class RealGameSession : IAsyncDisposable
             throw new InvalidOperationException("Game creation did not return gameId");
         }
 
-        return gameIdElement.GetString() ?? 
+        return gameIdElement.GetString() ??
             throw new InvalidOperationException("Game creation returned null gameId");
     }
 
@@ -174,24 +183,24 @@ public class RealGameSession : IAsyncDisposable
     public string GetCurrentPlayerId()
     {
         var anyProxy = _proxies.Values.First();
-        var currentPlayerId = anyProxy.LastGameState?.CurrentPlayerId;
-        
+        var currentPlayerId = anyProxy.GameModel?.CurrentPlayerId;
+
         if (string.IsNullOrEmpty(currentPlayerId))
         {
             // Default to first player if no current player set yet
             return _options.GetPlayerIds()[0];
         }
-        
+
         return currentPlayerId;
     }
 
     /// <summary>
     /// Gets the current game state
     /// </summary>
-    public GameState GetCurrentState()
+    public GameState GetCurrentGameState()
     {
         var anyProxy = _proxies.Values.First();
-        return anyProxy.LastGameState?.GameState ?? GameState.Uninitialized;
+        return anyProxy.GameModel?.GameState ?? GameState.Uninitialized;
     }
 
     /// <summary>
@@ -218,26 +227,26 @@ public class RealGameSession : IAsyncDisposable
     {
         var currentPlayerId = GetCurrentPlayerId();
         var proxy = GetProxy(currentPlayerId);
-        
+
         _logger.LogDebug("Executing {Action} for player {PlayerId}", action, currentPlayerId);
-        
+
         // Capture the current GameHash from all proxies before the action
         var preActionHashes = _proxies.Values
-            .Where(p => p.LastGameState != null)
-            .ToDictionary(p => p.PlayerId, p => p.LastGameState!.GameHash);
-        
+            .Where(p => p.GameModel != null)
+            .ToDictionary(p => p.PlayerId, p => p.GameModel!.GameHash);
+
         // Execute the action
         var result = await proxy.ExecuteDoActionAsync(GameId, action);
-        
+
         if (!result.Success)
         {
             throw new InvalidOperationException($"Action {action} failed: {result.Message}");
         }
-        
+
         // Wait for all proxies to receive the updated GameModel
         // This implements your described pattern: action triggers updates, wait for all notification threads
         await WaitForAllProxiesToReceiveActionUpdate(preActionHashes, action);
-        
+
         _logger.LogDebug("Action {Action} completed successfully with all proxies updated", action);
     }
 
@@ -249,22 +258,22 @@ public class RealGameSession : IAsyncDisposable
     {
         var timeout = TimeSpan.FromSeconds(10);
         var waitStart = DateTime.UtcNow;
-        
+
         _logger.LogDebug("Waiting for all proxies to receive GameStateUpdated after {Action}", action);
 
         while (DateTime.UtcNow - waitStart < timeout)
         {
             // Check if all proxies have received updated GameModel (hash changed or action completed)
             var proxiesWithUpdatedState = 0;
-            
+
             foreach (var proxy in _proxies.Values)
             {
-                if (proxy.LastGameState != null)
+                if (proxy.GameModel != null)
                 {
                     // Check if this proxy's GameHash has changed from before the action
                     if (preActionHashes.TryGetValue(proxy.PlayerId, out var preActionHash))
                     {
-                        if (proxy.LastGameState.GameHash != preActionHash)
+                        if (proxy.GameModel.GameHash != preActionHash)
                         {
                             proxiesWithUpdatedState++;
                         }
@@ -277,7 +286,7 @@ public class RealGameSession : IAsyncDisposable
                 }
             }
 
-            _logger.LogDebug("Proxies with updated state after {Action}: {Count}/{Total}", 
+            _logger.LogDebug("Proxies with updated state after {Action}: {Count}/{Total}",
                 action, proxiesWithUpdatedState, _proxies.Count);
 
             if (proxiesWithUpdatedState == _proxies.Count)
@@ -308,18 +317,18 @@ public class RealGameSession : IAsyncDisposable
     {
         // Brief delay to allow for state propagation
         await Task.Delay(50);
-        
-        // Check that all proxies have consistent LastGameState and GameHash
+
+        // Check that all proxies have consistent GameModel and GameHash
         var gameStates = _proxies.Values
-            .Select(p => new { Proxy = p.PlayerId, State = p.LastGameState?.GameState, Hash = p.LastGameState?.GameHash })
+            .Select(p => new { Proxy = p.PlayerId, State = p.GameModel?.GameState, Hash = p.GameModel?.GameHash })
             .Where(x => x.State.HasValue)
             .ToList();
-        
+
         if (gameStates.Count > 1)
         {
             var reference = gameStates[0];
             var inconsistencies = gameStates.Where(g => g.State != reference.State || g.Hash != reference.Hash).ToList();
-            
+
             if (inconsistencies.Any())
             {
                 var errorMessage = $"Game state inconsistency detected: {string.Join(", ", inconsistencies.Select(i => $"{i.Proxy}:{i.State}"))}";
@@ -334,31 +343,31 @@ public class RealGameSession : IAsyncDisposable
     public async Task VerifyGameConsistency()
     {
         await Task.Delay(50); // Brief delay for state propagation
-        
+
         var proxyStates = _proxies.Values
-            .Select(p => new { Proxy = p.PlayerId, GameState = p.LastGameState })
+            .Select(p => new { Proxy = p.PlayerId, GameState = p.GameModel })
             .Where(x => x.GameState != null)
             .ToList();
-        
+
         if (proxyStates.Count <= 1) return;
-        
+
         var referenceProxy = proxyStates[0];
         var referenceState = referenceProxy.GameState!;
         var inconsistencies = new List<string>();
-        
+
         foreach (var proxyState in proxyStates.Skip(1))
         {
             var state = proxyState.GameState!;
-            
+
             if (state.GameState != referenceState.GameState)
                 inconsistencies.Add($"{proxyState.Proxy}: GameState {state.GameState} vs {referenceState.GameState}");
-                
+
             if (state.CurrentPlayerId != referenceState.CurrentPlayerId)
                 inconsistencies.Add($"{proxyState.Proxy}: CurrentPlayer {state.CurrentPlayerId} vs {referenceState.CurrentPlayerId}");
-                
+
             if (state.GameStateMachineVersion != referenceState.GameStateMachineVersion)
                 inconsistencies.Add($"{proxyState.Proxy}: GameStateMachineVersion {state.GameStateMachineVersion} vs {referenceState.GameStateMachineVersion}");
-            
+
             // GameHash verification for board consistency - this is the key check
             if (!string.IsNullOrEmpty(state.GameHash) && !string.IsNullOrEmpty(referenceState.GameHash))
             {
@@ -368,7 +377,7 @@ public class RealGameSession : IAsyncDisposable
                 }
             }
         }
-        
+
         if (inconsistencies.Any())
         {
             var errorMessage = $"Game consistency check failed:\n  " + string.Join("\n  ", inconsistencies);
@@ -382,7 +391,7 @@ public class RealGameSession : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _logger.LogDebug("Disposing game session {GameId}", GameId);
-        
+
         foreach (var proxy in _proxies.Values)
         {
             try
@@ -394,10 +403,10 @@ public class RealGameSession : IAsyncDisposable
                 _logger.LogWarning(ex, "Error disposing proxy for player {PlayerId}", proxy.PlayerId);
             }
         }
-        
+
         _proxies.Clear();
         _httpClient.Dispose();
-        
+
         _logger.LogInformation("Game session {GameId} disposed", GameId);
     }
 }

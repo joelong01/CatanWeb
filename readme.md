@@ -1,25 +1,36 @@
 ﻿# Catan3 Phone Companion Design
 
 ## Overview
-This document outlines the design for a phone companion app that allows players to control the Catan3 WinUI3 game remotely. 
-The companion app will enable players to trigger game actions like "Next", "Undo", "Purchase", etc., from their mobile devices.
-The Game is a "Settlers of Catan" style game with a focus on real-time multiplayer gameplay.
+This document outlines the design for an application that is used to play Settlers of Catan.  The game is played with friends in the same room, so we don't need to worry about security.  The game is comprised
+of the following parts:
+
+**1. a "Desktop App" (in the DesktopApp project): this is currently a full end to end game that we DO NOT CHANGE.  it works as is, so if there is ever an issue as we implement the other parts, we can refer to 
+   the desktop app to see how the game should work.  Note that we model the UI and collect statistics, but we do not model Resources, Dice, or Development cards.  These are all managed with physical pieces.
+
+In Development, we have:
+
+**2. a GameService (in the GameService project): this is an ASP.NET Core service that implements the game logic and provides a REST API for the client to interact with the game.  The GameService is implemented 
+as an ASP.NET Core service. phone companion app that allows players to control the Catan3 WinUI3 game remotely. The companion app will enable players to trigger game actions like "Next", "Undo", "Purchase", etc., 
+from their mobile devices.The Game is a "Settlers of Catan" style game with a focus on real-time multiplayer gameplay.
+
+**3. a Shared module (in the Shared project): this contains all the data that is shared between the clients and the service.  This includes the GameModel, PlayerModel, and other data structures that are used by 
+the rest of the project.  The Shared module is a .NET Standard library that can be used by both the GameService and the client applications.
+
+**4: a comprehensive set of tests (in the Tests project): this includes unit tests, integration tests, and end-to-end tests that ensure the game logic works correctly and that the REST API is functioning as 
+expected.  The Game tests are designed to verify the functionality of the game. since the game is stateful, the tests are stateful (the exception is the shared project, which makes sure that all JSON serialization
+for both .net and javascript works correctly).  The tests are designed to be run in a continuous integration environment, and they are designed to be run in parallel. 
+
+**5: a CLI that will create a game and properly transition to the WaitingForRoll state. The use case is to debug the real service with a client that effeciently gets the game to a debuggable state.
+
+
+At the stage we are in DO NOT change the winui3 desktop app. that is the "source of truth" for how the game works, eventhough we are evolving it.  We can always reference back to the game to see *WHAT* needs be done, if not necessarily *HOW* it needs to be done.
+
 
 You are an expert at C# and ASP.Net.  You always write best practice code that is well structured, maintainable, and follows SOLID principles. You are also an expert at writing unit tests and integration tests to ensure the code is robust and reliable.
 After you make changes, you ensure that the tests run without error or warnings.  If there are errors or warnings you fix them.
 
 As this is initial implementation, sometimes the code is correct and the tests need to be update to match the code, and sometimes the code needs to be updated to match the tests.  You will always ensure that the code and tests are in sync before you finish a task.  
 If you are not sure, you will ask for clarification.
-
-The system is comprised of 4 parts:
-
-1. a client application that renders the full game.
-2. a web client companion that allows players to control the game when it is their turn.
-3. a GameService that implements the game logic and provides a REST API for the client to interact with the game.  The GameService is implemented as an ASP.NET Core service.
-4. a Shared module that contains all the data that is shared between the clients and the service
-
-At the stage we are in DO NOT change the winui3 desktop app. that is the "source of truth" for how the game works, eventhough we are evolving it.  We can always reference back to the game to see *WHAT* needs be done, if not necessarily *HOW* it needs to be done.
-
 
 the way the client works is there is a thread that is in an infinite loop until the game is over (e.g. GameState == GameState.GameOver).  in the loop, it calls to the GameService to the hanging GET.  when the GameModel changes, the call returns and the GameModel is then "marshalled" to the UI thread which updates the game.  
 Our tests should spawn a thread to make the hanging GET and then continue on their main thread, waiting on a TASK signaled by the spawn thread when the GameModel is updated to simulate the behavior.
@@ -34,8 +45,6 @@ the synchronization functionality works this way:
 
 this is the pattern our tests should be following.
 
-**MAJOR ARCHITECTURE UPDATE**: The system is being redesigned to extract the GameController into a dedicated ASP.NET Core service with a web-based mobile companion interface, enabling better separation of concerns, testability, and potential for distributed gameplay.
-
 ## Rules 📋
 
 These rules *MUST* be followed for *ALL* requests and no violations of any of these rules should be tolerated.
@@ -43,54 +52,21 @@ These rules *MUST* be followed for *ALL* requests and no violations of any of th
 ### **Development & Testing Guidelines**
 1. **Command Separators**: When running commands in agent mode, always use ";" as a separator instead of "&&" because using "&&" will cause Copilot to hang when executing PowerShell commands.
 2. **WinUI3 Desktop App**: The WinUI3 Desktop app is the main project and it works correctly. It can be analyzed for prior art. It cannot be changed without explicit directions to do so.
-3. **Test-Driven Documentation**: After we add a test and have verified that the project builds and runs correctly, we will update the companion.md file to reflect the current status of the project and the tests that have been completed.
-4. **Current Work Context**: Before starting any new work session or significant task, update the "Current Work" section with enough context to allow the work to continue seamlessly if a new session is created. Include current objectives, recent changes, pending tasks, and any important decisions or findings.
-5. **Task Completion Verification**: Before marking any task as complete, you must ask "is this task complete?" If the answer is yes, then follow rule 3 to update documentation. If not, continue enhancing the tests based on feedback. For example, verifying that shuffle was called and clients were updated is not sufficient - we must also verify that the board actually changed after the shuffle (tiles and harbors should be randomized).
-6. **GameState Testing**: Some states exist just to give the players a chance to look at the board and the only action is to click "Next".  if we have one of those states, you can simulate the Next action to get us to a state where we can run tests.
-7. **Single Source of Truth**: All client state should be encapsulated in the GameModel that the GameStateMachine returns via the hanging GET pattern or by requesting the current game state (`/api/gamestate/{gameId}`). We should not need separate APIs like `/api/players/{gameId}` - all player information, current player, game state, etc. should come from the complete GameModel. The only exception might be for creating a new game.
-8. **Catan Font Usage**: The companion web interface MUST use the official Catan font for all game-related icons and symbols. The font file is located at `Assets/Fonts/Catan.ttf` and should be served as a web font at `/fonts/Catan.ttf`. Use Unicode characters from `Layout/CatanFont.cs` for authentic Catan iconography (Settlement: \uE926, City: \uE900, Road: \uE909, Soldier: \uE90E, Knight: \uE930, etc.). This ensures visual consistency with the desktop app and provides the authentic Catan look and feel.
-9. **🚨 SHARED MODELS DOCUMENTATION REQUIREMENT**: **ANY** and **ALL** changes to the `Catan3.Shared` models **MUST** be fully documented in this companion.md file. This is **CRITICAL** because the WinUI3 Desktop App (Catan3 project) will be updated to use the Shared models, and since we started from the Desktop app implementation, all changes require corresponding updates to the Desktop app. Document changes in a dedicated "Shared Models Changes" section with: (a) What was changed, (b) Why it was changed, (c) Impact on Desktop app, (d) Required Desktop app modifications. This ensures seamless integration and prevents breaking changes.
-10. **TESTS MUST PASS**: Before marking any task as complete, ensure that all tests pass without errors or warnings. If there are compilation errors or test failures, fix them before proceeding.
-**Rule 10 Compliance**: All tests must pass without errors or warnings. If there are any issues, they must be resolved before proceeding with any further work. This includes ensuring that all tests are up-to-date and reflect the current state of the codebase.
+2. **Current Work Context**: Before starting any new work session or significant task, update the "Current Work" section with enough context to allow the work to continue seamlessly if a new session is created. Include current objectives, recent changes, pending tasks, and any important decisions or findings.
+4. **Task Completion Verification**: Before marking any task as complete, you must ask "is this task complete?" If the answer is yes, then follow rule 3 to update documentation. If not, continue enhancing the tests based on feedback. For example, verifying that shuffle was called and clients were updated is not sufficient - we must also verify that the board actually changed after the shuffle (tiles and harbors should be randomized).
+5. **GameState Testing**: Some states exist just to give the players a chance to look at the board and the only action is to click "Next".  if we have one of those states, you can simulate the Next action to get us to a state where we can run tests.
+6. **Single Source of Truth**: All client state should be encapsulated in the GameModel that the GameStateMachine returns via the hanging GET pattern or by requesting the current game state (`/api/gamestate/{gameId}`). We should not need separate APIs like `/api/players/{gameId}` - all player information, current player, game state, etc. should come from the complete GameModel. The only exception might be for creating a new game.
+7. **Catan Font Usage**: The companion web interface MUST use the official Catan font for all game-related icons and symbols. The font file is located at `Assets/Fonts/Catan.ttf` and should be served as a web font at `/fonts/Catan.ttf`. Use Unicode characters from `Layout/CatanFont.cs` for authentic Catan iconography (Settlement: \uE926, City: \uE900, Road: \uE909, Soldier: \uE90E, Knight: \uE930, etc.). This ensures visual consistency with the desktop app and provides the authentic Catan look and feel.
+8. **TESTS MUST PASS**: Before marking any task as complete, ensure that all tests pass without errors or warnings. If there are compilation errors or test failures, fix them before proceeding.
+
+**Rule Compliance**: All tests must pass without errors or warnings. If there are any issues, they must be resolved before proceeding with any further work. This includes ensuring that all tests are up-to-date and reflect the current state of the codebase.
 **SignalR**: use the proxy in the Shared project to call SignalR
-**EndToEndTests**: DO NOT USE AllocationHelpers. 
+
+
 ## Current Work
 *This section should be updated at the start of each work session with current context.*
 
 **Current Session**: ✅ **RULE 10 COMPLIANCE - ALL TESTS MUST PASS.  NO ERRORS NO WARNINGS.
-
-We are suffering from a misunderstanding of how "Version" works.  Version is *NOT* the version of the GameModel document in the game.  Version *IS* the Version of the GameStateMachine and is STATIC for the lifetime of the GameStateMachine.  It is incremented by 1 each time the GameStateMachine changes the GameModel.  This will be used in the future as a way to ensure backward compatibility.
-The tests INCORRECTLY assert that it changes with each GameModel change, which is not the case.  The GameModel is a snapshot of the game state at a point in time, and the Version is a static value that represents the version of the GameStateMachine itself. We have approximately
-29 tests failing and we need to fix all of the tests to correctly pass.
-
-**🎉 MAJOR ARCHITECTURE BREAKTHROUGH COMPLETED**:
-Successfully implemented GameId server-generation and Rule 7 compliance! The fundamental architecture issue has been resolved.
-
-**✅ COMPLETED OBJECTIVES**:
-1. **✅ STEP 1**: Added missing fields to GameModel to establish single source of truth
-2. **✅ STEP 2**: Updated GameStateMachine to generate its own GameId in constructor
-3. **✅ STEP 3**: Refactored GameStateMachineService to use server-generated GameIds
-4. **✅ STEP 4**: Updated `/api/game/new` and `/api/game/load` to return server-generated GameIds
-5. **✅ STEP 5**: Updated LogGameModel to ensure GameId and CreatedTime are set on all GameModels
-6. **✅ STEP 6**: Achieved zero compilation errors - build successful
-7. **✅ STEP 7**: Fixed test compilation issues - PlayerInfo namespace resolution corrected
-
-**🔧 NEXT PRIORITIES**:
-1. **✅ Fixed tests** to work with new server-generated GameId approach
-2. **Update companion app** to handle server-generated GameIds 
-3. **Full integration testing** to ensure all endpoints work correctly
-4. **Performance testing** to validate the new architecture
-5. **📋 Complete REST API documentation** - documenting all endpoints
-
-**💡 ARCHITECTURE PRINCIPLE ACHIEVED**:
-GameModel is now the complete single source of truth → GameInfo is pure summary/display object → Rule 7 fully compliant
-
-**🔍 PLAYERINFO INVESTIGATION RESULTS**:
-- **No duplicate PlayerInfo classes found** - only one definition exists in `Catan3.Shared.Models.GameInfo.cs`
-- **Compilation issue was namespace resolution confusion** - fixed with proper type references
-- **Tests.GameService.PlayerInfo reference was compiler error, not actual class**
-
-## Shared Models Changes 📋
 
 ### **GameModel Extensions for Rule 7 Compliance**
 **Date**: 2025-01-25  
@@ -446,25 +422,6 @@ private void LogGameModel(GameModel gameModel)
 }
 ```
 
-**5. Updated Hanging GET API Integration**:
-The `/api/gamestate/{gameId}/listen` endpoint now:
-1. Gets `IClientNotification` service from DI
-2. Calls `WaitForNotificationAsync()` with client's version and timeout
-3. Returns updated GameModel when notification is received or timeout occurs
-
-**6. Updated Dependency Injection in `Program.cs`**:
-```csharp
-builder.Services.AddSingleton<IClientNotification, ClientNotificationService>();
-builder.Services.AddSingleton<GameStateMachineService>();
-```
-
-#### **Benefits Achieved**:
-
-✅ **GameStateMachine Focus**: GameStateMachine now only worries about game state logic  
-✅ **Future-proof**: Can easily replace hanging GET with SignalR without changing GameStateMachine  
-✅ **Persistence Independence**: Persistence layer can move from local files to database without affecting GameStateMachine  
-✅ **Testability**: Each layer can be tested independently  
-✅ **Scalability**: Real-time notification system can be optimized separately  
 
 #### **Protocol Flow Implemented**:
 1. ✅ Client sends request to GameService containing the GameId
@@ -485,117 +442,254 @@ builder.Services.AddSingleton<GameStateMachineService>();
 2. **Update GameStateMachine constructor calls** to include notification service
 3. **Consider using same separation of concerns** for consistency
 
-#### **Testing Status**:
-✅ **Build successful** - No compilation errors  
-✅ **Architecture implemented** - Proper separation of concerns achieved  
-🔄 **Ready for integration testing** - All tests should pass with new architecture
-
-### **GameModel Version Field Addition - Rule 7 Compliance Complete**
-**Date**: 2025-01-25  
-**Change Type**: ✅ Property Addition + API Metadata Elimination + Integer Version for Hanging GET
-
-#### **What was changed**:
-**GameModel** - Added `Version` field in `Catan3.Shared/Models/GameModel.cs`:
-
-```csharp
-/// <summary>
-/// Gets or sets the version of this game instance.
-/// This field supports Rule 7 (Single Source of Truth) by ensuring GameModel contains all game metadata.
-/// Version starts at 1 and is incremented with each game state change.
-/// Used for hanging GET version comparison and client synchronization.
-/// </summary>
-public int Version { get; set; } = 1;
+Directory structure: here is the layout of the project, it should be kept up to date as new directories are added or moved around.
 ```
-
-Updated both GameModel constructors to initialize Version:
-```csharp
-// Initialize new fields for Rule 7 compliance
-CreatedTime = DateTime.UtcNow;
-Version = 1;
-```
-
-**GameStateMachine** - Updated `LogGameModel()` to manage version increments:
-```csharp
-// Increment version for each state change (integer version for hanging GET compatibility)
-gameModel.Version = Log.DoneCount + 1;
-```
-
-**GameStateMachineService** - Eliminated service-level version counter and made version come from GameModel:
-```csharp
-/// <summary>
-/// Gets the current version for the specified gameId from the GameModel
-/// Rule 7 Compliance: Version comes from GameModel, not service-level counter
-/// </summary>
-public int GetCurrentVersion(string? gameId = null)
-{
-    // If gameId is provided, get version from that specific game's GameModel
-    if (!string.IsNullOrEmpty(gameId))
-    {
-        var gameModel = GetCurrentGameState(gameId);
-        return gameModel?.Version ?? 1;
-    }
-    
-    // If no gameId provided, return the highest version across all games
-    // This maintains backward compatibility for existing API calls
-    var maxVersion = 1;
-    foreach (var kvp in _gameStateMachines)
-    {
-        try
-        {
-            var gameModel = kvp.Value.GetCurrentState();
-            if (gameModel != null && gameModel.Version > maxVersion)
-            {
-                maxVersion = gameModel.Version;
-            }
-        }
-        catch
-        {
-            // Skip games that have errors
-        }
-    }
-    return maxVersion;
-}
-```
-
-**GameApiController** - Updated all version references to use GameModel.Version:
-```csharp
-// Before: var currentVersion = _gameStateMachineService.GetCurrentVersion();
-// After: var currentVersion = gameModel.Version;
-```
-
-#### **Why it was changed**:
-**Hanging GET Compatibility**: The version system needs to support integer comparisons for the hanging GET system to work properly. The hanging GET tests expect version comparisons like `clientVersion < serverVersion` which requires integer arithmetic.
-
-**Rule 7 Compliance**: The previous implementation violated Single Responsibility Principle by:
-- Maintaining a separate `_currentVersion` counter in GameStateMachineService
-- Adding external version metadata in API responses instead of using GameModel.Version
-- Having version truth split between service and model layers
-
-**Better Design**: Version is now owned by GameModel:
-- `GameModel.Version` starts at 1 and increments with each state change
-- GameStateMachine manages version increments during LogGameModel()
-- GameStateMachineService gets version from GameModel, doesn't maintain its own counter
-- All API responses use GameModel.Version directly
-
-#### **Impact on Desktop app**:
-**🔧 BREAKING CHANGES**: 
-1. **GameModel.Version Property**: Desktop app can now access `gameModel.Version` for version tracking
-2. **Integer Version**: Version is now an integer (not string) for hanging GET compatibility
-3. **No External Version Management**: Desktop app should not manage version separately
-4. **Automatic Version Increment**: GameStateMachine handles version increments automatically
-
-#### **Required Desktop app modifications**:
-1. **Use GameModel.Version**: Replace any external version tracking with `gameModel.Version`
-2. **Integer Comparisons**: Version comparisons should use integer arithmetic
-3. **Remove External Metadata**: Don't add version to API responses - it's already in GameModel
-4. **Version Increment Logic**: If Desktop app uses GameStateMachine directly, version increments automatically
-
-#### **Benefits**:
-- **Complete Rule 7 Compliance**: GameModel is truly the single source of truth for version
-- **Hanging GET Support**: Integer version enables proper version comparison for real-time updates
-- **No Data Duplication**: Version lives only in GameModel, nowhere else
-- **Automatic Version Management**: GameStateMachine handles version increments consistently
-- **API Simplification**: API responses use GameModel.Version directly without external computation
-- **Future-proof**: All version needs are met by GameModel alone
-
----
+D:\GitHub\Catan3 [Companion ≡ +6 ~6 -253 !]> tree /A
+Folder PATH listing for volume Disk 0
+Volume serial number is CC93-B862
+D:.
++---.github
+|   \---workflows
++---.vscode
++---Catan3.CLI
+|   +---Commands
+|   \---Services
++---Catan3.GameService
+|   +---Controllers
+|   +---Design Assets
+|   +---Extensions
+|   +---Factory
+|   +---Hubs
+|   +---Models
+|   +---Properties
+|   +---Services
+|   +---Utility
+|   +---Views
+|   |   +---Home
+|   |   \---Shared
+|   \---wwwroot
+|       +---css
+|       +---diagrams
+|       +---fonts
+|       +---js
+|       +---lib
+|       |   +---bootstrap
+|       |   |   \---dist
+|       |   |       +---css
+|       |   |       \---js
+|       |   +---jquery
+|       |   |   \---dist
+|       |   +---jquery-validation
+|       |   |   \---dist
+|       |   \---jquery-validation-unobtrusive
+|       |       \---dist
+|       \---mermaid-source
++---Catan3.Shared
+|   +---Extensions
+|   +---Models
+|   +---Services
+|   \---Utility
++---DesktopApp
+|   +---Assets
+|   |   +---DefaultPlayers
+|   |   +---Fonts
+|   |   +---Harbors
+|   |   +---ResourceCards
+|   |   +---SVG
+|   |   +---Test Files
+|   |   \---Tiles
+|   +---Assets (2)
+|   |   \---DefaultPlayers
+|   +---bin
+|   |   \---ARM64
+|   |       \---Debug
+|   |           \---net9.0-windows10.0.22621.0
+|   |               \---win-arm64
+|   +---Buildings
+|   |   \---BuildingViewModel
+|   +---Controls
+|   +---Game
+|   |   +---Game Control
+|   |   +---GameFactory
+|   |   +---GameModel
+|   |   +---GameView
+|   |   \---NewGame
+|   +---GameState
+|   |   \---GameLog
+|   +---Harbors
+|   +---Layout
+|   +---MainPage
+|   +---Models
+|   |   \---ModelGeneration
+|   +---obj
+|   |   \---ARM64
+|   |       \---Debug
+|   |           \---net9.0-windows10.0.22621.0
+|   |               \---win-arm64
+|   |                   +---ref
+|   |                   \---refint
+|   +---Player
+|   |   \---PlayerSettings
+|   +---Properties
+|   |   \---PublishProfiles
+|   +---Resources
+|   +---Roads
+|   +---Robber
+|   +---Rolls
+|   +---Services
+|   |   \---Companion
+|   |       \---Models
+|   +---Tests
+|   +---Themes
+|   +---Tiles
+|   +---Utility
+|   \---ValueConverters
++---Docs
++---Scripts
++---Tests.GameService
+|   +---bin
+|   |   +---Debug
+|   |   |   \---net9.0
+|   |   \---Release
+|   |       \---net9.0
+|   +---Companion
+|   +---CompanionUI
+|   +---obj
+|   |   +---Debug
+|   |   |   \---net9.0
+|   |   |       +---ref
+|   |   |       \---refint
+|   |   \---Release
+|   |       \---net9.0
+|   |           +---ref
+|   |           \---refint
+|   +---SignalR
+|   \---TestClient
+|       +---Commands
+|       \---Services
+\---Tests.Shared
+    +---bin
+    |   +---Debug
+    |   |   \---net9.0
+    |   \---Release
+    |       \---net9.0
+    +---obj
+    |   +---Debug
+    |   |   \---net9.0
+    |   |       +---ref
+    |   |       \---refint
+    |   \---Release
+    |       \---net9.0
+    |           +---ref
+    |           \---refint
+    \---Serialization
+D:\GitHub\Catan3 [Companion ≡ +6 ~6 -253 !]> Get-ChildItem -Path . -Include bin,obj -Recurse -Directory |
+>>     ForEach-Object {
+>>         Write-Host "Deleting $($_.FullName)"
+>>         Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction Stop
+>>     }
+Deleting D:\GitHub\Catan3\DesktopApp\bin
+Deleting D:\GitHub\Catan3\DesktopApp\obj
+Deleting D:\GitHub\Catan3\Tests.GameService\bin
+Deleting D:\GitHub\Catan3\Tests.GameService\obj
+Deleting D:\GitHub\Catan3\Tests.Shared\bin
+Deleting D:\GitHub\Catan3\Tests.Shared\obj
+D:\GitHub\Catan3 [Companion ≡ +6 ~6 -253 !]> tree /A
+Folder PATH listing for volume Disk 0
+Volume serial number is CC93-B862
+D:.
++---.github
+|   \---workflows
++---.vscode
++---Catan3.CLI
+|   +---Commands
+|   \---Services
++---Catan3.GameService
+|   +---Controllers
+|   +---Design Assets
+|   +---Extensions
+|   +---Factory
+|   +---Hubs
+|   +---Models
+|   +---Properties
+|   +---Services
+|   +---Utility
+|   +---Views
+|   |   +---Home
+|   |   \---Shared
+|   \---wwwroot
+|       +---css
+|       +---diagrams
+|       +---fonts
+|       +---js
+|       +---lib
+|       |   +---bootstrap
+|       |   |   \---dist
+|       |   |       +---css
+|       |   |       \---js
+|       |   +---jquery
+|       |   |   \---dist
+|       |   +---jquery-validation
+|       |   |   \---dist
+|       |   \---jquery-validation-unobtrusive
+|       |       \---dist
+|       \---mermaid-source
++---Catan3.Shared
+|   +---Extensions
+|   +---Models
+|   +---Services
+|   \---Utility
++---DesktopApp
+|   +---Assets
+|   |   +---DefaultPlayers
+|   |   +---Fonts
+|   |   +---Harbors
+|   |   +---ResourceCards
+|   |   +---SVG
+|   |   +---Test Files
+|   |   \---Tiles
+|   +---Assets (2)
+|   |   \---DefaultPlayers
+|   +---Buildings
+|   |   \---BuildingViewModel
+|   +---Controls
+|   +---Game
+|   |   +---Game Control
+|   |   +---GameFactory
+|   |   +---GameModel
+|   |   +---GameView
+|   |   \---NewGame
+|   +---GameState
+|   |   \---GameLog
+|   +---Harbors
+|   +---Layout
+|   +---MainPage
+|   +---Models
+|   |   \---ModelGeneration
+|   +---Player
+|   |   \---PlayerSettings
+|   +---Properties
+|   |   \---PublishProfiles
+|   +---Resources
+|   +---Roads
+|   +---Robber
+|   +---Rolls
+|   +---Services
+|   |   \---Companion
+|   |       \---Models
+|   +---Tests
+|   +---Themes
+|   +---Tiles
+|   +---Utility
+|   \---ValueConverters
++---Docs
++---Scripts
++---Tests.GameService
+|   +---Companion
+|   +---CompanionUI
+|   +---SignalR
+|   \---TestClient
+|       +---Commands
+|       \---Services
+\---Tests.Shared
+    \---Serialization

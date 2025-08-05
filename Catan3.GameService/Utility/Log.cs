@@ -10,7 +10,9 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 using Catan3.GameService.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Catan3.GameService.Utility
 {
@@ -46,6 +48,7 @@ namespace Catan3.GameService.Utility
         private ObservableCollection<T> DoneStack { get; set; } = [];
         private ObservableCollection<T> RedoStack { get; set; } = [];
         public GameType GameType { get; set; } = GameType.Regular;
+        private readonly ILogger? _logger;
 
         [JsonConstructor]
         public Log(IPersistanceService? persistanceService, string localSaveFile)
@@ -54,6 +57,16 @@ namespace Catan3.GameService.Utility
             DoneStack.CollectionChanged += DoneStack_ListChanged;
             RedoStack.CollectionChanged += RedoStack_ListChanged;
             FilePath = localSaveFile;
+            _logger = null; // No logger for JSON constructor
+        }
+
+        public Log(IPersistanceService? persistanceService, string localSaveFile, ILogger? logger = null)
+        {
+            PersistService = persistanceService;
+            DoneStack.CollectionChanged += DoneStack_ListChanged;
+            RedoStack.CollectionChanged += RedoStack_ListChanged;
+            FilePath = localSaveFile;
+            _logger = logger;
         }
 
         public int DoneCount => DoneStack.Count;
@@ -106,7 +119,15 @@ namespace Catan3.GameService.Utility
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Undo operation failed: {ex.Message}");
+                if (_logger != null)
+                {
+                    _logger.LogError(ex, "[Log] Undo operation failed: {Message}", ex.Message);
+                }
+                else
+                {
+                    // Fallback for cases where logger is not available
+                    System.Diagnostics.Trace.WriteLine($"Undo operation failed: {ex.Message}");
+                }
                 return null;
             }
         }
@@ -126,7 +147,9 @@ namespace Catan3.GameService.Utility
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Redo operation failed: {ex.Message}");
+                // Note: Consider injecting ILogger for better logging
+                // For now, using simple approach to avoid changing constructor
+                System.Diagnostics.Trace.WriteLine($"Redo operation failed: {ex.Message}");
                 return null;
             }
         }
@@ -211,7 +234,15 @@ namespace Catan3.GameService.Utility
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed SaveAs: {ex.Message}");
+                if (_logger != null)
+                {
+                    _logger.LogError(ex, "[Log] Failed SaveAs: {Message}", ex.Message);
+                }
+                else
+                {
+                    // Fallback for cases where logger is not available
+                    System.Diagnostics.Trace.WriteLine($"Failed SaveAs: {ex.Message}");
+                }
             }
         }
 
@@ -233,20 +264,13 @@ namespace Catan3.GameService.Utility
     {
         public static string JsonSerialize<T>(T obj)
         {
-            return JsonSerializer.Serialize(obj, JsonOptions);
+            return JsonHelper.Serialize(obj);
         }
 
         public static T? JsonDeserialize<T>(string json)
         {
-            return JsonSerializer.Deserialize<T>(json, JsonOptions);
+            return JsonHelper.Deserialize<T>(json);
         }
-
-        private static readonly JsonSerializerOptions JsonOptions = new()
-        {
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            WriteIndented = false,
-            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
-        };
 
         public static byte[] Compress(string text)
         {

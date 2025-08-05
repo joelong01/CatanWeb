@@ -6,8 +6,27 @@ using Catan3.Shared.Services;
 using Catan3.Shared.Extensions;
 using Catan3.Shared.Utility;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace Catan3.CLI.Services;
+
+static class ProxyExtensions
+{
+    public static GameState GetGameState(this IEnumerable<SignalRProxy> proxies)
+    {
+        if (proxies is null) return GameState.Uninitialized;
+        var anyProxy = proxies.First();
+        return anyProxy.GameModel?.GameState ?? GameState.Uninitialized;
+    }
+
+    public static GameModel? GetGameModel(this IEnumerable<SignalRProxy> proxies)
+    {
+        if (proxies is null) return null;
+        var anyProxy = proxies.First();
+        return anyProxy.GameModel;
+    }
+}
+
 
 /// <summary>
 /// Main game runner that orchestrates the end-to-end game execution
@@ -30,7 +49,7 @@ public class GameRunner
     public async Task RunGameAsync(GameRunOptions options)
     {
         var startTime = DateTime.UtcNow;
-        
+
         try
         {
             LogEvent("?? CATAN CLI STARTING", $"Starting {options.GameType} game with {options.PlayerCount} players");
@@ -57,11 +76,11 @@ public class GameRunner
             // Step 5: Verify they all got the same GameModel by looking at the hash
             LogEvent("?? STEP 5", "Verifying all players have consistent GameModel (checking GameHash)");
             await session.VerifyGameConsistency();
-            
-            var gameState = session.GetCurrentState();
+
+            var gameState = session.GetCurrentGameState();
             var firstProxy = session.Proxies.Values.First();
-            var gameHash = firstProxy.LastGameState?.GameHash ?? "Unknown";
-            
+            var gameHash = firstProxy.GameModel?.GameHash ?? "Unknown";
+
             LogEvent("? STEP 5", $"All players have consistent GameModel - GameHash: {gameHash}");
             LogEvent("?? CURRENT STATE", $"Game is in state: {gameState}");
 
@@ -99,15 +118,15 @@ public class GameRunner
 
             var endTime = DateTime.UtcNow;
             var totalTime = endTime - startTime;
-            
+
             LogEvent("?? SUCCESS", $"Game execution completed successfully in {totalTime.TotalSeconds:F2} seconds");
-            LogEvent("?? SUMMARY", $"GameId: {session.GameId}, Final State: {session.GetCurrentState()}, Players: {string.Join(", ", session.GetPlayerNames())}");
+            LogEvent("?? SUMMARY", $"GameId: {session.GameId}, Final State: {session.GetCurrentGameState()}, Players: {string.Join(", ", session.GetPlayerNames())}");
 
             if (options.NoExit)
             {
                 LogEvent("?? NO-EXIT MODE", "Game state preserved. Press Ctrl+C to exit and release resources.");
                 LogEvent("?? DEBUG TIP", $"GameService at {options.ServerUri} has active game {session.GameId}");
-                
+
                 // Keep the session alive until Ctrl+C
                 Console.CancelKeyPress += (sender, e) =>
                 {
@@ -132,12 +151,12 @@ public class GameRunner
         catch (Exception ex)
         {
             LogEvent("? ERROR", $"Game execution failed: {ex.Message}");
-            
+
             if (options.LogLevel <= LogLevel.Debug)
             {
                 LogEvent("?? DEBUG", $"Exception details: {ex}");
             }
-            
+
             throw;
         }
     }
@@ -159,7 +178,7 @@ public class GameRunner
 
         while (iteration < maxIterations)
         {
-            var currentState = session.GetCurrentState();
+            var currentState = session.GetCurrentGameState();
             LogEvent("?? CURRENT STATE", $"Iteration {iteration + 1}: {currentState}");
 
             if (currentState == targetGameState)
@@ -170,7 +189,7 @@ public class GameRunner
 
             // Progress to next state based on current state
             await ProgressGameState(session, currentState);
-            
+
             iteration++;
         }
 
@@ -186,11 +205,11 @@ public class GameRunner
         {
             using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
             httpClient.BaseAddress = new Uri(options.GetRestApiUrl());
-            
+
             // Try to hit a simple endpoint to verify service is running
             // We'll try the companion games endpoint which should always respond
             var response = await httpClient.GetAsync("/api/companion/games");
-            
+
             if (response.IsSuccessStatusCode)
             {
                 _logger.LogDebug("Service verification successful: {StatusCode}", response.StatusCode);
@@ -224,7 +243,7 @@ public class GameRunner
     {
         var timestamp = DateTime.UtcNow.ToString("HH:mm:ss.fff");
         Console.WriteLine($"[{timestamp}] [{eventType}] {message}");
-        
+
         // Also log to the logger for debugging
         _logger.LogInformation("[{EventType}] {Message}", eventType, message);
     }
@@ -245,7 +264,7 @@ public class GameRunner
         await VerifyAllocateResourceReverse(session);
         await VerifyDoneResourceAllocation(session);
         await VerifyWaitingForRoll(session);
-        
+
         LogEvent("?? COMPLETE", "Full game progression completed!");
     }
 
@@ -294,9 +313,9 @@ public class GameRunner
     private async Task VerifyPickingBoard(RealGameSession session)
     {
         LogEvent("?? TESTING PICKINGBOARD", "Starting comprehensive PickingBoard state testing");
-        
+
         // ASSERTION 1: Verify we're in the correct state initially
-        var currentState = session.GetCurrentState();
+        var currentState = session.GetCurrentGameState();
         if (currentState != GameState.PickingBoard)
         {
             throw new InvalidOperationException($"Expected PickingBoard state, but was in {currentState}");
@@ -313,12 +332,12 @@ public class GameRunner
         LogEvent("? CONSISTENCY ASSERTION", "All players have consistent GameModel before testing");
 
         // ASSERTION 4: Verify action flags are correct for PickingBoard
-        var initialGameState = session.Proxies.Values.First().LastGameState;
+        var initialGameState = session.Proxies.Values.First().GameModel;
         if (initialGameState == null)
         {
             throw new InvalidOperationException("No GameState available from any proxy");
         }
-        
+
         // In PickingBoard, Next should be enabled, rolls should be disabled
         if (!initialGameState.ActionFlags.NextEnabled)
         {
@@ -341,42 +360,42 @@ public class GameRunner
         // SHUFFLE TEST 1: Execute first shuffle
         LogEvent("?? SHUFFLE TEST 1", "Executing first shuffle action");
         await session.ExecuteAction(GameAction.Shuffle);
-        
-        var firstShuffleState = session.Proxies.Values.First().LastGameState;
+
+        var firstShuffleState = session.Proxies.Values.First().GameModel;
         if (firstShuffleState == null)
         {
             throw new InvalidOperationException("No GameState after first shuffle");
         }
-        
+
         var firstShuffleHash = firstShuffleState.GameHash;
         if (string.IsNullOrEmpty(firstShuffleHash))
         {
             throw new InvalidOperationException("GameHash is null after first shuffle");
         }
-        
+
         if (firstShuffleHash == initialHash)
         {
             throw new InvalidOperationException("GameHash did not change after first shuffle - board was not randomized");
         }
-        
+
         LogEvent("? SHUFFLE ASSERTION 1", $"Board randomized successfully: {initialHash} ? {firstShuffleHash}");
 
         // SHUFFLE TEST 2: Execute second shuffle
         LogEvent("?? SHUFFLE TEST 2", "Executing second shuffle action");
         await session.ExecuteAction(GameAction.Shuffle);
-        
-        var secondShuffleState = session.Proxies.Values.First().LastGameState;
+
+        var secondShuffleState = session.Proxies.Values.First().GameModel;
         if (secondShuffleState == null)
         {
             throw new InvalidOperationException("No GameState after second shuffle");
         }
-        
+
         var secondShuffleHash = secondShuffleState.GameHash;
         if (string.IsNullOrEmpty(secondShuffleHash))
         {
             throw new InvalidOperationException("GameHash is null after second shuffle");
         }
-        
+
         if (secondShuffleHash == firstShuffleHash)
         {
             LogEvent("?? SHUFFLE WARNING", "Second shuffle produced same hash - this is possible but rare");
@@ -389,43 +408,43 @@ public class GameRunner
         // UNDO TEST: Test Undo functionality
         LogEvent("? UNDO TEST", "Testing Undo functionality");
         await session.ExecuteAction(GameAction.Undo);
-        
-        var undoState = session.Proxies.Values.First().LastGameState;
+
+        var undoState = session.Proxies.Values.First().GameModel;
         if (undoState == null)
         {
             throw new InvalidOperationException("No GameState after undo");
         }
-        
+
         var undoHash = undoState.GameHash;
         if (undoHash != firstShuffleHash)
         {
             throw new InvalidOperationException($"Undo failed: expected {firstShuffleHash}, got {undoHash}");
         }
-        
+
         if (!undoState.ActionFlags.RedoEnabled)
         {
             throw new InvalidOperationException("Redo should be enabled after Undo");
         }
-        
+
         LogEvent("? UNDO ASSERTION", $"Undo restored previous state correctly: {secondShuffleHash} ? {firstShuffleHash}");
         LogEvent("? REDO FLAG ASSERTION", "Redo is enabled after Undo");
 
         // REDO TEST: Test Redo functionality
         LogEvent("? REDO TEST", "Testing Redo functionality");
         await session.ExecuteAction(GameAction.Redo);
-        
-        var redoState = session.Proxies.Values.First().LastGameState;
+
+        var redoState = session.Proxies.Values.First().GameModel;
         if (redoState == null)
         {
             throw new InvalidOperationException("No GameState after redo");
         }
-        
+
         var redoHash = redoState.GameHash;
         if (redoHash != secondShuffleHash)
         {
             throw new InvalidOperationException($"Redo failed: expected {secondShuffleHash}, got {redoHash}");
         }
-        
+
         LogEvent("? REDO ASSERTION", $"Redo restored forward state correctly: {firstShuffleHash} ? {secondShuffleHash}");
 
         // BALANCE TEST: Test Balance functionality (if available)
@@ -433,7 +452,7 @@ public class GameRunner
         try
         {
             await session.ExecuteAction(GameAction.Balance);
-            var balanceState = session.Proxies.Values.First().LastGameState;
+            var balanceState = session.Proxies.Values.First().GameModel;
             if (balanceState == null)
             {
                 throw new InvalidOperationException("No GameState after balance");
@@ -447,19 +466,19 @@ public class GameRunner
 
         // STATE PERSISTENCE TEST: Verify we're still in PickingBoard after all actions
         await session.VerifyGameConsistency();
-        var finalState = session.GetCurrentState();
+        var finalState = session.GetCurrentGameState();
         if (finalState != GameState.PickingBoard)
         {
             throw new InvalidOperationException($"Expected to remain in PickingBoard state, but moved to {finalState}");
         }
         LogEvent("? STATE PERSISTENCE ASSERTION", "Still in PickingBoard state after all actions");
-        
+
         // ADVANCEMENT TEST: Advance to next state using Next action
         LogEvent("?? ADVANCEMENT TEST", "Testing advancement to next state with Next action");
         await session.ExecuteAction(GameAction.Next);
-        
+
         // FINAL STATE ASSERTION: Verify we advanced to WaitingForRollForOrder
-        var nextState = session.GetCurrentState();
+        var nextState = session.GetCurrentGameState();
         if (nextState != GameState.WaitingForRollForOrder)
         {
             throw new InvalidOperationException($"Expected WaitingForRollForOrder after Next, but got {nextState}");
@@ -469,16 +488,16 @@ public class GameRunner
         // FINAL CONSISTENCY CHECK
         await session.VerifyGameConsistency();
         LogEvent("? FINAL CONSISTENCY ASSERTION", "All players consistent after PickingBoard testing");
-        
+
         LogEvent("?? PICKINGBOARD COMPLETE", "All PickingBoard functionality verified with comprehensive assertions");
     }
 
     private async Task VerifyWaitingForRollForOrder(RealGameSession session)
     {
         LogEvent("?? TESTING WAITINGFORROLLFORORDER", "Starting WaitingForRollForOrder state testing");
-        
+
         // ASSERTION 1: Verify we're in the correct state
-        var currentState = session.GetCurrentState();
+        var currentState = session.GetCurrentGameState();
         if (currentState != GameState.WaitingForRollForOrder)
         {
             throw new InvalidOperationException($"Expected WaitingForRollForOrder state, but was in {currentState}");
@@ -487,27 +506,27 @@ public class GameRunner
 
         // ASSERTION 2: Verify current player and game consistency
         await session.VerifyGameConsistency();
-        var gameState = session.Proxies.Values.First().LastGameState;
+        var gameState = session.Proxies.Values.First().GameModel;
         if (gameState == null)
         {
             throw new InvalidOperationException("No GameState available");
         }
-        
+
         var currentPlayerId = session.GetCurrentPlayerId();
         LogEvent("?? CURRENT PLAYER", $"Current player: {currentPlayerId}");
 
         // ADVANCEMENT TEST: Test Next action to advance to FinishedRollOrder
         LogEvent("?? ADVANCEMENT TEST", "Testing advancement with Next action");
         await session.ExecuteAction(GameAction.Next);
-        
+
         // FINAL STATE ASSERTION: Verify advancement
-        var nextState = session.GetCurrentState();
+        var nextState = session.GetCurrentGameState();
         if (nextState != GameState.FinishedRollOrder)
         {
             throw new InvalidOperationException($"Expected FinishedRollOrder after Next, but got {nextState}");
         }
         LogEvent("? ADVANCEMENT ASSERTION", "Successfully advanced to FinishedRollOrder");
-        
+
         await session.VerifyGameConsistency();
         LogEvent("?? WAITINGFORROLLFORORDER COMPLETE", "WaitingForRollForOrder testing completed successfully");
     }
@@ -515,9 +534,9 @@ public class GameRunner
     private async Task VerifyFinishedRollOrder(RealGameSession session)
     {
         LogEvent("?? TESTING FINISHEDROLLORDER", "Starting FinishedRollOrder state testing");
-        
+
         // ASSERTION: Verify state and advance
-        var currentState = session.GetCurrentState();
+        var currentState = session.GetCurrentGameState();
         if (currentState != GameState.FinishedRollOrder)
         {
             throw new InvalidOperationException($"Expected FinishedRollOrder state, but was in {currentState}");
@@ -525,26 +544,26 @@ public class GameRunner
         LogEvent("? STATE ASSERTION", "Confirmed game is in FinishedRollOrder state");
 
         await session.VerifyGameConsistency();
-        
+
         LogEvent("?? ADVANCEMENT TEST", "Testing advancement with Next action");
         await session.ExecuteAction(GameAction.Next);
-        
-        var nextState = session.GetCurrentState();
+
+        var nextState = session.GetCurrentGameState();
         if (nextState != GameState.BeginResourceAllocation)
         {
             throw new InvalidOperationException($"Expected BeginResourceAllocation after Next, but got {nextState}");
         }
         LogEvent("? ADVANCEMENT ASSERTION", "Successfully advanced to BeginResourceAllocation");
-        
+
         LogEvent("?? FINISHEDROLLORDER COMPLETE", "FinishedRollOrder testing completed successfully");
     }
 
     private async Task VerifyBeginResourceAllocation(RealGameSession session)
     {
         LogEvent("?? TESTING BEGINRESOURCEALLOCATION", "Starting BeginResourceAllocation state testing");
-        
+
         // ASSERTION: Verify state and advance
-        var currentState = session.GetCurrentState();
+        var currentState = session.GetCurrentGameState();
         if (currentState != GameState.BeginResourceAllocation)
         {
             throw new InvalidOperationException($"Expected BeginResourceAllocation state, but was in {currentState}");
@@ -552,26 +571,26 @@ public class GameRunner
         LogEvent("? STATE ASSERTION", "Confirmed game is in BeginResourceAllocation state");
 
         await session.VerifyGameConsistency();
-        
+
         LogEvent("?? ADVANCEMENT TEST", "Testing advancement with Next action");
         await session.ExecuteAction(GameAction.Next);
-        
-        var nextState = session.GetCurrentState();
+
+        var nextState = session.GetCurrentGameState();
         if (nextState != GameState.AllocateResourceForward)
         {
             throw new InvalidOperationException($"Expected AllocateResourceForward after Next, but got {nextState}");
         }
         LogEvent("? ADVANCEMENT ASSERTION", "Successfully advanced to AllocateResourceForward");
-        
+
         LogEvent("?? BEGINRESOURCEALLOCATION COMPLETE", "BeginResourceAllocation testing completed successfully");
     }
 
     private async Task VerifyAllocateResourceForward(RealGameSession session)
     {
         LogEvent("?? TESTING ALLOCATERESOURCEFORWARD", "Starting AllocateResourceForward state testing");
-        
+
         // ASSERTION 1: Verify we're in the correct state
-        var currentState = session.GetCurrentState();
+        var currentState = session.GetCurrentGameState();
         if (currentState != GameState.AllocateResourceForward)
         {
             LogEvent("? FAIL", $"Expected AllocateResourceForward state, but was in {currentState}");
@@ -581,7 +600,7 @@ public class GameRunner
 
         // ASSERTION 2: Verify game structure for allocation
         await session.VerifyGameConsistency();
-        var gameState = session.Proxies.Values.First().LastGameState;
+        var gameState = session.Proxies.Values.First().GameModel;
         if (gameState == null)
         {
             LogEvent("? FAIL", "No GameState available");
@@ -603,7 +622,7 @@ public class GameRunner
             LogEvent("? FAIL", "Rolls should not be enabled during allocation");
             throw new InvalidOperationException("Rolls should not be enabled during allocation");
         }
-        
+
         LogEvent("? PASS", $"Game has {gameState.Buildings.Count} buildings and {gameState.Roads.Count} roads");
         LogEvent("? PASS", "Rolls disabled during allocation (correct)");
 
@@ -615,9 +634,9 @@ public class GameRunner
         {
             var currentPlayerId = session.GetCurrentPlayerId();
             var expectedPlayer = playerIds[i];
-            
+
             LogEvent($"?? PLAYER {i + 1}/{playerIds.Count}", $"Processing {currentPlayerId} (expected: {expectedPlayer})");
-            
+
             // ASSERTION: Verify correct player turn
             if (currentPlayerId != expectedPlayer)
             {
@@ -627,15 +646,15 @@ public class GameRunner
 
             // Get current game state for this player's turn
             await session.VerifyGameConsistency();
-            var currentGameState = session.Proxies.Values.First().LastGameState;
-            if (currentGameState == null)
+            var currentGameModel = session.Proxies.Values.GetGameModel();
+            if (currentGameModel is null)
             {
                 LogEvent("? FAIL", $"No GameState available for player {currentPlayerId}");
                 throw new InvalidOperationException($"No GameState available for player {currentPlayerId}");
             }
 
             // ASSERTION: Verify player entitlements
-            var currentPlayer = currentGameState.Players.FirstOrDefault(p => p.Id == currentPlayerId);
+            var currentPlayer = currentGameModel.Players.FirstOrDefault(p => p.Id == currentPlayerId);
             if (currentPlayer == null)
             {
                 LogEvent("? FAIL", $"Current player {currentPlayerId} not found in game state");
@@ -652,69 +671,69 @@ public class GameRunner
                 LogEvent("? FAIL", $"Player {currentPlayerId} should have Road entitlement");
                 throw new InvalidOperationException($"Player {currentPlayerId} should have Road entitlement");
             }
-            
+
             LogEvent("? PASS", $"Player {currentPlayerId} has Settlement and Road entitlements");
 
             // STEP 1: Place settlement with highest star value
             LogEvent("?? SETTLEMENT PLACEMENT", $"Finding best settlement location for {currentPlayerId}");
             await PlaceBestSettlement(session, currentPlayerId);
-            
+
             // Verify settlement placement result
             await session.VerifyGameConsistency();
-            var afterSettlementState = session.Proxies.Values.First().LastGameState;
+            var afterSettlementState = session.CurrentGameModel;
             if (afterSettlementState == null)
             {
                 LogEvent("? FAIL", "No GameState after settlement placement");
                 throw new InvalidOperationException("No GameState after settlement placement");
             }
-            
+
             var playerAfterSettlement = afterSettlementState.Players.FirstOrDefault(p => p.Id == currentPlayerId);
             if (playerAfterSettlement == null)
             {
                 LogEvent("? FAIL", $"Player {currentPlayerId} not found after settlement placement");
                 throw new InvalidOperationException($"Player {currentPlayerId} not found after settlement placement");
             }
-            
+
             if (playerAfterSettlement.Score != 1)
             {
                 LogEvent("? FAIL", $"Player {currentPlayerId} should have score 1 after settlement, but has {playerAfterSettlement.Score}");
                 throw new InvalidOperationException($"Player {currentPlayerId} should have score 1 after settlement, but has {playerAfterSettlement.Score}");
             }
-            
+
             if (playerAfterSettlement.UnspentEntitlements.Contains(Entitlement.Settlement))
             {
                 LogEvent("? FAIL", $"Player {currentPlayerId} should no longer have Settlement entitlement");
                 throw new InvalidOperationException($"Player {currentPlayerId} should no longer have Settlement entitlement");
             }
-            
+
             LogEvent("? PASS", $"Player {currentPlayerId} placed settlement, score is now 1, Settlement entitlement spent");
 
             // STEP 2: Place road
             LogEvent("??? ROAD PLACEMENT", $"Finding buildable road for {currentPlayerId}");
             await PlaceFirstBuildableRoad(session, currentPlayerId);
-            
+
             // Verify road placement result
             await session.VerifyGameConsistency();
-            var afterRoadState = session.Proxies.Values.First().LastGameState;
+            var afterRoadState = session.CurrentGameModel;
             if (afterRoadState == null)
             {
                 LogEvent("? FAIL", "No GameState after road placement");
                 throw new InvalidOperationException("No GameState after road placement");
             }
-            
+
             var playerAfterRoad = afterRoadState.Players.FirstOrDefault(p => p.Id == currentPlayerId);
             if (playerAfterRoad == null)
             {
                 LogEvent("? FAIL", $"Player {currentPlayerId} not found after road placement");
                 throw new InvalidOperationException($"Player {currentPlayerId} not found after road placement");
             }
-            
+
             if (playerAfterRoad.UnspentEntitlements.Contains(Entitlement.Road))
             {
                 LogEvent("? FAIL", $"Player {currentPlayerId} should no longer have Road entitlement");
                 throw new InvalidOperationException($"Player {currentPlayerId} should no longer have Road entitlement");
             }
-            
+
             LogEvent("? PASS", $"Player {currentPlayerId} placed road, Road entitlement spent");
 
             // STEP 3: Advance to next player or next phase
@@ -731,13 +750,13 @@ public class GameRunner
         }
 
         // FINAL ASSERTION: Verify we advanced to AllocateResourceReverse
-        var finalState = session.GetCurrentState();
+        var finalState = session.GetCurrentGameState();
         if (finalState != GameState.AllocateResourceReverse)
         {
             LogEvent("? FAIL", $"Expected AllocateResourceReverse after all players, but got {finalState}");
             throw new InvalidOperationException($"Expected AllocateResourceReverse after all players, but got {finalState}");
         }
-        
+
         // Verify current player is the last player (for reverse order)
         var finalCurrentPlayer = session.GetCurrentPlayerId();
         var lastPlayer = playerIds.Last();
@@ -746,9 +765,9 @@ public class GameRunner
             LogEvent("? FAIL", $"Expected {lastPlayer} to be current player in reverse phase, but got {finalCurrentPlayer}");
             throw new InvalidOperationException($"Expected {lastPlayer} to be current player in reverse phase, but got {finalCurrentPlayer}");
         }
-        
+
         LogEvent("? PASS", $"Successfully advanced to AllocateResourceReverse with {lastPlayer} as current player");
-        
+
         await session.VerifyGameConsistency();
         LogEvent("?? ALLOCATERESOURCEFORWARD COMPLETE", "All players completed forward allocation successfully");
     }
@@ -756,9 +775,9 @@ public class GameRunner
     private async Task VerifyAllocateResourceReverse(RealGameSession session)
     {
         LogEvent("?? TESTING ALLOCATERESOURCEREVERSE", "Starting AllocateResourceReverse state testing");
-        
+
         // ASSERTION 1: Verify we're in the correct state
-        var currentState = session.GetCurrentState();
+        var currentState = session.GetCurrentGameState();
         if (currentState != GameState.AllocateResourceReverse)
         {
             LogEvent("? FAIL", $"Expected AllocateResourceReverse state, but was in {currentState}");
@@ -768,41 +787,42 @@ public class GameRunner
 
         // ASSERTION 2: Verify game structure for reverse allocation
         await session.VerifyGameConsistency();
-        var gameState = session.Proxies.Values.First().LastGameState;
-        if (gameState == null)
+        
+        var gameModel = session.Proxies.Values.GetGameModel();
+        if (gameModel == null)
         {
             LogEvent("? FAIL", "No GameState available");
             throw new InvalidOperationException("No GameState available");
         }
 
-        if (gameState.Buildings.Count == 0)
+        if (gameModel.Buildings.Count == 0)
         {
             LogEvent("? FAIL", "No buildings available for allocation");
             throw new InvalidOperationException("No buildings available for allocation");
         }
-        if (gameState.Roads.Count == 0)
+        if (gameModel.Roads.Count == 0)
         {
             LogEvent("? FAIL", "No roads available for allocation");
             throw new InvalidOperationException("No roads available for allocation");
         }
-        if (gameState.ActionFlags.RollsEnabled)
+        if (gameModel.ActionFlags.RollsEnabled)
         {
             LogEvent("? FAIL", "Rolls should not be enabled during allocation");
             throw new InvalidOperationException("Rolls should not be enabled during allocation");
         }
-        
-        LogEvent("? PASS", $"Game has {gameState.Buildings.Count} buildings and {gameState.Roads.Count} roads");
+
+        LogEvent("? PASS", $"Game has {gameModel.Buildings.Count} buildings and {gameModel.Roads.Count} roads");
         LogEvent("? PASS", "Rolls disabled during allocation (correct)");
 
         // ASSERTION 3: Verify forward allocation was completed - all players should have 1 settlement and 1 road
         var playerIds = session.GetPlayerIds();
         foreach (var playerId in playerIds)
         {
-            var playerBuildings = gameState.Buildings.Count(b => 
+            var playerBuildings = gameModel.Buildings.Count(b =>
                 b.OwnerId == playerId && b.BuildingState == BuildingState.Settlement);
-            var playerRoads = gameState.Roads.Count(r => 
+            var playerRoads = gameModel.Roads.Count(r =>
                 r.OwnerId == playerId && r.RoadState == RoadState.Road);
-            
+
             if (playerBuildings != 1)
             {
                 LogEvent("? FAIL", $"Player {playerId} should have exactly 1 settlement from forward allocation, but has {playerBuildings}");
@@ -813,7 +833,7 @@ public class GameRunner
                 LogEvent("? FAIL", $"Player {playerId} should have exactly 1 road from forward allocation, but has {playerRoads}");
                 throw new InvalidOperationException($"Player {playerId} should have exactly 1 road from forward allocation, but has {playerRoads}");
             }
-            
+
             LogEvent("? PASS", $"Player {playerId} has 1 settlement and 1 road from forward allocation");
         }
 
@@ -826,7 +846,7 @@ public class GameRunner
             throw new InvalidOperationException($"Expected {lastPlayer} to be current player in reverse phase, but got {currentPlayerId}");
         }
         LogEvent("? PASS", $"Successfully advanced to AllocateResourceReverse with {lastPlayer} as current player");
-        
+
         // PLAYER ALLOCATION LOOP: Process each player in reverse order
         var reversePlayerIds = playerIds.AsEnumerable().Reverse().ToArray();
         LogEvent("??? REVERSE ALLOCATION", $"Starting reverse allocation for {reversePlayerIds.Length} players");
@@ -835,9 +855,9 @@ public class GameRunner
         {
             currentPlayerId = session.GetCurrentPlayerId();
             var expectedPlayer = reversePlayerIds[i];
-            
+
             LogEvent($"?? PLAYER {i + 1}/{reversePlayerIds.Length}", $"Processing {currentPlayerId} (expected: {expectedPlayer})");
-            
+
             // ASSERTION: Verify correct player turn
             if (currentPlayerId != expectedPlayer)
             {
@@ -847,7 +867,7 @@ public class GameRunner
 
             // Get current game state for this player's turn
             await session.VerifyGameConsistency();
-            var currentGameState = session.Proxies.Values.First().LastGameState;
+            var currentGameState = session.CurrentGameModel;
             if (currentGameState == null)
             {
                 LogEvent("? FAIL", $"No GameState available for player {currentPlayerId}");
@@ -872,7 +892,7 @@ public class GameRunner
                 LogEvent("? FAIL", $"Player {currentPlayerId} should have Road entitlement");
                 throw new InvalidOperationException($"Player {currentPlayerId} should have Road entitlement");
             }
-            
+
             LogEvent("? PASS", $"Player {currentPlayerId} has Settlement and Road entitlements");
 
             // ASSERTION: Verify resource tracking from forward allocation
@@ -888,16 +908,16 @@ public class GameRunner
             }
 
             // Track initial resources before settlement placement
-            var initialResourcesThisGame = currentPlayer.ResourcesThisGame.Brick + 
-                                         currentPlayer.ResourcesThisGame.Wood + 
-                                         currentPlayer.ResourcesThisGame.Sheep + 
-                                         currentPlayer.ResourcesThisGame.Wheat + 
+            var initialResourcesThisGame = currentPlayer.ResourcesThisGame.Brick +
+                                         currentPlayer.ResourcesThisGame.Wood +
+                                         currentPlayer.ResourcesThisGame.Sheep +
+                                         currentPlayer.ResourcesThisGame.Wheat +
                                          currentPlayer.ResourcesThisGame.Ore;
-            
-            var initialResourcesThisTurn = currentPlayer.ResourcesThisTurn.Brick + 
-                                         currentPlayer.ResourcesThisTurn.Wood + 
-                                         currentPlayer.ResourcesThisTurn.Sheep + 
-                                         currentPlayer.ResourcesThisTurn.Wheat + 
+
+            var initialResourcesThisTurn = currentPlayer.ResourcesThisTurn.Brick +
+                                         currentPlayer.ResourcesThisTurn.Wood +
+                                         currentPlayer.ResourcesThisTurn.Sheep +
+                                         currentPlayer.ResourcesThisTurn.Wheat +
                                          currentPlayer.ResourcesThisTurn.Ore;
 
             LogEvent("?? RESOURCE TRACKING", $"Player {currentPlayerId} before reverse settlement: {initialResourcesThisGame} total game resources, {initialResourcesThisTurn} this turn");
@@ -906,50 +926,50 @@ public class GameRunner
             // STEP 1: Place settlement with highest star value
             LogEvent("?? SETTLEMENT PLACEMENT", $"Finding best settlement location for {currentPlayerId}");
             await PlaceBestSettlement(session, currentPlayerId);
-            
+
             // Verify settlement placement result and resource updates
             await session.VerifyGameConsistency();
-            var afterSettlementState = session.Proxies.Values.First().LastGameState;
+            var afterSettlementState = session.CurrentGameModel;
             if (afterSettlementState == null)
             {
                 LogEvent("? FAIL", "No GameState after settlement placement");
                 throw new InvalidOperationException("No GameState after settlement placement");
             }
-            
+
             var playerAfterSettlement = afterSettlementState.Players.FirstOrDefault(p => p.Id == currentPlayerId);
             if (playerAfterSettlement == null)
             {
                 LogEvent("? FAIL", $"Player {currentPlayerId} not found after settlement placement");
                 throw new InvalidOperationException($"Player {currentPlayerId} not found after settlement placement");
             }
-            
+
             if (playerAfterSettlement.Score != 2)
             {
                 LogEvent("? FAIL", $"Player {currentPlayerId} should have score 2 after second settlement, but has {playerAfterSettlement.Score}");
                 throw new InvalidOperationException($"Player {currentPlayerId} should have score 2 after second settlement, but has {playerAfterSettlement.Score}");
             }
-            
+
             if (playerAfterSettlement.UnspentEntitlements.Contains(Entitlement.Settlement))
             {
                 LogEvent("? FAIL", $"Player {currentPlayerId} should no longer have Settlement entitlement");
                 throw new InvalidOperationException($"Player {currentPlayerId} should no longer have Settlement entitlement");
             }
-            
+
             // Verify resource updates after settlement placement (key difference in reverse allocation)
-            var finalResourcesThisGame = playerAfterSettlement.ResourcesThisGame.Brick + 
-                                       playerAfterSettlement.ResourcesThisGame.Wood + 
-                                       playerAfterSettlement.ResourcesThisGame.Sheep + 
-                                       playerAfterSettlement.ResourcesThisGame.Wheat + 
+            var finalResourcesThisGame = playerAfterSettlement.ResourcesThisGame.Brick +
+                                       playerAfterSettlement.ResourcesThisGame.Wood +
+                                       playerAfterSettlement.ResourcesThisGame.Sheep +
+                                       playerAfterSettlement.ResourcesThisGame.Wheat +
                                        playerAfterSettlement.ResourcesThisGame.Ore;
-            
-            var finalResourcesThisTurn = playerAfterSettlement.ResourcesThisTurn.Brick + 
-                                       playerAfterSettlement.ResourcesThisTurn.Wood + 
-                                       playerAfterSettlement.ResourcesThisTurn.Sheep + 
-                                       playerAfterSettlement.ResourcesThisTurn.Wheat + 
+
+            var finalResourcesThisTurn = playerAfterSettlement.ResourcesThisTurn.Brick +
+                                       playerAfterSettlement.ResourcesThisTurn.Wood +
+                                       playerAfterSettlement.ResourcesThisTurn.Sheep +
+                                       playerAfterSettlement.ResourcesThisTurn.Wheat +
                                        playerAfterSettlement.ResourcesThisTurn.Ore;
 
             LogEvent("?? RESOURCE UPDATE", $"Player {currentPlayerId} after reverse settlement: {finalResourcesThisGame} total game resources (+{finalResourcesThisGame - initialResourcesThisGame}), {finalResourcesThisTurn} this turn (+{finalResourcesThisTurn - initialResourcesThisTurn})");
-            
+
             // In reverse allocation, the second settlement typically yields resources
             if (finalResourcesThisGame >= initialResourcesThisGame)
             {
@@ -959,35 +979,35 @@ public class GameRunner
             {
                 LogEvent("?? WARN", $"Player {currentPlayerId} resource tracking shows decrease - may be valid based on settlement location");
             }
-            
+
             LogEvent("? PASS", $"Player {currentPlayerId} placed second settlement, score is now 2, Settlement entitlement spent");
 
             // STEP 2: Place road
             LogEvent("??? ROAD PLACEMENT", $"Finding buildable road for {currentPlayerId}");
             await PlaceFirstBuildableRoad(session, currentPlayerId);
-            
+
             // Verify road placement result
             await session.VerifyGameConsistency();
-            var afterRoadState = session.Proxies.Values.First().LastGameState;
-            if (afterRoadState == null)
+            var afterRoadStateGameModel = session.Proxies.Values.GetGameModel();
+            if (afterRoadStateGameModel == null)
             {
                 LogEvent("? FAIL", "No GameState after road placement");
                 throw new InvalidOperationException("No GameState after road placement");
             }
-            
-            var playerAfterRoad = afterRoadState.Players.FirstOrDefault(p => p.Id == currentPlayerId);
+
+            var playerAfterRoad = afterRoadStateGameModel.Players.FirstOrDefault(p => p.Id == currentPlayerId);
             if (playerAfterRoad == null)
             {
                 LogEvent("? FAIL", $"Player {currentPlayerId} not found after road placement");
                 throw new InvalidOperationException($"Player {currentPlayerId} not found after road placement");
             }
-            
+
             if (playerAfterRoad.UnspentEntitlements.Contains(Entitlement.Road))
             {
                 LogEvent("? FAIL", $"Player {currentPlayerId} should no longer have Road entitlement");
                 throw new InvalidOperationException($"Player {currentPlayerId} should no longer have Road entitlement");
             }
-            
+
             LogEvent("? PASS", $"Player {currentPlayerId} placed second road, Road entitlement spent");
 
             // STEP 3: Advance to next player or next phase
@@ -1004,18 +1024,18 @@ public class GameRunner
         }
 
         // FINAL ASSERTION: Verify we advanced to DoneResourceAllocation
-        var finalState = session.GetCurrentState();
+        var finalState = session.GetCurrentGameState();
         if (finalState != GameState.DoneResourceAllocation)
         {
             LogEvent("? FAIL", $"Expected DoneResourceAllocation after all players, but got {finalState}");
             throw new InvalidOperationException($"Expected DoneResourceAllocation after all players, but got {finalState}");
         }
-        
+
         LogEvent("? PASS", $"Successfully advanced to DoneResourceAllocation");
-        
+
         // FINAL VERIFICATION: Verify all players have exactly 2 settlements and 2 roads
         await session.VerifyGameConsistency();
-        var completedGameState = session.Proxies.Values.First().LastGameState;
+        var completedGameState = session.CurrentGameModel;
         if (completedGameState == null)
         {
             LogEvent("? FAIL", "No GameState after allocation completion");
@@ -1024,12 +1044,12 @@ public class GameRunner
 
         foreach (var playerId in playerIds)
         {
-            var playerBuildings = completedGameState.Buildings.Count(b => 
+            var playerBuildings = completedGameState.Buildings.Count(b =>
                 b.OwnerId == playerId && b.BuildingState == BuildingState.Settlement);
-            var playerRoads = completedGameState.Roads.Count(r => 
+            var playerRoads = completedGameState.Roads.Count(r =>
                 r.OwnerId == playerId && r.RoadState == RoadState.Road);
             var player = completedGameState.Players.FirstOrDefault(p => p.Id == playerId);
-            
+
             if (playerBuildings != 2)
             {
                 LogEvent("? FAIL", $"Player {playerId} should have exactly 2 settlements after complete allocation, but has {playerBuildings}");
@@ -1045,13 +1065,13 @@ public class GameRunner
                 LogEvent("? FAIL", $"Player {playerId} should have score 2 after complete allocation, but has {player?.Score}");
                 throw new InvalidOperationException($"Player {playerId} should have score 2 after complete allocation, but has {player?.Score}");
             }
-            
-            var totalResources = player?.ResourcesThisGame.Brick + player?.ResourcesThisGame.Wood + 
+
+            var totalResources = player?.ResourcesThisGame.Brick + player?.ResourcesThisGame.Wood +
                                player?.ResourcesThisGame.Sheep + player?.ResourcesThisGame.Wheat + player?.ResourcesThisGame.Ore;
-            
+
             LogEvent("? PASS", $"Player {playerId}: 2 settlements, 2 roads, score 2, {totalResources} total resources");
         }
-        
+
         LogEvent("?? ALLOCATERESOURCEREVERSE COMPLETE", "All players completed reverse allocation successfully with proper resource tracking");
     }
 
@@ -1060,15 +1080,15 @@ public class GameRunner
     /// </summary>
     private async Task PlaceBestSettlement(RealGameSession session, string playerId)
     {
-        var gameState = session.Proxies.Values.First().LastGameState;
-        if (gameState == null)
+        var gameModel = session.Proxies.Values.GetGameModel();
+        if (gameModel == null)
         {
             LogEvent("? FAIL", "No GameState available for settlement placement");
             throw new InvalidOperationException("No GameState available for settlement placement");
         }
 
         // Find all possible settlements (using opaque BuildingKey approach)
-        var possibleSettlements = gameState.Buildings
+        var possibleSettlements = gameModel.Buildings
             .Where(b => b.BuildingState == BuildingState.PossibleSettlement)
             .ToList();
 
@@ -1085,29 +1105,29 @@ public class GameRunner
             .Select(building => new
             {
                 building = building,
-                stars = gameState.TilesForBuildings(building.BuildingKey).Stars()
+                stars = gameModel.TilesForBuildings(building.BuildingKey).Stars()
             })
             .ToList();
 
         // Find settlement(s) with highest star value
         var maxStars = settlementOptions.Max(s => s.stars);
         var bestOptions = settlementOptions.Where(s => s.stars == maxStars).ToList();
-        
+
         // Pick the first one if multiple have same stars
         var selectedSettlement = bestOptions.First();
-        
+
         LogEvent("?? BEST SETTLEMENT", $"Selected {selectedSettlement.building.BuildingKey} with {selectedSettlement.stars} stars (from {bestOptions.Count} best options)");
 
         // Execute BuildingUpgradeMessage using opaque BuildingKey
         var proxy = session.GetProxy(playerId);
         var result = await proxy.ExecuteBuildingUpgradeAsync(session.GameId, selectedSettlement.building.BuildingKey);
-        
+
         if (!result.Success)
         {
             LogEvent("? FAIL", $"Settlement placement failed: {result.Message}");
             throw new InvalidOperationException($"Settlement placement failed: {result.Message}");
         }
-        
+
         LogEvent("? PASS", $"Player {playerId} successfully placed settlement at {selectedSettlement.building.BuildingKey}");
     }
 
@@ -1118,15 +1138,15 @@ public class GameRunner
     {
         // Get updated game state after settlement placement to find buildable roads
         await session.VerifyGameConsistency();
-        var gameState = session.Proxies.Values.First().LastGameState;
-        if (gameState == null)
+        var gameModel = session.Proxies.Values.GetGameModel();
+        if (gameModel == null)
         {
             LogEvent("? FAIL", "No GameState available for road placement");
             throw new InvalidOperationException("No GameState available for road placement");
         }
 
         // Find all buildable roads (using opaque RoadKey approach)
-        var buildableRoads = gameState.Roads
+        var buildableRoads = gameModel.Roads
             .Where(r => r.RoadState == RoadState.Buildable)
             .ToList();
 
@@ -1138,57 +1158,57 @@ public class GameRunner
 
         // Pick the first buildable road (simple approach)
         var selectedRoad = buildableRoads.First();
-        
+
         LogEvent("??? ROAD SELECTION", $"Selected road at {selectedRoad.RoadKey} (from {buildableRoads.Count} buildable roads)");
 
         // Execute RoadPurchaseMessage using opaque RoadKey
         var proxy = session.GetProxy(playerId);
         var result = await proxy.ExecuteRoadPurchaseAsync(session.GameId, selectedRoad.RoadKey);
-        
+
         if (!result.Success)
         {
             LogEvent("? FAIL", $"Road placement failed: {result.Message}");
             throw new InvalidOperationException($"Road placement failed: {result.Message}");
         }
-        
+
         LogEvent("? PASS", $"Player {playerId} successfully placed road at {selectedRoad.RoadKey}");
     }
 
     private async Task VerifyDoneResourceAllocation(RealGameSession session)
     {
         LogEvent("?? TESTING DONERESOURCEALLOCATION", "Starting DoneResourceAllocation state testing");
-        
+
         // ASSERTION: Verify we're in the correct state
-        var currentState = session.GetCurrentState();
-        if (currentState != GameState.DoneResourceAllocation)
+        var gameModel = session.GetCurrentGameState();
+        if (gameModel != GameState.DoneResourceAllocation)
         {
-            LogEvent("? FAIL", $"Expected DoneResourceAllocation state, but was in {currentState}");
-            throw new InvalidOperationException($"Expected DoneResourceAllocation state, but was in {currentState}");
+            LogEvent("? FAIL", $"Expected DoneResourceAllocation state, but was in {gameModel}");
+            throw new InvalidOperationException($"Expected DoneResourceAllocation state, but was in {gameModel}");
         }
         LogEvent("? PASS", "Confirmed game is in DoneResourceAllocation state");
 
         await session.VerifyGameConsistency();
-        
+
         LogEvent("?? ADVANCEMENT TEST", "Testing advancement with Next action");
         await session.ExecuteAction(GameAction.Next);
-        
-        var nextState = session.GetCurrentState();
+
+        var nextState = session.GetCurrentGameState();
         if (nextState != GameState.WaitingForRoll)
         {
             LogEvent("? FAIL", $"Expected WaitingForRoll after Next, but got {nextState}");
             throw new InvalidOperationException($"Expected WaitingForRoll after Next, but got {nextState}");
         }
         LogEvent("? PASS", "Successfully advanced to WaitingForRoll");
-        
+
         LogEvent("?? DONERESOURCEALLOCATION COMPLETE", "DoneResourceAllocation testing completed successfully");
     }
 
     private async Task VerifyWaitingForRoll(RealGameSession session)
     {
         LogEvent("?? TESTING WAITINGFORROLL", "Starting comprehensive WaitingForRoll state testing");
-        
+
         // ASSERTION 1: Verify we're in the correct state
-        var currentState = session.GetCurrentState();
+        var currentState = session.GetCurrentGameState();
         if (currentState != GameState.WaitingForRoll)
         {
             LogEvent("? FAIL", $"Expected WaitingForRoll state, but was in {currentState}");
@@ -1197,7 +1217,7 @@ public class GameRunner
         LogEvent("? PASS", "Confirmed game is in WaitingForRoll state");
 
         await session.VerifyGameConsistency();
-        var gameState = session.Proxies.Values.First().LastGameState;
+        var gameState = session.CurrentGameModel;
         if (gameState == null)
         {
             LogEvent("? FAIL", "No GameState available");
@@ -1243,11 +1263,11 @@ public class GameRunner
         LogEvent("??? SOLDIER TEST", "Testing Soldier entitlement purchase and robber movement mechanics");
 
         var proxy = session.GetProxy(currentPlayerId);
-        
+
         // Purchase Soldier entitlement
         LogEvent("?? PURCHASING", "Purchasing Soldier entitlement");
         var purchaseResult = await proxy.ExecutePurchaseAsync(session.GameId, Entitlement.Soldier);
-        
+
         if (!purchaseResult.Success)
         {
             LogEvent("? FAIL", $"Soldier purchase failed: {purchaseResult.Message}");
@@ -1257,7 +1277,7 @@ public class GameRunner
 
         // Verify state transitioned to MustMoveRobber
         await session.VerifyGameConsistency();
-        var currentState = session.GetCurrentState();
+        var currentState = session.GetCurrentGameState();
         if (currentState != GameState.MustMoveRobber)
         {
             LogEvent("? FAIL", $"Expected MustMoveRobber state after Soldier purchase, but got {currentState}");
@@ -1266,10 +1286,10 @@ public class GameRunner
         LogEvent("? PASS", "Successfully transitioned to MustMoveRobber state after Soldier purchase");
 
         // Find a tile with an opponent's settlement to target
-        var gameState = session.Proxies.Values.First().LastGameState;
+        var gameState = session.CurrentGameModel;
         var targetTile = FindTileWithOpponentSettlement(gameState!, currentPlayerId);
         var victimPlayerId = FindVictimOnTile(gameState!, targetTile, currentPlayerId);
-        
+
         LogEvent("?? TARGET", $"Moving robber to tile {targetTile} to target player {victimPlayerId}");
 
         // Get initial victim stats
@@ -1287,15 +1307,15 @@ public class GameRunner
 
         // Verify all players receive the same GameModel update
         await session.VerifyGameConsistency();
-        var afterRobberState = session.Proxies.Values.First().LastGameState;
-        
+        var afterRobberState = session.CurrentGameModel;
+
         // Verify stats updated appropriately
         var finalVictimStats = GetPlayerStats(afterRobberState!, victimPlayerId);
         var finalAttackerStats = GetPlayerStats(afterRobberState!, currentPlayerId);
 
         LogEvent("?? STATS UPDATE", $"Victim {victimPlayerId}: TimesTargeted {initialVictimStats.TimesTargeted} ? {finalVictimStats.TimesTargeted}, ResourcesLost {initialVictimStats.ResourcesLost} ? {finalVictimStats.ResourcesLost}");
         LogEvent("?? STATS UPDATE", $"Attacker {currentPlayerId}: ResourcesStolen {initialAttackerStats.ResourcesStolen} ? {finalAttackerStats.ResourcesStolen}");
-        
+
         // Note: Player stats tracking for robber is placeholder implementation for now
         // In a full implementation, TimesTargeted should increase
         LogEvent("? PASS", "Robber movement and targeting mechanics verified (stats tracking is placeholder)");
@@ -1303,10 +1323,10 @@ public class GameRunner
         // Undo the action
         LogEvent("? UNDO", "Testing undo of robber movement");
         await session.ExecuteAction(GameAction.Undo);
-        
+
         // Verify state after undo (might stay in MustMoveRobber or go back to WaitingForRoll)
         await session.VerifyGameConsistency();
-        var stateAfterUndo = session.GetCurrentState();
+        var stateAfterUndo = session.GetCurrentGameState();
         if (stateAfterUndo == GameState.WaitingForRoll)
         {
             LogEvent("? PASS", "Successfully undid robber movement, back to WaitingForRoll");
@@ -1323,10 +1343,10 @@ public class GameRunner
 
         // Move robber to desert (no targeting)
         LogEvent("??? DESERT", "Moving robber to desert tile (no victim targeting)");
-        var desertTile = FindDesertTile(session.Proxies.Values.First().LastGameState!);
-        
+        var desertTile = FindDesertTile(session.CurrentGameModel!);
+
         // Check current state - might need to purchase Soldier again or might still be in MustMoveRobber
-        var currentStateForDesert = session.GetCurrentState();
+        var currentStateForDesert = session.GetCurrentGameState();
         if (currentStateForDesert == GameState.WaitingForRoll)
         {
             // Purchase Soldier again
@@ -1359,7 +1379,7 @@ public class GameRunner
 
         // Verify nobody was targeted and we're back to WaitingForRoll
         await session.VerifyGameConsistency();
-        var finalStateAfterDesert = session.GetCurrentState();
+        var finalStateAfterDesert = session.GetCurrentGameState();
         if (finalStateAfterDesert != GameState.WaitingForRoll)
         {
             LogEvent("? FAIL", $"Expected WaitingForRoll after desert move, but got {finalStateAfterDesert}");
@@ -1384,13 +1404,13 @@ public class GameRunner
             LogEvent($"?? ROLL {rollValue}", $"Testing dice roll {rollValue}");
 
             // Get initial player resources
-            var initialGameState = session.Proxies.Values.First().LastGameState;
+            var initialGameState = session.CurrentGameModel;
             var initialPlayerResources = GetAllPlayerResources(initialGameState!);
 
             // Execute the roll
             var (die1, die2) = GetDiceCombination(rollValue);
             var rollResult = await proxy.ExecuteRollAsync(session.GameId, die1, die2);
-            
+
             if (!rollResult.Success)
             {
                 LogEvent("? FAIL", $"Roll {rollValue} failed: {rollResult.Message}");
@@ -1400,10 +1420,10 @@ public class GameRunner
 
             // Verify all players receive the same GameModel update
             await session.VerifyGameConsistency();
-            var afterRollState = session.Proxies.Values.First().LastGameState;
+            var afterRollState = session.CurrentGameModel;
 
             // Verify game transitioned to WaitingForNext
-            var currentState = session.GetCurrentState();
+            var currentState = session.GetCurrentGameState();
             if (currentState != GameState.WaitingForNext)
             {
                 LogEvent("? FAIL", $"Expected WaitingForNext after roll {rollValue}, but got {currentState}");
@@ -1423,10 +1443,10 @@ public class GameRunner
             // Undo the action
             LogEvent("? UNDO", $"Undoing roll {rollValue}");
             await session.ExecuteAction(GameAction.Undo);
-            
+
             // Verify we're back to WaitingForRoll
             await session.VerifyGameConsistency();
-            currentState = session.GetCurrentState();
+            currentState = session.GetCurrentGameState();
             if (currentState != GameState.WaitingForRoll)
             {
                 LogEvent("? FAIL", $"Expected WaitingForRoll after undo of roll {rollValue}, but got {currentState}");
@@ -1446,11 +1466,11 @@ public class GameRunner
         LogEvent("?? SEVEN ROLL", "Testing roll 7 with robber movement and victim targeting");
 
         var proxy = session.GetProxy(currentPlayerId);
-        
+
         // Execute roll 7
         LogEvent("?? ROLLING", "Rolling dice 7 (4+3)");
         var rollResult = await proxy.ExecuteRollAsync(session.GameId, 4, 3);
-        
+
         if (!rollResult.Success)
         {
             LogEvent("? FAIL", $"Roll 7 failed: {rollResult.Message}");
@@ -1460,7 +1480,7 @@ public class GameRunner
 
         // Verify state transitioned to MustMoveRobber
         await session.VerifyGameConsistency();
-        var currentState = session.GetCurrentState();
+        var currentState = session.GetCurrentGameState();
         if (currentState != GameState.MustMoveRobber)
         {
             LogEvent("? FAIL", $"Expected MustMoveRobber after roll 7, but got {currentState}");
@@ -1469,17 +1489,17 @@ public class GameRunner
         LogEvent("? PASS", "Successfully transitioned to MustMoveRobber after roll 7");
 
         // Verify robber is on desert initially
-        var gameState = session.Proxies.Values.First().LastGameState;
+        var gameState = session.CurrentGameModel;
         var robberLocation = GetRobberLocation(gameState!);
         var desertTile = FindDesertTile(gameState!);
-        
+
         // Note: Robber might not be on desert initially depending on game setup
         LogEvent("??? ROBBER", $"Robber currently at {robberLocation}");
 
         // Find a tile with another player's settlement
         var targetTile = FindTileWithOpponentSettlement(gameState!, currentPlayerId);
         var victimPlayerId = FindVictimOnTile(gameState!, targetTile, currentPlayerId);
-        
+
         LogEvent("?? TARGET", $"Moving robber to tile {targetTile} to target player {victimPlayerId}");
 
         // Move robber to tile with opponent
@@ -1497,9 +1517,9 @@ public class GameRunner
 
         // Transition to next state
         LogEvent("?? NEXT STATE", "Transitioning to next state after robber movement");
-        var nextState = session.GetCurrentState();
+        var nextState = session.GetCurrentGameState();
         LogEvent("?? CURRENT STATE", $"Current state after robber movement: {nextState}");
-        
+
         LogEvent("?? SEVEN ROLL COMPLETE", "Roll 7 and robber movement tested successfully");
     }
 
@@ -1510,8 +1530,8 @@ public class GameRunner
     {
         // Find buildings owned by other players
         var opponentBuildings = gameState.Buildings
-            .Where(b => !string.IsNullOrEmpty(b.OwnerId) && 
-                       b.OwnerId != currentPlayerId && 
+            .Where(b => !string.IsNullOrEmpty(b.OwnerId) &&
+                       b.OwnerId != currentPlayerId &&
                        b.BuildingState == BuildingState.Settlement)
             .ToList();
 
@@ -1532,8 +1552,8 @@ public class GameRunner
     {
         // Find buildings on this tile owned by other players
         var victimsOnTile = gameState.Buildings
-            .Where(b => !string.IsNullOrEmpty(b.OwnerId) && 
-                       b.OwnerId != currentPlayerId && 
+            .Where(b => !string.IsNullOrEmpty(b.OwnerId) &&
+                       b.OwnerId != currentPlayerId &&
                        b.BuildingKey.HexCoordinates.Equals(tileCoords))
             .Select(b => b.OwnerId!)
             .Distinct()
@@ -1577,7 +1597,7 @@ public class GameRunner
         // These would be actual properties on PlayerModel for tracking robber stats
         // For now, using basic resource counts as approximation
         var resourceCount = player.ResourcesThisGame.Brick + player.ResourcesThisGame.Wood +
-                          player.ResourcesThisGame.Sheep + player.ResourcesThisGame.Wheat + 
+                          player.ResourcesThisGame.Sheep + player.ResourcesThisGame.Wheat +
                           player.ResourcesThisGame.Ore;
 
         return (TimesTargeted: 0, ResourcesLost: 0, ResourcesStolen: 0); // Placeholder implementation
@@ -1589,12 +1609,11 @@ public class GameRunner
     private Dictionary<string, int> GetAllPlayerResources(GameModel gameState)
     {
         var result = new Dictionary<string, int>();
-        
+
         foreach (var player in gameState.Players)
         {
             var totalResources = player.ResourcesThisGame.Brick + player.ResourcesThisGame.Wood +
-                               player.ResourcesThisGame.Sheep + player.ResourcesThisGame.Wheat + 
-                               player.ResourcesThisGame.Ore;
+                               player.ResourcesThisGame.Sheep + player.ResourcesThisGame.Wheat + player.ResourcesThisGame.Ore;
             result[player.Id] = totalResources;
         }
 
@@ -1607,7 +1626,7 @@ public class GameRunner
     private int VerifyResourceDistribution(Dictionary<string, int> before, Dictionary<string, int> after, int rollValue)
     {
         int totalGranted = 0;
-        
+
         foreach (var playerId in before.Keys)
         {
             var granted = after[playerId] - before[playerId];
@@ -1664,4 +1683,6 @@ public class GameRunner
             return (die1, die2);
         }
     }
+
+
 }

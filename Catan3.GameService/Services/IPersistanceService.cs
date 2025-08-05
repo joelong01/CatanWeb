@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Catan3.GameService.Utility;
 
 namespace Catan3.GameService.Services
 {
@@ -21,6 +23,13 @@ namespace Catan3.GameService.Services
     /// </summary>
     public class GameServicePersistanceService : IPersistanceService
     {
+        private readonly ILogger<GameServicePersistanceService> _logger;
+
+        public GameServicePersistanceService(ILogger<GameServicePersistanceService> logger)
+        {
+            _logger = logger;
+        }
+
         public string? Location { get; private set; }
 
         public async Task<byte[]?> OpenAsync(string location)
@@ -32,7 +41,7 @@ namespace Catan3.GameService.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error opening file: {ex}");
+                _logger.LogEvent("FileOperation", $"Error opening file: {ex}", LogLevel.Error);
                 return null;
             }
         }
@@ -53,7 +62,7 @@ namespace Catan3.GameService.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error saving file: {ex}");
+                _logger.LogEvent("FileOperation", $"Error saving file: {ex}", LogLevel.Error);
                 return false;
             }
         }

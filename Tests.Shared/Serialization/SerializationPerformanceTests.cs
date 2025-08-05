@@ -13,21 +13,12 @@ namespace Tests.Shared.Serialization
     /// Performance benchmarks for serialization operations.
     /// These tests measure serialization/deserialization performance to ensure
     /// the companion app can handle real-time updates efficiently.
+    /// Uses the same JsonHelper as the real application for realistic performance measurements.
     /// </summary>
     public class SerializationPerformanceTests
     {
-        private readonly JsonSerializerOptions _jsonOptions;
-
-        public SerializationPerformanceTests()
-        {
-            _jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = false, // Compact for performance
-                Converters = { new JsonStringEnumConverter() },
-                PropertyNameCaseInsensitive = true
-            };
-        }
+        // Use the same JsonHelper as the real application for realistic performance measurements
+        private readonly JsonSerializerOptions _jsonOptions = JsonHelper.StandardOptions;
 
         [Fact]
         public void GameModel_SerializationPerformance_ShouldBeFast()

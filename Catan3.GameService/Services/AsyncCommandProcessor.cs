@@ -3,6 +3,7 @@ using Catan3.Shared.Models;
 using Catan3.GameService.Services;
 using Catan3.GameService.Controllers;
 using Catan3.Shared.Utility;
+using Catan3.GameService.Utility;
 
 namespace Catan3.GameService.Services
 {
@@ -43,7 +44,7 @@ namespace Catan3.GameService.Services
                     gameId = gameIdElement.GetString();
                 }
 
-                _logger.LogInformation("Processing command {CommandId} for game {GameId}", commandId, gameId);
+                _logger.LogEvent("Process Command", $"Processing command {commandId} for game {gameId}");
 
                 // Execute game logic using the existing GameApiController logic
                 var gameModel = await ExecuteGameLogicAsync(request);
@@ -61,11 +62,11 @@ namespace Catan3.GameService.Services
 
                 await Task.WhenAll(tasks);
 
-                _logger.LogInformation("Command {CommandId} completed successfully for game {GameId}", commandId, gameId);
+                _logger.LogEvent("Command Completed", $"Command {commandId} completed successfully for game {gameId}");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Command {CommandId} failed for game {GameId}: {Error}", commandId, gameId, ex.Message);
+                _logger.LogEvent("Command Failed", $"Command {commandId} failed for game {gameId}: {ex.Message}", LogLevel.Error);
 
                 // Notify about failure
                 if (!string.IsNullOrEmpty(gameId))

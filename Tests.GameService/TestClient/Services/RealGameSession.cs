@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using TestClient.Commands;
 using Catan3.Shared.Models;
 using Catan3.Shared.Services;
+using Catan3.Shared.Utility;
 using System.Text.Json;
 
 namespace TestClient.Services;
@@ -81,10 +82,7 @@ public class RealGameSession : IAsyncDisposable
             players = playerNames.Zip(playerIds, (name, id) => new { id, name }).ToList()
         };
 
-        var json = JsonSerializer.Serialize(request, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
+        var json = JsonHelper.Serialize(request);
 
         var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
         
@@ -100,7 +98,7 @@ public class RealGameSession : IAsyncDisposable
         }
 
         var responseBody = await response.Content.ReadAsStringAsync();
-        var result = JsonSerializer.Deserialize<JsonElement>(responseBody);
+        var result = JsonHelper.Deserialize<JsonElement>(responseBody);
 
         if (!result.TryGetProperty("gameId", out var gameIdElement))
         {

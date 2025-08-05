@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 using Catan3.Shared.Models;
 using System.Text.Json;
 using Catan3.Shared.Utility;
@@ -43,6 +44,10 @@ namespace Catan3.Shared.Services
             _connection = new HubConnectionBuilder()
                 .WithUrl(hubUrl)
                 .WithAutomaticReconnect()
+                .AddJsonProtocol(options =>
+                {
+                    JsonHelper.ConfigureOptions(options.PayloadSerializerOptions);
+                })
                 .Build();
 
             SetupEventHandlers();
@@ -62,6 +67,10 @@ namespace Catan3.Shared.Services
 
             _connection = connectionBuilder
                 .WithAutomaticReconnect()
+                .AddJsonProtocol(options =>
+                {
+                    JsonHelper.ConfigureOptions(options.PayloadSerializerOptions);
+                })
                 .Build();
 
             SetupEventHandlers();
@@ -86,6 +95,10 @@ namespace Catan3.Shared.Services
                     options.HttpMessageHandlerFactory = _ => testHandler;
                 })
                 .WithAutomaticReconnect()
+                .AddJsonProtocol(options =>
+                {
+                    JsonHelper.ConfigureOptions(options.PayloadSerializerOptions);
+                })
                 .Build();
 
             SetupEventHandlers();
@@ -98,11 +111,14 @@ namespace Catan3.Shared.Services
         /// </summary>
         public async Task ConnectAsync()
         {
+            LogEvent("CONNECTING", "Starting SignalR connection");
             await _connection.StartAsync();
+            LogEvent("CONNECTED", $"SignalR connection established, state: {_connection.State}");
 
             // Auto-join game if gameId provided
             if (!string.IsNullOrEmpty(_gameId))
             {
+                LogEvent("AUTO_JOINING", $"Auto-joining game {_gameId}");
                 await JoinGameAsync(_gameId);
             }
         }
@@ -112,7 +128,9 @@ namespace Catan3.Shared.Services
         /// </summary>
         public async Task JoinGameAsync(string gameId)
         {
+            LogEvent("JOINING_GAME", $"Calling JoinGame for game {gameId}");
             await _connection.InvokeAsync("JoinGame", gameId, _playerId);
+            LogEvent("JOIN_CALLED", $"JoinGame call completed for game {gameId}");
         }
 
         /// <summary>
@@ -267,15 +285,18 @@ namespace Catan3.Shared.Services
         /// </summary>
         public async Task<GameModel> WaitForGameStateAsync(GameState expectedState, TimeSpan? timeout = null)
         {
-            timeout ??= TimeSpan.FromSeconds(10);
+            timeout ??= System.Diagnostics.Debugger.IsAttached ? TimeSpan.FromHours(1) : TimeSpan.FromSeconds(60);
 
             // Check if we already have the expected state
             if (GameModel?.GameState == expectedState)
             {
+                LogEvent("ALREADY_IN_STATE", $"Already in expected state {expectedState}");
                 return GameModel;
             }
 
             var stateReachedTcs = new TaskCompletionSource<GameModel>();
+            var startTime = DateTime.UtcNow;
+            var endTime = startTime.Add(timeout.Value);
 
             void StateHandler(GameModel gameModel)
             {
@@ -289,8 +310,33 @@ namespace Catan3.Shared.Services
 
             try
             {
-                var result = await stateReachedTcs.Task.WaitAsync(timeout.Value);
-                return result;
+                var currentState = GameModel?.GameState.ToString() ?? "null";
+                LogEvent("WAITING_FOR_STATE", $"Waiting for {expectedState}, currently {currentState}");
+
+                while (DateTime.UtcNow < endTime)
+                {
+                    var remainingTime = endTime - DateTime.UtcNow;
+                    var waitTime = remainingTime > TimeSpan.FromSeconds(5) ? TimeSpan.FromSeconds(5) : remainingTime;
+                    
+                    try
+                    {
+                        var result = await stateReachedTcs.Task.WaitAsync(waitTime);
+                        return result;
+                    }
+                    catch (TimeoutException)
+                    {
+                        var elapsed = DateTime.UtcNow - startTime;
+                        currentState = GameModel?.GameState.ToString() ?? "null";
+                        LogEvent("STILL_WAITING", $"Still waiting for {expectedState}, currently {currentState} after {elapsed.TotalSeconds:F1}s");
+                    }
+                }
+
+                // Final timeout
+                var totalElapsed = DateTime.UtcNow - startTime;
+                currentState = GameModel?.GameState.ToString() ?? "null";
+                LogEvent("TIMEOUT", $"TIMEOUT after {totalElapsed.TotalSeconds:F1}s waiting for {expectedState}, still {currentState}");
+
+                throw new TimeoutException($"Timed out waiting for game state {expectedState} after {totalElapsed.TotalSeconds:F1} seconds. Current state: {currentState}");
             }
             finally
             {
@@ -303,7 +349,7 @@ namespace Catan3.Shared.Services
         /// </summary>
         private async Task<CommandResult> ExecuteCommandAsync(Func<Task> hubInvoke, string commandDescription, TimeSpan? timeout = null)
         {
-            timeout ??= TimeSpan.FromSeconds(10);
+            timeout ??= System.Diagnostics.Debugger.IsAttached ? TimeSpan.FromHours(1) : TimeSpan.FromSeconds(10);
             var commandId = Guid.NewGuid().ToString();
             var completionTcs = new TaskCompletionSource<CommandResult>();
 
@@ -344,8 +390,23 @@ namespace Catan3.Shared.Services
             // Game state updates
             _connection.On<GameModel>("GameStateUpdated", gameModel =>
             {
+                LogEvent("CLIENT_RECEIVED", "Received GameStateUpdated message");
+                
                 GameModel = gameModel;
-                GameStateUpdated?.Invoke(gameModel);
+                
+                // Log the update with gameId and playerId
+                var gameState = gameModel?.GameState.ToString() ?? "null";
+                LogEvent("GAME_STATE_UPDATED", $"Received GameState: {gameState}");
+                
+                if (gameModel != null)
+                {
+                    LogEvent("CLIENT_INVOKING", "Invoking GameStateUpdated event");
+                    GameStateUpdated?.Invoke(gameModel);
+                }
+                else
+                {
+                    LogEvent("CLIENT_NULL", "Received null gameModel");
+                }
             });
 
             // Command completion
@@ -399,6 +460,7 @@ namespace Catan3.Shared.Services
             // Player presence changes
             _connection.On<string, bool>("PlayerPresenceChanged", (playerId, isOnline) =>
             {
+                LogEvent("PRESENCE_RECEIVED", $"Received PlayerPresenceChanged: {playerId} -> {isOnline}");
                 PlayerPresenceChanged?.Invoke(playerId, isOnline);
             });
 
@@ -420,6 +482,22 @@ namespace Catan3.Shared.Services
                 // Handle connection closure if needed
                 return Task.CompletedTask;
             };
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        /// <summary>
+        /// Centralized logging method that handles debugger vs console output
+        /// </summary>
+        private void LogEvent(string eventType, string message)
+        {
+            var logMessage = $"[SignalRProxy][{eventType}] GameId: {_gameId ?? "null"}, PlayerId: {_playerId} - {message}";
+            if (System.Diagnostics.Debugger.IsAttached)
+                System.Diagnostics.Debug.WriteLine(logMessage);
+            else
+                Console.WriteLine(logMessage);
         }
 
         #endregion

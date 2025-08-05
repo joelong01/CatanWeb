@@ -143,6 +143,9 @@ namespace Tests.GameService.SignalR
             var session = new EndToEndSignalRSession(_factory, GameType.Expansion, playerIds);
             await session.InitializeAsync();
 
+            // Wait for all proxies to receive the initial GameModel and be in the PickingBoard state
+            await session.VerifyAllProxiesInState(GameState.PickingBoard);
+
             LogEvent(session, "PlayersJoined", $"Game created: {session.GameId} with {playerIds.Length} players");
 
             // Verify all 5 players connected correctly
@@ -595,7 +598,11 @@ namespace Tests.GameService.SignalR
             var timestamp = DateTime.UtcNow.ToString("HH:mm:ss.fff");
             if (session is null)
             {
-                Console.WriteLine($"[{cmb}:{cln}] [{timestamp}] [{eventType}] [ {message}");
+                var nullSessionLog = $"[{cmb}:{cln}] [{timestamp}] [{eventType}] [ {message}";
+                if (System.Diagnostics.Debugger.IsAttached)
+                    System.Diagnostics.Debug.WriteLine(nullSessionLog);
+                else
+                    Console.WriteLine(nullSessionLog);
                 return;
             }
 
@@ -604,11 +611,19 @@ namespace Tests.GameService.SignalR
             var gameModel = proxy.GameModel;
             if (gameModel is null)
             {
-                Console.WriteLine($"[{cmb}:{cln}] [{timestamp}] [{eventType}] [GameModel is null] {message}");
+                var errorLog = $"[{cmb}:{cln}] [{timestamp}] [{eventType}] [GameModel is null] {message}";
+                if (System.Diagnostics.Debugger.IsAttached)
+                    System.Diagnostics.Debug.WriteLine(errorLog);
+                else
+                    Console.WriteLine(errorLog);
                 throw new Exception("this is very odd");
 
             }
-            Console.WriteLine($"[{cmb}:{cln}] [{timestamp}] [{eventType}] [GameState={gameModel.GameState}] [CurrentPlayer={gameModel.CurrentPlayerId}] {message}");
+            var gameLog = $"[{cmb}:{cln}] [{timestamp}] [{eventType}] [GameState={gameModel.GameState}] [CurrentPlayer={gameModel.CurrentPlayerId}] {message}";
+            if (System.Diagnostics.Debugger.IsAttached)
+                System.Diagnostics.Debug.WriteLine(gameLog);
+            else
+                Console.WriteLine(gameLog);
         }
     }
 
@@ -635,7 +650,11 @@ namespace Tests.GameService.SignalR
         private void LogEvent(string eventType, string message, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
         {
             var timestamp = DateTime.UtcNow.ToString("HH:mm:ss.fff");
-            Console.WriteLine($"[{cmb}:{cln}] [{timestamp}] [{eventType}] {message}");
+            var logMessage = $"[{cmb}:{cln}] [{timestamp}] [{eventType}] {message}";
+            if (System.Diagnostics.Debugger.IsAttached)
+                System.Diagnostics.Debug.WriteLine(logMessage);
+            else
+                Console.WriteLine(logMessage);
         }
         /// <summary>
         /// Initializes the session by creating a game and connecting all players via SignalRProxy
@@ -820,7 +839,7 @@ namespace Tests.GameService.SignalR
                 playerIds = playerIds
             };
 
-            var newGameJson = JsonSerializer.Serialize(newGameRequest);
+            var newGameJson = JsonHelper.Serialize(newGameRequest);
             var newGameContent = new StringContent(newGameJson, System.Text.Encoding.UTF8, "application/json");
 
             var newGameResponse = await httpClient.PostAsync("/api/game/new", newGameContent);
@@ -832,7 +851,7 @@ namespace Tests.GameService.SignalR
             }
 
             var newGameBody = await newGameResponse.Content.ReadAsStringAsync();
-            var newGameResult = JsonSerializer.Deserialize<JsonElement>(newGameBody);
+            var newGameResult = JsonHelper.Deserialize<JsonElement>(newGameBody);
 
             if (!newGameResult.TryGetProperty("gameId", out var gameIdElement))
             {

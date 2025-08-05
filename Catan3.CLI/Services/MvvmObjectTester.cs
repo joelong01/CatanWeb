@@ -125,7 +125,7 @@ public class MvvmObjectTester
     private async Task TestUpdateGameModel(TestResults testResults)
     {
         testResults.TotalTests++;
-        
+        await Task.Delay(0);
         try
         {
             // Create a basic GameModel for testing
@@ -198,6 +198,7 @@ public class MvvmObjectTester
     /// </summary>
     private async Task VerifyObjectProperties<T>(T original, T deserialized, string objectName)
     {
+        await Task.CompletedTask;
         if (original == null || deserialized == null)
         {
             throw new InvalidOperationException($"Cannot verify null objects for {objectName}");

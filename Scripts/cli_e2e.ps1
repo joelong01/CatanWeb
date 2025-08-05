@@ -56,8 +56,8 @@ function Write-Header { param([string]$Message) Write-ColorOutput "?? $Message" 
 $GameServicePort = 8080
 $GameServiceUrl = "http://localhost:$GameServicePort"
 $SolutionFile = "Catan3.sln"
-$GameServiceProject = "Catan3.GameService\Catan3.GameService.csproj"
-$CLIProject = "Catan3.CLI\Catan3.CLI.csproj"
+$GameServiceProject = "..\Catan3.GameService\Catan3.GameService.csproj"
+$CLIProject = "..\Catan3.CLI\Catan3.CLI.csproj"
 
 # Global variables for cleanup
 $GameServiceProcess = $null
@@ -96,8 +96,8 @@ try {
     
     # Build only the projects needed for CLI (not the full solution)
     $projectsToBuild = @(
-        "Catan3.Shared\Catan3.Shared.csproj",
-        "Catan3.CLI\Catan3.CLI.csproj"
+        "..\Catan3.Shared\Catan3.Shared.csproj",
+        "..\Catan3.CLI\Catan3.CLI.csproj"
     )
     
     foreach ($project in $projectsToBuild) {

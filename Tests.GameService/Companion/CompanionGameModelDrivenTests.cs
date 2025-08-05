@@ -131,6 +131,8 @@ namespace Tests.GameService.Companion
                     Assert.All(entitlements, entitlement => 
                     {
                         // Companion should show enabled/disabled based on GameModel, not local logic
+                        // Note: Entitlement is an enum (value type), so no need for Assert.NotNull
+                        Assert.True(Enum.IsDefined(typeof(Entitlement), entitlement.Entitlement));
                     });
                 }
 
@@ -313,14 +315,14 @@ namespace Tests.GameService.Companion
                 playerIds = new[] { "Alice", "Bob", "Charlie", "David" }
             };
 
-            var newGameJson = JsonSerializer.Serialize(newGameRequest);
+            var newGameJson = JsonHelper.Serialize(newGameRequest);
             var newGameContent = new StringContent(newGameJson, Encoding.UTF8, "application/json");
 
             var newGameResponse = await httpClient.PostAsync("/api/game/new", newGameContent);
             Assert.True(newGameResponse.IsSuccessStatusCode);
 
             var newGameBody = await newGameResponse.Content.ReadAsStringAsync();
-            var newGameResult = JsonSerializer.Deserialize<JsonElement>(newGameBody);
+            var newGameResult = JsonHelper.Deserialize<JsonElement>(newGameBody);
 
             Assert.True(newGameResult.TryGetProperty("gameId", out var gameIdElement));
             return gameIdElement.GetString() ?? throw new InvalidOperationException("Null gameId");

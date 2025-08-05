@@ -55,7 +55,7 @@ namespace Tests.GameService.Companion
                 Assert.True(gamesResponse.IsSuccessStatusCode);
 
                 var gamesContent = await gamesResponse.Content.ReadAsStringAsync();
-                var gamesData = JsonSerializer.Deserialize<JsonElement>(gamesContent);
+                var gamesData = JsonHelper.Deserialize<JsonElement>(gamesContent);
                 
                 Assert.True(gamesData.TryGetProperty("games", out var gamesArray));
                 Assert.True(gamesArray.GetArrayLength() >= 2);
@@ -380,7 +380,7 @@ namespace Tests.GameService.Companion
             var newGameBody = await newGameResponse.Content.ReadAsStringAsync();
             var newGameResult = JsonHelper.Deserialize<JsonElement>(newGameBody);
 
-            if (newGameResult == null || !newGameResult.Value.TryGetProperty("gameId", out var gameIdElement))
+            if (!newGameResult.TryGetProperty("gameId", out var gameIdElement))
             {
                 throw new InvalidOperationException("Game creation did not return gameId");
             }

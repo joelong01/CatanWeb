@@ -93,11 +93,7 @@ namespace Tests.GameService.Companion
                     $"Games API should succeed. Status: {response.StatusCode}");
 
                 var content = await response.Content.ReadAsStringAsync();
-                var gamesResponse = JsonSerializer.Deserialize<CompanionGamesResponse>(content, new JsonSerializerOptions 
-                { 
-                    PropertyNameCaseInsensitive = true,
-                    Converters = { new JsonStringEnumConverter() }
-                });
+                var gamesResponse = JsonHelper.Deserialize<CompanionGamesResponse>(content);
 
                 Assert.NotNull(gamesResponse);
                 Assert.NotNull(gamesResponse.Games);
@@ -534,7 +530,7 @@ namespace Tests.GameService.Companion
                 playerIds = playerIds
             };
 
-            var newGameJson = JsonSerializer.Serialize(newGameRequest);
+            var newGameJson = JsonHelper.Serialize(newGameRequest);
             var newGameContent = new StringContent(newGameJson, Encoding.UTF8, "application/json");
 
             var newGameResponse = await httpClient.PostAsync("/api/game/new", newGameContent);
@@ -546,7 +542,7 @@ namespace Tests.GameService.Companion
             }
 
             var newGameBody = await newGameResponse.Content.ReadAsStringAsync();
-            var newGameResult = JsonSerializer.Deserialize<JsonElement>(newGameBody);
+            var newGameResult = JsonHelper.Deserialize<JsonElement>(newGameBody);
 
             if (!newGameResult.TryGetProperty("gameId", out var gameIdElement))
             {

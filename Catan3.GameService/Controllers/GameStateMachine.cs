@@ -11,6 +11,7 @@ using Catan3.GameService.Services;
 using Catan3.GameService.Factory;
 using Catan3.GameService.Utility;
 using Catan3.Shared.Utility;
+using Microsoft.Extensions.Logging;
 
 namespace Catan3.GameService.Controllers
 {
@@ -27,6 +28,7 @@ namespace Catan3.GameService.Controllers
         private Log<string> Log;
         private IPersistanceService? MyPersistanceService { get; set; }
         private readonly IClientNotification _clientNotification;
+        private readonly ILogger<GameStateMachine> _logger;
         
         /// <summary>
         /// Server-generated unique identifier for this game instance.
@@ -34,14 +36,15 @@ namespace Catan3.GameService.Controllers
         /// </summary>
         public string GameId { get; private set; }
 
-        public GameStateMachine(IPersistanceService? persistanceService, IClientNotification clientNotification, string localSaveFile)
+        public GameStateMachine(IPersistanceService? persistanceService, IClientNotification clientNotification, ILogger<GameStateMachine> logger, string localSaveFile)
         {
             // Generate server-side GameId to ensure it's available for all GameModels
             GameId = Guid.NewGuid().ToString();
             
-            Log = new Log<string>(persistanceService, localSaveFile);
+            Log = new Log<string>(persistanceService, localSaveFile, logger);
             MyPersistanceService = persistanceService;
             _clientNotification = clientNotification;
+            _logger = logger;
         }
 
         public int DoneCount => Log.DoneCount;
@@ -323,7 +326,7 @@ namespace Catan3.GameService.Controllers
         // Helper method for tracing without MVVM dependencies
         private void TraceMessage(string message, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
         {
-            Debug.WriteLine($"[{cmb}:{cln}] {message}");
+            _logger.LogEvent("GameStateMachine", $"[{cmb}:{cln}] {message}", LogLevel.Debug);
         }
 
         // All the game logic methods remain the same but with MVVM dependencies removed
@@ -793,11 +796,7 @@ namespace Catan3.GameService.Controllers
 
         private GameModel BuildingUpgrade(BuildingUpgradeMessage message)
         {
-            Console.WriteLine($"[DEBUG] BuildingUpgrade called with BuildingKey: {message.BuildingKey}");
-            
             GameModel gameModel = Log.CopyCurrent();
-            Console.WriteLine($"[DEBUG] Current game state: {gameModel.GameState}");
-            Console.WriteLine($"[DEBUG] Current player: {gameModel.CurrentPlayerId}");
             
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse, GameState.Supplemental]);
             BuildingKey buildingKey = message.BuildingKey;
@@ -805,11 +804,8 @@ namespace Catan3.GameService.Controllers
             var building = gameModel.Buildings.FindBuildingModel(buildingKey);
             if (building == null)
             {
-                Console.WriteLine($"[DEBUG] Building not found for key: {buildingKey}");
                 throw new Catan3.Shared.Utility.GameException($"Invalid BuildingKey: {buildingKey}");
             }
-            
-            Console.WriteLine($"[DEBUG] Found building: {building.BuildingKey}, State: {building.BuildingState}");
             
             if (building.BuildingState == BuildingState.NotBuildable)
             {
@@ -819,7 +815,6 @@ namespace Catan3.GameService.Controllers
             switch (building.BuildingState)
             {
                 case BuildingState.PossibleSettlement:
-                    Console.WriteLine($"[DEBUG] Upgrading PossibleSettlement to Settlement");
                     ThrowIfNoEntitlement(gameModel, [Entitlement.Settlement]);
                     building.BuildingState = BuildingState.Settlement;
                     building.OwnerId = gameModel.CurrentPlayerId;
@@ -856,37 +851,18 @@ namespace Catan3.GameService.Controllers
                     throw new Catan3.Shared.Utility.GameException("Knights cannot be upgraded further.");
             }
 
-            Console.WriteLine($"[DEBUG] About to check if gameModel.GameState == GameState.AllocateResourceReverse");
-            Console.WriteLine($"[DEBUG] gameModel.GameState = {gameModel.GameState}");
-            Console.WriteLine($"[DEBUG] GameState.AllocateResourceReverse = {GameState.AllocateResourceReverse}");
-            Console.WriteLine($"[DEBUG] Equality check: {gameModel.GameState == GameState.AllocateResourceReverse}");
-
             if (gameModel.GameState == GameState.AllocateResourceReverse)
             {
                 var currentPlayerModel = gameModel.CurrentPlayer();
-                Console.WriteLine($"[DEBUG] AllocateResourceReverse: Processing resources for {currentPlayerModel.Id}");
-                
                 var tilesForBuilding = gameModel.TilesForBuildings(building.BuildingKey);
-                Console.WriteLine($"[DEBUG] TilesForBuildings returned {tilesForBuilding.Count} tiles for building {building.BuildingKey}");
                 
                 foreach (var tile in tilesForBuilding)
                 {
-                    Console.WriteLine($"[DEBUG] Processing tile {tile.TileKey} with resource type {tile.ResourceTileType}");
                     ResourcesModel resources = building.Resources(tile.ResourceTileType);
-                    Console.WriteLine($"[DEBUG] Building.Resources({tile.ResourceTileType}) returned: Wheat={resources.Wheat}, Wood={resources.Wood}, Sheep={resources.Sheep}, Brick={resources.Brick}, Ore={resources.Ore}, GoldMine={resources.GoldMine}, Fish={resources.Fish}");
-                    
                     currentPlayerModel.ResourcesThisTurn.Add(resources);
-                    Console.WriteLine($"[DEBUG] After adding resources, player {currentPlayerModel.Id} ResourcesThisTurn: Wheat={currentPlayerModel.ResourcesThisTurn.Wheat}, Wood={currentPlayerModel.ResourcesThisTurn.Wood}, Sheep={currentPlayerModel.ResourcesThisTurn.Sheep}, Brick={currentPlayerModel.ResourcesThisTurn.Brick}, Ore={currentPlayerModel.ResourcesThisTurn.Ore}");
                 }
-                
-                Console.WriteLine($"[DEBUG] Final ResourcesThisTurn for {currentPlayerModel.Id}: Wheat={currentPlayerModel.ResourcesThisTurn.Wheat}, Wood={currentPlayerModel.ResourcesThisTurn.Wood}, Sheep={currentPlayerModel.ResourcesThisTurn.Sheep}, Brick={currentPlayerModel.ResourcesThisTurn.Brick}, Ore={currentPlayerModel.ResourcesThisTurn.Ore}");
-            }
-            else
-            {
-                Console.WriteLine($"[DEBUG] NOT in AllocateResourceReverse state, skipping resource allocation");
             }
 
-            Console.WriteLine($"[DEBUG] BuildingUpgrade completed successfully");
             return gameModel;
         }
 

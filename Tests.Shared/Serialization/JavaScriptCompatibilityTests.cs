@@ -13,21 +13,12 @@ namespace Tests.Shared.Serialization
     /// JavaScript compatibility tests that verify serialized models can be properly
     /// consumed by actual JavaScript engines (Node.js if available).
     /// These tests ensure the companion.js can properly work with serialized data.
+    /// Uses the same JsonHelper as the real application for accurate compatibility testing.
     /// </summary>
     public class JavaScriptCompatibilityTests
     {
-        private readonly JsonSerializerOptions _jsonOptions;
-
-        public JavaScriptCompatibilityTests()
-        {
-            _jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = true,
-                Converters = { new JsonStringEnumConverter() },
-                PropertyNameCaseInsensitive = true
-            };
-        }
+        // Use the same JsonHelper as the real application for accurate compatibility testing
+        private readonly JsonSerializerOptions _jsonOptions = JsonHelper.PrettyOptions;
 
         [Fact]
         public async Task GameModel_ShouldBeParseableByJavaScript()

@@ -3,6 +3,7 @@ using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
 using Catan3.GameService.Controllers;
 using Catan3.GameService.Services;
+using Catan3.GameService.Utility;
 
 namespace Catan3.GameService.Services
 {
@@ -18,12 +19,14 @@ namespace Catan3.GameService.Services
         private readonly IPersistanceService _persistanceService;
         private readonly IClientNotification _clientNotification;
         private readonly ILogger<GameStateMachineService> _logger;
+        private readonly ILoggerFactory _loggerFactory;
 
-        public GameStateMachineService(IPersistanceService persistanceService, IClientNotification clientNotification, ILogger<GameStateMachineService> logger)
+        public GameStateMachineService(IPersistanceService persistanceService, IClientNotification clientNotification, ILogger<GameStateMachineService> logger, ILoggerFactory loggerFactory)
         {
             _persistanceService = persistanceService;
             _clientNotification = clientNotification;
             _logger = logger;
+            _loggerFactory = loggerFactory;
         }
 
         /// <summary>
@@ -32,15 +35,15 @@ namespace Catan3.GameService.Services
         /// </summary>
         public GameStateMachine GetGameStateMachine(string gameId)
         {
-            _logger.LogDebug("Getting GameStateMachine for gameId: {GameId}", gameId);
+            _logger.LogEvent("Get GameStateMachine", $"Getting GameStateMachine for gameId: {gameId}", LogLevel.Debug);
             
             if (_gameStateMachines.TryGetValue(gameId, out var gameStateMachine))
             {
-                _logger.LogDebug("Found existing GameStateMachine for gameId: {GameId}", gameId);
+                _logger.LogEvent("GameStateMachine Found", $"Found existing GameStateMachine for gameId: {gameId}", LogLevel.Debug);
                 return gameStateMachine;
             }
             
-            _logger.LogWarning("GameStateMachine not found for gameId: {GameId}", gameId);
+            _logger.LogEvent("GameStateMachine Not Found", $"GameStateMachine not found for gameId: {gameId}", LogLevel.Warning);
             throw new Catan3.Shared.Utility.GameException($"Game {gameId} not found");
         }
 
@@ -50,9 +53,10 @@ namespace Catan3.GameService.Services
         /// </summary>
         private GameStateMachine CreateGameStateMachine()
         {
-            _logger.LogInformation("Creating new GameStateMachine with auto-generated GameId");
+            _logger.LogEvent("Create GameStateMachine", "Creating new GameStateMachine with auto-generated GameId");
             
-            var gameStateMachine = new GameStateMachine(_persistanceService, _clientNotification, "");  // Empty saveFile for now
+            var gameStateMachineLogger = _loggerFactory.CreateLogger<GameStateMachine>();
+            var gameStateMachine = new GameStateMachine(_persistanceService, _clientNotification, gameStateMachineLogger, "");  // Empty saveFile for now
             var gameId = gameStateMachine.GameId;
             
             // Update the save file path with the actual GameId
@@ -61,7 +65,7 @@ namespace Catan3.GameService.Services
             
             _gameStateMachines[gameId] = gameStateMachine;
             
-            _logger.LogInformation("Successfully created GameStateMachine with GameId: {GameId}, saveFile: {SaveFile}", gameId, saveFile);
+            _logger.LogEvent("GameStateMachine Created", $"Successfully created GameStateMachine with GameId: {gameId}, saveFile: {saveFile}");
             return gameStateMachine;
         }
 
@@ -71,15 +75,17 @@ namespace Catan3.GameService.Services
         /// </summary>
         public GameModel ExecuteAction(string gameId, Func<GameStateMachine, GameModel> action)
         {
-            _logger.LogDebug("Executing action on GameStateMachine for gameId: {GameId}", gameId);
+            _logger.LogEvent("Execute Action", $"Starting action execution - GameId: {gameId}");
             
             var gameStateMachine = GetGameStateMachine(gameId);
+            
+            _logger.LogEvent("Execute Action", $"Retrieved GameStateMachine, executing action - GameId: {gameId}");
             var result = action(gameStateMachine);
             
             // Rule 7 Compliance: GameModel contains all truth including version
             // Client notification is handled automatically by GameStateMachine.LogGameModel()
             
-            _logger.LogDebug("Action executed, version: {Version}, gameId: {GameId}", result.GameStateMachineVersion, gameId);
+            _logger.LogEvent("Execute Action", $"Action completed - GameId: {gameId}, Version: {result.GameStateMachineVersion}, State: {result.GameState}");
             
             return result;
         }
@@ -169,29 +175,30 @@ namespace Catan3.GameService.Services
         /// </summary>
         public GameModel? GetCurrentGameState(string gameId)
         {
-            _logger.LogDebug("Getting current game state for gameId: {GameId}", gameId);
+            _logger.LogInformation("[GameStateMachineService][GetCurrentGameState] Called for GameId: {GameId}", gameId);
             
             if (_gameStateMachines.TryGetValue(gameId, out var gameStateMachine))
             {
                 try
                 {
                     var gameModel = gameStateMachine.GetCurrentState();
-                    _logger.LogDebug("Retrieved game state for gameId: {GameId}, state: {GameState}", gameId, gameModel?.GameState);
+                    _logger.LogInformation("[GameStateMachineService][GetCurrentGameState] Found game - GameId: {GameId}, State: {GameState}, Players: {PlayerCount}", 
+                        gameId, gameModel?.GameState, gameModel?.Players?.Count ?? 0);
                     return gameModel;
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogWarning("Game exists but has no state yet for gameId: {GameId}, error: {Error}", gameId, ex.Message);
+                    _logger.LogWarning("[GameStateMachineService][GetCurrentGameState] Game exists but has no state yet - GameId: {GameId}, Error: {Error}", gameId, ex.Message);
                     return null;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error getting game state for gameId: {GameId}", gameId);
+                    _logger.LogError(ex, "[GameStateMachineService][GetCurrentGameState] Error getting game state - GameId: {GameId}", gameId);
                     return null;
                 }
             }
             
-            _logger.LogDebug("No game found for gameId: {GameId}", gameId);
+            _logger.LogWarning("[GameStateMachineService][GetCurrentGameState] Game not found - GameId: {GameId}", gameId);
             return null;
         }
 
