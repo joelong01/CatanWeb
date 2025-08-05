@@ -336,6 +336,17 @@ namespace Tests.GameService.Companion
 
             var proxy = new SignalRProxy(hubUrl, testHandler, playerId, gameId);
             await proxy.ConnectAsync();
+            
+            // Wait for initial GameStateUpdated event after joining
+            var maxWaitTime = TimeSpan.FromSeconds(5);
+            var waitInterval = TimeSpan.FromMilliseconds(100);
+            var startTime = DateTime.UtcNow;
+            
+            while (proxy.GameModel == null && DateTime.UtcNow - startTime < maxWaitTime)
+            {
+                await Task.Delay(waitInterval);
+            }
+            
             return proxy;
         }
 

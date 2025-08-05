@@ -256,6 +256,10 @@ namespace Tests.GameService.Companion
                 Assert.Equal(HubConnectionState.Connected, aliceProxy.Connection.State);
                 Assert.Equal(HubConnectionState.Connected, bobProxy.Connection.State);
 
+                // Wait for both proxies to receive initial game state
+                await aliceProxy.WaitForGameStateAsync(GameState.PickingBoard, TimeSpan.FromSeconds(5));
+                await bobProxy.WaitForGameStateAsync(GameState.PickingBoard, TimeSpan.FromSeconds(5));
+
                 // Test that each companion can see the same game state
                 Assert.NotNull(aliceProxy.GameModel);
                 Assert.NotNull(bobProxy.GameModel);

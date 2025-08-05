@@ -89,51 +89,30 @@ namespace Tests.GameService.Companion
             {
                 var gameId = await CreateTestGame("Regular", new[] { "Alice", "Bob", "Charlie", "David" });
 
-                // Simulate companion.js SignalR connection pattern
-                var uri = _factory.Server.BaseAddress ?? new Uri("http://localhost");
-                var hubUrl = new Uri(uri, "/gameHub").ToString();
-                var testHandler = _factory.Server.CreateHandler();
+                // Use SignalRProxy for robust real-time async waiting (like end-to-end tests)
+                var proxy = await CreateSignalRProxy(gameId, "Alice");
 
-                // Test connection establishment (companion.js initializeSignalR())
-                var connection = new HubConnectionBuilder()
-                    .WithUrl(hubUrl, options =>
-                    {
-                        options.HttpMessageHandlerFactory = _ => testHandler;
-                    })
-                    .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromMilliseconds(2000), TimeSpan.FromMilliseconds(10000), TimeSpan.FromMilliseconds(30000) })
-                    .Build();
-
-                var gameStateUpdates = new List<GameModel>();
-                var commandCompletions = new List<(string CommandId, bool Success, string Message)>();
-
-                // Setup event handlers (companion.js setupSignalRHandlers())
-                connection.On<GameModel>("GameStateUpdated", gameModel => 
-                {
-                    gameStateUpdates.Add(gameModel);
-                });
-
-                connection.On<string, bool, string>("CommandCompleted", (commandId, success, message) => 
-                {
-                    commandCompletions.Add((commandId, success, message));
-                });
-
-                await connection.StartAsync();
-                Assert.Equal(HubConnectionState.Connected, connection.State);
-
-                // Test joining game (companion.js connectToGame())
-                await connection.InvokeAsync("JoinGame", gameId, "Alice");
+                // Verify initial connection and state
+                Assert.Equal(HubConnectionState.Connected, proxy.Connection.State);
+                
+                // Wait for the initial game state to be received (PickingBoard state)
+                await proxy.WaitForGameStateAsync(GameState.PickingBoard, TimeSpan.FromSeconds(5));
+                
+                // Verify we have the game model
+                Assert.NotNull(proxy.GameModel);
+                Assert.Equal(GameState.PickingBoard, proxy.GameModel.GameState);
 
                 // Test command execution (companion.js doAction()) - use proper DoAction message object
-                var doActionMessage = new DoAction(GameAction.Shuffle);
-                await connection.InvokeAsync("ExecuteDoAction", gameId, "Alice", doActionMessage);
+                await proxy.ExecuteDoActionAsync(gameId, GameAction.Shuffle);
 
-                // Wait for potential updates
-                await Task.Delay(1000);
+                // Wait for the update after the shuffle action (should still be PickingBoard)
+                await proxy.WaitForGameStateAsync(GameState.PickingBoard, TimeSpan.FromSeconds(5));
 
-                // Verify SignalR pattern worked
-                Assert.True(gameStateUpdates.Count > 0, "Should have received game state updates");
+                // Verify the command was processed
+                Assert.NotNull(proxy.GameModel);
+                Assert.Equal(GameState.PickingBoard, proxy.GameModel.GameState);
 
-                await connection.DisposeAsync();
+                await proxy.DisposeAsync();
             }
         }
 
