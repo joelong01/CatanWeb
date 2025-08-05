@@ -15,7 +15,8 @@ namespace Catan3.GameService.Controllers
 
         public IActionResult Index()
         {
-            return View();
+            // Redirect root requests to the companion's "Join Game" page
+            return Redirect("/companion");
         }
 
         public IActionResult Privacy()
