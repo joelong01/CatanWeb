@@ -9,22 +9,26 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Shared.Models
 {
-    public partial class HarborKey : IComparable<HarborKey>
+    /// <summary>
+    /// Represents a key for a harbor, including the coordinates, type, and side.
+    /// Supports both plain object usage (for JSON/API) and MVVM usage (for UI data binding).
+    /// </summary>
+    public partial class HarborKey : ObservableObject, IComparable<HarborKey>
     {
-
-        public HexCoordinates HexCoordinates { get; set; } = new(0, 0, 0);
+        [ObservableProperty]
+        private HexCoordinates _hexCoordinates = new(0, 0, 0);
 
         /// <summary>
         /// Gets or sets the type of the harbor.
         /// </summary>
-
-        public HarborType HarborType { get; set; } = HarborType.ThreeForOne;
+        [ObservableProperty]
+        private HarborType _harborType = HarborType.ThreeForOne;
 
         /// <summary>
         /// Gets or sets the side of the hexagon where the harbor is located.
         /// </summary>
-
-        public HexSide Side { get; set; } = HexSide.Bottom;
+        [ObservableProperty]
+        private HexSide _side = HexSide.Bottom;
 
         /// <summary>
         /// Initializes a new instance of the HarborKey class with the specified coordinates, type, and side.
@@ -112,20 +116,21 @@ namespace Catan3.Shared.Models
     /// <summary>
     /// Represents a harbor model in the game, including its key and ownership information.
     /// Implements IComparable for sorting and comparison purposes.
+    /// Supports both plain object usage (for JSON/API) and MVVM usage (for UI data binding).
     /// </summary>
-    public class HarborModel : IComparable<HarborModel>
+    public partial class HarborModel : ObservableObject, IComparable<HarborModel>
     {
         /// <summary>
         /// Gets or sets the key of the harbor.
         /// </summary>
-
-        public HarborKey HarborKey { get; set; } = new();
+        [ObservableProperty]
+        private HarborKey _harborKey = new();
 
         /// <summary>
         /// Gets or sets the owner of the harbor.
         /// </summary>
-
-        public PlayerModel? Owner { get; set; } = null;
+        [ObservableProperty]
+        private PlayerModel? _owner = null;
 
         /// <summary>
         /// Gets the default instance of the HarborModel class.

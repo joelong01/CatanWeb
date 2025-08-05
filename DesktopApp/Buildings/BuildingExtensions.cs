@@ -200,32 +200,4 @@ namespace Catan3.Models
             return result;
         }
     }
-    public partial class BuildingKey
-    {
-        public override string ToString()
-        {
-            return $"[{this.HexCoordinates}-{Position}]";
-        }
-        public override bool Equals(object? obj)
-        {
-            return obj is not null && obj is BuildingKey key &&
-                   key.Position == this.Position &&
-                   key.HexCoordinates == this.HexCoordinates;
-        }
-        public override int GetHashCode() => HashCode.Combine(HexCoordinates, Position);
-        public static BuildingKey Default => new(HexCoordinates.Default, HexPosition.None);
-        public static bool operator ==(BuildingKey left, BuildingKey right)
-        {
-            if (left is null || right is null)
-            {
-                return false;
-            }
-            if (ReferenceEquals(left, right))
-            {
-                return true;
-            }
-            return left.Equals(right);
-        }
-        public static bool operator !=(BuildingKey left, BuildingKey right) => !( left == right );
-    }
 }

@@ -1,33 +1,39 @@
 using System;
 using Catan3.Shared.Utility;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Shared.Models
 {
     /// <summary>
     /// Represents a road model in the game, including its key, state, owner, and build index.
     /// Implements IComparable for sorting and comparison purposes.
+    /// Supports both plain object usage (for JSON/API) and MVVM usage (for UI data binding).
     /// </summary>
-    public class RoadModel : IComparable<RoadModel>
+    public partial class RoadModel : ObservableObject, IComparable<RoadModel>
     {
         /// <summary>
         /// Gets or sets the key of the road.
         /// </summary>
-        public RoadKey RoadKey { get; set; } = new();
+        [ObservableProperty]
+        private RoadKey _roadKey = new();
 
         /// <summary>
         /// Gets or sets the state of the road.
         /// </summary>
-        public RoadState RoadState { get; set; } = RoadState.Unowned;
+        [ObservableProperty]
+        private RoadState _roadState = RoadState.Unowned;
 
         /// <summary>
         /// Gets or sets the owner ID of the road.
         /// </summary>
-        public string? OwnerId { get; set; }
+        [ObservableProperty]
+        private string? _ownerId;
 
         /// <summary>
         /// Gets or sets the build index of the road.
         /// </summary>
-        public int BuildIndex { get; set; } = 0;
+        [ObservableProperty]
+        private int _buildIndex = 0;
 
         public RoadModel() { }
 

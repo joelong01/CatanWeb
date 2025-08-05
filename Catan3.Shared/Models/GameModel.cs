@@ -8,12 +8,23 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Shared.Models
 {
-    public class ActionFlags
+    /// <summary>
+    /// Represents flags for various game actions.
+    /// Supports both plain object usage (for JSON/API) and MVVM usage (for UI data binding).
+    /// </summary>
+    public partial class ActionFlags : ObservableObject
     {
-        public bool UndoEnabled { get; set; } = false;
-        public bool RedoEnabled { get; set; } = false;
-        public bool NextEnabled { get; set; } = false;
-        public bool RollsEnabled { get; set; } = false;
+        [ObservableProperty]
+        private bool _undoEnabled = false;
+        
+        [ObservableProperty]
+        private bool _redoEnabled = false;
+        
+        [ObservableProperty]
+        private bool _nextEnabled = false;
+        
+        [ObservableProperty]
+        private bool _rollsEnabled = false;
 
         public override string ToString()
         {
@@ -21,50 +32,70 @@ namespace Catan3.Shared.Models
         }
     }
 
-    public class GameModel
+    /// <summary>
+    /// Represents the main game model containing all game state.
+    /// Supports both plain object usage (for JSON/API) and MVVM usage (for UI data binding).
+    /// </summary>
+    public partial class GameModel : ObservableObject
     {
         /// <summary>
         /// What kinds of things can be purchased in this game and if they are allowed to be purchased at this time?
         /// </summary>
-        public List<EntitlementPurchaseModel> EntitlementPurchaseModel { get; set; } = new();
+        [ObservableProperty]
+        private List<EntitlementPurchaseModel> _entitlementPurchaseModel = new();
 
-        public ActionFlags ActionFlags { get; set; } = new();
+        [ObservableProperty]
+        private ActionFlags _actionFlags = new();
 
-        public GameType GameType { get; set; } = GameType.Regular;
+        [ObservableProperty]
+        private GameType _gameType = GameType.Regular;
 
-        public GameState GameState { get; set; } = GameState.WaitingForNewGame;
+        [ObservableProperty]
+        private GameState _gameState = GameState.WaitingForNewGame;
 
-        public bool HasSupplementalBuildPhase { get; set; } = false;
+        [ObservableProperty]
+        private bool _hasSupplementalBuildPhase = false;
 
-        public List<PlayerModel> Players { get; set; } = new();
+        [ObservableProperty]
+        private List<PlayerModel> _players = new();
 
-        public List<TileModel> Tiles { get; set; } = new();
+        [ObservableProperty]
+        private List<TileModel> _tiles = new();
 
-        public List<BuildingModel> Buildings { get; set; } = new();
+        [ObservableProperty]
+        private List<BuildingModel> _buildings = new();
 
-        public List<RoadModel> Roads { get; set; } = new();
+        [ObservableProperty]
+        private List<RoadModel> _roads = new();
 
-        public List<HarborModel> Harbors { get; set; } = new();
+        [ObservableProperty]
+        private List<HarborModel> _harbors = new();
 
-        public RobberModel Robber { get; set; } = new();
+        [ObservableProperty]
+        private RobberModel _robber = new();
 
-        public HouseRules HouseRules { get; set; } = new();
+        [ObservableProperty]
+        private HouseRules _houseRules = new();
 
-        public ResourceRules ResourceRules { get; set; } = new();
+        [ObservableProperty]
+        private ResourceRules _resourceRules = new();
 
-        public string CurrentPlayerId { get; set; } = string.Empty;
+        [ObservableProperty]
+        private string _currentPlayerId = string.Empty;
 
         /// <summary>
         /// Gets or sets the unique identifier for this game instance.
         /// This field supports Rule 7 (Single Source of Truth) by ensuring GameModel contains all game metadata.
         /// </summary>
-        public string GameId { get; set; } = string.Empty;
+        [ObservableProperty]
+        private string _gameId = string.Empty;
 
         /// <summary>
         /// Gets or sets when this game was created.
         /// This field supports Rule 7 (Single Source of Truth) by ensuring GameModel contains all game metadata.
         /// </summary>
-        public DateTime CreatedTime { get; set; } = DateTime.UtcNow;
+        [ObservableProperty]
+        private DateTime _createdTime = DateTime.UtcNow;
 
         /// <summary>
         /// Gets or sets the software version number of the GameStateMachine.
@@ -72,7 +103,7 @@ namespace Catan3.Shared.Models
         /// Version represents GameStateMachine software compatibility, not game state changes.
         /// This is used for client/server compatibility checks, not hanging GET version comparison.
         /// </summary>
-        public int GameStateMachineVersion { get;  } = 1;
+        public int GameStateMachineVersion { get; } = 1;
 
         /// <summary>
         /// Gets or sets a hash representing the current state of the game board and player data.
@@ -80,17 +111,22 @@ namespace Catan3.Shared.Models
         /// Used for fast verification that all clients have identical game states in multi-player testing.
         /// The hash is computed by the GameStateMachine whenever the game state changes.
         /// </summary>
-        public string GameHash { get; set; } = string.Empty;
+        [ObservableProperty]
+        private string _gameHash = string.Empty;
 
-        public RollModel RollModel { get; set; } = new();
+        [ObservableProperty]
+        private RollModel _rollModel = new();
 
         // keep track of the player who goes when there is nobody left to do supplemental
-        public string NextPlayerToRollAfterSupplemental { get; set; } = "";
+        [ObservableProperty]
+        private string _nextPlayerToRollAfterSupplemental = "";
 
         // keep track of the total resources ever generated in the game by everyone
-        public ResourcesModel GameResourcesModel { get; set; } = new();
+        [ObservableProperty]
+        private ResourcesModel _gameResourcesModel = new();
 
-        public GameState PreviousGameState { get; set; } = GameState.Uninitialized;
+        [ObservableProperty]
+        private GameState _previousGameState = GameState.Uninitialized;
 
         public GameModel(IGameMetadata gameInfo, List<PlayerModel> players)
         {

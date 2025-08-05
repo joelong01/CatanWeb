@@ -1,16 +1,30 @@
 using System;
 using System.Text.Json.Serialization;
 using Catan3.Shared.Utility;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Shared.Models
 {
-    public class TileModel : IComparable<TileModel>
+    /// <summary>
+    /// Represents a tile model in the game.
+    /// Supports both plain object usage (for JSON/API) and MVVM usage (for UI data binding).
+    /// </summary>
+    public partial class TileModel : ObservableObject, IComparable<TileModel>
     {
-        public HexCoordinates TileKey { get; set; } = HexCoordinates.Default;
-        public int Number { get; set; }
-        public ResourceType ResourceTileType { get; set; }
-        public bool Highlighted { get; set; }
-        public bool TemporarilyGold { get; set; }
+        [ObservableProperty]
+        private HexCoordinates _tileKey = HexCoordinates.Default;
+        
+        [ObservableProperty]
+        private int _number;
+        
+        [ObservableProperty]
+        private ResourceType _resourceTileType;
+        
+        [ObservableProperty]
+        private bool _highlighted;
+        
+        [ObservableProperty]
+        private bool _temporarilyGold;
 
         public static TileModel Default { get; } = new TileModel();
         

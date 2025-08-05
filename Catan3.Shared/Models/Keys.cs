@@ -1,23 +1,37 @@
 using System;
 using System.Text.Json.Serialization;
 using Catan3.Shared.Utility;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Shared.Models
 {
     /// <summary>
     /// Represents a key for a road, including the tile coordinates and the side of the hexagon.
+    /// Supports both plain object usage (for JSON/API) and MVVM usage (for UI data binding).
     /// </summary>
-    public class RoadKey : IComparable<RoadKey>
+    public partial class RoadKey : ObservableObject, IComparable<RoadKey>
     {
-        public HexCoordinates TileKey { get; set; } = HexCoordinates.Default;
-        public HexSide HexSide { get; set; } = HexSide.Bottom;
+        [ObservableProperty]
+        private HexCoordinates _tileKey = HexCoordinates.Default;
+        
+        [ObservableProperty]
+        private HexSide _hexSide = HexSide.Bottom;
 
+        /// <summary>
+        /// Initializes a new instance of the RoadKey class with the specified tile key and hex side.
+        /// </summary>
+        /// <param name="tileKey">The hex coordinates of the tile.</param>
+        /// <param name="side">The side of the hexagon where the road is located.</param>
         public RoadKey(HexCoordinates tileKey, HexSide side)
         {
             TileKey = tileKey;
             HexSide = side;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the RoadKey class with default values.
+        /// Used for JSON deserialization.
+        /// </summary>
         [JsonConstructor]
         public RoadKey() : this(HexCoordinates.Default, HexSide.Bottom) { }
 
@@ -52,18 +66,31 @@ namespace Catan3.Shared.Models
 
     /// <summary>
     /// Represents a key for a building, including the tile coordinates and position.
+    /// Supports both plain object usage (for JSON/API) and MVVM usage (for UI data binding).
     /// </summary>
-    public class BuildingKey : IComparable<BuildingKey>
+    public partial class BuildingKey : ObservableObject, IComparable<BuildingKey>
     {
-        public HexCoordinates HexCoordinates { get; set; } = HexCoordinates.Default;
-        public HexPosition Position { get; set; } = HexPosition.None;
+        [ObservableProperty]
+        private HexCoordinates _hexCoordinates = HexCoordinates.Default;
+        
+        [ObservableProperty]
+        private HexPosition _position = HexPosition.None;
 
+        /// <summary>
+        /// Initializes a new instance of the BuildingKey class with the specified coordinates and position.
+        /// </summary>
+        /// <param name="hexcoordinates">The hex coordinates of the building.</param>
+        /// <param name="position">The position of the building on the hex.</param>
         public BuildingKey(HexCoordinates hexcoordinates, HexPosition position)
         {
             HexCoordinates = hexcoordinates;
             Position = position;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the BuildingKey class with default values.
+        /// Used for JSON deserialization.
+        /// </summary>
         [JsonConstructor]
         public BuildingKey() : this(HexCoordinates.Default, HexPosition.None) { }
 

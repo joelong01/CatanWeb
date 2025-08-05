@@ -1,14 +1,33 @@
 using System;
 using Catan3.Shared.Utility;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Shared.Models
 {
     /// <summary>
     /// Represents a building model in the game, including its key, state, and ownership information.
     /// Implements IComparable for sorting and comparison purposes.
+    /// Supports both plain object usage (for JSON/API) and MVVM usage (for UI data binding).
     /// </summary>
-    public class BuildingModel : IComparable<BuildingModel>
+    public partial class BuildingModel : ObservableObject, IComparable<BuildingModel>
     {
+        [ObservableProperty]
+        private BuildingKey _buildingKey = new();
+        
+        [ObservableProperty]
+        private BuildingState _buildingState;
+        
+        [ObservableProperty]
+        private bool _wall = false;
+        
+        [ObservableProperty]
+        private bool _metropolis = false;
+        
+        [ObservableProperty]
+        private string? _ownerId;
+        
+        [ObservableProperty]
+        private bool _hasRobber = false;
         /// <summary>
         /// Initializes a new instance of the BuildingModel class with default values.
         /// </summary>
@@ -26,31 +45,6 @@ namespace Catan3.Shared.Models
             BuildingKey = buildingKey;
             BuildingState = buildingState;
         }
-
-        /// <summary>
-        /// Gets or sets the key identifying the building's location and position.
-        /// </summary>
-        public BuildingKey BuildingKey { get; set; } = new();
-
-        /// <summary>
-        /// Gets or sets the state of the building.
-        /// </summary>
-        public BuildingState BuildingState { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether the building has a wall.
-        /// </summary>
-        public bool Wall { get; set; } = false;
-
-        /// <summary>
-        /// Gets or sets a value indicating whether the building is a metropolis.
-        /// </summary>
-        public bool Metropolis { get; set; } = false;
-
-        /// <summary>
-        /// Gets or sets the ID of the owner of the building.
-        /// </summary>
-        public string? OwnerId { get; set; } = null;
 
         /// <summary>
         /// Gets the default instance of the BuildingModel class.

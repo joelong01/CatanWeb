@@ -5,17 +5,20 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Shared.Utility
 {
-
+    /// <summary>
+    /// Represents hexagonal coordinates in a cube coordinate system.
+    /// Supports both plain object usage (for JSON/API) and MVVM usage (for UI data binding).
+    /// </summary>
     public partial class HexCoordinates(int q, int r, int s) : ObservableObject, IComparable<HexCoordinates>
     {
-  
-        public  int Q { get; set; } = q;
+        [ObservableProperty]
+        private int _q = q;
 
-  
-        public  int R { get; set; } = r;
+        [ObservableProperty]
+        private int _r = r;
 
-  
-        public  int S { get; set; } = s;
+        [ObservableProperty]
+        private int _s = s;
 
         [JsonIgnore]
         public static Dictionary<Direction, HexCoordinates> Directions { get; } = new()

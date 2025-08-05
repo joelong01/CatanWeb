@@ -1,27 +1,58 @@
 using System.Text.Json.Serialization;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catan3.Shared.Models
 {
     /// <summary>
     /// Should contain all the resources used to track rolls. If you add one, add it everywhere...
+    /// Supports both plain object usage (for JSON/API) and MVVM usage (for UI data binding).
     /// </summary>
-    public class ResourcesModel
+    public partial class ResourcesModel : ObservableObject
     {
-        public int Brick { get; set; }
-        public int GoldMine { get; set; }
-        public int Ore { get; set; }
-        public int Sheep { get; set; }
-        public int Wheat { get; set; }
-        public int Wood { get; set; }
-        public int Paper { get; set; }
-        public int Cloth { get; set; }
-        public int Coin { get; set; }
-        public int Politics { get; set; }
-        public int Trade { get; set; }
-        public int Science { get; set; }
-        public int VictoryPoint { get; set; }
-        public int AnyDevCard { get; set; }
-        public int Robber { get; set; }
+        [ObservableProperty]
+        private int _brick;
+        
+        [ObservableProperty]
+        private int _goldMine;
+        
+        [ObservableProperty]
+        private int _ore;
+        
+        [ObservableProperty]
+        private int _sheep;
+        
+        [ObservableProperty]
+        private int _wheat;
+        
+        [ObservableProperty]
+        private int _wood;
+        
+        [ObservableProperty]
+        private int _paper;
+        
+        [ObservableProperty]
+        private int _cloth;
+        
+        [ObservableProperty]
+        private int _coin;
+        
+        [ObservableProperty]
+        private int _politics;
+        
+        [ObservableProperty]
+        private int _trade;
+        
+        [ObservableProperty]
+        private int _science;
+        
+        [ObservableProperty]
+        private int _victoryPoint;
+        
+        [ObservableProperty]
+        private int _anyDevCard;
+        
+        [ObservableProperty]
+        private int _robber;
 
         public ResourcesModel() { }
 
