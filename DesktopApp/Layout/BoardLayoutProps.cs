@@ -1,11 +1,11 @@
 
 using CommunityToolkit.Mvvm.ComponentModel;
-namespace Catan3.Models
+namespace Catan3.DesktopApp.Layout
 {
     /// <summary>
     /// Represents the layout of the game board, including tile offsets, board dimensions, hex sizes, and other layout properties.
     /// </summary>
-    public partial class BoardLayout : ObservableObject
+    public partial class BoardVisualLayout : ObservableObject
     {
         /// <summary>
         /// Gets or sets the vertical offset for tiles.

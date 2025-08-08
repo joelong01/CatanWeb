@@ -3,11 +3,17 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Text.Json.Serialization;
+using Catan3.Models;
 using Catan3.Utility;
+using Catan3.Shared.Models;
+using Catan3.DesktopApp.Layout;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
+using WinPoint = Windows.Foundation.Point;
+using HexCoordinates = Catan3.Shared.Utility.HexCoordinates;
+using HexSide = Catan3.Shared.Models.HexSide;
 namespace Catan3.Models
 {
     /// <summary>
@@ -26,7 +32,7 @@ namespace Catan3.Models
         /// Gets or sets the board layout.
         /// </summary>
         [ObservableProperty]
-        public partial BoardLayout Layout { get; set; }
+        public partial BoardVisualLayout Layout { get; set; }
 
         /// <summary>
         /// Gets or sets the left position of the harbor.
@@ -51,7 +57,7 @@ namespace Catan3.Models
         /// </summary>
         /// <param name="harbor">The harbor model.</param>
         /// <param name="layout">The board layout.</param>
-        public HarborViewModel(HarborModel harbor, BoardLayout layout)
+        public HarborViewModel(HarborModel harbor, BoardVisualLayout layout)
         {
             Harbor = harbor;
             Layout = layout;
@@ -61,20 +67,20 @@ namespace Catan3.Models
         /// <summary>
         /// Gets the default instance of the HarborViewModel class.
         /// </summary>
-        public static HarborViewModel Default => new(HarborModel.Default, BoardLayout.Default);
+        public static HarborViewModel Default => new(HarborModel.Default, BoardVisualLayout.Default);
 
         /// <summary>
         /// Initializes the view model by setting up property change listeners and updating the layout.
         /// </summary>
         void Init()
         {
-            if (Layout is not null && Layout is BoardLayout rbl)
+            if (Layout is not null && Layout is BoardVisualLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
             }
             else
             {
-                Layout = BoardLayout.Default;
+                Layout = BoardVisualLayout.Default;
                 Layout.PropertyChanged += Layout_PropertyChanged;
             }
             UpdateLayout();
@@ -95,7 +101,7 @@ namespace Catan3.Models
         /// <param name="e">The event arguments.</param>
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (sender is BoardLayout layout)
+            if (sender is BoardVisualLayout layout)
             {
                 this.Layout = layout;
                 UpdateLayout();
@@ -120,14 +126,14 @@ namespace Catan3.Models
         /// <param name="coordinates">The coordinates of the harbor.</param>
         /// <param name="side">The side of the hexagon where the harbor is located.</param>
         /// <returns>A Point representing the left and top position of the harbor.</returns>
-        public static Point GetLeftTop(BoardLayout Layout, HexCoordinates coordinates, HexSide side)
+        public static WinPoint GetLeftTop(BoardVisualLayout Layout, HexCoordinates coordinates, HexSide side)
         {
             double top = Layout.Top(coordinates);
             double left = Layout.Left(coordinates);
             double size = Layout.BuildingSize;
-            var pointDictionary = Layout.PointyHexPoints.PointyTopListToDictionary();
+            var pointDictionary = Layout.PointyHexPoints().PointyTopListToDictionary();
             // Get the point from the dictionary that corresponds to the harbor's position
-            Point vertexPoint = pointDictionary[side];
+            WinPoint vertexPoint = pointDictionary[side];
             // Adjust top and left to position the center of the harbor on the vertex
             top += vertexPoint.Y - size / 2.0; // Center vertically
             left += vertexPoint.X - size / 2.0; // Center horizontally
@@ -165,7 +171,7 @@ namespace Catan3.Models
                 default:
                     throw new ArgumentOutOfRangeException(nameof(Harbor.HarborKey.Side), $"Invalid hex side: {side}");
             }
-            return new Point(left, top);
+            return new WinPoint(left, top);
         }
 
         /// <summary>
@@ -177,7 +183,7 @@ namespace Catan3.Models
             {
                 PointCollection points = new();
                 double size = Layout.BuildingSize; // Assuming this is the diameter of the harbor circle
-                var flatTopDictionary = Layout.OuterHexPoints.FlatTopListToDictionary();
+                var flatTopDictionary = Layout.OuterHexPoints().FlatTopListToDictionary();
                 var tileTop = Layout.Top(Harbor.HarborKey.HexCoordinates);
                 var tileLeft = Layout.Left(Harbor.HarborKey.HexCoordinates);
                 var yOffset = Math.Abs(tileTop - Top);
@@ -186,48 +192,48 @@ namespace Catan3.Models
                 // (0,0) is the top-left corner of the UserControl
                 double centerX = size / 2.0; // X coordinate of the center of the harbor within the UserControl
                 double centerY = size / 2.0; // Y coordinate of the center of the harbor within the UserControl
-                Point topRight, topLeft, bottomRight, bottomLeft, left, right;
+                WinPoint topRight, topLeft, bottomRight, bottomLeft, left, right;
                 switch (Harbor.HarborKey.Side)
                 {
                     case HexSide.Top:
                         topLeft = flatTopDictionary[HexPosition.TopLeft];
                         topRight = flatTopDictionary[HexPosition.TopRight];
-                        points.Add(new Point(centerX, centerY));
+                        points.Add(new WinPoint(centerX, centerY));
                         points.Add(topLeft.Offset(-xOffset, yOffset));
                         points.Add(topRight.Offset(-xOffset, yOffset));
                         break;
                     case HexSide.TopRight:
                         topRight = flatTopDictionary[HexPosition.TopRight];
                         right = flatTopDictionary[HexPosition.Right];
-                        points.Add(new Point(centerX, centerY));
+                        points.Add(new WinPoint(centerX, centerY));
                         points.Add(topRight.Offset(-xOffset, -yOffset));
                         points.Add(right.Offset(-xOffset, -yOffset));
                         break;
                     case HexSide.BottomRight:
                         right = flatTopDictionary[HexPosition.Right];
                         bottomRight = flatTopDictionary[HexPosition.BottomRight];
-                        points.Add(new Point(centerX, centerY));
+                        points.Add(new WinPoint(centerX, centerY));
                         points.Add(right.Offset(-xOffset, -yOffset));
                         points.Add(bottomRight.Offset(-xOffset, -yOffset));
                         break;
                     case HexSide.Bottom:
                         bottomLeft = flatTopDictionary[HexPosition.BottomLeft];
                         bottomRight = flatTopDictionary[HexPosition.BottomRight];
-                        points.Add(new Point(centerX, centerY));
+                        points.Add(new WinPoint(centerX, centerY));
                         points.Add(bottomLeft.Offset(-xOffset, -yOffset));
                         points.Add(bottomRight.Offset(-xOffset, -yOffset));
                         break;
                     case HexSide.BottomLeft:
                         bottomLeft = flatTopDictionary[HexPosition.BottomLeft];
                         left = flatTopDictionary[HexPosition.Left];
-                        points.Add(new Point(centerX, centerY));
+                        points.Add(new WinPoint(centerX, centerY));
                         points.Add(bottomLeft.Offset(xOffset, -yOffset));
                         points.Add(left.Offset(xOffset, -yOffset));
                         break;
                     case HexSide.TopLeft:
                         topLeft = flatTopDictionary[HexPosition.TopLeft];
                         left = flatTopDictionary[HexPosition.Left];
-                        points.Add(new Point(centerX, centerY));
+                        points.Add(new WinPoint(centerX, centerY));
                         points.Add(topLeft.Offset(xOffset, -yOffset));
                         points.Add(left.Offset(xOffset, -yOffset));
                         break;

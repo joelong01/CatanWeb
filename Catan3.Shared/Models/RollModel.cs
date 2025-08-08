@@ -13,15 +13,15 @@ namespace Catan3.Shared.Models
         /// <summary>
         /// Gets or sets the roll counts for the game. Indexes 0 to 10 correspond to rolls 2 to 12.
         /// </summary>
-        [JsonPropertyName("RollCounts")]
+        [field: JsonPropertyName("RollCounts")]
         [ObservableProperty]
-        private int[] _rollCounts = new int[11];  // Indexes 0 to 10, corresponding to rolls 2 to 12
+        public partial int[] RollCounts { get; set; } = new int[11];
 
         /// <summary>
         /// Gets or sets the total number of rolls.
         /// </summary>
         [ObservableProperty]
-        private int _totalRolls = 0;
+        public partial int TotalRolls { get; set; } = 0;
     }
 
     /// <summary>
@@ -34,12 +34,12 @@ namespace Catan3.Shared.Models
         /// Gets or sets the turn roll model. Nullable as it gets set to null when the turn is over and the new one is created when the turn is started.
         /// </summary>
         [ObservableProperty]
-        private TurnRollModel? _turnRollModel;
+        public partial TurnRollModel? TurnRollModel { get; set; }
 
         /// <summary>
         /// Gets or sets the game roll model.
         /// </summary>
         [ObservableProperty]
-        private GameRollModel _gameRollModel = new();
+        public partial GameRollModel GameRollModel { get; set; } = new();
     }
 }

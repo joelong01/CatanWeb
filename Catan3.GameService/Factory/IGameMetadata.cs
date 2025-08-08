@@ -11,7 +11,6 @@ namespace Catan3.GameService.Factory
         Catan3.Shared.Models.HouseRules HouseRules { get; }
         Catan3.Shared.Models.ResourceRules ResourceRules { get; }
         bool HasSupplemental { get; }
-        Catan3.Shared.Models.BoardLayout Layout { get; }
         List<HexCoordinates> TileKeys { get; }
         List<Catan3.Shared.Models.ResourceType> Resources { get; }
         List<Catan3.Shared.Models.HarborModel> Harbors { get; }

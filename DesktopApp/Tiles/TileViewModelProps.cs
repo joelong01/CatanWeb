@@ -3,6 +3,9 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
+using Catan3.DesktopApp.Layout;
 namespace Catan3.Models
 {
     /// <summary>
@@ -20,7 +23,7 @@ namespace Catan3.Models
         /// Gets or sets the board layout.
         /// </summary>
         [ObservableProperty]
-        public partial BoardLayout? Layout { get; set; }
+        public partial BoardVisualLayout? Layout { get; set; }
 
         /// <summary>
         /// Gets or sets the left position of the tile.
@@ -61,7 +64,7 @@ namespace Catan3.Models
         /// <summary>
         /// Gets the default instance of the TileViewModel class.
         /// </summary>
-        public static TileViewModel Default { get; } = new(TileModel.Default, BoardLayout.Default);
+        public static TileViewModel Default { get; } = new(TileModel.Default, BoardVisualLayout.Default);
 
         /// <summary>
         /// Gets or sets the collection of target view models.

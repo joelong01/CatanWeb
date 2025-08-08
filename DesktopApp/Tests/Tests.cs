@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Catan3.Controller;
 using Catan3.Models;
+using Catan3.Shared.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
@@ -43,7 +44,7 @@ namespace Catan3.Tests
                 Debug.Assert(_tcs.Task.IsCompleted == true);
             }
             _tcs = new TaskCompletionSource<GameModel>(TaskCreationOptions.RunContinuationsAsynchronously);
-            Messenger.Send(new NewGameMessage(gameType, playerIds, savedFileName)); ;
+            Messenger.Send(new Catan3.Models.NewGameMessage(gameType, playerIds, savedFileName)); ;
             return _tcs.Task;
         }
 

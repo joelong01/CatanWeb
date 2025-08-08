@@ -13,25 +13,25 @@ namespace Catan3.Shared.Models
         /// Gets or sets the coordinates of the robber.
         /// </summary>
         [ObservableProperty]
-        private HexCoordinates _coordinates = HexCoordinates.Default;
+        public partial HexCoordinates Coordinates { get; set; } = HexCoordinates.Default;
 
         /// <summary>
         /// Gets or sets the ID of the player who moved the robber.
         /// </summary>
         [ObservableProperty]
-        private string? _movedBy;
+        public partial string? MovedBy { get; set; }
 
         /// <summary>
         /// Gets or sets the ID of the player who was targeted by the robber.
         /// </summary>
         [ObservableProperty]
-        private string? _targetted;
+        public partial string? Targetted { get; set; }
 
         /// <summary>
         /// Gets or sets the number of resources stolen by the robber.
         /// </summary>
         [ObservableProperty]
-        private int _resourcesStolen = 0;
+        public partial int ResourcesStolen { get; set; } = 0;
 
         /// <summary>
         /// Returns a string representation of the RobberModel.

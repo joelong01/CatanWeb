@@ -1,25 +1,21 @@
-﻿using System.Collections.Generic;
-using Catan3.Utility;
+using System.Collections.Generic;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
-using Catan3.DesktopApp.Models;
-using Catan3.DesktopApp.Layout;
 
-namespace Catan3.DesktopApp.Models
+namespace Catan3.Shared.Models
 {
     /// <summary>
     ///     Static data about a game Board
     /// </summary>
-    public partial class RegularBoardInfo : IDesktopGameMetadata
+    public partial class RegularBoardInfo : IGameMetadata
     {
         public GameType GameType { get; } = GameType.Regular;
         public string Description { get; } = "Regular Game";
         public HouseRules HouseRules { get; } = new HouseRules() { GoldTiles = 1, HideBaronBeforeInvasion = false, KnightMovesBaronBeforeRoll = true, WallsProtectCities = true };
         public ResourceRules ResourceRules { get; } = new ResourceRules(4, 5, 15, 3, 4);
         public static RegularBoardInfo Default { get; } = new RegularBoardInfo();
-        private RegularBoardInfo() => Layout = BoardVisualLayout.Default;
+        private RegularBoardInfo() { }
         public bool HasSupplemental => false;
-        public BoardVisualLayout Layout { get; private set; }
         public List<HexCoordinates> TileKeys { get; } =
              [
                  new(-2, 0, 2),

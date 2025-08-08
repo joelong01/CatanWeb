@@ -6,6 +6,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 namespace Catan3.Models
 {
     /// <summary>

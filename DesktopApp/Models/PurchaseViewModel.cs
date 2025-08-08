@@ -1,30 +1,12 @@
 ﻿using System.Windows.Input;
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Media;
+
 namespace Catan3.Models
 {
-    /// <summary>
-    /// Represents a model for an entitlement purchase, including the entitlement and whether it is enabled.
-    /// </summary>
-    /// <remarks>
-    /// Initializes a new instance of the EntitlementPurchaseModel class with the specified entitlement.
-    /// </remarks>
-    /// <param name="entitlement">The entitlement that will be purchased.</param>
-    public partial class EntitlementPurchaseModel(Entitlement entitlement) : ObservableObject
-    {
-        /// <summary>
-        /// Gets or sets the entitlement that will be purchased.
-        /// </summary>
-        [ObservableProperty]
-        public partial Entitlement Entitlement { get; set; } = entitlement;
-
-        /// <summary>
-        /// Gets or sets a value indicating whether the user is allowed to buy this entitlement at this time.
-        /// </summary>
-        [ObservableProperty]
-        public partial bool Enabled { get; set; } = false;
-    }
     /// <summary>
     /// Represents a view model for an entitlement purchase, including the purchase model, unspent count, orientation, description, glyph, command, and brushes.
     /// </summary>

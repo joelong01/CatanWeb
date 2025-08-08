@@ -12,20 +12,17 @@ namespace Catan3.Shared.Models
     public partial class TileModel : ObservableObject, IComparable<TileModel>
     {
         [ObservableProperty]
-        private HexCoordinates _tileKey = HexCoordinates.Default;
-        
-        [ObservableProperty]
-        private int _number;
-        
-        [ObservableProperty]
-        private ResourceType _resourceTileType;
-        
-        [ObservableProperty]
-        private bool _highlighted;
-        
-        [ObservableProperty]
-        private bool _temporarilyGold;
+        public partial HexCoordinates TileKey { get; set; } = HexCoordinates.Default;
 
+        [ObservableProperty]
+        public partial int Number { get; set; }
+        [ObservableProperty]
+        public partial ResourceType ResourceTileType { get; set; }
+
+        [ObservableProperty]
+        public partial bool Highlighted { get; set; }
+        [ObservableProperty]
+        public partial bool TemporarilyGold { get; set; }
         public static TileModel Default { get; } = new TileModel();
         
         public TileModel() { }

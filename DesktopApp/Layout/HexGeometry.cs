@@ -3,22 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
-namespace Catan3.Utility
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
+using WinPoint = Windows.Foundation.Point;
+
+namespace Catan3.DesktopApp.Layout
 {
-    /// <summary>
-    ///     this order matches the CalculateHexGeometry PointCollection order
-    /// </summary>
-    public enum HexPosition
-    {
-        
-        Right = 0,
-        BottomRight = 1,
-        BottomLeft = 2,
-        Left = 3,
-        TopLeft = 4,
-        TopRight = 5,
-        None = -1,
-    }
     /// <summary>
     ///     this is a static class for the Geometry of a Regular Flat top Hexagon.  Points assume (0,0) as the origin
     /// </summary>
@@ -75,7 +65,7 @@ namespace Catan3.Utility
                 adjustedX += deltaX;
                 adjustedY += deltaY;
                 HexCache[(size, true)] = points;
-                var newPoint = new Point(Math.Round(adjustedX, 2), Math.Round(adjustedY, 2));
+                var newPoint = new WinPoint(Math.Round(adjustedX, 2), Math.Round(adjustedY, 2));
                 points.Add(newPoint);
             }
             return points;
@@ -116,7 +106,7 @@ namespace Catan3.Utility
                 // Adjust x and y to align the topmost point at (deltaX, deltaY)
                 double adjustedX = originalX + deltaX;
                 double adjustedY = originalY + deltaY;
-                points.Add(new Point(Math.Round(adjustedX, 2), Math.Round(adjustedY, 2)));
+                points.Add(new WinPoint(Math.Round(adjustedX, 2), Math.Round(adjustedY, 2)));
             }
             HexCache[(size, false)] = points;
             return points;
@@ -148,14 +138,14 @@ namespace Catan3.Utility
         /// </summary>
         /// <param name="size">The size of the hexagon, defined as the length from its center to any vertex.</param>
         /// <returns>The Point representing the midpoint on the upper right segment of the hexagon.</returns>
-        public static Point BisectingPoint(double size)
+        public static WinPoint BisectingPoint(double size)
         {
             // The x-coordinate is given by the horizontal distance to the midpoint of the upper right segment,
             // which can be calculated as the cosine of 30 degrees times the size.
             // The y-coordinate is half the height of the equilateral triangle formed by the segment,
             // which is given by the sine of 60 degrees times the size.
             // These calculations assume the hexagon's orientation is such that one side is horizontal at the top.
-            return new Point(Math.Round(Math.Sqrt(3) / 2.0 * size, 2), Math.Round(size / 2.0, 2));
+            return new WinPoint(Math.Round(Math.Sqrt(3) / 2.0 * size, 2), Math.Round(size / 2.0, 2));
         }
         /// <summary>
         /// Calculates the size of a regular hexagon based on its height.
@@ -166,15 +156,6 @@ namespace Catan3.Utility
         public static double SizeFromHeight(double height)
         {
             return Math.Round(height / Math.Sqrt(3), 2);
-        }
-        public static HexCoordinates HexSubtract(HexCoordinates a, HexCoordinates b)
-        {
-            return new HexCoordinates(a.Q - b.Q, a.R - b.R, a.S - b.S);
-        }
-        public static double Distance(HexCoordinates a, HexCoordinates b)
-        {
-            var vec = HexSubtract(a, b);
-            return ( Math.Abs(vec.Q) + Math.Abs(vec.R) + Math.Abs(vec.S) ) / 2.0;
         }
     }
 }

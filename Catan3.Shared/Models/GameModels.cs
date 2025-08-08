@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Catan3.Shared.Utility;
 
@@ -99,7 +100,6 @@ namespace Catan3.Shared.Models
         public List<ResourceType> Resources { get; }
         public List<int> Numbers { get; }
         public List<HarborModel> Harbors { get; }
-        public BoardLayout Layout { get; }
         public bool HasSupplemental { get; }
         public HouseRules HouseRules { get; }
         public ResourceRules ResourceRules { get; }

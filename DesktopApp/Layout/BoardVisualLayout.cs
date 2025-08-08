@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 using Catan3.Utility;
+using Catan3.DesktopApp.Layout;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
-namespace Catan3.Models
+using Point = Windows.Foundation.Point;
+namespace Catan3.DesktopApp.Layout
 {
     /// <summary>
     /// This class is responsible for calculating the geometry of an inner hexagon placed within an outer hexagon. 
@@ -26,12 +30,12 @@ namespace Catan3.Models
     /// The positioning of the inner hexagon is adjusted such that the TileGap is the same on all sides, and the inner hexagon's 
     /// stroke is fully inside the boundary defined by the TileGap around the outer hexagon.
     /// </summary>
-    public partial class BoardLayout
+    public partial class BoardVisualLayout
     {
-        private BoardLayout() { }
+        private BoardVisualLayout() { }
         //
         //  this is used in the DependencyProperties so that there is a reasonable non-null default
-        public static BoardLayout Default { get; } = new BoardLayout();
+        public static BoardVisualLayout Default { get; } = new BoardVisualLayout();
         /// <summary>
         ///     return the top based on the geometry of a Regular Flat Topped Hexagon
         ///     see https://www.redblobgames.com/grids/hexagons/

@@ -1,21 +1,17 @@
-﻿using Catan3.Utility;
 using System.Collections.Generic;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
-using Catan3.DesktopApp.Models;
-using Catan3.DesktopApp.Layout;
 
-namespace Catan3.DesktopApp.Models
+namespace Catan3.Shared.Models
 {
-    public partial class ExpansionBoardInfo : IDesktopGameMetadata
+    public partial class ExpansionBoardInfo : IGameMetadata
     {
         public GameType GameType { get; } = GameType.Expansion;
         public string Description { get; } = "Expansion Game";
         public HouseRules HouseRules { get; } = new HouseRules() { GoldTiles = 2, HideBaronBeforeInvasion = false, KnightMovesBaronBeforeRoll = true, WallsProtectCities = true };
         public static ExpansionBoardInfo Default { get; } = new ExpansionBoardInfo();
         public ResourceRules ResourceRules { get; } = new ResourceRules(4, 5, 15, 3, 6);
-        private ExpansionBoardInfo() => Layout = BoardVisualLayout.Default;
-        public BoardVisualLayout Layout { get; private set; }
+        private ExpansionBoardInfo() { }
         public bool HasSupplemental => true;
         public List<HexCoordinates> TileKeys { get; } =
              [

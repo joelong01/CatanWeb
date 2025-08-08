@@ -1,17 +1,24 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using Catan3.Utility;
+using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
+using WinPoint = Windows.Foundation.Point;
+using HexCoordinates = Catan3.Shared.Utility.HexCoordinates;
+using Direction = Catan3.Shared.Models.Direction;
+using HexGeometry = Catan3.DesktopApp.Layout.HexGeometry;
+using Catan3.DesktopApp.Layout;
 namespace Catan3.Models
+
 {
     /// <summary>
     /// Represents the view model for a road, including its layout, position, and related properties.
@@ -29,13 +36,13 @@ namespace Catan3.Models
         /// Gets or sets the board layout.
         /// </summary>
         [ObservableProperty]
-        public partial BoardLayout Layout { get; set; } = BoardLayout.Default;
+        public partial BoardVisualLayout Layout { get; set; } = BoardVisualLayout.Default;
 
         /// <summary>
         /// Gets or sets the center point of the road.
         /// </summary>
         [ObservableProperty]
-        public partial Point RoadCenter { get; set; } = new Point(0, 0);
+        public partial WinPoint RoadCenter { get; set; } = new WinPoint(0, 0);
 
         /// <summary>
         /// Gets or sets the left position of the road.
@@ -71,10 +78,10 @@ namespace Catan3.Models
         /// <param name="road">The road model.</param>
         /// <param name="layout">The board layout.</param>
         [SetsRequiredMembers]
-        public RoadViewModel(RoadModel road, BoardLayout layout)
+        public RoadViewModel(RoadModel road, BoardVisualLayout layout)
         {
             Road = road ?? throw new ArgumentNullException(nameof(road), "road cannot be null"); ;
-            Layout = layout ?? throw new ArgumentNullException(nameof(layout), "Layout cannot be null");
+      
             IsActive = true;
             Messenger.Register<CurrentPlayerChanged>(this, (recipient, message) =>
             {
@@ -92,7 +99,7 @@ namespace Catan3.Models
                     OnPropertyChanged(nameof(GetBackgroundBrush));
                 }
             });
-            if (Layout is not null && Layout is BoardLayout rbl)
+            if (layout is not null && layout is BoardVisualLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
             }
@@ -106,7 +113,7 @@ namespace Catan3.Models
         /// <param name="e">The event arguments.</param>
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (sender is BoardLayout layout)
+            if (sender is BoardVisualLayout layout)
             {
                 Layout = layout;
                 UpdateLayout();
@@ -134,7 +141,7 @@ namespace Catan3.Models
 
             double offset = Layout.OuterHexSize - Layout.InnerHexSize;
             var pointyTopHexPoints = HexGeometry.PointyTopHexPoints(Layout.InnerHexSize - offset / 2.0, Layout.ControlWidth / 2.0, Layout.ControlHeight / 2.0).PointyTopListToDictionary();
-            RoadCenter = new Point(pointyTopHexPoints[this.Road.RoadKey.HexSide].X - BUILD_INDEX_TEXT_SIZE / 2.0, pointyTopHexPoints[this.Road.RoadKey.HexSide].Y - BUILD_INDEX_TEXT_SIZE / 2.0);
+            RoadCenter = new WinPoint(pointyTopHexPoints[this.Road.RoadKey.HexSide].X - BUILD_INDEX_TEXT_SIZE / 2.0, pointyTopHexPoints[this.Road.RoadKey.HexSide].Y - BUILD_INDEX_TEXT_SIZE / 2.0);
             OnPropertyChanged(nameof(RoadPolygon));
         }
 
@@ -184,7 +191,7 @@ namespace Catan3.Models
         /// <param name="tileKey">The tile key.</param>
         /// <param name="layout">The board layout.</param>
         /// <returns>The points for the road.</returns>
-        private static PointCollection GetRoadPoints(HexSide side, HexCoordinates tileKey, BoardLayout layout)
+        private static PointCollection GetRoadPoints(HexSide side, HexCoordinates tileKey, BoardVisualLayout layout)
         {
             Dictionary<HexSide, PointCollection>? sideDictionary;
             if (RoadCache.TryGetValue((layout.OuterHexSize, layout.TileGap, layout.InnerHexStrokeThickness), out sideDictionary))
@@ -220,13 +227,13 @@ namespace Catan3.Models
         /// <param name="tileKey">The tile key.</param>
         /// <param name="layout">The board layout.</param>
         /// <returns>The points for the specified side.</returns>
-        private static PointCollection PointsForSide(HexSide side, HexCoordinates tileKey, BoardLayout layout)
+        private static PointCollection PointsForSide(HexSide side, HexCoordinates tileKey, BoardVisualLayout layout)
         {
             PointCollection points = [];
             if (layout is null) return points;
             var outerHexPoints = layout.OuterHexPoints.FlatTopListToDictionary();
             var innerHexPoints = layout.InnerHexPoints.FlatTopListToDictionary();
-            Point delta;
+            WinPoint delta;
             switch (side)
             {
                 case HexSide.None:
@@ -235,7 +242,7 @@ namespace Catan3.Models
                     PointCollection bottom = PointsForSide(HexSide.Bottom, tileKey, layout);
                     foreach (var point in bottom)
                     {
-                        points.Add(new Point(point.X, point.Y - layout.ControlHeight));
+                        points.Add(new WinPoint(point.X, point.Y - layout.ControlHeight));
                     }
                     break;
                 case HexSide.TopRight:
@@ -244,15 +251,15 @@ namespace Catan3.Models
                     points.Add(innerHexPoints[HexPosition.TopRight]);
                     points.Add(innerHexPoints[HexPosition.Right]);
                     points.Add(outerHexPoints[HexPosition.Right]);
-                    points.Add(new Point(innerHexPoints[HexPosition.BottomLeft].X + delta.X, innerHexPoints[HexPosition.BottomRight].Y + delta.Y));
-                    points.Add(new Point(innerHexPoints[HexPosition.Left].X + delta.X, innerHexPoints[HexPosition.Left].Y + delta.Y));
+                    points.Add(new WinPoint(innerHexPoints[HexPosition.BottomLeft].X + delta.X, innerHexPoints[HexPosition.BottomRight].Y + delta.Y));
+                    points.Add(new WinPoint(innerHexPoints[HexPosition.Left].X + delta.X, innerHexPoints[HexPosition.Left].Y + delta.Y));
                     break;
                 case HexSide.BottomRight:
                     delta = GapBetweenTiles(tileKey, Direction.SouthEast, layout);
                     points.Add(innerHexPoints[HexPosition.BottomRight]);
                     points.Add(outerHexPoints[HexPosition.BottomRight]);
-                    points.Add(new Point(innerHexPoints[HexPosition.Left].X + delta.X, innerHexPoints[HexPosition.Left].Y + delta.Y));
-                    points.Add(new Point(innerHexPoints[HexPosition.TopLeft].X + delta.X, innerHexPoints[HexPosition.TopLeft].Y + delta.Y));
+                    points.Add(new WinPoint(innerHexPoints[HexPosition.Left].X + delta.X, innerHexPoints[HexPosition.Left].Y + delta.Y));
+                    points.Add(new WinPoint(innerHexPoints[HexPosition.TopLeft].X + delta.X, innerHexPoints[HexPosition.TopLeft].Y + delta.Y));
                     points.Add(outerHexPoints[HexPosition.Right]);
                     points.Add(innerHexPoints[HexPosition.Right]);
                     break;
@@ -261,15 +268,15 @@ namespace Catan3.Models
                     points.Add(innerHexPoints[HexPosition.BottomLeft]);
                     points.Add(innerHexPoints[HexPosition.BottomRight]);
                     points.Add(outerHexPoints[HexPosition.BottomRight]);
-                    points.Add(new Point(innerHexPoints[HexPosition.BottomRight].X, innerHexPoints[HexPosition.TopRight].Y + layout.ControlHeight));
-                    points.Add(new Point(innerHexPoints[HexPosition.BottomLeft].X, innerHexPoints[HexPosition.TopLeft].Y + layout.ControlHeight));
+                    points.Add(new WinPoint(innerHexPoints[HexPosition.BottomRight].X, innerHexPoints[HexPosition.TopRight].Y + layout.ControlHeight));
+                    points.Add(new WinPoint(innerHexPoints[HexPosition.BottomLeft].X, innerHexPoints[HexPosition.TopLeft].Y + layout.ControlHeight));
                     break;
                 case HexSide.BottomLeft:
                     delta = GapBetweenTiles(tileKey, Direction.SouthWest, layout);
                     points.Add(innerHexPoints[HexPosition.BottomLeft]);
                     points.Add(outerHexPoints[HexPosition.BottomLeft]);
-                    points.Add(new Point(innerHexPoints[HexPosition.Right].X + delta.X, innerHexPoints[HexPosition.Right].Y + delta.Y));
-                    points.Add(new Point(innerHexPoints[HexPosition.TopRight].X + delta.X, innerHexPoints[HexPosition.TopRight].Y + delta.Y));
+                    points.Add(new WinPoint(innerHexPoints[HexPosition.Right].X + delta.X, innerHexPoints[HexPosition.Right].Y + delta.Y));
+                    points.Add(new WinPoint(innerHexPoints[HexPosition.TopRight].X + delta.X, innerHexPoints[HexPosition.TopRight].Y + delta.Y));
                     points.Add(outerHexPoints[HexPosition.Left]);
                     points.Add(innerHexPoints[HexPosition.Left]);
                     break;
@@ -277,8 +284,8 @@ namespace Catan3.Models
                     delta = GapBetweenTiles(tileKey, Direction.NorthWest, layout);
                     points.Add(innerHexPoints[HexPosition.TopLeft]);
                     points.Add(outerHexPoints[HexPosition.TopLeft]);
-                    points.Add(new Point(innerHexPoints[HexPosition.Right].X + delta.X, innerHexPoints[HexPosition.Right].Y + delta.Y));
-                    points.Add(new Point(innerHexPoints[HexPosition.BottomRight].X + delta.X, innerHexPoints[HexPosition.BottomRight].Y + delta.Y));
+                    points.Add(new WinPoint(innerHexPoints[HexPosition.Right].X + delta.X, innerHexPoints[HexPosition.Right].Y + delta.Y));
+                    points.Add(new WinPoint(innerHexPoints[HexPosition.BottomRight].X + delta.X, innerHexPoints[HexPosition.BottomRight].Y + delta.Y));
                     points.Add(outerHexPoints[HexPosition.Left]);
                     points.Add(innerHexPoints[HexPosition.Left]);
                     break;
@@ -295,12 +302,12 @@ namespace Catan3.Models
         /// <param name="direction">The direction to the adjacent tile.</param>
         /// <param name="layout">The board layout.</param>
         /// <returns>The gap between the tiles as a Point.</returns>
-        private static Point GapBetweenTiles(HexCoordinates key, Direction direction, BoardLayout layout)
+        private static WinPoint GapBetweenTiles(HexCoordinates key, Direction direction, BoardVisualLayout layout)
         {
             var adjacentKey = key.GetAdjacentTile(direction);
             double xGap = layout.Left(adjacentKey) - layout.Left(key);
             double yGap = layout.Top(adjacentKey) - layout.Top(key);
-            return new Point(xGap, yGap);
+            return new WinPoint(xGap, yGap);
         }
 
         /// <summary>

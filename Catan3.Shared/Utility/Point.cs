@@ -1,3 +1,5 @@
+using System;
+
 namespace Catan3.Shared.Utility
 {
     /// <summary>

@@ -15,25 +15,25 @@ namespace Catan3.Shared.Models
         /// Gets or sets the key of the road.
         /// </summary>
         [ObservableProperty]
-        private RoadKey _roadKey = new();
+        public partial RoadKey RoadKey { get; set; } = new();
 
         /// <summary>
         /// Gets or sets the state of the road.
         /// </summary>
         [ObservableProperty]
-        private RoadState _roadState = RoadState.Unowned;
+        public partial RoadState RoadState { get; set; } = RoadState.Unowned;
 
         /// <summary>
         /// Gets or sets the owner ID of the road.
         /// </summary>
         [ObservableProperty]
-        private string? _ownerId;
+        public partial string? OwnerId { get; set; }
 
         /// <summary>
         /// Gets or sets the build index of the road.
         /// </summary>
         [ObservableProperty]
-        private int _buildIndex = 0;
+        public partial int BuildIndex { get; set; } = 0;
 
         public RoadModel() { }
 

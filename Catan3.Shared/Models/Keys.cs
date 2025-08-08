@@ -12,10 +12,10 @@ namespace Catan3.Shared.Models
     public partial class RoadKey : ObservableObject, IComparable<RoadKey>
     {
         [ObservableProperty]
-        private HexCoordinates _tileKey = HexCoordinates.Default;
-        
+        public partial HexCoordinates TileKey { get; set; } = HexCoordinates.Default;
+
         [ObservableProperty]
-        private HexSide _hexSide = HexSide.Bottom;
+        public partial HexSide HexSide { get; set; } = HexSide.Bottom;
 
         /// <summary>
         /// Initializes a new instance of the RoadKey class with the specified tile key and hex side.
@@ -71,10 +71,10 @@ namespace Catan3.Shared.Models
     public partial class BuildingKey : ObservableObject, IComparable<BuildingKey>
     {
         [ObservableProperty]
-        private HexCoordinates _hexCoordinates = HexCoordinates.Default;
-        
+        public partial HexCoordinates HexCoordinates { get; set; } = HexCoordinates.Default;
+
         [ObservableProperty]
-        private HexPosition _position = HexPosition.None;
+        public partial HexPosition Position { get; set; } = HexPosition.None;
 
         /// <summary>
         /// Initializes a new instance of the BuildingKey class with the specified coordinates and position.

@@ -23,6 +23,14 @@ namespace Catan3.GameService.Controllers
     /// Separation of Concerns: This class focuses solely on game state logic.
     /// Real-time client notifications are handled by IClientNotification service.
     /// </summary>
+    // SYNC NOTE:
+    // This class must remain behaviorally in sync with `DesktopApp/GameState/GameController.cs`.
+    // When changing game-state transitions or board shuffling logic, ensure both are updated.
+    // Critical sync points:
+    // - Entering MustMoveRobber: set PreviousGameState before transition (Soldier and Seven cases)
+    // - ShuffleCurrentGame: use GameFactory.Shuffle(gameModel) to change tile contents, not list order
+    // - AllowNext rules and SetActionFlags behavior must match client expectations
+    // - Buildable roads/buildings logic semantics should remain aligned
     public class GameStateMachine
     {
         private Log<string> Log;
@@ -177,7 +185,7 @@ namespace Catan3.GameService.Controllers
         {
             try
             {
-                var model = NewGame(message.GameType, message.PlayerIds);
+            var model = NewGame(message.GameType, message.PlayerIds);
                 LogGameModel(model);
                 return model;
             }
@@ -337,6 +345,8 @@ namespace Catan3.GameService.Controllers
             if (entitlement == Entitlement.Soldier)
             {
                 ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.WaitingForRoll]);
+                // Remember prior state so MoveRobber can return correctly
+                gameModel.PreviousGameState = gameModel.GameState;
                 gameModel.GameState = GameState.MustMoveRobber;
             }
             else
@@ -416,7 +426,7 @@ namespace Catan3.GameService.Controllers
 
         public GameModel NewGame(GameType selectedGame, IList<string> playerIds)
         {
-            var gameModel = GameFactory.CreateGame(selectedGame, playerIds);
+            var gameModel = Catan3.GameService.Factory.GameFactory.CreateGame(selectedGame, playerIds);
             Log.GameType = selectedGame;
             gameModel.GameType = selectedGame;
             gameModel.GameState = GameState.PickingBoard;
@@ -504,6 +514,8 @@ namespace Catan3.GameService.Controllers
             if (msg.Roll.NormalRoll == ValidCatanRoll.Seven)
             {
                 gameModel.CurrentPlayer().UnspentEntitlements.Add(Entitlement.RolledSeven);
+                // Remember prior state so MoveRobber can return correctly
+                gameModel.PreviousGameState = gameModel.GameState;
                 gameModel.GameState = GameState.MustMoveRobber;
             }
             return gameModel;
@@ -1044,7 +1056,8 @@ namespace Catan3.GameService.Controllers
         {
             GameModel gameModel = Log.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [GameState.PickingBoard]);
-            gameModel.Shuffle();
+            // Use board-content shuffle (resource/number/harbor) to avoid reordering the tile list
+            Catan3.GameService.Factory.GameFactory.Shuffle(gameModel);
             return gameModel;
         }
 

@@ -15,7 +15,7 @@
   <mp:PhoneIdentity PhoneProductId="606d7833-a1be-4389-aa5f-fe8dd1dd1da3" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>Catan3</DisplayName>
+    <DisplayName>Catan Desktop</DisplayName>
     <PublisherDisplayName>joelo</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -34,8 +34,8 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="Catan3"
-        Description="Catan3"
+        DisplayName="Catan Desktop"
+        Description="Catan Desktop - Settlers of Catan companion game"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">

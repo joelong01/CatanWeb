@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-
+using Catan3.Shared.Models;
+using Catan3.Shared.Extensions;
+using Catan3.Shared.Utility;
 using Microsoft.UI.Xaml.Controls;
 namespace Catan3.Models
 {
@@ -31,7 +34,7 @@ namespace Catan3.Models
 
             return $"{gameState.Description()}";
         }
-        public string BIND_StarCount(int stars, ObservableCollection<TileModel> _tiles)
+        public string BIND_StarCount(int stars, List<TileModel> _tiles)
         {
             Debug.Assert(GameModel is not null);
             int count = 0;

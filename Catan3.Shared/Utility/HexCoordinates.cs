@@ -1,4 +1,6 @@
 
+using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -12,14 +14,13 @@ namespace Catan3.Shared.Utility
     public partial class HexCoordinates(int q, int r, int s) : ObservableObject, IComparable<HexCoordinates>
     {
         [ObservableProperty]
-        private int _q = q;
+        public partial int Q { get; set; } = q;
 
         [ObservableProperty]
-        private int _r = r;
+        public partial int R { get; set; } = r;
 
         [ObservableProperty]
-        private int _s = s;
-
+        public partial int S { get; set; } = s;
         [JsonIgnore]
         public static Dictionary<Direction, HexCoordinates> Directions { get; } = new()
             {
@@ -64,6 +65,39 @@ namespace Catan3.Shared.Utility
         public static HexCoordinates operator +(HexCoordinates x, HexCoordinates y)
         {
             return new HexCoordinates(x.Q + y.Q, x.R + y.R, x.S + y.S);
+        }
+
+        /// <summary>
+        /// Subtracts one HexCoordinates instance from another.
+        /// </summary>
+        /// <param name="x">The first HexCoordinates instance.</param>
+        /// <param name="y">The second HexCoordinates instance to subtract.</param>
+        /// <returns>A new HexCoordinates instance representing the difference.</returns>
+        public static HexCoordinates operator -(HexCoordinates x, HexCoordinates y)
+        {
+            return new HexCoordinates(x.Q - y.Q, x.R - y.R, x.S - y.S);
+        }
+
+        /// <summary>
+        /// Calculates the distance between two HexCoordinates instances.
+        /// </summary>
+        /// <param name="a">The first HexCoordinates instance.</param>
+        /// <param name="b">The second HexCoordinates instance.</param>
+        /// <returns>The distance between the two HexCoordinates instances.</returns>
+        public static double Distance(HexCoordinates a, HexCoordinates b)
+        {
+            var vec = a - b;
+            return (Math.Abs(vec.Q) + Math.Abs(vec.R) + Math.Abs(vec.S)) / 2.0;
+        }
+
+        /// <summary>
+        /// Calculates the distance from this HexCoordinates to another.
+        /// </summary>
+        /// <param name="other">The other HexCoordinates instance.</param>
+        /// <returns>The distance to the other HexCoordinates instance.</returns>
+        public double DistanceTo(HexCoordinates other)
+        {
+            return Distance(this, other);
         }
 
         /// <summary>

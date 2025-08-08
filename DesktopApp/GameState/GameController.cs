@@ -7,7 +7,9 @@ using System.Threading.Tasks;
 
 using Catan.Services;
 
-using Catan10.Models;
+using Catan3.Shared.Models;
+using Catan3.Shared.Extensions;
+using Catan3.Shared.Utility;
 
 using Catan3.Models;
 using Catan3.Utility;
@@ -19,6 +21,13 @@ using CommunityToolkit.WinUI;
 using Microsoft.UI.Dispatching;
 namespace Catan3.Controller
 {
+    // SYNC NOTE:
+    // Keep this class behaviorally in sync with `Catan3.GameService/Controllers/GameStateMachine.cs`.
+    // Critical sync points:
+    // - Set PreviousGameState before transitioning to MustMoveRobber (Soldier and Seven flows)
+    // - Use GameFactory.Shuffle(gameModel) for content shuffle, not GameModel.Shuffle()
+    // - Keep AllowNext/SetActionFlags rules aligned
+    // - Maintain identical logic for buildable roads/buildings computations
     public class GameController : ObservableRecipient
     {
         private Log<string> Log;
@@ -125,7 +134,7 @@ namespace Catan3.Controller
                      SendErrorMessage(e.Message, e.ErrorLevel);
                  }
              });
-            Messenger.Register<NewGameMessage>(this, (recipient, message) =>
+            Messenger.Register<Catan3.Models.NewGameMessage>(this, (recipient, message) =>
             {
                 try
                 {
@@ -268,6 +277,8 @@ namespace Catan3.Controller
             {
                 // the entitlements you can get before rolling -- right now only the right to move the knight
                 ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.WaitingForRoll]);
+                // Remember the state we were in so we can return to it after moving the robber
+                gameModel.PreviousGameState = gameModel.GameState;
                 gameModel.GameState = GameState.MustMoveRobber;
             }
             else
@@ -468,6 +479,8 @@ namespace Catan3.Controller
             if (msg.Roll.NormalRoll == ValidCatanRoll.Seven)
             {
                 gameModel.CurrentPlayer().UnspentEntitlements.Add(Entitlement.RolledSeven);
+                // Remember where to return after the robber move completes
+                gameModel.PreviousGameState = gameModel.GameState;
                 gameModel.GameState = GameState.MustMoveRobber;
             }
             return gameModel;
@@ -1232,7 +1245,8 @@ namespace Catan3.Controller
             //  CONSIDER: caching the state to do a top level check w/o the GameModel hydration cost
             GameModel gameModel = Log.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [GameState.PickingBoard]);
-            gameModel.Shuffle();
+            // Call content shuffle (resource/number) explicitly to avoid calling GameModel.Shuffle() list reorder
+            Catan3.Models.GameFactory.Shuffle(gameModel);
             return gameModel;
         }
         public SerializableLog GetSerializableLog()

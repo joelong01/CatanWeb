@@ -1,6 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 namespace Catan3.Models
 {
     public partial class BuildingViewModel : ObservableRecipient

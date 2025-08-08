@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Security;
 
-using Catan10.Models;
+using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 

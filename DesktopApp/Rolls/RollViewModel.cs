@@ -4,6 +4,8 @@ using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 using static Catan3.Models.TurnRollViewModel;
 namespace Catan3.Models
 {
@@ -61,7 +63,7 @@ namespace Catan3.Models
         /// <summary>
         /// Gets a value indicating whether the turn roll is complete.
         /// </summary>
-        private bool IsComplete => TurnRollModel is not null && TurnRollModel.RedRoll != -1 && TurnRollModel.WhiteRoll != -1 && TurnRollModel.SpecialRoll != SpecialDice.None;
+        private bool IsComplete => TurnRollModel is not null && TurnRollModel.RedRoll != -1 && TurnRollModel.WhiteRoll != -1 && TurnRollModel.SpecialDice != SpecialDice.None;
 
         /// <summary>
         /// Sets the red roll value and sends a RollMessage if the turn roll is complete.
@@ -95,7 +97,7 @@ namespace Catan3.Models
         private void SpecialRoll(SpecialDice roll)
         {
             if (TurnRollModel is null) return;
-            TurnRollModel.SpecialRoll = roll;
+            TurnRollModel.SpecialDice = roll;
             if (IsComplete) { Messenger.Send(new RollMessage(TurnRollModel)); }
         }
 
@@ -107,8 +109,15 @@ namespace Catan3.Models
         private void NormalRoll(ValidCatanRoll roll)
         {
             if (roll == ValidCatanRoll.None) return;
-            if (TurnRollModel is null) return;
-            TurnRollModel.NormalRoll = roll;
+            // Ensure model exists
+            TurnRollModel ??= new TurnRollModel();
+
+            // Populate model so NormalRoll computes to the selected total (sum of red + white)
+            int total = (int)roll;
+            TurnRollModel.RedRoll = total;
+            TurnRollModel.WhiteRoll = 0;
+            TurnRollModel.SpecialDice = SpecialDice.None;
+
             Messenger.Send(new RollMessage(TurnRollModel));
         }
 

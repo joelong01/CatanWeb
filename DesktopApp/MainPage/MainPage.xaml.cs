@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Catan3.Models;
 using Catan3.Player;
 using Catan3.Tests;
+using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;

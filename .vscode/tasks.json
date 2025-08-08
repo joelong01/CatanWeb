@@ -7,10 +7,9 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/Catan3.csproj",
+                "${workspaceFolder}/Catan.sln",
                 "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary",
-                "/p:Platform=x64"
+                "/consoleloggerparameters:NoSummary"
             ],
             "problemMatcher": "$msCompile"
         }

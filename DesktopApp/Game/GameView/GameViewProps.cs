@@ -3,6 +3,9 @@ using System.Diagnostics;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
+using Catan3.DesktopApp.Models;
 using static Catan3.Models.TurnRollViewModel;
 namespace Catan3.Models
 {
@@ -43,7 +46,7 @@ namespace Catan3.Models
         /// Gets or sets the board information.
         /// </summary>
         [ObservableProperty]
-        public partial IGameMetadata? BoardInfo { get; set; }
+        public partial IDesktopGameMetadata? BoardInfo { get; set; }
 
         /// <summary>
         /// Gets or sets the view model for the robber.
@@ -196,7 +199,8 @@ namespace Catan3.Models
             foreach (var building in Buildings)
             {
                 if (building.Building.OwnerId is not null) continue;
-                if (building.Building.BuildingState == BuildingState.NotBuildable) continue;
+                // During PickingBoard we want to show Stars even for NotBuildable locations
+                if (building.Building.BuildingState == BuildingState.NotBuildable && GameModel.GameState != GameState.PickingBoard) continue;
                 if (building.VisualState == BuildingVisualState.Highlighted) continue;
                 bool hasEntitlement = CurrentPlayer.Player.UnspentEntitlements.Contains(Entitlement.Settlement);
                 //

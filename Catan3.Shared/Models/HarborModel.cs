@@ -16,19 +16,19 @@ namespace Catan3.Shared.Models
     public partial class HarborKey : ObservableObject, IComparable<HarborKey>
     {
         [ObservableProperty]
-        private HexCoordinates _hexCoordinates = new(0, 0, 0);
+        public partial HexCoordinates HexCoordinates { get; set; } = new(0, 0, 0);
 
         /// <summary>
         /// Gets or sets the type of the harbor.
         /// </summary>
         [ObservableProperty]
-        private HarborType _harborType = HarborType.ThreeForOne;
+        public partial HarborType HarborType { get; set; } = HarborType.ThreeForOne;
 
         /// <summary>
         /// Gets or sets the side of the hexagon where the harbor is located.
         /// </summary>
         [ObservableProperty]
-        private HexSide _side = HexSide.Bottom;
+        public partial HexSide Side { get; set; } = HexSide.Bottom;
 
         /// <summary>
         /// Initializes a new instance of the HarborKey class with the specified coordinates, type, and side.
@@ -124,13 +124,13 @@ namespace Catan3.Shared.Models
         /// Gets or sets the key of the harbor.
         /// </summary>
         [ObservableProperty]
-        private HarborKey _harborKey = new();
+        public partial HarborKey HarborKey { get; set; } = new();
 
         /// <summary>
         /// Gets or sets the owner of the harbor.
         /// </summary>
         [ObservableProperty]
-        private PlayerModel? _owner = null;
+        public partial PlayerModel? Owner { get; set; } = null;
 
         /// <summary>
         /// Gets the default instance of the HarborModel class.

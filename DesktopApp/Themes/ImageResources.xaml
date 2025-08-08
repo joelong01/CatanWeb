@@ -94,5 +94,5 @@
         ImageSource="../Assets/ResourceCards/robber.png"
         Stretch="UniformToFill" />
     <ImageBrush x:Key="ResourceCard.Invasion"
-            ImageSource="../Assets\Tiles\gpt invasion.png" Stretch="Fill" />
+            ImageSource="../Assets/Tiles/gpt invasion.png" Stretch="Fill" />
 </ResourceDictionary>

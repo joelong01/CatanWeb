@@ -11,6 +11,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.UI;
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 
 namespace Catan3.Models
 {
@@ -85,7 +87,7 @@ namespace Catan3.Models
         /// </summary>
         [ObservableProperty]
         [property: JsonIgnore]
-        public partial PlayerModel Player { get; set; } = PlayerModel.Default;
+        public partial PlayerModel Player { get; set; } = new PlayerModel();
 
         /// <summary>
         /// Gets or sets the resources for this turn. This property is not serialized.
@@ -211,7 +213,10 @@ namespace Catan3.Models
                 StatDictionary[stat.Name] = new PlayerStatsViewModel(Id, stat, PlayerColors);
             }
             // the list of stats to bind to
-            PlayerStats.AddRange([.. StatDictionary.Values.ToList()]);
+            foreach (var stat in StatDictionary.Values)
+            {
+                PlayerStats.Add(stat);
+            }
         }
 
         /// <summary>

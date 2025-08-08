@@ -12,7 +12,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Catan.Services;
 using Catan3.Controller;
-using Catan3.Models;
+using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.Storage;

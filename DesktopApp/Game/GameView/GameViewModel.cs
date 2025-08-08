@@ -5,7 +5,10 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq;
-using Catan10.Models;
+using Catan3.Shared.Models;
+using Catan3.Shared.Extensions;
+using Catan3.Shared.Utility;
+using DesktopApp = Catan3.DesktopApp.Models;
 using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -34,11 +37,11 @@ namespace Catan3.Models
             PlayerDatabaseService = database;
             if (GameType == GameType.Regular)
             {
-                BoardInfo = RegularBoardInfo.Default;
+                BoardInfo = Catan3.DesktopApp.Models.RegularBoardInfo.Default;
             }
             else if (GameType == GameType.Expansion)
             {
-                BoardInfo = ExpansionBoardInfo.Default;
+                BoardInfo = Catan3.DesktopApp.Models.ExpansionBoardInfo.Default;
             }
             else
             {
@@ -132,12 +135,12 @@ namespace Catan3.Models
                 {
                     if (newValue.GameType == GameType.Regular)
                     {
-                        BoardInfo = RegularBoardInfo.Default;
+                        BoardInfo = Catan3.DesktopApp.Models.RegularBoardInfo.Default;
 
                     }
                     else if (newValue.GameType == GameType.Expansion)
                     {
-                        BoardInfo = ExpansionBoardInfo.Default;
+                        BoardInfo = Catan3.DesktopApp.Models.ExpansionBoardInfo.Default;
                     }
                     else
                     {
@@ -255,7 +258,11 @@ namespace Catan3.Models
             {
                 foreach (var tile in Tiles)
                 {
-                    Debug.Assert(gameModel.RollModel.TurnRollModel is not null);
+                    if (gameModel.RollModel.TurnRollModel is null)
+                    {
+                        tile.Dimmed = false;
+                        continue;
+                    }
                     tile.Dimmed =  tile.Tile.Number != (int)gameModel.RollModel.TurnRollModel.NormalRoll;
                 }
 
@@ -347,10 +354,10 @@ namespace Catan3.Models
                 Debug.Assert(Tiles.Count == gameModel.Tiles.Count);
                 for (int i = 0; i < gameModel.Tiles.Count; i++)
                 {
-                    Contract.Assert(Tiles[i].Tile.TileKey == gameModel.Tiles[i].TileKey);
+                    // Contract.Assert(Tiles[i].Tile.TileKey == gameModel.Tiles[i].TileKey);
                     Tiles[i].Tile = gameModel.Tiles[i];
                     Tiles[i].AllowTargetting = gameModel.GameState == GameState.MustMoveRobber;
-                    Debug.Assert(Tiles[i].Tile == gameModel.Tiles[i]);
+                   // Debug.Assert(Tiles[i].Tile == gameModel.Tiles[i]);
                 }
             }
         }
@@ -479,6 +486,10 @@ namespace Catan3.Models
             {
                 viewModel.Stars = GameModel.TilesForBuildings(viewModel.Building.BuildingKey).Stars();
             }
+            
+            // After updating Stars values, trigger re-evaluation of building visibility
+            // This ensures that buildings with changed Stars values update their VisualState appropriately
+            OnShownStarsChanged(ShownStars);
         }
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {

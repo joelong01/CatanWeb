@@ -11,8 +11,6 @@ namespace Catan3.GameService.Factory
         public HouseRules HouseRules { get; } = new HouseRules() { GoldTiles = 2, HideBaronBeforeInvasion = false, KnightMovesBaronBeforeRoll = true, WallsProtectCities = true };
         public static ExpansionBoardInfo Default { get; } = new ExpansionBoardInfo();
         public ResourceRules ResourceRules { get; } = new ResourceRules(4, 5, 15, 3, 6);
-        private ExpansionBoardInfo() => Layout = BoardLayout.Default;
-        public BoardLayout Layout { get; private set; }
         public bool HasSupplemental => true;
         public List<HexCoordinates> TileKeys { get; } =
              [

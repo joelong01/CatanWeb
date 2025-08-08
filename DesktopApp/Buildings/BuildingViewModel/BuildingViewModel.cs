@@ -1,7 +1,10 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 using Catan3.Utility;
+using Catan3.DesktopApp.Layout;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
@@ -18,26 +21,26 @@ namespace Catan3.Models
     /// </summary>
     public partial class BuildingViewModel : ObservableRecipient
     {
-        public BuildingViewModel(BuildingModel building, BoardLayout layout) : this()
+        public BuildingViewModel(BuildingModel building, DesktopApp.Layout.BoardVisualLayout layout) : this()
         {
             Building = building;
             Layout = layout;
             IsActive = true;
-            if (Layout is not null && Layout is BoardLayout rbl)
+            if (Layout is not null && Layout is DesktopApp.Layout.BoardVisualLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
                 Layout = rbl;
             }
             else
             {
-                Layout = BoardLayout.Default;
+                Layout = DesktopApp.Layout.BoardVisualLayout.Default;
             }
            
             UpdateLayout();
         }
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (sender is BoardLayout layout)
+            if (sender is DesktopApp.Layout.BoardVisualLayout layout)
             {
                 this.Layout = layout;
                 UpdateLayout();
@@ -56,7 +59,7 @@ namespace Catan3.Models
         private double GetTop(BuildingKey key)
         {
             var top =  Layout.Top(key.HexCoordinates);
-            var center = Layout.OuterHexPoints.FlatTopListToDictionary()[key.Position];
+            var center = Layout.OuterHexPoints().FlatTopListToDictionary()[key.Position];
             top += center.Y;
             top -= ( Layout.BuildingSize ) * 0.5;
             return top;
@@ -69,7 +72,7 @@ namespace Catan3.Models
         private double GetLeft(BuildingKey key)
         {
             var left =  Layout.Left(key.HexCoordinates) ;
-            var center =  Layout.OuterHexPoints.FlatTopListToDictionary()[key.Position];
+            var center =  Layout.OuterHexPoints().FlatTopListToDictionary()[key.Position];
             left -= Layout.BuildingSize / 2.0;
             left += center.X;
             return left;
@@ -92,7 +95,7 @@ namespace Catan3.Models
         /// <param name="state"></param>
         /// <returns></returns>
         /// <exception cref="System.Exception"></exception>
-        public string BIND_StateGlyph(BuildingState state, BuildingVisualState visualState)
+        public string BIND_StateGlyph(BuildingState state, BuildingVisualState visualState, int stars)
         {
             string glyph;
             switch (state)
@@ -104,7 +107,7 @@ namespace Catan3.Models
                     if (visualState == BuildingVisualState.Stars)
                     {
                         // - during Board Picking or Resource Allocation
-                        glyph = Stars.ToString();
+                        glyph = stars.ToString();
                     }
                     else if (visualState == BuildingVisualState.Highlighted)
                     {

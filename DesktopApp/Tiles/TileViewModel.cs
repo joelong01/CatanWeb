@@ -7,6 +7,10 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.Activation;
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
+using Catan3.DesktopApp.Layout;
+using BoardVisualLayout = Catan3.DesktopApp.Layout.BoardVisualLayout;
 namespace Catan3.Models
 {
     /// <summary>
@@ -15,12 +19,12 @@ namespace Catan3.Models
     /// </summary>
     public partial class TileViewModel : ObservableRecipient
     {
-        public TileViewModel(TileModel tile, BoardLayout? layout)
+        public TileViewModel(TileModel tile, BoardVisualLayout? layout)
         {
             Tile = tile;
             Layout = layout;
             IsActive = true;
-            if (Layout is not null && Layout is BoardLayout rbl)
+            if (Layout is not null and BoardVisualLayout rbl)
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
             }
@@ -99,15 +103,16 @@ namespace Catan3.Models
         }
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (sender is not null && sender is BoardLayout layout)
+            if (sender is not null and BoardVisualLayout layout)
             {
                 // this.TraceMessage($"{e.PropertyName} changed for tile {Tile.HexCoordinates}");
                 Layout = layout;
                 UpdateLayout();
-                if (e.PropertyName == nameof(BoardLayout.OuterHexSize))
+                if (e.PropertyName == nameof(BoardVisualLayout.OuterHexSize))
                 {
-                    OnPropertyChanged(nameof(Layout.InnerHexPoints)); // Notify the UI to reevaluate this path
-                    OnPropertyChanged(nameof(Layout.OuterHexPoints)); // Notify the UI to reevaluate this path
+                    // The extension methods InnerHexPoints() and OuterHexPoints() depend on OuterHexSize
+                    // so we notify about the layout properties that actually change
+                    OnPropertyChanged(nameof(Layout.InnerHexSize));
                     OnPropertyChanged(nameof(Layout.ControlHeight));
                     OnPropertyChanged(nameof(Layout.ControlWidth));
                 }

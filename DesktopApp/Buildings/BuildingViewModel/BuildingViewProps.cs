@@ -1,4 +1,6 @@
 ﻿using System.Text.Json.Serialization;
+using Catan3.Shared.Models;
+using Catan3.DesktopApp.Layout;
 using CommunityToolkit.Mvvm.ComponentModel;
 namespace Catan3.Models
 {
@@ -9,7 +11,7 @@ namespace Catan3.Models
         public partial BuildingModel Building { get; set; } = BuildingModel.Default;
 
         [ObservableProperty]
-        public partial BoardLayout Layout { get; set; } = BoardLayout.Default;
+        public partial DesktopApp.Layout.BoardVisualLayout Layout { get; set; } = DesktopApp.Layout.BoardVisualLayout.Default;
 
         [ObservableProperty]
         public partial double Left { get; set; }

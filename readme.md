@@ -63,6 +63,14 @@ These rules *MUST* be followed for *ALL* requests and no violations of any of th
 **SignalR**: use the proxy in the Shared project to call SignalR
 
 
+### **Commenting Guidelines (for AI-friendly evolution)**
+- **Describe what the code does**: Write comments that state the intent and behavior of the code at the point of use. Favor clear names and minimal, high-signal comments.
+- **Avoid history/change logs in comments**: Do not record why or how the code changed, past decisions, or historic constraints in code comments. Use PR descriptions and commit messages for history.
+- **Avoid constraining future design**: Do not embed architectural choices or preferences as permanent rules in comments unless they are enforced by code/tests. Keep comments free of prescriptive historical rationale that would hinder refactors.
+- **Exception for bug fixes**: When fixing surprising or complex logic, add a short, adjacent comment that captures the specific bug symptom/data and the invariant being enforced (what must hold). Keep it concise and factual.
+- **Prefer self-documenting code**: Use expressive names, small functions, and types to reduce the need for explanatory comments.
+
+
 ## Current Work
 *This section should be updated at the start of each work session with current context.*
 

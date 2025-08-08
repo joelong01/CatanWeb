@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using System.Xml;
 using Catan3.Models;
 using Catan3.Utility;
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;

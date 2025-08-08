@@ -12,22 +12,21 @@ namespace Catan3.Shared.Models
     public partial class BuildingModel : ObservableObject, IComparable<BuildingModel>
     {
         [ObservableProperty]
-        private BuildingKey _buildingKey = new();
-        
+        public partial BuildingKey BuildingKey { get; set; } = new();
+
         [ObservableProperty]
-        private BuildingState _buildingState;
-        
+        public partial BuildingState BuildingState { get; set; }
         [ObservableProperty]
-        private bool _wall = false;
-        
+        public partial bool Wall { get; set; } = false;
+
         [ObservableProperty]
-        private bool _metropolis = false;
-        
+        public partial bool Metropolis { get; set; } = false;
         [ObservableProperty]
-        private string? _ownerId;
-        
+        public partial string? OwnerId { get; set; }
+
         [ObservableProperty]
-        private bool _hasRobber = false;
+        public partial bool HasRobber { get; set; } = false;
+
         /// <summary>
         /// Initializes a new instance of the BuildingModel class with default values.
         /// </summary>

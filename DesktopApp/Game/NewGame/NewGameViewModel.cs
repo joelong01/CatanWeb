@@ -1,6 +1,7 @@
-﻿using System.
-    Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Catan3.Shared.Models;
+using Catan3.Shared.Extensions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Controls;
 namespace Catan3.Models

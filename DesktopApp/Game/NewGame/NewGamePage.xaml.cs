@@ -8,6 +8,7 @@ using Catan3.Models;
 using Catan3.Player;
 using Catan3.Tests;
 using Catan3.Utility;
+using Catan3.Shared.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;

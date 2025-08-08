@@ -15,31 +15,79 @@
 		<SupportedOSPlatformVersion>10.0.22621.0</SupportedOSPlatformVersion>
 		<StartupObject></StartupObject>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<!-- Suppress warnings about version-specific runtime identifiers -->
+		<NoWarn>$(NoWarn);NETSDK1206</NoWarn>
+		
+		<!-- Assembly and Product Information -->
+		<AssemblyTitle>Catan Desktop</AssemblyTitle>
+		<AssemblyDescription>Catan Desktop - Settlers of Catan companion game</AssemblyDescription>
+		<AssemblyProduct>Catan Desktop</AssemblyProduct>
+		<Product>Catan Desktop</Product>
+		<Copyright>© 2025 Catan Desktop</Copyright>
+		<Company>Catan Desktop</Company>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<FileVersion>1.0.0.0</FileVersion>
+		
+		<!-- Auto-deployment configuration -->
+		<!-- Set to 'false' to disable auto-deployment, 'true' to enable -->
+		<AutoDeploy Condition="'$(AutoDeploy)' == ''">true</AutoDeploy>
 	</PropertyGroup>
+	
+	<!-- Custom deployment target - call manually with: dotnet build -t:BuildAndDeploy -->
+	<Target Name="BuildAndDeploy">
+		<Message Text="🚀 Starting deployment for $(Configuration) configuration ($(Platform))..." Importance="high" />
+		
+		<!-- Set deployment properties based on configuration -->
+		<PropertyGroup>
+			<DeploymentRuntimeIdentifier>win-$(Platform)</DeploymentRuntimeIdentifier>
+			<DeploymentPublishDir>$(OutputPath)publish</DeploymentPublishDir>
+			<DeploymentSingleFile Condition="'$(Configuration)' == 'Release'">true</DeploymentSingleFile>
+			<DeploymentSingleFile Condition="'$(Configuration)' == 'Debug'">false</DeploymentSingleFile>
+		</PropertyGroup>
+		
+		<!-- Create deployment directory -->
+		<MakeDir Directories="$(DeploymentPublishDir)" />
+		
+		<!-- Copy build output to deployment directory -->
+		<ItemGroup>
+			<BuildOutputFiles Include="$(OutputPath)**\*" />
+		</ItemGroup>
+		
+		<Copy SourceFiles="@(BuildOutputFiles)" 
+		      DestinationFolder="$(DeploymentPublishDir)\%(RecursiveDir)" 
+		      SkipUnchangedFiles="true" />
+		      
+		<Message Text="✅ Deployment completed successfully!" Importance="high" />
+		<Message Text="📂 Deployed to: $(DeploymentPublishDir)" Importance="high" />
+		<Message Text="💡 To disable auto-deployment, set AutoDeploy=false in project properties" Importance="normal" />
+	</Target>
+	
+	<!-- Auto-deploy after successful build (now enabled by default) -->
+	<Target Name="AutoDeploy" AfterTargets="AfterBuild" Condition="'$(AutoDeploy)' == 'true'">
+		<Message Text="🔄 Auto-deploying $(Configuration) build..." Importance="high" />
+		<CallTarget Targets="BuildAndDeploy" />
+	</Target>
+
 	<ItemGroup>
 		<Compile Remove="Catan3.GameService\**" />
-		<Compile Remove="Catan3.Shared\**" />
 		<Compile Remove="Catan3.CLI\**" />
 		<Compile Remove="CatanGameService\**" />
 		<Compile Remove="Player\PlayerOrder\**" />
 		<Compile Remove="Tests.GameService\**" />
 		<Compile Remove="Tests.Shared\**" />
 		<EmbeddedResource Remove="Catan3.GameService\**" />
-		<EmbeddedResource Remove="Catan3.Shared\**" />
 		<EmbeddedResource Remove="Catan3.CLI\**" />
 		<EmbeddedResource Remove="CatanGameService\**" />
 		<EmbeddedResource Remove="Player\PlayerOrder\**" />
 		<EmbeddedResource Remove="Tests.GameService\**" />
 		<EmbeddedResource Remove="Tests.Shared\**" />
 		<None Remove="Catan3.GameService\**" />
-		<None Remove="Catan3.Shared\**" />
 		<None Remove="Catan3.CLI\**" />
 		<None Remove="CatanGameService\**" />
 		<None Remove="Player\PlayerOrder\**" />
 		<None Remove="Tests.GameService\**" />
 		<None Remove="Tests.Shared\**" />
 		<Page Remove="Catan3.GameService\**" />
-		<Page Remove="Catan3.Shared\**" />
 		<Page Remove="Catan3.CLI\**" />
 		<Page Remove="CatanGameService\**" />
 		<Page Remove="Player\PlayerOrder\**" />
@@ -69,14 +117,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Catan3.Shared\Catan3.Shared.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 		<PackageReference Include="CommunityToolkit.WinUI" Version="7.1.2" />
 		<PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
-		<PackageReference Include="Microsoft.Graphics.Win2D" Version="1.3.2" />
 		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
 		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
 		<PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="3.0.0" />
@@ -88,6 +131,8 @@
 		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.7" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.Json" Version="9.0.7" />
 		<Manifest Include="$(ApplicationManifest)" />
 	</ItemGroup>
 	<!-- 
@@ -304,7 +349,6 @@
 	<ItemGroup>
 		<PRIResource Remove="Player\PlayerOrder\**" />
 		<PRIResource Remove="Catan3.GameService\**" />
-		<PRIResource Remove="Catan3.Shared\**" />
 		<PRIResource Remove="CatanGameService\**" />
 		<PRIResource Remove="Tests.GameService\**" />
 	</ItemGroup>
@@ -327,5 +371,16 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <PRIResource Remove="Tests.Shared\**" />
+	</ItemGroup>
+	
+	<!-- Include Shared project files directly -->
+	
+	<!-- Exclude duplicate files from DesktopApp -->
+	<ItemGroup>
+	  <Compile Remove="Models\interfaces.cs" />
+	  <Compile Remove="Game\GameModel\GameModelExtensions.cs" />
+	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\Catan3.Shared\Catan3.Shared.csproj" />
 	</ItemGroup>
 </Project>
