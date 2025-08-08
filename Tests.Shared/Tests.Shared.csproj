@@ -26,4 +26,8 @@
 
 
 
+  <Target Name="BuildAndDeploy" DependsOnTargets="Build">
+    <Message Text="BuildOnly: Tests.Shared" Importance="high" />
+  </Target>
+
 </Project>

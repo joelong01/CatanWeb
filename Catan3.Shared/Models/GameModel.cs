@@ -243,10 +243,12 @@ namespace Catan3.Shared.Models
             }
         }
 
+        // BUGFIX 2025-01-15: Harbor ownership was assigned incorrectly because this
+        // instance method returned the first harbor in the list. Use the shared
+        // adjacency logic to find only a harbor truly adjacent to the building.
         public HarborModel? FindAdjacentHarbor(BuildingKey buildingKey)
         {
-            // Simplified implementation
-            return Harbors.FirstOrDefault();
+            return Catan3.Shared.Extensions.GameModelExtensions.FindAdjacentHarbor(this, buildingKey);
         }
 
       

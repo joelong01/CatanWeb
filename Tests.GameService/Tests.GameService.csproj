@@ -41,4 +41,8 @@
     </Content>
   </ItemGroup>
 
+  <Target Name="BuildAndDeploy" DependsOnTargets="Build">
+    <Message Text="BuildOnly: Tests.GameService" Importance="high" />
+  </Target>
+
 </Project>

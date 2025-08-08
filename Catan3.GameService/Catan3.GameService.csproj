@@ -27,4 +27,8 @@
     </PackageReference>
   </ItemGroup>
 
+  <Target Name="BuildAndDeploy" DependsOnTargets="Build">
+    <Message Text="BuildOnly: Catan3.GameService" Importance="high" />
+  </Target>
+
 </Project>

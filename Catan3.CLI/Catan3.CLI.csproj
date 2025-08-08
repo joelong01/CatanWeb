@@ -22,4 +22,8 @@
     <PackageReference Include="System.Text.Json" Version="9.0.7" />
   </ItemGroup>
 
+  <Target Name="BuildAndDeploy" DependsOnTargets="Build">
+    <Message Text="BuildOnly: Catan3.CLI" Importance="high" />
+  </Target>
+
 </Project>

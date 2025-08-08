@@ -28,13 +28,12 @@
 		<AssemblyVersion>1.0.0.0</AssemblyVersion>
 		<FileVersion>1.0.0.0</FileVersion>
 		
-		<!-- Auto-deployment configuration -->
-		<!-- Set to 'false' to disable auto-deployment, 'true' to enable -->
-		<AutoDeploy Condition="'$(AutoDeploy)' == ''">true</AutoDeploy>
+        <!-- Auto-deployment configuration (disabled by default to avoid nested publish copy issues) -->
+        <AutoDeploy Condition="'$(AutoDeploy)' == ''">false</AutoDeploy>
 	</PropertyGroup>
 	
 	<!-- Custom deployment target - call manually with: dotnet build -t:BuildAndDeploy -->
-	<Target Name="BuildAndDeploy">
+    <Target Name="BuildAndDeploy">
 		<Message Text="🚀 Starting deployment for $(Configuration) configuration ($(Platform))..." Importance="high" />
 		
 		<!-- Set deployment properties based on configuration -->
@@ -45,12 +44,14 @@
 			<DeploymentSingleFile Condition="'$(Configuration)' == 'Debug'">false</DeploymentSingleFile>
 		</PropertyGroup>
 		
-		<!-- Create deployment directory -->
+        <!-- Clean and (re)create deployment directory to prevent recursive publish nesting -->
+        <RemoveDir Directories="$(DeploymentPublishDir)" />
 		<MakeDir Directories="$(DeploymentPublishDir)" />
 		
 		<!-- Copy build output to deployment directory -->
 		<ItemGroup>
-			<BuildOutputFiles Include="$(OutputPath)**\*" />
+            <BuildOutputFiles Include="$(OutputPath)**\*"
+                               Exclude="$(DeploymentPublishDir)/**;$(OutputPath)ref/**;$(OutputPath)refint/**;$(OutputPath)**/publish/**" />
 		</ItemGroup>
 		
 		<Copy SourceFiles="@(BuildOutputFiles)" 
