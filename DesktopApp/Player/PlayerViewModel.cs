@@ -230,6 +230,7 @@ namespace Catan3.Models
             foreach (var rcvm in ResourcesThisTurn.ResourceCounters)
             {
                 rcvm.HarborVisibility = Visibility.Collapsed;
+                rcvm.OwnerPlayerId = value.Id;
             }
 
             foreach (var harborKey in value.OwnedHarbors)

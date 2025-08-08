@@ -205,5 +205,10 @@ namespace Catan3.Models
             Debug.Assert(key != this.Building.BuildingKey);
         }
         public override string? ToString() => $"B={Building} VS={VisualState} S={Stars} I={BuildIndex}";
+
+        /// <summary>
+        /// Stable AutomationId for UI automation of a building control.
+        /// </summary>
+        public string AutomationId => $"Building-{Building.BuildingKey.HexCoordinates.Q}_{Building.BuildingKey.HexCoordinates.R}_{Building.BuildingKey.HexCoordinates.S}-{Building.BuildingKey.Position}";
     }
 }

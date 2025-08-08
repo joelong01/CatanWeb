@@ -29,11 +29,26 @@ namespace Catan3
                 System.Diagnostics.Debug.WriteLine(e.Message);
             };
 #endif
-
+            ConfigureTestMode(args?.Arguments);
             m_window = new MainWindow();
             m_window.Activate();
         }
         public Window m_window;
         public Window MainWindow => m_window;
+
+        /// <summary>
+        /// Enables deterministic, automation-friendly settings when launched with --test or CATAN_TEST=1.
+        /// </summary>
+        private static void ConfigureTestMode(string? launchArgs)
+        {
+            try
+            {
+                bool testMode = (launchArgs?.Contains("--test") ?? false) ||
+                                (Environment.GetEnvironmentVariable("CATAN_TEST") == "1");
+                if (!testMode) return;
+                Windows.UI.Xaml.Media.Animation.Timeline.AllowDependentAnimations = false;
+            }
+            catch { }
+        }
     }
 }

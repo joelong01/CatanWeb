@@ -7,6 +7,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
     <Grid Name="LayoutRoot" HorizontalAlignment="Left" VerticalAlignment="Top"
+            AutomationProperties.AutomationId="{x:Bind BuildingViewModel.AutomationId, Mode=OneWay}"
             CornerRadius="20" BorderThickness="0"
             Width="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}"
             Height="{x:Bind BuildingViewModel.Layout.BuildingSize, Mode=OneWay}"

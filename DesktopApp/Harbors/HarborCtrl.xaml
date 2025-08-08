@@ -19,6 +19,7 @@
     </UserControl.Resources>
     <Border BorderBrush="Yellow" BorderThickness="0">
         <Canvas Name="LayoutRoot"
+                AutomationProperties.AutomationId="{x:Bind ViewModel.AutomationId, Mode=OneWay}"
                 Width="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}"
                 Height="{x:Bind ViewModel.Layout.BuildingSize, Mode=OneWay}">
             <Polygon Points="{x:Bind ViewModel.HarborPoints, Mode=OneWay}"

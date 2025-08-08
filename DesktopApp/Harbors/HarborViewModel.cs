@@ -120,6 +120,11 @@ namespace Catan3.Models
         }
 
         /// <summary>
+        /// Stable AutomationId for UI automation of a harbor control.
+        /// </summary>
+        public string AutomationId => $"Harbor-{Harbor.HarborKey.HexCoordinates.Q}_{Harbor.HarborKey.HexCoordinates.R}_{Harbor.HarborKey.HexCoordinates.S}-{Harbor.HarborKey.Side}";
+
+        /// <summary>
         /// Calculates the left and top position of the harbor based on the layout, coordinates, and side.
         /// </summary>
         /// <param name="Layout">The board layout.</param>

@@ -29,6 +29,7 @@
                             HorizontalAlignment="Left" VerticalAlignment="Top"
                             Width="100" Height="100">
                         <Button Content="&#xE101;"
+                                AutomationProperties.AutomationId="NextButton"
                                 Command="{x:Bind ViewModel.GameViewModel.NextActionCommand, Mode=OneWay}"
                                 IsEnabled="{x:Bind ViewModel.GameViewModel.GameModel.ActionFlags.NextEnabled, Mode=OneWay}"
                                 Style="{StaticResource GameControllerStyle}"
@@ -41,6 +42,7 @@
                             HorizontalAlignment="Left" VerticalAlignment="Top"
                             Width="100" Height="100">
                         <Button Content="&#xE10D;"
+                                AutomationProperties.AutomationId="RedoButton"
                                 Command="{x:Bind ViewModel.GameViewModel.RedoCommand, Mode=OneWay}"
                                 Style="{StaticResource GameControllerStyle}"
                                 IsEnabled="{x:Bind ViewModel.GameViewModel.GameModel.ActionFlags.RedoEnabled, Mode=OneWay}"

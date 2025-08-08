@@ -107,6 +107,7 @@
                     HorizontalAlignment="Center">
                 <StackPanel Orientation="Vertical" Margin="0,0,20,0">
                     <Button Content="&#xE10E;"
+                            AutomationProperties.AutomationId="UndoButton"
                             Command="{x:Bind GameViewModel.UndoCommand, Mode=OneWay}"
                             Style="{StaticResource GameControllerStyle}"
                             Background="Transparent" Foreground="White" />
@@ -116,6 +117,7 @@
                 </StackPanel>
                 <StackPanel HorizontalAlignment="Center" Orientation="Vertical">
                     <Button
+                            AutomationProperties.AutomationId="ShuffleButton"
                             Command="{x:Bind GameViewModel.ShuffleCommand, Mode=OneWay}"
                             Content="&#xE10D;"
                             Style="{StaticResource GameControllerStyle}"
