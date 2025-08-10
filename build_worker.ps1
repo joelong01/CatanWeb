@@ -5,6 +5,7 @@ param(
     [switch]$Clean,
     [switch]$NoBuild,
     [switch]$NoTest,
+    [switch]$SkipUiTests,
     [switch]$Release,
     [switch]$NoRegister,
     [switch]$Unregister,
@@ -39,6 +40,7 @@ OPTIONS:
     -Clean          Clean the project before building
     -NoBuild        Skip the build step, only publish
     -NoTest         Skip running tests
+    -SkipUiTests    Skip UI/E2E test projects (e.g., Tests.DesktopApp.UI)
     -Release        Build in Release configuration (default: Debug)
     -NoRegister     Do not register the app after publish (default is to register)
     -Unregister     Unregister the app from the system and exit
@@ -50,6 +52,7 @@ EXAMPLES:
     .\build.ps1                           # Build, test, publish, and register (default)
     .\build.ps1 -Clean -Release           # Clean release build (registers by default)
     .\build.ps1 -NoTest -NoRegister       # Build and publish without tests and skip registration
+    .\build.ps1 -SkipUiTests              # Build, run unit/integration tests only, publish, register
     .\build.ps1 -Unregister               # Unregister the app and exit (implies -NoRegister)
     .\build.ps1 -Platform ARM64 -Release  # Build for ARM64 in Release mode
 
@@ -66,7 +69,7 @@ COMMON ERRORS:
     --no-test  →  -NoTest
     --no-build →  -NoBuild
     --no-register → -NoRegister
-"@ -ForegroundColor Cyan
+"@
 }
 
 # Helper: log commands in a readable, copy-pastable way
@@ -246,31 +249,63 @@ try {
         # Run tests if not skipped
         if (!$NoTest) {
             Write-Output "🧪 Running tests..."
-            # Ensure test results directory exists
+            # Prepare clean test results directory
             $ArtifactsDir = Join-Path $PSScriptRoot "artifacts"
             $TestResultsDir = Join-Path $ArtifactsDir "test-results"
+            if (Test-Path $TestResultsDir) {
+                try { Remove-Item -Path $TestResultsDir -Recurse -Force -ErrorAction Stop } catch { }
+            }
             New-Item -ItemType Directory -Path $TestResultsDir -Force -ErrorAction SilentlyContinue | Out-Null
 
-            $testArgs = @(
-                "--no-build",
-                "-c", $Configuration,
-                "--verbosity", $VerbosityLevel,
-                "--logger", "trx",
-                "--logger", "console;verbosity=normal",
-                "--results-directory", $TestResultsDir
-            )
-            Write-Command "dotnet test" $testArgs
-            dotnet test @testArgs
+            # Discover test projects at repo root matching 'Tests.*' (top-level only)
+            $testDirs = Get-ChildItem -Path $PSScriptRoot -Directory -Filter 'Tests.*' -ErrorAction SilentlyContinue
+            if ($SkipUiTests) {
+                $testDirs = $testDirs | Where-Object { $_.Name -notlike 'Tests.DesktopApp.UI*' }
+                Write-Output "⏭️  Skipping UI test projects (flag: -SkipUiTests)"
+            }
 
-            # Collect and summarize all TRX files
+            $testProjects = @()
+            foreach ($td in $testDirs) {
+                $candidates = Get-ChildItem -Path $td.FullName -Filter *.csproj -File -ErrorAction SilentlyContinue
+                if (-not $candidates) { continue }
+                $preferred = $candidates | Where-Object { $_.BaseName -eq $td.Name }
+                if (-not $preferred) { $preferred = $candidates | Select-Object -First 1 }
+                $testProjects += $preferred.FullName
+            }
+
+            if (-not $testProjects -or $testProjects.Count -eq 0) {
+                Write-Output "ℹ️  No test projects found. Skipping tests."
+                $testExit = 0
+            } else {
+                $testExit = 0
+                foreach ($proj in $testProjects) {
+                    $testArgs = @(
+                        $proj,
+                        "--no-build",
+                        "-c", $Configuration,
+                        "--verbosity", $VerbosityLevel,
+                        "--logger", "trx",
+                        "--logger", "console;verbosity=normal",
+                        "--results-directory", $TestResultsDir
+                    )
+                    Write-Command "dotnet test" $testArgs
+                    dotnet test @testArgs
+                    if ($LASTEXITCODE -ne 0) { $testExit = $LASTEXITCODE }
+                }
+            }
+
+            # Collect and summarize only new TRX files
             $trxFiles = Get-ChildItem -Path $TestResultsDir -Filter *.trx -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -ExpandProperty FullName
+            $totalFailed = 0
             if ($trxFiles) {
                 Write-Output ("📄 Test results saved to: {0}" -f ($trxFiles -join "; "))
                 $totalFailed = Summarize-Trx -Paths $trxFiles
             }
 
-            if ($LASTEXITCODE -ne 0) {
-                throw "Tests failed with exit code: $LASTEXITCODE. Skipping publish."
+            if ($testExit -ne 0 -or ($totalFailed -gt 0)) {
+                if ($testExit -ne 0) { Write-Error "dotnet test exited with code $testExit" }
+                if ($totalFailed -gt 0) { Write-Error "$totalFailed test(s) failed per TRX summary" }
+                throw "Tests failed. Skipping publish."
             }
             Write-Output "✅ All tests passed"
         }
@@ -359,7 +394,7 @@ try {
     }
 
 } catch {
-    Write-Host "❌ Build process failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Error "❌ Build process failed: $($_.Exception.Message)"
     Stop-Log
     exit 1
 }
