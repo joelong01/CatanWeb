@@ -12,6 +12,25 @@
                 "/consoleloggerparameters:NoSummary"
             ],
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "publish-desktop",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "publish",
+                "${workspaceFolder}/DesktopApp/Catan Desktop.csproj",
+                "-c", "Debug",
+                "-p:Platform=x64",
+                "--self-contained",
+                "-r", "win-x64"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build-and-publish",
+            "dependsOrder": "sequence",
+            "dependsOn": ["build", "publish-desktop"]
         }
     ]
 } 

@@ -15,6 +15,10 @@
 		<SupportedOSPlatformVersion>10.0.22621.0</SupportedOSPlatformVersion>
 		<StartupObject></StartupObject>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		
+		<!-- Package signing configuration -->
+		<GenerateTemporaryStoreCertificate>true</GenerateTemporaryStoreCertificate>
+		<PackageCertificateKeyFile>Catan Desktop_TemporaryKey.pfx</PackageCertificateKeyFile>
 		<!-- Suppress warnings about version-specific runtime identifiers -->
 		<NoWarn>$(NoWarn);NETSDK1206</NoWarn>
 		
@@ -30,6 +34,8 @@
 		
         <!-- Auto-deployment configuration (disabled by default to avoid nested publish copy issues) -->
         <AutoDeploy Condition="'$(AutoDeploy)' == ''">false</AutoDeploy>
+        <PackageCertificateThumbprint>B8336920F26C7FB4AD1DDF3B48B837E8CA73CFE5</PackageCertificateThumbprint>
+        <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
 	</PropertyGroup>
 	
 	<!-- Custom deployment target - call manually with: dotnet build -t:BuildAndDeploy -->
@@ -50,13 +56,10 @@
 		
 		<!-- Copy build output to deployment directory -->
 		<ItemGroup>
-            <BuildOutputFiles Include="$(OutputPath)**\*"
-                               Exclude="$(DeploymentPublishDir)/**;$(OutputPath)ref/**;$(OutputPath)refint/**;$(OutputPath)**/publish/**" />
+            <BuildOutputFiles Include="$(OutputPath)**\*" Exclude="$(DeploymentPublishDir)/**;$(OutputPath)ref/**;$(OutputPath)refint/**;$(OutputPath)**/publish/**" />
 		</ItemGroup>
 		
-		<Copy SourceFiles="@(BuildOutputFiles)" 
-		      DestinationFolder="$(DeploymentPublishDir)\%(RecursiveDir)" 
-		      SkipUnchangedFiles="true" />
+		<Copy SourceFiles="@(BuildOutputFiles)" DestinationFolder="$(DeploymentPublishDir)\%(RecursiveDir)" SkipUnchangedFiles="true" />
 		      
 		<Message Text="✅ Deployment completed successfully!" Importance="high" />
 		<Message Text="📂 Deployed to: $(DeploymentPublishDir)" Importance="high" />
@@ -206,28 +209,36 @@
 
 	<ItemGroup>
 		<Resource Include="Assets\cherry.jpg" />
+		<Resource Include="Assets\LargeTile.png" />
 		<Resource Include="Assets\LargeTile.scale-100.png" />
 		<Resource Include="Assets\LargeTile.scale-125.png" />
 		<Resource Include="Assets\LargeTile.scale-150.png" />
 		<Resource Include="Assets\LargeTile.scale-200.png" />
 		<Resource Include="Assets\LargeTile.scale-400.png" />
+		<Resource Include="Assets\LockScreenLogo.scale-200.png" />
 		<Resource Include="Assets\maple.jpg" />
+		<Resource Include="Assets\SmallTile.png" />
 		<Resource Include="Assets\SmallTile.scale-100.png" />
 		<Resource Include="Assets\SmallTile.scale-125.png" />
 		<Resource Include="Assets\SmallTile.scale-150.png" />
 		<Resource Include="Assets\SmallTile.scale-200.png" />
 		<Resource Include="Assets\SmallTile.scale-400.png" />
+		<Resource Include="Assets\SplashScreen.png" />
 		<Resource Include="Assets\SplashScreen.scale-100.png" />
 		<Resource Include="Assets\SplashScreen.scale-125.png" />
 		<Resource Include="Assets\SplashScreen.scale-150.png" />
+		<Resource Include="Assets\SplashScreen.scale-200.png" />
 		<Resource Include="Assets\SplashScreen.scale-400.png" />
 		<Resource Include="Assets\square 71x71 logo.scale-100.png" />
 		<Resource Include="Assets\square 71x71 logo.scale-200.png" />
+		<Resource Include="Assets\Square150x150Logo.png" />
 		<Resource Include="Assets\Square150x150Logo.scale-100.png" />
 		<Resource Include="Assets\Square150x150Logo.scale-125.png" />
 		<Resource Include="Assets\Square150x150Logo.scale-150.png" />
+		<Resource Include="Assets\Square150x150Logo.scale-200.png" />
 		<Resource Include="Assets\Square150x150Logo.scale-400.png" />
 		<Resource Include="Assets\AppIcon.png" />
+		<Resource Include="Assets\Square44x44Logo.png" />
 		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-16.png" />
 		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-24.png" />
 		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-256.png" />
@@ -240,9 +251,11 @@
 		<Resource Include="Assets\Square44x44Logo.scale-100.png" />
 		<Resource Include="Assets\Square44x44Logo.scale-125.png" />
 		<Resource Include="Assets\Square44x44Logo.scale-150.png" />
+		<Resource Include="Assets\Square44x44Logo.scale-200.png" />
 		<Resource Include="Assets\Square44x44Logo.scale-400.png" />
 		<Resource Include="Assets\Square44x44Logo.targetsize-16.png" />
 		<Resource Include="Assets\Square44x44Logo.targetsize-24.png" />
+		<Resource Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
 		<Resource Include="Assets\Square44x44Logo.targetsize-256.png" />
 		<Resource Include="Assets\Square44x44Logo.targetsize-32.png" />
 		<Resource Include="Assets\Square44x44Logo.targetsize-48.png" />
@@ -253,10 +266,15 @@
 		<Resource Include="Assets\StoreLogo.scale-200.png" />
 		<Resource Include="Assets\StoreLogo.scale-400.png" />
 		<Resource Include="Assets\water.png" />
+		<Resource Include="Assets\Wide310x150Logo.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-100.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-125.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-150.png" />
+		<Resource Include="Assets\Wide310x150Logo.scale-200.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-400.png" />
+		
+		<!-- Include all assets from subdirectories -->
+		<Resource Include="Assets\**\*" />
 	</ItemGroup>
 
 

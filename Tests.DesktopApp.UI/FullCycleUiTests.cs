@@ -25,7 +25,7 @@ namespace Tests.DesktopApp.UI
         {
             // Locate repo root by walking up from the test bin directory looking for the solution file
             var probe = new DirectoryInfo(AppContext.BaseDirectory);
-            while (probe != null && !File.Exists(Path.Combine(probe.FullName, "Catan3.sln")))
+            while (probe != null && !File.Exists(Path.Combine(probe.FullName, "Catan.sln")))
             {
                 probe = probe.Parent;
             }
