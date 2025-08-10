@@ -38,6 +38,7 @@ namespace Catan3
         public Window m_window;
         public Window MainWindow => m_window;
 
+#nullable enable
         /// <summary>
         /// Enables deterministic, automation-friendly settings when launched with --test or CATAN_TEST=1.
         /// </summary>
@@ -52,5 +53,6 @@ namespace Catan3
             }
             catch { }
         }
+#nullable disable
     }
 }
