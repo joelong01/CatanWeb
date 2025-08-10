@@ -53,6 +53,7 @@
                     </StackPanel>
                 </StackPanel>
                 <TextBlock
+                        AutomationProperties.AutomationId="StateMessage"
                         Text="{x:Bind ViewModel.GameViewModel.StateMessage(ViewModel.GameViewModel.GameModel, ViewModel.GameViewModel.GameModel.GameState), Mode=OneWay}"
                         HorizontalAlignment="Center" Margin="5" />
             </StackPanel>

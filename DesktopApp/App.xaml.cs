@@ -1,4 +1,6 @@
-﻿using Microsoft.UI.Xaml;
+﻿using System;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media.Animation;
 #nullable disable
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -46,7 +48,7 @@ namespace Catan3
                 bool testMode = (launchArgs?.Contains("--test") ?? false) ||
                                 (Environment.GetEnvironmentVariable("CATAN_TEST") == "1");
                 if (!testMode) return;
-                Windows.UI.Xaml.Media.Animation.Timeline.AllowDependentAnimations = false;
+                Timeline.AllowDependentAnimations = false;
             }
             catch { }
         }

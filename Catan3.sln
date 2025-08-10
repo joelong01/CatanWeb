@@ -1,0 +1,4 @@
+# Added test project for Desktop UI automation
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.DesktopApp.UI", "Tests.DesktopApp.UI\Tests.DesktopApp.UI.csproj", "{8C9B1C2E-8A4F-4C76-8E88-EEE7C3EFA73B}"
+EndProject
+
