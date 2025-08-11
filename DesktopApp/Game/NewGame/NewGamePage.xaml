@@ -11,7 +11,9 @@
     <Page.Resources>
         <DataTemplate x:Key="PlayerDataTemplate" x:DataType="m:PlayerViewModel">
             <Grid HorizontalAlignment="Stretch" Height="120"
-                    Background="{x:Bind PlayerColors.BackgroundBrush, Mode=OneWay}">
+                    Background="{x:Bind PlayerColors.BackgroundBrush, Mode=OneWay}"
+                    AutomationProperties.AutomationId="{x:Bind Id, Mode=OneWay}"
+                    AutomationProperties.Name="{x:Bind Name, Mode=OneWay}">
                 <Ellipse Name="Player_Picture" HorizontalAlignment="Center"
                         VerticalAlignment="Top" Width="100" Height="100"
                         Stroke="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}">

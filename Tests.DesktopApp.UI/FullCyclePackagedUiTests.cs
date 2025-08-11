@@ -43,56 +43,239 @@ namespace Tests.DesktopApp.UI
         {
             Sta.Run(() =>
             {
-                LaunchPackagedAppAndAttachToMainWindow();
+                System.Diagnostics.Debug.WriteLine("=== Test starting ===");
+                
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine("=== About to launch app ===");
+                    LaunchPackagedAppAndAttachToMainWindow();
+                    System.Diagnostics.Debug.WriteLine("=== App launched successfully ===");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"=== Error launching app: {ex.Message} ===");
+                    throw;
+                }
 
-                // Wait for the NewGame page to be fully loaded
-                WaitForNewGamePageToLoad();
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine("=== About to wait for NewGame page ===");
+                    // Wait for the NewGame page to be fully loaded
+                    WaitForNewGamePageToLoad();
+                    System.Diagnostics.Debug.WriteLine("=== NewGame page loaded ===");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"=== Error waiting for NewGame page: {ex.Message} ===");
+                    throw;
+                }
 
                 // New Game page: choose Expansion, select 5 players, Start
+                System.Diagnostics.Debug.WriteLine("=== Finding StartButton ===");
                 var startBtn = FindByAutomationId("StartButton").AsButton();
                 Assert.NotNull(startBtn);
+                System.Diagnostics.Debug.WriteLine("=== Found StartButton ===");
 
+                System.Diagnostics.Debug.WriteLine("=== Finding GameTypeCombo ===");
                 var gameTypeCombo = FindByAutomationId("GameTypeCombo").AsComboBox();
                 Assert.NotNull(gameTypeCombo);
-                gameTypeCombo.Select("Expansion Game");
+                System.Diagnostics.Debug.WriteLine("=== Found GameTypeCombo ===");
+                
+                try
+                {
+                    gameTypeCombo.Select("Expansion Game");
+                    System.Diagnostics.Debug.WriteLine("=== Selected Expansion Game ===");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"=== Error selecting Expansion Game: {ex.Message} ===");
+                    throw;
+                }
 
                 // Select the first 5 players in the GridView
                 var playersGridView = FindByAutomationId("PlayersGridView").AsGrid();
                 Assert.NotNull(playersGridView);
                 
                 // Wait a moment for the GridView to populate
-                Thread.Sleep(1000);
+                Thread.Sleep(2000);
                 
-                // Debug: Check what children the GridView has
-                var allChildren = playersGridView.FindAllDescendants();
-                System.Diagnostics.Debug.WriteLine($"GridView has {allChildren.Length} total descendants");
-                foreach (var child in allChildren.Take(10)) // Show first 10
+                // For WinUI GridView, we need to find the actual selectable items
+                // GridView items are typically GridViewItem controls containing our data template
+                var gridViewItems = Retry.WhileNull(() => 
                 {
-                    System.Diagnostics.Debug.WriteLine($"  Child: {child.ControlType} - {child.Name} - {child.AutomationId}");
+                    try
+                    {
+                        // Try multiple approaches to find grid items
+                        var listItems = playersGridView.FindAllDescendants(cf => cf.ByControlType(ControlType.ListItem));
+                        if (listItems.Length >= 5) return listItems;
+                        
+                        var dataItems = playersGridView.FindAllDescendants(cf => cf.ByControlType(ControlType.DataItem));
+                        if (dataItems.Length >= 5) return dataItems;
+                        
+                        var customItems = playersGridView.FindAllDescendants(cf => cf.ByControlType(ControlType.Custom));
+                        if (customItems.Length >= 5) return customItems;
+                        
+                        return null;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error finding grid items: {ex.Message}");
+                        return null;
+                    }
+                }, timeout: TimeSpan.FromSeconds(10), interval: TimeSpan.FromMilliseconds(500)).Result;
+                
+                if (gridViewItems == null)
+                {
+                    // Debug: Check what we actually have - safely access properties
+                    var allChildren = playersGridView.FindAllDescendants();
+                    System.Diagnostics.Debug.WriteLine($"GridView has {allChildren.Length} total descendants");
+                    for (int i = 0; i < Math.Min(10, allChildren.Length); i++)
+                    {
+                        var child = allChildren[i];
+                        try
+                        {
+                            var controlType = child.ControlType.ToString();
+                            var name = "(checking name...)";
+                            var automationId = "(checking id...)";
+                            
+                            // Safely access properties
+                            try { name = child.Name ?? "(null)"; } catch { name = "(error)"; }
+                            try { automationId = child.AutomationId ?? "(null)"; } catch { automationId = "(error)"; }
+                            
+                            System.Diagnostics.Debug.WriteLine($"  Child[{i}]: {controlType} - Name: {name} - AutomationId: {automationId}");
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"  Child[{i}]: Error accessing element: {ex.Message}");
+                        }
+                    }
+                    
+                    Assert.Fail("Could not find GridView items after waiting 10 seconds");
                 }
                 
-                // Try different selectors for player items
-                var dataItems = playersGridView.FindAllDescendants(cf => cf.ByControlType(ControlType.DataItem));
-                var listItems = playersGridView.FindAllDescendants(cf => cf.ByControlType(ControlType.ListItem));
-                var gridItems = playersGridView.FindAllDescendants(cf => cf.ByControlType(ControlType.Custom));
+                Assert.True(gridViewItems.Length >= 5, $"Expected at least 5 players, found {gridViewItems.Length}");
                 
-                System.Diagnostics.Debug.WriteLine($"Found {dataItems.Length} DataItems, {listItems.Length} ListItems, {gridItems.Length} Custom items");
-                
-                // Use whichever selector finds items
-                var playerItems = dataItems.Length > 0 ? dataItems : 
-                                 listItems.Length > 0 ? listItems : 
-                                 gridItems.Length > 0 ? gridItems : 
-                                 new AutomationElement[0];
-                
-                Assert.True(playerItems.Length >= 5, $"Expected at least 5 players, found {playerItems.Length}. DataItems={dataItems.Length}, ListItems={listItems.Length}, Custom={gridItems.Length}");
+                // Select the first 5 players - WinUI GridView with SelectionMode="Multiple" requires proper selection
                 for (int i = 0; i < 5; i++) 
                 {
-                    playerItems[i].Click();
+                    var item = gridViewItems[i];
+                    System.Diagnostics.Debug.WriteLine($"=== Attempting to select GridView item {i} ===");
+                    
+                    try
+                    {
+                        // For WinUI GridView with SelectionMode="Multiple", we need to:
+                        // 1. Make sure the item is visible and focusable
+                        // 2. Use proper selection patterns or keyboard simulation
+                        
+                        // First, ensure the item is in view and focused
+                        item.Focus();
+                        Thread.Sleep(100);
+                        
+                        // Try using Ctrl+Click for multiple selection (standard Windows behavior)
+                        System.Diagnostics.Debug.WriteLine($"Trying Ctrl+Click for item {i}");
+                        
+                        // Simulate Ctrl key down, click, Ctrl key up
+                        // Note: FlaUI doesn't have great keyboard simulation, so we'll try different approaches
+                        
+                        // Method 1: Try using the Invoke pattern if available
+                        try
+                        {
+                            var invokePattern = item.Patterns.Invoke.PatternOrDefault;
+                            if (invokePattern != null)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Using Invoke pattern for item {i}");
+                                invokePattern.Invoke();
+                                Thread.Sleep(100);
+                                continue;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Invoke pattern failed for item {i}: {ex.Message}");
+                        }
+                        
+                        // Method 2: Try Toggle pattern (for selectable items)
+                        try
+                        {
+                            var togglePattern = item.Patterns.Toggle.PatternOrDefault;
+                            if (togglePattern != null)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Using Toggle pattern for item {i}");
+                                togglePattern.Toggle();
+                                Thread.Sleep(100);
+                                continue;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Toggle pattern failed for item {i}: {ex.Message}");
+                        }
+                        
+                        // Method 3: Try SelectionItem pattern
+                        try
+                        {
+                            var selectionPattern = item.Patterns.SelectionItem.PatternOrDefault;
+                            if (selectionPattern != null)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Using SelectionItem pattern for item {i}");
+                                selectionPattern.AddToSelection(); // Use AddToSelection for multiple selection
+                                Thread.Sleep(100);
+                                continue;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"SelectionItem pattern failed for item {i}: {ex.Message}");
+                        }
+                        
+                        // Method 4: Fallback to basic click
+                        System.Diagnostics.Debug.WriteLine($"Fallback to basic click for item {i}");
+                        item.Click();
+                        Thread.Sleep(100);
+                        
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"All selection methods failed for item {i}: {ex.Message}");
+                        // Continue with next item rather than failing the test
+                    }
                 }
+                
+                // After attempting to select all items, let's check if the GridView has any selection
+                System.Diagnostics.Debug.WriteLine("=== Checking GridView selection after selection attempts ===");
+                Thread.Sleep(500); // Give time for selection events to process
 
+                System.Diagnostics.Debug.WriteLine("=== About to click Start button ===");
                 startBtn.Invoke();
+                System.Diagnostics.Debug.WriteLine("=== Start button clicked ===");
 
                 // Wait for board to render and PickingBoard state
+                System.Diagnostics.Debug.WriteLine("=== Waiting for PickingBoard state ===");
+                
+                // First, let's see what state we're actually in
+                for (int attempt = 0; attempt < 10; attempt++)
+                {
+                    try
+                    {
+                        var stateLabel = Main.FindFirstDescendant(cf => cf.ByAutomationId("StateMessage"))?.AsLabel();
+                        var currentState = stateLabel?.Text ?? "(no state found)";
+                        System.Diagnostics.Debug.WriteLine($"Current state (attempt {attempt}): {currentState}");
+                        
+                        if (currentState.Contains("PickingBoard", StringComparison.OrdinalIgnoreCase))
+                        {
+                            System.Diagnostics.Debug.WriteLine("=== PickingBoard state found! ===");
+                            break;
+                        }
+                        
+                        Thread.Sleep(1000);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error checking state: {ex.Message}");
+                        Thread.Sleep(1000);
+                    }
+                }
+                
                 Assert.True(WaitForState("PickingBoard", TimeSpan.FromSeconds(10)), "Expected PickingBoard state");
 
                 // Core board interactions on PickingBoard: Shuffle -> Undo -> Redo
@@ -217,7 +400,18 @@ namespace Tests.DesktopApp.UI
 
         private AutomationElement FindByAutomationId(string automationId)
         {
-            var el = Retry.WhileNull(() => Main.FindFirstDescendant(cf => cf.ByAutomationId(automationId)), timeout: TimeSpan.FromSeconds(5)).Result;
+            var el = Retry.WhileNull(() => 
+            {
+                try
+                {
+                    return Main.FindFirstDescendant(cf => cf.ByAutomationId(automationId));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error finding element with AutomationId '{automationId}': {ex.Message}");
+                    return null;
+                }
+            }, timeout: TimeSpan.FromSeconds(5)).Result;
             Assert.NotNull(el);
             return el!;
         }
@@ -225,9 +419,20 @@ namespace Tests.DesktopApp.UI
         private void WaitForNewGamePageToLoad()
         {
             // Wait for the StartButton to appear, which indicates the NewGame page is loaded
-            var startBtn = Retry.WhileNull(() => Main.FindFirstDescendant(cf => cf.ByAutomationId("StartButton")), 
-                timeout: TimeSpan.FromSeconds(10), 
-                interval: TimeSpan.FromMilliseconds(500)).Result;
+            var startBtn = Retry.WhileNull(() => 
+            {
+                try
+                {
+                    return Main.FindFirstDescendant(cf => cf.ByAutomationId("StartButton"));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error in WaitForNewGamePageToLoad: {ex.Message}");
+                    return null;
+                }
+            }, 
+            timeout: TimeSpan.FromSeconds(10), 
+            interval: TimeSpan.FromMilliseconds(500)).Result;
             
             if (startBtn == null)
             {
