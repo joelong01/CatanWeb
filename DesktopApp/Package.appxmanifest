@@ -16,7 +16,7 @@
 
   <Properties>
     <DisplayName>Catan Desktop</DisplayName>
-    <PublisherDisplayName>joelo</PublisherDisplayName>
+    <PublisherDisplayName>joelong</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -46,7 +46,7 @@
             <uap:ShowOn Tile="square310x310Logo"/>
           </uap:ShowNameOnTiles>
         </uap:DefaultTile >
-        <uap:SplashScreen Image="Assets\SplashScreen.png" />
+        <uap:SplashScreen Image="Assets\SplashScreen.png" BackgroundColor="#2F4F4F" />
         <uap:InitialRotationPreference>
           <uap:Rotation Preference="landscape"/>
           <uap:Rotation Preference="landscapeFlipped"/></uap:InitialRotationPreference>

@@ -14,6 +14,14 @@
 		<SupportedOSPlatformVersion>10.0.22621.0</SupportedOSPlatformVersion>
 		<StartupObject></StartupObject>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+		<!-- Configure for MSIX packaging -->
+		<WindowsPackageType>MSIX</WindowsPackageType>
+		<WindowsAppSDKBootstrapAutoInitializeOptions_Default>true</WindowsAppSDKBootstrapAutoInitializeOptions_Default>
+		<!-- Optional developer-friendly prompts; keep disabled for CI
+		<WindowsAppSDKBootstrapAutoInitializeOptions_OnNoMatch_ShowUI>true</WindowsAppSDKBootstrapAutoInitializeOptions_OnNoMatch_ShowUI>
+		<WindowsAppSDKBootstrapAutoInitializeOptions_OnError_FailFast>true</WindowsAppSDKBootstrapAutoInitializeOptions_OnError_FailFast>
+		-->
 		
 		<!-- Package signing configuration -->
 		<GenerateTemporaryStoreCertificate>true</GenerateTemporaryStoreCertificate>
@@ -207,8 +215,18 @@
 
 
 	<ItemGroup>
-		<Resource Include="Assets\cherry.jpg" />
+		<!-- MSIX Package Assets - These files are copied to the package for the app manifest -->
+		<!-- Manifest assets (referenced in Package.appxmanifest) -->
+		<Resource Include="Assets\StoreLogo.png" />
+		<Resource Include="Assets\Square150x150Logo.png" />
+		<Resource Include="Assets\Square44x44Logo.png" />
+		<Resource Include="Assets\Wide310x150Logo.png" />
+		<Resource Include="Assets\SmallTile.png" />
 		<Resource Include="Assets\LargeTile.png" />
+		<Resource Include="Assets\SplashScreen.png" />
+		
+		<!-- Other assets embedded in the application -->
+		<Resource Include="Assets\cherry.jpg" />
 		<Resource Include="Assets\LargeTile.scale-100.png" />
 		<Resource Include="Assets\LargeTile.scale-125.png" />
 		<Resource Include="Assets\LargeTile.scale-150.png" />
@@ -216,13 +234,11 @@
 		<Resource Include="Assets\LargeTile.scale-400.png" />
 		<Resource Include="Assets\LockScreenLogo.scale-200.png" />
 		<Resource Include="Assets\maple.jpg" />
-		<Resource Include="Assets\SmallTile.png" />
 		<Resource Include="Assets\SmallTile.scale-100.png" />
 		<Resource Include="Assets\SmallTile.scale-125.png" />
 		<Resource Include="Assets\SmallTile.scale-150.png" />
 		<Resource Include="Assets\SmallTile.scale-200.png" />
 		<Resource Include="Assets\SmallTile.scale-400.png" />
-		<Resource Include="Assets\SplashScreen.png" />
 		<Resource Include="Assets\SplashScreen.scale-100.png" />
 		<Resource Include="Assets\SplashScreen.scale-125.png" />
 		<Resource Include="Assets\SplashScreen.scale-150.png" />
@@ -230,14 +246,12 @@
 		<Resource Include="Assets\SplashScreen.scale-400.png" />
 		<Resource Include="Assets\square 71x71 logo.scale-100.png" />
 		<Resource Include="Assets\square 71x71 logo.scale-200.png" />
-		<Resource Include="Assets\Square150x150Logo.png" />
 		<Resource Include="Assets\Square150x150Logo.scale-100.png" />
 		<Resource Include="Assets\Square150x150Logo.scale-125.png" />
 		<Resource Include="Assets\Square150x150Logo.scale-150.png" />
 		<Resource Include="Assets\Square150x150Logo.scale-200.png" />
 		<Resource Include="Assets\Square150x150Logo.scale-400.png" />
 		<Resource Include="Assets\AppIcon.png" />
-		<Resource Include="Assets\Square44x44Logo.png" />
 		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-16.png" />
 		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-24.png" />
 		<Resource Include="Assets\Square44x44Logo.altform-lightunplated_targetsize-256.png" />
@@ -265,7 +279,6 @@
 		<Resource Include="Assets\StoreLogo.scale-200.png" />
 		<Resource Include="Assets\StoreLogo.scale-400.png" />
 		<Resource Include="Assets\water.png" />
-		<Resource Include="Assets\Wide310x150Logo.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-100.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-125.png" />
 		<Resource Include="Assets\Wide310x150Logo.scale-150.png" />
@@ -400,5 +413,63 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\Catan3.Shared\Catan3.Shared.csproj" />
+	</ItemGroup>
+	
+	<!-- Game assets (tiles, resource cards, harbors, etc.) -->
+	<ItemGroup>
+		<!-- Base game images -->
+		<Resource Include="Assets\water.png" />
+		<Resource Include="Assets\cherry.jpg" />
+		<Resource Include="Assets\maple.jpg" />
+		
+		<!-- Tile images -->
+		<Resource Include="Assets\Tiles\back.jpg" />
+		<Resource Include="Assets\Tiles\brick.png" />
+		<Resource Include="Assets\Tiles\desert.png" />
+		<Resource Include="Assets\Tiles\goldMine.png" />
+		<Resource Include="Assets\Tiles\gpt invasion.png" />
+		<Resource Include="Assets\Tiles\invasion.png" />
+		<Resource Include="Assets\Tiles\ore.png" />
+		<Resource Include="Assets\Tiles\sheep.png" />
+		<Resource Include="Assets\Tiles\wheat.png" />
+		<Resource Include="Assets\Tiles\wood.png" />
+		
+		<!-- Resource cards - list all files explicitly -->
+		<Resource Include="Assets\ResourceCards\anydevcard.png" />
+		<Resource Include="Assets\ResourceCards\back.png" />
+		<Resource Include="Assets\ResourceCards\brick.png" />
+		<Resource Include="Assets\ResourceCards\cloth.png" />
+		<Resource Include="Assets\ResourceCards\coin.png" />
+		<Resource Include="Assets\ResourceCards\goldMine.png" />
+		<Resource Include="Assets\ResourceCards\ore.png" />
+		<Resource Include="Assets\ResourceCards\paper.png" />
+		<Resource Include="Assets\ResourceCards\politics.png" />
+		<Resource Include="Assets\ResourceCards\robber.png" />
+		<Resource Include="Assets\ResourceCards\science.png" />
+		<Resource Include="Assets\ResourceCards\sheep.png" />
+		<Resource Include="Assets\ResourceCards\trade.png" />
+		<Resource Include="Assets\ResourceCards\victorypoint.png" />
+		<Resource Include="Assets\ResourceCards\wheat.png" />
+		<Resource Include="Assets\ResourceCards\wood.png" />
+		
+		<!-- Harbors - list all files explicitly -->
+		<Resource Include="Assets\Harbors\2 for 1 brick.png" />
+		<Resource Include="Assets\Harbors\2 for 1 ore.png" />
+		<Resource Include="Assets\Harbors\2 for 1 sheep.png" />
+		<Resource Include="Assets\Harbors\2 for 1 wheat.png" />
+		<Resource Include="Assets\Harbors\2 for 1 wood.png" />
+		<Resource Include="Assets\Harbors\3 for 1.png" />
+		
+		<!-- Fonts -->
+		<Resource Include="Assets\Fonts\Catan.ttf" />
+		
+		<!-- Default Players -->
+		<Resource Include="Assets\DefaultPlayers\adrian.jpg" />
+		<Resource Include="Assets\DefaultPlayers\chris.jpg" />
+		<Resource Include="Assets\DefaultPlayers\Dodgy.png" />
+		<Resource Include="Assets\DefaultPlayers\doug.jpg" />
+		<Resource Include="Assets\DefaultPlayers\guest.png" />
+		<Resource Include="Assets\DefaultPlayers\joe.jpg" />
+		<Resource Include="Assets\DefaultPlayers\ryan.jpg" />
 	</ItemGroup>
 </Project>

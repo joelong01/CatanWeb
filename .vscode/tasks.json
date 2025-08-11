@@ -1,36 +1,139 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "build",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "build",
-                "${workspaceFolder}/Catan.sln",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "publish-desktop",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "publish",
-                "${workspaceFolder}/DesktopApp/Catan Desktop.csproj",
-                "-c", "Debug",
-                "-p:Platform=x64",
-                "--self-contained",
-                "-r", "win-x64"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "build-and-publish",
-            "dependsOrder": "sequence",
-            "dependsOn": ["build", "publish-desktop"]
-        }
-    ]
-} 
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"${workspaceFolder}/Catan.sln",
+				"/property:GenerateFullPaths=true",
+				"/consoleloggerparameters:NoSummary"
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "publish-desktop",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"publish",
+				"${workspaceFolder}/DesktopApp/Catan Desktop.csproj",
+				"-c",
+				"Debug",
+				"-p:Platform=x64",
+				"--self-contained",
+				"-r",
+				"win-x64"
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build-and-publish",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"build",
+				"publish-desktop"
+			]
+		},
+		{
+			"label": "test-ui",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"Tests.DesktopApp.UI/Tests.DesktopApp.UI.csproj",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "rebuild-desktopapp",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"DesktopApp/Catan Desktop.csproj",
+				"-c",
+				"Debug",
+				"-p:Platform=x64"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "rebuild-desktopapp-quoted",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"DesktopApp/Catan Desktop.csproj",
+				"-c",
+				"Debug",
+				"-p:Platform=x64"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "test-ui-2",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"Tests.DesktopApp.UI/Tests.DesktopApp.UI.csproj",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "run-ui-tests",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"Tests.DesktopApp.UI/Tests.DesktopApp.UI.csproj",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "run-ui-tests-fixed",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"Tests.DesktopApp.UI/Tests.DesktopApp.UI.csproj",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		}
+	]
+}
