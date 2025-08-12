@@ -854,10 +854,10 @@ namespace Catan3.Controller
             gameModel.ActionFlags.RedoEnabled = false;
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
-            
+            var oldHash = gameModel.GameHash;
             // Update GameHash after all game state modifications are complete
             gameModel.UpdateGameHash();
-            
+            this.TraceMessage($"GameState: {gameModel.GameState} OldHash={oldHash} newHash={gameModel.GameHash}");
             Log.Done(gameModel);
 
             DispatcherQueue.GetForCurrentThread().EnqueueAsync(async () =>
