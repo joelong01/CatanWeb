@@ -55,6 +55,7 @@
         </ItemsControl>
         <!--Tiles-->
         <ItemsControl x:Name="IC_Tiles"
+                AutomationProperties.AutomationId="GameBoardTiles"
                 ItemsSource="{x:Bind GameViewModel.Tiles, Mode=OneWay}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>

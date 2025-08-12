@@ -1,10 +1,10 @@
-﻿# Catan3 Phone Companion Design
+# Catan3 Phone Companion Design
 
 ## Overview
 
 This document outlines the design for an application that is used to play Settlers of Catan. The game is played with friends in the same room, so we don't need to worry about security. The game is comprised of the following parts:
 
-**1. a "Desktop App" (in the DesktopApp project):** This is currently a full end-to-end game that we DO NOT CHANGE. It works as is, so if there is ever an issue as we implement the other parts, we can refer to the desktop app to see how the game should work. Note that we model the UI and collect statistics, but we do not model Resources, Dice, or Development cards. These are all managed with physical pieces.
+**1. a "Desktop App" (in the DesktopApp project):** This is currently a full end-to-end game that we DO NOT CHANGE unless specifically told to do so. It works as is, so if there is ever an issue as we implement the other parts, we can refer to the desktop app to see how the game should work. Note that we model the UI and collect statistics, but we do not model Resources, Dice, or Development cards. These are all managed with physical pieces.
 
 In Development, we have:
 
@@ -37,8 +37,6 @@ This is the pattern our tests should be following.
 ## Rules 📋
 
 These rules *MUST* be followed for *ALL* requests and no violations of any of these rules should be tolerated.
-
-#### **Why it was changed (PlayerModel Name Property Addition)**
 
 1. **Command Separators**: When running commands in agent mode, always use ";" as a separator instead of "&&" because using "&&" will cause Copilot to hang when executing PowerShell commands.
 2. **WinUI3 Desktop App**: The WinUI3 Desktop app is the main project and it works correctly. It can be analyzed for prior art. It cannot be changed without explicit directions to do so.
@@ -134,14 +132,14 @@ The `GameStateMachine` class in `Catan3.GameService/Controllers/GameStateMachine
 /// </summary>
 public string GameId { get; private set; }
 
-public GameStateMachine(IPersistanceService? persistanceService, IClientNotification clientNotification, string localSaveFile)
+public GameStateMachine(IPersistenceService? PersistenceService, IClientNotification clientNotification, string localSaveFile)
 {
     // Generate server-side GameId to ensure it's available for all GameModels
     GameId = Guid.NewGuid().ToString();
     
     _clientNotification = clientNotification;
-    Log = new Log<string>(persistanceService, localSaveFile);
-    MyPersistanceService = persistanceService;
+    Log = new Log<string>(PersistenceService, localSaveFile);
+    MyPersistenceService = PersistenceService;
 }
 ```
 
@@ -178,6 +176,7 @@ public interface IClientNotification
 - `/api/game/register` endpoint is deprecated
 
 **New Game Request Models**:
+
 ```csharp
 /// <summary>
 /// Represents a player in a new game request
@@ -224,146 +223,104 @@ public class NewGameRequest
 
 ## Directory Structure
 
-Here is the layout of the project, it should be kept up to date as new directories are added or moved around:
+Here is the current layout of the project:
 
-```bash
-D:\GitHub\Catan3 [Companion ≡ +6 ~6 -253 !]> tree /A
-Folder PATH listing for volume Disk 0
-Volume serial number is CC93-B862
-D:.
-+---.github
-|   \---workflows
-+---.vscode
-+---Catan3.CLI
-|   +---Commands
-|   \---Services
-+---Catan3.GameService
-|   +---Controllers
-|   +---Design Assets
-|   +---Extensions
-|   +---Factory
-|   +---Hubs
-|   +---Models
-|   +---Properties
-|   +---Services
-|   +---Utility
-|   +---Views
-|   |   +---Home
-|   |   \---Shared
-|   \---wwwroot
-|       +---css
-|       +---diagrams
-|       +---fonts
-|       +---js
-|       +---lib
-|       |   +---bootstrap
-|       |   |   \---dist
-|       |   |       +---css
-|       |   |       \---js
-|       |   +---jquery
-|       |   |   \---dist
-|       |   +---jquery-validation
-|       |   |   \---dist
-|       |   \---jquery-validation-unobtrusive
-|       |       \---dist
-|       \---mermaid-source
-+---Catan3.Shared
-|   +---Extensions
-|   +---Models
-|   +---Services
-|   \---Utility
-+---DesktopApp
-|   +---Assets
-|   |   +---DefaultPlayers
-|   |   +---Fonts
-|   |   +---Harbors
-|   |   +---ResourceCards
-|   |   +---SVG
-|   |   +---Test Files
-|   |   \---Tiles
-|   +---Assets (2)
-|   |   \---DefaultPlayers
-|   +---bin
-|   |   \---ARM64
-|   |       \---Debug
-|   |           \---net9.0-windows10.0.22621.0
-|   |               \---win-arm64
-|   +---Buildings
-|   |   \---BuildingViewModel
-|   +---Controls
-|   +---Game
-|   |   +---Game Control
-|   |   +---GameFactory
-|   |   +---GameModel
-|   |   +---GameView
-|   |   \---NewGame
-|   +---GameState
-|   |   \---GameLog
-|   +---Harbors
-|   +---Layout
-|   +---MainPage
-|   +---Models
-|   |   \---ModelGeneration
-|   +---obj
-|   |   \---ARM64
-|   |       \---Debug
-|   |           \---net9.0-windows10.0.22621.0
-|   |               \---win-arm64
-|   |                   +---ref
-|   |                   \---refint
-|   +---Player
-|   |   \---PlayerSettings
-|   +---Properties
-|   |   \---PublishProfiles
-|   +---Resources
-|   +---Roads
-|   +---Robber
-|   +---Rolls
-|   +---Services
-|   |   \---Companion
-|   |       \---Models
-|   +---Tests
-|   +---Themes
-|   +---Tiles
-|   +---Utility
-|   \---ValueConverters
-+---Docs
-+---Scripts
-+---Tests.GameService
-|   +---bin
-|   |   +---Debug
-|   |   |   \---net9.0
-|   |   \---Release
-|   |       \---net9.0
-|   +---Companion
-|   +---CompanionUI
-|   +---obj
-|   |   +---Debug
-|   |   |   \---net9.0
-|   |   |       +---ref
-|   |   |       \---refint
-|   |   \---Release
-|   |       \---net9.0
-|   |           +---ref
-|   |           \---refint
-|   +---SignalR
-|   \---TestClient
-|       +---Commands
-|       \---Services
-\---Tests.Shared
-    +---bin
-    |   +---Debug
-    |   |   \---net9.0
-    |   \---Release
-    |       \---net9.0
-    +---obj
-    |   +---Debug
-    |   |   \---net9.0
-    |   |       +---ref
-    |   |       \---refint
-    |   \---Release
-    |       \---net9.0
-    |           +---ref
-    |           \---refint
-    \---Serialization
+```
+Catan/
+├── .github/
+│   └── workflows/
+├── .vscode/
+├── artifacts/
+├── bin/
+├── Catan3.CLI/
+│   ├── Commands/
+│   └── Services/
+├── Catan3.GameService/
+│   ├── Controllers/
+│   ├── Design Assets/
+│   ├── Factory/
+│   ├── Hubs/
+│   ├── Models/
+│   ├── Properties/
+│   ├── Services/
+│   ├── Utility/
+│   ├── Views/
+│   │   ├── Home/
+│   │   └── Shared/
+│   └── wwwroot/
+│       ├── css/
+│       ├── diagrams/
+│       ├── fonts/
+│       ├── js/
+│       ├── lib/
+│       │   ├── bootstrap/
+│       │   ├── jquery/
+│       │   ├── jquery-validation/
+│       │   └── jquery-validation-unobtrusive/
+│       └── mermaid-source/
+├── Catan3.Shared/
+│   ├── Extensions/
+│   ├── Models/
+│   ├── Services/
+│   └── Utility/
+├── DesktopApp/
+│   ├── Assets/
+│   │   ├── DefaultPlayers/
+│   │   ├── Fonts/
+│   │   ├── Harbors/
+│   │   ├── ResourceCards/
+│   │   ├── SVG/
+│   │   ├── Test Files/
+│   │   └── Tiles/
+│   ├── Buildings/
+│   │   └── BuildingViewModel/
+│   ├── Controls/
+│   ├── Game/
+│   │   ├── Game Control/
+│   │   ├── GameFactory/
+│   │   ├── GameModel/
+│   │   ├── GameView/
+│   │   └── NewGame/
+│   ├── GameState/
+│   │   └── GameLog/
+│   ├── Harbors/
+│   ├── Layout/
+│   ├── MainPage/
+│   ├── Models/
+│   ├── Player/
+│   │   └── PlayerSettings/
+│   ├── Properties/
+│   │   └── PublishProfiles/
+│   ├── Resources/
+│   ├── Roads/
+│   ├── Robber/
+│   ├── Rolls/
+│   ├── Services/
+│   │   └── Companion/
+│   │       └── Models/
+│   ├── Tests/
+│   ├── Themes/
+│   ├── Tiles/
+│   ├── Utility/
+│   └── ValueConverters/
+├── Docs/
+├── Scripts/
+├── Tests.DesktopApp.UI/
+│   └── TestInfra/
+├── Tests.GameService/
+│   ├── Companion/
+│   ├── CompanionUI/
+│   ├── SignalR/
+│   └── TestClient/
+│       ├── Commands/
+│       └── Services/
+├── Tests.Shared/
+│   └── Serialization/
+├── build_worker.ps1
+├── build.ps1
+├── Catan.sln
+├── GlobalSuppressions.cs
+├── publish.ps1
+├── readme.md
+└── test_shared_reference.cs
 ```

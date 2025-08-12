@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -17,7 +17,7 @@ namespace Catan.Services
     /// <summary>
     /// Provides file operations to open and save files with asynchronous support.
     /// </summary>
-    public interface IPersistanceService
+    public interface IPersistenceService
     {
         Task<bool> SaveAsync(string location, byte[] data);
         Task<byte[]?> OpenAsync(string location);
@@ -203,7 +203,7 @@ namespace Catan.Services
     /// <summary>
     /// Implements file operations for opening and saving files on disk, utilizing the Windows Storage API.
     /// </summary>
-    public class FileService : IPersistanceService
+    public class FileService : IPersistenceService
     {
         /// <summary>
         /// Returns the name of the file that the user picked.

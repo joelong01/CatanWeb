@@ -17,6 +17,7 @@
                             HorizontalAlignment="Left" VerticalAlignment="Top"
                             Width="100" Height="100">
                         <Button Content="&#xE10E;"
+                                AutomationProperties.AutomationId="UndoButton"
                                 Command="{x:Bind ViewModel.GameViewModel.UndoCommand, Mode=OneWay}"
                                 IsEnabled="{x:Bind ViewModel.GameViewModel.GameModel.ActionFlags.UndoEnabled, Mode=OneWay}"
                                 Style="{StaticResource GameControllerStyle}"
@@ -58,5 +59,6 @@
                         HorizontalAlignment="Center" Margin="5" />
             </StackPanel>
         </Viewbox>
+        
     </Grid>
 </UserControl>

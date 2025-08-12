@@ -81,12 +81,11 @@ function Write-Command([string]$command, [object[]]$cmdArgs) {
 }
 
 # Summarize one or more TRX files with failed tests
-function Summarize-Trx {
+function Get-TrxSummary {
     param(
         [Parameter(Mandatory=$true)][string[]]$Paths
     )
     $totalFailed = 0
-    $summaries = @()
 
     foreach ($path in $Paths) {
         if (-not (Test-Path $path)) { continue }
@@ -335,7 +334,7 @@ try {
             $totalFailed = 0
             if ($trxFiles) {
                 Write-Output ("📄 Test results saved to: {0}" -f ($trxFiles -join "; "))
-                $totalFailed = Summarize-Trx -Paths $trxFiles
+                $totalFailed = Get-TrxSummary -Paths $trxFiles
             }
 
             if ($testExit -ne 0 -or ($totalFailed -gt 0)) {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -32,11 +32,11 @@ namespace Catan3.Controller
     {
         private Log<string> Log;
 
-        private IPersistanceService? MyPersistanceService { get; set; }
-        public GameController(IPersistanceService? persistanceService, string localSaveFile)
+        private IPersistenceService? MyPersistenceService { get; set; }
+        public GameController(IPersistenceService? PersistenceService, string localSaveFile)
         {
-            Log = new Log<string>(persistanceService, localSaveFile);
-            MyPersistanceService = persistanceService;
+            Log = new Log<string>(PersistenceService, localSaveFile);
+            MyPersistenceService = PersistenceService;
             RegisterMessages();
         }
         public int DoneCount => Log.DoneCount;
@@ -198,7 +198,7 @@ namespace Catan3.Controller
                     //  optimize away the case when there are supplemental players
                     foreach (var player in gameModel.Players)
                     {
-                        player.ParticipatingInSupplemental = message.PlayerIds.Contains(player.Id);  // this makes the flag explicity false if it is not in the list
+                        player.ParticipatingInSupplemental = message.PlayerIds.Contains(player.Id);  // this makes the flag explicitly false if it is not in the list
                     }
 
                     LogGameModel(gameModel); //undo puts us back to this state
@@ -371,14 +371,14 @@ namespace Catan3.Controller
         }
         public async Task<GameModel> LoadGame(string filePath)
         {
-            if (MyPersistanceService is null) throw new GameException("no persistance service was set");
+            if (MyPersistenceService is null) throw new GameException("no Persistence service was set");
 
-            var compressedBytes = await MyPersistanceService.OpenAsync(filePath) ?? throw new GameException($"Unable to open file {filePath}");
+            var compressedBytes = await MyPersistenceService.OpenAsync(filePath) ?? throw new GameException($"Unable to open file {filePath}");
 
             var decompressedJson = SerializationHelper.Decompress(compressedBytes);
             // Deserialize the JSON back into your Log or relevant data structure
             var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) ?? throw new GameException("Error: Failed to load the game data.");
-            Log<string> log = Log<string>.FromSerializableLog(savedLog, MyPersistanceService, filePath);
+            Log<string> log = Log<string>.FromSerializableLog(savedLog, MyPersistenceService, filePath);
             this.Log = log;
 
             return Log.CurrentState();
@@ -422,7 +422,7 @@ namespace Catan3.Controller
             }
             //
             // calculate resources based on the tiles that are highlighted (which we just set)
-            // i'm doing this in a dictionary to keep the map playerid->ResoruceModel as we 
+            // i'm doing this in a dictionary to keep the map playerid->ResourceModel as we 
             // need to collect the total amount of resources for all the building/tiles
             Dictionary<string, ResourcesModel> playerResources = [];
             foreach (var player in gameModel.Players)
@@ -453,7 +453,7 @@ namespace Catan3.Controller
             }
 
             //
-            // set the property that shows the harbor when they have 2:1 harbro and they recieved that resource
+            // set the property that shows the harbor when they have 2:1 harbro and they received that resource
             // this turn
 
 
@@ -502,7 +502,7 @@ namespace Catan3.Controller
         {
             //
             //  there are some states where the transition out of the state is not done via clicking on Next.
-            //  in these cases, Next shoudl be disabled.  If you invent a new one, add it to this list.
+            //  in these cases, Next should be disabled.  If you invent a new one, add it to this list.
             List<GameState> NonNextStates = [GameState.WaitingForRoll, GameState.MustMoveRobber];
 
 
@@ -644,8 +644,8 @@ namespace Catan3.Controller
                         PlayerModel? participatingPlayer = null;
 
                         // Loop through the players starting from the current player and wrap around
-                        // and set the flag for FinishedSuplemental and ParticipatingInSupplemental
-                        // we have two flags because ParticipatingInSupplemental drives the UI to show who has a suplemental turn
+                        // and set the flag for FinishedSupplemental and ParticipatingInSupplemental
+                        // we have two flags because ParticipatingInSupplemental drives the UI to show who has a Supplemental turn
                         // and FinishedSupplemental is used to determine if we have any players left to play supplemental
                         for (int i = 0; i < gameModel.Players.Count; i++)
                         {
@@ -659,7 +659,7 @@ namespace Catan3.Controller
 
                             if (player.ParticipatingInSupplemental)
                             {
-                                player.FinishedSuplemental = false;
+                                player.FinishedSupplemental = false;
                             }
                         }
                         //
@@ -707,7 +707,7 @@ namespace Catan3.Controller
                             int index = (currentPlayerIndex + i) % gameModel.Players.Count;
                             if (index == currentPlayerIndex) continue;
                             var player = gameModel.Players[index];
-                            if (player.ParticipatingInSupplemental && !player.FinishedSuplemental)
+                            if (player.ParticipatingInSupplemental && !player.FinishedSupplemental)
                             {
                                 participatingPlayer = player;
                                 break;
@@ -722,7 +722,7 @@ namespace Catan3.Controller
                             {
                                 // if the current player is participating, then we need to set the flag to false
                                 // so that they don't get picked again
-                                gameModel.Players[currentPlayerIndex].FinishedSuplemental = true;
+                                gameModel.Players[currentPlayerIndex].FinishedSupplemental = true;
                             }
                            
 
@@ -854,6 +854,10 @@ namespace Catan3.Controller
             gameModel.ActionFlags.RedoEnabled = false;
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
+            
+            // Update GameHash after all game state modifications are complete
+            gameModel.UpdateGameHash();
+            
             Log.Done(gameModel);
 
             DispatcherQueue.GetForCurrentThread().EnqueueAsync(async () =>
@@ -1291,7 +1295,7 @@ namespace Catan3.Controller
         {
             ResetBuildableRoads(gameModel);
             List<RoadModel> buildableRoads = [];
-            if (gameModel.Phase() == GamePhase.Purchase) // during allocation we can only build next to the settlment
+            if (gameModel.Phase() == GamePhase.Purchase) // during allocation we can only build next to the settlement
             {
                 foreach (var road in gameModel.Roads)
                 {

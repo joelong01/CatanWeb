@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -58,7 +58,7 @@ namespace Catan3.Models
         {
             if (this.Messenger.IsRegistered<TileOwnersResponse>(this))
             {
-                this.TraceMessage($"{this} is already registerd!");
+                this.TraceMessage($"{this} is already registered!");
                 return;
             }
             this.Messenger.Register<TileOwnersResponse>(this, (recipient, message) =>
@@ -79,7 +79,7 @@ namespace Catan3.Models
                         }
                     }
                     // 1/14/2025: Always add an option to not target somebody
-                    Targets.Add(new TargetViewModel("Nobody. Hatred Deffered.", null));
+                    Targets.Add(new TargetViewModel("Nobody. Hatred Deferred.", null));
                 }
                 finally
                 {

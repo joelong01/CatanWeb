@@ -9,7 +9,7 @@ namespace Catan3.GameService.Services
     /// <summary>
     /// Provides file operations to open and save files with asynchronous support.
     /// </summary>
-    public interface IPersistanceService
+    public interface IPersistenceService
     {
         Task<bool> SaveAsync(string location, byte[] data);
         Task<byte[]?> OpenAsync(string location);
@@ -19,13 +19,13 @@ namespace Catan3.GameService.Services
     }
 
     /// <summary>
-    /// Simple implementation of IPersistanceService for the game service
+    /// Simple implementation of IPersistenceService for the game service
     /// </summary>
-    public class GameServicePersistanceService : IPersistanceService
+    public class GameServicePersistenceService : IPersistenceService
     {
-        private readonly ILogger<GameServicePersistanceService> _logger;
+        private readonly ILogger<GameServicePersistenceService> _logger;
 
-        public GameServicePersistanceService(ILogger<GameServicePersistanceService> logger)
+        public GameServicePersistenceService(ILogger<GameServicePersistenceService> logger)
         {
             _logger = logger;
         }

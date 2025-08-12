@@ -57,7 +57,7 @@ builder.Services.Configure<GameApiOptions>(options =>
 });
 
 // Register persistence service for save/load functionality
-builder.Services.AddSingleton<IPersistanceService, GameServicePersistanceService>();
+builder.Services.AddSingleton<IPersistenceService, GameServicePersistenceService>();
 
 // Register SignalR-based client notification service for real-time updates
 builder.Services.AddSingleton<SignalRNotificationService>();

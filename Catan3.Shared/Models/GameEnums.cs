@@ -89,7 +89,7 @@ namespace Catan3.Shared.Models
         TestCheckpoint,
         [Description("Move Robber")]
         MustMoveRobber,
-        [Description("DnD Agressor on Victim")]
+        [Description("DnD Aggressor on Victim")]
         DisplaceVictimKnight,
         [Description("Move Target Knight")]
         DisplaceKnightMoveVictim,

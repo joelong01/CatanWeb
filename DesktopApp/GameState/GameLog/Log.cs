@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -19,7 +19,7 @@ using Windows.Storage;
 namespace Catan3.Utility
 {
     /// <summary>
-    ///     The System.Text.Serialize package has trouble composing with MVVM becuse of the Code behind strategy
+    ///     The System.Text.Serialize package has trouble composing with MVVM because of the Code behind strategy
     ///     Se can can convert to a SerializableLog and then Json serialize it.  In testing, compressing the JSON
     ///     of an individual GameModel reduces side by about 50%.  Compressing the full stack is a huge reduction -
     ///     50 GameModels are hundreds of K compressed, but only 5k compressed.
@@ -47,15 +47,15 @@ namespace Catan3.Utility
     }
     public partial class Log<T> : ObservableRecipient, ILog
     {
-        private IPersistanceService? PersistService { get; set; }
+        private IPersistenceService? PersistService { get; set; }
         public string FilePath { get; private set; }
         private ObservableCollection<T> DoneStack { get; set; } = [];
         private ObservableCollection<T> RedoStack { get; set; } = [];
         public GameType GameType { get; set; } = GameType.Regular;
         [JsonConstructor]
-        public Log(IPersistanceService? persistanceService, string localSaveFile)
+        public Log(IPersistenceService? PersistenceService, string localSaveFile)
         {
-            PersistService = persistanceService;
+            PersistService = PersistenceService;
             DoneStack.CollectionChanged += DoneStack_ListChanged;
             RedoStack.CollectionChanged += RedoStack_ListChanged;
             FilePath = localSaveFile;
@@ -258,9 +258,9 @@ namespace Catan3.Utility
         /// <param name="sLog">The SerializableLog instance to convert.</param>
         /// <returns>A new Log<T> instance populated with the data from the SerializableLog's stacks and game type.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the JSON deserialization fails or if the JSON format is not compatible with type T.</exception>
-        public static Log<T> FromSerializableLog(SerializableLog sLog, IPersistanceService persistanceService, string filePath)
+        public static Log<T> FromSerializableLog(SerializableLog sLog, IPersistenceService PersistenceService, string filePath)
         {
-            var log = new Log<T>(persistanceService, filePath);
+            var log = new Log<T>(PersistenceService, filePath);
             for (int i = sLog.DoneStack.Count - 1; i >= 0; i--)
             {
                 var json = sLog.DoneStack[i];
@@ -370,7 +370,7 @@ namespace Catan3.Utility
             }
         }
         /// <summary>
-        ///     Updating via notifcation when the UndoStack changes
+        ///     Updating via notification when the UndoStack changes
         /// </summary>
         [property: JsonIgnore]
         [ObservableProperty]

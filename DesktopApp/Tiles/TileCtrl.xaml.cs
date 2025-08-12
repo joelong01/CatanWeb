@@ -166,5 +166,35 @@ namespace Catan3.Controls
             });
             
         }
+        
+        /// <summary>
+        /// Gets the automation ID for the tile number control
+        /// </summary>
+        /// <param name="coordinates">The tile coordinates</param>
+        /// <returns>Automation ID string for the tile number</returns>
+        public string GetTileNumberAutomationId(object coordinates)
+        {
+            return $"TileNumber-{coordinates}";
+        }
+        
+        /// <summary>
+        /// Gets the automation ID for the tile resource control
+        /// </summary>
+        /// <param name="coordinates">The tile coordinates</param>
+        /// <returns>Automation ID string for the tile resource</returns>
+        public string GetTileResourceAutomationId(object coordinates)
+        {
+            return $"TileResource-{coordinates}";
+        }
+        
+        /// <summary>
+        /// Gets the automation ID for the overall tile control
+        /// </summary>
+        /// <param name="coordinates">The tile coordinates</param>
+        /// <returns>Automation ID string for the tile</returns>
+        public string GetTileAutomationId(object coordinates)
+        {
+            return $"Tile-{coordinates}";
+        }
     }
 }

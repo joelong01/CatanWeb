@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -38,7 +38,7 @@ namespace Catan3.Models
         /// <summary>
         /// Gets the file service.
         /// </summary>
-        private readonly IPersistanceService _fileService;
+        private readonly IPersistenceService _fileService;
 
         /// <summary>
         /// Gets the message service.
@@ -63,7 +63,7 @@ namespace Catan3.Models
         /// <param name="selectedGame">The selected game type.</param>
         /// <param name="playingPlayerIds">The list of playing player IDs.</param>
         /// <param name="filePath">The file path.</param>
-        public MainPageViewModel(IPersistanceService fileService, IPlayerDatabase playerDatabase, GameType selectedGame, IList<string> playingPlayerIds, string filePath)
+        public MainPageViewModel(IPersistenceService fileService, IPlayerDatabase playerDatabase, GameType selectedGame, IList<string> playingPlayerIds, string filePath)
         {
             FunctionTimer.Enabled = false;
             WeakReferenceMessenger.Default.Send(new EndGame());

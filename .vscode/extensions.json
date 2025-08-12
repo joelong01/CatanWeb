@@ -1,0 +1,27 @@
+{
+  "recommendations": [
+    "ms-dotnettools.csdevkit",
+    "ms-dotnettools.csharp",
+    "ms-dotnettools.vscode-dotnet-runtime",
+    "ms-vscode.powershell",
+    "redhat.vscode-xml",
+    "ms-vscode.hexeditor",
+    "ms-vscode.vscode-typescript-next",
+    "ms-dotnettools.vscodeintellicode",
+    "github.copilot",
+    "github.copilot-chat",
+    "continue.continue",
+    "ms-vscode.test-adapter-converter",
+    "formulahendry.dotnet-test-explorer",
+    "jmrog.vscode-nuget-package-manager",
+    "github.vscode-pull-request-github",
+    "eamodio.gitlens",
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
+    "streetsidesoftware.code-spell-checker"
+  ],
+  "unwantedRecommendations": [
+    "ms-dotnettools.blazorwasm-companion",
+    "ms-dotnettools.dotnet-interactive-vscode"
+  ]
+}

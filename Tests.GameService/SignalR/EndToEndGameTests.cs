@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Catan3.Shared.Models;
@@ -34,8 +34,8 @@ namespace Tests.GameService.SignalR
         //
         // during the allocation phase, we update the Buildings in GameModel.  the order of the Buildings is fixed
         // and the BuildingState is updated without worrying about order. But we need to know what the last building picked
-        //  was so we can verify the resources.  we'll do that by just keeping a simnple map of playerId -> Building because
-        //  these tests are statful...
+        //  was so we can verify the resources.  we'll do that by just keeping a simple map of playerId -> Building because
+        //  these tests are stateful...
 
         private readonly Dictionary<string, BuildingModel> _lastBuildingPicked = [];
 
@@ -390,7 +390,7 @@ namespace Tests.GameService.SignalR
                     // rely on service logic to validate settlement placement
 
                     var result = await proxy.ExecuteBuildingUpgradeAsync(session.GameId, bestBuilding.BuildingKey);
-                    Assert.True(result.Success, $"Settlement placement failed: {result.Message}"); // if this worked, the PickOmptimalSettlement worked
+                    Assert.True(result.Success, $"Settlement placement failed: {result.Message}"); // if this worked, the PickOptimalSettlement worked
                     LogEvent(session, "SettlementPlaced", $"✅ {currentPlayerId} settlement placement succeeded!.  GameState={gameModel.GameState}");
                     if (gameModel.GameState == GameState.AllocateResourceReverse)
                     {
@@ -522,7 +522,7 @@ namespace Tests.GameService.SignalR
             var gameModel = proxy.GameModel;
             Assert.NotNull(gameModel);
             Assert.Equal(GameState.DoneResourceAllocation, gameModel.GameState);
-            LogEvent(session, "VerifyDoneResourceAllocation", $"GameState={gameModel.GameState} CurrentPlaye={gameModel.CurrentPlayerId}");
+            LogEvent(session, "VerifyDoneResourceAllocation", $"GameState={gameModel.GameState} Currentplayer={gameModel.CurrentPlayerId}");
             Assert.Equal("Alice", currentPlayerId);
 
             // ASSERTION 2: Verify final allocation results - all players should have 2 settlements and 2 roads
