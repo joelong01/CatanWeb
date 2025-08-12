@@ -178,6 +178,12 @@
                     "name": "XML Language Support",
                     "description": "XML support for project files and XAML",
                     "required": false
+                },
+                {
+                    "id": "prateekmahendrakar.prettyxml",
+                    "name": "Pretty XML",
+                    "description": "XML formatter extension for XAML files",
+                    "required": false
                 }
             ]
         },

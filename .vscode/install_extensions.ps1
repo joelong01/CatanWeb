@@ -467,11 +467,11 @@ if (-not $SkipCore) {
 
 # Process selected scenarios
 foreach ($scenarioKey in $selectedScenarios) {
-    $scenario = $config.scenarios.$scenarioKey
+    $scenarioObj = $config.scenarios.PSObject.Properties.Where({$_.Name -eq $scenarioKey}).Value
     Write-ColorOutput ""
-    Write-ColorOutput "📦 Processing Scenario: $($scenario.name)" $Blue
+    Write-ColorOutput "📦 Processing Scenario: $($scenarioObj.name)" $Blue
     
-    foreach ($ext in $scenario.extensions) {
+    foreach ($ext in $scenarioObj.extensions) {
         $isInstalled = $installedExtensions -contains $ext.id
         
         if ($isInstalled -and -not $Force) {
@@ -483,7 +483,7 @@ foreach ($scenarioKey in $selectedScenarios) {
                 id = $ext.id
                 name = $ext.name
                 description = $ext.description
-                scenario = $scenario.name
+                scenario = $scenarioObj.name
                 required = $ext.required
             }
         }
