@@ -31,6 +31,7 @@
                             Width="100" Height="100">
                         <Button Content="&#xE101;"
                                 AutomationProperties.AutomationId="NextButton"
+                                AutomationProperties.ItemStatus="{x:Bind ViewModel.GameModelJson, Mode=OneWay}"
                                 Command="{x:Bind ViewModel.GameViewModel.NextActionCommand, Mode=OneWay}"
                                 IsEnabled="{x:Bind ViewModel.GameViewModel.GameModel.ActionFlags.NextEnabled, Mode=OneWay}"
                                 Style="{StaticResource GameControllerStyle}"

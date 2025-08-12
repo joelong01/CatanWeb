@@ -107,7 +107,7 @@
                     HorizontalAlignment="Center">
                 <StackPanel Orientation="Vertical" Margin="0,0,20,0">
                     <Button Content="&#xE10E;"
-                            AutomationProperties.AutomationId="UndoButton"
+                            AutomationProperties.AutomationId="PreviousBoardButton"
                             Command="{x:Bind GameViewModel.UndoCommand, Mode=OneWay}"
                             Style="{StaticResource GameControllerStyle}"
                             Background="Transparent" Foreground="White" />

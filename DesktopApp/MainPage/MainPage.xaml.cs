@@ -7,6 +7,7 @@ using Catan3.Models;
 using Catan3.Player;
 using Catan3.Tests;
 using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -124,7 +125,8 @@ namespace Catan3
             MainWindow.CurrentGame = newValue;
             this.DataContext = newValue;
 
-
+            // Set the Tag property for UI test access
+            UpdateGameModelTag();
         }
         private void OnRightButtonTapped(object sender, RightTappedRoutedEventArgs e)
         {
@@ -175,6 +177,33 @@ namespace Catan3
                 }
             }
 
+            // Update the Tag when GameModel changes
+            if (e.PropertyName == nameof(GameViewModel.GameModel))
+            {
+                UpdateGameModelTag();
+            }
+        }
+
+        /// <summary>
+        /// Updates the MainPageViewModel's GameModelJson property with the current GameModel for UI test access
+        /// </summary>
+        private void UpdateGameModelTag()
+        {
+            try
+            {
+                if (MainPageModel?.GameViewModel?.GameModel is not null)
+                {
+                    // Serialize GameModel to JSON and update the ViewModel property
+                    // This will automatically update the AutomationProperties.ItemStatus binding
+                    var options = new JsonSerializerOptions { WriteIndented = false };
+                    var gameModelJson = JsonSerializer.Serialize(MainPageModel.GameViewModel.GameModel, options);
+                    MainPageModel.GameModelJson = gameModelJson;
+                }
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Error updating GameModel JSON: {ex.Message}");
+            }
         }
 
         private async Task ShowMessageDialog(string message, string title)

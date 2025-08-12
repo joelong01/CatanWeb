@@ -31,6 +31,13 @@ namespace Catan3.Models
         public partial bool ShowCommands { get; set; } = false;
 
         /// <summary>
+        /// Gets the current GameModel serialized as JSON for UI automation access.
+        /// This property is bound to AutomationProperties.ItemStatus for test automation.
+        /// </summary>
+        [ObservableProperty]
+        public partial string GameModelJson { get; set; } = string.Empty;
+
+        /// <summary>
         /// Gets the game controller.
         /// </summary>
         private GameController GameController { get; set; }
