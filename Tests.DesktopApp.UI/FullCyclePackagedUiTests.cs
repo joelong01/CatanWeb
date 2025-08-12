@@ -18,8 +18,10 @@ using Xunit;
 using Xunit.Sdk;
 
 using Tests.DesktopApp.UI.TestInfra;
+using static System.Math;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
+using Catan3.Shared.Extensions;
 
 namespace Tests.DesktopApp.UI
 {
@@ -32,12 +34,75 @@ namespace Tests.DesktopApp.UI
     {
         private UIA3Automation? _automation;
         private AutomationElement? _main;
+        private DebugTraceListener? _debugListener;
+
+        /// <summary>
+        /// Custom trace listener to capture debug output from the desktop app
+        /// </summary>
+        private class DebugTraceListener : TraceListener
+        {
+            private readonly FullCyclePackagedUiTests _parent;
+            private static volatile bool _isInWrite = false; // Prevent recursion
+            
+            public DebugTraceListener(FullCyclePackagedUiTests parent)
+            {
+                _parent = parent;
+            }
+            
+            public override void Write(string? message)
+            {
+                if (!string.IsNullOrEmpty(message) && !_isInWrite)
+                {
+                    _isInWrite = true;
+                    try
+                    {
+                        // Use Console.WriteLine directly to avoid triggering Debug.WriteLine again
+                        Console.WriteLine($"[DesktopApp]: {message}");
+                    }
+                    finally
+                    {
+                        _isInWrite = false;
+                    }
+                }
+            }
+            
+            public override void WriteLine(string? message)
+            {
+                if (!string.IsNullOrEmpty(message) && !_isInWrite)
+                {
+                    _isInWrite = true;
+                    try
+                    {
+                        // Use Console.WriteLine directly to avoid triggering Debug.WriteLine again
+                        Console.WriteLine($"[DesktopApp]: {message}");
+                    }
+                    finally
+                    {
+                        _isInWrite = false;
+                    }
+                }
+            }
+        }
         private AutomationElement Main => _main ?? throw new InvalidOperationException("Main window not initialized");
+
+        public FullCyclePackagedUiTests()
+        {
+            // Set up debug listener to capture desktop app trace messages
+            _debugListener = new DebugTraceListener(this);
+            Trace.Listeners.Add(_debugListener);
+        }
 
         public void Dispose()
         {
             try
             {
+                // Remove debug listener
+                if (_debugListener != null)
+                {
+                    Trace.Listeners.Remove(_debugListener);
+                    _debugListener = null;
+                }
+                
                 // Attempt to close the window cleanly after test
                 _main?.AsWindow()?.Close();
             }
@@ -284,6 +349,34 @@ namespace Tests.DesktopApp.UI
             startBtn.Invoke();
             this.TraceMessage("Start button clicked - should now be transitioning to PickingBoard");
             
+            // Give the app a moment to transition before checking state
+            Thread.Sleep(2000);
+            
+            // Check if there's an error dialog and dismiss it if present
+            try
+            {
+                var errorDialog = Main.FindFirstDescendant(cf => cf.ByName("Error"));
+                if (errorDialog != null)
+                {
+                    this.TraceMessage("Error dialog detected, attempting to dismiss");
+                    var okButton = errorDialog.FindFirstDescendant(cf => cf.ByName("Ok")) ?? 
+                                   errorDialog.FindFirstDescendant(cf => cf.ByName("OK"));
+                    if (okButton != null)
+                    {
+                        this.TraceMessage("Found OK button, clicking to dismiss error dialog");
+                        okButton.Click();
+                        Thread.Sleep(500);
+                    }
+                    
+                    // The error suggests there's a bug in the app logic
+                    Assert.Fail("App encountered an error: 'Index was outside the bounds of the array' when creating new game");
+                }
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Error checking for error dialog: {ex.Message}");
+            }
+            
             // Wait for transition to PickingBoard state
             Assert.True(WaitForGameState(GameState.PickingBoard, TimeSpan.FromSeconds(10)), "Expected to transition to PickingBoard state");
             VerifyExpectedGameState(GameState.PickingBoard);
@@ -451,7 +544,6 @@ namespace Tests.DesktopApp.UI
             
             // Get and verify GameModel state from AutomationProperties.ItemStatus
             var gameModel = GetCurrentGameModel();
-            Assert.NotNull(gameModel);
             
             // Get the actual current player (don't assume a specific name since it comes from UI selection)
             var currentPlayerId = gameModel.CurrentPlayerId;
@@ -460,21 +552,72 @@ namespace Tests.DesktopApp.UI
             
             this.TraceMessage($"✅ Verified GameModel state: {gameModel.GameState}, CurrentPlayer: {currentPlayerId}");
 
-            // STEP 2: Execute Next action to advance to FinishedRollOrder (matching SignalR pattern)
+            // STEP 2: Find the 3rd person to go first and click their "Go First" button
+            this.TraceMessage("Finding the 3rd person in the player order to make them go first");
+            
+            // Get current player order
+            var playerOrder = gameModel.Players?.Select(p => p.Name).ToList() ?? new List<string>();
+            this.TraceMessage($"Current player order: [{string.Join(", ", playerOrder)}]");
+            
+            if (playerOrder.Count >= 3)
+            {
+                var thirdPlayerName = playerOrder[2]; // Index 2 = third player
+                this.TraceMessage($"Third player is: {thirdPlayerName}");
+                
+                // Find the "Go First" button for the third player
+                // Look for elements that might contain the player's name and a "Go First" button
+                var goFirstButtons = Main.FindAllDescendants(cf => cf.ByText("Go First")).ToList();
+                this.TraceMessage($"Found {goFirstButtons.Count} 'Go First' buttons total");
+                
+                if (goFirstButtons.Count >= 3)
+                {
+                    // Click the third "Go First" button (index 2)
+                    var thirdGoFirstButton = goFirstButtons[2];
+                    this.TraceMessage($"Clicking 'Go First' button for third player: {thirdPlayerName}");
+                    thirdGoFirstButton.AsButton().Invoke();
+                    
+                    // Wait for UI to update
+                    Thread.Sleep(1000);
+                    
+                    // Verify order changed
+                    var updatedGameModel = GetCurrentGameModel();
+                    var newPlayerOrder = updatedGameModel.Players?.Select(p => p.Name).ToList() ?? new List<string>();
+                    this.TraceMessage($"Updated player order: [{string.Join(", ", newPlayerOrder)}]");
+                    
+                    // The third player should now be first
+                    if (newPlayerOrder.Count > 0 && newPlayerOrder[0] == thirdPlayerName)
+                    {
+                        this.TraceMessage($"✅ Successfully made {thirdPlayerName} go first!");
+                    }
+                    else
+                    {
+                        this.TraceMessage($"⚠️ Player order may not have changed as expected");
+                    }
+                }
+                else
+                {
+                    this.TraceMessage($"Not enough 'Go First' buttons found ({goFirstButtons.Count}), skipping reorder");
+                }
+            }
+            else
+            {
+                this.TraceMessage($"Not enough players ({playerOrder.Count}) to select third player");
+            }
+
+            // STEP 4: Execute Next action to advance to FinishedRollOrder (matching SignalR pattern)
             this.TraceMessage("Executing Next action to advance to FinishedRollOrder");
             var next = FindByAutomationId("NextButton").AsButton();
             Assert.NotNull(next);
             Assert.True(next.IsEnabled, "Next button should be enabled to transition from WaitingForRollForOrder");
             this.TraceMessage("Next button found and enabled, clicking to advance to FinishedRollOrder");
             next.Invoke();
-            
-            // STEP 3: Verify transition to FinishedRollOrder (matching SignalR pattern)
+
+            // STEP 5: Verify transition to FinishedRollOrder (matching SignalR pattern)
             Assert.True(WaitForGameState(GameState.FinishedRollOrder, TimeSpan.FromSeconds(6)), "Expected to transition to FinishedRollOrder state");
             VerifyExpectedGameState(GameState.FinishedRollOrder);
             
             // Verify GameModel consistency after transition
             var newGameModel = GetCurrentGameModel();
-            Assert.NotNull(newGameModel);
             Assert.Equal(GameState.FinishedRollOrder, newGameModel.GameState);
             
             this.TraceMessage("✅ WaitingForRollForOrder state verified - advanced to FinishedRollOrder");
@@ -497,7 +640,6 @@ namespace Tests.DesktopApp.UI
             
             // Get and verify GameModel state from AutomationProperties.ItemStatus
             var gameModel = GetCurrentGameModel();
-            Assert.NotNull(gameModel);
             
             this.TraceMessage($"✅ Verified GameModel state: {gameModel.GameState}");
             
@@ -514,23 +656,22 @@ namespace Tests.DesktopApp.UI
             var goFirstButtons = Main.FindAllDescendants(cf => cf.ByText("Go First")).ToList();
             this.TraceMessage($"Found {goFirstButtons.Count} 'Go First' buttons");
             
-            if (goFirstButtons.Count > 0)
+            if (goFirstButtons.Count >= 3)
             {
-                // Test scenario: One player decides to go first (most common case where order changes)
-                var firstButton = goFirstButtons[0];
-                this.TraceMessage("Testing scenario: First player clicks 'Go First' to change order");
+                // Test scenario: Third player decides to go first (third player going first as requested)
+                var thirdButton = goFirstButtons[2]; // Index 2 = third button
+                this.TraceMessage("Testing scenario: Third player clicks 'Go First' to change order");
                 
                 try
                 {
-                    firstButton.AsButton().Invoke();
-                    this.TraceMessage("Clicked first 'Go First' button");
+                    thirdButton.AsButton().Invoke();
+                    this.TraceMessage("Clicked third 'Go First' button");
                     
                     // Wait for UI to update
                     Thread.Sleep(1000);
                     
                     // Verify order changed (first player should now be at the front)
                     var updatedGameModel = GetCurrentGameModel();
-                    Assert.NotNull(updatedGameModel);
                     
                     var newPlayerOrder = updatedGameModel.Players?.Select(p => p.Name).ToList() ?? new List<string>();
                     this.TraceMessage($"Updated player order: [{string.Join(", ", newPlayerOrder)}]");
@@ -539,11 +680,11 @@ namespace Tests.DesktopApp.UI
                     bool orderChanged = !initialPlayerOrder.SequenceEqual(newPlayerOrder);
                     if (orderChanged)
                     {
-                        this.TraceMessage("✅ Player order correctly changed after 'Go First' click");
+                        this.TraceMessage("✅ Player order correctly changed after third player clicked 'Go First'");
                     }
                     else
                     {
-                        this.TraceMessage("ℹ️ Player order remained the same (first player was already first)");
+                        this.TraceMessage("ℹ️ Player order remained the same (third player was already first)");
                     }
                     
                     // Verify game state is still FinishedRollOrder (Go First doesn't advance the state)
@@ -575,7 +716,6 @@ namespace Tests.DesktopApp.UI
             
             // Verify GameModel consistency after transition
             var finalGameModel = GetCurrentGameModel();
-            Assert.NotNull(finalGameModel);
             Assert.Equal(GameState.BeginResourceAllocation, finalGameModel.GameState);
             
             this.TraceMessage("✅ FinishedRollOrder state verified - advanced to BeginResourceAllocation");
@@ -595,7 +735,6 @@ namespace Tests.DesktopApp.UI
             
             // Get and verify GameModel state from AutomationProperties.ItemStatus
             var gameModel = GetCurrentGameModel();
-            Assert.NotNull(gameModel);
             
             this.TraceMessage($"Verified GameModel state: {gameModel.GameState}");
 
@@ -617,7 +756,8 @@ namespace Tests.DesktopApp.UI
 
         /// <summary>
         /// Test the AllocateResourceForward state
-        /// Transitions from AllocateResourceForward to AllocateResourceReverse when Next button is clicked (after all players)
+        /// Players must place settlements and roads during this phase
+        /// Each player: 1. Places settlement 2. Places road 3. Clicks Next
         /// </summary>
         private void Test_AllocateResourceForward()
         {
@@ -626,52 +766,100 @@ namespace Tests.DesktopApp.UI
             // Verify we're in the correct state using GameState (not UI text)
             VerifyExpectedGameState(GameState.AllocateResourceForward);
             
-            // Get and verify GameModel state from AutomationProperties.ItemStatus
-            var gameModel = GetCurrentGameModel();
-            Assert.NotNull(gameModel);
+            // Get and verify initial GameModel state from AutomationProperties.ItemStatus
+            var initialGameModel = GetCurrentGameModel();
             
-            this.TraceMessage($"Verified GameModel state: {gameModel.GameState}");
+            this.TraceMessage($"Verified GameModel state: {initialGameModel.GameState}");
 
-            // In this state, we need to click Next multiple times to go through all players
-            // The GameController shows this transitions to AllocateResourceReverse when all players are done
-            int maxNextClicks = 10; // Safety limit
-            int nextClicks = 0;
+            // In allocation phase, each player takes a turn: settlement -> road -> next
+            // Loop until we transition out of AllocateResourceForward
+            int maxIterations = 20; // Safety limit (5 players * 4 iterations each should be enough)
+            int iterations = 0;
             
-            while (nextClicks < maxNextClicks)
+            // Always get fresh GameState for loop condition - NEVER cache GameModel across iterations!
+            while (GetCurrentGameModel().GameState == GameState.AllocateResourceForward && iterations < maxIterations)
             {
-                var next = FindByAutomationId("NextButton").AsButton();
-                Assert.NotNull(next);
+                // Get current player directly without caching GameModel
+                var currentPlayer = GetCurrentGameModel().CurrentPlayer();
                 
-                if (!next.IsEnabled)
+                this.TraceMessage($"Player {currentPlayer.Name} turn in AllocateResourceForward");
+                
+                // Get GameHash before settlement placement
+                var preSettlementGameModel = GetCurrentGameModel();
+                var preSettlementGameHash = preSettlementGameModel.GameHash;
+                this.TraceMessage($"Pre-settlement GameHash: {preSettlementGameHash}");
+                this.TraceMessage($"Pre-settlement buildable roads: {preSettlementGameModel.Roads.Count(r => r.RoadState == RoadState.Buildable)}");
+                
+                // Step 1: Place settlement (pick the one with most stars)
+                this.TraceMessage($"Step 1: Player {currentPlayer.Name} placing settlement");
+                
+                // Check StateMessage before settlement placement
+                var stateMessageBefore = FindByAutomationId("StateMessage");
+                this.TraceMessage($"StateMessage before settlement: '{stateMessageBefore?.Name}'");
+                
+                PlaceOptimalSettlement(preSettlementGameModel);
+                
+                // Wait a bit for the UI to respond
+                Thread.Sleep(500);
+                
+                // Check StateMessage after settlement placement
+                var stateMessageAfter = FindByAutomationId("StateMessage");
+                this.TraceMessage($"StateMessage after settlement: '{stateMessageAfter?.Name}'");
+                
+                // Check if there are any visible error messages or notifications
+                var errorElements = new List<AutomationElement>();
+                try
                 {
-                    this.TraceMessage("Next button is disabled, checking current state");
-                    break;
+                    errorElements.AddRange(Main.FindAllDescendants(cf => cf.ByText("Error")));
+                    errorElements.AddRange(Main.FindAllDescendants(cf => cf.ByText("Invalid")));
+                    errorElements.AddRange(Main.FindAllDescendants(cf => cf.ByText("Cannot")));
+                }
+                catch { /* Ignore if no elements found */ }
+                    
+                if (errorElements.Any())
+                {
+                    this.TraceMessage($"Found potential error messages: {string.Join(", ", errorElements.Select(e => e.Name))}");
                 }
                 
-                this.TraceMessage($"Clicking Next button (click #{nextClicks + 1}) in AllocateResourceForward");
-                next.Invoke();
-                nextClicks++;
+                // Wait for UI and GameModel to update after settlement placement
+                this.TraceMessage("Waiting for GameModel to update after settlement placement...");
+                Thread.Sleep(20000);
                 
-                Thread.Sleep(1000); // Give time for state transition
+                // Get fresh GameModel with updated buildable roads - NEVER reuse GameModel!
+                var postSettlementGameModel = GetCurrentGameModel();
+                var postSettlementGameHash = postSettlementGameModel.GameHash;
+                Assert.NotEqual(postSettlementGameHash, preSettlementGameHash); // they MUST change!
+                this.TraceMessage($"Post-settlement GameHash: {postSettlementGameHash}");
+                this.TraceMessage($"GameHash changed: {preSettlementGameHash != postSettlementGameHash}");
+                this.TraceMessage($"GameModel refreshed, found {postSettlementGameModel.Roads.Count(r => r.RoadState == RoadState.Buildable)} buildable roads");
                 
-                // Check if we've moved to AllocateResourceReverse
-                var currentStateLabel = Main.FindFirstDescendant(cf => cf.ByAutomationId("StateMessage"))?.AsLabel();
-                var currentStateText = currentStateLabel?.Text ?? "(no state found)";
-                this.TraceMessage($"State after click #{nextClicks}: {currentStateText}");
+                // Step 2: Place road (pick first buildable road from updated GameModel)
+                this.TraceMessage($"Step 2: Player {currentPlayer.Name} placing road");
+                PlaceFirstBuildableRoad(postSettlementGameModel);
                 
-                if (currentStateText.Contains("AllocateResourceReverse", StringComparison.OrdinalIgnoreCase))
-                {
-                    this.TraceMessage("Successfully transitioned to AllocateResourceReverse state");
-                    break;
-                }
+                // Wait for UI to update after road placement
+                Thread.Sleep(500);
                 
-                // Update GameModel to see current state
-                var currentGameModel = GetCurrentGameModel();
-                if (currentGameModel?.GameState == GameState.AllocateResourceReverse)
-                {
-                    this.TraceMessage("GameModel shows we're now in AllocateResourceReverse");
-                    break;
-                }
+                // Step 3: Click Next to advance to next player or next phase
+                this.TraceMessage($"Step 3: Player {currentPlayer.Name} clicking Next to advance");
+                var nextButton = FindByAutomationId("NextButton").AsButton();
+                Assert.NotNull(nextButton);
+                Assert.True(nextButton.IsEnabled, "Next button should be enabled after placing settlement and road");
+                nextButton.Invoke();
+                
+                // Wait for state transition
+                Thread.Sleep(1000);
+                
+                // Log the new state after Next click - get fresh GameModel
+                var postNextGameModel = GetCurrentGameModel();
+                this.TraceMessage($"After Next click, GameState is now: {postNextGameModel.GameState}");
+                
+                iterations++;
+            }
+            
+            if (iterations >= maxIterations)
+            {
+                throw new InvalidOperationException($"AllocateResourceForward phase did not complete within {maxIterations} iterations");
             }
             
             // Verify we ended up in AllocateResourceReverse
@@ -684,7 +872,8 @@ namespace Tests.DesktopApp.UI
 
         /// <summary>
         /// Test the AllocateResourceReverse state
-        /// Transitions from AllocateResourceReverse to DoneResourceAllocation when Next button is clicked (after all players)
+        /// Players must place settlements and roads during this phase in reverse order
+        /// Each player: 1. Places settlement 2. Places road 3. Clicks Next
         /// </summary>
         private void Test_AllocateResourceReverse()
         {
@@ -693,52 +882,72 @@ namespace Tests.DesktopApp.UI
             // Verify we're in the correct state using GameState (not UI text)
             VerifyExpectedGameState(GameState.AllocateResourceReverse);
             
-            // Get and verify GameModel state from AutomationProperties.ItemStatus
-            var gameModel = GetCurrentGameModel();
-            Assert.NotNull(gameModel);
+            // Get and verify initial GameModel state from AutomationProperties.ItemStatus
+            var initialGameModel = GetCurrentGameModel();
             
-            this.TraceMessage($"Verified GameModel state: {gameModel.GameState}");
+            this.TraceMessage($"Verified GameModel state: {initialGameModel.GameState}");
 
-            // In this state, we need to click Next multiple times to go through all players in reverse order
-            // The GameController shows this transitions to DoneResourceAllocation when the first player is reached
-            int maxNextClicks = 10; // Safety limit
-            int nextClicks = 0;
+            // In allocation reverse phase, each player takes a turn: settlement -> road -> next
+            // Loop until we transition out of AllocateResourceReverse
+            int maxIterations = 20; // Safety limit (5 players * 4 iterations each should be enough)
+            int iterations = 0;
             
-            while (nextClicks < maxNextClicks)
+            // Always get fresh GameState for loop condition - NEVER cache GameModel across iterations!
+            while (GetCurrentGameModel().GameState == GameState.AllocateResourceReverse && iterations < maxIterations)
             {
-                var next = FindByAutomationId("NextButton").AsButton();
-                Assert.NotNull(next);
+                // Get current player directly without caching GameModel
+                var currentPlayer = GetCurrentGameModel().CurrentPlayer();
                 
-                if (!next.IsEnabled)
-                {
-                    this.TraceMessage("Next button is disabled, checking current state");
-                    break;
-                }
+                this.TraceMessage($"Player {currentPlayer.Name} turn in AllocateResourceReverse");
                 
-                this.TraceMessage($"Clicking Next button (click #{nextClicks + 1}) in AllocateResourceReverse");
-                next.Invoke();
-                nextClicks++;
+                // Get GameHash before settlement placement
+                var preSettlementGameModel = GetCurrentGameModel();
+                var preSettlementGameHash = preSettlementGameModel.GameHash;
+                this.TraceMessage($"Pre-settlement GameHash: {preSettlementGameHash}");
+                this.TraceMessage($"Pre-settlement buildable roads: {preSettlementGameModel.Roads.Count(r => r.RoadState == RoadState.Buildable)}");
                 
-                Thread.Sleep(1000); // Give time for state transition
+                // Step 1: Place settlement (pick the one with most stars)
+                this.TraceMessage($"Step 1: Player {currentPlayer.Name} placing settlement");
+                PlaceOptimalSettlement(preSettlementGameModel);
                 
-                // Check if we've moved to DoneResourceAllocation
-                var currentStateLabel = Main.FindFirstDescendant(cf => cf.ByAutomationId("StateMessage"))?.AsLabel();
-                var currentStateText = currentStateLabel?.Text ?? "(no state found)";
-                this.TraceMessage($"State after click #{nextClicks}: {currentStateText}");
+                // Wait for UI and GameModel to update after settlement placement
+                this.TraceMessage("Waiting for GameModel to update after settlement placement...");
+                Thread.Sleep(1500); // Longer wait to ensure MVVM updates complete
                 
-                if (currentStateText.Contains("DoneResourceAllocation", StringComparison.OrdinalIgnoreCase))
-                {
-                    this.TraceMessage("Successfully transitioned to DoneResourceAllocation state");
-                    break;
-                }
+                // Get fresh GameModel with updated buildable roads - NEVER reuse GameModel!
+                var postSettlementGameModel = GetCurrentGameModel();
+                var postSettlementGameHash = postSettlementGameModel.GameHash;
+                this.TraceMessage($"Post-settlement GameHash: {postSettlementGameHash}");
+                this.TraceMessage($"GameHash changed: {preSettlementGameHash != postSettlementGameHash}");
+                this.TraceMessage($"GameModel refreshed, found {postSettlementGameModel.Roads.Count(r => r.RoadState == RoadState.Buildable)} buildable roads");
                 
-                // Update GameModel to see current state
-                var currentGameModel = GetCurrentGameModel();
-                if (currentGameModel?.GameState == GameState.DoneResourceAllocation)
-                {
-                    this.TraceMessage("GameModel shows we're now in DoneResourceAllocation");
-                    break;
-                }
+                // Step 2: Place road (pick first buildable road from updated GameModel)
+                this.TraceMessage($"Step 2: Player {currentPlayer.Name} placing road");
+                PlaceFirstBuildableRoad(postSettlementGameModel);
+                
+                // Wait for UI to update after road placement
+                Thread.Sleep(500);
+                
+                // Step 3: Click Next to advance to next player or next phase
+                this.TraceMessage($"Step 3: Player {currentPlayer.Name} clicking Next to advance");
+                var nextButton = FindByAutomationId("NextButton").AsButton();
+                Assert.NotNull(nextButton);
+                Assert.True(nextButton.IsEnabled, "Next button should be enabled after placing settlement and road");
+                nextButton.Invoke();
+                
+                // Wait for state transition
+                Thread.Sleep(1000);
+                
+                // Log the new state after Next click - get fresh GameModel
+                var postNextGameModel = GetCurrentGameModel();
+                this.TraceMessage($"After Next click, GameState is now: {postNextGameModel.GameState}");
+                
+                iterations++;
+            }
+            
+            if (iterations >= maxIterations)
+            {
+                throw new InvalidOperationException($"AllocateResourceReverse phase did not complete within {maxIterations} iterations");
             }
             
             // Verify we ended up in DoneResourceAllocation
@@ -762,7 +971,6 @@ namespace Tests.DesktopApp.UI
             
             // Get and verify GameModel state from AutomationProperties.ItemStatus
             var gameModel = GetCurrentGameModel();
-            Assert.NotNull(gameModel);
             
             this.TraceMessage($"Verified GameModel state: {gameModel.GameState}");
 
@@ -794,7 +1002,6 @@ namespace Tests.DesktopApp.UI
             
             // Get and verify GameModel state from AutomationProperties.ItemStatus
             var gameModel = GetCurrentGameModel();
-            Assert.NotNull(gameModel);
             
             this.TraceMessage($"Verified GameModel state: {gameModel.GameState}");
             
@@ -810,6 +1017,238 @@ namespace Tests.DesktopApp.UI
             
             this.TraceMessage("Successfully verified WaitingForRoll state - this is the end of the core game setup flow!");
             this.TraceMessage("=== Test_WaitingForRoll completed ===");
+        }
+
+        /// <summary>
+        /// Places the optimal settlement for the current player based on star count
+        /// Similar to SignalR test PickOptimalSettlement method
+        /// </summary>
+        private void PlaceOptimalSettlement(GameModel gameModel)
+        {
+            // Find all possible settlements
+            var possibleSettlements = gameModel.Buildings
+                .Where(b => b.BuildingState == BuildingState.PossibleSettlement)
+                .ToList();
+
+            if (!possibleSettlements.Any())
+            {
+                throw new InvalidOperationException("No possible settlements available");
+            }
+
+            // Find the settlement with the highest star count using the same logic as SignalR tests
+            var settlementOptions = possibleSettlements
+                .Select(building => new
+                {
+                    stars = gameModel.TilesForBuildings(building.BuildingKey).Stars(),
+                    building = building
+                })
+                .ToList();
+
+            var maxStars = settlementOptions.Max(s => s.stars);
+            var bestSettlement = settlementOptions.First(s => s.stars == maxStars);
+
+            this.TraceMessage($"Placing settlement at {bestSettlement.building.BuildingKey} with {bestSettlement.stars} stars");
+
+            // Click on the building to select it
+            ClickOnBuilding(bestSettlement.building.BuildingKey);
+        }
+
+        /// <summary>
+        /// Places the first buildable road for the current player
+        /// Similar to SignalR test logic
+        /// </summary>
+        private void PlaceFirstBuildableRoad(GameModel gameModel)
+        {
+            // Find all buildable roads
+            var buildableRoads = gameModel.Roads
+                .Where(r => r.RoadState == RoadState.Buildable)
+                .ToList();
+
+            if (!buildableRoads.Any())
+            {
+                throw new InvalidOperationException("No buildable roads available");
+            }
+
+            this.TraceMessage($"Found {buildableRoads.Count} buildable roads:");
+            foreach (var road in buildableRoads)
+            {
+                this.TraceMessage($"  - {road.RoadKey} (state: {road.RoadState})");
+            }
+
+            // Try each buildable road until we find one that has a UI element
+            foreach (var road in buildableRoads)
+            {
+                this.TraceMessage($"Attempting to place road at {road.RoadKey}");
+                var roadElement = FindRoadElement(road.RoadKey);
+                if (roadElement != null)
+                {
+                    this.TraceMessage($"Successfully found UI element for road {road.RoadKey}, clicking it");
+                    roadElement.Click();
+                    return;
+                }
+                else
+                {
+                    this.TraceMessage($"Could not find UI element for road {road.RoadKey}, trying next one");
+                }
+            }
+
+            throw new InvalidOperationException($"Could not find UI elements for any of the {buildableRoads.Count} buildable roads");
+        }
+
+        /// <summary>
+        /// Clicks on a building by its BuildingKey
+        /// </summary>
+        private void ClickOnBuilding(BuildingKey buildingKey)
+        {
+            // Build the expected AutomationId that matches BuildingViewModel.AutomationId format
+            var expectedAutomationId = $"Building-{buildingKey.HexCoordinates.Q}_{buildingKey.HexCoordinates.R}_{buildingKey.HexCoordinates.S}-{buildingKey.Position}";
+            
+            // Look for a UI element with the building's AutomationId
+            var buildingElement = Retry.WhileNull(() => 
+                Main.FindFirstDescendant(cf => cf.ByAutomationId(expectedAutomationId)),
+                timeout: TimeSpan.FromSeconds(5)).Result;
+
+            if (buildingElement == null)
+            {
+                this.TraceMessage($"Warning: Could not find UI element for building with AutomationId '{expectedAutomationId}', trying fallback searches");
+                
+                // Try alternative patterns
+                buildingElement = Retry.WhileNull(() => 
+                    Main.FindFirstDescendant(cf => cf.ByAutomationId($"Building_{buildingKey}")),
+                    timeout: TimeSpan.FromSeconds(2)).Result;
+            }
+
+            if (buildingElement == null)
+            {
+                buildingElement = Retry.WhileNull(() => 
+                    Main.FindFirstDescendant(cf => cf.ByAutomationId(buildingKey.ToString())),
+                    timeout: TimeSpan.FromSeconds(2)).Result;
+            }
+
+            if (buildingElement == null)
+            {
+                buildingElement = Retry.WhileNull(() => 
+                    Main.FindFirstDescendant(cf => cf.ByName(buildingKey.ToString())),
+                    timeout: TimeSpan.FromSeconds(2)).Result;
+            }
+
+            Assert.NotNull(buildingElement);
+            this.TraceMessage($"Clicking building element: {buildingElement.AutomationId ?? buildingElement.Name}");
+            
+            buildingElement.Click();
+            Thread.Sleep(300); // Give time for the click to register
+        }
+
+        /// <summary>
+        /// Clicks on a road by its RoadKey, handling road aliases
+        /// </summary>
+        private void ClickOnRoad(RoadKey roadKey)
+        {
+            var roadElement = FindRoadElement(roadKey);
+            Assert.NotNull(roadElement);
+            this.TraceMessage($"Clicking road element: {roadElement.AutomationId ?? roadElement.Name}");
+            
+            roadElement.Click();
+            Thread.Sleep(300); // Give time for the click to register
+        }
+
+        /// <summary>
+        /// Finds a road UI element by trying the main RoadKey and all its aliases
+        /// </summary>
+        private AutomationElement? FindRoadElement(RoadKey roadKey)
+        {
+            // Try the main AutomationId format first
+            var expectedAutomationId = $"Road-{roadKey.TileKey.Q}_{roadKey.TileKey.R}_{roadKey.TileKey.S}-{roadKey.HexSide}";
+            
+            this.TraceMessage($"Looking for road with primary AutomationId: {expectedAutomationId}");
+            var roadElement = Main.FindFirstDescendant(cf => cf.ByAutomationId(expectedAutomationId));
+
+            if (roadElement != null)
+            {
+                this.TraceMessage($"Found road with primary AutomationId: {expectedAutomationId}");
+                return roadElement;
+            }
+
+            // Try road aliases - roads can be represented from different adjacent tiles
+            var aliases = GetRoadAliases(roadKey);
+            foreach (var (position, direction) in aliases)
+            {
+                var aliasCoords = GetAdjacentTile(roadKey.TileKey, direction);
+                var aliasAutomationId = $"Road-{aliasCoords.Q}_{aliasCoords.R}_{aliasCoords.S}-{position}";
+                
+                this.TraceMessage($"Trying road alias AutomationId: {aliasAutomationId}");
+                roadElement = Main.FindFirstDescendant(cf => cf.ByAutomationId(aliasAutomationId));
+
+                if (roadElement != null)
+                {
+                    this.TraceMessage($"Found road with alias AutomationId: {aliasAutomationId}");
+                    return roadElement;
+                }
+            }
+
+            // Try fallback patterns
+            this.TraceMessage($"Warning: Could not find UI element for road {roadKey} or its aliases, trying fallback searches");
+            
+            roadElement = Main.FindFirstDescendant(cf => cf.ByAutomationId($"Road_{roadKey}"));
+
+            if (roadElement == null)
+            {
+                roadElement = Main.FindFirstDescendant(cf => cf.ByAutomationId(roadKey.ToString()));
+            }
+
+            if (roadElement == null)
+            {
+                roadElement = Main.FindFirstDescendant(cf => cf.ByName(roadKey.ToString()));
+            }
+
+            return roadElement;
+        }
+
+        /// <summary>
+        /// Gets road aliases based on RoadModelExtensions.Aliases logic
+        /// </summary>
+        private List<(HexSide position, Direction direction)> GetRoadAliases(RoadKey key)
+        {
+            List<(HexSide, Direction)> directions = [];
+            switch (key.HexSide)
+            {
+                case HexSide.TopRight:
+                    directions.Add((HexSide.BottomLeft, Direction.NorthEast));
+                    break;
+                case HexSide.BottomRight:
+                    directions.Add((HexSide.TopLeft, Direction.SouthEast));
+                    break;
+                case HexSide.BottomLeft:
+                    directions.Add((HexSide.TopRight, Direction.SouthWest));
+                    break;
+                case HexSide.Bottom:
+                    directions.Add((HexSide.Top, Direction.South));
+                    break;
+                case HexSide.Top:
+                    directions.Add((HexSide.Bottom, Direction.North));
+                    break;
+                case HexSide.TopLeft:
+                    directions.Add((HexSide.BottomRight, Direction.NorthWest));
+                    break;
+            }
+            return directions;
+        }
+
+        /// <summary>
+        /// Gets adjacent tile coordinates based on direction
+        /// </summary>
+        private HexCoordinates GetAdjacentTile(HexCoordinates coords, Direction direction)
+        {
+            return direction switch
+            {
+                Direction.North => new HexCoordinates(coords.Q, coords.R - 1, coords.S + 1),
+                Direction.NorthEast => new HexCoordinates(coords.Q + 1, coords.R - 1, coords.S),
+                Direction.SouthEast => new HexCoordinates(coords.Q + 1, coords.R, coords.S - 1),
+                Direction.South => new HexCoordinates(coords.Q, coords.R + 1, coords.S - 1),
+                Direction.SouthWest => new HexCoordinates(coords.Q - 1, coords.R + 1, coords.S),
+                Direction.NorthWest => new HexCoordinates(coords.Q - 1, coords.R, coords.S + 1),
+                _ => coords
+            };
         }
 
         private void LaunchPackagedAppAndAttachToMainWindow()
@@ -988,8 +1427,9 @@ namespace Tests.DesktopApp.UI
         /// <summary>
         /// Gets the current GameModel by reading JSON from AutomationProperties.ItemStatus
         /// This is a clean UI automation approach that doesn't require app dependencies
+        /// Returns a valid GameModel or fails with Assert - never returns null
         /// </summary>
-        private GameModel? GetCurrentGameModel()
+        private GameModel GetCurrentGameModel()
         {
             try
             {
@@ -1007,6 +1447,7 @@ namespace Tests.DesktopApp.UI
                             {
                                 this.TraceMessage($"GameModel retrieved from NextButton: JSON length={buttonGameModelJson.Length}");
                                 var buttonGameModel = JsonSerializer.Deserialize<GameModel>(buttonGameModelJson, JsonHelper.StandardOptions);
+                                Assert.NotNull(buttonGameModel);
                                 return buttonGameModel;
                             }
                             else
@@ -1043,6 +1484,7 @@ namespace Tests.DesktopApp.UI
                             {
                                 this.TraceMessage($"GameModel retrieved from MainContentGrid: JSON length={gridGameModelJson.Length}");
                                 var gridGameModel = JsonSerializer.Deserialize<GameModel>(gridGameModelJson, JsonHelper.StandardOptions);
+                                Assert.NotNull(gridGameModel);
                                 return gridGameModel;
                             }
                         }
@@ -1090,7 +1532,7 @@ namespace Tests.DesktopApp.UI
                     if (mainPage == null)
                     {
                         this.TraceMessage("No element with GameModel data found");
-                        return null;
+                        Assert.Fail("Failed to find any UI element containing GameModel data");
                     }
                 }
 
@@ -1101,24 +1543,28 @@ namespace Tests.DesktopApp.UI
                     if (string.IsNullOrEmpty(gameModelJson))
                     {
                         this.TraceMessage("GameModel JSON not found in element ItemStatus property");
-                        return null;
+                        Assert.Fail("GameModel JSON is empty in element ItemStatus property");
                     }
 
                     // Deserialize the JSON to GameModel
                     var gameModel = JsonSerializer.Deserialize<GameModel>(gameModelJson, JsonHelper.StandardOptions);
+                    Assert.NotNull(gameModel);
                     return gameModel;
                 }
                 else
                 {
                     this.TraceMessage("Element does not support ItemStatus property");
-                    return null;
+                    Assert.Fail("Element does not support ItemStatus property");
                 }
             }
             catch (Exception ex)
             {
                 this.TraceMessage($"Error getting GameModel from MainPage ItemStatus: {ex.Message}");
-                return null;
+                Assert.Fail($"Error getting GameModel: {ex.Message}");
             }
+            
+            // This line should never be reached due to Assert.Fail calls above
+            throw new InvalidOperationException("GetCurrentGameModel failed to return a valid GameModel");
         }
 
         /// <summary>
@@ -1214,8 +1660,119 @@ namespace Tests.DesktopApp.UI
         /// </summary>
         private GameState? GetGameState()
         {
-            var gameModel = GetCurrentGameModel();
+            var gameModel = TryGetCurrentGameModel();
             return gameModel?.GameState;
+        }
+
+        /// <summary>
+        /// Tries to get the current GameModel without failing, returns null if not available
+        /// Used in waiting scenarios where the GameModel might not be ready yet
+        /// </summary>
+        private GameModel? TryGetCurrentGameModel()
+        {
+            try
+            {
+                // Try NextButton first (for most game states)
+                var nextButton = Main.FindFirstDescendant(cf => cf.ByAutomationId("NextButton"));
+                
+                if (nextButton != null)
+                {
+                    try
+                    {
+                        if (nextButton.Properties.ItemStatus.TryGetValue(out var nextGameModelValue))
+                        {
+                            var nextGameModelJson = nextGameModelValue as string;
+                            if (!string.IsNullOrEmpty(nextGameModelJson))
+                            {
+                                var nextGameModel = JsonSerializer.Deserialize<GameModel>(nextGameModelJson, JsonHelper.StandardOptions);
+                                return nextGameModel;
+                            }
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Continue to fallback options
+                    }
+                }
+                
+                // Fallback 1: Try MainContentGrid
+                var mainContentGrid = Main.FindFirstDescendant(cf => cf.ByAutomationId("MainContentGrid"));
+                
+                if (mainContentGrid != null)
+                {
+                    try
+                    {
+                        if (mainContentGrid.Properties.ItemStatus.TryGetValue(out var gridGameModelValue))
+                        {
+                            var gridGameModelJson = gridGameModelValue as string;
+                            if (!string.IsNullOrEmpty(gridGameModelJson))
+                            {
+                                var gridGameModel = JsonSerializer.Deserialize<GameModel>(gridGameModelJson, JsonHelper.StandardOptions);
+                                return gridGameModel;
+                            }
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Continue to fallback options
+                    }
+                }
+                
+                // Fallback 2: Try to find the MainPage element by its AutomationId
+                var mainPage = Main.FindFirstDescendant(cf => cf.ByAutomationId("MainPage"));
+                
+                if (mainPage == null)
+                {
+                    // Try finding any element that has ItemStatus property containing our GameModel JSON
+                    var allElements = Main.FindAllDescendants().Take(50);
+                    foreach (var element in allElements)
+                    {
+                        try
+                        {
+                            if (element.Properties.ItemStatus.TryGetValue(out var itemStatusValue))
+                            {
+                                var itemStatus = itemStatusValue as string;
+                                if (!string.IsNullOrEmpty(itemStatus) && itemStatus.Contains("GameState"))
+                                {
+                                    mainPage = element;
+                                    break;
+                                }
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // ItemStatus not supported on this element, continue
+                        }
+                    }
+                    
+                    if (mainPage == null)
+                    {
+                        return null; // GameModel not available yet
+                    }
+                }
+
+                // Access the ItemStatus property which contains the GameModel JSON
+                if (mainPage.Properties.ItemStatus.TryGetValue(out var gameModelValue))
+                {
+                    var gameModelJson = gameModelValue as string;
+                    if (string.IsNullOrEmpty(gameModelJson))
+                    {
+                        return null; // GameModel not available yet
+                    }
+
+                    // Deserialize the JSON to GameModel
+                    var gameModel = JsonSerializer.Deserialize<GameModel>(gameModelJson, JsonHelper.StandardOptions);
+                    return gameModel;
+                }
+                else
+                {
+                    return null; // GameModel not available yet
+                }
+            }
+            catch (Exception)
+            {
+                return null; // GameModel not available yet
+            }
         }
 
         /// <summary>
