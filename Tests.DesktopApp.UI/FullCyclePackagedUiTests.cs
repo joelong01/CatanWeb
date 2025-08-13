@@ -35,6 +35,7 @@ namespace Tests.DesktopApp.UI
         private UIA3Automation? _automation;
         private AutomationElement? _main;
         private DebugTraceListener? _debugListener;
+        private bool _testSucceeded = false;
 
         /// <summary>
         /// Custom trace listener to capture debug output from the desktop app
@@ -103,8 +104,17 @@ namespace Tests.DesktopApp.UI
                     _debugListener = null;
                 }
                 
-                // Attempt to close the window cleanly after test
-                _main?.AsWindow()?.Close();
+                // Only close the app if the test succeeded
+                // If the test failed, leave it open for debugging
+                if (_testSucceeded)
+                {
+                    this.TraceMessage("Test succeeded - closing app");
+                    _main?.AsWindow()?.Close();
+                }
+                else
+                {
+                    this.TraceMessage("Test failed - leaving app open for debugging. You can check the debug window for trace messages.");
+                }
             }
             catch { }
             _automation?.Dispose();
@@ -156,6 +166,7 @@ namespace Tests.DesktopApp.UI
                 Test_WaitingForRoll(); // End state for this test
                 
                 this.TraceMessage("=== All GameState tests completed successfully ===");
+                _testSucceeded = true; // Mark test as successful
             });
         }
 

@@ -401,5 +401,10 @@ namespace Catan3.Models
         {
             return $"{Road}";
         }
+
+        /// <summary>
+        /// Stable AutomationId for UI automation of a road control.
+        /// </summary>
+        public string AutomationId => $"Road-{Road.RoadKey.TileKey.Q}_{Road.RoadKey.TileKey.R}_{Road.RoadKey.TileKey.S}-{Road.RoadKey.HexSide}";
     }
 }

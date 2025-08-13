@@ -14,26 +14,31 @@ namespace Catan3.Models
     public class BuildingMouseEntered(BuildingViewModel buildingViewModel)
     {
         public BuildingViewModel BuildingViewModel { get; } = buildingViewModel;
+        public override string ToString() => $"BuildingMouseEntered: {BuildingViewModel.Building?.BuildingKey}";
     }
     
     public class BuildingMouseExit(BuildingViewModel buildingViewModel)
     {
         public BuildingViewModel BuildingViewModel { get; } = buildingViewModel;
+        public override string ToString() => $"BuildingMouseExit: {BuildingViewModel.Building?.BuildingKey}";
     }
     
     public class CurrentPlayerChanged(PlayerViewModel currentPlayer)
     {
         public PlayerViewModel CurrentPlayer { get; } = currentPlayer;
+        public override string ToString() => $"CurrentPlayerChanged: {CurrentPlayer.Player?.Name ?? "Unknown"}";
     }
     
     public class RequestTileOwners(TileViewModel tileViewModel)
     {
         public TileViewModel TileViewModel { get; } = tileViewModel;
+        public override string ToString() => $"RequestTileOwners: {TileViewModel.Tile?.TileKey}";
     }
     
     public class TileOwnersResponse(IList<PlayerViewModel> players)
     {
         public IList<PlayerViewModel> Owners { get; } = players;
+        public override string ToString() => $"TileOwnersResponse: {Owners.Count} owners";
     }
     
     public class UpdateOrientation(CatanOrientation newOrientation)
