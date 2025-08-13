@@ -204,6 +204,8 @@
                         Icon="Repair" />
                 <AppBarButton Label="Toggle Titlebar" Click="OnToggleTitleBar"
                         Icon="FullScreen" />
+                <AppBarButton Label="Show Debug Window" Click="OnShowDebugWindow"
+                        Icon="ViewAll" />
                 <AppBarButton Label="Quit" Click="OnClose" Margin="0,0,0,0"
                         Icon="ClosePane" />
                 <AppBarButton Label="Run Tests" Click="OnRunTests"

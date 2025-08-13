@@ -301,7 +301,7 @@ namespace Catan.Services
                     using var fileStream = new FileStream(location, FileMode.Create, FileAccess.Write, FileShare.None);
                     await fileStream.WriteAsync(data.AsMemory(0, data.Length));
                     await fileStream.FlushAsync(); // Ensure all data is written to the file
-                    this.TraceMessage($"saved with attempts={attempt}");
+                   // this.TraceMessage($"saved with attempts={attempt}");
                     return true;
                 }
                 catch (IOException ex) when (attempt < maxRetries - 1)

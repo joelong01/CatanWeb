@@ -343,5 +343,11 @@ namespace Catan3
                 MySplitView.IsPaneOpen = false;
             }
         }
+
+        private void OnShowDebugWindow(object sender, RoutedEventArgs e)
+        {
+            DebugWindow.Show();
+            HideMenu(); // Close the menu after opening debug window
+        }
     }
 }

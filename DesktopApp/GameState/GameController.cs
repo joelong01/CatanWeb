@@ -812,7 +812,9 @@ namespace Catan3.Controller
         /// the road key is invalid, or the road is already owned.</exception>
         private GameModel RoadPurchase(RoadPurchaseMessage message)
         {
+           
             GameModel gameModel = Log.CopyCurrent();
+            this.TraceMessage($"GameState: {gameModel.GameState} RoadPurchase: {message}");
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse, GameState.Supplemental]);
             ThrowIfNoEntitlement(gameModel, [Entitlement.Road]);
             var roadKey = message.RoadKey;
@@ -932,6 +934,7 @@ namespace Catan3.Controller
             {
                 throw new GameException($"{building} is not buildingable.");
             }
+            this.TraceMessage($"GameState: {gameModel.GameState} BuildingUpgrade: {building} in state {building.BuildingState} for player {gameModel.CurrentPlayerId}");
             // Process the building upgrade based on its current state.
             switch (building.BuildingState)
             {
