@@ -6,7 +6,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+        AutomationProperties.AutomationId="Page_NewGame" AutomationProperties.Name="Page_NewGame"
+       
+      x:Name="Page_NewGame">
 
     <Page.Resources>
         <DataTemplate x:Key="PlayerDataTemplate" x:DataType="m:PlayerViewModel">
@@ -69,6 +72,7 @@
                     Visibility="{x:Bind Frame.CanGoBack, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
             <Button Content="Start" Width="100" Click="OnStart" Margin="5"
                     AutomationProperties.AutomationId="StartButton"
+                    AutomationProperties.Name="StartButton"
                     HorizontalAlignment="Right" />
 
             <Button Content="Run Tests" Width="100" Click="OnRunTests"

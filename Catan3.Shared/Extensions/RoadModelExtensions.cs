@@ -9,6 +9,12 @@ namespace Catan3.Shared.Extensions
 {
     public static class RoadModelExtensions
     {
+
+        public static string GetAutomationId(this RoadKey key)
+        {
+            if (key is null) throw new ArgumentNullException(nameof(key));
+            return $"Road-{key}";
+        }
         public static List<RoadModel> OwnedAdjacentRoadsNotCounted(this GameModel gameModel, RoadModel road, List<RoadModel> owned, RoadModel? blockedFork, out bool adjacentFork)
         {
             List<RoadModel> list = [];

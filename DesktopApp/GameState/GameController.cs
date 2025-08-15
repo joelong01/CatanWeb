@@ -650,7 +650,7 @@ namespace Catan3.Controller
                         for (int i = 0; i < gameModel.Players.Count; i++)
                         {
                             int index = (currentPlayerIndex + i) % gameModel.Players.Count;
-                           
+
                             if (index == currentPlayerIndex)
                             {
                                 continue;
@@ -724,12 +724,12 @@ namespace Catan3.Controller
                                 // so that they don't get picked again
                                 gameModel.Players[currentPlayerIndex].FinishedSupplemental = true;
                             }
-                           
+
 
                             // Change to that player
                             gameModel.ChangePlayerTo(participatingPlayer.Id);
 
-                         
+
                         }
                         else
                         {
@@ -812,7 +812,7 @@ namespace Catan3.Controller
         /// the road key is invalid, or the road is already owned.</exception>
         private GameModel RoadPurchase(RoadPurchaseMessage message)
         {
-           
+
             GameModel gameModel = Log.CopyCurrent();
             this.TraceMessage($"GameState: {gameModel.GameState} RoadPurchase: {message}");
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse, GameState.Supplemental]);

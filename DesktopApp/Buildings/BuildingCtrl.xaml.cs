@@ -2,6 +2,7 @@ using Catan3.Models;
 using Catan3.Utility;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Catan3.Shared.Extensions;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 namespace Catan3.Controls
@@ -15,7 +16,7 @@ namespace Catan3.Controls
         public static readonly DependencyProperty BuildingViewModelProperty = DependencyProperty.Register("BuildingViewModel", typeof(BuildingViewModel), typeof(BuildingCtrl), new PropertyMetadata(null, BuildingViewModelChanged));
         public BuildingViewModel BuildingViewModel
         {
-            get => ( BuildingViewModel )GetValue(BuildingViewModelProperty);
+            get => (BuildingViewModel)GetValue(BuildingViewModelProperty);
             set => SetValue(BuildingViewModelProperty, value);
         }
         private static void BuildingViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -26,7 +27,7 @@ namespace Catan3.Controls
         }
         private void SetBuildingViewModel(BuildingViewModel value)
         {
-           // this.TraceMessage($"{value} Hashcode: {value.GetHashCode()}");
+            // this.TraceMessage($"{value} Hashcode: {value.GetHashCode()}");
             //var bindingExpression = TXT_StateGlyph.GetBindingExpression(TextBlock.TextProperty);
             //if (bindingExpression is not null) bindingExpression.UpdateSource();
         }
@@ -35,7 +36,7 @@ namespace Catan3.Controls
             return isMetropolis ? 0.6 : 1.0;
         }
         private string LaurelGlyph => CatanFont.Laurel;
-        
+
         private void OnPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             BuildingViewModel.UpgradeCommand.Execute(BuildingViewModel);
@@ -55,6 +56,15 @@ namespace Catan3.Controls
                 grid.BorderThickness = new Thickness(1);
             }
             BuildingViewModel.MouseEnterCommand.Execute(BuildingViewModel);
+        }
+
+        public string GetCtrlAutomationId(BuildingViewModel viewModel)
+        {
+            if (viewModel is null || viewModel.Building is null || viewModel.Building.BuildingKey is null)
+            {
+                return "Building-Default";
+            }
+            return viewModel.Building.BuildingKey.GetAutomationId();
         }
     }
 }

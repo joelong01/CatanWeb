@@ -134,6 +134,8 @@
                             <GridView.ItemTemplate>
                                 <DataTemplate x:DataType="models:UiRollModel">
                                     <c:SingleRoll Number="{x:Bind Roll}"
+                                                  AutomationProperties.AutomationId="{x:Bind AutomationId, Mode=OneWay}"
+                                                  AutomationProperties.Name="{x:Bind AutomationId, Mode=OneWay}"
                                             GameRolls="{x:Bind RollViewModel.GameRollViewModel, Mode=OneWay}"
                                             TurnRoll="{x:Bind RollViewModel.TurnRollViewModel, Mode=OneWay}" />
                                 </DataTemplate>

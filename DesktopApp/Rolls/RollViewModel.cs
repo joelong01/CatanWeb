@@ -48,6 +48,8 @@ namespace Catan3.Models
         /// </summary>
         [ObservableProperty]
         public partial int Roll { get; set; } = roll;
+
+        public string AutomationId => $"Roll - {Roll}";
     }
     /// <summary>
     /// Represents the view model for turn rolls, including commands for rolling dice.

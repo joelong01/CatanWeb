@@ -1,7 +1,7 @@
 using Catan3.Models;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
-using Catan3.Utility;
+using Catan3.Shared.Extensions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 namespace Catan3.Controls
@@ -16,7 +16,8 @@ namespace Catan3.Controls
         {
             InitializeComponent();
         }
-        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(RoadViewModel), typeof(RoadCtrl), new PropertyMetadata(new RoadKey(HexCoordinates.Default, HexSide.None), ViewModelChanged));
+
+        public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(RoadViewModel), typeof(RoadCtrl), new PropertyMetadata(null, ViewModelChanged));
         public RoadViewModel ViewModel
         {
             get => ( RoadViewModel )GetValue(ViewModelProperty);
@@ -41,6 +42,20 @@ namespace Catan3.Controls
         private void OnPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             ViewModel.MouseClickedCommand.Execute(ViewModel);
+        }
+
+        /// <summary>
+        /// Gets the automation ID for the road control - consistent with TileCtrl pattern
+        /// </summary>
+        /// <param name="roadKey">The road key</param>
+        /// <returns>Automation ID string for the road</returns>
+        public string GetCtrlAutomationId(RoadViewModel viewModel)
+        {
+            if (viewModel is null || viewModel.Road is null || viewModel.Road.RoadKey is null)
+            {
+                return "RoadCtrl-Default";
+            }
+            return viewModel.Road.RoadKey.GetAutomationId();
         }
     }
 }

@@ -8,6 +8,7 @@ param(
     [switch]$SkipUiTests,
     [switch]$Release,
     [switch]$NoRegister,
+    [switch]$NoFontRegister,
     [switch]$Unregister,
     [switch]$Help,
     [ValidateSet("x64", "x86", "ARM64")]
@@ -43,6 +44,7 @@ OPTIONS:
     -SkipUiTests    Skip UI/E2E test projects (e.g., Tests.DesktopApp.UI)
     -Release        Build in Release configuration (default: Debug)
     -NoRegister     Do not register the app after publish (default is to register)
+    -NoFontRegister Do not register the Catan font (default is to register)
     -Unregister     Unregister the app from the system and exit
     -Platform       Target platform: x64, x86, ARM64 (default: x64)
     -Verbose        Enable verbose output (built-in PowerShell)
@@ -53,12 +55,14 @@ EXAMPLES:
     .\build.ps1 -Clean -Release           # Clean release build (registers by default)
     .\build.ps1 -NoTest -NoRegister       # Build and publish without tests and skip registration
     .\build.ps1 -SkipUiTests              # Build, run unit/integration tests only, publish, register
+    .\build.ps1 -NoFontRegister           # Build normally but skip font registration
     .\build.ps1 -Unregister               # Unregister the app and exit (implies -NoRegister)
     .\build.ps1 -Platform ARM64 -Release  # Build for ARM64 in Release mode
 
 DEFAULTS:
-    By default, this script will build, test, publish, and register the app so you can
-    find it in the Start menu and launch/debug it immediately. Use -NoRegister to opt out.
+    By default, this script will build, test, publish, register the app, and register
+    the Catan font so you can find it in the Start menu and launch/debug it immediately. 
+    Use -NoRegister to skip app registration or -NoFontRegister to skip font registration.
 
 NOTE: Use PowerShell syntax (-Parameter) not bash syntax (--parameter)
 
@@ -145,6 +149,59 @@ function Stop-Log {
     if ($script:TranscriptStarted) {
         try { Stop-Transcript | Out-Null } catch { }
         $script:TranscriptStarted = $false
+    }
+}
+
+# Font registration helper
+function Register-Font {
+    param(
+        [Parameter(Mandatory=$true)][string]$FontPath
+    )
+    
+    if (-not (Test-Path $FontPath)) {
+        Write-Output "⚠️  Font file not found: $FontPath"
+        return $false
+    }
+    
+    try {
+        Write-Output "🎨 Registering Catan font..."
+        
+        # Load the font file
+        $fontFile = Get-Item $FontPath
+        
+        # Add to Windows font registry using Win32 API
+        Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class FontRegistration {
+    [DllImport("gdi32.dll", EntryPoint="AddFontResourceW", SetLastError=true)]
+    public static extern int AddFontResource([MarshalAs(UnmanagedType.LPWStr)]string lpFileName);
+    
+    [DllImport("user32.dll", SetLastError=true)]
+    public static extern int SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+    
+    public const int HWND_BROADCAST = 0xFFFF;
+    public const uint WM_FONTCHANGE = 0x001D;
+}
+"@
+        
+        # Register the font
+        $result = [FontRegistration]::AddFontResource($FontPath)
+        
+        if ($result -gt 0) {
+            # Notify all windows that fonts have changed
+            [FontRegistration]::SendMessage([IntPtr]0xFFFF, 0x001D, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+            
+            Write-Output "✅ Font registered successfully: $($fontFile.Name)"
+            Write-Output "   Font families added: $result"
+            return $true
+        } else {
+            Write-Output "❌ Font registration failed for: $($fontFile.Name)"
+            return $false
+        }
+    } catch {
+        Write-Output "❌ Error registering font: $($_.Exception.Message)"
+        return $false
     }
 }
 
@@ -280,6 +337,14 @@ try {
     dotnet build @buildArgs
     if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code: $LASTEXITCODE" }
     Write-Output "✅ Build completed successfully"
+
+    # Register the Catan font for UI consistency (unless skipped)
+    if (-not $NoFontRegister) {
+        $fontPath = Join-Path $PSScriptRoot "DesktopApp\Assets\Fonts\Catan.ttf"
+        Register-Font -FontPath $fontPath
+    } else {
+        Write-Output "⏭️  Font registration skipped (flag: -NoFontRegister)"
+    }
 
         # Run tests if not skipped
         if (!$NoTest) {

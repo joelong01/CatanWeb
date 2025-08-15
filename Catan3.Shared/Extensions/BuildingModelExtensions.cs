@@ -11,6 +11,11 @@ namespace Catan3.Shared.Extensions
 {
     public static class BuildingModelExtensions
     {
+        public static string GetAutomationId(this BuildingKey key)
+        {
+            if (key is null) throw new ArgumentNullException(nameof(key));
+            return $"Building-{key}";
+        }
         public static List<(HexPosition position, Direction direction)> Aliases(this BuildingKey key)
         {
             List<(HexPosition, Direction)> directions = [];

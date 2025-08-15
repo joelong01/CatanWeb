@@ -6,7 +6,8 @@
         xmlns:c="using:Catan3.Controls" xmlns:m="using:Catan3.Models"
         xmlns:u="using:Catan3.Utility"
         d:DataContext="{d:DesignInstance Type=m:GameViewModel}" mc:Ignorable="d"
-        Canvas.ZIndex="1" d:DesignHeight="450" d:DesignWidth="800">
+        Canvas.ZIndex="1" d:DesignHeight="450" d:DesignWidth="800"
+        AutomationProperties.AutomationId="GameBoardCtrl">
     <UserControl.Resources>
         <Storyboard x:Key="MoveRobberAnimation">
             <DoubleAnimation Storyboard.TargetName="VB_Robber"
@@ -85,6 +86,7 @@
         </ItemsControl>
         <!--Roads-->
         <ItemsControl x:Name="IC_Roads"
+                AutomationProperties.AutomationId="IC_Roads"
                 ItemsSource="{x:Bind GameViewModel.Roads, Mode=OneWay}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>

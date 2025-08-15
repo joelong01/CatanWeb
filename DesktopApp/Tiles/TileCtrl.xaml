@@ -20,8 +20,8 @@
     </Control.Resources>
 
     <Canvas Name="CANVAS_LayoutRoot"
-            AutomationProperties.AutomationId="{x:Bind GetTileAutomationId(TileViewModel.Tile.TileKey), Mode=OneWay}"
-            AutomationProperties.Name="{x:Bind TileViewModel.Tile.TileKey, Mode=OneWay}"
+            AutomationProperties.AutomationId="{x:Bind GetTileAutomationId(TileViewModel.Tile), Mode=OneWay}"
+            AutomationProperties.Name="{x:Bind  GetTileAutomationId(TileViewModel.Tile), Mode=OneWay}"
             Width="{x:Bind TileViewModel.Layout.ControlWidth, Mode=OneWay}"
             Height="{x:Bind TileViewModel.Layout.ControlHeight, Mode=OneWay}">
         <u:FlipperCtrl
@@ -71,7 +71,7 @@
                                 Visibility="{x:Bind TileViewModel.Tile.Number, Mode=OneWay, Converter={StaticResource NumberToVisibilityConverter}}">
                             <c:CatanNumber
                                     Number="{x:Bind TileViewModel.Tile.Number, Mode=OneWay}"
-                                    AutomationProperties.AutomationId="{x:Bind GetTileNumberAutomationId(TileViewModel.Tile.TileKey), Mode=OneWay}"
+                                    AutomationProperties.AutomationId="{x:Bind GetTileNumberAutomationId(TileViewModel.Tile), Mode=OneWay}"
                                     AutomationProperties.Name="{x:Bind TileViewModel.Tile.Number, Mode=OneWay}" />
                             <Grid.RenderTransform>
                                 <CompositeTransform
@@ -88,7 +88,7 @@
                                 <u:FlipperCtrl.Front>
                                     <Border CornerRadius="5" Width="67"
                                             Height="100" BorderThickness=".5"
-                                            AutomationProperties.AutomationId="{x:Bind GetTileResourceAutomationId(TileViewModel.Tile.TileKey), Mode=OneWay}"
+                                            AutomationProperties.AutomationId="{x:Bind GetTileResourceAutomationId(TileViewModel.Tile), Mode=OneWay}"
                                             AutomationProperties.Name="{x:Bind TileViewModel.Tile.ResourceTileType, Mode=OneWay}">
                                         <Rectangle RadiusX="1" RadiusY="1"
                                                 Fill="{x:Bind TileViewModel.GetResourceImage(TileViewModel.Tile, TileViewModel.Tile.ResourceTileType), Mode=OneWay}" />
