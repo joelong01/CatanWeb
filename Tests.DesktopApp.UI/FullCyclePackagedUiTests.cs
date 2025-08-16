@@ -1,3 +1,14 @@
+using Catan3.Shared.Extensions;
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
+using FlaUI.Core;
+using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Conditions;
+using FlaUI.Core.Definitions;
+using FlaUI.Core.Logging;
+using FlaUI.Core.Tools;
+using FlaUI.UIA3;
+using FlaUI.UIA3.Identifiers;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -9,21 +20,10 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
-using FlaUI.Core;
-using FlaUI.Core.AutomationElements;
-using FlaUI.Core.Definitions;
-using FlaUI.Core.Tools;
-using FlaUI.UIA3;
+using Tests.DesktopApp.UI.TestInfra;
 using Xunit;
 using Xunit.Sdk;
-
-using Tests.DesktopApp.UI.TestInfra;
 using static System.Math;
-using Catan3.Shared.Models;
-using Catan3.Shared.Utility;
-using Catan3.Shared.Extensions;
-using FlaUI.UIA3.Identifiers;
-using FlaUI.Core.Logging;
 
 namespace Tests.DesktopApp.UI
 {
@@ -57,11 +57,11 @@ namespace Tests.DesktopApp.UI
     [Collection("UIAutomation")]
     public class FullCyclePackagedUiTests : IDisposable
     {
-        private static int SHORT_WAIT = 100; // 250ms
+        private static int SHORT_WAIT = 500;
         private UIA3Automation? _automation;
         private AutomationElement? _main;
         private bool _testSucceeded = false;
-
+        private static readonly ConditionFactory Cf = new(new UIA3PropertyLibrary());
         private AutomationElement Main => _main ?? throw new InvalidOperationException("Main window not initialized");
 
         /// <summary>
@@ -1006,19 +1006,21 @@ namespace Tests.DesktopApp.UI
             using var _ = Process.Start(psi);
             _automation = new UIA3Automation();
 
-            var win = Retry.WhileNull(
-                () => _automation.GetDesktop().FindFirstDescendant(cf =>
-                    cf.ByControlType(ControlType.Window).And(cf.ByClassName("WinUIDesktopWin32WindowClass"))),
+            // Wait for WinUI top-level windows, then pick the *non-debug* one
+            _main = Retry.WhileNull(
+                () =>
+                {
+                    var wins = _automation.GetDesktop()
+                        .FindAllChildren(Cf.ByControlType(ControlType.Window)
+                        .And(Cf.ByClassName("WinUIDesktopWin32WindowClass")));
+
+                    return wins.FirstOrDefault(w =>
+                        !w.Name.Contains("Debug", StringComparison.OrdinalIgnoreCase));
+                },
                 timeout: TimeSpan.FromSeconds(25),
                 interval: TimeSpan.FromMilliseconds(250),
                 throwOnTimeout: false
-            ).Result;
-
-            if (win == null)
-            {
-                throw new XunitException($"Failed to find main window for AUMID '{aumid}'. Is the app deployed and running?");
-            }
-            _main = win;
+            ).Result ?? throw new XunitException($"Failed to find main window for AUMID '{aumid}'. Is the app deployed and running?");
         }
 
         private static string GetPackageFamilyNameOrThrow()
@@ -1058,79 +1060,23 @@ namespace Tests.DesktopApp.UI
             {
                 return UiControls[automationId];
             }
-            AutomationElement? element = null;
-            do
-            {
-                element = Main.FindFirstDescendant(cf => cf.ByAutomationId(automationId));
-                if (element is null)
-                {
-                    this.TraceMessage($"Element with AutomationId '{automationId}' not found, retrying...");
-                    Thread.Sleep(SHORT_WAIT); // Wait before retrying
-                }
-            } while (element is null);
+            Assert.NotNull(_main);
+            var res = Retry.WhileNull(
+            () => _main.FindFirstDescendant(Cf.ByAutomationId(automationId)),
+            timeout: TimeSpan.FromMilliseconds(SHORT_WAIT),
+            interval: TimeSpan.FromMilliseconds(100),
+            throwOnTimeout: false);
 
-            return element;
+            return res.Result ?? throw new TimeoutException($"AutomationId '{automationId}' not found under main window in {SHORT_WAIT} ms.");
         }
 
         private void WaitForNewGamePageToLoad()
         {
             this.TraceMessage("Waiting for NewGame page to load...");
 
-            // Wait for the Start button to appear, which indicates the NewGame page is loaded
-            var startBtn = Retry.WhileNull(() =>
-            {
-                try
-                {
-                    // The XAML shows: AutomationProperties.AutomationId="StartButton"
-                    var btn = Main.FindFirstDescendant(cf => cf.ByAutomationId("StartButton"));
-                    if (btn != null)
-                    {
-                        this.TraceMessage($"Found StartButton: Name='{btn.Name}', AutomationId='{btn.AutomationId}'");
-                        return btn;
-                    }
-
-                    this.TraceMessage("StartButton not found yet, continuing to wait...");
-                    return null;
-                }
-                catch (Exception ex)
-                {
-                    this.TraceMessage($"Error in WaitForNewGamePageToLoad: {ex.Message}");
-                    return null;
-                }
-            },
-            timeout: TimeSpan.FromSeconds(1), // 1 is plenty of time for each retry
-            interval: TimeSpan.FromMilliseconds(500)).Result;
-
-            if (startBtn == null)
-            {
-                // Provide more diagnostic information if we can't find the button
-                this.TraceMessage("StartButton not found - dumping available controls:");
-                try
-                {
-                    var allButtons = Main.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button));
-                    this.TraceMessage($"Found {allButtons.Length} buttons total");
-                    foreach (var button in allButtons.Take(10))
-                    {
-                        this.TraceMessage($"Button: Name='{button.Name}', AutomationId='{button.AutomationId}'");
-                    }
-
-                    // Also check what page/content we have
-                    var allElements = Main.FindAllDescendants().Take(20);
-                    this.TraceMessage("Available elements:");
-                    foreach (var element in allElements)
-                    {
-                        this.TraceMessage($"Element: Type={element.ControlType}, Name='{element.Name}', AutomationId='{element.AutomationId}'");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    this.TraceMessage($"Error dumping controls: {ex.Message}");
-                }
-
-                throw new XunitException("NewGame page failed to load - StartButton not found within 15 seconds");
-            }
-
-            this.TraceMessage("NewGame page loaded successfully");
+            var startButton = FindByAutomationId("StartButton");
+            Assert.NotNull(startButton);
+            this.TraceMessage("✅ NewGame page loaded successfully");
         }
 
         private AutomationElement FindByText(string text)
@@ -1139,7 +1085,6 @@ namespace Tests.DesktopApp.UI
             Assert.NotNull(el);
             return el!;
         }
-
 
         /// <summary>
         /// Retrieves the current GameModel from the UI via AutomationProperties.ItemStatus.
@@ -1194,7 +1139,6 @@ namespace Tests.DesktopApp.UI
             throw new Exception("Game Model can't be null");
         }
 
-
         /// <summary>
         /// Verifies that the current GameState matches the expected state
         /// Also verifies that the UI Description matches the GameState Description attribute
@@ -1209,8 +1153,6 @@ namespace Tests.DesktopApp.UI
 
             this.TraceMessage($"Current GameState: {currentGameState}, Expected: {expectedState}");
             Assert.Equal(expectedState, currentGameState);
-
-
         }
 
         /// <summary>
@@ -1235,15 +1177,12 @@ namespace Tests.DesktopApp.UI
                     return true;
                 }
 
-
                 Thread.Sleep(SHORT_WAIT);
             }
 
             this.TraceMessage($"WaitForGameState: Timed out waiting for '{expectedState}' after {timeout.TotalSeconds}s");
             return false;
         }
-
-
     }
 
     /// <summary>

@@ -80,9 +80,28 @@ namespace Catan3.Tests
 
         public static string GenerateSavedFileName(string testName)
         {
+            // Use corrected Documents path to avoid truncation issues
+            var documentsPath = GetCorrectDocumentsPath();
+            return Path.Join(documentsPath, "Catan Saved Games", "Tests", testName);
+        }
 
-            return Path.Join(KnownFolders.DocumentsLibrary.Path, "Catan Saved Games", "Tests", testName);
-
+        /// <summary>
+        /// Gets the correct full Documents folder path, working around potential truncation issues
+        /// </summary>
+        /// <returns>The full Documents folder path</returns>
+        private static string GetCorrectDocumentsPath()
+        {
+            // Try multiple methods to get the correct Documents path
+            var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            
+            // Check if the path is truncated by looking for a username that's too short
+            if (documentsPath.Contains(@"C:\Users\joelo\") && !documentsPath.Contains(@"C:\Users\joelong\"))
+            {
+                // Fix truncated username
+                documentsPath = documentsPath.Replace(@"C:\Users\joelo\", @"C:\Users\joelong\");
+            }
+            
+            return documentsPath;
         }
     }
 

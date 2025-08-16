@@ -95,7 +95,9 @@ namespace Catan3
             var folderPath = Path.GetDirectoryName(fqn) ?? throw new GameException($"Invalid Directory Name in PlayerDatabase {fqn}");
             if (folderPath == string.Empty)
             {
-                folderPath = KnownFolders.DocumentsLibrary.Path;
+                // Use corrected Documents path to avoid truncation
+                var documentsPath = GetCorrectDocumentsPath();
+                folderPath = Path.Combine(documentsPath, PlayerFolder);
             }
             var fileName = Path.GetFileNameWithoutExtension(fqn);
             var parts = fileName.Split('_');
@@ -172,6 +174,12 @@ namespace Catan3
             try
             {
                 var folder = await KnownFolders.DocumentsLibrary.CreateFolderAsync(PlayerFolder, CreationCollisionOption.OpenIfExists);
+                
+                // Add tracing to see what path is being used
+                //this.TraceMessage($"📁 LoadPlayerDatabase: KnownFolders.DocumentsLibrary.Path = '{KnownFolders.DocumentsLibrary.Path}'");
+                //this.TraceMessage($"📁 LoadPlayerDatabase: folder.Path = '{folder.Path}'");
+                //this.TraceMessage($"📁 LoadPlayerDatabase: Environment.GetFolderPath(MyDocuments) = '{Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)}'");
+                
                 var item = await folder.TryGetItemAsync(PlayersFileName);
                 if (item is not null && item is StorageFile file)
                 {
@@ -192,6 +200,45 @@ namespace Catan3
                 foreach (var p in AllPlayers)
                 {
                     p.InitializeAfterDeserialization();
+                    
+                    // Fix truncated paths that may exist from previous versions (including OneDrive paths)
+                    bool pathFixed = false;
+                    
+                    // Handle both regular Documents and OneDrive Documents paths
+                    if (p.CroppedImageUri.Contains(@"C:\Users\joelo\") && !p.CroppedImageUri.Contains(@"C:\Users\joelong\"))
+                    {
+                        var oldPath = p.CroppedImageUri;
+                        p.CroppedImageUri = p.CroppedImageUri.Replace(@"C:\Users\joelo\", @"C:\Users\joelong\");
+                      //  this.TraceMessage($"🔧 Fixed truncated CroppedImageUri for {p.Name}: '{oldPath}' → '{p.CroppedImageUri}'");
+                        pathFixed = true;
+                    }
+                    
+                    if (p.ImageUri.Contains(@"C:\Users\joelo\") && !p.ImageUri.Contains(@"C:\Users\joelong\"))
+                    {
+                        var oldPath = p.ImageUri;
+                        p.ImageUri = p.ImageUri.Replace(@"C:\Users\joelo\", @"C:\Users\joelong\");
+                     //   this.TraceMessage($"🔧 Fixed truncated ImageUri for {p.Name}: '{oldPath}' → '{p.ImageUri}'");
+                        pathFixed = true;
+                    }
+                    
+                    // Save corrected paths back to database (but only once for all fixes)
+                    if (pathFixed)
+                    {
+                      //  this.TraceMessage($"💾 Paths were fixed for {p.Name}, will save database after all fixes");
+                    }
+                    
+                   //  this.TraceMessage($"👥 Player loaded from database: {p.Name} with CroppedImageUri: '{p.CroppedImageUri}'");
+                }
+                
+                // Save the database once if any paths were fixed
+                bool anyPathsFixed = AllPlayers.Any(p => 
+                    (p.CroppedImageUri.Contains(@"C:\Users\joelong\") && p.CroppedImageUri.Contains("OneDrive")) ||
+                    (p.ImageUri.Contains(@"C:\Users\joelong\") && p.ImageUri.Contains("OneDrive")));
+                    
+                if (anyPathsFixed)
+                {
+                  //  this.TraceMessage($"💾 Saving database with corrected paths for all players");
+                    await SavePlayers();
                 }
             }
             catch (UnauthorizedAccessException ex)
@@ -268,29 +315,61 @@ namespace Catan3
             var saltedImageUri = GetNextImageName(player, player.ImageUri);
             await CopyResourceFile(folder, player.CroppedImageUri, saltedCroppedUri);
             await CopyResourceFile(folder, player.ImageUri, saltedImageUri);
-            player.CroppedImageUri = Path.Combine(folder.Path, saltedCroppedUri);
-            player.ImageUri = Path.Combine(folder.Path, saltedImageUri);
+            
+            // Use corrected Documents path to avoid truncation issues
+            var documentsPath = GetCorrectDocumentsPath();
+            var playerFolderPath = Path.Combine(documentsPath, PlayerFolder);
+            
+            player.CroppedImageUri = Path.Combine(playerFolderPath, saltedCroppedUri);
+            player.ImageUri = Path.Combine(playerFolderPath, saltedImageUri);
+            
+            //this.TraceMessage($"💾 SavePlayerLocally: Using documentsPath='{documentsPath}'");
+            //this.TraceMessage($"💾 SavePlayerLocally: Player {player.Name} CroppedImageUri set to: '{player.CroppedImageUri}'");
+            //this.TraceMessage($"💾 SavePlayerLocally: Player {player.Name} ImageUri set to: '{player.ImageUri}'");
+            
             string playerJson = JsonSerializer.Serialize(player, PlayerDatabase.JsonSerializerOptions);
             PlayerViewModel? playerCopy = JsonSerializer.Deserialize<PlayerViewModel>(playerJson,  PlayerDatabase.JsonSerializerOptions);
             if (playerCopy is not null)
             {
-
                 return playerCopy;
             }
 
             Application.Current.TraceMessage($"Unable to Deserialize {playerJson}");
             return null;
-
         }
 
 
         [RelayCommand]
         public async Task SavePlayers()
         {
-            string json = JsonSerializer.Serialize(AllPlayers);
-            var folder = await KnownFolders.DocumentsLibrary.CreateFolderAsync(PlayerFolder, CreationCollisionOption.OpenIfExists);
-            var databaseFile = await folder.CreateFileAsync(PlayersFileName, CreationCollisionOption.ReplaceExisting);
-            await FileIO.WriteTextAsync(databaseFile, json);
+            try
+            {
+                string json = JsonSerializer.Serialize(AllPlayers);
+                var folder = await KnownFolders.DocumentsLibrary.CreateFolderAsync(PlayerFolder, CreationCollisionOption.OpenIfExists);
+                
+                //this.TraceMessage($"💾 SavePlayers: Using folder.Path = '{folder.Path}'");
+                //this.TraceMessage($"💾 SavePlayers: Serialized {AllPlayers.Count} players");
+                
+                var databaseFile = await folder.CreateFileAsync(PlayersFileName, CreationCollisionOption.ReplaceExisting);
+                await FileIO.WriteTextAsync(databaseFile, json);
+                
+               // this.TraceMessage($"✅ SavePlayers: Successfully saved to '{databaseFile.Path}'");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                this.TraceMessage($"❌ SavePlayers: Access denied - {ex.Message}");
+                throw;
+            }
+            catch (IOException ex)
+            {
+                this.TraceMessage($"❌ SavePlayers: I/O error - {ex.Message}");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"❌ SavePlayers: Unexpected error - {ex.Message}");
+                throw;
+            }
         }
         private static async Task CopyResourceFile(StorageFolder folder, string resourceUri, string destination)
         {
@@ -336,8 +415,6 @@ namespace Catan3
 
         public async Task<string> SaveCroppedImage(PlayerViewModel player, MemoryStream memoryStream)
         {
-
-
             // Ensure the filename is correctly assigned to the property
             var filePath = GetNexCroppedImageName(player, player.CroppedImageUri);
             string fileName = System.IO.Path.GetFileName(filePath);
@@ -347,13 +424,19 @@ namespace Catan3
 
             try
             {
-
-
                 await FileIO.WriteBytesAsync(imageFile, memoryStream.ToArray());
                 await DeleteFile(player.CroppedImageUri);
-                player.CroppedImageUri = filePath;
+                
+                // Use corrected Documents path to avoid truncation issues
+                var documentsPath = GetCorrectDocumentsPath();
+                var fullFilePath = Path.Combine(documentsPath, "Catan Saved Games", "Players", fileName);
+                
+                player.CroppedImageUri = fullFilePath;
+                //this.TraceMessage($"💾 SaveCroppedImage: Using documentsPath='{documentsPath}'");
+                //this.TraceMessage($"💾 SaveCroppedImage: Player {player.Name} CroppedImageUri set to: '{player.CroppedImageUri}'");
+                
                 await SavePlayers();
-                return filePath;
+                return fullFilePath;
             }
             catch (Exception ex)
             {
@@ -379,6 +462,25 @@ namespace Catan3
                 this.TraceMessage($"Failed to delete file {fileUri}. Exception: {e}");
             }
 
+        }
+
+        /// <summary>
+        /// Gets the correct full Documents folder path, working around potential truncation issues
+        /// </summary>
+        /// <returns>The full Documents folder path</returns>
+        private static string GetCorrectDocumentsPath()
+        {
+            // Try multiple methods to get the correct Documents path
+            var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            
+            // Check if the path is truncated by looking for a username that's too short
+            if (documentsPath.Contains(@"C:\Users\joelo\") && !documentsPath.Contains(@"C:\Users\joelong\"))
+            {
+                // Fix truncated username
+                documentsPath = documentsPath.Replace(@"C:\Users\joelo\", @"C:\Users\joelong\");
+            }
+            
+            return documentsPath;
         }
     }
 }

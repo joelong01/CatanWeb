@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -79,10 +79,14 @@ namespace Catan.Services
                 }
                 else
                 {
-                    // If the path is a relative path
-                    StorageFolder documentsFolder = KnownFolders.DocumentsLibrary;
+                    // If the path is a relative path - use corrected Documents path
+                    var documentsPath = FileService.GetCorrectDocumentsPath();
+                    var documentsFolder = await StorageFolder.GetFolderFromPathAsync(documentsPath);
                     StorageFile storageFile = await documentsFolder.CreateFileAsync(path, CreationCollisionOption.OpenIfExists);
                     fullPath = storageFile.Path;
+                    
+                    //this.TraceMessage($"🗂️ FileHandler: Using corrected Documents path: '{documentsPath}'");
+                    //this.TraceMessage($"🗂️ FileHandler: Full file path: '{fullPath}'");
                 }
 
                 var result = new FileStream(fullPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
@@ -90,7 +94,7 @@ namespace Catan.Services
             }
             catch (Exception e)
             {
-                this.TraceMessage($"{e}");
+                this.TraceMessage($"❌ FileHandler error: {e}");
                 throw;
             }
         }
@@ -284,13 +288,17 @@ namespace Catan.Services
 
             if (!Path.IsPathRooted(location))
             {
-                var documentsFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                // Use corrected Documents path to avoid truncation issues
+                var documentsFolder = GetCorrectDocumentsPath();
                 location = Path.Combine(documentsFolder, location);
+                //this.TraceMessage($"🗂️ SaveAsync: Using corrected Documents path: '{documentsFolder}'");
+                //this.TraceMessage($"🗂️ SaveAsync: Full save path: '{location}'");
             }
 
             var directory = Path.GetDirectoryName(location) ?? throw new Exception("this really shouldn't be null!");
             if (!Directory.Exists(directory))
             {
+                this.TraceMessage($"🗂️ SaveAsync: Creating directory: '{directory}'");
                 Directory.CreateDirectory(directory);
             }
 
@@ -301,7 +309,7 @@ namespace Catan.Services
                     using var fileStream = new FileStream(location, FileMode.Create, FileAccess.Write, FileShare.None);
                     await fileStream.WriteAsync(data.AsMemory(0, data.Length));
                     await fileStream.FlushAsync(); // Ensure all data is written to the file
-                   // this.TraceMessage($"saved with attempts={attempt}");
+                  //  this.TraceMessage($"✅ SaveAsync: Successfully saved file '{location}' on attempt {attempt + 1}");
                     return true;
                 }
                 catch (IOException ex) when (attempt < maxRetries - 1)
@@ -311,7 +319,7 @@ namespace Catan.Services
                 }
                 catch (Exception ex)
                 {
-                    this.TraceMessage($"Error saving file: {ex}");
+                    this.TraceMessage($"❌ SaveAsync: Error saving file '{location}': {ex}");
                     return false;
                 }
             }
@@ -337,6 +345,25 @@ namespace Catan.Services
             InitializeWithWindow.Initialize(savePicker, hwnd);
             var file = await savePicker.PickSaveFileAsync();
             return file?.Path ?? string.Empty;
+        }
+
+        /// <summary>
+        /// Gets the correct full Documents folder path, working around potential truncation issues
+        /// </summary>
+        /// <returns>The full Documents folder path</returns>
+        public static string GetCorrectDocumentsPath()
+        {
+            // Try multiple methods to get the correct Documents path
+            var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            
+            // Check if the path is truncated by looking for a username that's too short
+            if (documentsPath.Contains(@"C:\Users\joelo\") && !documentsPath.Contains(@"C:\Users\joelong\"))
+            {
+                // Fix truncated username
+                documentsPath = documentsPath.Replace(@"C:\Users\joelo\", @"C:\Users\joelong\");
+            }
+            
+            return documentsPath;
         }
     }
 }

@@ -129,6 +129,7 @@ namespace Catan3.Models
         /// <param name="newValue">The new cropped image URI.</param>
         partial void OnCroppedImageUriChanged(string oldValue, string newValue)
         {
+           // this.TraceMessage($"Player {Name} CroppedImageUri changed: '{oldValue}' → '{newValue}'");
             if (newValue is not null)
             {
                 CroppedBitmapImage = CreateBitmapImage(newValue);
@@ -152,13 +153,24 @@ namespace Catan3.Models
         /// <returns>A BitmapImage created from the specified URI.</returns>
         private BitmapImage CreateBitmapImage(string uri)
         {
-            return new BitmapImage
+            //this.TraceMessage($"Player {Name} creating BitmapImage from URI: '{uri}'");
+            try
             {
-                UriSource = new Uri(uri),
-                DecodePixelHeight = 200,
-                DecodePixelWidth = 200,
-                CreateOptions = BitmapCreateOptions.IgnoreImageCache
-            };
+                var bitmapImage = new BitmapImage
+                {
+                    UriSource = new Uri(uri),
+                    DecodePixelHeight = 200,
+                    DecodePixelWidth = 200,
+                    CreateOptions = BitmapCreateOptions.IgnoreImageCache
+                };
+               // this.TraceMessage($"✅ Player {Name} BitmapImage created successfully");
+                return bitmapImage;
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Player {Name} failed to create BitmapImage: {ex.Message}");
+                throw;
+            }
         }
 
         /// <summary>
@@ -184,9 +196,12 @@ namespace Catan3.Models
             Id = id;
             Name = name;
             ImageUri = imageUri;
-            CroppedImageUri = croppedImageUri;
             PlayerColors = playerColors;
             IsActive = isActive;
+            
+           // this.TraceMessage($"🏗️ Player {name} constructor: ImageUri='{imageUri}', CroppedImageUri='{croppedImageUri}'");
+            
+            CroppedImageUri = croppedImageUri; // This will trigger OnCroppedImageUriChanged
             CroppedBitmapImage = CreateBitmapImage(CroppedImageUri);
             CreateStats();
         }
