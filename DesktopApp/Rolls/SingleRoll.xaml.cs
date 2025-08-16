@@ -41,6 +41,19 @@ namespace Catan3.Controls
         {
             ValidCatanRoll = (ValidCatanRoll)value;
         }
+        public string? RollAutomationId
+        {
+            get => (string?)GetValue(RollAutomationIdProperty);
+            set => SetValue(RollAutomationIdProperty, value);
+        }
+
+        public static readonly DependencyProperty RollAutomationIdProperty =
+            DependencyProperty.Register(
+                nameof(RollAutomationId),
+                typeof(string),
+                typeof(SingleRoll),
+                new PropertyMetadata(null));
+
         public static readonly DependencyProperty ValidCatanRollProperty = DependencyProperty.Register("ValidCatanRoll", typeof(ValidCatanRoll), typeof(SingleRoll), new PropertyMetadata(ValidCatanRoll.None));
         public ValidCatanRoll ValidCatanRoll
         {

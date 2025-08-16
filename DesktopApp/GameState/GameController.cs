@@ -814,7 +814,7 @@ namespace Catan3.Controller
         {
 
             GameModel gameModel = Log.CopyCurrent();
-            this.TraceMessage($"GameState: {gameModel.GameState} RoadPurchase: {message}");
+         //   this.TraceMessage($"GameState: {gameModel.GameState} RoadPurchase: {message}");
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse, GameState.Supplemental]);
             ThrowIfNoEntitlement(gameModel, [Entitlement.Road]);
             var roadKey = message.RoadKey;

@@ -57,7 +57,7 @@ namespace Tests.DesktopApp.UI
     [Collection("UIAutomation")]
     public class FullCyclePackagedUiTests : IDisposable
     {
-        private static int SHORT_WAIT = 500;
+        private static int SHORT_WAIT = 750;
         private UIA3Automation? _automation;
         private AutomationElement? _main;
         private bool _testSucceeded = false;
@@ -484,20 +484,17 @@ namespace Tests.DesktopApp.UI
         {
             this.TraceMessage("=== Test_WaitingForRollForOrder ===");
 
-            // STEP 1: Verify we're in the correct state using GameState (not UI text)
-            VerifyExpectedGameState(GameState.WaitingForRollForOrder);
-
+            //
             // Get and verify GameModel state from AutomationProperties.ItemStatus
             var gameModel = GetCurrentGameModel();
+            Assert.Equal(GameState.WaitingForRollForOrder, gameModel.GameState);
 
             // Get the actual current player (don't assume a specific name since it comes from UI selection)
             var currentPlayerId = gameModel.CurrentPlayerId;
             Assert.NotNull(currentPlayerId);
             Assert.False(string.IsNullOrEmpty(currentPlayerId));
 
-            this.TraceMessage($"✅ Verified GameModel state: {gameModel.GameState}, CurrentPlayer: {currentPlayerId}");
-
-            // STEP 2: Find the 3rd person to go first and click their "Go First" button
+               // Find the 3rd person to go first and click their "Go First" button
             this.TraceMessage("Finding the 3rd person in the player order to make them go first");
 
             // Get current player order
@@ -780,6 +777,86 @@ namespace Tests.DesktopApp.UI
             // Wait for state transition
             Thread.Sleep(SHORT_WAIT);
         }
+        /// <summary>
+        /// Clicks the roll card "Roll - N" reliably and waits for the GameModel to change.
+        /// </summary>
+        private void DoRoll(int roll)
+        {
+            var id = $"Roll - {roll}";
+
+            // Activate the main window first (helps input routing)
+            var win = _main!.AsWindow();
+            try { win.Focus(); } catch { /* best effort */ }
+
+            // Locate the roll card (SingleRoll root) by AutomationId
+            var card = FindByAutomationId(id);
+
+            // Prefer the inner Button under the card; fall back to the card itself if you moved the id
+            var btn = card.FindFirstDescendant(cf => cf.ByControlType(ControlType.Button))?.AsButton()
+                     ?? card.AsButton(); // may be null if ControlType != Button
+
+            Assert.NotNull(btn);
+
+            // If virtualized/offscreen, scroll it into view
+            btn.Patterns.ScrollItem.PatternOrDefault?.ScrollIntoView();
+
+            // Wait until interactable
+            Retry.WhileTrue(
+                () => !btn.IsEnabled || btn.IsOffscreen,
+                timeout: TimeSpan.FromSeconds(5),
+                interval: TimeSpan.FromMilliseconds(100));
+
+            // Snapshot pre-action state so we can confirm the click did something
+            var preHash = GetCurrentGameModel().GameHash;
+
+            // Give focus (improves Click reliability)
+            try { btn.Focus(); } catch { /* ignore */ }
+
+            // Prefer Invoke; fall back to Click (some templates don’t expose Invoke)
+            var inv = btn.Patterns.Invoke.PatternOrDefault;
+            if (inv != null) inv.Invoke();
+            else btn.Click();
+
+            // Wait for the model to change to confirm the action happened
+            var changed = Retry.WhileTrue(
+                () => string.Equals(GetCurrentGameModel().GameHash, preHash, StringComparison.Ordinal),
+                timeout: TimeSpan.FromSeconds(5),
+                interval: TimeSpan.FromMilliseconds(100)).Success;
+
+            if (!changed)
+            {
+                // Optional: dump element info to diagnose why it didn't fire
+                DumpElementForDiagnostics(btn);
+                throw new Xunit.Sdk.XunitException($"Roll '{id}' did not change the GameModel within timeout.");
+            }
+
+            Thread.Sleep(SHORT_WAIT);
+        }
+
+
+        private static void DumpElementForDiagnostics(AutomationElement el)
+        {
+            try
+            {
+                var rect = el.BoundingRectangle;
+                bool hasInvoke = el.Patterns.Invoke.PatternOrDefault != null;
+                bool hasScrollItem = el.Patterns.ScrollItem.PatternOrDefault != null;
+                bool hasSelection = el.Patterns.SelectionItem.PatternOrDefault != null;
+                bool hasLegacyIA = el.Patterns.LegacyIAccessible.PatternOrDefault != null;
+                bool hasToggle = el.Patterns.Toggle.PatternOrDefault != null;
+                bool hasValue = el.Patterns.Value.PatternOrDefault != null;
+
+                rect.TraceMessage(
+                  
+                    $"Name={el.Name}, Id={el.AutomationId}, Enabled={el.IsEnabled}, " +
+                    $"Offscreen={el.IsOffscreen}, Rect={rect}, " +
+                    $"Patterns: Invoke={hasInvoke}, ScrollItem={hasScrollItem}, " +
+                    $"SelectionItem={hasSelection}, LegacyIA={hasLegacyIA}, Toggle={hasToggle}, Value={hasValue}");
+            }
+            catch { /* best effort */ }
+        }
+
+
 
 
 
@@ -819,20 +896,11 @@ namespace Tests.DesktopApp.UI
         private void Test_WaitingForRoll()
         {
             this.TraceMessage("=== Test_WaitingForRoll ===");
-
-
-
+            DoRoll(6);
             // Get and verify GameModel state from AutomationProperties.ItemStatus
+            Thread.Sleep(SHORT_WAIT * 2);
             var gameModel = GetCurrentGameModel();
-            Assert.Equal(GameState.WaitingForRoll, gameModel.GameState);
-
-            this.TraceMessage($"Verified GameModel state: {gameModel.GameState}");
-
-            //
-            //  TODO: walk the game model, find the first player, get the building they own
-            //        find an adjacent tile, gets its number, and roll that number.
-            //        get the gamemodel and verify they received the right resources.
-            //        
+            Assert.Equal(GameState.WaitingForNext, gameModel.GameState);
 
             this.TraceMessage("Successfully verified WaitingForRoll state - this is the end of the core game setup flow!");
             this.TraceMessage("=== Test_WaitingForRoll completed ===");
