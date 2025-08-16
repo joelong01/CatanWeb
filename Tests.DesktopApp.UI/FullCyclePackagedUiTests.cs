@@ -143,12 +143,12 @@ namespace Tests.DesktopApp.UI
         {
             try
             {
-                // Only close the app if the test succeeded
-                // If the test failed, leave it open for debugging
+             
                 if (_testSucceeded)
                 {
                     this.TraceMessage("Test succeeded - closing app");
-                    _main?.AsWindow()?.Close();
+                    // leave app open for manual testing
+                   // _main?.AsWindow()?.Close();
                 }
                 else
                 {
