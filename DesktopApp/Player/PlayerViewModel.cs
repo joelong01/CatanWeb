@@ -129,6 +129,7 @@ namespace Catan3.Models
         /// <param name="newValue">The new cropped image URI.</param>
         partial void OnCroppedImageUriChanged(string oldValue, string newValue)
         {
+           // this.TraceMessage($"Player {Name} CroppedImageUri changed: '{oldValue}' → '{newValue}'");
             if (newValue is not null)
             {
                 CroppedBitmapImage = CreateBitmapImage(newValue);
@@ -152,13 +153,24 @@ namespace Catan3.Models
         /// <returns>A BitmapImage created from the specified URI.</returns>
         private BitmapImage CreateBitmapImage(string uri)
         {
-            return new BitmapImage
+            //this.TraceMessage($"Player {Name} creating BitmapImage from URI: '{uri}'");
+            try
             {
-                UriSource = new Uri(uri),
-                DecodePixelHeight = 200,
-                DecodePixelWidth = 200,
-                CreateOptions = BitmapCreateOptions.IgnoreImageCache
-            };
+                var bitmapImage = new BitmapImage
+                {
+                    UriSource = new Uri(uri),
+                    DecodePixelHeight = 200,
+                    DecodePixelWidth = 200,
+                    CreateOptions = BitmapCreateOptions.IgnoreImageCache
+                };
+               // this.TraceMessage($"✅ Player {Name} BitmapImage created successfully");
+                return bitmapImage;
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Player {Name} failed to create BitmapImage: {ex.Message}");
+                throw;
+            }
         }
 
         /// <summary>
@@ -184,9 +196,12 @@ namespace Catan3.Models
             Id = id;
             Name = name;
             ImageUri = imageUri;
-            CroppedImageUri = croppedImageUri;
             PlayerColors = playerColors;
             IsActive = isActive;
+            
+           // this.TraceMessage($"🏗️ Player {name} constructor: ImageUri='{imageUri}', CroppedImageUri='{croppedImageUri}'");
+            
+            CroppedImageUri = croppedImageUri; // This will trigger OnCroppedImageUriChanged
             CroppedBitmapImage = CreateBitmapImage(CroppedImageUri);
             CreateStats();
         }
@@ -230,6 +245,7 @@ namespace Catan3.Models
             foreach (var rcvm in ResourcesThisTurn.ResourceCounters)
             {
                 rcvm.HarborVisibility = Visibility.Collapsed;
+                rcvm.OwnerPlayerId = value.Id;
             }
 
             foreach (var harborKey in value.OwnedHarbors)
@@ -255,7 +271,7 @@ namespace Catan3.Models
             StatDictionary[StatName.SoldierPlayed].Count = value.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier);
             StatDictionary[StatName.SoldierPlayed].Highlighted = value.LargestArmy;
             StatDictionary[StatName.ResourcesLostToRobber].Count = value.ResourcesThisGame.Robber;
-            StatDictionary[StatName.TimesTargetted].Count = value.TimesTargeted;
+            StatDictionary[StatName.TimesTargeted].Count = value.TimesTargeted;
             // 1/15/2025: do not count resources lost to robber in total resources
             StatDictionary[StatName.TotalResources].Count = value.ResourcesThisGame.Count - value.ResourcesThisGame.Robber;
             StatDictionary[StatName.GoodRolls].Count = value.GoodRolls;

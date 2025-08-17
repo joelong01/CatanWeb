@@ -1,5 +1,6 @@
 using Catan3.Models;
 using Catan3.Shared.Models;
+using Catan3.Shared.Extensions;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -19,14 +20,14 @@ namespace Catan3.Controls
         public static readonly DependencyProperty TileViewModelProperty = DependencyProperty.Register("TileViewModel", typeof(TileViewModel), typeof(TileCtrl), new PropertyMetadata(null, TileViewModelChanged));
         public TileViewModel TileViewModel
         {
-            get => ( TileViewModel )GetValue(TileViewModelProperty);
+            get => (TileViewModel)GetValue(TileViewModelProperty);
             set => SetValue(TileViewModelProperty, value);
         }
         private static void TileViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as TileCtrl;
             var depPropValue = (TileViewModel)e.NewValue;
-            depPropClass?.SetTileViewModel(depPropValue, ( TileViewModel )e.OldValue);
+            depPropClass?.SetTileViewModel(depPropValue, (TileViewModel)e.OldValue);
         }
         private void SetTileViewModel(TileViewModel newModel, TileViewModel? oldModel)
         {
@@ -35,7 +36,7 @@ namespace Catan3.Controls
                 oldModel.PropertyChanged -= ViewModel_PropertyChanged;
             }
 
-           if (newModel is not null)
+            if (newModel is not null)
             {
                 newModel.PropertyChanged += ViewModel_PropertyChanged;
             }
@@ -43,10 +44,10 @@ namespace Catan3.Controls
 
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-           
+
             if (e.PropertyName == nameof(TileViewModel.Dimmed))
             {
-              
+
                 if (TileViewModel.Dimmed)
                 {
                     DimAnimation.Begin();
@@ -56,7 +57,7 @@ namespace Catan3.Controls
                     RevertAnimation.Begin();
                 }
             }
-          
+
         }
 
         private Visibility PipsVisibility(int tileNumber, int pipIndex)
@@ -135,9 +136,9 @@ namespace Catan3.Controls
         private void OnRightClicked(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs e)
         {
             e.Handled = true;
-            if (!TileViewModel.AllowTargetting) return;
+            if (!TileViewModel.AllowTargeting) return;
             this.TileViewModel.TargetCommand.Execute(null);
-     //       Debug.Assert(TileViewModel.Targets.Count != 0);
+            //       Debug.Assert(TileViewModel.Targets.Count != 0);
             var flyout = new MenuFlyout();
             foreach (var target in TileViewModel.Targets)
             {
@@ -155,7 +156,7 @@ namespace Catan3.Controls
             var cancelItem = new MenuFlyoutItem
             {
                 Text = "Cancel",
-                Command = new RelayCommand(() => {})
+                Command = new RelayCommand(() => { })
             };
             flyout.Items.Add(cancelItem);
             flyout.ShowAt(sender as FrameworkElement, new FlyoutShowOptions
@@ -164,7 +165,31 @@ namespace Catan3.Controls
                 Placement = FlyoutPlacementMode.RightEdgeAlignedTop,
                 ShowMode = FlyoutShowMode.Transient
             });
-            
+
+        }
+
+        public string GetTileAutomationId(TileModel model)
+        {
+            return model.GetTileAutomationId();
+        }
+
+        public string GetTileNumberAutomationId(TileModel model)
+        {
+            if (model is null || model.TileKey is null)
+            {
+                return "TileNumber-Default";
+            }
+            return model.GetTileNumberAutomationId();
+        }
+
+        public string GetTileResourceAutomationId(TileModel model)
+        {
+            if (model is null || model.TileKey is null)
+            {
+                return "TileResource-Default";
+            }
+            return model.GetTileResourceAutomationId();
+
         }
     }
 }

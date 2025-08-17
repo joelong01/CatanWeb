@@ -1,0 +1,28 @@
+{
+  "EnableImportCompletion": true,
+  "EnableDecompilationSupport": true,
+  "EnableAnalyzersSupport": true,
+  "EnableRoslynAnalyzers": true,
+  "enableMsBuildLoadProjectsOnDemand": false,
+  "FormattingOptions": {
+    "NewLine": "\n",
+    "UseTabs": false,
+    "TabSize": 4,
+    "IndentationSize": 4
+  },
+  "RoslynExtensionsOptions": {
+    "EnableAnalyzersSupport": true,
+    "EnableImportCompletion": true,
+    "AnalyzeOpenDocumentsOnly": false
+  },
+  "FileOptions": {
+    "SystemExcludeSearchPatterns": [
+      "**/bin/**/*",
+      "**/obj/**/*"
+    ]
+  },
+  "MsBuild": {
+    "UseLegacySdkResolver": false,
+    "LoadProjectsOnDemand": false
+  }
+}

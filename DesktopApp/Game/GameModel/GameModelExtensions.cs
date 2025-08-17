@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Catan3.Utility;
@@ -243,7 +243,7 @@ namespace Catan3.Models
         ///     return the harbor that is adjacent to the given building key.
         /// </summary>
         /// <param name="gameModel"></param>
-        /// <param name="buidingKey"></param>
+        /// <param name="buildingKey"></param>
         /// <returns>the adjacent Harbor or null if it has none</returns>
 
         public static HarborModel? FindAdjacentHarbor(this GameModel gameModel, BuildingKey buildingKey)

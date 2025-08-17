@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using Catan3.Shared.Models;
@@ -162,7 +162,7 @@ namespace Catan3.Models
         private static Brush GetBrush(BuildingVisualState visualState, string? ownerId, PlayerViewModel currentPlayer, bool foreground)
         {
             //
-            // not buildable or in a state we shoudln't show
+            // not buildable or in a state we shouldn't show
             if (visualState == BuildingVisualState.Hidden)
             {
                 Debug.Assert(ownerId is null);
@@ -205,5 +205,7 @@ namespace Catan3.Models
             Debug.Assert(key != this.Building.BuildingKey);
         }
         public override string? ToString() => $"B={Building} VS={VisualState} S={Stars} I={BuildIndex}";
+
+        
     }
 }

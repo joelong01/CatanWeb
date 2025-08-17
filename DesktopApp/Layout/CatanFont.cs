@@ -1,4 +1,4 @@
-﻿
+
 using System.Collections.Generic;
 using Catan3.Models;
 using Catan3.Shared.Models;
@@ -20,9 +20,9 @@ namespace Catan3.Utility
         public static readonly string Science = "\uE901B";
         public static readonly string Pirate = "\uE90C";
         public static readonly string Ship = "\uE90D";
-        public static readonly string SolidSheild = "\uE925";
+        public static readonly string SolidShield = "\uE925";
         public static readonly string Settlement = "\uE926";
-        public static readonly string FancySheild = "\uE927";
+        public static readonly string FancyShield = "\uE927";
         public static readonly string Soldier = "\uE90E";
         public static readonly string Knight = "\uE930";
         public static readonly string Road = "\uE909";

@@ -267,7 +267,7 @@ namespace Tests.Shared.Serialization
                     {
                         Coordinates = new HexCoordinates(0, 1, -1),
                         MovedBy = "Player1",
-                        Targetted = "Player2",
+                        Targeted = "Player2",
                         ResourcesStolen = 2
                     };
 
@@ -279,7 +279,7 @@ namespace Tests.Shared.Serialization
                     Assert.Equal(robber.Coordinates.R, deserialized.Coordinates.R);
                     Assert.Equal(robber.Coordinates.S, deserialized.Coordinates.S);
                     Assert.Equal(robber.MovedBy, deserialized.MovedBy);
-                    Assert.Equal(robber.Targetted, deserialized.Targetted);
+                    Assert.Equal(robber.Targeted, deserialized.Targeted);
                     Assert.Equal(robber.ResourcesStolen, deserialized.ResourcesStolen);
                 });
             }

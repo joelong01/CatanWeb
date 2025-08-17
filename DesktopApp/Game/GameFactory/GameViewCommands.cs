@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -13,7 +13,7 @@ namespace Catan3.Models
         ///     This method is called as an ICommand by controls that bind to GameViewModel
         ///     It requires coordination across the GameViewModel (e.g. needs Undo/Redo)
         ///     and therefore needs to be send to the Messenger.  If there is a service
-        ///     handling game logic, this will send a requrest to the service.
+        ///     handling game logic, this will send a request to the service.
         /// </summary>
         [RelayCommand]
         public void Shuffle()

@@ -111,7 +111,7 @@ namespace Catan3.Shared.Models
         /// Gets or sets a value indicating whether the player has completed their supplemental turn.
         /// </summary>
         [ObservableProperty]
-        public partial bool FinishedSuplemental { get; set; }
+        public partial bool FinishedSupplemental { get; set; }
 
         /// <summary>
         /// Gets or sets the resources obtained by the player this turn.

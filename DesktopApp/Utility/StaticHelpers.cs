@@ -192,6 +192,7 @@ namespace Catan3
                 Debug.Indent();
             }
             Debug.WriteLine($"{cfp}({cln}):{toWrite}\t\t[Caller={cmb}]");
+            DebugWindow.ShowMessage(toWrite);
             for (int i = 0; i < indentLevel; i++)
             {
                 Debug.Unindent();

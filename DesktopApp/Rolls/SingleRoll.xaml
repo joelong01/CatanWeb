@@ -18,7 +18,9 @@
                 Style="{x:Null}" PointerEntered="OnPointerEntered"
                 PointerExited="OnPointerExited" BorderBrush="White"
                 BorderThickness="0"
-                CommandParameter="{x:Bind ValidCatanRoll, Mode=OneWay}">
+                CommandParameter="{x:Bind ValidCatanRoll, Mode=OneWay}"
+                AutomationProperties.AutomationId="{x:Bind RollAutomationId, Mode=OneWay}"
+                AutomationProperties.Name="{x:Bind RollAutomationId, Mode=OneWay}">
             <Button.Content>
                 <StackPanel>
                     <TextBlock

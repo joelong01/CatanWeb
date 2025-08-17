@@ -43,7 +43,7 @@ namespace Catan3.GameService.Utility
 
     public class Log<T> : ILog
     {
-        private IPersistanceService? PersistService { get; set; }
+        private IPersistenceService? PersistService { get; set; }
         public string FilePath { get; private set; }
         private ObservableCollection<T> DoneStack { get; set; } = [];
         private ObservableCollection<T> RedoStack { get; set; } = [];
@@ -51,18 +51,18 @@ namespace Catan3.GameService.Utility
         private readonly ILogger? _logger;
 
         [JsonConstructor]
-        public Log(IPersistanceService? persistanceService, string localSaveFile)
+        public Log(IPersistenceService? PersistenceService, string localSaveFile)
         {
-            PersistService = persistanceService;
+            PersistService = PersistenceService;
             DoneStack.CollectionChanged += DoneStack_ListChanged;
             RedoStack.CollectionChanged += RedoStack_ListChanged;
             FilePath = localSaveFile;
             _logger = null; // No logger for JSON constructor
         }
 
-        public Log(IPersistanceService? persistanceService, string localSaveFile, ILogger? logger = null)
+        public Log(IPersistenceService? PersistenceService, string localSaveFile, ILogger? logger = null)
         {
-            PersistService = persistanceService;
+            PersistService = PersistenceService;
             DoneStack.CollectionChanged += DoneStack_ListChanged;
             RedoStack.CollectionChanged += RedoStack_ListChanged;
             FilePath = localSaveFile;
@@ -199,9 +199,9 @@ namespace Catan3.GameService.Utility
             return log;
         }
 
-        public static Log<T> FromSerializableLog(SerializableLog sLog, IPersistanceService persistanceService, string filePath)
+        public static Log<T> FromSerializableLog(SerializableLog sLog, IPersistenceService PersistenceService, string filePath)
         {
-            var log = new Log<T>(persistanceService, filePath);
+            var log = new Log<T>(PersistenceService, filePath);
             
             for (int i = sLog.DoneStack.Count - 1; i >= 0; i--)
             {

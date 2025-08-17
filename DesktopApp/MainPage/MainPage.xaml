@@ -8,7 +8,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" RightTapped="OnRightButtonTapped" KeyUp="OnKeyUp"
         xmlns:c="using:Catan3.Controls" xmlns:models="using:Catan3.Models"
-        d:DataContext="{d:DesignInstance Type=models:GameViewModel}">
+        d:DataContext="{d:DesignInstance Type=models:GameViewModel}"
+        AutomationProperties.AutomationId="MainPage"
+        AutomationProperties.ItemStatus="{x:Bind MainPageModel.GameModelJson, Mode=OneWay}">
     <Page.Resources>
         <Style TargetType="Rectangle" x:Key="RECT_ResourceCard">
             <Setter Property="Width" Value="67" />
@@ -74,7 +76,9 @@
             Margin="0" PanePlacement="Left"
             IsPaneOpen="{x:Bind MainPageModel.ShowCommands, Mode=OneWay}"
             DisplayMode="CompactOverlay">
-        <Grid Background="Transparent">
+        <Grid Background="Transparent" 
+              AutomationProperties.AutomationId="MainContentGrid"
+              AutomationProperties.ItemStatus="{x:Bind MainPageModel.GameModelJson, Mode=OneWay}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="25*" />
                 <ColumnDefinition Width="60*" />
@@ -130,8 +134,9 @@
                             <GridView.ItemTemplate>
                                 <DataTemplate x:DataType="models:UiRollModel">
                                     <c:SingleRoll Number="{x:Bind Roll}"
-                                            GameRolls="{x:Bind RollViewModel.GameRollViewModel, Mode=OneWay}"
-                                            TurnRoll="{x:Bind RollViewModel.TurnRollViewModel, Mode=OneWay}" />
+                                                RollAutomationId="{x:Bind AutomationId, Mode=OneWay}"
+                                                GameRolls="{x:Bind RollViewModel.GameRollViewModel, Mode=OneWay}"
+                                                TurnRoll="{x:Bind RollViewModel.TurnRollViewModel, Mode=OneWay}" />
                                 </DataTemplate>
                             </GridView.ItemTemplate>
                         </GridView>
@@ -200,6 +205,8 @@
                         Icon="Repair" />
                 <AppBarButton Label="Toggle Titlebar" Click="OnToggleTitleBar"
                         Icon="FullScreen" />
+                <AppBarButton Label="Show Debug Window" Click="OnShowDebugWindow"
+                        Icon="ViewAll" />
                 <AppBarButton Label="Quit" Click="OnClose" Margin="0,0,0,0"
                         Icon="ClosePane" />
                 <AppBarButton Label="Run Tests" Click="OnRunTests"

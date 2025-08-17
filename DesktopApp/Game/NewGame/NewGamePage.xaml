@@ -6,12 +6,17 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+        AutomationProperties.AutomationId="Page_NewGame" AutomationProperties.Name="Page_NewGame"
+       
+      x:Name="Page_NewGame">
 
     <Page.Resources>
         <DataTemplate x:Key="PlayerDataTemplate" x:DataType="m:PlayerViewModel">
             <Grid HorizontalAlignment="Stretch" Height="120"
-                    Background="{x:Bind PlayerColors.BackgroundBrush, Mode=OneWay}">
+                    Background="{x:Bind PlayerColors.BackgroundBrush, Mode=OneWay}"
+                    AutomationProperties.AutomationId="{x:Bind Id, Mode=OneWay}"
+                    AutomationProperties.Name="{x:Bind Name, Mode=OneWay}">
                 <Ellipse Name="Player_Picture" HorizontalAlignment="Center"
                         VerticalAlignment="Top" Width="100" Height="100"
                         Stroke="{x:Bind PlayerColors.ForegroundBrush, Mode=OneWay}">
@@ -30,6 +35,7 @@
             VerticalAlignment="Center">
         <GridView Margin="10" HorizontalAlignment="Stretch" Width="624"
                 x:Name="ListView_Players" SelectionMode="Multiple"
+                AutomationProperties.AutomationId="PlayersGridView"
                 VerticalAlignment="Top" Background="Transparent"
                 SelectionChanged="{x:Bind ViewModel.Players_SelectionChanged}"
                 ItemsSource="{x:Bind ViewModel.Players, Mode=OneWay}"
@@ -48,6 +54,7 @@
                     HorizontalAlignment="Left" Margin="10" />
 
             <ComboBox ItemsSource="{x:Bind ViewModel.Games, Mode=OneWay}"
+                    AutomationProperties.AutomationId="GameTypeCombo"
                     SelectedItem="{x:Bind ViewModel.SelectedGame, Mode=OneWay}"
                     SelectionChanged="{x:Bind ViewModel.Game_SelectionChanged}"
                     SelectionChangedTrigger="Always" HorizontalAlignment="Right"
@@ -64,6 +71,8 @@
             <Button Content="Cancel" Width="100" Click="OnCancel" Margin="5"
                     Visibility="{x:Bind Frame.CanGoBack, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
             <Button Content="Start" Width="100" Click="OnStart" Margin="5"
+                    AutomationProperties.AutomationId="StartButton"
+                    AutomationProperties.Name="StartButton"
                     HorizontalAlignment="Right" />
 
             <Button Content="Run Tests" Width="100" Click="OnRunTests"

@@ -34,7 +34,7 @@ namespace Catan3.GameService.Controllers
     public class GameStateMachine
     {
         private Log<string> Log;
-        private IPersistanceService? MyPersistanceService { get; set; }
+        private IPersistenceService? MyPersistenceService { get; set; }
         private readonly IClientNotification _clientNotification;
         private readonly ILogger<GameStateMachine> _logger;
         
@@ -44,13 +44,13 @@ namespace Catan3.GameService.Controllers
         /// </summary>
         public string GameId { get; private set; }
 
-        public GameStateMachine(IPersistanceService? persistanceService, IClientNotification clientNotification, ILogger<GameStateMachine> logger, string localSaveFile)
+        public GameStateMachine(IPersistenceService? PersistenceService, IClientNotification clientNotification, ILogger<GameStateMachine> logger, string localSaveFile)
         {
             // Generate server-side GameId to ensure it's available for all GameModels
             GameId = Guid.NewGuid().ToString();
             
-            Log = new Log<string>(persistanceService, localSaveFile, logger);
-            MyPersistanceService = persistanceService;
+            Log = new Log<string>(PersistenceService, localSaveFile, logger);
+            MyPersistenceService = PersistenceService;
             _clientNotification = clientNotification;
             _logger = logger;
         }
@@ -435,12 +435,12 @@ namespace Catan3.GameService.Controllers
 
         public async Task<GameModel> LoadGame(string filePath)
         {
-            if (MyPersistanceService is null) throw new Catan3.Shared.Utility.GameException("no persistance service was set");
+            if (MyPersistenceService is null) throw new Catan3.Shared.Utility.GameException("no Persistence service was set");
 
-            var compressedBytes = await MyPersistanceService.OpenAsync(filePath) ?? throw new Catan3.Shared.Utility.GameException($"Unable to open file {filePath}");
+            var compressedBytes = await MyPersistenceService.OpenAsync(filePath) ?? throw new Catan3.Shared.Utility.GameException($"Unable to open file {filePath}");
             var decompressedJson = SerializationHelper.Decompress(compressedBytes);
             var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) ?? throw new Catan3.Shared.Utility.GameException("Error: Failed to load the game data.");
-            Log<string> log = Log<string>.FromSerializableLog(savedLog, MyPersistanceService, filePath);
+            Log<string> log = Log<string>.FromSerializableLog(savedLog, MyPersistenceService, filePath);
             this.Log = log;
             return Log.CurrentState();
         }

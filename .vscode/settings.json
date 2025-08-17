@@ -1,0 +1,12 @@
+{
+    "dotnet.defaultSolution": "Catan.sln",
+    "omnisharp.projectLoadTimeout": 300,
+    "omnisharp.enableEditorConfigSupport": true,
+    "omnisharp.enableRoslynAnalyzers": true,
+    "omnisharp.enableDecompilationSupport": true,
+    "files.exclude": {
+        "**/bin": true,
+        "**/obj": true
+    },
+    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true
+}

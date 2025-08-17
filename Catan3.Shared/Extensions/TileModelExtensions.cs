@@ -9,6 +9,25 @@ namespace Catan3.Shared.Extensions
 {
     public static class TileModelExtensions
     {
+        public static string GetTileAutomationId(this TileModel tileModel)
+        {
+            ArgumentNullException.ThrowIfNull(tileModel, nameof(tileModel));
+            return $"Tile-{tileModel.TileKey}";
+        }
+        public static string GetTileNumberAutomationId(this TileModel tileModel)
+        {
+            ArgumentNullException.ThrowIfNull(tileModel, nameof(tileModel));
+            if (tileModel.TileKey is null)
+                throw new ArgumentNullException(nameof(tileModel.TileKey), "TileKey cannot be null.");
+            return $"Number-{tileModel.TileKey}";
+        }
+        public static string GetTileResourceAutomationId(this TileModel tileModel)
+        {
+            ArgumentNullException.ThrowIfNull(tileModel, nameof(tileModel));
+            if (tileModel.TileKey is null)
+                throw new ArgumentNullException(nameof(tileModel.TileKey), "TileKey cannot be null.");
+            return $"Resource-{tileModel.TileKey}";
+        }
         public static TileModel? TileFromCoords(this IEnumerable<TileModel> collection, HexCoordinates coords)
         {
             ArgumentNullException.ThrowIfNull(collection, nameof(collection));

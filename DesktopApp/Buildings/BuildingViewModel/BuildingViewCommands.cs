@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Catan3.Shared.Models;
@@ -34,7 +34,7 @@ namespace Catan3.Models
             });
         }
         /// <summary>
-        ///     We recieve a message from MainPageViewModel that the current player has changed.
+        ///     We receive a message from MainPageViewModel that the current player has changed.
         ///     Store this in a non-Observable property!
         /// </summary>
         /// <param name="newCurrentPlayer"></param>

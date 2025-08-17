@@ -38,6 +38,16 @@ namespace Catan3.Models
         public partial Visibility HarborVisibility { get; set; } = Visibility.Collapsed;
 
         /// <summary>
+        /// AutomationId used by UI tests to locate the harbor glyph for a given player/resource.
+        /// </summary>
+        public string HarborGlyphAutomationId => $"HarborGlyph-{OwnerPlayerId}-{Resource}";
+
+        /// <summary>
+        /// Set by the containing player panel so AutomationIds are unique and stable.
+        /// </summary>
+        public string OwnerPlayerId { get; set; } = "Unknown";
+
+        /// <summary>
         /// Gets the default instance of the ResourceCounterViewModel class.
         /// </summary>
         public static ResourceCounterViewModel Default { get; } = new ResourceCounterViewModel(0, ResourceType.None);

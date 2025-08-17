@@ -17,12 +17,14 @@
             VerticalAlignment="Top" Canvas.ZIndex="100" IsHitTestVisible="True"
             RenderTransformOrigin=".5 .5">
         <Polygon
+                AutomationProperties.AutomationId="{x:Bind GetCtrlAutomationId(ViewModel), Mode=OneWay}"
+                AutomationProperties.Name="{x:Bind GetCtrlAutomationId(ViewModel), Mode=OneWay}"
                 Fill="{x:Bind ViewModel.GetBackgroundBrush(ViewModel.Road.RoadState, ViewModel.Road.OwnerId, ViewModel.CurrentPlayer), Mode=OneWay}"
                 Points="{x:Bind ViewModel.RoadPolygon, Mode=OneWay}"
                 Stroke="{x:Bind ViewModel.GetForegroundBrush(ViewModel.Road.RoadState, ViewModel.Road.OwnerId, ViewModel.CurrentPlayer), Mode=OneWay}"
                 StrokeThickness="{x:Bind ViewModel.Layout.RoadStrokeThickness, Mode=OneWay}"
                 Opacity="{x:Bind ViewModel.Opacity(ViewModel.Road, ViewModel.Road.RoadState), Mode=OneWay}"
-              
+
                 PointerPressed="OnPointerPressed" />
         <Ellipse Width="10" Height="10" Fill="Green" Visibility="Collapsed" />
         <Viewbox Stretch="Uniform" Height="20" HorizontalAlignment="Left"

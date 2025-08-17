@@ -53,11 +53,31 @@ namespace Catan3
         {
             get
             {
-                var myDocuments = KnownFolders.DocumentsLibrary;
-                var fileName= $"{ViewModel.SelectedGame}-{UniqueIdGenerator.GenerateUniqueId()}.catan";
+                // Use corrected Documents path to avoid truncation issues
+                var documentsPath = GetCorrectDocumentsPath();
+                var fileName = $"{ViewModel.SelectedGame}-{UniqueIdGenerator.GenerateUniqueId()}.catan";
                 
-                return Path.Join(myDocuments.Path, "Catan Saved Games", fileName);
+                return Path.Join(documentsPath, "Catan Saved Games", fileName);
             }
+        }
+
+        /// <summary>
+        /// Gets the correct full Documents folder path, working around potential truncation issues
+        /// </summary>
+        /// <returns>The full Documents folder path</returns>
+        private static string GetCorrectDocumentsPath()
+        {
+            // Try multiple methods to get the correct Documents path
+            var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            
+            // Check if the path is truncated by looking for a username that's too short
+            if (documentsPath.Contains(@"C:\Users\joelo\") && !documentsPath.Contains(@"C:\Users\joelong\"))
+            {
+                // Fix truncated username
+                documentsPath = documentsPath.Replace(@"C:\Users\joelo\", @"C:\Users\joelong\");
+            }
+            
+            return documentsPath;
         }
 
         public async Task ShowErrorDialog(string errorMessage)

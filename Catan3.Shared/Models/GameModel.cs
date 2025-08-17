@@ -132,8 +132,8 @@ namespace Catan3.Shared.Models
         public GameModel(IGameMetadata gameInfo, List<PlayerModel> players)
         {
             Players = players;
-            GameType = gameInfo.HouseRules != null ? GameType.Regular : GameType.Regular; // Simplified for now
-            HasSupplementalBuildPhase = false; // Simplified for now
+            GameType = gameInfo.GameType;
+            HasSupplementalBuildPhase = gameInfo.HasSupplemental;
             ResourceRules = gameInfo.ResourceRules;
             HouseRules = gameInfo.HouseRules ?? throw new GameException("House Rules cannot be null!");
             CurrentPlayerId = players.Count > 0 ? players[0].Id : string.Empty;

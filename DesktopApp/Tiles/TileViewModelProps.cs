@@ -59,7 +59,7 @@ namespace Catan3.Models
         /// Gets or sets a value indicating whether targeting is allowed.
         /// </summary>
         [ObservableProperty]
-        public partial bool AllowTargetting { get; set; } = false;
+        public partial bool AllowTargeting { get; set; } = false;
 
         /// <summary>
         /// Gets the default instance of the TileViewModel class.

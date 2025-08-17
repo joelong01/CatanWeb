@@ -16,14 +16,14 @@ namespace Catan3.GameService.Services
     public class GameStateMachineService
     {
         private readonly ConcurrentDictionary<string, GameStateMachine> _gameStateMachines = new();
-        private readonly IPersistanceService _persistanceService;
+        private readonly IPersistenceService _PersistenceService;
         private readonly IClientNotification _clientNotification;
         private readonly ILogger<GameStateMachineService> _logger;
         private readonly ILoggerFactory _loggerFactory;
 
-        public GameStateMachineService(IPersistanceService persistanceService, IClientNotification clientNotification, ILogger<GameStateMachineService> logger, ILoggerFactory loggerFactory)
+        public GameStateMachineService(IPersistenceService PersistenceService, IClientNotification clientNotification, ILogger<GameStateMachineService> logger, ILoggerFactory loggerFactory)
         {
-            _persistanceService = persistanceService;
+            _PersistenceService = PersistenceService;
             _clientNotification = clientNotification;
             _logger = logger;
             _loggerFactory = loggerFactory;
@@ -56,7 +56,7 @@ namespace Catan3.GameService.Services
             _logger.LogEvent("Create GameStateMachine", "Creating new GameStateMachine with auto-generated GameId");
             
             var gameStateMachineLogger = _loggerFactory.CreateLogger<GameStateMachine>();
-            var gameStateMachine = new GameStateMachine(_persistanceService, _clientNotification, gameStateMachineLogger, "");  // Empty saveFile for now
+            var gameStateMachine = new GameStateMachine(_PersistenceService, _clientNotification, gameStateMachineLogger, "");  // Empty saveFile for now
             var gameId = gameStateMachine.GameId;
             
             // Update the save file path with the actual GameId
