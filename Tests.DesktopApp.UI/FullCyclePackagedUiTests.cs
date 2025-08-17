@@ -143,12 +143,12 @@ namespace Tests.DesktopApp.UI
         {
             try
             {
-             
+
                 if (_testSucceeded)
                 {
                     this.TraceMessage("Test succeeded - closing app");
                     // leave app open for manual testing
-                   // _main?.AsWindow()?.Close();
+                    // _main?.AsWindow()?.Close();
                 }
                 else
                 {
@@ -494,7 +494,7 @@ namespace Tests.DesktopApp.UI
             Assert.NotNull(currentPlayerId);
             Assert.False(string.IsNullOrEmpty(currentPlayerId));
 
-               // Find the 3rd person to go first and click their "Go First" button
+            // Find the 3rd person to go first and click their "Go First" button
             this.TraceMessage("Finding the 3rd person in the player order to make them go first");
 
             // Get current player order
@@ -847,7 +847,7 @@ namespace Tests.DesktopApp.UI
                 bool hasValue = el.Patterns.Value.PatternOrDefault != null;
 
                 rect.TraceMessage(
-                  
+
                     $"Name={el.Name}, Id={el.AutomationId}, Enabled={el.IsEnabled}, " +
                     $"Offscreen={el.IsOffscreen}, Rect={rect}, " +
                     $"Patterns: Invoke={hasInvoke}, ScrollItem={hasScrollItem}, " +
@@ -1250,6 +1250,14 @@ namespace Tests.DesktopApp.UI
 
             this.TraceMessage($"WaitForGameState: Timed out waiting for '{expectedState}' after {timeout.TotalSeconds}s");
             return false;
+        }
+        ///
+        /// <summary>
+        ///     GameModel has a List<PlayerView
+        /// </summary>
+        private void VerifyPlayerStats()
+        {
+
         }
     }
 

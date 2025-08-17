@@ -356,7 +356,7 @@ namespace Catan3.Models
                 {
                     // Contract.Assert(Tiles[i].Tile.TileKey == gameModel.Tiles[i].TileKey);
                     Tiles[i].Tile = gameModel.Tiles[i];
-                    Tiles[i].AllowTargetting = gameModel.GameState == GameState.MustMoveRobber;
+                    Tiles[i].AllowTargeting = gameModel.GameState == GameState.MustMoveRobber;
                    // Debug.Assert(Tiles[i].Tile == gameModel.Tiles[i]);
                 }
             }

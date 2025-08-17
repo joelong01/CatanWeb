@@ -98,7 +98,7 @@ namespace Catan3.Models
         [RelayCommand]
         public void TargetPicked(string? id)
         {
-         //   this.TraceMessage($"targetting {id}");
+         //   this.TraceMessage($"targeting {id}");
             this.Messenger.Send<MoveRobberMessage>(new MoveRobberMessage(this.Tile.TileKey, id));
         }
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)

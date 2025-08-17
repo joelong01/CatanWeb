@@ -25,7 +25,7 @@ namespace Catan3.Shared.Models
         /// Gets or sets the ID of the player who was targeted by the robber.
         /// </summary>
         [ObservableProperty]
-        public partial string? Targetted { get; set; }
+        public partial string? Targeted { get; set; }
 
         /// <summary>
         /// Gets or sets the number of resources stolen by the robber.
@@ -39,7 +39,7 @@ namespace Catan3.Shared.Models
         /// <returns>A string representation of the RobberModel.</returns>
         public override string ToString()
         {
-            return $"{Coordinates}-{MovedBy}->{Targetted}: {ResourcesStolen}";
+            return $"{Coordinates}-{MovedBy}->{Targeted}: {ResourcesStolen}";
         }
     }
 }
