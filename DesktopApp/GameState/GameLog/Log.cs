@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -14,10 +15,22 @@ using Catan.Services;
 using Catan3.Controller;
 using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.UI.Xaml.Shapes;
 using Windows.Storage;
 namespace Catan3.Utility
 {
+    /// <summary>
+    /// Represents a recorded action for test scenario creation.
+    /// Simplified version that doesn't depend on test project types.
+    /// </summary>
+    public class RecordedAction
+    {
+        public string Type { get; set; } = string.Empty;
+        public string? PlayerId { get; set; }
+        public string? ExpectedState { get; set; }
+        public Dictionary<string, object> Parameters { get; set; } = new();
+        public string? Description { get; set; }
+    }
+
     /// <summary>
     ///     The System.Text.Serialize package has trouble composing with MVVM because of the Code behind strategy
     ///     Se can can convert to a SerializableLog and then Json serialize it.  In testing, compressing the JSON
@@ -52,6 +65,9 @@ namespace Catan3.Utility
         private ObservableCollection<T> DoneStack { get; set; } = [];
         private ObservableCollection<T> RedoStack { get; set; } = [];
         public GameType GameType { get; set; } = GameType.Regular;
+
+        // Recording functionality for test scenario creation
+        public List<RecordedAction> RecordedActions { get; set; } = new();
         [JsonConstructor]
         public Log(IPersistenceService? PersistenceService, string localSaveFile)
         {
@@ -148,17 +164,17 @@ namespace Catan3.Utility
         {
             Type type = typeof(T);
             string? json = JsonSerializer.Serialize(model) ?? throw new InvalidOperationException("Unable to serialize GameModel.");
-            if (type == typeof(string)) return ( T )( object )json;
+            if (type == typeof(string)) return (T)(object)json;
             if (type == typeof(byte[]))
             {
                 byte[] compressedData = SerializationHelper.Compress(json);
-                return ( T )( object )compressedData;
+                return (T)(object)compressedData;
             }
             if (type == typeof(GameModel))
             {
                 object? o = JsonSerializer.Deserialize<GameModel>(json);
                 Debug.Assert(o is not null);
-                return ( T )( object )o;
+                return (T)(object)o;
             }
             throw new InvalidOperationException($"Conversion from GameModel to type {typeof(T)} is not supported.");
         }
@@ -173,12 +189,12 @@ namespace Catan3.Utility
             if (data is null) throw new InvalidOperationException("Data cannot be null.");
             Type type = typeof(T);
             // Return directly if the data is already a string
-            if (type == typeof(string)) return ( string )( object )data;
+            if (type == typeof(string)) return (string)(object)data;
             // Handle serialization for GameModel instances
             if (type == typeof(GameModel))
             {
                 // Cast is necessary to ensure the serializer accesses GameModel properties correctly
-                return JsonSerializer.Serialize(( GameModel )( object )data) ?? throw new InvalidOperationException("Unable to serialize GameModel.");
+                return JsonSerializer.Serialize((GameModel)(object)data) ?? throw new InvalidOperationException("Unable to serialize GameModel.");
             }
             // Decompress byte array to JSON string assuming the byte array is compressed JSON
             if (data is byte[] byte_array)
@@ -209,18 +225,18 @@ namespace Catan3.Utility
             Type type = typeof(T);
             // Return directly if T is string
             if (type == typeof(string))
-                return ( T )( object )json;
+                return (T)(object)json;
             // Deserialize JSON into a GameModel if T is GameModel
             if (type == typeof(GameModel))
             {
                 var deserialized = SerializationHelper.JsonDeserialize<GameModel>(json) ?? throw new InvalidOperationException("Unable to Deserialize GameModel.");
-                return ( T )( object )deserialized;
+                return (T)(object)deserialized;
             }
             // Compress JSON into a byte array if T is byte[]
             if (type == typeof(byte[]))
             {
                 byte[] compressed = SerializationHelper.Compress(json);
-                return ( T )( object )compressed;
+                return (T)(object)compressed;
             }
             // Throw an exception if T is not one of the expected types
             throw new InvalidOperationException($"Unsupported type for JSON conversion: {type.Name}.");
@@ -274,6 +290,23 @@ namespace Catan3.Utility
                 log.RedoStack.Add(data);  // Corrected to add to RedoStack
             }
             log.GameType = sLog.GameType;  // Assign game type from SerializableLog
+            return log;
+        }
+        /// <summary>
+        ///     creates a Log<T> from a GameModel, serializing the GameModel to JSON and adding it to the DoneStack.
+        ///     effectively loads the game from a GameModel. Used primarily in testing.
+        /// </summary>
+        /// <param name="gameModel"></param>
+        /// <param name="myPersistenceService"></param>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
+
+        internal static Log<T> FromGameModel(GameModel gameModel, IPersistenceService PersistenceService, string filePath)
+        {
+            var log = new Log<T>(PersistenceService, filePath);
+            var json = SerializationHelper.JsonSerialize(gameModel) ?? throw new InvalidOperationException("Unable to Serialize GameModel.");
+            log.GameType = log.GameType;  // Assign game type from SerializableLog
+            log.DoneStack.Add(ToT(json)); // Add the GameModel as a JSON string to DoneStack
             return log;
         }
         private void RedoStack_ListChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -401,7 +434,7 @@ namespace Catan3.Utility
         {
             if (DoneStack.Count == 0)
                 throw new InvalidOperationException("DoneStack is empty, no data to retrieve.");
-            string json=String.Empty;
+            string json = String.Empty;
             if (DoneStack.Peek() is T data)
             {
                 if (data is byte[] compressedData)
@@ -461,6 +494,92 @@ namespace Catan3.Utility
             }
         }
 
+        /// <summary>
+        /// Records an action for test scenario creation when in record mode.
+        /// Automatically saves the recording after each action.
+        /// </summary>
+        public void RecordAction(string actionType, string? playerId, string? gameState, Dictionary<string, object>? parameters = null,
+            [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0)
+        {
+            if (!App.RecordMode) return;
+
+            var action = new RecordedAction
+            {
+                Type = actionType,
+                PlayerId = playerId,
+                ExpectedState = gameState,
+                Parameters = parameters ?? new Dictionary<string, object>(),
+                Description = $"{actionType} by {playerId} at {gameState}"
+            };
+
+            RecordedActions.Add(action);
+
+            // Send recording message to debug window with caller information
+            var recordMsg = $"[RECORDING #{RecordedActions.Count}] {action.Type} - {action.Description}";
+            this.TraceMessage(recordMsg, 0, cmb, cln);
+            DebugWindow.ShowMessage(recordMsg); // Ensure message always shows in DebugWindow
+
+            // Show file path for the first recorded action
+            if (RecordedActions.Count == 1)
+            {
+                var recordingPath = System.IO.Path.ChangeExtension(FilePath, ".catan-records.json");
+                var pathMsg = $"📁 Recording to: {recordingPath}";
+                DebugWindow.ShowMessage(pathMsg);
+            }
+
+            // Save the recording file after each action for stability
+            Task.Run(async () => await SaveRecordingAsync());
+        }
+
+        /// <summary>
+        /// Saves the recorded actions to a JSON file in the same directory as the game file.
+        /// Uses the persistence service to ensure consistent file handling.
+        /// </summary>
+        public async Task SaveRecordingAsync()
+        {
+            if (PersistService is null || RecordedActions.Count == 0) return;
+
+            try
+            {
+                // Create a test scenario object with the recorded actions
+                var scenario = new
+                {
+                    name = "Recorded Game Session",
+                    description = "Auto-recorded gameplay session",
+                    gameType = GameType.ToString(),
+                    expectedPlayerCount = 0, // Will be set from actual game
+                    testFilePath = System.IO.Path.GetFileName(FilePath),
+                    expectedFinalState = "WaitingForRoll",
+                    timeoutMs = 300000,
+                    recordMode = false,
+                    actions = RecordedActions
+                };
+
+                // Generate the recording filename based on the game file
+                var recordingPath = System.IO.Path.ChangeExtension(FilePath, ".catan-records.json");
+
+                // Serialize to JSON
+                var json = JsonSerializer.Serialize(scenario, new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+                });
+
+                // Save using the persistence service
+                var jsonBytes = Encoding.UTF8.GetBytes(json);
+                await PersistService.SaveAsync(recordingPath, jsonBytes);
+
+                var saveMessage = $"💾 Saved {RecordedActions.Count} recorded actions to: {recordingPath}";
+                Debug.WriteLine(saveMessage);
+                DebugWindow.ShowMessage(saveMessage);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to save recording: {ex.Message}");
+            }
+        }
+
         public async Task SaveAsAsync(string filePath)
         {
             try
@@ -474,12 +593,14 @@ namespace Catan3.Utility
                 throw;
             }
         }
+
+
     }
     public static class LogExtensions
     {
         public static T Peek<T>(this IList<T> collection)
         {
-            return ( T )collection[^1];
+            return (T)collection[^1];
         }
         public static T Pop<T>(this IList<T> collection)
         {

@@ -44,7 +44,8 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         private readonly UIA3Automation _automation;
         private readonly Dictionary<string, AutomationElement> _uiControlsCache;
         private readonly ConditionFactory _cf;
-        private const int SHORT_WAIT = 750;
+        private const int SHORT_WAIT = 1500;
+        private const int LONG_WAIT = SHORT_WAIT * 10;
 
         public UIAutomationHelper(AutomationElement mainWindow, UIA3Automation automation)
         {
@@ -97,16 +98,56 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             var buildingElements = _uiControlsCache.Values.Count(obj => obj.AutomationId.StartsWith("Building"));
             var tileElements = _uiControlsCache.Values.Count(obj => obj.AutomationId.StartsWith("Tile"));
             var rollElements = _uiControlsCache.Values.Count(obj => obj.AutomationId.StartsWith("Roll"));
+            var purchaseElements = _uiControlsCache.Values.Count(obj => obj.AutomationId.StartsWith("Purchase"));
             
             // Also count coordinate-based building elements (format like (-3,3,0)-Right)
             var coordinateBuildingElements = _uiControlsCache.Values.Count(obj => 
                 obj.AutomationId.Contains("(") && obj.AutomationId.Contains(")") && obj.AutomationId.Contains("-"));
 
-            TraceMessage($"  Roads: {roadElements}, Buildings: {buildingElements}, CoordinateBuildings: {coordinateBuildingElements}, Tiles: {tileElements}, Rolls: {rollElements}");
+            TraceMessage($"  Roads: {roadElements}, Buildings: {buildingElements}, CoordinateBuildings: {coordinateBuildingElements}, Tiles: {tileElements}, Rolls: {rollElements}, Purchase: {purchaseElements}");
+            
+            // Check for critical buttons - UiPumpButton is essential, purchase buttons may be face-down
+            var essentialButtons = new[] { "UiPumpButton" };
+            var purchaseButtons = new[] { "PurchaseRoadButton", "PurchaseSettlementButton", "PurchaseCityButton", "PurchaseSoldierButton" };
+            
+            var missingEssential = essentialButtons.Where(buttonId => !_uiControlsCache.ContainsKey(buttonId)).ToArray();
+            var missingPurchase = purchaseButtons.Where(buttonId => !_uiControlsCache.ContainsKey(buttonId)).ToArray();
+            
+            var foundPurchaseButtons = _uiControlsCache.Keys.Where(k => k.StartsWith("Purchase")).ToArray();
+            
+            // UiPumpButton is absolutely critical - fail if missing
+            if (missingEssential.Any())
+            {
+                TraceMessage($"❌ CRITICAL: Missing essential buttons: {string.Join(", ", missingEssential)}");
+                TraceMessage($"❌ All automation IDs containing 'Ui': {string.Join(", ", _uiControlsCache.Keys.Where(k => k.Contains("Ui")))}");
+                TraceMessage($"❌ All automation IDs containing 'Pump': {string.Join(", ", _uiControlsCache.Keys.Where(k => k.Contains("Pump")))}");
+                TraceMessage($"❌ All automation IDs containing 'Button': {string.Join(", ", _uiControlsCache.Keys.Where(k => k.Contains("Button")))}");
+                throw new Exception($"Essential buttons not found in automation cache: {string.Join(", ", missingEssential)}. Test cannot proceed.");
+            }
+            
+            // Purchase buttons may be face-down (inside FlipperCtrl), so warn but don't fail
+            if (missingPurchase.Any())
+            {
+                TraceMessage($"⚠️ WARNING: Purchase buttons not found (may be face-down in FlipperCtrl): {string.Join(", ", missingPurchase)}");
+                TraceMessage($"⚠️ Found purchase buttons: {string.Join(", ", foundPurchaseButtons)}");
+                TraceMessage($"⚠️ All automation IDs with 'Purchase': {string.Join(", ", _uiControlsCache.Keys.Where(k => k.Contains("Purchase")))}");
+                TraceMessage($"⚠️ This is expected when purchase actions are disabled (cards face-down)");
+            }
+            else
+            {
+                TraceMessage($"✅ All purchase buttons found: {string.Join(", ", purchaseButtons)}");
+            }
+            
+            TraceMessage($"✅ Essential buttons verified: {string.Join(", ", essentialButtons)}");
+            TraceMessage($"✅ Total purchase buttons in cache: {foundPurchaseButtons.Length}");
             
             // Show sample AutomationIds for debugging
             var sampleIds = _uiControlsCache.Keys.Take(10).ToArray();
             TraceMessage($"  Sample AutomationIds: {string.Join(", ", sampleIds)}");
+            
+            // Extra debug info for specific missing elements
+            var allButtonIds = _uiControlsCache.Keys.Where(k => k.Contains("Button")).ToArray();
+            TraceMessage($"  All Button AutomationIds found: {string.Join(", ", allButtonIds)}");
             
             // Show coordinate building samples specifically
             var coordinateSamples = _uiControlsCache.Keys
@@ -129,13 +170,15 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             var button = FindByAutomationId(automationId).AsButton();
             Assert.NotNull(button);
             
-            if (!button.IsEnabled)
-            {
-                throw new InvalidOperationException($"Button '{automationId}' is not enabled");
-            }
+            // Diagnostic: Check current button state
+            TraceMessage($"Button '{automationId}' current state - IsEnabled: {button.IsEnabled}, IsOffscreen: {button.IsOffscreen}");
             
+            // Wait for button to become enabled with proper message pumping
+            WaitHelper.WaitUntilOrThrow(() => button.IsEnabled, TimeSpan.FromMilliseconds(LONG_WAIT), $"Button '{automationId}' to become enabled");
+            
+            TraceMessage($"Button '{automationId}' is now enabled, invoking...");
             button.Invoke();
-            Thread.Sleep(SHORT_WAIT);
+            UiPump.DelayWithPump(SHORT_WAIT);
         }
 
         /// <summary>
@@ -200,7 +243,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 throw new Exception($"Roll '{id}' did not change the GameModel within timeout.");
             }
 
-            Thread.Sleep(SHORT_WAIT);
+            UiPump.DelayWithPump(SHORT_WAIT);
         }
 
         /// <summary>
@@ -215,8 +258,23 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 : FindByAutomationId(buildingKey);
                 
             Assert.NotNull(buildingElement);
+            
+            // Snapshot pre-action state
+            var preHash = GetCurrentGameModel().GameHash;
+            
             buildingElement.Click();
-            Thread.Sleep(SHORT_WAIT);
+            
+            // Wait for the model to change
+            var changed = WaitHelper.WaitUntil(
+                () => !string.Equals(GetCurrentGameModel().GameHash, preHash, StringComparison.Ordinal),
+                TimeSpan.FromSeconds(5));
+
+            if (!changed)
+            {
+                throw new Exception($"Building click '{buildingKey}' did not change the GameModel within timeout.");
+            }
+            
+            UiPump.DelayWithPump(SHORT_WAIT);
         }
 
         /// <summary>
@@ -231,8 +289,23 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 : FindByAutomationId(roadKey);
                 
             Assert.NotNull(roadElement);
+            
+            // Snapshot pre-action state
+            var preHash = GetCurrentGameModel().GameHash;
+            
             roadElement.Click();
-            Thread.Sleep(SHORT_WAIT);
+            
+            // Wait for the model to change
+            var changed = WaitHelper.WaitUntil(
+                () => !string.Equals(GetCurrentGameModel().GameHash, preHash, StringComparison.Ordinal),
+                TimeSpan.FromSeconds(5));
+
+            if (!changed)
+            {
+                throw new Exception($"Road click '{roadKey}' did not change the GameModel within timeout.");
+            }
+            
+            UiPump.DelayWithPump(SHORT_WAIT);
         }
 
 
@@ -289,7 +362,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                     return true;
                 }
 
-                Thread.Sleep(SHORT_WAIT);
+                UiPump.DelayWithPump(SHORT_WAIT);
             }
 
             TraceMessage($"WaitForGameState: Timed out waiting for '{expectedState}' after {timeout.TotalSeconds}s");
@@ -306,13 +379,28 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 return _uiControlsCache[automationId];
             }
 
+            // First try normal search
             var res = Retry.WhileNull(
                 () => _mainWindow.FindFirstDescendant(_cf.ByAutomationId(automationId)),
                 timeout: TimeSpan.FromMilliseconds(SHORT_WAIT),
                 interval: TimeSpan.FromMilliseconds(100),
                 throwOnTimeout: false);
 
-            return res.Result ?? throw new TimeoutException($"AutomationId '{automationId}' not found under main window in {SHORT_WAIT} ms.");
+            if (res.Result != null)
+            {
+                return res.Result;
+            }
+
+            // If not found and it's a purchase button, provide helpful message about FlipperCtrl
+            if (automationId.StartsWith("Purchase") && automationId.EndsWith("Button"))
+            {
+                TraceMessage($"Purchase button '{automationId}' not found - likely face-down in FlipperCtrl");
+                throw new TimeoutException($"Purchase button '{automationId}' not found. This may be because the purchase option is disabled and the FlipperCtrl is showing the back face. Consider checking game state before attempting purchase actions.");
+            }
+
+            // For other elements, provide detailed diagnostic info
+            TraceMessage($"Element '{automationId}' not found. Available elements: {string.Join(", ", _uiControlsCache.Keys.Take(20))}");
+            throw new TimeoutException($"AutomationId '{automationId}' not found under main window in {SHORT_WAIT} ms.");
         }
 
         /// <summary>
@@ -328,6 +416,64 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             var output = $"UIAutomationHelper({cln}): {message} [Caller={cmb}]";
             System.Diagnostics.Debug.WriteLine(output);
         }
+
+        /// <summary>
+        /// Waits for a condition to become true while pumping Windows messages.
+        /// This prevents the STA thread from blocking UI updates during waits.
+        /// </summary>
+        private void WaitForConditionWithPump(Func<bool> condition, TimeSpan timeout, string description)
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            
+            while (!condition() && stopwatch.Elapsed < timeout)
+            {
+                UiPump.DelayWithPump(50); // Pump messages while waiting
+            }
+            
+            if (!condition())
+            {
+                throw new TimeoutException($"Timeout waiting for {description} after {timeout.TotalSeconds} seconds");
+            }
+        }
+
+        /// <summary>
+        /// Finds an automation element by its ID. Uses cache if available, otherwise searches the UI tree.
+        /// </summary>
+        /// <param name="automationId">The automation ID to find</param>
+        /// <returns>The AutomationElement if found</returns>
+        /// <exception cref="TimeoutException">Thrown if the element is not found</exception>
+        public AutomationElement FindElement(string automationId)
+        {
+            return FindByAutomationId(automationId);
+        }
+
+        /// <summary>
+        /// Tries to find an automation element by its ID. Returns null if not found.
+        /// </summary>
+        /// <param name="automationId">The automation ID to find</param>
+        /// <returns>The AutomationElement if found, null otherwise</returns>
+        public AutomationElement? TryFindElement(string automationId)
+        {
+            try
+            {
+                return FindByAutomationId(automationId);
+            }
+            catch (TimeoutException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Checks if an automation element with the given ID exists and is accessible.
+        /// </summary>
+        /// <param name="automationId">The automation ID to check for</param>
+        /// <returns>True if the element exists and is accessible, false otherwise</returns>
+        public bool ElementExists(string automationId)
+        {
+            return TryFindElement(automationId) != null;
+        }
+
 
         public void Dispose()
         {

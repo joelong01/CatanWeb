@@ -27,10 +27,10 @@ namespace Catan3
             await PlayerDatabase.LoadPlayerDatabase();
             
             // Check if we should auto-load a test file
-            if (!string.IsNullOrEmpty(App.TestFilePath))
+            if (!string.IsNullOrEmpty(App.ActivatedFilePath))
             {
                 // Auto-load test file and skip NewGame dialog
-                AutoLoadTestFile(App.TestFilePath);
+                LoadActivatedFile(App.ActivatedFilePath);
             }
             else
             {
@@ -40,15 +40,16 @@ namespace Catan3
             }
         }
         
-        private void AutoLoadTestFile(string testFilePath)
+        private void LoadActivatedFile(string activatedFilePath)
         {
             try
             {
                 // Create the main page view model for a saved game and navigate directly to game
                 // This mimics what NewGamePage does when loading a saved game
-                var mainPageViewModel = new MainPageViewModel(FileService, PlayerDatabase, GameType.SavedGame, new List<string>(), testFilePath);
+                var mainPageViewModel = new MainPageViewModel(FileService, PlayerDatabase, GameType.SavedGame, [], activatedFilePath, App.IsTestMode);
                 CurrentGame = mainPageViewModel;
                 MainFrame.Navigate(typeof(MainPage), mainPageViewModel);
+                this.Title = $"Catan ({activatedFilePath})";
             }
             catch
             {

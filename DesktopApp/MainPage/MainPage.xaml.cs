@@ -284,6 +284,15 @@ namespace Catan3
         {
             App.Current.Exit();
         }
+
+        /// <summary>
+        /// Forces UI message pumping to allow animations and updates to complete.
+        /// Useful for test automation to ensure UI state is synchronized.
+        /// </summary>
+        private async void OnUiPumpClick(object sender, RoutedEventArgs e)
+        {
+            await Task.Delay(5);
+        }
         private void OnToggleTitleBar(object sender, RoutedEventArgs e)
         {
             ToggleTitleBar();
@@ -348,6 +357,13 @@ namespace Catan3
         {
             DebugWindow.Show();
             HideMenu(); // Close the menu after opening debug window
+        }
+        
+        private void OnToggleRecordMode(object sender, RoutedEventArgs e)
+        {
+            // The toggle is handled via binding to MainPageModel.IsRecordMode
+            // which updates App.RecordMode in the property setter
+            HideMenu(); // Close the menu after toggling
         }
     }
 }

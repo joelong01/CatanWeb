@@ -36,11 +36,36 @@ namespace Catan3.Models
         /// </summary>
         [ObservableProperty]
         public partial string GameModelJson { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether recording mode is enabled.
+        /// When true, all game actions are recorded for test scenario generation.
+        /// </summary>
+        [ObservableProperty]
+        public partial bool IsRecordMode { get; set; } = App.RecordMode;
+        
+        partial void OnIsRecordModeChanged(bool value)
+        {
+            App.RecordMode = value;
+            
+            // Show debug window when recording is enabled so user can see recording messages
+            if (value)
+            {
+                DebugWindow.Show();
+                this.TraceMessage("Record Mode ENABLED - Recording game actions");
+                this.TraceMessage("Recording will be saved when you save the game file");
+            }
+            else
+            {
+                this.TraceMessage("Record Mode DISABLED");
+            }
+        }
 
         /// <summary>
         /// Gets the game controller.
         /// </summary>
         private GameController GameController { get; set; }
+        public bool IsTest { get; private set; }
 
         /// <summary>
         /// Gets the file service.
@@ -70,7 +95,7 @@ namespace Catan3.Models
         /// <param name="selectedGame">The selected game type.</param>
         /// <param name="playingPlayerIds">The list of playing player IDs.</param>
         /// <param name="filePath">The file path.</param>
-        public MainPageViewModel(IPersistenceService fileService, IPlayerDatabase playerDatabase, GameType selectedGame, IList<string> playingPlayerIds, string filePath)
+        public MainPageViewModel(IPersistenceService fileService, IPlayerDatabase playerDatabase, GameType selectedGame, IList<string> playingPlayerIds, string filePath, bool isTest = false)
         {
             FunctionTimer.Enabled = false;
             WeakReferenceMessenger.Default.Send(new EndGame());
@@ -79,6 +104,7 @@ namespace Catan3.Models
             RegisterMessages();
             GameViewModel = new GameViewModel(playerDatabase);
             GameController = new GameController(_fileService, filePath);
+            this.IsTest = isTest;
             if (selectedGame == GameType.SavedGame)
             {
                 Messenger.Send(new LoadGameMessage(filePath));

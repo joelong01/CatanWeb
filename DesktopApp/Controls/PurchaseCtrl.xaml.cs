@@ -19,6 +19,24 @@ namespace Catan3.Controls
             get => ( EntitlementPurchaseViewModel )GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
+
+        /// <summary>
+        /// Gets the automation ID for the purchase control based on entitlement type
+        /// </summary>
+        public string GetPurchaseAutomationId(EntitlementPurchaseViewModel viewModel)
+        {
+            if (viewModel?.EntitlementPurchaseModel?.Entitlement == null)
+                return "PurchaseButton";
+
+            return viewModel.EntitlementPurchaseModel.Entitlement.ToString() switch
+            {
+                "Road" => "PurchaseRoadButton",
+                "Settlement" => "PurchaseSettlementButton", 
+                "City" => "PurchaseCityButton",
+                "Soldier" => "PurchaseSoldierButton",
+                _ => $"Purchase{viewModel.EntitlementPurchaseModel.Entitlement}Button"
+            };
+        }
         private void Viewbox_Holding(object sender, Microsoft.UI.Xaml.Input.HoldingRoutedEventArgs e)
         {
         }

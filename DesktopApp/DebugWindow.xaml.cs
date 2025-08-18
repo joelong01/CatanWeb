@@ -51,14 +51,45 @@ namespace Catan3
         /// </summary>
         public static void Show()
         {
-            ((App)Application.Current)?.MainWindow?.DispatcherQueue.TryEnqueue(() =>
+            try
             {
-                if (s_instance == null)
+                // Try to get the current dispatcher queue
+                var dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+                if (dispatcherQueue != null)
                 {
-                    s_instance = new DebugWindow();
+                    dispatcherQueue.TryEnqueue(() =>
+                    {
+                        ShowInternal();
+                    });
                 }
-                s_instance.Activate();
-            });
+                else
+                {
+                    // Fallback if no dispatcher queue available
+                    ShowInternal();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"DebugWindow.Show() failed: {ex.Message}");
+                // Try direct creation as last resort
+                try
+                {
+                    ShowInternal();
+                }
+                catch (Exception ex2)
+                {
+                    System.Diagnostics.Debug.WriteLine($"DebugWindow fallback failed: {ex2.Message}");
+                }
+            }
+        }
+
+        private static void ShowInternal()
+        {
+            if (s_instance == null)
+            {
+                s_instance = new DebugWindow();
+            }
+            s_instance.Activate();
         }
 
         private void OnClearClick(object sender, RoutedEventArgs e)

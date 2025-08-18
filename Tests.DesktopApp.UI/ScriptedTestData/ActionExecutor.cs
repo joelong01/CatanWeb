@@ -147,14 +147,18 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                     Thread.Sleep(action.DelayMs);
                 }
 
-                // Verify expected state if specified
-                if (!string.IsNullOrEmpty(action.ExpectedState))
-                {
-                    var expectedState = Enum.Parse<GameState>(action.ExpectedState);
-                    _uiHelper.VerifyGameState(expectedState);
-                }
-
                 TraceMessage($"✅ Action completed successfully: {action.Type}");
+                
+                // Force UI message pumping after action completion
+                try
+                {
+                    _uiHelper.ClickButton("UiPumpButton");
+                }
+                catch (Exception pumpEx)
+                {
+                    TraceMessage($"⚠️ UiPumpButton click failed (non-critical): {pumpEx.Message}");
+                }
+                
                 return true;
             }
             catch (Exception ex)

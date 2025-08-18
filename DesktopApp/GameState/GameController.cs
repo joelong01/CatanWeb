@@ -1,24 +1,21 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-
 using Catan.Services;
-
-using Catan3.Shared.Models;
-using Catan3.Shared.Extensions;
-using Catan3.Shared.Utility;
-
 using Catan3.Models;
+using Catan3.Shared.Extensions;
+using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 using Catan3.Utility;
-
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI;
-
 using Microsoft.UI.Dispatching;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Threading.Tasks;
 namespace Catan3.Controller
 {
     // SYNC NOTE:
@@ -49,11 +46,13 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                        this.RecordAction("DoAction", new {
-                            GameAction = message.Action.ToString(),
-                            PlayerId = gameModel.CurrentPlayerId,
-                            GameState = gameModel.GameState.ToString()
-                        });
+                        Log.RecordAction(
+                            actionType: GetActionType(message.Action),
+                            playerId: gameModel.CurrentPlayerId,
+                            gameState: gameModel.GameState.ToString(),
+                            parameters: new Dictionary<string, object> { 
+                                { "gameAction", message.Action.ToString() } 
+                            });
                         
                         gameModel = null;
                         switch (message.Action)
@@ -93,11 +92,13 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                        this.RecordAction("BuildingUpgradeMessage", new {
-                            AutomationId = message.BuildingKey.GetAutomationId(),
-                            PlayerId = gameModel.CurrentPlayerId,
-                            GameState = gameModel.GameState.ToString()
-                        });
+                        Log.RecordAction(
+                            actionType: GetBuildingActionType(gameModel),
+                            playerId: gameModel.CurrentPlayerId,
+                            gameState: gameModel.GameState.ToString(),
+                            parameters: new Dictionary<string, object> { 
+                                { "automationId", message.BuildingKey.GetAutomationId() } 
+                            });
                         
                         gameModel = BuildingUpgrade(message);
                         LogGameModel(gameModel);
@@ -113,11 +114,13 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                    this.RecordAction("SetPlayerOrderMessage", new {
-                        PlayerIds = message.PlayerIds.ToArray(),
-                        CurrentPlayerId = gameModel.CurrentPlayerId,
-                        GameState = gameModel.GameState.ToString()
-                    });
+                    Log.RecordAction(
+                        actionType: "SetPlayerOrder",
+                        playerId: gameModel.CurrentPlayerId,
+                        gameState: gameModel.GameState.ToString(),
+                        parameters: new Dictionary<string, object> { 
+                            { "playerIds", message.PlayerIds.ToArray() } 
+                        });
                     
                     gameModel = SetPlayerOrder(message.PlayerIds);
                     LogGameModel(gameModel);
@@ -130,22 +133,29 @@ namespace Catan3.Controller
             });
             Messenger.Register<RoadPurchaseMessage>(this, (recipient, message) =>
                 {
+                    var automationId = message.RoadKey.GetAutomationId();
+                    this.TraceMessage($"🛣️ Received RoadPurchaseMessage for {automationId}");
+                    
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                        this.RecordAction("RoadPurchaseMessage", new {
-                            AutomationId = message.RoadKey.GetAutomationId(),
-                            PlayerId = gameModel.CurrentPlayerId,
-                            GameState = gameModel.GameState.ToString()
-                        });
+                        Log.RecordAction(
+                            actionType: "PlaceRoad",
+                            playerId: gameModel.CurrentPlayerId,
+                            gameState: gameModel.GameState.ToString(),
+                            parameters: new Dictionary<string, object> { 
+                                { "automationId", automationId } 
+                            });
                         
                         var model = RoadPurchase(message);
+                        this.TraceMessage($"✅ Road placement successful for {automationId}");
                         LogGameModel(model);
                         Messenger.Send(new UpdateGameModel(model));
 
                     }
                     catch (GameException e)
                     {
+                        this.TraceMessage($"❌ Road placement failed for {automationId}: {e.Message}");
                         SendErrorMessage(e.Message, e.ErrorLevel);
                     }
                 });
@@ -154,12 +164,14 @@ namespace Catan3.Controller
                  try
                  {
                      var gameModel = Log.CopyCurrent();
-                     this.RecordAction("MoveRobberMessage", new {
-                         AutomationId = $"Tile-{message.Coordinates}",
-                         TargetPlayerId = message.TargetPlayerId,
-                         PlayerId = gameModel.CurrentPlayerId,
-                         GameState = gameModel.GameState.ToString()
-                     });
+                     Log.RecordAction(
+                         actionType: "MoveRobber",
+                         playerId: gameModel.CurrentPlayerId,
+                         gameState: gameModel.GameState.ToString(),
+                         parameters: new Dictionary<string, object> { 
+                             { "automationId", $"Tile-{message.Coordinates}" },
+                             { "targetPlayerId", message.TargetPlayerId ?? string.Empty }
+                         });
                      
                      var model = MoveRobber(message);
                      LogGameModel(model);
@@ -201,11 +213,13 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                    this.RecordAction("RollMessage", new {
-                        AutomationId = $"Roll-{(int)message.Roll.NormalRoll}",
-                        PlayerId = gameModel.CurrentPlayerId,
-                        GameState = gameModel.GameState.ToString()
-                    });
+                    Log.RecordAction(
+                        actionType: "RollDice",
+                        playerId: gameModel.CurrentPlayerId,
+                        gameState: gameModel.GameState.ToString(),
+                        parameters: new Dictionary<string, object> { 
+                            { "automationId", $"Roll-{(int)message.Roll.NormalRoll}" }
+                        });
                     
                     var model = OnRoll(message);
                     LogGameModel(model);
@@ -221,11 +235,11 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                    this.RecordAction("PurchaseMessage", new {
-                        Entitlement = message.Entitlement.ToString(),
-                        PlayerId = gameModel.CurrentPlayerId,
-                        GameState = gameModel.GameState.ToString()
-                    });
+                    Log.RecordAction(
+                        actionType: GetPurchaseActionType(message.Entitlement),
+                        playerId: gameModel.CurrentPlayerId,
+                        gameState: gameModel.GameState.ToString(),
+                        parameters: null);
                     
                     var model = OnPurchase(message);
                     LogGameModel(model);
@@ -245,11 +259,13 @@ namespace Catan3.Controller
                     GameModel gameModel = Log.CopyCurrent();
                     if (gameModel.GameState != GameState.PickSupplementalPlayers) return;
                     
-                    this.RecordAction("PlayersDoingSupplemental", new {
-                        PlayerIds = message.PlayerIds.ToArray(),
-                        CurrentPlayerId = gameModel.CurrentPlayerId,
-                        GameState = gameModel.GameState.ToString()
-                    });
+                    Log.RecordAction(
+                        actionType: "SelectSupplementalPlayers",
+                        playerId: gameModel.CurrentPlayerId,
+                        gameState: gameModel.GameState.ToString(),
+                        parameters: new Dictionary<string, object> { 
+                            { "playerIds", message.PlayerIds.ToArray() } 
+                        });
                     //
                     //  optimize away the case when there are supplemental players
                     foreach (var player in gameModel.Players)
@@ -294,11 +310,11 @@ namespace Catan3.Controller
                 GameModel gameModel = Log.CopyCurrent();
                 if (gameModel.GameState != GameState.FinishedRollOrder) return;
                 
-                this.RecordAction("GoFirstMessage", new {
-                    PlayerId = message.PlayerId,
-                    CurrentPlayerId = gameModel.CurrentPlayerId,
-                    GameState = gameModel.GameState.ToString()
-                });
+                Log.RecordAction(
+                    actionType: "GoFirst",
+                    playerId: message.PlayerId,
+                    gameState: gameModel.GameState.ToString(),
+                    parameters: null);
                 while (gameModel.Players[0].Id != message.PlayerId)
                 {
                     var player = gameModel.Players[0];
@@ -431,17 +447,49 @@ namespace Catan3.Controller
             gameModel.GameState = GameState.PickingBoard;
             return gameModel;
         }
+        /// <summary>
+        ///     Loads the game from the file path.  It can be a ".catan" file (compressed JSON) or a ".catan_test" file (uncompressed JSON).
+        ///     if it is a test, we need to pull out the GameModel (ignore the array of Actions) and then load that.
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
+        /// <exception cref="GameException"></exception>
         public async Task<GameModel> LoadGame(string filePath)
         {
             if (MyPersistenceService is null) throw new GameException("no Persistence service was set");
 
-            var compressedBytes = await MyPersistenceService.OpenAsync(filePath) ?? throw new GameException($"Unable to open file {filePath}");
 
-            var decompressedJson = SerializationHelper.Decompress(compressedBytes);
-            // Deserialize the JSON back into your Log or relevant data structure
-            var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) ?? throw new GameException("Error: Failed to load the game data.");
-            Log<string> log = Log<string>.FromSerializableLog(savedLog, MyPersistenceService, filePath);
-            this.Log = log;
+
+            // check to see if the extension is a ".catan" file (compressed JSON) or a ".catan_test" file (uncompressed JSON)
+            if (Path.GetExtension(filePath).Equals(".catan_test", StringComparison.OrdinalIgnoreCase))
+            {
+                await using var fs = File.OpenRead(filePath);
+                using var doc = await JsonDocument.ParseAsync(fs);
+
+                if (doc.RootElement.TryGetProperty("GameModel", out var gmElem))
+                {
+                    var gm = gmElem.Deserialize<GameModel>(new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    }) ?? throw new GameException("Error: Failed to load the game data.");
+                    
+                    Log<string> log = Log<string>.FromGameModel(gm, MyPersistenceService, filePath);
+                    this.Log = log;
+                    return Log.CurrentState();
+                }
+               
+               
+            }
+            else
+            {
+                var fileBytes = await MyPersistenceService.OpenAsync(filePath) ?? throw new GameException($"Unable to open file {filePath}");
+
+                var decompressedJson = SerializationHelper.Decompress(fileBytes);
+                // Deserialize the JSON back into your Log or relevant data structure
+                var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) ?? throw new GameException("Error: Failed to load the game data.");
+                Log<string> log = Log<string>.FromSerializableLog(savedLog, MyPersistenceService, filePath);
+                this.Log = log;
+            }
 
             return Log.CurrentState();
 
@@ -1670,6 +1718,63 @@ namespace Catan3.Controller
             } while (ownedAdjacentNotCounted.Count != 0);
             return max;
         }
+        
+        #region Recording Helpers
+        
+        /// <summary>
+        /// Maps GameAction enum to test action type strings
+        /// </summary>
+        private string GetActionType(GameAction action)
+        {
+            return action switch
+            {
+                GameAction.Next => "AdvanceNext",
+                GameAction.Shuffle => "ShuffleBoard",
+                GameAction.Undo => "PreviousBoard",
+                GameAction.Redo => "RedoBoard",
+                _ => action.ToString()
+            };
+        }
+        
+        /// <summary>
+        /// Determines the building action type based on game state and context
+        /// </summary>
+        private string GetBuildingActionType(GameModel gameModel)
+        {
+            // During allocation phases, it's always PlaceSettlement
+            if (gameModel.GameState == GameState.AllocateResourceForward ||
+                gameModel.GameState == GameState.AllocateResourceReverse)
+            {
+                return "PlaceSettlement";
+            }
+            
+            // During normal gameplay, check if player has City entitlement
+            // If they have a City entitlement, it's an upgrade
+            var currentPlayer = gameModel.Players.FirstOrDefault(p => p.Id == gameModel.CurrentPlayerId);
+            if (currentPlayer?.UnspentEntitlements?.Contains(Entitlement.City) == true)
+            {
+                return "UpgradeToCity";
+            }
+            
+            return "PlaceSettlement";
+        }
+        
+        /// <summary>
+        /// Maps Entitlement enum to purchase action types
+        /// </summary>
+        private string GetPurchaseActionType(Entitlement entitlement)
+        {
+            return entitlement switch
+            {
+                Entitlement.Road => "PurchaseRoad",
+                Entitlement.Settlement => "PurchaseSettlement",
+                Entitlement.City => "PurchaseCity",
+                Entitlement.Soldier => "PurchaseSoldier",
+                _ => $"Purchase{entitlement}"
+            };
+        }
+        
+        #endregion
 
     }
 }

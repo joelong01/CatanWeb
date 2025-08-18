@@ -3,7 +3,7 @@ using System.IO;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media.Animation;
 using System.Threading.Tasks;
-#nullable disable
+
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 namespace Catan3
@@ -16,23 +16,26 @@ namespace Catan3
         /// <summary>
         /// Global flag to enable recording of user actions for test scenario generation.
         /// When true, disables normal trace messages and records actions instead.
+        /// Set to true manually when you want to record a game session.
         /// </summary>
-        public static bool RecordMode { get; set; } = true;
-        
+        public static bool RecordMode { get; set; } = false;
+
         /// <summary>
         /// Path to test file to auto-load on startup (bypasses NewGame dialog)
         /// </summary>
-#nullable enable
-        public static string? TestFilePath { get; set; }
-#nullable disable
+
+        public static string? ActivatedFilePath { get; set; } = null;
+        public static bool IsTestMode { get; private set; } = false; // set based on extension
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
         /// </summary>
+#nullable disable
         public App()
         {
             this.InitializeComponent();
         }
+#nullable enable
         /// <summary>
         /// Invoked when the application is launched.
         /// </summary>
@@ -46,16 +49,17 @@ namespace Catan3
             };
 #endif
             this.TraceMessage($"Command Line arguments: {args?.Arguments}");
-            
+
             // Check for file activation arguments
             CheckForFileActivation();
-            
-            ConfigureTestMode(args?.Arguments);
+
             InitializeWindow();
         }
-        
+
         /// <summary>
-        /// Checks if the app was activated to open a .catan file.
+        /// Checks if the app was activated to open a file.  We support 2 file types:
+        ///     .catan       Normal game file.
+        ///     .catan_test  Test scenario file.
         /// </summary>
         private void CheckForFileActivation()
         {
@@ -63,26 +67,33 @@ namespace Catan3
             {
                 var activationArgs = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
                 this.TraceMessage($"Activation kind: {activationArgs?.Kind}");
-                
+
                 if (activationArgs?.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.File)
                 {
                     if (activationArgs.Data is Windows.ApplicationModel.Activation.FileActivatedEventArgs fileArgs)
                     {
                         this.TraceMessage($"File activation detected with {fileArgs.Files?.Count} files");
-                        
+
                         if (fileArgs.Files?.Count > 0)
                         {
                             var file = fileArgs.Files[0] as Windows.Storage.StorageFile;
-                            if (file != null && file.Path.EndsWith(".catan", StringComparison.OrdinalIgnoreCase))
+                            if (file is null)
                             {
-                                this.TraceMessage($"File activation: {file.Path}");
-                                
-                                // Use the file path directly - test already handles temp file creation
-                                TestFilePath = file.Path;
-                                
+                                this.TraceMessage("No valid file found in activation arguments.");
+                                return;
+                            }
+                            bool isNormalGameFile = file.Path.EndsWith(".catan", StringComparison.OrdinalIgnoreCase);
+                            bool isTestFile = file.Path.EndsWith(".catan_test", StringComparison.OrdinalIgnoreCase);
+                            this.TraceMessage($"File activation: {file.Path}");
+
+                            if (isTestFile)
+                            {
                                 // Enable test mode for file activation
                                 Timeline.AllowDependentAnimations = false;
-                                this.TraceMessage($"Set TestFilePath to: {TestFilePath}");
+                                // Disable recording mode when running tests
+                                RecordMode = false;
+                                IsTestMode = true;
+
                             }
                         }
                     }
@@ -94,7 +105,7 @@ namespace Catan3
             }
         }
 
-        
+
         /// <summary>
         /// Initializes the main window if not already initialized.
         /// </summary>
@@ -117,56 +128,48 @@ namespace Catan3
         {
             // Wait for 1 ms to allow splash screen display and background initialization
             await Task.Delay(1);
-            
+
             // Activate the window on the UI thread
             Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() =>
             {
                 m_window?.Activate();
             });
+
+            // Give the main window time to fully initialize, then show debug window
+            await Task.Delay(100);
+
+            Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() =>
+            {
+                // Show debug window by default (especially important during testing)
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine("App: About to show DebugWindow");
+
+                    // Show the window first
+                    DebugWindow.Show();
+
+
+
+                    // Give it a moment to create, then send messages
+                    Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() =>
+                    {
+                        DebugWindow.ShowMessage($"🪟 DebugWindow auto-opened (TestMode: {IsTestMode})");
+
+                        // For test mode, add additional message
+                        if (IsTestMode)
+                        {
+                            DebugWindow.ShowMessage("🧪 Test Mode: Enhanced debugging enabled");
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"App: Failed to show DebugWindow: {ex.Message}");
+                }
+            });
         }
         public Window m_window;
         public Window MainWindow => m_window;
 
-#nullable enable
-        /// <summary>
-        /// Enables deterministic, automation-friendly settings when launched with --test or CATAN_TEST=1.
-        /// Also supports --load-test-file=path to auto-load a specific game file.
-        /// </summary>
-        private static void ConfigureTestMode(string? launchArgs)
-        {
-            try
-            {
-                bool testMode = (launchArgs?.Contains("--test") ?? false) ||
-                                (Environment.GetEnvironmentVariable("CATAN_TEST") == "1");
-                
-                // Check for test file loading
-                if (!string.IsNullOrEmpty(launchArgs))
-                {
-                    const string loadTestFilePrefix = "--load-test-file=";
-                    var loadTestFileIndex = launchArgs.IndexOf(loadTestFilePrefix);
-                    if (loadTestFileIndex >= 0)
-                    {
-                        var startIndex = loadTestFileIndex + loadTestFilePrefix.Length;
-                        var endIndex = launchArgs.IndexOf(' ', startIndex);
-                        if (endIndex == -1) endIndex = launchArgs.Length;
-                        
-                        var testFilePath = launchArgs.Substring(startIndex, endIndex - startIndex).Trim('"');
-                        if (File.Exists(testFilePath))
-                        {
-                            // Copy to temp file to preserve original
-                            var tempFilePath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.catan");
-                            File.Copy(testFilePath, tempFilePath, overwrite: true);
-                            TestFilePath = tempFilePath;
-                            testMode = true; // Auto-enable test mode when loading test file
-                        }
-                    }
-                }
-                
-                if (!testMode) return;
-                Timeline.AllowDependentAnimations = false;
-            }
-            catch { }
-        }
-#nullable disable
     }
 }

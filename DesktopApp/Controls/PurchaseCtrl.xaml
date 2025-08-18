@@ -37,6 +37,8 @@
         <u:FlipperCtrl.Front>
             <Grid x:Name="GRID_Front" HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
+                    AutomationProperties.AutomationId="{x:Bind GetPurchaseAutomationId(ViewModel), Mode=OneWay}"
+                    AutomationProperties.Name="{x:Bind GetPurchaseAutomationId(ViewModel), Mode=OneWay}"
                     PointerEntered="OnPointerEntered" CornerRadius="10"
                     PointerExited="OnPointerExited"
                     PointerPressed="OnPointerPressed"

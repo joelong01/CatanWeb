@@ -2,11 +2,9 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
 using Catan3.Shared.Models;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
@@ -205,27 +203,6 @@ namespace Catan3
             {
                 Debug.Unindent();
             }
-        }
-        
-        public static void RecordAction(this object pThis, string messageType, object? parameters = null, 
-            [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
-        {
-            if (!App.RecordMode) return;
-            
-            var actionRecord = new 
-            {
-                MessageType = messageType,
-                Parameters = parameters,
-                Caller = cmb,
-                Line = cln,
-                File = Path.GetFileNameWithoutExtension(cfp)
-            };
-            
-            var message = $"RECORD: {JsonSerializer.Serialize(actionRecord, Catan3.Shared.Utility.JsonHelper.StandardOptions)}";
-            
-            // Send to both Debug output AND DebugWindow (like TraceMessage)
-            Debug.WriteLine(message);
-            DebugWindow.ShowMessage(message);
         }
     }
     public delegate void SimulatedButtonClick();

@@ -1,9 +1,9 @@
 {
-  "name": "Expansion Test Complete Flow",
-  "description": "Full game flow from board setup through allocation phase, main game start with soldier purchase, robber movement, and supplemental building phase",
-  "testFilePath": "Assets/TestFiles/Expansion-Test.catan",
+  "name": "Recorded Game Session",
+  "description": "Auto-recorded gameplay session",
   "gameType": "Expansion",
   "expectedPlayerCount": 5,
+  "testFilePath": "Expansion-Test.catan",
   "expectedFinalState": "WaitingForRoll",
   "timeoutMs": 300000,
   "recordMode": false,
@@ -11,460 +11,699 @@
     {
       "type": "AdvanceNext",
       "playerId": "Joe-001",
-      "expectedState": "WaitingForRollForOrder",
-      "description": "Initial board setup transition"
+      "expectedState": "PickingBoard",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at PickingBoard"
     },
     {
       "type": "AdvanceNext",
       "playerId": "Joe-001",
+      "expectedState": "WaitingForRollForOrder",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at WaitingForRollForOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Doug-001",
       "expectedState": "FinishedRollOrder",
-      "description": "Roll order transition"
+      "parameters": {},
+      "description": "GoFirst by Doug-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Doug-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Doug-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Ryan-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Ryan-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Adrian-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Adrian-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Joe-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Joe-001 at FinishedRollOrder"
     },
     {
       "type": "GoFirst",
       "playerId": "Dodgy-001",
       "expectedState": "FinishedRollOrder",
-      "parameters": {
-        "playerId": "Dodgy-001"
-      },
-      "description": "Dodgy clicks Go First to reorder players"
+      "parameters": {},
+      "description": "GoFirst by Dodgy-001 at FinishedRollOrder"
     },
     {
       "type": "GoFirst",
       "playerId": "Doug-001",
       "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Doug-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Ryan-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Ryan-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Adrian-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Adrian-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Joe-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Joe-001 at FinishedRollOrder"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "FinishedRollOrder",
       "parameters": {
-        "playerId": "Doug-001"
+        "gameAction": "Next"
       },
-      "description": "Doug clicks Go First to become first player"
+      "description": "AdvanceNext by Joe-001 at FinishedRollOrder"
     },
     {
       "type": "AdvanceNext",
-      "playerId": "Doug-001",
+      "playerId": "Joe-001",
       "expectedState": "BeginResourceAllocation",
-      "description": "Begin allocation phase"
-    },
-    {
-      "type": "AdvanceNext",
-      "playerId": "Doug-001",
-      "expectedState": "AllocateResourceForward",
-      "description": "Start allocation forward"
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at BeginResourceAllocation"
     },
     {
       "type": "PlaceSettlement",
-      "playerId": "Doug-001",
+      "playerId": "Joe-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Building-(1,-1,0)-BottomRight"
+      },
+      "description": "PlaceSettlement by Joe-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Road-(1,-1,0)-Bottom"
+      },
+      "description": "PlaceRoad by Joe-001 at AllocateResourceForward"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Dodgy-001",
       "expectedState": "AllocateResourceForward",
       "parameters": {
         "automationId": "Building-(-3,3,0)-Right"
       },
-      "description": "Doug places first settlement"
+      "description": "PlaceSettlement by Dodgy-001 at AllocateResourceForward"
     },
     {
       "type": "PlaceRoad",
-      "playerId": "Doug-001",
+      "playerId": "Dodgy-001",
+      "expectedState": "AllocateResourceForward",
       "parameters": {
         "automationId": "Road-(-2,2,0)-Bottom"
       },
-      "description": "Doug places first road"
+      "description": "PlaceRoad by Dodgy-001 at AllocateResourceForward"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Dodgy-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Dodgy-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Doug-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Building-(2,-1,-1)-Right"
+      },
+      "description": "PlaceSettlement by Doug-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Doug-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Road-(2,-1,-1)-TopRight"
+      },
+      "description": "PlaceRoad by Doug-001 at AllocateResourceForward"
     },
     {
       "type": "AdvanceNext",
       "playerId": "Doug-001",
-      "description": "Doug advances to next player"
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Doug-001 at AllocateResourceForward"
     },
     {
       "type": "PlaceSettlement",
       "playerId": "Ryan-001",
       "expectedState": "AllocateResourceForward",
-      "parameters": {
-        "automationId": "Building-(-1,0,1)-BottomRight"
-      },
-      "description": "Ryan places first settlement"
-    },
-    {
-      "type": "PlaceRoad",
-      "playerId": "Ryan-001",
-      "parameters": {
-        "automationId": "Road-(-1,1,0)-TopRight"
-      },
-      "description": "Ryan places first road"
-    },
-    {
-      "type": "AdvanceNext",
-      "playerId": "Ryan-001",
-      "description": "Ryan advances to next player"
-    },
-    {
-      "type": "PlaceSettlement",
-      "playerId": "Adrian-001",
-      "expectedState": "AllocateResourceForward",
-      "parameters": {
-        "buildingKey": "(1,-1,0)-BottomRight"
-      },
-      "description": "Adrian places first settlement"
-    },
-    {
-      "type": "PlaceRoad",
-      "playerId": "Adrian-001",
-      "parameters": {
-        "roadKey": "(1,0,-1)-TopRight"
-      },
-      "description": "Adrian places first road"
-    },
-    {
-      "type": "AdvanceNext",
-      "playerId": "Adrian-001",
-      "description": "Adrian advances to next player"
-    },
-    {
-      "type": "PlaceSettlement",
-      "playerId": "Joe-001",
-      "expectedState": "AllocateResourceForward",
-      "parameters": {
-        "buildingKey": "(2,-1,-1)-Right"
-      },
-      "description": "Joe places first settlement"
-    },
-    {
-      "type": "PlaceRoad",
-      "playerId": "Joe-001",
-      "parameters": {
-        "roadKey": "(2,-1,-1)-BottomRight"
-      },
-      "description": "Joe places first road"
-    },
-    {
-      "type": "AdvanceNext",
-      "playerId": "Joe-001",
-      "description": "Joe advances to next player"
-    },
-    {
-      "type": "PlaceSettlement",
-      "playerId": "Dodgy-001",
-      "expectedState": "AllocateResourceForward",
-      "parameters": {
-        "buildingKey": "(1,-2,1)-BottomRight"
-      },
-      "description": "Dodgy places first settlement"
-    },
-    {
-      "type": "PlaceRoad",
-      "playerId": "Dodgy-001",
-      "parameters": {
-        "roadKey": "(1,-2,1)-Bottom"
-      },
-      "description": "Dodgy places first road"
-    },
-    {
-      "type": "AdvanceNext",
-      "playerId": "Dodgy-001",
-      "expectedState": "AllocateResourceReverse",
-      "description": "Dodgy advances - triggers reverse allocation"
-    },
-    {
-      "type": "PlaceSettlement",
-      "playerId": "Dodgy-001",
-      "expectedState": "AllocateResourceReverse",
-      "parameters": {
-        "buildingKey": "(0,2,-2)-Right"
-      },
-      "description": "Dodgy places second settlement (reverse order)"
-    },
-    {
-      "type": "PlaceRoad",
-      "playerId": "Dodgy-001",
-      "parameters": {
-        "roadKey": "(0,2,-2)-BottomRight"
-      },
-      "description": "Dodgy places second road"
-    },
-    {
-      "type": "AdvanceNext",
-      "playerId": "Dodgy-001",
-      "description": "Dodgy advances to next player"
-    },
-    {
-      "type": "PlaceSettlement",
-      "playerId": "Joe-001",
-      "expectedState": "AllocateResourceReverse",
-      "parameters": {
-        "buildingKey": "(2,0,-2)-Right"
-      },
-      "description": "Joe places second settlement"
-    },
-    {
-      "type": "PlaceRoad",
-      "playerId": "Joe-001",
-      "parameters": {
-        "roadKey": "(2,0,-2)-BottomRight"
-      },
-      "description": "Joe places second road"
-    },
-    {
-      "type": "AdvanceNext",
-      "playerId": "Joe-001",
-      "description": "Joe advances to next player"
-    },
-    {
-      "type": "PlaceSettlement",
-      "playerId": "Adrian-001",
-      "expectedState": "AllocateResourceReverse",
       "parameters": {
         "automationId": "Building-(-3,2,1)-Right"
       },
-      "description": "Adrian places second settlement"
+      "description": "PlaceSettlement by Ryan-001 at AllocateResourceForward"
     },
     {
       "type": "PlaceRoad",
-      "playerId": "Adrian-001",
+      "playerId": "Ryan-001",
+      "expectedState": "AllocateResourceForward",
       "parameters": {
         "automationId": "Road-(-2,1,1)-Bottom"
       },
-      "description": "Adrian places second road"
+      "description": "PlaceRoad by Ryan-001 at AllocateResourceForward"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Ryan-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Ryan-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Adrian-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Building-(0,2,-2)-Right"
+      },
+      "description": "PlaceSettlement by Adrian-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Adrian-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Road-(1,1,-2)-Bottom"
+      },
+      "description": "PlaceRoad by Adrian-001 at AllocateResourceForward"
     },
     {
       "type": "AdvanceNext",
       "playerId": "Adrian-001",
-      "description": "Adrian advances to next player"
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Adrian-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Adrian-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Building-(1,-2,1)-BottomRight"
+      },
+      "description": "PlaceSettlement by Adrian-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Adrian-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Road-(1,-1,0)-TopRight"
+      },
+      "description": "PlaceRoad by Adrian-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Adrian-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Adrian-001 at AllocateResourceReverse"
     },
     {
       "type": "PlaceSettlement",
       "playerId": "Ryan-001",
       "expectedState": "AllocateResourceReverse",
       "parameters": {
-        "buildingKey": "(0,-1,1)-BottomRight"
+        "automationId": "Building-(-1,0,1)-BottomRight"
       },
-      "description": "Ryan places second settlement"
+      "description": "PlaceSettlement by Ryan-001 at AllocateResourceReverse"
     },
     {
       "type": "PlaceRoad",
       "playerId": "Ryan-001",
+      "expectedState": "AllocateResourceReverse",
       "parameters": {
-        "roadKey": "(0,0,0)-TopRight"
+        "automationId": "Road-(-1,0,1)-Bottom"
       },
-      "description": "Ryan places wrong road (will be undone)"
-    },
-    {
-      "type": "PreviousBoard",
-      "playerId": "Ryan-001",
-      "description": "Ryan undoes incorrect road placement"
-    },
-    {
-      "type": "PlaceRoad",
-      "playerId": "Ryan-001",
-      "parameters": {
-        "roadKey": "(0,-1,1)-Bottom"
-      },
-      "description": "Ryan places correct road"
+      "description": "PlaceRoad by Ryan-001 at AllocateResourceReverse"
     },
     {
       "type": "AdvanceNext",
       "playerId": "Ryan-001",
-      "description": "Ryan completes turn"
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Ryan-001 at AllocateResourceReverse"
     },
     {
       "type": "PlaceSettlement",
       "playerId": "Doug-001",
       "expectedState": "AllocateResourceReverse",
       "parameters": {
-        "buildingKey": "(1,0,-1)-BottomRight"
+        "automationId": "Building-(2,0,-2)-Right"
       },
-      "description": "Doug places second settlement"
+      "description": "PlaceSettlement by Doug-001 at AllocateResourceReverse"
     },
     {
       "type": "PlaceRoad",
       "playerId": "Doug-001",
+      "expectedState": "AllocateResourceReverse",
       "parameters": {
-        "roadKey": "(1,0,-1)-Bottom"
+        "automationId": "Road-(2,0,-2)-BottomRight"
       },
-      "description": "Doug places second road"
+      "description": "PlaceRoad by Doug-001 at AllocateResourceReverse"
     },
     {
       "type": "AdvanceNext",
       "playerId": "Doug-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Doug-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Dodgy-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Building-(0,-2,2)-TopLeft"
+      },
+      "description": "PlaceSettlement by Dodgy-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Dodgy-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Road-(0,-2,2)-Top"
+      },
+      "description": "PlaceRoad by Dodgy-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Dodgy-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Dodgy-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Joe-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Building-(-2,0,2)-Right"
+      },
+      "description": "PlaceSettlement by Joe-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Road-(-2,0,2)-BottomRight"
+      },
+      "description": "PlaceRoad by Joe-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
       "expectedState": "DoneResourceAllocation",
-      "description": "Doug completes allocation phase"
-    },
-    {
-      "type": "AdvanceNext",
-      "playerId": "Doug-001",
-      "expectedState": "WaitingForRoll",
-      "description": "Start main game"
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at DoneResourceAllocation"
     },
     {
       "type": "PurchaseSoldier",
-      "playerId": "Doug-001",
-      "expectedState": "MustMoveRobber",
-      "description": "Doug purchases soldier to move robber"
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForRoll",
+      "parameters": {},
+      "description": "PurchaseSoldier by Joe-001 at WaitingForRoll"
     },
     {
       "type": "MoveRobber",
-      "playerId": "Doug-001",
+      "playerId": "Joe-001",
+      "expectedState": "MustMoveRobber",
       "parameters": {
-        "coordinates": "(1,-2,1)",
+        "automationId": "Tile-(-2,3,-1)",
         "targetPlayerId": "Dodgy-001"
       },
-      "description": "Doug moves robber and targets Dodgy"
+      "description": "MoveRobber by Joe-001 at MustMoveRobber"
     },
     {
       "type": "RollDice",
-      "playerId": "Doug-001",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForRoll",
+      "parameters": {
+        "automationId": "Roll-6"
+      },
+      "description": "RollDice by Joe-001 at WaitingForRoll"
+    },
+    {
+      "type": "PurchaseRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
       "expectedState": "WaitingForNext",
       "parameters": {
-        "roll": 6
+        "automationId": "Road-(0,0,0)-BottomRight"
       },
-      "description": "Doug rolls dice"
+      "description": "PlaceRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseSettlement",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseSettlement by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Building-(0,0,0)-BottomRight"
+      },
+      "description": "PlaceSettlement by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Road-(0,1,-1)-TopRight"
+      },
+      "description": "PlaceRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Road-(1,0,-1)-Bottom"
+      },
+      "description": "PlaceRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Road-(1,0,-1)-BottomRight"
+      },
+      "description": "PlaceRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Road-(1,0,-1)-TopRight"
+      },
+      "description": "PlaceRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Road-(0,1,-1)-BottomRight"
+      },
+      "description": "PlaceRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseCity",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseCity by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "UpgradeToCity",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Building-(0,0,0)-BottomRight"
+      },
+      "description": "UpgradeToCity by Joe-001 at WaitingForNext"
     },
     {
       "type": "AdvanceNext",
-      "playerId": "Doug-001",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "SelectSupplementalPlayers",
+      "playerId": "Joe-001",
       "expectedState": "PickSupplementalPlayers",
-      "description": "Advance to supplemental player selection"
+      "parameters": {
+        "playerIds": [
+          "Dodgy-001",
+          "Doug-001",
+          "Ryan-001",
+          "Adrian-001"
+        ]
+      },
+      "description": "SelectSupplementalPlayers by Joe-001 at PickSupplementalPlayers"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "PickSupplementalPlayers",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at PickSupplementalPlayers"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Dodgy-001",
+      "expectedState": "Supplemental",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Dodgy-001 at Supplemental"
     },
     {
       "type": "AdvanceNext",
       "playerId": "Doug-001",
       "expectedState": "Supplemental",
-      "description": "Start supplemental building phase"
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Doug-001 at Supplemental"
     },
     {
-      "type": "PurchaseRoad",
-      "playerId": "Adrian-001",
+      "type": "AdvanceNext",
+      "playerId": "Ryan-001",
       "expectedState": "Supplemental",
-      "description": "Adrian purchases road"
-    },
-    {
-      "type": "PlaceRoad",
-      "playerId": "Adrian-001",
       "parameters": {
-        "automationId": "Road-(-3,2,1)-BottomRight"
+        "gameAction": "Next"
       },
-      "description": "Adrian places first road"
-    },
-    {
-      "type": "PurchaseRoad",
-      "playerId": "Adrian-001",
-      "description": "Adrian purchases another road"
-    },
-    {
-      "type": "PlaceRoad",
-      "playerId": "Adrian-001",
-      "parameters": {
-        "automationId": "Road-(-3,2,1)-Bottom"
-      },
-      "description": "Adrian places second road"
-    },
-    {
-      "type": "PurchaseCity",
-      "playerId": "Adrian-001",
-      "description": "Adrian purchases city"
-    },
-    {
-      "type": "UpgradeToCity",
-      "playerId": "Adrian-001",
-      "parameters": {
-        "automationId": "Building-(-3,2,1)-Right"
-      },
-      "description": "Adrian upgrades settlement to city"
-    },
-    {
-      "type": "PurchaseRoad",
-      "playerId": "Adrian-001",
-      "description": "Adrian purchases road (will undo)"
-    },
-    {
-      "type": "PreviousBoard",
-      "playerId": "Adrian-001",
-      "description": "Adrian undoes road purchase"
-    },
-    {
-      "type": "PurchaseSettlement",
-      "playerId": "Adrian-001",
-      "description": "Adrian purchases settlement instead"
-    },
-    {
-      "type": "PlaceSettlement",
-      "playerId": "Adrian-001",
-      "parameters": {
-        "automationId": "Building-(-3,2,1)-BottomLeft"
-      },
-      "description": "Adrian places new settlement"
+      "description": "AdvanceNext by Ryan-001 at Supplemental"
     },
     {
       "type": "AdvanceNext",
       "playerId": "Adrian-001",
-      "description": "Adrian completes supplemental turn"
+      "expectedState": "Supplemental",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Adrian-001 at Supplemental"
+    },
+    {
+      "type": "PurchaseSoldier",
+      "playerId": "Dodgy-001",
+      "expectedState": "WaitingForRoll",
+      "parameters": {},
+      "description": "PurchaseSoldier by Dodgy-001 at WaitingForRoll"
+    },
+    {
+      "type": "MoveRobber",
+      "playerId": "Dodgy-001",
+      "expectedState": "MustMoveRobber",
+      "parameters": {
+        "automationId": "Tile-(0,-1,1)",
+        "targetPlayerId": null
+      },
+      "description": "MoveRobber by Dodgy-001 at MustMoveRobber"
+    },
+    {
+      "type": "RollDice",
+      "playerId": "Dodgy-001",
+      "expectedState": "WaitingForRoll",
+      "parameters": {
+        "automationId": "Roll-7"
+      },
+      "description": "RollDice by Dodgy-001 at WaitingForRoll"
+    },
+    {
+      "type": "MoveRobber",
+      "playerId": "Dodgy-001",
+      "expectedState": "MustMoveRobber",
+      "parameters": {
+        "automationId": "Tile-(-3,1,2)",
+        "targetPlayerId": null
+      },
+      "description": "MoveRobber by Dodgy-001 at MustMoveRobber"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Dodgy-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Dodgy-001 at WaitingForNext"
+    },
+    {
+      "type": "SelectSupplementalPlayers",
+      "playerId": "Dodgy-001",
+      "expectedState": "PickSupplementalPlayers",
+      "parameters": {
+        "playerIds": [
+          "Joe-001"
+        ]
+      },
+      "description": "SelectSupplementalPlayers by Dodgy-001 at PickSupplementalPlayers"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Dodgy-001",
+      "expectedState": "PickSupplementalPlayers",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Dodgy-001 at PickSupplementalPlayers"
     },
     {
       "type": "PurchaseRoad",
       "playerId": "Joe-001",
       "expectedState": "Supplemental",
-      "description": "Joe purchases road"
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at Supplemental"
     },
     {
       "type": "PlaceRoad",
       "playerId": "Joe-001",
+      "expectedState": "Supplemental",
       "parameters": {
-        "roadKey": "(2,0,-2)-TopRight"
+        "automationId": "Road-(0,1,-1)-Bottom"
       },
-      "description": "Joe places first road"
-    },
-    {
-      "type": "PurchaseRoad",
-      "playerId": "Joe-001",
-      "description": "Joe purchases second road"
-    },
-    {
-      "type": "PurchaseRoad",
-      "playerId": "Joe-001",
-      "description": "Joe purchases third road"
-    },
-    {
-      "type": "PlaceRoad",
-      "playerId": "Joe-001",
-      "parameters": {
-        "roadKey": "(2,1,-3)-TopRight"
-      },
-      "description": "Joe places second road"
-    },
-    {
-      "type": "PlaceRoad",
-      "playerId": "Joe-001",
-      "parameters": {
-        "roadKey": "(3,0,-3)-Bottom"
-      },
-      "description": "Joe places third road"
-    },
-    {
-      "type": "PurchaseSettlement",
-      "playerId": "Joe-001",
-      "description": "Joe purchases settlement"
-    },
-    {
-      "type": "PlaceSettlement",
-      "playerId": "Joe-001",
-      "parameters": {
-        "buildingKey": "(3,0,-3)-BottomRight"
-      },
-      "description": "Joe places new settlement"
-    },
-    {
-      "type": "PurchaseCity",
-      "playerId": "Joe-001",
-      "description": "Joe purchases city"
-    },
-    {
-      "type": "UpgradeToCity",
-      "playerId": "Joe-001",
-      "parameters": {
-        "buildingKey": "(2,-1,-1)-Right"
-      },
-      "description": "Joe upgrades original settlement to city"
+      "description": "PlaceRoad by Joe-001 at Supplemental"
     },
     {
       "type": "AdvanceNext",
       "playerId": "Joe-001",
-      "description": "Joe completes supplemental turn"
+      "expectedState": "Supplemental",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at Supplemental"
     }
   ]
 }
