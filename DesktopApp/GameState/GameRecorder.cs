@@ -46,15 +46,28 @@ namespace Catan3.Utility
         {
             if (!_isRecording)
             {
-                return; // just ignore if recording has ended
+                this.LogMessage($"⚠️ Attempted to record action while recording is stopped: {message.GetType().Name}");
+                return;
             }
 
-            // Map message to test action format
-            var action = MapMessageToAction(message);
-            if (action != null)
+            try
             {
-                _recordedActions.Add(action);
-                this.LogMessage($"📝 Recorded: {action.GetType().Name}");
+                // Map message to test action format
+                var action = MapMessageToAction(message);
+                if (action != null)
+                {
+                    _recordedActions.Add(action);
+                    this.LogMessage($"📝 Recorded: {message.GetType().Name}");
+                }
+                else
+                {
+                    this.LogMessage($"⚠️ Failed to map message type: {message.GetType().Name}");
+                }
+            }
+            catch (Exception ex)
+            {
+                this.LogMessage($"❌ Error recording action {message.GetType().Name}: {ex.Message}");
+                // Don't throw - continue recording other actions
             }
         }
 
@@ -63,13 +76,136 @@ namespace Catan3.Utility
         /// </summary>
         private object? MapMessageToAction(object message)
         {
-            // This will be implemented based on the specific message types used in the application
-            // For now, just record the message as-is for basic functionality
+            return message.GetType().Name switch
+            {
+                "DoAction" => MapDoActionMessage((dynamic)message),
+                "BuildingUpgradeMessage" => MapBuildingUpgradeMessage((dynamic)message),
+                "RoadPurchaseMessage" => MapRoadPurchaseMessage((dynamic)message),
+                "MoveRobberMessage" => MapMoveRobberMessage((dynamic)message),
+                "RollMessage" => MapRollMessage((dynamic)message),
+                "PurchaseMessage" => MapPurchaseMessage((dynamic)message),
+                "SetPlayerOrderMessage" => MapSetPlayerOrderMessage((dynamic)message),
+                "GoFirstMessage" => MapGoFirstMessage((dynamic)message),
+                "PickSupplementalPlayersMessage" => MapPickSupplementalPlayersMessage((dynamic)message),
+                _ => new { type = "Unknown", messageType = message.GetType().Name, timestamp = DateTime.UtcNow }
+            };
+        }
+
+        private object MapDoActionMessage(dynamic message)
+        {
             return new
             {
-                type = message.GetType().Name,
-                message = message,
+                type = GetActionTypeFromGameAction(message.Action),
+                parameters = new Dictionary<string, object> { { "gameAction", message.Action.ToString() } },
                 timestamp = DateTime.UtcNow
+            };
+        }
+
+        private object MapBuildingUpgradeMessage(dynamic message)
+        {
+            return new
+            {
+                type = "PlaceBuilding", // or "UpgradeBuilding" based on context
+                parameters = new Dictionary<string, object> { { "automationId", message.BuildingKey.GetAutomationId() } },
+                timestamp = DateTime.UtcNow
+            };
+        }
+
+        private object MapRoadPurchaseMessage(dynamic message)
+        {
+            return new
+            {
+                type = "PlaceRoad",
+                parameters = new Dictionary<string, object> { { "automationId", message.RoadKey.GetAutomationId() } },
+                timestamp = DateTime.UtcNow
+            };
+        }
+
+        private object MapMoveRobberMessage(dynamic message)
+        {
+            return new
+            {
+                type = "MoveRobber",
+                parameters = new Dictionary<string, object> 
+                { 
+                    { "automationId", $"Tile-{message.Coordinates}" },
+                    { "targetPlayerId", message.TargetPlayerId ?? string.Empty }
+                },
+                timestamp = DateTime.UtcNow
+            };
+        }
+
+        private object MapRollMessage(dynamic message)
+        {
+            return new
+            {
+                type = "RollDice",
+                parameters = new Dictionary<string, object> { { "automationId", $"Roll-{(int)message.Roll.NormalRoll}" } },
+                timestamp = DateTime.UtcNow
+            };
+        }
+
+        private object MapPurchaseMessage(dynamic message)
+        {
+            return new
+            {
+                type = GetPurchaseActionType(message.Entitlement),
+                parameters = (Dictionary<string, object>?)null,
+                timestamp = DateTime.UtcNow
+            };
+        }
+
+        private object MapSetPlayerOrderMessage(dynamic message)
+        {
+            return new
+            {
+                type = "SetPlayerOrder",
+                parameters = new Dictionary<string, object> { { "playerIds", message.PlayerIds.ToArray() } },
+                timestamp = DateTime.UtcNow
+            };
+        }
+
+        private object MapGoFirstMessage(dynamic message)
+        {
+            return new
+            {
+                type = "GoFirst",
+                parameters = new Dictionary<string, object> { { "playerId", message.PlayerId } },
+                timestamp = DateTime.UtcNow
+            };
+        }
+
+        private object MapPickSupplementalPlayersMessage(dynamic message)
+        {
+            return new
+            {
+                type = "SelectSupplementalPlayers",
+                parameters = new Dictionary<string, object> { { "playerIds", message.PlayerIds.ToArray() } },
+                timestamp = DateTime.UtcNow
+            };
+        }
+
+        private static string GetActionTypeFromGameAction(dynamic action)
+        {
+            return action.ToString() switch
+            {
+                "Shuffle" => "ShuffleGame",
+                "Undo" => "UndoAction",
+                "Redo" => "RedoAction", 
+                "Next" => "NextState",
+                _ => $"GameAction{action}"
+            };
+        }
+
+        private static string GetPurchaseActionType(dynamic entitlement)
+        {
+            return entitlement.ToString() switch
+            {
+                "Road" => "PurchaseRoad",
+                "Settlement" => "PurchaseSettlement",
+                "City" => "PurchaseCity",
+                "DevelopmentCard" => "PurchaseDevelopmentCard",
+                _ => $"Purchase{entitlement}"
             };
         }
 
