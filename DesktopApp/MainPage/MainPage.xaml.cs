@@ -4,11 +4,10 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Catan3.Models;
+using Catan3.Shared.Models;
 using Catan3.Player;
 using Catan3.Tests;
-using Catan3.Shared.Models;
-using Catan3.Shared.Utility;
-using CommunityToolkit.Mvvm.Messaging;
+
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;

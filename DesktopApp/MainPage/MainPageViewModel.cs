@@ -48,16 +48,37 @@ namespace Catan3.Models
         {
             App.RecordMode = value;
             
-            // Show debug window when recording is enabled so user can see recording messages
             if (value)
             {
+                // Show debug window when recording starts so user can see recording messages
                 DebugWindow.Show();
-                this.TraceMessage("Record Mode ENABLED - Recording game actions");
-                this.TraceMessage("Recording will be saved when you save the game file");
+                
+                // Send message to start recording from current game state
+                try
+                {
+                    Messenger.Send(new StartRecordingMessage());
+                    this.TraceMessage("🎬 Recording STARTED - Game actions will be captured to .catan_test file");
+                    this.TraceMessage("📁 Recording will be saved to Desktop when recording stops");
+                }
+                catch (Exception ex)
+                {
+                    this.TraceMessage($"❌ Failed to start recording: {ex.Message}");
+                    // Reset the toggle if recording failed to start
+                    IsRecordMode = false;
+                }
             }
             else
             {
-                this.TraceMessage("Record Mode DISABLED");
+                // Send message to stop recording and save the .catan_test file
+                try
+                {
+                    Messenger.Send(new StopRecordingMessage());
+                    this.TraceMessage("🎬 Recording STOPPED - .catan_test file saved");
+                }
+                catch (Exception ex)
+                {
+                    this.TraceMessage($"❌ Failed to stop recording: {ex.Message}");
+                }
             }
         }
 

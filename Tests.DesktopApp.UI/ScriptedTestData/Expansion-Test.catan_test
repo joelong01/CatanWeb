@@ -1,0 +1,4172 @@
+﻿{
+  "GameModel": {
+    "EntitlementPurchaseModel": [
+      {
+        "Entitlement": 2,
+        "Enabled": false
+      },
+      {
+        "Entitlement": 4,
+        "Enabled": false
+      },
+      {
+        "Entitlement": 3,
+        "Enabled": false
+      },
+      {
+        "Entitlement": 9,
+        "Enabled": false
+      }
+    ],
+    "ActionFlags": {
+      "UndoEnabled": true,
+      "RedoEnabled": false,
+      "NextEnabled": true,
+      "RollsEnabled": false
+    },
+    "GameType": 1,
+    "GameState": 4,
+    "HasSupplementalBuildPhase": true,
+    "Players": [
+      {
+        "Id": "Joe-001",
+        "Name": "Joe",
+        "GoldRolls": 0,
+        "GoodRolls": 0,
+        "BadRolls": 0,
+        "HasLongestRoad": false,
+        "IslandsPlayed": 0,
+        "LargestArmy": false,
+        "LongestRoad": 0,
+        "MaxNoResourceRolls": 0,
+        "NoResourceCount": 0,
+        "Stars": 0,
+        "Score": 0,
+        "HighestScore": true,
+        "TimesTargeted": 0,
+        "ParticipatingInSupplemental": false,
+        "FinishedSupplemental": false,
+        "ResourcesThisTurn": {
+          "Brick": 0,
+          "GoldMine": 0,
+          "Ore": 0,
+          "Sheep": 0,
+          "Wheat": 0,
+          "Wood": 0,
+          "Paper": 0,
+          "Cloth": 0,
+          "Coin": 0,
+          "Politics": 0,
+          "Trade": 0,
+          "Science": 0,
+          "VictoryPoint": 0,
+          "AnyDevCard": 0,
+          "Robber": 0
+        },
+        "ResourcesThisGame": {
+          "Brick": 0,
+          "GoldMine": 0,
+          "Ore": 0,
+          "Sheep": 0,
+          "Wheat": 0,
+          "Wood": 0,
+          "Paper": 0,
+          "Cloth": 0,
+          "Coin": 0,
+          "Politics": 0,
+          "Trade": 0,
+          "Science": 0,
+          "VictoryPoint": 0,
+          "AnyDevCard": 0,
+          "Robber": 0
+        },
+        "UnspentEntitlements": [],
+        "SpentEntitlementsThisGame": [],
+        "SpentEntitlementsThisTurn": [],
+        "OwnedHarbors": []
+      },
+      {
+        "Id": "Dodgy-001",
+        "Name": "Dodgy",
+        "GoldRolls": 0,
+        "GoodRolls": 0,
+        "BadRolls": 0,
+        "HasLongestRoad": false,
+        "IslandsPlayed": 0,
+        "LargestArmy": false,
+        "LongestRoad": 0,
+        "MaxNoResourceRolls": 0,
+        "NoResourceCount": 0,
+        "Stars": 0,
+        "Score": 0,
+        "HighestScore": true,
+        "TimesTargeted": 0,
+        "ParticipatingInSupplemental": false,
+        "FinishedSupplemental": false,
+        "ResourcesThisTurn": {
+          "Brick": 0,
+          "GoldMine": 0,
+          "Ore": 0,
+          "Sheep": 0,
+          "Wheat": 0,
+          "Wood": 0,
+          "Paper": 0,
+          "Cloth": 0,
+          "Coin": 0,
+          "Politics": 0,
+          "Trade": 0,
+          "Science": 0,
+          "VictoryPoint": 0,
+          "AnyDevCard": 0,
+          "Robber": 0
+        },
+        "ResourcesThisGame": {
+          "Brick": 0,
+          "GoldMine": 0,
+          "Ore": 0,
+          "Sheep": 0,
+          "Wheat": 0,
+          "Wood": 0,
+          "Paper": 0,
+          "Cloth": 0,
+          "Coin": 0,
+          "Politics": 0,
+          "Trade": 0,
+          "Science": 0,
+          "VictoryPoint": 0,
+          "AnyDevCard": 0,
+          "Robber": 0
+        },
+        "UnspentEntitlements": [],
+        "SpentEntitlementsThisGame": [],
+        "SpentEntitlementsThisTurn": [],
+        "OwnedHarbors": []
+      },
+      {
+        "Id": "Doug-001",
+        "Name": "Doug",
+        "GoldRolls": 0,
+        "GoodRolls": 0,
+        "BadRolls": 0,
+        "HasLongestRoad": false,
+        "IslandsPlayed": 0,
+        "LargestArmy": false,
+        "LongestRoad": 0,
+        "MaxNoResourceRolls": 0,
+        "NoResourceCount": 0,
+        "Stars": 0,
+        "Score": 0,
+        "HighestScore": true,
+        "TimesTargeted": 0,
+        "ParticipatingInSupplemental": false,
+        "FinishedSupplemental": false,
+        "ResourcesThisTurn": {
+          "Brick": 0,
+          "GoldMine": 0,
+          "Ore": 0,
+          "Sheep": 0,
+          "Wheat": 0,
+          "Wood": 0,
+          "Paper": 0,
+          "Cloth": 0,
+          "Coin": 0,
+          "Politics": 0,
+          "Trade": 0,
+          "Science": 0,
+          "VictoryPoint": 0,
+          "AnyDevCard": 0,
+          "Robber": 0
+        },
+        "ResourcesThisGame": {
+          "Brick": 0,
+          "GoldMine": 0,
+          "Ore": 0,
+          "Sheep": 0,
+          "Wheat": 0,
+          "Wood": 0,
+          "Paper": 0,
+          "Cloth": 0,
+          "Coin": 0,
+          "Politics": 0,
+          "Trade": 0,
+          "Science": 0,
+          "VictoryPoint": 0,
+          "AnyDevCard": 0,
+          "Robber": 0
+        },
+        "UnspentEntitlements": [],
+        "SpentEntitlementsThisGame": [],
+        "SpentEntitlementsThisTurn": [],
+        "OwnedHarbors": []
+      },
+      {
+        "Id": "Ryan-001",
+        "Name": "Ryan",
+        "GoldRolls": 0,
+        "GoodRolls": 0,
+        "BadRolls": 0,
+        "HasLongestRoad": false,
+        "IslandsPlayed": 0,
+        "LargestArmy": false,
+        "LongestRoad": 0,
+        "MaxNoResourceRolls": 0,
+        "NoResourceCount": 0,
+        "Stars": 0,
+        "Score": 0,
+        "HighestScore": true,
+        "TimesTargeted": 0,
+        "ParticipatingInSupplemental": false,
+        "FinishedSupplemental": false,
+        "ResourcesThisTurn": {
+          "Brick": 0,
+          "GoldMine": 0,
+          "Ore": 0,
+          "Sheep": 0,
+          "Wheat": 0,
+          "Wood": 0,
+          "Paper": 0,
+          "Cloth": 0,
+          "Coin": 0,
+          "Politics": 0,
+          "Trade": 0,
+          "Science": 0,
+          "VictoryPoint": 0,
+          "AnyDevCard": 0,
+          "Robber": 0
+        },
+        "ResourcesThisGame": {
+          "Brick": 0,
+          "GoldMine": 0,
+          "Ore": 0,
+          "Sheep": 0,
+          "Wheat": 0,
+          "Wood": 0,
+          "Paper": 0,
+          "Cloth": 0,
+          "Coin": 0,
+          "Politics": 0,
+          "Trade": 0,
+          "Science": 0,
+          "VictoryPoint": 0,
+          "AnyDevCard": 0,
+          "Robber": 0
+        },
+        "UnspentEntitlements": [],
+        "SpentEntitlementsThisGame": [],
+        "SpentEntitlementsThisTurn": [],
+        "OwnedHarbors": []
+      },
+      {
+        "Id": "Adrian-001",
+        "Name": "Adrian",
+        "GoldRolls": 0,
+        "GoodRolls": 0,
+        "BadRolls": 0,
+        "HasLongestRoad": false,
+        "IslandsPlayed": 0,
+        "LargestArmy": false,
+        "LongestRoad": 0,
+        "MaxNoResourceRolls": 0,
+        "NoResourceCount": 0,
+        "Stars": 0,
+        "Score": 0,
+        "HighestScore": true,
+        "TimesTargeted": 0,
+        "ParticipatingInSupplemental": false,
+        "FinishedSupplemental": false,
+        "ResourcesThisTurn": {
+          "Brick": 0,
+          "GoldMine": 0,
+          "Ore": 0,
+          "Sheep": 0,
+          "Wheat": 0,
+          "Wood": 0,
+          "Paper": 0,
+          "Cloth": 0,
+          "Coin": 0,
+          "Politics": 0,
+          "Trade": 0,
+          "Science": 0,
+          "VictoryPoint": 0,
+          "AnyDevCard": 0,
+          "Robber": 0
+        },
+        "ResourcesThisGame": {
+          "Brick": 0,
+          "GoldMine": 0,
+          "Ore": 0,
+          "Sheep": 0,
+          "Wheat": 0,
+          "Wood": 0,
+          "Paper": 0,
+          "Cloth": 0,
+          "Coin": 0,
+          "Politics": 0,
+          "Trade": 0,
+          "Science": 0,
+          "VictoryPoint": 0,
+          "AnyDevCard": 0,
+          "Robber": 0
+        },
+        "UnspentEntitlements": [],
+        "SpentEntitlementsThisGame": [],
+        "SpentEntitlementsThisTurn": [],
+        "OwnedHarbors": []
+      }
+    ],
+    "Tiles": [
+      {
+        "TileKey": {
+          "Q": -3,
+          "R": 1,
+          "S": 2
+        },
+        "Number": 11,
+        "ResourceTileType": 3,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": -3,
+          "R": 2,
+          "S": 1
+        },
+        "Number": 10,
+        "ResourceTileType": 2,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": -3,
+          "R": 3,
+          "S": 0
+        },
+        "Number": 4,
+        "ResourceTileType": 1,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": -2,
+          "R": 0,
+          "S": 2
+        },
+        "Number": 7,
+        "ResourceTileType": 6,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": -2,
+          "R": 1,
+          "S": 1
+        },
+        "Number": 5,
+        "ResourceTileType": 2,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": -2,
+          "R": 2,
+          "S": 0
+        },
+        "Number": 5,
+        "ResourceTileType": 1,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": -2,
+          "R": 3,
+          "S": -1
+        },
+        "Number": 6,
+        "ResourceTileType": 4,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": -1,
+          "R": -1,
+          "S": 2
+        },
+        "Number": 9,
+        "ResourceTileType": 4,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": -1,
+          "R": 0,
+          "S": 1
+        },
+        "Number": 4,
+        "ResourceTileType": 1,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": -1,
+          "R": 1,
+          "S": 0
+        },
+        "Number": 3,
+        "ResourceTileType": 0,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": -1,
+          "R": 2,
+          "S": -1
+        },
+        "Number": 12,
+        "ResourceTileType": 1,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": -1,
+          "R": 3,
+          "S": -2
+        },
+        "Number": 11,
+        "ResourceTileType": 4,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 0,
+          "R": -2,
+          "S": 2
+        },
+        "Number": 2,
+        "ResourceTileType": 0,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 0,
+          "R": -1,
+          "S": 1
+        },
+        "Number": 7,
+        "ResourceTileType": 6,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 0,
+          "R": 0,
+          "S": 0
+        },
+        "Number": 6,
+        "ResourceTileType": 3,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 0,
+          "R": 1,
+          "S": -1
+        },
+        "Number": 2,
+        "ResourceTileType": 2,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 0,
+          "R": 2,
+          "S": -2
+        },
+        "Number": 8,
+        "ResourceTileType": 3,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 0,
+          "R": 3,
+          "S": -3
+        },
+        "Number": 11,
+        "ResourceTileType": 4,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 1,
+          "R": -2,
+          "S": 1
+        },
+        "Number": 8,
+        "ResourceTileType": 0,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 1,
+          "R": -1,
+          "S": 0
+        },
+        "Number": 9,
+        "ResourceTileType": 0,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 1,
+          "R": 0,
+          "S": -1
+        },
+        "Number": 4,
+        "ResourceTileType": 3,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 1,
+          "R": 1,
+          "S": -2
+        },
+        "Number": 9,
+        "ResourceTileType": 0,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 1,
+          "R": 2,
+          "S": -3
+        },
+        "Number": 10,
+        "ResourceTileType": 3,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 2,
+          "R": -2,
+          "S": 0
+        },
+        "Number": 3,
+        "ResourceTileType": 1,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 2,
+          "R": -1,
+          "S": -1
+        },
+        "Number": 5,
+        "ResourceTileType": 2,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 2,
+          "R": 0,
+          "S": -2
+        },
+        "Number": 3,
+        "ResourceTileType": 0,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 2,
+          "R": 1,
+          "S": -3
+        },
+        "Number": 12,
+        "ResourceTileType": 4,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 3,
+          "R": -2,
+          "S": -1
+        },
+        "Number": 8,
+        "ResourceTileType": 2,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 3,
+          "R": -1,
+          "S": -2
+        },
+        "Number": 10,
+        "ResourceTileType": 4,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      },
+      {
+        "TileKey": {
+          "Q": 3,
+          "R": 0,
+          "S": -3
+        },
+        "Number": 6,
+        "ResourceTileType": 1,
+        "Highlighted": false,
+        "TemporarilyGold": false
+      }
+    ],
+    "Buildings": [
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 1,
+            "S": 2
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 1,
+            "S": 2
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 1,
+            "S": 2
+          },
+          "Position": 2
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 1,
+            "S": 2
+          },
+          "Position": 3
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 1,
+            "S": 2
+          },
+          "Position": 4
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 1,
+            "S": 2
+          },
+          "Position": 5
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 2,
+            "S": 1
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 2,
+            "S": 1
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 2,
+            "S": 1
+          },
+          "Position": 2
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 2,
+            "S": 1
+          },
+          "Position": 3
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 3,
+            "S": 0
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 3,
+            "S": 0
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 3,
+            "S": 0
+          },
+          "Position": 2
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 3,
+            "S": 0
+          },
+          "Position": 3
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -2,
+            "R": 0,
+            "S": 2
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -2,
+            "R": 0,
+            "S": 2
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -2,
+            "R": 0,
+            "S": 2
+          },
+          "Position": 4
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -2,
+            "R": 0,
+            "S": 2
+          },
+          "Position": 5
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -2,
+            "R": 1,
+            "S": 1
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -2,
+            "R": 1,
+            "S": 1
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -2,
+            "R": 2,
+            "S": 0
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -2,
+            "R": 2,
+            "S": 0
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -2,
+            "R": 3,
+            "S": -1
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -2,
+            "R": 3,
+            "S": -1
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -2,
+            "R": 3,
+            "S": -1
+          },
+          "Position": 2
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": -1,
+            "S": 2
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": -1,
+            "S": 2
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": -1,
+            "S": 2
+          },
+          "Position": 4
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": -1,
+            "S": 2
+          },
+          "Position": 5
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": 0,
+            "S": 1
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": 0,
+            "S": 1
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": 1,
+            "S": 0
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": 1,
+            "S": 0
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": 2,
+            "S": -1
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": 2,
+            "S": -1
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": 3,
+            "S": -2
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": 3,
+            "S": -2
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": 3,
+            "S": -2
+          },
+          "Position": 2
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": -2,
+            "S": 2
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": -2,
+            "S": 2
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": -2,
+            "S": 2
+          },
+          "Position": 4
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": -2,
+            "S": 2
+          },
+          "Position": 5
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": -1,
+            "S": 1
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": -1,
+            "S": 1
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": 0,
+            "S": 0
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": 0,
+            "S": 0
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": 1,
+            "S": -1
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": 1,
+            "S": -1
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": 2,
+            "S": -2
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": 2,
+            "S": -2
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": 3,
+            "S": -3
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": 3,
+            "S": -3
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": 3,
+            "S": -3
+          },
+          "Position": 2
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 1,
+            "R": -2,
+            "S": 1
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 1,
+            "R": -2,
+            "S": 1
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 1,
+            "R": -2,
+            "S": 1
+          },
+          "Position": 5
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 1,
+            "R": -1,
+            "S": 0
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 1,
+            "R": -1,
+            "S": 0
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 1,
+            "R": 0,
+            "S": -1
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 1,
+            "R": 0,
+            "S": -1
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 1,
+            "R": 1,
+            "S": -2
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 1,
+            "R": 1,
+            "S": -2
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 1,
+            "R": 2,
+            "S": -3
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 1,
+            "R": 2,
+            "S": -3
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 2,
+            "R": -2,
+            "S": 0
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 2,
+            "R": -2,
+            "S": 0
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 2,
+            "R": -2,
+            "S": 0
+          },
+          "Position": 5
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 2,
+            "R": -1,
+            "S": -1
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 2,
+            "R": -1,
+            "S": -1
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 2,
+            "R": 0,
+            "S": -2
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 2,
+            "R": 0,
+            "S": -2
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 2,
+            "R": 1,
+            "S": -3
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 2,
+            "R": 1,
+            "S": -3
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 3,
+            "R": -2,
+            "S": -1
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 3,
+            "R": -2,
+            "S": -1
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 3,
+            "R": -2,
+            "S": -1
+          },
+          "Position": 5
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 3,
+            "R": -1,
+            "S": -2
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 3,
+            "R": -1,
+            "S": -2
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 3,
+            "R": 0,
+            "S": -3
+          },
+          "Position": 0
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      },
+      {
+        "BuildingKey": {
+          "HexCoordinates": {
+            "Q": 3,
+            "R": 0,
+            "S": -3
+          },
+          "Position": 1
+        },
+        "BuildingState": 0,
+        "Wall": false,
+        "Metropolis": false,
+        "OwnerId": null,
+        "HasRobber": false
+      }
+    ],
+    "Roads": [
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 1,
+            "S": 2
+          },
+          "HexSide": 0
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 1,
+            "S": 2
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 1,
+            "S": 2
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 1,
+            "S": 2
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 1,
+            "S": 2
+          },
+          "HexSide": 4
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 1,
+            "S": 2
+          },
+          "HexSide": 5
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 2,
+            "S": 1
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 2,
+            "S": 1
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 2,
+            "S": 1
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 2,
+            "S": 1
+          },
+          "HexSide": 4
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 2,
+            "S": 1
+          },
+          "HexSide": 5
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 3,
+            "S": 0
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 3,
+            "S": 0
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 3,
+            "S": 0
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 3,
+            "S": 0
+          },
+          "HexSide": 4
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -3,
+            "R": 3,
+            "S": 0
+          },
+          "HexSide": 5
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 0,
+            "S": 2
+          },
+          "HexSide": 0
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 0,
+            "S": 2
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 0,
+            "S": 2
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 0,
+            "S": 2
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 0,
+            "S": 2
+          },
+          "HexSide": 5
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 1,
+            "S": 1
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 1,
+            "S": 1
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 1,
+            "S": 1
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 2,
+            "S": 0
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 2,
+            "S": 0
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 2,
+            "S": 0
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 3,
+            "S": -1
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 3,
+            "S": -1
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 3,
+            "S": -1
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -2,
+            "R": 3,
+            "S": -1
+          },
+          "HexSide": 4
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": -1,
+            "S": 2
+          },
+          "HexSide": 0
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": -1,
+            "S": 2
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": -1,
+            "S": 2
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": -1,
+            "S": 2
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": -1,
+            "S": 2
+          },
+          "HexSide": 5
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": 0,
+            "S": 1
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": 0,
+            "S": 1
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": 0,
+            "S": 1
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": 1,
+            "S": 0
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": 1,
+            "S": 0
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": 1,
+            "S": 0
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": 2,
+            "S": -1
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": 2,
+            "S": -1
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": 2,
+            "S": -1
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": 3,
+            "S": -2
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": 3,
+            "S": -2
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": 3,
+            "S": -2
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": -1,
+            "R": 3,
+            "S": -2
+          },
+          "HexSide": 4
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": -2,
+            "S": 2
+          },
+          "HexSide": 0
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": -2,
+            "S": 2
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": -2,
+            "S": 2
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": -2,
+            "S": 2
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": -2,
+            "S": 2
+          },
+          "HexSide": 5
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": -1,
+            "S": 1
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": -1,
+            "S": 1
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": -1,
+            "S": 1
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": 0,
+            "S": 0
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": 0,
+            "S": 0
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": 0,
+            "S": 0
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": 1,
+            "S": -1
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": 1,
+            "S": -1
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": 1,
+            "S": -1
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": 2,
+            "S": -2
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": 2,
+            "S": -2
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": 2,
+            "S": -2
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": 3,
+            "S": -3
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": 3,
+            "S": -3
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": 3,
+            "S": -3
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 0,
+            "R": 3,
+            "S": -3
+          },
+          "HexSide": 4
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": -2,
+            "S": 1
+          },
+          "HexSide": 0
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": -2,
+            "S": 1
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": -2,
+            "S": 1
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": -2,
+            "S": 1
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": -1,
+            "S": 0
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": -1,
+            "S": 0
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": -1,
+            "S": 0
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": 0,
+            "S": -1
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": 0,
+            "S": -1
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": 0,
+            "S": -1
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": 1,
+            "S": -2
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": 1,
+            "S": -2
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": 1,
+            "S": -2
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": 2,
+            "S": -3
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": 2,
+            "S": -3
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 1,
+            "R": 2,
+            "S": -3
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 2,
+            "R": -2,
+            "S": 0
+          },
+          "HexSide": 0
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 2,
+            "R": -2,
+            "S": 0
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 2,
+            "R": -2,
+            "S": 0
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 2,
+            "R": -2,
+            "S": 0
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 2,
+            "R": -1,
+            "S": -1
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 2,
+            "R": -1,
+            "S": -1
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 2,
+            "R": -1,
+            "S": -1
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 2,
+            "R": 0,
+            "S": -2
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 2,
+            "R": 0,
+            "S": -2
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 2,
+            "R": 0,
+            "S": -2
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 2,
+            "R": 1,
+            "S": -3
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 2,
+            "R": 1,
+            "S": -3
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 2,
+            "R": 1,
+            "S": -3
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 3,
+            "R": -2,
+            "S": -1
+          },
+          "HexSide": 0
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 3,
+            "R": -2,
+            "S": -1
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 3,
+            "R": -2,
+            "S": -1
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 3,
+            "R": -2,
+            "S": -1
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 3,
+            "R": -1,
+            "S": -2
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 3,
+            "R": -1,
+            "S": -2
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 3,
+            "R": -1,
+            "S": -2
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 3,
+            "R": 0,
+            "S": -3
+          },
+          "HexSide": 1
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 3,
+            "R": 0,
+            "S": -3
+          },
+          "HexSide": 2
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      },
+      {
+        "RoadKey": {
+          "TileKey": {
+            "Q": 3,
+            "R": 0,
+            "S": -3
+          },
+          "HexSide": 3
+        },
+        "RoadState": 0,
+        "OwnerId": null,
+        "BuildIndex": 0
+      }
+    ],
+    "Harbors": [
+      {
+        "HarborKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 2,
+            "S": 1
+          },
+          "HarborType": 5,
+          "Side": 5
+        },
+        "Owner": null
+      },
+      {
+        "HarborKey": {
+          "HexCoordinates": {
+            "Q": -3,
+            "R": 3,
+            "S": 0
+          },
+          "HarborType": 5,
+          "Side": 4
+        },
+        "Owner": null
+      },
+      {
+        "HarborKey": {
+          "HexCoordinates": {
+            "Q": -2,
+            "R": 0,
+            "S": 2
+          },
+          "HarborType": 4,
+          "Side": 5
+        },
+        "Owner": null
+      },
+      {
+        "HarborKey": {
+          "HexCoordinates": {
+            "Q": -1,
+            "R": 3,
+            "S": -2
+          },
+          "HarborType": 3,
+          "Side": 3
+        },
+        "Owner": null
+      },
+      {
+        "HarborKey": {
+          "HexCoordinates": {
+            "Q": 0,
+            "R": -2,
+            "S": 2
+          },
+          "HarborType": 1,
+          "Side": 0
+        },
+        "Owner": null
+      },
+      {
+        "HarborKey": {
+          "HexCoordinates": {
+            "Q": 1,
+            "R": -2,
+            "S": 1
+          },
+          "HarborType": 5,
+          "Side": 1
+        },
+        "Owner": null
+      },
+      {
+        "HarborKey": {
+          "HexCoordinates": {
+            "Q": 1,
+            "R": 2,
+            "S": -3
+          },
+          "HarborType": 0,
+          "Side": 3
+        },
+        "Owner": null
+      },
+      {
+        "HarborKey": {
+          "HexCoordinates": {
+            "Q": 2,
+            "R": -2,
+            "S": 0
+          },
+          "HarborType": 2,
+          "Side": 1
+        },
+        "Owner": null
+      },
+      {
+        "HarborKey": {
+          "HexCoordinates": {
+            "Q": 2,
+            "R": 1,
+            "S": -3
+          },
+          "HarborType": 5,
+          "Side": 3
+        },
+        "Owner": null
+      },
+      {
+        "HarborKey": {
+          "HexCoordinates": {
+            "Q": 3,
+            "R": -1,
+            "S": -2
+          },
+          "HarborType": 5,
+          "Side": 1
+        },
+        "Owner": null
+      },
+      {
+        "HarborKey": {
+          "HexCoordinates": {
+            "Q": 3,
+            "R": 0,
+            "S": -3
+          },
+          "HarborType": 5,
+          "Side": 2
+        },
+        "Owner": null
+      }
+    ],
+    "Robber": {
+      "Coordinates": {
+        "Q": -10,
+        "R": -10,
+        "S": -10
+      },
+      "MovedBy": null,
+      "Targetted": null,
+      "ResourcesStolen": 0
+    },
+    "HouseRules": {
+      "GoldTiles": 2,
+      "WallsProtectCities": true,
+      "HideBaronBeforeInvasion": false,
+      "KnightMovesBaronBeforeRoll": true,
+      "HideRobberBeforeInvasion": false,
+      "KnightMovesRobberBeforeRoll": false
+    },
+    "ResourceRules": {
+      "MaxCities": 4,
+      "MaxSettlements": 5,
+      "MaxRoads": 15,
+      "MinPlayers": 3,
+      "MaxPlayers": 6
+    },
+    "CurrentPlayerId": "Joe-001",
+    "GameId": "",
+    "CreatedTime": "2025-08-17T20:11:21.5681343Z",
+    "GameStateMachineVersion": 1,
+    "GameHash": "FFFFFFFFEEE96E86",
+    "RollModel": {
+      "TurnRollModel": null,
+      "GameRollModel": {
+        "RollCounts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "TotalRolls": 0
+      }
+    },
+    "NextPlayerToRollAfterSupplemental": "",
+    "GameResourcesModel": {
+      "Brick": 0,
+      "GoldMine": 0,
+      "Ore": 0,
+      "Sheep": 0,
+      "Wheat": 0,
+      "Wood": 0,
+      "Paper": 0,
+      "Cloth": 0,
+      "Coin": 0,
+      "Politics": 0,
+      "Trade": 0,
+      "Science": 0,
+      "VictoryPoint": 0,
+      "AnyDevCard": 0,
+      "Robber": 0
+    },
+    "PreviousGameState": 0
+  },
+  "ActionStack": [
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "PickingBoard",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at PickingBoard"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForRollForOrder",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at WaitingForRollForOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Doug-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Doug-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Doug-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Doug-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Ryan-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Ryan-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Adrian-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Adrian-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Joe-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Joe-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Dodgy-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Dodgy-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Doug-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Doug-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Ryan-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Ryan-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Adrian-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Adrian-001 at FinishedRollOrder"
+    },
+    {
+      "type": "GoFirst",
+      "playerId": "Joe-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {},
+      "description": "GoFirst by Joe-001 at FinishedRollOrder"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "FinishedRollOrder",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at FinishedRollOrder"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "BeginResourceAllocation",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at BeginResourceAllocation"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Joe-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Building-(1,-1,0)-BottomRight"
+      },
+      "description": "PlaceSettlement by Joe-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Road-(1,-1,0)-Bottom"
+      },
+      "description": "PlaceRoad by Joe-001 at AllocateResourceForward"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Dodgy-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Building-(-3,3,0)-Right"
+      },
+      "description": "PlaceSettlement by Dodgy-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Dodgy-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Road-(-2,2,0)-Bottom"
+      },
+      "description": "PlaceRoad by Dodgy-001 at AllocateResourceForward"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Dodgy-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Dodgy-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Doug-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Building-(2,-1,-1)-Right"
+      },
+      "description": "PlaceSettlement by Doug-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Doug-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Road-(2,-1,-1)-TopRight"
+      },
+      "description": "PlaceRoad by Doug-001 at AllocateResourceForward"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Doug-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Doug-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Ryan-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Building-(-3,2,1)-Right"
+      },
+      "description": "PlaceSettlement by Ryan-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Ryan-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Road-(-2,1,1)-Bottom"
+      },
+      "description": "PlaceRoad by Ryan-001 at AllocateResourceForward"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Ryan-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Ryan-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Adrian-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Building-(0,2,-2)-Right"
+      },
+      "description": "PlaceSettlement by Adrian-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Adrian-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "automationId": "Road-(1,1,-2)-Bottom"
+      },
+      "description": "PlaceRoad by Adrian-001 at AllocateResourceForward"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Adrian-001",
+      "expectedState": "AllocateResourceForward",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Adrian-001 at AllocateResourceForward"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Adrian-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Building-(1,-2,1)-BottomRight"
+      },
+      "description": "PlaceSettlement by Adrian-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Adrian-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Road-(1,-1,0)-TopRight"
+      },
+      "description": "PlaceRoad by Adrian-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Adrian-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Adrian-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Ryan-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Building-(-1,0,1)-BottomRight"
+      },
+      "description": "PlaceSettlement by Ryan-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Ryan-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Road-(-1,0,1)-Bottom"
+      },
+      "description": "PlaceRoad by Ryan-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Ryan-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Ryan-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Doug-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Building-(2,0,-2)-Right"
+      },
+      "description": "PlaceSettlement by Doug-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Doug-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Road-(2,0,-2)-BottomRight"
+      },
+      "description": "PlaceRoad by Doug-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Doug-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Doug-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Dodgy-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Building-(0,-2,2)-TopLeft"
+      },
+      "description": "PlaceSettlement by Dodgy-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Dodgy-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Road-(0,-2,2)-Top"
+      },
+      "description": "PlaceRoad by Dodgy-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Dodgy-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Dodgy-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Joe-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Building-(-2,0,2)-Right"
+      },
+      "description": "PlaceSettlement by Joe-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "automationId": "Road-(-2,0,2)-BottomRight"
+      },
+      "description": "PlaceRoad by Joe-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "AllocateResourceReverse",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at AllocateResourceReverse"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "DoneResourceAllocation",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at DoneResourceAllocation"
+    },
+    {
+      "type": "PurchaseSoldier",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForRoll",
+      "parameters": {},
+      "description": "PurchaseSoldier by Joe-001 at WaitingForRoll"
+    },
+    {
+      "type": "MoveRobber",
+      "playerId": "Joe-001",
+      "expectedState": "MustMoveRobber",
+      "parameters": {
+        "automationId": "Tile-(-2,3,-1)",
+        "targetPlayerId": "Dodgy-001"
+      },
+      "description": "MoveRobber by Joe-001 at MustMoveRobber"
+    },
+    {
+      "type": "RollDice",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForRoll",
+      "parameters": {
+        "automationId": "Roll-6"
+      },
+      "description": "RollDice by Joe-001 at WaitingForRoll"
+    },
+    {
+      "type": "PurchaseRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Road-(0,0,0)-BottomRight"
+      },
+      "description": "PlaceRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseSettlement",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseSettlement by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceSettlement",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Building-(0,0,0)-BottomRight"
+      },
+      "description": "PlaceSettlement by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Road-(0,1,-1)-TopRight"
+      },
+      "description": "PlaceRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Road-(1,0,-1)-Bottom"
+      },
+      "description": "PlaceRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Road-(1,0,-1)-BottomRight"
+      },
+      "description": "PlaceRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Road-(1,0,-1)-TopRight"
+      },
+      "description": "PlaceRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Road-(0,1,-1)-BottomRight"
+      },
+      "description": "PlaceRoad by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "PurchaseCity",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {},
+      "description": "PurchaseCity by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "UpgradeToCity",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "automationId": "Building-(0,0,0)-BottomRight"
+      },
+      "description": "UpgradeToCity by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at WaitingForNext"
+    },
+    {
+      "type": "SelectSupplementalPlayers",
+      "playerId": "Joe-001",
+      "expectedState": "PickSupplementalPlayers",
+      "parameters": {
+        "playerIds": [
+          "Dodgy-001",
+          "Doug-001",
+          "Ryan-001",
+          "Adrian-001"
+        ]
+      },
+      "description": "SelectSupplementalPlayers by Joe-001 at PickSupplementalPlayers"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "PickSupplementalPlayers",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at PickSupplementalPlayers"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Dodgy-001",
+      "expectedState": "Supplemental",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Dodgy-001 at Supplemental"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Doug-001",
+      "expectedState": "Supplemental",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Doug-001 at Supplemental"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Ryan-001",
+      "expectedState": "Supplemental",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Ryan-001 at Supplemental"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Adrian-001",
+      "expectedState": "Supplemental",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Adrian-001 at Supplemental"
+    },
+    {
+      "type": "PurchaseSoldier",
+      "playerId": "Dodgy-001",
+      "expectedState": "WaitingForRoll",
+      "parameters": {},
+      "description": "PurchaseSoldier by Dodgy-001 at WaitingForRoll"
+    },
+    {
+      "type": "MoveRobber",
+      "playerId": "Dodgy-001",
+      "expectedState": "MustMoveRobber",
+      "parameters": {
+        "automationId": "Tile-(0,-1,1)",
+        "targetPlayerId": null
+      },
+      "description": "MoveRobber by Dodgy-001 at MustMoveRobber"
+    },
+    {
+      "type": "RollDice",
+      "playerId": "Dodgy-001",
+      "expectedState": "WaitingForRoll",
+      "parameters": {
+        "automationId": "Roll-7"
+      },
+      "description": "RollDice by Dodgy-001 at WaitingForRoll"
+    },
+    {
+      "type": "MoveRobber",
+      "playerId": "Dodgy-001",
+      "expectedState": "MustMoveRobber",
+      "parameters": {
+        "automationId": "Tile-(-3,1,2)",
+        "targetPlayerId": null
+      },
+      "description": "MoveRobber by Dodgy-001 at MustMoveRobber"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Dodgy-001",
+      "expectedState": "WaitingForNext",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Dodgy-001 at WaitingForNext"
+    },
+    {
+      "type": "SelectSupplementalPlayers",
+      "playerId": "Dodgy-001",
+      "expectedState": "PickSupplementalPlayers",
+      "parameters": {
+        "playerIds": [
+          "Joe-001"
+        ]
+      },
+      "description": "SelectSupplementalPlayers by Dodgy-001 at PickSupplementalPlayers"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Dodgy-001",
+      "expectedState": "PickSupplementalPlayers",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Dodgy-001 at PickSupplementalPlayers"
+    },
+    {
+      "type": "PurchaseRoad",
+      "playerId": "Joe-001",
+      "expectedState": "Supplemental",
+      "parameters": {},
+      "description": "PurchaseRoad by Joe-001 at Supplemental"
+    },
+    {
+      "type": "PlaceRoad",
+      "playerId": "Joe-001",
+      "expectedState": "Supplemental",
+      "parameters": {
+        "automationId": "Road-(0,1,-1)-Bottom"
+      },
+      "description": "PlaceRoad by Joe-001 at Supplemental"
+    },
+    {
+      "type": "AdvanceNext",
+      "playerId": "Joe-001",
+      "expectedState": "Supplemental",
+      "parameters": {
+        "gameAction": "Next"
+      },
+      "description": "AdvanceNext by Joe-001 at Supplemental"
+    }
+  ]
+}

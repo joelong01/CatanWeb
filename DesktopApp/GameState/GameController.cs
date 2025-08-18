@@ -30,6 +30,9 @@ namespace Catan3.Controller
         private Log<string> Log;
 
         private IPersistenceService? MyPersistenceService { get; set; }
+        
+        // Recording state  
+        private GameRecorder? _recorder = null;
         public GameController(IPersistenceService? PersistenceService, string localSaveFile)
         {
             Log = new Log<string>(PersistenceService, localSaveFile);
@@ -46,13 +49,8 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                        Log.RecordAction(
-                            actionType: GetActionType(message.Action),
-                            playerId: gameModel.CurrentPlayerId,
-                            gameState: gameModel.GameState.ToString(),
-                            parameters: new Dictionary<string, object> { 
-                                { "gameAction", message.Action.ToString() } 
-                            });
+                      
+                        _recorder?.RecordAction(message);
                         
                         gameModel = null;
                         switch (message.Action)
@@ -92,13 +90,8 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                        Log.RecordAction(
-                            actionType: GetBuildingActionType(gameModel),
-                            playerId: gameModel.CurrentPlayerId,
-                            gameState: gameModel.GameState.ToString(),
-                            parameters: new Dictionary<string, object> { 
-                                { "automationId", message.BuildingKey.GetAutomationId() } 
-                            });
+                     
+                        _recorder?.RecordAction(message);
                         
                         gameModel = BuildingUpgrade(message);
                         LogGameModel(gameModel);
@@ -114,13 +107,7 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                    Log.RecordAction(
-                        actionType: "SetPlayerOrder",
-                        playerId: gameModel.CurrentPlayerId,
-                        gameState: gameModel.GameState.ToString(),
-                        parameters: new Dictionary<string, object> { 
-                            { "playerIds", message.PlayerIds.ToArray() } 
-                        });
+                    _recorder?.RecordAction(message);
                     
                     gameModel = SetPlayerOrder(message.PlayerIds);
                     LogGameModel(gameModel);
@@ -139,13 +126,7 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                        Log.RecordAction(
-                            actionType: "PlaceRoad",
-                            playerId: gameModel.CurrentPlayerId,
-                            gameState: gameModel.GameState.ToString(),
-                            parameters: new Dictionary<string, object> { 
-                                { "automationId", automationId } 
-                            });
+                        _recorder?.RecordAction(message);
                         
                         var model = RoadPurchase(message);
                         this.TraceMessage($"✅ Road placement successful for {automationId}");
@@ -164,14 +145,7 @@ namespace Catan3.Controller
                  try
                  {
                      var gameModel = Log.CopyCurrent();
-                     Log.RecordAction(
-                         actionType: "MoveRobber",
-                         playerId: gameModel.CurrentPlayerId,
-                         gameState: gameModel.GameState.ToString(),
-                         parameters: new Dictionary<string, object> { 
-                             { "automationId", $"Tile-{message.Coordinates}" },
-                             { "targetPlayerId", message.TargetPlayerId ?? string.Empty }
-                         });
+                     _recorder?.RecordAction(message);
                      
                      var model = MoveRobber(message);
                      LogGameModel(model);
@@ -208,18 +182,38 @@ namespace Catan3.Controller
                     SendErrorMessage(e.Message, e.ErrorLevel);
                 }
             });
+            Messenger.Register<StartRecordingMessage>(this, (recipient, message) =>
+            {
+                try
+                {
+                    StartRecording(message.OutputPath);
+                    this.TraceMessage("✅ Recording started - all subsequent actions will be recorded");
+                }
+                catch (Exception e)
+                {
+                    this.TraceMessage($"❌ Failed to start recording: {e.Message}");
+                    SendErrorMessage($"Failed to start recording: {e.Message}", ErrorLevel.Critical);
+                }
+            });
+            Messenger.Register<StopRecordingMessage>(this, (recipient, message) =>
+            {
+                try
+                {
+                    var filePath = StopRecording();
+                    this.TraceMessage($"✅ Recording stopped - saved to: {filePath}");
+                }
+                catch (Exception e)
+                {
+                    this.TraceMessage($"❌ Failed to stop recording: {e.Message}");
+                    SendErrorMessage($"Failed to stop recording: {e.Message}", ErrorLevel.Critical);
+                }
+            });
             Messenger.Register<RollMessage>(this, (recipient, message) =>
             {
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                    Log.RecordAction(
-                        actionType: "RollDice",
-                        playerId: gameModel.CurrentPlayerId,
-                        gameState: gameModel.GameState.ToString(),
-                        parameters: new Dictionary<string, object> { 
-                            { "automationId", $"Roll-{(int)message.Roll.NormalRoll}" }
-                        });
+                    _recorder?.RecordAction(message);
                     
                     var model = OnRoll(message);
                     LogGameModel(model);
@@ -235,11 +229,7 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                    Log.RecordAction(
-                        actionType: GetPurchaseActionType(message.Entitlement),
-                        playerId: gameModel.CurrentPlayerId,
-                        gameState: gameModel.GameState.ToString(),
-                        parameters: null);
+                    _recorder?.RecordAction(message);
                     
                     var model = OnPurchase(message);
                     LogGameModel(model);
@@ -259,13 +249,7 @@ namespace Catan3.Controller
                     GameModel gameModel = Log.CopyCurrent();
                     if (gameModel.GameState != GameState.PickSupplementalPlayers) return;
                     
-                    Log.RecordAction(
-                        actionType: "SelectSupplementalPlayers",
-                        playerId: gameModel.CurrentPlayerId,
-                        gameState: gameModel.GameState.ToString(),
-                        parameters: new Dictionary<string, object> { 
-                            { "playerIds", message.PlayerIds.ToArray() } 
-                        });
+                    _recorder?.RecordAction(message);
                     //
                     //  optimize away the case when there are supplemental players
                     foreach (var player in gameModel.Players)
@@ -309,12 +293,8 @@ namespace Catan3.Controller
             {
                 GameModel gameModel = Log.CopyCurrent();
                 if (gameModel.GameState != GameState.FinishedRollOrder) return;
-                
-                Log.RecordAction(
-                    actionType: "GoFirst",
-                    playerId: message.PlayerId,
-                    gameState: gameModel.GameState.ToString(),
-                    parameters: null);
+                _recorder?.RecordAction(message);
+             
                 while (gameModel.Players[0].Id != message.PlayerId)
                 {
                     var player = gameModel.Players[0];
@@ -1773,6 +1753,48 @@ namespace Catan3.Controller
                 _ => $"Purchase{entitlement}"
             };
         }
+
+        #region Recording Methods
+
+        /// <summary>
+        /// Starts recording actions from the current game state.
+        /// Creates a new GameRecorder instance with the current GameModel.
+        /// </summary>
+        /// <param name="outputPath">Optional output path for the .catan_test file. If null, uses default path.</param>
+        private void StartRecording(string? outputPath = null)
+        {
+            if (_recorder != null)
+            {
+                throw new InvalidOperationException("Recording is already in progress. Stop current recording before starting a new one.");
+            }
+
+            // Get current game model and create new recording session
+            var currentModel = Log.CurrentState();
+            _recorder = new GameRecorder(currentModel, outputPath);
+
+            this.TraceMessage($"🎬 Recording started from GameState: {currentModel.GameState}");
+        }
+
+        /// <summary>
+        /// Stops recording and creates the complete .catan_test file with initial GameModel + recorded actions.
+        /// </summary>
+        /// <returns>The path where the .catan_test file was saved</returns>
+        private string StopRecording()
+        {
+            if (_recorder == null)
+            {
+                throw new InvalidOperationException("No recording is currently in progress.");
+            }
+
+            var filePath = _recorder.EndRecording();
+            _recorder = null;
+            return filePath;
+        }
+
+
+
+
+        #endregion
         
         #endregion
 

@@ -77,7 +77,7 @@ namespace Tests.DesktopApp.UI
     /// 
     /// 5. Copy recorded actions from Debug output into a new JSON scenario file:
     ///    - Save as: Tests.DesktopApp.UI\ScriptedTestData\my-new-scenario.json
-    ///    - Follow the structure of expansion-test-scenario.json
+    ///    - Follow the structure of the ActionStack in .catan_test files
     /// 
     /// 6. Update test to use your new scenario:
     ///    - Modify ExecuteScenario() to load your new JSON file
@@ -535,7 +535,7 @@ namespace Tests.DesktopApp.UI
             var assemblyPath = Path.GetDirectoryName(assembly.Location)!;
             
             // Try to find the file in the output directory first (it should be copied there)
-            var sourceFile = Path.Combine(assemblyPath, "ScriptedTestData", "Expansion-Test.catan");
+            var sourceFile = Path.Combine(assemblyPath, "ScriptedTestData", "Expansion-Test.catan_test");
             
             // If not in output, try to find it relative to the source directory
             if (!File.Exists(sourceFile))
@@ -549,7 +549,7 @@ namespace Tests.DesktopApp.UI
                 
                 if (current != null)
                 {
-                    sourceFile = Path.Combine(current.FullName, "ScriptedTestData", "Expansion-Test.catan");
+                    sourceFile = Path.Combine(current.FullName, "ScriptedTestData", "Expansion-Test.catan_test");
                 }
             }
             
@@ -831,7 +831,7 @@ namespace Tests.DesktopApp.UI
             return false;
         }
         /// <summary>
-        /// Executes the main scripted test scenario loaded from expansion-test-scenario.json.
+        /// Executes the main scripted test scenario loaded from Expansion-Test.catan_test.
         /// 
         /// Process:
         /// 1. Locates the scenario JSON file in ScriptedTestData folder
@@ -855,7 +855,7 @@ namespace Tests.DesktopApp.UI
             // Find the scenario file in the same way as the test file
             var assembly = Assembly.GetExecutingAssembly();
             var assemblyPath = Path.GetDirectoryName(assembly.Location)!;
-            var scenarioPath = Path.Combine(assemblyPath, "ScriptedTestData", "expansion-test-scenario.json");
+            var scenarioPath = Path.Combine(assemblyPath, "ScriptedTestData", "Expansion-Test.catan_test");
             
             // If not in output, try source directory
             if (!File.Exists(scenarioPath))
@@ -868,7 +868,7 @@ namespace Tests.DesktopApp.UI
                 
                 if (current != null)
                 {
-                    scenarioPath = Path.Combine(current.FullName, "ScriptedTestData", "expansion-test-scenario.json");
+                    scenarioPath = Path.Combine(current.FullName, "ScriptedTestData", "Expansion-Test.catan_test");
                 }
             }
             

@@ -66,8 +66,6 @@ namespace Catan3.Utility
         private ObservableCollection<T> RedoStack { get; set; } = [];
         public GameType GameType { get; set; } = GameType.Regular;
 
-        // Recording functionality for test scenario creation
-        public List<RecordedAction> RecordedActions { get; set; } = new();
         [JsonConstructor]
         public Log(IPersistenceService? PersistenceService, string localSaveFile)
         {
@@ -494,91 +492,6 @@ namespace Catan3.Utility
             }
         }
 
-        /// <summary>
-        /// Records an action for test scenario creation when in record mode.
-        /// Automatically saves the recording after each action.
-        /// </summary>
-        public void RecordAction(string actionType, string? playerId, string? gameState, Dictionary<string, object>? parameters = null,
-            [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0)
-        {
-            if (!App.RecordMode) return;
-
-            var action = new RecordedAction
-            {
-                Type = actionType,
-                PlayerId = playerId,
-                ExpectedState = gameState,
-                Parameters = parameters ?? new Dictionary<string, object>(),
-                Description = $"{actionType} by {playerId} at {gameState}"
-            };
-
-            RecordedActions.Add(action);
-
-            // Send recording message to debug window with caller information
-            var recordMsg = $"[RECORDING #{RecordedActions.Count}] {action.Type} - {action.Description}";
-            this.TraceMessage(recordMsg, 0, cmb, cln);
-            DebugWindow.ShowMessage(recordMsg); // Ensure message always shows in DebugWindow
-
-            // Show file path for the first recorded action
-            if (RecordedActions.Count == 1)
-            {
-                var recordingPath = System.IO.Path.ChangeExtension(FilePath, ".catan-records.json");
-                var pathMsg = $"📁 Recording to: {recordingPath}";
-                DebugWindow.ShowMessage(pathMsg);
-            }
-
-            // Save the recording file after each action for stability
-            Task.Run(async () => await SaveRecordingAsync());
-        }
-
-        /// <summary>
-        /// Saves the recorded actions to a JSON file in the same directory as the game file.
-        /// Uses the persistence service to ensure consistent file handling.
-        /// </summary>
-        public async Task SaveRecordingAsync()
-        {
-            if (PersistService is null || RecordedActions.Count == 0) return;
-
-            try
-            {
-                // Create a test scenario object with the recorded actions
-                var scenario = new
-                {
-                    name = "Recorded Game Session",
-                    description = "Auto-recorded gameplay session",
-                    gameType = GameType.ToString(),
-                    expectedPlayerCount = 0, // Will be set from actual game
-                    testFilePath = System.IO.Path.GetFileName(FilePath),
-                    expectedFinalState = "WaitingForRoll",
-                    timeoutMs = 300000,
-                    recordMode = false,
-                    actions = RecordedActions
-                };
-
-                // Generate the recording filename based on the game file
-                var recordingPath = System.IO.Path.ChangeExtension(FilePath, ".catan-records.json");
-
-                // Serialize to JSON
-                var json = JsonSerializer.Serialize(scenario, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
-                });
-
-                // Save using the persistence service
-                var jsonBytes = Encoding.UTF8.GetBytes(json);
-                await PersistService.SaveAsync(recordingPath, jsonBytes);
-
-                var saveMessage = $"💾 Saved {RecordedActions.Count} recorded actions to: {recordingPath}";
-                Debug.WriteLine(saveMessage);
-                DebugWindow.ShowMessage(saveMessage);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Failed to save recording: {ex.Message}");
-            }
-        }
 
         public async Task SaveAsAsync(string filePath)
         {

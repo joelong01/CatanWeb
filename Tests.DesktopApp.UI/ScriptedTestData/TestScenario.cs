@@ -7,18 +7,18 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
     /// Represents a complete test scenario with a predefined game file and sequence of scripted actions.
     /// 
     /// Structure:
-    /// - Predefined game file (.catan) containing board setup and initial state
+    /// - Combined .catan_test file containing both GameModel and ActionStack
     /// - Ordered sequence of TestActions that represent user interactions
     /// - Expected states for validation at each step
     /// - Metadata for test configuration and validation
     /// 
     /// Deterministic Testing:
-    /// - Uses fixed game file to ensure consistent starting conditions
+    /// - Uses fixed GameModel to ensure consistent starting conditions
     /// - Actions contain explicit parameters (AutomationIds) for predictable behavior
     /// - Expected states allow verification that actions have correct effects
     /// 
     /// Data Sources:
-    /// - JSON scenario files (e.g., expansion-test-scenario.json)
+    /// - .catan_test files which contain both GameModel and ActionStack
     /// - Recorded during manual gameplay or constructed for specific test cases
     /// 
     /// Execution: Loaded by ScenarioLoader and executed by ActionExecutor via FullCyclePackagedUiTests.

@@ -28,6 +28,7 @@ public class Program
         var expansionCommand = new Command("expansion", "Start an Expansion game (5 players)");
         var regularCommand = new Command("regular", "Start a Regular game (3-4 players)");
         var testCommand = new Command("test", "Run various CLI tests");
+        var extractCommand = new Command("extract", "Extract GameModel from .catan file to JSON");
 
         // Add common options to both game commands
         AddGameOptions(expansionCommand, host, Catan3.Shared.Models.GameType.Expansion);
@@ -35,10 +36,14 @@ public class Program
 
         // Add test command options
         AddTestOptions(testCommand, host);
+        
+        // Add extract command options
+        AddExtractOptions(extractCommand);
 
         rootCommand.AddCommand(expansionCommand);
         rootCommand.AddCommand(regularCommand);
         rootCommand.AddCommand(testCommand);
+        rootCommand.AddCommand(extractCommand);
 
         // Execute the command
         return await rootCommand.InvokeAsync(args);
@@ -139,6 +144,54 @@ public class Program
                 Environment.Exit(1);
             }
         }, mvvmObjectsOption);
+    }
+
+    private static void AddExtractOptions(Command command)
+    {
+        // Add extract-specific options
+        var inputOption = new Option<string>(
+            "--in",
+            "Input .catan file path")
+        {
+            IsRequired = true
+        };
+
+        var outputOption = new Option<string>(
+            "--out",
+            "Output JSON file path")
+        {
+            IsRequired = true
+        };
+        
+        var actionsOption = new Option<string?>(
+            "--actions",
+            "Optional: JSON file with actions to create a .catan_test file");
+        
+        command.AddOption(inputOption);
+        command.AddOption(outputOption);
+        command.AddOption(actionsOption);
+
+        command.SetHandler(async (input, output, actions) =>
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(actions))
+                {
+                    // Create a combined .catan_test file
+                    await ExtractCommand.CreateTestFileAsync(input, actions, output);
+                }
+                else
+                {
+                    // Extract just the GameModel
+                    await ExtractCommand.ExtractGameModelAsync(input, output);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Extract Error: {ex.Message}");
+                Environment.Exit(1);
+            }
+        }, inputOption, outputOption, actionsOption);
     }
 
     private static IHost CreateHost()

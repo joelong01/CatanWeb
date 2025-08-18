@@ -105,4 +105,15 @@ namespace Catan3.Shared.Models
         public string LocalFile { get; } = localFile;
         public override string ToString() => $"LoadGameMessage: {LocalFile}";
     }
+
+    public class StartRecordingMessage(string? outputPath = null)
+    {
+        public string? OutputPath { get; } = outputPath;
+        public override string ToString() => $"StartRecordingMessage: {OutputPath ?? "default path"}";
+    }
+
+    public class StopRecordingMessage
+    {
+        public override string ToString() => "StopRecordingMessage";
+    }
 }
