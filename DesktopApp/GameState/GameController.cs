@@ -48,7 +48,14 @@ namespace Catan3.Controller
                 {
                     try
                     {
-                        GameModel? gameModel = null;
+                        var gameModel = Log.CopyCurrent();
+                        this.RecordAction("DoAction", new {
+                            GameAction = message.Action.ToString(),
+                            PlayerId = gameModel.CurrentPlayerId,
+                            GameState = gameModel.GameState.ToString()
+                        });
+                        
+                        gameModel = null;
                         switch (message.Action)
                         {
                             case GameAction.Shuffle:
@@ -85,7 +92,14 @@ namespace Catan3.Controller
                 {
                     try
                     {
-                        var gameModel = BuildingUpgrade(message);
+                        var gameModel = Log.CopyCurrent();
+                        this.RecordAction("BuildingUpgradeMessage", new {
+                            AutomationId = message.BuildingKey.GetAutomationId(),
+                            PlayerId = gameModel.CurrentPlayerId,
+                            GameState = gameModel.GameState.ToString()
+                        });
+                        
+                        gameModel = BuildingUpgrade(message);
                         LogGameModel(gameModel);
                         Messenger.Send(new UpdateGameModel(gameModel));
                     }
@@ -98,7 +112,14 @@ namespace Catan3.Controller
             {
                 try
                 {
-                    var gameModel = SetPlayerOrder(message.PlayerIds);
+                    var gameModel = Log.CopyCurrent();
+                    this.RecordAction("SetPlayerOrderMessage", new {
+                        PlayerIds = message.PlayerIds.ToArray(),
+                        CurrentPlayerId = gameModel.CurrentPlayerId,
+                        GameState = gameModel.GameState.ToString()
+                    });
+                    
+                    gameModel = SetPlayerOrder(message.PlayerIds);
                     LogGameModel(gameModel);
                     Messenger.Send(new UpdateGameModel(gameModel));
                 }
@@ -111,6 +132,13 @@ namespace Catan3.Controller
                 {
                     try
                     {
+                        var gameModel = Log.CopyCurrent();
+                        this.RecordAction("RoadPurchaseMessage", new {
+                            AutomationId = message.RoadKey.GetAutomationId(),
+                            PlayerId = gameModel.CurrentPlayerId,
+                            GameState = gameModel.GameState.ToString()
+                        });
+                        
                         var model = RoadPurchase(message);
                         LogGameModel(model);
                         Messenger.Send(new UpdateGameModel(model));
@@ -125,6 +153,14 @@ namespace Catan3.Controller
              {
                  try
                  {
+                     var gameModel = Log.CopyCurrent();
+                     this.RecordAction("MoveRobberMessage", new {
+                         AutomationId = $"Tile-{message.Coordinates}",
+                         TargetPlayerId = message.TargetPlayerId,
+                         PlayerId = gameModel.CurrentPlayerId,
+                         GameState = gameModel.GameState.ToString()
+                     });
+                     
                      var model = MoveRobber(message);
                      LogGameModel(model);
                      Messenger.Send(new UpdateGameModel(model));
@@ -164,6 +200,13 @@ namespace Catan3.Controller
             {
                 try
                 {
+                    var gameModel = Log.CopyCurrent();
+                    this.RecordAction("RollMessage", new {
+                        AutomationId = $"Roll-{(int)message.Roll.NormalRoll}",
+                        PlayerId = gameModel.CurrentPlayerId,
+                        GameState = gameModel.GameState.ToString()
+                    });
+                    
                     var model = OnRoll(message);
                     LogGameModel(model);
                     Messenger.Send(new UpdateGameModel(model));
@@ -177,6 +220,13 @@ namespace Catan3.Controller
             {
                 try
                 {
+                    var gameModel = Log.CopyCurrent();
+                    this.RecordAction("PurchaseMessage", new {
+                        Entitlement = message.Entitlement.ToString(),
+                        PlayerId = gameModel.CurrentPlayerId,
+                        GameState = gameModel.GameState.ToString()
+                    });
+                    
                     var model = OnPurchase(message);
                     LogGameModel(model);
                     Messenger.Send(new UpdateGameModel(model));
@@ -194,6 +244,12 @@ namespace Catan3.Controller
                 {
                     GameModel gameModel = Log.CopyCurrent();
                     if (gameModel.GameState != GameState.PickSupplementalPlayers) return;
+                    
+                    this.RecordAction("PlayersDoingSupplemental", new {
+                        PlayerIds = message.PlayerIds.ToArray(),
+                        CurrentPlayerId = gameModel.CurrentPlayerId,
+                        GameState = gameModel.GameState.ToString()
+                    });
                     //
                     //  optimize away the case when there are supplemental players
                     foreach (var player in gameModel.Players)
@@ -237,6 +293,12 @@ namespace Catan3.Controller
             {
                 GameModel gameModel = Log.CopyCurrent();
                 if (gameModel.GameState != GameState.FinishedRollOrder) return;
+                
+                this.RecordAction("GoFirstMessage", new {
+                    PlayerId = message.PlayerId,
+                    CurrentPlayerId = gameModel.CurrentPlayerId,
+                    GameState = gameModel.GameState.ToString()
+                });
                 while (gameModel.Players[0].Id != message.PlayerId)
                 {
                     var player = gameModel.Players[0];

@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(./build.ps1 -NoTest)",
+      "Bash(dotnet build)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []

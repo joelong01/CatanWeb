@@ -1,5 +1,8 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Catan.Services;
 using Catan3.Models;
+using Catan3.Shared.Models;
 using WinUIEx;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -22,9 +25,37 @@ namespace Catan3
         private async void OnLoaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
             await PlayerDatabase.LoadPlayerDatabase();
-            NewGameViewModel viewModel = new(PlayerDatabase.AllPlayers);
-            MainFrame.Navigate(typeof(NewGamePage), viewModel);
-
+            
+            // Check if we should auto-load a test file
+            if (!string.IsNullOrEmpty(App.TestFilePath))
+            {
+                // Auto-load test file and skip NewGame dialog
+                AutoLoadTestFile(App.TestFilePath);
+            }
+            else
+            {
+                // Normal flow - show NewGame dialog
+                NewGameViewModel viewModel = new(PlayerDatabase.AllPlayers);
+                MainFrame.Navigate(typeof(NewGamePage), viewModel);
+            }
+        }
+        
+        private void AutoLoadTestFile(string testFilePath)
+        {
+            try
+            {
+                // Create the main page view model for a saved game and navigate directly to game
+                // This mimics what NewGamePage does when loading a saved game
+                var mainPageViewModel = new MainPageViewModel(FileService, PlayerDatabase, GameType.SavedGame, new List<string>(), testFilePath);
+                CurrentGame = mainPageViewModel;
+                MainFrame.Navigate(typeof(MainPage), mainPageViewModel);
+            }
+            catch
+            {
+                // Fallback to normal flow if anything goes wrong
+                NewGameViewModel viewModel = new(PlayerDatabase.AllPlayers);
+                MainFrame.Navigate(typeof(NewGamePage), viewModel);
+            }
         }
     }
 }
