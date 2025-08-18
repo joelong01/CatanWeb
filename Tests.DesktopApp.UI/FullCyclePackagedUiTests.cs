@@ -54,6 +54,43 @@ namespace Tests.DesktopApp.UI
     /// 4. do NOT put comments that show the history of how the code got there.  if you add comments, they should say what it DOES
     /// 5. header comments should not be updated without explicit user consent.  if the code is inconsistent with the comment, ask for guidance.
     /// 6. the full test name is "Full_Stateful_Flow_PackagedApp_Expansion_FivePlayers" use it.
+    /// 
+    ///     ========== HOW TO CREATE/UPDATE TEST SCENARIOS ==========
+    /// 
+    /// TO RECORD A NEW SCENARIO:
+    /// 1. Enable recording mode in DesktopApp\App.xaml.cs:
+    ///    - Set: public static bool RecordMode { get; set; } = true;
+    /// 
+    /// 2. Copy the test file to preserve the original:
+    ///    - Source: Tests.DesktopApp.UI\ScriptedTestData\Expansion-Test.catan
+    ///    - Copy to: DesktopApp\Assets\Test Files\MyNewTest.catan (or similar name)
+    /// 
+    /// 3. Build and run the desktop app:
+    ///    - Run: ./build.ps1 -NoTest
+    ///    - Launch the app and open your copied .catan file
+    /// 
+    /// 4. Play through the scenario manually:
+    ///    - Click on the Menu Item "Show Debug Trace" to open the debug window
+    ///    - All actions will be automatically recorded with AutomationIds
+    ///    - Recorded data appears in Debug output window
+    ///    - Game state is captured BEFORE each action for proper assertion timing
+    /// 
+    /// 5. Copy recorded actions from Debug output into a new JSON scenario file:
+    ///    - Save as: Tests.DesktopApp.UI\ScriptedTestData\my-new-scenario.json
+    ///    - Follow the structure of expansion-test-scenario.json
+    /// 
+    /// 6. Update test to use your new scenario:
+    ///    - Modify ExecuteScenario() to load your new JSON file
+    ///    - Update the test file path in CreateTempTestFile() if needed
+    /// 
+    /// 7. Turn off recording mode when done:
+    ///    - Set: public static bool RecordMode { get; set; } = false;
+    /// 
+    /// IMPORTANT NOTES:
+    /// - Recording captures AutomationIds (e.g., "Building-(-3,3,0)-Right") not raw coordinates
+    /// - State assertions are recorded BEFORE actions, not after
+    /// - All placement actions use deterministic parameters, not "optimal placement" logic
+    /// - Test files should be copied to avoid overwriting originals during development
     /// </summary>
     [Collection("UIAutomation")]
     public class FullCyclePackagedUiTests : IDisposable
