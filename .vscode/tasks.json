@@ -3,13 +3,23 @@
 	"tasks": [
 		{
 			"label": "build",
-			"command": "dotnet",
+			"command": "powershell",
 			"type": "process",
 			"args": [
-				"build",
-				"${workspaceFolder}/Catan.sln",
-				"/property:GenerateFullPaths=true",
-				"/consoleloggerparameters:NoSummary"
+				"-ExecutionPolicy", "Bypass",
+				"-File", "${workspaceFolder}/build.ps1",
+				"-NoTest"
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build-tests",
+			"command": "powershell",
+			"type": "process",
+			"args": [
+				"-ExecutionPolicy", "Bypass",
+				"-File", "${workspaceFolder}/build.ps1",
+				"-NoTest"
 			],
 			"problemMatcher": "$msCompile"
 		},

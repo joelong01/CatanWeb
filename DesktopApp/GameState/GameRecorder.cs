@@ -4,6 +4,28 @@ using System.IO;
 using System.Text.Json;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
+using System.Runtime.InteropServices;
+using System.Diagnostics;
+public static class NativeMessageBox
+{
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
+
+    /// <summary>Shows a blocking system MessageBox on Windows; falls back to stderr elsewhere.</summary>
+    public static void Show(string text, string caption = "Message", uint type = 0)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            // hWnd = IntPtr.Zero (no owner), type=0 = OK
+            MessageBox(IntPtr.Zero, text, caption, type);
+        }
+        else
+        {
+            Console.Error.WriteLine($"{caption}: {text}");
+        }
+    }
+}
+
 
 namespace Catan3.Utility
 {
@@ -13,6 +35,7 @@ namespace Catan3.Utility
     /// </summary>
     public class GameRecorder
     {
+       
         private readonly GameModel _initialGameModel;
         private readonly List<object> _recordedActions;
         private readonly string _outputPath;
@@ -27,8 +50,12 @@ namespace Catan3.Utility
         {
             // Create a deep copy of the GameModel via serialize/deserialize to ensure immutability
             var jsonString = SerializationHelper.JsonSerialize(initialGameModel);
-            _initialGameModel = SerializationHelper.JsonDeserialize<GameModel>(jsonString)
-                ?? throw new InvalidOperationException("Failed to create deep copy of GameModel");
+            _initialGameModel = SerializationHelper.JsonDeserialize<GameModel>(jsonString);
+            if (initialGameModel is null)
+            {
+                NativeMessageBox.Show("Initial GameModel is null.", "Game Recorder Error", 0x00000010 /* MB_ICONHAND */);
+                Debugger.Break();
+            }
 
             _recordedActions = new List<object>();
             _outputPath = GenerateTestFilePath(logFilePath);
@@ -126,8 +153,8 @@ namespace Catan3.Utility
             return new
             {
                 type = "MoveRobber",
-                parameters = new Dictionary<string, object> 
-                { 
+                parameters = new Dictionary<string, object>
+                {
                     { "automationId", $"Tile-{message.Coordinates}" },
                     { "targetPlayerId", message.TargetPlayerId ?? string.Empty }
                 },
@@ -191,7 +218,7 @@ namespace Catan3.Utility
             {
                 "Shuffle" => "ShuffleGame",
                 "Undo" => "UndoAction",
-                "Redo" => "RedoAction", 
+                "Redo" => "RedoAction",
                 "Next" => "NextState",
                 _ => $"GameAction{action}"
             };
@@ -229,12 +256,8 @@ namespace Catan3.Utility
                     ActionStack = _recordedActions.ToArray()
                 };
 
-                // Serialize with pretty formatting
-                var jsonContent = JsonSerializer.Serialize(catanTestData, new JsonSerializerOptions 
-                { 
-                    WriteIndented = true,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                });
+                // Serialize with pretty formatting using shared options
+                var jsonContent = JsonSerializer.Serialize(catanTestData, JsonHelper.PrettyOptions);
 
                 // Ensure output directory exists
                 var directory = Path.GetDirectoryName(_outputPath);

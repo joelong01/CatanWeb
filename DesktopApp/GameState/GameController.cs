@@ -173,13 +173,21 @@ namespace Catan3.Controller
             {
                 try
                 {
+                    this.TraceMessage($"LoadGameMessage received for: {message.LocalFile}");
                     var model = await LoadGame(message.LocalFile);
+                    this.TraceMessage($"Game loaded successfully, sending UpdateGameModel");
                     LogGameModel(model);
                     Messenger.Send(new UpdateGameModel(model));
                 }
                 catch (GameException e)
                 {
+                    this.TraceMessage($"GameException in LoadGameMessage: {e.Message}");
                     SendErrorMessage(e.Message, e.ErrorLevel);
+                }
+                catch (Exception e)
+                {
+                    this.TraceMessage($"Unexpected exception in LoadGameMessage: {e}");
+                    SendErrorMessage($"Failed to load game file: {e.Message}", Catan3.Shared.Models.ErrorLevel.Critical);
                 }
             });
             Messenger.Register<StartRecordingMessage>(this, (recipient, message) =>
@@ -448,17 +456,16 @@ namespace Catan3.Controller
 
                 if (doc.RootElement.TryGetProperty("GameModel", out var gmElem))
                 {
-                    var gm = gmElem.Deserialize<GameModel>(new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    }) ?? throw new GameException("Error: Failed to load the game data.");
+                    var gm = gmElem.Deserialize<GameModel>(Catan3.Shared.Utility.JsonHelper.StandardOptions) ?? throw new GameException("Error: Failed to load the game data.");
                     
                     Log<string> log = Log<string>.FromGameModel(gm, MyPersistenceService, filePath);
                     this.Log = log;
                     return Log.CurrentState();
                 }
-               
-               
+                else
+                {
+                    throw new GameException($"Invalid .catan_test file format: Missing 'GameModel' property in {filePath}");
+                }
             }
             else
             {

@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Catan3.Models;
 using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 using Catan3.Player;
 using Catan3.Tests;
 
@@ -194,8 +195,7 @@ namespace Catan3
                 {
                     // Serialize GameModel to JSON and update the ViewModel property
                     // This will automatically update the AutomationProperties.ItemStatus binding
-                    var options = new JsonSerializerOptions { WriteIndented = false };
-                    var gameModelJson = JsonSerializer.Serialize(MainPageModel.GameViewModel.GameModel, options);
+                    var gameModelJson = JsonSerializer.Serialize(MainPageModel.GameViewModel.GameModel, JsonHelper.StandardOptions);
                     MainPageModel.GameModelJson = gameModelJson;
                 }
             }

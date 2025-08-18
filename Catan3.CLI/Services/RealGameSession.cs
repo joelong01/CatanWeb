@@ -135,10 +135,7 @@ public class RealGameSession : IAsyncDisposable
             players = playerNames.Zip(playerIds, (name, id) => new { id, name }).ToList()
         };
 
-        var json = JsonSerializer.Serialize(request, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
+        var json = JsonSerializer.Serialize(request, JsonHelper.StandardOptions);
 
         var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 

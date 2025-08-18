@@ -17,11 +17,7 @@ public class MvvmObjectTester
     public MvvmObjectTester(ILogger<MvvmObjectTester> logger)
     {
         _logger = logger;
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = true
-        };
+        _jsonOptions = JsonHelper.PrettyOptions;
     }
 
     /// <summary>

@@ -1,0 +1,23 @@
+{
+  "profiles": {
+    "Debug UI Tests - Regular Game": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "test --no-build --logger:console;verbosity=detailed -- --test-file \"Regular Game Test.catan_test\"",
+      "workingDirectory": "$(ProjectDir)..\\",
+      "environmentVariables": {
+        "CATAN_TEST_FILE": "Regular Game Test.catan_test",
+        "CATAN_DEBUG_WAIT": "true"
+      }
+    },
+    "Debug UI Tests - Default": {
+      "commandName": "Executable", 
+      "executablePath": "dotnet",
+      "commandLineArgs": "test --no-build --logger:console;verbosity=detailed",
+      "workingDirectory": "$(ProjectDir)..\\",
+      "environmentVariables": {
+        "CATAN_DEBUG_WAIT": "true"
+      }
+    }
+  }
+}

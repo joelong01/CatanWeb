@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Catan3.Shared.Utility;
 
 namespace Catan3.CLI.Commands
 {
@@ -61,13 +62,7 @@ namespace Catan3.CLI.Commands
                 
                 // Parse and pretty-print the GameModel
                 using var gameModelDoc = JsonDocument.Parse(gameModelJson);
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                };
-                
-                var prettyJson = JsonSerializer.Serialize(gameModelDoc.RootElement, options);
+                var prettyJson = JsonSerializer.Serialize(gameModelDoc.RootElement, JsonHelper.PrettyOptions);
                 
                 // Write to output file
                 await File.WriteAllTextAsync(outputPath, prettyJson, Encoding.UTF8);

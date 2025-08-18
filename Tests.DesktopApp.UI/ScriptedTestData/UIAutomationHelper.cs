@@ -128,14 +128,13 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             // Purchase buttons may be face-down (inside FlipperCtrl), so warn but don't fail
             if (missingPurchase.Any())
             {
-                TraceMessage($"⚠️ WARNING: Purchase buttons not found (may be face-down in FlipperCtrl): {string.Join(", ", missingPurchase)}");
+                TraceMessage($"⚠️ INFO: Purchase buttons not found in initial cache (may be face-down in FlipperCtrl): {string.Join(", ", missingPurchase)}");
                 TraceMessage($"⚠️ Found purchase buttons: {string.Join(", ", foundPurchaseButtons)}");
-                TraceMessage($"⚠️ All automation IDs with 'Purchase': {string.Join(", ", _uiControlsCache.Keys.Where(k => k.Contains("Purchase")))}");
-                TraceMessage($"⚠️ This is expected when purchase actions are disabled (cards face-down)");
+                TraceMessage($"⚠️ These will be searched dynamically when needed");
             }
             else
             {
-                TraceMessage($"✅ All purchase buttons found: {string.Join(", ", purchaseButtons)}");
+                TraceMessage($"✅ All purchase buttons found in cache: {string.Join(", ", purchaseButtons)}");
             }
             
             TraceMessage($"✅ Essential buttons verified: {string.Join(", ", essentialButtons)}");
@@ -162,23 +161,138 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
 
         /// <summary>
         /// Clicks a button with the specified automation ID robustly.
+        /// Handles special cases like purchase buttons that may be inside FlipperCtrl.
         /// </summary>
         public void ClickButton(string automationId)
         {
             TraceMessage($"Clicking button: {automationId}");
             
-            var button = FindByAutomationId(automationId).AsButton();
-            Assert.NotNull(button);
+            AutomationElement button;
+            
+            // For purchase buttons, try dynamic search if not in cache
+            if (automationId.StartsWith("Purchase") && automationId.EndsWith("Button"))
+            {
+                button = FindPurchaseButtonDynamically(automationId);
+            }
+            else
+            {
+                button = FindByAutomationId(automationId);
+            }
+            
+            var buttonElement = button.AsButton();
+            Assert.NotNull(buttonElement);
             
             // Diagnostic: Check current button state
-            TraceMessage($"Button '{automationId}' current state - IsEnabled: {button.IsEnabled}, IsOffscreen: {button.IsOffscreen}");
+            TraceMessage($"Button '{automationId}' current state - IsEnabled: {buttonElement.IsEnabled}, IsOffscreen: {buttonElement.IsOffscreen}");
             
             // Wait for button to become enabled with proper message pumping
-            WaitHelper.WaitUntilOrThrow(() => button.IsEnabled, TimeSpan.FromMilliseconds(LONG_WAIT), $"Button '{automationId}' to become enabled");
+            WaitHelper.WaitUntilOrThrow(() => buttonElement.IsEnabled, TimeSpan.FromMilliseconds(LONG_WAIT), $"Button '{automationId}' to become enabled");
             
             TraceMessage($"Button '{automationId}' is now enabled, invoking...");
-            button.Invoke();
+            buttonElement.Invoke();
             UiPump.DelayWithPump(SHORT_WAIT);
+        }
+        
+        /// <summary>
+        /// Dynamically searches for purchase buttons that may be face-down in FlipperCtrl.
+        /// This method performs a fresh search of the UI tree instead of relying on cache.
+        /// </summary>
+        private AutomationElement FindPurchaseButtonDynamically(string automationId)
+        {
+            TraceMessage($"Performing dynamic search for purchase button: {automationId}");
+            
+            // First try the cache (in case it's face-up now)
+            if (_uiControlsCache.TryGetValue(automationId, out var cachedElement))
+            {
+                TraceMessage($"Found {automationId} in cache");
+                return cachedElement;
+            }
+            
+            // Perform fresh search for FlipperCtrl elements that might contain purchase buttons
+            var allElements = _mainWindow.FindAllDescendants();
+            foreach (var element in allElements)
+            {
+                try
+                {
+                    var elementAutomationId = element.Properties.AutomationId.ValueOrDefault;
+                    if (elementAutomationId == automationId)
+                    {
+                        TraceMessage($"Found {automationId} via dynamic search");
+                        // Cache it for future use
+                        _uiControlsCache[automationId] = element;
+                        return element;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Ignore elements that can't be accessed
+                    TraceMessage($"Skipped element during dynamic search: {ex.Message}");
+                }
+            }
+            
+            // If still not found, try alternative approach: find by FlipperCtrl parent
+            var flipperElement = FindByFlipperCtrlPattern(automationId);
+            if (flipperElement != null)
+            {
+                TraceMessage($"Found {automationId} via FlipperCtrl pattern search");
+                _uiControlsCache[automationId] = flipperElement;
+                return flipperElement;
+            }
+            
+            // If still not found, provide helpful error message
+            throw new TimeoutException($"Purchase button '{automationId}' not found via dynamic search. The FlipperCtrl may still be face-down, or the purchase action may not be available in the current game state.");
+        }
+        
+        /// <summary>
+        /// Alternative search method: Look for FlipperCtrl elements and check their Front content
+        /// for purchase buttons. This handles the case where buttons are in FlipperCtrl.Front
+        /// but may not be immediately visible.
+        /// </summary>
+        private AutomationElement? FindByFlipperCtrlPattern(string automationId)
+        {
+            TraceMessage($"Searching for {automationId} via FlipperCtrl pattern");
+            
+            // Find all elements that might be FlipperCtrl (look for elements with Front/Back children)
+            var allElements = _mainWindow.FindAllDescendants();
+            
+            foreach (var element in allElements)
+            {
+                try
+                {
+                    // Look for elements that have children suggesting they're FlipperCtrl
+                    var children = element.FindAllChildren();
+                    
+                    // Check if any child contains our target AutomationId
+                    foreach (var child in children)
+                    {
+                        var childAutomationId = child.Properties.AutomationId.ValueOrDefault;
+                        if (childAutomationId == automationId)
+                        {
+                            TraceMessage($"Found {automationId} as child of potential FlipperCtrl");
+                            return child;
+                        }
+                        
+                        // Also check grandchildren (for nested structures)
+                        var grandchildren = child.FindAllChildren();
+                        foreach (var grandchild in grandchildren)
+                        {
+                            var grandchildAutomationId = grandchild.Properties.AutomationId.ValueOrDefault;
+                            if (grandchildAutomationId == automationId)
+                            {
+                                TraceMessage($"Found {automationId} as grandchild of potential FlipperCtrl");
+                                return grandchild;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Ignore inaccessible elements
+                    TraceMessage($"Skipped element in FlipperCtrl search: {ex.Message}");
+                }
+            }
+            
+            return null;
         }
 
         /// <summary>

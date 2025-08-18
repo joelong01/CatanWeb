@@ -157,6 +157,25 @@ namespace Tests.DesktopApp.UI
             _automation?.Dispose();
         }
         [Fact]
+        public void Expansion_End_To_End_Test()
+        {
+            Sta.Run(() =>
+            {
+                DoFullTestWithScriptedActions("Expansion-Test.catan_test");
+            });
+        }
+        
+        [Fact]
+        public void Regular_End_To_End_Test()
+        {
+            Sta.Run(() =>
+            {
+                DoFullTestWithScriptedActions("Regular Game Test.catan_test");
+            });
+        }
+        
+        [Fact]
+        [Obsolete("Use Expansion_End_To_End_Test or Regular_End_To_End_Test instead")]
         public void Full_Stateful_Flow_PackagedApp_Expansion_FivePlayers()
         {
             Sta.Run(() =>
@@ -181,12 +200,16 @@ namespace Tests.DesktopApp.UI
         /// Exception Handling: Any unhandled exception marks the test as failed,
         /// which triggers the Dispose() method to leave the app open for debugging.
         /// </summary>
-        private void DoFullTestWithScriptedActions()
+        /// <param name="testFileName">Optional test file name. If null, uses GetTestFileName() logic.</param>
+        private void DoFullTestWithScriptedActions(string? testFileName = null)
         {
-            this.TraceMessage("Test starting with scripted actions methodology");
+            // Ensure we have a test file name
+            testFileName ??= GetTestFileName();
+            
+            this.TraceMessage($"Test starting with scripted actions methodology - File: {testFileName}");
 
             // Step 1: Create temp file and copy test game
-            var tempTestFile = CreateTempTestFile();
+            var tempTestFile = CreateTempTestFile(testFileName);
             this.TraceMessage($"Created temp test file: {tempTestFile}");
 
             try
@@ -206,7 +229,7 @@ namespace Tests.DesktopApp.UI
 
                 // Step 5: Execute the scripted scenario
                 this.TraceMessage("=== Starting scripted action execution ===");
-                ExecuteScenario();
+                ExecuteScenario(testFileName);
 
                 this.TraceMessage("=== All scripted actions completed successfully ===");
                 _testSucceeded = true; // Mark test as successful
@@ -525,17 +548,58 @@ namespace Tests.DesktopApp.UI
         /// Throws: XunitException if the app fails to launch or main window cannot be found
         /// </summary>
         /// <summary>
+        /// Gets the test file name from environment variable or command-line arguments.
+        /// Falls back to default "Expansion-Test.catan_test" if not specified.
+        /// </summary>
+        private string GetTestFileName()
+        {
+            // Check environment variable first (can be set in test runner or CI/CD)
+            var testFile = Environment.GetEnvironmentVariable("CATAN_TEST_FILE");
+            
+            // If not set, check command-line arguments
+            if (string.IsNullOrEmpty(testFile))
+            {
+                var args = Environment.GetCommandLineArgs();
+                for (int i = 0; i < args.Length - 1; i++)
+                {
+                    if (args[i] == "--test-file" || args[i] == "-t")
+                    {
+                        testFile = args[i + 1];
+                        break;
+                    }
+                }
+            }
+            
+            // Default to Expansion-Test.catan_test if not specified
+            if (string.IsNullOrEmpty(testFile))
+            {
+                testFile = "Expansion-Test.catan_test";
+                this.TraceMessage($"No test file specified. Using default: {testFile}");
+            }
+            else
+            {
+                this.TraceMessage($"Using test file from configuration: {testFile}");
+            }
+            
+            return testFile;
+        }
+        
+        /// <summary>
         /// Creates a temporary copy of the test file to avoid modifying the original.
         /// Returns the path to the temporary file.
         /// </summary>
-        private string CreateTempTestFile()
+        /// <param name="testFileName">Optional test file name. If null, uses GetTestFileName() logic.</param>
+        private string CreateTempTestFile(string? testFileName = null)
         {
+            // Use provided filename or check for test file override from environment variable or command-line
+            testFileName ??= GetTestFileName();
+            
             // The test file is stored alongside the test data in ScriptedTestData folder
             var assembly = Assembly.GetExecutingAssembly();
             var assemblyPath = Path.GetDirectoryName(assembly.Location)!;
             
             // Try to find the file in the output directory first (it should be copied there)
-            var sourceFile = Path.Combine(assemblyPath, "ScriptedTestData", "Expansion-Test.catan_test");
+            var sourceFile = Path.Combine(assemblyPath, "ScriptedTestData", testFileName);
             
             // If not in output, try to find it relative to the source directory
             if (!File.Exists(sourceFile))
@@ -549,7 +613,7 @@ namespace Tests.DesktopApp.UI
                 
                 if (current != null)
                 {
-                    sourceFile = Path.Combine(current.FullName, "ScriptedTestData", "Expansion-Test.catan_test");
+                    sourceFile = Path.Combine(current.FullName, "ScriptedTestData", testFileName);
                 }
             }
             
@@ -559,9 +623,12 @@ namespace Tests.DesktopApp.UI
             }
 
             var tempFile = Path.GetTempFileName();
-            var tempCatanFile = Path.ChangeExtension(tempFile, ".catan");
             
-            File.Copy(sourceFile, tempCatanFile, overwrite: true);
+            // Preserve the original file extension to maintain file association behavior
+            var originalExtension = Path.GetExtension(sourceFile);
+            var tempTestFile = Path.ChangeExtension(tempFile, originalExtension);
+            
+            File.Copy(sourceFile, tempTestFile, overwrite: true);
             
             // Clean up the temp file that was created by GetTempFileName
             if (File.Exists(tempFile))
@@ -569,7 +636,8 @@ namespace Tests.DesktopApp.UI
                 File.Delete(tempFile);
             }
             
-            return tempCatanFile;
+            this.TraceMessage($"Created temp file with extension: {originalExtension}");
+            return tempTestFile;
         }
 
         /// <summary>
@@ -584,7 +652,8 @@ namespace Tests.DesktopApp.UI
             var psi = new ProcessStartInfo
             {
                 FileName = testFilePath,
-                UseShellExecute = true // This tells Windows to use file associations
+                UseShellExecute = true, // This tells Windows to use file associations
+                Verb = "open" // Use the default open verb for the file type
             };
 
             using var _ = Process.Start(psi);
@@ -598,6 +667,12 @@ namespace Tests.DesktopApp.UI
                         .FindAllChildren(Cf.ByControlType(ControlType.Window)
                         .And(Cf.ByClassName("WinUIDesktopWin32WindowClass")));
 
+                    this.TraceMessage($"Found {wins.Length} WinUI windows");
+                    foreach (var win in wins)
+                    {
+                        this.TraceMessage($"  Window: '{win.Name}' (ProcessId: {win.Properties.ProcessId})");
+                    }
+
                     return wins.FirstOrDefault(w =>
                         !w.Name.Contains("Debug", StringComparison.OrdinalIgnoreCase));
                 },
@@ -605,6 +680,21 @@ namespace Tests.DesktopApp.UI
                 interval: TimeSpan.FromMilliseconds(250),
                 throwOnTimeout: false
             ).Result ?? throw new XunitException($"Failed to find main window after launching .catan file. Is the app installed and file association working?");
+            
+            // Check if we should wait for debugger attachment AFTER the app is launched
+            if (Environment.GetEnvironmentVariable("CATAN_DEBUG_WAIT") == "true")
+            {
+                this.TraceMessage("⏸️ WAITING FOR DEBUGGER ATTACHMENT");
+                this.TraceMessage("   The Catan Desktop app is now running");
+                this.TraceMessage("   1. In VS Code, switch to 'Attach to Catan Desktop' configuration");
+                this.TraceMessage("   2. Press F5 to attach debugger");
+                this.TraceMessage("   3. Set your breakpoints in the Desktop app");
+                this.TraceMessage("   Waiting 10 seconds for debugger attachment...");
+                
+                // Give time to attach debugger
+                System.Threading.Thread.Sleep(10000);
+                this.TraceMessage("Continuing with test execution...");
+            }
         }
 
         /// <summary>
@@ -831,7 +921,7 @@ namespace Tests.DesktopApp.UI
             return false;
         }
         /// <summary>
-        /// Executes the main scripted test scenario loaded from Expansion-Test.catan_test.
+        /// Executes the main scripted test scenario loaded from the specified test file.
         /// 
         /// Process:
         /// 1. Locates the scenario JSON file in ScriptedTestData folder
@@ -850,12 +940,14 @@ namespace Tests.DesktopApp.UI
         /// 
         /// Fallback: If no scenario file exists, executes a basic validation scenario.
         /// </summary>
-        private void ExecuteScenario()
+        /// <param name="testFileName">The test file name to execute</param>
+        private void ExecuteScenario(string testFileName)
         {
+            
             // Find the scenario file in the same way as the test file
             var assembly = Assembly.GetExecutingAssembly();
             var assemblyPath = Path.GetDirectoryName(assembly.Location)!;
-            var scenarioPath = Path.Combine(assemblyPath, "ScriptedTestData", "Expansion-Test.catan_test");
+            var scenarioPath = Path.Combine(assemblyPath, "ScriptedTestData", testFileName);
             
             // If not in output, try source directory
             if (!File.Exists(scenarioPath))
@@ -868,7 +960,7 @@ namespace Tests.DesktopApp.UI
                 
                 if (current != null)
                 {
-                    scenarioPath = Path.Combine(current.FullName, "ScriptedTestData", "Expansion-Test.catan_test");
+                    scenarioPath = Path.Combine(current.FullName, "ScriptedTestData", testFileName);
                 }
             }
             

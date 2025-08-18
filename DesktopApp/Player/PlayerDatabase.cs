@@ -265,10 +265,7 @@ namespace Catan3
             }
 
         }
-        public static JsonSerializerOptions JsonSerializerOptions { get; } = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-        };
+        public static JsonSerializerOptions JsonSerializerOptions => JsonHelper.PrettyOptions;
         private async Task<ObservableCollection<PlayerViewModel>> SaveDefaultPlayers(StorageFolder folder, string fileName)
         {
             try

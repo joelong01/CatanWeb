@@ -33,6 +33,7 @@ namespace Catan3
 #nullable disable
         public App()
         {
+          //  System.Diagnostics.Debugger.Launch();
             this.InitializeComponent();
         }
 #nullable enable
@@ -42,18 +43,27 @@ namespace Catan3
         /// <param name="args">Details about the launch request and process.</param>
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
-#if DEBUG
-            DebugSettings.BindingFailed += (sender, e) =>
+            try
             {
-                System.Diagnostics.Debug.WriteLine(e.Message);
-            };
+#if DEBUG
+                DebugSettings.BindingFailed += (sender, e) =>
+                {
+                    System.Diagnostics.Debug.WriteLine(e.Message);
+                };
 #endif
-            this.TraceMessage($"Command Line arguments: {args?.Arguments}");
+                this.TraceMessage($"Command Line arguments: {args?.Arguments}");
 
-            // Check for file activation arguments
-            CheckForFileActivation();
+                // Check for file activation arguments
+                CheckForFileActivation();
 
-            InitializeWindow();
+                InitializeWindow();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"FATAL ERROR in OnLaunched: {ex}");
+                this.TraceMessage($"FATAL ERROR in OnLaunched: {ex}");
+                throw;
+            }
         }
 
         /// <summary>
@@ -86,14 +96,19 @@ namespace Catan3
                             bool isTestFile = file.Path.EndsWith(".catan_test", StringComparison.OrdinalIgnoreCase);
                             this.TraceMessage($"File activation: {file.Path}");
 
-                            if (isTestFile)
+                            if (isTestFile || isNormalGameFile)
                             {
-                                // Enable test mode for file activation
-                                Timeline.AllowDependentAnimations = false;
-                                // Disable recording mode when running tests
-                                RecordMode = false;
-                                IsTestMode = true;
-
+                                // Set the activated file path
+                                ActivatedFilePath = file.Path;
+                                this.TraceMessage($"Set ActivatedFilePath: {ActivatedFilePath}");
+                                
+                                if (isTestFile)
+                                {
+                                    // Disable recording mode when running tests
+                                    RecordMode = false;
+                                    IsTestMode = true;
+                                    this.TraceMessage("Test mode enabled via file activation");
+                                }
                             }
                         }
                     }
@@ -114,6 +129,14 @@ namespace Catan3
             if (m_window == null)
             {
                 m_window = new MainWindow();
+                
+                // Apply test mode settings after window creation but before activation
+                if (IsTestMode)
+                {
+                    Timeline.AllowDependentAnimations = false;
+                    this.TraceMessage("Applied test mode UI settings (disabled animations)");
+                }
+                
                 // Delay window activation to allow splash screen to show and background tasks to run
                 _ = DelayedActivateAsync();
             }
@@ -138,6 +161,9 @@ namespace Catan3
             // Give the main window time to fully initialize, then show debug window
             await Task.Delay(100);
 
+            // Capture values before entering dispatcher context to avoid cross-thread issues
+            var isTestModeSnapshot = IsTestMode;
+            
             Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() =>
             {
                 // Show debug window by default (especially important during testing)
@@ -153,10 +179,10 @@ namespace Catan3
                     // Give it a moment to create, then send messages
                     Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() =>
                     {
-                        DebugWindow.ShowMessage($"🪟 DebugWindow auto-opened (TestMode: {IsTestMode})");
+                        DebugWindow.ShowMessage($"🪟 DebugWindow auto-opened (TestMode: {isTestModeSnapshot})");
 
                         // For test mode, add additional message
-                        if (IsTestMode)
+                        if (isTestModeSnapshot)
                         {
                             DebugWindow.ShowMessage("🧪 Test Mode: Enhanced debugging enabled");
                         }
