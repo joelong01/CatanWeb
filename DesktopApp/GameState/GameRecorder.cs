@@ -22,8 +22,8 @@ namespace Catan3.Utility
         /// Creates a new recording session starting from the provided GameModel.
         /// </summary>
         /// <param name="initialGameModel">The GameModel to use as the starting state for the recording</param>
-        /// <param name="outputPath">Optional output path for the .catan_test file. If null, generates default path.</param>
-        public GameRecorder(GameModel initialGameModel, string? outputPath = null)
+        /// <param name="logFilePath">The path of the log file to use for generating the test file path</param>
+        public GameRecorder(GameModel initialGameModel, string logFilePath)
         {
             // Create a deep copy of the GameModel via serialize/deserialize to ensure immutability
             var jsonString = SerializationHelper.JsonSerialize(initialGameModel);
@@ -31,7 +31,7 @@ namespace Catan3.Utility
                 ?? throw new InvalidOperationException("Failed to create deep copy of GameModel");
 
             _recordedActions = new List<object>();
-            _outputPath = outputPath ?? GenerateDefaultOutputPath();
+            _outputPath = GenerateTestFilePath(logFilePath);
             _isRecording = true;
 
             this.LogMessage($"🎬 Recording started from GameState: {_initialGameModel.GameState}");
@@ -280,13 +280,13 @@ namespace Catan3.Utility
         public GameModel InitialGameModel => _initialGameModel;
 
         /// <summary>
-        /// Generates a default output path with timestamp for the recording.
+        /// Generates the test file path based on the log file path, using the same location and name with .catan_test extension.
         /// </summary>
-        private static string GenerateDefaultOutputPath()
+        private static string GenerateTestFilePath(string logFilePath)
         {
-            var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-            var fileName = $"recorded-session_{timestamp}.catan_test";
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), fileName);
+            var directory = Path.GetDirectoryName(logFilePath) ?? throw new ArgumentException("Invalid log file path", nameof(logFilePath));
+            var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(logFilePath);
+            return Path.Combine(directory, $"{fileNameWithoutExtension}.catan_test");
         }
 
         /// <summary>

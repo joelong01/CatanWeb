@@ -1760,7 +1760,7 @@ namespace Catan3.Controller
         /// Starts recording actions from the current game state.
         /// Creates a new GameRecorder instance with the current GameModel.
         /// </summary>
-        /// <param name="outputPath">Optional output path for the .catan_test file. If null, uses default path.</param>
+        /// <param name="outputPath">Ignored - test file path is generated from log file path</param>
         private void StartRecording(string? outputPath = null)
         {
             if (_recorder != null)
@@ -1768,9 +1768,9 @@ namespace Catan3.Controller
                 throw new InvalidOperationException("Recording is already in progress. Stop current recording before starting a new one.");
             }
 
-            // Get current game model and create new recording session
+            // Get current game model and create new recording session using log file path
             var currentModel = Log.CurrentState();
-            _recorder = new GameRecorder(currentModel, outputPath);
+            _recorder = new GameRecorder(currentModel, Log.FilePath);
 
             this.TraceMessage($"🎬 Recording started from GameState: {currentModel.GameState}");
         }

@@ -171,15 +171,15 @@ namespace Catan3
             try
             {
                 string key = $"ResourceCard.{resourceType}";
-                var result =  ( ImageBrush )Application.Current.Resources[key];
+                var result = (ImageBrush)Application.Current.Resources[key];
                 Debug.Assert(result is not null);
                 return result;
             }
             catch
-            ( Exception ex )
+            (Exception ex)
             {
                 resourceType.TraceMessage($"{ex.Message}");
-                return ( ImageBrush )Application.Current.Resources["ResourceCard.None"];
+                return (ImageBrush)Application.Current.Resources["ResourceCard.None"];
             }
         }
     }
@@ -195,10 +195,9 @@ namespace Catan3
             Debug.WriteLine($"{cfp}({cln}):{toWrite}\t\t[Caller={cmb}]");
             //
             // in Record Mode, do not write to DebugWindow, just log to Debug
-            if (!App.RecordMode)
-            {
-                DebugWindow.ShowMessage(toWrite);
-            }
+
+            DebugWindow.ShowMessage(toWrite);
+
             for (int i = 0; i < indentLevel; i++)
             {
                 Debug.Unindent();
@@ -212,14 +211,14 @@ namespace Catan3
         private bool isPointerCaptured = false;
         public ButtonLookAndFeel(Grid grid)
         {
-          
+
             grid.PointerEntered += OnPointerEntered;
             grid.PointerExited += OnPointerExited;
             grid.PointerPressed += OnPointerPressed;
         }
         private void OnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
-           
+
             if (sender is Grid grid)
             {
                 grid.BorderThickness = new Thickness(1);
@@ -227,7 +226,7 @@ namespace Catan3
         }
         private void OnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
-            
+
             if (sender is Grid grid)
             {
                 if (!isPointerCaptured)
@@ -236,10 +235,10 @@ namespace Catan3
                 }
             }
         }
-   
+
         private void OnPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
-          
+
             if (sender is Grid grid)
             {
                 void pointerReleasedHandler(object s, PointerRoutedEventArgs origE)
@@ -250,7 +249,7 @@ namespace Catan3
                         var point = origE.GetCurrentPoint(releasedGrid).Position;
                         bool isInside = point.X >= 0 && point.X <= releasedGrid.ActualWidth &&
                                 point.Y >= 0 && point.Y <= releasedGrid.ActualHeight;
-                        if (( PointerEventHandler? )pointerReleasedHandler is not null)
+                        if ((PointerEventHandler?)pointerReleasedHandler is not null)
                         {
                             releasedGrid.PointerReleased -= pointerReleasedHandler;
                         }

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Catan.Services;
 using Catan3.Models;
 using Catan3.Shared.Models;
+using Microsoft.UI.Xaml;
 using WinUIEx;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -18,8 +19,9 @@ namespace Catan3
         {
             Instance = this;
             this.InitializeComponent();
-           
-
+            
+            // Subscribe to window closing event
+            this.Closed += OnMainWindowClosed;
         }
 
         private async void OnLoaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
@@ -57,6 +59,12 @@ namespace Catan3
                 NewGameViewModel viewModel = new(PlayerDatabase.AllPlayers);
                 MainFrame.Navigate(typeof(NewGamePage), viewModel);
             }
+        }
+        
+        private void OnMainWindowClosed(object sender, WindowEventArgs args)
+        {
+            // Close the DebugWindow if it's open
+            DebugWindow.CloseInstance();
         }
     }
 }

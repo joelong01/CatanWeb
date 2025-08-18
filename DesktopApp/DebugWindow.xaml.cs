@@ -96,6 +96,18 @@ namespace Catan3
         {
             MessagesTextBox.Text = "";
         }
+        
+        /// <summary>
+        /// Closes the DebugWindow instance if it exists
+        /// </summary>
+        public static void CloseInstance()
+        {
+            if (s_instance != null)
+            {
+                s_instance.Close();
+                s_instance = null;
+            }
+        }
 
         private void Window_Closed(object sender, WindowEventArgs args)
         {
