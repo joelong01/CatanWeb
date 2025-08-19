@@ -50,11 +50,16 @@
             </TextBox>
         </ScrollViewer>
         
-        <!-- Footer with Clear button -->
+        <!-- Footer with Copy and Clear buttons -->
         <StackPanel Grid.Row="2" 
                     Orientation="Horizontal" 
                     HorizontalAlignment="Right" 
                     Margin="10,5,10,10">
+            <Button x:Name="CopyButton" 
+                    Content="Copy" 
+                    Click="OnCopyClick"
+                    MinWidth="75"
+                    Margin="0,0,5,0"/>
             <Button x:Name="ClearButton" 
                     Content="Clear" 
                     Click="OnClearClick"

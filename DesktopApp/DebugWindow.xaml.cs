@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
 using WinUIEx;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace Catan3
 {
@@ -90,6 +91,23 @@ namespace Catan3
                 s_instance = new DebugWindow();
             }
             s_instance.Activate();
+        }
+
+        private void OnCopyClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var dataPackage = new DataPackage();
+                dataPackage.SetText(MessagesTextBox.Text);
+                Clipboard.SetContent(dataPackage);
+                
+                // Show a brief confirmation message
+                ShowMessage("📋 Log content copied to clipboard");
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"❌ Failed to copy to clipboard: {ex.Message}");
+            }
         }
 
         private void OnClearClick(object sender, RoutedEventArgs e)

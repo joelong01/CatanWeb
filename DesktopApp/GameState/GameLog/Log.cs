@@ -13,6 +13,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Catan.Services;
 using Catan3.Controller;
+using Catan3.Shared.Utility;
 using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Windows.Storage;
@@ -65,6 +66,11 @@ namespace Catan3.Utility
         private ObservableCollection<T> DoneStack { get; set; } = [];
         private ObservableCollection<T> RedoStack { get; set; } = [];
         public GameType GameType { get; set; } = GameType.Regular;
+        
+        /// <summary>
+        /// When true, the log will skip saving to prevent overwriting test files
+        /// </summary>
+        public bool InTestMode { get; set; } = false;
 
         [JsonConstructor]
         public Log(IPersistenceService? PersistenceService, string localSaveFile)
@@ -134,7 +140,7 @@ namespace Catan3.Utility
             {
                 try
                 {
-                    return JsonSerializer.Deserialize<GameModel>(json);
+                    return JsonSerializer.Deserialize<GameModel>(json, JsonHelper.StandardOptions);
                 }
                 catch (JsonException ex)
                 {
@@ -146,8 +152,8 @@ namespace Catan3.Utility
         }
         private static GameModel CopyGameModel(GameModel model)
         {
-            string json = JsonSerializer.Serialize(model) ?? throw new Exception("GameModel must serialize!)");
-            return JsonSerializer.Deserialize<GameModel>(json) ?? throw new Exception("GameModel must Deserialize!");
+            string json = JsonSerializer.Serialize(model, JsonHelper.StandardOptions) ?? throw new Exception("GameModel must serialize!)");
+            return JsonSerializer.Deserialize<GameModel>(json, JsonHelper.StandardOptions) ?? throw new Exception("GameModel must Deserialize!");
         }
         /// <summary>
         /// Converts a GameModel instance into a specified type T. The type T can be a GameModel,
@@ -478,6 +484,12 @@ namespace Catan3.Utility
         public async Task SaveAsync()
         {
             if (PersistService is null) return;
+            
+            // Skip saving when in test mode to prevent overwriting test files
+            if (InTestMode)
+            {
+                return;
+            }
 
             try
             {

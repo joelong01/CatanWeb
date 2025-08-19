@@ -75,7 +75,7 @@
                     AutomationProperties.Name="StartButton"
                     HorizontalAlignment="Right" />
 
-            <Button Content="Run Tests" Width="100" Click="OnRunTests"
+            <Button Content="Load Test File" Width="120" Click="OnRunTests"
                     Margin="5" HorizontalAlignment="Right" />
 
         </StackPanel>

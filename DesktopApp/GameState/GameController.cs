@@ -451,20 +451,40 @@ namespace Catan3.Controller
             // check to see if the extension is a ".catan" file (compressed JSON) or a ".catan_test" file (uncompressed JSON)
             if (Path.GetExtension(filePath).Equals(".catan_test", StringComparison.OrdinalIgnoreCase))
             {
-                await using var fs = File.OpenRead(filePath);
-                using var doc = await JsonDocument.ParseAsync(fs);
+                try
+                {
+                    this.TraceMessage($"Reading .catan_test file: {filePath}");
+                    await using var fs = File.OpenRead(filePath);
+                    this.TraceMessage($"File size: {fs.Length} bytes");
+                    using var doc = await JsonDocument.ParseAsync(fs);
+                    this.TraceMessage("JSON parsed successfully");
 
-                if (doc.RootElement.TryGetProperty("GameModel", out var gmElem))
+                if (doc.RootElement.TryGetProperty("gameModel", out var gmElem))
                 {
                     var gm = gmElem.Deserialize<GameModel>(Catan3.Shared.Utility.JsonHelper.StandardOptions) ?? throw new GameException("Error: Failed to load the game data.");
                     
                     Log<string> log = Log<string>.FromGameModel(gm, MyPersistenceService, filePath);
+                    log.InTestMode = true; // Prevent saving to avoid overwriting test files
                     this.Log = log;
+                    this.TraceMessage("Set log to test mode - saves will be skipped");
                     return Log.CurrentState();
                 }
-                else
+                    else
+                    {
+                        throw new GameException($"Invalid .catan_test file format: Missing 'gameModel' property in {filePath}");
+                    }
+                }
+                catch (JsonException jsonEx)
                 {
-                    throw new GameException($"Invalid .catan_test file format: Missing 'GameModel' property in {filePath}");
+                    this.TraceMessage($"JSON parsing failed for {filePath}: {jsonEx.Message}");
+                    this.TraceMessage($"JSON exception details: {jsonEx}");
+                    throw new GameException($"Invalid JSON format in .catan_test file {filePath}: {jsonEx.Message}");
+                }
+                catch (Exception ex)
+                {
+                    this.TraceMessage($"Unexpected error reading {filePath}: {ex.Message}");
+                    this.TraceMessage($"Exception details: {ex}");
+                    throw new GameException($"Error reading .catan_test file {filePath}: {ex.Message}");
                 }
             }
             else

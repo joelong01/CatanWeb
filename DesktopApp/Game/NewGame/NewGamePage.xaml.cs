@@ -15,6 +15,7 @@ using Microsoft.UI.Xaml.Navigation;
 using Windows.Storage;
 
 
+
 namespace Catan3
 {
     /// <summary>
@@ -145,8 +146,22 @@ namespace Catan3
 
         private async void OnRunTests(object sender, RoutedEventArgs e)
         {
-            var test = new CatanTests();
-            await test.TestScore();
+            try
+            {
+                Debug.Assert(MainWindow.Instance is not null);
+                var filePath = await MainWindow.FileService.OpenFileAsync(MainWindow.Instance, [".catan_test"]);
+                if (filePath is not null && filePath != "")
+                {
+                  // Navigate to MainPage with a minimal ViewModel for test mode
+                    MainPageViewModel mpViewModel = new(MainWindow.FileService, MainWindow.PlayerDatabase, GameType.SavedGame, [], filePath);
+                    Frame.Navigate(typeof(MainPage), mpViewModel);
+                    Frame.BackStack.Clear();
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorDialog($"Failed to load test file: {ex.Message}");
+            }
         }
     }
 }
