@@ -102,7 +102,7 @@ namespace Tests.GameService.Companion
                 Assert.NotNull(proxy.GameModel);
                 Assert.Equal(GameState.PickingBoard, proxy.GameModel.GameState);
 
-                // Test command execution (companion.js doAction()) - use proper DoAction message object
+                // Test command execution (companion.js doAction()) - use proper ExecuteGameActionMessage message object
                 await proxy.ExecuteDoActionAsync(gameId, GameAction.Shuffle);
 
                 // Wait for the update after the shuffle action (should still be PickingBoard)

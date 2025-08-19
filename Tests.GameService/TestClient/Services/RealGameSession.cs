@@ -156,7 +156,7 @@ public class RealGameSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// Executes a DoAction command using the current player
+    /// Executes a ExecuteGameActionMessage command using the current player
     /// </summary>
     public async Task ExecuteAction(GameAction action)
     {

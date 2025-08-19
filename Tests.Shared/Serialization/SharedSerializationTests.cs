@@ -568,9 +568,9 @@ namespace Tests.Shared.Serialization
             {
                 await Task.Run(() =>
                 {
-                    // Test DoAction message
-                    var doAction = new DoAction(GameAction.Next);
-                    TestMessageSerialization(doAction, nameof(DoAction));
+                    // Test ExecuteGameActionMessage message
+                    var doAction = new ExecuteGameActionMessage(GameAction.Next);
+                    TestMessageSerialization(doAction, nameof(ExecuteGameActionMessage));
 
                     // Test PurchaseMessage
                     var purchase = new PurchaseMessage(Entitlement.Settlement);

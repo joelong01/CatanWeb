@@ -166,7 +166,8 @@ namespace Catan3.Shared.Extensions
                 hash += primes.Pop() * gameModel.Robber.Coordinates.R;
                 hash += primes.Pop() * gameModel.Robber.Coordinates.S;
             }
-            
+            var result = hash.ToString("X");
+            result.TraceMessage($"Game hash computed: {result}");
             // Convert to hex string for readability
             return hash.ToString("X");
         }

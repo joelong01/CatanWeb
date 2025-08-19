@@ -99,7 +99,7 @@ namespace Catan3.GameService.Services
                 // Use the GameStateMachineService to execute the action (same logic as GameApiController)
                 GameModel? updatedGameModel = messageType switch
                 {
-                    "DoAction" => _gameService.ExecuteAction(gameId, gsm => ProcessDoAction(messageData, gsm)),
+                    "ExecuteGameActionMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessDoAction(messageData, gsm)),
                     "PurchaseMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessPurchaseMessage(messageData, gsm)),
                     "RoadPurchaseMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessRoadPurchase(messageData, gsm)),
                     "BuildingUpgradeMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessBuildingUpgrade(messageData, gsm)),
@@ -122,7 +122,7 @@ namespace Catan3.GameService.Services
             var actionStr = messageData.GetProperty("action").GetString();
             if (Enum.TryParse<GameAction>(actionStr, out var action))
             {
-                var message = new DoAction(action);
+                var message = new ExecuteGameActionMessage(action);
                 return gameStateMachine.HandleDoAction(message);
             }
             throw new ArgumentException($"Invalid action: {actionStr}");

@@ -44,13 +44,13 @@ namespace Catan3.Controller
         {
             Debug.Assert(Messenger is not null);
             IsActive = true;
-            Messenger.Register<DoAction>(this, (recipient, message) =>
+            Messenger.Register<ExecuteGameActionMessage>(this, (recipient, message) =>
                 {
                     try
                     {
                         var gameModel = Log.CopyCurrent();
                       
-                        _recorder?.RecordAction(message);
+                        _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
                         
                         gameModel = null;
                         switch (message.Action)
@@ -91,7 +91,7 @@ namespace Catan3.Controller
                     {
                         var gameModel = Log.CopyCurrent();
                      
-                        _recorder?.RecordAction(message);
+                        _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
                         
                         gameModel = BuildingUpgrade(message);
                         LogGameModel(gameModel);
@@ -107,8 +107,8 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                    _recorder?.RecordAction(message);
-                    
+                    _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+
                     gameModel = SetPlayerOrder(message.PlayerIds);
                     LogGameModel(gameModel);
                     Messenger.Send(new UpdateGameModel(gameModel));
@@ -126,7 +126,7 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                        _recorder?.RecordAction(message);
+                           _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
                         
                         var model = RoadPurchase(message);
                         this.TraceMessage($"✅ Road placement successful for {automationId}");
@@ -145,7 +145,7 @@ namespace Catan3.Controller
                  try
                  {
                      var gameModel = Log.CopyCurrent();
-                     _recorder?.RecordAction(message);
+                        _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
                      
                      var model = MoveRobber(message);
                      LogGameModel(model);
@@ -221,7 +221,7 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                    _recorder?.RecordAction(message);
+                       _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
                     
                     var model = OnRoll(message);
                     LogGameModel(model);
@@ -237,7 +237,7 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                    _recorder?.RecordAction(message);
+                       _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
                     
                     var model = OnPurchase(message);
                     LogGameModel(model);
@@ -257,7 +257,7 @@ namespace Catan3.Controller
                     GameModel gameModel = Log.CopyCurrent();
                     if (gameModel.GameState != GameState.PickSupplementalPlayers) return;
                     
-                    _recorder?.RecordAction(message);
+                       _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
                     //
                     //  optimize away the case when there are supplemental players
                     foreach (var player in gameModel.Players)
@@ -279,7 +279,7 @@ namespace Catan3.Controller
                 try
                 {
                     GameModel gameModel = Log.CopyCurrent();
-                    _recorder?.RecordAction(message);
+                       _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
                     
                     if (BalanceBoard(gameModel))
                     {
@@ -303,7 +303,7 @@ namespace Catan3.Controller
             {
                 GameModel gameModel = Log.CopyCurrent();
                 if (gameModel.GameState != GameState.FinishedRollOrder) return;
-                _recorder?.RecordAction(message);
+                   _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
              
                 while (gameModel.Players[0].Id != message.PlayerId)
                 {

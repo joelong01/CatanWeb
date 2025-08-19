@@ -362,7 +362,7 @@ namespace Catan3.GameService.Controllers
             var actionStr = messageData.GetProperty("action").GetString();
             if (Enum.TryParse<GameAction>(actionStr, out var action))
             {
-                var message = new DoAction(action);
+                var message = new ExecuteGameActionMessage(action);
                 return gameStateMachine.HandleDoAction(message);
             }
             throw new ArgumentException($"Invalid action: {actionStr}");

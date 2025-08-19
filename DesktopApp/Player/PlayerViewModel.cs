@@ -13,6 +13,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.UI;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
+using Windows.Media.AppBroadcasting;
 
 namespace Catan3.Models
 {
@@ -311,6 +312,22 @@ namespace Catan3.Models
         void GoFirst()
         {
             WeakReferenceMessenger.Default.Send(new GoFirstMessage(this.Id));
+        }
+        /// <summary>
+        ///     function to x:Bind to the GoFirst command in XAML.
+        /// </summary>
+        /// <returns></returns>
+        internal string GetGoFirstAutomationId()
+        {
+            return $"GoFirst-{Id}";
+        }
+        /// <summary>
+        /// ParticipatingInSupplementalAutomationId: function to x:Bind to the ParticipatingInSupplemental command in XAML.
+        /// </summary>  
+        /// 
+        internal string ParticipatingInSupplementalAutomationId()
+        {
+            return $"ParticipatingInSupplemental-{Id}";
         }
     }
     /// <summary>

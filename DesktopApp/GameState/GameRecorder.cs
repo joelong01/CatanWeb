@@ -37,7 +37,7 @@ namespace Catan3.Utility
     {
        
         private readonly GameModel _initialGameModel;
-        private readonly List<object> _recordedActions;
+        private readonly List<IRecordedMessage> _recordedActions;
         private readonly string _outputPath;
         private bool _isRecording;
 
@@ -60,7 +60,7 @@ namespace Catan3.Utility
             _initialGameModel = SerializationHelper.JsonDeserialize<GameModel>(jsonString) 
                 ?? throw new InvalidOperationException("Failed to deserialize GameModel during deep copy");
 
-            _recordedActions = new List<object>();
+            _recordedActions = new List<IRecordedMessage>();
             _outputPath = GenerateTestFilePath(logFilePath);
             _isRecording = true;
 
@@ -71,195 +71,28 @@ namespace Catan3.Utility
         /// <summary>
         /// Records an action that occurred during the recording session.
         /// </summary>
-        /// <param name="message">The message object containing the action information</param>
-        public void RecordAction(object message)
+        /// <param name="recordedMessage">The recorded message containing the action and game hash</param>
+        public void RecordAction(IRecordedMessage recordedMessage)
         {
             if (!_isRecording)
             {
-                this.TraceMessage($"⚠️ Attempted to record action while recording is stopped: {message.GetType().Name}");
+                this.TraceMessage($"⚠️ Attempted to record action while recording is stopped: {recordedMessage.RecordType}");
                 return;
             }
 
             try
             {
-                // Map message to test action format
-                var action = MapMessageToAction(message);
-                if (action != null)
-                {
-                    _recordedActions.Add(action);
-                    this.TraceMessage($"📝 Recorded: {message.GetType().Name}");
-                }
-                else
-                {
-                    this.TraceMessage($"🔇 Ignored: {message.GetType().Name} (not recorded in tests)");
-                }
+                _recordedActions.Add(recordedMessage);
+                this.TraceMessage($"📝 Recorded: {recordedMessage.RecordType} with hash: {recordedMessage.GameHash}");
             }
             catch (Exception ex)
             {
-                this.TraceMessage($"❌ Error recording action {message.GetType().Name}: {ex.Message}");
+                this.TraceMessage($"❌ Error recording action {recordedMessage.RecordType}: {ex.Message}");
                 // Don't throw - continue recording other actions
             }
         }
 
-        /// <summary>
-        /// Maps different message types to the appropriate test action format.
-        /// </summary>
-        private object? MapMessageToAction(object message)
-        {
-            return message.GetType().Name switch
-            {
-                "DoAction" => MapDoActionMessage((dynamic)message),
-                "BuildingUpgradeMessage" => MapBuildingUpgradeMessage((dynamic)message),
-                "RoadPurchaseMessage" => MapRoadPurchaseMessage((dynamic)message),
-                "MoveRobberMessage" => MapMoveRobberMessage((dynamic)message),
-                "RollMessage" => MapRollMessage((dynamic)message),
-                "PurchaseMessage" => MapPurchaseMessage((dynamic)message),
-                "SetPlayerOrderMessage" => MapSetPlayerOrderMessage((dynamic)message),
-                "GoFirstMessage" => MapGoFirstMessage((dynamic)message),
-                "PlayersDoingSupplemental" => MapPlayersDoingSupplementalMessage((dynamic)message),
-                "BalanceBoardMessage" => MapBalanceBoardMessage((dynamic)message),
-                
-                // Message types we explicitly don't record (return null)
-                "NewGameMessage" => null,
-                "UpdateGameModel" => null,
-                "EndGame" => null,
-                "ErrorMessage" => null,
-                "PersistGameMessage" => null,
-                "LoadGameMessage" => null,
-                "StartRecordingMessage" => null,
-                "StopRecordingMessage" => null,
-                
-                _ => throw new NotSupportedException($"Unsupported message type for recording: {message.GetType().Name}. Add explicit mapping for this message type.")
-            };
-        }
 
-        private object MapDoActionMessage(dynamic message)
-        {
-            return new
-            {
-                type = GetActionTypeFromGameAction(message.Action),
-                parameters = new Dictionary<string, object> { { "gameAction", message.Action.ToString() } },
-                timestamp = DateTime.UtcNow
-            };
-        }
-
-        private object MapBuildingUpgradeMessage(dynamic message)
-        {
-            return new
-            {
-                type = "PlaceBuilding", // or "UpgradeBuilding" based on context
-                parameters = new Dictionary<string, object> { { "automationId", message.BuildingKey.GetAutomationId() } },
-                timestamp = DateTime.UtcNow
-            };
-        }
-
-        private object MapRoadPurchaseMessage(dynamic message)
-        {
-            return new
-            {
-                type = "PlaceRoad",
-                parameters = new Dictionary<string, object> { { "automationId", message.RoadKey.GetAutomationId() } },
-                timestamp = DateTime.UtcNow
-            };
-        }
-
-        private object MapMoveRobberMessage(dynamic message)
-        {
-            return new
-            {
-                type = "MoveRobber",
-                parameters = new Dictionary<string, object>
-                {
-                    { "automationId", $"Tile-{message.Coordinates}" },
-                    { "targetPlayerId", message.TargetPlayerId ?? string.Empty }
-                },
-                timestamp = DateTime.UtcNow
-            };
-        }
-
-        private object MapRollMessage(dynamic message)
-        {
-            return new
-            {
-                type = "RollDice",
-                parameters = new Dictionary<string, object> { { "automationId", $"Roll-{(int)message.Roll.NormalRoll}" } },
-                timestamp = DateTime.UtcNow
-            };
-        }
-
-        private object MapPurchaseMessage(dynamic message)
-        {
-            return new
-            {
-                type = GetPurchaseActionType(message.Entitlement),
-                parameters = (Dictionary<string, object>?)null,
-                timestamp = DateTime.UtcNow
-            };
-        }
-
-        private object MapSetPlayerOrderMessage(dynamic message)
-        {
-            return new
-            {
-                type = "SetPlayerOrder",
-                parameters = new Dictionary<string, object> { { "playerIds", message.PlayerIds.ToArray() } },
-                timestamp = DateTime.UtcNow
-            };
-        }
-
-        private object MapGoFirstMessage(dynamic message)
-        {
-            return new
-            {
-                type = "GoFirst",
-                parameters = new Dictionary<string, object> { { "playerId", message.PlayerId } },
-                timestamp = DateTime.UtcNow
-            };
-        }
-
-        private object MapPlayersDoingSupplementalMessage(dynamic message)
-        {
-            return new
-            {
-                type = "SelectSupplementalPlayers",
-                parameters = new Dictionary<string, object> { { "playerIds", message.PlayerIds.ToArray() } },
-                timestamp = DateTime.UtcNow
-            };
-        }
-
-        private object MapBalanceBoardMessage(dynamic message)
-        {
-            return new
-            {
-                type = ActionType.ShuffleBoard,
-                parameters = (Dictionary<string, object>?)null,
-                timestamp = DateTime.UtcNow
-            };
-        }
-
-        private static ActionType GetActionTypeFromGameAction(dynamic action)
-        {
-            return action.ToString() switch
-            {
-                "Shuffle" => ActionType.ShuffleBoard,
-                "Undo" => ActionType.PreviousBoard,
-                "Redo" => ActionType.RedoBoard,
-                "Next" => ActionType.AdvanceNext,
-                _ => ActionType.AdvanceNext // Default fallback
-            };
-        }
-
-        private static ActionType GetPurchaseActionType(dynamic entitlement)
-        {
-            return entitlement.ToString() switch
-            {
-                "Road" => ActionType.PurchaseRoad,
-                "Settlement" => ActionType.PurchaseSettlement,
-                "City" => ActionType.PurchaseCity,
-                "Soldier" => ActionType.PurchaseSoldier,
-                _ => ActionType.PurchaseRoad // Default fallback
-            };
-        }
 
         /// <summary>
         /// Ends the recording session and saves the complete .catan_test file.

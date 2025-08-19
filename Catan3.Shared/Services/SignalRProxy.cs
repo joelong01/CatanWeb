@@ -150,14 +150,14 @@ namespace Catan3.Shared.Services
         #region SignalR Hub Method Wrappers
 
         /// <summary>
-        /// Executes a DoAction command (Shuffle, Undo, Redo, Next, Balance)
+        /// Executes a ExecuteGameActionMessage command (Shuffle, Undo, Redo, Next, Balance)
         /// </summary>
         public async Task<CommandResult> ExecuteDoActionAsync(string gameId, GameAction action, TimeSpan? timeout = null)
         {
-            var message = new DoAction(action);
+            var message = new ExecuteGameActionMessage(action);
             return await ExecuteCommandAsync(
                 () => _connection.InvokeAsync("ExecuteDoAction", gameId, _playerId, message),
-                $"DoAction {action}",
+                $"ExecuteGameActionMessage {action}",
                 timeout
             );
         }

@@ -217,7 +217,7 @@ public class RealGameSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// Executes a DoAction command using the current player and waits for all proxies to receive updates
+    /// Executes a ExecuteGameActionMessage command using the current player and waits for all proxies to receive updates
     /// Implements the async notification pattern where action triggers GameModel updates to all clients
     /// </summary>
     public async Task ExecuteAction(GameAction action)

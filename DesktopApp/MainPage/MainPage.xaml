@@ -37,6 +37,7 @@
                     BorderThickness="1">
                 <Button Content="Go First" Margin="10" VerticalAlignment="Top"
                         HorizontalAlignment="Center"
+                        AutomationProperties.AutomationId="{x:Bind GetGoFirstAutomationId(), Mode=OneWay}"
                         Command="{x:Bind GoFirstCommand, Mode=OneWay}" />
                 <Ellipse Width="75" Height="75" Margin="10">
                     <Ellipse.Fill>
@@ -58,6 +59,7 @@
                     BorderThickness="1">
                 <CheckBox Content="Doing Supplemental" Margin="10"
                         VerticalAlignment="Top" HorizontalAlignment="Center"
+                        AutomationProperties.AutomationId="{x:Bind ParticipatingInSupplementalAutomationId(), Mode=OneWay}"
                         IsEnabled="{x:Bind CanParticipateInSupplemental(IsCurrentPlayer), Mode=OneWay}"
                         IsChecked="{x:Bind PartipatingInSupplemental, Mode=TwoWay}" />
                 <Ellipse Width="75" Height="75" Margin="10">

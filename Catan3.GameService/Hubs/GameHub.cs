@@ -104,34 +104,34 @@ namespace Catan3.GameService.Hubs
         #region Direct MVVM Message Handlers - Same as Desktop App
 
         /// <summary>
-        /// Executes DoAction commands (Shuffle, Undo, Redo, Next) - matches Desktop app exactly
+        /// Executes ExecuteGameActionMessage commands (Shuffle, Undo, Redo, Next) - matches Desktop app exactly
         /// </summary>
         /// <param name="gameId">The game ID</param>
         /// <param name="playerId">The player ID executing the action</param>
-        /// <param name="message">The DoAction message object</param>
-        public async Task ExecuteDoAction(string gameId, string playerId, DoAction message)
+        /// <param name="message">The ExecuteGameActionMessage message object</param>
+        public async Task ExecuteDoAction(string gameId, string playerId, ExecuteGameActionMessage message)
         {
             var commandId = Guid.NewGuid().ToString();
             try 
             {
-                LogEvent("DoAction", $"SignalR DoAction: {message.Action} for {playerId} in {gameId}");
+                LogEvent("ExecuteGameActionMessage", $"SignalR ExecuteGameActionMessage: {message.Action} for {playerId} in {gameId}");
                 
                 // Process synchronously for real-time response
                 var updatedGameModel = _gameService.ExecuteAction(gameId, gsm => gsm.HandleDoAction(message));
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
-                LogEvent("Send Client Update", $"GameStateUpdated sent for DoAction: {message.Action} - PlayerId={playerId}, GameID={gameId}");
+                LogEvent("Send Client Update", $"GameStateUpdated sent for ExecuteGameActionMessage: {message.Action} - PlayerId={playerId}, GameID={gameId}");
                 
                 // Notify command completion to original client
                 await Clients.Caller.SendAsync("CommandCompleted", commandId, true, $"{message.Action} completed");
                 
-                LogEvent("DoAction", $"DoAction {message.Action} completed successfully for game {gameId}", LogLevel.Debug);
+                LogEvent("ExecuteGameActionMessage", $"ExecuteGameActionMessage {message.Action} completed successfully for game {gameId}", LogLevel.Debug);
             }
             catch (Exception ex)
             {
-                LogEvent("DoAction", $"Failed to execute DoAction {message.Action} for {playerId} in {gameId}: {ex.Message}", LogLevel.Error);
-                var errorInfo = CreateDetailedErrorInfo(ex, "DoAction", $"{message.Action}");
+                LogEvent("ExecuteGameActionMessage", $"Failed to execute ExecuteGameActionMessage {message.Action} for {playerId} in {gameId}: {ex.Message}", LogLevel.Error);
+                var errorInfo = CreateDetailedErrorInfo(ex, "ExecuteGameActionMessage", $"{message.Action}");
                 await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }

@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text.Json;
 using System.Collections.Generic;
 using Catan3.Shared.Utility;
+using Catan3.Shared.Models;
+using Catan3.Shared.Extensions;
 
 namespace Tests.DesktopApp.UI.ScriptedTestData
 {
@@ -45,16 +47,19 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                     throw new InvalidOperationException(".catan_test file must contain an 'actionStack' property");
                 }
                 
-                // Deserialize the actions
-                var actions = JsonSerializer.Deserialize<List<TestAction>>(actionStack.GetRawText(), JsonHelper.StandardOptions);
-                if (actions == null)
+                // Deserialize the recorded messages using polymorphic JSON serialization
+                var recordedMessages = JsonSerializer.Deserialize<List<IRecordedMessage>>(actionStack.GetRawText(), JsonHelper.StandardOptions);
+                if (recordedMessages == null)
                 {
                     throw new InvalidOperationException("Failed to deserialize ActionStack");
                 }
                 
+                // Store recorded messages directly for replay validation and UI interaction
+                var actions = recordedMessages;
+                
                 // Extract game metadata from GameModel
                 var gameType = gameModel.TryGetProperty("gameType", out var gt) 
-                    ? gt.GetInt32() == 1 ? "Expansion" : "Regular"
+                    ? gt.GetString() ?? "Regular"
                     : "Regular";
                     
                 var playerCount = 0;
@@ -116,5 +121,6 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             
             return testFilePath;
         }
+
     }
 }

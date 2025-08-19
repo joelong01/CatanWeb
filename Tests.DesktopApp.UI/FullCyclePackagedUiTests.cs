@@ -840,6 +840,37 @@ namespace Tests.DesktopApp.UI
         /// Returns: Valid GameModel instance
         /// Throws: AssertionException if GameModel cannot be retrieved or is invalid
         /// </summary>
+        /// <summary>
+        /// Gets the current game hash without deserializing the full GameModel.
+        /// More efficient when only the hash is needed for validation.
+        /// </summary>
+        private string GetCurrentGameHash()
+        {
+            AutomationElement nextButton = FindByAutomationId("NextButton");
+            Assert.NotNull(nextButton);
+            
+            if (nextButton.Properties.ItemStatus.TryGetValue(out var buttonGameModelValue))
+            {
+                var buttonGameModelJson = buttonGameModelValue as string;
+                if (!string.IsNullOrEmpty(buttonGameModelJson))
+                {
+                    // Simple JSON search for gameHash value without full deserialization
+                    var hashStart = buttonGameModelJson.IndexOf("\"gameHash\":\"");
+                    if (hashStart >= 0)
+                    {
+                        hashStart += 12; // Skip past "gameHash":"
+                        var hashEnd = buttonGameModelJson.IndexOf('"', hashStart);
+                        if (hashEnd > hashStart)
+                        {
+                            return buttonGameModelJson.Substring(hashStart, hashEnd - hashStart);
+                        }
+                    }
+                }
+            }
+            
+            throw new InvalidOperationException("Could not extract GameHash from NextButton ItemStatus");
+        }
+
         private GameModel GetCurrentGameModel()
         {
             // Primary approach: Get GameModel from NextButton which is always accessible and reliable
@@ -979,23 +1010,217 @@ namespace Tests.DesktopApp.UI
             var uiHelper = new UIAutomationHelper(Main, _automation!);
             var actionExecutor = new ActionExecutor(uiHelper);
 
-            // Execute each action in sequence
+            // Execute each recorded message in sequence
             for (int i = 0; i < scenario.Actions.Count; i++)
             {
-                var currentAction = scenario.Actions[i];
-                this.TraceMessage($"Executing action {i + 1}/{scenario.Actions.Count}: {currentAction.Type} for player {currentAction.PlayerId}");
+                var recordedMessage = scenario.Actions[i];
+                this.TraceMessage($"Replaying action {i + 1}/{scenario.Actions.Count}: {recordedMessage.RecordType} with hash {recordedMessage.GameHash}");
 
-                // Note: State assertions removed because ExpectedState represents the state BEFORE the action,
-                // but we cannot assert it matches current state since previous actions have modified the state.
+                // Validate that current GameHash matches recorded GameHash
+                var currentGameHash = GetCurrentGameHash();
+                if (currentGameHash != recordedMessage.GameHash)
+                {
+                    this.TraceMessage($"❌ Game state mismatch at action {i}:");
+                    this.TraceMessage($"   Expected: {recordedMessage.GameHash}");
+                    this.TraceMessage($"   Current:  {currentGameHash}");
+                    throw new InvalidOperationException($"Game state mismatch at action {i}: expected {recordedMessage.GameHash}, got {currentGameHash}");
+                }
 
-                // Execute the current action
-                actionExecutor.ExecuteAction(currentAction);
+                this.TraceMessage($"✅ GameHash validated: {currentGameHash}");
+
+                // Execute UI interaction based on recorded message type
+                ExecuteRecordedMessage(recordedMessage, uiHelper);
 
                 // Wait for UI to update
                 Thread.Sleep(SHORT_WAIT);
             }
 
             this.TraceMessage("All scripted actions completed successfully");
+        }
+
+        /// <summary>
+        /// Executes a UI interaction based on the recorded message type.
+        /// Uses pattern matching to delegate to specific execution methods.
+        /// </summary>
+        private void ExecuteRecordedMessage(IRecordedMessage recordedMessage, UIAutomationHelper uiHelper)
+        {
+            switch (recordedMessage)
+            {
+                case ExecuteGameActionRecord action:
+                    Execute_GameAction(action);
+                    break;
+                case PurchaseRecord purchase:
+                    Execute_Purchase(purchase);
+                    break;
+                case BuildingUpgradeRecord building:
+                    Execute_BuildingUpgrade(building, uiHelper);
+                    break;
+                case RoadPurchaseRecord road:
+                    Execute_RoadPurchase(road, uiHelper);
+                    break;
+                case MoveRobberRecord robber:
+                    Execute_MoveRobber(robber, uiHelper);
+                    break;
+                case RollRecord roll:
+                    Execute_Roll(roll);
+                    break;
+                case SetPlayerOrderRecord playerOrder:
+                    Execute_SetPlayerOrder(playerOrder);
+                    break;
+                case GoFirstRecord goFirst:
+                    Execute_GoFirst(goFirst);
+                    break;
+                case PlayersDoingSupplementalRecord supplemental:
+                    Execute_PlayersDoingSupplemental(supplemental);
+                    break;
+                case BalanceBoardRecord balance:
+                    Execute_BalanceBoard(balance);
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unknown recorded message type: {recordedMessage.GetType().Name}");
+            }
+        }
+
+        // Individual execution methods for each recorded message type
+
+        private void Execute_Roll(RollRecord roll)
+        {
+            this.TraceMessage($"Executing roll: {roll.Roll.NormalRoll}");
+            DoRoll((int)roll.Roll.NormalRoll);
+        }
+
+        private void Execute_Purchase(PurchaseRecord purchase)
+        {
+            var buttonId = purchase.Entitlement switch
+            {
+                Entitlement.Road => "PurchaseRoadButton",
+                Entitlement.Settlement => "PurchaseSettlementButton",
+                Entitlement.City => "PurchaseCityButton", 
+                Entitlement.Soldier => "PurchaseSoldierButton",
+                _ => throw new InvalidOperationException($"Unknown entitlement: {purchase.Entitlement}")
+            };
+            
+            this.TraceMessage($"Executing purchase: {purchase.Entitlement} -> {buttonId}");
+            var button = FindByAutomationId(buttonId);
+            Assert.NotNull(button);
+            button.Click();
+        }
+
+        private void Execute_GameAction(ExecuteGameActionRecord action)
+        {
+            var buttonId = action.Action switch
+            {
+                GameAction.Shuffle => "ShuffleButton",
+                GameAction.Undo => "UndoButton",
+                GameAction.Redo => "RedoButton", 
+                GameAction.Next => "NextButton",
+                _ => throw new InvalidOperationException($"Unknown game action: {action.Action}")
+            };
+            
+            this.TraceMessage($"Executing game action: {action.Action} -> {buttonId}");
+            var button = FindByAutomationId(buttonId);
+            Assert.NotNull(button);
+            button.Click();
+        }
+
+        private void Execute_BuildingUpgrade(BuildingUpgradeRecord building, UIAutomationHelper uiHelper)
+        {
+            var automationId = building.BuildingKey.GetAutomationId();
+            this.TraceMessage($"Executing building upgrade: {automationId}");
+            
+            var element = uiHelper.FindElement(automationId);
+            if (element == null)
+                throw new InvalidOperationException($"Building element not found: {automationId}");
+                
+            element.Click();
+        }
+
+        private void Execute_RoadPurchase(RoadPurchaseRecord road, UIAutomationHelper uiHelper)
+        {
+            var automationId = road.RoadKey.GetAutomationId();
+            this.TraceMessage($"Executing road purchase: {automationId}");
+            
+            var element = uiHelper.FindElement(automationId);
+            if (element == null)
+                throw new InvalidOperationException($"Road element not found: {automationId}");
+                
+            element.Click();
+        }
+
+        private void Execute_MoveRobber(MoveRobberRecord robber, UIAutomationHelper uiHelper)
+        {
+            var tileAutomationId = $"Tile-{robber.Coordinates}";
+            this.TraceMessage($"Executing move robber: {tileAutomationId}, target: {robber.TargetPlayerId ?? "none"}");
+            
+            var tileElement = uiHelper.FindElement(tileAutomationId);
+            if (tileElement == null)
+                throw new InvalidOperationException($"Tile element not found: {tileAutomationId}");
+            
+            // Right-click on tile to open robber context menu
+            tileElement.RightClick();
+            
+            // TODO: If there's a target player, select them from the context menu
+            // This would require additional UI automation to handle the context menu
+            if (!string.IsNullOrEmpty(robber.TargetPlayerId))
+            {
+                this.TraceMessage($"TODO: Select target player {robber.TargetPlayerId} from context menu");
+                // For now, just click somewhere to close menu - needs proper implementation
+            }
+        }
+
+        private void Execute_SetPlayerOrder(SetPlayerOrderRecord playerOrder)
+        {
+            this.TraceMessage($"Executing set player order: {string.Join(", ", playerOrder.PlayerIds)}");
+            // Player order is typically handled by the game logic automatically
+            // May need to click Next to proceed
+            var nextButton = FindByAutomationId("NextButton");
+            nextButton?.Click();
+        }
+
+        private void Execute_GoFirst(GoFirstRecord goFirst)
+        {
+            var automationId = $"GoFirst-{goFirst.PlayerId}";
+            this.TraceMessage($"Executing go first: Player {goFirst.PlayerId} -> {automationId}");
+            
+            var goFirstButton = FindByAutomationId(automationId);
+            if (goFirstButton == null)
+                throw new InvalidOperationException($"Go First button not found for player: {automationId}");
+            
+            goFirstButton.Click();
+        }
+
+        private void Execute_PlayersDoingSupplemental(PlayersDoingSupplementalRecord supplemental)
+        {
+            this.TraceMessage($"Executing supplemental players: {string.Join(", ", supplemental.PlayerIds)}");
+            
+            // Click checkbox for each player that should participate
+            foreach (var playerId in supplemental.PlayerIds)
+            {
+                var automationId = $"ParticipatingInSupplemental-{playerId}";
+                this.TraceMessage($"Selecting supplemental player: {playerId} -> {automationId}");
+                
+                var checkbox = FindByAutomationId(automationId);
+                if (checkbox == null)
+                    throw new InvalidOperationException($"Supplemental player checkbox not found: {automationId}");
+                
+                checkbox.Click();
+            }
+            
+            // After selecting all players, click Next to proceed
+            var nextButton = FindByAutomationId("NextButton");
+            if (nextButton == null)
+                throw new InvalidOperationException("Next button not found after supplemental player selection");
+            
+            nextButton.Click();
+        }
+
+        private void Execute_BalanceBoard(BalanceBoardRecord balance)
+        {
+            this.TraceMessage("Executing balance board");
+            var button = FindByAutomationId("BalanceBoardButton");
+            if (button == null)
+                throw new InvalidOperationException("BalanceBoardButton not found");
+            button.Click();
         }
 
         /// <summary>

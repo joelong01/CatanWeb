@@ -66,7 +66,7 @@ namespace Catan3.GameService.Controllers
         }
 
         // Simplified message handling without MVVM
-        public GameModel HandleDoAction(DoAction message)
+        public GameModel HandleDoAction(ExecuteGameActionMessage message)
         {
             try
             {

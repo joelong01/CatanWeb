@@ -18,17 +18,17 @@ namespace Catan3.Models
         [RelayCommand]
         public void Shuffle()
         {
-            Messenger.Send(new DoAction(GameAction.Shuffle));
+            Messenger.Send(new ExecuteGameActionMessage(GameAction.Shuffle));
         }
         [RelayCommand]
         public void Undo()
         {
-            Messenger.Send(new DoAction(GameAction.Undo));
+            Messenger.Send(new ExecuteGameActionMessage(GameAction.Undo));
         }
         [RelayCommand]
         public void Redo()
         {
-            Messenger.Send(new DoAction(GameAction.Redo));
+            Messenger.Send(new ExecuteGameActionMessage(GameAction.Redo));
         }
         [RelayCommand]
         public void NextAction()
@@ -49,7 +49,7 @@ namespace Catan3.Models
  
             }
 
-            Messenger.Send(new DoAction(GameAction.Next));
+            Messenger.Send(new ExecuteGameActionMessage(GameAction.Next));
 
         }
         /// <summary>

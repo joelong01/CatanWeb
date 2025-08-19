@@ -1,3 +1,4 @@
+using Catan3.Shared.Models;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -52,9 +53,9 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         public int ExpectedPlayerCount { get; set; }
         
         /// <summary>
-        /// Chronological list of actions to execute in sequence
+        /// Chronological list of recorded messages to replay in sequence
         /// </summary>
-        public List<TestAction> Actions { get; set; } = new();
+        public List<IRecordedMessage> Actions { get; set; } = new();
         
         /// <summary>
         /// Expected final game state when all actions are completed
@@ -109,14 +110,9 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             if (Actions.Count == 0)
                 errors.Add("Scenario must have at least one action defined");
             
-            // Check for required player IDs in actions
-            var playerIds = Actions.Where(a => !string.IsNullOrEmpty(a.PlayerId))
-                                  .Select(a => a.PlayerId)
-                                  .Distinct()
-                                  .Count();
-            
-            if (playerIds == 0)
-                errors.Add("At least one action must specify a playerId");
+            // Validation for recorded messages - just check that we have valid game hashes
+            if (Actions.Any(a => string.IsNullOrEmpty(a.GameHash)))
+                errors.Add("All recorded messages must have a valid GameHash");
             
             return errors;
         }
