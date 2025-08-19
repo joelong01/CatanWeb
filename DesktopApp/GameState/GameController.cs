@@ -279,6 +279,8 @@ namespace Catan3.Controller
                 try
                 {
                     GameModel gameModel = Log.CopyCurrent();
+                    _recorder?.RecordAction(message);
+                    
                     if (BalanceBoard(gameModel))
                     {
                         LogGameModel(gameModel);

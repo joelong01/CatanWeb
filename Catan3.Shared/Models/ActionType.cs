@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace Tests.DesktopApp.UI.ScriptedTestData
+namespace Catan3.Shared.Models
 {
     /// <summary>
     /// Represents the types of actions that can be scripted in UI tests.

@@ -1,4 +1,4 @@
-{
+﻿{
   "gameModel": {
     "entitlementPurchaseModel": [
       {
@@ -3358,14 +3358,14 @@
   },
   "actionStack": [
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
       "timestamp": "2025-08-18T23:29:22.4488602Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
@@ -3379,63 +3379,63 @@
       "timestamp": "2025-08-18T23:29:27.8869836Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
       "timestamp": "2025-08-18T23:29:29.0362118Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
       "timestamp": "2025-08-18T23:29:30.1369082Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
       "timestamp": "2025-08-18T23:29:32.5100867Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
       "timestamp": "2025-08-18T23:29:34.9261425Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
       "timestamp": "2025-08-18T23:29:37.6218862Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
       "timestamp": "2025-08-18T23:29:41.1979438Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
       "timestamp": "2025-08-18T23:29:44.1230255Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
       "timestamp": "2025-08-18T23:29:46.4725997Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
@@ -3449,19 +3449,19 @@
       "timestamp": "2025-08-18T23:29:49.1007565Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
       "timestamp": "2025-08-18T23:29:49.9732029Z"
     },
     {
-      "type": "Unknown",
-      "messageType": "PlayersDoingSupplemental",
+      "type": "SelectSupplementalPlayers",
+      "parameters": null,
       "timestamp": "2025-08-18T23:29:55.1578919Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
@@ -3478,7 +3478,7 @@
       "timestamp": "2025-08-18T23:30:01.3540174Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
@@ -3495,7 +3495,7 @@
       "timestamp": "2025-08-18T23:30:09.0943667Z"
     },
     {
-      "type": "NextState",
+      "type": "AdvanceNext",
       "parameters": {
         "gameAction": "Next"
       },
@@ -3531,3 +3531,4 @@
     }
   ]
 }
+

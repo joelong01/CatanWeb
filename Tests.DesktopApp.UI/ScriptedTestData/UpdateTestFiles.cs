@@ -13,7 +13,8 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
     {
         public static void UpdateAllTestFiles()
         {
-            var testDataDir = Path.GetDirectoryName(typeof(UpdateTestFiles).Assembly.Location);
+            var testDataDir = Path.GetDirectoryName(typeof(UpdateTestFiles).Assembly.Location) 
+                ?? throw new InvalidOperationException("Unable to determine test data directory");
             var catanTestFiles = Directory.GetFiles(testDataDir, "*.catan_test", SearchOption.AllDirectories);
             
             foreach (var file in catanTestFiles)

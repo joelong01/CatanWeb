@@ -35,14 +35,14 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 var root = document.RootElement;
                 
                 // Extract GameModel and ActionStack from the .catan_test file
-                if (!root.TryGetProperty("GameModel", out var gameModel))
+                if (!root.TryGetProperty("gameModel", out var gameModel))
                 {
-                    throw new InvalidOperationException(".catan_test file must contain a 'GameModel' property");
+                    throw new InvalidOperationException(".catan_test file must contain a 'gameModel' property");
                 }
                 
-                if (!root.TryGetProperty("ActionStack", out var actionStack))
+                if (!root.TryGetProperty("actionStack", out var actionStack))
                 {
-                    throw new InvalidOperationException(".catan_test file must contain an 'ActionStack' property");
+                    throw new InvalidOperationException(".catan_test file must contain an 'actionStack' property");
                 }
                 
                 // Deserialize the actions
@@ -53,12 +53,12 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 }
                 
                 // Extract game metadata from GameModel
-                var gameType = gameModel.TryGetProperty("GameType", out var gt) 
+                var gameType = gameModel.TryGetProperty("gameType", out var gt) 
                     ? gt.GetInt32() == 1 ? "Expansion" : "Regular"
                     : "Regular";
                     
                 var playerCount = 0;
-                if (gameModel.TryGetProperty("Players", out var players))
+                if (gameModel.TryGetProperty("players", out var players))
                 {
                     playerCount = players.GetArrayLength();
                 }

@@ -48,21 +48,24 @@ namespace Catan3.Utility
         /// <param name="logFilePath">The path of the log file to use for generating the test file path</param>
         public GameRecorder(GameModel initialGameModel, string logFilePath)
         {
-            // Create a deep copy of the GameModel via serialize/deserialize to ensure immutability
-            var jsonString = SerializationHelper.JsonSerialize(initialGameModel);
-            _initialGameModel = SerializationHelper.JsonDeserialize<GameModel>(jsonString);
             if (initialGameModel is null)
             {
                 NativeMessageBox.Show("Initial GameModel is null.", "Game Recorder Error", 0x00000010 /* MB_ICONHAND */);
                 Debugger.Break();
+                throw new ArgumentNullException(nameof(initialGameModel));
             }
+
+            // Create a deep copy of the GameModel via serialize/deserialize to ensure immutability
+            var jsonString = SerializationHelper.JsonSerialize(initialGameModel);
+            _initialGameModel = SerializationHelper.JsonDeserialize<GameModel>(jsonString) 
+                ?? throw new InvalidOperationException("Failed to deserialize GameModel during deep copy");
 
             _recordedActions = new List<object>();
             _outputPath = GenerateTestFilePath(logFilePath);
             _isRecording = true;
 
-            this.LogMessage($"🎬 Recording started from GameState: {_initialGameModel.GameState}");
-            this.LogMessage($"📁 Recording will be saved to: {_outputPath}");
+            this.TraceMessage($"🎬 Recording started from GameState: {_initialGameModel.GameState}");
+            this.TraceMessage($"📁 Recording will be saved to: {_outputPath}");
         }
 
         /// <summary>
@@ -73,7 +76,7 @@ namespace Catan3.Utility
         {
             if (!_isRecording)
             {
-                this.LogMessage($"⚠️ Attempted to record action while recording is stopped: {message.GetType().Name}");
+                this.TraceMessage($"⚠️ Attempted to record action while recording is stopped: {message.GetType().Name}");
                 return;
             }
 
@@ -84,16 +87,16 @@ namespace Catan3.Utility
                 if (action != null)
                 {
                     _recordedActions.Add(action);
-                    this.LogMessage($"📝 Recorded: {message.GetType().Name}");
+                    this.TraceMessage($"📝 Recorded: {message.GetType().Name}");
                 }
                 else
                 {
-                    this.LogMessage($"⚠️ Failed to map message type: {message.GetType().Name}");
+                    this.TraceMessage($"🔇 Ignored: {message.GetType().Name} (not recorded in tests)");
                 }
             }
             catch (Exception ex)
             {
-                this.LogMessage($"❌ Error recording action {message.GetType().Name}: {ex.Message}");
+                this.TraceMessage($"❌ Error recording action {message.GetType().Name}: {ex.Message}");
                 // Don't throw - continue recording other actions
             }
         }
@@ -113,8 +116,20 @@ namespace Catan3.Utility
                 "PurchaseMessage" => MapPurchaseMessage((dynamic)message),
                 "SetPlayerOrderMessage" => MapSetPlayerOrderMessage((dynamic)message),
                 "GoFirstMessage" => MapGoFirstMessage((dynamic)message),
-                "PickSupplementalPlayersMessage" => MapPickSupplementalPlayersMessage((dynamic)message),
-                _ => new { type = "Unknown", messageType = message.GetType().Name, timestamp = DateTime.UtcNow }
+                "PlayersDoingSupplemental" => MapPlayersDoingSupplementalMessage((dynamic)message),
+                "BalanceBoardMessage" => MapBalanceBoardMessage((dynamic)message),
+                
+                // Message types we explicitly don't record (return null)
+                "NewGameMessage" => null,
+                "UpdateGameModel" => null,
+                "EndGame" => null,
+                "ErrorMessage" => null,
+                "PersistGameMessage" => null,
+                "LoadGameMessage" => null,
+                "StartRecordingMessage" => null,
+                "StopRecordingMessage" => null,
+                
+                _ => throw new NotSupportedException($"Unsupported message type for recording: {message.GetType().Name}. Add explicit mapping for this message type.")
             };
         }
 
@@ -202,7 +217,7 @@ namespace Catan3.Utility
             };
         }
 
-        private object MapPickSupplementalPlayersMessage(dynamic message)
+        private object MapPlayersDoingSupplementalMessage(dynamic message)
         {
             return new
             {
@@ -212,27 +227,37 @@ namespace Catan3.Utility
             };
         }
 
-        private static string GetActionTypeFromGameAction(dynamic action)
+        private object MapBalanceBoardMessage(dynamic message)
         {
-            return action.ToString() switch
+            return new
             {
-                "Shuffle" => "ShuffleGame",
-                "Undo" => "UndoAction",
-                "Redo" => "RedoAction",
-                "Next" => "NextState",
-                _ => $"GameAction{action}"
+                type = ActionType.ShuffleBoard,
+                parameters = (Dictionary<string, object>?)null,
+                timestamp = DateTime.UtcNow
             };
         }
 
-        private static string GetPurchaseActionType(dynamic entitlement)
+        private static ActionType GetActionTypeFromGameAction(dynamic action)
+        {
+            return action.ToString() switch
+            {
+                "Shuffle" => ActionType.ShuffleBoard,
+                "Undo" => ActionType.PreviousBoard,
+                "Redo" => ActionType.RedoBoard,
+                "Next" => ActionType.AdvanceNext,
+                _ => ActionType.AdvanceNext // Default fallback
+            };
+        }
+
+        private static ActionType GetPurchaseActionType(dynamic entitlement)
         {
             return entitlement.ToString() switch
             {
-                "Road" => "PurchaseRoad",
-                "Settlement" => "PurchaseSettlement",
-                "City" => "PurchaseCity",
-                "DevelopmentCard" => "PurchaseDevelopmentCard",
-                _ => $"Purchase{entitlement}"
+                "Road" => ActionType.PurchaseRoad,
+                "Settlement" => ActionType.PurchaseSettlement,
+                "City" => ActionType.PurchaseCity,
+                "Soldier" => ActionType.PurchaseSoldier,
+                _ => ActionType.PurchaseRoad // Default fallback
             };
         }
 
@@ -272,12 +297,12 @@ namespace Catan3.Utility
                 var actionCount = _recordedActions.Count;
                 _isRecording = false;
 
-                this.LogMessage($"🎬 Recording ended - saved {actionCount} actions to {_outputPath}");
+                this.TraceMessage($"🎬 Recording ended - saved {actionCount} actions to {_outputPath}");
                 return _outputPath;
             }
             catch (Exception ex)
             {
-                this.LogMessage($"❌ Failed to save recording: {ex.Message}");
+                this.TraceMessage($"❌ Failed to save recording: {ex.Message}");
                 throw new InvalidOperationException($"Failed to save recording to {_outputPath}: {ex.Message}", ex);
             }
         }
@@ -315,7 +340,7 @@ namespace Catan3.Utility
         /// <summary>
         /// Logs a message with recording context.
         /// </summary>
-        private void LogMessage(string message)
+        private void TraceMessage(string message)
         {
             System.Diagnostics.Debug.WriteLine($"GameRecorder: {message}");
         }
