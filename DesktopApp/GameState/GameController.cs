@@ -30,7 +30,7 @@ namespace Catan3.Controller
         private Log<string> Log;
 
         private IPersistenceService? MyPersistenceService { get; set; }
-        
+
         // Recording state  
         private GameRecorder? _recorder = null;
         public GameController(IPersistenceService? PersistenceService, string localSaveFile)
@@ -49,9 +49,9 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                      
+
                         _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
-                        
+
                         gameModel = null;
                         switch (message.Action)
                         {
@@ -88,16 +88,16 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                     
+
                         _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
-                        
-                        gameModel = ShuffleCurrentGame(message.Seed);
+
+                        gameModel = ShuffleCurrentGame();
                         LogGameModel(gameModel);
                         Messenger.Send(new UpdateGameModel(gameModel));
                     }
                     catch (GameException e)
                     {
-                        this.TraceMessage($"Exception doing Shuffle with seed {message.Seed}. Message: {e}");
+                        this.TraceMessage($"Exception doing Shuffle. Message: {e}");
                     }
                 });
             Messenger.Register<BuildingUpgradeMessage>(this, (recipient, message) =>
@@ -105,9 +105,9 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                     
+
                         _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
-                        
+
                         gameModel = BuildingUpgrade(message);
                         LogGameModel(gameModel);
                         Messenger.Send(new UpdateGameModel(gameModel));
@@ -137,12 +137,12 @@ namespace Catan3.Controller
                 {
                     var automationId = message.RoadKey.GetAutomationId();
                     this.TraceMessage($"🛣️ Received RoadPurchaseMessage for {automationId}");
-                    
+
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                           _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
-                        
+                        _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+
                         var model = RoadPurchase(message);
                         this.TraceMessage($"✅ Road placement successful for {automationId}");
                         LogGameModel(model);
@@ -160,8 +160,8 @@ namespace Catan3.Controller
                  try
                  {
                      var gameModel = Log.CopyCurrent();
-                        _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
-                     
+                     _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+
                      var model = MoveRobber(message);
                      LogGameModel(model);
                      Messenger.Send(new UpdateGameModel(model));
@@ -236,8 +236,8 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                       _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
-                    
+                    _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+
                     var model = OnRoll(message);
                     LogGameModel(model);
                     Messenger.Send(new UpdateGameModel(model));
@@ -252,8 +252,8 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                       _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
-                    
+                    _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+
                     var model = OnPurchase(message);
                     LogGameModel(model);
                     Messenger.Send(new UpdateGameModel(model));
@@ -271,8 +271,8 @@ namespace Catan3.Controller
                 {
                     GameModel gameModel = Log.CopyCurrent();
                     if (gameModel.GameState != GameState.PickSupplementalPlayers) return;
-                    
-                       _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+
+                    _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
                     //
                     //  optimize away the case when there are supplemental players
                     foreach (var player in gameModel.Players)
@@ -294,8 +294,8 @@ namespace Catan3.Controller
                 try
                 {
                     GameModel gameModel = Log.CopyCurrent();
-                       _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
-                    
+                    _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+
                     if (BalanceBoard(gameModel))
                     {
                         LogGameModel(gameModel);
@@ -318,8 +318,8 @@ namespace Catan3.Controller
             {
                 GameModel gameModel = Log.CopyCurrent();
                 if (gameModel.GameState != GameState.FinishedRollOrder) return;
-                   _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
-             
+                _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+
                 while (gameModel.Players[0].Id != message.PlayerId)
                 {
                     var player = gameModel.Players[0];
@@ -476,16 +476,16 @@ namespace Catan3.Controller
                     using var doc = await JsonDocument.ParseAsync(fs);
                     this.TraceMessage("JSON parsed successfully");
 
-                if (doc.RootElement.TryGetProperty("gameModel", out var gmElem))
-                {
-                    var gm = gmElem.Deserialize<GameModel>(Catan3.Shared.Utility.JsonHelper.StandardOptions) ?? throw new GameException("Error: Failed to load the game data.");
-                    
-                    Log<string> log = Log<string>.FromGameModel(gm, MyPersistenceService, filePath);
-                    log.InTestMode = true; // Prevent saving to avoid overwriting test files
-                    this.Log = log;
-                    this.TraceMessage("Set log to test mode - saves will be skipped");
-                    return Log.CurrentState();
-                }
+                    if (doc.RootElement.TryGetProperty("gameModel", out var gmElem))
+                    {
+                        var gm = gmElem.Deserialize<GameModel>(Catan3.Shared.Utility.JsonHelper.StandardOptions) ?? throw new GameException("Error: Failed to load the game data.");
+
+                        Log<string> log = Log<string>.FromGameModel(gm, MyPersistenceService, filePath);
+                        log.InTestMode = true; // Prevent saving to avoid overwriting test files
+                        this.Log = log;
+                        this.TraceMessage("Set log to test mode - saves will be skipped");
+                        return Log.CurrentState();
+                    }
                     else
                     {
                         throw new GameException($"Invalid .catan_test file format: Missing 'gameModel' property in {filePath}");
@@ -948,7 +948,7 @@ namespace Catan3.Controller
         {
 
             GameModel gameModel = Log.CopyCurrent();
-         //   this.TraceMessage($"GameState: {gameModel.GameState} RoadPurchase: {message}");
+            //   this.TraceMessage($"GameState: {gameModel.GameState} RoadPurchase: {message}");
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse, GameState.Supplemental]);
             ThrowIfNoEntitlement(gameModel, [Entitlement.Road]);
             var roadKey = message.RoadKey;
@@ -993,7 +993,11 @@ namespace Catan3.Controller
             var oldHash = gameModel.GameHash;
             // Update GameHash after all game state modifications are complete
             gameModel.UpdateGameHash();
-           // this.TraceMessage($"GameState: {gameModel.GameState} OldHash={oldHash} newHash={gameModel.GameHash}");
+
+            // remember the Random Seed and RandomIterations so that we can replay the game
+          
+
+            // this.TraceMessage($"GameState: {gameModel.GameState} OldHash={oldHash} newHash={gameModel.GameHash}");
             Log.Done(gameModel);
 
             DispatcherQueue.GetForCurrentThread().EnqueueAsync(async () =>
@@ -1326,7 +1330,7 @@ namespace Catan3.Controller
                 if (gameModel.Tiles is null) throw new GameException("Tiles is null");
 
                 // Reset the TemporarilyGold property for all tiles and keep a list of the tiles that were previously gold.
-                HashSet<HexCoordinates> previouslyGoldTiles = new();
+                HashSet<HexCoordinates> previouslyGoldTiles = [];
                 foreach (var tile in gameModel.Tiles)
                 {
                     if (tile.TemporarilyGold)
@@ -1337,8 +1341,8 @@ namespace Catan3.Controller
                 }
 
                 // Initialize a random number generator.
-                var rand = new Random();
-                HashSet<int> usedIndices = new();
+                var rand = new ReplayableRandom(gameModel.RandomSeed, gameModel.RandomIterations);
+                HashSet<int> usedIndices = [];
 
                 // Set new gold tiles while avoiding desert tiles, duplicates, and previously gold tiles.
                 while (usedIndices.Count < gameModel.HouseRules.GoldTiles)
@@ -1387,21 +1391,10 @@ namespace Catan3.Controller
             GameModel gameModel = Log.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [GameState.PickingBoard]);
             // Call content shuffle (resource/number) explicitly to avoid calling GameModel.Shuffle() list reorder
-            Catan3.Models.GameFactory.Shuffle(gameModel);
+            GameFactory.Shuffle(gameModel);
             return gameModel;
         }
 
-        private GameModel ShuffleCurrentGame(int seed)
-        {
-            //
-            //  you need to get the gameModel prior to checking the state as we don't know the state until then.
-            //  CONSIDER: caching the state to do a top level check w/o the GameModel hydration cost
-            GameModel gameModel = Log.CopyCurrent();
-            ThrowIfWrongState(gameModel.GameState, [GameState.PickingBoard]);
-            // Call content shuffle (resource/number) with deterministic seed for reproducible results
-            Catan3.Models.GameFactory.Shuffle(gameModel, seed);
-            return gameModel;
-        }
         public SerializableLog GetSerializableLog()
         {
             return Log.GetSerializableLog();
@@ -1754,9 +1747,9 @@ namespace Catan3.Controller
             } while (ownedAdjacentNotCounted.Count != 0);
             return max;
         }
-        
+
         #region Recording Helpers
-        
+
         /// <summary>
         /// Maps GameAction enum to test action type strings
         /// </summary>
@@ -1771,7 +1764,7 @@ namespace Catan3.Controller
                 _ => action.ToString()
             };
         }
-        
+
         /// <summary>
         /// Determines the building action type based on game state and context
         /// </summary>
@@ -1783,7 +1776,7 @@ namespace Catan3.Controller
             {
                 return "PlaceSettlement";
             }
-            
+
             // During normal gameplay, check if player has City entitlement
             // If they have a City entitlement, it's an upgrade
             var currentPlayer = gameModel.Players.FirstOrDefault(p => p.Id == gameModel.CurrentPlayerId);
@@ -1791,10 +1784,10 @@ namespace Catan3.Controller
             {
                 return "UpgradeToCity";
             }
-            
+
             return "PlaceSettlement";
         }
-        
+
         /// <summary>
         /// Maps Entitlement enum to purchase action types
         /// </summary>
@@ -1851,7 +1844,7 @@ namespace Catan3.Controller
 
 
         #endregion
-        
+
         #endregion
 
     }

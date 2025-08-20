@@ -60,7 +60,7 @@ namespace Catan3.Utility
             _initialGameModel = SerializationHelper.JsonDeserialize<GameModel>(jsonString) 
                 ?? throw new InvalidOperationException("Failed to deserialize GameModel during deep copy");
 
-            _recordedActions = new List<IRecordedMessage>();
+            _recordedActions = [];
             _outputPath = GenerateTestFilePath(logFilePath);
             _isRecording = true;
 

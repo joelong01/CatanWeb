@@ -319,8 +319,8 @@ namespace Tests.Shared.Serialization
                     RedoEnabled = false,
                     RollsEnabled = true
                 },
-                EntitlementPurchaseModel = new List<EntitlementPurchaseModel>
-                {
+                EntitlementPurchaseModel =
+                [
                     new() { Entitlement = Entitlement.Settlement, Enabled = true },
                     new() { Entitlement = Entitlement.City, Enabled = true },
                     new() { Entitlement = Entitlement.Road, Enabled = true },
@@ -328,7 +328,7 @@ namespace Tests.Shared.Serialization
                     new() { Entitlement = Entitlement.DevCard, Enabled = false },
                     new() { Entitlement = Entitlement.BuyKnight, Enabled = true },
                     new() { Entitlement = Entitlement.UpgradeKnight, Enabled = false }
-                },
+                ],
                 HouseRules = new HouseRules
                 {
                     GoldTiles = 2,

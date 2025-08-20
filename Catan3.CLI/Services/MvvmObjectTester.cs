@@ -38,9 +38,9 @@ public class MvvmObjectTester
         await TestObject(() => new BuildingUpgradeMessage(new BuildingKey(new HexCoordinates(1, -1, 0), HexPosition.Right)), "BuildingUpgradeMessage", testResults);
         await TestObject(() => new MoveRobberMessage(new HexCoordinates(2, -1, -1), "TestPlayer"), "MoveRobberMessage", testResults);
         await TestObject(() => new RollMessage(new TurnRollModel(3, 4)), "RollMessage", testResults);
-        await TestObject(() => new NewGameMessage(GameType.Regular, new List<string> { "Alice", "Bob", "Charlie" }), "NewGameMessage", testResults);
-        await TestObject(() => new SetPlayerOrderMessage(new List<string> { "Alice", "Bob", "Charlie" }), "SetPlayerOrderMessage", testResults);
-        await TestObject(() => new PlayersDoingSupplemental(new List<string> { "Alice", "Bob" }), "PlayersDoingSupplemental", testResults);
+        await TestObject(() => new NewGameMessage(GameType.Regular, ["Alice", "Bob", "Charlie"]), "NewGameMessage", testResults);
+        await TestObject(() => new SetPlayerOrderMessage(["Alice", "Bob", "Charlie"]), "SetPlayerOrderMessage", testResults);
+        await TestObject(() => new PlayersDoingSupplemental(["Alice", "Bob"]), "PlayersDoingSupplemental", testResults);
         await TestObject(() => new GoFirstMessage("Alice"), "GoFirstMessage", testResults);
         await TestObject(() => new BalanceBoardMessage(), "BalanceBoardMessage", testResults);
         await TestObject(() => new EndGame(), "EndGame", testResults);

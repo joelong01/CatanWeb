@@ -17,8 +17,8 @@ namespace Catan3.Shared.Models
         public string GameType { get; set; } = "";
         public string GameState { get; set; } = "";
         public int PlayerCount { get; set; }
-        public List<string> PlayerNames { get; set; } = new();
-        public List<string> PlayerIds { get; set; } = new();
+        public List<string> PlayerNames { get; set; } = [];
+        public List<string> PlayerIds { get; set; } = [];
         public string CurrentPlayer { get; set; } = "";
         public DateTime CreatedTime { get; set; }
         public string CreatedTimeDisplay { get; set; } = "";
@@ -66,7 +66,7 @@ namespace Catan3.Shared.Models
                 return Players.Select(p => p.Id).Where(id => !string.IsNullOrEmpty(id)).ToList();
             }
             
-            return PlayerIds?.Where(id => !string.IsNullOrEmpty(id)).ToList() ?? new List<string>();
+            return PlayerIds?.Where(id => !string.IsNullOrEmpty(id)).ToList() ?? [];
         }
 
         /// <summary>
@@ -85,7 +85,7 @@ namespace Catan3.Shared.Models
                 return PlayerIds.Select(ExtractNameFromId).ToList();
             }
             
-            return new List<string>();
+            return [];
         }
 
         private static string ExtractNameFromId(string id)

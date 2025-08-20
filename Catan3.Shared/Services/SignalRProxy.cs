@@ -20,7 +20,7 @@ namespace Catan3.Shared.Services
         private readonly HubConnection _connection;
         private readonly string _playerId;
         private readonly string? _gameId;
-        private readonly Dictionary<string, TaskCompletionSource<CommandResult>> _pendingCommands = new();
+        private readonly Dictionary<string, TaskCompletionSource<CommandResult>> _pendingCommands = [];
         private readonly object _commandLock = new();
 
         public HubConnection Connection => _connection;

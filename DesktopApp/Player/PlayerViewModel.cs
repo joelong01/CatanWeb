@@ -115,7 +115,7 @@ namespace Catan3.Models
         /// Gets the dictionary of player stats.
         /// </summary>
         [JsonIgnore]
-        public Dictionary<StatName, PlayerStatsViewModel> StatDictionary { get; } = new();
+        public Dictionary<StatName, PlayerStatsViewModel> StatDictionary { get; } = [];
 
         /// <summary>
         /// Gets the default instance of the PlayerViewModel class.

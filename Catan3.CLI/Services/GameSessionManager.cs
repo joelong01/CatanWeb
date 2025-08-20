@@ -9,7 +9,7 @@ namespace Catan3.CLI.Services;
 public class GameSessionManager
 {
     private readonly ILogger<GameSessionManager> _logger;
-    private readonly Dictionary<string, RealGameSession> _activeSessions = new();
+    private readonly Dictionary<string, RealGameSession> _activeSessions = [];
 
     public GameSessionManager(ILogger<GameSessionManager> logger)
     {

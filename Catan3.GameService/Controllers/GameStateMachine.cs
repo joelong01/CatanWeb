@@ -1014,7 +1014,7 @@ namespace Catan3.GameService.Controllers
                 if (gameModel.HouseRules.GoldTiles == 0) return;
                 if (gameModel.Tiles is null) throw new Catan3.Shared.Utility.GameException("Tiles is null");
 
-                HashSet<HexCoordinates> previouslyGoldTiles = new();
+                HashSet<HexCoordinates> previouslyGoldTiles = [];
                 foreach (var tile in gameModel.Tiles)
                 {
                     if (tile.TemporarilyGold)
@@ -1024,12 +1024,12 @@ namespace Catan3.GameService.Controllers
                     }
                 }
 
-                var rand = new Random();
-                HashSet<int> usedIndices = new();
+               
+                HashSet<int> usedIndices = [];
 
                 while (usedIndices.Count < gameModel.HouseRules.GoldTiles)
                 {
-                    int index = rand.Next(gameModel.Tiles.Count);
+                    int index = gameModel.NextRandom(gameModel.Tiles.Count);
                     var tileModel = gameModel.Tiles[index];
 
                     if (previouslyGoldTiles.Contains(tileModel.TileKey) ||

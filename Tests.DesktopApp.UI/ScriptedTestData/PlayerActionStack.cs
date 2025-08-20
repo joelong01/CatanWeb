@@ -31,7 +31,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         /// List of actions that have been executed for this player.
         /// Used for debugging and validation.
         /// </summary>
-        public List<TestAction> ExecutedActions { get; set; } = new();
+        public List<TestAction> ExecutedActions { get; set; } = [];
         
         /// <summary>
         /// Whether this player has any remaining actions to execute

@@ -24,7 +24,7 @@ namespace Catan3.Shared.Models
         /// Parameters specific to the action type.
         /// Contents depend on ActionType - see documentation for each action.
         /// </summary>
-        public Dictionary<string, object> Parameters { get; set; } = new();
+        public Dictionary<string, object> Parameters { get; set; } = [];
         
         /// <summary>
         /// Expected game state after this action completes.

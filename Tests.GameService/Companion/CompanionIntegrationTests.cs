@@ -480,7 +480,7 @@ namespace Tests.GameService.Companion
         private readonly WebApplicationFactory<Program> _factory;
         private readonly GameType _gameType;
         private readonly string[] _playerIds;
-        private readonly Dictionary<string, SignalRProxy> _proxies = new();
+        private readonly Dictionary<string, SignalRProxy> _proxies = [];
 
         public string GameId { get; private set; } = "";
         public string[] PlayerIds => _playerIds;
@@ -572,7 +572,7 @@ namespace Tests.GameService.Companion
     /// </summary>
     public class CompanionGamesResponse
     {
-        public List<CompanionGameInfo> Games { get; set; } = new();
+        public List<CompanionGameInfo> Games { get; set; } = [];
     }
 
     /// <summary>
@@ -585,7 +585,7 @@ namespace Tests.GameService.Companion
         public string GameType { get; set; } = "";
         public string GameState { get; set; } = "";
         public int PlayerCount { get; set; }
-        public List<string> PlayerNames { get; set; } = new();
+        public List<string> PlayerNames { get; set; } = [];
         public string CurrentPlayer { get; set; } = "";
         public bool IsActive { get; set; }
         public string CreatedTimeDisplay { get; set; } = "";

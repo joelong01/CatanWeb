@@ -42,10 +42,9 @@ namespace Catan3.Shared.Models
         public override string ToString() => $"RollMessage: {Roll}";
     }
 
-    public class ShuffleMessage(int seed)
+    public class ShuffleMessage()
     {
-        public int Seed { get; } = seed;
-        public override string ToString() => $"ShuffleMessage: Seed={Seed}";
+        public override string ToString() => $"ShuffleMessage";
     }
 
     public class NewGameMessage(GameType GameType, IList<string> PlayerIds)

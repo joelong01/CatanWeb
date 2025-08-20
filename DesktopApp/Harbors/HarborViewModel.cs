@@ -186,7 +186,7 @@ namespace Catan3.Models
         {
             get
             {
-                PointCollection points = new();
+                PointCollection points = [];
                 double size = Layout.BuildingSize; // Assuming this is the diameter of the harbor circle
                 var flatTopDictionary = Layout.OuterHexPoints().FlatTopListToDictionary();
                 var tileTop = Layout.Top(Harbor.HarborKey.HexCoordinates);

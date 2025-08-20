@@ -40,6 +40,29 @@ namespace Catan3.Shared.Models
     public partial class GameModel : ObservableObject
     {
         /// <summary>
+        /// Gets or sets a hash representing the current state of the game board and player data.
+        /// This hash includes Tiles, Players, Harbors, Roads, Buildings, GameState, CurrentPlayerId, and Robber.
+        /// Used for fast verification that all clients have identical game states in multi-player testing.
+        /// The hash is computed by the GameStateMachine whenever the game state changes.
+        /// </summary>
+        [ObservableProperty]
+        public partial string GameHash { get; set; } = string.Empty;
+        /// <summary>
+        ///     the Seed that was used to generate the random numbers for this game.  this will be carried
+        ///     from one GameModel to the next in the same game.  We do this because we are using a deterministic
+        ///     random class so that when we open files to replay a game for a test, we'll always get the same
+        ///     random numbers.
+        /// </summary>
+        [ObservableProperty]
+        public partial int RandomSeed { get; set; } = 0;
+
+        /// <summary>
+        ///     the number of times we've called Next() on the Random class in this game.
+        /// </summary>
+        [ObservableProperty]
+        public partial int RandomIterations{ get; set; } = 0;
+
+        /// <summary>
         /// What kinds of things can be purchased in this game and if they are allowed to be purchased at this time?
         /// </summary>
         [ObservableProperty]
@@ -106,14 +129,7 @@ namespace Catan3.Shared.Models
         /// </summary>
         public int GameStateMachineVersion { get; } = 1;
 
-        /// <summary>
-        /// Gets or sets a hash representing the current state of the game board and player data.
-        /// This hash includes Tiles, Players, Harbors, Roads, Buildings, GameState, CurrentPlayerId, and Robber.
-        /// Used for fast verification that all clients have identical game states in multi-player testing.
-        /// The hash is computed by the GameStateMachine whenever the game state changes.
-        /// </summary>
-        [ObservableProperty]
-        public partial string GameHash { get; set; } = string.Empty;
+       
 
         [ObservableProperty]
         public partial RollModel RollModel { get; set; } = new();
@@ -148,7 +164,7 @@ namespace Catan3.Shared.Models
 
         public GameModel()
         {
-            Players = new();
+            Players = [];
             GameType = GameType.Regular;
             HasSupplementalBuildPhase = false;
             ResourceRules = new ResourceRules();
@@ -232,16 +248,7 @@ namespace Catan3.Shared.Models
             return Players.Count > 0 && !string.IsNullOrEmpty(CurrentPlayerId);
         }
 
-        public void Shuffle()
-        {
-            // Simplified shuffle implementation
-            var random = new Random();
-            for (int i = Tiles.Count - 1; i > 0; i--)
-            {
-                int j = random.Next(i + 1);
-                (Tiles[i], Tiles[j]) = (Tiles[j], Tiles[i]);
-            }
-        }
+
 
         // BUGFIX 2025-01-15: Harbor ownership was assigned incorrectly because this
         // instance method returned the first harbor in the list. Use the shared
@@ -255,13 +262,13 @@ namespace Catan3.Shared.Models
 
         private List<EntitlementPurchaseModel> GetDefaultPurchaseableEntitlements()
         {
-            return new List<EntitlementPurchaseModel>
-            {
+            return
+            [
                 new() { Entitlement = Entitlement.Settlement, Enabled = true },
                 new() { Entitlement = Entitlement.Road, Enabled = true },
                 new() { Entitlement = Entitlement.City, Enabled = true },
                 new() { Entitlement = Entitlement.Soldier, Enabled = true }
-            };
+            ];
         }
 
         // Rule 7 Compliance: Helper methods for computed fields that GameInfo needs

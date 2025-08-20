@@ -764,31 +764,31 @@ namespace Tests.Shared.Serialization
                     RedoEnabled = false,
                     RollsEnabled = false
                 },
-                EntitlementPurchaseModel = new List<EntitlementPurchaseModel>
-                {
+                EntitlementPurchaseModel =
+                [
                     new() { Entitlement = Entitlement.Settlement, Enabled = true },
                     new() { Entitlement = Entitlement.Road, Enabled = true },
                     new() { Entitlement = Entitlement.City, Enabled = false },
                     new() { Entitlement = Entitlement.Soldier, Enabled = true }
-                },
-                Tiles = new List<TileModel>
-                {
+                ],
+                Tiles =
+                [
                     new() { TileKey = new HexCoordinates(0, 0, 0), ResourceTileType = ResourceType.Wheat, Number = 6 },
                     new() { TileKey = new HexCoordinates(1, -1, 0), ResourceTileType = ResourceType.Wood, Number = 8 },
                     new() { TileKey = new HexCoordinates(-1, 1, 0), ResourceTileType = ResourceType.Brick, Number = 5 }
-                },
-                Buildings = new List<BuildingModel>
-                {
+                ],
+                Buildings =
+                [
                     new() { BuildingKey = new BuildingKey(new HexCoordinates(0, 0, 0), HexPosition.TopRight), BuildingState = BuildingState.Settlement, OwnerId = "Alice-001" }
-                },
-                Roads = new List<RoadModel>
-                {
+                ],
+                Roads =
+                [
                     new() { RoadKey = new RoadKey(new HexCoordinates(0, 0, 0), HexSide.Top), RoadState = RoadState.Road, OwnerId = "Alice-001" }
-                },
-                Harbors = new List<HarborModel>
-                {
+                ],
+                Harbors =
+                [
                     new() { HarborKey = new HarborKey(new HexCoordinates(2, -1, -1), HarborType.ThreeForOne, HexSide.Bottom) }
-                },
+                ],
                 Robber = new RobberModel { Coordinates = new HexCoordinates(0, 0, 0) },
                 HouseRules = new HouseRules(),
                 ResourceRules = new ResourceRules(4, 5, 15, 3, 4),

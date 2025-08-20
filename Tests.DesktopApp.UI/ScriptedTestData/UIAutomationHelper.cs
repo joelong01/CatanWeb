@@ -51,7 +51,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         {
             _mainWindow = mainWindow ?? throw new ArgumentNullException(nameof(mainWindow));
             _automation = automation ?? throw new ArgumentNullException(nameof(automation));
-            _uiControlsCache = new Dictionary<string, AutomationElement>();
+            _uiControlsCache = [];
             _cf = new ConditionFactory(new UIA3PropertyLibrary());
         }
 
@@ -116,8 +116,8 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             }
             TraceMessage($"=== END DEBUG LISTING ===");
             
-            // Check for critical buttons - UiPumpButton is essential, purchase buttons may be face-down
-            var essentialButtons = new[] { "UiPumpButton" };
+            // Check for critical buttons - TestAutomationActionButton is essential, purchase buttons may be face-down
+            var essentialButtons = new[] { "TestAutomationActionButton" };
             var purchaseButtons = new[] { "PurchaseRoadButton", "PurchaseSettlementButton", "PurchaseCityButton", "PurchaseSoldierButton" };
             
             var missingEssential = essentialButtons.Where(buttonId => !_uiControlsCache.ContainsKey(buttonId)).ToArray();
@@ -125,7 +125,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             
             var foundPurchaseButtons = _uiControlsCache.Keys.Where(k => k.StartsWith("Purchase")).ToArray();
             
-            // UiPumpButton is absolutely critical - fail if missing
+            // TestAutomationActionButton is absolutely critical - fail if missing
             if (missingEssential.Any())
             {
                 TraceMessage($"❌ CRITICAL: Missing essential buttons: {string.Join(", ", missingEssential)}");

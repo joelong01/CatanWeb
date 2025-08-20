@@ -268,22 +268,22 @@ try {{
                 GameType = GameType.Regular,
                 CurrentPlayerId = "Player1",
                 CreatedTime = DateTime.UtcNow,
-                Players = new List<PlayerModel>
-                {
+                Players =
+                [
                     new("Player1-001"),
                     new("Player2-002")
-                },
+                ],
                 ActionFlags = new ActionFlags
                 {
                     NextEnabled = true,
                     UndoEnabled = false,
                     RedoEnabled = false
                 },
-                EntitlementPurchaseModel = new List<EntitlementPurchaseModel>
-                {
+                EntitlementPurchaseModel =
+                [
                     new() { Entitlement = Entitlement.Settlement, Enabled = true },
                     new() { Entitlement = Entitlement.Road, Enabled = true }
-                },
+                ],
                 HouseRules = new HouseRules(),
                 ResourceRules = new ResourceRules(4, 5, 15, 3, 4)
             };

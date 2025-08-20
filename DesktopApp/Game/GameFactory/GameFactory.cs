@@ -80,20 +80,17 @@ namespace Catan3.Models
         /// <summary>
         /// 
         ///  can be called any time and returns a random valid board
+        ///  we don't use the GameModel extensions because of the implementation of ShuffleList which does not
+        ///  take the GameModel as a parameter.  It also calls Random many times, so this will make it a bit more efficient.
         /// </summary>
         public static void Shuffle(this GameModel game)
         {
-            Random random = new();
+            var random = new ReplayableRandom(game.RandomSeed, game.RandomIterations);
             Shuffle(game, random);
+            game.RandomIterations = random.Iterations;
         }
 
-        public static void Shuffle(this GameModel game, int seed)
-        {
-            Random random = new(seed);
-            Shuffle(game, random);
-        }
-
-        private static void Shuffle(GameModel game, Random random)
+        private static void Shuffle(GameModel game, ReplayableRandom random)
         {
             int count = game.Tiles.Count;
             do
@@ -114,7 +111,7 @@ namespace Catan3.Models
             // 1/14/2025: Robber starts off the board so the first move can be to a desert tile, so do NOT put the robber on a desert tile
 
         }
-        private static void ShuffleList<T, TValue>(IList<T> list, Random random, Func<T, TValue> valueSelector, Action<T, TValue> valueSetter)
+        private static void ShuffleList<T, TValue>(IList<T> list, ReplayableRandom random, Func<T, TValue> valueSelector, Action<T, TValue> valueSetter)
         {
             int count = list.Count;
             for (int i = 0; i < count; i++)

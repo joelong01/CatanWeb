@@ -55,7 +55,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         /// <summary>
         /// Chronological list of recorded messages to replay in sequence
         /// </summary>
-        public List<IRecordedMessage> Actions { get; set; } = new();
+        public List<IRecordedMessage> Actions { get; set; } = [];
         
         /// <summary>
         /// Expected final game state when all actions are completed

@@ -25,6 +25,13 @@ namespace Catan3.Models
         public partial GameViewModel GameViewModel { get; set; }
 
         /// <summary>
+        /// Data that has been set by the UI test automation framework to drive the automated Ui tests
+        /// </summary>
+        /// 
+        [ObservableProperty]
+        public partial string SmuggledTestData { get; set; } = string.Empty;
+
+        /// <summary>
         /// Gets or sets a value indicating whether to show commands.
         /// </summary>
         [ObservableProperty]

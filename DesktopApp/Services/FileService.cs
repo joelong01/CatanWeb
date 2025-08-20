@@ -338,7 +338,7 @@ namespace Catan.Services
             {
                 SuggestedStartLocation = PickerLocationId.DocumentsLibrary
             };
-            savePicker.FileTypeChoices.Add("Catan File", new List<string> { ".catan" });
+            savePicker.FileTypeChoices.Add("Catan File", [".catan"]);
             savePicker.SuggestedFileName = defaultFileName;
             var window = (Application.Current as App)?.MainWindow as MainWindow;
             IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);

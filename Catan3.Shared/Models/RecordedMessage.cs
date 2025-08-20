@@ -136,10 +136,6 @@ namespace Catan3.Shared.Models
         /// <inheritdoc />
         public string GameHash { get; init; } = string.Empty;
 
-        /// <summary>
-        /// The seed used for deterministic randomization.
-        /// </summary>
-        public int Seed { get; init; }
 
         /// <inheritdoc />
         [JsonIgnore]
@@ -152,7 +148,7 @@ namespace Catan3.Shared.Models
         public ShuffleRecord(string gameHash, int seed)
         {
             GameHash = gameHash;
-            Seed = seed;
+     
         }
 
         /// <summary>
@@ -161,7 +157,6 @@ namespace Catan3.Shared.Models
         public ShuffleRecord(string gameHash, ShuffleMessage message)
         {
             GameHash = gameHash;
-            Seed = message.Seed;
         }
     }
 

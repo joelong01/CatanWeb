@@ -28,7 +28,7 @@ namespace Catan3.Utility
         public string Type { get; set; } = string.Empty;
         public string? PlayerId { get; set; }
         public string? ExpectedState { get; set; }
-        public Dictionary<string, object> Parameters { get; set; } = new();
+        public Dictionary<string, object> Parameters { get; set; } = [];
         public string? Description { get; set; }
     }
 

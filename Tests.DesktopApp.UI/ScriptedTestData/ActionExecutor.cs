@@ -152,11 +152,11 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 // Force UI message pumping after action completion
                 try
                 {
-                    _uiHelper.ClickButton("UiPumpButton");
+                    _uiHelper.ClickButton("TestAutomationActionButton");
                 }
                 catch (Exception pumpEx)
                 {
-                    TraceMessage($"⚠️ UiPumpButton click failed (non-critical): {pumpEx.Message}");
+                    TraceMessage($"⚠️ TestAutomationActionButton click failed (non-critical): {pumpEx.Message}");
                 }
                 
                 return true;

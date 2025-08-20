@@ -152,8 +152,8 @@ namespace Catan3.Models
         /// <summary>
         /// Gets the list of player stats templates.
         /// </summary>
-        public static List<StatTemplate> PlayerStats { get; } = new()
-            {
+        public static List<StatTemplate> PlayerStats { get; } =
+            [
                 new StatTemplate(StatName.Score, CatanFont.Score),
                 new StatTemplate(StatName.RoadsPlayed, CatanFont.Road),
                 new StatTemplate(StatName.CitiesPlayed, CatanFont.City),
@@ -166,6 +166,6 @@ namespace Catan3.Models
                 new StatTemplate(StatName.GoodRolls, CatanFont.GoodRoll),
                 new StatTemplate(StatName.BadRolls, CatanFont.BadRoll),
                 new StatTemplate(StatName.Stars, CatanFont.Star),
-            };
+            ];
     }
 }

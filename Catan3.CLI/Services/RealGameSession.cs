@@ -15,7 +15,7 @@ public class RealGameSession : IAsyncDisposable
 {
     private readonly GameRunOptions _options;
     private readonly ILogger _logger;
-    private readonly Dictionary<string, SignalRProxy> _proxies = new();
+    private readonly Dictionary<string, SignalRProxy> _proxies = [];
     private readonly HttpClient _httpClient;
 
     public string GameId { get; private set; } = "";

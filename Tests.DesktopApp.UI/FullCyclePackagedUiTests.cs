@@ -117,7 +117,7 @@ namespace Tests.DesktopApp.UI
         /// <summary>
         /// Loads automation objects using the enhanced UIAutomationHelper with validation.
         /// Should be called once after the game board is fully loaded (PickingBoard state).
-        /// Will throw if required buttons (Purchase buttons, UiPumpButton) are missing.
+        /// Will throw if required buttons (Purchase buttons, TestAutomationActionButton) are missing.
         /// </summary>
         private void LoadAutomationObjects()
         {
@@ -131,7 +131,7 @@ namespace Tests.DesktopApp.UI
             this.TraceMessage("Waiting for UI elements to be fully rendered...");
             Thread.Sleep(2000);
             
-            // Retry LoadAutomationObjects if UiPumpButton is missing (UI might still be loading)
+            // Retry LoadAutomationObjects if TestAutomationActionButton is missing (UI might still be loading)
             int retryCount = 0;
             const int maxRetries = 3;
             
@@ -145,7 +145,7 @@ namespace Tests.DesktopApp.UI
                     this.TraceMessage("✅ LoadAutomationObjects succeeded");
                     return; // Success, exit the retry loop
                 }
-                catch (Exception ex) when (ex.Message.Contains("UiPumpButton") && retryCount < maxRetries - 1)
+                catch (Exception ex) when (ex.Message.Contains("TestAutomationActionButton") && retryCount < maxRetries - 1)
                 {
                     retryCount++;
                     this.TraceMessage($"⚠️ LoadAutomationObjects failed (attempt {retryCount}/{maxRetries}): {ex.Message}");
@@ -1122,14 +1122,8 @@ namespace Tests.DesktopApp.UI
 
         private void Execute_Shuffle(ShuffleRecord shuffle)
         {
-            this.TraceMessage($"Executing shuffle with recorded seed: {shuffle.Seed}");
-            
-            // Set the test seed in the hidden TextBox before clicking shuffle
-            var testSeedInput = FindByAutomationId("TestSeedInput");
-            Assert.NotNull(testSeedInput);
-            testSeedInput.AsTextBox().Text = shuffle.Seed.ToString();
-            
-            // Now click the shuffle button, which will use the test seed
+            this.TraceMessage($"Executing shuffle with recorded");
+            // click the shuffle button...
             var shuffleButton = FindByAutomationId("ShuffleButton");
             Assert.NotNull(shuffleButton);
             shuffleButton.Click();

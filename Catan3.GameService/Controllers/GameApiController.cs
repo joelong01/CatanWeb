@@ -148,7 +148,7 @@ namespace Catan3.GameService.Controllers
             {
                 // Handle both old JSON format and new NewGameRequest format for backward compatibility
                 GameType gameType;
-                List<string> playerIds = new();
+                List<string> playerIds = [];
 
                 // Check for required gameType field
                 if (!request.TryGetProperty("gameType", out var gameTypeElement))

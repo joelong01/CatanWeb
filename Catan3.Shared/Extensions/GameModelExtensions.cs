@@ -16,6 +16,35 @@ namespace Catan3.Shared.Extensions
                     gameModel.GameState == GameState.BeginResourceAllocation || gameModel.GameState == GameState.PickingBoard);
         }
 
+        /// <summary>
+        /// gets the next Random number using the ReplayableRandom class and updates the game state
+        /// </summary>
+        /// 
+        public static int NextRandom(this GameModel gameModel)
+        {
+            var random = new ReplayableRandom(gameModel.RandomSeed, gameModel.RandomIterations);
+            int result = random.Next();
+            gameModel.RandomIterations = random.Iterations;
+            return result;
+        }
+
+        public static int NextRandom(this GameModel gameModel, int maxValue)
+        {
+            var random = new ReplayableRandom(gameModel.RandomSeed, gameModel.RandomIterations);
+            int result = random.Next(maxValue);
+            gameModel.RandomIterations = random.Iterations;
+            return result;
+        }
+
+        public static int NextRandom(this GameModel gameModel, int minValue, int maxValue)
+        {
+            var random = new ReplayableRandom(gameModel.RandomSeed, gameModel.RandomIterations);
+            int result = random.Next(minValue, maxValue);
+            gameModel.RandomIterations = random.Iterations;
+            return result;
+        }
+
+
         public static GamePhase Phase(this GameModel gameModel)
         {
             switch (gameModel.GameState)

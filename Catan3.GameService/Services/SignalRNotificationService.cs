@@ -12,7 +12,7 @@ namespace Catan3.GameService.Services
     {
         private readonly IHubContext<GameHub> _hubContext;
         private readonly ILogger<SignalRNotificationService> _logger;
-        private readonly Dictionary<string, GameModel> _gameStates = new();
+        private readonly Dictionary<string, GameModel> _gameStates = [];
         private readonly object _stateLock = new();
 
         public SignalRNotificationService(IHubContext<GameHub> hubContext, ILogger<SignalRNotificationService> logger)
