@@ -4,6 +4,7 @@
     "omnisharp.enableEditorConfigSupport": true,
     "omnisharp.enableRoslynAnalyzers": true,
     "omnisharp.enableDecompilationSupport": true,
+    "github.copilot.nextEditSuggestions.enabled": false,
     "files.exclude": {
         "**/bin": true,
         "**/obj": true

@@ -96,7 +96,7 @@ namespace Tests.DesktopApp.UI
     [Collection("UIAutomation")]
     public class FullCyclePackagedUiTests : IDisposable
     {
-        private static int SHORT_WAIT = 1000;
+        private static int SHORT_WAIT = 25;
         private static int LONG_WAIT = SHORT_WAIT * 3;
         private UIA3Automation? _automation;
         private AutomationElement? _main;
@@ -285,7 +285,7 @@ namespace Tests.DesktopApp.UI
             }
             nextButton.Invoke();
             // Wait for state transition
-            Thread.Sleep(SHORT_WAIT);
+            ShortWait(_uiHelper!);
         }
         /// <summary>
         /// Performs a dice roll by clicking the specified roll card in the UI.
@@ -503,7 +503,7 @@ namespace Tests.DesktopApp.UI
             Assert.NotNull(buildingElement);
 
             buildingElement.Click();
-            Thread.Sleep(SHORT_WAIT); // Give time for the click to register
+             ShortWait(_uiHelper!);
         }
 
         /// <summary>
@@ -529,7 +529,7 @@ namespace Tests.DesktopApp.UI
             Assert.NotNull(roadElement);
 
             roadElement.Click();
-            Thread.Sleep(SHORT_WAIT); // Give time for the click to register
+            ShortWait(_uiHelper!);
         }
 
 
@@ -950,7 +950,7 @@ namespace Tests.DesktopApp.UI
                     return true;
                 }
 
-                Thread.Sleep(SHORT_WAIT);
+                 ShortWait(_uiHelper!);
             }
 
             this.TraceMessage($"WaitForGameState: Timed out waiting for '{expectedState}' after {timeout.TotalSeconds}s");
@@ -1037,7 +1037,7 @@ namespace Tests.DesktopApp.UI
                 ExecuteRecordedMessage(recordedMessage, uiHelper);
 
                 // Wait for UI to update
-                Thread.Sleep(SHORT_WAIT);
+                 ShortWait(_uiHelper!);
             }
 
             this.TraceMessage("All scripted actions completed successfully");
@@ -1183,6 +1183,45 @@ namespace Tests.DesktopApp.UI
                 this.TraceMessage($"TODO: Select target player {robber.TargetPlayerId} from context menu");
                 // For now, just click somewhere to close menu - needs proper implementation
             }
+        }
+
+        private void ExecuteTestCommand(TestCommandModel model, UIAutomationHelper uiHelper)
+        {
+            this.TraceMessage($"Executing test command: {model.Type}");
+
+            // Handle specific commands
+            switch (model.Type)
+            {
+                case TestCommandType.UpdateUi:
+                    {
+                        var json = JsonSerializer.Serialize(model, JsonHelper.StandardOptions);
+                        
+                        // Set the JSON in the smuggled test data TextBox
+                        var smuggledDataTextBox = FindByAutomationId("SmuggledTestData");
+                        Assert.NotNull(smuggledDataTextBox);
+                        smuggledDataTextBox.AsTextBox().Text = json;
+                        this.TraceMessage($"Set smuggled test data: {json}");
+                    }
+                    break;
+                default:
+                    this.TraceMessage($"Unhandled test command type: {model.Type}");
+                    break;
+            }
+            
+            // Click the test automation action button to execute the command
+            var testActionButton = FindByAutomationId("TestAutomationActionButton");
+            Assert.NotNull(testActionButton);
+            testActionButton.Click();
+            this.TraceMessage("Clicked TestAutomationActionButton");
+            
+        }
+
+        private void ShortWait(UIAutomationHelper uiHelper)
+        {
+            TestCommandModel cmd = new TestCommandModel(TestCommandType.UpdateUi);
+            ExecuteTestCommand(cmd, uiHelper);
+            Thread.Sleep(SHORT_WAIT);
+            
         }
 
         private void Execute_SetPlayerOrder(SetPlayerOrderRecord playerOrder)

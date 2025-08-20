@@ -291,6 +291,7 @@ namespace Catan3
         /// </summary>
         private async void OnExecuteTestCommand(object sender, RoutedEventArgs e)
         {
+            await Task.Delay(5); // give time for data binding to work
             if (MainPageModel is null)
             {
                 this.TraceMessage("MainPageModel is null, cannot execute test command.");
@@ -299,7 +300,8 @@ namespace Catan3
             var json = MainPageModel?.SmuggledTestData;
             if (string.IsNullOrEmpty(json))
             {
-                this.TraceMessage("Empty Json for TestCommandModel");
+                this.TraceMessage($"Empty Json for TestCommandModel, direct text: {_txtSmuggledData.Text}");
+                
                 return;
             }
             try
@@ -316,12 +318,10 @@ namespace Catan3
                         await Task.Delay(5);
                         break;
                     default:
-                        this.TraceMessage($"Unknown command: {json}");
-                        break;
-                     
-                        
-                       
+                        throw new InvalidOperationException($"Unknown command: {json}");
+
                 }
+                this.TraceMessage($"TestCommand {testCommandModel.Type} executed");
             }
             catch (JsonException je)
             {
@@ -334,7 +334,7 @@ namespace Catan3
                 return;
             }
 
-
+           
 
            
         }

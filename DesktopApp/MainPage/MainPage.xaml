@@ -97,21 +97,22 @@
                             ViewModel="{x:Bind MainPageModel, Mode=OneWay}"
                             HorizontalAlignment="Center" VerticalAlignment="Top" />
 
-                    <Button Width="50" Height="50" Background="Red" 
+                    <Button Width="2" Height="2" Background="Red" 
                     Grid.Column="0"
                     AutomationProperties.AutomationId="TestAutomationActionButton"
                     AutomationProperties.Name="TestAutomationActionButton"
-                    Click="OnExecuteTestCommand" Opacity="0.3"
+                    Click="OnExecuteTestCommand" Opacity="0.01"
                     HorizontalAlignment="Right" VerticalAlignment="Top"
                     Margin="0,-5,5,0" />
 
                     <!-- Hidden test seed input for deterministic shuffle during UI testing -->
-                    <TextBox Width="50" Height="50" Background="Green" 
+                    <TextBox Width="5" Height="5" Background="Transparent" 
                     Grid.Column="0"
+                             x:Name="_txtSmuggledData"
                     AutomationProperties.AutomationId="SmuggledTestData"
                     AutomationProperties.Name="SmuggledTestData"
                     Text="{x:Bind MainPageModel.SmuggledTestData, Mode=TwoWay}"
-                    Opacity="1"
+                    Opacity=".1"
                     HorizontalAlignment="Right" VerticalAlignment="Top"
                     Margin="0,-10,10,0" 
                     BorderThickness="0" />
