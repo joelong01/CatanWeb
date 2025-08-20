@@ -106,6 +106,16 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
 
             TraceMessage($"  Roads: {roadElements}, Buildings: {buildingElements}, CoordinateBuildings: {coordinateBuildingElements}, Tiles: {tileElements}, Rolls: {rollElements}, Purchase: {purchaseElements}");
             
+            // DEBUG: List ALL AutomationIds to see what's actually being found
+            TraceMessage($"=== DEBUG: ALL AUTOMATION IDs FOUND ===");
+            var allIds = _uiControlsCache.Keys.OrderBy(k => k).ToArray();
+            for (int i = 0; i < allIds.Length; i += 10)
+            {
+                var batch = allIds.Skip(i).Take(10);
+                TraceMessage($"  Batch {(i/10) + 1}: {string.Join(", ", batch)}");
+            }
+            TraceMessage($"=== END DEBUG LISTING ===");
+            
             // Check for critical buttons - UiPumpButton is essential, purchase buttons may be face-down
             var essentialButtons = new[] { "UiPumpButton" };
             var purchaseButtons = new[] { "PurchaseRoadButton", "PurchaseSettlementButton", "PurchaseCityButton", "PurchaseSoldierButton" };

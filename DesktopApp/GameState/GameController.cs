@@ -55,10 +55,6 @@ namespace Catan3.Controller
                         gameModel = null;
                         switch (message.Action)
                         {
-                            case GameAction.Shuffle:
-                                gameModel = ShuffleCurrentGame();
-                                LogGameModel(gameModel);
-                                break;
                             case GameAction.Undo:
                                 gameModel = Undo(); // NOTE: Undo does not call LogGameMode!
                                 break;
@@ -69,6 +65,8 @@ namespace Catan3.Controller
                                 gameModel = NextState();
                                 LogGameModel(gameModel);
                                 break;
+                            default:
+                                throw new InvalidOperationException("invalid game action: " + message.Action);
                         }
                         if (gameModel is not null)
                         {
@@ -83,6 +81,23 @@ namespace Catan3.Controller
                     catch (GameException e)
                     {
                         this.TraceMessage($"Exception doing Action {message.Action}. Message: {e}");
+                    }
+                });
+            Messenger.Register<ShuffleMessage>(this, (recipient, message) =>
+                {
+                    try
+                    {
+                        var gameModel = Log.CopyCurrent();
+                     
+                        _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+                        
+                        gameModel = ShuffleCurrentGame(message.Seed);
+                        LogGameModel(gameModel);
+                        Messenger.Send(new UpdateGameModel(gameModel));
+                    }
+                    catch (GameException e)
+                    {
+                        this.TraceMessage($"Exception doing Shuffle with seed {message.Seed}. Message: {e}");
                     }
                 });
             Messenger.Register<BuildingUpgradeMessage>(this, (recipient, message) =>
@@ -1373,6 +1388,18 @@ namespace Catan3.Controller
             ThrowIfWrongState(gameModel.GameState, [GameState.PickingBoard]);
             // Call content shuffle (resource/number) explicitly to avoid calling GameModel.Shuffle() list reorder
             Catan3.Models.GameFactory.Shuffle(gameModel);
+            return gameModel;
+        }
+
+        private GameModel ShuffleCurrentGame(int seed)
+        {
+            //
+            //  you need to get the gameModel prior to checking the state as we don't know the state until then.
+            //  CONSIDER: caching the state to do a top level check w/o the GameModel hydration cost
+            GameModel gameModel = Log.CopyCurrent();
+            ThrowIfWrongState(gameModel.GameState, [GameState.PickingBoard]);
+            // Call content shuffle (resource/number) with deterministic seed for reproducible results
+            Catan3.Models.GameFactory.Shuffle(gameModel, seed);
             return gameModel;
         }
         public SerializableLog GetSerializableLog()

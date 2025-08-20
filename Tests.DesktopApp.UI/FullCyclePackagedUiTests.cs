@@ -1,6 +1,7 @@
 using Catan3.Shared.Extensions;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
+using CommunityToolkit.Mvvm.Messaging;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Conditions;
@@ -126,9 +127,35 @@ namespace Tests.DesktopApp.UI
                 _uiHelper = new UIAutomationHelper(Main, _automation!);
             }
             
-            // Use the enhanced UIAutomationHelper implementation with validation
-            // This will automatically log stats and throw if required buttons are missing
-            _uiHelper.LoadAutomationObjects();
+            // Wait a bit more for all UI elements to be fully rendered
+            this.TraceMessage("Waiting for UI elements to be fully rendered...");
+            Thread.Sleep(2000);
+            
+            // Retry LoadAutomationObjects if UiPumpButton is missing (UI might still be loading)
+            int retryCount = 0;
+            const int maxRetries = 3;
+            
+            while (retryCount < maxRetries)
+            {
+                try
+                {
+                    // Use the enhanced UIAutomationHelper implementation with validation
+                    // This will automatically log stats and throw if required buttons are missing
+                    _uiHelper.LoadAutomationObjects();
+                    this.TraceMessage("✅ LoadAutomationObjects succeeded");
+                    return; // Success, exit the retry loop
+                }
+                catch (Exception ex) when (ex.Message.Contains("UiPumpButton") && retryCount < maxRetries - 1)
+                {
+                    retryCount++;
+                    this.TraceMessage($"⚠️ LoadAutomationObjects failed (attempt {retryCount}/{maxRetries}): {ex.Message}");
+                    this.TraceMessage($"Waiting {2000 * retryCount}ms before retry...");
+                    Thread.Sleep(2000 * retryCount); // Progressive delay
+                }
+            }
+            
+            // If we get here, all retries failed
+            throw new Exception($"LoadAutomationObjects failed after {maxRetries} attempts. UI may not be fully loaded.");
         }
 
         /// <summary>
@@ -161,7 +188,7 @@ namespace Tests.DesktopApp.UI
         {
             Sta.Run(() =>
             {
-                DoFullTestWithScriptedActions("Expansion-Test.catan_test");
+                DoFullTestWithScriptedActions("Expansion.catan_test");
             });
         }
         
@@ -170,7 +197,7 @@ namespace Tests.DesktopApp.UI
         {
             Sta.Run(() =>
             {
-                DoFullTestWithScriptedActions("Regular Game Test.catan_test");
+                DoFullTestWithScriptedActions("Regular.catan_test");
             });
         }
         
@@ -190,7 +217,7 @@ namespace Tests.DesktopApp.UI
         /// Exit State: Test completed (app either closed or left open for debugging)
         /// 
         /// Test Flow:
-        /// 1. Copy test file to temp location
+        /// 1. Locate test file path directly
         /// 2. Launch app with command line args to auto-load the test file
         /// 3. Wait for game board to be loaded
         /// 4. Load automation objects cache
@@ -208,48 +235,29 @@ namespace Tests.DesktopApp.UI
             
             this.TraceMessage($"Test starting with scripted actions methodology - File: {testFileName}");
 
-            // Step 1: Create temp file and copy test game
-            var tempTestFile = CreateTempTestFile(testFileName);
-            this.TraceMessage($"Created temp test file: {tempTestFile}");
+            // Step 1: Get test file path directly (no temp copying)
+            var testFilePath = GetTestFilePath(testFileName);
+            this.TraceMessage($"Using test file: {testFilePath}");
 
-            try
-            {
-                // Step 2: Launch app with test file
-                this.TraceMessage("About to launch app with test file");
-                LaunchAppWithTestFile(tempTestFile);
-                this.TraceMessage("App launched successfully");
+            // Step 2: Launch app with test file
+            this.TraceMessage("About to launch app with test file");
+            LaunchAppWithTestFile(testFilePath);
+            this.TraceMessage("App launched successfully");
 
-                // Step 3: Wait for game to be loaded (should skip NewGame dialog)
-                this.TraceMessage("Waiting for game board to load");
-                WaitForGameBoardToLoad();
-                this.TraceMessage("Game board loaded");
+            // Step 3: Wait for game to be loaded (should skip NewGame dialog)
+            this.TraceMessage("Waiting for game board to load");
+            WaitForGameBoardToLoad();
+            this.TraceMessage("Game board loaded");
 
-                // Step 4: Load automation objects after the game board is created
-                LoadAutomationObjects();
+            // Step 4: Load automation objects after the game board is created
+            LoadAutomationObjects();
 
-                // Step 5: Execute the scripted scenario
-                this.TraceMessage("=== Starting scripted action execution ===");
-                ExecuteScenario(testFileName);
+            // Step 5: Execute the scripted scenario
+            this.TraceMessage("=== Starting scripted action execution ===");
+            ExecuteScenario(testFileName);
 
-                this.TraceMessage("=== All scripted actions completed successfully ===");
-                _testSucceeded = true; // Mark test as successful
-            }
-            finally
-            {
-                // Clean up temp file
-                try
-                {
-                    if (File.Exists(tempTestFile))
-                    {
-                        File.Delete(tempTestFile);
-                        this.TraceMessage($"Cleaned up temp file: {tempTestFile}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    this.TraceMessage($"Warning: Could not clean up temp file: {ex.Message}");
-                }
-            }
+            this.TraceMessage("=== All scripted actions completed successfully ===");
+            _testSucceeded = true; // Mark test as successful
         }
 
 
@@ -585,11 +593,11 @@ namespace Tests.DesktopApp.UI
         }
         
         /// <summary>
-        /// Creates a temporary copy of the test file to avoid modifying the original.
-        /// Returns the path to the temporary file.
+        /// Gets the path to the test file without creating a temporary copy.
+        /// Returns the direct path to the .catan_test file.
         /// </summary>
         /// <param name="testFileName">Optional test file name. If null, uses GetTestFileName() logic.</param>
-        private string CreateTempTestFile(string? testFileName = null)
+        private string GetTestFilePath(string? testFileName = null)
         {
             // Use provided filename or check for test file override from environment variable or command-line
             testFileName ??= GetTestFileName();
@@ -622,22 +630,8 @@ namespace Tests.DesktopApp.UI
                 throw new FileNotFoundException($"Test file not found. Looked in: {sourceFile}");
             }
 
-            var tempFile = Path.GetTempFileName();
-            
-            // Preserve the original file extension to maintain file association behavior
-            var originalExtension = Path.GetExtension(sourceFile);
-            var tempTestFile = Path.ChangeExtension(tempFile, originalExtension);
-            
-            File.Copy(sourceFile, tempTestFile, overwrite: true);
-            
-            // Clean up the temp file that was created by GetTempFileName
-            if (File.Exists(tempFile))
-            {
-                File.Delete(tempFile);
-            }
-            
-            this.TraceMessage($"Created temp file with extension: {originalExtension}");
-            return tempTestFile;
+            this.TraceMessage($"Found test file: {sourceFile}");
+            return sourceFile;
         }
 
         /// <summary>
@@ -1049,6 +1043,9 @@ namespace Tests.DesktopApp.UI
                 case ExecuteGameActionRecord action:
                     Execute_GameAction(action);
                     break;
+                case ShuffleRecord shuffle:
+                    Execute_Shuffle(shuffle);
+                    break;
                 case PurchaseRecord purchase:
                     Execute_Purchase(purchase);
                     break;
@@ -1121,6 +1118,21 @@ namespace Tests.DesktopApp.UI
             var button = FindByAutomationId(buttonId);
             Assert.NotNull(button);
             button.Click();
+        }
+
+        private void Execute_Shuffle(ShuffleRecord shuffle)
+        {
+            this.TraceMessage($"Executing shuffle with recorded seed: {shuffle.Seed}");
+            
+            // Set the test seed in the hidden TextBox before clicking shuffle
+            var testSeedInput = FindByAutomationId("TestSeedInput");
+            Assert.NotNull(testSeedInput);
+            testSeedInput.AsTextBox().Text = shuffle.Seed.ToString();
+            
+            // Now click the shuffle button, which will use the test seed
+            var shuffleButton = FindByAutomationId("ShuffleButton");
+            Assert.NotNull(shuffleButton);
+            shuffleButton.Click();
         }
 
         private void Execute_BuildingUpgrade(BuildingUpgradeRecord building, UIAutomationHelper uiHelper)

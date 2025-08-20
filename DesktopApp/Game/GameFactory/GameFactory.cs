@@ -84,6 +84,17 @@ namespace Catan3.Models
         public static void Shuffle(this GameModel game)
         {
             Random random = new();
+            Shuffle(game, random);
+        }
+
+        public static void Shuffle(this GameModel game, int seed)
+        {
+            Random random = new(seed);
+            Shuffle(game, random);
+        }
+
+        private static void Shuffle(GameModel game, Random random)
+        {
             int count = game.Tiles.Count;
             do
             {

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
 
@@ -53,6 +54,23 @@ namespace Catan3.Shared.Extensions
         }
 
         /// <summary>
+        /// Computes a deterministic hash code for a string using simple polynomial rolling hash.
+        /// Unlike string.GetHashCode(), this produces the same result across application runs.
+        /// </summary>
+        private static int GetDeterministicStringHash(string? input)
+        {
+            if (string.IsNullOrEmpty(input)) return 0;
+            
+            int hash = 0;
+            const int prime = 31;
+            foreach (char c in input)
+            {
+                hash = hash * prime + c;
+            }
+            return hash;
+        }
+
+        /// <summary>
         /// Computes a prime-based hash representing the current state of the game tiles.
         /// Uses unique prime multipliers for each tile position to ensure mathematical uniqueness.
         /// This method is fast and deterministic - identical game states will always produce the same hash.
@@ -66,19 +84,21 @@ namespace Catan3.Shared.Extensions
         {
             // Prime numbers for unique hash computation
             // Need enough primes for: tiles (60), harbors (22), roads (~100), buildings (80), entitlements (~50), etc.
-            var primes = new Stack<int>(First750Primes.AsEnumerable().Reverse());
+            var primes = new Stack<int>(First750Primes.AsEnumerable());
             
-            long hash = 0;
+            BigInteger hash = 0;
             
             // Include GameState and CurrentPlayerId for state verification
             hash += (int)gameModel.GameState * primes.Pop();
-            hash += (gameModel.CurrentPlayerId?.GetHashCode() ?? 0) * primes.Pop();
+            hash += GetDeterministicStringHash(gameModel.CurrentPlayerId) * primes.Pop();
             
-            // Process tiles with unique prime multipliers
-            for (int tileIndex = 0; tileIndex < gameModel.Tiles.Count; tileIndex++)
+            // Process tiles with unique prime multipliers (sorted by coordinates for consistency)
+            var sortedTiles = gameModel.Tiles.OrderBy(t => t.TileKey.Q)
+                .ThenBy(t => t.TileKey.R)
+                .ThenBy(t => t.TileKey.S);
+            
+            foreach (var tile in sortedTiles)
             {
-                var tile = gameModel.Tiles[tileIndex];
-                
                 // Each tile gets 2 unique primes: one for resource, one for number
                 hash += primes.Pop() * (int)tile.ResourceTileType;
                 hash += primes.Pop() * tile.Number;
@@ -114,7 +134,7 @@ namespace Catan3.Shared.Extensions
                 {
                     // Use unique primes for each owned road
                     hash += primes.Pop() * roadIndex; // Road position in sorted order
-                    hash += primes.Pop() * (road.OwnerId?.GetHashCode() ?? 0); // Owner hash
+                    hash += primes.Pop() * GetDeterministicStringHash(road.OwnerId); // Owner hash
                     roadIndex++;
                 }
             }
@@ -134,7 +154,7 @@ namespace Catan3.Shared.Extensions
                     // Use unique primes for each owned building
                     hash += primes.Pop() * buildingIndex; // Building position in sorted order
                     hash += primes.Pop() * (int)building.BuildingState; // Building state (Settlement vs City)
-                    hash += primes.Pop() * (building.OwnerId?.GetHashCode() ?? 0); // Owner hash
+                    hash += primes.Pop() * GetDeterministicStringHash(building.OwnerId); // Owner hash
                     buildingIndex++;
                 }
             }
@@ -152,7 +172,7 @@ namespace Catan3.Shared.Extensions
                         foreach (var entitlement in sortedEntitlements)
                         {
                             hash += primes.Pop() * (int)entitlement;
-                            hash += primes.Pop() * (player.Id?.GetHashCode() ?? 0);
+                            hash += primes.Pop() * GetDeterministicStringHash(player.Id);
                         }
                     }
                 }
@@ -167,9 +187,8 @@ namespace Catan3.Shared.Extensions
                 hash += primes.Pop() * gameModel.Robber.Coordinates.S;
             }
             var result = hash.ToString("X");
-            result.TraceMessage($"Game hash computed: {result}");
-            // Convert to hex string for readability
-            return hash.ToString("X");
+            result.TraceMessage($"BigInt Game hash computed: {result}");
+            return result;
         }
 
         /// <summary>

@@ -57,6 +57,7 @@ namespace Catan3.Shared.Models
     /// </summary>
     [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
     [JsonDerivedType(typeof(ExecuteGameActionRecord), ExecuteGameActionRecord.Discriminator)]
+    [JsonDerivedType(typeof(ShuffleRecord), ShuffleRecord.Discriminator)]
     [JsonDerivedType(typeof(PurchaseRecord), PurchaseRecord.Discriminator)]
     [JsonDerivedType(typeof(BuildingUpgradeRecord), BuildingUpgradeRecord.Discriminator)]
     [JsonDerivedType(typeof(RoadPurchaseRecord), RoadPurchaseRecord.Discriminator)]
@@ -119,6 +120,48 @@ namespace Catan3.Shared.Models
         {
             GameHash = gameHash;
             Action = message.Action;
+        }
+    }
+
+    /// <summary>
+    /// Snapshot of a <c>ShuffleMessage</c> suitable for recording and replay.
+    /// </summary>
+    public sealed class ShuffleRecord : IRecordedMessage
+    {
+        /// <summary>
+        /// Discriminator value written to/expected from JSON: <c>"shuffleRecord"</c>.
+        /// </summary>
+        public const string Discriminator = "shuffleRecord";
+
+        /// <inheritdoc />
+        public string GameHash { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The seed used for deterministic randomization.
+        /// </summary>
+        public int Seed { get; init; }
+
+        /// <inheritdoc />
+        [JsonIgnore]
+        public string RecordType => Discriminator;
+
+        /// <summary>
+        /// Constructor used during deserialization and for programmatic creation.
+        /// </summary>
+        [JsonConstructor]
+        public ShuffleRecord(string gameHash, int seed)
+        {
+            GameHash = gameHash;
+            Seed = seed;
+        }
+
+        /// <summary>
+        /// Convenience constructor to capture a <see cref="ShuffleMessage"/> at runtime.
+        /// </summary>
+        public ShuffleRecord(string gameHash, ShuffleMessage message)
+        {
+            GameHash = gameHash;
+            Seed = message.Seed;
         }
     }
 
@@ -393,6 +436,12 @@ namespace Catan3.Shared.Models
             => new ExecuteGameActionRecord(gameHash, msg);
 
         /// <summary>
+        /// Capture a <see cref="ShuffleMessage"/> as a <see cref="ShuffleRecord"/>.
+        /// </summary>
+        public static IRecordedMessage ToRecord(this ShuffleMessage msg, string gameHash)
+            => new ShuffleRecord(gameHash, msg);
+
+        /// <summary>
         /// Capture a <see cref="PurchaseMessage"/> as a <see cref="PurchaseRecord"/>.
         /// </summary>
         public static IRecordedMessage ToRecord(this PurchaseMessage msg, string gameHash)
@@ -466,6 +515,7 @@ namespace Catan3.Shared.Models
         public static void Match(
             this IRecordedMessage msg,
             Action<ExecuteGameActionRecord>? onExecute = null,
+            Action<ShuffleRecord>? onShuffle = null,
             Action<PurchaseRecord>? onPurchase = null,
             Action<BuildingUpgradeRecord>? onBuildingUpgrade = null,
             Action<RoadPurchaseRecord>? onRoadPurchase = null,
@@ -480,12 +530,13 @@ namespace Catan3.Shared.Models
             switch (msg)
             {
                 case ExecuteGameActionRecord e: onExecute?.Invoke(e); break;
+                case ShuffleRecord s: onShuffle?.Invoke(s); break;
                 case PurchaseRecord p: onPurchase?.Invoke(p); break;
                 case BuildingUpgradeRecord b: onBuildingUpgrade?.Invoke(b); break;
                 case RoadPurchaseRecord r: onRoadPurchase?.Invoke(r); break;
                 case MoveRobberRecord m: onMoveRobber?.Invoke(m); break;
                 case RollRecord ro: onRoll?.Invoke(ro); break;
-                case SetPlayerOrderRecord s: onSetPlayerOrder?.Invoke(s); break;
+                case SetPlayerOrderRecord so: onSetPlayerOrder?.Invoke(so); break;
                 case GoFirstRecord g: onGoFirst?.Invoke(g); break;
                 case PlayersDoingSupplementalRecord ps: onPlayersDoingSupplemental?.Invoke(ps); break;
                 case BalanceBoardRecord bb: onBalanceBoard?.Invoke(bb); break;

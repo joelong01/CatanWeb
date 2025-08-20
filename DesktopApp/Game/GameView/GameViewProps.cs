@@ -55,6 +55,13 @@ namespace Catan3.Models
         public partial RobberViewModel RobberViewModel { get; set; } = new(new());
 
         /// <summary>
+        /// Gets or sets the test seed for deterministic shuffle during UI testing.
+        /// When set, the shuffle operation will use this seed instead of generating a random one.
+        /// </summary>
+        [ObservableProperty]
+        public partial string ShuffleSeed { get; set; } = "";
+
+        /// <summary>
         /// Gets or sets the name of the game.
         /// </summary>
         [ObservableProperty]

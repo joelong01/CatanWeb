@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -18,7 +19,23 @@ namespace Catan3.Models
         [RelayCommand]
         public void Shuffle()
         {
-            Messenger.Send(new ExecuteGameActionMessage(GameAction.Shuffle));
+            // Check for test seed property first, otherwise generate random seed
+            int seed = GetTestSeedOrRandom();
+            Messenger.Send(new ShuffleMessage(seed));
+        }
+        
+        private int GetTestSeedOrRandom()
+        {
+            // Check if a test seed is provided via the ShuffleSeed property
+            if (!string.IsNullOrEmpty(ShuffleSeed) && int.TryParse(ShuffleSeed, out int testSeed))
+            {
+                this.TraceMessage($"Using test seed: {ShuffleSeed}");  
+                ShuffleSeed = string.Empty; // Clear the seed after use
+                return testSeed;
+            }
+            
+            // No test seed provided, generate random
+            return Random.Shared.Next();
         }
         [RelayCommand]
         public void Undo()
