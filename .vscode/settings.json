@@ -8,5 +8,21 @@
         "**/bin": true,
         "**/obj": true
     },
-    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true
+    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+    "cSpell.words": [
+        "csdevkit",
+        "csproj",
+        "dotnettools",
+        "msbuild",
+        "omnisharp",
+        "pscustomobject",
+        "refs",
+        "retarget",
+        "tfm",
+        "tfms",
+        "vscode",
+        "vswhere",
+        "winui", 
+        "nologo"
+    ]
 }
