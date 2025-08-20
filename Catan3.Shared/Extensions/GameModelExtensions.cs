@@ -121,6 +121,12 @@ namespace Catan3.Shared.Extensions
             hash += (int)gameModel.GameState * primes.Pop();
             hash += GetDeterministicStringHash(gameModel.CurrentPlayerId) * primes.Pop();
             
+            // Include NextPlayerToRollAfterSupplemental for supplemental phase consistency
+            hash += GetDeterministicStringHash(gameModel.NextPlayerToRollAfterSupplemental) * primes.Pop();
+            
+            // Include HasSupplementalBuildPhase for game configuration consistency
+            hash += (gameModel.HasSupplementalBuildPhase ? 1 : 0) * primes.Pop();
+            
             // Process tiles with unique prime multipliers (sorted by coordinates for consistency)
             var sortedTiles = gameModel.Tiles.OrderBy(t => t.TileKey.Q)
                 .ThenBy(t => t.TileKey.R)
@@ -195,6 +201,10 @@ namespace Catan3.Shared.Extensions
                 
                 foreach (var player in sortedPlayers)
                 {
+                    // Include ParticipatingInSupplemental flag for supplemental phase consistency
+                    hash += primes.Pop() * (player.ParticipatingInSupplemental ? 1 : 0);
+                    hash += primes.Pop() * GetDeterministicStringHash(player.Id);
+                    
                     if (player.UnspentEntitlements?.Any() == true)
                     {
                         var sortedEntitlements = player.UnspentEntitlements.OrderBy(e => (int)e);

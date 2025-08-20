@@ -138,5 +138,15 @@ namespace Catan3.Shared.Extensions
             ArgumentNullException.ThrowIfNull(list);
             return list.Sum(tile => tile.Stars);
         }
+
+        /// <summary>
+        /// Gets the AutomationId for a robber target menu item.
+        /// </summary>
+        /// <param name="targetPlayerId">The player ID to target, or null for "Nobody"</param>
+        /// <returns>AutomationId string for the target menu item</returns>
+        public static string GetRobberTargetAutomationId(string? targetPlayerId)
+        {
+            return $"RobberTarget-{targetPlayerId ?? "Nobody"}";
+        }
     }
 }

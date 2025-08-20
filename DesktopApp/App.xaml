@@ -12,6 +12,16 @@
                 <ResourceDictionary Source="Themes/StyleResourceDictionary.xaml" />
                 <ResourceDictionary Source="Themes/ImageResources.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Centralized Animation Durations -->
+            <!-- These are updated to Duration.Forever (zero) when in test mode -->
+            <Duration x:Key="AnimationFast">0:0:0.1</Duration>
+            <Duration x:Key="AnimationMedium">0:0:0.25</Duration>
+            <Duration x:Key="AnimationSlow">0:0:0.5</Duration>
+            <Duration x:Key="AnimationExtraSlow">0:0:2</Duration>
+            <Duration x:Key="AnimationButtonPress">0:0:0.2</Duration>
+            <Duration x:Key="AnimationColorTransition">0:0:0.3</Duration>
+            <Duration x:Key="AnimationDelay">0:0:1</Duration>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

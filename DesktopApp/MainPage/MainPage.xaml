@@ -226,6 +226,7 @@
 
                 <AppBarButton Label="Balance"
                         Command="{x:Bind MainPageModel.GameViewModel.BalanceCommand, Mode=OneWay}"
+                              AutomationProperties.AutomationId="BalanceBoardButton"
                         Icon="Repair" />
                 <AppBarButton Label="Toggle Titlebar" Click="OnToggleTitleBar"
                         Icon="FullScreen" />

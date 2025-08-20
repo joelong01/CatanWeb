@@ -12,16 +12,16 @@
         <Storyboard x:Key="MoveRobberAnimation">
             <DoubleAnimation Storyboard.TargetName="VB_Robber"
                     Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransfrom.TranslateX)"
-                    Duration="0:0:0.250" To="100" />
+                    Duration="{StaticResource AnimationMedium}" To="100" />
             <DoubleAnimation Storyboard.TargetName="VB_Robber"
                     Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransfrom.TranslateY)"
-                    Duration="0:0:0.250" To="100" />
+                    Duration="{StaticResource AnimationMedium}" To="100" />
         </Storyboard>
         <Storyboard x:Name="SB_AnimateOpacity">
             <DoubleAnimation x:Name="DA_AnimateOpacity"
                     Storyboard.TargetName="VB_Robber"
-                    Storyboard.TargetProperty="Opacity" BeginTime="0:0:1"
-                    Duration="0:0:0.250" From="0.0" To="1.0" />
+                    Storyboard.TargetProperty="Opacity" BeginTime="{StaticResource AnimationDelay}"
+                    Duration="{StaticResource AnimationMedium}" From="0.0" To="1.0" />
         </Storyboard>
     </UserControl.Resources>
     <Canvas Background="Transparent" HorizontalAlignment="Center"

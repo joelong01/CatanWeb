@@ -48,7 +48,7 @@
                                 <VisualState x:Name="Normal" />
                                 <VisualState x:Name="PointerOver">
                                     <Storyboard>
-                                        <ColorAnimation Duration="0:0:0.3"
+                                        <ColorAnimation Duration="{StaticResource AnimationColorTransition}"
                                                 Storyboard.TargetName="RootBorder"
                                                 Storyboard.TargetProperty="(Border.BorderBrush).(SolidColorBrush.Color)"
                                                 To="{Binding Path=(Button.BorderBrush), RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BrushToColorConverter}}" />
@@ -56,11 +56,11 @@
                                 </VisualState>
                                 <VisualState x:Name="Pressed">
                                     <Storyboard>
-                                        <DoubleAnimation Duration="0:0:0.2"
+                                        <DoubleAnimation Duration="{StaticResource AnimationButtonPress}"
                                                 To="0.9"
                                                 Storyboard.TargetName="RootBorder"
                                                 Storyboard.TargetProperty="ScaleX" />
-                                        <DoubleAnimation Duration="0:0:0.2"
+                                        <DoubleAnimation Duration="{StaticResource AnimationButtonPress}"
                                                 To="0.9"
                                                 Storyboard.TargetName="RootBorder"
                                                 Storyboard.TargetProperty="ScaleY" />
@@ -68,7 +68,7 @@
                                 </VisualState>
                                 <VisualState x:Name="PointerExited">
                                     <Storyboard>
-                                        <ColorAnimation Duration="0:0:0.3"
+                                        <ColorAnimation Duration="{StaticResource AnimationColorTransition}"
                                                 Storyboard.TargetName="RootBorder"
                                                 Storyboard.TargetProperty="(Border.BorderBrush).(SolidColorBrush.Color)"
                                                 To="Transparent" />

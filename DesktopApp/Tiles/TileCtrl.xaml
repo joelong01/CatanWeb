@@ -11,11 +11,11 @@
     <Control.Resources>
         <Storyboard x:Name="DimAnimation">
             <DoubleAnimation Storyboard.TargetProperty="Opacity" Storyboard.TargetName="CANVAS_LayoutRoot" To="0.5"
-                    Duration="0:0:0.5" AutoReverse="False" />
+                    Duration="{StaticResource AnimationSlow}" AutoReverse="False" />
         </Storyboard>
         <Storyboard x:Name="RevertAnimation">
             <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Storyboard.TargetName="CANVAS_LayoutRoot"
-                    Duration="0:0:0.5" AutoReverse="False" />
+                    Duration="{StaticResource AnimationSlow}" AutoReverse="False" />
         </Storyboard>
     </Control.Resources>
 

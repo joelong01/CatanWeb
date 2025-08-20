@@ -134,6 +134,7 @@ namespace Catan3
                 if (IsTestMode)
                 {
                     Timeline.AllowDependentAnimations = false;
+                    Catan3.Utility.AnimationSpeed.SetTestMode(true);
                     this.TraceMessage("Applied test mode UI settings (disabled animations)");
                 }
                 

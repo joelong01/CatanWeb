@@ -117,7 +117,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             //TraceMessage($"=== END DEBUG LISTING ===");
             
             // Check for critical buttons - TestAutomationActionButton is essential, purchase buttons may be face-down
-            var essentialControls = new[] { "TestAutomationActionButton", "SmuggledTestData" };
+            var essentialControls = new[] { "TestAutomationActionButton", "SmuggledTestData", "BalanceBoardButton" };
             var purchaseButtons = new[] { "PurchaseRoadButton", "PurchaseSettlementButton", "PurchaseCityButton", "PurchaseSoldierButton" };
             
             var missingEssential = essentialControls.Where(automationId => !_uiControlsCache.ContainsKey(automationId)).ToArray();
@@ -504,7 +504,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             // First try normal search
             var res = Retry.WhileNull(
                 () => _mainWindow.FindFirstDescendant(_cf.ByAutomationId(automationId)),
-                timeout: TimeSpan.FromMilliseconds(SHORT_WAIT),
+                timeout: TimeSpan.FromMilliseconds(1000),
                 interval: TimeSpan.FromMilliseconds(100),
                 throwOnTimeout: false);
 

@@ -21,7 +21,7 @@ namespace Catan3.Models
         private GameType GameType { get; set; } = GameType.Unset;
         private IPlayerDatabase PlayerDatabaseService { get; set; }
         private DispatcherTimer DimTileTimer { get; } = new();
-        private static readonly TimeSpan TILE_DIM_TIME = TimeSpan.FromSeconds(2);
+        private static TimeSpan TILE_DIM_TIME => Catan3.Utility.AnimationSpeed.ExtraSlow;
         //
         // 
         /// <summary>

@@ -21,8 +21,9 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
-using Tests.DesktopApp.UI.TestInfra;
 using Tests.DesktopApp.UI.ScriptedTestData;
+using Tests.DesktopApp.UI.TestInfra;
+using Windows.Foundation;
 using Xunit;
 using Xunit.Sdk;
 using static System.Math;
@@ -97,7 +98,8 @@ namespace Tests.DesktopApp.UI
     public class FullCyclePackagedUiTests : IDisposable
     {
         private static int SHORT_WAIT = 25;
-        private static int LONG_WAIT = SHORT_WAIT * 3;
+        private static int MEDIUM_WAIT = 250;
+        private static int LONG_WAIT = 1000;
         private UIA3Automation? _automation;
         private AutomationElement? _main;
         private bool _testSucceeded = false;
@@ -126,15 +128,15 @@ namespace Tests.DesktopApp.UI
             {
                 _uiHelper = new UIAutomationHelper(Main, _automation!);
             }
-            
+
             // Wait a bit more for all UI elements to be fully rendered
             this.TraceMessage("Waiting for UI elements to be fully rendered...");
-            Thread.Sleep(2000);
-            
+
+
             // Retry LoadAutomationObjects if TestAutomationActionButton is missing (UI might still be loading)
             int retryCount = 0;
-            const int maxRetries = 3;
-            
+            const int maxRetries = 5;
+
             while (retryCount < maxRetries)
             {
                 try
@@ -150,10 +152,10 @@ namespace Tests.DesktopApp.UI
                     retryCount++;
                     this.TraceMessage($"⚠️ LoadAutomationObjects failed (attempt {retryCount}/{maxRetries}): {ex.Message}");
                     this.TraceMessage($"Waiting {2000 * retryCount}ms before retry...");
-                    Thread.Sleep(2000 * retryCount); // Progressive delay
+                    Thread.Sleep(50 * retryCount); // Progressive delay
                 }
             }
-            
+
             // If we get here, all retries failed
             throw new Exception($"LoadAutomationObjects failed after {maxRetries} attempts. UI may not be fully loaded.");
         }
@@ -191,7 +193,7 @@ namespace Tests.DesktopApp.UI
                 DoFullTestWithScriptedActions("Expansion.catan_test");
             });
         }
-        
+
         [Fact]
         public void Regular_End_To_End_Test()
         {
@@ -200,7 +202,7 @@ namespace Tests.DesktopApp.UI
                 DoFullTestWithScriptedActions("Regular.catan_test");
             });
         }
-        
+
         [Fact]
         [Obsolete("Use Expansion_End_To_End_Test or Regular_End_To_End_Test instead")]
         public void Full_Stateful_Flow_PackagedApp_Expansion_FivePlayers()
@@ -232,7 +234,7 @@ namespace Tests.DesktopApp.UI
         {
             // Ensure we have a test file name
             testFileName ??= GetTestFileName();
-            
+
             this.TraceMessage($"Test starting with scripted actions methodology - File: {testFileName}");
 
             // Step 1: Get test file path directly (no temp copying)
@@ -351,7 +353,7 @@ namespace Tests.DesktopApp.UI
                 throw new Xunit.Sdk.XunitException($"Roll '{id}' did not change the GameModel within timeout.");
             }
 
-            Thread.Sleep(SHORT_WAIT);
+            ShortWait(_uiHelper!);
         }
 
 
@@ -473,7 +475,7 @@ namespace Tests.DesktopApp.UI
             {
                 _uiHelper = new UIAutomationHelper(Main, _automation!);
             }
-            
+
             var automationId = buildableRoads[0].RoadKey.GetAutomationId();
             var element = _uiHelper.FindElement(automationId);
             Assert.NotNull(element);
@@ -498,12 +500,12 @@ namespace Tests.DesktopApp.UI
             {
                 _uiHelper = new UIAutomationHelper(Main, _automation!);
             }
-            
+
             var buildingElement = _uiHelper.FindElement(expectedAutomationId);
             Assert.NotNull(buildingElement);
 
             buildingElement.Click();
-             ShortWait(_uiHelper!);
+            ShortWait(_uiHelper!);
         }
 
         /// <summary>
@@ -524,7 +526,7 @@ namespace Tests.DesktopApp.UI
             {
                 _uiHelper = new UIAutomationHelper(Main, _automation!);
             }
-            
+
             var roadElement = _uiHelper.FindElement(roadModel.RoadKey.GetAutomationId());
             Assert.NotNull(roadElement);
 
@@ -563,7 +565,7 @@ namespace Tests.DesktopApp.UI
         {
             // Check environment variable first (can be set in test runner or CI/CD)
             var testFile = Environment.GetEnvironmentVariable("CATAN_TEST_FILE");
-            
+
             // If not set, check command-line arguments
             if (string.IsNullOrEmpty(testFile))
             {
@@ -577,7 +579,7 @@ namespace Tests.DesktopApp.UI
                     }
                 }
             }
-            
+
             // Default to Expansion-Test.catan_test if not specified
             if (string.IsNullOrEmpty(testFile))
             {
@@ -588,10 +590,10 @@ namespace Tests.DesktopApp.UI
             {
                 this.TraceMessage($"Using test file from configuration: {testFile}");
             }
-            
+
             return testFile;
         }
-        
+
         /// <summary>
         /// Gets the path to the test file without creating a temporary copy.
         /// Returns the direct path to the .catan_test file.
@@ -601,14 +603,14 @@ namespace Tests.DesktopApp.UI
         {
             // Use provided filename or check for test file override from environment variable or command-line
             testFileName ??= GetTestFileName();
-            
+
             // The test file is stored alongside the test data in ScriptedTestData folder
             var assembly = Assembly.GetExecutingAssembly();
             var assemblyPath = Path.GetDirectoryName(assembly.Location)!;
-            
+
             // Try to find the file in the output directory first (it should be copied there)
             var sourceFile = Path.Combine(assemblyPath, "ScriptedTestData", testFileName);
-            
+
             // If not in output, try to find it relative to the source directory
             if (!File.Exists(sourceFile))
             {
@@ -618,13 +620,13 @@ namespace Tests.DesktopApp.UI
                 {
                     current = current.Parent;
                 }
-                
+
                 if (current != null)
                 {
                     sourceFile = Path.Combine(current.FullName, "ScriptedTestData", testFileName);
                 }
             }
-            
+
             if (!File.Exists(sourceFile))
             {
                 throw new FileNotFoundException($"Test file not found. Looked in: {sourceFile}");
@@ -642,7 +644,7 @@ namespace Tests.DesktopApp.UI
         private void LaunchAppWithTestFile(string testFilePath)
         {
             this.TraceMessage($"Launching .catan file via file association: {testFilePath}");
-            
+
             var psi = new ProcessStartInfo
             {
                 FileName = testFilePath,
@@ -655,37 +657,37 @@ namespace Tests.DesktopApp.UI
             {
                 throw new InvalidOperationException("Failed to launch process or get process ID");
             }
-            
+
             var targetProcessId = process.Id;
             this.TraceMessage($"Launched process ID: {targetProcessId}");
-            
+
             _automation = new UIA3Automation();
 
             // Wait for the window with our specific process ID
             _main = Retry.WhileNull(
                 () =>
                 {
-                var wins = _automation.GetDesktop()
-                    .FindAllChildren(Cf.ByProcessId(targetProcessId));
-                       
+                    var wins = _automation.GetDesktop()
+                        .FindAllChildren(Cf.ByProcessId(targetProcessId));
+
                     this.TraceMessage($"Found {wins.Length} WinUI windows for process {targetProcessId}");
-                    
+
                     // Should only be one window for our process, but filter out debug windows just in case
-                    var mainWindow = wins.FirstOrDefault(w => 
+                    var mainWindow = wins.FirstOrDefault(w =>
                         !w.Name.Contains("Catan Debug Messages", StringComparison.OrdinalIgnoreCase));
-                    
+
                     if (mainWindow != null)
                     {
                         this.TraceMessage($"✅ Found window: {mainWindow.Name}");
                     }
-                    
+
                     return mainWindow;
                 },
                 timeout: TimeSpan.FromSeconds(25),
                 interval: TimeSpan.FromMilliseconds(250),
                 throwOnTimeout: false
             ).Result ?? throw new XunitException($"Failed to find window for process {targetProcessId}. The app may have crashed or failed to create a window.");
-            
+
             // Check if we should wait for debugger attachment AFTER the app is launched
             if (Environment.GetEnvironmentVariable("CATAN_DEBUG_WAIT") == "true")
             {
@@ -695,9 +697,9 @@ namespace Tests.DesktopApp.UI
                 this.TraceMessage("   2. Press F5 to attach debugger");
                 this.TraceMessage("   3. Set your breakpoints in the Desktop app");
                 this.TraceMessage("   Waiting 10 seconds for debugger attachment...");
-                
+
                 // Give time to attach debugger
-                System.Threading.Thread.Sleep(10000);
+
                 this.TraceMessage("Continuing with test execution...");
             }
         }
@@ -709,7 +711,7 @@ namespace Tests.DesktopApp.UI
         {
             var assembly = Assembly.GetExecutingAssembly();
             var assemblyPath = Path.GetDirectoryName(assembly.Location)!;
-            
+
             // Walk up until we find the .sln file or .git directory
             var current = new DirectoryInfo(assemblyPath);
             while (current != null)
@@ -721,7 +723,7 @@ namespace Tests.DesktopApp.UI
                 }
                 current = current.Parent;
             }
-            
+
             throw new DirectoryNotFoundException("Could not find repository root (no .sln or .git found)");
         }
 
@@ -802,7 +804,7 @@ namespace Tests.DesktopApp.UI
             {
                 _uiHelper = new UIAutomationHelper(Main, _automation!);
             }
-            
+
             return _uiHelper.FindElement(automationId);
         }
 
@@ -853,7 +855,7 @@ namespace Tests.DesktopApp.UI
         {
             AutomationElement nextButton = FindByAutomationId("NextButton");
             Assert.NotNull(nextButton);
-            
+
             if (nextButton.Properties.ItemStatus.TryGetValue(out var buttonGameModelValue))
             {
                 var buttonGameModelJson = buttonGameModelValue as string;
@@ -872,7 +874,7 @@ namespace Tests.DesktopApp.UI
                     }
                 }
             }
-            
+
             throw new InvalidOperationException("Could not extract GameHash from NextButton ItemStatus");
         }
 
@@ -950,7 +952,7 @@ namespace Tests.DesktopApp.UI
                     return true;
                 }
 
-                 ShortWait(_uiHelper!);
+                ShortWait(_uiHelper!);
             }
 
             this.TraceMessage($"WaitForGameState: Timed out waiting for '{expectedState}' after {timeout.TotalSeconds}s");
@@ -979,12 +981,12 @@ namespace Tests.DesktopApp.UI
         /// <param name="testFileName">The test file name to execute</param>
         private void ExecuteScenario(string testFileName)
         {
-            
+
             // Find the scenario file in the same way as the test file
             var assembly = Assembly.GetExecutingAssembly();
             var assemblyPath = Path.GetDirectoryName(assembly.Location)!;
             var scenarioPath = Path.Combine(assemblyPath, "ScriptedTestData", testFileName);
-            
+
             // If not in output, try source directory
             if (!File.Exists(scenarioPath))
             {
@@ -993,13 +995,13 @@ namespace Tests.DesktopApp.UI
                 {
                     current = current.Parent;
                 }
-                
+
                 if (current != null)
                 {
                     scenarioPath = Path.Combine(current.FullName, "ScriptedTestData", testFileName);
                 }
             }
-            
+
             if (!File.Exists(scenarioPath))
             {
                 this.TraceMessage($"Scenario file not found: {scenarioPath}");
@@ -1018,9 +1020,11 @@ namespace Tests.DesktopApp.UI
             // Execute each recorded message in sequence
             for (int i = 0; i < scenario.Actions.Count; i++)
             {
+                if (i == 48)
+                {
+                    this.TraceMessage("this works. 49 does not.");
+                }
                 var recordedMessage = scenario.Actions[i];
-                this.TraceMessage($"Replaying action {i + 1}/{scenario.Actions.Count}: {recordedMessage.RecordType} with hash {recordedMessage.GameHash}");
-
                 // Validate that current GameHash matches recorded GameHash
                 var currentGameHash = GetCurrentGameHash();
                 if (currentGameHash != recordedMessage.GameHash)
@@ -1031,13 +1035,11 @@ namespace Tests.DesktopApp.UI
                     throw new InvalidOperationException($"Game state mismatch at action {i}: expected {recordedMessage.GameHash}, got {currentGameHash}");
                 }
 
-                this.TraceMessage($"✅ GameHash validated: {currentGameHash}");
-
                 // Execute UI interaction based on recorded message type
                 ExecuteRecordedMessage(recordedMessage, uiHelper);
 
                 // Wait for UI to update
-                 ShortWait(_uiHelper!);
+                ShortWait(_uiHelper!);
             }
 
             this.TraceMessage("All scripted actions completed successfully");
@@ -1049,6 +1051,7 @@ namespace Tests.DesktopApp.UI
         /// </summary>
         private void ExecuteRecordedMessage(IRecordedMessage recordedMessage, UIAutomationHelper uiHelper)
         {
+            this.TraceMessage($"Executing recorded message: {recordedMessage.RecordType} with hash {recordedMessage.GameHash}");
             switch (recordedMessage)
             {
                 case ExecuteGameActionRecord action:
@@ -1103,15 +1106,28 @@ namespace Tests.DesktopApp.UI
             {
                 Entitlement.Road => "PurchaseRoadButton",
                 Entitlement.Settlement => "PurchaseSettlementButton",
-                Entitlement.City => "PurchaseCityButton", 
+                Entitlement.City => "PurchaseCityButton",
                 Entitlement.Soldier => "PurchaseSoldierButton",
                 _ => throw new InvalidOperationException($"Unknown entitlement: {purchase.Entitlement}")
             };
-            
+
             this.TraceMessage($"Executing purchase: {purchase.Entitlement} -> {buttonId}");
             var button = FindByAutomationId(buttonId);
             Assert.NotNull(button);
-            button.Click();
+
+            // PurchaseCtrl uses custom pointer handling, try Invoke pattern first
+            var invokePattern = button.Patterns.Invoke.PatternOrDefault;
+            if (invokePattern != null)
+            {
+                invokePattern.Invoke();
+                this.TraceMessage($"Used Invoke pattern for purchase button: {buttonId}");
+            }
+            else
+            {
+                // Fallback to Click if Invoke pattern is not available
+                button.Click();
+                this.TraceMessage($"Used Click fallback for purchase button: {buttonId}");
+            }
         }
 
         private void Execute_GameAction(ExecuteGameActionRecord action)
@@ -1120,11 +1136,11 @@ namespace Tests.DesktopApp.UI
             {
                 GameAction.Shuffle => "ShuffleButton",
                 GameAction.Undo => "UndoButton",
-                GameAction.Redo => "RedoButton", 
+                GameAction.Redo => "RedoButton",
                 GameAction.Next => "NextButton",
                 _ => throw new InvalidOperationException($"Unknown game action: {action.Action}")
             };
-            
+
             this.TraceMessage($"Executing game action: {action.Action} -> {buttonId}");
             var button = FindByAutomationId(buttonId);
             Assert.NotNull(button);
@@ -1144,11 +1160,11 @@ namespace Tests.DesktopApp.UI
         {
             var automationId = building.BuildingKey.GetAutomationId();
             this.TraceMessage($"Executing building upgrade: {automationId}");
-            
+
             var element = uiHelper.FindElement(automationId);
             if (element == null)
                 throw new InvalidOperationException($"Building element not found: {automationId}");
-                
+
             element.Click();
         }
 
@@ -1156,32 +1172,56 @@ namespace Tests.DesktopApp.UI
         {
             var automationId = road.RoadKey.GetAutomationId();
             this.TraceMessage($"Executing road purchase: {automationId}");
-            
+
             var element = uiHelper.FindElement(automationId);
             if (element == null)
                 throw new InvalidOperationException($"Road element not found: {automationId}");
-                
+
             element.Click();
         }
 
         private void Execute_MoveRobber(MoveRobberRecord robber, UIAutomationHelper uiHelper)
         {
+            Thread.Sleep(MEDIUM_WAIT);
             var tileAutomationId = $"Tile-{robber.Coordinates}";
             this.TraceMessage($"Executing move robber: {tileAutomationId}, target: {robber.TargetPlayerId ?? "none"}");
-            
+
             var tileElement = uiHelper.FindElement(tileAutomationId);
             if (tileElement == null)
                 throw new InvalidOperationException($"Tile element not found: {tileAutomationId}");
-            
+
             // Right-click on tile to open robber context menu
             tileElement.RightClick();
-            
-            // TODO: If there's a target player, select them from the context menu
-            // This would require additional UI automation to handle the context menu
-            if (!string.IsNullOrEmpty(robber.TargetPlayerId))
+            this.TraceMessage("Right-clicked on tile to open context menu");
+
+       
+            // Generate the expected AutomationId using the same extension method
+            var targetAutomationId = TileModelExtensions.GetRobberTargetAutomationId(robber.TargetPlayerId);
+               // Wait specifically for the target menu item to appear with retry logic
+            AutomationElement? targetMenuItem = null;
+            var maxRetries = 10;
+            var retryDelay = 100; // ms
+
+            for (int retry = 0; retry < maxRetries; retry++)
             {
-                this.TraceMessage($"TODO: Select target player {robber.TargetPlayerId} from context menu");
-                // For now, just click somewhere to close menu - needs proper implementation
+                targetMenuItem = uiHelper.TryFindElement(targetAutomationId);
+                if (targetMenuItem != null)
+                {
+                    this.TraceMessage($"Found target menu item on retry {retry + 1}");
+                    break;
+                }
+
+                this.TraceMessage($"Target menu item not found on retry {retry + 1}, waiting {retryDelay}ms...");
+                Thread.Sleep(retryDelay);
+            }
+            if (targetMenuItem != null)
+            {
+                targetMenuItem.Click();
+            }
+            else
+            {
+
+                throw new InvalidOperationException($"Target menu item not found: {targetAutomationId}");
             }
         }
 
@@ -1195,7 +1235,7 @@ namespace Tests.DesktopApp.UI
                 case TestCommandType.UpdateUi:
                     {
                         var json = JsonSerializer.Serialize(model, JsonHelper.StandardOptions);
-                        
+
                         // Set the JSON in the smuggled test data TextBox
                         var smuggledDataTextBox = FindByAutomationId("SmuggledTestData");
                         Assert.NotNull(smuggledDataTextBox);
@@ -1207,13 +1247,13 @@ namespace Tests.DesktopApp.UI
                     this.TraceMessage($"Unhandled test command type: {model.Type}");
                     break;
             }
-            
+
             // Click the test automation action button to execute the command
             var testActionButton = FindByAutomationId("TestAutomationActionButton");
             Assert.NotNull(testActionButton);
             testActionButton.Click();
             this.TraceMessage("Clicked TestAutomationActionButton");
-            
+
         }
 
         private void ShortWait(UIAutomationHelper uiHelper)
@@ -1221,7 +1261,7 @@ namespace Tests.DesktopApp.UI
             TestCommandModel cmd = new TestCommandModel(TestCommandType.UpdateUi);
             ExecuteTestCommand(cmd, uiHelper);
             Thread.Sleep(SHORT_WAIT);
-            
+
         }
 
         private void Execute_SetPlayerOrder(SetPlayerOrderRecord playerOrder)
@@ -1237,36 +1277,36 @@ namespace Tests.DesktopApp.UI
         {
             var automationId = $"GoFirst-{goFirst.PlayerId}";
             this.TraceMessage($"Executing go first: Player {goFirst.PlayerId} -> {automationId}");
-            
+
             var goFirstButton = FindByAutomationId(automationId);
             if (goFirstButton == null)
                 throw new InvalidOperationException($"Go First button not found for player: {automationId}");
-            
+
             goFirstButton.Click();
         }
 
         private void Execute_PlayersDoingSupplemental(PlayersDoingSupplementalRecord supplemental)
         {
             this.TraceMessage($"Executing supplemental players: {string.Join(", ", supplemental.PlayerIds)}");
-            
+
             // Click checkbox for each player that should participate
             foreach (var playerId in supplemental.PlayerIds)
             {
                 var automationId = $"ParticipatingInSupplemental-{playerId}";
                 this.TraceMessage($"Selecting supplemental player: {playerId} -> {automationId}");
-                
+
                 var checkbox = FindByAutomationId(automationId);
                 if (checkbox == null)
                     throw new InvalidOperationException($"Supplemental player checkbox not found: {automationId}");
-                
+
                 checkbox.Click();
             }
-            
+
             // After selecting all players, click Next to proceed
             var nextButton = FindByAutomationId("NextButton");
             if (nextButton == null)
                 throw new InvalidOperationException("Next button not found after supplemental player selection");
-            
+
             nextButton.Click();
         }
 
@@ -1276,7 +1316,20 @@ namespace Tests.DesktopApp.UI
             var button = FindByAutomationId("BalanceBoardButton");
             if (button == null)
                 throw new InvalidOperationException("BalanceBoardButton not found");
-            button.Click();
+
+            // AppBarButton requires Invoke pattern, not Click
+            var invokePattern = button.Patterns.Invoke.PatternOrDefault;
+            if (invokePattern != null)
+            {
+                invokePattern.Invoke();
+                this.TraceMessage("Invoked BalanceBoardButton using Invoke pattern");
+            }
+            else
+            {
+                // Fallback to Click if Invoke pattern is not available
+                button.Click();
+                this.TraceMessage("Used Click fallback for BalanceBoardButton");
+            }
         }
 
         /// <summary>
@@ -1287,7 +1340,7 @@ namespace Tests.DesktopApp.UI
         private void ExecuteBasicScenario()
         {
             this.TraceMessage("Executing basic test scenario");
-            
+
             // Wait for game to be in a testable state
             var gameModel = GetCurrentGameModel();
             this.TraceMessage($"Current game state: {gameModel.GameState}");
@@ -1297,12 +1350,12 @@ namespace Tests.DesktopApp.UI
             {
                 this.TraceMessage("Performing test roll");
                 DoRoll(6);
-                
+
                 // Verify state changed
                 var newGameModel = GetCurrentGameModel();
                 this.TraceMessage($"Game state after roll: {newGameModel.GameState}");
             }
-            
+
             this.TraceMessage("Basic scenario completed");
         }
 

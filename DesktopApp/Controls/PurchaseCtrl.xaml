@@ -10,18 +10,18 @@
         <Storyboard x:Name="SB_AnimatePush">
             <DoubleAnimation Storyboard.TargetName="ScaleTransform"
                     Storyboard.TargetProperty="ScaleX" To="0.98"
-                    AutoReverse="False" Duration="0:0:0.1" />
+                    AutoReverse="False" Duration="{StaticResource AnimationFast}" />
             <DoubleAnimation Storyboard.TargetName="ScaleTransform"
                     Storyboard.TargetProperty="ScaleY" To="0.98"
-                    AutoReverse="False" Duration="0:0:0.1" />
+                    AutoReverse="False" Duration="{StaticResource AnimationFast}" />
         </Storyboard>
         <Storyboard x:Name="SB_AnimateRelease">
             <DoubleAnimation Storyboard.TargetName="ScaleTransform"
                     Storyboard.TargetProperty="ScaleX" To="1"
-                    AutoReverse="False" Duration="0:0:0.1" />
+                    AutoReverse="False" Duration="{StaticResource AnimationFast}" />
             <DoubleAnimation Storyboard.TargetName="ScaleTransform"
                     Storyboard.TargetProperty="ScaleY" To="1"
-                    AutoReverse="False" Duration="0:0:0.1" />
+                    AutoReverse="False" Duration="{StaticResource AnimationFast}" />
         </Storyboard>
     </UserControl.Resources>
     <u:FlipperCtrl Orientation="{x:Bind ViewModel.Orientation, Mode=OneWay}"

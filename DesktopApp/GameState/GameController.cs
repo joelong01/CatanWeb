@@ -356,6 +356,8 @@ namespace Catan3.Controller
         {
             GameModel gameModel = Log.CopyCurrent();
             Entitlement entitlement = message.Entitlement;
+            this.TraceMessage($"🛡️ Processing purchase: {entitlement}");
+            
             if (entitlement == Entitlement.Soldier)
             {
                 // the entitlements you can get before rolling -- right now only the right to move the knight
@@ -363,6 +365,7 @@ namespace Catan3.Controller
                 // Remember the state we were in so we can return to it after moving the robber
                 gameModel.PreviousGameState = gameModel.GameState;
                 gameModel.GameState = GameState.MustMoveRobber;
+                this.TraceMessage($"🔄 Soldier purchased - transitioning to MustMoveRobber state");
             }
             else
             {

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Catan3.Shared.Models;
+using Catan3.Utility;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -67,7 +68,7 @@ namespace Catan3
             {
                 From = from,
                 To = to,
-                Duration = TimeSpan.FromSeconds(0.5)
+                Duration = new Duration(AnimationSpeed.Slow)
             };
             var storyboard = new Storyboard();
             storyboard.Children.Add(da);

@@ -3,6 +3,7 @@ using Catan3.Shared.Models;
 using Catan3.Shared.Extensions;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
@@ -148,6 +149,11 @@ namespace Catan3.Controls
                     Command = TileViewModel.TargetPickedCommand,
                     CommandParameter = target.Id
                 };
+                
+                // Set AutomationId for UI testing
+                menuItem.SetValue(AutomationProperties.AutomationIdProperty, 
+                    TileModelExtensions.GetRobberTargetAutomationId(target.Id));
+                
                 flyout.Items.Add(menuItem);
             }
             // Add a separator
@@ -158,12 +164,13 @@ namespace Catan3.Controls
                 Text = "Cancel",
                 Command = new RelayCommand(() => { })
             };
+            cancelItem.SetValue(AutomationProperties.AutomationIdProperty, "RobberTarget-Cancel");
             flyout.Items.Add(cancelItem);
             flyout.ShowAt(sender as FrameworkElement, new FlyoutShowOptions
             {
                 Position = e.GetPosition(sender as UIElement),
                 Placement = FlyoutPlacementMode.RightEdgeAlignedTop,
-                ShowMode = FlyoutShowMode.Transient
+                ShowMode = FlyoutShowMode.Standard
             });
 
         }
