@@ -650,30 +650,41 @@ namespace Tests.DesktopApp.UI
                 Verb = "open" // Use the default open verb for the file type
             };
 
-            using var _ = Process.Start(psi);
+            using var process = Process.Start(psi);
+            if (process == null)
+            {
+                throw new InvalidOperationException("Failed to launch process or get process ID");
+            }
+            
+            var targetProcessId = process.Id;
+            this.TraceMessage($"Launched process ID: {targetProcessId}");
+            
             _automation = new UIA3Automation();
 
-            // Wait for WinUI top-level windows, then pick the *non-debug* one
+            // Wait for the window with our specific process ID
             _main = Retry.WhileNull(
                 () =>
                 {
-                    var wins = _automation.GetDesktop()
-                        .FindAllChildren(Cf.ByControlType(ControlType.Window)
-                        .And(Cf.ByClassName("WinUIDesktopWin32WindowClass")));
-
-                    this.TraceMessage($"Found {wins.Length} WinUI windows");
-                    foreach (var win in wins)
+                var wins = _automation.GetDesktop()
+                    .FindAllChildren(Cf.ByProcessId(targetProcessId));
+                       
+                    this.TraceMessage($"Found {wins.Length} WinUI windows for process {targetProcessId}");
+                    
+                    // Should only be one window for our process, but filter out debug windows just in case
+                    var mainWindow = wins.FirstOrDefault(w => 
+                        !w.Name.Contains("Catan Debug Messages", StringComparison.OrdinalIgnoreCase));
+                    
+                    if (mainWindow != null)
                     {
-                        this.TraceMessage($"  Window: '{win.Name}' (ProcessId: {win.Properties.ProcessId})");
+                        this.TraceMessage($"✅ Found window: {mainWindow.Name}");
                     }
-
-                    return wins.FirstOrDefault(w =>
-                        !w.Name.Contains("Debug", StringComparison.OrdinalIgnoreCase));
+                    
+                    return mainWindow;
                 },
                 timeout: TimeSpan.FromSeconds(25),
                 interval: TimeSpan.FromMilliseconds(250),
                 throwOnTimeout: false
-            ).Result ?? throw new XunitException($"Failed to find main window after launching .catan file. Is the app installed and file association working?");
+            ).Result ?? throw new XunitException($"Failed to find window for process {targetProcessId}. The app may have crashed or failed to create a window.");
             
             // Check if we should wait for debugger attachment AFTER the app is launched
             if (Environment.GetEnvironmentVariable("CATAN_DEBUG_WAIT") == "true")

@@ -107,20 +107,20 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             TraceMessage($"  Roads: {roadElements}, Buildings: {buildingElements}, CoordinateBuildings: {coordinateBuildingElements}, Tiles: {tileElements}, Rolls: {rollElements}, Purchase: {purchaseElements}");
             
             // DEBUG: List ALL AutomationIds to see what's actually being found
-            TraceMessage($"=== DEBUG: ALL AUTOMATION IDs FOUND ===");
-            var allIds = _uiControlsCache.Keys.OrderBy(k => k).ToArray();
-            for (int i = 0; i < allIds.Length; i += 10)
-            {
-                var batch = allIds.Skip(i).Take(10);
-                TraceMessage($"  Batch {(i/10) + 1}: {string.Join(", ", batch)}");
-            }
-            TraceMessage($"=== END DEBUG LISTING ===");
+            //TraceMessage($"=== DEBUG: ALL AUTOMATION IDs FOUND ===");
+            //var allIds = _uiControlsCache.Keys.OrderBy(k => k).ToArray();
+            //for (int i = 0; i < allIds.Length; i += 10)
+            //{
+            //    var batch = allIds.Skip(i).Take(10);
+            //    TraceMessage($"  Batch {(i/10) + 1}: {string.Join(", ", batch)}");
+            //}
+            //TraceMessage($"=== END DEBUG LISTING ===");
             
             // Check for critical buttons - TestAutomationActionButton is essential, purchase buttons may be face-down
-            var essentialButtons = new[] { "TestAutomationActionButton" };
+            var essentialControls = new[] { "TestAutomationActionButton", "SmuggledTestData" };
             var purchaseButtons = new[] { "PurchaseRoadButton", "PurchaseSettlementButton", "PurchaseCityButton", "PurchaseSoldierButton" };
             
-            var missingEssential = essentialButtons.Where(buttonId => !_uiControlsCache.ContainsKey(buttonId)).ToArray();
+            var missingEssential = essentialControls.Where(automationId => !_uiControlsCache.ContainsKey(automationId)).ToArray();
             var missingPurchase = purchaseButtons.Where(buttonId => !_uiControlsCache.ContainsKey(buttonId)).ToArray();
             
             var foundPurchaseButtons = _uiControlsCache.Keys.Where(k => k.StartsWith("Purchase")).ToArray();
@@ -129,9 +129,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             if (missingEssential.Any())
             {
                 TraceMessage($"❌ CRITICAL: Missing essential buttons: {string.Join(", ", missingEssential)}");
-                TraceMessage($"❌ All automation IDs containing 'Ui': {string.Join(", ", _uiControlsCache.Keys.Where(k => k.Contains("Ui")))}");
-                TraceMessage($"❌ All automation IDs containing 'Pump': {string.Join(", ", _uiControlsCache.Keys.Where(k => k.Contains("Pump")))}");
-                TraceMessage($"❌ All automation IDs containing 'Button': {string.Join(", ", _uiControlsCache.Keys.Where(k => k.Contains("Button")))}");
+                TraceMessage($"❌ All automation IDs containing 'Test': {string.Join(", ", _uiControlsCache.Keys.Where(k => k.Contains("Ui")))}");
                 throw new Exception($"Essential buttons not found in automation cache: {string.Join(", ", missingEssential)}. Test cannot proceed.");
             }
             
@@ -147,7 +145,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 TraceMessage($"✅ All purchase buttons found in cache: {string.Join(", ", purchaseButtons)}");
             }
             
-            TraceMessage($"✅ Essential buttons verified: {string.Join(", ", essentialButtons)}");
+            TraceMessage($"✅ Essential buttons verified: {string.Join(", ", essentialControls)}");
             TraceMessage($"✅ Total purchase buttons in cache: {foundPurchaseButtons.Length}");
             
             // Show sample AutomationIds for debugging

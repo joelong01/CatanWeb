@@ -14,6 +14,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
+using System.Reflection.Metadata.Ecma335;
+using CommunityToolkit.WinUI.UI.Triggers;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 namespace Catan3
@@ -285,12 +287,56 @@ namespace Catan3
         }
 
         /// <summary>
-        /// Forces UI message pumping to allow animations and updates to complete.
-        /// Useful for test automation to ensure UI state is synchronized.
+        /// Execute a command on behalf of the test automation framework.
         /// </summary>
-        private async void OnUiPumpClick(object sender, RoutedEventArgs e)
+        private async void OnExecuteTestCommand(object sender, RoutedEventArgs e)
         {
-            await Task.Delay(5);
+            if (MainPageModel is null)
+            {
+                this.TraceMessage("MainPageModel is null, cannot execute test command.");
+                return;
+            }
+            var json = MainPageModel?.SmuggledTestData;
+            if (string.IsNullOrEmpty(json))
+            {
+                this.TraceMessage("Empty Json for TestCommandModel");
+                return;
+            }
+            try
+            {
+                TestCommandModel? testCommandModel = JsonSerializer.Deserialize<TestCommandModel>(json, JsonHelper.StandardOptions);
+                if (testCommandModel is null)
+                {
+                    this.TraceMessage("Deserialized TestCommandModel is null.");
+                    return;
+                }
+                switch (testCommandModel.Type)
+                {
+                    case TestCommandType.UpdateUi:
+                        await Task.Delay(5);
+                        break;
+                    default:
+                        this.TraceMessage($"Unknown command: {json}");
+                        break;
+                     
+                        
+                       
+                }
+            }
+            catch (JsonException je)
+            {
+                this.TraceMessage($"JSON Exception! {je.Message} test: {json}");
+                return;
+            }
+            catch (Exception exception)
+            {
+                this.TraceMessage($"Unknown Exception! {exception.Message} test: {json}");
+                return;
+            }
+
+
+
+           
         }
         private void OnToggleTitleBar(object sender, RoutedEventArgs e)
         {

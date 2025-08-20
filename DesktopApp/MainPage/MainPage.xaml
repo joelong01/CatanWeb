@@ -99,9 +99,9 @@
 
                     <Button Width="50" Height="50" Background="Red" 
                     Grid.Column="0"
-                    AutomationProperties.AutomationId="UiPumpButton"
-                    AutomationProperties.Name="UiPumpButton"
-                    Click="OnUiPumpClick" Opacity="0.3"
+                    AutomationProperties.AutomationId="TestAutomationActionButton"
+                    AutomationProperties.Name="TestAutomationActionButton"
+                    Click="OnExecuteTestCommand" Opacity="0.3"
                     HorizontalAlignment="Right" VerticalAlignment="Top"
                     Margin="0,-5,5,0" />
 

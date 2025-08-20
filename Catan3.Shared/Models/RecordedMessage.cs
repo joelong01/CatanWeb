@@ -145,7 +145,7 @@ namespace Catan3.Shared.Models
         /// Constructor used during deserialization and for programmatic creation.
         /// </summary>
         [JsonConstructor]
-        public ShuffleRecord(string gameHash, int seed)
+        public ShuffleRecord(string gameHash)
         {
             GameHash = gameHash;
      
