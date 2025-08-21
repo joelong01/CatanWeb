@@ -318,7 +318,7 @@ namespace Catan3.Models
                     this.CurrentPlayer = Players[i]; // triggers OnCurrentPlayerChanged
 
                 }
-                Players[i].PartipatingInSupplemental = gameModel.Players[i].ParticipatingInSupplemental;
+                Players[i].ParticipatingInSupplemental = gameModel.Players[i].ParticipatingInSupplemental;
 
             }
         }

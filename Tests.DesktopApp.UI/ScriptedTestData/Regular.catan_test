@@ -1,6 +1,6 @@
 {
   "gameModel": {
-    "gameHash": "6405E567",
+    "gameHash": "E625A031",
     "randomSeed": 0,
     "randomIterations": 94,
     "entitlementPurchaseModel": [
@@ -2301,7 +2301,7 @@
     },
     "currentPlayerId": "Joe-001",
     "gameId": "",
-    "createdTime": "2025-08-20T22:57:12.2394291Z",
+    "createdTime": "2025-08-20T23:39:56.5606338Z",
     "gameStateMachineVersion": 1,
     "rollModel": {
       "turnRollModel": null,
@@ -2344,222 +2344,243 @@
   },
   "actionStack": [
     {
+      "type": "shuffleRecord",
+      "gameHash": "E625A031"
+    },
+    {
+      "type": "shuffleRecord",
+      "gameHash": "E625A0B9"
+    },
+    {
+      "type": "shuffleRecord",
+      "gameHash": "E6259F09"
+    },
+    {
+      "type": "balanceBoard",
+      "gameHash": "E6259DF7"
+    },
+    {
       "type": "executeGameActionRecord",
-      "gameHash": "6405E567",
+      "gameHash": "E6259CF7",
       "action": "Next"
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "6405FC02",
+      "gameHash": "E625B392",
+      "action": "Next"
+    },
+    {
+      "type": "goFirst",
+      "gameHash": "E625CA2D",
+      "playerId": "Dodgy-001"
+    },
+    {
+      "type": "executeGameActionRecord",
+      "gameHash": "F1F0F6B0A",
       "action": "Next"
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "6406129D",
-      "action": "Next"
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "6405B831",
+      "gameHash": "F1F0F109E",
       "action": "Next"
     },
     {
       "type": "buildingUpgrade",
-      "gameHash": "61295AFE",
+      "gameHash": "F793B001B",
       "buildingKey": {
         "hexCoordinates": {
           "q": -2,
           "r": 0,
           "s": 2
         },
-        "position": "Right"
+        "position": "TopRight"
       }
     },
     {
       "type": "roadPurchase",
-      "gameHash": "A2A8378E",
+      "gameHash": "EB9624CB",
       "roadKey": {
         "tileKey": {
-          "q": -1,
-          "r": -1,
+          "q": -2,
+          "r": 0,
           "s": 2
         },
-        "hexSide": "Bottom"
+        "hexSide": "TopRight"
       }
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "BDDEEA22",
+      "gameHash": "8A9C40FB",
       "action": "Next"
     },
     {
       "type": "buildingUpgrade",
-      "gameHash": "E6FAE4209",
+      "gameHash": "545414F9",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -2,
+          "r": 0,
+          "s": 2
+        },
+        "position": "BottomRight"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "gameHash": "0C84E3620",
+      "roadKey": {
+        "tileKey": {
+          "q": -2,
+          "r": 1,
+          "s": 1
+        },
+        "hexSide": "TopRight"
+      }
+    },
+    {
+      "type": "executeGameActionRecord",
+      "gameHash": "3F5CD155",
+      "action": "Next"
+    },
+    {
+      "type": "buildingUpgrade",
+      "gameHash": "0FFD54C98",
       "buildingKey": {
         "hexCoordinates": {
           "q": -2,
           "r": 1,
           "s": 1
         },
-        "position": "Right"
+        "position": "BottomRight"
       }
     },
     {
       "type": "roadPurchase",
-      "gameHash": "F66A39EBA",
+      "gameHash": "103FC162",
       "roadKey": {
         "tileKey": {
-          "q": -1,
-          "r": 0,
-          "s": 1
-        },
-        "hexSide": "Bottom"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "96379C99",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "B9FD4D95",
-      "buildingKey": {
-        "hexCoordinates": {
           "q": -2,
           "r": 2,
           "s": 0
         },
-        "position": "Right"
+        "hexSide": "TopRight"
+      }
+    },
+    {
+      "type": "executeGameActionRecord",
+      "gameHash": "441D2C3A",
+      "action": "Next"
+    },
+    {
+      "type": "buildingUpgrade",
+      "gameHash": "09C793FD3",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -1,
+          "r": -1,
+          "s": 2
+        },
+        "position": "TopRight"
       }
     },
     {
       "type": "roadPurchase",
-      "gameHash": "1135FE9B1",
+      "gameHash": "35FDD0A2",
+      "roadKey": {
+        "tileKey": {
+          "q": -1,
+          "r": -1,
+          "s": 2
+        },
+        "hexSide": "TopRight"
+      }
+    },
+    {
+      "type": "executeGameActionRecord",
+      "gameHash": "ECCC35FE9",
+      "action": "Next"
+    },
+    {
+      "type": "buildingUpgrade",
+      "gameHash": "EE8095B0A",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -1,
+          "r": -1,
+          "s": 2
+        },
+        "position": "BottomRight"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "gameHash": "E0414DD16",
+      "roadKey": {
+        "tileKey": {
+          "q": -1,
+          "r": 0,
+          "s": 1
+        },
+        "hexSide": "TopRight"
+      }
+    },
+    {
+      "type": "executeGameActionRecord",
+      "gameHash": "7758BD22",
+      "action": "Next"
+    },
+    {
+      "type": "buildingUpgrade",
+      "gameHash": "426FEDDA",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -1,
+          "r": 0,
+          "s": 1
+        },
+        "position": "BottomRight"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "gameHash": "A3BA7763",
       "roadKey": {
         "tileKey": {
           "q": -1,
           "r": 1,
           "s": 0
         },
-        "hexSide": "Bottom"
+        "hexSide": "TopRight"
       }
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "D3CAD8F",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "F644175FC",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": 0,
-          "r": -1,
-          "s": 1
-        },
-        "position": "Right"
-      }
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "F18C31459",
-      "roadKey": {
-        "tileKey": {
-          "q": 1,
-          "r": -2,
-          "s": 1
-        },
-        "hexSide": "Bottom"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "EA20B6094",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "E17FF62E8",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": 0,
-          "r": 0,
-          "s": 0
-        },
-        "position": "Right"
-      }
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "D43F71F90",
-      "roadKey": {
-        "tileKey": {
-          "q": 1,
-          "r": -1,
-          "s": 0
-        },
-        "hexSide": "Bottom"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "DBD670968",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "EFE0BDD35",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": 0,
-          "r": 1,
-          "s": -1
-        },
-        "position": "Right"
-      }
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "E3F8B1C7C",
-      "roadKey": {
-        "tileKey": {
-          "q": 1,
-          "r": 0,
-          "s": -1
-        },
-        "hexSide": "Bottom"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "E82EDCB69",
+      "gameHash": "E19287124",
       "action": "Next"
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "E82EDE204",
+      "gameHash": "E192887BF",
       "action": "Next"
     },
     {
       "type": "purchase",
-      "gameHash": "E82EDF89F",
+      "gameHash": "E19289E5A",
       "entitlement": "Soldier"
     },
     {
       "type": "moveRobber",
-      "gameHash": "EC2B4CB3E",
+      "gameHash": "EE3467026",
       "coordinates": {
-        "q": -1,
-        "r": 1,
-        "s": 0
+        "q": 2,
+        "r": -1,
+        "s": -1
       },
-      "targetPlayerId": "Dodgy-001"
+      "targetPlayerId": null
     },
     {
       "type": "roll",
-      "gameHash": "E82EDF89D",
+      "gameHash": "E19289E74",
       "roll": {
         "redRoll": 7,
         "whiteRoll": 0,
@@ -2569,13 +2590,69 @@
     },
     {
       "type": "moveRobber",
-      "gameHash": "EC2B5F0D7",
+      "gameHash": "EE34794CB",
       "coordinates": {
-        "q": 1,
-        "r": 0,
-        "s": -1
+        "q": -2,
+        "r": 2,
+        "s": 0
       },
-      "targetPlayerId": null
+      "targetPlayerId": "Joe-001"
+    },
+    {
+      "type": "purchase",
+      "gameHash": "E1928B4E1",
+      "entitlement": "Road"
+    },
+    {
+      "type": "roadPurchase",
+      "gameHash": "EE344BB7C",
+      "roadKey": {
+        "tileKey": {
+          "q": -2,
+          "r": 0,
+          "s": 2
+        },
+        "hexSide": "Top"
+      }
+    },
+    {
+      "type": "purchase",
+      "gameHash": "E87E2BE1C",
+      "entitlement": "Road"
+    },
+    {
+      "type": "roadPurchase",
+      "gameHash": "DC6819F5B",
+      "roadKey": {
+        "tileKey": {
+          "q": -2,
+          "r": 0,
+          "s": 2
+        },
+        "hexSide": "TopLeft"
+      }
+    },
+    {
+      "type": "purchase",
+      "gameHash": "F0311DF4C",
+      "entitlement": "Settlement"
+    },
+    {
+      "type": "purchase",
+      "gameHash": "2F01B3A7",
+      "entitlement": "City"
+    },
+    {
+      "type": "buildingUpgrade",
+      "gameHash": "3F291437",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -2,
+          "r": 0,
+          "s": 2
+        },
+        "position": "TopRight"
+      }
     }
   ]
 }

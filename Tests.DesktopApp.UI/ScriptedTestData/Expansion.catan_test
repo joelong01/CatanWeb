@@ -1,6 +1,6 @@
 {
   "gameModel": {
-    "gameHash": "64106F9A",
+    "gameHash": "C7B51FBF",
     "randomSeed": 0,
     "randomIterations": 923,
     "entitlementPurchaseModel": [
@@ -148,120 +148,6 @@
       {
         "id": "Doug-001",
         "name": "Doug",
-        "goldRolls": 0,
-        "goodRolls": 0,
-        "badRolls": 0,
-        "hasLongestRoad": false,
-        "islandsPlayed": 0,
-        "largestArmy": false,
-        "longestRoad": 0,
-        "maxNoResourceRolls": 0,
-        "noResourceCount": 0,
-        "stars": 0,
-        "score": 0,
-        "highestScore": true,
-        "timesTargeted": 0,
-        "participatingInSupplemental": false,
-        "finishedSupplemental": false,
-        "resourcesThisTurn": {
-          "brick": 0,
-          "goldMine": 0,
-          "ore": 0,
-          "sheep": 0,
-          "wheat": 0,
-          "wood": 0,
-          "paper": 0,
-          "cloth": 0,
-          "coin": 0,
-          "politics": 0,
-          "trade": 0,
-          "science": 0,
-          "victoryPoint": 0,
-          "anyDevCard": 0,
-          "robber": 0
-        },
-        "resourcesThisGame": {
-          "brick": 0,
-          "goldMine": 0,
-          "ore": 0,
-          "sheep": 0,
-          "wheat": 0,
-          "wood": 0,
-          "paper": 0,
-          "cloth": 0,
-          "coin": 0,
-          "politics": 0,
-          "trade": 0,
-          "science": 0,
-          "victoryPoint": 0,
-          "anyDevCard": 0,
-          "robber": 0
-        },
-        "unspentEntitlements": [],
-        "spentEntitlementsThisGame": [],
-        "spentEntitlementsThisTurn": [],
-        "ownedHarbors": []
-      },
-      {
-        "id": "Ryan-001",
-        "name": "Ryan",
-        "goldRolls": 0,
-        "goodRolls": 0,
-        "badRolls": 0,
-        "hasLongestRoad": false,
-        "islandsPlayed": 0,
-        "largestArmy": false,
-        "longestRoad": 0,
-        "maxNoResourceRolls": 0,
-        "noResourceCount": 0,
-        "stars": 0,
-        "score": 0,
-        "highestScore": true,
-        "timesTargeted": 0,
-        "participatingInSupplemental": false,
-        "finishedSupplemental": false,
-        "resourcesThisTurn": {
-          "brick": 0,
-          "goldMine": 0,
-          "ore": 0,
-          "sheep": 0,
-          "wheat": 0,
-          "wood": 0,
-          "paper": 0,
-          "cloth": 0,
-          "coin": 0,
-          "politics": 0,
-          "trade": 0,
-          "science": 0,
-          "victoryPoint": 0,
-          "anyDevCard": 0,
-          "robber": 0
-        },
-        "resourcesThisGame": {
-          "brick": 0,
-          "goldMine": 0,
-          "ore": 0,
-          "sheep": 0,
-          "wheat": 0,
-          "wood": 0,
-          "paper": 0,
-          "cloth": 0,
-          "coin": 0,
-          "politics": 0,
-          "trade": 0,
-          "science": 0,
-          "victoryPoint": 0,
-          "anyDevCard": 0,
-          "robber": 0
-        },
-        "unspentEntitlements": [],
-        "spentEntitlementsThisGame": [],
-        "spentEntitlementsThisTurn": [],
-        "ownedHarbors": []
-      },
-      {
-        "id": "Adrian-001",
-        "name": "Adrian",
         "goldRolls": 0,
         "goodRolls": 0,
         "badRolls": 0,
@@ -3278,7 +3164,7 @@
             "r": 2,
             "s": 1
           },
-          "harborType": "Wheat",
+          "harborType": "ThreeForOne",
           "side": "TopLeft"
         },
         "owner": null
@@ -3290,7 +3176,7 @@
             "r": 3,
             "s": 0
           },
-          "harborType": "ThreeForOne",
+          "harborType": "Brick",
           "side": "BottomLeft"
         },
         "owner": null
@@ -3302,7 +3188,7 @@
             "r": 0,
             "s": 2
           },
-          "harborType": "ThreeForOne",
+          "harborType": "Ore",
           "side": "TopLeft"
         },
         "owner": null
@@ -3314,7 +3200,7 @@
             "r": 3,
             "s": -2
           },
-          "harborType": "Brick",
+          "harborType": "ThreeForOne",
           "side": "Bottom"
         },
         "owner": null
@@ -3338,7 +3224,7 @@
             "r": -2,
             "s": 1
           },
-          "harborType": "Sheep",
+          "harborType": "ThreeForOne",
           "side": "TopRight"
         },
         "owner": null
@@ -3350,7 +3236,7 @@
             "r": 2,
             "s": -3
           },
-          "harborType": "Ore",
+          "harborType": "ThreeForOne",
           "side": "Bottom"
         },
         "owner": null
@@ -3374,7 +3260,7 @@
             "r": 1,
             "s": -3
           },
-          "harborType": "ThreeForOne",
+          "harborType": "Wheat",
           "side": "Bottom"
         },
         "owner": null
@@ -3386,7 +3272,7 @@
             "r": -1,
             "s": -2
           },
-          "harborType": "Wood",
+          "harborType": "Sheep",
           "side": "TopRight"
         },
         "owner": null
@@ -3398,7 +3284,7 @@
             "r": 0,
             "s": -3
           },
-          "harborType": "ThreeForOne",
+          "harborType": "Wood",
           "side": "BottomRight"
         },
         "owner": null
@@ -3431,7 +3317,7 @@
     },
     "currentPlayerId": "Joe-001",
     "gameId": "",
-    "createdTime": "2025-08-20T17:50:15.1167624Z",
+    "createdTime": "2025-08-20T23:42:48.7963043Z",
     "gameStateMachineVersion": 1,
     "rollModel": {
       "turnRollModel": null,
@@ -3474,219 +3360,28 @@
   },
   "actionStack": [
     {
-      "type": "shuffleRecord",
-      "gameHash": "64106F9A"
-    },
-    {
-      "type": "shuffleRecord",
-      "gameHash": "6410759A"
-    },
-    {
-      "type": "shuffleRecord",
-      "gameHash": "64107E38"
-    },
-    {
-      "type": "shuffleRecord",
-      "gameHash": "64107D64"
-    },
-    {
-      "type": "shuffleRecord",
-      "gameHash": "64107C3E"
-    },
-    {
-      "type": "balanceBoard",
-      "gameHash": "641075E8"
-    },
-    {
       "type": "executeGameActionRecord",
-      "gameHash": "64107642",
+      "gameHash": "C7B51FBF",
       "action": "Next"
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "64108CDD",
-      "action": "Next"
-    },
-    {
-      "type": "goFirst",
-      "gameHash": "6410A378",
-      "playerId": "Adrian-001"
-    },
-    {
-      "type": "goFirst",
-      "gameHash": "5BACEF59",
-      "playerId": "Dodgy-001"
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "9CFA4455",
+      "gameHash": "C7B5365A",
       "action": "Next"
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "9CF9E9E9",
+      "gameHash": "C7B54CF5",
+      "action": "Next"
+    },
+    {
+      "type": "executeGameActionRecord",
+      "gameHash": "C7B4F289",
       "action": "Next"
     },
     {
       "type": "buildingUpgrade",
-      "gameHash": "F6109B3D6",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": 0,
-          "r": 0,
-          "s": 0
-        },
-        "position": "Right"
-      }
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "887BC4F0",
-      "roadKey": {
-        "tileKey": {
-          "q": 1,
-          "r": -1,
-          "s": 0
-        },
-        "hexSide": "Bottom"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "F5C840948",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "94497610",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": 0,
-          "r": -2,
-          "s": 2
-        },
-        "position": "BottomRight"
-      }
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "9F599D0B",
-      "roadKey": {
-        "tileKey": {
-          "q": 0,
-          "r": -2,
-          "s": 2
-        },
-        "hexSide": "Bottom"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "2FB8759A",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "4D4B1331",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": 2,
-          "r": 0,
-          "s": -2
-        },
-        "position": "Right"
-      }
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "0B86D4C1B",
-      "roadKey": {
-        "tileKey": {
-          "q": 2,
-          "r": 0,
-          "s": -2
-        },
-        "hexSide": "BottomRight"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "C5001779",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "A86BBC64",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": -2,
-          "r": 3,
-          "s": -1
-        },
-        "position": "Right"
-      }
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "F3EA8FFCB",
-      "roadKey": {
-        "tileKey": {
-          "q": -2,
-          "r": 3,
-          "s": -1
-        },
-        "hexSide": "TopRight"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "09EB091AC",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "0800AD359",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": 1,
-          "r": 1,
-          "s": -2
-        },
-        "position": "BottomRight"
-      }
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "199DDFD69",
-      "roadKey": {
-        "tileKey": {
-          "q": 1,
-          "r": 1,
-          "s": -2
-        },
-        "hexSide": "Bottom"
-      }
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "F3F0DB7E5",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": -3,
-          "r": 1,
-          "s": 2
-        },
-        "position": "Right"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "F3F0DB7E5",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "EDD67046E",
+      "gameHash": "B95ADD6",
       "buildingKey": {
         "hexCoordinates": {
           "q": -3,
@@ -3698,7 +3393,7 @@
     },
     {
       "type": "roadPurchase",
-      "gameHash": "7AF8B6FB",
+      "gameHash": "105E9F090",
       "roadKey": {
         "tileKey": {
           "q": -2,
@@ -3710,407 +3405,246 @@
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "321FED44",
+      "gameHash": "7CCF9A0A",
       "action": "Next"
     },
     {
       "type": "buildingUpgrade",
-      "gameHash": "3732CE1B",
+      "gameHash": "5C57659F",
       "buildingKey": {
         "hexCoordinates": {
-          "q": 1,
-          "r": -2,
+          "q": -3,
+          "r": 2,
           "s": 1
         },
-        "position": "BottomRight"
+        "position": "Right"
       }
     },
     {
       "type": "roadPurchase",
-      "gameHash": "19B01DD5F",
+      "gameHash": "7484B066",
       "roadKey": {
         "tileKey": {
-          "q": 1,
-          "r": -1,
-          "s": 0
-        },
-        "hexSide": "TopRight"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "114E87801",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "14CCF84AE",
-      "buildingKey": {
-        "hexCoordinates": {
           "q": -2,
           "r": 1,
           "s": 1
         },
-        "position": "BottomRight"
+        "hexSide": "Bottom"
+      }
+    },
+    {
+      "type": "executeGameActionRecord",
+      "gameHash": "08FFD26F7",
+      "action": "Next"
+    },
+    {
+      "type": "buildingUpgrade",
+      "gameHash": "5934C817",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -3,
+          "r": 3,
+          "s": 0
+        },
+        "position": "Right"
       }
     },
     {
       "type": "roadPurchase",
-      "gameHash": "0A84AA0F5",
+      "gameHash": "3D7C1075",
       "roadKey": {
         "tileKey": {
           "q": -2,
           "r": 2,
           "s": 0
         },
-        "hexSide": "TopRight"
+        "hexSide": "Bottom"
       }
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "094ACB5A8",
+      "gameHash": "AF2BC215",
       "action": "Next"
     },
     {
       "type": "buildingUpgrade",
-      "gameHash": "0F424BCEB",
+      "gameHash": "E6FA3B6A",
       "buildingKey": {
         "hexCoordinates": {
           "q": -1,
-          "r": 3,
-          "s": -2
+          "r": -1,
+          "s": 2
         },
         "position": "BottomRight"
       }
     },
     {
       "type": "roadPurchase",
-      "gameHash": "0EBC76F09",
+      "gameHash": "0B8E34671",
       "roadKey": {
         "tileKey": {
           "q": -1,
-          "r": 3,
-          "s": -2
+          "r": -1,
+          "s": 2
         },
-        "hexSide": "Bottom"
+        "hexSide": "BottomRight"
       }
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "ED3E258C1",
+      "gameHash": "910702EA",
       "action": "Next"
     },
     {
       "type": "buildingUpgrade",
-      "gameHash": "E8B81F663",
+      "gameHash": "F55368C2C",
       "buildingKey": {
         "hexCoordinates": {
-          "q": 3,
-          "r": -2,
-          "s": -1
+          "q": -1,
+          "r": 0,
+          "s": 1
         },
-        "position": "TopRight"
+        "position": "BottomRight"
       }
     },
     {
       "type": "roadPurchase",
-      "gameHash": "DEC7C2C0A",
+      "gameHash": "F629CDD3A",
       "roadKey": {
         "tileKey": {
-          "q": 3,
-          "r": -2,
-          "s": -1
+          "q": -1,
+          "r": 0,
+          "s": 1
         },
-        "hexSide": "TopRight"
+        "hexSide": "BottomRight"
       }
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "DD54F8FB5",
+      "gameHash": "F24F7B438",
+      "action": "Next"
+    },
+    {
+      "type": "buildingUpgrade",
+      "gameHash": "B1953315",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -1,
+          "r": 1,
+          "s": 0
+        },
+        "position": "BottomRight"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "gameHash": "13CA838E",
+      "roadKey": {
+        "tileKey": {
+          "q": -1,
+          "r": 1,
+          "s": 0
+        },
+        "hexSide": "BottomRight"
+      }
+    },
+    {
+      "type": "executeGameActionRecord",
+      "gameHash": "B44FBD87",
       "action": "Next"
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "DD54FA650",
+      "gameHash": "B44FD422",
       "action": "Next"
-    },
-    {
-      "type": "purchase",
-      "gameHash": "DD54FBCEB",
-      "entitlement": "Soldier"
-    },
-    {
-      "type": "moveRobber",
-      "gameHash": "D9F46A205",
-      "coordinates": {
-        "q": 3,
-        "r": -2,
-        "s": -1
-      },
-      "targetPlayerId": null
     },
     {
       "type": "roll",
-      "gameHash": "DD54FBD01",
+      "gameHash": "B44FEABD",
       "roll": {
-        "redRoll": 6,
+        "redRoll": 3,
         "whiteRoll": 0,
         "specialDice": "None",
-        "normalRoll": "Six"
+        "normalRoll": "Three"
       }
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "DD54FD39C",
+      "gameHash": "B4500158",
       "action": "Next"
     },
     {
       "type": "playersDoingSupplemental",
-      "gameHash": "DD551811D",
+      "gameHash": "1C2A7ED6",
       "playerIds": [
-        "Doug-001",
-        "Ryan-001",
-        "Adrian-001",
-        "Joe-001"
+        "Dodgy-001",
+        "Doug-001"
       ]
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "DD551811D",
+      "gameHash": "1C2AA43A",
       "action": "Next"
     },
     {
       "type": "purchase",
-      "gameHash": "E59AB9035",
+      "gameHash": "F5512AE31",
       "entitlement": "Road"
     },
     {
       "type": "roadPurchase",
-      "gameHash": "EC6820454",
+      "gameHash": "C4918184",
       "roadKey": {
         "tileKey": {
-          "q": -1,
-          "r": -1,
-          "s": 2
-        },
-        "hexSide": "TopRight"
-      }
-    },
-    {
-      "type": "purchase",
-      "gameHash": "ECB3C1EEC",
-      "entitlement": "Settlement"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "EEC93D07F",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": -1,
-          "r": -1,
-          "s": 2
-        },
-        "position": "TopRight"
-      }
-    },
-    {
-      "type": "purchase",
-      "gameHash": "109E31F",
-      "entitlement": "City"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "7D8094E9",
-      "buildingKey": {
-        "hexCoordinates": {
           "q": 0,
-          "r": -2,
-          "s": 2
-        },
-        "position": "BottomRight"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "109F598",
-      "action": "Next"
-    },
-    {
-      "type": "purchase",
-      "gameHash": "5BFE1269",
-      "entitlement": "Road"
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "09E1FC323",
-      "roadKey": {
-        "tileKey": {
-          "q": 3,
           "r": -1,
-          "s": -2
+          "s": 1
         },
         "hexSide": "Bottom"
       }
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "C2A8AD5C",
+      "gameHash": "08E515972",
       "action": "Next"
     },
     {
       "type": "purchase",
-      "gameHash": "A20B9591",
+      "gameHash": "112ACFF70",
       "entitlement": "Road"
     },
     {
       "type": "roadPurchase",
-      "gameHash": "F4929D7A8",
+      "gameHash": "101250E17",
       "roadKey": {
         "tileKey": {
           "q": -2,
-          "r": 2,
-          "s": 0
-        },
-        "hexSide": "Bottom"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "37929150",
-      "action": "Next"
-    },
-    {
-      "type": "purchase",
-      "gameHash": "3FF6456F",
-      "entitlement": "Road"
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "F115BAFF",
-      "roadKey": {
-        "tileKey": {
-          "q": -3,
-          "r": 1,
-          "s": 2
+          "r": 3,
+          "s": -1
         },
         "hexSide": "TopRight"
       }
     },
     {
       "type": "purchase",
-      "gameHash": "5C6D3B4C",
-      "entitlement": "Road"
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "0908A6A18",
-      "roadKey": {
-        "tileKey": {
-          "q": -2,
-          "r": 0,
-          "s": 2
-        },
-        "hexSide": "TopLeft"
-      }
-    },
-    {
-      "type": "purchase",
-      "gameHash": "17B4CFA4C",
-      "entitlement": "Settlement"
-    },
-    {
-      "type": "purchase",
-      "gameHash": "15DC4F6BC",
-      "entitlement": "Road"
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "13016E3C0",
-      "roadKey": {
-        "tileKey": {
-          "q": -2,
-          "r": 0,
-          "s": 2
-        },
-        "hexSide": "BottomRight"
-      }
-    },
-    {
-      "type": "purchase",
-      "gameHash": "3B06DBF2B",
+      "gameHash": "F0D014312",
       "entitlement": "Settlement"
     },
     {
       "type": "buildingUpgrade",
-      "gameHash": "3DF756AB5",
+      "gameHash": "F202A1113",
       "buildingKey": {
         "hexCoordinates": {
           "q": -2,
-          "r": 0,
-          "s": 2
+          "r": 3,
+          "s": -1
         },
         "position": "Right"
       }
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "270884A2A",
-      "action": "Undo"
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "3DF756AB5",
-      "action": "Undo"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "3B06DBF2B",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": -2,
-          "r": 0,
-          "s": 2
-        },
-        "position": "Right"
-      }
-    },
-    {
-      "type": "purchase",
-      "gameHash": "2366FCC12",
-      "entitlement": "City"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "270885BAB",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": -3,
-          "r": 1,
-          "s": 2
-        },
-        "position": "Right"
-      }
-    },
-    {
-      "type": "purchase",
-      "gameHash": "2366FDEC5",
-      "entitlement": "Settlement"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "270885CDD",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": -2,
-          "r": 0,
-          "s": 2
-        },
-        "position": "TopLeft"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "367A9BEDB",
+      "gameHash": "7A15537F",
       "action": "Next"
     }
   ]

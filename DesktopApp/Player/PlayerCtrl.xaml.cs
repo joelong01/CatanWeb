@@ -57,12 +57,12 @@ namespace Catan3.Controls
             set => SetValue(PlayerViewModelProperty, value);
         }
 
-        private Visibility SupplementalVisibility(GameState state, bool PartipatingInSupplemental)
+        private Visibility SupplementalVisibility(GameState state, bool ParticipatingInSupplemental)
         {
             if (state != GameState.Supplemental) return Visibility.Visible;
 
-            var ret = PartipatingInSupplemental ? Visibility.Visible : Visibility.Collapsed;
-          //  this.TraceMessage($"{PlayerViewModel.Player} Suppl={PlayerViewModel.PartipatingInSupplemental} SupplementalVisibility={ret}");
+            var ret = ParticipatingInSupplemental ? Visibility.Visible : Visibility.Collapsed;
+          //  this.TraceMessage($"{PlayerViewModel.Player} Suppl={PlayerViewModel.ParticipatingInSupplemental} SupplementalVisibility={ret}");
             return ret;
 
         }

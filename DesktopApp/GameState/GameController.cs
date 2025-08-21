@@ -49,7 +49,7 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-
+                        this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
                         _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
 
                         gameModel = null;
@@ -88,7 +88,7 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-
+                        this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
                         _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
 
                         gameModel = ShuffleCurrentGame();
@@ -104,8 +104,9 @@ namespace Catan3.Controller
                 {
                     try
                     {
-                        var gameModel = Log.CopyCurrent();
 
+                        var gameModel = Log.CopyCurrent();
+                        this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
                         _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
 
                         gameModel = BuildingUpgrade(message);
@@ -122,6 +123,7 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
+                    this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
                     _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
 
                     gameModel = SetPlayerOrder(message.PlayerIds);
@@ -134,24 +136,21 @@ namespace Catan3.Controller
                 }
             });
             Messenger.Register<RoadPurchaseMessage>(this, (recipient, message) =>
-                {
-                    var automationId = message.RoadKey.GetAutomationId();
-                    this.TraceMessage($"🛣️ Received RoadPurchaseMessage for {automationId}");
-
+            {
                     try
                     {
                         var gameModel = Log.CopyCurrent();
+                        this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
                         _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
 
                         var model = RoadPurchase(message);
-                        this.TraceMessage($"✅ Road placement successful for {automationId}");
                         LogGameModel(model);
                         Messenger.Send(new UpdateGameModel(model));
 
                     }
                     catch (GameException e)
                     {
-                        this.TraceMessage($"❌ Road placement failed for {automationId}: {e.Message}");
+                        this.TraceMessage($"❌ Road placement failed for {message}: {e.Message}");
                         SendErrorMessage(e.Message, e.ErrorLevel);
                     }
                 });
@@ -160,6 +159,7 @@ namespace Catan3.Controller
                  try
                  {
                      var gameModel = Log.CopyCurrent();
+                     this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
                      _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
 
                      var model = MoveRobber(message);
@@ -175,9 +175,10 @@ namespace Catan3.Controller
             {
                 try
                 {
-                    var model = NewGame(message.GameType, message.PlayerIds);
-                    LogGameModel(model);
-                    Messenger.Send(new UpdateGameModel(model));
+                    var gameModel = NewGame(message.GameType, message.PlayerIds);
+                    LogGameModel(gameModel);
+                    this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
+                    Messenger.Send(new UpdateGameModel(gameModel));
                 }
                 catch (GameException e)
                 {
@@ -209,6 +210,7 @@ namespace Catan3.Controller
             {
                 try
                 {
+                    this.TraceMessage($"[Message={message}]");
                     StartRecording(message.OutputPath);
                     this.TraceMessage("✅ Recording started - all subsequent actions will be recorded");
                 }
@@ -236,6 +238,7 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
+                    this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
                     _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
 
                     var model = OnRoll(message);
@@ -252,6 +255,7 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
+                    this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
                     _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
 
                     var model = OnPurchase(message);
@@ -270,6 +274,7 @@ namespace Catan3.Controller
                 try
                 {
                     GameModel gameModel = Log.CopyCurrent();
+                    this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
                     if (gameModel.GameState != GameState.PickSupplementalPlayers) return;
 
                     _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
@@ -294,6 +299,7 @@ namespace Catan3.Controller
                 try
                 {
                     GameModel gameModel = Log.CopyCurrent();
+                    this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
                     _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
 
                     if (BalanceBoard(gameModel))
@@ -317,6 +323,7 @@ namespace Catan3.Controller
             Messenger.Register<GoFirstMessage>(this, (recipient, message) =>
             {
                 GameModel gameModel = Log.CopyCurrent();
+                this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
                 if (gameModel.GameState != GameState.FinishedRollOrder) return;
                 _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
 
@@ -357,7 +364,7 @@ namespace Catan3.Controller
             GameModel gameModel = Log.CopyCurrent();
             Entitlement entitlement = message.Entitlement;
             this.TraceMessage($"🛡️ Processing purchase: {entitlement}");
-            
+
             if (entitlement == Entitlement.Soldier)
             {
                 // the entitlements you can get before rolling -- right now only the right to move the knight
@@ -595,7 +602,7 @@ namespace Catan3.Controller
 
 
             // now fix up the underlying resource models in the same way as if we loading it from disk or got it back from a service
-            // -- e.g. create new data objects and stick the full object into the model
+            // -- e.g. create new data objects and stick the full object into the gameModel
             foreach (var player in gameModel.Players)
             {
                 var newResources = playerResources[player.Id];
@@ -651,25 +658,25 @@ namespace Catan3.Controller
             return true;
         }
         /// <summary>
-        /// Reorders the players in the game model to match a specified order of player IDs.
+        /// Reorders the players in the game gameModel to match a specified order of player IDs.
         /// </summary>
         /// <param name="playerIds">A list of player IDs representing the desired order of players.</param>
         /// <returns>A new instance of GameModel with players reordered according to playerIds,
-        /// or throws an GameException if any player ID in playerIds does not exist in the game model.</returns>
+        /// or throws an GameException if any player ID in playerIds does not exist in the game gameModel.</returns>
         /// <remarks>
         /// This function performs the reordering with the following steps:
-        /// 1. Creates a copy of the current game model to ensure that changes do not affect the original state.
+        /// 1. Creates a copy of the current game gameModel to ensure that changes do not affect the original state.
         /// 2. Constructs a dictionary from the current list of players for O(1) lookup time, using player IDs as keys.
         /// 3. Iterates over the list of desired player IDs, using the dictionary to quickly map IDs to PlayerModel instances.
         /// 4. Collects these mapped PlayerModel instances into a new list that reflects the desired order.
-        /// 5. Assigns this newly ordered list back to the players property of the game model.
+        /// 5. Assigns this newly ordered list back to the players property of the game gameModel.
         /// 6. sets the CurrentPlayerId to be the first PlayerId in the collection of players
         /// 
         /// The algorithm assumes that each player ID in playerIds uniquely exists in the original player list. The use of a dictionary
         /// for player lookup optimizes the reordering process, making it efficient for large lists by reducing the complexity
         /// to O(n + m), where n is the number of players in the original list and m is the number of IDs in playerIds.
         /// </remarks>
-        /// <exception cref="GameException">Thrown if an ID in playerIds does not correspond to any player in the game model.</exception>
+        /// <exception cref="GameException">Thrown if an ID in playerIds does not correspond to any player in the game gameModel.</exception>
         private GameModel SetPlayerOrder(IList<string> playerIds)
         {
             GameModel gameModel = Log.CopyCurrent();
@@ -944,7 +951,7 @@ namespace Catan3.Controller
         /// Attempts to purchase a road for the current player based on the given road key.
         /// </summary>
         /// <param name="roadKey">The key that identifies the specific road to be purchased.</param>
-        /// <returns>The updated game model reflecting the road purchase, or null if the purchase is invalid.</returns>
+        /// <returns>The updated game gameModel reflecting the road purchase, or null if the purchase is invalid.</returns>
         /// <exception cref="GameException">Thrown when the game state is not appropriate for a road purchase,
         /// the road key is invalid, or the road is already owned.</exception>
         private GameModel RoadPurchase(RoadPurchaseMessage message)
@@ -955,7 +962,7 @@ namespace Catan3.Controller
             ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse, GameState.Supplemental]);
             ThrowIfNoEntitlement(gameModel, [Entitlement.Road]);
             var roadKey = message.RoadKey;
-            // Retrieve the road model corresponding to the road key.
+            // Retrieve the road gameModel corresponding to the road key.
             var roadModel = gameModel.Roads.FirstOrDefault(r => r.RoadKey == roadKey);
             if (roadModel == null)
             {
@@ -998,7 +1005,7 @@ namespace Catan3.Controller
             gameModel.UpdateGameHash();
 
             // remember the Random Seed and RandomIterations so that we can replay the game
-          
+
 
             // this.TraceMessage($"GameState: {gameModel.GameState} OldHash={oldHash} newHash={gameModel.GameHash}");
             Log.Done(gameModel);
@@ -1061,7 +1068,7 @@ namespace Catan3.Controller
         /// Upgrades a building based on its current state.
         /// </summary>
         /// <param name="buildingKey">Key identifying the specific building to upgrade.</param>
-        /// <returns>The updated game model after the building upgrade.</returns>
+        /// <returns>The updated game gameModel after the building upgrade.</returns>
         /// <exception cref="GameException">Thrown when the game state is incorrect, the building key is invalid,
         /// or when trying to upgrade a building not owned by the current player.</exception>
         private GameModel BuildingUpgrade(BuildingUpgradeMessage message)
@@ -1154,9 +1161,9 @@ namespace Catan3.Controller
             currentPlayer.SpentEntitlementsThisGame.Add(entitlement);
         }
         /// <summary>
-        /// Updates the scores of all players in the given game model based on current game state.
+        /// Updates the scores of all players in the given game gameModel based on current game state.
         /// </summary>
-        /// <param name="gameModel">The game model containing the players whose scores need updating.</param>
+        /// <param name="gameModel">The game gameModel containing the players whose scores need updating.</param>
         private void UpdateScore(GameModel gameModel)
         {
             int maxScore = 0;
@@ -1236,7 +1243,7 @@ namespace Catan3.Controller
         /// Moves the robber to a new location based on input from a player.
         /// </summary>
         /// <param name="moveRobber">The move message containing the new coordinates for the robber.</param>
-        /// <returns>The updated game model after moving the robber.</returns>
+        /// <returns>The updated game gameModel after moving the robber.</returns>
         /// <exception cref="GameException">Thrown if the game state is not correct for moving the robber,
         /// or if the current player ID is invalid.</exception>
         private GameModel MoveRobber(MoveRobberMessage moveRobber)
@@ -1321,7 +1328,7 @@ namespace Catan3.Controller
         /// Marks a random set of tiles as temporarily gold, avoiding desert tiles, duplicates, and ensure
         /// that they are different each turn.
         /// </summary>
-        /// <param name="gameModel">The game model containing the tiles and house rules.</param>
+        /// <param name="gameModel">The game gameModel containing the tiles and house rules.</param>
         private void SetTempGoldTiles(GameModel gameModel)
         {
             try
@@ -1820,7 +1827,7 @@ namespace Catan3.Controller
                 throw new InvalidOperationException("Recording is already in progress. Stop current recording before starting a new one.");
             }
 
-            // Get current game model and create new recording session using log file path
+            // Get current game gameModel and create new recording session using log file path
             var currentModel = Log.CurrentState();
             _recorder = new GameRecorder(currentModel, Log.FilePath);
 

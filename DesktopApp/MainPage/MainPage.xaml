@@ -61,7 +61,7 @@
                         VerticalAlignment="Top" HorizontalAlignment="Center"
                         AutomationProperties.AutomationId="{x:Bind ParticipatingInSupplementalAutomationId(), Mode=OneWay}"
                         IsEnabled="{x:Bind CanParticipateInSupplemental(IsCurrentPlayer), Mode=OneWay}"
-                        IsChecked="{x:Bind PartipatingInSupplemental, Mode=TwoWay}" />
+                        IsChecked="{x:Bind ParticipatingInSupplemental, Mode=TwoWay}" />
                 <Ellipse Width="75" Height="75" Margin="10">
                     <Ellipse.Fill>
                         <ImageBrush

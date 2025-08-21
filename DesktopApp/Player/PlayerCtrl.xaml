@@ -5,7 +5,7 @@
         xmlns:c="using:Catan3.Controls" xmlns:models="using:Catan3.Models"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        Visibility="{x:Bind SupplementalVisibility(GameState, PlayerViewModel.PartipatingInSupplemental), Mode=OneWay}"
+        Visibility="{x:Bind SupplementalVisibility(GameState, PlayerViewModel.ParticipatingInSupplemental), Mode=OneWay}"
         mc:Ignorable="d">
     <UserControl.Resources>
         <c:StatTemplateSelector x:Key="StatTemplateSelector"
