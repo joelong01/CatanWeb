@@ -1,11 +1,51 @@
+/*
+ * GameStateMachine.cs
+ * 
+ * OVERVIEW:
+ * This class contains the core game logic for the Catan desktop application. It implements the 
+ * IGameStateMachine interface and manages all game state transitions, rule enforcement, and
+ * player actions without any UI or messaging dependencies.
+ * 
+ * PURPOSE AND ARCHITECTURE:
+ * - Separation of Concerns: This class was separated from MVVM messaging to create a clean
+ *   boundary between game logic and UI messaging. The GameMessageService handles MVVM messages
+ *   and delegates to this class for actual game operations.
+ * - Interface Implementation: Implements IGameStateMachine from Catan3.Shared, allowing it to
+ *   be used by both desktop app (via GameMessageService) and potentially by web services or
+ *   other clients through the same interface.
+ * - Pure Game Logic: Contains no UI dependencies, MVVM messaging, or framework-specific code.
+ *   All methods focus solely on game state manipulation and rule enforcement.
+ * 
+ * KEY RESPONSIBILITIES:
+ * 1. Game State Management: Handles all state transitions (WaitingForRoll, Supplemental, etc.)
+ * 2. Rule Enforcement: Validates moves, purchases, and actions according to Catan rules
+ * 3. Player Actions: Processes dice rolls, building placement, robber movement, etc.
+ * 4. Game Persistence: Manages saving/loading games through the Log system
+ * 5. Action Recording: Integrates with GameRecorder for replay functionality
+ * 6. Resource Management: Handles resource distribution, purchasing, and allocation
+ * 
+ * SYNC REQUIREMENTS:
+ * Keep this class behaviorally in sync with `Catan3.GameService/Controllers/GameStateMachine.cs`.
+ * Critical sync points:
+ * - Set PreviousGameState before transitioning to MustMoveRobber (Soldier and Seven flows)
+ * - Use GameFactory.Shuffle(gameModel) for content shuffle, not GameModel.Shuffle()
+ * - Keep AllowNext/SetActionFlags rules aligned
+ * - Maintain identical logic for buildable roads/buildings computations
+ * 
+ * DESIGN PATTERNS:
+ * - Command Pattern: Each public method represents a game command/action
+ * - State Machine: Manages complex game state transitions with validation
+ * - Repository Pattern: Uses Log<string> for game state persistence
+ * - Interface Segregation: Clean IGameStateMachine interface for dependency injection
+ */
+
 using Catan.Services;
 using Catan3.Models;
 using Catan3.Shared.Extensions;
+using Catan3.Shared.Interfaces;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
 using Catan3.Utility;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI;
 using Microsoft.UI.Dispatching;
 using System;
@@ -18,348 +58,368 @@ using System.Text.Json;
 using System.Threading.Tasks;
 namespace Catan3.GameState
 {
-    // SYNC NOTE:
-    // Keep this class behaviorally in sync with `Catan3.GameService/Controllers/GameStateMachine.cs`.
-    // Critical sync points:
-    // - Set PreviousGameState before transitioning to MustMoveRobber (Soldier and Seven flows)
-    // - Use GameFactory.Shuffle(gameModel) for content shuffle, not GameModel.Shuffle()
-    // - Keep AllowNext/SetActionFlags rules aligned
-    // - Maintain identical logic for buildable roads/buildings computations
-    public class GameStateMachine : ObservableRecipient
+    public class GameStateMachine : IGameStateMachine
     {
+        /// <summary>
+        /// The game state log that manages undo/redo functionality and persistence.
+        /// </summary>
         private Log<string> Log;
 
+        /// <summary>
+        /// Service for persisting game state to storage.
+        /// </summary>
         private IPersistenceService? MyPersistenceService { get; set; }
 
-        // Recording state  
+        /// <summary>
+        /// Optional recorder for capturing game actions for replay functionality.
+        /// </summary>
         private GameRecorder? _recorder = null;
+
+        /// <summary>
+        /// Initializes a new GameStateMachine with persistence and logging capabilities.
+        /// </summary>
+        /// <param name="PersistenceService">Service for saving/loading game state. Can be null for in-memory only.</param>
+        /// <param name="localSaveFile">Path to the local save file for this game session.</param>
         public GameStateMachine(IPersistenceService? PersistenceService, string localSaveFile)
         {
             Log = new Log<string>(PersistenceService, localSaveFile);
             MyPersistenceService = PersistenceService;
-            RegisterMessages();
         }
-        public int DoneCount => Log.DoneCount;
-        private void RegisterMessages()
+
+
+        /// <summary>
+        /// Executes a game action (Next, Undo, Redo) and returns the updated game state.
+        /// This is the primary method for advancing the game through its various states.
+        /// </summary>
+        /// <param name="message">The action to execute (Next, Undo, or Redo).</param>
+        /// <returns>The updated GameModel after executing the action.</returns>
+        /// <exception cref="GameException">Thrown when the action cannot be performed.</exception>
+        /// <exception cref="InvalidOperationException">Thrown for unknown action types.</exception>
+        public Task<GameModel> ExecuteGameActionAsync(ExecuteGameActionMessage message)
         {
-            Debug.Assert(Messenger is not null);
-            IsActive = true;
-            Messenger.Register<ExecuteGameActionMessage>(this, (recipient, message) =>
-                {
-                    try
-                    {
-                        var gameModel = Log.CopyCurrent();
-                        this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                        _recorder?.RecordAction(message.ToRecord(gameModel));
+            var gameModel = Log.CopyCurrent();
+            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            _recorder?.RecordAction(message.ToRecord(gameModel));
 
-                        gameModel = null;
-                        switch (message.Action)
-                        {
-                            case GameAction.Undo:
-                                gameModel = Undo(); // NOTE: Undo does not call LogGameModel!
-                                break;
-                            case GameAction.Redo:
-                                gameModel = Redo();  // NOTE: Redo does not call LogGameModel!
-                                break;
-                            case GameAction.Next:
-                                gameModel = NextState();
-                                LogGameModel(gameModel);
-                                break;
-                            default:
-                                throw new InvalidOperationException("invalid game action: " + message.Action);
-                        }
-                        if (gameModel is not null)
-                        {
-
-                            Messenger.Send(new UpdateGameModel(gameModel));
-                        }
-                        else
-                        {
-                            throw new GameException($"Unable to do action {message}");
-                        }
-                    }
-                    catch (GameException e)
-                    {
-                        this.TraceMessage($"Exception doing Action {message.Action}. Message: {e}");
-                    }
-                });
-            Messenger.Register<ShuffleMessage>(this, (recipient, message) =>
-                {
-                    try
-                    {
-                        var gameModel = Log.CopyCurrent();
-                        this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                        _recorder?.RecordAction(message.ToRecord(gameModel));
-
-                        gameModel = ShuffleCurrentGame();
-                        LogGameModel(gameModel);
-                        Messenger.Send(new UpdateGameModel(gameModel));
-                    }
-                    catch (GameException e)
-                    {
-                        this.TraceMessage($"Exception doing Shuffle. Message: {e}");
-                    }
-                });
-            Messenger.Register<BuildingUpgradeMessage>(this, (recipient, message) =>
-                {
-                    try
-                    {
-
-                        var gameModel = Log.CopyCurrent();
-                        this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                        _recorder?.RecordAction(message.ToRecord(gameModel));
-
-                        gameModel = BuildingUpgrade(message);
-                        LogGameModel(gameModel);
-                        Messenger.Send(new UpdateGameModel(gameModel));
-                    }
-                    catch (GameException e)
-                    {
-                        SendErrorMessage(e.Message, e.ErrorLevel);
-                    }
-                });
-            Messenger.Register<SetPlayerOrderMessage>(this, (recipient, message) =>
+            gameModel = null;
+            switch (message.Action)
             {
-                try
-                {
-                    var gameModel = Log.CopyCurrent();
-                    this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                    _recorder?.RecordAction(message.ToRecord(gameModel));
-
-                    gameModel = SetPlayerOrder(message.PlayerIds);
+                case GameAction.Undo:
+                    gameModel = Undo(); // NOTE: Undo does not call LogGameModel!
+                    break;
+                case GameAction.Redo:
+                    gameModel = Redo();  // NOTE: Redo does not call LogGameModel!
+                    break;
+                case GameAction.Next:
+                    gameModel = NextState();
                     LogGameModel(gameModel);
-                    Messenger.Send(new UpdateGameModel(gameModel));
-                }
-                catch (GameException e)
-                {
-                    SendErrorMessage(e.Message, e.ErrorLevel);
-                }
-            });
-            Messenger.Register<RoadPurchaseMessage>(this, (recipient, message) =>
+                    break;
+                default:
+                    throw new InvalidOperationException("invalid game action: " + message.Action);
+            }
+            if (gameModel is null)
             {
-                    try
-                    {
-                        var gameModel = Log.CopyCurrent();
-                        this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                        _recorder?.RecordAction(message.ToRecord(gameModel));
+                throw new GameException($"Unable to do action {message}");
+            }
+            return Task.FromResult(gameModel);
+        }
 
-                        var model = RoadPurchase(message);
-                        LogGameModel(model);
-                        Messenger.Send(new UpdateGameModel(model));
+        /// <summary>
+        /// Handles shuffle operation for randomizing deck/board state.
+        /// Used when players want to reshuffle the game content for balance.
+        /// </summary>
+        /// <param name="message">The shuffle request.</param>
+        /// <returns>The updated GameModel with shuffled content.</returns>
+        /// <exception cref="GameException">Thrown when shuffle cannot be performed.</exception>
+        public Task<GameModel> HandleShuffleAsync(ShuffleMessage message)
+        {
+            var gameModel = Log.CopyCurrent();
+            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            _recorder?.RecordAction(message.ToRecord(gameModel));
 
-                    }
-                    catch (GameException e)
-                    {
-                        this.TraceMessage($"❌ Road placement failed for {message}: {e.Message}");
-                        SendErrorMessage(e.Message, e.ErrorLevel);
-                    }
-                });
-            Messenger.Register<MoveRobberMessage>(this, (recipient, message) =>
-             {
-                 try
-                 {
-                     var gameModel = Log.CopyCurrent();
-                     this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                     _recorder?.RecordAction(message.ToRecord(gameModel));
+            gameModel = ShuffleCurrentGame();
+            LogGameModel(gameModel);
+            return Task.FromResult(gameModel);
+        }
 
-                     var model = MoveRobber(message);
-                     LogGameModel(model);
-                     Messenger.Send(new UpdateGameModel(model));
-                 }
-                 catch (GameException e)
-                 {
-                     SendErrorMessage(e.Message, e.ErrorLevel);
-                 }
-             });
-            Messenger.Register<Catan3.Models.NewGameMessage>(this, (recipient, message) =>
+        /// <summary>
+        /// Handles building upgrade operations (settlement to city).
+        /// Validates the upgrade is legal and updates the game state accordingly.
+        /// </summary>
+        /// <param name="message">The building upgrade request with building location.</param>
+        /// <returns>The updated GameModel with the upgraded building.</returns>
+        /// <exception cref="GameException">Thrown when the upgrade is not valid.</exception>
+        public Task<GameModel> HandleBuildingUpgradeAsync(BuildingUpgradeMessage message)
+        {
+            var gameModel = Log.CopyCurrent();
+            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            gameModel = BuildingUpgrade(message);
+            LogGameModel(gameModel);
+            return Task.FromResult(gameModel);
+        }
+
+        /// <summary>
+        /// Handles setting the player turn order for the game.
+        /// Reorders players according to the specified sequence and updates the current player.
+        /// </summary>
+        /// <param name="message">The new player order with list of player IDs.</param>
+        /// <returns>The updated GameModel with reordered players.</returns>
+        /// <exception cref="GameException">Thrown when player order is invalid.</exception>
+        public Task<GameModel> HandleSetPlayerOrderAsync(SetPlayerOrderMessage message)
+        {
+            var gameModel = Log.CopyCurrent();
+            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            gameModel = SetPlayerOrder(message.PlayerIds);
+            LogGameModel(gameModel);
+            return Task.FromResult(gameModel);
+        }
+
+        /// <summary>
+        /// Handles road purchase operations.
+        /// Validates the road placement is legal and updates the game state.
+        /// </summary>
+        /// <param name="message">The road purchase request with road location.</param>
+        /// <returns>The updated GameModel with the new road placed.</returns>
+        /// <exception cref="GameException">Thrown when road placement is not valid.</exception>
+        public Task<GameModel> HandleRoadPurchaseAsync(RoadPurchaseMessage message)
+        {
+            var gameModel = Log.CopyCurrent();
+            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            var model = RoadPurchase(message);
+            LogGameModel(model);
+            return Task.FromResult(model);
+        }
+
+        /// <summary>
+        /// Handles robber movement operations.
+        /// Moves the robber to a new hex and optionally steals from a target player.
+        /// </summary>
+        /// <param name="message">The robber move request with coordinates and optional target player.</param>
+        /// <returns>The updated GameModel with robber moved.</returns>
+        /// <exception cref="GameException">Thrown when robber movement is not valid.</exception>
+        public Task<GameModel> HandleMoveRobberAsync(MoveRobberMessage message)
+        {
+            var gameModel = Log.CopyCurrent();
+            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            var model = MoveRobber(message);
+            LogGameModel(model);
+            return Task.FromResult(model);
+        }
+
+        /// <summary>
+        /// Handles new game creation with specified game type and players.
+        /// Initializes a fresh game state with the provided configuration.
+        /// </summary>
+        /// <param name="message">The new game request with game type and player list.</param>
+        /// <returns>The newly created GameModel in initial state.</returns>
+        /// <exception cref="GameException">Thrown when game creation fails.</exception>
+        public Task<GameModel> HandleNewGameAsync(Catan3.Shared.Models.NewGameMessage message)
+        {
+            var gameModel = NewGame(message.GameType, message.PlayerIds);
+            LogGameModel(gameModel);
+            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            return Task.FromResult(gameModel);
+        }
+
+        /// <summary>
+        /// Handles loading a game from a file (.catan or .catan_test format).
+        /// Restores the complete game state from the specified file path.
+        /// </summary>
+        /// <param name="message">The load game request with file path.</param>
+        /// <returns>The loaded GameModel from the file.</returns>
+        /// <exception cref="GameException">Thrown when file loading fails.</exception>
+        public async Task<GameModel> HandleLoadGameAsync(LoadGameMessage message)
+        {
+            this.TraceMessage($"LoadGameMessage received for: {message.LocalFile}");
+            var model = await LoadGame(message.LocalFile);
+            this.TraceMessage($"Game loaded successfully, sending UpdateGameModel");
+            LogGameModel(model);
+            return model;
+        }
+
+        /// <summary>
+        /// Handles starting game action recording for replay functionality.
+        /// All subsequent game actions will be recorded to the specified output path.
+        /// </summary>
+        /// <param name="message">The start recording request with optional output path.</param>
+        /// <returns>A completed task when recording has started.</returns>
+        /// <exception cref="Exception">Thrown when recording cannot be started.</exception>
+        public Task HandleStartRecordingAsync(StartRecordingMessage message)
+        {
+            this.TraceMessage($"[Message={message}]");
+            StartRecording(message.OutputPath);
+            this.TraceMessage("✅ Recording started - all subsequent actions will be recorded");
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Handles stopping game action recording and saving the recorded data.
+        /// Finalizes the recording session and saves all captured actions to file.
+        /// </summary>
+        /// <param name="message">The stop recording request.</param>
+        /// <returns>A completed task when recording has stopped and been saved.</returns>
+        /// <exception cref="Exception">Thrown when recording cannot be stopped or saved.</exception>
+        public Task HandleStopRecordingAsync(StopRecordingMessage message)
+        {
+            var filePath = StopRecording();
+            this.TraceMessage($"✅ Recording stopped - saved to: {filePath}");
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Handles dice roll operations and resource distribution.
+        /// Processes the dice roll, distributes resources, and handles special cases like rolling 7.
+        /// </summary>
+        /// <param name="message">The roll request with dice values.</param>
+        /// <returns>The updated GameModel after processing the roll.</returns>
+        /// <exception cref="GameException">Thrown when the roll cannot be processed.</exception>
+        public Task<GameModel> HandleRollAsync(RollMessage message)
+        {
+            var gameModel = Log.CopyCurrent();
+            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            var model = OnRoll(message);
+            LogGameModel(model);
+            return Task.FromResult(model);
+        }
+
+        /// <summary>
+        /// Handles entitlement purchases (roads, settlements, cities, soldiers).
+        /// Validates the purchase is legal and adds the entitlement to the player's inventory.
+        /// </summary>
+        /// <param name="message">The purchase request with entitlement type.</param>
+        /// <returns>The updated GameModel with the purchased entitlement.</returns>
+        /// <exception cref="GameException">Thrown when the purchase is not valid.</exception>
+        public Task<GameModel> HandlePurchaseAsync(PurchaseMessage message)
+        {
+            var gameModel = Log.CopyCurrent();
+            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            var model = OnPurchase(message);
+            LogGameModel(model);
+            return Task.FromResult(model);
+        }
+
+        /// <summary>
+        /// Handles individual player participation decisions for supplemental building phase.
+        /// Updates a player's participation flag for the supplemental round.
+        /// </summary>
+        /// <param name="message">The participation request with player ID and participation status.</param>
+        /// <returns>The updated GameModel with player participation status set.</returns>
+        /// <exception cref="GameException">Thrown when participation cannot be set.</exception>
+        public Task<GameModel> HandleParticipatingInSupplementalAsync(ParticipatingInSupplementalMessage message)
+        {
+            GameModel gameModel = Log.CopyCurrent();
+            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            if (gameModel.GameState != Shared.Models.GameState.PickSupplementalPlayers) 
             {
-                try
-                {
-                    var gameModel = NewGame(message.GameType, message.PlayerIds);
-                    LogGameModel(gameModel);
-                    this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                    Messenger.Send(new UpdateGameModel(gameModel));
-                }
-                catch (GameException e)
-                {
-                    SendErrorMessage(e.Message, e.ErrorLevel);
-                }
-            });
-            Messenger.Register<LoadGameMessage>(this, async (recipient, message) =>
+                return Task.FromResult(gameModel);
+            }
+
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+            
+            // Find the player and update their participation flag
+            var player = gameModel.Players.FirstOrDefault(p => p.Id == message.PlayerId);
+            if (player is not null)
             {
-                try
-                {
-                    this.TraceMessage($"LoadGameMessage received for: {message.LocalFile}");
-                    var model = await LoadGame(message.LocalFile);
-                    this.TraceMessage($"Game loaded successfully, sending UpdateGameModel");
-                    LogGameModel(model);
-                    Messenger.Send(new UpdateGameModel(model));
-                }
-                catch (GameException e)
-                {
-                    this.TraceMessage($"GameException in LoadGameMessage: {e.Message}");
-                    SendErrorMessage(e.Message, e.ErrorLevel);
-                }
-                catch (Exception e)
-                {
-                    this.TraceMessage($"Unexpected exception in LoadGameMessage: {e}");
-                    SendErrorMessage($"Failed to load game file: {e.Message}", Catan3.Shared.Models.ErrorLevel.Critical);
-                }
-            });
-            Messenger.Register<StartRecordingMessage>(this, (recipient, message) =>
+                player.ParticipatingInSupplemental = message.Participating;
+                this.TraceMessage($"Player {message.PlayerId} supplemental participation set to {message.Participating}");
+            }
+
+            LogGameModel(gameModel); //undo puts us back to this state
+            return Task.FromResult(gameModel);
+        }
+
+        /// <summary>
+        /// Handles board balance operations to adjust tile resource distribution.
+        /// Attempts to balance the board by swapping resource types to improve fairness.
+        /// </summary>
+        /// <param name="message">The balance board request.</param>
+        /// <returns>The updated GameModel with potentially rebalanced board.</returns>
+        /// <exception cref="GameException">Thrown when board balancing fails.</exception>
+        public Task<GameModel> HandleBalanceBoardAsync(BalanceBoardMessage message)
+        {
+            GameModel gameModel = Log.CopyCurrent();
+            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            if (BalanceBoard(gameModel))
             {
-                try
-                {
-                    this.TraceMessage($"[Message={message}]");
-                    StartRecording(message.OutputPath);
-                    this.TraceMessage("✅ Recording started - all subsequent actions will be recorded");
-                }
-                catch (Exception e)
-                {
-                    this.TraceMessage($"❌ Failed to start recording: {e.Message}");
-                    SendErrorMessage($"Failed to start recording: {e.Message}", ErrorLevel.Critical);
-                }
-            });
-            Messenger.Register<StopRecordingMessage>(this, (recipient, message) =>
-            {
-                try
-                {
-                    var filePath = StopRecording();
-                    this.TraceMessage($"✅ Recording stopped - saved to: {filePath}");
-                }
-                catch (Exception e)
-                {
-                    this.TraceMessage($"❌ Failed to stop recording: {e.Message}");
-                    SendErrorMessage($"Failed to stop recording: {e.Message}", ErrorLevel.Critical);
-                }
-            });
-            Messenger.Register<RollMessage>(this, (recipient, message) =>
-            {
-                try
-                {
-                    var gameModel = Log.CopyCurrent();
-                    this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                    _recorder?.RecordAction(message.ToRecord(gameModel));
-
-                    var model = OnRoll(message);
-                    LogGameModel(model);
-                    Messenger.Send(new UpdateGameModel(model));
-                }
-                catch (GameException e)
-                {
-                    SendErrorMessage(e.Message, e.ErrorLevel);
-                }
-            });
-            Messenger.Register<PurchaseMessage>(this, (recipient, message) =>
-            {
-                try
-                {
-                    var gameModel = Log.CopyCurrent();
-                    this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                    _recorder?.RecordAction(message.ToRecord(gameModel));
-
-                    var model = OnPurchase(message);
-                    LogGameModel(model);
-                    Messenger.Send(new UpdateGameModel(model));
-                }
-                catch (GameException e)
-                {
-                    SendErrorMessage(e.Message, e.ErrorLevel);
-                }
-            });
-
-            Messenger.Register(this, (object recipient, ParticipatingInSupplementalMessage message) =>
-            {
-                try
-                {
-                    GameModel gameModel = Log.CopyCurrent();
-                    this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                    if (gameModel.GameState != Shared.Models.GameState.PickSupplementalPlayers) return;
-
-                    _recorder?.RecordAction(message.ToRecord(gameModel));
-                    
-                    // Find the player and update their participation flag
-                    var player = gameModel.Players.FirstOrDefault(p => p.Id == message.PlayerId);
-                    if (player != null)
-                    {
-                        player.ParticipatingInSupplemental = message.Participating;
-                        this.TraceMessage($"Player {message.PlayerId} supplemental participation set to {message.Participating}");
-                    }
-
-                    LogGameModel(gameModel); //undo puts us back to this state
-
-                    Messenger.Send(new UpdateGameModel(gameModel));
-                }
-                catch (GameException e)
-                {
-                    SendErrorMessage(e.Message, e.ErrorLevel);
-                }
-            });
-
-            Messenger.Register<BalanceBoardMessage>(this, (recipient, message) =>
-            {
-                try
-                {
-                    GameModel gameModel = Log.CopyCurrent();
-                    this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                    _recorder?.RecordAction(message.ToRecord(gameModel));
-
-                    if (BalanceBoard(gameModel))
-                    {
-                        LogGameModel(gameModel);
-
-                        Messenger.Send(new UpdateGameModel(gameModel));
-                    }
-                }
-                catch (GameException e)
-                {
-                    SendErrorMessage(e.Message, e.ErrorLevel);
-                }
-            });
-            Messenger.Register<EndGame>(this, (recipient, message) =>
-            {
-
-                this.Log.IsActive = false;
-                Messenger.UnregisterAll(this);
-            });
-            Messenger.Register(this, (object recipient, GoFirstMessage message) =>
-            {
-                GameModel gameModel = Log.CopyCurrent();
-                this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                if (gameModel.GameState != Shared.Models.GameState.FinishedRollOrder) return;
-                _recorder?.RecordAction(message.ToRecord(gameModel));
-
-                while (gameModel.Players[0].Id != message.PlayerId)
-                {
-                    var player = gameModel.Players[0];
-                    gameModel.Players.RemoveAt(0);
-                    gameModel.Players.Add(player);
-                }
-                gameModel.CurrentPlayerId = gameModel.Players[0].Id;
                 LogGameModel(gameModel);
-                Messenger.Send(new UpdateGameModel(gameModel));
-            });
-
-            Messenger.Register<PersistGameMessage>(this, async (recipient, message) =>
-            {
-                switch (message.Action)
-                {
-                    case LocalPersistActions.Save:
-                        await Log.SaveAsync();
-                        break;
-                    case LocalPersistActions.SaveAs:
-                        await Log.SaveAsAsync(message.Location);
-                        break;
-                    case LocalPersistActions.Open:
-                        break;
-                }
-
-            });
+            }
+            return Task.FromResult(gameModel);
         }
-        private void SendErrorMessage(string message, ErrorLevel errorLevel, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
+
+        /// <summary>
+        /// Handles end game operations and cleanup.
+        /// Deactivates the game log and performs any necessary cleanup operations.
+        /// </summary>
+        /// <param name="message">The end game request.</param>
+        /// <returns>A completed task when game has been ended.</returns>
+        public Task HandleEndGameAsync(EndGame message)
         {
-            this.TraceMessage(errorLevel.ToString() + ": " + message, indentLevel, cmb, cln, cfp);
-            Messenger.Send(new ErrorMessage(message, errorLevel, cmb, cln, cfp));
+            this.Log.IsActive = false;
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Handles setting which player goes first in the turn order.
+        /// Reorders the player list so the specified player becomes the first player.
+        /// </summary>
+        /// <param name="message">The go first request with player ID.</param>
+        /// <returns>The updated GameModel with reordered players.</returns>
+        /// <exception cref="GameException">Thrown when player reordering fails.</exception>
+        public Task<GameModel> HandleGoFirstAsync(GoFirstMessage message)
+        {
+            GameModel gameModel = Log.CopyCurrent();
+            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            if (gameModel.GameState != Shared.Models.GameState.FinishedRollOrder) 
+            {
+                return Task.FromResult(gameModel);
+            }
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            while (gameModel.Players[0].Id != message.PlayerId)
+            {
+                var player = gameModel.Players[0];
+                gameModel.Players.RemoveAt(0);
+                gameModel.Players.Add(player);
+            }
+            gameModel.CurrentPlayerId = gameModel.Players[0].Id;
+            LogGameModel(gameModel);
+            return Task.FromResult(gameModel);
+        }
+
+        /// <summary>
+        /// Handles game persistence operations (save/load).
+        /// Saves the current game state to the specified location or performs load operations.
+        /// </summary>
+        /// <param name="message">The persistence request with action type and location.</param>
+        /// <returns>A completed task when persistence operation is finished.</returns>
+        /// <exception cref="Exception">Thrown when persistence operation fails.</exception>
+        public async Task HandlePersistGameAsync(PersistGameMessage message)
+        {
+            switch (message.Action)
+            {
+                case LocalPersistActions.Save:
+                    await Log.SaveAsync();
+                    break;
+                case LocalPersistActions.SaveAs:
+                    await Log.SaveAsAsync(message.Location);
+                    break;
+                case LocalPersistActions.Open:
+                    break;
+            }
         }
         private GameModel OnPurchase(PurchaseMessage message)
         {

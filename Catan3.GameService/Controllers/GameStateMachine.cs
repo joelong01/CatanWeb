@@ -55,7 +55,6 @@ namespace Catan3.GameService.Controllers
             _logger = logger;
         }
 
-        public int DoneCount => Log.DoneCount;
 
         /// <summary>
         /// Gets the current game state from the log

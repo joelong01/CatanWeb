@@ -99,9 +99,9 @@ namespace Catan3.Models
         }
 
         /// <summary>
-        /// Gets the game controller.
+        /// Gets the game message service that handles MVVM messaging to the game logic.
         /// </summary>
-        private GameStateMachine GameController { get; set; }
+        private GameMessageService GameController { get; set; }
         public bool IsTest { get; private set; }
 
         /// <summary>
@@ -140,7 +140,8 @@ namespace Catan3.Models
             _playerDatabase = playerDatabase;
             RegisterMessages();
             GameViewModel = new GameViewModel(playerDatabase);
-            GameController = new GameStateMachine(_fileService, filePath);
+            var gameStateMachine = new GameStateMachine(_fileService, filePath);
+            GameController = new GameMessageService(gameStateMachine);
             this.IsTest = isTest;
             if (selectedGame == GameType.SavedGame)
             {
