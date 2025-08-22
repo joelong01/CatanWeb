@@ -10,11 +10,11 @@ namespace Catan3.Models
 {
     public partial class GameViewModel
     {
-        public string StateMessage(GameModel gameModel, GameState gameState)
+        public string StateMessage(GameModel gameModel, Shared.Models.GameState gameState)
         {
 
 
-            if (gameState == GameState.WaitingForNext || gameState == GameState.AllocateResourceForward || gameState == GameState.AllocateResourceReverse)
+            if (gameState == Shared.Models.GameState.WaitingForNext || gameState == Shared.Models.GameState.AllocateResourceForward || gameState == Shared.Models.GameState.AllocateResourceReverse)
             {
                 var player = gameModel.CurrentPlayer();
                 int count = player.UnspentEntitlements.Count;

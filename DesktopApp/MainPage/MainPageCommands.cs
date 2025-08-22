@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using Catan3.Controller;
+using Catan3.GameState;
 using Catan3.Utility;
 using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;

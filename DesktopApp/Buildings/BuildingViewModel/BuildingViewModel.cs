@@ -14,7 +14,7 @@ namespace Catan3.Models
     /// <summary>
     ///     The building visual state goes through the following
     ///     
-    ///     1. Buildable gets set by the Controller.
+    ///     1. Buildable gets set by the GameState.
     ///         => if a building is not buildable and it is Empty, then is is always transparent to the user
     ///         => if a building is not buildable and is owned, it is Opacity 1.0, but it should not be "selectable"
     ///     3. GetStateGlyph() will 

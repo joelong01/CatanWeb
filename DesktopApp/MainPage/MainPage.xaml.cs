@@ -33,9 +33,9 @@ namespace Catan3
             {
                 switch (page.MainPageModel.GameViewModel.GameModel?.GameState)
                 {
-                    case GameState.FinishedRollOrder:
+                    case Shared.Models.GameState.FinishedRollOrder:
                         return RollOrderTemplate ?? base.SelectTemplateCore(item, container);
-                    case GameState.PickSupplementalPlayers:
+                    case Shared.Models.GameState.PickSupplementalPlayers:
                         return PickSupplementalPlayersTemplate ?? base.SelectTemplate(item, container);
                     default:
                         return PlayerStatsTemplate ?? base.SelectTemplateCore(item, container); ;
@@ -73,17 +73,17 @@ namespace Catan3
 
         }
 
-        public DataTemplate? StateToItemTemplate(GameState gameState)
+        public DataTemplate? StateToItemTemplate(Shared.Models.GameState gameState)
         {
             switch (gameState)
             {
-                case GameState.FinishedRollOrder:
+                case Shared.Models.GameState.FinishedRollOrder:
                     if (this.Resources.TryGetValue("RollOrderTemplate", out var rollOrderTemplate))
                     {
                         return rollOrderTemplate as DataTemplate;
                     }
                     break;
-                case GameState.PickSupplementalPlayers:
+                case Shared.Models.GameState.PickSupplementalPlayers:
                     if (this.Resources.TryGetValue("PickSupplementalPlayersTemplate", out var pickSupplementalPlayers))
                     {
                         return pickSupplementalPlayers as DataTemplate;

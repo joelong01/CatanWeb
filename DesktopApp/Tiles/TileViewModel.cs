@@ -37,13 +37,13 @@ namespace Catan3.Models
             {
                 Messenger.UnregisterAll(this);
             });
-            Messenger.Register<GameStateChanged>(this, (recipient, message) =>
+            Messenger.Register(this, (object recipient, GameStateChanged message) =>
             {
                switch (message.State)
                 {
-                    case GameState.AllocateResourceForward:
-                    case GameState.AllocateResourceReverse:
-                    case GameState.MustMoveRobber:
+                    case Shared.Models.GameState.AllocateResourceForward:
+                    case Shared.Models.GameState.AllocateResourceReverse:
+                    case Shared.Models.GameState.MustMoveRobber:
                         TileIndexVisibility = Visibility.Visible;
                         break;
                     default:

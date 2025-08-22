@@ -34,19 +34,19 @@ namespace Catan3.Controls
             this.InitializeComponent();
         }
         public static readonly DependencyProperty PlayerViewModelProperty = DependencyProperty.Register("PlayerViewModel", typeof(PlayerViewModel), typeof(PlayerCtrl), new PropertyMetadata(null));
-        public static readonly DependencyProperty GameStateProperty = DependencyProperty.Register("GameState", typeof(GameState), typeof(PlayerCtrl), new PropertyMetadata(GameState.Uninitialized, GameStateChanged));
-        public GameState GameState
+        public static readonly DependencyProperty GameStateProperty = DependencyProperty.Register("GameState", typeof(Shared.Models.GameState), typeof(PlayerCtrl), new PropertyMetadata(Shared.Models.GameState.Uninitialized, GameStateChanged));
+        public Shared.Models.GameState GameState
         {
-            get => (GameState)GetValue(GameStateProperty);
+            get => (Shared.Models.GameState)GetValue(GameStateProperty);
             set => SetValue(GameStateProperty, value);
         }
         private static void GameStateChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as PlayerCtrl;
-            var depPropValue = (GameState)e.NewValue;
+            var depPropValue = (Shared.Models.GameState)e.NewValue;
             depPropClass?.SetGameState(depPropValue);
         }
-        private void SetGameState(GameState value)
+        private void SetGameState(Shared.Models.GameState value)
         {
            
         }
@@ -57,9 +57,9 @@ namespace Catan3.Controls
             set => SetValue(PlayerViewModelProperty, value);
         }
 
-        private Visibility SupplementalVisibility(GameState state, bool ParticipatingInSupplemental)
+        private Visibility SupplementalVisibility(Shared.Models.GameState state, bool ParticipatingInSupplemental)
         {
-            if (state != GameState.Supplemental) return Visibility.Visible;
+            if (state != Shared.Models.GameState.Supplemental) return Visibility.Visible;
 
             var ret = ParticipatingInSupplemental ? Visibility.Visible : Visibility.Collapsed;
           //  this.TraceMessage($"{PlayerViewModel.Player} Suppl={PlayerViewModel.ParticipatingInSupplemental} SupplementalVisibility={ret}");

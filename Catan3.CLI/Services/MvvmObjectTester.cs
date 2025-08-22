@@ -40,7 +40,7 @@ public class MvvmObjectTester
         await TestObject(() => new RollMessage(new TurnRollModel(3, 4)), "RollMessage", testResults);
         await TestObject(() => new NewGameMessage(GameType.Regular, ["Alice", "Bob", "Charlie"]), "NewGameMessage", testResults);
         await TestObject(() => new SetPlayerOrderMessage(["Alice", "Bob", "Charlie"]), "SetPlayerOrderMessage", testResults);
-        await TestObject(() => new PlayersDoingSupplemental(["Alice", "Bob"]), "PlayersDoingSupplemental", testResults);
+        await TestObject(() => new ParticipatingInSupplementalMessage("Bob", false), "ParticipatingInSupplementalMessage", testResults);
         await TestObject(() => new GoFirstMessage("Alice"), "GoFirstMessage", testResults);
         await TestObject(() => new BalanceBoardMessage(), "BalanceBoardMessage", testResults);
         await TestObject(() => new EndGame(), "EndGame", testResults);

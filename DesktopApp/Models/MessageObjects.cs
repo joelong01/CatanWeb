@@ -46,9 +46,9 @@ namespace Catan3.Models
         public CatanOrientation Orientation { get; } = newOrientation;
     }
     
-    public class GameStateChanged(GameState newState)
+    public class GameStateChanged(Shared.Models.GameState newState)
     {
-        public GameState State { get; } = newState;
+        public Shared.Models.GameState State { get; } = newState;
     }
     
     public class TurnEnding(string playerId)

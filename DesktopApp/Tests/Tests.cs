@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Catan3.Controller;
+using Catan3.GameState;
 using Catan3.Models;
 using Catan3.Shared.Models;
 using Catan3.Utility;
@@ -21,12 +21,12 @@ namespace Catan3.Tests
 
     public class TestProxy : ObservableRecipient, IDisposable
     {
-        public GameController GameController { get; internal set; }
+        public GameStateMachine GameController { get; internal set; }
         private TaskCompletionSource<GameModel>? _tcs;
 
         public TestProxy(string filename)
         {
-            GameController = new GameController(MainWindow.FileService, GenerateSavedFileName(filename));
+            GameController = new GameStateMachine(MainWindow.FileService, GenerateSavedFileName(filename));
             Messenger.Register<UpdateGameModel>(this, UpdateGameModel);
         }
 

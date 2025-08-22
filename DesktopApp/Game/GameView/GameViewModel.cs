@@ -240,7 +240,7 @@ namespace Catan3.Models
         {
             Debug.Assert(GameModel is not null);
             // do things here that the game state requires
-            if (gameModel.GameState == GameState.WaitingForRoll)
+            if (gameModel.GameState == Shared.Models.GameState.WaitingForRoll)
             {
                 this.RollViewModel.TurnRollViewModel.TurnRollModel = new();
             }
@@ -254,7 +254,7 @@ namespace Catan3.Models
                 this.Id = GameModel.GetHashCode().ToString();
             }
 
-            if (gameModel.GameState ==GameState.WaitingForNext) // e.g. just did a roll
+            if (gameModel.GameState == Shared.Models.GameState.WaitingForNext) // e.g. just did a roll
             {
                 foreach (var tile in Tiles)
                 {
@@ -356,7 +356,7 @@ namespace Catan3.Models
                 {
                     // Contract.Assert(Tiles[i].Tile.TileKey == gameModel.Tiles[i].TileKey);
                     Tiles[i].Tile = gameModel.Tiles[i];
-                    Tiles[i].AllowTargeting = gameModel.GameState == GameState.MustMoveRobber;
+                    Tiles[i].AllowTargeting = gameModel.GameState == Shared.Models.GameState.MustMoveRobber;
                    // Debug.Assert(Tiles[i].Tile == gameModel.Tiles[i]);
                 }
             }

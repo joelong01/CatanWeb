@@ -201,14 +201,14 @@ namespace Catan3.Models
             {
                 if (building.Building.OwnerId is not null) continue;
                 // During PickingBoard we want to show Stars even for NotBuildable locations
-                if (building.Building.BuildingState == BuildingState.NotBuildable && GameModel.GameState != GameState.PickingBoard) continue;
+                if (building.Building.BuildingState == BuildingState.NotBuildable && GameModel.GameState != Shared.Models.GameState.PickingBoard) continue;
                 if (building.VisualState == BuildingVisualState.Highlighted) continue;
                 bool hasEntitlement = CurrentPlayer.Player.UnspentEntitlements.Contains(Entitlement.Settlement);
                 //
                 // I want the Stars to hide after the user builds their settlement in the allocation phase as 
                 // showing them makes the game look too busy.  But we also want to do queries/look at Stars
                 // when we pick the board.
-                if (building.Stars >= value && ( hasEntitlement || GameModel.GameState == GameState.PickingBoard ))
+                if (building.Stars >= value && ( hasEntitlement || GameModel.GameState == Shared.Models.GameState.PickingBoard ))
                 {
                     building.VisualState = BuildingVisualState.Stars;
                 }

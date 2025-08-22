@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Catan.Services;
-using Catan3.Controller;
+using Catan3.GameState;
 using Catan3.Utility;
 using Catan3.Shared.Models;
 using Catan3.Shared.Extensions;
@@ -101,7 +101,7 @@ namespace Catan3.Models
         /// <summary>
         /// Gets the game controller.
         /// </summary>
-        private GameController GameController { get; set; }
+        private GameStateMachine GameController { get; set; }
         public bool IsTest { get; private set; }
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace Catan3.Models
             _playerDatabase = playerDatabase;
             RegisterMessages();
             GameViewModel = new GameViewModel(playerDatabase);
-            GameController = new GameController(_fileService, filePath);
+            GameController = new GameStateMachine(_fileService, filePath);
             this.IsTest = isTest;
             if (selectedGame == GameType.SavedGame)
             {
@@ -190,10 +190,10 @@ namespace Catan3.Models
             List<string> gameModelPlayerIds = GameViewModel.GameModel.Players.Select(player => player.Id).ToList();
             if (!viewModelPlayerIds.SequenceEqual(gameModelPlayerIds))
             {
-                if (GameViewModel.GameModel.GameState == GameState.FinishedRollOrder)
+                if (GameViewModel.GameModel.GameState == Shared.Models.GameState.FinishedRollOrder)
                 {
                     // in this state, make the GameModel match the GameViewModel, but we need to tell
-                    // the GameController that there is a new order -- it will be logged, etc.
+                    // the GameStateMachine that there is a new order -- it will be logged, etc.
                     Messenger.Send(new SetPlayerOrderMessage(viewModelPlayerIds));
                 }
                 else
@@ -204,7 +204,7 @@ namespace Catan3.Models
             }
         }
 
-        public Visibility BIND_ShowBoardMeasurements(GameState currentState)
+        public Visibility BIND_ShowBoardMeasurements(Shared.Models.GameState currentState)
         {
             if (GameViewModel.GameModel is null) return Visibility.Collapsed;
             return this.GameViewModel.GameModel.AllocationPhase() ? Visibility.Visible : Visibility.Collapsed;

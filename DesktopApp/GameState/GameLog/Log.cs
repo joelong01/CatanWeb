@@ -12,7 +12,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Catan.Services;
-using Catan3.Controller;
+using Catan3.GameState;
 using Catan3.Shared.Utility;
 using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;

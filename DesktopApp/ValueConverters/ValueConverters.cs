@@ -19,11 +19,11 @@ namespace Catan3.Converters
 
         public object? Convert(object value, Type targetType, object parameter, string language)
         {
-            if (value is GameState gameState)
+            if (value is Shared.Models.GameState gameState)
             {
                 return gameState switch
                 {
-                    GameState.FinishedRollOrder => RollOrderTemplate,
+                    Shared.Models.GameState.FinishedRollOrder => RollOrderTemplate,
                     _ => PlayerStatsTemplate,
                 };
             }
@@ -239,9 +239,9 @@ namespace Catan3.Converters
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            if (value is GameState currentState)
+            if (value is Shared.Models.GameState currentState)
             {
-                if (parameter is string param && Enum.TryParse(param, out GameState desiredState))
+                if (parameter is string param && Enum.TryParse(param, out Shared.Models.GameState desiredState))
                 {
                     return currentState == desiredState ? Visibility.Visible : Visibility.Collapsed;
                 }
@@ -262,9 +262,9 @@ namespace Catan3.Converters
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            if (value is GameState currentState)
+            if (value is Shared.Models.GameState currentState)
             {
-                if (parameter is string param && Enum.TryParse(param, out GameState desiredState))
+                if (parameter is string param && Enum.TryParse(param, out Shared.Models.GameState desiredState))
                 {
                     return currentState == desiredState ? Visibility.Collapsed : Visibility.Visible;
                 }

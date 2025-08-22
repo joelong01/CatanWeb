@@ -16,7 +16,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Tasks;
-namespace Catan3.Controller
+namespace Catan3.GameState
 {
     // SYNC NOTE:
     // Keep this class behaviorally in sync with `Catan3.GameService/Controllers/GameStateMachine.cs`.
@@ -25,7 +25,7 @@ namespace Catan3.Controller
     // - Use GameFactory.Shuffle(gameModel) for content shuffle, not GameModel.Shuffle()
     // - Keep AllowNext/SetActionFlags rules aligned
     // - Maintain identical logic for buildable roads/buildings computations
-    public class GameController : ObservableRecipient
+    public class GameStateMachine : ObservableRecipient
     {
         private Log<string> Log;
 
@@ -33,7 +33,7 @@ namespace Catan3.Controller
 
         // Recording state  
         private GameRecorder? _recorder = null;
-        public GameController(IPersistenceService? PersistenceService, string localSaveFile)
+        public GameStateMachine(IPersistenceService? PersistenceService, string localSaveFile)
         {
             Log = new Log<string>(PersistenceService, localSaveFile);
             MyPersistenceService = PersistenceService;
@@ -268,13 +268,13 @@ namespace Catan3.Controller
                 }
             });
 
-            Messenger.Register<ParticipatingInSupplementalMessage>(this, (recipient, message) =>
+            Messenger.Register(this, (object recipient, ParticipatingInSupplementalMessage message) =>
             {
                 try
                 {
                     GameModel gameModel = Log.CopyCurrent();
                     this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                    if (gameModel.GameState != GameState.PickSupplementalPlayers) return;
+                    if (gameModel.GameState != Shared.Models.GameState.PickSupplementalPlayers) return;
 
                     _recorder?.RecordAction(message.ToRecord(gameModel));
                     
@@ -322,11 +322,11 @@ namespace Catan3.Controller
                 this.Log.IsActive = false;
                 Messenger.UnregisterAll(this);
             });
-            Messenger.Register<GoFirstMessage>(this, (recipient, message) =>
+            Messenger.Register(this, (object recipient, GoFirstMessage message) =>
             {
                 GameModel gameModel = Log.CopyCurrent();
                 this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
-                if (gameModel.GameState != GameState.FinishedRollOrder) return;
+                if (gameModel.GameState != Shared.Models.GameState.FinishedRollOrder) return;
                 _recorder?.RecordAction(message.ToRecord(gameModel));
 
                 while (gameModel.Players[0].Id != message.PlayerId)
@@ -370,15 +370,15 @@ namespace Catan3.Controller
             if (entitlement == Entitlement.Soldier)
             {
                 // the entitlements you can get before rolling -- right now only the right to move the knight
-                ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.WaitingForRoll]);
+                ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.WaitingForNext, Shared.Models.GameState.WaitingForRoll]);
                 // Remember the state we were in so we can return to it after moving the robber
                 gameModel.PreviousGameState = gameModel.GameState;
-                gameModel.GameState = GameState.MustMoveRobber;
+                gameModel.GameState = Shared.Models.GameState.MustMoveRobber;
                 this.TraceMessage($"🔄 Soldier purchased - transitioning to MustMoveRobber state");
             }
             else
             {
-                ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.Supplemental]);
+                ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.WaitingForNext, Shared.Models.GameState.Supplemental]);
             }
             if (!ValidatePurchase(gameModel, entitlement))
             {
@@ -391,7 +391,7 @@ namespace Catan3.Controller
         private bool BalanceBoard(GameModel gameModel)
         {
 
-            ThrowIfWrongState(gameModel.GameState, [GameState.PickingBoard]);
+            ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.PickingBoard]);
 
             ResourceCounterViewModel min = new(50, ResourceType.None);
             ResourceCounterViewModel max = new(0, ResourceType.None);
@@ -469,7 +469,7 @@ namespace Catan3.Controller
             
             Log.GameType = selectedGame;
             gameModel.GameType = selectedGame;
-            gameModel.GameState = GameState.PickingBoard;
+            gameModel.GameState = Shared.Models.GameState.PickingBoard;
             return gameModel;
         }
         /// <summary>
@@ -552,14 +552,14 @@ namespace Catan3.Controller
         private GameModel OnRoll(RollMessage msg)
         {
             GameModel gameModel = Log.CopyCurrent();
-            ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForRoll]);
+            ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.WaitingForRoll]);
             gameModel.RollModel.TurnRollModel = msg.Roll;
             // update the global counts for rolls
             gameModel.RollModel.GameRollModel.RollCounts[(int)gameModel.RollModel.TurnRollModel.NormalRoll - 2]++;
             gameModel.RollModel.GameRollModel.TotalRolls++;
 
             // update the state
-            gameModel.GameState = GameState.WaitingForNext;
+            gameModel.GameState = Shared.Models.GameState.WaitingForNext;
             // highlight the tiles and build a list of tiles that have this number
             List<TileModel> highlightedTiles = [];
             foreach (TileModel tile in gameModel.Tiles)
@@ -635,7 +635,7 @@ namespace Catan3.Controller
                 gameModel.CurrentPlayer().UnspentEntitlements.Add(Entitlement.RolledSeven);
                 // Remember where to return after the robber move completes
                 gameModel.PreviousGameState = gameModel.GameState;
-                gameModel.GameState = GameState.MustMoveRobber;
+                gameModel.GameState = Shared.Models.GameState.MustMoveRobber;
             }
             return gameModel;
         }
@@ -650,14 +650,14 @@ namespace Catan3.Controller
         {
             gameModel.ActionFlags.UndoEnabled = Log.CanUndo;
             gameModel.ActionFlags.NextEnabled = AllowNext(gameModel);
-            gameModel.ActionFlags.RollsEnabled = gameModel.GameState == GameState.WaitingForRoll;
+            gameModel.ActionFlags.RollsEnabled = gameModel.GameState == Shared.Models.GameState.WaitingForRoll;
         }
         private bool AllowNext(GameModel gameModel)
         {
             //
             //  there are some states where the transition out of the state is not done via clicking on Next.
             //  in these cases, Next should be disabled.  If you invent a new one, add it to this list.
-            List<GameState> NonNextStates = [GameState.WaitingForRoll, GameState.MustMoveRobber];
+            List<Shared.Models.GameState> NonNextStates = [Shared.Models.GameState.WaitingForRoll, Shared.Models.GameState.MustMoveRobber];
 
 
             if (NonNextStates.Contains(gameModel.GameState)) return false;
@@ -690,7 +690,7 @@ namespace Catan3.Controller
         private GameModel SetPlayerOrder(IList<string> playerIds)
         {
             GameModel gameModel = Log.CopyCurrent();
-            ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForRollForOrder, GameState.FinishedRollOrder]);
+            ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.WaitingForRollForOrder, Shared.Models.GameState.FinishedRollOrder]);
             var playerLookup = gameModel.Players.ToDictionary(p => p.Id);
             // Using LINQ to order players according to playerIds
             List<PlayerModel> orderedPlayers = playerIds
@@ -717,29 +717,29 @@ namespace Catan3.Controller
             if (!CanTransitionToNext(gameModel)) throw new GameException("Cannot transition to Next state at this time");
             switch (gameModel.GameState)
             {
-                case GameState.Uninitialized:
-                case GameState.WaitingForNewGame:
+                case Shared.Models.GameState.Uninitialized:
+                case Shared.Models.GameState.WaitingForNewGame:
                     break;
-                case GameState.BeginResourceAllocation:
+                case Shared.Models.GameState.BeginResourceAllocation:
                     GrantAllocationResources(gameModel);
-                    gameModel.GameState = GameState.AllocateResourceForward;
+                    gameModel.GameState = Shared.Models.GameState.AllocateResourceForward;
                     break;
-                case GameState.WaitingForPlayers:
-                    gameModel.GameState = GameState.PickingBoard;
+                case Shared.Models.GameState.WaitingForPlayers:
+                    gameModel.GameState = Shared.Models.GameState.PickingBoard;
                     break;
-                case GameState.PickingBoard:
-                    gameModel.GameState = GameState.WaitingForRollForOrder;
+                case Shared.Models.GameState.PickingBoard:
+                    gameModel.GameState = Shared.Models.GameState.WaitingForRollForOrder;
                     break;
-                case GameState.WaitingForRollForOrder:
-                    gameModel.GameState = GameState.FinishedRollOrder;
+                case Shared.Models.GameState.WaitingForRollForOrder:
+                    gameModel.GameState = Shared.Models.GameState.FinishedRollOrder;
                     break;
-                case GameState.FinishedRollOrder:
-                    gameModel.GameState = GameState.BeginResourceAllocation;
+                case Shared.Models.GameState.FinishedRollOrder:
+                    gameModel.GameState = Shared.Models.GameState.BeginResourceAllocation;
                     break;
-                case GameState.AllocateResourceForward:
+                case Shared.Models.GameState.AllocateResourceForward:
                     if (gameModel.Players.Last().Score == 1)
                     {
-                        gameModel.GameState = GameState.AllocateResourceReverse;
+                        gameModel.GameState = Shared.Models.GameState.AllocateResourceReverse;
                         GrantAllocationResources(gameModel);
                     }
                     else
@@ -749,10 +749,10 @@ namespace Catan3.Controller
                         GrantAllocationResources(gameModel);
                     }
                     break;
-                case GameState.AllocateResourceReverse:
+                case Shared.Models.GameState.AllocateResourceReverse:
                     if (gameModel.CurrentPlayerId == gameModel.Players[0].Id)
                     {
-                        gameModel.GameState = GameState.DoneResourceAllocation;
+                        gameModel.GameState = Shared.Models.GameState.DoneResourceAllocation;
                     }
                     else
                     {
@@ -760,20 +760,20 @@ namespace Catan3.Controller
                         GrantAllocationResources(gameModel);
                     }
                     break;
-                case GameState.DoneResourceAllocation:
+                case Shared.Models.GameState.DoneResourceAllocation:
                     UpdateStateOnNextPlayer(gameModel);
                     SetTempGoldTiles(gameModel);
-                    gameModel.GameState = GameState.WaitingForRoll;
+                    gameModel.GameState = Shared.Models.GameState.WaitingForRoll;
                     break;
-                case GameState.WaitingForRoll:
+                case Shared.Models.GameState.WaitingForRoll:
                     // GameState.WaitingForRoll is not controlled by the Next button.
                     // it is controlled by hitting a roll UI
                     break;
-                case GameState.WaitingForNext:
+                case Shared.Models.GameState.WaitingForNext:
                     if (gameModel.HasSupplementalBuildPhase)
                     {
 
-                        gameModel.GameState = GameState.PickSupplementalPlayers;
+                        gameModel.GameState = Shared.Models.GameState.PickSupplementalPlayers;
 
                         gameModel.Players.ForEach(p =>
                         {
@@ -790,7 +790,7 @@ namespace Catan3.Controller
                         UpdateStateOnNextPlayer(gameModel);
                     }
                     break;
-                case GameState.PickSupplementalPlayers:
+                case Shared.Models.GameState.PickSupplementalPlayers:
                     {
                         // find current player index
                         int currentPlayerIndex = gameModel.Players.FindIndex(p => p.Id == gameModel.CurrentPlayerId);
@@ -830,7 +830,7 @@ namespace Catan3.Controller
                         if (participatingPlayer is not null)
                         {
                             // we have at least one -- set the game state to supplemental
-                            gameModel.GameState = GameState.Supplemental;
+                            gameModel.GameState = Shared.Models.GameState.Supplemental;
 
                             // change to the first player
                             gameModel.ChangePlayerTo(participatingPlayer.Id);
@@ -846,7 +846,7 @@ namespace Catan3.Controller
 
                         break;
                     }
-                case GameState.Supplemental:
+                case Shared.Models.GameState.Supplemental:
                     {
                         // Find the index of the player who is set to roll after the supplemental phase
                         int currentPlayerIndex = gameModel.Players.FindIndex(p => p.Id == gameModel.CurrentPlayerId);
@@ -868,7 +868,7 @@ namespace Catan3.Controller
                         if (participatingPlayer is not null && participatingPlayer.Id != gameModel.CurrentPlayerId)
                         {
                             // We have at least one -- set the game state to supplemental
-                            gameModel.GameState = GameState.Supplemental;
+                            gameModel.GameState = Shared.Models.GameState.Supplemental;
                             if (gameModel.Players[currentPlayerIndex].ParticipatingInSupplemental)
                             {
                                 // if the current player is participating, then we need to set the flag to false
@@ -890,39 +890,39 @@ namespace Catan3.Controller
                         break;
                     }
 
-                case GameState.MustMoveRobber:
+                case Shared.Models.GameState.MustMoveRobber:
                     break;
-                case GameState.TooManyCards:
+                case Shared.Models.GameState.TooManyCards:
                     break;
-                case GameState.MustDestroyCity:
+                case Shared.Models.GameState.MustDestroyCity:
                     break;
-                case GameState.PickingRandomGoldTiles:
+                case Shared.Models.GameState.PickingRandomGoldTiles:
                     break;
-                case GameState.HandlePirates:
+                case Shared.Models.GameState.HandlePirates:
                     break;
-                case GameState.DoneDestroyingCities:
+                case Shared.Models.GameState.DoneDestroyingCities:
                     break;
-                case GameState.MustMoveMerchant:
+                case Shared.Models.GameState.MustMoveMerchant:
                     break;
-                case GameState.DestroyRoad:
+                case Shared.Models.GameState.DestroyRoad:
                     break;
-                case GameState.SwapNumbers:
+                case Shared.Models.GameState.SwapNumbers:
                     break;
-                case GameState.PickDeserter:
+                case Shared.Models.GameState.PickDeserter:
                     break;
-                case GameState.PlaceDeserterKnight:
+                case Shared.Models.GameState.PlaceDeserterKnight:
                     break;
-                case GameState.DoneWithDeserter:
+                case Shared.Models.GameState.DoneWithDeserter:
                     break;
-                case GameState.UpgradeToMetro:
+                case Shared.Models.GameState.UpgradeToMetro:
                     break;
-                case GameState.TestCheckpoint:
+                case Shared.Models.GameState.TestCheckpoint:
                     break;
-                case GameState.DisplaceVictimKnight:
+                case Shared.Models.GameState.DisplaceVictimKnight:
                     break;
-                case GameState.DisplaceKnightMoveVictim:
+                case Shared.Models.GameState.DisplaceKnightMoveVictim:
                     break;
-                case GameState.ClickOnKnight:
+                case Shared.Models.GameState.ClickOnKnight:
                     break;
 
             }
@@ -938,7 +938,7 @@ namespace Catan3.Controller
                 p.SpentEntitlementsThisTurn = [];
             });
             SetTempGoldTiles(gameModel);
-            gameModel.GameState = GameState.WaitingForRoll;
+            gameModel.GameState = Shared.Models.GameState.WaitingForRoll;
             ResetBuildableRoads(gameModel);
         }
 
@@ -949,7 +949,7 @@ namespace Catan3.Controller
         /// <param name="gameModel"></param>
         private void GrantAllocationResources(GameModel gameModel)
         {
-            ThrowIfWrongState(gameModel.GameState, [GameState.BeginResourceAllocation, GameState.AllocateResourceForward, GameState.AllocateResourceReverse]);
+            ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.BeginResourceAllocation, Shared.Models.GameState.AllocateResourceForward, Shared.Models.GameState.AllocateResourceReverse]);
             var currentPlayer = gameModel.CurrentPlayer();
             currentPlayer.UnspentEntitlements.Add(Entitlement.Settlement);
             currentPlayer.UnspentEntitlements.Add(Entitlement.Road);
@@ -966,7 +966,7 @@ namespace Catan3.Controller
 
             GameModel gameModel = Log.CopyCurrent();
             //   this.TraceMessage($"GameState: {gameModel.GameState} RoadPurchase: {message}");
-            ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse, GameState.Supplemental]);
+            ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.WaitingForNext, Shared.Models.GameState.AllocateResourceForward, Shared.Models.GameState.AllocateResourceReverse, Shared.Models.GameState.Supplemental]);
             ThrowIfNoEntitlement(gameModel, [Entitlement.Road]);
             var roadKey = message.RoadKey;
             // Retrieve the road gameModel corresponding to the road key.
@@ -1048,7 +1048,7 @@ namespace Catan3.Controller
         {
 
             var moveRobber = gameModel.PurchaseModel(Entitlement.Soldier);
-            if (gameModel.GameState != GameState.WaitingForNext && gameModel.GameState != GameState.WaitingForRoll)
+            if (gameModel.GameState != Shared.Models.GameState.WaitingForNext && gameModel.GameState != Shared.Models.GameState.WaitingForRoll)
             {
                 moveRobber.Enabled = false;
                 return;
@@ -1081,7 +1081,7 @@ namespace Catan3.Controller
         private GameModel BuildingUpgrade(BuildingUpgradeMessage message)
         {
             GameModel gameModel = Log.CopyCurrent();
-            ThrowIfWrongState(gameModel.GameState, [GameState.WaitingForNext, GameState.AllocateResourceForward, GameState.AllocateResourceReverse, GameState.Supplemental]);
+            ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.WaitingForNext, Shared.Models.GameState.AllocateResourceForward, Shared.Models.GameState.AllocateResourceReverse, Shared.Models.GameState.Supplemental]);
             BuildingKey buildingKey = message.BuildingKey;
             var building = gameModel.Buildings.FindBuildingModel(buildingKey)
                     ?? throw new GameException($"Invalid BuildingKey: {buildingKey}");
@@ -1140,7 +1140,7 @@ namespace Catan3.Controller
                     // No action needed if knights cannot be upgraded.
             }
 
-            if (gameModel.GameState == GameState.AllocateResourceReverse)
+            if (gameModel.GameState == Shared.Models.GameState.AllocateResourceReverse)
             {
                 var currentPlayerModel = gameModel.CurrentPlayer();
                 foreach (var tile in gameModel.TilesForBuildings(building.BuildingKey))
@@ -1257,7 +1257,7 @@ namespace Catan3.Controller
         {
             GameModel gameModel = Log.CopyCurrent();
             // Validate the current game state
-            ThrowIfWrongState(gameModel.GameState, [GameState.MustMoveRobber]);
+            ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.MustMoveRobber]);
             ThrowIfBadPlayer(gameModel.CurrentPlayerId, gameModel.Players);
             ThrowIfNoEntitlement(gameModel, [Entitlement.Soldier, Entitlement.RolledSeven]);
             // Update the robber's position and the player who moved it
@@ -1281,7 +1281,7 @@ namespace Catan3.Controller
             {
                 Debug.Assert(gameModel.CurrentPlayer().UnspentEntitlements.Contains(Entitlement.RolledSeven));
                 ConsumeEntitlement(gameModel, Entitlement.RolledSeven);
-                gameModel.GameState = GameState.WaitingForNext;
+                gameModel.GameState = Shared.Models.GameState.WaitingForNext;
             }
 
             // 1/14/2024:  if the robber is moved, reset the count of resources stolen
@@ -1294,7 +1294,7 @@ namespace Catan3.Controller
         /// <param name="currentState">The current game state to validate.</param>
         /// <param name="validStates">An array of states that are considered valid.</param>
         /// <exception cref="GameException">Thrown if the current state is not in the list of valid states.</exception>
-        private static void ThrowIfWrongState(GameState currentState, GameState[] validStates)
+        private static void ThrowIfWrongState(Shared.Models.GameState currentState, Shared.Models.GameState[] validStates)
         {
             if (!validStates.Contains(currentState))
             {
@@ -1302,7 +1302,7 @@ namespace Catan3.Controller
                 throw new GameException($"{currentState} is invalid. Must be in this set: [{validStatesList}]");
             }
         }
-        private static bool WrongStateCheck(GameState currentState, GameState[] validStates)
+        private static bool WrongStateCheck(Shared.Models.GameState currentState, Shared.Models.GameState[] validStates)
         {
             return validStates.Contains(currentState);
         }
@@ -1406,7 +1406,7 @@ namespace Catan3.Controller
             //  you need to get the gameModel prior to checking the state as we don't know the state until then.
             //  CONSIDER: caching the state to do a top level check w/o the GameModel hydration cost
             GameModel gameModel = Log.CopyCurrent();
-            ThrowIfWrongState(gameModel.GameState, [GameState.PickingBoard]);
+            ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.PickingBoard]);
             // Call content shuffle (resource/number) explicitly to avoid calling GameModel.Shuffle() list reorder
             GameFactory.Shuffle(gameModel);
             return gameModel;
@@ -1788,8 +1788,8 @@ namespace Catan3.Controller
         private string GetBuildingActionType(GameModel gameModel)
         {
             // During allocation phases, it's always PlaceSettlement
-            if (gameModel.GameState == GameState.AllocateResourceForward ||
-                gameModel.GameState == GameState.AllocateResourceReverse)
+            if (gameModel.GameState == Shared.Models.GameState.AllocateResourceForward ||
+                gameModel.GameState == Shared.Models.GameState.AllocateResourceReverse)
             {
                 return "PlaceSettlement";
             }
