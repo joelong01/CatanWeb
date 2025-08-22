@@ -36,21 +36,6 @@ namespace Catan3.Models
         [RelayCommand]
         public void NextAction()
         {
-            if (GameModel?.GameState == GameState.PickSupplementalPlayers)
-            {
-                List<string> supplementalPlayers = [];
-                foreach (var player in Players)
-                {
-                    if (player.ParticipatingInSupplemental)
-                    {
-                      //  this.TraceMessage($"Adding {player} to suppl list");
-                        supplementalPlayers.Add(player.Id);
-                    }
-                }
-                Messenger.Send(new PlayersDoingSupplemental(supplementalPlayers));
-                
- 
-            }
 
             Messenger.Send(new ExecuteGameActionMessage(GameAction.Next));
 

@@ -65,14 +65,20 @@ namespace Catan3.Shared.Models
     [JsonDerivedType(typeof(RollRecord), RollRecord.Discriminator)]
     [JsonDerivedType(typeof(SetPlayerOrderRecord), SetPlayerOrderRecord.Discriminator)]
     [JsonDerivedType(typeof(GoFirstRecord), GoFirstRecord.Discriminator)]
-    [JsonDerivedType(typeof(PlayersDoingSupplementalRecord), PlayersDoingSupplementalRecord.Discriminator)]
+    [JsonDerivedType(typeof(ParticipatingInSupplementalRecord), ParticipatingInSupplementalRecord.Discriminator)]
     [JsonDerivedType(typeof(BalanceBoardRecord), BalanceBoardRecord.Discriminator)]
     public interface IRecordedMessage
     {
         /// <summary>
         /// Stable identifier for the game state associated with this record.
         /// </summary>
-        string GameHash { get; }
+        string ExpectedGameHash { get; }
+
+        /// <summary>
+        /// The game state when this message was recorded.
+        /// Used for validation during test replay.
+        /// </summary>
+        GameState ExpectedGameState { get; }
 
         /// <summary>
         /// The discriminator for this record as it appears in JSON under "type".
@@ -92,7 +98,11 @@ namespace Catan3.Shared.Models
         public const string Discriminator = "executeGameActionRecord";
 
         /// <inheritdoc />
-        public string GameHash { get; init; } = string.Empty;
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
+
+
 
         /// <summary>
         /// The action that was executed.
@@ -107,18 +117,20 @@ namespace Catan3.Shared.Models
         /// Constructor used during deserialization and for programmatic creation.
         /// </summary>
         [JsonConstructor]
-        public ExecuteGameActionRecord(string gameHash, GameAction action)
+        public ExecuteGameActionRecord(string expectedGameHash, GameState expectedGameState, GameAction action)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
             Action = action;
         }
 
         /// <summary>
         /// Convenience constructor to capture an <see cref="ExecuteGameActionMessage"/> at runtime.
         /// </summary>
-        public ExecuteGameActionRecord(string gameHash, ExecuteGameActionMessage message)
+        public ExecuteGameActionRecord(GameModel gameModel, ExecuteGameActionMessage message)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
             Action = message.Action;
         }
     }
@@ -134,7 +146,11 @@ namespace Catan3.Shared.Models
         public const string Discriminator = "shuffleRecord";
 
         /// <inheritdoc />
-        public string GameHash { get; init; } = string.Empty;
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
+
+        /// <inheritdoc />
 
 
         /// <inheritdoc />
@@ -145,18 +161,19 @@ namespace Catan3.Shared.Models
         /// Constructor used during deserialization and for programmatic creation.
         /// </summary>
         [JsonConstructor]
-        public ShuffleRecord(string gameHash)
+        public ShuffleRecord(string expectedGameHash, GameState expectedGameState)
         {
-            GameHash = gameHash;
-     
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
         }
 
         /// <summary>
         /// Convenience constructor to capture a <see cref="ShuffleMessage"/> at runtime.
         /// </summary>
-        public ShuffleRecord(string gameHash, ShuffleMessage message)
+        public ShuffleRecord(GameModel gameModel, ShuffleMessage message)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
         }
     }
 
@@ -171,7 +188,11 @@ namespace Catan3.Shared.Models
         public const string Discriminator = "purchase";
 
         /// <inheritdoc />
-        public string GameHash { get; init; } = string.Empty;
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
+
+
 
         /// <summary>
         /// The entitlement purchased.
@@ -186,18 +207,20 @@ namespace Catan3.Shared.Models
         /// Constructor used during deserialization and for programmatic creation.
         /// </summary>
         [JsonConstructor]
-        public PurchaseRecord(string gameHash, Entitlement entitlement)
+        public PurchaseRecord(string expectedGameHash, GameState expectedGameState, Entitlement entitlement)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
             Entitlement = entitlement;
         }
 
         /// <summary>
         /// Convenience constructor to capture a <see cref="PurchaseMessage"/> at runtime.
         /// </summary>
-        public PurchaseRecord(string gameHash, PurchaseMessage message)
+        public PurchaseRecord(GameModel gameModel, PurchaseMessage message)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
             Entitlement = message.Entitlement;
         }
     }
@@ -209,22 +232,27 @@ namespace Catan3.Shared.Models
     {
         public const string Discriminator = "buildingUpgrade";
 
-        public string GameHash { get; init; } = string.Empty;
+        public string ExpectedGameHash { get; init; } = string.Empty;
+
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
         public BuildingKey BuildingKey { get; init; } = default!;
 
         [JsonIgnore]
         public string RecordType => Discriminator;
 
         [JsonConstructor]
-        public BuildingUpgradeRecord(string gameHash, BuildingKey buildingKey)
+        public BuildingUpgradeRecord(string expectedGameHash, GameState expectedGameState, BuildingKey buildingKey)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
             BuildingKey = buildingKey;
         }
 
-        public BuildingUpgradeRecord(string gameHash, BuildingUpgradeMessage message)
+        public BuildingUpgradeRecord(GameModel gameModel, BuildingUpgradeMessage message)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
             BuildingKey = message.BuildingKey;
         }
     }
@@ -236,22 +264,26 @@ namespace Catan3.Shared.Models
     {
         public const string Discriminator = "roadPurchase";
 
-        public string GameHash { get; init; } = string.Empty;
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
         public RoadKey RoadKey { get; init; } = default!;
 
         [JsonIgnore]
         public string RecordType => Discriminator;
 
         [JsonConstructor]
-        public RoadPurchaseRecord(string gameHash, RoadKey roadKey)
+        public RoadPurchaseRecord(string expectedGameHash, GameState expectedGameState, RoadKey roadKey)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
             RoadKey = roadKey;
         }
 
-        public RoadPurchaseRecord(string gameHash, RoadPurchaseMessage message)
+        public RoadPurchaseRecord(GameModel gameModel, RoadPurchaseMessage message)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
             RoadKey = message.RoadKey;
         }
     }
@@ -263,7 +295,9 @@ namespace Catan3.Shared.Models
     {
         public const string Discriminator = "moveRobber";
 
-        public string GameHash { get; init; } = string.Empty;
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
         public HexCoordinates Coordinates { get; init; } = default!;
         public string? TargetPlayerId { get; init; }
 
@@ -271,16 +305,18 @@ namespace Catan3.Shared.Models
         public string RecordType => Discriminator;
 
         [JsonConstructor]
-        public MoveRobberRecord(string gameHash, HexCoordinates coordinates, string? targetPlayerId)
+        public MoveRobberRecord(string expectedGameHash, GameState expectedGameState, HexCoordinates coordinates, string? targetPlayerId)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
             Coordinates = coordinates;
             TargetPlayerId = targetPlayerId;
         }
 
-        public MoveRobberRecord(string gameHash, MoveRobberMessage message)
+        public MoveRobberRecord(GameModel gameModel, MoveRobberMessage message)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
             Coordinates = message.Coordinates;
             TargetPlayerId = message.TargetPlayerId;
         }
@@ -293,22 +329,26 @@ namespace Catan3.Shared.Models
     {
         public const string Discriminator = "roll";
 
-        public string GameHash { get; init; } = string.Empty;
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
         public TurnRollModel Roll { get; init; } = default!;
 
         [JsonIgnore]
         public string RecordType => Discriminator;
 
         [JsonConstructor]
-        public RollRecord(string gameHash, TurnRollModel roll)
+        public RollRecord(string expectedGameHash, GameState expectedGameState, TurnRollModel roll)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
             Roll = roll;
         }
 
-        public RollRecord(string gameHash, RollMessage message)
+        public RollRecord(GameModel gameModel, RollMessage message)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
             Roll = message.Roll;
         }
     }
@@ -320,22 +360,26 @@ namespace Catan3.Shared.Models
     {
         public const string Discriminator = "setPlayerOrder";
 
-        public string GameHash { get; init; } = string.Empty;
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
         public IList<string> PlayerIds { get; init; } = default!;
 
         [JsonIgnore]
         public string RecordType => Discriminator;
 
         [JsonConstructor]
-        public SetPlayerOrderRecord(string gameHash, IList<string> playerIds)
+        public SetPlayerOrderRecord(string expectedGameHash, GameState expectedGameState, IList<string> playerIds)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
             PlayerIds = playerIds;
         }
 
-        public SetPlayerOrderRecord(string gameHash, SetPlayerOrderMessage message)
+        public SetPlayerOrderRecord(GameModel gameModel, SetPlayerOrderMessage message)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
             PlayerIds = message.PlayerIds;
         }
     }
@@ -347,50 +391,61 @@ namespace Catan3.Shared.Models
     {
         public const string Discriminator = "goFirst";
 
-        public string GameHash { get; init; } = string.Empty;
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
         public string PlayerId { get; init; } = string.Empty;
 
         [JsonIgnore]
         public string RecordType => Discriminator;
 
         [JsonConstructor]
-        public GoFirstRecord(string gameHash, string playerId)
+        public GoFirstRecord(string expectedGameHash, GameState expectedGameState, string playerId)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
             PlayerId = playerId;
         }
 
-        public GoFirstRecord(string gameHash, GoFirstMessage message)
+        public GoFirstRecord(GameModel gameModel, GoFirstMessage message)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
             PlayerId = message.PlayerId;
         }
     }
 
     /// <summary>
-    /// Snapshot of a <c>PlayersDoingSupplemental</c> suitable for recording and replay.
+    /// Snapshot of a <c>ParticipatingInSupplementalMessage</c> suitable for recording and replay.
     /// </summary>
-    public sealed class PlayersDoingSupplementalRecord : IRecordedMessage
+    public sealed class ParticipatingInSupplementalRecord : IRecordedMessage
     {
-        public const string Discriminator = "playersDoingSupplemental";
+        public const string Discriminator = "participatingInSupplemental";
 
-        public string GameHash { get; init; } = string.Empty;
-        public IList<string> PlayerIds { get; init; } = default!;
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
+        public string PlayerId { get; init; } = string.Empty;
+        public bool Participating { get; init; }
 
         [JsonIgnore]
         public string RecordType => Discriminator;
 
         [JsonConstructor]
-        public PlayersDoingSupplementalRecord(string gameHash, IList<string> playerIds)
+        public ParticipatingInSupplementalRecord(string expectedGameHash, GameState expectedGameState, string playerId, bool participating)
         {
-            GameHash = gameHash;
-            PlayerIds = playerIds;
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
+            PlayerId = playerId;
+            Participating = participating;
         }
 
-        public PlayersDoingSupplementalRecord(string gameHash, PlayersDoingSupplemental message)
+        public ParticipatingInSupplementalRecord(GameModel gameModel, ParticipatingInSupplementalMessage message)
         {
-            GameHash = gameHash;
-            PlayerIds = message.PlayerIds;
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
+            PlayerId = message.PlayerId;
+            Participating = message.Participating;
         }
     }
 
@@ -401,20 +456,23 @@ namespace Catan3.Shared.Models
     {
         public const string Discriminator = "balanceBoard";
 
-        public string GameHash { get; init; } = string.Empty;
-
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
         [JsonIgnore]
         public string RecordType => Discriminator;
 
         [JsonConstructor]
-        public BalanceBoardRecord(string gameHash)
+        public BalanceBoardRecord(string expectedGameHash, GameState expectedGameState)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
         }
 
-        public BalanceBoardRecord(string gameHash, BalanceBoardMessage message)
+        public BalanceBoardRecord(GameModel gameModel, BalanceBoardMessage message)
         {
-            GameHash = gameHash;
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
         }
     }
 
@@ -427,117 +485,70 @@ namespace Catan3.Shared.Models
         /// <summary>
         /// Capture an <see cref="ExecuteGameActionMessage"/> as an <see cref="ExecuteGameActionRecord"/>.
         /// </summary>
-        public static IRecordedMessage ToRecord(this ExecuteGameActionMessage msg, string gameHash)
-            => new ExecuteGameActionRecord(gameHash, msg);
+        public static IRecordedMessage ToRecord(this ExecuteGameActionMessage msg, GameModel gameModel)
+            => new ExecuteGameActionRecord(gameModel, msg);
 
         /// <summary>
         /// Capture a <see cref="ShuffleMessage"/> as a <see cref="ShuffleRecord"/>.
         /// </summary>
-        public static IRecordedMessage ToRecord(this ShuffleMessage msg, string gameHash)
-            => new ShuffleRecord(gameHash, msg);
+        public static IRecordedMessage ToRecord(this ShuffleMessage msg, GameModel gameModel)
+            => new ShuffleRecord(gameModel, msg);
 
         /// <summary>
         /// Capture a <see cref="PurchaseMessage"/> as a <see cref="PurchaseRecord"/>.
         /// </summary>
-        public static IRecordedMessage ToRecord(this PurchaseMessage msg, string gameHash)
-            => new PurchaseRecord(gameHash, msg);
+        public static IRecordedMessage ToRecord(this PurchaseMessage msg, GameModel gameModel)
+            => new PurchaseRecord(gameModel, msg);
 
         /// <summary>
         /// Capture a <see cref="BuildingUpgradeMessage"/> as a <see cref="BuildingUpgradeRecord"/>.
         /// </summary>
-        public static IRecordedMessage ToRecord(this BuildingUpgradeMessage msg, string gameHash)
-            => new BuildingUpgradeRecord(gameHash, msg);
+        public static IRecordedMessage ToRecord(this BuildingUpgradeMessage msg, GameModel gameModel)
+            => new BuildingUpgradeRecord(gameModel, msg);
 
         /// <summary>
         /// Capture a <see cref="RoadPurchaseMessage"/> as a <see cref="RoadPurchaseRecord"/>.
         /// </summary>
-        public static IRecordedMessage ToRecord(this RoadPurchaseMessage msg, string gameHash)
-            => new RoadPurchaseRecord(gameHash, msg);
+        public static IRecordedMessage ToRecord(this RoadPurchaseMessage msg, GameModel gameModel)
+            => new RoadPurchaseRecord(gameModel, msg);
 
         /// <summary>
         /// Capture a <see cref="MoveRobberMessage"/> as a <see cref="MoveRobberRecord"/>.
         /// </summary>
-        public static IRecordedMessage ToRecord(this MoveRobberMessage msg, string gameHash)
-            => new MoveRobberRecord(gameHash, msg);
+        public static IRecordedMessage ToRecord(this MoveRobberMessage msg, GameModel gameModel)
+            => new MoveRobberRecord(gameModel, msg);
 
         /// <summary>
         /// Capture a <see cref="RollMessage"/> as a <see cref="RollRecord"/>.
         /// </summary>
-        public static IRecordedMessage ToRecord(this RollMessage msg, string gameHash)
-            => new RollRecord(gameHash, msg);
+        public static IRecordedMessage ToRecord(this RollMessage msg, GameModel gameModel)
+            => new RollRecord(gameModel, msg);
 
         /// <summary>
         /// Capture a <see cref="SetPlayerOrderMessage"/> as a <see cref="SetPlayerOrderRecord"/>.
         /// </summary>
-        public static IRecordedMessage ToRecord(this SetPlayerOrderMessage msg, string gameHash)
-            => new SetPlayerOrderRecord(gameHash, msg);
+        public static IRecordedMessage ToRecord(this SetPlayerOrderMessage msg, GameModel gameModel)
+            => new SetPlayerOrderRecord(gameModel, msg);
 
         /// <summary>
         /// Capture a <see cref="GoFirstMessage"/> as a <see cref="GoFirstRecord"/>.
         /// </summary>
-        public static IRecordedMessage ToRecord(this GoFirstMessage msg, string gameHash)
-            => new GoFirstRecord(gameHash, msg);
+        public static IRecordedMessage ToRecord(this GoFirstMessage msg, GameModel gameModel)
+            => new GoFirstRecord(gameModel, msg);
 
         /// <summary>
-        /// Capture a <see cref="PlayersDoingSupplemental"/> as a <see cref="PlayersDoingSupplementalRecord"/>.
+        /// Capture a <see cref="ParticipatingInSupplementalMessage"/> as a <see cref="ParticipatingInSupplementalRecord"/>.
         /// </summary>
-        public static IRecordedMessage ToRecord(this PlayersDoingSupplemental msg, string gameHash)
-            => new PlayersDoingSupplementalRecord(gameHash, msg);
+        public static IRecordedMessage ToRecord(this ParticipatingInSupplementalMessage msg, GameModel gameModel)
+            => new ParticipatingInSupplementalRecord(gameModel, msg);
 
         /// <summary>
         /// Capture a <see cref="BalanceBoardMessage"/> as a <see cref="BalanceBoardRecord"/>.
         /// </summary>
-        public static IRecordedMessage ToRecord(this BalanceBoardMessage msg, string gameHash)
-            => new BalanceBoardRecord(gameHash, msg);
+        public static IRecordedMessage ToRecord(this BalanceBoardMessage msg, GameModel gameModel)
+            => new BalanceBoardRecord(gameModel, msg);
     }
 
-    /// <summary>
-    /// Helpers for working with heterogeneous recordings during replay.
-    /// </summary>
-    public static class RecordedMessageReplay
-    {
-        /// <summary>
-        /// Downcast to a specific record type, throwing a clear exception on mismatch.
-        /// Useful when branching by <see cref="IRecordedMessage.RecordType"/>.
-        /// </summary>
-        public static T As<T>(this IRecordedMessage msg) where T : class, IRecordedMessage =>
-            msg as T ?? throw new InvalidCastException(
-                $"Expected {typeof(T).Name} but got {msg.GetType().Name}");
-
-        /// <summary>
-        /// Pattern-match and invoke the appropriate callback for the underlying record.
-        /// </summary>
-        public static void Match(
-            this IRecordedMessage msg,
-            Action<ExecuteGameActionRecord>? onExecute = null,
-            Action<ShuffleRecord>? onShuffle = null,
-            Action<PurchaseRecord>? onPurchase = null,
-            Action<BuildingUpgradeRecord>? onBuildingUpgrade = null,
-            Action<RoadPurchaseRecord>? onRoadPurchase = null,
-            Action<MoveRobberRecord>? onMoveRobber = null,
-            Action<RollRecord>? onRoll = null,
-            Action<SetPlayerOrderRecord>? onSetPlayerOrder = null,
-            Action<GoFirstRecord>? onGoFirst = null,
-            Action<PlayersDoingSupplementalRecord>? onPlayersDoingSupplemental = null,
-            Action<BalanceBoardRecord>? onBalanceBoard = null,
-            Action<IRecordedMessage>? onUnknown = null)
-        {
-            switch (msg)
-            {
-                case ExecuteGameActionRecord e: onExecute?.Invoke(e); break;
-                case ShuffleRecord s: onShuffle?.Invoke(s); break;
-                case PurchaseRecord p: onPurchase?.Invoke(p); break;
-                case BuildingUpgradeRecord b: onBuildingUpgrade?.Invoke(b); break;
-                case RoadPurchaseRecord r: onRoadPurchase?.Invoke(r); break;
-                case MoveRobberRecord m: onMoveRobber?.Invoke(m); break;
-                case RollRecord ro: onRoll?.Invoke(ro); break;
-                case SetPlayerOrderRecord so: onSetPlayerOrder?.Invoke(so); break;
-                case GoFirstRecord g: onGoFirst?.Invoke(g); break;
-                case PlayersDoingSupplementalRecord ps: onPlayersDoingSupplemental?.Invoke(ps); break;
-                case BalanceBoardRecord bb: onBalanceBoard?.Invoke(bb); break;
-                default: onUnknown?.Invoke(msg); break;
-            }
-        }
-    }
+    
 
 }

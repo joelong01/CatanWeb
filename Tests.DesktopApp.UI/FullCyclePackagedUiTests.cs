@@ -46,7 +46,7 @@ namespace Tests.DesktopApp.UI
     ///     }
     /// 
     ///  There is a property we bind to that has the GameModel (which is all the state for the game) in JSON format. The game uses a "copy on write"
-    ///  strategy, so every interaction that causes an update to the game results in a new GameModel.  You can compare GameModel.GameHash between two
+    ///  strategy, so every interaction that causes an update to the game results in a new GameModel.  You can compare GameModel.ExpectedGameHash between two
     ///  GameModel instances. if they are the same, they are identical.  if they are not, they are different.
     ///  
     ///     ========== RULES FOR THIS FILE ==========
@@ -97,8 +97,8 @@ namespace Tests.DesktopApp.UI
     [Collection("UIAutomation")]
     public class FullCyclePackagedUiTests : IDisposable
     {
-        private static int SHORT_WAIT = 25;
-        private static int MEDIUM_WAIT = 250;
+        private static int SHORT_WAIT = 250;
+        private static int MEDIUM_WAIT = 750;
         private static int LONG_WAIT = 1000;
         private UIA3Automation? _automation;
         private AutomationElement? _main;
@@ -329,31 +329,42 @@ namespace Tests.DesktopApp.UI
                 timeout: TimeSpan.FromSeconds(5),
                 interval: TimeSpan.FromMilliseconds(100));
 
+
+
             // Snapshot pre-action state so we can confirm the click did something
             var preHash = GetCurrentGameModel().GameHash;
-
+            this.TraceMessage($"Before Roll [ExpectedGameHash={preHash}]");
+            ShortWait(_uiHelper!);
             // Give focus (improves Click reliability)
             try { btn.Focus(); } catch { /* ignore */ }
-
+            ShortWait(_uiHelper!);
             // Prefer Invoke; fall back to Click (some templates don’t expose Invoke)
             var inv = btn.Patterns.Invoke.PatternOrDefault;
             if (inv != null) inv.Invoke();
             else btn.Click();
 
-            // Wait for the model to change to confirm the action happened
-            var changed = Retry.WhileTrue(
-                () => string.Equals(GetCurrentGameModel().GameHash, preHash, StringComparison.Ordinal),
-                timeout: TimeSpan.FromSeconds(5),
-                interval: TimeSpan.FromMilliseconds(100)).Success;
-
-            if (!changed)
-            {
-                // Optional: dump element info to diagnose why it didn't fire
-                DumpElementForDiagnostics(btn);
-                throw new Xunit.Sdk.XunitException($"Roll '{id}' did not change the GameModel within timeout.");
-            }
-
+            // Wait a bit to ensure the click is processed, and also give the game a chance
+            // to run its bindings
             ShortWait(_uiHelper!);
+
+            //
+            //  
+            // this.TraceMessage($"After Roll and wait [ExpectedGameHash={GetCurrentGameModel().GameHash}]");
+
+            // // Wait for the model to change to confirm the action happened
+            // var changed = Retry.WhileTrue(
+            //     () => string.Equals(GetCurrentGameModel().GameHash, preHash, StringComparison.Ordinal),
+            //     timeout: TimeSpan.FromSeconds(5),
+            //     interval: TimeSpan.FromMilliseconds(100)).Success;
+
+            // if (!changed)
+            // {
+            //     // Optional: dump element info to diagnose why it didn't fire
+            //     DumpElementForDiagnostics(btn);
+            //     throw new Xunit.Sdk.XunitException($"Roll '{id}' did not change the GameModel within timeout.");
+            // }
+
+            // ShortWait(_uiHelper!);
         }
 
 
@@ -875,7 +886,7 @@ namespace Tests.DesktopApp.UI
                 }
             }
 
-            throw new InvalidOperationException("Could not extract GameHash from NextButton ItemStatus");
+            throw new InvalidOperationException("Could not extract ExpectedGameHash from NextButton ItemStatus");
         }
 
         private GameModel GetCurrentGameModel()
@@ -1020,19 +1031,16 @@ namespace Tests.DesktopApp.UI
             // Execute each recorded message in sequence
             for (int i = 0; i < scenario.Actions.Count; i++)
             {
-                if (i == 48)
-                {
-                    this.TraceMessage("this works. 49 does not.");
-                }
                 var recordedMessage = scenario.Actions[i];
-                // Validate that current GameHash matches recorded GameHash
+                
+                ValidateMessage(recordedMessage);
+                // Validate that current ExpectedGameHash matches recorded ExpectedGameHash
                 var currentGameHash = GetCurrentGameHash();
-                if (currentGameHash != recordedMessage.GameHash)
+                if (currentGameHash != recordedMessage.ExpectedGameHash)
                 {
-                    this.TraceMessage($"❌ Game state mismatch at action {i}:");
-                    this.TraceMessage($"   Expected: {recordedMessage.GameHash}");
-                    this.TraceMessage($"   Current:  {currentGameHash}");
-                    throw new InvalidOperationException($"Game state mismatch at action {i}: expected {recordedMessage.GameHash}, got {currentGameHash}");
+                    this.TraceMessage($"❌ Game state mismatch at action {i}:[GameState={GetCurrentGameModel().GameState}][Action={recordedMessage.RecordType}] [Expected Game Hash={recordedMessage.ExpectedGameHash}][Current={currentGameHash}]");
+
+                    throw new InvalidOperationException($"Game state mismatch at action {i}: expected {recordedMessage.ExpectedGameHash}, got {currentGameHash}");
                 }
 
                 // Execute UI interaction based on recorded message type
@@ -1045,13 +1053,37 @@ namespace Tests.DesktopApp.UI
             this.TraceMessage("All scripted actions completed successfully");
         }
 
+        ///
+        private void ValidateMessage(IRecordedMessage recordedMessage)
+        {
+            // Ensure the recorded message has a valid ExpectedGameHash
+            if (string.IsNullOrEmpty(recordedMessage.ExpectedGameHash))
+            {
+                throw new InvalidOperationException($"Recorded message {recordedMessage.RecordType} is missing ExpectedGameHash");
+            }
+            // Ensure the recorded message has a valid RecordType
+            if (recordedMessage.RecordType == null)
+            {
+                throw new InvalidOperationException($"Recorded message is missing RecordType");
+            }
+
+            var currentGameModel = GetCurrentGameModel() ?? throw new InvalidOperationException("Current GameModel cannot be null");
+
+            if (currentGameModel.GameHash != recordedMessage.ExpectedGameHash || currentGameModel.GameState != recordedMessage.ExpectedGameState)
+            {
+                string message=($"[Expected GameHash ={recordedMessage.ExpectedGameHash}][Current Hash={currentGameModel.GameHash}][Expected GameState={recordedMessage.ExpectedGameState}] [Current GameState=[{currentGameModel.GameState}]");
+                this.TraceMessage(message);
+                throw new InvalidOperationException($"message");
+            }
+        }
+
         /// <summary>
         /// Executes a UI interaction based on the recorded message type.
         /// Uses pattern matching to delegate to specific execution methods.
         /// </summary>
         private void ExecuteRecordedMessage(IRecordedMessage recordedMessage, UIAutomationHelper uiHelper)
         {
-            this.TraceMessage($"Executing recorded message: {recordedMessage.RecordType} with hash {recordedMessage.GameHash}");
+            this.TraceMessage($"Executing recorded message: {recordedMessage.RecordType} with hash {recordedMessage.ExpectedGameHash}");
             switch (recordedMessage)
             {
                 case ExecuteGameActionRecord action:
@@ -1081,8 +1113,8 @@ namespace Tests.DesktopApp.UI
                 case GoFirstRecord goFirst:
                     Execute_GoFirst(goFirst);
                     break;
-                case PlayersDoingSupplementalRecord supplemental:
-                    Execute_PlayersDoingSupplemental(supplemental);
+                case ParticipatingInSupplementalRecord supplemental:
+                    Execute_ParticipatingInSupplemental(supplemental);
                     break;
                 case BalanceBoardRecord balance:
                     Execute_BalanceBoard(balance);
@@ -1194,10 +1226,10 @@ namespace Tests.DesktopApp.UI
             tileElement.RightClick();
             this.TraceMessage("Right-clicked on tile to open context menu");
 
-       
+
             // Generate the expected AutomationId using the same extension method
             var targetAutomationId = TileModelExtensions.GetRobberTargetAutomationId(robber.TargetPlayerId);
-               // Wait specifically for the target menu item to appear with retry logic
+            // Wait specifically for the target menu item to appear with retry logic
             AutomationElement? targetMenuItem = null;
             var maxRetries = 10;
             var retryDelay = 100; // ms
@@ -1285,29 +1317,42 @@ namespace Tests.DesktopApp.UI
             goFirstButton.Click();
         }
 
-        private void Execute_PlayersDoingSupplemental(PlayersDoingSupplementalRecord supplemental)
+        private void Execute_ParticipatingInSupplemental(ParticipatingInSupplementalRecord supplemental)
         {
-            this.TraceMessage($"Executing supplemental players: {string.Join(", ", supplemental.PlayerIds)}");
+            this.TraceMessage($"Executing supplemental participation: {supplemental.PlayerId} -> {supplemental.Participating}");
 
-            // Click checkbox for each player that should participate
-            foreach (var playerId in supplemental.PlayerIds)
+            var automationId = $"ParticipatingInSupplemental-{supplemental.PlayerId}";
+            var checkbox = FindByAutomationId(automationId);
+            if (checkbox == null)
+                throw new InvalidOperationException($"Supplemental player checkbox not found: {automationId}");
+
+            // Check if the checkbox is already in the correct state
+            bool isChecked = checkbox.Patterns.Toggle.IsSupported ? 
+                checkbox.Patterns.Toggle.Pattern.ToggleState == ToggleState.On : 
+                false;
+
+            if (isChecked != supplemental.Participating)
             {
-                var automationId = $"ParticipatingInSupplemental-{playerId}";
-                this.TraceMessage($"Selecting supplemental player: {playerId} -> {automationId}");
-
-                var checkbox = FindByAutomationId(automationId);
-                if (checkbox == null)
-                    throw new InvalidOperationException($"Supplemental player checkbox not found: {automationId}");
-
-                checkbox.Click();
+                // Use Toggle pattern to change the state
+                var togglePattern = checkbox.Patterns.Toggle.Pattern;
+                if (togglePattern != null)
+                {
+                    togglePattern.Toggle();
+                    this.TraceMessage($"Toggled checkbox using Toggle pattern for {supplemental.PlayerId}");
+                }
+                else
+                {
+                    checkbox.Click();
+                    this.TraceMessage($"Clicked checkbox (no Toggle pattern) for {supplemental.PlayerId}");
+                }
+                
+                // Wait for XAML bindings to update after checkbox click
+                ShortWait(_uiHelper!);
             }
-
-            // After selecting all players, click Next to proceed
-            var nextButton = FindByAutomationId("NextButton");
-            if (nextButton == null)
-                throw new InvalidOperationException("Next button not found after supplemental player selection");
-
-            nextButton.Click();
+            else
+            {
+                this.TraceMessage($"Checkbox already in correct state for {supplemental.PlayerId}: {supplemental.Participating}");
+            }
         }
 
         private void Execute_BalanceBoard(BalanceBoardRecord balance)

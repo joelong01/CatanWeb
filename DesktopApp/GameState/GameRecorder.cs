@@ -83,7 +83,7 @@ namespace Catan3.Utility
             try
             {
                 _recordedActions.Add(recordedMessage);
-                this.TraceMessage($"📝 Recorded: {recordedMessage.RecordType} with hash: {recordedMessage.GameHash}");
+                this.TraceMessage($"📝 Recorded: {recordedMessage.RecordType} with hash: {recordedMessage.ExpectedGameHash}");
             }
             catch (Exception ex)
             {

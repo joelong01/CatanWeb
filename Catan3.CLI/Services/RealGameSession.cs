@@ -227,7 +227,7 @@ public class RealGameSession : IAsyncDisposable
 
         _logger.LogDebug("Executing {Action} for player {PlayerId}", action, currentPlayerId);
 
-        // Capture the current GameHash from all proxies before the action
+        // Capture the current ExpectedGameHash from all proxies before the action
         var preActionHashes = _proxies.Values
             .Where(p => p.GameModel != null)
             .ToDictionary(p => p.PlayerId, p => p.GameModel!.GameHash);
@@ -267,7 +267,7 @@ public class RealGameSession : IAsyncDisposable
             {
                 if (proxy.GameModel != null)
                 {
-                    // Check if this proxy's GameHash has changed from before the action
+                    // Check if this proxy's ExpectedGameHash has changed from before the action
                     if (preActionHashes.TryGetValue(proxy.PlayerId, out var preActionHash))
                     {
                         if (proxy.GameModel.GameHash != preActionHash)
@@ -315,7 +315,7 @@ public class RealGameSession : IAsyncDisposable
         // Brief delay to allow for state propagation
         await Task.Delay(50);
 
-        // Check that all proxies have consistent GameModel and GameHash
+        // Check that all proxies have consistent GameModel and ExpectedGameHash
         var gameStates = _proxies.Values
             .Select(p => new { Proxy = p.PlayerId, State = p.GameModel?.GameState, Hash = p.GameModel?.GameHash })
             .Where(x => x.State.HasValue)
@@ -335,7 +335,7 @@ public class RealGameSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// Verifies game consistency across all proxies using GameHash
+    /// Verifies game consistency across all proxies using ExpectedGameHash
     /// </summary>
     public async Task VerifyGameConsistency()
     {
@@ -365,12 +365,12 @@ public class RealGameSession : IAsyncDisposable
             if (state.GameStateMachineVersion != referenceState.GameStateMachineVersion)
                 inconsistencies.Add($"{proxyState.Proxy}: GameStateMachineVersion {state.GameStateMachineVersion} vs {referenceState.GameStateMachineVersion}");
 
-            // GameHash verification for board consistency - this is the key check
+            // ExpectedGameHash verification for board consistency - this is the key check
             if (!string.IsNullOrEmpty(state.GameHash) && !string.IsNullOrEmpty(referenceState.GameHash))
             {
                 if (state.GameHash != referenceState.GameHash)
                 {
-                    inconsistencies.Add($"{proxyState.Proxy}: GameHash {state.GameHash} vs {referenceState.GameHash} (BOARD MISMATCH!)");
+                    inconsistencies.Add($"{proxyState.Proxy}: ExpectedGameHash {state.GameHash} vs {referenceState.GameHash} (BOARD MISMATCH!)");
                 }
             }
         }

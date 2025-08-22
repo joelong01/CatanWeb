@@ -50,7 +50,16 @@ namespace Catan3.Models
         /// </summary>
         [ObservableProperty]
         public partial bool IsRecordMode { get; set; } = App.RecordMode;
-        
+
+        partial void OnGameModelJsonChanged(string value)
+        {
+            // This is used for UI automation to get the current game state as JSON
+            if (GameViewModel.GameModel is not null)
+            {
+                this.TraceMessage($"GameModelJson changed.  [GameState={GameViewModel.GameModel.GameState}][ExpectedGameHash={GameViewModel.GameModel.GameHash}]");
+            }
+        }
+
         partial void OnIsRecordModeChanged(bool value)
         {
             App.RecordMode = value;

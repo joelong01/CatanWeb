@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Numerics;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
@@ -121,8 +120,6 @@ namespace Catan3.Shared.Extensions
             hash += (int)gameModel.GameState * primes.Pop();
             hash += GetDeterministicStringHash(gameModel.CurrentPlayerId) * primes.Pop();
             
-            // Include NextPlayerToRollAfterSupplemental for supplemental phase consistency
-            hash += GetDeterministicStringHash(gameModel.NextPlayerToRollAfterSupplemental) * primes.Pop();
             
             // Include HasSupplementalBuildPhase for game configuration consistency
             hash += (gameModel.HasSupplementalBuildPhase ? 1 : 0) * primes.Pop();
@@ -203,7 +200,10 @@ namespace Catan3.Shared.Extensions
                 {
                     // Include ParticipatingInSupplemental flag for supplemental phase consistency
                     hash += primes.Pop() * (player.ParticipatingInSupplemental ? 1 : 0);
+                    // Include FinishedSupplemental flag for supplemental phase state tracking
+                    hash += primes.Pop() * (player.FinishedSupplemental ? 1 : 0);
                     hash += primes.Pop() * GetDeterministicStringHash(player.Id);
+                    
                     
                     if (player.UnspentEntitlements?.Any() == true)
                     {
@@ -315,7 +315,7 @@ namespace Catan3.Shared.Extensions
         };
 
         /// <summary>
-        /// Updates the GameHash by recomputing it from the current game state.
+        /// Updates the ExpectedGameHash by recomputing it from the current game state.
         /// This should be called by the GameStateMachine whenever the game state changes.
         /// </summary>
         public static void UpdateGameHash(this GameModel gameModel)

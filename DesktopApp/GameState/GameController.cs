@@ -49,17 +49,17 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                        this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
-                        _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+                        this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+                        _recorder?.RecordAction(message.ToRecord(gameModel));
 
                         gameModel = null;
                         switch (message.Action)
                         {
                             case GameAction.Undo:
-                                gameModel = Undo(); // NOTE: Undo does not call LogGameMode!
+                                gameModel = Undo(); // NOTE: Undo does not call LogGameModel!
                                 break;
                             case GameAction.Redo:
-                                gameModel = Redo();  // NOTE: Redo does not call LogGameMode!
+                                gameModel = Redo();  // NOTE: Redo does not call LogGameModel!
                                 break;
                             case GameAction.Next:
                                 gameModel = NextState();
@@ -88,8 +88,8 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                        this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
-                        _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+                        this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+                        _recorder?.RecordAction(message.ToRecord(gameModel));
 
                         gameModel = ShuffleCurrentGame();
                         LogGameModel(gameModel);
@@ -106,8 +106,8 @@ namespace Catan3.Controller
                     {
 
                         var gameModel = Log.CopyCurrent();
-                        this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
-                        _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+                        this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+                        _recorder?.RecordAction(message.ToRecord(gameModel));
 
                         gameModel = BuildingUpgrade(message);
                         LogGameModel(gameModel);
@@ -123,8 +123,8 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                    this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
-                    _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+                    this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+                    _recorder?.RecordAction(message.ToRecord(gameModel));
 
                     gameModel = SetPlayerOrder(message.PlayerIds);
                     LogGameModel(gameModel);
@@ -140,8 +140,8 @@ namespace Catan3.Controller
                     try
                     {
                         var gameModel = Log.CopyCurrent();
-                        this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
-                        _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+                        this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+                        _recorder?.RecordAction(message.ToRecord(gameModel));
 
                         var model = RoadPurchase(message);
                         LogGameModel(model);
@@ -159,8 +159,8 @@ namespace Catan3.Controller
                  try
                  {
                      var gameModel = Log.CopyCurrent();
-                     this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
-                     _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+                     this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+                     _recorder?.RecordAction(message.ToRecord(gameModel));
 
                      var model = MoveRobber(message);
                      LogGameModel(model);
@@ -177,7 +177,7 @@ namespace Catan3.Controller
                 {
                     var gameModel = NewGame(message.GameType, message.PlayerIds);
                     LogGameModel(gameModel);
-                    this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
+                    this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
                     Messenger.Send(new UpdateGameModel(gameModel));
                 }
                 catch (GameException e)
@@ -238,8 +238,8 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                    this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
-                    _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+                    this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+                    _recorder?.RecordAction(message.ToRecord(gameModel));
 
                     var model = OnRoll(message);
                     LogGameModel(model);
@@ -255,8 +255,8 @@ namespace Catan3.Controller
                 try
                 {
                     var gameModel = Log.CopyCurrent();
-                    this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
-                    _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+                    this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+                    _recorder?.RecordAction(message.ToRecord(gameModel));
 
                     var model = OnPurchase(message);
                     LogGameModel(model);
@@ -268,21 +268,22 @@ namespace Catan3.Controller
                 }
             });
 
-            Messenger.Register<PlayersDoingSupplemental>(this, (recipient, message) =>
+            Messenger.Register<ParticipatingInSupplementalMessage>(this, (recipient, message) =>
             {
-
                 try
                 {
                     GameModel gameModel = Log.CopyCurrent();
-                    this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
+                    this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
                     if (gameModel.GameState != GameState.PickSupplementalPlayers) return;
 
-                    _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
-                    //
-                    //  optimize away the case when there are supplemental players
-                    foreach (var player in gameModel.Players)
+                    _recorder?.RecordAction(message.ToRecord(gameModel));
+                    
+                    // Find the player and update their participation flag
+                    var player = gameModel.Players.FirstOrDefault(p => p.Id == message.PlayerId);
+                    if (player != null)
                     {
-                        player.ParticipatingInSupplemental = message.PlayerIds.Contains(player.Id);  // this makes the flag explicitly false if it is not in the list
+                        player.ParticipatingInSupplemental = message.Participating;
+                        this.TraceMessage($"Player {message.PlayerId} supplemental participation set to {message.Participating}");
                     }
 
                     LogGameModel(gameModel); //undo puts us back to this state
@@ -294,13 +295,14 @@ namespace Catan3.Controller
                     SendErrorMessage(e.Message, e.ErrorLevel);
                 }
             });
+
             Messenger.Register<BalanceBoardMessage>(this, (recipient, message) =>
             {
                 try
                 {
                     GameModel gameModel = Log.CopyCurrent();
-                    this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
-                    _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+                    this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+                    _recorder?.RecordAction(message.ToRecord(gameModel));
 
                     if (BalanceBoard(gameModel))
                     {
@@ -323,9 +325,9 @@ namespace Catan3.Controller
             Messenger.Register<GoFirstMessage>(this, (recipient, message) =>
             {
                 GameModel gameModel = Log.CopyCurrent();
-                this.TraceMessage($"[GameState={gameModel.GameState}][GameHash={gameModel.GameHash}][Message={message}]");
+                this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
                 if (gameModel.GameState != GameState.FinishedRollOrder) return;
-                _recorder?.RecordAction(message.ToRecord(gameModel.GameHash));
+                _recorder?.RecordAction(message.ToRecord(gameModel));
 
                 while (gameModel.Players[0].Id != message.PlayerId)
                 {
@@ -457,6 +459,14 @@ namespace Catan3.Controller
         public GameModel NewGame(GameType selectedGame, IList<string> playerIds)
         {
             var gameModel = GameFactory.CreateGame(selectedGame, playerIds);
+            
+            // Set random seed for truly random new games (not deterministic)
+            var random = new ReplayableRandom();
+            gameModel.RandomSeed = random.Seed;
+            
+            // Shuffle the board with the new random seed
+            GameFactory.Shuffle(gameModel);
+            
             Log.GameType = selectedGame;
             gameModel.GameType = selectedGame;
             gameModel.GameState = GameState.PickingBoard;
@@ -787,8 +797,7 @@ namespace Catan3.Controller
                         // Initialize the player found as null
                         PlayerModel? participatingPlayer = null;
 
-                        // Loop through the players starting from the current player and wrap around
-                        // and set the flag for FinishedSupplemental and ParticipatingInSupplemental
+                        // Loop through ALL players and reset FinishedSupplemental flag for consistent state
                         // we have two flags because ParticipatingInSupplemental drives the UI to show who has a Supplemental turn
                         // and FinishedSupplemental is used to determine if we have any players left to play supplemental
                         for (int i = 0; i < gameModel.Players.Count; i++)
@@ -801,10 +810,8 @@ namespace Catan3.Controller
                             }
                             var player = gameModel.Players[index];
 
-                            if (player.ParticipatingInSupplemental)
-                            {
-                                player.FinishedSupplemental = false;
-                            }
+                            // Reset FinishedSupplemental for all players to ensure consistent hash calculation
+                            player.FinishedSupplemental = false;
                         }
                         //
                         //  find the first player who is participating in supplemental
@@ -1001,7 +1008,7 @@ namespace Catan3.Controller
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
             var oldHash = gameModel.GameHash;
-            // Update GameHash after all game state modifications are complete
+            // Update ExpectedGameHash after all game state modifications are complete
             gameModel.UpdateGameHash();
 
             // remember the Random Seed and RandomIterations so that we can replay the game

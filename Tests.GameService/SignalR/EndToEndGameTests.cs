@@ -199,7 +199,7 @@ namespace Tests.GameService.SignalR
             var initialGameState = session.GetProxy("Alice").GameModel;
             var initialHash = initialGameState?.GameHash;
             Assert.NotNull(initialHash);
-            LogEvent(session, "InitialHash", $"Initial GameHash: {initialHash}");
+            LogEvent(session, "InitialHash", $"Initial ExpectedGameHash: {initialHash}");
 
             // Execute first shuffle
             await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Shuffle);
@@ -759,7 +759,7 @@ namespace Tests.GameService.SignalR
             // Brief delay to allow for state propagation
             await Task.Delay(50);
 
-            // Check that all proxies have consistent GameModel and GameHash
+            // Check that all proxies have consistent GameModel and ExpectedGameHash
             var gameStates = _proxies.Values
                 .Select(p => new { Proxy = p.PlayerId, State = p.GameModel?.GameState, Hash = p.GameModel?.GameHash })
                 .Where(x => x.State.HasValue)
@@ -779,7 +779,7 @@ namespace Tests.GameService.SignalR
         }
 
         /// <summary>
-        /// Verifies game consistency across all proxies using GameHash
+        /// Verifies game consistency across all proxies using ExpectedGameHash
         /// </summary>
         public async Task VerifyGameConsistency()
         {
@@ -810,12 +810,12 @@ namespace Tests.GameService.SignalR
                 if (state.GameStateMachineVersion != referenceState.GameStateMachineVersion)
                     inconsistencies.Add($"{proxyState.Proxy}: Version {state.GameStateMachineVersion} vs {referenceState.GameStateMachineVersion}");
 
-                // GameHash verification for board consistency
+                // ExpectedGameHash verification for board consistency
                 if (!string.IsNullOrEmpty(state.GameHash) && !string.IsNullOrEmpty(referenceState.GameHash))
                 {
                     if (state.GameHash != referenceState.GameHash)
                     {
-                        inconsistencies.Add($"{proxyState.Proxy}: GameHash {state.GameHash} vs {referenceState.GameHash} (BOARD MISMATCH!)");
+                        inconsistencies.Add($"{proxyState.Proxy}: ExpectedGameHash {state.GameHash} vs {referenceState.GameHash} (BOARD MISMATCH!)");
                     }
                 }
             }

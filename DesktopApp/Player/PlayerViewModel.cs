@@ -60,7 +60,8 @@ namespace Catan3.Models
 
         partial void OnParticipatingInSupplementalChanged(bool oldValue, bool newValue)
         {
-          // this.TraceMessage($"Player {Name} is {(newValue ? "" : "not ")}participating in the supplemental phase.");
+          // send the MVVM message
+            WeakReferenceMessenger.Default.Send(new ParticipatingInSupplementalMessage(this.Id, newValue));
         }
 
         /// <summary>

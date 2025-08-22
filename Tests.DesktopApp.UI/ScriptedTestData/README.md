@@ -93,7 +93,7 @@ For each recorded action:
 ```csharp
 // 1. Validate current game state matches recorded expectation
 string currentHash = GetCurrentGameHash();
-if (currentHash != recordedMessage.GameHash) {
+if (currentHash != recordedMessage.ExpectedGameHash) {
     throw new InvalidOperationException("Game state mismatch");
 }
 

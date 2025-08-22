@@ -66,10 +66,11 @@ namespace Catan3.Shared.Models
         public override string ToString() => $"UpdateGameModel: {GameModel?.GameState}, Players: {GameModel?.Players?.Count ?? 0}";
     }
 
-    public class PlayersDoingSupplemental(IList<string> playerIds)
+    public class ParticipatingInSupplementalMessage(string playerId, bool participating)
     {
-        public IList<string> PlayerIds { get; } = playerIds;
-        public override string ToString() => $"PlayersDoingSupplemental: {PlayerIds.Count} players";
+        public string PlayerId { get; } = playerId;
+        public bool Participating { get; } = participating;
+        public override string ToString() => $"ParticipatingInSupplementalMessage: {PlayerId} -> {(Participating ? "Yes" : "No")}";
     }
 
     public class GoFirstMessage(string playerId)

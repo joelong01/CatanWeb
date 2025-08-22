@@ -745,7 +745,7 @@ namespace Catan3.GameService.Controllers
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
             
-            // Update GameHash after all game state modifications are complete
+            // Update ExpectedGameHash after all game state modifications are complete
             gameModel.UpdateGameHash();
             
             Log.Done(gameModel);
@@ -1406,7 +1406,7 @@ namespace Catan3.GameService.Controllers
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
             
-            // Update GameHash after all game state modifications are complete
+            // Update ExpectedGameHash after all game state modifications are complete
             gameModel.UpdateGameHash();
             
             // NOTE: We do NOT call Log.Done(gameModel) here because Undo/Redo navigate existing history

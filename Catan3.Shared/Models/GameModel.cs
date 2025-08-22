@@ -158,7 +158,7 @@ namespace Catan3.Shared.Models
             // Initialize new fields for Rule 7 compliance
             CreatedTime = DateTime.UtcNow;
             GameStateMachineVersion = 1;
-            // GameHash will be computed later by GameStateMachine when state changes
+            // ExpectedGameHash will be computed later by GameStateMachine when state changes
             GameHash = string.Empty;
         }
 
@@ -172,7 +172,7 @@ namespace Catan3.Shared.Models
             // Initialize new fields for Rule 7 compliance
             CreatedTime = DateTime.UtcNow;
             GameStateMachineVersion = 1;
-            // GameHash will be computed later by GameStateMachine when state changes
+            // ExpectedGameHash will be computed later by GameStateMachine when state changes
             GameHash = string.Empty;
         }
 

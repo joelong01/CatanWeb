@@ -74,14 +74,14 @@ public class GameRunner
             LogEvent("? STEP 4", $"All {session.PlayerCount} players connected to game {session.GameId}");
 
             // Step 5: Verify they all got the same GameModel by looking at the hash
-            LogEvent("?? STEP 5", "Verifying all players have consistent GameModel (checking GameHash)");
+            LogEvent("?? STEP 5", "Verifying all players have consistent GameModel (checking ExpectedGameHash)");
             await session.VerifyGameConsistency();
 
             var gameState = session.GetCurrentGameState();
             var firstProxy = session.Proxies.Values.First();
             var gameHash = firstProxy.GameModel?.GameHash ?? "Unknown";
 
-            LogEvent("? STEP 5", $"All players have consistent GameModel - GameHash: {gameHash}");
+            LogEvent("? STEP 5", $"All players have consistent GameModel - ExpectedGameHash: {gameHash}");
             LogEvent("?? CURRENT STATE", $"Game is in state: {gameState}");
 
             // Step 6: Check if we've reached the target state
@@ -353,9 +353,9 @@ public class GameRunner
         var initialHash = initialGameState.GameHash;
         if (string.IsNullOrEmpty(initialHash))
         {
-            throw new InvalidOperationException("Initial GameHash is null or empty");
+            throw new InvalidOperationException("Initial ExpectedGameHash is null or empty");
         }
-        LogEvent("?? INITIAL HASH", $"Initial GameHash: {initialHash}");
+        LogEvent("?? INITIAL HASH", $"Initial ExpectedGameHash: {initialHash}");
 
         // SHUFFLE TEST 1: Execute first shuffle
         LogEvent("?? SHUFFLE TEST 1", "Executing first shuffle action");
@@ -370,12 +370,12 @@ public class GameRunner
         var firstShuffleHash = firstShuffleState.GameHash;
         if (string.IsNullOrEmpty(firstShuffleHash))
         {
-            throw new InvalidOperationException("GameHash is null after first shuffle");
+            throw new InvalidOperationException("ExpectedGameHash is null after first shuffle");
         }
 
         if (firstShuffleHash == initialHash)
         {
-            throw new InvalidOperationException("GameHash did not change after first shuffle - board was not randomized");
+            throw new InvalidOperationException("ExpectedGameHash did not change after first shuffle - board was not randomized");
         }
 
         LogEvent("? SHUFFLE ASSERTION 1", $"Board randomized successfully: {initialHash} ? {firstShuffleHash}");
@@ -393,7 +393,7 @@ public class GameRunner
         var secondShuffleHash = secondShuffleState.GameHash;
         if (string.IsNullOrEmpty(secondShuffleHash))
         {
-            throw new InvalidOperationException("GameHash is null after second shuffle");
+            throw new InvalidOperationException("ExpectedGameHash is null after second shuffle");
         }
 
         if (secondShuffleHash == firstShuffleHash)

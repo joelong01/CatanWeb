@@ -241,18 +241,6 @@ namespace Catan3.Shared.Services
             );
         }
 
-        /// <summary>
-        /// Executes a Players Doing Supplemental command
-        /// </summary>
-        public async Task<CommandResult> ExecutePlayersDoingSupplementalAsync(string gameId, IList<string> playerIds, TimeSpan? timeout = null)
-        {
-            var message = new PlayersDoingSupplemental(playerIds);
-            return await ExecuteCommandAsync(
-                () => _connection.InvokeAsync("ExecutePlayersDoingSupplemental", gameId, _playerId, message),
-                "Players Doing Supplemental",
-                timeout
-            );
-        }
 
         /// <summary>
         /// Executes a Balance Board command

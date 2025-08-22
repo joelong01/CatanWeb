@@ -5,6 +5,9 @@
     "omnisharp.enableRoslynAnalyzers": true,
     "omnisharp.enableDecompilationSupport": true,
     "github.copilot.nextEditSuggestions.enabled": false,
+    "files.associations": {
+        "*.catan_test": "json"
+    },
     "files.exclude": {
         "**/bin": true,
         "**/obj": true
@@ -23,7 +26,7 @@
         "tfms",
         "vscode",
         "vswhere",
-        "winui", 
+        "winui",
         "nologo"
     ]
 }

@@ -111,8 +111,8 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 errors.Add("Scenario must have at least one action defined");
             
             // Validation for recorded messages - just check that we have valid game hashes
-            if (Actions.Any(a => string.IsNullOrEmpty(a.GameHash)))
-                errors.Add("All recorded messages must have a valid GameHash");
+            if (Actions.Any(a => string.IsNullOrEmpty(a.ExpectedGameHash)))
+                errors.Add("All recorded messages must have a valid ExpectedGameHash");
             
             return errors;
         }

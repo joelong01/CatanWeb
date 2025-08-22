@@ -12,12 +12,18 @@ namespace Catan3.Shared.Utility
         private Random _rng = null!;
 
         public int Iterations { get; private set; }
+        public int Seed => _seed;
 
         public ReplayableRandom(int seed, int inter = 0)
         {
             _seed = seed;
             Iterations = 0;
             Restore(inter);
+        }
+
+        // Default constructor for truly random games (not deterministic)
+        public ReplayableRandom() : this(Random.Shared.Next())
+        {
         }
 
         // Call this on load: resets and advances to recorded Iterations
