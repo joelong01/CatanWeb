@@ -1,8 +1,8 @@
 {
   "gameModel": {
-    "gameHash": "E625A031",
-    "randomSeed": 0,
-    "randomIterations": 94,
+    "gameHash": "669B6C19",
+    "randomSeed": 2058126334,
+    "randomIterations": 235,
     "entitlementPurchaseModel": [
       {
         "entitlement": "Settlement",
@@ -210,8 +210,8 @@
           "r": 0,
           "s": 2
         },
-        "number": 12,
-        "resourceTileType": "Wood",
+        "number": 3,
+        "resourceTileType": "Sheep",
         "highlighted": false,
         "temporarilyGold": false
       },
@@ -220,6 +220,17 @@
           "q": -2,
           "r": 1,
           "s": 1
+        },
+        "number": 5,
+        "resourceTileType": "Wheat",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": -2,
+          "r": 2,
+          "s": 0
         },
         "number": 6,
         "resourceTileType": "Wheat",
@@ -228,141 +239,31 @@
       },
       {
         "tileKey": {
-          "q": -2,
-          "r": 2,
-          "s": 0
-        },
-        "number": 9,
-        "resourceTileType": "Wheat",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
           "q": -1,
           "r": -1,
           "s": 2
-        },
-        "number": 9,
-        "resourceTileType": "Brick",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": -1,
-          "r": 0,
-          "s": 1
-        },
-        "number": 3,
-        "resourceTileType": "Sheep",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": -1,
-          "r": 1,
-          "s": 0
-        },
-        "number": 5,
-        "resourceTileType": "Brick",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": -1,
-          "r": 2,
-          "s": -1
-        },
-        "number": 5,
-        "resourceTileType": "Wood",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 0,
-          "r": -2,
-          "s": 2
-        },
-        "number": 4,
-        "resourceTileType": "Wood",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 0,
-          "r": -1,
-          "s": 1
-        },
-        "number": 11,
-        "resourceTileType": "Sheep",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 0,
-          "r": 0,
-          "s": 0
         },
         "number": 8,
-        "resourceTileType": "Wheat",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 0,
-          "r": 1,
-          "s": -1
-        },
-        "number": 2,
         "resourceTileType": "Sheep",
         "highlighted": false,
         "temporarilyGold": false
       },
       {
         "tileKey": {
-          "q": 0,
-          "r": 2,
-          "s": -2
-        },
-        "number": 11,
-        "resourceTileType": "Ore",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 1,
-          "r": -2,
+          "q": -1,
+          "r": 0,
           "s": 1
         },
-        "number": 10,
-        "resourceTileType": "Ore",
+        "number": 11,
+        "resourceTileType": "Sheep",
         "highlighted": false,
         "temporarilyGold": false
       },
       {
         "tileKey": {
-          "q": 1,
-          "r": -1,
+          "q": -1,
+          "r": 1,
           "s": 0
-        },
-        "number": 4,
-        "resourceTileType": "Wood",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 1,
-          "r": 0,
-          "s": -1
         },
         "number": 7,
         "resourceTileType": "Desert",
@@ -371,12 +272,111 @@
       },
       {
         "tileKey": {
+          "q": -1,
+          "r": 2,
+          "s": -1
+        },
+        "number": 9,
+        "resourceTileType": "Ore",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": -2,
+          "s": 2
+        },
+        "number": 5,
+        "resourceTileType": "Ore",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": -1,
+          "s": 1
+        },
+        "number": 12,
+        "resourceTileType": "Ore",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": 0,
+          "s": 0
+        },
+        "number": 10,
+        "resourceTileType": "Wheat",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": 1,
+          "s": -1
+        },
+        "number": 4,
+        "resourceTileType": "Brick",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": 2,
+          "s": -2
+        },
+        "number": 3,
+        "resourceTileType": "Wood",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 1,
+          "r": -2,
+          "s": 1
+        },
+        "number": 6,
+        "resourceTileType": "Sheep",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 1,
+          "r": -1,
+          "s": 0
+        },
+        "number": 11,
+        "resourceTileType": "Wood",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 1,
+          "r": 0,
+          "s": -1
+        },
+        "number": 9,
+        "resourceTileType": "Wood",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
           "q": 1,
           "r": 1,
           "s": -2
         },
-        "number": 10,
-        "resourceTileType": "Ore",
+        "number": 8,
+        "resourceTileType": "Wood",
         "highlighted": false,
         "temporarilyGold": false
       },
@@ -386,8 +386,8 @@
           "r": -2,
           "s": 0
         },
-        "number": 8,
-        "resourceTileType": "Sheep",
+        "number": 10,
+        "resourceTileType": "Brick",
         "highlighted": false,
         "temporarilyGold": false
       },
@@ -397,8 +397,8 @@
           "r": -1,
           "s": -1
         },
-        "number": 3,
-        "resourceTileType": "Wheat",
+        "number": 2,
+        "resourceTileType": "Brick",
         "highlighted": false,
         "temporarilyGold": false
       },
@@ -408,8 +408,8 @@
           "r": 0,
           "s": -2
         },
-        "number": 6,
-        "resourceTileType": "Brick",
+        "number": 4,
+        "resourceTileType": "Wheat",
         "highlighted": false,
         "temporarilyGold": false
       }
@@ -2172,7 +2172,7 @@
             "r": 1,
             "s": 1
           },
-          "harborType": "Wood",
+          "harborType": "ThreeForOne",
           "side": "TopLeft"
         },
         "owner": null
@@ -2184,7 +2184,7 @@
             "r": 2,
             "s": 0
           },
-          "harborType": "Brick",
+          "harborType": "ThreeForOne",
           "side": "BottomLeft"
         },
         "owner": null
@@ -2196,7 +2196,7 @@
             "r": -1,
             "s": 2
           },
-          "harborType": "ThreeForOne",
+          "harborType": "Ore",
           "side": "TopLeft"
         },
         "owner": null
@@ -2208,7 +2208,7 @@
             "r": 2,
             "s": -1
           },
-          "harborType": "ThreeForOne",
+          "harborType": "Wheat",
           "side": "BottomLeft"
         },
         "owner": null
@@ -2220,7 +2220,7 @@
             "r": -2,
             "s": 2
           },
-          "harborType": "Sheep",
+          "harborType": "Wood",
           "side": "Top"
         },
         "owner": null
@@ -2232,7 +2232,7 @@
             "r": -2,
             "s": 1
           },
-          "harborType": "Ore",
+          "harborType": "ThreeForOne",
           "side": "TopRight"
         },
         "owner": null
@@ -2256,7 +2256,7 @@
             "r": -1,
             "s": -1
           },
-          "harborType": "ThreeForOne",
+          "harborType": "Brick",
           "side": "TopRight"
         },
         "owner": null
@@ -2268,7 +2268,7 @@
             "r": 0,
             "s": -2
           },
-          "harborType": "Wheat",
+          "harborType": "Sheep",
           "side": "BottomRight"
         },
         "owner": null
@@ -2301,7 +2301,7 @@
     },
     "currentPlayerId": "Joe-001",
     "gameId": "",
-    "createdTime": "2025-08-20T23:39:56.5606338Z",
+    "createdTime": "2025-08-25T15:57:51.9368644Z",
     "gameStateMachineVersion": 1,
     "rollModel": {
       "turnRollModel": null,
@@ -2344,78 +2344,33 @@
   },
   "actionStack": [
     {
-      "type": "shuffleRecord",
-      "gameHash": "E625A031"
-    },
-    {
-      "type": "shuffleRecord",
-      "gameHash": "E625A0B9"
-    },
-    {
-      "type": "shuffleRecord",
-      "gameHash": "E6259F09"
-    },
-    {
-      "type": "balanceBoard",
-      "gameHash": "E6259DF7"
-    },
-    {
       "type": "executeGameActionRecord",
-      "gameHash": "E6259CF7",
+      "expectedGameHash": "669B6C19",
+      "expectedGameState": "PickingBoard",
       "action": "Next"
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "E625B392",
-      "action": "Next"
-    },
-    {
-      "type": "goFirst",
-      "gameHash": "E625CA2D",
-      "playerId": "Dodgy-001"
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "F1F0F6B0A",
+      "expectedGameHash": "669B82B4",
+      "expectedGameState": "WaitingForRollForOrder",
       "action": "Next"
     },
     {
       "type": "executeGameActionRecord",
-      "gameHash": "F1F0F109E",
+      "expectedGameHash": "669B994F",
+      "expectedGameState": "FinishedRollOrder",
+      "action": "Next"
+    },
+    {
+      "type": "executeGameActionRecord",
+      "expectedGameHash": "669B3EE3",
+      "expectedGameState": "BeginResourceAllocation",
       "action": "Next"
     },
     {
       "type": "buildingUpgrade",
-      "gameHash": "F793B001B",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": -2,
-          "r": 0,
-          "s": 2
-        },
-        "position": "TopRight"
-      }
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "EB9624CB",
-      "roadKey": {
-        "tileKey": {
-          "q": -2,
-          "r": 0,
-          "s": 2
-        },
-        "hexSide": "TopRight"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "8A9C40FB",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "545414F9",
+      "expectedGameHash": "13E5F750",
+      "expectedGameState": "AllocateResourceForward",
       "buildingKey": {
         "hexCoordinates": {
           "q": -2,
@@ -2427,231 +2382,15 @@
     },
     {
       "type": "roadPurchase",
-      "gameHash": "0C84E3620",
-      "roadKey": {
-        "tileKey": {
-          "q": -2,
-          "r": 1,
-          "s": 1
-        },
-        "hexSide": "TopRight"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "3F5CD155",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "0FFD54C98",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": -2,
-          "r": 1,
-          "s": 1
-        },
-        "position": "BottomRight"
-      }
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "103FC162",
-      "roadKey": {
-        "tileKey": {
-          "q": -2,
-          "r": 2,
-          "s": 0
-        },
-        "hexSide": "TopRight"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "441D2C3A",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "09C793FD3",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": -1,
-          "r": -1,
-          "s": 2
-        },
-        "position": "TopRight"
-      }
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "35FDD0A2",
-      "roadKey": {
-        "tileKey": {
-          "q": -1,
-          "r": -1,
-          "s": 2
-        },
-        "hexSide": "TopRight"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "ECCC35FE9",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "EE8095B0A",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": -1,
-          "r": -1,
-          "s": 2
-        },
-        "position": "BottomRight"
-      }
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "E0414DD16",
-      "roadKey": {
-        "tileKey": {
-          "q": -1,
-          "r": 0,
-          "s": 1
-        },
-        "hexSide": "TopRight"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "7758BD22",
-      "action": "Next"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "426FEDDA",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": -1,
-          "r": 0,
-          "s": 1
-        },
-        "position": "BottomRight"
-      }
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "A3BA7763",
-      "roadKey": {
-        "tileKey": {
-          "q": -1,
-          "r": 1,
-          "s": 0
-        },
-        "hexSide": "TopRight"
-      }
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "E19287124",
-      "action": "Next"
-    },
-    {
-      "type": "executeGameActionRecord",
-      "gameHash": "E192887BF",
-      "action": "Next"
-    },
-    {
-      "type": "purchase",
-      "gameHash": "E19289E5A",
-      "entitlement": "Soldier"
-    },
-    {
-      "type": "moveRobber",
-      "gameHash": "EE3467026",
-      "coordinates": {
-        "q": 2,
-        "r": -1,
-        "s": -1
-      },
-      "targetPlayerId": null
-    },
-    {
-      "type": "roll",
-      "gameHash": "E19289E74",
-      "roll": {
-        "redRoll": 7,
-        "whiteRoll": 0,
-        "specialDice": "None",
-        "normalRoll": "Seven"
-      }
-    },
-    {
-      "type": "moveRobber",
-      "gameHash": "EE34794CB",
-      "coordinates": {
-        "q": -2,
-        "r": 2,
-        "s": 0
-      },
-      "targetPlayerId": "Joe-001"
-    },
-    {
-      "type": "purchase",
-      "gameHash": "E1928B4E1",
-      "entitlement": "Road"
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "EE344BB7C",
+      "expectedGameHash": "0B121F12C",
+      "expectedGameState": "AllocateResourceForward",
       "roadKey": {
         "tileKey": {
           "q": -2,
           "r": 0,
           "s": 2
         },
-        "hexSide": "Top"
-      }
-    },
-    {
-      "type": "purchase",
-      "gameHash": "E87E2BE1C",
-      "entitlement": "Road"
-    },
-    {
-      "type": "roadPurchase",
-      "gameHash": "DC6819F5B",
-      "roadKey": {
-        "tileKey": {
-          "q": -2,
-          "r": 0,
-          "s": 2
-        },
-        "hexSide": "TopLeft"
-      }
-    },
-    {
-      "type": "purchase",
-      "gameHash": "F0311DF4C",
-      "entitlement": "Settlement"
-    },
-    {
-      "type": "purchase",
-      "gameHash": "2F01B3A7",
-      "entitlement": "City"
-    },
-    {
-      "type": "buildingUpgrade",
-      "gameHash": "3F291437",
-      "buildingKey": {
-        "hexCoordinates": {
-          "q": -2,
-          "r": 0,
-          "s": 2
-        },
-        "position": "TopRight"
+        "hexSide": "BottomRight"
       }
     }
   ]

@@ -23,26 +23,71 @@ namespace Catan3
         {
             try
             {
-                // Ensure we're on the UI thread
-                ((App)Application.Current)?.MainWindow?.DispatcherQueue.TryEnqueue(() =>
+                // Try multiple approaches to get a valid dispatcher queue
+                Microsoft.UI.Dispatching.DispatcherQueue? dispatcherQueue = null;
+                
+                // First try current thread dispatcher
+                try
                 {
-                    if (s_instance == null)
+                    dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+                }
+                catch { /* Ignore and try next approach */ }
+                
+                // If that fails, try MainWindow dispatcher if available
+                if (dispatcherQueue == null && Application.Current is App app && app.MainWindow != null)
+                {
+                    try
                     {
-                        s_instance = new DebugWindow();
-                        s_instance.Activate();
+                        dispatcherQueue = app.MainWindow.DispatcherQueue;
                     }
-
-                    // Add timestamp and append message
-                    var timestampedMessage = $"[{DateTime.Now:HH:mm:ss.fff}] {message}";
-                    s_instance.MessagesTextBox.Text += timestampedMessage + Environment.NewLine;
-                    
-                    // Auto-scroll to bottom
-                    s_instance.MessagesTextBox.Select(s_instance.MessagesTextBox.Text.Length, 0);
-                });
+                    catch { /* Ignore and try next approach */ }
+                }
+                
+                if (dispatcherQueue != null)
+                {
+                    dispatcherQueue.TryEnqueue(() =>
+                    {
+                        ShowMessageInternal(message);
+                    });
+                }
+                else
+                {
+                    // If no dispatcher queue available, try direct call (might be on UI thread already)
+                    ShowMessageInternal(message);
+                }
             }
-            catch
+            catch (Exception ex)
             {
                 // Fallback to console if window creation fails
+                Console.WriteLine($"[DEBUG]: {message}");
+                System.Diagnostics.Debug.WriteLine($"DebugWindow.ShowMessage failed: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Internal method to actually show the message - must be called on UI thread
+        /// </summary>
+        private static void ShowMessageInternal(string message)
+        {
+            try
+            {
+                if (s_instance == null)
+                {
+                    s_instance = new DebugWindow();
+                    s_instance.Activate();
+                }
+
+                // Add timestamp and append message
+                var timestampedMessage = $"[{DateTime.Now:HH:mm:ss.fff}] {message}";
+                s_instance.MessagesTextBox.Text += timestampedMessage + Environment.NewLine;
+                
+                // Auto-scroll to bottom
+                s_instance.MessagesTextBox.Select(s_instance.MessagesTextBox.Text.Length, 0);
+            }
+            catch (Exception ex)
+            {
+                // Final fallback
+                System.Diagnostics.Debug.WriteLine($"DebugWindow.ShowMessageInternal failed: {ex.Message}");
                 Console.WriteLine($"[DEBUG]: {message}");
             }
         }

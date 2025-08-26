@@ -67,6 +67,7 @@
             <Button Content="Manage Players" Width="125" Margin="5"
                     Click="OnManagePlayers" />
             <Button Content="Open" Width="125" Margin="5" Click="OnOpen" />
+            <Button Content="Settings" Width="100" Margin="5" Click="OnSettings" />
 
             <Button Content="Cancel" Width="100" Click="OnCancel" Margin="5"
                     Visibility="{x:Bind Frame.CanGoBack, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />

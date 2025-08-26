@@ -234,6 +234,8 @@
                         Icon="ViewAll" />
                 <AppBarToggleButton Label="Record Mode" Click="OnToggleRecordMode"
                         Icon="Video" IsChecked="{x:Bind MainPageModel.IsRecordMode, Mode=TwoWay}" />
+                <AppBarButton Label="Settings" Click="OnSettings"
+                        Icon="Setting" />
                 <AppBarButton Label="Quit" Click="OnClose" Margin="0,0,0,0"
                         Icon="ClosePane" />
                 <AppBarButton Label="Run Tests" Click="OnRunTests"

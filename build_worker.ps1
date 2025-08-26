@@ -6,6 +6,8 @@ param(
     [switch]$NoBuild,
     [switch]$NoTest,
     [switch]$SkipUiTests,
+    [switch]$NoUiTests,
+    [switch]$IncludeUiTests,
     [switch]$Release,
     [switch]$NoRegister,
     [switch]$NoFontRegister,
@@ -41,7 +43,9 @@ OPTIONS:
     -Clean          Clean the project before building
     -NoBuild        Skip the build step, only publish
     -NoTest         Skip running tests
-    -SkipUiTests    Skip UI/E2E test projects (e.g., Tests.DesktopApp.UI)
+    -SkipUiTests    Skip UI/E2E test projects (e.g., Tests.DesktopApp.UI) - DEPRECATED, use -NoUiTests
+    -NoUiTests      Skip UI/E2E test projects (alias for -SkipUiTests) - DEPRECATED, UI tests now skipped by default
+    -IncludeUiTests Include UI/E2E test projects (requires recorded test files)
     -Release        Build in Release configuration (default: Debug)
     -NoRegister     Do not register the app after publish (default is to register)
     -NoFontRegister Do not register the Catan font (default is to register)
@@ -54,14 +58,17 @@ EXAMPLES:
     .\build.ps1                           # Build, test, publish, and register (default)
     .\build.ps1 -Clean -Release           # Clean release build (registers by default)
     .\build.ps1 -NoTest -NoRegister       # Build and publish without tests and skip registration
-    .\build.ps1 -SkipUiTests              # Build, run unit/integration tests only, publish, register
+    .\build.ps1 -IncludeUiTests           # Build, run ALL tests including UI tests, publish, register
+    .\build.ps1 -SkipUiTests              # DEPRECATED - Build, run unit/integration tests only
+    .\build.ps1 -NoUiTests                # DEPRECATED - Same as -SkipUiTests
     .\build.ps1 -NoFontRegister           # Build normally but skip font registration
     .\build.ps1 -Unregister               # Unregister the app and exit (implies -NoRegister)
     .\build.ps1 -Platform ARM64 -Release  # Build for ARM64 in Release mode
 
 DEFAULTS:
-    By default, this script will build, test, publish, register the app, and register
+    By default, this script will build, test (excluding UI tests), publish, register the app, and register
     the Catan font so you can find it in the Start menu and launch/debug it immediately. 
+    UI tests are skipped by default as they require recorded test files - use -IncludeUiTests to run them.
     Use -NoRegister to skip app registration or -NoFontRegister to skip font registration.
 
 NOTE: Use PowerShell syntax (-Parameter) not bash syntax (--parameter)
@@ -359,9 +366,18 @@ try {
 
             # Discover test projects at repo root matching 'Tests.*' (top-level only)
             $testDirs = Get-ChildItem -Path $PSScriptRoot -Directory -Filter 'Tests.*' -ErrorAction SilentlyContinue
-            if ($SkipUiTests) {
+            
+            # Skip UI tests by default unless -IncludeUiTests is explicitly specified
+            if (-not $IncludeUiTests) {
                 $testDirs = $testDirs | Where-Object { $_.Name -notlike 'Tests.DesktopApp.UI*' }
-                Write-Output "⏭️  Skipping UI test projects (flag: -SkipUiTests)"
+                if ($SkipUiTests -or $NoUiTests) {
+                    $flagUsed = if ($NoUiTests) { "-NoUiTests" } else { "-SkipUiTests" }
+                    Write-Output "⏭️  Skipping UI test projects (flag: $flagUsed) - DEPRECATED: UI tests now skipped by default"
+                } else {
+                    Write-Output "⏭️  Skipping UI test projects (default behavior - use -IncludeUiTests to run them)"
+                }
+            } else {
+                Write-Output "🎭 Including UI test projects (flag: -IncludeUiTests)"
             }
 
             $testProjects = @()
@@ -381,7 +397,6 @@ try {
                 foreach ($proj in $testProjects) {
                     $testArgs = @(
                         $proj,
-                        "--no-build",
                         "-c", $Configuration,
                         "--verbosity", $VerbosityLevel,
                         "--logger", "trx",

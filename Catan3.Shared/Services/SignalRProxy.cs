@@ -275,7 +275,7 @@ namespace Catan3.Shared.Services
         /// <summary>
         /// Waits for a specific game state to be reached
         /// </summary>
-        public async Task<GameModel> WaitForGameStateAsync(GameState expectedState, TimeSpan? timeout = null)
+        public async Task<GameModel> WaitForGameStateAsync(Catan3.Shared.Models.GameState expectedState, TimeSpan? timeout = null)
         {
             timeout ??= System.Diagnostics.Debugger.IsAttached ? TimeSpan.FromHours(1) : TimeSpan.FromSeconds(60);
 

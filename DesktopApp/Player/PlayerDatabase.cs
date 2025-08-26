@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Xml;
 using Catan3.Models;
+using Catan.Services;
 using Catan3.Utility;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
@@ -96,7 +97,7 @@ namespace Catan3
             if (folderPath == string.Empty)
             {
                 // Use corrected Documents path to avoid truncation
-                var documentsPath = GetCorrectDocumentsPath();
+                var documentsPath = FileService.GetCorrectDocumentsPath();
                 folderPath = Path.Combine(documentsPath, PlayerFolder);
             }
             var fileName = Path.GetFileNameWithoutExtension(fqn);
@@ -173,7 +174,14 @@ namespace Catan3
 
             try
             {
-                var folder = await KnownFolders.DocumentsLibrary.CreateFolderAsync(PlayerFolder, CreationCollisionOption.OpenIfExists);
+                // Use the corrected Documents path that respects CATAN_DOCUMENTS_PATH environment variable
+                var documentsPath = FileService.GetCorrectDocumentsPath();
+                var playerFolderPath = Path.Combine(documentsPath, PlayerFolder);
+                
+                // Ensure the directory exists
+                Directory.CreateDirectory(playerFolderPath);
+                
+                var folder = await StorageFolder.GetFolderFromPathAsync(playerFolderPath);
                 
                 // Add tracing to see what path is being used
                 //this.TraceMessage($"📁 LoadPlayerDatabase: KnownFolders.DocumentsLibrary.Path = '{KnownFolders.DocumentsLibrary.Path}'");
@@ -314,7 +322,7 @@ namespace Catan3
             await CopyResourceFile(folder, player.ImageUri, saltedImageUri);
             
             // Use corrected Documents path to avoid truncation issues
-            var documentsPath = GetCorrectDocumentsPath();
+            var documentsPath = FileService.GetCorrectDocumentsPath();
             var playerFolderPath = Path.Combine(documentsPath, PlayerFolder);
             
             player.CroppedImageUri = Path.Combine(playerFolderPath, saltedCroppedUri);
@@ -425,7 +433,7 @@ namespace Catan3
                 await DeleteFile(player.CroppedImageUri);
                 
                 // Use corrected Documents path to avoid truncation issues
-                var documentsPath = GetCorrectDocumentsPath();
+                var documentsPath = FileService.GetCorrectDocumentsPath();
                 var fullFilePath = Path.Combine(documentsPath, "Catan Saved Games", "Players", fileName);
                 
                 player.CroppedImageUri = fullFilePath;
@@ -461,23 +469,5 @@ namespace Catan3
 
         }
 
-        /// <summary>
-        /// Gets the correct full Documents folder path, working around potential truncation issues
-        /// </summary>
-        /// <returns>The full Documents folder path</returns>
-        private static string GetCorrectDocumentsPath()
-        {
-            // Try multiple methods to get the correct Documents path
-            var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            
-            // Check if the path is truncated by looking for a username that's too short
-            if (documentsPath.Contains(@"C:\Users\joelo\") && !documentsPath.Contains(@"C:\Users\joelong\"))
-            {
-                // Fix truncated username
-                documentsPath = documentsPath.Replace(@"C:\Users\joelo\", @"C:\Users\joelong\");
-            }
-            
-            return documentsPath;
-        }
     }
 }

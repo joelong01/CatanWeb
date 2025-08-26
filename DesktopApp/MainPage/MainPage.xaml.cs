@@ -410,5 +410,32 @@ namespace Catan3
             // which updates App.RecordMode in the property setter
             HideMenu(); // Close the menu after toggling
         }
+
+        /// <summary>
+        /// Handles the Settings button click. Navigates to the Settings page
+        /// with slide-out animation from the left side.
+        /// </summary>
+        /// <param name="sender">The Settings AppBarButton</param>
+        /// <param name="e">Click event arguments</param>
+        private async void OnSettings(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Show Settings dialog
+                var settingsDialog = new Settings.SettingsDialog
+                {
+                    XamlRoot = this.XamlRoot
+                };
+                
+                await settingsDialog.ShowAsync();
+                
+                // Hide the app bar menu after dialog closes
+                HideMenu();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error showing Settings dialog: {ex.Message}");
+            }
+        }
     }
 }

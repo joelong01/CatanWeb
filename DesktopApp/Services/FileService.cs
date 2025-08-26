@@ -24,6 +24,12 @@ namespace Catan.Services
         string? Location { get; }
         Task<string?> OpenFileAsync(WindowEx parent, IList<string> filters);
         Task<string> PickSaveFileAsync(string defaultFileName);
+        
+        // Text file operations
+        Task<bool> WriteTextFileAsync(string relativePath, string content);
+        Task<string?> ReadTextFileAsync(string relativePath);
+        string GetFullPath(string relativePath);
+        void EnsureDirectoryExists(string relativePath);
     }
 
     /// <summary>
@@ -353,6 +359,26 @@ namespace Catan.Services
         /// <returns>The full Documents folder path</returns>
         public static string GetCorrectDocumentsPath()
         {
+            // Check for custom path override via environment variable
+            var customPath = Environment.GetEnvironmentVariable("CATAN_DOCUMENTS_PATH");
+            typeof(FileService).TraceMessage($"CATAN_DOCUMENTS_PATH env var: '{customPath}'");
+            
+            if (!string.IsNullOrEmpty(customPath))
+            {
+                // Trim any trailing backslash for consistency
+                customPath = customPath.TrimEnd('\\');
+                
+                if (Directory.Exists(customPath))
+                {
+                    typeof(FileService).TraceMessage($"Using custom path: '{customPath}'");
+                    return customPath;
+                }
+                else
+                {
+                    typeof(FileService).TraceMessage($"Custom path does not exist: '{customPath}'");
+                }
+            }
+
             // Try multiple methods to get the correct Documents path
             var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             
@@ -363,7 +389,78 @@ namespace Catan.Services
                 documentsPath = documentsPath.Replace(@"C:\Users\joelo\", @"C:\Users\joelong\");
             }
             
+            typeof(FileService).TraceMessage($"Using default Documents path: '{documentsPath}'");
             return documentsPath;
+        }
+
+        /// <summary>
+        /// Writes text content to a file using the configured Documents path
+        /// </summary>
+        /// <param name="relativePath">Path relative to Documents folder (e.g., "Catan Saved Games/test.catan_test")</param>
+        /// <param name="content">Text content to write</param>
+        /// <returns>True if successful, false otherwise</returns>
+        public async Task<bool> WriteTextFileAsync(string relativePath, string content)
+        {
+            try
+            {
+                var fullPath = GetFullPath(relativePath);
+                EnsureDirectoryExists(relativePath);
+                
+                await File.WriteAllTextAsync(fullPath, content);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"❌ WriteTextFileAsync failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Reads text content from a file using the configured Documents path
+        /// </summary>
+        /// <param name="relativePath">Path relative to Documents folder</param>
+        /// <returns>File content or null if file doesn't exist or error occurs</returns>
+        public async Task<string?> ReadTextFileAsync(string relativePath)
+        {
+            try
+            {
+                var fullPath = GetFullPath(relativePath);
+                if (!File.Exists(fullPath))
+                    return null;
+                    
+                return await File.ReadAllTextAsync(fullPath);
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"❌ ReadTextFileAsync failed: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets the full path for a relative path using the configured Documents folder
+        /// </summary>
+        /// <param name="relativePath">Path relative to Documents folder</param>
+        /// <returns>Full absolute path</returns>
+        public string GetFullPath(string relativePath)
+        {
+            var documentsPath = GetCorrectDocumentsPath();
+            return Path.Combine(documentsPath, relativePath);
+        }
+
+        /// <summary>
+        /// Ensures the directory exists for the given relative path
+        /// </summary>
+        /// <param name="relativePath">Path relative to Documents folder</param>
+        public void EnsureDirectoryExists(string relativePath)
+        {
+            var fullPath = GetFullPath(relativePath);
+            var directory = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
         }
     }
 }

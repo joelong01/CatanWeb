@@ -80,6 +80,16 @@ namespace Catan3.Utility
             RedoStack.CollectionChanged += RedoStack_ListChanged;
             FilePath = localSaveFile;
 
+            // Automatically enable test mode for .catan_test files to prevent overwriting
+            if (localSaveFile.EndsWith(".catan_test", StringComparison.OrdinalIgnoreCase))
+            {
+                InTestMode = true;
+                this.TraceMessage($"Log constructor: Test mode ENABLED for file: {localSaveFile}");
+            }
+            else
+            {
+                this.TraceMessage($"Log constructor: Test mode disabled for file: {localSaveFile}");
+            }
         }
 
         public async Task<bool> InitializeAsync(string path)
@@ -483,14 +493,17 @@ namespace Catan3.Utility
         /// <returns></returns>
         public async Task SaveAsync()
         {
+            this.TraceMessage($"SaveAsync called - FilePath: {FilePath}, InTestMode: {InTestMode}");
+            
             if (PersistService is null) return;
             
             // Skip saving when in test mode to prevent overwriting test files
             if (InTestMode)
             {
+                this.TraceMessage("SaveAsync: Skipping save because InTestMode is true");
                 return;
             }
-
+            this.TraceMessage("NOT IN TEST MODE");
             try
             {
                 var uncompressedLog = GetSerializableLog(); // this always comes back the same

@@ -5,7 +5,12 @@
       "Bash(./build.ps1 -NoTest)",
       "Bash(dotnet build)",
       "Bash(powershell:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(.build.ps1 -SkipUiTests)",
+      "Bash(pwsh:*)",
+      "Bash(./build.ps1 -NoUiTests)"
     ],
     "deny": [],
     "ask": []

@@ -226,7 +226,6 @@ namespace Catan3.Shared.Extensions
                 hash += primes.Pop() * gameModel.Robber.Coordinates.S;
             }
             var result = hash.ToString("X");
-            result.TraceMessage($"BigInt Game hash computed: {result}");
             return result;
         }
 

@@ -55,31 +55,13 @@ namespace Catan3
             get
             {
                 // Use corrected Documents path to avoid truncation issues
-                var documentsPath = GetCorrectDocumentsPath();
+                var documentsPath = Catan.Services.FileService.GetCorrectDocumentsPath();
                 var fileName = $"{ViewModel.SelectedGame}-{UniqueIdGenerator.GenerateUniqueId()}.catan";
                 
                 return Path.Join(documentsPath, "Catan Saved Games", fileName);
             }
         }
 
-        /// <summary>
-        /// Gets the correct full Documents folder path, working around potential truncation issues
-        /// </summary>
-        /// <returns>The full Documents folder path</returns>
-        private static string GetCorrectDocumentsPath()
-        {
-            // Try multiple methods to get the correct Documents path
-            var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            
-            // Check if the path is truncated by looking for a username that's too short
-            if (documentsPath.Contains(@"C:\Users\joelo\") && !documentsPath.Contains(@"C:\Users\joelong\"))
-            {
-                // Fix truncated username
-                documentsPath = documentsPath.Replace(@"C:\Users\joelo\", @"C:\Users\joelong\");
-            }
-            
-            return documentsPath;
-        }
 
         public async Task ShowErrorDialog(string errorMessage)
         {
@@ -161,6 +143,25 @@ namespace Catan3
             catch (Exception ex)
             {
                 await ShowErrorDialog($"Failed to load test file: {ex.Message}");
+            }
+        }
+
+        private async void OnSettings(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Show Settings dialog
+                var settingsDialog = new Settings.SettingsDialog
+                {
+                    XamlRoot = this.XamlRoot
+                };
+                
+                await settingsDialog.ShowAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error showing Settings dialog: {ex.Message}");
+                await ShowErrorDialog($"Failed to open settings: {ex.Message}");
             }
         }
     }

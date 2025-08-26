@@ -117,7 +117,7 @@ namespace Catan3.GameService.Hubs
                 LogEvent("ExecuteGameActionMessage", $"SignalR ExecuteGameActionMessage: {message.Action} for {playerId} in {gameId}");
                 
                 // Process synchronously for real-time response
-                var updatedGameModel = _gameService.ExecuteAction(gameId, gsm => gsm.HandleDoAction(message));
+                var updatedGameModel = await _gameService.ExecuteActionAsync(gameId, gsm => gsm.ExecuteGameActionAsync(message));
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -150,7 +150,7 @@ namespace Catan3.GameService.Hubs
                 LogEvent("Purchase", $"SignalR Purchase: {message.Entitlement} for {playerId} in {gameId}");
                 
                 // Process synchronously for real-time response
-                var updatedGameModel = _gameService.ExecuteAction(gameId, gsm => gsm.HandlePurchaseMessage(message));
+                var updatedGameModel = await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandlePurchaseAsync(message));
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -183,7 +183,7 @@ namespace Catan3.GameService.Hubs
                 LogEvent("RoadPurchase", $"SignalR Road Purchase: {message.RoadKey} for {playerId} in {gameId}");
                 
                 // Process synchronously for real-time response
-                var updatedGameModel = _gameService.ExecuteAction(gameId, gsm => gsm.HandleRoadPurchase(message));
+                var updatedGameModel = await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleRoadPurchaseAsync(message));
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -216,7 +216,7 @@ namespace Catan3.GameService.Hubs
                 LogEvent("BuildingUpgrade", $"SignalR Building Upgrade: {message.BuildingKey} for {playerId} in {gameId}");
                 
                 // Process synchronously for real-time response
-                var updatedGameModel = _gameService.ExecuteAction(gameId, gsm => gsm.HandleBuildingUpgrade(message));
+                var updatedGameModel = await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleBuildingUpgradeAsync(message));
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -249,7 +249,7 @@ namespace Catan3.GameService.Hubs
                 LogEvent("MoveRobber", $"SignalR Move Robber: {message.Coordinates} for {playerId} in {gameId}");
                 
                 // Process synchronously for real-time response
-                var updatedGameModel = _gameService.ExecuteAction(gameId, gsm => gsm.HandleMoveRobber(message));
+                var updatedGameModel = await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleMoveRobberAsync(message));
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -282,7 +282,7 @@ namespace Catan3.GameService.Hubs
                 LogEvent("Roll", $"SignalR Roll: {message.Roll.NormalRoll} for {playerId} in {gameId}");
                 
                 // Process synchronously for real-time response
-                var updatedGameModel = _gameService.ExecuteAction(gameId, gsm => gsm.HandleRoll(message));
+                var updatedGameModel = await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleRollAsync(message));
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -315,7 +315,7 @@ namespace Catan3.GameService.Hubs
                 LogEvent("SetPlayerOrder", $"SignalR Set Player Order for {playerId} in {gameId}");
                 
                 // Process synchronously for real-time response
-                var updatedGameModel = _gameService.ExecuteAction(gameId, gsm => gsm.HandleSetPlayerOrder(message));
+                var updatedGameModel = await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleSetPlayerOrderAsync(message));
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -335,34 +335,36 @@ namespace Catan3.GameService.Hubs
         }
 
         /// <summary>
-        /// Executes Players Doing Supplemental phase commands - matches Desktop app exactly
+        /// Executes Participating In Supplemental phase commands - matches Desktop app exactly
         /// </summary>
         /// <param name="gameId">The game ID</param>
         /// <param name="playerId">The player ID</param>
-        /// <param name="message">The PlayersDoingSupplemental object</param>
-        public async Task ExecutePlayersDoingSupplemental(string gameId, string playerId, PlayersDoingSupplemental message)
+        /// <param name="participating">Whether the player is participating in supplemental</param>
+        public async Task ExecuteParticipatingInSupplemental(string gameId, string playerId, bool participating)
         {
             var commandId = Guid.NewGuid().ToString();
             try 
             {
-                LogEvent("PlayersDoingSupplemental", $"SignalR Players Doing Supplemental for {playerId} in {gameId}");
+                LogEvent("ParticipatingInSupplemental", $"SignalR Participating In Supplemental for {playerId} in {gameId}: {participating}");
+                
+                var message = new ParticipatingInSupplementalMessage(playerId, participating);
                 
                 // Process synchronously for real-time response
-                var updatedGameModel = _gameService.ExecuteAction(gameId, gsm => gsm.HandlePlayersDoingSupplemental(message));
+                var updatedGameModel = await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleParticipatingInSupplementalAsync(message));
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
-                LogEvent("Send Client Update", $"GameStateUpdated sent for PlayersDoingSupplemental - PlayerId={playerId}, GameID={gameId}");
+                LogEvent("Send Client Update", $"GameStateUpdated sent for ParticipatingInSupplemental - PlayerId={playerId}, GameID={gameId}");
                 
                 // Notify command completion to original client
-                await Clients.Caller.SendAsync("CommandCompleted", commandId, true, "Supplemental players set");
+                await Clients.Caller.SendAsync("CommandCompleted", commandId, true, "Supplemental participation set");
                 
-                LogEvent("PlayersDoingSupplemental", $"Players Doing Supplemental completed successfully for game {gameId}", LogLevel.Debug);
+                LogEvent("ParticipatingInSupplemental", $"Participating In Supplemental completed successfully for game {gameId}", LogLevel.Debug);
             }
             catch (Exception ex)
             {
-                LogEvent("PlayersDoingSupplemental", $"Failed to execute Players Doing Supplemental for {playerId} in {gameId}: {ex.Message}", LogLevel.Error);
-                var errorInfo = CreateDetailedErrorInfo(ex, "PlayersDoingSupplemental", "");
+                LogEvent("ParticipatingInSupplemental", $"Failed to execute Participating In Supplemental for {playerId} in {gameId}: {ex.Message}", LogLevel.Error);
+                var errorInfo = CreateDetailedErrorInfo(ex, "ParticipatingInSupplemental", "");
                 await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }
@@ -381,7 +383,7 @@ namespace Catan3.GameService.Hubs
                 LogEvent("BalanceBoard", $"SignalR Balance Board for {playerId} in {gameId}");
                 
                 // Process synchronously for real-time response
-                var updatedGameModel = _gameService.ExecuteAction(gameId, gsm => gsm.HandleBalanceBoard(message));
+                var updatedGameModel = await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleBalanceBoardAsync(message));
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -414,7 +416,7 @@ namespace Catan3.GameService.Hubs
                 LogEvent("GoFirst", $"SignalR Go First: {message.PlayerId} for {playerId} in {gameId}");
                 
                 // Process synchronously for real-time response
-                var updatedGameModel = _gameService.ExecuteAction(gameId, gsm => gsm.HandleGoFirst(message));
+                var updatedGameModel = await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleGoFirstAsync(message));
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);

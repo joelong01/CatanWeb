@@ -1,7 +1,10 @@
+using System;
 using System.Collections.Concurrent;
+using System.IO;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
-using Catan3.GameService.Controllers;
+using Catan3.Shared.GameLogic;
+using Catan3.Shared.Interfaces;
 using Catan3.GameService.Services;
 using Catan3.GameService.Utility;
 
@@ -51,22 +54,39 @@ namespace Catan3.GameService.Services
         /// Creates a new GameStateMachine for the specified gameId
         /// Only called when creating a new game, not for retrieving existing games
         /// </summary>
-        private GameStateMachine CreateGameStateMachine()
+        private GameStateMachine CreateGameStateMachine(string gameId)
         {
-            _logger.LogEvent("Create GameStateMachine", "Creating new GameStateMachine with auto-generated GameId");
+            _logger.LogEvent("Create GameStateMachine", $"Creating new GameStateMachine for GameId: {gameId}");
             
-            var gameStateMachineLogger = _loggerFactory.CreateLogger<GameStateMachine>();
-            var gameStateMachine = new GameStateMachine(_PersistenceService, _clientNotification, gameStateMachineLogger, "");  // Empty saveFile for now
-            var gameId = gameStateMachine.GameId;
-            
-            // Update the save file path with the actual GameId
             var saveFile = Path.Combine(Path.GetTempPath(), "Catan3Games", $"game_{gameId}.catan");
-            // TODO: We may need to update the Log's save file path if required
             
-            _gameStateMachines[gameId] = gameStateMachine;
+            // Create the DI dependencies for the shared GameStateMachine
+            var gameServiceLogger = _loggerFactory.CreateLogger<GameStateMachine>();
+            var gameLogger = new GameServiceLogger(gameServiceLogger);
+            
+            // Create the Log and wrap it
+            var log = new GameService.Utility.Log<string>(_PersistenceService, saveFile, gameServiceLogger);
+            var gameLog = new GameServiceLogAdapter(log, _PersistenceService);
+            
+            // Create other dependencies
+            var gameFactory = new GameServiceFactoryAdapter();
+            var fileOperations = new GameServiceFileOperationsAdapter();
+            var recorderFactory = new GameServiceRecorderFactory(gameLogger, fileOperations);
+            var persistenceAdapter = new GameServicePersistenceAdapter(_PersistenceService);
+            
+            // Create the shared GameStateMachine with DI
+            var sharedGameStateMachine = new GameStateMachine(
+                gameLog, 
+                gameLogger, 
+                recorderFactory,
+                persistenceAdapter, 
+                gameFactory);
+            
+            // Store using the generated GameId
+            _gameStateMachines[gameId] = sharedGameStateMachine;
             
             _logger.LogEvent("GameStateMachine Created", $"Successfully created GameStateMachine with GameId: {gameId}, saveFile: {saveFile}");
-            return gameStateMachine;
+            return sharedGameStateMachine;
         }
 
         /// <summary>
@@ -118,9 +138,9 @@ namespace Catan3.GameService.Services
         {
             _logger.LogInformation("Creating new game with auto-generated GameId");
             
-            // Create the GameStateMachine first - it will generate its own GameId
-            var gameStateMachine = CreateGameStateMachine();
-            var gameId = gameStateMachine.GameId;
+            // Generate GameId and create the GameStateMachine
+            var gameId = Guid.NewGuid().ToString();
+            var gameStateMachine = CreateGameStateMachine(gameId);
             
             _logger.LogInformation("Created GameStateMachine with GameId: {GameId}", gameId);
             
@@ -148,9 +168,9 @@ namespace Catan3.GameService.Services
         {
             _logger.LogInformation("Creating new game async with auto-generated GameId");
             
-            // Create the GameStateMachine first - it will generate its own GameId
-            var gameStateMachine = CreateGameStateMachine();
-            var gameId = gameStateMachine.GameId;
+            // Generate GameId and create the GameStateMachine
+            var gameId = Guid.NewGuid().ToString();
+            var gameStateMachine = CreateGameStateMachine(gameId);
             
             _logger.LogInformation("Created GameStateMachine with GameId: {GameId}", gameId);
             

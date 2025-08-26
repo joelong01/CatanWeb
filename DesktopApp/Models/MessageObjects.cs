@@ -110,11 +110,4 @@ namespace Catan3.Models
         public IList<ResourceType> Resources { get; } = resources;
     }
 
-    // Extended NewGameMessage that includes LocalFile for DesktopApp specific functionality
-    public class NewGameMessage(GameType selectedGame, IList<string> playerIds, string localFile)
-    {
-        public GameType GameType = selectedGame;
-        public IList<string> PlayerIds { get; set; } = playerIds;
-        public string LocalFile { get; set; } = localFile;
-    }
 }

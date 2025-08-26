@@ -109,6 +109,9 @@ namespace Catan3.Shared.Models
 
         /// <summary>
         /// Gets or sets the unique identifier for this game instance.
+        /// Used by the Service for routing messages to the correct game and by Desktop for file naming.
+        /// Desktop format: GameType-GameId.catan (e.g., "Expansion-UuSc5VsEAn3rJLR2ne.catan")
+        /// Service format: Server-generated GUID for multi-game management.
         /// This field supports Rule 7 (Single Source of Truth) by ensuring GameModel contains all game metadata.
         /// </summary>
         [ObservableProperty]

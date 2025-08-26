@@ -3,6 +3,12 @@ using System.IO;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media.Animation;
 using System.Threading.Tasks;
+using Catan3.Shared.Interfaces;
+using Catan3.Shared.Models;
+using System.Text.Json;
+using Windows.Storage;
+using Microsoft.Extensions.Logging;
+using Catan3.Services;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -26,6 +32,22 @@ namespace Catan3
 
         public static string? ActivatedFilePath { get; set; } = null;
         public static bool IsTestMode { get; private set; } = false; // set based on extension
+        
+        /// <summary>
+        /// Global log level setting that controls which messages are displayed.
+        /// Only messages at or above this level will be shown.
+        /// </summary>
+        public static GameLogLevel LogLevel { get; set; } = GameLogLevel.Trace;
+
+        /// <summary>
+        /// Global application settings accessible from anywhere in the app
+        /// </summary>
+        public static SettingsModel Settings { get; private set; } = new SettingsModel();
+
+        /// <summary>
+        /// Global logger instance accessible from anywhere in the app for TraceMessage extensions
+        /// </summary>
+        public static ILogger? Logger { get; private set; }
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
@@ -51,7 +73,13 @@ namespace Catan3
                     System.Diagnostics.Debug.WriteLine(e.Message);
                 };
 #endif
+                // Initialize logger first, before any TraceMessage calls
+                InitializeLogger();
+                
                 this.TraceMessage($"Command Line arguments: {args?.Arguments}");
+
+                // Load application settings before anything else
+                LoadSettings();
 
                 // Check for file activation arguments
                 CheckForFileActivation();
@@ -63,6 +91,173 @@ namespace Catan3
                 System.Diagnostics.Debug.WriteLine($"FATAL ERROR in OnLaunched: {ex}");
                 this.TraceMessage($"FATAL ERROR in OnLaunched: {ex}");
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Initializes the global logger instance with our custom DebugWindow provider
+        /// </summary>
+        private void InitializeLogger()
+        {
+            try
+            {
+                var loggerFactory = LoggerFactory.Create(builder =>
+                {
+                    builder.AddProvider(new DebugWindowLoggerProvider(LogLevel));
+                });
+
+                Logger = loggerFactory.CreateLogger("Catan3");
+                this.TraceMessage("Logger initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to initialize logger: {ex.Message}");
+                // Continue without logger - old TraceMessage will still work
+            }
+        }
+
+        /// <summary>
+        /// Loads application settings from default configuration and user storage.
+        /// First loads defaults from Assets/settings.json, then merges user preferences,
+        /// applies environment variable overrides, and saves the final merged settings.
+        /// </summary>
+        private void LoadSettings()
+        {
+            try
+            {
+                // First, load default settings from Assets/settings.json
+                LoadDefaultSettings();
+                
+                // Then, load user settings from storage and merge
+                LoadUserSettings();
+                
+                // Apply environment variable overrides
+                ApplyEnvironmentOverrides();
+                
+                // Always save settings after loading to ensure new defaults are persisted
+                SaveSettings();
+                
+                this.TraceMessage("Settings loaded and saved successfully");
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Failed to load settings, using defaults: {ex.Message}");
+                Settings = new SettingsModel();
+            }
+        }
+
+        /// <summary>
+        /// Loads default settings configuration from the Assets/settings.json file.
+        /// This file is checked into source control and defines all available settings
+        /// with their metadata, validation rules, and default values.
+        /// </summary>
+        private void LoadDefaultSettings()
+        {
+            try
+            {
+                var uri = new Uri("ms-appx:///Assets/settings.json");
+                var file = StorageFile.GetFileFromApplicationUriAsync(uri).AsTask().Result;
+                var json = FileIO.ReadTextAsync(file).AsTask().Result;
+                
+                this.TraceMessage($"Loaded settings JSON: {json}");
+                
+                var defaultSettings = JsonSerializer.Deserialize<SettingsModel>(json);
+                if (defaultSettings != null)
+                {
+                    Settings = defaultSettings;
+                    this.TraceMessage($"Loaded {Settings.Settings.Count} default settings");
+                }
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Failed to load default settings: {ex.Message}");
+                Settings = new SettingsModel();
+            }
+        }
+
+        /// <summary>
+        /// Loads user-specific settings from ApplicationData.LocalSettings and merges
+        /// them with the default settings. User values override defaults where they exist.
+        /// If no user settings are found, the current defaults will be saved.
+        /// </summary>
+        private void LoadUserSettings()
+        {
+            try
+            {
+                var localSettings = ApplicationData.Current.LocalSettings;
+                
+                if (localSettings.Values.TryGetValue("UserSettingsJson", out var userSettingsJson))
+                {
+                    var userSettings = JsonSerializer.Deserialize<SettingsModel>(userSettingsJson.ToString()!);
+                    if (userSettings != null)
+                    {
+                        // Merge user settings with defaults
+                        foreach (var userSetting in userSettings.Settings)
+                        {
+                            var defaultSetting = Settings.GetSetting(userSetting.SettingName);
+                            if (defaultSetting != null)
+                            {
+                                defaultSetting.Value = userSetting.Value;
+                            }
+                        }
+                        this.TraceMessage("Merged user settings with defaults");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Failed to load user settings: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Applies environment variable overrides to settings that specify an
+        /// environmentVariable property. Environment variables take precedence
+        /// over both default and user-saved values.
+        /// </summary>
+        private void ApplyEnvironmentOverrides()
+        {
+            foreach (var setting in Settings.Settings)
+            {
+                if (!string.IsNullOrEmpty(setting.EnvironmentVariable))
+                {
+                    var envValue = Environment.GetEnvironmentVariable(setting.EnvironmentVariable);
+                    if (!string.IsNullOrEmpty(envValue))
+                    {
+                        setting.Value = envValue;
+                        this.TraceMessage($"Applied environment override for {setting.SettingName}: {envValue}");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Saves the current application settings to both ApplicationData.LocalSettings
+        /// and system environment variables (for settings that specify environmentVariable).
+        /// This ensures settings persist across app launches and are accessible to external tools.
+        /// </summary>
+        public static void SaveSettings()
+        {
+            try
+            {
+                var localSettings = ApplicationData.Current.LocalSettings;
+                
+                // Save settings as JSON
+                var settingsJson = JsonSerializer.Serialize(Settings);
+                localSettings.Values["UserSettingsJson"] = settingsJson;
+                
+                // Update environment variables for settings that require it
+                foreach (var setting in Settings.Settings)
+                {
+                    if (!string.IsNullOrEmpty(setting.EnvironmentVariable) && setting.Value != null)
+                    {
+                        Environment.SetEnvironmentVariable(setting.EnvironmentVariable, setting.Value.ToString(), EnvironmentVariableTarget.User);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to save settings: {ex.Message}");
             }
         }
 

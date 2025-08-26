@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Catan3.GameState;
+using Catan3.Services;
 using Catan3.Models;
 using Catan3.Shared.Models;
 using Catan3.Utility;
@@ -21,12 +21,12 @@ namespace Catan3.Tests
 
     public class TestProxy : ObservableRecipient, IDisposable
     {
-        public GameStateMachine GameController { get; internal set; }
+        public Catan3.Shared.GameLogic.GameStateMachine GameController { get; internal set; }
         private TaskCompletionSource<GameModel>? _tcs;
 
         public TestProxy(string filename)
         {
-            GameController = new GameStateMachine(MainWindow.FileService, GenerateSavedFileName(filename));
+            GameController = DesktopGameStateMachineFactory.Create(MainWindow.FileService, GenerateSavedFileName(filename));
             Messenger.Register<UpdateGameModel>(this, UpdateGameModel);
         }
 
@@ -44,7 +44,7 @@ namespace Catan3.Tests
                 Debug.Assert(_tcs.Task.IsCompleted == true);
             }
             _tcs = new TaskCompletionSource<GameModel>(TaskCreationOptions.RunContinuationsAsynchronously);
-            Messenger.Send(new Catan3.Models.NewGameMessage(gameType, playerIds, savedFileName)); ;
+            Messenger.Send(new Catan3.Shared.Models.NewGameMessage(gameType, playerIds));
             return _tcs.Task;
         }
 
@@ -81,28 +81,10 @@ namespace Catan3.Tests
         public static string GenerateSavedFileName(string testName)
         {
             // Use corrected Documents path to avoid truncation issues
-            var documentsPath = GetCorrectDocumentsPath();
+            var documentsPath = Catan.Services.FileService.GetCorrectDocumentsPath();
             return Path.Join(documentsPath, "Catan Saved Games", "Tests", testName);
         }
 
-        /// <summary>
-        /// Gets the correct full Documents folder path, working around potential truncation issues
-        /// </summary>
-        /// <returns>The full Documents folder path</returns>
-        private static string GetCorrectDocumentsPath()
-        {
-            // Try multiple methods to get the correct Documents path
-            var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            
-            // Check if the path is truncated by looking for a username that's too short
-            if (documentsPath.Contains(@"C:\Users\joelo\") && !documentsPath.Contains(@"C:\Users\joelong\"))
-            {
-                // Fix truncated username
-                documentsPath = documentsPath.Replace(@"C:\Users\joelo\", @"C:\Users\joelong\");
-            }
-            
-            return documentsPath;
-        }
     }
 
 

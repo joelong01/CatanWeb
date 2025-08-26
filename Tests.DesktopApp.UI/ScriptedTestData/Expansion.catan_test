@@ -1,8 +1,8 @@
 {
   "gameModel": {
-    "gameHash": "F4856CAF0",
-    "randomSeed": 0,
-    "randomIterations": 923,
+    "gameHash": "26276BBD",
+    "randomSeed": 985564074,
+    "randomIterations": 1846,
     "entitlementPurchaseModel": [
       {
         "entitlement": "Settlement",
@@ -18,17 +18,17 @@
       },
       {
         "entitlement": "Soldier",
-        "enabled": true
+        "enabled": false
       }
     ],
     "actionFlags": {
-      "undoEnabled": true,
+      "undoEnabled": false,
       "redoEnabled": false,
-      "nextEnabled": false,
-      "rollsEnabled": true
+      "nextEnabled": true,
+      "rollsEnabled": false
     },
     "gameType": "Expansion",
-    "gameState": "WaitingForRoll",
+    "gameState": "PickingBoard",
     "hasSupplementalBuildPhase": true,
     "players": [
       {
@@ -36,16 +36,16 @@
         "name": "Joe",
         "goldRolls": 0,
         "goodRolls": 0,
-        "badRolls": 1,
+        "badRolls": 0,
         "hasLongestRoad": false,
         "islandsPlayed": 0,
         "largestArmy": false,
-        "longestRoad": 1,
+        "longestRoad": 0,
         "maxNoResourceRolls": 0,
         "noResourceCount": 0,
         "stars": 0,
-        "score": 2,
-        "highestScore": false,
+        "score": 0,
+        "highestScore": true,
         "timesTargeted": 0,
         "participatingInSupplemental": false,
         "finishedSupplemental": false,
@@ -84,12 +84,7 @@
           "robber": 0
         },
         "unspentEntitlements": [],
-        "spentEntitlementsThisGame": [
-          "Settlement",
-          "Road",
-          "Settlement",
-          "Road"
-        ],
+        "spentEntitlementsThisGame": [],
         "spentEntitlementsThisTurn": [],
         "ownedHarbors": []
       },
@@ -98,82 +93,18 @@
         "name": "Dodgy",
         "goldRolls": 0,
         "goodRolls": 0,
-        "badRolls": 1,
+        "badRolls": 0,
         "hasLongestRoad": false,
         "islandsPlayed": 0,
         "largestArmy": false,
-        "longestRoad": 2,
+        "longestRoad": 0,
         "maxNoResourceRolls": 0,
         "noResourceCount": 0,
         "stars": 0,
-        "score": 3,
+        "score": 0,
         "highestScore": true,
         "timesTargeted": 0,
-        "participatingInSupplemental": true,
-        "finishedSupplemental": true,
-        "resourcesThisTurn": {
-          "brick": 0,
-          "goldMine": 0,
-          "ore": 0,
-          "sheep": 0,
-          "wheat": 0,
-          "wood": 0,
-          "paper": 0,
-          "cloth": 0,
-          "coin": 0,
-          "politics": 0,
-          "trade": 0,
-          "science": 0,
-          "victoryPoint": 0,
-          "anyDevCard": 0,
-          "robber": 0
-        },
-        "resourcesThisGame": {
-          "brick": 0,
-          "goldMine": 0,
-          "ore": 0,
-          "sheep": 0,
-          "wheat": 0,
-          "wood": 0,
-          "paper": 0,
-          "cloth": 0,
-          "coin": 0,
-          "politics": 0,
-          "trade": 0,
-          "science": 0,
-          "victoryPoint": 0,
-          "anyDevCard": 0,
-          "robber": 0
-        },
-        "unspentEntitlements": [],
-        "spentEntitlementsThisGame": [
-          "Settlement",
-          "Road",
-          "Settlement",
-          "Road",
-          "Road",
-          "Settlement"
-        ],
-        "spentEntitlementsThisTurn": [],
-        "ownedHarbors": []
-      },
-      {
-        "id": "Doug-001",
-        "name": "Doug",
-        "goldRolls": 0,
-        "goodRolls": 0,
-        "badRolls": 1,
-        "hasLongestRoad": false,
-        "islandsPlayed": 0,
-        "largestArmy": false,
-        "longestRoad": 2,
-        "maxNoResourceRolls": 0,
-        "noResourceCount": 0,
-        "stars": 0,
-        "score": 3,
-        "highestScore": true,
-        "timesTargeted": 0,
-        "participatingInSupplemental": true,
+        "participatingInSupplemental": false,
         "finishedSupplemental": false,
         "resourcesThisTurn": {
           "brick": 0,
@@ -210,13 +141,64 @@
           "robber": 0
         },
         "unspentEntitlements": [],
-        "spentEntitlementsThisGame": [
-          "Road",
-          "Settlement",
-          "Road",
-          "Road",
-          "City"
-        ],
+        "spentEntitlementsThisGame": [],
+        "spentEntitlementsThisTurn": [],
+        "ownedHarbors": []
+      },
+      {
+        "id": "Doug-001",
+        "name": "Doug",
+        "goldRolls": 0,
+        "goodRolls": 0,
+        "badRolls": 0,
+        "hasLongestRoad": false,
+        "islandsPlayed": 0,
+        "largestArmy": false,
+        "longestRoad": 0,
+        "maxNoResourceRolls": 0,
+        "noResourceCount": 0,
+        "stars": 0,
+        "score": 0,
+        "highestScore": true,
+        "timesTargeted": 0,
+        "participatingInSupplemental": false,
+        "finishedSupplemental": false,
+        "resourcesThisTurn": {
+          "brick": 0,
+          "goldMine": 0,
+          "ore": 0,
+          "sheep": 0,
+          "wheat": 0,
+          "wood": 0,
+          "paper": 0,
+          "cloth": 0,
+          "coin": 0,
+          "politics": 0,
+          "trade": 0,
+          "science": 0,
+          "victoryPoint": 0,
+          "anyDevCard": 0,
+          "robber": 0
+        },
+        "resourcesThisGame": {
+          "brick": 0,
+          "goldMine": 0,
+          "ore": 0,
+          "sheep": 0,
+          "wheat": 0,
+          "wood": 0,
+          "paper": 0,
+          "cloth": 0,
+          "coin": 0,
+          "politics": 0,
+          "trade": 0,
+          "science": 0,
+          "victoryPoint": 0,
+          "anyDevCard": 0,
+          "robber": 0
+        },
+        "unspentEntitlements": [],
+        "spentEntitlementsThisGame": [],
         "spentEntitlementsThisTurn": [],
         "ownedHarbors": []
       }
@@ -228,8 +210,8 @@
           "r": 1,
           "s": 2
         },
-        "number": 6,
-        "resourceTileType": "Ore",
+        "number": 4,
+        "resourceTileType": "Sheep",
         "highlighted": false,
         "temporarilyGold": false
       },
@@ -239,7 +221,7 @@
           "r": 2,
           "s": 1
         },
-        "number": 9,
+        "number": 8,
         "resourceTileType": "Brick",
         "highlighted": false,
         "temporarilyGold": false
@@ -250,10 +232,10 @@
           "r": 3,
           "s": 0
         },
-        "number": 4,
-        "resourceTileType": "Sheep",
+        "number": 3,
+        "resourceTileType": "Wheat",
         "highlighted": false,
-        "temporarilyGold": true
+        "temporarilyGold": false
       },
       {
         "tileKey": {
@@ -261,8 +243,8 @@
           "r": 0,
           "s": 2
         },
-        "number": 5,
-        "resourceTileType": "Wood",
+        "number": 6,
+        "resourceTileType": "Sheep",
         "highlighted": false,
         "temporarilyGold": false
       },
@@ -272,7 +254,7 @@
           "r": 1,
           "s": 1
         },
-        "number": 12,
+        "number": 4,
         "resourceTileType": "Wood",
         "highlighted": false,
         "temporarilyGold": false
@@ -281,6 +263,204 @@
         "tileKey": {
           "q": -2,
           "r": 2,
+          "s": 0
+        },
+        "number": 5,
+        "resourceTileType": "Ore",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": -2,
+          "r": 3,
+          "s": -1
+        },
+        "number": 8,
+        "resourceTileType": "Ore",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": -1,
+          "r": -1,
+          "s": 2
+        },
+        "number": 2,
+        "resourceTileType": "Brick",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": -1,
+          "r": 0,
+          "s": 1
+        },
+        "number": 5,
+        "resourceTileType": "Wheat",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": -1,
+          "r": 1,
+          "s": 0
+        },
+        "number": 11,
+        "resourceTileType": "Sheep",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": -1,
+          "r": 2,
+          "s": -1
+        },
+        "number": 7,
+        "resourceTileType": "Desert",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": -1,
+          "r": 3,
+          "s": -2
+        },
+        "number": 5,
+        "resourceTileType": "Sheep",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": -2,
+          "s": 2
+        },
+        "number": 4,
+        "resourceTileType": "Wood",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": -1,
+          "s": 1
+        },
+        "number": 3,
+        "resourceTileType": "Wood",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": 0,
+          "s": 0
+        },
+        "number": 3,
+        "resourceTileType": "Brick",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": 1,
+          "s": -1
+        },
+        "number": 6,
+        "resourceTileType": "Wheat",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": 2,
+          "s": -2
+        },
+        "number": 2,
+        "resourceTileType": "Wood",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": 3,
+          "s": -3
+        },
+        "number": 12,
+        "resourceTileType": "Wheat",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 1,
+          "r": -2,
+          "s": 1
+        },
+        "number": 10,
+        "resourceTileType": "Sheep",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 1,
+          "r": -1,
+          "s": 0
+        },
+        "number": 12,
+        "resourceTileType": "Ore",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 1,
+          "r": 0,
+          "s": -1
+        },
+        "number": 10,
+        "resourceTileType": "Sheep",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 1,
+          "r": 1,
+          "s": -2
+        },
+        "number": 9,
+        "resourceTileType": "Brick",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 1,
+          "r": 2,
+          "s": -3
+        },
+        "number": 11,
+        "resourceTileType": "Ore",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 2,
+          "r": -2,
           "s": 0
         },
         "number": 7,
@@ -290,130 +470,20 @@
       },
       {
         "tileKey": {
-          "q": -2,
-          "r": 3,
-          "s": -1
-        },
-        "number": 5,
-        "resourceTileType": "Brick",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": -1,
+          "q": 2,
           "r": -1,
-          "s": 2
-        },
-        "number": 4,
-        "resourceTileType": "Ore",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": -1,
-          "r": 0,
-          "s": 1
-        },
-        "number": 6,
-        "resourceTileType": "Sheep",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": -1,
-          "r": 1,
-          "s": 0
-        },
-        "number": 2,
-        "resourceTileType": "Wheat",
-        "highlighted": false,
-        "temporarilyGold": true
-      },
-      {
-        "tileKey": {
-          "q": -1,
-          "r": 2,
           "s": -1
         },
         "number": 10,
-        "resourceTileType": "Wood",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": -1,
-          "r": 3,
-          "s": -2
-        },
-        "number": 8,
-        "resourceTileType": "Brick",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 0,
-          "r": -2,
-          "s": 2
-        },
-        "number": 5,
         "resourceTileType": "Wheat",
         "highlighted": false,
         "temporarilyGold": false
       },
       {
         "tileKey": {
-          "q": 0,
-          "r": -1,
-          "s": 1
-        },
-        "number": 11,
-        "resourceTileType": "Ore",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 0,
+          "q": 2,
           "r": 0,
-          "s": 0
-        },
-        "number": 9,
-        "resourceTileType": "Wheat",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 0,
-          "r": 1,
-          "s": -1
-        },
-        "number": 10,
-        "resourceTileType": "Sheep",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 0,
-          "r": 2,
           "s": -2
-        },
-        "number": 4,
-        "resourceTileType": "Wood",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 0,
-          "r": 3,
-          "s": -3
         },
         "number": 9,
         "resourceTileType": "Ore",
@@ -422,100 +492,12 @@
       },
       {
         "tileKey": {
-          "q": 1,
-          "r": -2,
-          "s": 1
-        },
-        "number": 3,
-        "resourceTileType": "Wood",
-        "highlighted": true,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 1,
-          "r": -1,
-          "s": 0
+          "q": 2,
+          "r": 1,
+          "s": -3
         },
         "number": 6,
-        "resourceTileType": "Sheep",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 1,
-          "r": 0,
-          "s": -1
-        },
-        "number": 10,
-        "resourceTileType": "Ore",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 1,
-          "r": 1,
-          "s": -2
-        },
-        "number": 11,
-        "resourceTileType": "Wheat",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 1,
-          "r": 2,
-          "s": -3
-        },
-        "number": 8,
-        "resourceTileType": "Wheat",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 2,
-          "r": -2,
-          "s": 0
-        },
-        "number": 12,
-        "resourceTileType": "Brick",
-        "highlighted": false,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 2,
-          "r": -1,
-          "s": -1
-        },
-        "number": 3,
-        "resourceTileType": "Brick",
-        "highlighted": true,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 2,
-          "r": 0,
-          "s": -2
-        },
-        "number": 3,
-        "resourceTileType": "Brick",
-        "highlighted": true,
-        "temporarilyGold": false
-      },
-      {
-        "tileKey": {
-          "q": 2,
-          "r": 1,
-          "s": -3
-        },
-        "number": 2,
-        "resourceTileType": "Sheep",
+        "resourceTileType": "Wood",
         "highlighted": false,
         "temporarilyGold": false
       },
@@ -525,7 +507,7 @@
           "r": -2,
           "s": -1
         },
-        "number": 11,
+        "number": 9,
         "resourceTileType": "Wood",
         "highlighted": false,
         "temporarilyGold": false
@@ -536,8 +518,8 @@
           "r": -1,
           "s": -2
         },
-        "number": 7,
-        "resourceTileType": "Desert",
+        "number": 8,
+        "resourceTileType": "Brick",
         "highlighted": false,
         "temporarilyGold": false
       },
@@ -547,8 +529,8 @@
           "r": 0,
           "s": -3
         },
-        "number": 8,
-        "resourceTileType": "Sheep",
+        "number": 11,
+        "resourceTileType": "Brick",
         "highlighted": false,
         "temporarilyGold": false
       }
@@ -563,10 +545,10 @@
           },
           "position": "Right"
         },
-        "buildingState": "Settlement",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
-        "ownerId": "Joe-001",
+        "ownerId": null,
         "hasRobber": false
       },
       {
@@ -578,7 +560,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -593,7 +575,7 @@
           },
           "position": "BottomLeft"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -608,7 +590,7 @@
           },
           "position": "Left"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -623,7 +605,7 @@
           },
           "position": "TopLeft"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -638,7 +620,7 @@
           },
           "position": "TopRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -653,10 +635,10 @@
           },
           "position": "Right"
         },
-        "buildingState": "Settlement",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
-        "ownerId": "Dodgy-001",
+        "ownerId": null,
         "hasRobber": false
       },
       {
@@ -668,7 +650,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -683,7 +665,7 @@
           },
           "position": "BottomLeft"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -698,7 +680,7 @@
           },
           "position": "Left"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -713,10 +695,10 @@
           },
           "position": "Right"
         },
-        "buildingState": "Settlement",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
-        "ownerId": "Doug-001",
+        "ownerId": null,
         "hasRobber": false
       },
       {
@@ -728,7 +710,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -743,7 +725,7 @@
           },
           "position": "BottomLeft"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -758,7 +740,7 @@
           },
           "position": "Left"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -773,10 +755,10 @@
           },
           "position": "Right"
         },
-        "buildingState": "City",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
-        "ownerId": "Doug-001",
+        "ownerId": null,
         "hasRobber": false
       },
       {
@@ -788,7 +770,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -803,7 +785,7 @@
           },
           "position": "TopLeft"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -818,7 +800,7 @@
           },
           "position": "TopRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -833,10 +815,10 @@
           },
           "position": "Right"
         },
-        "buildingState": "Settlement",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
-        "ownerId": "Dodgy-001",
+        "ownerId": null,
         "hasRobber": false
       },
       {
@@ -848,7 +830,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -863,10 +845,10 @@
           },
           "position": "Right"
         },
-        "buildingState": "Settlement",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
-        "ownerId": "Joe-001",
+        "ownerId": null,
         "hasRobber": false
       },
       {
@@ -878,7 +860,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -893,7 +875,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -908,7 +890,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -923,7 +905,7 @@
           },
           "position": "BottomLeft"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -938,7 +920,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -953,7 +935,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -968,7 +950,7 @@
           },
           "position": "TopLeft"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -983,7 +965,7 @@
           },
           "position": "TopRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -998,7 +980,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1013,7 +995,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1028,10 +1010,10 @@
           },
           "position": "Right"
         },
-        "buildingState": "Settlement",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
-        "ownerId": "Dodgy-001",
+        "ownerId": null,
         "hasRobber": false
       },
       {
@@ -1043,7 +1025,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1058,7 +1040,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1073,7 +1055,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1088,7 +1070,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1103,7 +1085,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1118,7 +1100,7 @@
           },
           "position": "BottomLeft"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1133,7 +1115,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1148,7 +1130,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1163,7 +1145,7 @@
           },
           "position": "TopLeft"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1178,7 +1160,7 @@
           },
           "position": "TopRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1193,7 +1175,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1208,7 +1190,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1223,7 +1205,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1238,7 +1220,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1253,7 +1235,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1268,7 +1250,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1283,7 +1265,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1298,7 +1280,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1313,7 +1295,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1328,7 +1310,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1343,7 +1325,7 @@
           },
           "position": "BottomLeft"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1358,7 +1340,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1373,7 +1355,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1388,7 +1370,7 @@
           },
           "position": "TopRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1403,7 +1385,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1418,7 +1400,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1433,7 +1415,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1448,7 +1430,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1463,7 +1445,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1478,7 +1460,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1493,7 +1475,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1508,7 +1490,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1523,7 +1505,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1538,7 +1520,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1553,7 +1535,7 @@
           },
           "position": "TopRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1568,7 +1550,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1583,7 +1565,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1598,7 +1580,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1613,7 +1595,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1628,7 +1610,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1643,7 +1625,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1658,7 +1640,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1673,7 +1655,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1688,7 +1670,7 @@
           },
           "position": "TopRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1703,7 +1685,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1718,7 +1700,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1733,7 +1715,7 @@
           },
           "position": "Right"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -1748,7 +1730,7 @@
           },
           "position": "BottomRight"
         },
-        "buildingState": "NotBuildable",
+        "buildingState": "PossibleSettlement",
         "wall": false,
         "metropolis": false,
         "ownerId": null,
@@ -2012,8 +1994,8 @@
           },
           "hexSide": "Bottom"
         },
-        "roadState": "Road",
-        "ownerId": "Joe-001",
+        "roadState": "Unowned",
+        "ownerId": null,
         "buildIndex": 0
       },
       {
@@ -2064,8 +2046,8 @@
           },
           "hexSide": "Bottom"
         },
-        "roadState": "Road",
-        "ownerId": "Dodgy-001",
+        "roadState": "Unowned",
+        "ownerId": null,
         "buildIndex": 0
       },
       {
@@ -2103,8 +2085,8 @@
           },
           "hexSide": "Bottom"
         },
-        "roadState": "Road",
-        "ownerId": "Doug-001",
+        "roadState": "Unowned",
+        "ownerId": null,
         "buildIndex": 0
       },
       {
@@ -2194,8 +2176,8 @@
           },
           "hexSide": "BottomRight"
         },
-        "roadState": "Road",
-        "ownerId": "Doug-001",
+        "roadState": "Unowned",
+        "ownerId": null,
         "buildIndex": 0
       },
       {
@@ -2207,8 +2189,8 @@
           },
           "hexSide": "Bottom"
         },
-        "roadState": "Road",
-        "ownerId": "Doug-001",
+        "roadState": "Unowned",
+        "ownerId": null,
         "buildIndex": 0
       },
       {
@@ -2259,8 +2241,8 @@
           },
           "hexSide": "Bottom"
         },
-        "roadState": "Road",
-        "ownerId": "Dodgy-001",
+        "roadState": "Unowned",
+        "ownerId": null,
         "buildIndex": 0
       },
       {
@@ -2272,8 +2254,8 @@
           },
           "hexSide": "TopRight"
         },
-        "roadState": "Road",
-        "ownerId": "Dodgy-001",
+        "roadState": "Unowned",
+        "ownerId": null,
         "buildIndex": 0
       },
       {
@@ -2298,8 +2280,8 @@
           },
           "hexSide": "Bottom"
         },
-        "roadState": "Road",
-        "ownerId": "Joe-001",
+        "roadState": "Unowned",
+        "ownerId": null,
         "buildIndex": 0
       },
       {
@@ -3218,7 +3200,7 @@
             "r": 3,
             "s": -2
           },
-          "harborType": "Brick",
+          "harborType": "Wood",
           "side": "Bottom"
         },
         "owner": null
@@ -3242,7 +3224,7 @@
             "r": -2,
             "s": 1
           },
-          "harborType": "Sheep",
+          "harborType": "ThreeForOne",
           "side": "TopRight"
         },
         "owner": null
@@ -3254,7 +3236,7 @@
             "r": 2,
             "s": -3
           },
-          "harborType": "Ore",
+          "harborType": "Sheep",
           "side": "Bottom"
         },
         "owner": null
@@ -3278,7 +3260,7 @@
             "r": 1,
             "s": -3
           },
-          "harborType": "ThreeForOne",
+          "harborType": "Ore",
           "side": "Bottom"
         },
         "owner": null
@@ -3290,7 +3272,7 @@
             "r": -1,
             "s": -2
           },
-          "harborType": "Wood",
+          "harborType": "Brick",
           "side": "TopRight"
         },
         "owner": null
@@ -3333,21 +3315,16 @@
       "minPlayers": 3,
       "maxPlayers": 6
     },
-    "currentPlayerId": "Dodgy-001",
+    "currentPlayerId": "Joe-001",
     "gameId": "",
-    "createdTime": "2025-08-20T23:42:01.1824814Z",
+    "createdTime": "2025-08-26T02:19:43.7314925Z",
     "gameStateMachineVersion": 1,
     "rollModel": {
-      "turnRollModel": {
-        "redRoll": 0,
-        "whiteRoll": 0,
-        "specialDice": "None",
-        "normalRoll": 0
-      },
+      "turnRollModel": null,
       "gameRollModel": {
         "rollCounts": [
           0,
-          1,
+          0,
           0,
           0,
           0,
@@ -3358,10 +3335,10 @@
           0,
           0
         ],
-        "totalRolls": 1
+        "totalRolls": 0
       }
     },
-    "nextPlayerToRollAfterSupplemental": "Dodgy-001",
+    "nextPlayerToRollAfterSupplemental": "",
     "gameResourcesModel": {
       "brick": 0,
       "goldMine": 0,
@@ -3383,198 +3360,674 @@
   },
   "actionStack": [
     {
-      "type": "roll",
-      "expectedGameHash": "F4856CAF0",
-      "expectedGameState": "WaitingForRoll",
-      "roll": {
-        "redRoll": 6,
-        "whiteRoll": 0,
-        "specialDice": "None",
-        "normalRoll": "Six"
+      "type": "shuffleRecord",
+      "expectedGameHash": "26276BBD",
+      "expectedGameState": "PickingBoard"
+    },
+    {
+      "type": "shuffleRecord",
+      "expectedGameHash": "262790F9",
+      "expectedGameState": "PickingBoard"
+    },
+    {
+      "type": "shuffleRecord",
+      "expectedGameHash": "26279AD5",
+      "expectedGameState": "PickingBoard"
+    },
+    {
+      "type": "executeGameActionRecord",
+      "expectedGameHash": "26279CCD",
+      "expectedGameState": "PickingBoard",
+      "action": "Next"
+    },
+    {
+      "type": "executeGameActionRecord",
+      "expectedGameHash": "2627B368",
+      "expectedGameState": "WaitingForRollForOrder",
+      "action": "Next"
+    },
+    {
+      "type": "goFirst",
+      "expectedGameHash": "2627CA03",
+      "expectedGameState": "FinishedRollOrder",
+      "playerId": "Dodgy-001"
+    },
+    {
+      "type": "executeGameActionRecord",
+      "expectedGameHash": "F5F116AE0",
+      "expectedGameState": "FinishedRollOrder",
+      "action": "Next"
+    },
+    {
+      "type": "executeGameActionRecord",
+      "expectedGameHash": "F5F111074",
+      "expectedGameState": "BeginResourceAllocation",
+      "action": "Next"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "E27A165F",
+      "expectedGameState": "AllocateResourceForward",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -1,
+          "r": 3,
+          "s": -2
+        },
+        "position": "BottomRight"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "9DA19597",
+      "expectedGameState": "AllocateResourceForward",
+      "roadKey": {
+        "tileKey": {
+          "q": 0,
+          "r": 3,
+          "s": -3
+        },
+        "hexSide": "BottomLeft"
       }
     },
     {
       "type": "executeGameActionRecord",
-      "expectedGameHash": "F4856E18B",
+      "expectedGameHash": "7A590DB",
+      "expectedGameState": "AllocateResourceForward",
+      "action": "Next"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "4B0C75DF",
+      "expectedGameState": "AllocateResourceForward",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -3,
+          "r": 3,
+          "s": 0
+        },
+        "position": "Right"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "0E2E8149E",
+      "expectedGameState": "AllocateResourceForward",
+      "roadKey": {
+        "tileKey": {
+          "q": -3,
+          "r": 3,
+          "s": 0
+        },
+        "hexSide": "TopRight"
+      }
+    },
+    {
+      "type": "executeGameActionRecord",
+      "expectedGameHash": "3489FD37",
+      "expectedGameState": "AllocateResourceForward",
+      "action": "Next"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "503B43EA",
+      "expectedGameState": "AllocateResourceForward",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": 0,
+          "r": 1,
+          "s": -1
+        },
+        "position": "BottomRight"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "415550CA",
+      "expectedGameState": "AllocateResourceForward",
+      "roadKey": {
+        "tileKey": {
+          "q": 0,
+          "r": 2,
+          "s": -2
+        },
+        "hexSide": "TopRight"
+      }
+    },
+    {
+      "type": "executeGameActionRecord",
+      "expectedGameHash": "A8AA6A9C",
+      "expectedGameState": "AllocateResourceForward",
+      "action": "Next"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "F4703B725",
+      "expectedGameState": "AllocateResourceReverse",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": 2,
+          "r": -1,
+          "s": -1
+        },
+        "position": "Right"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "1013429C4",
+      "expectedGameState": "AllocateResourceReverse",
+      "roadKey": {
+        "tileKey": {
+          "q": 2,
+          "r": -1,
+          "s": -1
+        },
+        "hexSide": "BottomRight"
+      }
+    },
+    {
+      "type": "executeGameActionRecord",
+      "expectedGameHash": "0B78A4E09",
+      "expectedGameState": "AllocateResourceReverse",
+      "action": "Next"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "0D8D6E25E",
+      "expectedGameState": "AllocateResourceReverse",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -1,
+          "r": 0,
+          "s": 1
+        },
+        "position": "BottomRight"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "13ABE2678",
+      "expectedGameState": "AllocateResourceReverse",
+      "roadKey": {
+        "tileKey": {
+          "q": -1,
+          "r": 0,
+          "s": 1
+        },
+        "hexSide": "Bottom"
+      }
+    },
+    {
+      "type": "executeGameActionRecord",
+      "expectedGameHash": "475DA724",
+      "expectedGameState": "AllocateResourceReverse",
+      "action": "Next"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "EEDC8401E",
+      "expectedGameState": "AllocateResourceReverse",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": 0,
+          "r": 3,
+          "s": -3
+        },
+        "position": "BottomRight"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "F78B67F01",
+      "expectedGameState": "AllocateResourceReverse",
+      "roadKey": {
+        "tileKey": {
+          "q": 0,
+          "r": 3,
+          "s": -3
+        },
+        "hexSide": "Bottom"
+      }
+    },
+    {
+      "type": "executeGameActionRecord",
+      "expectedGameHash": "5007012",
+      "expectedGameState": "AllocateResourceReverse",
+      "action": "Next"
+    },
+    {
+      "type": "executeGameActionRecord",
+      "expectedGameHash": "50086AD",
+      "expectedGameState": "DoneResourceAllocation",
+      "action": "Next"
+    },
+    {
+      "type": "roll",
+      "expectedGameHash": "5009D48",
+      "expectedGameState": "WaitingForRoll",
+      "roll": {
+        "redRoll": 8,
+        "whiteRoll": 0,
+        "specialDice": "None",
+        "normalRoll": "Eight"
+      }
+    },
+    {
+      "type": "executeGameActionRecord",
+      "expectedGameHash": "500B3E3",
       "expectedGameState": "WaitingForNext",
       "action": "Next"
     },
     {
       "type": "participatingInSupplemental",
-      "expectedGameHash": "F48586A34",
-      "expectedGameState": "PickSupplementalPlayers",
-      "playerId": "Dodgy-001",
-      "participating": false
-    },
-    {
-      "type": "participatingInSupplemental",
-      "expectedGameHash": "F48586A34",
+      "expectedGameHash": "5026164",
       "expectedGameState": "PickSupplementalPlayers",
       "playerId": "Doug-001",
-      "participating": false
+      "participating": true
     },
     {
       "type": "participatingInSupplemental",
-      "expectedGameHash": "F48586A34",
+      "expectedGameHash": "5027413",
       "expectedGameState": "PickSupplementalPlayers",
       "playerId": "Joe-001",
       "participating": true
     },
     {
-      "type": "participatingInSupplemental",
-      "expectedGameHash": "F48587C75",
-      "expectedGameState": "PickSupplementalPlayers",
-      "playerId": "Doug-001",
-      "participating": true
-    },
-    {
       "type": "executeGameActionRecord",
-      "expectedGameHash": "F48588ED4",
+      "expectedGameHash": "5028690",
       "expectedGameState": "PickSupplementalPlayers",
       "action": "Next"
     },
     {
       "type": "purchase",
-      "expectedGameHash": "CCB29DEC",
+      "expectedGameHash": "0895C95A8",
       "expectedGameState": "Supplemental",
       "entitlement": "Road"
     },
     {
+      "type": "roadPurchase",
+      "expectedGameHash": "7618299B",
+      "expectedGameState": "Supplemental",
+      "roadKey": {
+        "tileKey": {
+          "q": -2,
+          "r": 1,
+          "s": 1
+        },
+        "hexSide": "BottomRight"
+      }
+    },
+    {
       "type": "purchase",
-      "expectedGameHash": "6FD19517",
+      "expectedGameHash": "8965E23B",
       "expectedGameState": "Supplemental",
       "entitlement": "Settlement"
     },
     {
       "type": "buildingUpgrade",
-      "expectedGameHash": "B3257F4",
+      "expectedGameHash": "97593FFE",
       "expectedGameState": "Supplemental",
       "buildingKey": {
         "hexCoordinates": {
-          "q": -1,
-          "r": -1,
-          "s": 2
+          "q": -2,
+          "r": 1,
+          "s": 1
         },
-        "position": "Right"
+        "position": "BottomRight"
       }
     },
     {
       "type": "purchase",
-      "expectedGameHash": "1DC648CC7",
+      "expectedGameHash": "0B6C9D492",
       "expectedGameState": "Supplemental",
       "entitlement": "Road"
     },
     {
       "type": "roadPurchase",
-      "expectedGameHash": "124AA2D04",
+      "expectedGameHash": "3DC0C5F3",
       "expectedGameState": "Supplemental",
       "roadKey": {
         "tileKey": {
-          "q": 0,
-          "r": -2,
-          "s": 2
+          "q": -3,
+          "r": 2,
+          "s": 1
+        },
+        "hexSide": "BottomRight"
+      }
+    },
+    {
+      "type": "purchase",
+      "expectedGameHash": "F0F6238C6",
+      "expectedGameState": "Supplemental",
+      "entitlement": "Road"
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "B2812FF1",
+      "expectedGameState": "Supplemental",
+      "roadKey": {
+        "tileKey": {
+          "q": -2,
+          "r": 1,
+          "s": 1
         },
         "hexSide": "Bottom"
       }
     },
     {
+      "type": "purchase",
+      "expectedGameHash": "A452863",
+      "expectedGameState": "Supplemental",
+      "entitlement": "Road"
+    },
+    {
+      "type": "purchase",
+      "expectedGameHash": "85A60FC2",
+      "expectedGameState": "Supplemental",
+      "entitlement": "Road"
+    },
+    {
       "type": "roadPurchase",
-      "expectedGameHash": "E6EAB4D6",
+      "expectedGameHash": "BD0DBD7",
       "expectedGameState": "Supplemental",
       "roadKey": {
         "tileKey": {
-          "q": 0,
-          "r": -1,
+          "q": -3,
+          "r": 2,
           "s": 1
         },
         "hexSide": "TopRight"
       }
     },
     {
+      "type": "roadPurchase",
+      "expectedGameHash": "E09B0258A",
+      "expectedGameState": "Supplemental",
+      "roadKey": {
+        "tileKey": {
+          "q": -2,
+          "r": 2,
+          "s": 0
+        },
+        "hexSide": "Bottom"
+      }
+    },
+    {
       "type": "purchase",
-      "expectedGameHash": "DE76551B",
+      "expectedGameHash": "DC762143C",
+      "expectedGameState": "Supplemental",
+      "entitlement": "Settlement"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "EEDA42785",
+      "expectedGameState": "Supplemental",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -3,
+          "r": 1,
+          "s": 2
+        },
+        "position": "BottomRight"
+      }
+    },
+    {
+      "type": "purchase",
+      "expectedGameHash": "E0212E244",
       "expectedGameState": "Supplemental",
       "entitlement": "Road"
     },
     {
       "type": "roadPurchase",
-      "expectedGameHash": "574E9CAA",
+      "expectedGameHash": "DDE92F619",
+      "expectedGameState": "Supplemental",
+      "roadKey": {
+        "tileKey": {
+          "q": -2,
+          "r": 2,
+          "s": 0
+        },
+        "hexSide": "BottomRight"
+      }
+    },
+    {
+      "type": "purchase",
+      "expectedGameHash": "F53EDFA68",
+      "expectedGameState": "Supplemental",
+      "entitlement": "Road"
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "DB7590CB",
+      "expectedGameState": "Supplemental",
+      "roadKey": {
+        "tileKey": {
+          "q": -2,
+          "r": 2,
+          "s": 0
+        },
+        "hexSide": "TopRight"
+      }
+    },
+    {
+      "type": "purchase",
+      "expectedGameHash": "E65E9EF61",
+      "expectedGameState": "Supplemental",
+      "entitlement": "City"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "F319DCC1D",
+      "expectedGameState": "Supplemental",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -2,
+          "r": 1,
+          "s": 1
+        },
+        "position": "BottomRight"
+      }
+    },
+    {
+      "type": "executeGameActionRecord",
+      "expectedGameHash": "E65EA0210",
+      "expectedGameState": "Supplemental",
+      "action": "Next"
+    },
+    {
+      "type": "purchase",
+      "expectedGameHash": "EA8A4CD24",
+      "expectedGameState": "Supplemental",
+      "entitlement": "Road"
+    },
+    {
+      "type": "purchase",
+      "expectedGameHash": "F1330065C",
+      "expectedGameState": "Supplemental",
+      "entitlement": "Road"
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "F2C16300C",
+      "expectedGameState": "Supplemental",
+      "roadKey": {
+        "tileKey": {
+          "q": 2,
+          "r": -1,
+          "s": -1
+        },
+        "hexSide": "Bottom"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "DDA2CB93",
       "expectedGameState": "Supplemental",
       "roadKey": {
         "tileKey": {
           "q": 1,
-          "r": -2,
-          "s": 1
+          "r": 0,
+          "s": -1
         },
-        "hexSide": "Bottom"
+        "hexSide": "BottomRight"
       }
     },
     {
-      "type": "executeGameActionRecord",
-      "expectedGameHash": "8E81D8E",
-      "expectedGameState": "Supplemental",
-      "action": "Next"
-    },
-    {
       "type": "purchase",
-      "expectedGameHash": "3BA2E8D0",
+      "expectedGameHash": "F6437F6CB",
       "expectedGameState": "Supplemental",
       "entitlement": "Road"
     },
     {
       "type": "roadPurchase",
-      "expectedGameHash": "CE89148",
+      "expectedGameHash": "EF50B073B",
       "expectedGameState": "Supplemental",
       "roadKey": {
         "tileKey": {
-          "q": -1,
-          "r": 2,
+          "q": 1,
+          "r": 0,
           "s": -1
         },
-        "hexSide": "TopRight"
+        "hexSide": "Bottom"
       }
     },
     {
       "type": "purchase",
-      "expectedGameHash": "0D0D95EA9",
+      "expectedGameHash": "E4A7694D6",
       "expectedGameState": "Supplemental",
       "entitlement": "Settlement"
     },
     {
       "type": "buildingUpgrade",
-      "expectedGameHash": "09D2FB5DF",
+      "expectedGameHash": "E94B5457C",
       "expectedGameState": "Supplemental",
       "buildingKey": {
         "hexCoordinates": {
-          "q": -1,
-          "r": 2,
+          "q": 1,
+          "r": 0,
           "s": -1
         },
         "position": "Right"
       }
     },
     {
+      "type": "purchase",
+      "expectedGameHash": "EAAEB1B0E",
+      "expectedGameState": "Supplemental",
+      "entitlement": "Road"
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "E935EACEE",
+      "expectedGameState": "Supplemental",
+      "roadKey": {
+        "tileKey": {
+          "q": 0,
+          "r": 1,
+          "s": -1
+        },
+        "hexSide": "BottomRight"
+      }
+    },
+    {
+      "type": "purchase",
+      "expectedGameHash": "14C7B9848",
+      "expectedGameState": "Supplemental",
+      "entitlement": "Road"
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "1ACDC10D0",
+      "expectedGameState": "Supplemental",
+      "roadKey": {
+        "tileKey": {
+          "q": 1,
+          "r": 1,
+          "s": -2
+        },
+        "hexSide": "Bottom"
+      }
+    },
+    {
+      "type": "purchase",
+      "expectedGameHash": "86E62EF",
+      "expectedGameState": "Supplemental",
+      "entitlement": "Settlement"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "123A7C3D",
+      "expectedGameState": "Supplemental",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": 1,
+          "r": 1,
+          "s": -2
+        },
+        "position": "BottomRight"
+      }
+    },
+    {
+      "type": "purchase",
+      "expectedGameHash": "0AB16840",
+      "expectedGameState": "Supplemental",
+      "entitlement": "City"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "C2B2511F",
+      "expectedGameState": "Supplemental",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": 2,
+          "r": -1,
+          "s": -1
+        },
+        "position": "Right"
+      }
+    },
+    {
+      "type": "purchase",
+      "expectedGameHash": "0AB179DB",
+      "expectedGameState": "Supplemental",
+      "entitlement": "City"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "C2B262BA",
+      "expectedGameState": "Supplemental",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": 0,
+          "r": 1,
+          "s": -1
+        },
+        "position": "BottomRight"
+      }
+    },
+    {
       "type": "executeGameActionRecord",
-      "expectedGameHash": "13117E879",
+      "expectedGameHash": "0AB18BD6",
       "expectedGameState": "Supplemental",
       "action": "Next"
     },
     {
       "type": "purchase",
-      "expectedGameHash": "0EE5D021E",
+      "expectedGameHash": "C7F6A57B",
       "expectedGameState": "WaitingForRoll",
       "entitlement": "Soldier"
     },
     {
       "type": "moveRobber",
-      "expectedGameHash": "1A254A3CE",
+      "expectedGameHash": "D6D25E3F",
       "expectedGameState": "MustMoveRobber",
       "coordinates": {
         "q": 0,
-        "r": 0,
-        "s": 0
+        "r": 3,
+        "s": -3
       },
-      "targetPlayerId": "Dodgy-001"
+      "targetPlayerId": null
     }
   ]
 }

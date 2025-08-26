@@ -236,6 +236,7 @@ namespace Catan3.GameState
             }
         }
 
+
         /// <summary>
         /// Handles LoadGameMessage from the UI to load a saved game.
         /// Delegates to GameStateMachine and sends the result back to the UI.

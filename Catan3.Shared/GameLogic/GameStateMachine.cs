@@ -39,15 +39,10 @@
  * - Interface Segregation: Clean IGameStateMachine interface for dependency injection
  */
 
-using Catan.Services;
-using Catan3.Models;
 using Catan3.Shared.Extensions;
 using Catan3.Shared.Interfaces;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
-using Catan3.Utility;
-using CommunityToolkit.WinUI;
-using Microsoft.UI.Dispatching;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -56,34 +51,70 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Tasks;
-namespace Catan3.GameState
+namespace Catan3.Shared.GameLogic
 {
     public class GameStateMachine : IGameStateMachine
     {
         /// <summary>
         /// The game state log that manages undo/redo functionality and persistence.
         /// </summary>
-        private Log<string> Log;
+        private readonly IGameLog _gameLog;
 
         /// <summary>
         /// Service for persisting game state to storage.
         /// </summary>
-        private IPersistenceService? MyPersistenceService { get; set; }
+        private readonly IPersistenceService _persistenceService;
+
+        /// <summary>
+        /// Logger for tracing and debugging game operations.
+        /// </summary>
+        private readonly IGameLogger _logger;
+
+        /// <summary>
+        /// Factory for creating game recorders.
+        /// </summary>
+        private readonly IGameRecorderFactory _recorderFactory;
+
+        /// <summary>
+        /// Factory for creating games and shuffling content.
+        /// </summary>
+        private readonly IGameFactory _gameFactory;
 
         /// <summary>
         /// Optional recorder for capturing game actions for replay functionality.
         /// </summary>
-        private GameRecorder? _recorder = null;
+        private IGameRecorder? _recorder = null;
 
         /// <summary>
-        /// Initializes a new GameStateMachine with persistence and logging capabilities.
+        /// Initializes a new GameStateMachine with dependency injection.
         /// </summary>
-        /// <param name="PersistenceService">Service for saving/loading game state. Can be null for in-memory only.</param>
-        /// <param name="localSaveFile">Path to the local save file for this game session.</param>
-        public GameStateMachine(IPersistenceService? PersistenceService, string localSaveFile)
+        /// <param name="gameLog">Service for managing game state history and persistence.</param>
+        /// <param name="gameLogger">Logger for tracing game operations.</param>
+        /// <param name="recorderFactory">Factory for creating game recorders.</param>
+        /// <param name="persistenceService">Service for saving/loading game state.</param>
+        /// <param name="gameFactory">Factory for creating games and shuffling content.</param>
+        public GameStateMachine(
+            IGameLog gameLog,
+            IGameLogger gameLogger,
+            IGameRecorderFactory recorderFactory,
+            IPersistenceService persistenceService,
+            IGameFactory gameFactory)
         {
-            Log = new Log<string>(PersistenceService, localSaveFile);
-            MyPersistenceService = PersistenceService;
+            _gameLog = gameLog;
+            _logger = gameLogger;
+            _recorderFactory = recorderFactory;
+            _persistenceService = persistenceService;
+            _gameFactory = gameFactory;
+        }
+
+        /// <summary>
+        /// Gets the current game state from the game log.
+        /// Used by GameService for status queries and game listing.
+        /// </summary>
+        /// <returns>The current GameModel state.</returns>
+        public GameModel GetCurrentState()
+        {
+            return _gameLog.CurrentState();
         }
 
 
@@ -97,8 +128,8 @@ namespace Catan3.GameState
         /// <exception cref="InvalidOperationException">Thrown for unknown action types.</exception>
         public Task<GameModel> ExecuteGameActionAsync(ExecuteGameActionMessage message)
         {
-            var gameModel = Log.CopyCurrent();
-            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            var gameModel = _gameLog.CopyCurrent();
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             _recorder?.RecordAction(message.ToRecord(gameModel));
 
             gameModel = null;
@@ -133,8 +164,8 @@ namespace Catan3.GameState
         /// <exception cref="GameException">Thrown when shuffle cannot be performed.</exception>
         public Task<GameModel> HandleShuffleAsync(ShuffleMessage message)
         {
-            var gameModel = Log.CopyCurrent();
-            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            var gameModel = _gameLog.CopyCurrent();
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             _recorder?.RecordAction(message.ToRecord(gameModel));
 
             gameModel = ShuffleCurrentGame();
@@ -151,8 +182,8 @@ namespace Catan3.GameState
         /// <exception cref="GameException">Thrown when the upgrade is not valid.</exception>
         public Task<GameModel> HandleBuildingUpgradeAsync(BuildingUpgradeMessage message)
         {
-            var gameModel = Log.CopyCurrent();
-            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            var gameModel = _gameLog.CopyCurrent();
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             _recorder?.RecordAction(message.ToRecord(gameModel));
 
             gameModel = BuildingUpgrade(message);
@@ -169,8 +200,8 @@ namespace Catan3.GameState
         /// <exception cref="GameException">Thrown when player order is invalid.</exception>
         public Task<GameModel> HandleSetPlayerOrderAsync(SetPlayerOrderMessage message)
         {
-            var gameModel = Log.CopyCurrent();
-            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            var gameModel = _gameLog.CopyCurrent();
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             _recorder?.RecordAction(message.ToRecord(gameModel));
 
             gameModel = SetPlayerOrder(message.PlayerIds);
@@ -187,8 +218,8 @@ namespace Catan3.GameState
         /// <exception cref="GameException">Thrown when road placement is not valid.</exception>
         public Task<GameModel> HandleRoadPurchaseAsync(RoadPurchaseMessage message)
         {
-            var gameModel = Log.CopyCurrent();
-            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            var gameModel = _gameLog.CopyCurrent();
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             _recorder?.RecordAction(message.ToRecord(gameModel));
 
             var model = RoadPurchase(message);
@@ -205,8 +236,8 @@ namespace Catan3.GameState
         /// <exception cref="GameException">Thrown when robber movement is not valid.</exception>
         public Task<GameModel> HandleMoveRobberAsync(MoveRobberMessage message)
         {
-            var gameModel = Log.CopyCurrent();
-            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            var gameModel = _gameLog.CopyCurrent();
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             _recorder?.RecordAction(message.ToRecord(gameModel));
 
             var model = MoveRobber(message);
@@ -225,7 +256,7 @@ namespace Catan3.GameState
         {
             var gameModel = NewGame(message.GameType, message.PlayerIds);
             LogGameModel(gameModel);
-            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             return Task.FromResult(gameModel);
         }
 
@@ -238,9 +269,9 @@ namespace Catan3.GameState
         /// <exception cref="GameException">Thrown when file loading fails.</exception>
         public async Task<GameModel> HandleLoadGameAsync(LoadGameMessage message)
         {
-            this.TraceMessage($"LoadGameMessage received for: {message.LocalFile}");
+            _logger.Log(GameLogLevel.Trace, $"LoadGameMessage received for: {message.LocalFile}");
             var model = await LoadGame(message.LocalFile);
-            this.TraceMessage($"Game loaded successfully, sending UpdateGameModel");
+            _logger.Log(GameLogLevel.Trace, $"Game loaded successfully, sending UpdateGameModel");
             LogGameModel(model);
             return model;
         }
@@ -254,9 +285,9 @@ namespace Catan3.GameState
         /// <exception cref="Exception">Thrown when recording cannot be started.</exception>
         public Task HandleStartRecordingAsync(StartRecordingMessage message)
         {
-            this.TraceMessage($"[Message={message}]");
+            _logger.Log(GameLogLevel.Trace, $"[Message={message}]");
             StartRecording(message.OutputPath);
-            this.TraceMessage("✅ Recording started - all subsequent actions will be recorded");
+            _logger.Log(GameLogLevel.Trace, "✅ Recording started - all subsequent actions will be recorded");
             return Task.CompletedTask;
         }
 
@@ -267,11 +298,10 @@ namespace Catan3.GameState
         /// <param name="message">The stop recording request.</param>
         /// <returns>A completed task when recording has stopped and been saved.</returns>
         /// <exception cref="Exception">Thrown when recording cannot be stopped or saved.</exception>
-        public Task HandleStopRecordingAsync(StopRecordingMessage message)
+        public async Task HandleStopRecordingAsync(StopRecordingMessage message)
         {
-            var filePath = StopRecording();
-            this.TraceMessage($"✅ Recording stopped - saved to: {filePath}");
-            return Task.CompletedTask;
+            var filePath = await StopRecording();
+            _logger.Log(GameLogLevel.Trace, $"✅ Recording stopped - saved to: {filePath}");
         }
 
         /// <summary>
@@ -283,8 +313,8 @@ namespace Catan3.GameState
         /// <exception cref="GameException">Thrown when the roll cannot be processed.</exception>
         public Task<GameModel> HandleRollAsync(RollMessage message)
         {
-            var gameModel = Log.CopyCurrent();
-            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            var gameModel = _gameLog.CopyCurrent();
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             _recorder?.RecordAction(message.ToRecord(gameModel));
 
             var model = OnRoll(message);
@@ -301,8 +331,8 @@ namespace Catan3.GameState
         /// <exception cref="GameException">Thrown when the purchase is not valid.</exception>
         public Task<GameModel> HandlePurchaseAsync(PurchaseMessage message)
         {
-            var gameModel = Log.CopyCurrent();
-            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            var gameModel = _gameLog.CopyCurrent();
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             _recorder?.RecordAction(message.ToRecord(gameModel));
 
             var model = OnPurchase(message);
@@ -319,8 +349,8 @@ namespace Catan3.GameState
         /// <exception cref="GameException">Thrown when participation cannot be set.</exception>
         public Task<GameModel> HandleParticipatingInSupplementalAsync(ParticipatingInSupplementalMessage message)
         {
-            GameModel gameModel = Log.CopyCurrent();
-            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            GameModel gameModel = _gameLog.CopyCurrent();
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             if (gameModel.GameState != Shared.Models.GameState.PickSupplementalPlayers) 
             {
                 return Task.FromResult(gameModel);
@@ -333,7 +363,7 @@ namespace Catan3.GameState
             if (player is not null)
             {
                 player.ParticipatingInSupplemental = message.Participating;
-                this.TraceMessage($"Player {message.PlayerId} supplemental participation set to {message.Participating}");
+                _logger.Log(GameLogLevel.Trace, $"Player {message.PlayerId} supplemental participation set to {message.Participating}");
             }
 
             LogGameModel(gameModel); //undo puts us back to this state
@@ -349,8 +379,8 @@ namespace Catan3.GameState
         /// <exception cref="GameException">Thrown when board balancing fails.</exception>
         public Task<GameModel> HandleBalanceBoardAsync(BalanceBoardMessage message)
         {
-            GameModel gameModel = Log.CopyCurrent();
-            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            GameModel gameModel = _gameLog.CopyCurrent();
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             _recorder?.RecordAction(message.ToRecord(gameModel));
 
             if (BalanceBoard(gameModel))
@@ -368,7 +398,7 @@ namespace Catan3.GameState
         /// <returns>A completed task when game has been ended.</returns>
         public Task HandleEndGameAsync(EndGame message)
         {
-            this.Log.IsActive = false;
+            _gameLog.IsActive = false;
             return Task.CompletedTask;
         }
 
@@ -381,8 +411,8 @@ namespace Catan3.GameState
         /// <exception cref="GameException">Thrown when player reordering fails.</exception>
         public Task<GameModel> HandleGoFirstAsync(GoFirstMessage message)
         {
-            GameModel gameModel = Log.CopyCurrent();
-            this.TraceMessage($"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            GameModel gameModel = _gameLog.CopyCurrent();
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             if (gameModel.GameState != Shared.Models.GameState.FinishedRollOrder) 
             {
                 return Task.FromResult(gameModel);
@@ -412,10 +442,10 @@ namespace Catan3.GameState
             switch (message.Action)
             {
                 case LocalPersistActions.Save:
-                    await Log.SaveAsync();
+                    await _gameLog.SaveAsync();
                     break;
                 case LocalPersistActions.SaveAs:
-                    await Log.SaveAsAsync(message.Location);
+                    await _gameLog.SaveAsAsync(message.Location);
                     break;
                 case LocalPersistActions.Open:
                     break;
@@ -423,9 +453,9 @@ namespace Catan3.GameState
         }
         private GameModel OnPurchase(PurchaseMessage message)
         {
-            GameModel gameModel = Log.CopyCurrent();
+            GameModel gameModel = _gameLog.CopyCurrent();
             Entitlement entitlement = message.Entitlement;
-            this.TraceMessage($"🛡️ Processing purchase: {entitlement}");
+            _logger.Log(GameLogLevel.Trace, $"🛡️ Processing purchase: {entitlement}");
 
             if (entitlement == Entitlement.Soldier)
             {
@@ -434,7 +464,7 @@ namespace Catan3.GameState
                 // Remember the state we were in so we can return to it after moving the robber
                 gameModel.PreviousGameState = gameModel.GameState;
                 gameModel.GameState = Shared.Models.GameState.MustMoveRobber;
-                this.TraceMessage($"🔄 Soldier purchased - transitioning to MustMoveRobber state");
+                _logger.Log(GameLogLevel.Trace, $"🔄 Soldier purchased - transitioning to MustMoveRobber state");
             }
             else
             {
@@ -453,8 +483,8 @@ namespace Catan3.GameState
 
             ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.PickingBoard]);
 
-            ResourceCounterViewModel min = new(50, ResourceType.None);
-            ResourceCounterViewModel max = new(0, ResourceType.None);
+            ResourceCounterModel min = new(50, ResourceType.None);
+            ResourceCounterModel max = new(0, ResourceType.None);
 
             var resourceToCountDictionary = gameModel.Tiles.GroupBy(tile => tile.ResourceTileType)
             .ToDictionary(group => group.Key, group => group.Sum(tile => tile.Stars));
@@ -471,7 +501,7 @@ namespace Catan3.GameState
                                                             .OrderByDescending(t => t.Stars)
                                                             .ToList();
 
-            this.TraceMessage($"Min Tile: {minTile}");
+            _logger.Log(GameLogLevel.Trace, $"Min Tile: {minTile}");
 
             minTile.ResourceTileType = maxResourceType;
 
@@ -480,13 +510,13 @@ namespace Catan3.GameState
                 tile.ResourceTileType = minResourceType;
                 if (gameModel.ValidateGame())
                 {
-                    this.TraceMessage($"max Tile: {tile}");
+                    _logger.Log(GameLogLevel.Trace, $"max Tile: {tile}");
                     return true;
                 }
 
             }
 
-            this.TraceMessage("Unable to swap");
+            _logger.Log(GameLogLevel.Trace, "Unable to swap");
             minTile.ResourceTileType = minResourceType;
             return false;
         }
@@ -518,16 +548,16 @@ namespace Catan3.GameState
         }
         public GameModel NewGame(GameType selectedGame, IList<string> playerIds)
         {
-            var gameModel = GameFactory.CreateGame(selectedGame, playerIds);
+            var gameModel = _gameFactory.CreateGame(selectedGame, playerIds);
             
             // Set random seed for truly random new games (not deterministic)
             var random = new ReplayableRandom();
             gameModel.RandomSeed = random.Seed;
             
             // Shuffle the board with the new random seed
-            GameFactory.Shuffle(gameModel);
+            _gameFactory.Shuffle(gameModel);
             
-            Log.GameType = selectedGame;
+            _gameLog.GameType = selectedGame;
             gameModel.GameType = selectedGame;
             gameModel.GameState = Shared.Models.GameState.PickingBoard;
             return gameModel;
@@ -541,7 +571,7 @@ namespace Catan3.GameState
         /// <exception cref="GameException"></exception>
         public async Task<GameModel> LoadGame(string filePath)
         {
-            if (MyPersistenceService is null) throw new GameException("no Persistence service was set");
+            if (_persistenceService is null) throw new GameException("no Persistence service was set");
 
 
 
@@ -550,21 +580,28 @@ namespace Catan3.GameState
             {
                 try
                 {
-                    this.TraceMessage($"Reading .catan_test file: {filePath}");
+                    _logger.Log(GameLogLevel.Trace, $"Reading .catan_test file: {filePath}");
                     await using var fs = File.OpenRead(filePath);
-                    this.TraceMessage($"File size: {fs.Length} bytes");
+                    _logger.Log(GameLogLevel.Trace, $"File size: {fs.Length} bytes");
                     using var doc = await JsonDocument.ParseAsync(fs);
-                    this.TraceMessage("JSON parsed successfully");
+                    _logger.Log(GameLogLevel.Trace, "JSON parsed successfully");
 
                     if (doc.RootElement.TryGetProperty("gameModel", out var gmElem))
                     {
                         var gm = gmElem.Deserialize<GameModel>(Catan3.Shared.Utility.JsonHelper.StandardOptions) ?? throw new GameException("Error: Failed to load the game data.");
 
-                        Log<string> log = Log<string>.FromGameModel(gm, MyPersistenceService, filePath);
-                        log.InTestMode = true; // Prevent saving to avoid overwriting test files
-                        this.Log = log;
-                        this.TraceMessage("Set log to test mode - saves will be skipped");
-                        return Log.CurrentState();
+                        // CRITICAL: Initialize ReplayableRandom with saved seed for deterministic behavior
+                        // This ensures GameHash consistency during test replay
+                        if (gm.RandomSeed != 0)
+                        {
+                            _ = new ReplayableRandom(gm.RandomSeed, gm.RandomIterations);
+                            _logger.Log(GameLogLevel.Trace, $"Initialized ReplayableRandom with seed: {gm.RandomSeed}, iterations: {gm.RandomIterations}");
+                        }
+
+                        // Initialize the game log with the loaded GameModel
+                        _gameLog.Done(gm);
+                        _logger.Log(GameLogLevel.Trace, "Loaded .catan_test file and initialized game log");
+                        return _gameLog.CurrentState();
                     }
                     else
                     {
@@ -573,29 +610,33 @@ namespace Catan3.GameState
                 }
                 catch (JsonException jsonEx)
                 {
-                    this.TraceMessage($"JSON parsing failed for {filePath}: {jsonEx.Message}");
-                    this.TraceMessage($"JSON exception details: {jsonEx}");
+                    _logger.Log(GameLogLevel.Trace, $"JSON parsing failed for {filePath}: {jsonEx.Message}");
+                    _logger.Log(GameLogLevel.Trace, $"JSON exception details: {jsonEx}");
                     throw new GameException($"Invalid JSON format in .catan_test file {filePath}: {jsonEx.Message}");
                 }
                 catch (Exception ex)
                 {
-                    this.TraceMessage($"Unexpected error reading {filePath}: {ex.Message}");
-                    this.TraceMessage($"Exception details: {ex}");
+                    _logger.Log(GameLogLevel.Trace, $"Unexpected error reading {filePath}: {ex.Message}");
+                    _logger.Log(GameLogLevel.Trace, $"Exception details: {ex}");
                     throw new GameException($"Error reading .catan_test file {filePath}: {ex.Message}");
                 }
             }
             else
             {
-                var fileBytes = await MyPersistenceService.OpenAsync(filePath) ?? throw new GameException($"Unable to open file {filePath}");
+                var fileBytes = await _persistenceService.OpenAsync(filePath) ?? throw new GameException($"Unable to open file {filePath}");
 
-                var decompressedJson = SerializationHelper.Decompress(fileBytes);
-                // Deserialize the JSON back into your Log or relevant data structure
-                var savedLog = SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) ?? throw new GameException("Error: Failed to load the game data.");
-                Log<string> log = Log<string>.FromSerializableLog(savedLog, MyPersistenceService, filePath);
-                this.Log = log;
+                var decompressedJson = Catan3.Shared.Utility.SerializationHelper.Decompress(fileBytes);
+                
+                // Deserialize the JSON back into our SerializableLog structure
+                var savedLog = Catan3.Shared.Utility.SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson) 
+                    ?? throw new GameException("Error: Failed to load the game data.");
+                
+                // Load the saved log into our game log
+                _gameLog.LoadFromSerializableLog(savedLog);
+                _logger.Log(GameLogLevel.Trace, "Loaded .catan file and restored game log");
+                
+                return _gameLog.CurrentState();
             }
-
-            return Log.CurrentState();
 
 
         }
@@ -611,7 +652,7 @@ namespace Catan3.GameState
         /// <exception cref="GameException"></exception>
         private GameModel OnRoll(RollMessage msg)
         {
-            GameModel gameModel = Log.CopyCurrent();
+            GameModel gameModel = _gameLog.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.WaitingForRoll]);
             gameModel.RollModel.TurnRollModel = msg.Roll;
             // update the global counts for rolls
@@ -708,7 +749,7 @@ namespace Catan3.GameState
         /// <param name="gameModel"></param>
         private void SetActionFlags(GameModel gameModel)
         {
-            gameModel.ActionFlags.UndoEnabled = Log.CanUndo;
+            gameModel.ActionFlags.UndoEnabled = _gameLog.CanUndo;
             gameModel.ActionFlags.NextEnabled = AllowNext(gameModel);
             gameModel.ActionFlags.RollsEnabled = gameModel.GameState == Shared.Models.GameState.WaitingForRoll;
         }
@@ -749,7 +790,7 @@ namespace Catan3.GameState
         /// <exception cref="GameException">Thrown if an ID in playerIds does not correspond to any player in the game gameModel.</exception>
         private GameModel SetPlayerOrder(IList<string> playerIds)
         {
-            GameModel gameModel = Log.CopyCurrent();
+            GameModel gameModel = _gameLog.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.WaitingForRollForOrder, Shared.Models.GameState.FinishedRollOrder]);
             var playerLookup = gameModel.Players.ToDictionary(p => p.Id);
             // Using LINQ to order players according to playerIds
@@ -773,7 +814,7 @@ namespace Catan3.GameState
         /// <returns></returns>
         private GameModel NextState()
         {
-            GameModel gameModel = Log.CopyCurrent();
+            GameModel gameModel = _gameLog.CopyCurrent();
             if (!CanTransitionToNext(gameModel)) throw new GameException("Cannot transition to Next state at this time");
             switch (gameModel.GameState)
             {
@@ -1024,7 +1065,7 @@ namespace Catan3.GameState
         private GameModel RoadPurchase(RoadPurchaseMessage message)
         {
 
-            GameModel gameModel = Log.CopyCurrent();
+            GameModel gameModel = _gameLog.CopyCurrent();
             //   this.TraceMessage($"GameState: {gameModel.GameState} RoadPurchase: {message}");
             ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.WaitingForNext, Shared.Models.GameState.AllocateResourceForward, Shared.Models.GameState.AllocateResourceReverse, Shared.Models.GameState.Supplemental]);
             ThrowIfNoEntitlement(gameModel, [Entitlement.Road]);
@@ -1075,18 +1116,18 @@ namespace Catan3.GameState
 
 
             // this.TraceMessage($"GameState: {gameModel.GameState} OldHash={oldHash} newHash={gameModel.GameHash}");
-            Log.Done(gameModel);
+            _gameLog.Done(gameModel);
 
-            DispatcherQueue.GetForCurrentThread().EnqueueAsync(async () =>
+            _ = Task.Run(async () =>
             {
                 try
                 {
-                    await Log.SaveAsync();
+                    await _gameLog.SaveAsync();
                 }
                 catch (Exception ex)
                 {
                     // Handle the exception (e.g., log it, show a message to the user, etc.)
-                    this.TraceMessage($"Error saving log: {ex.Message}");
+                    _logger.Log(GameLogLevel.Trace, $"Error saving log: {ex.Message}");
                 }
             });
 
@@ -1140,7 +1181,7 @@ namespace Catan3.GameState
         /// or when trying to upgrade a building not owned by the current player.</exception>
         private GameModel BuildingUpgrade(BuildingUpgradeMessage message)
         {
-            GameModel gameModel = Log.CopyCurrent();
+            GameModel gameModel = _gameLog.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.WaitingForNext, Shared.Models.GameState.AllocateResourceForward, Shared.Models.GameState.AllocateResourceReverse, Shared.Models.GameState.Supplemental]);
             BuildingKey buildingKey = message.BuildingKey;
             var building = gameModel.Buildings.FindBuildingModel(buildingKey)
@@ -1149,7 +1190,7 @@ namespace Catan3.GameState
             {
                 throw new GameException($"{building} is not buildingable.");
             }
-            this.TraceMessage($"GameState: {gameModel.GameState} BuildingUpgrade: {building} in state {building.BuildingState} for player {gameModel.CurrentPlayerId}");
+            _logger.Log(GameLogLevel.Trace, $"GameState: {gameModel.GameState} BuildingUpgrade: {building} in state {building.BuildingState} for player {gameModel.CurrentPlayerId}");
             // Process the building upgrade based on its current state.
             switch (building.BuildingState)
             {
@@ -1168,7 +1209,7 @@ namespace Catan3.GameState
                         // set the PlayerModel to have owned this harbor
 
                         currentPlayer.OwnedHarbors.Add(adjacentHarbor.HarborKey);
-                        this.TraceMessage($"{adjacentHarbor} now owned by {currentPlayer}");
+                        _logger.Log(GameLogLevel.Trace, $"{adjacentHarbor} now owned by {currentPlayer}");
                     }
                     break;
                 case BuildingState.Settlement:
@@ -1259,14 +1300,14 @@ namespace Catan3.GameState
                     //         gets the largest army
                     if (knightsPlayed == maxSoldierCount && playerWithLargestArmy is null)
                     {
-                        this.TraceMessage($"{player} has largest army");
+                        _logger.Log(GameLogLevel.Trace, $"{player} has largest army");
                         player.LargestArmy = true;
                         playerWithLargestArmy = player;
                     }
                     else if (playerWithLargestArmy is not null && knightsPlayed > playerWithLargestArmy.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier))
                     {
                         // new layer steals it
-                        this.TraceMessage($"{player} took largest army from {playerWithLargestArmy}");
+                        _logger.Log(GameLogLevel.Trace, $"{player} took largest army from {playerWithLargestArmy}");
                         playerWithLargestArmy.LargestArmy = false;
                         player.LargestArmy = true;
                         playerWithLargestArmy = player;
@@ -1315,7 +1356,7 @@ namespace Catan3.GameState
         /// or if the current player ID is invalid.</exception>
         private GameModel MoveRobber(MoveRobberMessage moveRobber)
         {
-            GameModel gameModel = Log.CopyCurrent();
+            GameModel gameModel = _gameLog.CopyCurrent();
             // Validate the current game state
             ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.MustMoveRobber]);
             ThrowIfBadPlayer(gameModel.CurrentPlayerId, gameModel.Players);
@@ -1382,7 +1423,7 @@ namespace Catan3.GameState
         }
         private bool CanTransitionToNext(GameModel gameModel)
         {
-            //GameModel gameModel = Log.CurrentState();
+            //GameModel gameModel = _gameLog.CurrentState();
             //var currentPlayer = CurrentPlayer(gameModel);
             //
             //  when entitlement are added make sure they don't have any
@@ -1429,19 +1470,19 @@ namespace Catan3.GameState
 
                     if (previouslyGoldTiles.Contains(tileModel.TileKey))
                     {
-                        this.TraceMessage($"Tile {tileModel.TileKey} was previously gold, skipping.");
+                        _logger.Log(GameLogLevel.Trace, $"Tile {tileModel.TileKey} was previously gold, skipping.");
                         continue;
                     }
 
                     if (tileModel.ResourceTileType == ResourceType.Desert)
                     {
-                        this.TraceMessage($"Tile {tileModel.TileKey} is a desert tile, skipping.");
+                        _logger.Log(GameLogLevel.Trace, $"Tile {tileModel.TileKey} is a desert tile, skipping.");
                         continue;
                     }
 
                     if (usedIndices.Contains(index))
                     {
-                        this.TraceMessage($"Tile {tileModel.TileKey} was already selected, skipping.");
+                        _logger.Log(GameLogLevel.Trace, $"Tile {tileModel.TileKey} was already selected, skipping.");
                         continue;
                     }
 
@@ -1465,28 +1506,37 @@ namespace Catan3.GameState
             //
             //  you need to get the gameModel prior to checking the state as we don't know the state until then.
             //  CONSIDER: caching the state to do a top level check w/o the GameModel hydration cost
-            GameModel gameModel = Log.CopyCurrent();
+            GameModel gameModel = _gameLog.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.PickingBoard]);
             // Call content shuffle (resource/number) explicitly to avoid calling GameModel.Shuffle() list reorder
-            GameFactory.Shuffle(gameModel);
+            _gameFactory.Shuffle(gameModel);
             return gameModel;
         }
 
-        public SerializableLog GetSerializableLog()
+        public Catan3.Shared.Interfaces.SerializableLog GetSerializableLog()
         {
-            return Log.GetSerializableLog();
+            var desktopLog = _gameLog.GetSerializableLog();
+            // Convert from Desktop SerializableLog to Shared SerializableLog
+            return new Catan3.Shared.Interfaces.SerializableLog
+            {
+                DoneStack = desktopLog.DoneStack,
+                RedoStack = desktopLog.RedoStack,
+                GameType = desktopLog.GameType,
+                DoneCount = desktopLog.DoneCount,
+                RedoCount = desktopLog.RedoCount
+            };
         }
 
         private GameModel? Undo()
         {
-            GameModel result = ((ILog)Log).Undo() ?? throw new GameException("Undo cannot be done");
+            GameModel result = _gameLog.Undo() ?? throw new GameException("Undo cannot be done");
             SetActionFlags(result);
             result.ActionFlags.RedoEnabled = true;
             return result;
         }
         private GameModel? Redo()
         {
-            GameModel result = ((ILog)Log).Redo() ?? throw new GameException("Redo cannot be done");
+            GameModel result = _gameLog.Redo() ?? throw new GameException("Redo cannot be done");
             SetActionFlags(result);
             return result;
         }
@@ -1895,24 +1945,24 @@ namespace Catan3.GameState
             }
 
             // Get current game gameModel and create new recording session using log file path
-            var currentModel = Log.CurrentState();
-            _recorder = new GameRecorder(currentModel, Log.FilePath);
+            var currentModel = _gameLog.CurrentState();
+            _recorder = _recorderFactory.CreateRecorder(currentModel, _gameLog.FilePath);
 
-            this.TraceMessage($"🎬 Recording started from GameState: {currentModel.GameState}");
+            _logger.Log(GameLogLevel.Trace, $"🎬 Recording started from GameState: {currentModel.GameState}");
         }
 
         /// <summary>
         /// Stops recording and creates the complete .catan_test file with initial GameModel + recorded actions.
         /// </summary>
         /// <returns>The path where the .catan_test file was saved</returns>
-        private string StopRecording()
+        private async Task<string> StopRecording()
         {
             if (_recorder == null)
             {
                 throw new InvalidOperationException("No recording is currently in progress.");
             }
 
-            var filePath = _recorder.EndRecording();
+            var filePath = await _recorder.EndRecording();
             _recorder = null;
             return filePath;
         }

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
+using Catan3.Shared.GameLogic;
 using Catan3.GameService.Services;
 using Catan3.GameService.Utility;
 
@@ -139,7 +140,7 @@ namespace Catan3.GameService.Controllers
         }
 
         [HttpPost("game/new")]
-        public IActionResult NewGame([FromBody] JsonElement request)
+        public async Task<IActionResult> NewGame([FromBody] JsonElement request)
         {
             var requestId = Guid.NewGuid().ToString("N")[..8];
             _logger.LogEvent("API Request", $"[{requestId}] POST /api/game/new - Creating new game");
@@ -206,7 +207,7 @@ namespace Catan3.GameService.Controllers
                 _logger.LogEvent("New Game Request", $"[{requestId}] Creating new game - GameType: {gameType}, Players: [{string.Join(", ", playerIds)}]");
 
                 var newGameMessage = new NewGameMessage(gameType, playerIds);
-                var (gameId, gameModel) = _gameStateMachineService.CreateNewGame(gsm => gsm.HandleNewGame(newGameMessage));
+                var (gameId, gameModel) = await _gameStateMachineService.CreateNewGameAsync(gsm => gsm.HandleNewGameAsync(newGameMessage));
 
                 var currentVersion = gameModel.GameStateMachineVersion;
 
@@ -248,7 +249,7 @@ namespace Catan3.GameService.Controllers
                 var loadGameMessage = new LoadGameMessage(filePath);
                 
                 // Create a new GameStateMachine and load the game into it
-                var (gameId, gameModel) = await _gameStateMachineService.CreateNewGameAsync(async gsm => await gsm.HandleLoadGame(loadGameMessage));
+                var (gameId, gameModel) = await _gameStateMachineService.CreateNewGameAsync(async gsm => await gsm.HandleLoadGameAsync(loadGameMessage));
 
                 var currentVersion = gameModel.GameStateMachineVersion;
 
@@ -302,7 +303,7 @@ namespace Catan3.GameService.Controllers
 
                 var persistMessage = new PersistGameMessage(action, location);
                 var gameStateMachine = _gameStateMachineService.GetGameStateMachine(gameId);
-                await gameStateMachine.HandlePersistGame(persistMessage);
+                await gameStateMachine.HandlePersistGameAsync(persistMessage);
 
                 _logger.LogEvent("Game Persisted", $"[{requestId}] Game persisted successfully - GameId: {gameId}, Action: {action}");
 
@@ -363,7 +364,7 @@ namespace Catan3.GameService.Controllers
             if (Enum.TryParse<GameAction>(actionStr, out var action))
             {
                 var message = new ExecuteGameActionMessage(action);
-                return gameStateMachine.HandleDoAction(message);
+                return gameStateMachine.ExecuteGameActionAsync(message).Result;
             }
             throw new ArgumentException($"Invalid action: {actionStr}");
         }
@@ -374,7 +375,7 @@ namespace Catan3.GameService.Controllers
             if (Enum.TryParse<Entitlement>(entitlementStr, out var entitlement))
             {
                 var message = new PurchaseMessage(entitlement);
-                return gameStateMachine.HandlePurchaseMessage(message);
+                return gameStateMachine.HandlePurchaseAsync(message).Result;
             }
             throw new ArgumentException($"Invalid entitlement: {entitlementStr}");
         }
@@ -397,7 +398,7 @@ namespace Catan3.GameService.Controllers
             var tileKey = new HexCoordinates(q, r, s);
             var roadKey = new RoadKey { TileKey = tileKey, HexSide = side };
             var message = new RoadPurchaseMessage(roadKey);
-            return gameStateMachine.HandleRoadPurchase(message);
+            return gameStateMachine.HandleRoadPurchaseAsync(message).Result;
         }
 
         private GameModel ProcessBuildingUpgrade(JsonElement messageData, GameStateMachine gameStateMachine)
@@ -418,7 +419,7 @@ namespace Catan3.GameService.Controllers
             var hexCoordinates = new HexCoordinates(q, r, s);
             var buildingKey = new BuildingKey(hexCoordinates, position);
             var message = new BuildingUpgradeMessage(buildingKey);
-            return gameStateMachine.HandleBuildingUpgrade(message);
+            return gameStateMachine.HandleBuildingUpgradeAsync(message).Result;
         }
 
         private GameModel ProcessMoveRobber(JsonElement messageData, GameStateMachine gameStateMachine)
@@ -436,7 +437,7 @@ namespace Catan3.GameService.Controllers
 
             var coordinates = new HexCoordinates(q, r, s);
             var message = new MoveRobberMessage(coordinates, targetPlayerId);
-            return gameStateMachine.HandleMoveRobber(message);
+            return gameStateMachine.HandleMoveRobberAsync(message).Result;
         }
 
         private GameModel ProcessRoll(JsonElement messageData, GameStateMachine gameStateMachine)
@@ -470,7 +471,7 @@ namespace Catan3.GameService.Controllers
             };
 
             var message = new RollMessage(roll);
-            return gameStateMachine.HandleRoll(message);
+            return gameStateMachine.HandleRollAsync(message).Result;
         }
 
         private GameModel ProcessSetPlayerOrder(JsonElement messageData, GameStateMachine gameStateMachine)
@@ -482,25 +483,14 @@ namespace Catan3.GameService.Controllers
                 .ToList();
 
             var message = new SetPlayerOrderMessage(playerIds);
-            return gameStateMachine.HandleSetPlayerOrder(message);
+            return gameStateMachine.HandleSetPlayerOrderAsync(message).Result;
         }
 
-        private GameModel ProcessPlayersDoingSupplemental(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            var playerIds = messageData.GetProperty("playerIds").EnumerateArray()
-                .Select(element => element.GetString())
-                .Where(id => !string.IsNullOrEmpty(id))
-                .Cast<string>()
-                .ToList();
-
-            var message = new PlayersDoingSupplemental(playerIds);
-            return gameStateMachine.HandlePlayersDoingSupplemental(message);
-        }
 
         private GameModel ProcessBalanceBoard(JsonElement messageData, GameStateMachine gameStateMachine)
         {
             var message = new BalanceBoardMessage();
-            return gameStateMachine.HandleBalanceBoard(message);
+            return gameStateMachine.HandleBalanceBoardAsync(message).Result;
         }
 
         private GameModel ProcessGoFirst(JsonElement messageData, GameStateMachine gameStateMachine)
@@ -509,7 +499,7 @@ namespace Catan3.GameService.Controllers
                 ?? throw new ArgumentException("Missing playerId");
 
             var message = new GoFirstMessage(playerId);
-            return gameStateMachine.HandleGoFirst(message);
+            return gameStateMachine.HandleGoFirstAsync(message).Result;
         }
     }
 }

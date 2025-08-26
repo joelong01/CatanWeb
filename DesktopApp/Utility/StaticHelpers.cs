@@ -2,11 +2,14 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Catan3.Shared.Models;
+using Catan3.Shared.Interfaces;
 using Catan3.Utility;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -186,22 +189,55 @@ namespace Catan3
     }
     public static class Extensions
     {
+        /// <summary>
+        /// Original TraceMessage method - defaults to Trace level for backward compatibility
+        /// </summary>
         public static void TraceMessage(this object o, string toWrite, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
         {
+            o.TraceMessage(GameLogLevel.Trace, toWrite, indentLevel, cmb, cln, cfp);
+        }
 
-            for (int i = 0; i < indentLevel; i++)
+        /// <summary>
+        /// Extended TraceMessage method with log level filtering that uses ILogger when available
+        /// </summary>
+        public static void TraceMessage(this object o, GameLogLevel logLevel, string toWrite, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
+        {
+            // Check if the message should be displayed based on the global log level
+            if (logLevel < App.LogLevel)
             {
-                Debug.Indent();
+                return; // Skip messages below the current log level
             }
-            Debug.WriteLine($"{cfp}({cln}):{toWrite}\t\t[Caller={cmb}]");
-            //
-            // in Record Mode, do not write to DebugWindow, just log to Debug
 
-            DebugWindow.ShowMessage(toWrite);
+            // Format the message with indentation and caller info
+            var indent = new string(' ', indentLevel * 4);
+            var prefixedMessage = $"[{logLevel}] {toWrite}";
+            var fullMessage = $"{indent}{cfp}({cln}):{prefixedMessage}\t\t[Caller={cmb}]";
 
-            for (int i = 0; i < indentLevel; i++)
+            // Use ILogger if available (it will write to both Debug and DebugWindow)
+            if (App.Logger != null)
             {
-                Debug.Unindent();
+                // Map GameLogLevel to Microsoft.Extensions.Logging.LogLevel
+                var msLogLevel = logLevel switch
+                {
+                    GameLogLevel.Trace => Microsoft.Extensions.Logging.LogLevel.Trace,
+                    GameLogLevel.Debug => Microsoft.Extensions.Logging.LogLevel.Debug,
+                    GameLogLevel.Information => Microsoft.Extensions.Logging.LogLevel.Information,
+                    GameLogLevel.Warning => Microsoft.Extensions.Logging.LogLevel.Warning,
+                    GameLogLevel.Error => Microsoft.Extensions.Logging.LogLevel.Error,
+                    _ => Microsoft.Extensions.Logging.LogLevel.Trace
+                };
+
+                // Write to Debug output (for VS Code Debug Window)
+                Debug.WriteLine(fullMessage);
+                // App.Logger.Log would also write but we're already handling it
+              //  App.Logger.Log(msLogLevel, fullMessage);
+                DebugWindow.ShowMessage(fullMessage);
+            }
+            else
+            {
+                // Fallback to direct Debug.WriteLine and DebugWindow if logger not initialized
+                Debug.WriteLine(fullMessage);
+                DebugWindow.ShowMessage(fullMessage);
             }
         }
     }

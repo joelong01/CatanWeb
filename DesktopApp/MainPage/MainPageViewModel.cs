@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Catan.Services;
+using Catan3.Services;
 using Catan3.GameState;
 using Catan3.Utility;
 using Catan3.Shared.Models;
@@ -101,7 +102,7 @@ namespace Catan3.Models
         /// <summary>
         /// Gets the game message service that handles MVVM messaging to the game logic.
         /// </summary>
-        private GameMessageService GameController { get; set; }
+        private GameMessageService GameMessageService { get; set; }
         public bool IsTest { get; private set; }
 
         /// <summary>
@@ -140,8 +141,12 @@ namespace Catan3.Models
             _playerDatabase = playerDatabase;
             RegisterMessages();
             GameViewModel = new GameViewModel(playerDatabase);
-            var gameStateMachine = new GameStateMachine(_fileService, filePath);
-            GameController = new GameMessageService(gameStateMachine);
+            var gameStateMachine = DesktopGameStateMachineFactory.Create(_fileService, filePath);
+            if (gameStateMachine is null)
+            {
+                throw new GameException($"DesktopGameStateMachineFactory returned a null GamveViewModel!");
+            }
+            GameMessageService = new GameMessageService(gameStateMachine);
             this.IsTest = isTest;
             if (selectedGame == GameType.SavedGame)
             {
@@ -149,7 +154,7 @@ namespace Catan3.Models
             }
             else
             {
-                Messenger.Send(new NewGameMessage(selectedGame, playingPlayerIds, filePath));
+                Messenger.Send(new Catan3.Shared.Models.NewGameMessage(selectedGame, playingPlayerIds));
             }
         }
 
