@@ -119,38 +119,68 @@ namespace Catan3.Shared.GameLogic
 
 
         /// <summary>
-        /// Executes a game action (Next, Undo, Redo) and returns the updated game state.
-        /// This is the primary method for advancing the game through its various states.
+        /// Handles undo operation to revert the last action.
+        /// Note: Undo operations do not call LogGameModel as they modify the log state directly.
         /// </summary>
-        /// <param name="message">The action to execute (Next, Undo, or Redo).</param>
-        /// <returns>The updated GameModel after executing the action.</returns>
-        /// <exception cref="GameException">Thrown when the action cannot be performed.</exception>
-        /// <exception cref="InvalidOperationException">Thrown for unknown action types.</exception>
-        public Task<GameModel> ExecuteGameActionAsync(ExecuteGameActionMessage message)
+        /// <param name="message">The undo message.</param>
+        /// <returns>The updated GameModel after undoing the last action.</returns>
+        /// <exception cref="GameException">Thrown when the undo operation cannot be performed.</exception>
+        public Task<GameModel> HandleUndoAsync(UndoMessage message)
         {
             var gameModel = _gameLog.CopyCurrent();
             _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             _recorder?.RecordAction(message.ToRecord(gameModel));
 
-            gameModel = null;
-            switch (message.Action)
-            {
-                case GameAction.Undo:
-                    gameModel = Undo(); // NOTE: Undo does not call LogGameModel!
-                    break;
-                case GameAction.Redo:
-                    gameModel = Redo();  // NOTE: Redo does not call LogGameModel!
-                    break;
-                case GameAction.Next:
-                    gameModel = NextState();
-                    LogGameModel(gameModel);
-                    break;
-                default:
-                    throw new InvalidOperationException("invalid game action: " + message.Action);
-            }
+            gameModel = Undo(); // NOTE: Undo does not call LogGameModel!
+            
             if (gameModel is null)
             {
-                throw new GameException($"Unable to do action {message}");
+                throw new GameException($"Unable to perform undo operation");
+            }
+            return Task.FromResult(gameModel);
+        }
+
+        /// <summary>
+        /// Handles redo operation to reapply a previously undone action.
+        /// Note: Redo operations do not call LogGameModel as they modify the log state directly.
+        /// </summary>
+        /// <param name="message">The redo message.</param>
+        /// <returns>The updated GameModel after redoing the previously undone action.</returns>
+        /// <exception cref="GameException">Thrown when the redo operation cannot be performed.</exception>
+        public Task<GameModel> HandleRedoAsync(RedoMessage message)
+        {
+            var gameModel = _gameLog.CopyCurrent();
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            gameModel = Redo(); // NOTE: Redo does not call LogGameModel!
+            
+            if (gameModel is null)
+            {
+                throw new GameException($"Unable to perform redo operation");
+            }
+            return Task.FromResult(gameModel);
+        }
+
+        /// <summary>
+        /// Handles next action to advance to the next game state.
+        /// This operation progresses the game through its state machine and logs the result.
+        /// </summary>
+        /// <param name="message">The next message.</param>
+        /// <returns>The updated GameModel after advancing to the next state.</returns>
+        /// <exception cref="GameException">Thrown when the next state transition cannot be performed.</exception>
+        public Task<GameModel> HandleNextAsync(NextMessage message)
+        {
+            var gameModel = _gameLog.CopyCurrent();
+            _logger.Log(GameLogLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            gameModel = NextState();
+            LogGameModel(gameModel);
+            
+            if (gameModel is null)
+            {
+                throw new GameException($"Unable to advance to next state");
             }
             return Task.FromResult(gameModel);
         }
@@ -1099,6 +1129,16 @@ namespace Catan3.Shared.GameLogic
         ///     
         /// </summary>
         /// <param name="gameModel"></param>
+        /// <summary>
+        /// Initializes the logging state for a loaded GameModel.
+        /// This public method provides a robust alternative to reflection-based access.
+        /// </summary>
+        /// <param name="gameModel">The GameModel to initialize logging state for</param>
+        public void InitializeLoggingState(GameModel gameModel)
+        {
+            LogGameModel(gameModel);
+        }
+        
         private void LogGameModel(GameModel gameModel)
         {
             UpdateScore(gameModel);
@@ -1721,14 +1761,13 @@ namespace Catan3.Shared.GameLogic
             var currentPlayer = gameModel.CurrentPlayer();
             int total = currentPlayer.SpentEntitlementsThisGame.Count(e => e == entitlement) +
                         currentPlayer.UnspentEntitlements.Count(e => e == entitlement);
-            return entitlement switch
-            {
-                Entitlement.Road => (total < gameModel.ResourceRules.MaxRoads),
-                Entitlement.Settlement => (total < gameModel.ResourceRules.MaxSettlements),
-                Entitlement.City => (total < gameModel.ResourceRules.MaxCities),
-                Entitlement.Soldier => true,
-                _ => throw new Exception($"TODO: add support for {entitlement} to AllowPurchase"),
-            };
+            
+            // Get the maximum allowed count for this entitlement from resource rules
+            int maxAllowed = gameModel.ResourceRules.MaxEntitlementCount(entitlement);
+            
+            // If maxAllowed is 0, it means there's no limit (unlimited)
+            // Otherwise, check if total is less than the limit
+            return maxAllowed == 0 || total < maxAllowed;
         }
         public void CalculateLongestRoad(GameModel gameModel)
         {
@@ -1877,20 +1916,6 @@ namespace Catan3.Shared.GameLogic
 
         #region Recording Helpers
 
-        /// <summary>
-        /// Maps GameAction enum to test action type strings
-        /// </summary>
-        private string GetActionType(GameAction action)
-        {
-            return action switch
-            {
-                GameAction.Next => "AdvanceNext",
-                GameAction.Shuffle => "ShuffleBoard",
-                GameAction.Undo => "PreviousBoard",
-                GameAction.Redo => "RedoBoard",
-                _ => action.ToString()
-            };
-        }
 
         /// <summary>
         /// Determines the building action type based on game state and context

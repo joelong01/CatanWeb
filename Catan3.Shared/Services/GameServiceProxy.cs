@@ -11,17 +11,23 @@ using Catan3.Shared.Utility;
 namespace Catan3.Shared.Services
 {
     /// <summary>
-    /// SignalR Proxy for Catan3 GameHub - provides a clean, strongly-typed interface for all SignalR operations.
+    /// Game Service Proxy for Catan3 - provides a unified interface for both SignalR and REST API operations.
     /// Can be used by both test infrastructure and Desktop client applications.
-    /// Handles connection management, command execution, and event subscriptions.
+    /// Handles connection management, command execution, event subscriptions, and REST API calls.
     /// </summary>
-    public class SignalRProxy : IAsyncDisposable
+    public class GameServiceProxy : IAsyncDisposable
     {
         private readonly HubConnection _connection;
+        private readonly HttpClient _httpClient;
         private readonly string _playerId;
-        private readonly string? _gameId;
+        private string? _gameId;
         private readonly Dictionary<string, TaskCompletionSource<CommandResult>> _pendingCommands = [];
         private readonly object _commandLock = new();
+        
+        /// <summary>
+        /// The base URI for the game service REST API (e.g., "https://localhost:8080")
+        /// </summary>
+        public string ServiceUri { get; set; } = string.Empty;
 
         public HubConnection Connection => _connection;
         public string PlayerId => _playerId;
@@ -35,15 +41,17 @@ namespace Catan3.Shared.Services
         public event Action<string, bool>? PlayerPresenceChanged;
 
         /// <summary>
-        /// Creates a SignalRProxy for the Catan3 GameHub
+        /// Creates a GameServiceProxy for the Catan3 GameHub with REST API support
         /// </summary>
         /// <param name="hubUrl">The SignalR hub URL (e.g., "https://localhost:7000/gameHub")</param>
+        /// <param name="serviceUri">The base URI for REST API calls (e.g., "https://localhost:8080")</param>
         /// <param name="playerId">The player ID for this connection</param>
         /// <param name="gameId">Optional game ID to auto-join</param>
-        public SignalRProxy(string hubUrl, string playerId, string? gameId = null)
+        public GameServiceProxy(string hubUrl, string serviceUri, string playerId, string? gameId = null)
         {
             _playerId = playerId;
             _gameId = gameId;
+            ServiceUri = serviceUri;
 
             _connection = new HubConnectionBuilder()
                 .WithUrl(hubUrl)
@@ -54,20 +62,25 @@ namespace Catan3.Shared.Services
                 })
                 .Build();
 
+            // Create HttpClient with same lifetime as GameServiceProxy for optimal connection reuse
+            // This HttpClient will be disposed in DisposeAsync() to ensure proper resource cleanup
+            _httpClient = new HttpClient();
             SetupEventHandlers();
         }
 
         /// <summary>
-        /// Creates a SignalRProxy with custom HubConnection configuration
+        /// Creates a GameServiceProxy with custom HubConnection configuration
         /// (useful for testing with WebApplicationFactory)
         /// </summary>
         /// <param name="connectionBuilder">Pre-configured HubConnectionBuilder</param>
+        /// <param name="serviceUri">The base URI for REST API calls (e.g., "https://localhost:8080")</param>
         /// <param name="playerId">The player ID for this connection</param>
         /// <param name="gameId">Optional game ID to auto-join</param>
-        public SignalRProxy(HubConnectionBuilder connectionBuilder, string playerId, string? gameId = null)
+        public GameServiceProxy(HubConnectionBuilder connectionBuilder, string serviceUri, string playerId, string? gameId = null)
         {
             _playerId = playerId;
             _gameId = gameId;
+            ServiceUri = serviceUri;
 
             _connection = connectionBuilder
                 .WithAutomaticReconnect()
@@ -77,21 +90,24 @@ namespace Catan3.Shared.Services
                 })
                 .Build();
 
+            _httpClient = new HttpClient();
             SetupEventHandlers();
         }
 
         /// <summary>
-        /// Creates a SignalRProxy for testing with WebApplicationFactory
+        /// Creates a GameServiceProxy for testing with WebApplicationFactory
         /// This constructor makes it easy to use test server handlers
         /// </summary>
         /// <param name="hubUrl">The SignalR hub URL</param>
+        /// <param name="serviceUri">The base URI for REST API calls</param>
         /// <param name="testHandler">HttpMessageHandler from test factory (use factory.Server.CreateHandler())</param>
         /// <param name="playerId">The player ID for this connection</param>
         /// <param name="gameId">Optional game ID to auto-join</param>
-        public SignalRProxy(string hubUrl, HttpMessageHandler testHandler, string playerId, string? gameId = null)
+        public GameServiceProxy(string hubUrl, string serviceUri, HttpMessageHandler testHandler, string playerId, string? gameId = null)
         {
             _playerId = playerId;
             _gameId = gameId;
+            ServiceUri = serviceUri;
 
             _connection = new HubConnectionBuilder()
                 .WithUrl(hubUrl, options =>
@@ -105,6 +121,7 @@ namespace Catan3.Shared.Services
                 })
                 .Build();
 
+            _httpClient = new HttpClient(testHandler);
             SetupEventHandlers();
         }
 
@@ -128,12 +145,13 @@ namespace Catan3.Shared.Services
         }
 
         /// <summary>
-        /// Joins a specific game
+        /// Joins a specific game and stores the gameId for future operations
         /// </summary>
         public async Task JoinGameAsync(string gameId)
         {
             LogEvent("JOINING_GAME", $"Calling JoinGame for game {gameId}");
             await _connection.InvokeAsync("JoinGame", gameId, _playerId);
+            _gameId = gameId; // Store the gameId for future operations
             LogEvent("JOIN_CALLED", $"JoinGame call completed for game {gameId}");
         }
 
@@ -150,30 +168,108 @@ namespace Catan3.Shared.Services
         #region SignalR Hub Method Wrappers
 
         /// <summary>
-        /// Executes a ExecuteGameActionMessage command (Shuffle, Undo, Redo, Next, Balance)
+        /// Executes an Undo command on the game service
+        /// Uses the stored GameId from JoinGameAsync call.
         /// </summary>
-        public async Task<CommandResult> ExecuteDoActionAsync(string gameId, GameAction action, TimeSpan? timeout = null)
+        public async Task<CommandResult> ExecuteUndoAsync(TimeSpan? timeout = null)
         {
-            var message = new ExecuteGameActionMessage(action);
+            if (string.IsNullOrEmpty(_gameId))
+                throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
+            
+            var message = new UndoMessage();
             return await ExecuteCommandAsync(
-                () => _connection.InvokeAsync("ExecuteDoAction", gameId, _playerId, message),
-                $"ExecuteGameActionMessage {action}",
+                () => _connection.InvokeAsync("ExecuteDoAction", _gameId, _playerId, message),
+                "UndoMessage",
                 timeout
             );
         }
 
         /// <summary>
-        /// Executes a Purchase command for entitlements
+        /// Executes a Redo command on the game service
+        /// Uses the stored GameId from JoinGameAsync call.
         /// </summary>
-        public async Task<CommandResult> ExecutePurchaseAsync(string gameId, Entitlement entitlement, TimeSpan? timeout = null)
+        public async Task<CommandResult> ExecuteRedoAsync(TimeSpan? timeout = null)
         {
+            if (string.IsNullOrEmpty(_gameId))
+                throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
+            
+            var message = new RedoMessage();
+            return await ExecuteCommandAsync(
+                () => _connection.InvokeAsync("ExecuteDoAction", _gameId, _playerId, message),
+                "RedoMessage",
+                timeout
+            );
+        }
+
+        /// <summary>
+        /// Executes a Next command on the game service
+        /// Uses the stored GameId from JoinGameAsync call.
+        /// </summary>
+        public async Task<CommandResult> ExecuteNextAsync(TimeSpan? timeout = null)
+        {
+            if (string.IsNullOrEmpty(_gameId))
+                throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
+            
+            var message = new NextMessage();
+            return await ExecuteCommandAsync(
+                () => _connection.InvokeAsync("ExecuteDoAction", _gameId, _playerId, message),
+                "NextMessage",
+                timeout
+            );
+        }
+
+        /// <summary>
+        /// Executes a Shuffle command on the game service
+        /// Uses the stored GameId from JoinGameAsync call.
+        /// </summary>
+        public async Task<CommandResult> ExecuteShuffleAsync(TimeSpan? timeout = null)
+        {
+            if (string.IsNullOrEmpty(_gameId))
+                throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
+            
+            var message = new ShuffleMessage();
+            return await ExecuteCommandAsync(
+                () => _connection.InvokeAsync("ExecuteDoAction", _gameId, _playerId, message),
+                "ShuffleMessage",
+                timeout
+            );
+        }
+
+        /// <summary>
+        /// Executes a Balance command on the game service
+        /// Uses the stored GameId from JoinGameAsync call.
+        /// </summary>
+        public async Task<CommandResult> ExecuteBalanceAsync(TimeSpan? timeout = null)
+        {
+            if (string.IsNullOrEmpty(_gameId))
+                throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
+            
+            var message = new BalanceBoardMessage();
+            return await ExecuteCommandAsync(
+                () => _connection.InvokeAsync("ExecuteDoAction", _gameId, _playerId, message),
+                "BalanceBoardMessage",
+                timeout
+            );
+        }
+
+
+        /// <summary>
+        /// Executes a Purchase command for entitlements
+        /// Uses the stored GameId from JoinGameAsync call.
+        /// </summary>
+        public async Task<CommandResult> ExecutePurchaseAsync(Entitlement entitlement, TimeSpan? timeout = null)
+        {
+            if (string.IsNullOrEmpty(_gameId))
+                throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
+                
             var message = new PurchaseMessage(entitlement);
             return await ExecuteCommandAsync(
-                () => _connection.InvokeAsync("ExecutePurchase", gameId, _playerId, message),
+                () => _connection.InvokeAsync("ExecutePurchase", _gameId, _playerId, message),
                 $"Purchase {entitlement}",
                 timeout
             );
         }
+        
 
         /// <summary>
         /// Executes a Road Purchase command
@@ -216,17 +312,22 @@ namespace Catan3.Shared.Services
 
         /// <summary>
         /// Executes a Roll command
+        /// Uses the stored GameId from JoinGameAsync call.
         /// </summary>
-        public async Task<CommandResult> ExecuteRollAsync(string gameId, int die1, int die2, TimeSpan? timeout = null)
+        public async Task<CommandResult> ExecuteRollAsync(int die1, int die2, TimeSpan? timeout = null)
         {
+            if (string.IsNullOrEmpty(_gameId))
+                throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
+                
             var turnRollModel = new TurnRollModel(die1, die2);
             var message = new RollMessage(turnRollModel);
             return await ExecuteCommandAsync(
-                () => _connection.InvokeAsync("ExecuteRoll", gameId, _playerId, message),
+                () => _connection.InvokeAsync("ExecuteRoll", _gameId, _playerId, message),
                 $"Roll ({die1},{die2})",
                 timeout
             );
         }
+        
 
         /// <summary>
         /// Executes a Set Player Order command
@@ -257,15 +358,129 @@ namespace Catan3.Shared.Services
 
         /// <summary>
         /// Executes a Go First command
+        /// Uses the stored GameId from JoinGameAsync call.
         /// </summary>
-        public async Task<CommandResult> ExecuteGoFirstAsync(string gameId, string firstPlayerId, TimeSpan? timeout = null)
+        public async Task<CommandResult> ExecuteGoFirstAsync(string firstPlayerId, TimeSpan? timeout = null)
         {
+            if (string.IsNullOrEmpty(_gameId))
+                throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
+                
             var message = new GoFirstMessage(firstPlayerId);
             return await ExecuteCommandAsync(
-                () => _connection.InvokeAsync("ExecuteGoFirst", gameId, _playerId, message),
+                () => _connection.InvokeAsync("ExecuteGoFirst", _gameId, _playerId, message),
                 $"Go First: {firstPlayerId}",
                 timeout
             );
+        }
+        
+
+        /// <summary>
+        /// Loads a GameModel directly - primarily for testing purposes
+        /// </summary>
+        public async Task<CommandResult> LoadGameModelAsync(GameModel gameModel, TimeSpan? timeout = null)
+        {
+            // LoadGameModel is special - it creates a game, so we don't require an existing gameId
+            // Instead we'll use a temporary gameId and update it when the load succeeds
+            var tempGameId = "load-game-" + Guid.NewGuid().ToString("N")[..8];
+            
+            var result = await ExecuteCommandAsync(
+                () => _connection.InvokeAsync("LoadGameModel", tempGameId, _playerId, gameModel),
+                $"Load GameModel (State: {gameModel.GameState})",
+                timeout
+            );
+            
+            // If successful, extract the actual gameId from the result message and store it
+            if (result.Success && result.Message.Contains("GameId:"))
+            {
+                var actualGameId = ExtractGameIdFromMessage(result.Message);
+                _gameId = actualGameId;
+            }
+            
+            return result;
+        }
+        
+        private string ExtractGameIdFromMessage(string message)
+        {
+            // Message format: "GameModel loaded successfully with GameId: a4066571-5ddc-4321-b68a-2920b8e9d53d"
+            var prefix = "GameModel loaded successfully with GameId: ";
+            if (message.StartsWith(prefix))
+            {
+                return message.Substring(prefix.Length);
+            }
+            throw new InvalidOperationException($"Could not extract GameId from message: {message}");
+        }
+
+        #endregion
+
+        #region REST API Methods
+
+        /// <summary>
+        /// Creates a new game via REST API
+        /// </summary>
+        /// <param name="gameType">The type of game to create</param>
+        /// <param name="hasSupplemental">Whether the game has supplemental build phase</param>
+        /// <param name="playerNames">List of player names</param>
+        /// <returns>The created game information</returns>
+        public async Task<GameInfo> CreateGameAsync(GameType gameType, bool hasSupplemental, List<string> playerNames)
+        {
+            if (string.IsNullOrEmpty(ServiceUri))
+                throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
+
+            var createGameRequest = new
+            {
+                GameType = gameType.ToString(),
+                HasSupplemental = hasSupplemental,
+                PlayerNames = playerNames
+            };
+
+            var json = JsonHelper.Serialize(createGameRequest);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{ServiceUri}/api/games", content);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            return JsonHelper.Deserialize<GameInfo>(responseJson) 
+                ?? throw new InvalidOperationException("Failed to deserialize CreateGame response");
+        }
+
+        /// <summary>
+        /// Gets all available games via REST API
+        /// </summary>
+        /// <returns>List of available games</returns>
+        public async Task<List<GameInfo>> GetAvailableGamesAsync()
+        {
+            if (string.IsNullOrEmpty(ServiceUri))
+                throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
+
+            var response = await _httpClient.GetAsync($"{ServiceUri}/api/companion/games");
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            
+            // The API returns a wrapper object: { success: true, games: [...], count: N, timestamp: "..." }
+            var apiResponse = JsonHelper.Deserialize<GetAvailableGamesResponse>(responseJson)
+                ?? throw new InvalidOperationException("Failed to deserialize GetAvailableGames response");
+                
+            return apiResponse.Games;
+        }
+
+        /// <summary>
+        /// Gets a specific game via REST API
+        /// </summary>
+        /// <param name="gameId">The game ID to retrieve</param>
+        /// <returns>The game information</returns>
+        public async Task<GameInfo> GetGameAsync(string gameId)
+        {
+            if (string.IsNullOrEmpty(ServiceUri))
+                throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
+
+            var response = await _httpClient.GetAsync($"{ServiceUri}/api/games/{gameId}");
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            return JsonHelper.Deserialize<GameInfo>(responseJson) 
+                ?? throw new InvalidOperationException("Failed to deserialize GetGame response");
         }
 
         #endregion
@@ -412,16 +627,30 @@ namespace Catan3.Shared.Services
                     Timestamp = DateTime.UtcNow
                 };
 
-                CommandCompleted?.Invoke(commandId, success, message);
-
-                // Complete any pending commands (simplified - in production you'd match by commandId)
+                // Complete the specific pending command that matches this commandId
+                TaskCompletionSource<CommandResult>? pendingCommand = null;
+                
                 lock (_commandLock)
                 {
-                    foreach (var pending in _pendingCommands.Values)
+                    if (_pendingCommands.TryGetValue(commandId, out pendingCommand))
                     {
-                        pending.TrySetResult(result);
+                        _pendingCommands.Remove(commandId);
                     }
-                    _pendingCommands.Clear();
+                }
+                
+                // Complete command and invoke events outside of lock to prevent deadlocks
+                if (pendingCommand != null)
+                {
+                    pendingCommand.TrySetResult(result);
+                }
+                
+                try
+                {
+                    CommandCompleted?.Invoke(commandId, success, message);
+                }
+                catch (Exception ex)
+                {
+                    LogEvent("EVENT_HANDLER_ERROR", $"Error in CommandCompleted event handler: {ex.Message}");
                 }
             });
 
@@ -436,16 +665,30 @@ namespace Catan3.Shared.Services
                     Timestamp = DateTime.UtcNow
                 };
 
-                CommandFailed?.Invoke(commandId, error);
-
-                // Complete any pending commands with failure
+                // Complete the specific pending command that matches this commandId with failure
+                TaskCompletionSource<CommandResult>? pendingCommand = null;
+                
                 lock (_commandLock)
                 {
-                    foreach (var pending in _pendingCommands.Values)
+                    if (_pendingCommands.TryGetValue(commandId, out pendingCommand))
                     {
-                        pending.TrySetResult(result);
+                        _pendingCommands.Remove(commandId);
                     }
-                    _pendingCommands.Clear();
+                }
+                
+                // Complete command and invoke events outside of lock to prevent deadlocks
+                if (pendingCommand != null)
+                {
+                    pendingCommand.TrySetResult(result);
+                }
+                
+                try
+                {
+                    CommandFailed?.Invoke(commandId, error);
+                }
+                catch (Exception ex)
+                {
+                    LogEvent("EVENT_HANDLER_ERROR", $"Error in CommandFailed event handler: {ex.Message}");
                 }
             });
 
@@ -485,7 +728,7 @@ namespace Catan3.Shared.Services
         /// </summary>
         private void LogEvent(string eventType, string message)
         {
-            var logMessage = $"[SignalRProxy][{eventType}] GameId: {_gameId ?? "null"}, PlayerId: {_playerId} - {message}";
+            var logMessage = $"[GameServiceProxy][{eventType}] GameId: {_gameId ?? "null"}, PlayerId: {_playerId} - {message}";
             if (System.Diagnostics.Debugger.IsAttached)
                 System.Diagnostics.Debug.WriteLine(logMessage);
             else
@@ -497,7 +740,9 @@ namespace Catan3.Shared.Services
         #region IAsyncDisposable
 
         /// <summary>
-        /// Disposes the SignalR connection properly
+        /// Disposes the SignalR connection and HTTP client properly.
+        /// Resource cleanup strategy: HttpClient has same lifetime as GameServiceProxy
+        /// to maximize connection pooling and reuse benefits for production scenarios.
         /// </summary>
         public async ValueTask DisposeAsync()
         {
@@ -510,6 +755,9 @@ namespace Catan3.Shared.Services
                 await _connection.StopAsync();
             }
             await _connection.DisposeAsync();
+            
+            // Dispose HttpClient to properly close TCP connections and release resources
+            _httpClient.Dispose();
         }
 
         #endregion
@@ -524,5 +772,16 @@ namespace Catan3.Shared.Services
         public bool Success { get; set; }
         public string Message { get; set; } = "";
         public DateTime Timestamp { get; set; }
+    }
+
+    /// <summary>
+    /// Response format for the /api/companion/games endpoint
+    /// </summary>
+    public class GetAvailableGamesResponse
+    {
+        public bool Success { get; set; }
+        public List<GameInfo> Games { get; set; } = [];
+        public int Count { get; set; }
+        public string Timestamp { get; set; } = "";
     }
 }

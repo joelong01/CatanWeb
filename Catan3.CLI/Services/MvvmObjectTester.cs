@@ -32,7 +32,9 @@ public class MvvmObjectTester
         var testResults = new TestResults();
 
         // Test each MVVM message object
-        await TestObject(() => new ExecuteGameActionMessage(GameAction.Shuffle), "ExecuteGameActionMessage", testResults);
+        await TestObject(() => new UndoMessage(), "UndoMessage", testResults);
+        await TestObject(() => new RedoMessage(), "RedoMessage", testResults);
+        await TestObject(() => new NextMessage(), "NextMessage", testResults);
         await TestObject(() => new PurchaseMessage(Entitlement.Settlement), "PurchaseMessage", testResults);
         await TestObject(() => new RoadPurchaseMessage(new RoadKey(new HexCoordinates(0, 0, 0), HexSide.TopRight)), "RoadPurchaseMessage", testResults);
         await TestObject(() => new BuildingUpgradeMessage(new BuildingKey(new HexCoordinates(1, -1, 0), HexPosition.Right)), "BuildingUpgradeMessage", testResults);

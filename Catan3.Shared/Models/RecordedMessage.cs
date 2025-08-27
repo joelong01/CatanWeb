@@ -56,7 +56,9 @@ namespace Catan3.Shared.Models
     ///   � Branch by concrete type (pattern matching) or via <see cref="RecordType"/> to access data.
     /// </summary>
     [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-    [JsonDerivedType(typeof(ExecuteGameActionRecord), ExecuteGameActionRecord.Discriminator)]
+    [JsonDerivedType(typeof(UndoRecord), UndoRecord.Discriminator)]
+    [JsonDerivedType(typeof(RedoRecord), RedoRecord.Discriminator)]
+    [JsonDerivedType(typeof(NextRecord), NextRecord.Discriminator)]
     [JsonDerivedType(typeof(ShuffleRecord), ShuffleRecord.Discriminator)]
     [JsonDerivedType(typeof(PurchaseRecord), PurchaseRecord.Discriminator)]
     [JsonDerivedType(typeof(BuildingUpgradeRecord), BuildingUpgradeRecord.Discriminator)]
@@ -88,26 +90,19 @@ namespace Catan3.Shared.Models
     }
 
     /// <summary>
-    /// Snapshot of an <c>ExecuteGameActionMessage</c> suitable for recording and replay.
+    /// Snapshot of an <c>UndoMessage</c> suitable for recording and replay.
     /// </summary>
-    public sealed class ExecuteGameActionRecord : IRecordedMessage
+    public sealed class UndoRecord : IRecordedMessage
     {
         /// <summary>
-        /// Discriminator value written to/expected from JSON: <c>"executeGameActionRecord"</c>.
+        /// Discriminator value written to/expected from JSON: <c>"undoRecord"</c>.
         /// </summary>
-        public const string Discriminator = "executeGameActionRecord";
+        public const string Discriminator = "undoRecord";
 
         /// <inheritdoc />
         public string ExpectedGameHash { get; init; } = string.Empty;
         /// <inheritdoc />
         public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
-
-
-
-        /// <summary>
-        /// The action that was executed.
-        /// </summary>
-        public GameAction Action { get; init; } = default!;
 
         /// <inheritdoc />
         [JsonIgnore]
@@ -117,21 +112,97 @@ namespace Catan3.Shared.Models
         /// Constructor used during deserialization and for programmatic creation.
         /// </summary>
         [JsonConstructor]
-        public ExecuteGameActionRecord(string expectedGameHash, GameState expectedGameState, GameAction action)
+        public UndoRecord(string expectedGameHash, GameState expectedGameState)
         {
             ExpectedGameHash = expectedGameHash;
             ExpectedGameState = expectedGameState;
-            Action = action;
         }
 
         /// <summary>
-        /// Convenience constructor to capture an <see cref="ExecuteGameActionMessage"/> at runtime.
+        /// Convenience constructor to capture an <see cref="UndoMessage"/> at runtime.
         /// </summary>
-        public ExecuteGameActionRecord(GameModel gameModel, ExecuteGameActionMessage message)
+        public UndoRecord(GameModel gameModel, UndoMessage message)
         {
             ExpectedGameHash = gameModel.GameHash;
             ExpectedGameState = gameModel.GameState;
-            Action = message.Action;
+        }
+    }
+
+    /// <summary>
+    /// Snapshot of a <c>RedoMessage</c> suitable for recording and replay.
+    /// </summary>
+    public sealed class RedoRecord : IRecordedMessage
+    {
+        /// <summary>
+        /// Discriminator value written to/expected from JSON: <c>"redoRecord"</c>.
+        /// </summary>
+        public const string Discriminator = "redoRecord";
+
+        /// <inheritdoc />
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
+
+        /// <inheritdoc />
+        [JsonIgnore]
+        public string RecordType => Discriminator;
+
+        /// <summary>
+        /// Constructor used during deserialization and for programmatic creation.
+        /// </summary>
+        [JsonConstructor]
+        public RedoRecord(string expectedGameHash, GameState expectedGameState)
+        {
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
+        }
+
+        /// <summary>
+        /// Convenience constructor to capture a <see cref="RedoMessage"/> at runtime.
+        /// </summary>
+        public RedoRecord(GameModel gameModel, RedoMessage message)
+        {
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
+        }
+    }
+
+    /// <summary>
+    /// Snapshot of a <c>NextMessage</c> suitable for recording and replay.
+    /// </summary>
+    public sealed class NextRecord : IRecordedMessage
+    {
+        /// <summary>
+        /// Discriminator value written to/expected from JSON: <c>"nextRecord"</c>.
+        /// </summary>
+        public const string Discriminator = "nextRecord";
+
+        /// <inheritdoc />
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
+
+        /// <inheritdoc />
+        [JsonIgnore]
+        public string RecordType => Discriminator;
+
+        /// <summary>
+        /// Constructor used during deserialization and for programmatic creation.
+        /// </summary>
+        [JsonConstructor]
+        public NextRecord(string expectedGameHash, GameState expectedGameState)
+        {
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
+        }
+
+        /// <summary>
+        /// Convenience constructor to capture a <see cref="NextMessage"/> at runtime.
+        /// </summary>
+        public NextRecord(GameModel gameModel, NextMessage message)
+        {
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
         }
     }
 
@@ -483,10 +554,22 @@ namespace Catan3.Shared.Models
     public static class MessageConverters
     {
         /// <summary>
-        /// Capture an <see cref="ExecuteGameActionMessage"/> as an <see cref="ExecuteGameActionRecord"/>.
+        /// Capture an <see cref="UndoMessage"/> as an <see cref="UndoRecord"/>.
         /// </summary>
-        public static IRecordedMessage ToRecord(this ExecuteGameActionMessage msg, GameModel gameModel)
-            => new ExecuteGameActionRecord(gameModel, msg);
+        public static IRecordedMessage ToRecord(this UndoMessage msg, GameModel gameModel)
+            => new UndoRecord(gameModel, msg);
+
+        /// <summary>
+        /// Capture a <see cref="RedoMessage"/> as a <see cref="RedoRecord"/>.
+        /// </summary>
+        public static IRecordedMessage ToRecord(this RedoMessage msg, GameModel gameModel)
+            => new RedoRecord(gameModel, msg);
+
+        /// <summary>
+        /// Capture a <see cref="NextMessage"/> as a <see cref="NextRecord"/>.
+        /// </summary>
+        public static IRecordedMessage ToRecord(this NextMessage msg, GameModel gameModel)
+            => new NextRecord(gameModel, msg);
 
         /// <summary>
         /// Capture a <see cref="ShuffleMessage"/> as a <see cref="ShuffleRecord"/>.

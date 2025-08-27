@@ -237,26 +237,72 @@ namespace Tests.DesktopApp.UI
 
             this.TraceMessage($"Test starting with scripted actions methodology - File: {testFileName}");
 
-            // Step 1: Get test file path directly (no temp copying)
-            var testFilePath = GetTestFilePath(testFileName);
-            this.TraceMessage($"Using test file: {testFilePath}");
+            // Step 1: Load scenario data once from embedded resources (synchronous version)
+            this.TraceMessage("Loading test scenario data from embedded resources");
+            Catan3.Shared.TestData.TestScenario sharedScenario;
+            try
+            {
+                // Use the synchronous stream version to avoid async issues in STA thread
+                using var stream = Catan3.Shared.TestData.TestDataLoader.GetTestFileStream(testFileName);
+                using var reader = new System.IO.StreamReader(stream);
+                var json = reader.ReadToEnd();
+                
+                var document = System.Text.Json.JsonDocument.Parse(json);
+                var root = document.RootElement;
 
-            // Step 2: Launch app with test file
+                if (!root.TryGetProperty("gameModel", out var gameModelElement))
+                {
+                    throw new InvalidOperationException($"Test file '{testFileName}' is missing 'gameModel' property");
+                }
+
+                if (!root.TryGetProperty("actionStack", out var actionStackElement))
+                {
+                    throw new InvalidOperationException($"Test file '{testFileName}' is missing 'actionStack' property");
+                }
+
+                var gameModel = gameModelElement.Deserialize<Catan3.Shared.Models.GameModel>(Catan3.Shared.Utility.JsonHelper.StandardOptions)
+                    ?? throw new InvalidOperationException($"Failed to deserialize GameModel from '{testFileName}'");
+
+                var actions = actionStackElement.Deserialize<Catan3.Shared.Models.IRecordedMessage[]>(Catan3.Shared.Utility.JsonHelper.StandardOptions)
+                    ?? Array.Empty<Catan3.Shared.Models.IRecordedMessage>();
+
+                sharedScenario = new Catan3.Shared.TestData.TestScenario
+                {
+                    TestFileName = testFileName,
+                    InitialGameModel = gameModel,
+                    RecordedActions = actions
+                };
+                
+                this.TraceMessage($"Loaded scenario with {sharedScenario.RecordedActions.Length} actions");
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Failed to load scenario: {ex.Message}");
+                this.TraceMessage($"Exception type: {ex.GetType().Name}");
+                this.TraceMessage($"Stack trace: {ex.StackTrace}");
+                throw;
+            }
+
+            // Step 2: Get test file path for app launch (still need temp file for app to open)
+            var testFilePath = GetTestFilePath(testFileName);
+            this.TraceMessage($"Using test file for app launch: {testFilePath}");
+
+            // Step 3: Launch app with test file
             this.TraceMessage("About to launch app with test file");
             LaunchAppWithTestFile(testFilePath);
             this.TraceMessage("App launched successfully");
 
-            // Step 3: Wait for game to be loaded (should skip NewGame dialog)
+            // Step 4: Wait for game to be loaded (should skip NewGame dialog)
             this.TraceMessage("Waiting for game board to load");
             WaitForGameBoardToLoad();
             this.TraceMessage("Game board loaded");
 
-            // Step 4: Load automation objects after the game board is created
+            // Step 5: Load automation objects after the game board is created
             LoadAutomationObjects();
 
-            // Step 5: Execute the scripted scenario
+            // Step 6: Execute the scripted scenario using pre-loaded data
             this.TraceMessage("=== Starting scripted action execution ===");
-            ExecuteScenario(testFileName);
+            ExecuteScenario(sharedScenario);
 
             this.TraceMessage("=== All scripted actions completed successfully ===");
             _testSucceeded = true; // Mark test as successful
@@ -298,6 +344,7 @@ namespace Tests.DesktopApp.UI
         /// 3. Ensures the button is enabled and visible
         /// 4. Captures pre-action GameModel hash for verification
         /// 5. Clicks the button (prefers Invoke pattern over Click)
+        /// 
         /// 6. Waits for GameModel to change, confirming the action succeeded
         /// 
         /// The method includes robust error handling and scrolling for virtualized UI elements.
@@ -569,82 +616,34 @@ namespace Tests.DesktopApp.UI
         /// Throws: XunitException if the app fails to launch or main window cannot be found
         /// </summary>
         /// <summary>
-        /// Gets the test file name from environment variable or command-line arguments.
-        /// Falls back to default "Expansion-Test.catan_test" if not specified.
+        /// Gets the default test file name for the legacy obsolete test.
+        /// Modern tests should specify the test file name directly.
         /// </summary>
         private string GetTestFileName()
         {
-            // Check environment variable first (can be set in test runner or CI/CD)
-            var testFile = Environment.GetEnvironmentVariable("CATAN_TEST_FILE");
-
-            // If not set, check command-line arguments
-            if (string.IsNullOrEmpty(testFile))
-            {
-                var args = Environment.GetCommandLineArgs();
-                for (int i = 0; i < args.Length - 1; i++)
-                {
-                    if (args[i] == "--test-file" || args[i] == "-t")
-                    {
-                        testFile = args[i + 1];
-                        break;
-                    }
-                }
-            }
-
-            // Default to Expansion-Test.catan_test if not specified
-            if (string.IsNullOrEmpty(testFile))
-            {
-                testFile = "Expansion-Test.catan_test";
-                this.TraceMessage($"No test file specified. Using default: {testFile}");
-            }
-            else
-            {
-                this.TraceMessage($"Using test file from configuration: {testFile}");
-            }
-
-            return testFile;
+            return "Expansion.catan_test";
         }
 
         /// <summary>
-        /// Gets the path to the test file without creating a temporary copy.
-        /// Returns the direct path to the .catan_test file.
+        /// Gets the path to the test file by extracting it from the shared TestData resources.
+        /// Creates a temporary copy that the desktop app can load.
         /// </summary>
         /// <param name="testFileName">Optional test file name. If null, uses GetTestFileName() logic.</param>
         private string GetTestFilePath(string? testFileName = null)
         {
-            // Use provided filename or check for test file override from environment variable or command-line
             testFileName ??= GetTestFileName();
 
-            // The test file is stored alongside the test data in ScriptedTestData folder
-            var assembly = Assembly.GetExecutingAssembly();
-            var assemblyPath = Path.GetDirectoryName(assembly.Location)!;
-
-            // Try to find the file in the output directory first (it should be copied there)
-            var sourceFile = Path.Combine(assemblyPath, "ScriptedTestData", testFileName);
-
-            // If not in output, try to find it relative to the source directory
-            if (!File.Exists(sourceFile))
-            {
-                // Go up from bin/Debug/net9.0-windows... to find the source directory
-                var current = new DirectoryInfo(assemblyPath);
-                while (current != null && !File.Exists(Path.Combine(current.FullName, "Tests.DesktopApp.UI.csproj")))
-                {
-                    current = current.Parent;
-                }
-
-                if (current != null)
-                {
-                    sourceFile = Path.Combine(current.FullName, "ScriptedTestData", testFileName);
-                }
-            }
-
-            if (!File.Exists(sourceFile))
-            {
-                throw new FileNotFoundException($"Test file not found. Looked in: {sourceFile}");
-            }
-
-            this.TraceMessage($"Found test file: {sourceFile}");
-            return sourceFile;
+            // Extract the test file from the Shared assembly embedded resources
+            var tempPath = Path.Combine(Path.GetTempPath(), "CatanTests", testFileName);
+            Directory.CreateDirectory(Path.GetDirectoryName(tempPath)!);
+            
+            // Load from shared embedded resources (TestData files: Expansion.catan_test, Regular.catan_test)
+            using var stream = Catan3.Shared.TestData.TestDataLoader.GetTestFileStream(testFileName);
+            using var fileStream = File.Create(tempPath);
+            stream.CopyTo(fileStream);
+            
+            this.TraceMessage($"Extracted shared test file to: {tempPath}");
+            return tempPath;
         }
 
         /// <summary>
@@ -970,14 +969,13 @@ namespace Tests.DesktopApp.UI
             return false;
         }
         /// <summary>
-        /// Executes the main scripted test scenario loaded from the specified test file.
+        /// Executes the main scripted test scenario using pre-loaded scenario data.
         /// 
         /// Process:
-        /// 1. Locates the scenario JSON file in ScriptedTestData folder
-        /// 2. Loads and parses the TestScenario using ScenarioLoader
-        /// 3. Creates UIAutomationHelper and ActionExecutor instances
-        /// 4. Iterates through all actions in sequence
-        /// 5. For each action:
+        /// 1. Uses pre-loaded scenario data from embedded resources (no file searching)
+        /// 2. Creates UIAutomationHelper and ActionExecutor instances  
+        /// 3. Iterates through all actions in sequence
+        /// 4. For each action:
         ///    - Asserts current game state matches recorded state (before action execution)
         ///    - Executes the action using ActionExecutor
         ///    - Waits for UI to update
@@ -987,51 +985,22 @@ namespace Tests.DesktopApp.UI
         /// During replay, we assert the same timing - check state BEFORE executing each action.
         /// This ensures the test validates the exact same conditions as when recorded.
         /// 
-        /// Fallback: If no scenario file exists, executes a basic validation scenario.
+        /// Efficiency: This method no longer searches for files - it uses pre-loaded data
+        /// passed from DoFullTestWithScriptedActions() to eliminate duplicate file access.
         /// </summary>
-        /// <param name="testFileName">The test file name to execute</param>
-        private void ExecuteScenario(string testFileName)
+        /// <param name="sharedScenario">Pre-loaded test scenario with actions to execute</param>
+        private void ExecuteScenario(Catan3.Shared.TestData.TestScenario sharedScenario)
         {
-
-            // Find the scenario file in the same way as the test file
-            var assembly = Assembly.GetExecutingAssembly();
-            var assemblyPath = Path.GetDirectoryName(assembly.Location)!;
-            var scenarioPath = Path.Combine(assemblyPath, "ScriptedTestData", testFileName);
-
-            // If not in output, try source directory
-            if (!File.Exists(scenarioPath))
-            {
-                var current = new DirectoryInfo(assemblyPath);
-                while (current != null && !File.Exists(Path.Combine(current.FullName, "Tests.DesktopApp.UI.csproj")))
-                {
-                    current = current.Parent;
-                }
-
-                if (current != null)
-                {
-                    scenarioPath = Path.Combine(current.FullName, "ScriptedTestData", testFileName);
-                }
-            }
-
-            if (!File.Exists(scenarioPath))
-            {
-                this.TraceMessage($"Scenario file not found: {scenarioPath}");
-                this.TraceMessage("Using basic scenario execution without JSON file");
-                ExecuteBasicScenario();
-                return;
-            }
-
-            var scenario = ScenarioLoader.LoadScenario(scenarioPath);
-            this.TraceMessage($"Loaded scenario: {scenario.GetSummary()}");
+            this.TraceMessage($"Executing pre-loaded scenario with {sharedScenario.RecordedActions.Length} actions");
 
             // Create UI automation helper and action executor once
             var uiHelper = new UIAutomationHelper(Main, _automation!);
             var actionExecutor = new ActionExecutor(uiHelper);
 
             // Execute each recorded message in sequence
-            for (int i = 0; i < scenario.Actions.Count; i++)
+            for (int i = 0; i < sharedScenario.RecordedActions.Length; i++)
             {
-                var recordedMessage = scenario.Actions[i];
+                var recordedMessage = sharedScenario.RecordedActions[i];
                 
                 ValidateMessage(recordedMessage);
                 // Validate that current ExpectedGameHash matches recorded ExpectedGameHash
@@ -1086,8 +1055,14 @@ namespace Tests.DesktopApp.UI
             this.TraceMessage($"Executing recorded message: {recordedMessage.RecordType} with hash {recordedMessage.ExpectedGameHash}");
             switch (recordedMessage)
             {
-                case ExecuteGameActionRecord action:
-                    Execute_GameAction(action);
+                case UndoRecord undoAction:
+                    Execute_Undo(undoAction);
+                    break;
+                case RedoRecord redoAction:
+                    Execute_Redo(redoAction);
+                    break;
+                case NextRecord nextAction:
+                    Execute_Next(nextAction);
                     break;
                 case ShuffleRecord shuffle:
                     Execute_Shuffle(shuffle);
@@ -1162,19 +1137,26 @@ namespace Tests.DesktopApp.UI
             }
         }
 
-        private void Execute_GameAction(ExecuteGameActionRecord action)
+        private void Execute_Undo(UndoRecord action)
         {
-            var buttonId = action.Action switch
-            {
-                GameAction.Shuffle => "ShuffleButton",
-                GameAction.Undo => "UndoButton",
-                GameAction.Redo => "RedoButton",
-                GameAction.Next => "NextButton",
-                _ => throw new InvalidOperationException($"Unknown game action: {action.Action}")
-            };
+            this.TraceMessage("Executing undo action -> UndoButton");
+            var button = FindByAutomationId("UndoButton");
+            Assert.NotNull(button);
+            button.Click();
+        }
 
-            this.TraceMessage($"Executing game action: {action.Action} -> {buttonId}");
-            var button = FindByAutomationId(buttonId);
+        private void Execute_Redo(RedoRecord action)
+        {
+            this.TraceMessage("Executing redo action -> RedoButton");
+            var button = FindByAutomationId("RedoButton");
+            Assert.NotNull(button);
+            button.Click();
+        }
+
+        private void Execute_Next(NextRecord action)
+        {
+            this.TraceMessage("Executing next action -> NextButton");
+            var button = FindByAutomationId("NextButton");
             Assert.NotNull(button);
             button.Click();
         }

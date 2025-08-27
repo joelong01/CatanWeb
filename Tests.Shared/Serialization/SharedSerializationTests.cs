@@ -28,7 +28,6 @@ namespace Tests.Shared.Serialization
         #region Enum Serialization Tests
 
         [Theory]
-        [InlineData(typeof(GameAction))]
         [InlineData(typeof(ResourceType))]
         [InlineData(typeof(BuildingState))]
         [InlineData(typeof(BuildingVisualState))]
@@ -568,9 +567,10 @@ namespace Tests.Shared.Serialization
             {
                 await Task.Run(() =>
                 {
-                    // Test ExecuteGameActionMessage message
-                    var doAction = new ExecuteGameActionMessage(GameAction.Next);
-                    TestMessageSerialization(doAction, nameof(ExecuteGameActionMessage));
+                    // Test individual action messages
+                    TestMessageSerialization(new UndoMessage(), nameof(UndoMessage));
+                    TestMessageSerialization(new RedoMessage(), nameof(RedoMessage)); 
+                    TestMessageSerialization(new NextMessage(), nameof(NextMessage));
 
                     // Test PurchaseMessage
                     var purchase = new PurchaseMessage(Entitlement.Settlement);

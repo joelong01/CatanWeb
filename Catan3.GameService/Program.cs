@@ -38,7 +38,11 @@ builder.Services.AddCors(options =>
 });
 
 // Add SignalR for real-time communication
-builder.Services.AddSignalR()
+builder.Services.AddSignalR(options =>
+    {
+        // Increase message size limit for large GameModel objects (default is 32KB)
+        options.MaximumReceiveMessageSize = 1024 * 1024; // 1MB
+    })
     .AddJsonProtocol(options =>
     {
         JsonHelper.ConfigureOptions(options.PayloadSerializerOptions);

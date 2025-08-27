@@ -5,10 +5,19 @@ using Catan3.Shared.Utility;
 namespace Catan3.Shared.Models
 {
     // Core message types needed for the web API
-    public class ExecuteGameActionMessage(GameAction action)
+    public class UndoMessage
     {
-        public GameAction Action { get; } = action;
-        public override string ToString() => $"ExecuteGameActionMessage: {Action}";
+        public override string ToString() => "UndoMessage";
+    }
+
+    public class RedoMessage
+    {
+        public override string ToString() => "RedoMessage";
+    }
+
+    public class NextMessage
+    {
+        public override string ToString() => "NextMessage";
     }
 
     public class PurchaseMessage(Entitlement entitlement)

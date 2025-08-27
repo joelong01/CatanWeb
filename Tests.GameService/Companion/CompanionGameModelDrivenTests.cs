@@ -56,7 +56,7 @@ namespace Tests.GameService.Companion
                 Assert.True(actionFlags.NextEnabled || actionFlags.UndoEnabled || actionFlags.RedoEnabled);
 
                 // Test progression and verify UI updates from new GameModel
-                var result = await companion.ExecuteDoActionAsync(gameId, GameAction.Next);
+                var result = await companion.ExecuteNextAsync();
                 if (result.Success)
                 {
                     await Task.Delay(500); // Wait for update
@@ -186,7 +186,7 @@ namespace Tests.GameService.Companion
                 var initialState = companion1.GameModel?.GameState;
 
                 // Execute action from companion1
-                var result = await companion1.ExecuteDoActionAsync(gameId, GameAction.Shuffle);
+                var result = await companion1.ExecuteShuffleAsync();
                 if (result.Success)
                 {
                     // Verify companion2 receives update via SignalR
@@ -328,13 +328,13 @@ namespace Tests.GameService.Companion
             return gameIdElement.GetString() ?? throw new InvalidOperationException("Null gameId");
         }
 
-        private async Task<SignalRProxy> CreateCompanionProxy(string gameId, string playerId)
+        private async Task<GameServiceProxy> CreateCompanionProxy(string gameId, string playerId)
         {
             var uri = _factory.Server.BaseAddress ?? new Uri("http://localhost");
             var hubUrl = new Uri(uri, "/gameHub").ToString();
             var testHandler = _factory.Server.CreateHandler();
 
-            var proxy = new SignalRProxy(hubUrl, testHandler, playerId, gameId);
+            var proxy = new GameServiceProxy(hubUrl, "http://localhost", testHandler, playerId, gameId);
             await proxy.ConnectAsync();
             
             // Wait for initial GameStateUpdated event after joining
@@ -350,7 +350,7 @@ namespace Tests.GameService.Companion
             return proxy;
         }
 
-        private async Task ProgressToAllocationState(SignalRProxy companion, string gameId)
+        private async Task ProgressToAllocationState(GameServiceProxy companion, string gameId)
         {
             // Progress through game states to reach allocation
             var maxAttempts = 10;
@@ -367,7 +367,7 @@ namespace Tests.GameService.Companion
 
                 if (gameModel?.ActionFlags?.NextEnabled == true)
                 {
-                    await companion.ExecuteDoActionAsync(gameId, GameAction.Next);
+                    await companion.ExecuteNextAsync();
                     await Task.Delay(500);
                 }
                 else
@@ -379,7 +379,7 @@ namespace Tests.GameService.Companion
             }
         }
 
-        private async Task ProgressToMainGameplay(SignalRProxy companion, string gameId)
+        private async Task ProgressToMainGameplay(GameServiceProxy companion, string gameId)
         {
             // Progress through initial states to main gameplay
             var maxAttempts = 20;
@@ -396,7 +396,7 @@ namespace Tests.GameService.Companion
 
                 if (gameModel?.ActionFlags?.NextEnabled == true)
                 {
-                    await companion.ExecuteDoActionAsync(gameId, GameAction.Next);
+                    await companion.ExecuteNextAsync();
                     await Task.Delay(500);
                 }
                 else

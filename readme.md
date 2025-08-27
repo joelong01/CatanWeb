@@ -1,20 +1,21 @@
-# Catan3 Phone Companion Design
+# Catan3 Game System
 
 ## Overview
 
-This document outlines the design for an application that is used to play Settlers of Catan. The game is played with friends in the same room, so we don't need to worry about security. The game is comprised of the following parts:
+This document outlines the design for a multi-platform Settlers of Catan game system. The game is played with friends in the same room, supporting both desktop and web-based companion experiences. The system is comprised of the following components:
 
-**1. a "Desktop App" (in the DesktopApp project):** This is currently a full end-to-end game that we DO NOT CHANGE unless specifically told to do so. It works as is, so if there is ever an issue as we implement the other parts, we can refer to the desktop app to see how the game should work. Note that we model the UI and collect statistics, but we do not model Resources, Dice, or Development cards. These are all managed with physical pieces.
+**1. Desktop App (DesktopApp project):** A full-featured WinUI3 game client that serves as the reference implementation. This works as-is and should NOT be changed unless specifically directed. It models the UI and game state, while Resources, Dice, and Development cards are managed with physical pieces.
 
-In Development, we have:
+**2. GameService (Catan3.GameService project):** An ASP.NET Core service that implements game logic using both REST API and SignalR for real-time communication. The service enables players to trigger game actions like "Next", "Undo", "Purchase", etc., from their devices with immediate real-time updates to all connected clients.
 
-**2. a GameService (in the GameService project):** This is an ASP.NET Core service that implements the game logic and provides a REST API for the client to interact with the game. The GameService is implemented as an ASP.NET Core service. The companion app will enable players to trigger game actions like "Next", "Undo", "Purchase", etc., from their mobile devices. The Game is a "Settlers of Catan" style game with a focus on real-time multiplayer gameplay.
+**3. Shared Library (Catan3.Shared project):** Contains all shared data structures, game logic, and communication interfaces. This includes GameModel, PlayerModel, GameStateMachine, and the unified GameServiceProxy for client-server communication. The library is used by both the GameService and client applications.
 
-**3. a Shared module (in the Shared project):** This contains all the data that is shared between the clients and the service. This includes the GameModel, PlayerModel, and other data structures that are used by the rest of the project. The Shared module is a .NET Standard library that can be used by both the GameService and the client applications.
+**4. Comprehensive Test Suite:** Multiple test projects ensure game logic correctness and API functionality:
+   - **Tests.DesktopApp.UI:** End-to-end UI automation tests 
+   - **Tests.GameService:** Integration and SignalR communication tests
+   - **Tests.Shared:** JSON serialization compatibility tests for .NET and JavaScript
 
-**4. a comprehensive set of tests (in the Tests project):** This includes unit tests, integration tests, and end-to-end tests that ensure the game logic works correctly and that the REST API is functioning as expected. The Game tests are designed to verify the functionality of the game. Since the game is stateful, the tests are stateful (the exception is the shared project, which makes sure that all JSON serialization for both .NET and JavaScript works correctly). The tests are designed to be run in a continuous integration environment, and they are designed to be run in parallel.
-
-**5. a CLI that will create a game and properly transition to the WaitingForRoll state:** The use case is to debug the real service with a client that efficiently gets the game to a debuggable state.
+**5. CLI Tool (Catan3.CLI project):** Command-line interface for debugging and testing. Creates games and transitions them to debuggable states efficiently.
 
 At the stage we are in, DO NOT change the WinUI3 desktop app. That is the "source of truth" for how the game works, even though we are evolving it. We can always reference back to the game to see *WHAT* needs to be done, if not necessarily *HOW* it needs to be done.
 
@@ -22,17 +23,32 @@ You are an expert at C# and ASP.NET. You always write best practice code that is
 
 As this is initial implementation, sometimes the code is correct and the tests need to be updated to match the code, and sometimes the code needs to be updated to match the tests. You will always ensure that the code and tests are in sync before you finish a task. If you are not sure, you will ask for clarification.
 
-The way the client works is there is a thread that is in an infinite loop until the game is over (e.g., GameState == GameState.GameOver). In the loop, it calls to the GameService to the hanging GET. When the GameModel changes, the call returns and the GameModel is then "marshalled" to the UI thread which updates the game. Our tests should spawn a thread to make the hanging GET and then continue on their main thread, waiting on a TASK signaled by the spawn thread when the GameModel is updated to simulate the behavior.
+## Communication Architecture
 
-The synchronization functionality works this way:
+The system uses **SignalR** for real-time bidirectional communication between clients and the GameService, replacing the previous hanging GET pattern:
 
-1. Client has a thread that has a hanging GET. This is in an infinite loop, terminating when the GameState reaches GameOver. If the GET times out, it just loops to call the GET again.
-2. The main UI thread on the client can interact with the service that causes the GameModel to be updated.
-3. On ANY change to the GameModel (including Undo or Redo), the hanging GET for all clients completes and this GameModel is passed back to the client.
-4. The thread that executes the hanging GET passes the new GameModel to the main UI thread, which then does whatever it does (in the Desktop app, it forces a UI update).
-5. The worker thread loops to do another hanging GET.
+### **SignalR Hub Communication**
+1. **Client Connection:** Clients connect to `/gameHub` and join game-specific groups
+2. **Action Execution:** Clients send game actions (Undo, Redo, Next, Purchase, etc.) via SignalR hub methods
+3. **Real-time Updates:** GameService immediately broadcasts `GameStateUpdated` events to all clients in the game group
+4. **Command Completion:** Clients receive `CommandCompleted` or `CommandFailed` notifications with results
 
-This is the pattern our tests should be following.
+### **GameServiceProxy - Unified Client Interface**
+The `GameServiceProxy` class in `Catan3.Shared.Services` provides a unified interface combining:
+- **SignalR Hub Methods:** Real-time game actions (Undo, Redo, Next, Roll, Purchase, etc.)
+- **REST API Calls:** Game management (CreateGame, GetAvailableGames, GetGame)
+- **Event Handling:** GameStateUpdated, CommandCompleted, PlayerPresenceChanged events
+- **Connection Management:** Automatic reconnection, proper resource disposal
+
+### **Message Architecture**
+Game actions use specific message types instead of generic commands:
+- `UndoMessage` → `HandleUndoAsync()`
+- `RedoMessage` → `HandleRedoAsync()`
+- `NextMessage` → `HandleNextAsync()`
+- `ShuffleMessage` → `HandleShuffleAsync()`
+- `PurchaseMessage` → `HandlePurchaseAsync()`
+
+This provides compile-time type safety and eliminates string-based action matching.
 
 ## Rules 📋
 
@@ -48,7 +64,7 @@ These rules *MUST* be followed for *ALL* requests and no violations of any of th
 8. **TESTS MUST PASS**: Before marking any task as complete, ensure that all tests pass without errors or warnings. If there are compilation errors or test failures, fix them before proceeding.
 9. **COMMENT RULES**: We do not embed comments that give history. Comments are there to tell what it *does*. There can be exceptions when the logic is difficult and we want to explain why something works the way it does - we can add a comment with a date and what the bug was and the fix we are making.
 10. **Rule Compliance**: All tests must pass without errors or warnings. If there are any issues, they must be resolved before proceeding with any further work. This includes ensuring that all tests are up-to-date and reflect the current state of the codebase.
-11. **SignalR**: Use the proxy in the Shared project to call SignalR.
+11. **SignalR Communication**: Use GameServiceProxy in the Shared project for all client-server communication. It provides unified access to both SignalR hub methods and REST APIs.
 
 ### **Commenting Guidelines (for AI-friendly evolution)**
 
@@ -121,51 +137,49 @@ private static string ExtractNameFromId(string id)
 }
 ```
 
-### **GameStateMachine - Server-Generated GameIds**
+### **GameStateMachine - Shared Game Logic**
 
-The `GameStateMachine` class in `Catan3.GameService/Controllers/GameStateMachine.cs` generates its own GameId and manages client notifications:
+The `GameStateMachine` class in `Catan3.Shared.GameLogic` contains the core game logic and state management. The interface has been refactored for type safety:
 
 ```csharp
 /// <summary>
-/// Server-generated unique identifier for this game instance.
-/// Generated in constructor to ensure GameId is always available for all GameModels.
+/// Interface for game state management operations.
+/// Provides clean abstraction between messaging layer and game logic.
 /// </summary>
-public string GameId { get; private set; }
-
-public GameStateMachine(IPersistenceService? PersistenceService, IClientNotification clientNotification, string localSaveFile)
+public interface IGameStateMachine
 {
-    // Generate server-side GameId to ensure it's available for all GameModels
-    GameId = Guid.NewGuid().ToString();
-    
-    _clientNotification = clientNotification;
-    Log = new Log<string>(PersistenceService, localSaveFile);
-    MyPersistenceService = PersistenceService;
+    Task<GameModel> HandleUndoAsync(UndoMessage message);
+    Task<GameModel> HandleRedoAsync(RedoMessage message);  
+    Task<GameModel> HandleNextAsync(NextMessage message);
+    Task<GameModel> HandleShuffleAsync(ShuffleMessage message);
+    Task<GameModel> HandlePurchaseAsync(PurchaseMessage message);
+    // ... additional action handlers
 }
 ```
 
-### **Client Notification Architecture**
+This replaces the previous generic `ExecuteGameActionAsync(ExecuteGameActionMessage)` with specific typed methods for each action.
 
-The system uses a separation of concerns approach for real-time updates:
+### **SignalR Hub Architecture**
 
-**IClientNotification Interface**:
+The system uses SignalR for real-time client-server communication:
 
+**GameHub** (`Catan3.GameService.Hubs.GameHub`):
+- Handles client connections and game group management
+- Routes typed messages to appropriate GameStateMachine handlers
+- Broadcasts `GameStateUpdated` events to all clients in the game group
+- Provides command completion feedback via `CommandCompleted`/`CommandFailed` events
+
+**Message Routing**:
 ```csharp
-public interface IClientNotification
+GameModel updatedGameModel = message switch
 {
-    Task NotifyAsync(string gameId, GameModel gameModel);
-    Task<GameModel> WaitForNotificationAsync(string gameId, string clientId, int currentVersion, CancellationToken cancellationToken);
-}
+    UndoMessage undoMsg => await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleUndoAsync(undoMsg)),
+    RedoMessage redoMsg => await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleRedoAsync(redoMsg)), 
+    NextMessage nextMsg => await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleNextAsync(nextMsg)),
+    // ... other message types
+    _ => throw new ArgumentException($"Unknown message type: {messageTypeName}")
+};
 ```
-
-**ClientNotificationService**:
-
-- Maintains `ConcurrentDictionary<string, ClientManager>` where key = gameId
-- Each `ClientManager` handles multiple clients waiting for updates for that specific game
-- When `NotifyAsync()` is called:
-  1. Serializes GameModel to JSON
-  2. Stores JSON in ClientManager
-  3. Signals all waiting threads for that gameId
-  4. Each waiting thread copies JSON to response and completes the HTTP request
 
 ### **API Design**
 
@@ -212,14 +226,21 @@ public class NewGameRequest
 }
 ```
 
-### **Protocol Flow**
+### **Communication Flow**
 
-1. Client sends request to GameService containing the GameId
-2. GameService looks up the GameId in its HashMap (GameStateMachineService)
-   - If not found, returns HTTP 404
-   - If found, dispatches the request to the correct GameStateMachine
-3. GameStateMachine **always** returns a GameModel (focus on game state only)
-4. GameService uses the GameModel to trigger the hanging GET notification system to update all clients with the new game model
+**SignalR Real-time Actions:**
+1. Client connects to `/gameHub` and joins game group via `JoinGame(gameId, playerId)`
+2. Client sends typed action messages (UndoMessage, NextMessage, etc.) via hub methods
+3. GameHub routes message to GameStateMachineService for the specific gameId
+4. GameStateMachine processes action and returns updated GameModel
+5. GameHub broadcasts `GameStateUpdated(gameModel)` to all clients in the game group
+6. GameHub sends `CommandCompleted(commandId, success, message)` to the originating client
+
+**REST API Operations:**
+- `POST /api/games` - Create new game
+- `GET /api/games/{gameId}` - Get game state  
+- `GET /api/companion/games` - List available games
+- Game management operations that don't require real-time updates
 
 ## Directory Structure
 
@@ -260,8 +281,11 @@ Catan/
 │       └── mermaid-source/
 ├── Catan3.Shared/
 │   ├── Extensions/
+│   ├── GameLogic/          # GameStateMachine moved here  
+│   ├── Interfaces/         # IGameStateMachine interface
 │   ├── Models/
-│   ├── Services/
+│   ├── Services/           # GameServiceProxy for client communication
+│   ├── TestData/           # Shared test scenarios
 │   └── Utility/
 ├── DesktopApp/
 │   ├── Assets/

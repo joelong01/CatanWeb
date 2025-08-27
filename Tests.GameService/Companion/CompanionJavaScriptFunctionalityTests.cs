@@ -89,8 +89,8 @@ namespace Tests.GameService.Companion
             {
                 var gameId = await CreateTestGame("Regular", new[] { "Alice", "Bob", "Charlie", "David" });
 
-                // Use SignalRProxy for robust real-time async waiting (like end-to-end tests)
-                var proxy = await CreateSignalRProxy(gameId, "Alice");
+                // Use GameServiceProxy for robust real-time async waiting (like end-to-end tests)
+                var proxy = await CreateGameServiceProxy(gameId, "Alice");
 
                 // Verify initial connection and state
                 Assert.Equal(HubConnectionState.Connected, proxy.Connection.State);
@@ -103,7 +103,7 @@ namespace Tests.GameService.Companion
                 Assert.Equal(GameState.PickingBoard, proxy.GameModel.GameState);
 
                 // Test command execution (companion.js doAction()) - use proper ExecuteGameActionMessage message object
-                await proxy.ExecuteDoActionAsync(gameId, GameAction.Shuffle);
+                await proxy.ExecuteShuffleAsync();
 
                 // Wait for the update after the shuffle action (should still be PickingBoard)
                 await proxy.WaitForGameStateAsync(GameState.PickingBoard, TimeSpan.FromSeconds(5));
@@ -193,10 +193,10 @@ namespace Tests.GameService.Companion
                            gameModel.ActionFlags.RedoEnabled);
 
                 // Test state progression and UI data
-                var proxy = await CreateSignalRProxy(gameId, "Alice");
+                var proxy = await CreateGameServiceProxy(gameId, "Alice");
                 
                 // Advance to next state
-                var result = await proxy.ExecuteDoActionAsync(gameId, GameAction.Next);
+                var result = await proxy.ExecuteNextAsync();
                 Assert.True(result.Success);
 
                 // Verify new state provides appropriate UI data
@@ -215,23 +215,29 @@ namespace Tests.GameService.Companion
             using (new FunctionTimer("CommandExecution", enableOverride: true))
             {
                 var gameId = await CreateTestGame("Regular", new[] { "Alice", "Bob", "Charlie", "David" });
-                var proxy = await CreateSignalRProxy(gameId, "Alice");
+                var proxy = await CreateGameServiceProxy(gameId, "Alice");
 
                 var commandResults = new Dictionary<string, bool>();
 
                 // Test basic actions (companion.js doAction())
-                var basicActions = new[] { GameAction.Shuffle, GameAction.Undo, GameAction.Next };
-                foreach (var action in basicActions)
+                var testActions = new[]
+                {
+                    ("Shuffle", (Func<Task<CommandResult>>)(() => proxy.ExecuteShuffleAsync())),
+                    ("Undo", (Func<Task<CommandResult>>)(() => proxy.ExecuteUndoAsync())),
+                    ("Next", (Func<Task<CommandResult>>)(() => proxy.ExecuteNextAsync()))
+                };
+                
+                foreach (var (actionName, actionFunc) in testActions)
                 {
                     try
                     {
-                        var result = await proxy.ExecuteDoActionAsync(gameId, action);
-                        commandResults[action.ToString()] = result.Success;
+                        var result = await actionFunc();
+                        commandResults[actionName] = result.Success;
                     }
                     catch (Exception ex)
                     {
-                        commandResults[action.ToString()] = false;
-                        Console.WriteLine($"Action {action} failed: {ex.Message}");
+                        commandResults[actionName] = false;
+                        Console.WriteLine($"Action {actionName} failed: {ex.Message}");
                     }
                 }
 
@@ -274,8 +280,8 @@ namespace Tests.GameService.Companion
                 var gameId = await CreateTestGame("Regular", new[] { "Alice", "Bob", "Charlie", "David" });
 
                 // Create multiple companion connections
-                var companion1 = await CreateSignalRProxy(gameId, "Alice");
-                var companion2 = await CreateSignalRProxy(gameId, "Bob");
+                var companion1 = await CreateGameServiceProxy(gameId, "Alice");
+                var companion2 = await CreateGameServiceProxy(gameId, "Bob");
 
                 var companion1Updates = new List<GameModel>();
                 var companion2Updates = new List<GameModel>();
@@ -284,7 +290,7 @@ namespace Tests.GameService.Companion
                 companion2.GameStateUpdated += companion2Updates.Add;
 
                 // Execute action from one companion
-                var result = await companion1.ExecuteDoActionAsync(gameId, GameAction.Shuffle);
+                var result = await companion1.ExecuteShuffleAsync();
                 Assert.True(result.Success);
 
                 // Wait for updates to propagate
@@ -378,13 +384,13 @@ namespace Tests.GameService.Companion
                 .Build();
         }
 
-        private async Task<SignalRProxy> CreateSignalRProxy(string gameId, string playerId)
+        private async Task<GameServiceProxy> CreateGameServiceProxy(string gameId, string playerId)
         {
             var uri = _factory.Server.BaseAddress ?? new Uri("http://localhost");
             var hubUrl = new Uri(uri, "/gameHub").ToString();
             var testHandler = _factory.Server.CreateHandler();
 
-            var proxy = new SignalRProxy(hubUrl, testHandler, playerId, gameId);
+            var proxy = new GameServiceProxy(hubUrl, "http://localhost", testHandler, playerId, gameId);
             await proxy.ConnectAsync();
             return proxy;
         }

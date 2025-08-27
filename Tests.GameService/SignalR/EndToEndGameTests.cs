@@ -26,7 +26,7 @@ namespace Tests.GameService.SignalR
     /// AllocateResourceForward → AllocateResourceReverse → WaitingForRoll → WaitingForNext → 
     /// PickSupplementalPlayers → Supplemental → MustMoveRobber
     /// 
-    /// Updated to use SignalRProxy from Catan3.Shared instead of local test helpers (Rule compliance).
+    /// Updated to use GameServiceProxy from Catan3.Shared instead of local test helpers (Rule compliance).
     /// </summary>
     public class EndToEndGameTests : IClassFixture<WebApplicationFactory<Program>>
     {
@@ -202,7 +202,13 @@ namespace Tests.GameService.SignalR
             LogEvent(session, "InitialHash", $"Initial ExpectedGameHash: {initialHash}");
 
             // Execute first shuffle
-            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Shuffle);
+            var shuffleProxy = session.GetProxy(currentPlayerId);
+            var shuffleResult = await shuffleProxy.ExecuteShuffleAsync();
+            if (!shuffleResult.Success)
+            {
+                throw new InvalidOperationException($"Shuffle action failed: {shuffleResult.Message}");
+            }
+            await session.VerifyAllProxiesReceivedUpdate();
             var firstShuffleState = session.GetProxy("Alice").GameModel;
             var firstShuffleHash = firstShuffleState?.GameHash;
             Assert.NotNull(firstShuffleHash);
@@ -210,7 +216,12 @@ namespace Tests.GameService.SignalR
             LogEvent(session, "FirstShuffle", $"After first shuffle: {firstShuffleHash}");
 
             // Execute second shuffle
-            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Shuffle);
+            shuffleResult = await shuffleProxy.ExecuteShuffleAsync();
+            if (!shuffleResult.Success)
+            {
+                throw new InvalidOperationException($"Shuffle action failed: {shuffleResult.Message}");
+            }
+            await session.VerifyAllProxiesReceivedUpdate();
             var secondShuffleState = session.GetProxy("Alice").GameModel;
             var secondShuffleHash = secondShuffleState?.GameHash;
             Assert.NotNull(secondShuffleHash);
@@ -218,7 +229,13 @@ namespace Tests.GameService.SignalR
             LogEvent(session, "SecondShuffle", $"After second shuffle: {secondShuffleHash}");
 
             // Test Undo functionality
-            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Undo);
+            var undoProxy = session.GetProxy(currentPlayerId);
+            var undoResult = await undoProxy.ExecuteUndoAsync();
+            if (!undoResult.Success)
+            {
+                throw new InvalidOperationException($"Undo action failed: {undoResult.Message}");
+            }
+            await session.VerifyAllProxiesReceivedUpdate();
             var undoState = session.GetProxy("Alice").GameModel;
             var undoHash = undoState?.GameHash;
             Assert.Equal(firstShuffleHash, undoHash);
@@ -226,7 +243,13 @@ namespace Tests.GameService.SignalR
             LogEvent(session, "UndoVerified", "✅ Undo restored previous state correctly");
 
             // Test Redo functionality
-            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Redo);
+            var redoProxy = session.GetProxy(currentPlayerId);
+            var redoResult = await redoProxy.ExecuteRedoAsync();
+            if (!redoResult.Success)
+            {
+                throw new InvalidOperationException($"Redo action failed: {redoResult.Message}");
+            }
+            await session.VerifyAllProxiesReceivedUpdate();
             var redoState = session.GetProxy("Alice").GameModel;
             var redoHash = redoState?.GameHash;
             Assert.Equal(secondShuffleHash, redoHash);
@@ -235,7 +258,13 @@ namespace Tests.GameService.SignalR
             // Test Balance functionality (if available)
             try
             {
-                await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Balance);
+                var balanceProxy = session.GetProxy(currentPlayerId);
+                var balanceResult = await balanceProxy.ExecuteBalanceAsync();
+                if (!balanceResult.Success)
+                {
+                    throw new InvalidOperationException($"Balance action failed: {balanceResult.Message}");
+                }
+                await session.VerifyAllProxiesReceivedUpdate();
                 var balanceState = session.GetProxy("Alice").GameModel;
                 Assert.NotNull(balanceState);
                 LogEvent(session, "BalanceVerified", "✅ Balance action executed successfully");
@@ -246,7 +275,13 @@ namespace Tests.GameService.SignalR
             }
 
             // Advance to next state using Next action
-            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Next);
+            var nextProxy = session.GetProxy(currentPlayerId);
+            var nextResult = await nextProxy.ExecuteNextAsync();
+            if (!nextResult.Success)
+            {
+                throw new InvalidOperationException($"Next action failed: {nextResult.Message}");
+            }
+            await session.VerifyAllProxiesReceivedUpdate();
             await session.VerifyAllProxiesInState(GameState.WaitingForRollForOrder);
             await session.VerifyGameConsistency();
 
@@ -272,7 +307,13 @@ namespace Tests.GameService.SignalR
 
             // Test Next action to advance to FinishedRollOrder
             var currentPlayerId = session.GetCurrentPlayerId();
-            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Next);
+            var nextProxy = session.GetProxy(currentPlayerId);
+            var nextResult = await nextProxy.ExecuteNextAsync();
+            if (!nextResult.Success)
+            {
+                throw new InvalidOperationException($"Next action failed: {nextResult.Message}");
+            }
+            await session.VerifyAllProxiesReceivedUpdate();
             await session.VerifyAllProxiesInState(GameState.FinishedRollOrder);
             await session.VerifyGameConsistency();
 
@@ -298,7 +339,13 @@ namespace Tests.GameService.SignalR
 
             // Test Next action to advance to BeginResourceAllocation
             var currentPlayerId = session.GetCurrentPlayerId();
-            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Next);
+            var nextProxy = session.GetProxy(currentPlayerId);
+            var nextResult = await nextProxy.ExecuteNextAsync();
+            if (!nextResult.Success)
+            {
+                throw new InvalidOperationException($"Next action failed: {nextResult.Message}");
+            }
+            await session.VerifyAllProxiesReceivedUpdate();
             await session.VerifyAllProxiesInState(GameState.BeginResourceAllocation);
             await session.VerifyGameConsistency();
 
@@ -324,7 +371,13 @@ namespace Tests.GameService.SignalR
 
             // Test Next action to advance to AllocateResourceForward
             var currentPlayerId = session.GetCurrentPlayerId();
-            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Next);
+            var nextProxy = session.GetProxy(currentPlayerId);
+            var nextResult = await nextProxy.ExecuteNextAsync();
+            if (!nextResult.Success)
+            {
+                throw new InvalidOperationException($"Next action failed: {nextResult.Message}");
+            }
+            await session.VerifyAllProxiesReceivedUpdate();
             await session.VerifyAllProxiesInState(GameState.AllocateResourceForward);
             await session.VerifyGameConsistency();
 
@@ -449,8 +502,13 @@ namespace Tests.GameService.SignalR
                 }
 
                 // advance to the next state
-
-                await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Next);
+                var nextProxy = session.GetProxy(currentPlayerId);
+                var nextResult = await nextProxy.ExecuteNextAsync();
+                if (!nextResult.Success)
+                {
+                    throw new InvalidOperationException($"Next action failed: {nextResult.Message}");
+                }
+                await session.VerifyAllProxiesReceivedUpdate();
 
 
                 //
@@ -576,7 +634,13 @@ namespace Tests.GameService.SignalR
 
             // ADVANCEMENT TEST: Test Next action to advance to WaitingForRoll
             LogEvent(session, "Before Next()", "Testing advancement with Next action to WaitingForRoll");
-            await session.ExecuteActionWithVerification(currentPlayerId, GameAction.Next);
+            var nextProxy = session.GetProxy(currentPlayerId);
+            var nextResult = await nextProxy.ExecuteNextAsync();
+            if (!nextResult.Success)
+            {
+                throw new InvalidOperationException($"Next action failed: {nextResult.Message}");
+            }
+            await session.VerifyAllProxiesReceivedUpdate();
 
             // FINAL ASSERTION: Verify we advanced to WaitingForRoll
             await session.VerifyAllProxiesInState(GameState.WaitingForRoll);
@@ -625,10 +689,408 @@ namespace Tests.GameService.SignalR
             else
                 Console.WriteLine(gameLog);
         }
+
+        /// <summary>
+        /// Test that replays the shared Expansion.catan_test file to ensure GameService
+        /// produces identical game state progression as the Desktop app.
+        /// This validates that the shared GameStateMachine behaves consistently across both architectures.
+        /// </summary>
+        [Fact]
+        public async Task TestLoadGameModelOnly()
+        {
+            LogEvent(null, "LoadGameModelTest", "=== Testing LoadGameModel in isolation ===");
+
+            // Load the shared test scenario
+            var testScenario = await Catan3.Shared.TestData.TestDataLoader.LoadTestScenarioAsync("Expansion.catan_test");
+            LogEvent(null, "TestFileLoaded", $"Loaded test scenario: {testScenario.TestFileName}");
+
+            // Create a single SignalR proxy
+            var playerId = testScenario.InitialGameModel.Players[0].Id;
+            var gameId = "test-game-" + Guid.NewGuid().ToString("N")[..8];
+            
+            var uri = _factory.Server.BaseAddress ?? new Uri("http://localhost");
+            var hubUrl = new Uri(uri, "/gameHub").ToString();
+            var serviceUri = uri.ToString().TrimEnd('/');
+            var testHandler = _factory.Server.CreateHandler();
+            var proxy = new GameServiceProxy(hubUrl, serviceUri, testHandler, playerId);
+            
+            LogEvent(null, "ProxyCreated", $"Created SignalR proxy for player {playerId}");
+
+            // Connect to SignalR
+            await proxy.ConnectAsync();
+            LogEvent(null, "ProxyConnected", $"Connected proxy for player {playerId}");
+
+            // Try to load the GameModel
+            LogEvent(null, "LoadingGameModel", $"Attempting to load GameModel with state: {testScenario.InitialGameModel.GameState}");
+            
+            try
+            {
+                var loadResult = await proxy.LoadGameModelAsync(testScenario.InitialGameModel);
+                LogEvent(null, "LoadModelSuccess", $"LoadGameModel succeeded: {loadResult.Success}, Message: {loadResult.Message}");
+            }
+            catch (Exception ex)
+            {
+                LogEvent(null, "LoadModelError", $"LoadGameModel failed: {ex.GetType().Name}: {ex.Message}");
+                throw;
+            }
+            finally
+            {
+                // Cleanup
+                await proxy.DisposeAsync();
+                LogEvent(null, "TestComplete", "LoadGameModel test completed");
+            }
+        }
+
+        [Fact]
+        public async Task ReplaySharedExpansionTestFile()
+        {
+            LogEvent(null, "ReplayTest", "=== Starting replay of shared Expansion.catan_test with proper multiplayer flow ===");
+
+            // Load the shared test scenario - parse gameModel and actionStack
+            var testScenario = await Catan3.Shared.TestData.TestDataLoader.LoadTestScenarioAsync("Expansion.catan_test");
+            LogEvent(null, "TestFileLoaded", $"Loaded test scenario: {testScenario.TestFileName} with {testScenario.RecordedActions.Length} actions");
+
+            // Extract player IDs from the initial game model
+            var playerIds = testScenario.InitialGameModel.Players.Select(p => p.Id).ToArray();
+            LogEvent(null, "PlayersIdentified", $"Players in test: {string.Join(", ", playerIds)}");
+
+            // Set a user-friendly game name for testing
+            var randomSalt = Random.Shared.Next(1000, 9999);
+            testScenario.InitialGameModel.GameName = $"Expansion Test {randomSalt}";
+
+            // === STEP 1: First player loads the game ===
+            var firstPlayerId = playerIds[0];
+            var uri = _factory.Server.BaseAddress ?? new Uri("http://localhost");
+            var hubUrl = new Uri(uri, "/gameHub").ToString();
+            var serviceUri = uri.ToString().TrimEnd('/');
+            var testHandler = _factory.Server.CreateHandler();
+            
+            var firstPlayerProxy = new GameServiceProxy(hubUrl, serviceUri, testHandler, firstPlayerId);
+            await firstPlayerProxy.ConnectAsync();
+            LogEvent(null, "FirstPlayerConnected", $"First player {firstPlayerId} connected to SignalR");
+
+            // Load the GameModel using the first player's proxy
+            var loadResult = await firstPlayerProxy.LoadGameModelAsync(testScenario.InitialGameModel);
+            if (!loadResult.Success)
+            {
+                throw new InvalidOperationException($"Failed to load GameModel: {loadResult.Message}");
+            }
+            
+            // Get the actual GameId that was set in the proxy
+            var actualGameId = firstPlayerProxy.GameId ?? throw new InvalidOperationException("GameId was not set after loading GameModel");
+            LogEvent(null, "GameModelLoaded", $"GameModel loaded by {firstPlayerId}: {loadResult.Message}");
+            LogEvent(null, "ActualGameId", $"Game created with GameId: {actualGameId}");
+            LogEvent(null, "ExpectedGameName", $"Looking for games with GameName: '{testScenario.InitialGameModel.GameName}'");
+
+            // === STEP 2: Other players discover and join the game ===
+            var otherPlayerProxies = new Dictionary<string, GameServiceProxy>();
+            
+            foreach (var playerId in playerIds.Skip(1))
+            {
+                // Create proxy for this player
+                var playerProxy = new GameServiceProxy(hubUrl, serviceUri, testHandler, playerId);
+                await playerProxy.ConnectAsync();
+                LogEvent(null, "PlayerConnected", $"Player {playerId} connected to SignalR");
+
+                // Discover available games via REST API
+                var availableGames = await playerProxy.GetAvailableGamesAsync();
+                LogEvent(null, "GamesDiscovered", $"Player {playerId} discovered {availableGames.Count} available games");
+                
+                // Log detailed information about each discovered game
+                for (int i = 0; i < availableGames.Count; i++)
+                {
+                    var game = availableGames[i];
+                    LogEvent(null, "GameDetails", $"Game[{i}]: GameId='{game.GameId}', DisplayName='{game.DisplayName}', GameType='{game.GameType}', GameState='{game.GameState}', Players={game.PlayerCount}");
+                }
+
+                // Find our test game by DisplayName (which should match the GameName we set)
+                var testGame = availableGames.FirstOrDefault(g => g.DisplayName == testScenario.InitialGameModel.GameName);
+                if (testGame == null)
+                {
+                    throw new InvalidOperationException($"Player {playerId} could not find test game '{testScenario.InitialGameModel.GameName}' in available games");
+                }
+                
+                LogEvent(null, "GameFound", $"Player {playerId} found test game: {testGame.DisplayName} (ID: {testGame.GameId})");
+
+                // Join the game
+                await playerProxy.JoinGameAsync(testGame.GameId);
+                LogEvent(null, "PlayerJoined", $"Player {playerId} joined game {testGame.GameId}");
+                
+                otherPlayerProxies[playerId] = playerProxy;
+            }
+
+            // Combine all proxies for convenience
+            var allProxies = new Dictionary<string, GameServiceProxy>
+            {
+                [firstPlayerId] = firstPlayerProxy
+            };
+            foreach (var kvp in otherPlayerProxies)
+            {
+                allProxies[kvp.Key] = kvp.Value;
+            }
+
+            LogEvent(null, "AllPlayersJoined", $"All {allProxies.Count} players have joined the game following proper multiplayer flow");
+
+            // Wait for all proxies to receive the initial GameModel
+            await Task.Delay(500); // Brief wait for SignalR notifications
+            
+            // Verify all proxies have the same GameModel and match expected initial state
+            VerifyAllProxiesHaveSameGameModel(allProxies, testScenario.InitialGameModel.GameState, testScenario.InitialGameModel.GameHash);
+            LogEvent(null, "InitialStateVerified", $"All proxies have correct initial state: {testScenario.InitialGameModel.GameState}");
+
+            // === STEP 3: Execute recorded actions ===
+            int actionIndex = 0;
+            foreach (var recordedMessage in testScenario.RecordedActions)
+            {
+                actionIndex++;
+                var recordType = recordedMessage.GetType().Name;
+                LogEvent(null, "ReplayingAction", $"[{actionIndex}/{testScenario.RecordedActions.Length}] Replaying: {recordType}");
+
+                try
+                {
+                    // Execute the appropriate action using SignalR proxy
+                    await ExecuteRecordedAction(allProxies, recordedMessage, actualGameId);
+
+                    // Wait for SignalR notifications to propagate
+                    await Task.Delay(100);
+
+                    // Verify all proxies have same GameHash and it matches expected
+                    if (recordedMessage.ExpectedGameHash != null)
+                    {
+                        VerifyAllProxiesHaveSameGameModel(allProxies, expectedHash: recordedMessage.ExpectedGameHash);
+                        LogEvent(null, "HashVerified", $"✅ Hash verified: {recordedMessage.ExpectedGameHash}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogEvent(null, "ReplayError", $"❌ Failed at action {actionIndex}: {ex.Message}");
+                    throw new InvalidOperationException($"Replay failed at action {actionIndex} ({recordType}): {ex.Message}", ex);
+                }
+            }
+
+            LogEvent(null, "ReplayComplete", $"✅ Successfully replayed all {testScenario.RecordedActions.Length} actions");
+
+            // Cleanup
+            foreach (var proxy in allProxies.Values)
+            {
+                await proxy.DisposeAsync();
+            }
+            
+            LogEvent(null, "TestComplete", "✅ Expansion.catan_test replay completed successfully with proper multiplayer flow - GameService matches Desktop behavior");
+        }
+
+
+        /// <summary>
+        /// Verifies that all SignalR proxies have the same GameModel state
+        /// </summary>
+        private void VerifyAllProxiesHaveSameGameModel(Dictionary<string, GameServiceProxy> proxies, Catan3.Shared.Models.GameState? expectedState = null, string? expectedHash = null)
+        {
+            var gameModels = proxies.Values.Select(p => p.GameModel).Where(gm => gm != null).ToList();
+            
+            if (gameModels.Count == 0)
+            {
+                throw new InvalidOperationException("No proxies have received GameModel updates");
+            }
+
+            var firstGameModel = gameModels[0]!;
+            
+            // Verify all proxies have the same game state
+            foreach (var gameModel in gameModels.Skip(1))
+            {
+                if (gameModel!.GameState != firstGameModel.GameState)
+                {
+                    throw new InvalidOperationException($"GameState mismatch: {gameModel.GameState} vs {firstGameModel.GameState}");
+                }
+                
+                if (gameModel.GameHash != firstGameModel.GameHash)
+                {
+                    throw new InvalidOperationException($"GameHash mismatch: {gameModel.GameHash} vs {firstGameModel.GameHash}");
+                }
+                
+                if (gameModel.GameStateMachineVersion != firstGameModel.GameStateMachineVersion)
+                {
+                    throw new InvalidOperationException($"Version mismatch: {gameModel.GameStateMachineVersion} vs {firstGameModel.GameStateMachineVersion}");
+                }
+            }
+
+            // Verify against expected values if provided
+            if (expectedState.HasValue && firstGameModel.GameState != expectedState.Value)
+            {
+                throw new InvalidOperationException($"Expected GameState {expectedState}, got {firstGameModel.GameState}");
+            }
+            
+            if (!string.IsNullOrEmpty(expectedHash) && firstGameModel.GameHash != expectedHash)
+            {
+                throw new InvalidOperationException($"Expected GameHash {expectedHash}, got {firstGameModel.GameHash}");
+            }
+        }
+
+        /// <summary>
+        /// Executes a recorded action using the appropriate SignalR proxy
+        /// </summary>
+        private async Task ExecuteRecordedAction(Dictionary<string, GameServiceProxy> proxies, IRecordedMessage recordedMessage, string gameId)
+        {
+            // Determine which player should execute this action based on current game state
+            var firstProxy = proxies.Values.First();
+            var gameModel = firstProxy.GameModel;
+            var currentPlayerId = gameModel?.CurrentPlayerId ?? proxies.Keys.First();
+            
+            if (!proxies.TryGetValue(currentPlayerId, out var currentPlayerProxy))
+            {
+                throw new InvalidOperationException($"No proxy found for current player: {currentPlayerId}");
+            }
+
+            switch (recordedMessage)
+            {
+                case ShuffleRecord shuffle:
+                    var shuffleResult = await currentPlayerProxy.ExecuteShuffleAsync();
+                    if (!shuffleResult.Success)
+                    {
+                        throw new InvalidOperationException($"Shuffle action failed: {shuffleResult.Message}");
+                    }
+                    break;
+
+                // ExecuteGameActionRecord is deprecated - individual record types are used instead
+
+                case GoFirstRecord goFirst:
+                    var goFirstPlayerId = goFirst.PlayerId;
+                    await currentPlayerProxy.ExecuteGoFirstAsync(goFirstPlayerId);
+                    break;
+
+                case PurchaseRecord purchase:
+                    await currentPlayerProxy.ExecutePurchaseAsync(purchase.Entitlement);
+                    break;
+
+                case RollRecord roll:
+                    var rollModel = roll.Roll;
+                    await currentPlayerProxy.ExecuteRollAsync(rollModel.RedRoll, rollModel.WhiteRoll);
+                    break;
+
+                default:
+                    var typeName = recordedMessage.GetType().Name;
+                    throw new NotImplementedException($"Action type {typeName} not yet implemented for SignalR proxy replay");
+            }
+        }
+
+        /// <summary>
+        /// Replays a recorded action from the test file
+        /// </summary>
+        private async Task ReplayRecordedAction(EndToEndSignalRSession session, IRecordedMessage recordedMessage)
+        {
+            // Determine which player should execute this action based on current game state
+            var gameModel = session.GetProxy(session.PlayerIds[0]).GameModel;
+            var currentPlayerId = gameModel?.CurrentPlayerId ?? session.PlayerIds[0];
+
+            switch (recordedMessage)
+            {
+                case ShuffleRecord shuffle:
+                    LogEvent(session, "ShuffleReplay", "Executing shuffle action replay");
+                    var shuffleProxy = session.GetProxy(currentPlayerId);
+                    var shuffleResult = await shuffleProxy.ExecuteShuffleAsync();
+                    if (!shuffleResult.Success)
+                    {
+                        LogEvent(session, "ShuffleSkipped", $"⚠️ Shuffle action failed: {shuffleResult.Message}");
+                    }
+                    else
+                    {
+                        await session.VerifyAllProxiesReceivedUpdate();
+                        LogEvent(session, "ShuffleCompleted", "✅ Shuffle action replay completed");
+                    }
+                    break;
+
+                case UndoRecord undoAction:
+                    LogEvent(session, "UndoReplay", "Executing undo action replay");
+                    var undoProxy = session.GetProxy(currentPlayerId);
+                    var undoResult = await undoProxy.ExecuteUndoAsync();
+                    if (!undoResult.Success)
+                    {
+                        LogEvent(session, "UndoSkipped", $"⚠️ Undo action failed: {undoResult.Message}");
+                    }
+                    else
+                    {
+                        await session.VerifyAllProxiesReceivedUpdate();
+                        LogEvent(session, "UndoCompleted", "✅ Undo action replay completed");
+                    }
+                    break;
+                    
+                case RedoRecord redoAction:
+                    LogEvent(session, "RedoReplay", "Executing redo action replay");
+                    var redoProxy = session.GetProxy(currentPlayerId);
+                    var redoResult = await redoProxy.ExecuteRedoAsync();
+                    if (!redoResult.Success)
+                    {
+                        LogEvent(session, "RedoSkipped", $"⚠️ Redo action failed: {redoResult.Message}");
+                    }
+                    else
+                    {
+                        await session.VerifyAllProxiesReceivedUpdate();
+                        LogEvent(session, "RedoCompleted", "✅ Redo action replay completed");
+                    }
+                    break;
+                    
+                case NextRecord nextAction:
+                    LogEvent(session, "NextReplay", "Executing next action replay");
+                    var nextProxy = session.GetProxy(currentPlayerId);
+                    var nextResult = await nextProxy.ExecuteNextAsync();
+                    if (!nextResult.Success)
+                    {
+                        LogEvent(session, "NextSkipped", $"⚠️ Next action failed: {nextResult.Message}");
+                    }
+                    else
+                    {
+                        await session.VerifyAllProxiesReceivedUpdate();
+                        LogEvent(session, "NextCompleted", "✅ Next action replay completed");
+                    }
+                    break;
+
+                case GoFirstRecord goFirst:
+                    // GoFirst messages contain the player who goes first
+                    var goFirstPlayerId = goFirst.PlayerId;
+                    // In GameService, this would be handled via a specific message
+                    // For now, we'll skip this as it's typically handled automatically
+                    LogEvent(session, "GoFirstSkipped", $"Skipping goFirst for player {goFirstPlayerId} - handled automatically");
+                    break;
+
+                case PurchaseRecord purchase:
+                    LogEvent(session, "PurchaseReplay", $"Executing purchase action replay: {purchase.Entitlement}");
+                    var purchaseProxy = session.GetProxy(currentPlayerId);
+                    var purchaseResult = await purchaseProxy.ExecutePurchaseAsync(purchase.Entitlement);
+                    if (!purchaseResult.Success)
+                    {
+                        LogEvent(session, "PurchaseSkipped", $"⚠️ Purchase action failed: {purchaseResult.Message}");
+                    }
+                    else
+                    {
+                        await session.VerifyAllProxiesReceivedUpdate();
+                        LogEvent(session, "PurchaseCompleted", $"✅ Purchase action replay completed: {purchase.Entitlement}");
+                    }
+                    break;
+
+                case RollRecord roll:
+                    LogEvent(session, "RollReplay", $"Executing roll action replay: ({roll.Roll.RedRoll},{roll.Roll.WhiteRoll})");
+                    var rollProxy = session.GetProxy(currentPlayerId);
+                    var rollResult = await rollProxy.ExecuteRollAsync(roll.Roll.RedRoll, roll.Roll.WhiteRoll);
+                    if (!rollResult.Success)
+                    {
+                        LogEvent(session, "RollSkipped", $"⚠️ Roll action failed: {rollResult.Message}");
+                    }
+                    else
+                    {
+                        await session.VerifyAllProxiesReceivedUpdate();
+                        LogEvent(session, "RollCompleted", $"✅ Roll action replay completed: ({roll.Roll.RedRoll},{roll.Roll.WhiteRoll})");
+                    }
+                    break;
+
+                default:
+                    var typeName = recordedMessage.GetType().Name;
+                    LogEvent(session, "UnknownRecordType", $"⚠️ Unknown record type: {typeName} - skipping");
+                    break;
+            }
+        }
     }
 
     /// <summary>
-    /// E2E-specific session wrapper that uses SignalRProxy from Catan3.Shared
+    /// E2E-specific session wrapper that uses GameServiceProxy from Catan3.Shared
     /// This complies with the rule: "SignalR: use the proxy in the Shared project to call SignalR"
     /// </summary>
     public class EndToEndSignalRSession : IAsyncDisposable
@@ -636,9 +1098,9 @@ namespace Tests.GameService.SignalR
         private readonly WebApplicationFactory<Program> _factory;
         private readonly GameType _gameType;
         private readonly string[] _playerIds;
-        private readonly Dictionary<string, SignalRProxy> _proxies = [];
+        private readonly Dictionary<string, GameServiceProxy> _proxies = [];
 
-        public string GameId { get; private set; } = "";
+        public string GameId { get; set; } = "";
         public string[] PlayerIds => _playerIds;
 
         public EndToEndSignalRSession(WebApplicationFactory<Program> factory, GameType gameType, string[] playerIds)
@@ -657,7 +1119,7 @@ namespace Tests.GameService.SignalR
                 Console.WriteLine(logMessage);
         }
         /// <summary>
-        /// Initializes the session by creating a game and connecting all players via SignalRProxy
+        /// Initializes the session by creating a game and connecting all players via GameServiceProxy
         /// </summary>
         public async Task InitializeAsync()
         {
@@ -667,7 +1129,16 @@ namespace Tests.GameService.SignalR
             var gameId = await CreateGameViaRest(httpClient, _gameType, _playerIds);
             GameId = gameId;
 
-            // Connect all players via SignalRProxy in parallel for faster execution
+            await ConnectPlayersAsync();
+        }
+        
+        /// <summary>
+        /// Connects all players to an existing game via GameServiceProxy
+        /// </summary>
+        public async Task ConnectPlayersAsync()
+        {
+            LogEvent("PlayerConnection", "Connecting all players to game");
+            // Connect all players via GameServiceProxy in parallel for faster execution
             var connectTasks = _playerIds.Select(async playerId =>
             {
                 // Use test factory to create a connection that works with in-memory test server
@@ -676,7 +1147,8 @@ namespace Tests.GameService.SignalR
 
                 // Use the HttpMessageHandler constructor - this is perfect for tests!
                 var testHandler = _factory.Server.CreateHandler();
-                var proxy = new SignalRProxy(hubUrl, testHandler, playerId, gameId);
+                var serviceUri = uri.ToString().TrimEnd('/');
+                var proxy = new GameServiceProxy(hubUrl, serviceUri, testHandler, playerId, GameId);
                 await proxy.ConnectAsync();
                 
                 // Store in thread-safe way
@@ -694,7 +1166,7 @@ namespace Tests.GameService.SignalR
         /// <summary>
         /// Gets a specific proxy by player ID
         /// </summary>
-        public SignalRProxy GetProxy(string playerId)
+        public GameServiceProxy GetProxy(string playerId)
         {
             if (!_proxies.TryGetValue(playerId, out var proxy))
             {
@@ -730,25 +1202,7 @@ namespace Tests.GameService.SignalR
             await Task.WhenAll(tasks);
         }
 
-        /// <summary>
-        /// Executes action and verifies all proxies receive updates
-        /// </summary>
-        public async Task ExecuteActionWithVerification(string playerId, GameAction action)
-        {
-            LogEvent("ActionExecution", $"Executing action {action} for player {playerId}");
-            var executingProxy = GetProxy(playerId);
-
-            // Execute action using SignalRProxy
-            var result = await executingProxy.ExecuteDoActionAsync(GameId, action);
-
-            if (!result.Success)
-            {
-                throw new InvalidOperationException($"Action {action} failed: {result.Message}");
-            }
-
-            // Verify all proxies received updates by checking their latest game state
-            await VerifyAllProxiesReceivedUpdate();
-        }
+        // ExecuteActionWithVerification method removed - replaced with individual proxy method calls
 
         /// <summary>
         /// Verifies all proxies have received recent updates (have consistent game state)

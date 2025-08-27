@@ -100,7 +100,9 @@ namespace Catan3.GameService.Services
                 // Use the GameStateMachineService to execute the action (same logic as GameApiController)
                 GameModel? updatedGameModel = messageType switch
                 {
-                    "ExecuteGameActionMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessDoAction(messageData, gsm)),
+                    "UndoMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessUndoMessage(messageData, gsm)),
+                    "RedoMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessRedoMessage(messageData, gsm)),
+                    "NextMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessNextMessage(messageData, gsm)),
                     "PurchaseMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessPurchaseMessage(messageData, gsm)),
                     "RoadPurchaseMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessRoadPurchase(messageData, gsm)),
                     "BuildingUpgradeMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessBuildingUpgrade(messageData, gsm)),
@@ -116,16 +118,23 @@ namespace Catan3.GameService.Services
             });
         }
 
-        // Copy the message processing methods from GameApiController
-        private GameModel ProcessDoAction(JsonElement messageData, GameStateMachine gameStateMachine)
+        // Individual message processing methods
+        private GameModel ProcessUndoMessage(JsonElement messageData, GameStateMachine gameStateMachine)
         {
-            var actionStr = messageData.GetProperty("action").GetString();
-            if (Enum.TryParse<GameAction>(actionStr, out var action))
-            {
-                var message = new ExecuteGameActionMessage(action);
-                return gameStateMachine.ExecuteGameActionAsync(message).Result;
-            }
-            throw new ArgumentException($"Invalid action: {actionStr}");
+            var message = new UndoMessage();
+            return gameStateMachine.HandleUndoAsync(message).Result;
+        }
+
+        private GameModel ProcessRedoMessage(JsonElement messageData, GameStateMachine gameStateMachine)
+        {
+            var message = new RedoMessage();
+            return gameStateMachine.HandleRedoAsync(message).Result;
+        }
+
+        private GameModel ProcessNextMessage(JsonElement messageData, GameStateMachine gameStateMachine)
+        {
+            var message = new NextMessage();
+            return gameStateMachine.HandleNextAsync(message).Result;
         }
 
         private GameModel ProcessPurchaseMessage(JsonElement messageData, GameStateMachine gameStateMachine)

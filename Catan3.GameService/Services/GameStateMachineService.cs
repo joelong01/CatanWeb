@@ -294,5 +294,29 @@ namespace Catan3.GameService.Services
             // Version is always 1 for all games - it represents GameStateMachine software compatibility
             return 1;
         }
+
+        /// <summary>
+        /// Creates a new game with a specific GameId (used for loading existing games)
+        /// Uses the provided GameId instead of generating a new one
+        /// </summary>
+        public async Task<(string gameId, GameModel gameModel)> CreateNewGameWithIdAsync(string gameId, Func<GameStateMachine, Task<GameModel>> createGameAction)
+        {
+            _logger.LogInformation("Creating new game async with provided GameId: {GameId}", gameId);
+            
+            // Use the provided GameId instead of generating a new one
+            var gameStateMachine = CreateGameStateMachine(gameId);
+            
+            _logger.LogInformation("Created GameStateMachine with provided GameId: {GameId}", gameId);
+            
+            // Execute the new game action to initialize the game state
+            var result = await createGameAction(gameStateMachine);
+            
+            // Keep the existing GameId and CreatedTime from the loaded GameModel
+            // Don't overwrite them like we do for new games
+            _logger.LogInformation("New game created successfully async with provided GameId: {GameId}, version: {Version}", 
+                gameId, result.GameStateMachineVersion);
+                
+            return (gameId, result);
+        }
     }
 }

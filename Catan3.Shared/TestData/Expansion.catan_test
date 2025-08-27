@@ -28,7 +28,7 @@
       "rollsEnabled": false
     },
     "gameType": "Expansion",
-    "gameName": "",
+    "gameName": "Expansion-Test-001",
     "gameState": "PickingBoard",
     "hasSupplementalBuildPhase": true,
     "players": [
@@ -3317,7 +3317,7 @@
       "maxPlayers": 6
     },
     "currentPlayerId": "Joe-001",
-    "gameId": "",
+    "gameId": "Expansion-Test-001",
     "createdTime": "2025-08-26T22:24:25.506106Z",
     "gameStateMachineVersion": 1,
     "rollModel": {

@@ -69,6 +69,7 @@ namespace Catan3.GameService.Controllers
                 if (currentGame == null)
                 {
                     _logger.LogEvent("Game Not Found", $"[{requestId}] Game not found: {gameId}", LogLevel.Warning);
+                    // NOTE: Including GameId in error response is safe - client provided it in the request
                     return Task.FromResult<IActionResult>(NotFound($"Game {gameId} not found"));
                 }
 
@@ -114,6 +115,7 @@ namespace Catan3.GameService.Controllers
                 if (gameModel == null)
                 {
                     _logger.LogEvent("Game Not Found", $"[{requestId}] Game not found: {gameId}", LogLevel.Warning);
+                    // NOTE: Including GameId in error response is safe - client provided it in the request
                     return NotFound($"Game {gameId} not found");
                 }
 
@@ -361,12 +363,13 @@ namespace Catan3.GameService.Controllers
         private GameModel ProcessDoAction(JsonElement messageData, GameStateMachine gameStateMachine)
         {
             var actionStr = messageData.GetProperty("action").GetString();
-            if (Enum.TryParse<GameAction>(actionStr, out var action))
+            return actionStr switch
             {
-                var message = new ExecuteGameActionMessage(action);
-                return gameStateMachine.ExecuteGameActionAsync(message).Result;
-            }
-            throw new ArgumentException($"Invalid action: {actionStr}");
+                "Undo" => gameStateMachine.HandleUndoAsync(new UndoMessage()).Result,
+                "Redo" => gameStateMachine.HandleRedoAsync(new RedoMessage()).Result,
+                "Next" => gameStateMachine.HandleNextAsync(new NextMessage()).Result,
+                _ => throw new ArgumentException($"Invalid action: {actionStr}")
+            };
         }
 
         private GameModel ProcessPurchaseMessage(JsonElement messageData, GameStateMachine gameStateMachine)

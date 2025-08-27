@@ -84,7 +84,9 @@ namespace Catan3.GameState
             Debug.Assert(Messenger is not null);
             IsActive = true;
             
-            Messenger.Register<ExecuteGameActionMessage>(this, HandleExecuteGameActionAsync);
+            Messenger.Register<UndoMessage>(this, HandleUndoAsync);
+            Messenger.Register<RedoMessage>(this, HandleRedoAsync);
+            Messenger.Register<NextMessage>(this, HandleNextAsync);
             Messenger.Register<ShuffleMessage>(this, HandleShuffleAsync);
             Messenger.Register<BuildingUpgradeMessage>(this, HandleBuildingUpgradeAsync);
             Messenger.Register<SetPlayerOrderMessage>(this, HandleSetPlayerOrderAsync);
@@ -104,16 +106,54 @@ namespace Catan3.GameState
         }
 
         /// <summary>
-        /// Handles ExecuteGameActionMessage from the UI to perform game actions (Next, Undo, Redo).
+        /// Handles UndoMessage from the UI to revert the last action.
         /// Delegates to GameStateMachine and sends the result back to the UI.
         /// </summary>
         /// <param name="recipient">The message recipient (this service).</param>
-        /// <param name="message">The game action message from the UI.</param>
-        private async void HandleExecuteGameActionAsync(object recipient, ExecuteGameActionMessage message)
+        /// <param name="message">The undo message from the UI.</param>
+        private async void HandleUndoAsync(object recipient, UndoMessage message)
         {
             try
             {
-                var gameModel = await _gameStateMachine.ExecuteGameActionAsync(message);
+                var gameModel = await _gameStateMachine.HandleUndoAsync(message);
+                Messenger.Send(new UpdateGameModel(gameModel));
+            }
+            catch (GameException e)
+            {
+                SendErrorMessage(e.Message, e.ErrorLevel);
+            }
+        }
+
+        /// <summary>
+        /// Handles RedoMessage from the UI to reapply a previously undone action.
+        /// Delegates to GameStateMachine and sends the result back to the UI.
+        /// </summary>
+        /// <param name="recipient">The message recipient (this service).</param>
+        /// <param name="message">The redo message from the UI.</param>
+        private async void HandleRedoAsync(object recipient, RedoMessage message)
+        {
+            try
+            {
+                var gameModel = await _gameStateMachine.HandleRedoAsync(message);
+                Messenger.Send(new UpdateGameModel(gameModel));
+            }
+            catch (GameException e)
+            {
+                SendErrorMessage(e.Message, e.ErrorLevel);
+            }
+        }
+
+        /// <summary>
+        /// Handles NextMessage from the UI to advance to the next game state.
+        /// Delegates to GameStateMachine and sends the result back to the UI.
+        /// </summary>
+        /// <param name="recipient">The message recipient (this service).</param>
+        /// <param name="message">The next message from the UI.</param>
+        private async void HandleNextAsync(object recipient, NextMessage message)
+        {
+            try
+            {
+                var gameModel = await _gameStateMachine.HandleNextAsync(message);
                 Messenger.Send(new UpdateGameModel(gameModel));
             }
             catch (GameException e)

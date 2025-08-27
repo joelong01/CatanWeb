@@ -19,6 +19,11 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="TestData\*.catan_test" />
+    <None Include="TestData\README.md" />
+  </ItemGroup>
+
   <Target Name="BuildAndDeploy" DependsOnTargets="Build">
     <Message Text="BuildOnly: Catan3.Shared" Importance="high" />
   </Target>

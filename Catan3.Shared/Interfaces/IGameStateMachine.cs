@@ -13,9 +13,19 @@ namespace Catan3.Shared.Interfaces
     {
 
         /// <summary>
-        /// Executes a game action (Next, Undo, Redo, etc.).
+        /// Handles undo operation to revert the last action.
         /// </summary>
-        Task<GameModel> ExecuteGameActionAsync(ExecuteGameActionMessage message);
+        Task<GameModel> HandleUndoAsync(UndoMessage message);
+
+        /// <summary>
+        /// Handles redo operation to reapply a previously undone action.
+        /// </summary>
+        Task<GameModel> HandleRedoAsync(RedoMessage message);
+
+        /// <summary>
+        /// Handles next action to advance to the next game state.
+        /// </summary>
+        Task<GameModel> HandleNextAsync(NextMessage message);
 
         /// <summary>
         /// Handles dice roll operation.

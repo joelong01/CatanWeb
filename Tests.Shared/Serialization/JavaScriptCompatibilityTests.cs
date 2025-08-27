@@ -49,7 +49,7 @@ namespace Tests.Shared.Serialization
             {
                 var enumTypes = new[]
                 {
-                    typeof(GameAction), typeof(ResourceType), typeof(BuildingState),
+                    typeof(ResourceType), typeof(BuildingState),
                     typeof(GameType), typeof(GameState), typeof(Entitlement),
                     typeof(HexPosition), typeof(HexSide)
                 };

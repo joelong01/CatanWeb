@@ -160,7 +160,7 @@ namespace Tests.GameService.Companion
                 var hubUrl = new Uri(uri, "/gameHub").ToString();
                 var testHandler = _factory.Server.CreateHandler();
 
-                var companionProxy = new SignalRProxy(hubUrl, testHandler, "Alice", gameSession.GameId);
+                var companionProxy = new GameServiceProxy(hubUrl, "http://localhost", testHandler, "Alice", gameSession.GameId);
                 await companionProxy.ConnectAsync();
 
                 // Verify connection and initial state
@@ -175,7 +175,7 @@ namespace Tests.GameService.Companion
                 };
 
                 // Trigger a game state change via the main game session
-                var result = await gameSession.GetProxy("Alice").ExecuteDoActionAsync(gameSession.GameId, GameAction.Shuffle);
+                var result = await gameSession.GetProxy("Alice").ExecuteShuffleAsync();
                 Assert.True(result.Success, $"Shuffle action should succeed: {result.Message}");
 
                 // Verify companion received the update
@@ -200,22 +200,22 @@ namespace Tests.GameService.Companion
                 var hubUrl = new Uri(uri, "/gameHub").ToString();
                 var testHandler = _factory.Server.CreateHandler();
 
-                var companionProxy = new SignalRProxy(hubUrl, testHandler, "Alice", gameSession.GameId);
+                var companionProxy = new GameServiceProxy(hubUrl, "http://localhost", testHandler, "Alice", gameSession.GameId);
                 await companionProxy.ConnectAsync();
 
                 // Test companion executing commands
                 var commandResults = new List<(string Command, bool Success)>();
 
                 // Test Shuffle command
-                var shuffleResult = await companionProxy.ExecuteDoActionAsync(gameSession.GameId, GameAction.Shuffle);
+                var shuffleResult = await companionProxy.ExecuteShuffleAsync();
                 commandResults.Add(("Shuffle", shuffleResult.Success));
 
                 // Test Undo command
-                var undoResult = await companionProxy.ExecuteDoActionAsync(gameSession.GameId, GameAction.Undo);
+                var undoResult = await companionProxy.ExecuteUndoAsync();
                 commandResults.Add(("Undo", undoResult.Success));
 
                 // Test Next command to advance state
-                var nextResult = await companionProxy.ExecuteDoActionAsync(gameSession.GameId, GameAction.Next);
+                var nextResult = await companionProxy.ExecuteNextAsync();
                 commandResults.Add(("Next", nextResult.Success));
 
                 // Verify all commands executed successfully
@@ -246,8 +246,8 @@ namespace Tests.GameService.Companion
                 var hubUrl = new Uri(uri, "/gameHub").ToString();
                 var testHandler = _factory.Server.CreateHandler();
 
-                var aliceProxy = new SignalRProxy(hubUrl, testHandler, "Alice", gameSession.GameId);
-                var bobProxy = new SignalRProxy(hubUrl, testHandler, "Bob", gameSession.GameId);
+                var aliceProxy = new GameServiceProxy(hubUrl, "http://localhost", testHandler, "Alice", gameSession.GameId);
+                var bobProxy = new GameServiceProxy(hubUrl, "http://localhost", testHandler, "Bob", gameSession.GameId);
 
                 await aliceProxy.ConnectAsync();
                 await bobProxy.ConnectAsync();
@@ -437,14 +437,14 @@ namespace Tests.GameService.Companion
             var hubUrl = new Uri(uri, "/gameHub").ToString();
             var testHandler = _factory.Server.CreateHandler();
 
-            var companionProxy = new SignalRProxy(hubUrl, testHandler, "Alice", gameSession.GameId);
+            var companionProxy = new GameServiceProxy(hubUrl, "http://localhost", testHandler, "Alice", gameSession.GameId);
             await companionProxy.ConnectAsync();
 
             var updateReceived = new TaskCompletionSource<GameModel>();
             companionProxy.GameStateUpdated += updateReceived.SetResult;
 
             // Trigger update from main session
-            await gameSession.GetProxy("Alice").ExecuteDoActionAsync(gameSession.GameId, GameAction.Shuffle);
+            await gameSession.GetProxy("Alice").ExecuteShuffleAsync();
 
             // Verify companion received update
             var updatedGameModel = await updateReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -459,11 +459,11 @@ namespace Tests.GameService.Companion
             var hubUrl = new Uri(uri, "/gameHub").ToString();
             var testHandler = _factory.Server.CreateHandler();
 
-            var companionProxy = new SignalRProxy(hubUrl, testHandler, "Alice", gameSession.GameId);
+            var companionProxy = new GameServiceProxy(hubUrl, "http://localhost", testHandler, "Alice", gameSession.GameId);
             await companionProxy.ConnectAsync();
 
             // Test basic game actions
-            var result = await companionProxy.ExecuteDoActionAsync(gameSession.GameId, GameAction.Next);
+            var result = await companionProxy.ExecuteNextAsync();
             Assert.True(result.Success);
 
             await companionProxy.DisposeAsync();
@@ -480,7 +480,7 @@ namespace Tests.GameService.Companion
         private readonly WebApplicationFactory<Program> _factory;
         private readonly GameType _gameType;
         private readonly string[] _playerIds;
-        private readonly Dictionary<string, SignalRProxy> _proxies = [];
+        private readonly Dictionary<string, GameServiceProxy> _proxies = [];
 
         public string GameId { get; private set; } = "";
         public string[] PlayerIds => _playerIds;
@@ -499,13 +499,13 @@ namespace Tests.GameService.Companion
             var gameId = await CreateGameViaRest(httpClient, _gameType, _playerIds);
             GameId = gameId;
 
-            // Connect all players via SignalRProxy
+            // Connect all players via GameServiceProxy
             var connectTasks = _playerIds.Select(async playerId =>
             {
                 var uri = _factory.Server.BaseAddress ?? new Uri("http://localhost");
                 var hubUrl = new Uri(uri, "/gameHub").ToString();
                 var testHandler = _factory.Server.CreateHandler();
-                var proxy = new SignalRProxy(hubUrl, testHandler, playerId, gameId);
+                var proxy = new GameServiceProxy(hubUrl, "http://localhost", testHandler, playerId, gameId);
                 await proxy.ConnectAsync();
                 
                 lock (_proxies)
@@ -517,7 +517,7 @@ namespace Tests.GameService.Companion
             await Task.WhenAll(connectTasks);
         }
 
-        public SignalRProxy GetProxy(string playerId)
+        public GameServiceProxy GetProxy(string playerId)
         {
             if (!_proxies.TryGetValue(playerId, out var proxy))
             {

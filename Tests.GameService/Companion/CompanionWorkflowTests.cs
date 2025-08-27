@@ -115,7 +115,7 @@ namespace Tests.GameService.Companion
                 Console.WriteLine($"?? Created test game: {gameId}");
 
                 // Create multiple companion connections (simulating multiple phones)
-                var companions = new List<SignalRProxy>();
+                var companions = new List<GameServiceProxy>();
                 var playerIds = new[] { "Alice", "Bob", "Charlie" };
 
                 foreach (var playerId in playerIds)
@@ -226,7 +226,7 @@ namespace Tests.GameService.Companion
                 Console.WriteLine($"? PickingBoard state data validated: {companion.GameModel.ActionFlags.NextEnabled}");
 
                 // Progress to next state and verify UI data changes
-                var result = await companion.ExecuteDoActionAsync(gameId, GameAction.Next);
+                var result = await companion.ExecuteNextAsync();
                 Assert.True(result.Success);
                 
                 await Task.Delay(500); // Wait for update
@@ -326,7 +326,7 @@ namespace Tests.GameService.Companion
             return gameModel;
         }
 
-        private async Task<SignalRProxy> TestPlayerSelection(string gameId, string playerId)
+        private async Task<GameServiceProxy> TestPlayerSelection(string gameId, string playerId)
         {
             var companion = await CreateCompanionConnection(gameId, playerId);
             
@@ -338,19 +338,19 @@ namespace Tests.GameService.Companion
             return companion;
         }
 
-        private async Task<SignalRProxy> CreateCompanionConnection(string gameId, string playerId)
+        private async Task<GameServiceProxy> CreateCompanionConnection(string gameId, string playerId)
         {
             var uri = _factory.Server.BaseAddress ?? new Uri("http://localhost");
             var hubUrl = new Uri(uri, "/gameHub").ToString();
             var testHandler = _factory.Server.CreateHandler();
 
-            var proxy = new SignalRProxy(hubUrl, testHandler, playerId, gameId);
+            var proxy = new GameServiceProxy(hubUrl, "http://localhost", testHandler, playerId, gameId);
             await proxy.ConnectAsync();
             
             return proxy;
         }
 
-        private async Task TestRealTimeGameUpdates(SignalRProxy companion, string gameId)
+        private async Task TestRealTimeGameUpdates(GameServiceProxy companion, string gameId)
         {
             var updateReceived = new TaskCompletionSource<GameModel>();
             companion.GameStateUpdated += (gameModel) => 
@@ -360,7 +360,7 @@ namespace Tests.GameService.Companion
 
             // Create another connection to trigger an update
             var otherCompanion = await CreateCompanionConnection(gameId, "Bob");
-            await otherCompanion.ExecuteDoActionAsync(gameId, GameAction.Shuffle);
+            await otherCompanion.ExecuteShuffleAsync();
 
             // Verify the original companion received the update
             var updatedGameModel = await updateReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -370,33 +370,38 @@ namespace Tests.GameService.Companion
             await otherCompanion.DisposeAsync();
         }
 
-        private async Task TestGameActionExecution(SignalRProxy companion, string gameId)
+        private async Task TestGameActionExecution(GameServiceProxy companion, string gameId)
         {
             // Test various game actions that companion.js can execute
-            var actions = new[] { GameAction.Shuffle, GameAction.Undo, GameAction.Next };
+            var testActions = new[]
+            {
+                ("Shuffle", (Func<Task<CommandResult>>)(() => companion.ExecuteShuffleAsync())),
+                ("Undo", (Func<Task<CommandResult>>)(() => companion.ExecuteUndoAsync())),
+                ("Next", (Func<Task<CommandResult>>)(() => companion.ExecuteNextAsync()))
+            };
             
-            foreach (var action in actions)
+            foreach (var (actionName, actionFunc) in testActions)
             {
                 try
                 {
-                    var result = await companion.ExecuteDoActionAsync(gameId, action);
+                    var result = await actionFunc();
                     // Some actions might not be valid in current state, but should not crash
                     Assert.NotNull(result);
                 }
                 catch (Exception ex)
                 {
                     // Log but don't fail - some actions may not be valid in current state
-                    Console.WriteLine($"Action {action} resulted in: {ex.Message}");
+                    Console.WriteLine($"Action {actionName} resulted in: {ex.Message}");
                 }
             }
         }
 
-        private async Task TestGameStateProgression(SignalRProxy companion, string gameId)
+        private async Task TestGameStateProgression(GameServiceProxy companion, string gameId)
         {
             var initialState = companion.GameModel?.GameState;
             
             // Try to advance the game state
-            var result = await companion.ExecuteDoActionAsync(gameId, GameAction.Next);
+            var result = await companion.ExecuteNextAsync();
             
             if (result.Success)
             {
@@ -408,7 +413,7 @@ namespace Tests.GameService.Companion
             }
         }
 
-        private void TestGameStateSynchronization(List<SignalRProxy> companions, string gameId)
+        private void TestGameStateSynchronization(List<GameServiceProxy> companions, string gameId)
         {
             // Verify all companions see the same game state
             var gameModels = companions.Select(c => c.GameModel).Where(gm => gm != null).ToList();
@@ -425,7 +430,7 @@ namespace Tests.GameService.Companion
             }
         }
 
-        private async Task TestCrossCompanionUpdates(List<SignalRProxy> companions, string gameId)
+        private async Task TestCrossCompanionUpdates(List<GameServiceProxy> companions, string gameId)
         {
             if (companions.Count < 2) return;
 
@@ -441,7 +446,7 @@ namespace Tests.GameService.Companion
             }
 
             // Execute action from first companion
-            await companions[0].ExecuteDoActionAsync(gameId, GameAction.Shuffle);
+            await companions[0].ExecuteShuffleAsync();
 
             // Verify other companions received updates
             var updateTasks = updatesReceived.Select(tcs => tcs.Task).ToArray();
@@ -451,7 +456,7 @@ namespace Tests.GameService.Companion
             Assert.True(completedUpdates.Any(completed => completed), "At least one companion should receive updates");
         }
 
-        private async Task TestTurnBasedBehavior(List<SignalRProxy> companions, string gameId)
+        private async Task TestTurnBasedBehavior(List<GameServiceProxy> companions, string gameId)
         {
             // Get current game state to determine current player
             var gameModel = companions.First().GameModel;
@@ -464,7 +469,7 @@ namespace Tests.GameService.Companion
             if (currentPlayerCompanion != null && otherCompanion != null)
             {
                 // Current player should be able to execute actions
-                var currentPlayerResult = await currentPlayerCompanion.ExecuteDoActionAsync(gameId, GameAction.Next);
+                var currentPlayerResult = await currentPlayerCompanion.ExecuteNextAsync();
                 // Result may succeed or fail based on game state, but should not crash
 
                 // Other players may have limited actions available

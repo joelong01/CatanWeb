@@ -110,12 +110,21 @@ namespace Catan3.GameService.Factory
         }
 
         /// <summary>
-        /// Can be called any time and returns a random valid board
+        /// Can be called any time and returns a random valid board.
+        /// Uses ReplayableRandom for deterministic behavior, matching Desktop app implementation.
         /// </summary>
         public static void Shuffle(this GameModel game)
         {
-            Random random = new();
+            // CRITICAL FIX: Use ReplayableRandom with game's RandomSeed and RandomIterations
+            // This matches the Desktop app implementation exactly for deterministic behavior
+            var random = new ReplayableRandom(game.RandomSeed, game.RandomIterations);
             int count = game.Tiles.Count;
+            
+            // NOTE: The validation loop below is INTENTIONALLY deterministic and thread-safe:
+            // - Each GameStateMachine instance operates on isolated game data (per-game concurrency isolation)
+            // - ReplayableRandom produces the same sequence for the same seed+iterations
+            // - The loop will always take the same number of iterations for the same starting conditions
+            // - This is NOT a race condition - it's deterministic game logic by design
             do
             {
                 ShuffleList<TileModel, ResourceType>(game.Tiles, random,
@@ -131,10 +140,14 @@ namespace Catan3.GameService.Factory
                 EnsureDesertSeven(game);
             } while (!ValidateGame(game));
 
+            // CRITICAL: Update RandomIterations after shuffling, matching Desktop app
+            // This captures the total iterations needed (including validation loops) for replay consistency
+            game.RandomIterations = random.Iterations;
+            
             // 1/14/2025: Robber starts off the board so the first move can be to a desert tile, so do NOT put the robber on a desert tile
         }
 
-        private static void ShuffleList<T, TValue>(IList<T> list, Random random, Func<T, TValue> valueSelector, Action<T, TValue> valueSetter)
+        private static void ShuffleList<T, TValue>(IList<T> list, ReplayableRandom random, Func<T, TValue> valueSelector, Action<T, TValue> valueSetter)
         {
             int count = list.Count;
             for (int i = 0; i < count; i++)

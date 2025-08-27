@@ -26,8 +26,14 @@ namespace Catan3.GameService.Services
         }
 
         // Delegate all IGameStateMachine methods to the wrapped instance
-        public Task<GameModel> ExecuteGameActionAsync(ExecuteGameActionMessage message) => 
-            _gameStateMachine.ExecuteGameActionAsync(message);
+        public Task<GameModel> HandleUndoAsync(UndoMessage message) => 
+            _gameStateMachine.HandleUndoAsync(message);
+            
+        public Task<GameModel> HandleRedoAsync(RedoMessage message) => 
+            _gameStateMachine.HandleRedoAsync(message);
+            
+        public Task<GameModel> HandleNextAsync(NextMessage message) => 
+            _gameStateMachine.HandleNextAsync(message);
 
         public Task<GameModel> HandleShuffleAsync(ShuffleMessage message) => 
             _gameStateMachine.HandleShuffleAsync(message);

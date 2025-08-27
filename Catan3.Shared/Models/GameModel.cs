@@ -74,6 +74,14 @@ namespace Catan3.Shared.Models
         [ObservableProperty]
         public partial GameType GameType { get; set; } = GameType.Regular;
 
+        /// <summary>
+        /// Gets or sets the user-friendly name of the game.
+        /// This is displayed in game lists and UI. Not included in GameHash calculation
+        /// to avoid breaking existing test files.
+        /// </summary>
+        [ObservableProperty]
+        public partial string GameName { get; set; } = string.Empty;
+
         [ObservableProperty]
         public partial GameState GameState { get; set; } = GameState.WaitingForNewGame;
 
@@ -300,11 +308,19 @@ namespace Catan3.Shared.Models
 
         /// <summary>
         /// Gets a user-friendly display name for this game.
-        /// Format: "GameType - FirstPlayerName +AdditionalCount (Time)"
-        /// Example: "Regular - Alice +2 (17:10)"
+        /// If GameName is set, uses it; otherwise uses default format.
+        /// Format: "GameType - FirstPlayerName +AdditionalCount (Time)" or "GameName"
+        /// Example: "Regular - Alice +2 (17:10)" or "Expansion Test 1234"
         /// </summary>
         public string GetDisplayName()
         {
+            // If a custom GameName is set, use it as the display name
+            if (!string.IsNullOrEmpty(GameName))
+            {
+                return GameName;
+            }
+            
+            // Otherwise use the default format
             var timeStr = CreatedTime.ToString("HH:mm");
             var playersStr = Players.Count > 0 ? Players[0].Name : "Unknown";
             if (Players.Count > 1)

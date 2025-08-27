@@ -9,13 +9,13 @@ namespace Catan3.CLI.Services;
 
 /// <summary>
 /// Represents a real game session connected to a running GameService
-/// Uses SignalRProxy to interact with the game, following the same patterns as EndToEndStatefulTest
+/// Uses GameServiceProxy to interact with the game, following the same patterns as EndToEndStatefulTest
 /// </summary>
 public class RealGameSession : IAsyncDisposable
 {
     private readonly GameRunOptions _options;
     private readonly ILogger _logger;
-    private readonly Dictionary<string, SignalRProxy> _proxies = [];
+    private readonly Dictionary<string, GameServiceProxy> _proxies = [];
     private readonly HttpClient _httpClient;
 
     public string GameId { get; private set; } = "";
@@ -24,7 +24,7 @@ public class RealGameSession : IAsyncDisposable
     /// <summary>
     /// Gets all connected proxies (for verification purposes)
     /// </summary>
-    public IReadOnlyDictionary<string, SignalRProxy> Proxies => _proxies;
+    public IReadOnlyDictionary<string, GameServiceProxy> Proxies => _proxies;
 
     public RealGameSession(GameRunOptions options, ILogger logger)
     {
@@ -66,7 +66,7 @@ public class RealGameSession : IAsyncDisposable
 
             // Create SignalR proxy for real service (not test factory)
             var hubUrl = _options.GetSignalRHubUrl();
-            var proxy = new SignalRProxy(hubUrl, playerId, GameId);
+            var proxy = new GameServiceProxy(hubUrl, playerId, GameId);
 
             // Connect to SignalR hub - this starts the continuous listening
             await proxy.ConnectAsync();
@@ -165,7 +165,7 @@ public class RealGameSession : IAsyncDisposable
     /// <summary>
     /// Gets a specific proxy by player ID
     /// </summary>
-    public SignalRProxy GetProxy(string playerId)
+    public GameServiceProxy GetProxy(string playerId)
     {
         if (!_proxies.TryGetValue(playerId, out var proxy))
         {
@@ -217,15 +217,15 @@ public class RealGameSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// Executes a ExecuteGameActionMessage command using the current player and waits for all proxies to receive updates
+    /// Executes an Undo command using the current player and waits for all proxies to receive updates
     /// Implements the async notification pattern where action triggers GameModel updates to all clients
     /// </summary>
-    public async Task ExecuteAction(GameAction action)
+    public async Task ExecuteUndoAsync()
     {
         var currentPlayerId = GetCurrentPlayerId();
         var proxy = GetProxy(currentPlayerId);
 
-        _logger.LogDebug("Executing {Action} for player {PlayerId}", action, currentPlayerId);
+        _logger.LogDebug("Executing Undo for player {PlayerId}", currentPlayerId);
 
         // Capture the current ExpectedGameHash from all proxies before the action
         var preActionHashes = _proxies.Values
@@ -233,30 +233,89 @@ public class RealGameSession : IAsyncDisposable
             .ToDictionary(p => p.PlayerId, p => p.GameModel!.GameHash);
 
         // Execute the action
-        var result = await proxy.ExecuteDoActionAsync(GameId, action);
+        var result = await proxy.ExecuteUndoAsync();
 
         if (!result.Success)
         {
-            throw new InvalidOperationException($"Action {action} failed: {result.Message}");
+            throw new InvalidOperationException($"Undo action failed: {result.Message}");
         }
 
         // Wait for all proxies to receive the updated GameModel
-        // This implements your described pattern: action triggers updates, wait for all notification threads
-        await WaitForAllProxiesToReceiveActionUpdate(preActionHashes, action);
+        await WaitForAllProxiesToReceiveActionUpdate(preActionHashes, "Undo");
 
-        _logger.LogDebug("Action {Action} completed successfully with all proxies updated", action);
+        _logger.LogDebug("Undo action completed successfully with all proxies updated");
+    }
+
+    /// <summary>
+    /// Executes a Redo command using the current player and waits for all proxies to receive updates
+    /// Implements the async notification pattern where action triggers GameModel updates to all clients
+    /// </summary>
+    public async Task ExecuteRedoAsync()
+    {
+        var currentPlayerId = GetCurrentPlayerId();
+        var proxy = GetProxy(currentPlayerId);
+
+        _logger.LogDebug("Executing Redo for player {PlayerId}", currentPlayerId);
+
+        // Capture the current ExpectedGameHash from all proxies before the action
+        var preActionHashes = _proxies.Values
+            .Where(p => p.GameModel != null)
+            .ToDictionary(p => p.PlayerId, p => p.GameModel!.GameHash);
+
+        // Execute the action
+        var result = await proxy.ExecuteRedoAsync();
+
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Redo action failed: {result.Message}");
+        }
+
+        // Wait for all proxies to receive the updated GameModel
+        await WaitForAllProxiesToReceiveActionUpdate(preActionHashes, "Redo");
+
+        _logger.LogDebug("Redo action completed successfully with all proxies updated");
+    }
+
+    /// <summary>
+    /// Executes a Next command using the current player and waits for all proxies to receive updates
+    /// Implements the async notification pattern where action triggers GameModel updates to all clients
+    /// </summary>
+    public async Task ExecuteNextAsync()
+    {
+        var currentPlayerId = GetCurrentPlayerId();
+        var proxy = GetProxy(currentPlayerId);
+
+        _logger.LogDebug("Executing Next for player {PlayerId}", currentPlayerId);
+
+        // Capture the current ExpectedGameHash from all proxies before the action
+        var preActionHashes = _proxies.Values
+            .Where(p => p.GameModel != null)
+            .ToDictionary(p => p.PlayerId, p => p.GameModel!.GameHash);
+
+        // Execute the action
+        var result = await proxy.ExecuteNextAsync();
+
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Next action failed: {result.Message}");
+        }
+
+        // Wait for all proxies to receive the updated GameModel
+        await WaitForAllProxiesToReceiveActionUpdate(preActionHashes, "Next");
+
+        _logger.LogDebug("Next action completed successfully with all proxies updated");
     }
 
     /// <summary>
     /// Waits for all proxies to receive GameStateUpdated after an action
     /// Implements the notification pattern: main thread waits while notification threads signal completion
     /// </summary>
-    private async Task WaitForAllProxiesToReceiveActionUpdate(Dictionary<string, string> preActionHashes, GameAction action)
+    private async Task WaitForAllProxiesToReceiveActionUpdate(Dictionary<string, string> preActionHashes, string actionName)
     {
         var timeout = TimeSpan.FromSeconds(10);
         var waitStart = DateTime.UtcNow;
 
-        _logger.LogDebug("Waiting for all proxies to receive GameStateUpdated after {Action}", action);
+        _logger.LogDebug("Waiting for all proxies to receive GameStateUpdated after {ActionName}", actionName);
 
         while (DateTime.UtcNow - waitStart < timeout)
         {
@@ -283,12 +342,12 @@ public class RealGameSession : IAsyncDisposable
                 }
             }
 
-            _logger.LogDebug("Proxies with updated state after {Action}: {Count}/{Total}",
-                action, proxiesWithUpdatedState, _proxies.Count);
+            _logger.LogDebug("Proxies with updated state after {ActionName}: {Count}/{Total}",
+                actionName, proxiesWithUpdatedState, _proxies.Count);
 
             if (proxiesWithUpdatedState == _proxies.Count)
             {
-                _logger.LogDebug("All proxies received updated GameModel after {Action}", action);
+                _logger.LogDebug("All proxies received updated GameModel after {ActionName}", actionName);
                 return;
             }
 
@@ -296,7 +355,7 @@ public class RealGameSession : IAsyncDisposable
             await Task.Delay(50);
         }
 
-        throw new TimeoutException($"Timeout waiting for all proxies to receive GameStateUpdated after {action} - {timeout.TotalSeconds} seconds");
+        throw new TimeoutException($"Timeout waiting for all proxies to receive GameStateUpdated after {actionName} - {timeout.TotalSeconds} seconds");
     }
 
     /// <summary>
@@ -304,7 +363,67 @@ public class RealGameSession : IAsyncDisposable
     /// </summary>
     public async Task ExecuteNextAction()
     {
-        await ExecuteAction(GameAction.Next);
+        await ExecuteNextAsync();
+    }
+
+    /// <summary>
+    /// Executes a Shuffle action using the current player and waits for all proxies to receive updates
+    /// Implements the async notification pattern where action triggers GameModel updates to all clients
+    /// </summary>
+    public async Task ExecuteShuffleAsync()
+    {
+        var currentPlayerId = GetCurrentPlayerId();
+        var proxy = GetProxy(currentPlayerId);
+
+        _logger.LogDebug("Executing Shuffle for player {PlayerId}", currentPlayerId);
+
+        // Capture the current ExpectedGameHash from all proxies before the action
+        var preActionHashes = _proxies.Values
+            .Where(p => p.GameModel != null)
+            .ToDictionary(p => p.PlayerId, p => p.GameModel!.GameHash);
+
+        // Execute the action
+        var result = await proxy.ExecuteShuffleAsync();
+
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Shuffle action failed: {result.Message}");
+        }
+
+        // Wait for all proxies to receive the updated GameModel
+        await WaitForAllProxiesToReceiveActionUpdate(preActionHashes, "Shuffle");
+
+        _logger.LogDebug("Shuffle action completed successfully with all proxies updated");
+    }
+
+    /// <summary>
+    /// Executes a Balance action using the current player and waits for all proxies to receive updates
+    /// Implements the async notification pattern where action triggers GameModel updates to all clients
+    /// </summary>
+    public async Task ExecuteBalanceAsync()
+    {
+        var currentPlayerId = GetCurrentPlayerId();
+        var proxy = GetProxy(currentPlayerId);
+
+        _logger.LogDebug("Executing Balance for player {PlayerId}", currentPlayerId);
+
+        // Capture the current ExpectedGameHash from all proxies before the action
+        var preActionHashes = _proxies.Values
+            .Where(p => p.GameModel != null)
+            .ToDictionary(p => p.PlayerId, p => p.GameModel!.GameHash);
+
+        // Execute the action
+        var result = await proxy.ExecuteBalanceAsync();
+
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Balance action failed: {result.Message}");
+        }
+
+        // Wait for all proxies to receive the updated GameModel
+        await WaitForAllProxiesToReceiveActionUpdate(preActionHashes, "Balance");
+
+        _logger.LogDebug("Balance action completed successfully with all proxies updated");
     }
 
     /// <summary>

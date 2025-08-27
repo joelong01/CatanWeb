@@ -91,7 +91,7 @@ The test suite is organized into three main test classes:
 
 ### ?? Test Infrastructure
 - Uses `WebApplicationFactory<Program>` for integration testing
-- Leverages `SignalRProxy` from `Catan3.Shared` for SignalR testing
+- Leverages `GameServiceProxy` from `Catan3.Shared` for SignalR testing
 - Implements proper test cleanup and resource disposal
 - Uses `FunctionTimer` for performance monitoring
 

@@ -12,14 +12,14 @@ namespace Catan3.CLI.Services;
 
 static class ProxyExtensions
 {
-    public static GameState GetGameState(this IEnumerable<SignalRProxy> proxies)
+    public static GameState GetGameState(this IEnumerable<GameServiceProxy> proxies)
     {
         if (proxies is null) return GameState.Uninitialized;
         var anyProxy = proxies.First();
         return anyProxy.GameModel?.GameState ?? GameState.Uninitialized;
     }
 
-    public static GameModel? GetGameModel(this IEnumerable<SignalRProxy> proxies)
+    public static GameModel? GetGameModel(this IEnumerable<GameServiceProxy> proxies)
     {
         if (proxies is null) return null;
         var anyProxy = proxies.First();
@@ -359,7 +359,7 @@ public class GameRunner
 
         // SHUFFLE TEST 1: Execute first shuffle
         LogEvent("?? SHUFFLE TEST 1", "Executing first shuffle action");
-        await session.ExecuteAction(GameAction.Shuffle);
+        await session.ExecuteShuffleAsync();
 
         var firstShuffleState = session.Proxies.Values.First().GameModel;
         if (firstShuffleState == null)
@@ -382,7 +382,7 @@ public class GameRunner
 
         // SHUFFLE TEST 2: Execute second shuffle
         LogEvent("?? SHUFFLE TEST 2", "Executing second shuffle action");
-        await session.ExecuteAction(GameAction.Shuffle);
+        await session.ExecuteShuffleAsync();
 
         var secondShuffleState = session.Proxies.Values.First().GameModel;
         if (secondShuffleState == null)
@@ -407,7 +407,7 @@ public class GameRunner
 
         // UNDO TEST: Test Undo functionality
         LogEvent("? UNDO TEST", "Testing Undo functionality");
-        await session.ExecuteAction(GameAction.Undo);
+        await session.ExecuteUndoAsync();
 
         var undoState = session.Proxies.Values.First().GameModel;
         if (undoState == null)
@@ -431,7 +431,7 @@ public class GameRunner
 
         // REDO TEST: Test Redo functionality
         LogEvent("? REDO TEST", "Testing Redo functionality");
-        await session.ExecuteAction(GameAction.Redo);
+        await session.ExecuteRedoAsync();
 
         var redoState = session.Proxies.Values.First().GameModel;
         if (redoState == null)
@@ -451,7 +451,7 @@ public class GameRunner
         LogEvent("?? BALANCE TEST", "Testing Balance functionality");
         try
         {
-            await session.ExecuteAction(GameAction.Balance);
+            await session.ExecuteBalanceAsync();
             var balanceState = session.Proxies.Values.First().GameModel;
             if (balanceState == null)
             {
@@ -475,7 +475,7 @@ public class GameRunner
 
         // ADVANCEMENT TEST: Advance to next state using Next action
         LogEvent("?? ADVANCEMENT TEST", "Testing advancement to next state with Next action");
-        await session.ExecuteAction(GameAction.Next);
+        await session.ExecuteNextAsync();
 
         // FINAL STATE ASSERTION: Verify we advanced to WaitingForRollForOrder
         var nextState = session.GetCurrentGameState();
@@ -517,7 +517,7 @@ public class GameRunner
 
         // ADVANCEMENT TEST: Test Next action to advance to FinishedRollOrder
         LogEvent("?? ADVANCEMENT TEST", "Testing advancement with Next action");
-        await session.ExecuteAction(GameAction.Next);
+        await session.ExecuteNextAsync();
 
         // FINAL STATE ASSERTION: Verify advancement
         var nextState = session.GetCurrentGameState();
@@ -546,7 +546,7 @@ public class GameRunner
         await session.VerifyGameConsistency();
 
         LogEvent("?? ADVANCEMENT TEST", "Testing advancement with Next action");
-        await session.ExecuteAction(GameAction.Next);
+        await session.ExecuteNextAsync();
 
         var nextState = session.GetCurrentGameState();
         if (nextState != GameState.BeginResourceAllocation)
@@ -573,7 +573,7 @@ public class GameRunner
         await session.VerifyGameConsistency();
 
         LogEvent("?? ADVANCEMENT TEST", "Testing advancement with Next action");
-        await session.ExecuteAction(GameAction.Next);
+        await session.ExecuteNextAsync();
 
         var nextState = session.GetCurrentGameState();
         if (nextState != GameState.AllocateResourceForward)
@@ -740,12 +740,12 @@ public class GameRunner
             if (i < playerIds.Count - 1)
             {
                 LogEvent("?? NEXT PLAYER", $"Advancing from {currentPlayerId} to next player");
-                await session.ExecuteAction(GameAction.Next);
+                await session.ExecuteNextAsync();
             }
             else
             {
                 LogEvent("?? NEXT PHASE", $"All players completed, advancing to AllocateResourceReverse");
-                await session.ExecuteAction(GameAction.Next);
+                await session.ExecuteNextAsync();
             }
         }
 
@@ -1014,12 +1014,12 @@ public class GameRunner
             if (i < reversePlayerIds.Length - 1)
             {
                 LogEvent("?? NEXT PLAYER", $"Advancing from {currentPlayerId} to next player in reverse order");
-                await session.ExecuteAction(GameAction.Next);
+                await session.ExecuteNextAsync();
             }
             else
             {
                 LogEvent("?? NEXT PHASE", $"All players completed reverse allocation, advancing to DoneResourceAllocation");
-                await session.ExecuteAction(GameAction.Next);
+                await session.ExecuteNextAsync();
             }
         }
 
@@ -1190,7 +1190,7 @@ public class GameRunner
         await session.VerifyGameConsistency();
 
         LogEvent("?? ADVANCEMENT TEST", "Testing advancement with Next action");
-        await session.ExecuteAction(GameAction.Next);
+        await session.ExecuteNextAsync();
 
         var nextState = session.GetCurrentGameState();
         if (nextState != GameState.WaitingForRoll)
@@ -1266,7 +1266,7 @@ public class GameRunner
 
         // Purchase Soldier entitlement
         LogEvent("?? PURCHASING", "Purchasing Soldier entitlement");
-        var purchaseResult = await proxy.ExecutePurchaseAsync(session.GameId, Entitlement.Soldier);
+        var purchaseResult = await proxy.ExecutePurchaseAsync(Entitlement.Soldier);
 
         if (!purchaseResult.Success)
         {
@@ -1322,7 +1322,7 @@ public class GameRunner
 
         // Undo the action
         LogEvent("? UNDO", "Testing undo of robber movement");
-        await session.ExecuteAction(GameAction.Undo);
+        await session.ExecuteUndoAsync();
 
         // Verify state after undo (might stay in MustMoveRobber or go back to WaitingForRoll)
         await session.VerifyGameConsistency();
@@ -1350,7 +1350,7 @@ public class GameRunner
         if (currentStateForDesert == GameState.WaitingForRoll)
         {
             // Purchase Soldier again
-            var soldierResult2 = await proxy.ExecutePurchaseAsync(session.GameId, Entitlement.Soldier);
+            var soldierResult2 = await proxy.ExecutePurchaseAsync(Entitlement.Soldier);
             if (!soldierResult2.Success)
             {
                 LogEvent("? FAIL", $"Second Soldier purchase failed: {soldierResult2.Message}");
@@ -1409,7 +1409,7 @@ public class GameRunner
 
             // Execute the roll
             var (die1, die2) = GetDiceCombination(rollValue);
-            var rollResult = await proxy.ExecuteRollAsync(session.GameId, die1, die2);
+            var rollResult = await proxy.ExecuteRollAsync(die1, die2);
 
             if (!rollResult.Success)
             {
@@ -1442,7 +1442,7 @@ public class GameRunner
 
             // Undo the action
             LogEvent("? UNDO", $"Undoing roll {rollValue}");
-            await session.ExecuteAction(GameAction.Undo);
+            await session.ExecuteUndoAsync();
 
             // Verify we're back to WaitingForRoll
             await session.VerifyGameConsistency();
@@ -1469,7 +1469,7 @@ public class GameRunner
 
         // Execute roll 7
         LogEvent("?? ROLLING", "Rolling dice 7 (4+3)");
-        var rollResult = await proxy.ExecuteRollAsync(session.GameId, 4, 3);
+        var rollResult = await proxy.ExecuteRollAsync(4, 3);
 
         if (!rollResult.Success)
         {

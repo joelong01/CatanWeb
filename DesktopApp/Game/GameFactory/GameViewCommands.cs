@@ -26,19 +26,17 @@ namespace Catan3.Models
         [RelayCommand]
         public void Undo()
         {
-            Messenger.Send(new ExecuteGameActionMessage(GameAction.Undo));
+            Messenger.Send(new UndoMessage());
         }
         [RelayCommand]
         public void Redo()
         {
-            Messenger.Send(new ExecuteGameActionMessage(GameAction.Redo));
+            Messenger.Send(new RedoMessage());
         }
         [RelayCommand]
         public void NextAction()
         {
-
-            Messenger.Send(new ExecuteGameActionMessage(GameAction.Next));
-
+            Messenger.Send(new NextMessage());
         }
         /// <summary>
         ///     this is not undoable, client only ... so we can implement this here instead

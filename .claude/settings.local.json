@@ -10,7 +10,9 @@
       "Bash(dotnet test:*)",
       "Bash(.build.ps1 -SkipUiTests)",
       "Bash(pwsh:*)",
-      "Bash(./build.ps1 -NoUiTests)"
+      "Bash(./build.ps1 -NoUiTests)",
+      "Bash(grep:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

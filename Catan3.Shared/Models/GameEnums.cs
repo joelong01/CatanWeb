@@ -2,11 +2,6 @@ using System.ComponentModel;
 
 namespace Catan3.Shared.Models
 {
-    public enum GameAction
-    {
-        Shuffle, Undo, Redo, Balance,
-        Next
-    }
     public enum ResourceType
     {
         Sheep, Wood, Ore, Wheat, Brick, GoldMine, Desert,

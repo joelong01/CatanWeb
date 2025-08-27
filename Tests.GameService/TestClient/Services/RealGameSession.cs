@@ -9,13 +9,13 @@ namespace TestClient.Services;
 
 /// <summary>
 /// Represents a real game session connected to a running GameService
-/// Uses SignalRProxy to interact with the game, following the same patterns as EndToEndStatefulTest
+/// Uses GameServiceProxy to interact with the game, following the same patterns as EndToEndStatefulTest
 /// </summary>
 public class RealGameSession : IAsyncDisposable
 {
     private readonly GameRunOptions _options;
     private readonly ILogger _logger;
-    private readonly Dictionary<string, SignalRProxy> _proxies = [];
+    private readonly Dictionary<string, GameServiceProxy> _proxies = [];
     private readonly HttpClient _httpClient;
 
     public string GameId { get; private set; } = "";
@@ -52,7 +52,7 @@ public class RealGameSession : IAsyncDisposable
             
             // Create SignalR proxy for real service (not test factory)
             var hubUrl = _options.GetSignalRHubUrl();
-            var proxy = new SignalRProxy(hubUrl, playerId, GameId);
+            var proxy = new GameServiceProxy(hubUrl, playerId, GameId);
             await proxy.ConnectAsync();
             
             _proxies[playerId] = proxy;
@@ -112,7 +112,7 @@ public class RealGameSession : IAsyncDisposable
     /// <summary>
     /// Gets a specific proxy by player ID
     /// </summary>
-    public SignalRProxy GetProxy(string playerId)
+    public GameServiceProxy GetProxy(string playerId)
     {
         if (!_proxies.TryGetValue(playerId, out var proxy))
         {
@@ -155,35 +155,121 @@ public class RealGameSession : IAsyncDisposable
         return _options.GetPlayerNames();
     }
 
-    /// <summary>
-    /// Executes a ExecuteGameActionMessage command using the current player
-    /// </summary>
-    public async Task ExecuteAction(GameAction action)
-    {
-        var currentPlayerId = GetCurrentPlayerId();
-        var proxy = GetProxy(currentPlayerId);
-        
-        _logger.LogDebug("Executing {Action} for player {PlayerId}", action, currentPlayerId);
-        
-        var result = await proxy.ExecuteDoActionAsync(GameId, action);
-        
-        if (!result.Success)
-        {
-            throw new InvalidOperationException($"Action {action} failed: {result.Message}");
-        }
-        
-        // Verify all proxies received updates
-        await VerifyAllProxiesReceivedUpdate();
-        
-        _logger.LogDebug("Action {Action} completed successfully", action);
-    }
+    // ExecuteAction(GameAction) method removed - replaced with individual proxy method calls
 
     /// <summary>
     /// Executes a Next action specifically
     /// </summary>
     public async Task ExecuteNextAction()
     {
-        await ExecuteAction(GameAction.Next);
+        var currentPlayerId = GetCurrentPlayerId();
+        var proxy = GetProxy(currentPlayerId);
+        
+        _logger.LogDebug("Executing Next for player {PlayerId}", currentPlayerId);
+        
+        var result = await proxy.ExecuteNextAsync();
+        
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Next action failed: {result.Message}");
+        }
+        
+        // Verify all proxies received updates
+        await VerifyAllProxiesReceivedUpdate();
+        
+        _logger.LogDebug("Next action completed successfully");
+    }
+
+    /// <summary>
+    /// Executes a Shuffle action specifically
+    /// </summary>
+    public async Task ExecuteShuffleAction()
+    {
+        var currentPlayerId = GetCurrentPlayerId();
+        var proxy = GetProxy(currentPlayerId);
+        
+        _logger.LogDebug("Executing Shuffle for player {PlayerId}", currentPlayerId);
+        
+        var result = await proxy.ExecuteShuffleAsync();
+        
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Shuffle action failed: {result.Message}");
+        }
+        
+        // Verify all proxies received updates
+        await VerifyAllProxiesReceivedUpdate();
+        
+        _logger.LogDebug("Shuffle action completed successfully");
+    }
+
+    /// <summary>
+    /// Executes an Undo action specifically
+    /// </summary>
+    public async Task ExecuteUndoAction()
+    {
+        var currentPlayerId = GetCurrentPlayerId();
+        var proxy = GetProxy(currentPlayerId);
+        
+        _logger.LogDebug("Executing Undo for player {PlayerId}", currentPlayerId);
+        
+        var result = await proxy.ExecuteUndoAsync();
+        
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Undo action failed: {result.Message}");
+        }
+        
+        // Verify all proxies received updates
+        await VerifyAllProxiesReceivedUpdate();
+        
+        _logger.LogDebug("Undo action completed successfully");
+    }
+
+    /// <summary>
+    /// Executes a Redo action specifically
+    /// </summary>
+    public async Task ExecuteRedoAction()
+    {
+        var currentPlayerId = GetCurrentPlayerId();
+        var proxy = GetProxy(currentPlayerId);
+        
+        _logger.LogDebug("Executing Redo for player {PlayerId}", currentPlayerId);
+        
+        var result = await proxy.ExecuteRedoAsync();
+        
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Redo action failed: {result.Message}");
+        }
+        
+        // Verify all proxies received updates
+        await VerifyAllProxiesReceivedUpdate();
+        
+        _logger.LogDebug("Redo action completed successfully");
+    }
+
+    /// <summary>
+    /// Executes a Balance action specifically
+    /// </summary>
+    public async Task ExecuteBalanceAction()
+    {
+        var currentPlayerId = GetCurrentPlayerId();
+        var proxy = GetProxy(currentPlayerId);
+        
+        _logger.LogDebug("Executing Balance for player {PlayerId}", currentPlayerId);
+        
+        var result = await proxy.ExecuteBalanceAsync();
+        
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Balance action failed: {result.Message}");
+        }
+        
+        // Verify all proxies received updates
+        await VerifyAllProxiesReceivedUpdate();
+        
+        _logger.LogDebug("Balance action completed successfully");
     }
 
     /// <summary>

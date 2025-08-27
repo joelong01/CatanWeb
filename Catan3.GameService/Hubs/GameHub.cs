@@ -35,6 +35,13 @@ namespace Catan3.GameService.Hubs
         {
             LogEvent("JoinGame", $"Player {playerId} requesting to join game {gameId} via SignalR");
             
+            // Validate GameId - fail fast if empty or null
+            if (string.IsNullOrEmpty(gameId))
+            {
+                LogEvent("JoinGame", $"ERROR: Player {playerId} attempted to join with empty/null gameId", LogLevel.Error);
+                throw new ArgumentException($"GameId cannot be null or empty. Player {playerId} must provide a valid GameId to join a game.");
+            }
+            
             await Groups.AddToGroupAsync(Context.ConnectionId, gameId);
             LogEvent("JoinGame", $"Player {playerId} added to SignalR group {gameId}");
 
@@ -104,34 +111,44 @@ namespace Catan3.GameService.Hubs
         #region Direct MVVM Message Handlers - Same as Desktop App
 
         /// <summary>
-        /// Executes ExecuteGameActionMessage commands (Shuffle, Undo, Redo, Next) - matches Desktop app exactly
+        /// Executes game action messages (UndoMessage, RedoMessage, NextMessage, etc.) - matches Desktop app exactly
         /// </summary>
         /// <param name="gameId">The game ID</param>
         /// <param name="playerId">The player ID executing the action</param>
-        /// <param name="message">The ExecuteGameActionMessage message object</param>
-        public async Task ExecuteDoAction(string gameId, string playerId, ExecuteGameActionMessage message)
+        /// <param name="message">The message object (UndoMessage, RedoMessage, NextMessage, etc.)</param>
+        public async Task ExecuteDoAction(string gameId, string playerId, object message)
         {
             var commandId = Guid.NewGuid().ToString();
             try 
             {
-                LogEvent("ExecuteGameActionMessage", $"SignalR ExecuteGameActionMessage: {message.Action} for {playerId} in {gameId}");
+                var messageTypeName = message.GetType().Name;
+                LogEvent("GameActionMessage", $"SignalR {messageTypeName}: for {playerId} in {gameId}");
                 
                 // Process synchronously for real-time response
-                var updatedGameModel = await _gameService.ExecuteActionAsync(gameId, gsm => gsm.ExecuteGameActionAsync(message));
+                GameModel updatedGameModel = message switch
+                {
+                    UndoMessage undoMsg => await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleUndoAsync(undoMsg)),
+                    RedoMessage redoMsg => await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleRedoAsync(redoMsg)),
+                    NextMessage nextMsg => await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleNextAsync(nextMsg)),
+                    ShuffleMessage shuffleMsg => await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleShuffleAsync(shuffleMsg)),
+                    BalanceBoardMessage balanceMsg => await _gameService.ExecuteActionAsync(gameId, gsm => gsm.HandleBalanceBoardAsync(balanceMsg)),
+                    _ => throw new ArgumentException($"Unknown message type: {messageTypeName}")
+                };
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
-                LogEvent("Send Client Update", $"GameStateUpdated sent for ExecuteGameActionMessage: {message.Action} - PlayerId={playerId}, GameID={gameId}");
+                LogEvent("Send Client Update", $"GameStateUpdated sent for {messageTypeName} - PlayerId={playerId}, GameID={gameId}");
                 
                 // Notify command completion to original client
-                await Clients.Caller.SendAsync("CommandCompleted", commandId, true, $"{message.Action} completed");
+                await Clients.Caller.SendAsync("CommandCompleted", commandId, true, $"{messageTypeName} completed");
                 
-                LogEvent("ExecuteGameActionMessage", $"ExecuteGameActionMessage {message.Action} completed successfully for game {gameId}", LogLevel.Debug);
+                LogEvent("GameActionMessage", $"{messageTypeName} completed successfully for game {gameId}", LogLevel.Debug);
             }
             catch (Exception ex)
             {
-                LogEvent("ExecuteGameActionMessage", $"Failed to execute ExecuteGameActionMessage {message.Action} for {playerId} in {gameId}: {ex.Message}", LogLevel.Error);
-                var errorInfo = CreateDetailedErrorInfo(ex, "ExecuteGameActionMessage", $"{message.Action}");
+                var messageTypeName = message.GetType().Name;
+                LogEvent("GameActionMessage", $"Failed to execute {messageTypeName} for {playerId} in {gameId}: {ex.Message}", LogLevel.Error);
+                var errorInfo = CreateDetailedErrorInfo(ex, "GameActionMessage", messageTypeName);
                 await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }
@@ -431,6 +448,57 @@ namespace Catan3.GameService.Hubs
             {
                 LogEvent("GoFirst", $"Failed to execute Go First for {playerId} in {gameId}: {ex.Message}", LogLevel.Error);
                 var errorInfo = CreateDetailedErrorInfo(ex, "GoFirst", $"{message.PlayerId}");
+                await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
+            }
+        }
+
+        /// <summary>
+        /// Loads a GameModel directly - primarily for testing purposes
+        /// </summary>
+        /// <param name="gameId">The game ID to use</param>
+        /// <param name="playerId">The player ID making the request</param>
+        /// <param name="gameModel">The GameModel to load</param>
+        public async Task LoadGameModel(string gameId, string playerId, GameModel gameModel)
+        {
+            var commandId = Guid.NewGuid().ToString();
+            try 
+            {
+                LogEvent("LoadGameModel", $"Loading GameModel for game {gameId} by player {playerId}");
+                LogEvent("LoadGameModel", $"GameModel contains GameId: '{gameModel.GameId}' - will use this existing GameId");
+                
+                // Use the GameId from the GameModel itself, not generate a new one
+                // This is correct behavior - when loading an existing game, use its existing GameId
+                var existingGameId = gameModel.GameId;
+                if (string.IsNullOrEmpty(existingGameId))
+                {
+                    throw new InvalidOperationException("GameModel must have a valid GameId when loading. Cannot load GameModel with empty GameId.");
+                }
+                
+                // Create the game using the GameModel's existing GameId
+                var (actualGameId, loadedGameModel) = await _gameService.CreateNewGameWithIdAsync(existingGameId, gsm => 
+                {
+                    // Initialize logging state using the public method (replaces fragile reflection usage)
+                    gsm.InitializeLoggingState(gameModel);
+                    LogEvent("LoadGameModel", "Logging state initialized for loaded GameModel");
+                    
+                    return Task.FromResult(gameModel);
+                });
+                
+                LogEvent("LoadGameModel", $"GameModel loaded successfully - GameId: {actualGameId}, GameState: {loadedGameModel.GameState}");
+                
+                // Notify all clients in game group using the actual GameId
+                await Clients.Group(actualGameId).SendAsync("GameStateUpdated", loadedGameModel);
+                LogEvent("Send Client Update", $"GameStateUpdated sent for LoadGameModel - PlayerId={playerId}, GameID={actualGameId}");
+                
+                // Notify command completion to original client
+                await Clients.Caller.SendAsync("CommandCompleted", commandId, true, $"GameModel loaded successfully with GameId: {actualGameId}");
+                
+                LogEvent("LoadGameModel", $"LoadGameModel completed successfully for game {actualGameId}", LogLevel.Debug);
+            }
+            catch (Exception ex)
+            {
+                LogEvent("LoadGameModel", $"Failed to load GameModel for {playerId} in {gameId}: {ex.Message}", LogLevel.Error);
+                var errorInfo = CreateDetailedErrorInfo(ex, "LoadGameModel", $"GameState: {gameModel.GameState}");
                 await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
             }
         }

@@ -207,21 +207,21 @@ public class GameRunner
         LogEvent("?? PICKING BOARD", "Testing PickingBoard state functionality");
         
         // Execute shuffles, undo, redo, balance (same as test)
-        await session.ExecuteAction(GameAction.Shuffle);
+        await session.ExecuteShuffleAction();
         LogEvent("?? SHUFFLED", "Board shuffled");
         
-        await session.ExecuteAction(GameAction.Shuffle);
+        await session.ExecuteShuffleAction();
         LogEvent("?? SHUFFLED", "Board shuffled again");
         
-        await session.ExecuteAction(GameAction.Undo);
+        await session.ExecuteUndoAction();
         LogEvent("? UNDO", "Undid last action");
         
-        await session.ExecuteAction(GameAction.Redo);
+        await session.ExecuteRedoAction();
         LogEvent("? REDO", "Redid last action");
         
         try
         {
-            await session.ExecuteAction(GameAction.Balance);
+            await session.ExecuteBalanceAction();
             LogEvent("?? BALANCED", "Board balanced");
         }
         catch (Exception ex)
@@ -229,28 +229,28 @@ public class GameRunner
             LogEvent("?? BALANCE SKIP", $"Balance not available: {ex.Message}");
         }
         
-        await session.ExecuteAction(GameAction.Next);
+        await session.ExecuteNextAction();
         LogEvent("? PICKING BOARD", "Completed - advanced to WaitingForRollForOrder");
     }
 
     private async Task VerifyWaitingForRollForOrder(RealGameSession session)
     {
         LogEvent("?? ROLL FOR ORDER", "Processing roll for order phase");
-        await session.ExecuteAction(GameAction.Next);
+        await session.ExecuteNextAction();
         LogEvent("? ROLL FOR ORDER", "Completed - advanced to FinishedRollOrder");
     }
 
     private async Task VerifyFinishedRollOrder(RealGameSession session)
     {
         LogEvent("?? FINISHED ROLL ORDER", "Processing finished roll order");
-        await session.ExecuteAction(GameAction.Next);
+        await session.ExecuteNextAction();
         LogEvent("? FINISHED ROLL ORDER", "Completed - advanced to BeginResourceAllocation");
     }
 
     private async Task VerifyBeginResourceAllocation(RealGameSession session)
     {
         LogEvent("??? BEGIN ALLOCATION", "Starting resource allocation phase");
-        await session.ExecuteAction(GameAction.Next);
+        await session.ExecuteNextAction();
         LogEvent("? BEGIN ALLOCATION", "Completed - advanced to AllocateResourceForward");
     }
 
@@ -263,7 +263,7 @@ public class GameRunner
         // For now, just try to advance
         try
         {
-            await session.ExecuteAction(GameAction.Next);
+            await session.ExecuteNextAction();
             LogEvent("? FORWARD ALLOCATION", "Advanced to next phase");
         }
         catch (Exception ex)

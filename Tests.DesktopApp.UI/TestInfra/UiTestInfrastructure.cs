@@ -25,7 +25,12 @@ namespace Tests.DesktopApp.UI.TestInfra
             t.IsBackground = true;
             t.Start();
             t.Join();
-            if (captured != null) throw captured;
+            if (captured != null) 
+            {
+                System.Diagnostics.Debug.WriteLine($"Exception in STA thread: {captured}");
+                Console.WriteLine($"Exception in STA thread: {captured}");
+                throw captured;
+            }
         }
     }
 }
