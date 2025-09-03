@@ -73,7 +73,6 @@ namespace Catan3.Shared.GameLogic
         /// <summary>
         /// Factory for creating game recorders.
         /// </summary>
-        private readonly IGameRecorderFactory _recorderFactory;
 
 
         /// <summary>
@@ -91,12 +90,10 @@ namespace Catan3.Shared.GameLogic
         public GameStateMachine(
             IGameLog gameLog,
             ICatanDebugTrace gameLogger,
-            IGameRecorderFactory recorderFactory,
             IPersistenceService persistenceService)
         {
             _gameLog = gameLog;
             _logger = gameLogger;
-            _recorderFactory = recorderFactory;
             _persistenceService = persistenceService;
         }
 
@@ -2009,7 +2006,7 @@ namespace Catan3.Shared.GameLogic
 
             // Get current game gameModel and create new recording session using log file path
             var currentModel = _gameLog.CurrentState();
-            _recorder = _recorderFactory.CreateRecorder(currentModel, _gameLog.FilePath);
+            _recorder = new GameRecorder(currentModel, _gameLog.FilePath, _logger, _persistenceService);
 
             _logger.Trace(GameTraceLevel.Trace, $"🎬 Recording started from GameState: {currentModel.GameState}");
         }

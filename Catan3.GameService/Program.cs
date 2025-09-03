@@ -1,5 +1,6 @@
 using Catan3.GameService.Controllers;
 using Catan3.GameService.Services;
+using Catan3.Shared.Interfaces;
 using Catan3.GameService.Hubs;
 using Catan3.Shared.Utility;
 using System.Net;

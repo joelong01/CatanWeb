@@ -29,15 +29,12 @@ namespace Catan3.Models
             }
         }
         [RelayCommand]
-        private async Task SaveAs()
+        private void SaveAs()
         {
             try
             {
-                var path = await _fileService.PickSaveFileAsync("");
-                if (path != "")
-                {
-                    Messenger.Send(new PersistGameMessage(LocalPersistActions.SaveAs, path));
-                }
+                // Send SaveAs request to GameMessageService - it will handle file dialog and persistence
+                Messenger.Send(new SaveAsRequestMessage());
             }
             catch (Exception ex)
             {

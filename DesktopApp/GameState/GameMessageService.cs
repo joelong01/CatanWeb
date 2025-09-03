@@ -42,6 +42,7 @@ using Catan3.Shared.Interfaces;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
 using Catan3.Shared.Extensions;
+using Catan3.Models;
 using Catan3.Shared.GameLogic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
@@ -71,14 +72,19 @@ namespace Catan3.GameState
         /// <summary>
         /// The persistence service used for game operations.
         /// </summary>
-        private readonly Catan.Services.IPersistenceService _persistenceService;
+        private readonly Catan3.Shared.Interfaces.IPersistenceService _persistenceService;
+
+        /// <summary>
+        /// Current application settings received from UpdateSettings messages.
+        /// </summary>
+        private SettingsModel? _currentSettings;
 
         /// <summary>
         /// Initializes a new GameMessageService that handles MVVM messages.
         /// Creates GameStateMachine instances internally based on received messages.
         /// </summary>
         /// <param name="persistenceService">The persistence service for file operations.</param>
-        public GameMessageService(Catan.Services.IPersistenceService persistenceService)
+        public GameMessageService(Catan3.Shared.Interfaces.IPersistenceService persistenceService)
         {
             _persistenceService = persistenceService;
             RegisterMessages();
@@ -112,6 +118,8 @@ namespace Catan3.GameState
             Messenger.Register<EndGame>(this, HandleEndGameAsync);
             Messenger.Register<GoFirstMessage>(this, HandleGoFirstAsync);
             Messenger.Register<PersistGameMessage>(this, HandlePersistGameAsync);
+            Messenger.Register<UpdateSettings>(this, HandleUpdateSettingsAsync);
+            Messenger.Register<SaveAsRequestMessage>(this, HandleSaveAsRequestAsync);
         }
 
         /// <summary>
@@ -618,12 +626,9 @@ namespace Catan3.GameState
             // Create Desktop-specific implementations of shared interfaces
             var gameLog = new Catan3.Services.DesktopGameLog(_persistenceService, localSaveFile);
             var gameLogger = new Catan3.Services.DesktopGameLogger();
-            var fileOperations = new Catan3.Services.DesktopFileOperationsAdapter(_persistenceService);
-            var recorderFactory = new Catan3.Services.DesktopGameRecorderFactory(gameLogger, fileOperations);
-            var adaptedPersistenceService = new Catan3.Services.DesktopPersistenceServiceAdapter(_persistenceService);
 
-            // Create and return shared GameStateMachine with Desktop dependencies
-            return new GameStateMachine(gameLog, gameLogger, recorderFactory, adaptedPersistenceService);
+            // Create and return shared GameStateMachine with Desktop dependencies  
+            return new GameStateMachine(gameLog, gameLogger, _persistenceService);
         }
 
         /// <summary>
@@ -710,6 +715,67 @@ namespace Catan3.GameState
         /// <param name="cmb">The calling member name (auto-filled).</param>
         /// <param name="cln">The calling line number (auto-filled).</param>
         /// <param name="cfp">The calling file path (auto-filled).</param>
+        
+        /// <summary>
+        /// Handles UpdateSettings message from the UI to receive current application settings.
+        /// Stores the settings for use in game creation and file path generation.
+        /// </summary>
+        /// <param name="recipient">The message recipient (this service).</param>
+        /// <param name="message">The settings update message containing current settings.</param>
+        private void HandleUpdateSettingsAsync(object recipient, UpdateSettings message)
+        {
+            _currentSettings = message.Settings;
+            this.TraceMessage($"Settings updated: {message.Settings.Settings.Count} settings received");
+            
+            // Update persistence service with save directory from settings
+            var saveDirectory = message.Settings.GetStringValue("SaveDirectory");
+            if (!string.IsNullOrEmpty(saveDirectory))
+            {
+                try
+                {
+                    _persistenceService.SaveDirectory = saveDirectory;
+                    this.TraceMessage($"✅ Game save directory configured: {saveDirectory}");
+                }
+                catch (Exception ex)
+                {
+                    this.TraceMessage($"❌ Failed to set save directory '{saveDirectory}': {ex.Message}");
+                    // Don't throw - log the error and continue, but saves will fail until directory is fixed
+                }
+            }
+            else
+            {
+                this.TraceMessage("⚠️ No SaveDirectory setting found - file saves will require absolute paths");
+            }
+        }
+
+        /// <summary>
+        /// Handles SaveAsRequestMessage from the UI to show file dialog and save game.
+        /// </summary>
+        private async void HandleSaveAsRequestAsync(object recipient, SaveAsRequestMessage message)
+        {
+            try
+            {
+                // Cast to Desktop FileService to access UI-specific methods
+                if (_persistenceService is Catan.Services.FileService desktopFileService)
+                {
+                    var path = await desktopFileService.PickSaveFileAsync("");
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        // Handle the save operation via existing PersistGameMessage handler
+                        HandlePersistGameAsync(this, new PersistGameMessage(LocalPersistActions.SaveAs, path));
+                    }
+                }
+                else
+                {
+                    this.TraceMessage("SaveAs failed: PersistenceService is not Desktop FileService");
+                }
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"SaveAs failed: {ex.Message}");
+            }
+        }
+
         private void SendErrorMessage(string message, ErrorLevel errorLevel, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
         {
             this.TraceMessage(errorLevel.ToString() + ": " + message, indentLevel, cmb, cln, cfp);

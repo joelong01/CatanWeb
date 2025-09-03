@@ -9,6 +9,7 @@ using System.Text.Json;
 using Windows.Storage;
 using Microsoft.Extensions.Logging;
 using Catan3.Services;
+using CommunityToolkit.Mvvm.Messaging;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -254,6 +255,9 @@ namespace Catan3
                         Environment.SetEnvironmentVariable(setting.EnvironmentVariable, setting.Value.ToString(), EnvironmentVariableTarget.User);
                     }
                 }
+
+                // Broadcast settings update via MVVM messaging
+                WeakReferenceMessenger.Default.Send(new UpdateSettings(Settings));
             }
             catch (Exception ex)
             {

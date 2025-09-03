@@ -21,7 +21,7 @@ namespace Catan3.Shared.GameLogic
         private readonly List<IRecordedMessage> _recordedActions;
         private readonly string _outputPath;
         private readonly ICatanDebugTrace _logger;
-        private readonly IFileOperations _fileOperations;
+        private readonly IPersistenceService _persistenceService;
         private bool _isRecording;
 
         /// <summary>
@@ -30,11 +30,11 @@ namespace Catan3.Shared.GameLogic
         /// <param name="initialGameModel">The GameModel to use as the starting state for the recording</param>
         /// <param name="logFilePath">The path of the log file to use for generating the test file path</param>
         /// <param name="logger">Logger for recording operations</param>
-        /// <param name="fileOperations">File operations service for saving recordings</param>
-        public GameRecorder(GameModel initialGameModel, string logFilePath, ICatanDebugTrace logger, IFileOperations fileOperations)
+        /// <param name="persistenceService">Persistence service for saving recordings</param>
+        public GameRecorder(GameModel initialGameModel, string logFilePath, ICatanDebugTrace logger, IPersistenceService persistenceService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _fileOperations = fileOperations ?? throw new ArgumentNullException(nameof(fileOperations));
+            _persistenceService = persistenceService ?? throw new ArgumentNullException(nameof(persistenceService));
 
             if (initialGameModel is null)
             {
@@ -105,8 +105,8 @@ namespace Catan3.Shared.GameLogic
                 // Convert full path to relative path for file operations
                 var relativePath = GetRelativePathFromFullPath(_outputPath);
                 
-                // Save the file using file operations service
-                var success = await _fileOperations.WriteTextFileAsync(relativePath, jsonContent);
+                // Save the file using persistence service
+                var success = await _persistenceService.WriteTextAsync(_outputPath, jsonContent);
                 if (!success)
                 {
                     throw new InvalidOperationException($"Failed to save recording file to {_outputPath}");

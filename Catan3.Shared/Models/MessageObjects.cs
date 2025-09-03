@@ -202,4 +202,10 @@ namespace Catan3.Shared.Models
     {
         public override string ToString() => "StopRecordingMessage";
     }
+
+    public class UpdateSettings(SettingsModel settings)
+    {
+        public SettingsModel Settings { get; } = settings;
+        public override string ToString() => $"UpdateSettings: {Settings.Settings.Count} settings";
+    }
 }

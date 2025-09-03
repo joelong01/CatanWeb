@@ -95,6 +95,11 @@ namespace Catan3.Models
         public string? FilePath { get; } = file;
     }
 
+    public class SaveAsRequestMessage
+    {
+        public override string ToString() => "SaveAsRequestMessage";
+    }
+
     public class GetPlayerMessage(string playerId)
     {
         public string PlayerId { get; } = playerId;

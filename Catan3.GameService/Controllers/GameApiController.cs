@@ -36,11 +36,11 @@ namespace Catan3.GameService.Controllers
     public class GameApiController : ControllerBase
     {
         private readonly GameApiOptions _options;
-        private readonly Services.IPersistenceService _persistenceService;
+        private readonly IPersistenceService _persistenceService;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<GameApiController> _logger;
 
-        public GameApiController(IOptions<GameApiOptions> options, Services.IPersistenceService persistenceService, ILoggerFactory loggerFactory, ILogger<GameApiController> logger)
+        public GameApiController(IOptions<GameApiOptions> options, IPersistenceService persistenceService, ILoggerFactory loggerFactory, ILogger<GameApiController> logger)
         {
             _options = options.Value;
             _persistenceService = persistenceService;
@@ -56,12 +56,9 @@ namespace Catan3.GameService.Controllers
             // Create GameService-specific implementations
             var gameServiceLogger = _loggerFactory.CreateLogger<GameStateMachine>();
             var gameLogger = new GameServiceLogger(gameServiceLogger);
-            var fileOperations = new GameServiceFileOperationsAdapter();
-            var recorderFactory = new GameServiceRecorderFactory(gameLogger, fileOperations);
-            var persistenceAdapter = new GameServicePersistenceAdapter(_persistenceService);
 
             // Create and return GameStateMachine with GameService dependencies
-            return new GameStateMachine(gameLog, gameLogger, recorderFactory, persistenceAdapter);
+            return new GameStateMachine(gameLog, gameLogger, _persistenceService);
         }
 
         /// <summary>

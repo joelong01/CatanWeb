@@ -6,6 +6,7 @@ using Catan.Services;
 using Catan3.Services;
 using Catan3.GameState;
 using Catan3.Utility;
+using Catan3.Shared.Interfaces;
 using Catan3.Shared.Models;
 using Catan3.Shared.Extensions;
 using Catan3.Shared.Utility;
@@ -105,10 +106,6 @@ namespace Catan3.Models
         private GameMessageService GameMessageService { get; set; }
         public bool IsTest { get; private set; }
 
-        /// <summary>
-        /// Gets the file service.
-        /// </summary>
-        private readonly IPersistenceService _fileService;
 
         /// <summary>
         /// Gets the message service.
@@ -137,13 +134,19 @@ namespace Catan3.Models
         {
             FunctionTimer.Enabled = false;
             WeakReferenceMessenger.Default.Send(new EndGame());
-            _fileService = fileService;
             _playerDatabase = playerDatabase;
             RegisterMessages();
             GameViewModel = new GameViewModel(playerDatabase);
             
             // Create GameMessageService with persistence service - it will manage GameStateMachine internally
-            GameMessageService = new GameMessageService(_fileService);
+            GameMessageService = new GameMessageService(fileService);
+            
+            // Send current settings to GameMessageService after it's created and ready to receive messages
+            if (App.Settings != null)
+            {
+                Messenger.Send(new UpdateSettings(App.Settings));
+            }
+            
             this.IsTest = isTest;
             if (selectedGame == GameType.SavedGame)
             {
@@ -167,12 +170,6 @@ namespace Catan3.Models
             Messenger.Register<EndGame>(this, (recipient, message) =>
             {
                 Messenger.UnregisterAll(this);
-            });
-            Messenger.Register<OpenFileRequestMessage>(this, async (recipient, message) =>
-            {
-                if (_fileService is null) throw new GameException("File Service is null and it should not be");
-                var result = await _fileService.OpenFileAsync(message.Parent, message.Filters);
-                Messenger.Send(new OpenFileResponseMessage(result));
             });
         }
 

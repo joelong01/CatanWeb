@@ -14,9 +14,9 @@ namespace Catan3.Services
     public class DesktopGameLog : IGameLog
     {
         private Log<string> _log;
-        private readonly Catan.Services.IPersistenceService _persistenceService;
+        private readonly IPersistenceService _persistenceService;
 
-        public DesktopGameLog(Catan.Services.IPersistenceService persistenceService, string localSaveFile)
+        public DesktopGameLog(IPersistenceService persistenceService, string localSaveFile)
         {
             _persistenceService = persistenceService;
             _log = new Log<string>(persistenceService, localSaveFile);

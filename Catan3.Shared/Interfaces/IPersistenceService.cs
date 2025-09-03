@@ -28,5 +28,19 @@ namespace Catan3.Shared.Interfaces
         /// Gets the current location being worked with.
         /// </summary>
         string? Location { get; }
+
+        /// <summary>
+        /// Gets or sets the base directory where files should be saved.
+        /// Implementations should use this as the root for relative paths.
+        /// </summary>
+        string SaveDirectory { get; set; }
+
+        /// <summary>
+        /// Writes text content to the specified location asynchronously.
+        /// </summary>
+        /// <param name="location">The file path to write to.</param>
+        /// <param name="content">The text content to write.</param>
+        /// <returns>True if successful, false otherwise.</returns>
+        Task<bool> WriteTextAsync(string location, string content);
     }
 }

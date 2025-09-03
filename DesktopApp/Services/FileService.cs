@@ -12,25 +12,10 @@ using Windows.Storage.Pickers;
 using WinRT.Interop;
 using WinUIEx;
 
+using Catan3.Shared.Interfaces;
+
 namespace Catan.Services
 {
-    /// <summary>
-    /// Provides file operations to open and save files with asynchronous support.
-    /// </summary>
-    public interface IPersistenceService
-    {
-        Task<bool> SaveAsync(string location, byte[] data);
-        Task<byte[]?> OpenAsync(string location);
-        string? Location { get; }
-        Task<string?> OpenFileAsync(WindowEx parent, IList<string> filters);
-        Task<string> PickSaveFileAsync(string defaultFileName);
-        
-        // Text file operations
-        Task<bool> WriteTextFileAsync(string relativePath, string content);
-        Task<string?> ReadTextFileAsync(string relativePath);
-        string GetFullPath(string relativePath);
-        void EnsureDirectoryExists(string relativePath);
-    }
 
     /// <summary>
     /// The FileHandler class provides methods to open, read, write, and close a file using a cached FileStream.
@@ -213,12 +198,34 @@ namespace Catan.Services
     /// <summary>
     /// Implements file operations for opening and saving files on disk, utilizing the Windows Storage API.
     /// </summary>
-    public class FileService : IPersistenceService
+    public class FileService : Catan3.Shared.Interfaces.IPersistenceService
     {
         /// <summary>
         /// Returns the name of the file that the user picked.
         /// </summary>
         public string? Location { get; private set; }
+
+        private string _saveDirectory = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the base directory where files should be saved.
+        /// Used as the root for relative paths in save operations.
+        /// </summary>
+        public string SaveDirectory 
+        { 
+            get => _saveDirectory;
+            set 
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                    throw new ArgumentException("SaveDirectory cannot be null or empty", nameof(value));
+                
+                if (!Directory.Exists(value))
+                    throw new DirectoryNotFoundException($"SaveDirectory does not exist: {value}");
+                
+                _saveDirectory = value;
+                this.TraceMessage($"SaveDirectory set to: {value}");
+            }
+        }
 
         /// <summary>
         /// Opens a file selected by the user and reads its bytes asynchronously.
@@ -294,11 +301,13 @@ namespace Catan.Services
 
             if (!Path.IsPathRooted(location))
             {
-                // Use corrected Documents path to avoid truncation issues
-                var documentsFolder = GetCorrectDocumentsPath();
-                location = Path.Combine(documentsFolder, location);
-                //this.TraceMessage($"🗂️ SaveAsync: Using corrected Documents path: '{documentsFolder}'");
-                //this.TraceMessage($"🗂️ SaveAsync: Full save path: '{location}'");
+                // Fail fast if SaveDirectory is not configured
+                if (string.IsNullOrEmpty(_saveDirectory))
+                    throw new InvalidOperationException("SaveDirectory must be set before saving files with relative paths");
+                
+                location = Path.Combine(_saveDirectory, location);
+                this.TraceMessage($"🗂️ SaveAsync: Using configured SaveDirectory: '{_saveDirectory}'");
+                this.TraceMessage($"🗂️ SaveAsync: Full save path: '{location}'");
             }
 
             var directory = Path.GetDirectoryName(location) ?? throw new Exception("this really shouldn't be null!");
@@ -411,7 +420,7 @@ namespace Catan.Services
         /// <param name="relativePath">Path relative to Documents folder (e.g., "Catan Saved Games/test.catan_test")</param>
         /// <param name="content">Text content to write</param>
         /// <returns>True if successful, false otherwise</returns>
-        public async Task<bool> WriteTextFileAsync(string relativePath, string content)
+        public async Task<bool> WriteTextAsync(string relativePath, string content)
         {
             try
             {
