@@ -3,10 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
-using Catan3.Utility;
-using Catan3.DesktopApp.Layout;
 using Microsoft.UI.Xaml.Media;
-using Windows.Foundation;
 using Point = Windows.Foundation.Point;
 namespace Catan3.DesktopApp.Layout
 {

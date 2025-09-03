@@ -1,8 +1,6 @@
 using System.Text.Json;
 using Catan3.Shared.Models;
 using Catan3.Shared.GameLogic;
-using Catan3.GameService.Services;
-using Catan3.GameService.Controllers;
 using Catan3.Shared.Utility;
 using Catan3.GameService.Utility;
 

@@ -1,5 +1,3 @@
-using System.Threading.Tasks;
-
 namespace Catan3.Shared.Interfaces
 {
     /// <summary>

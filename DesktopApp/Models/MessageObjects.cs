@@ -1,10 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Runtime.CompilerServices;
 using Catan3.Shared.Models;
-using Catan3.Shared.Utility;
-using Windows.Services.Maps.LocalSearch;
-using Windows.Storage;
 using WinUIEx;
 
 namespace Catan3.Models

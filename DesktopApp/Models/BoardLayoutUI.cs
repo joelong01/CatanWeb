@@ -1,6 +1,3 @@
-using Microsoft.UI.Xaml.Media;
-using Windows.Foundation;
-
 namespace Catan3.DesktopApp.Layout
 {
     /// <summary>

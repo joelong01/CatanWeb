@@ -1,9 +1,6 @@
 using Microsoft.Extensions.Logging;
 using TestClient.Commands;
-using TestClient.Services;
 using Catan3.Shared.Models;
-using Catan3.Shared.Services;
-using System.Text.Json;
 
 namespace TestClient.Services;
 

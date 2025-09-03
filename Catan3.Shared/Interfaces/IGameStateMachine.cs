@@ -1,6 +1,4 @@
 using Catan3.Shared.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Catan3.Shared.Interfaces
 {

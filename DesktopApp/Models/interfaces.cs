@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
-using Catan3.Utility;
+using Catan3.Shared.Utility;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 namespace Catan3.Models

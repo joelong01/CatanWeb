@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
-using System.Security;
 
 using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;

@@ -1,18 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Catan3;
 using Microsoft.UI.Xaml;
-using Windows.Security.ExchangeActiveSyncProvisioning;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 using WinUIEx;
-
-using Catan3.Shared.Interfaces;
 
 namespace Catan.Services
 {

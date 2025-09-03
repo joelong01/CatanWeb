@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace Catan3.GameService.Utility
 {
     /// <summary>

@@ -2,11 +2,7 @@
 // This file is kept as a placeholder to avoid breaking existing imports
 // All code should use: using Catan3.Shared.Models;
 
-using Catan3.Shared.Models;
-
 namespace Tests.DesktopApp.UI.ScriptedTestData
 {
     // Type aliases for backward compatibility
-    using TestAction = Catan3.Shared.Models.TestAction;
-    using ActionParameters = Catan3.Shared.Models.ActionParameters;
-}
+    }

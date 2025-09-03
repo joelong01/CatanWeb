@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Catan3.Shared.Models;
@@ -8,9 +7,7 @@ using Catan3.Shared.Extensions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
-using Tests.GameService.SignalR;
 using Xunit;
-using System.Reflection;
 
 namespace Tests.GameService.SignalR
 {

@@ -1,6 +1,5 @@
 ﻿using System.Text.Json.Serialization;
 using Catan3.Shared.Models;
-using Catan3.DesktopApp.Layout;
 using CommunityToolkit.Mvvm.ComponentModel;
 namespace Catan3.Models
 {

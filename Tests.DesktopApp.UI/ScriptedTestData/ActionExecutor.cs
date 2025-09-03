@@ -1,12 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Catan3.Shared.Models;
 using FlaUI.Core.AutomationElements;
-using Xunit;
 
 namespace Tests.DesktopApp.UI.ScriptedTestData
 {

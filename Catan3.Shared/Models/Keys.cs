@@ -1,4 +1,3 @@
-using System;
 using System.Text.Json.Serialization;
 using Catan3.Shared.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;

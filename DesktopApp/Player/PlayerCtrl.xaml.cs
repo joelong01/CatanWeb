@@ -1,8 +1,6 @@
 using Catan3.Models;
-using Catan3.Shared.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.VisualBasic;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 namespace Catan3.Controls

@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using Catan3.Shared.Models;
 using Catan3.Shared.Extensions;
-using Catan3.Shared.Utility;
-using Microsoft.UI.Xaml.Controls;
 namespace Catan3.Models
 {
     public partial class GameViewModel

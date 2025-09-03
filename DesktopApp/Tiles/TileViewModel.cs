@@ -6,10 +6,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
-using Windows.ApplicationModel.Activation;
 using Catan3.Shared.Models;
-using Catan3.Shared.Utility;
-using Catan3.DesktopApp.Layout;
 using BoardVisualLayout = Catan3.DesktopApp.Layout.BoardVisualLayout;
 namespace Catan3.Models
 {

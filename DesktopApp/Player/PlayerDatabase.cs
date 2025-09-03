@@ -6,18 +6,15 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Xml;
 using Catan3.Models;
 using Catan.Services;
-using Catan3.Utility;
-using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
+using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Windows.Storage;
 namespace Catan3
 {

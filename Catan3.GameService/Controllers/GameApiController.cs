@@ -1,9 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Options;
-using System.Collections.Concurrent;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
 using Catan3.Shared.GameLogic;
@@ -188,10 +185,8 @@ namespace Catan3.GameService.Controllers
                 // Create new game model
                 var gameModel = GameModelExtensions.CreateNew(gameInfo, newGameMessage.PlayerIds, newGameMessage.GameName ?? "Untitled Game");
                 
-                // Create the Log for this game
-                var gameServiceLogger = _loggerFactory.CreateLogger<GameStateMachine>();
-                var log = new GameService.Utility.Log<string>(_persistenceService, gameModel, isTest: false, gameServiceLogger);
-                var gameLog = new GameServiceLogAdapter(log, _persistenceService);
+                // Create the Log for this game (no logger needed for basic functionality)
+                var gameLog = new Shared.Utility.Log<string>(_persistenceService, gameModel, isTest: false);
                 
                 // Create GameStateMachine with the Log
                 var gameStateMachine = CreateGameStateMachineWithServiceDependencies(gameLog);
@@ -222,8 +217,7 @@ namespace Catan3.GameService.Controllers
                 }
 
                 // Create Log from compressed data
-                var log = Log<string>.FromCompressedString(loadGameMessage.CompressedLog, _persistenceService);
-                var gameLog = new GameServiceLogAdapter(log, _persistenceService);
+                var gameLog = Log<string>.FromCompressedString(loadGameMessage.CompressedLog, _persistenceService);
 
                 // Create GameStateMachine with initialized dependencies
                 var gameStateMachine = CreateGameStateMachineWithServiceDependencies(gameLog);
@@ -266,8 +260,7 @@ namespace Catan3.GameService.Controllers
                 // Create Log WITHOUT the GameModel (matches Desktop pattern)
                 // Use empty string for file path when IsTest is true, otherwise use temp path
                 var filePath = loadGameModelMessage.IsTest ? string.Empty : Path.Combine(Path.GetTempPath(), "Catan3Games", gameModel.SaveFileName());
-                var log = new Log<string>(_persistenceService, filePath);
-                var gameLog = new GameServiceLogAdapter(log, _persistenceService);
+                var gameLog = new Shared.Utility.Log<string>(_persistenceService, filePath);
                 
                 // Create GameStateMachine with initialized dependencies
                 var gameStateMachine = CreateGameStateMachineWithServiceDependencies(gameLog);

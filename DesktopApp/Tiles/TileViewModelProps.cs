@@ -2,9 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
-using Microsoft.Windows.AppLifecycle;
 using Catan3.Shared.Models;
-using Catan3.Shared.Utility;
 using Catan3.DesktopApp.Layout;
 namespace Catan3.Models
 {

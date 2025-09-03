@@ -2,21 +2,18 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Catan3.Shared.Models;
 using Catan3.Shared.Interfaces;
 using Catan3.Utility;
-using Microsoft.Extensions.Logging;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
-using Windows.Foundation;
 using Windows.UI;
 namespace Catan3
 {
@@ -86,9 +83,9 @@ namespace Catan3
     }
     public static class PointExtensions
     {
-        public static Point Offset(this Point point, double x, double y)
+        public static Windows.Foundation.Point Offset(this Windows.Foundation.Point point, double x, double y)
         {
-            return new Point(point.X + x, point.Y + y);
+            return new Windows.Foundation.Point(point.X + x, point.Y + y);
         }
     }
     public static class StaticBrushes
@@ -163,8 +160,8 @@ namespace Catan3
                 brush = new LinearGradientBrush
                 {
                     GradientStops = gradientStopCollection,
-                    StartPoint = new Point(0, 0),
-                    EndPoint = new Point(1, 1)
+                    StartPoint = new Windows.Foundation.Point(0, 0),
+                    EndPoint = new Windows.Foundation.Point(1, 1)
                 };
                 gradientBrushes[key] = brush;
             }

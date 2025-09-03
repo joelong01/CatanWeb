@@ -5,7 +5,6 @@ using System.Text.Json;
 using System.Collections.Generic;
 using Catan3.Shared.Utility;
 using Catan3.Shared.Models;
-using Catan3.Shared.Extensions;
 
 namespace Tests.DesktopApp.UI.ScriptedTestData
 {

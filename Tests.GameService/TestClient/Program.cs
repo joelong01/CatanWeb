@@ -1,10 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.CommandLine; // RootCommand, Command
-using System.Threading.Tasks; // Task
-using Microsoft.AspNetCore.SignalR.Client; // For SignalR HubConnection
-using Catan3.Shared.Models; // If you're using GameType directly in this file
 
 using TestClient.Commands;
 using TestClient.Services;

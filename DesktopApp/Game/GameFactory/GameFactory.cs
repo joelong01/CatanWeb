@@ -2,10 +2,9 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Catan3.Utility;
+using Catan3.Shared.Utility;
 using Catan3.Shared.Models;
 using Catan3.Shared.Extensions;
-using Catan3.Shared.Utility;
 namespace Catan3.Models
 {
     public static class GameFactory

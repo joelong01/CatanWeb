@@ -15,7 +15,6 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
 using System.Diagnostics;
 using WinUIEx;
-using Microsoft.UI;
 using System.IO;
 using System.Linq;
 namespace Catan3.Models

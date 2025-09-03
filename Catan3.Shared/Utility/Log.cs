@@ -1,23 +1,13 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-using Catan.Services;
 using Catan3.Shared.Interfaces;
-using Catan3.GameState;
-using Catan3.Shared.Utility;
 using Catan3.Shared.Models;
-using CommunityToolkit.Mvvm.ComponentModel;
-namespace Catan3.Utility
+using Catan3.Shared.Extensions;
+using SerializableLog = Catan3.Shared.Interfaces.SerializableLog;
+namespace Catan3.Shared.Utility
 {
     /// <summary>
     /// Represents a recorded action for test scenario creation.
@@ -32,36 +22,10 @@ namespace Catan3.Utility
         public string? Description { get; set; }
     }
 
-    /// <summary>
-    ///     The System.Text.Serialize package has trouble composing with MVVM because of the Code behind strategy
-    ///     Se can can convert to a SerializableLog and then Json serialize it.  In testing, compressing the JSON
-    ///     of an individual GameModel reduces side by about 50%.  Compressing the full stack is a huge reduction -
-    ///     50 GameModels are hundreds of K compressed, but only 5k compressed.
-    /// </summary>
-    //  
-    public class SerializableLog
-    {
-        public List<string> DoneStack { get; set; } = [];
-        public List<string> RedoStack { get; set; } = [];
-        public GameType GameType { get; set; } = GameType.Regular;
-        public int DoneCount { get; set; } = 0;
-        public int RedoCount { get; set; } = 0;
-    }
-    public interface ILog
-    {
-        GameType GameType { get; set; }
-        int DoneCount { get; }
-        int RedoCount { get; }
-        bool CanUndo { get; }
-        bool CanRedo { get; }
-        SerializableLog GetSerializableLog();
-        void Done(GameModel model);
-        GameModel? Undo();
-        GameModel? Redo();
-    }
-    public partial class Log<T> : ObservableRecipient, ILog
+    public partial class Log<T> : IGameLog
     {
         private IPersistenceService? PersistService { get; set; }
+        private readonly ICatanDebugTrace? _logger;
         public string FilePath { get; private set; }
         private ObservableCollection<T> DoneStack { get; set; } = [];
         private ObservableCollection<T> RedoStack { get; set; } = [];
@@ -72,10 +36,16 @@ namespace Catan3.Utility
         /// </summary>
         public bool InTestMode { get; set; } = false;
 
+        /// <summary>
+        /// Gets or sets whether the log is currently active for tracking operations.
+        /// </summary>
+        public bool IsActive { get; set; } = true;
+
         [JsonConstructor]
         public Log(IPersistenceService? PersistenceService, string localSaveFile)
         {
             PersistService = PersistenceService;
+            _logger = null; // No logger for JSON constructor
             DoneStack.CollectionChanged += DoneStack_ListChanged;
             RedoStack.CollectionChanged += RedoStack_ListChanged;
             FilePath = localSaveFile;
@@ -84,12 +54,61 @@ namespace Catan3.Utility
             if (localSaveFile.EndsWith(".catan_test", StringComparison.OrdinalIgnoreCase))
             {
                 InTestMode = true;
-                this.TraceMessage($"Trace constructor: Test mode ENABLED for file: {localSaveFile}");
+                _logger?.TraceMessage($"Trace constructor: Test mode ENABLED for file: {localSaveFile}");
             }
             else
             {
-                this.TraceMessage($"Trace constructor: Test mode disabled for file: {localSaveFile}");
+                _logger?.TraceMessage($"Trace constructor: Test mode disabled for file: {localSaveFile}");
             }
+        }
+
+        public Log(IPersistenceService? PersistenceService, string localSaveFile, ICatanDebugTrace? logger = null)
+        {
+            PersistService = PersistenceService;
+            _logger = logger;
+            DoneStack.CollectionChanged += DoneStack_ListChanged;
+            RedoStack.CollectionChanged += RedoStack_ListChanged;
+            FilePath = localSaveFile;
+
+            // Automatically enable test mode for .catan_test files to prevent overwriting
+            if (localSaveFile.EndsWith(".catan_test", StringComparison.OrdinalIgnoreCase))
+            {
+                InTestMode = true;
+                _logger?.TraceMessage($"Trace constructor: Test mode ENABLED for file: {localSaveFile}");
+            }
+            else
+            {
+                _logger?.TraceMessage($"Trace constructor: Test mode disabled for file: {localSaveFile}");
+            }
+        }
+
+        /// <summary>
+        /// Constructor for loading existing GameModel with proper file path generation.
+        /// If isTest is true, no file path is set (no saving). If false, uses GameModel.SaveFileName() for naming.
+        /// </summary>
+        public Log(IPersistenceService? PersistenceService, GameModel gameModel, bool isTest, ICatanDebugTrace? logger = null)
+        {
+            PersistService = PersistenceService;
+            _logger = logger;
+            DoneStack.CollectionChanged += DoneStack_ListChanged;
+            RedoStack.CollectionChanged += RedoStack_ListChanged;
+            
+            // Set file path based on test mode
+            if (isTest)
+            {
+                FilePath = string.Empty; // No saving for tests
+            }
+            else
+            {
+                // Use GameModel extension method for consistent naming
+                FilePath = Path.Combine(Path.GetTempPath(), "Catan3Games", gameModel.SaveFileName());
+            }
+            
+            // Initialize with the provided GameModel
+            var json = JsonHelper.Serialize(gameModel);
+            var data = (T)(object)json;
+            DoneStack.Add(data);
+            GameType = gameModel.GameType;
         }
 
         public bool FileExists(string path)
@@ -120,7 +139,7 @@ namespace Catan3.Utility
             {
                 try
                 {
-                    json = SerializationHelper.Decompress(compressedData);
+                    json = JsonHelper.Decompress(compressedData);
                 }
                 catch (Exception ex)
                 {
@@ -166,7 +185,7 @@ namespace Catan3.Utility
             if (type == typeof(string)) return (T)(object)json;
             if (type == typeof(byte[]))
             {
-                byte[] compressedData = SerializationHelper.Compress(json);
+                byte[] compressedData = JsonHelper.Compress(json);
                 return (T)(object)compressedData;
             }
             if (type == typeof(GameModel))
@@ -198,7 +217,7 @@ namespace Catan3.Utility
             // Decompress byte array to JSON string assuming the byte array is compressed JSON
             if (data is byte[] byte_array)
             {
-                return SerializationHelper.Decompress(byte_array);
+                return JsonHelper.Decompress(byte_array);
             }
             // Throw an exception if the data type is not one of the expected types
             throw new InvalidOperationException("Unsupported type for JSON conversion.");
@@ -228,13 +247,13 @@ namespace Catan3.Utility
             // Deserialize JSON into a GameModel if T is GameModel
             if (type == typeof(GameModel))
             {
-                var deserialized = SerializationHelper.JsonDeserialize<GameModel>(json) ?? throw new InvalidOperationException("Unable to Deserialize GameModel.");
+                var deserialized = JsonHelper.Deserialize<GameModel>(json) ?? throw new InvalidOperationException("Unable to Deserialize GameModel.");
                 return (T)(object)deserialized;
             }
             // Compress JSON into a byte array if T is byte[]
             if (type == typeof(byte[]))
             {
-                byte[] compressed = SerializationHelper.Compress(json);
+                byte[] compressed = JsonHelper.Compress(json);
                 return (T)(object)compressed;
             }
             // Throw an exception if T is not one of the expected types
@@ -291,6 +310,51 @@ namespace Catan3.Utility
             log.GameType = sLog.GameType;  // Assign game type from SerializableLog
             return log;
         }
+
+        public static Log<T> FromCompressedString(string compressedBase64, IPersistenceService PersistenceService)
+        {
+            var compressedBytes = Convert.FromBase64String(compressedBase64);
+            var json = JsonHelper.Decompress(compressedBytes);
+            var serializableLog = JsonHelper.Deserialize<SerializableLog>(json)
+                ?? throw new InvalidOperationException("Failed to deserialize compressed log data");
+
+            return FromSerializableLog(serializableLog, PersistenceService, string.Empty);
+        }
+
+        /// <summary>
+        /// Restores the log state from a serializable log structure.
+        /// Required by IGameLog interface.
+        /// </summary>
+        /// <param name="serializableLog">The serializable log to restore from</param>
+        /// <returns>The current game model after loading the log</returns>
+        public GameModel LoadFromSerializableLog(SerializableLog serializableLog)
+        {
+            // Clear existing stacks
+            DoneStack.Clear();
+            RedoStack.Clear();
+
+            // Load Done stack
+            for (int i = serializableLog.DoneStack.Count - 1; i >= 0; i--)
+            {
+                var json = serializableLog.DoneStack[i];
+                var data = ToT(json);
+                DoneStack.Add(data);
+            }
+
+            // Load Redo stack  
+            for (int i = serializableLog.RedoStack.Count - 1; i >= 0; i--)
+            {
+                var json = serializableLog.RedoStack[i];
+                var data = ToT(json);
+                RedoStack.Add(data);
+            }
+
+            // Restore game type
+            GameType = serializableLog.GameType;
+
+            // Return current state
+            return CurrentState();
+        }
         /// <summary>
         ///     creates a Trace<T> from a GameModel, serializing the GameModel to JSON and adding it to the DoneStack.
         ///     effectively loads the game from a GameModel. Used primarily in testing.
@@ -303,7 +367,7 @@ namespace Catan3.Utility
         internal static Log<T> FromGameModel(GameModel gameModel, IPersistenceService PersistenceService, string filePath)
         {
             var log = new Log<T>(PersistenceService, filePath);
-            var json = SerializationHelper.JsonSerialize(gameModel) ?? throw new InvalidOperationException("Unable to Serialize GameModel.");
+            var json = JsonHelper.Serialize(gameModel) ?? throw new InvalidOperationException("Unable to Serialize GameModel.");
             log.GameType = log.GameType;  // Assign game type from SerializableLog
             log.DoneStack.Add(ToT(json)); // Add the GameModel as a JSON string to DoneStack
             return log;
@@ -313,7 +377,7 @@ namespace Catan3.Utility
             if (sender is not null and ObservableCollection<T> list)
             {
                 this.CanRedo = list.Count > 0;
-                //  this.TraceMessage($"Redo Depth {list.Count} size={GetStackSize(list)}");
+                //  _logger?.TraceMessage($"Redo Depth {list.Count} size={GetStackSize(list)}");
             }
         }
         private void DoneStack_ListChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -321,7 +385,7 @@ namespace Catan3.Utility
             if (sender is not null and ObservableCollection<T> list)
             {
                 this.CanUndo = list.Count > 1; // don't undo past the start
-                                               // this.TraceMessage($"Done Depth {list.Count}  size={GetStackSize(list)}");
+                                               // _logger?.TraceMessage($"Done Depth {list.Count}  size={GetStackSize(list)}");
             }
         }
         /// <summary>
@@ -402,17 +466,15 @@ namespace Catan3.Utility
             }
         }
         /// <summary>
-        ///     Updating via notification when the UndoStack changes
+        ///     Updated via notification when the UndoStack changes
         /// </summary>
-        [property: JsonIgnore]
-        [ObservableProperty]
-        public partial bool CanUndo { get; set; } = false;
+        [JsonIgnore]
+        public bool CanUndo { get; private set; } = false;
         /// <summary>
         ///  Updated via notification when the RedoStack changes
         /// </summary>
-        [ObservableProperty]
-        [property: JsonIgnore]
-        public partial bool CanRedo { get; set; } = false;
+        [JsonIgnore]
+        public bool CanRedo { get; private set; } = false;
         /// <summary>
         /// Retrieves the current game state from the top of the DoneStack.
         /// </summary>
@@ -440,7 +502,7 @@ namespace Catan3.Utility
                 {
                     try
                     {
-                        json = SerializationHelper.Decompress(compressedData);
+                        json = JsonHelper.Decompress(compressedData);
                     }
                     catch (Exception ex)
                     {
@@ -452,9 +514,9 @@ namespace Catan3.Utility
                     json = jsonString;
                 if (data is GameModel gameModel)
                 {
-                    json = SerializationHelper.JsonSerialize(gameModel);
+                    json = JsonHelper.Serialize(gameModel);
                 }
-                GameModel copy = SerializationHelper.JsonDeserialize<GameModel>(json) ?? throw new InvalidOperationException("Unabled to deserialize GameModel");
+                GameModel copy = JsonHelper.Deserialize<GameModel>(json) ?? throw new InvalidOperationException("Unabled to deserialize GameModel");
                 return copy;
             }
             // This code should theoretically never be reached because of the above check, but it's a safeguard.
@@ -478,27 +540,27 @@ namespace Catan3.Utility
         /// <returns></returns>
         public async Task SaveAsync()
         {
-            this.TraceMessage($"SaveAsync called - FilePath: {FilePath}, InTestMode: {InTestMode}");
+            _logger?.TraceMessage($"SaveAsync called - FilePath: {FilePath}, InTestMode: {InTestMode}");
             
             if (PersistService is null) return;
             
             // Skip saving when in test mode to prevent overwriting test files
             if (InTestMode)
             {
-                this.TraceMessage("SaveAsync: Skipping save because InTestMode is true");
+                _logger?.TraceMessage("SaveAsync: Skipping save because InTestMode is true");
                 return;
             }
-            this.TraceMessage("NOT IN TEST MODE");
+            _logger?.TraceMessage("NOT IN TEST MODE");
             try
             {
                 var uncompressedLog = GetSerializableLog(); // this always comes back the same
-                var json = SerializationHelper.JsonSerialize(uncompressedLog);
-                var compressedBytes = SerializationHelper.Compress(json);
+                var json = JsonHelper.Serialize(uncompressedLog);
+                var compressedBytes = JsonHelper.Compress(json);
                 await PersistService.SaveAsync(FilePath, compressedBytes);
             }
             catch (Exception ex)
             {
-                this.TraceMessage($"Failed SaveAs: {ex.Message}");
+                _logger?.TraceMessage($"Failed SaveAs: {ex.Message}");
             }
         }
 
@@ -534,36 +596,6 @@ namespace Catan3.Utility
         public static void Push<T>(this IList<T> collection, T item)
         {
             collection.Add(item);
-        }
-    }
-    public class SerializationHelper
-    {
-        public static string JsonSerialize<T>(T obj)
-        {
-            return JsonSerializer.Serialize(obj, Catan3.Shared.Utility.JsonHelper.StandardOptions);
-        }
-        public static T? JsonDeserialize<T>(string json)
-        {
-            return JsonSerializer.Deserialize<T>(json,  Catan3.Shared.Utility.JsonHelper.StandardOptions);
-        }
-      
-        public static byte[] Compress(string text)
-        {
-            var buffer = Encoding.UTF8.GetBytes(text);
-            using var memoryStream = new MemoryStream();
-            using (var brotliStream = new BrotliStream(memoryStream, CompressionMode.Compress, true))
-            {
-                brotliStream.Write(buffer, 0, buffer.Length);
-            }
-            return memoryStream.ToArray();
-        }
-        public static string Decompress(byte[] data)
-        {
-            using var compressedStream = new MemoryStream(data);
-            using var brotliStream = new BrotliStream(compressedStream, CompressionMode.Decompress);
-            using var resultStream = new MemoryStream();
-            brotliStream.CopyTo(resultStream);
-            return Encoding.UTF8.GetString(resultStream.ToArray());
         }
     }
 }

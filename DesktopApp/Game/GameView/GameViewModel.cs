@@ -8,8 +8,6 @@ using System.Linq;
 using Catan3.Shared.Models;
 using Catan3.Shared.Extensions;
 using Catan3.Shared.Utility;
-using DesktopApp = Catan3.DesktopApp.Models;
-using Catan3.Utility;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;

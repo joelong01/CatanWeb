@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Catan3.Shared.Models;
-using Catan3.Shared.Utility;
 using static Catan3.Models.TurnRollViewModel;
 namespace Catan3.Models
 {

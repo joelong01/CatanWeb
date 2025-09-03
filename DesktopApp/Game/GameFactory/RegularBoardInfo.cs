@@ -1,8 +1,6 @@
 ﻿using System.Collections.Generic;
-using Catan3.Utility;
-using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
-using Catan3.DesktopApp.Models;
+using Catan3.Shared.Models;
 using Catan3.DesktopApp.Layout;
 
 namespace Catan3.DesktopApp.Models

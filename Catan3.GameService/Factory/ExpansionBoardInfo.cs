@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using Catan3.Shared.Models;
+﻿using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
 
 namespace Catan3.GameService.Factory

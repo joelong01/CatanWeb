@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.UI.Xaml.Media;
-using Windows.Foundation;
-using Catan3.Shared.Models;
-using Catan3.Shared.Utility;
 using WinPoint = Windows.Foundation.Point;
 
 namespace Catan3.DesktopApp.Layout

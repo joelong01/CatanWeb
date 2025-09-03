@@ -1,12 +1,9 @@
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Catan3.Shared.Models;
-using Catan3.Shared.Utility;
 using Catan3.DesktopApp.Models;
-using static Catan3.Models.TurnRollViewModel;
 namespace Catan3.Models
 {
     /// <summary>

@@ -56,8 +56,8 @@ namespace Catan3.Utility
             }
 
             // Create a deep copy of the GameModel via serialize/deserialize to ensure immutability
-            var jsonString = SerializationHelper.JsonSerialize(initialGameModel);
-            _initialGameModel = SerializationHelper.JsonDeserialize<GameModel>(jsonString) 
+            var jsonString = JsonHelper.Serialize(initialGameModel);
+            _initialGameModel = JsonHelper.Deserialize<GameModel>(jsonString) 
                 ?? throw new InvalidOperationException("Failed to deserialize GameModel during deep copy");
 
             _recordedActions = [];

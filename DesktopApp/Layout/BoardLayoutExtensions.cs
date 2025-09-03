@@ -1,9 +1,5 @@
-using System.Collections.Generic;
-using System.Diagnostics;
 using Catan3.Shared.Models;
-using Catan3.DesktopApp.Layout;
 using Microsoft.UI.Xaml.Media;
-using Windows.Foundation;
 
 namespace Catan3.DesktopApp.Layout
 {

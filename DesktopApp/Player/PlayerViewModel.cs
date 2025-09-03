@@ -12,8 +12,6 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.UI;
 using Catan3.Shared.Models;
-using Catan3.Shared.Utility;
-using Windows.Media.AppBroadcasting;
 
 namespace Catan3.Models
 {

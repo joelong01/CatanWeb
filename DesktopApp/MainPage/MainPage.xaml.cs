@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Catan3.Models;
@@ -13,8 +12,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
-using System.Reflection.Metadata.Ecma335;
-using CommunityToolkit.WinUI.UI.Triggers;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 namespace Catan3

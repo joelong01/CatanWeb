@@ -1,6 +1,5 @@
 using System;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Catan3.Utility
 {

@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
-
 namespace Catan3.Shared.Models
 {
     /// <summary>

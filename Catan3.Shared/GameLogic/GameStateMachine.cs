@@ -43,14 +43,8 @@ using Catan3.Shared.Extensions;
 using Catan3.Shared.Interfaces;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Threading.Tasks;
 namespace Catan3.Shared.GameLogic
 {
     public class GameStateMachine : IGameStateMachine
@@ -297,10 +291,10 @@ namespace Catan3.Shared.GameLogic
             {
                 // Decompress the log data
                 var compressedBytes = Convert.FromBase64String(compressedLog);
-                var decompressedJson = Catan3.Shared.Utility.SerializationHelper.Decompress(compressedBytes);
+                var decompressedJson = Catan3.Shared.Utility.JsonHelper.Decompress(compressedBytes);
 
                 // Deserialize the JSON back into our SerializableLog structure
-                var savedLog = Catan3.Shared.Utility.SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson);
+                var savedLog = Catan3.Shared.Utility.JsonHelper.Deserialize<SerializableLog>(decompressedJson);
                 if (savedLog == null)
                 {
                     throw new GameException("Failed to deserialize SerializableLog from compressed log");
@@ -691,10 +685,10 @@ namespace Catan3.Shared.GameLogic
             {
                 var fileBytes = await _persistenceService.OpenAsync(filePath) ?? throw new GameException($"Unable to open file {filePath}");
 
-                var decompressedJson = Catan3.Shared.Utility.SerializationHelper.Decompress(fileBytes);
+                var decompressedJson = Catan3.Shared.Utility.JsonHelper.Decompress(fileBytes);
 
                 // Deserialize the JSON back into our SerializableLog structure
-                var savedLog = Catan3.Shared.Utility.SerializationHelper.JsonDeserialize<SerializableLog>(decompressedJson)
+                var savedLog = Catan3.Shared.Utility.JsonHelper.Deserialize<SerializableLog>(decompressedJson)
                     ?? throw new GameException("Error: Failed to load the game data.");
 
                 // Load the saved log into our game log

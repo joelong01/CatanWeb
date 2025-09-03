@@ -1,5 +1,4 @@
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using System;
 using WinUIEx;
 using Windows.ApplicationModel.DataTransfer;

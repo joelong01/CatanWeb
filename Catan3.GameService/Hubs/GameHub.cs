@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.SignalR;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
 using Catan3.GameService.Services;
-using System.Text.Json;
 
 namespace Catan3.GameService.Hubs
 {

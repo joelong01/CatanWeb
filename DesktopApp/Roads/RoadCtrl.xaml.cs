@@ -1,6 +1,4 @@
 using Catan3.Models;
-using Catan3.Shared.Models;
-using Catan3.Shared.Utility;
 using Catan3.Shared.Extensions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;

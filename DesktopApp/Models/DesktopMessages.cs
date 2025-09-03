@@ -1,5 +1,3 @@
-using System;
-
 namespace Catan3.Models
 {
     /// <summary>

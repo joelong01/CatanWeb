@@ -1,6 +1,3 @@
-using System;
-using Catan3.Shared.Utility;
-
 namespace Catan3.Shared.Models
 {
     /// <summary>

@@ -1,6 +1,4 @@
-using System;
 using System.Runtime.CompilerServices;
-using Microsoft.Extensions.Logging;
 using Catan3.Shared.Interfaces;
 
 namespace Catan3.GameService.Services

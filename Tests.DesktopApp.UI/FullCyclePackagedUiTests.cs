@@ -1,15 +1,11 @@
 using Catan3.Shared.Extensions;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
-using CommunityToolkit.Mvvm.Messaging;
-using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Conditions;
 using FlaUI.Core.Definitions;
-using FlaUI.Core.Logging;
 using FlaUI.Core.Tools;
 using FlaUI.UIA3;
-using FlaUI.UIA3.Identifiers;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -23,10 +19,8 @@ using System.Text.Json;
 using System.Threading;
 using Tests.DesktopApp.UI.ScriptedTestData;
 using Tests.DesktopApp.UI.TestInfra;
-using Windows.Foundation;
 using Xunit;
 using Xunit.Sdk;
-using static System.Math;
 
 namespace Tests.DesktopApp.UI
 {

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Xunit;
 using Catan3.Shared.Models;
 using Catan3.Shared.Services;

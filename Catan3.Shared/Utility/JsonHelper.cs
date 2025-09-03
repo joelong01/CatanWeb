@@ -1,4 +1,3 @@
-using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -104,6 +103,36 @@ namespace Catan3.Shared.Utility
             {
                 target.Converters.Add(converter);
             }
+        }
+
+        /// <summary>
+        /// Compresses a text string using Brotli compression.
+        /// </summary>
+        /// <param name="text">The text to compress</param>
+        /// <returns>Compressed data as byte array</returns>
+        public static byte[] Compress(string text)
+        {
+            var buffer = System.Text.Encoding.UTF8.GetBytes(text);
+            using var memoryStream = new System.IO.MemoryStream();
+            using (var brotliStream = new System.IO.Compression.BrotliStream(memoryStream, System.IO.Compression.CompressionMode.Compress, true))
+            {
+                brotliStream.Write(buffer, 0, buffer.Length);
+            }
+            return memoryStream.ToArray();
+        }
+
+        /// <summary>
+        /// Decompresses Brotli-compressed data to a text string.
+        /// </summary>
+        /// <param name="data">The compressed data to decompress</param>
+        /// <returns>Decompressed text string</returns>
+        public static string Decompress(byte[] data)
+        {
+            using var compressedStream = new System.IO.MemoryStream(data);
+            using var brotliStream = new System.IO.Compression.BrotliStream(compressedStream, System.IO.Compression.CompressionMode.Decompress);
+            using var resultStream = new System.IO.MemoryStream();
+            brotliStream.CopyTo(resultStream);
+            return System.Text.Encoding.UTF8.GetString(resultStream.ToArray());
         }
     }
 }

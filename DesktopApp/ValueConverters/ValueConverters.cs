@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using Catan3.Shared.Models;
-using Catan3.Shared.Utility;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;

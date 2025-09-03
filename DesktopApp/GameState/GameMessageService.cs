@@ -38,7 +38,6 @@
  * GameStateMachine Exception → GameMessageService Catch → ErrorMessage → UI Error Display
  */
 
-using Catan3.Shared.Interfaces;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
 using Catan3.Shared.Extensions;
@@ -623,9 +622,9 @@ namespace Catan3.GameState
         /// <returns>A configured GameStateMachine using Desktop services.</returns>
         private GameStateMachine CreateGameStateMachineWithDesktopDependencies(string localSaveFile)
         {
-            // Create Desktop-specific implementations of shared interfaces
-            var gameLog = new Catan3.Services.DesktopGameLog(_persistenceService, localSaveFile);
+            // Create shared implementations 
             var gameLogger = new Catan3.Services.DesktopGameLogger();
+            var gameLog = new Catan3.Shared.Utility.Log<string>(_persistenceService, localSaveFile, gameLogger);
 
             // Create and return shared GameStateMachine with Desktop dependencies  
             return new GameStateMachine(gameLog, gameLogger, _persistenceService);
