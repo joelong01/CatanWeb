@@ -41,7 +41,7 @@ namespace Catan3.CLI.Commands
                 // The .catan file contains a SerializableLog with DoneStack, RedoStack, GameType, etc.
                 if (!root.TryGetProperty("DoneStack", out var doneStack))
                 {
-                    // Log available properties for debugging
+                    // Trace available properties for debugging
                     var properties = root.EnumerateObject().Select(p => p.Name).ToArray();
                     Console.WriteLine($"Available properties in .catan file: {string.Join(", ", properties)}");
                     throw new InvalidOperationException("No 'DoneStack' property found in the .catan file");

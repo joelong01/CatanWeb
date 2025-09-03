@@ -66,7 +66,8 @@ namespace Catan3.Shared.Interfaces
         /// Restores the log state from a serializable log structure.
         /// </summary>
         /// <param name="serializableLog">The serializable log to restore from</param>
-        void LoadFromSerializableLog(SerializableLog serializableLog);
+        /// <returns>The current game model after loading the log</returns>
+        GameModel LoadFromSerializableLog(SerializableLog serializableLog);
 
         /// <summary>
         /// Records a completed game model operation in the log.

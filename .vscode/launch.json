@@ -91,6 +91,28 @@
             "request": "attach",
             "processName": "Catan Desktop.exe",
             "justMyCode": false
+        },
+        {
+            "name": "Expansion-Replay-Test",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-tests",
+            "program": "dotnet",
+            "args": [
+                "test",
+                "${workspaceFolder}/Tests.GameService/Tests.GameService.csproj",
+                "--no-build",
+                "--filter",
+                "FullyQualifiedName~ReplaySharedExpansionTestFile",
+                "-v",
+                "normal",
+                "--logger",
+                "console;verbosity=detailed"
+            ],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "justMyCode": false
         }
     ],
     "inputs": [

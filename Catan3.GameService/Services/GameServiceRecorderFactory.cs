@@ -11,10 +11,10 @@ namespace Catan3.GameService.Services
     /// </summary>
     public class GameServiceRecorderFactory : IGameRecorderFactory
     {
-        private readonly IGameLogger _logger;
+        private readonly ICatanDebugTrace _logger;
         private readonly IFileOperations _fileOperations;
 
-        public GameServiceRecorderFactory(IGameLogger logger, IFileOperations fileOperations)
+        public GameServiceRecorderFactory(ICatanDebugTrace logger, IFileOperations fileOperations)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fileOperations = fileOperations ?? throw new ArgumentNullException(nameof(fileOperations));

@@ -10,7 +10,7 @@ namespace Catan3.GameService.Factory
 {
     public static class GameFactory
     {
-        public static GameModel CreateGame(GameType gameType, IList<string> players)
+        public static GameModel CreateGame(GameType gameType, IList<string> playerIds, string gameName)
         {
             IGameMetadata gameInfo;
             if (gameType == GameType.Regular)
@@ -28,14 +28,17 @@ namespace Catan3.GameService.Factory
             
             Debug.Assert((gameInfo.TileKeys.Count == gameInfo.Numbers.Count) && (gameInfo.TileKeys.Count == gameInfo.Resources.Count));
             
-            List<PlayerModel> playerModels = players.Select(Id => new PlayerModel { Id = Id }).ToList();
-            if (players.Count < gameInfo.ResourceRules.MinPlayers || players.Count > gameInfo.ResourceRules.MaxPlayers)
+            List<PlayerModel> playerModels = playerIds.Select(Id => new PlayerModel { Id = Id }).ToList();
+            if (playerIds.Count < gameInfo.ResourceRules.MinPlayers || playerIds.Count > gameInfo.ResourceRules.MaxPlayers)
             {
-                throw new System.Exception($"{gameInfo.Description} must have players between {gameInfo.ResourceRules.MinPlayers} and {gameInfo.ResourceRules.MaxPlayers}. You gave {players.Count}");
+                throw new System.Exception($"{gameInfo.Description} must have players between {gameInfo.ResourceRules.MinPlayers} and {gameInfo.ResourceRules.MaxPlayers}. You gave {playerIds.Count}");
             }
             
             GameModel game = new GameModel
             {
+                GameId = Guid.NewGuid().ToString(),
+                GameName = gameName,
+                CreatedTime = DateTime.UtcNow,
                 GameType = gameType,
                 Players = playerModels,
                 CurrentPlayerId = playerModels.FirstOrDefault()?.Id ?? "",

@@ -326,7 +326,7 @@ namespace Tests.DesktopApp.UI
             if (nextButton.IsEnabled == false)
             {
                 this.TraceMessage("Next button is not enabled, cannot proceed");
-                // Log the current state and any relevant information
+                // Trace the current state and any relevant information
                 var gameModel = GetCurrentGameModel();
                 this.TraceMessage($"Current GameState: {gameModel.GameState} CurrentPlayer={gameModel.CurrentPlayerId}");
                 Assert.Fail("Next button should be enabled to proceed to next state");
@@ -494,7 +494,7 @@ namespace Tests.DesktopApp.UI
         /// 
         /// Strategy: This method uses a comprehensive approach to handle road UI automation challenges:
         /// 1. Find all roads in RoadState.Buildable from the GameModel
-        /// 2. Log all available roads for debugging purposes
+        /// 2. Trace all available roads for debugging purposes
         /// 3. Attempt to find and click each road using complex alias logic and hierarchy navigation
         /// 4. Include extensive debugging output to help diagnose automation issues
         /// 5. Test the entire XAML hierarchy to understand why road elements aren't found
@@ -521,7 +521,7 @@ namespace Tests.DesktopApp.UI
 
 
 
-            // Log buildable roads as CSV like GameController does
+            // Trace buildable roads as CSV like GameController does
             var buildableRoadsCsv = string.Join(",", buildableRoads.Select(r => r.RoadKey.ToString()));
             this.TraceMessage($"Buildable roads CSV: {buildableRoadsCsv}");
 

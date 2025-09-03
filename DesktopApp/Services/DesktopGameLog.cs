@@ -1,13 +1,15 @@
 using Catan3.Shared.Interfaces;
 using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 using Catan3.Utility;
+using System;
 using System.Threading.Tasks;
 using SharedSerializableLog = Catan3.Shared.Interfaces.SerializableLog;
 
 namespace Catan3.Services
 {
     /// <summary>
-    /// Desktop implementation of IGameLog that wraps the existing Log&lt;string&gt; class.
+    /// Desktop implementation of IGameLog that wraps the existing Trace&lt;string&gt; class.
     /// </summary>
     public class DesktopGameLog : IGameLog
     {
@@ -52,7 +54,8 @@ namespace Catan3.Services
             };
         }
 
-        public void LoadFromSerializableLog(SharedSerializableLog serializableLog)
+
+        public GameModel LoadFromSerializableLog(SharedSerializableLog serializableLog)
         {
             // Convert shared SerializableLog to Desktop SerializableLog format
             var desktopSerializableLog = new Catan3.Utility.SerializableLog
@@ -66,6 +69,7 @@ namespace Catan3.Services
 
             // Replace our internal log with a new one created from the serializable log
             _log = Log<string>.FromSerializableLog(desktopSerializableLog, _persistenceService, _log.FilePath);
+            return _log.CopyCurrent();
         }
 
         public void Done(GameModel model) => _log.Done(model);

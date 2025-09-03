@@ -259,7 +259,7 @@ namespace Catan3
             }
             catch (Exception ex)
             {
-                // Log detailed information about the exception
+                // Trace detailed information about the exception
                 App.Current.TraceMessage($"Exception: {ex.Message}");
                 App.Current.TraceMessage($"Stack Trace: {ex.StackTrace}");
 

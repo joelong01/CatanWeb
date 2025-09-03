@@ -3,10 +3,10 @@ using System.Runtime.CompilerServices;
 namespace Catan3.Shared.Interfaces
 {
     /// <summary>
-    /// Log level enumeration that matches Microsoft.Extensions.Logging.LogLevel
+    /// Trace level enumeration that matches Microsoft.Extensions.Logging.LogLevel
     /// but without the dependency on the logging framework.
     /// </summary>
-    public enum GameLogLevel
+    public enum GameTraceLevel
     {
         Trace = 0,
         Debug = 1,
@@ -22,18 +22,18 @@ namespace Catan3.Shared.Interfaces
     /// Allows platform-specific implementations for Desktop (TraceMessage/Debug Window) and Service (ILogger).
     /// Supports LogLevel concept from Microsoft.Extensions.Logging for unified logging semantics.
     /// </summary>
-    public interface IGameLogger
+    public interface ICatanDebugTrace
     {
         /// <summary>
         /// Logs a message at the specified log level with optional caller information.
         /// </summary>
-        /// <param name="logLevel">The severity level of the log message.</param>
+        /// <param name="traceLevel">The severity level of the log message.</param>
         /// <param name="message">The message to log.</param>
         /// <param name="indentLevel">The indentation level for formatting (optional).</param>
         /// <param name="callerMemberName">The calling member name (auto-filled).</param>
         /// <param name="callerLineNumber">The calling line number (auto-filled).</param>
         /// <param name="callerFilePath">The calling file path (auto-filled).</param>
-        void Log(GameLogLevel logLevel, string message, int indentLevel = 0, [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0, [CallerFilePath] string callerFilePath = "");
+        void Trace(GameTraceLevel traceLevel, string message, int indentLevel = 0, [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0, [CallerFilePath] string callerFilePath = "");
 
         /// <summary>
         /// Logs a trace-level message (equivalent to TraceMessage in Desktop implementation).
@@ -45,7 +45,7 @@ namespace Catan3.Shared.Interfaces
         /// <param name="callerFilePath">The calling file path (auto-filled).</param>
         void TraceMessage(string message, int indentLevel = 0, [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0, [CallerFilePath] string callerFilePath = "")
         {
-            Log(GameLogLevel.Debug, message, indentLevel, callerMemberName, callerLineNumber, callerFilePath);
+            Trace(GameTraceLevel.Debug, message, indentLevel, callerMemberName, callerLineNumber, callerFilePath);
         }
 
         /// <summary>
@@ -56,9 +56,9 @@ namespace Catan3.Shared.Interfaces
         /// <param name="callerMemberName">The calling member name (auto-filled).</param>
         /// <param name="callerLineNumber">The calling line number (auto-filled).</param>
         /// <param name="callerFilePath">The calling file path (auto-filled).</param>
-        void LogInformation(string message, int indentLevel = 0, [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0, [CallerFilePath] string callerFilePath = "")
+        void TraceInfo(string message, int indentLevel = 0, [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0, [CallerFilePath] string callerFilePath = "")
         {
-            Log(GameLogLevel.Information, message, indentLevel, callerMemberName, callerLineNumber, callerFilePath);
+            Trace(GameTraceLevel.Information, message, indentLevel, callerMemberName, callerLineNumber, callerFilePath);
         }
 
         /// <summary>
@@ -69,9 +69,9 @@ namespace Catan3.Shared.Interfaces
         /// <param name="callerMemberName">The calling member name (auto-filled).</param>
         /// <param name="callerLineNumber">The calling line number (auto-filled).</param>
         /// <param name="callerFilePath">The calling file path (auto-filled).</param>
-        void LogWarning(string message, int indentLevel = 0, [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0, [CallerFilePath] string callerFilePath = "")
+        void TraceWarning(string message, int indentLevel = 0, [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0, [CallerFilePath] string callerFilePath = "")
         {
-            Log(GameLogLevel.Warning, message, indentLevel, callerMemberName, callerLineNumber, callerFilePath);
+            Trace(GameTraceLevel.Warning, message, indentLevel, callerMemberName, callerLineNumber, callerFilePath);
         }
 
         /// <summary>
@@ -82,9 +82,9 @@ namespace Catan3.Shared.Interfaces
         /// <param name="callerMemberName">The calling member name (auto-filled).</param>
         /// <param name="callerLineNumber">The calling line number (auto-filled).</param>
         /// <param name="callerFilePath">The calling file path (auto-filled).</param>
-        void LogError(string message, int indentLevel = 0, [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0, [CallerFilePath] string callerFilePath = "")
+        void TraceError(string message, int indentLevel = 0, [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0, [CallerFilePath] string callerFilePath = "")
         {
-            Log(GameLogLevel.Error, message, indentLevel, callerMemberName, callerLineNumber, callerFilePath);
+            Trace(GameTraceLevel.Error, message, indentLevel, callerMemberName, callerLineNumber, callerFilePath);
         }
     }
 }

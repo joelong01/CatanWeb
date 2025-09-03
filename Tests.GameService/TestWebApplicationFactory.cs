@@ -20,9 +20,11 @@ namespace Tests.GameService
         /// </summary>
         public static WebApplicationFactory<Program> Create()
         {
-            // Enable more verbose logging when debugging
-            var logLevel = System.Diagnostics.Debugger.IsAttached ? "Information" : "Error";
-            var gameServiceLogLevel = System.Diagnostics.Debugger.IsAttached ? "Information" : "Error";
+            // Hard-coded verbose logging for debugging test failures
+            var enableVerboseLogging = true; // TEMPORARY: Always enable to debug timeout/discovery issues
+            
+            var logLevel = enableVerboseLogging ? "Information" : "Error";
+            var gameServiceLogLevel = enableVerboseLogging ? "Information" : "Error";
             
             return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             {
@@ -64,7 +66,7 @@ namespace Tests.GameService
                 builder.ConfigureServices(services =>
                 {
                     // Configure logging services directly through dependency injection
-                    var minLogLevel = System.Diagnostics.Debugger.IsAttached ? LogLevel.Information : LogLevel.Error;
+                    var minLogLevel = enableVerboseLogging ? LogLevel.Information : LogLevel.Error;
                     
                     services.Configure<LoggerFilterOptions>(options =>
                     {
@@ -75,8 +77,8 @@ namespace Tests.GameService
                         options.AddFilter("Microsoft.AspNetCore", LogLevel.Error);
                         options.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Error);
                         
-                        // Enable our application logging when debugging
-                        if (System.Diagnostics.Debugger.IsAttached)
+                        // Enable our application logging when verbose mode is active
+                        if (enableVerboseLogging)
                         {
                             options.AddFilter("Catan3.GameService", LogLevel.Information);
                             options.AddFilter("Catan3.GameService.Controllers", LogLevel.Information);
@@ -95,6 +97,15 @@ namespace Tests.GameService
                     // Override any specific service configurations for testing if needed
                 });
             });
+        }
+        
+        /// <summary>
+        /// Creates a factory with verbose logging enabled regardless of environment
+        /// Use this for debugging specific failing tests
+        /// </summary>
+        public static WebApplicationFactory<Program> CreateVerbose()
+        {
+            return Create(); // All factories are verbose now due to hard-coded setting
         }
     }
 }

@@ -141,20 +141,19 @@ namespace Catan3.Models
             _playerDatabase = playerDatabase;
             RegisterMessages();
             GameViewModel = new GameViewModel(playerDatabase);
-            var gameStateMachine = DesktopGameStateMachineFactory.Create(_fileService, filePath);
-            if (gameStateMachine is null)
-            {
-                throw new GameException($"DesktopGameStateMachineFactory returned a null GamveViewModel!");
-            }
-            GameMessageService = new GameMessageService(gameStateMachine);
+            
+            // Create GameMessageService with persistence service - it will manage GameStateMachine internally
+            GameMessageService = new GameMessageService(_fileService);
             this.IsTest = isTest;
             if (selectedGame == GameType.SavedGame)
             {
-                Messenger.Send(new LoadGameMessage(filePath));
+                Messenger.Send(new LoadLocalCatanGameMessage(filePath));
             }
             else
             {
-                Messenger.Send(new Catan3.Shared.Models.NewGameMessage(selectedGame, playingPlayerIds));
+                // For new games, send NewGame message with the playing player IDs
+                var gameName = selectedGame == GameType.Regular ? "New Regular Game" : "New Expansion Game";
+                Messenger.Send(new NewGameMessage(selectedGame, playingPlayerIds, gameName));
             }
         }
 

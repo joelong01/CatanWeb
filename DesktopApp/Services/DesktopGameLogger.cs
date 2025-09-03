@@ -5,11 +5,11 @@ using System.Runtime.CompilerServices;
 namespace Catan3.Services
 {
     /// <summary>
-    /// Desktop implementation of IGameLogger that uses the existing TraceMessage extension.
+    /// Desktop implementation of ICatanDebugTrace that uses the existing TraceMessage extension.
     /// </summary>
-    public class DesktopGameLogger : IGameLogger
+    public class DesktopGameLogger : ICatanDebugTrace
     {
-        public void Log(GameLogLevel logLevel, string message, int indentLevel = 0, 
+        public void Trace(GameTraceLevel logLevel, string message, int indentLevel = 0, 
             [CallerMemberName] string callerMemberName = "", 
             [CallerLineNumber] int callerLineNumber = 0, 
             [CallerFilePath] string callerFilePath = "")

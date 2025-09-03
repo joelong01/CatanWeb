@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Search",
+      "Grep",
+      "LS",
+      "Glob"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

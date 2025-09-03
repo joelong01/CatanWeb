@@ -9,10 +9,10 @@ namespace Catan3.Services
     /// </summary>
     public class DesktopGameRecorderFactory : IGameRecorderFactory
     {
-        private readonly IGameLogger _logger;
+        private readonly ICatanDebugTrace _logger;
         private readonly IFileOperations _fileOperations;
 
-        public DesktopGameRecorderFactory(IGameLogger logger, IFileOperations fileOperations)
+        public DesktopGameRecorderFactory(ICatanDebugTrace logger, IFileOperations fileOperations)
         {
             _logger = logger;
             _fileOperations = fileOperations;

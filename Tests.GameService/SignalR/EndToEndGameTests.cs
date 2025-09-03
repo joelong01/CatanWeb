@@ -495,7 +495,7 @@ namespace Tests.GameService.SignalR
                         LogEvent(session, "InnerException", $"Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
                     }
 
-                    // Log the stack trace for debugging
+                    // Trace the stack trace for debugging
                     LogEvent(session, "StackTrace", $"Stack trace: {ex.StackTrace}");
 
                     throw;
@@ -750,24 +750,37 @@ namespace Tests.GameService.SignalR
             var testScenario = await Catan3.Shared.TestData.TestDataLoader.LoadTestScenarioAsync("Expansion.catan_test");
             LogEvent(null, "TestFileLoaded", $"Loaded test scenario: {testScenario.TestFileName} with {testScenario.RecordedActions.Length} actions");
 
+            testScenario.InitialGameModel.Validate();
+          
             // Extract player IDs from the initial game model
             var playerIds = testScenario.InitialGameModel.Players.Select(p => p.Id).ToArray();
             LogEvent(null, "PlayersIdentified", $"Players in test: {string.Join(", ", playerIds)}");
 
-            // Set a user-friendly game name for testing
-            var randomSalt = Random.Shared.Next(1000, 9999);
-            testScenario.InitialGameModel.GameName = $"Expansion Test {randomSalt}";
+            // the gameName is already set in the file.  use it.
+           
 
-            // === STEP 1: First player loads the game ===
-            var firstPlayerId = playerIds[0];
+            // === STEP 1: ALL Players Connect to SignalR First (Real-World Pattern) ===
             var uri = _factory.Server.BaseAddress ?? new Uri("http://localhost");
             var hubUrl = new Uri(uri, "/gameHub").ToString();
             var serviceUri = uri.ToString().TrimEnd('/');
             var testHandler = _factory.Server.CreateHandler();
             
-            var firstPlayerProxy = new GameServiceProxy(hubUrl, serviceUri, testHandler, firstPlayerId);
-            await firstPlayerProxy.ConnectAsync();
-            LogEvent(null, "FirstPlayerConnected", $"First player {firstPlayerId} connected to SignalR");
+            // Create connections for ALL players first (like real users would)
+            var allProxies = new Dictionary<string, GameServiceProxy>();
+            
+            foreach (var playerId in playerIds)
+            {
+                var playerProxy = new GameServiceProxy(hubUrl, serviceUri, testHandler, playerId);
+                await playerProxy.ConnectAsync();
+                allProxies[playerId] = playerProxy;
+                LogEvent(null, "PlayerConnected", $"Player {playerId} connected to SignalR");
+            }
+            
+            LogEvent(null, "AllPlayersConnected", $"All {allProxies.Count} players connected to SignalR following real-world pattern");
+
+            // === STEP 2: One Player Loads the Game via REST API ===
+            var firstPlayerId = playerIds[0];
+            var firstPlayerProxy = allProxies[firstPlayerId];
 
             // Load the GameModel using the first player's proxy
             var loadResult = await firstPlayerProxy.LoadGameModelAsync(testScenario.InitialGameModel);
@@ -782,21 +795,18 @@ namespace Tests.GameService.SignalR
             LogEvent(null, "ActualGameId", $"Game created with GameId: {actualGameId}");
             LogEvent(null, "ExpectedGameName", $"Looking for games with GameName: '{testScenario.InitialGameModel.GameName}'");
 
-            // === STEP 2: Other players discover and join the game ===
-            var otherPlayerProxies = new Dictionary<string, GameServiceProxy>();
+            // === STEP 3: ALL Players Discover and Join the Game via SignalR (Real-World Pattern) ===
+            LogEvent(null, "StartingDiscoveryAndJoin", "All players will now discover and join the game (including the player who loaded it)");
             
-            foreach (var playerId in playerIds.Skip(1))
+            foreach (var playerId in playerIds) // ALL players, including first player
             {
-                // Create proxy for this player
-                var playerProxy = new GameServiceProxy(hubUrl, serviceUri, testHandler, playerId);
-                await playerProxy.ConnectAsync();
-                LogEvent(null, "PlayerConnected", $"Player {playerId} connected to SignalR");
-
-                // Discover available games via REST API
+                var playerProxy = allProxies[playerId];
+                
+                // Each player discovers available games independently
                 var availableGames = await playerProxy.GetAvailableGamesAsync();
                 LogEvent(null, "GamesDiscovered", $"Player {playerId} discovered {availableGames.Count} available games");
                 
-                // Log detailed information about each discovered game
+                // Trace detailed information about discovered games for debugging
                 for (int i = 0; i < availableGames.Count; i++)
                 {
                     var game = availableGames[i];
@@ -807,38 +817,29 @@ namespace Tests.GameService.SignalR
                 var testGame = availableGames.FirstOrDefault(g => g.DisplayName == testScenario.InitialGameModel.GameName);
                 if (testGame == null)
                 {
-                    throw new InvalidOperationException($"Player {playerId} could not find test game '{testScenario.InitialGameModel.GameName}' in available games");
+                    throw new InvalidOperationException($"Player {playerId} could not find test game '{testScenario.InitialGameModel.GameName}' in available games. Found games: {string.Join(", ", availableGames.Select(g => g.DisplayName))}");
                 }
                 
                 LogEvent(null, "GameFound", $"Player {playerId} found test game: {testGame.DisplayName} (ID: {testGame.GameId})");
 
-                // Join the game
+                // Join the game via SignalR
                 await playerProxy.JoinGameAsync(testGame.GameId);
                 LogEvent(null, "PlayerJoined", $"Player {playerId} joined game {testGame.GameId}");
-                
-                otherPlayerProxies[playerId] = playerProxy;
-            }
-
-            // Combine all proxies for convenience
-            var allProxies = new Dictionary<string, GameServiceProxy>
-            {
-                [firstPlayerId] = firstPlayerProxy
-            };
-            foreach (var kvp in otherPlayerProxies)
-            {
-                allProxies[kvp.Key] = kvp.Value;
             }
 
             LogEvent(null, "AllPlayersJoined", $"All {allProxies.Count} players have joined the game following proper multiplayer flow");
 
-            // Wait for all proxies to receive the initial GameModel
-            await Task.Delay(500); // Brief wait for SignalR notifications
+            // === STEP 4: Verify All Players Have Same GameModel After Joining ===
+            LogEvent(null, "VerifyingSynchronization", "Waiting for SignalR notifications to propagate to all clients");
+            await Task.Delay(1000); // Longer wait to ensure all SignalR updates have propagated
             
             // Verify all proxies have the same GameModel and match expected initial state
+            LogEvent(null, "StartingGameModelVerification", "Verifying all players have synchronized GameModel");
             VerifyAllProxiesHaveSameGameModel(allProxies, testScenario.InitialGameModel.GameState, testScenario.InitialGameModel.GameHash);
-            LogEvent(null, "InitialStateVerified", $"All proxies have correct initial state: {testScenario.InitialGameModel.GameState}");
+            LogEvent(null, "InitialStateVerified", $"✅ All {allProxies.Count} players have correct synchronized initial state: {testScenario.InitialGameModel.GameState}");
 
-            // === STEP 3: Execute recorded actions ===
+            // === STEP 5: Execute Recorded Actions (All Players Now Properly Joined) ===
+            LogEvent(null, "StartingActionReplay", "Starting action replay - all players are now properly joined to SignalR groups");
             int actionIndex = 0;
             foreach (var recordedMessage in testScenario.RecordedActions)
             {

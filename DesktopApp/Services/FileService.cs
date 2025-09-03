@@ -354,6 +354,18 @@ namespace Catan.Services
         }
 
         /// <summary>
+        /// Generates a save file path for a new game in the standard Catan save location.
+        /// </summary>
+        /// <param name="gameModel">The game model to generate a path for.</param>
+        /// <returns>Full path to save the new game file.</returns>
+        public static string GenerateNewGameSaveFilePath(Catan3.Shared.Models.GameModel gameModel)
+        {
+            var documentsPath = GetCorrectDocumentsPath();
+            var fileName = $"{gameModel.GameType}-{gameModel.GameId}.catan";
+            return Path.Join(documentsPath, "Catan Saved Games", fileName);
+        }
+
+        /// <summary>
         /// Gets the correct full Documents folder path, working around potential truncation issues
         /// </summary>
         /// <returns>The full Documents folder path</returns>

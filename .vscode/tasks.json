@@ -144,6 +144,37 @@
 				"$msCompile"
 			],
 			"group": "test"
+		},
+		{
+			"label": "Expansion-Replay-Test",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"Tests.GameService/Tests.GameService.csproj",
+				"--filter",
+				"FullyQualifiedName~ReplaySharedExpansionTestFile",
+				"-v",
+				"normal",
+				"--logger",
+				"console;verbosity=detailed"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			}
 		}
 	]
 }

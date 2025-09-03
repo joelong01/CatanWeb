@@ -12,9 +12,14 @@ var builder = WebApplication.CreateBuilder(args);
 Console.OutputEncoding = Encoding.UTF8;
 
 // Configure logging based on environment
-if (builder.Environment.EnvironmentName == "Testing")
+// Allow verbose logging when explicitly requested via environment variable or command line
+var suppressTestLogging = builder.Environment.EnvironmentName == "Testing" 
+    && Environment.GetEnvironmentVariable("CATAN_TEST_VERBOSE") != "true"
+    && !args.Contains("--verbose");
+
+if (suppressTestLogging)
 {
-    // Suppress all logging during tests
+    // Suppress all logging during tests (unless verbose mode requested)
     builder.Logging.ClearProviders();
     builder.Logging.SetMinimumLevel(LogLevel.Error);
 }
@@ -25,6 +30,9 @@ builder.Services.AddControllersWithViews()
     {
         JsonHelper.ConfigureOptions(options.JsonSerializerOptions);
     });
+
+// Note: Previously had complex model validation configuration, but now we handle
+// complex GameModel objects as JSON strings to avoid ASP.NET validation limits
 
 // Add CORS for local development
 builder.Services.AddCors(options =>
@@ -70,9 +78,6 @@ builder.Services.AddSingleton<IClientNotification>(provider => provider.GetRequi
 // Register async command processor for fire-and-forget command execution
 builder.Services.AddSingleton<AsyncCommandProcessor>();
 
-// Register GameStateMachineService as Singleton to ensure shared state across all requests
-// This ensures that games created in one request can be retrieved in subsequent requests
-builder.Services.AddSingleton<GameStateMachineService>();
 
 var app = builder.Build();
 

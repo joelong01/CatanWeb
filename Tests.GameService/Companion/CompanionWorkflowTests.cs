@@ -390,7 +390,7 @@ namespace Tests.GameService.Companion
                 }
                 catch (Exception ex)
                 {
-                    // Log but don't fail - some actions may not be valid in current state
+                    // Trace but don't fail - some actions may not be valid in current state
                     Console.WriteLine($"Action {actionName} resulted in: {ex.Message}");
                 }
             }

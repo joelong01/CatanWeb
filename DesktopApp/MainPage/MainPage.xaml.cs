@@ -7,7 +7,6 @@ using Catan3.Models;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
 using Catan3.Player;
-using Catan3.Tests;
 
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -271,15 +270,11 @@ namespace Catan3
         {
             MainPageModel?.SetPlayerOrder();
         }
-        private async void OnRunTests(object sender, RoutedEventArgs e)
+        private void OnRunTests(object sender, RoutedEventArgs e)
         {
             HideMenu();
 
-
-            var test = new CatanTests();
-            await test.TestScore();
             //await test.RunAll();
-            
         }
         private void OnClose(object sender, RoutedEventArgs e)
         {

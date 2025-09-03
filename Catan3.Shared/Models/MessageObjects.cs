@@ -4,6 +4,51 @@ using Catan3.Shared.Utility;
 
 namespace Catan3.Shared.Models
 {
+    /// <summary>
+    /// Wrapper for SignalR messages that contains MVVM message as JSON string.
+    /// Solves polymorphic deserialization issues in SignalR Hub methods.
+    /// </summary>
+    public class SignalRMessage
+    {
+        /// <summary>
+        /// The type name of the message (e.g., "ShuffleMessage", "NextMessage")
+        /// </summary>
+        public string MessageType { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// The MVVM message serialized as JSON string using JsonHelper.StandardOptions
+        /// </summary>
+        public string MessageJson { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Creates a SignalR message wrapper from an MVVM message object
+        /// </summary>
+        public static SignalRMessage Create<T>(T message)
+        {
+            return new SignalRMessage
+            {
+                MessageType = typeof(T).Name,
+                MessageJson = JsonHelper.Serialize(message)
+            };
+        }
+        
+        /// <summary>
+        /// Deserializes the JSON back to the original message type
+        /// </summary>
+        public T Deserialize<T>()
+        {
+            return JsonHelper.Deserialize<T>(MessageJson) ?? throw new InvalidOperationException($"Failed to deserialize {MessageType}");
+        }
+        
+        /// <summary>
+        /// Deserializes the JSON back to a specific type
+        /// </summary>
+        public object Deserialize(Type messageType)
+        {
+            return JsonHelper.Deserialize(MessageJson, messageType) ?? throw new InvalidOperationException($"Failed to deserialize {MessageType}");
+        }
+    }
+
     // Core message types needed for the web API
     public class UndoMessage
     {
@@ -56,11 +101,12 @@ namespace Catan3.Shared.Models
         public override string ToString() => $"ShuffleMessage";
     }
 
-    public class NewGameMessage(GameType GameType, IList<string> PlayerIds)
+    public class NewGameMessage(GameType GameType, IList<string> PlayerIds, string GameName)
     {
         public GameType GameType { get; } = GameType;
         public IList<string> PlayerIds { get; set; } = PlayerIds;
-        public override string ToString() => $"NewGameMessage: {GameType}, Players: {PlayerIds.Count}";
+        public string GameName { get; } = GameName;
+        public override string ToString() => $"NewGameMessage: {GameName} ({GameType}), Players: {PlayerIds.Count}";
     }
 
     public class SetPlayerOrderMessage(IList<string> playerIds)
@@ -115,10 +161,35 @@ namespace Catan3.Shared.Models
         public override string ToString() => $"PersistGameMessage: {Action} -> {Location}";
     }
 
-    public class LoadGameMessage(string localFile)
+    /// <summary>
+    /// Shared message for loading games from compressed log data (.catan files).
+    /// Contains Base64-encoded compressed SerializableLog data.
+    /// Used by GameService APIs to load production game files.
+    /// </summary>
+    public class LoadGameMessage(string compressedLog)
     {
-        public string LocalFile { get; } = localFile;
-        public override string ToString() => $"LoadGameMessage: {LocalFile}";
+        public string CompressedLog { get; } = compressedLog;
+        public override string ToString() => $"LoadGameMessage: {CompressedLog.Length} chars";
+    }
+
+    /// <summary>
+    /// Shared message for loading games from deserialized GameModel (.catan_test files).
+    /// Used by GameService APIs and tests to load game state directly.
+    /// </summary>
+    public class LoadGameModelMessage
+    {
+        public string GameModelJson { get; set; } = string.Empty;
+        public bool IsTest { get; set; } = false;
+        
+        public LoadGameModelMessage() { }
+        
+        public LoadGameModelMessage(string gameModelJson, bool isTest = false)
+        {
+            GameModelJson = gameModelJson;
+            IsTest = isTest;
+        }
+        
+        public override string ToString() => $"LoadGameModelMessage: {GameModelJson.Length} characters";
     }
 
     public class StartRecordingMessage(string? outputPath = null)

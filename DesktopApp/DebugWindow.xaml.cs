@@ -147,7 +147,7 @@ namespace Catan3
                 Clipboard.SetContent(dataPackage);
                 
                 // Show a brief confirmation message
-                ShowMessage("📋 Log content copied to clipboard");
+                ShowMessage("📋 Trace content copied to clipboard");
             }
             catch (Exception ex)
             {

@@ -1,10 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Options;
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
 using Catan3.Shared.GameLogic;
+using Catan3.Shared.Extensions;
+using Catan3.Shared.Interfaces;
 using Catan3.GameService.Services;
 using Catan3.GameService.Utility;
 
@@ -32,23 +36,48 @@ namespace Catan3.GameService.Controllers
     public class GameApiController : ControllerBase
     {
         private readonly GameApiOptions _options;
-        private readonly GameStateMachineService _gameStateMachineService;
+        private readonly Services.IPersistenceService _persistenceService;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<GameApiController> _logger;
 
-        public GameApiController(IOptions<GameApiOptions> options, GameStateMachineService gameStateMachineService, ILogger<GameApiController> logger)
+        public GameApiController(IOptions<GameApiOptions> options, Services.IPersistenceService persistenceService, ILoggerFactory loggerFactory, ILogger<GameApiController> logger)
         {
             _options = options.Value;
-            _gameStateMachineService = gameStateMachineService;
+            _persistenceService = persistenceService;
+            _loggerFactory = loggerFactory;
             _logger = logger;
+        }
+
+        /// <summary>
+        /// Creates a GameStateMachine with GameService-specific dependencies
+        /// </summary>
+        private GameStateMachine CreateGameStateMachineWithServiceDependencies(IGameLog gameLog)
+        {
+            // Create GameService-specific implementations
+            var gameServiceLogger = _loggerFactory.CreateLogger<GameStateMachine>();
+            var gameLogger = new GameServiceLogger(gameServiceLogger);
+            var fileOperations = new GameServiceFileOperationsAdapter();
+            var recorderFactory = new GameServiceRecorderFactory(gameLogger, fileOperations);
+            var persistenceAdapter = new GameServicePersistenceAdapter(_persistenceService);
+
+            // Create and return GameStateMachine with GameService dependencies
+            return new GameStateMachine(gameLog, gameLogger, recorderFactory, persistenceAdapter);
+        }
+
+        /// <summary>
+        /// Gets an existing GameStateMachine for the specified gameId
+        /// </summary>
+        public static GameStateMachine GetGameStateMachine(string gameId)
+        {
+            return GameStateMachineRegistry.GetGameStateMachine(gameId);
         }
 
         [HttpPost("game/action")]
         public Task<IActionResult> ExecuteGameAction([FromBody] JsonElement request)
         {
-            var requestId = Guid.NewGuid().ToString("N")[..8];
             var commandId = Guid.NewGuid();
             
-            _logger.LogEvent("API Request", $"[{requestId}] POST /api/game/action - Processing async command {commandId}");
+            _logger.LogEvent("API Request", $"POST /api/game/action - Processing async command {commandId}");
             
             try
             {
@@ -56,19 +85,22 @@ namespace Catan3.GameService.Controllers
                 var playerId = request.GetProperty("playerId").GetString();
                 var messageType = request.GetProperty("messageType").GetString();
 
-                _logger.LogEvent("Command Request", $"[{requestId}] Async command request - GameId: {gameId}, PlayerId: {playerId}, MessageType: {messageType}, CommandId: {commandId}");
+                _logger.LogEvent("Command Request", $"Async command request - GameId: {gameId}, PlayerId: {playerId}, MessageType: {messageType}, CommandId: {commandId}");
 
                 if (string.IsNullOrEmpty(gameId) || string.IsNullOrEmpty(playerId) || string.IsNullOrEmpty(messageType))
                 {
-                    _logger.LogEvent("Validation Error", $"[{requestId}] Missing required fields: gameId={gameId}, playerId={playerId}, messageType={messageType}", LogLevel.Warning);
+                    _logger.LogEvent("Validation Error", $"Missing required fields: gameId={gameId}, playerId={playerId}, messageType={messageType}", LogLevel.Warning);
                     return Task.FromResult<IActionResult>(BadRequest("Missing required fields: gameId, playerId, messageType"));
                 }
 
                 // Verify game exists before processing
-                var currentGame = _gameStateMachineService.GetCurrentGameState(gameId);
-                if (currentGame == null)
+                try
                 {
-                    _logger.LogEvent("Game Not Found", $"[{requestId}] Game not found: {gameId}", LogLevel.Warning);
+                    GameStateMachineRegistry.GetGameStateMachine(gameId);
+                }
+                catch (GameException)
+                {
+                    _logger.LogEvent("Game Not Found", $"Game not found: {gameId}", LogLevel.Warning);
                     // NOTE: Including GameId in error response is safe - client provided it in the request
                     return Task.FromResult<IActionResult>(NotFound($"Game {gameId} not found"));
                 }
@@ -76,8 +108,8 @@ namespace Catan3.GameService.Controllers
                 // Get the async command processor from DI
                 var commandProcessor = HttpContext.RequestServices.GetRequiredService<AsyncCommandProcessor>();
 
-                // Fire-and-forget async processing
-                _ = commandProcessor.ProcessAsync(request, commandId);
+                // Fire-and-forget async processing with function to get GameStateMachine
+                _ = commandProcessor.ProcessAsync(request, commandId, GameStateMachineRegistry.GetGameStateMachine);
 
                 // Return immediate response
                 var response = new
@@ -88,13 +120,13 @@ namespace Catan3.GameService.Controllers
                     estimatedCompletionMs = 100 // Most commands complete very quickly
                 };
 
-                _logger.LogEvent("Command Accepted", $"[{requestId}] Command accepted for async processing - CommandId: {commandId}, GameId: {gameId}");
+                _logger.LogEvent("Command Accepted", $"Command accepted for async processing - CommandId: {commandId}, GameId: {gameId}");
 
                 return Task.FromResult<IActionResult>(Ok(response));
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Command Error", $"[{requestId}] Error accepting command for async processing - CommandId: {commandId}: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Command Error", $"Error accepting command for async processing - CommandId: {commandId}: {ex.Message}", LogLevel.Error);
                 return Task.FromResult<IActionResult>(StatusCode(500, $"Error accepting command: {ex.Message}"));
             }
         }
@@ -106,28 +138,27 @@ namespace Catan3.GameService.Controllers
         [HttpGet("gamestate/{gameId}")]
         public IActionResult GetGameState(string gameId)
         {
-            var requestId = Guid.NewGuid().ToString("N")[..8];
-            _logger.LogEvent("API Request", $"[{requestId}] GET /api/gamestate/{gameId} - Getting game state");
+            _logger.LogEvent("API Request", $"GET /api/gamestate/{gameId} - Getting game state");
             
             try
             {
-                var gameModel = _gameStateMachineService.GetCurrentGameState(gameId);
-                if (gameModel == null)
-                {
-                    _logger.LogEvent("Game Not Found", $"[{requestId}] Game not found: {gameId}", LogLevel.Warning);
-                    // NOTE: Including GameId in error response is safe - client provided it in the request
-                    return NotFound($"Game {gameId} not found");
-                }
+                var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
+                var gameModel = gameStateMachine.GetCurrentState();
 
                 var result = CreateGameStateResponse(gameId, gameModel);
                 
-                _logger.LogEvent("Game State Retrieved", $"[{requestId}] Game state retrieved successfully - GameId: {gameId}, State: {gameModel.GameState}, Players: {gameModel.Players.Count}, GameStateMachineVersion: {gameModel.GameStateMachineVersion}");
+                _logger.LogEvent("Game State Retrieved", $"Game state retrieved successfully - GameId: {gameId}, State: {gameModel.GameState}, Players: {gameModel.Players.Count}, GameStateMachineVersion: {gameModel.GameStateMachineVersion}");
                 
                 return Ok(result);
             }
+            catch (GameException)
+            {
+                _logger.LogEvent("Game Not Found", $"Game not found: {gameId}", LogLevel.Warning);
+                return NotFound($"Game {gameId} not found");
+            }
             catch (Exception ex)
             {
-                _logger.LogEvent("Get Game State Error", $"[{requestId}] Error getting game state for gameId: {gameId}: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Get Game State Error", $"Error getting game state for gameId: {gameId}: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, $"Error getting game state: {ex.Message}");
             }
         }
@@ -135,148 +166,135 @@ namespace Catan3.GameService.Controllers
         [HttpPost("game/register")]
         public IActionResult RegisterGame([FromBody] JsonElement request)
         {
-            var requestId = Guid.NewGuid().ToString("N")[..8];
-            _logger.LogEvent("API Request", $"[{requestId}] POST /api/game/register - This endpoint is deprecated, use /api/game/new instead");
+            _logger.LogEvent("API Request", $"POST /api/game/register - This endpoint is deprecated, use /api/game/new instead");
             
             return BadRequest("This endpoint is deprecated. Use /api/game/new instead, which will return a server-generated gameId.");
         }
 
         [HttpPost("game/new")]
-        public async Task<IActionResult> NewGame([FromBody] JsonElement request)
+        public async Task<IActionResult> NewGame([FromBody] NewGameMessage newGameMessage)
         {
-            var requestId = Guid.NewGuid().ToString("N")[..8];
-            _logger.LogEvent("API Request", $"[{requestId}] POST /api/game/new - Creating new game");
+            _logger.LogEvent("API Request", $"POST /api/game/new - Creating new game");
             
             try
             {
-                // Handle both old JSON format and new NewGameRequest format for backward compatibility
-                GameType gameType;
-                List<string> playerIds = [];
-
-                // Check for required gameType field
-                if (!request.TryGetProperty("gameType", out var gameTypeElement))
+                if (newGameMessage is null || newGameMessage.PlayerIds is null or { Count: 0 })
                 {
-                    _logger.LogEvent("Validation Error", $"[{requestId}] Missing required field: gameType", LogLevel.Warning);
-                    return BadRequest("Missing required fields: gameType");
+                    return BadRequest("Invalid game creation request - must specify game type and players");
                 }
 
-                var gameTypeStr = gameTypeElement.ValueKind switch
-                {
-                    JsonValueKind.String => gameTypeElement.GetString(),
-                    JsonValueKind.Number => ((GameType)gameTypeElement.GetInt32()).ToString(),
-                    _ => null
-                };
+                // Get the appropriate game metadata based on game type
+                IGameMetadata gameInfo = newGameMessage.GameType == GameType.Regular 
+                    ? RegularBoardInfo.Default 
+                    : ExpansionBoardInfo.Default;
                 
-                if (string.IsNullOrEmpty(gameTypeStr) || !Enum.TryParse<GameType>(gameTypeStr, out gameType))
-                {
-                    _logger.LogEvent("Validation Error", $"[{requestId}] Invalid game type: {gameTypeStr ?? "null"}", LogLevel.Warning);
-                    return BadRequest($"Invalid game type: {gameTypeStr}");
-                }
+                // Create new game model
+                var gameModel = GameModelExtensions.CreateNew(gameInfo, newGameMessage.PlayerIds, newGameMessage.GameName ?? "Untitled Game");
+                
+                // Create the Log for this game
+                var gameServiceLogger = _loggerFactory.CreateLogger<GameStateMachine>();
+                var log = new GameService.Utility.Log<string>(_persistenceService, gameModel, isTest: false, gameServiceLogger);
+                var gameLog = new GameServiceLogAdapter(log, _persistenceService);
+                
+                // Create GameStateMachine with the Log
+                var gameStateMachine = CreateGameStateMachineWithServiceDependencies(gameLog);
+                
+                // Store in registry
+                GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);
 
-                // Handle player data - can be either simple string array or complex objects with Id/Name
-                if (request.TryGetProperty("playerIds", out var playerIdsElement) && playerIdsElement.ValueKind == JsonValueKind.Array)
-                {
-                    // Simple string array format for backward compatibility
-                    playerIds = playerIdsElement.EnumerateArray()
-                        .Select(element => {
-                            return element.ValueKind switch
-                            {
-                                JsonValueKind.String => element.GetString(),
-                                JsonValueKind.Number => element.GetInt32().ToString(),
-                                _ => element.ToString()
-                            };
-                        })
-                        .Where(id => !string.IsNullOrEmpty(id))
-                        .Cast<string>()
-                        .ToList();
-                }
-                else if (request.TryGetProperty("players", out var playersElement) && playersElement.ValueKind == JsonValueKind.Array)
-                {
-                    // Complex object format following Desktop app pattern
-                    playerIds = playersElement.EnumerateArray()
-                        .Where(p => p.TryGetProperty("id", out var id) && 
-                                   (id.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(id.GetString())))
-                        .Select(p => p.GetProperty("id").GetString()!)
-                        .ToList();
-                }
-
-                if (playerIds.Count == 0)
-                {
-                    _logger.LogEvent("Validation Error", $"[{requestId}] No valid players provided", LogLevel.Warning);
-                    return BadRequest("At least one valid player is required");
-                }
-
-                _logger.LogEvent("New Game Request", $"[{requestId}] Creating new game - GameType: {gameType}, Players: [{string.Join(", ", playerIds)}]");
-
-                var newGameMessage = new NewGameMessage(gameType, playerIds);
-                var (gameId, gameModel) = await _gameStateMachineService.CreateNewGameAsync(gsm => gsm.HandleNewGameAsync(newGameMessage));
-
-                var currentVersion = gameModel.GameStateMachineVersion;
-
-                _logger.LogEvent("New Game Created", $"[{requestId}] New game created successfully - GameId: {gameId}, Version: {currentVersion}, State: {gameModel.GameState}");
-
-                return Ok(new
-                {
-                    success = true,
-                    gameId = gameId,  // Return the server-generated GameId
-                    gameStateVersion = currentVersion,
-                    message = "New game created successfully"
-                });
+                // Return minimal response - client must join via SignalR to get GameModel
+                return Ok(new { success = true, gameId = gameModel.GameId });
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("New Game Error", $"[{requestId}] Error creating new game: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("New Game Error", $"Error creating new game: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, $"Error creating new game: {ex.Message}");
             }
         }
 
         [HttpPost("game/load")]
-        public async Task<IActionResult> LoadGame([FromBody] JsonElement request)
+        public async Task<IActionResult> LoadGame([FromBody] LoadGameMessage loadGameMessage)
         {
-            var requestId = Guid.NewGuid().ToString("N")[..8];
-            _logger.LogEvent("API Request", $"[{requestId}] POST /api/game/load - Loading game");
+            _logger.LogEvent("API Request", $"POST /api/game/load - Loading game from compressed log");
             
             try
             {
-                var filePath = request.GetProperty("filePath").GetString();
-
-                if (string.IsNullOrEmpty(filePath))
+                if (loadGameMessage?.CompressedLog is null or { Length: 0 })
                 {
-                    _logger.LogEvent("Validation Error", $"[{requestId}] Missing required fields - FilePath: {filePath ?? "null"}", LogLevel.Warning);
-                    return BadRequest("Missing required fields: filePath");
+                    return BadRequest("Missing compressed game data");
                 }
 
-                _logger.LogEvent("Load Game Request", $"[{requestId}] Loading game - FilePath: {filePath}");
+                // Create Log from compressed data
+                var log = Log<string>.FromCompressedString(loadGameMessage.CompressedLog, _persistenceService);
+                var gameLog = new GameServiceLogAdapter(log, _persistenceService);
 
-                var loadGameMessage = new LoadGameMessage(filePath);
+                // Create GameStateMachine with initialized dependencies
+                var gameStateMachine = CreateGameStateMachineWithServiceDependencies(gameLog);
+
+                // Get the current game state to determine GameId
+                var gameModel = gameStateMachine.GetCurrentState();
                 
-                // Create a new GameStateMachine and load the game into it
-                var (gameId, gameModel) = await _gameStateMachineService.CreateNewGameAsync(async gsm => await gsm.HandleLoadGameAsync(loadGameMessage));
+                // Store GameStateMachine in registry
+                GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);
 
-                var currentVersion = gameModel.GameStateMachineVersion;
-
-                _logger.LogEvent("Game Loaded", $"[{requestId}] Game loaded successfully - GameId: {gameId}, Version: {currentVersion}");
-
-                return Ok(new
-                {
-                    success = true,
-                    gameId = gameId,  // Return the server-generated GameId
-                    gameStateVersion = currentVersion,
-                    message = "Game loaded successfully"
-                });
+                // Return minimal response - client must join via SignalR to get GameModel
+                return Ok(new { success = true, gameId = gameModel.GameId });
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Load Game Error", $"[{requestId}] Error loading game: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Load Game Error", $"Error loading game: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, $"Error loading game: {ex.Message}");
+            }
+        }
+
+        [HttpPost("game/loadmodel")]
+        public async Task<IActionResult> LoadGameModel([FromBody] LoadGameModelMessage loadGameModelMessage)
+        {
+            _logger.LogEvent("API Request", $"POST /api/game/loadmodel - Loading game from GameModel JSON");
+            
+            try
+            {
+                if (string.IsNullOrWhiteSpace(loadGameModelMessage?.GameModelJson))
+                {
+                    return BadRequest("Missing GameModel JSON data");
+                }
+
+                // Deserialize the GameModel from the message
+                var gameModel = JsonHelper.Deserialize<GameModel>(loadGameModelMessage.GameModelJson)
+                    ?? throw new InvalidOperationException("Failed to deserialize GameModel from LoadGameModelMessage JSON");
+                
+                // Validate the deserialized GameModel
+                gameModel.Validate();
+                
+                // Create Log WITHOUT the GameModel (matches Desktop pattern)
+                // Use empty string for file path when IsTest is true, otherwise use temp path
+                var filePath = loadGameModelMessage.IsTest ? string.Empty : Path.Combine(Path.GetTempPath(), "Catan3Games", gameModel.SaveFileName());
+                var log = new Log<string>(_persistenceService, filePath);
+                var gameLog = new GameServiceLogAdapter(log, _persistenceService);
+                
+                // Create GameStateMachine with initialized dependencies
+                var gameStateMachine = CreateGameStateMachineWithServiceDependencies(gameLog);
+                
+                // Initialize the logging state with the GameModel (matches Desktop pattern)
+                gameStateMachine.InitializeLoggingState(gameModel);
+                
+                // Store GameStateMachine in registry
+                GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);
+
+                // Return minimal response - client must join via SignalR to get GameModel
+                return Ok(new { success = true, gameId = gameModel.GameId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Load GameModel Error", $"Error loading game from GameModel: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, $"Error loading game from GameModel: {ex.Message}");
             }
         }
 
         [HttpPost("game/persist")]
         public async Task<IActionResult> PersistGame([FromBody] JsonElement request)
         {
-            var requestId = Guid.NewGuid().ToString("N")[..8];
-            _logger.LogEvent("API Request", $"[{requestId}] POST /api/game/persist - Persisting game");
+            _logger.LogEvent("API Request", $"POST /api/game/persist - Persisting game");
             
             try
             {
@@ -291,23 +309,23 @@ namespace Catan3.GameService.Controllers
 
                 if (string.IsNullOrEmpty(gameId))
                 {
-                    _logger.LogEvent("Validation Error", $"[{requestId}] Missing gameId in persist request", LogLevel.Warning);
+                    _logger.LogEvent("Validation Error", $"Missing gameId in persist request", LogLevel.Warning);
                     return BadRequest("Missing gameId");
                 }
 
                 if (!Enum.TryParse<LocalPersistActions>(actionStr, out var action))
                 {
-                    _logger.LogEvent("Validation Error", $"[{requestId}] Invalid persist action: {actionStr}", LogLevel.Warning);
+                    _logger.LogEvent("Validation Error", $"Invalid persist action: {actionStr}", LogLevel.Warning);
                     return BadRequest($"Invalid persist action: {actionStr}");
                 }
 
-                _logger.LogEvent("Persist Game Request", $"[{requestId}] Persisting game - GameId: {gameId}, Action: {action}, Location: {location}");
+                _logger.LogEvent("Persist Game Request", $"Persisting game - GameId: {gameId}, Action: {action}, Location: {location}");
 
                 var persistMessage = new PersistGameMessage(action, location);
-                var gameStateMachine = _gameStateMachineService.GetGameStateMachine(gameId);
+                var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
                 await gameStateMachine.HandlePersistGameAsync(persistMessage);
 
-                _logger.LogEvent("Game Persisted", $"[{requestId}] Game persisted successfully - GameId: {gameId}, Action: {action}");
+                _logger.LogEvent("Game Persisted", $"Game persisted successfully - GameId: {gameId}, Action: {action}");
 
                 return Ok(new
                 {
@@ -317,7 +335,7 @@ namespace Catan3.GameService.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Persist Game Error", $"[{requestId}] Error persisting game: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Persist Game Error", $"Error persisting game: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, $"Error persisting game: {ex.Message}");
             }
         }
@@ -325,14 +343,13 @@ namespace Catan3.GameService.Controllers
         [HttpGet("companion/games")]
         public IActionResult GetAvailableGames()
         {
-            var requestId = Guid.NewGuid().ToString("N")[..8];
-            _logger.LogEvent("API Request", $"[{requestId}] GET /api/companion/games - Getting available games");
+            _logger.LogEvent("API Request", $"GET /api/companion/games - Getting available games");
             
             try
             {
-                var availableGames = _gameStateMachineService.GetAvailableGames();
+                var availableGames = GameStateMachineRegistry.GetAvailableGames().OrderByDescending(g => g.CreatedTime).ToList();
                 
-                _logger.LogEvent("Available Games", $"[{requestId}] Found {availableGames.Count} available games");
+                _logger.LogEvent("Available Games", $"Found {availableGames.Count} available games");
                 
                 return Ok(new
                 {
@@ -344,7 +361,7 @@ namespace Catan3.GameService.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Get Available Games Error", $"[{requestId}] Error getting available games: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Get Available Games Error", $"Error getting available games: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, $"Error getting available games: {ex.Message}");
             }
         }

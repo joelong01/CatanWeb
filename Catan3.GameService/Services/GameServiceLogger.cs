@@ -6,10 +6,10 @@ using Catan3.Shared.Interfaces;
 namespace Catan3.GameService.Services
 {
     /// <summary>
-    /// GameService implementation of IGameLogger that wraps Microsoft.Extensions.Logging.ILogger.
+    /// GameService implementation of ICatanDebugTrace that wraps Microsoft.Extensions.Logging.ILogger.
     /// Bridges the shared GameStateMachine logging interface to ASP.NET Core logging infrastructure.
     /// </summary>
-    public class GameServiceLogger : IGameLogger
+    public class GameServiceLogger : ICatanDebugTrace
     {
         private readonly ILogger _logger;
 
@@ -18,9 +18,9 @@ namespace Catan3.GameService.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public void Log(GameLogLevel logLevel, string message, int indentLevel = 0, [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0, [CallerFilePath] string callerFilePath = "")
+        public void Trace(GameTraceLevel logLevel, string message, int indentLevel = 0, [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0, [CallerFilePath] string callerFilePath = "")
         {
-            // Convert our GameLogLevel to Microsoft.Extensions.Logging.LogLevel
+            // Convert our GameTraceLevel to Microsoft.Extensions.Logging.LogLevel
             var msLogLevel = ConvertLogLevel(logLevel);
             
             // Format message with indentation if specified
@@ -29,7 +29,7 @@ namespace Catan3.GameService.Services
                 : message;
 
             // Add caller information for trace/debug levels
-            if (logLevel <= GameLogLevel.Debug)
+            if (logLevel <= GameTraceLevel.Debug)
             {
                 var fileName = System.IO.Path.GetFileName(callerFilePath);
                 formattedMessage = $"[{fileName}:{callerLineNumber} {callerMemberName}] {formattedMessage}";
@@ -39,19 +39,19 @@ namespace Catan3.GameService.Services
         }
 
         /// <summary>
-        /// Converts GameLogLevel to Microsoft.Extensions.Logging.LogLevel.
+        /// Converts GameTraceLevel to Microsoft.Extensions.Logging.LogLevel.
         /// </summary>
-        private static Microsoft.Extensions.Logging.LogLevel ConvertLogLevel(GameLogLevel gameLogLevel)
+        private static Microsoft.Extensions.Logging.LogLevel ConvertLogLevel(GameTraceLevel gameLogLevel)
         {
             return gameLogLevel switch
             {
-                GameLogLevel.Trace => Microsoft.Extensions.Logging.LogLevel.Trace,
-                GameLogLevel.Debug => Microsoft.Extensions.Logging.LogLevel.Debug,
-                GameLogLevel.Information => Microsoft.Extensions.Logging.LogLevel.Information,
-                GameLogLevel.Warning => Microsoft.Extensions.Logging.LogLevel.Warning,
-                GameLogLevel.Error => Microsoft.Extensions.Logging.LogLevel.Error,
-                GameLogLevel.Critical => Microsoft.Extensions.Logging.LogLevel.Critical,
-                GameLogLevel.None => Microsoft.Extensions.Logging.LogLevel.None,
+                GameTraceLevel.Trace => Microsoft.Extensions.Logging.LogLevel.Trace,
+                GameTraceLevel.Debug => Microsoft.Extensions.Logging.LogLevel.Debug,
+                GameTraceLevel.Information => Microsoft.Extensions.Logging.LogLevel.Information,
+                GameTraceLevel.Warning => Microsoft.Extensions.Logging.LogLevel.Warning,
+                GameTraceLevel.Error => Microsoft.Extensions.Logging.LogLevel.Error,
+                GameTraceLevel.Critical => Microsoft.Extensions.Logging.LogLevel.Critical,
+                GameTraceLevel.None => Microsoft.Extensions.Logging.LogLevel.None,
                 _ => Microsoft.Extensions.Logging.LogLevel.Information
             };
         }

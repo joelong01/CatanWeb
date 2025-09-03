@@ -78,14 +78,11 @@ namespace Catan3.Shared.Interfaces
         Task<GameModel> HandleBalanceBoardAsync(BalanceBoardMessage message);
 
         /// <summary>
-        /// Creates a new game with specified parameters.
+        /// Loads a game from compressed JSON data (.catan files).
+        /// Restores the full game history including undo/redo stacks.
         /// </summary>
-        Task<GameModel> HandleNewGameAsync(Catan3.Shared.Models.NewGameMessage message);
+        Task<GameModel> HandleLoadCompressedLogAsync(string compressedLog);
 
-        /// <summary>
-        /// Loads a game from the specified file path.
-        /// </summary>
-        Task<GameModel> HandleLoadGameAsync(LoadGameMessage message);
 
         /// <summary>
         /// Starts recording game actions to the specified output path.

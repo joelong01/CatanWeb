@@ -41,37 +41,46 @@
 using Catan3.Shared.Interfaces;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
+using Catan3.Shared.Extensions;
+using Catan3.Shared.GameLogic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 
 namespace Catan3.GameState
 {
     /// <summary>
     /// MVVM messaging service that bridges UI messages to game logic operations.
-    /// This class handles all MVVM communication between the UI layer and the GameStateMachine,
-    /// providing a clean separation between presentation concerns and game logic.
+    /// This class handles all MVVM communication and manages the GameStateMachine lifecycle internally.
+    /// Receives MVVM messages and creates/manages GameStateMachine instances as needed.
+    /// Future: Will be replaced with a proxy that delegates to GameService REST/SignalR APIs.
     /// </summary>
     internal class GameMessageService : ObservableRecipient
     {
         /// <summary>
-        /// The game state machine that contains the core game logic.
-        /// All game operations are delegated to this instance.
+        /// The current game state machine that contains the core game logic.
+        /// Created internally when game messages are received.
         /// </summary>
-        private readonly IGameStateMachine _gameStateMachine;
+        private GameStateMachine? _gameStateMachine;
 
         /// <summary>
-        /// Initializes a new GameMessageService with the specified game state machine.
-        /// Automatically registers for all MVVM messages upon construction.
+        /// The persistence service used for game operations.
         /// </summary>
-        /// <param name="gameStateMachine">The game state machine to delegate operations to.</param>
-        public GameMessageService(IGameStateMachine gameStateMachine)
+        private readonly Catan.Services.IPersistenceService _persistenceService;
+
+        /// <summary>
+        /// Initializes a new GameMessageService that handles MVVM messages.
+        /// Creates GameStateMachine instances internally based on received messages.
+        /// </summary>
+        /// <param name="persistenceService">The persistence service for file operations.</param>
+        public GameMessageService(Catan.Services.IPersistenceService persistenceService)
         {
-            _gameStateMachine = gameStateMachine;
+            _persistenceService = persistenceService;
             RegisterMessages();
         }
 
@@ -92,8 +101,8 @@ namespace Catan3.GameState
             Messenger.Register<SetPlayerOrderMessage>(this, HandleSetPlayerOrderAsync);
             Messenger.Register<RoadPurchaseMessage>(this, HandleRoadPurchaseAsync);
             Messenger.Register<MoveRobberMessage>(this, HandleMoveRobberAsync);
-            Messenger.Register<Catan3.Shared.Models.NewGameMessage>(this, HandleNewGameAsync);
-            Messenger.Register<LoadGameMessage>(this, HandleLoadGameAsync);
+            Messenger.Register<NewGameMessage>(this, HandleNewGameAsync);
+            Messenger.Register<Catan3.Models.LoadLocalCatanGameMessage>(this, HandleLoadLocalCatanGameAsync);
             Messenger.Register<StartRecordingMessage>(this, HandleStartRecordingAsync);
             Messenger.Register<StopRecordingMessage>(this, HandleStopRecordingAsync);
             Messenger.Register<RollMessage>(this, HandleRollAsync);
@@ -113,6 +122,12 @@ namespace Catan3.GameState
         /// <param name="message">The undo message from the UI.</param>
         private async void HandleUndoAsync(object recipient, UndoMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 var gameModel = await _gameStateMachine.HandleUndoAsync(message);
@@ -132,6 +147,12 @@ namespace Catan3.GameState
         /// <param name="message">The redo message from the UI.</param>
         private async void HandleRedoAsync(object recipient, RedoMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 var gameModel = await _gameStateMachine.HandleRedoAsync(message);
@@ -151,6 +172,12 @@ namespace Catan3.GameState
         /// <param name="message">The next message from the UI.</param>
         private async void HandleNextAsync(object recipient, NextMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 var gameModel = await _gameStateMachine.HandleNextAsync(message);
@@ -170,6 +197,12 @@ namespace Catan3.GameState
         /// <param name="message">The shuffle message from the UI.</param>
         private async void HandleShuffleAsync(object recipient, ShuffleMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 var gameModel = await _gameStateMachine.HandleShuffleAsync(message);
@@ -189,6 +222,12 @@ namespace Catan3.GameState
         /// <param name="message">The building upgrade message from the UI.</param>
         private async void HandleBuildingUpgradeAsync(object recipient, BuildingUpgradeMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 var gameModel = await _gameStateMachine.HandleBuildingUpgradeAsync(message);
@@ -208,6 +247,12 @@ namespace Catan3.GameState
         /// <param name="message">The player order message from the UI.</param>
         private async void HandleSetPlayerOrderAsync(object recipient, SetPlayerOrderMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 var gameModel = await _gameStateMachine.HandleSetPlayerOrderAsync(message);
@@ -227,6 +272,12 @@ namespace Catan3.GameState
         /// <param name="message">The road purchase message from the UI.</param>
         private async void HandleRoadPurchaseAsync(object recipient, RoadPurchaseMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 var gameModel = await _gameStateMachine.HandleRoadPurchaseAsync(message);
@@ -246,6 +297,12 @@ namespace Catan3.GameState
         /// <param name="message">The robber movement message from the UI.</param>
         private async void HandleMoveRobberAsync(object recipient, MoveRobberMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 var gameModel = await _gameStateMachine.HandleMoveRobberAsync(message);
@@ -259,7 +316,7 @@ namespace Catan3.GameState
 
         /// <summary>
         /// Handles NewGameMessage from the UI to create a new game.
-        /// Delegates to GameStateMachine and sends the result back to the UI.
+        /// Creates a fresh GameStateMachine with a new game and sends the result back to the UI.
         /// </summary>
         /// <param name="recipient">The message recipient (this service).</param>
         /// <param name="message">The new game message from the UI.</param>
@@ -267,7 +324,15 @@ namespace Catan3.GameState
         {
             try
             {
-                var gameModel = await _gameStateMachine.HandleNewGameAsync(message);
+                // Get the appropriate game metadata based on game type
+                IGameMetadata gameInfo = message.GameType == GameType.Regular 
+                    ? RegularBoardInfo.Default 
+                    : ExpansionBoardInfo.Default;
+                
+                // Use the helper function to create the new game
+                var gameModel = await CreateNewGameAsync(gameInfo, message.PlayerIds, message.GameName ?? "Untitled Game");
+                
+                // Send the current game state to the UI
                 Messenger.Send(new UpdateGameModel(gameModel));
             }
             catch (GameException e)
@@ -278,16 +343,42 @@ namespace Catan3.GameState
 
 
         /// <summary>
-        /// Handles LoadGameMessage from the UI to load a saved game.
-        /// Delegates to GameStateMachine and sends the result back to the UI.
+        /// Handles LoadLocalCatanGameMessage from the UI to load a saved game.
+        /// Creates a fresh GameStateMachine with the loaded game data and sends the result back to the UI.
+        /// Supports both .catan (compressed) and .catan_test (uncompressed) file formats.
         /// </summary>
         /// <param name="recipient">The message recipient (this service).</param>
-        /// <param name="message">The load game message from the UI.</param>
-        private async void HandleLoadGameAsync(object recipient, LoadGameMessage message)
+        /// <param name="message">The load game message from the UI containing file path.</param>
+        private async void HandleLoadLocalCatanGameAsync(object recipient, Catan3.Models.LoadLocalCatanGameMessage message)
         {
             try
             {
-                var gameModel = await _gameStateMachine.HandleLoadGameAsync(message);
+                var filePath = message.LocalFile;
+                if (!System.IO.File.Exists(filePath))
+                {
+                    throw new GameException($"File not found: {filePath}");
+                }
+
+                var extension = System.IO.Path.GetExtension(filePath);
+                GameModel gameModel;
+
+                switch (extension.ToLowerInvariant())
+                {
+                    case ".catan":
+                        // Use helper function for compressed games
+                        gameModel = await LoadCompressedGameAsync(filePath);
+                        break;
+                        
+                    case ".catan_test":
+                        // Use helper function for test scenarios
+                        gameModel = await LoadTestScenarioAsync(filePath);
+                        break;
+                        
+                    default:
+                        throw new GameException($"Unsupported file extension: {extension}. Only .catan and .catan_test files are supported.");
+                }
+                
+                // Send the loaded game state to the UI
                 Messenger.Send(new UpdateGameModel(gameModel));
             }
             catch (GameException e)
@@ -304,6 +395,12 @@ namespace Catan3.GameState
         /// <param name="message">The start recording message from the UI.</param>
         private async void HandleStartRecordingAsync(object recipient, StartRecordingMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 await _gameStateMachine.HandleStartRecordingAsync(message);
@@ -322,6 +419,12 @@ namespace Catan3.GameState
         /// <param name="message">The stop recording message from the UI.</param>
         private async void HandleStopRecordingAsync(object recipient, StopRecordingMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 await _gameStateMachine.HandleStopRecordingAsync(message);
@@ -340,6 +443,12 @@ namespace Catan3.GameState
         /// <param name="message">The dice roll message from the UI.</param>
         private async void HandleRollAsync(object recipient, RollMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 var gameModel = await _gameStateMachine.HandleRollAsync(message);
@@ -359,6 +468,12 @@ namespace Catan3.GameState
         /// <param name="message">The purchase message from the UI.</param>
         private async void HandlePurchaseAsync(object recipient, PurchaseMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 var gameModel = await _gameStateMachine.HandlePurchaseAsync(message);
@@ -378,6 +493,12 @@ namespace Catan3.GameState
         /// <param name="message">The supplemental participation message from the UI.</param>
         private async void HandleParticipatingInSupplementalAsync(object recipient, ParticipatingInSupplementalMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 var gameModel = await _gameStateMachine.HandleParticipatingInSupplementalAsync(message);
@@ -397,6 +518,12 @@ namespace Catan3.GameState
         /// <param name="message">The balance board message from the UI.</param>
         private async void HandleBalanceBoardAsync(object recipient, BalanceBoardMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 var gameModel = await _gameStateMachine.HandleBalanceBoardAsync(message);
@@ -416,6 +543,12 @@ namespace Catan3.GameState
         /// <param name="message">The end game message from the UI.</param>
         private async void HandleEndGameAsync(object recipient, EndGame message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 await _gameStateMachine.HandleEndGameAsync(message);
@@ -434,6 +567,12 @@ namespace Catan3.GameState
         /// <param name="message">The go first message from the UI.</param>
         private async void HandleGoFirstAsync(object recipient, GoFirstMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 var gameModel = await _gameStateMachine.HandleGoFirstAsync(message);
@@ -453,6 +592,12 @@ namespace Catan3.GameState
         /// <param name="message">The persistence message from the UI.</param>
         private async void HandlePersistGameAsync(object recipient, PersistGameMessage message)
         {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
             try
             {
                 await _gameStateMachine.HandlePersistGameAsync(message);
@@ -461,6 +606,98 @@ namespace Catan3.GameState
             {
                 SendErrorMessage(e.Message, e.ErrorLevel);
             }
+        }
+
+        /// <summary>
+        /// Creates a GameStateMachine with Desktop-specific dependencies.
+        /// </summary>
+        /// <param name="localSaveFile">The local save file path.</param>
+        /// <returns>A configured GameStateMachine using Desktop services.</returns>
+        private GameStateMachine CreateGameStateMachineWithDesktopDependencies(string localSaveFile)
+        {
+            // Create Desktop-specific implementations of shared interfaces
+            var gameLog = new Catan3.Services.DesktopGameLog(_persistenceService, localSaveFile);
+            var gameLogger = new Catan3.Services.DesktopGameLogger();
+            var fileOperations = new Catan3.Services.DesktopFileOperationsAdapter(_persistenceService);
+            var recorderFactory = new Catan3.Services.DesktopGameRecorderFactory(gameLogger, fileOperations);
+            var adaptedPersistenceService = new Catan3.Services.DesktopPersistenceServiceAdapter(_persistenceService);
+
+            // Create and return shared GameStateMachine with Desktop dependencies
+            return new GameStateMachine(gameLog, gameLogger, recorderFactory, adaptedPersistenceService);
+        }
+
+        /// <summary>
+        /// Creates a brand new game with the specified parameters.
+        /// Creates a fresh GameStateMachine instance for the new game.
+        /// </summary>
+        /// <param name="gameInfo">The game metadata containing board configuration.</param>
+        /// <param name="playerIds">The list of player IDs.</param>
+        /// <param name="gameName">The name of the game.</param>
+        /// <returns>The newly created GameModel.</returns>
+        private async Task<GameModel> CreateNewGameAsync(IGameMetadata gameInfo, IList<string> playerIds, string gameName)
+        {
+            // Create the new game model
+            var gameModel = GameModelExtensions.CreateNew(gameInfo, playerIds, gameName);
+            
+            // Generate save file path for the new game
+            var saveFilePath = Catan.Services.FileService.GenerateNewGameSaveFilePath(gameModel);
+            
+            // Create the GameStateMachine with Desktop dependencies
+            _gameStateMachine = CreateGameStateMachineWithDesktopDependencies(saveFilePath);
+            
+            // Initialize with the new game
+            _gameStateMachine.InitializeLoggingState(gameModel);
+            
+            // Return the current game state - wrapped in Task for async compatibility
+            return await Task.FromResult(_gameStateMachine.GetCurrentState());
+        }
+
+        /// <summary>
+        /// Loads a game from a compressed .catan file.
+        /// Creates a fresh GameStateMachine and restores the full game history including undo/redo stacks.
+        /// </summary>
+        /// <param name="filePath">The path to the .catan file.</param>
+        /// <returns>The loaded GameModel with full history.</returns>
+        private async Task<GameModel> LoadCompressedGameAsync(string filePath)
+        {
+            // Create a fresh GameStateMachine for the loaded game
+            _gameStateMachine = CreateGameStateMachineWithDesktopDependencies(filePath);
+            
+            // Read and convert to Base64 for compatibility with existing code
+            var compressedBytes = await System.IO.File.ReadAllBytesAsync(filePath);
+            var base64CompressedLog = Convert.ToBase64String(compressedBytes);
+            
+            // Load the compressed log and return the game state
+            return await _gameStateMachine.HandleLoadCompressedLogAsync(base64CompressedLog);
+        }
+
+        /// <summary>
+        /// Loads a test scenario from a .catan_test file.
+        /// Creates a fresh GameStateMachine and extracts the GameModel from the test file.
+        /// </summary>
+        /// <param name="filePath">The path to the .catan_test file.</param>
+        /// <returns>The loaded GameModel for testing.</returns>
+        private async Task<GameModel> LoadTestScenarioAsync(string filePath)
+        {
+            // Extract GameModel from the test file
+            var fileContent = await System.IO.File.ReadAllTextAsync(filePath);
+            using var document = System.Text.Json.JsonDocument.Parse(fileContent);
+            var root = document.RootElement;
+            
+            if (!root.TryGetProperty("gameModel", out var gameModelElement))
+                throw new GameException(".catan_test file must contain a 'gameModel' property");
+            
+            var extractedGameModel = JsonHelper.Deserialize<GameModel>(gameModelElement.GetRawText());
+            if (extractedGameModel == null)
+                throw new GameException("Failed to deserialize GameModel from .catan_test file");
+            
+            // Create GameStateMachine with Desktop dependencies
+            _gameStateMachine = CreateGameStateMachineWithDesktopDependencies(filePath);
+            
+            // Initialize the log with the GameModel
+            _gameStateMachine.InitializeLoggingState(extractedGameModel);
+            
+            return extractedGameModel;
         }
 
         /// <summary>

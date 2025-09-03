@@ -194,13 +194,13 @@ namespace Catan3
         /// </summary>
         public static void TraceMessage(this object o, string toWrite, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
         {
-            o.TraceMessage(GameLogLevel.Trace, toWrite, indentLevel, cmb, cln, cfp);
+            o.TraceMessage(GameTraceLevel.Trace, toWrite, indentLevel, cmb, cln, cfp);
         }
 
         /// <summary>
         /// Extended TraceMessage method with log level filtering that uses ILogger when available
         /// </summary>
-        public static void TraceMessage(this object o, GameLogLevel logLevel, string toWrite, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
+        public static void TraceMessage(this object o, GameTraceLevel logLevel, string toWrite, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
         {
             // Check if the message should be displayed based on the global log level
             if (logLevel < App.LogLevel)
@@ -216,21 +216,21 @@ namespace Catan3
             // Use ILogger if available (it will write to both Debug and DebugWindow)
             if (App.Logger != null)
             {
-                // Map GameLogLevel to Microsoft.Extensions.Logging.LogLevel
+                // Map GameTraceLevel to Microsoft.Extensions.Logging.LogLevel
                 var msLogLevel = logLevel switch
                 {
-                    GameLogLevel.Trace => Microsoft.Extensions.Logging.LogLevel.Trace,
-                    GameLogLevel.Debug => Microsoft.Extensions.Logging.LogLevel.Debug,
-                    GameLogLevel.Information => Microsoft.Extensions.Logging.LogLevel.Information,
-                    GameLogLevel.Warning => Microsoft.Extensions.Logging.LogLevel.Warning,
-                    GameLogLevel.Error => Microsoft.Extensions.Logging.LogLevel.Error,
+                    GameTraceLevel.Trace => Microsoft.Extensions.Logging.LogLevel.Trace,
+                    GameTraceLevel.Debug => Microsoft.Extensions.Logging.LogLevel.Debug,
+                    GameTraceLevel.Information => Microsoft.Extensions.Logging.LogLevel.Information,
+                    GameTraceLevel.Warning => Microsoft.Extensions.Logging.LogLevel.Warning,
+                    GameTraceLevel.Error => Microsoft.Extensions.Logging.LogLevel.Error,
                     _ => Microsoft.Extensions.Logging.LogLevel.Trace
                 };
 
                 // Write to Debug output (for VS Code Debug Window)
                 Debug.WriteLine(fullMessage);
-                // App.Logger.Log would also write but we're already handling it
-              //  App.Logger.Log(msLogLevel, fullMessage);
+                // App.Logger.Trace would also write but we're already handling it
+              //  App.Logger.Trace(msLogLevel, fullMessage);
                 DebugWindow.ShowMessage(fullMessage);
             }
             else

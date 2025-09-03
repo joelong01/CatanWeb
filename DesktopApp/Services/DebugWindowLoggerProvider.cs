@@ -11,9 +11,9 @@ namespace Catan3.Services
     public class DebugWindowLoggerProvider : ILoggerProvider
     {
         private readonly ConcurrentDictionary<string, DebugWindowLogger> _loggers = new();
-        private readonly GameLogLevel _minLevel;
+        private readonly GameTraceLevel _minLevel;
 
-        public DebugWindowLoggerProvider(GameLogLevel minLevel = GameLogLevel.Trace)
+        public DebugWindowLoggerProvider(GameTraceLevel minLevel = GameTraceLevel.Trace)
         {
             _minLevel = minLevel;
         }
@@ -35,9 +35,9 @@ namespace Catan3.Services
     internal class DebugWindowLogger : ILogger
     {
         private readonly string _categoryName;
-        private readonly GameLogLevel _minLevel;
+        private readonly GameTraceLevel _minLevel;
 
-        public DebugWindowLogger(string categoryName, GameLogLevel minLevel)
+        public DebugWindowLogger(string categoryName, GameTraceLevel minLevel)
         {
             _categoryName = categoryName;
             _minLevel = minLevel;
@@ -75,19 +75,19 @@ namespace Catan3.Services
         }
 
         /// <summary>
-        /// Maps Microsoft.Extensions.Logging.LogLevel to our custom GameLogLevel
+        /// Maps Microsoft.Extensions.Logging.LogLevel to our custom GameTraceLevel
         /// </summary>
-        private static GameLogLevel MapToGameLogLevel(LogLevel logLevel)
+        private static GameTraceLevel MapToGameLogLevel(LogLevel logLevel)
         {
             return logLevel switch
             {
-                LogLevel.Trace => GameLogLevel.Trace,
-                LogLevel.Debug => GameLogLevel.Debug,
-                LogLevel.Information => GameLogLevel.Information,
-                LogLevel.Warning => GameLogLevel.Warning,
-                LogLevel.Error => GameLogLevel.Error,
-                LogLevel.Critical => GameLogLevel.Error,
-                _ => GameLogLevel.Trace
+                LogLevel.Trace => GameTraceLevel.Trace,
+                LogLevel.Debug => GameTraceLevel.Debug,
+                LogLevel.Information => GameTraceLevel.Information,
+                LogLevel.Warning => GameTraceLevel.Warning,
+                LogLevel.Error => GameTraceLevel.Error,
+                LogLevel.Critical => GameTraceLevel.Error,
+                _ => GameTraceLevel.Trace
             };
         }
     }

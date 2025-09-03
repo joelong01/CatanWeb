@@ -37,7 +37,7 @@ namespace Catan3
         /// Global log level setting that controls which messages are displayed.
         /// Only messages at or above this level will be shown.
         /// </summary>
-        public static GameLogLevel LogLevel { get; set; } = GameLogLevel.Trace;
+        public static GameTraceLevel LogLevel { get; set; } = GameTraceLevel.Trace;
 
         /// <summary>
         /// Global application settings accessible from anywhere in the app

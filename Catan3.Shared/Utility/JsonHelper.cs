@@ -23,7 +23,11 @@ namespace Catan3.Shared.Utility
             Converters = { new JsonStringEnumConverter() },
             // Additional options for robustness
             AllowTrailingCommas = true,
-            ReadCommentHandling = JsonCommentHandling.Skip
+            ReadCommentHandling = JsonCommentHandling.Skip,
+            // Increase validation limits for complex GameModel objects
+            MaxDepth = 128, // Default is 64, increase for nested game structures
+            DefaultBufferSize = 32 * 1024, // 32KB buffer size
+            ReferenceHandler = ReferenceHandler.IgnoreCycles // Handle circular references
         };
 
         /// <summary>
@@ -37,7 +41,11 @@ namespace Catan3.Shared.Utility
             WriteIndented = true, // Pretty formatting for readability
             Converters = { new JsonStringEnumConverter() },
             AllowTrailingCommas = true,
-            ReadCommentHandling = JsonCommentHandling.Skip
+            ReadCommentHandling = JsonCommentHandling.Skip,
+            // Increase validation limits for complex GameModel objects
+            MaxDepth = 128, // Default is 64, increase for nested game structures
+            DefaultBufferSize = 32 * 1024, // 32KB buffer size
+            ReferenceHandler = ReferenceHandler.IgnoreCycles // Handle circular references
         };
 
         /// <summary>
@@ -86,6 +94,9 @@ namespace Catan3.Shared.Utility
             target.WriteIndented = StandardOptions.WriteIndented;
             target.AllowTrailingCommas = StandardOptions.AllowTrailingCommas;
             target.ReadCommentHandling = StandardOptions.ReadCommentHandling;
+            target.MaxDepth = StandardOptions.MaxDepth;
+            target.DefaultBufferSize = StandardOptions.DefaultBufferSize;
+            target.ReferenceHandler = StandardOptions.ReferenceHandler;
             
             // Copy converters
             target.Converters.Clear();

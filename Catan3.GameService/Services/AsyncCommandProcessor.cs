@@ -15,16 +15,13 @@ namespace Catan3.GameService.Services
     /// </summary>
     public class AsyncCommandProcessor
     {
-        private readonly GameStateMachineService _gameService;
         private readonly SignalRNotificationService _signalRNotification;
         private readonly ILogger<AsyncCommandProcessor> _logger;
 
         public AsyncCommandProcessor(
-            GameStateMachineService gameService,
             SignalRNotificationService signalRNotification,
             ILogger<AsyncCommandProcessor> logger)
         {
-            _gameService = gameService;
             _signalRNotification = signalRNotification;
             _logger = logger;
         }
@@ -34,7 +31,8 @@ namespace Catan3.GameService.Services
         /// </summary>
         /// <param name="request">The game command request</param>
         /// <param name="commandId">Unique command identifier for tracking</param>
-        public async Task ProcessAsync(JsonElement request, Guid commandId)
+        /// <param name="getGameStateMachine">Function to get GameStateMachine by gameId</param>
+        public async Task ProcessAsync(JsonElement request, Guid commandId, Func<string, GameStateMachine> getGameStateMachine)
         {
             string? gameId = null;
             try
@@ -47,8 +45,8 @@ namespace Catan3.GameService.Services
 
                 _logger.LogEvent("Process Command", $"Processing command {commandId} for game {gameId}");
 
-                // Execute game logic using the existing GameApiController logic
-                var gameModel = await ExecuteGameLogicAsync(request);
+                // Execute game logic using the provided GameStateMachine function
+                var gameModel = await ExecuteGameLogicAsync(request, getGameStateMachine);
                 gameId = gameModel.GameId; // Ensure we have the correct gameId
 
                 // Parallel operations: Notify clients + command completion
@@ -78,11 +76,12 @@ namespace Catan3.GameService.Services
         }
 
         /// <summary>
-        /// Executes the game logic using the existing GameApiController patterns
+        /// Executes the game logic using the provided GameStateMachine function
         /// </summary>
         /// <param name="request">The game command request</param>
+        /// <param name="getGameStateMachine">Function to get GameStateMachine by gameId</param>
         /// <returns>The updated game model</returns>
-        private async Task<GameModel> ExecuteGameLogicAsync(JsonElement request)
+        private async Task<GameModel> ExecuteGameLogicAsync(JsonElement request, Func<string, GameStateMachine> getGameStateMachine)
         {
             // Execute synchronously but wrap in Task for async interface
             return await Task.Run(() =>
@@ -97,20 +96,23 @@ namespace Catan3.GameService.Services
 
                 _logger.LogDebug("Processing message type: {MessageType} for game {GameId}", messageType, gameId);
 
-                // Use the GameStateMachineService to execute the action (same logic as GameApiController)
+                // Get the GameStateMachine directly from the controller
+                var gameStateMachine = getGameStateMachine(gameId);
+
+                // Execute the action directly on the GameStateMachine
                 GameModel? updatedGameModel = messageType switch
                 {
-                    "UndoMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessUndoMessage(messageData, gsm)),
-                    "RedoMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessRedoMessage(messageData, gsm)),
-                    "NextMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessNextMessage(messageData, gsm)),
-                    "PurchaseMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessPurchaseMessage(messageData, gsm)),
-                    "RoadPurchaseMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessRoadPurchase(messageData, gsm)),
-                    "BuildingUpgradeMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessBuildingUpgrade(messageData, gsm)),
-                    "MoveRobberMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessMoveRobber(messageData, gsm)),
-                    "RollMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessRoll(messageData, gsm)),
-                    "SetPlayerOrderMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessSetPlayerOrder(messageData, gsm)),
-                    "BalanceBoardMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessBalanceBoard(messageData, gsm)),
-                    "GoFirstMessage" => _gameService.ExecuteAction(gameId, gsm => ProcessGoFirst(messageData, gsm)),
+                    "UndoMessage" => ProcessUndoMessage(messageData, gameStateMachine),
+                    "RedoMessage" => ProcessRedoMessage(messageData, gameStateMachine),
+                    "NextMessage" => ProcessNextMessage(messageData, gameStateMachine),
+                    "PurchaseMessage" => ProcessPurchaseMessage(messageData, gameStateMachine),
+                    "RoadPurchaseMessage" => ProcessRoadPurchase(messageData, gameStateMachine),
+                    "BuildingUpgradeMessage" => ProcessBuildingUpgrade(messageData, gameStateMachine),
+                    "MoveRobberMessage" => ProcessMoveRobber(messageData, gameStateMachine),
+                    "RollMessage" => ProcessRoll(messageData, gameStateMachine),
+                    "SetPlayerOrderMessage" => ProcessSetPlayerOrder(messageData, gameStateMachine),
+                    "BalanceBoardMessage" => ProcessBalanceBoard(messageData, gameStateMachine),
+                    "GoFirstMessage" => ProcessGoFirst(messageData, gameStateMachine),
                     _ => throw new ArgumentException($"Unknown message type: {messageType}")
                 };
 

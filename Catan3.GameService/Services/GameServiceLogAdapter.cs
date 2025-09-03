@@ -7,8 +7,8 @@ using Catan3.GameService.Utility;
 namespace Catan3.GameService.Services
 {
     /// <summary>
-    /// GameService implementation of IGameLog that wraps the existing Log&lt;string&gt; class.
-    /// Bridges the shared GameStateMachine logging interface to GameService's existing Log infrastructure.
+    /// GameService implementation of IGameLog that wraps the existing Trace&lt;string&gt; class.
+    /// Bridges the shared GameStateMachine logging interface to GameService's existing Trace infrastructure.
     /// </summary>
     public class GameServiceLogAdapter : IGameLog
     {
@@ -48,7 +48,7 @@ namespace Catan3.GameService.Services
             };
         }
 
-        public void LoadFromSerializableLog(Catan3.Shared.Interfaces.SerializableLog serializableLog)
+        public GameModel LoadFromSerializableLog(Catan3.Shared.Interfaces.SerializableLog serializableLog)
         {
             // Convert shared SerializableLog to GameService SerializableLog format
             var serviceSerializableLog = new Catan3.GameService.Utility.SerializableLog
@@ -62,6 +62,7 @@ namespace Catan3.GameService.Services
 
             // Replace our internal log with a new one created from the serializable log
             _log = Log<string>.FromSerializableLog(serviceSerializableLog, _persistenceService, _log.FilePath);
+            return _log.CopyCurrent();
         }
 
         public void Done(GameModel model)

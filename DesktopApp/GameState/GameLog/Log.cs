@@ -84,11 +84,11 @@ namespace Catan3.Utility
             if (localSaveFile.EndsWith(".catan_test", StringComparison.OrdinalIgnoreCase))
             {
                 InTestMode = true;
-                this.TraceMessage($"Log constructor: Test mode ENABLED for file: {localSaveFile}");
+                this.TraceMessage($"Trace constructor: Test mode ENABLED for file: {localSaveFile}");
             }
             else
             {
-                this.TraceMessage($"Log constructor: Test mode disabled for file: {localSaveFile}");
+                this.TraceMessage($"Trace constructor: Test mode disabled for file: {localSaveFile}");
             }
         }
 
@@ -281,12 +281,12 @@ namespace Catan3.Utility
             return log;
         }
         /// <summary>
-        /// Rehydrates a SerializableLog into a Log<T> instance, converting serialized JSON strings 
+        /// Rehydrates a SerializableLog into a Trace<T> instance, converting serialized JSON strings 
         /// back into their original data types and preserving the LIFO order of operations as 
         /// represented in the DoneStack and RedoStack.
         /// </summary>
         /// <param name="sLog">The SerializableLog instance to convert.</param>
-        /// <returns>A new Log<T> instance populated with the data from the SerializableLog's stacks and game type.</returns>
+        /// <returns>A new Trace<T> instance populated with the data from the SerializableLog's stacks and game type.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the JSON deserialization fails or if the JSON format is not compatible with type T.</exception>
         public static Log<T> FromSerializableLog(SerializableLog sLog, IPersistenceService PersistenceService, string filePath)
         {
@@ -307,7 +307,7 @@ namespace Catan3.Utility
             return log;
         }
         /// <summary>
-        ///     creates a Log<T> from a GameModel, serializing the GameModel to JSON and adding it to the DoneStack.
+        ///     creates a Trace<T> from a GameModel, serializing the GameModel to JSON and adding it to the DoneStack.
         ///     effectively loads the game from a GameModel. Used primarily in testing.
         /// </summary>
         /// <param name="gameModel"></param>
@@ -411,7 +411,7 @@ namespace Catan3.Utility
             }
             catch (Exception ex)
             {
-                // Log the error and return false indicating failure
+                // Trace the error and return false indicating failure
                 Debug.WriteLine($"Redo operation failed: {ex.Message}");
                 return null;
             }
@@ -555,18 +555,13 @@ namespace Catan3.Utility
     {
         public static string JsonSerialize<T>(T obj)
         {
-            return JsonSerializer.Serialize(obj, JsonOptions);
+            return JsonSerializer.Serialize(obj, Catan3.Shared.Utility.JsonHelper.StandardOptions);
         }
         public static T? JsonDeserialize<T>(string json)
         {
-            return JsonSerializer.Deserialize<T>(json, JsonOptions);
+            return JsonSerializer.Deserialize<T>(json,  Catan3.Shared.Utility.JsonHelper.StandardOptions);
         }
-        private static readonly JsonSerializerOptions JsonOptions = new()
-        {
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            WriteIndented = false,
-            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
-        };
+      
         public static byte[] Compress(string text)
         {
             var buffer = Encoding.UTF8.GetBytes(text);

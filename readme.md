@@ -50,6 +50,84 @@ Game actions use specific message types instead of generic commands:
 
 This provides compile-time type safety and eliminates string-based action matching.
 
+## Game Lifecycle API Patterns
+
+The system follows a clean separation between game lifecycle management (REST) and real-time gameplay (SignalR):
+
+### **REST APIs - Game Lifecycle Management**
+These endpoints handle game creation, loading, and initial bootstrap operations:
+
+#### **Creating New Games**
+```http
+POST /api/game/new
+Content-Type: application/json
+
+{
+  "PlayerIds": ["Alice-001", "Bob-002", "Charlie-003"],
+  "GameType": "Regular"
+}
+
+Response: { "success": true, "gameId": "generated-uuid" }
+```
+
+#### **Loading Existing Games**
+```http
+POST /api/game/load
+Content-Type: application/json
+
+{
+  "CompressedLog": "base64-encoded-compressed-log-data"
+}
+
+Response: { "success": true, "gameId": "original-game-uuid" }
+```
+
+```http
+POST /api/game/loadmodel  
+Content-Type: application/json
+
+{
+  "GameModelJson": "{ /* GameModel serialized as JSON string */ }"
+}
+
+Response: { "success": true, "gameId": "original-game-uuid" }
+```
+
+#### **Key Design Principles**
+- **REST returns only `gameId`**: No GameModel data is returned from REST endpoints
+- **GameId preservation**: Loading existing games preserves their original GameId 
+- **No GameId extraction**: Service methods handle GameId internally from game data
+- **Bootstrap only**: REST APIs only create/load games, they don't handle gameplay
+
+### **SignalR - Real-time Gameplay**
+After bootstrapping with REST, all game interactions use SignalR:
+
+1. **Join Game**: `JoinGame(gameId, playerId)` - Client joins game group
+2. **Receive Initial State**: Server sends `GameStateUpdated` with complete GameModel
+3. **Send Commands**: `ExecuteGameAction(gameId, playerId, message)` - Typed game actions
+4. **Receive Updates**: Server broadcasts `GameStateUpdated` to all players
+5. **Command Feedback**: `CommandCompleted` or `CommandFailed` notifications
+
+### **Implementation Pattern**
+The clean pattern eliminates complex GameId extraction and tuple returns:
+
+```csharp
+// Clean pattern - single method, GameId from returned GameModel
+var gameModel = await _gameStateMachineService.CreateNewGameAsync(
+    gsm => gsm.HandleNewGameAsync(message));
+    
+return Ok(new { success = true, gameId = gameModel.GameId });
+```
+
+### **Test Pattern**
+Tests should follow this flow:
+1. Load `.catan_test` file and deserialize JSON
+2. Extract GameModel and action stack from test data
+3. Use REST API to load game: `POST /api/game/loadmodel`
+4. Join game via SignalR using returned `gameId`
+5. Execute recorded actions via SignalR
+6. Verify game state progression
+
 ## Rules 📋
 
 These rules *MUST* be followed for *ALL* requests and no violations of any of these rules should be tolerated.

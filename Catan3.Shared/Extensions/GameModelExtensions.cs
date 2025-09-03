@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Numerics;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
@@ -8,6 +10,117 @@ namespace Catan3.Shared.Extensions
 {
     public static class GameModelExtensions
     {
+        /// <summary>
+        /// Creates a new GameModel with the specified game metadata, players, and name.
+        /// Initializes all tiles, buildings, roads, and harbors for the game board.
+        /// </summary>
+        /// <param name="gameInfo">The game metadata containing board configuration.</param>
+        /// <param name="playerIds">The list of player IDs.</param>
+        /// <param name="gameName">The name of the game.</param>
+        /// <returns>A fully initialized GameModel ready to play.</returns>
+        public static GameModel CreateNew(IGameMetadata gameInfo, IList<string> playerIds, string gameName)
+        {
+            Debug.Assert((gameInfo.TileKeys.Count == gameInfo.Numbers.Count) && (gameInfo.TileKeys.Count == gameInfo.Resources.Count));
+            
+            if (playerIds.Count < gameInfo.ResourceRules.MinPlayers || playerIds.Count > gameInfo.ResourceRules.MaxPlayers)
+            {
+                throw new GameException($"{gameInfo.Description} must have players between {gameInfo.ResourceRules.MinPlayers} and {gameInfo.ResourceRules.MaxPlayers}. You gave {playerIds.Count}");
+            }
+            
+            List<PlayerModel> playerModels = playerIds.Select(id => new PlayerModel { Id = id }).ToList();
+            
+            GameModel game = new()
+            {
+                GameId = Guid.NewGuid().ToString(),
+                GameName = gameName,
+                CreatedTime = DateTime.UtcNow,
+                GameType = gameInfo.GameType,
+                Players = playerModels,
+                CurrentPlayerId = playerModels.FirstOrDefault()?.Id ?? "",
+                HouseRules = gameInfo.HouseRules,
+                ResourceRules = gameInfo.ResourceRules,
+                HasSupplementalBuildPhase = gameInfo.HasSupplemental,
+                EntitlementPurchaseModel = gameInfo.PurchaseableEntitlements.ToList(),
+                Tiles = [],
+                Buildings = [],
+                Roads = [],
+                Harbors = [],
+                GameResourcesModel = new ResourcesModel(),
+                RollModel = new RollModel(),
+                ActionFlags = new ActionFlags(),
+                Robber = new RobberModel { Coordinates = HexCoordinates.Default }
+            };
+            
+            // Initialize tiles
+            for (int i = 0; i < gameInfo.TileKeys.Count; i++)
+            {
+                var tile = new TileModel
+                {
+                    ResourceTileType = gameInfo.Resources[i],
+                    Number = gameInfo.Numbers[i],
+                    TileKey = gameInfo.TileKeys[i]
+                };
+                game.Tiles.Add(tile);
+            }
+            
+            // Initialize buildings and roads for each tile
+            foreach (var tile in game.Tiles)
+            {
+                // Add buildings for each position on the tile
+                foreach (HexPosition buildingPosition in Enum.GetValues<HexPosition>())
+                {
+                    if (buildingPosition == HexPosition.None) continue;
+                    
+                    var buildingKey = new BuildingKey(tile.TileKey, buildingPosition);
+                    var building = game.Buildings.FindBuildingModel(buildingKey);
+                    if (building is null)
+                    {
+                        game.Buildings.Add(new BuildingModel 
+                        { 
+                            BuildingKey = buildingKey, 
+                            BuildingState = BuildingState.NotBuildable 
+                        });
+                    }
+                }
+                
+                // Add roads for each side of the tile
+                foreach (HexSide roadPosition in Enum.GetValues<HexSide>())
+                {
+                    if (roadPosition == HexSide.None) continue;
+                    
+                    var roadKey = new RoadKey(tile.TileKey, roadPosition);
+                    var road = game.Roads.FindRoad(roadKey);
+                    if (road is null)
+                    {
+                        game.Roads.Add(new RoadModel 
+                        { 
+                            RoadKey = roadKey,
+                            RoadState = RoadState.Unowned
+                        });
+                    }
+                }
+            }
+            
+            // Add harbors
+            game.Harbors.AddRange(gameInfo.Harbors);
+
+            // Set random seed for new games
+            var random = new ReplayableRandom();
+            game.RandomSeed = random.Seed;
+            game.RandomIterations = 0;
+
+            // Shuffle the board
+            game.Shuffle();
+            
+            // Set initial game state
+            game.GameState = GameState.PickingBoard;
+            
+            // Compute initial game hash
+            game.UpdateGameHash();
+
+            return game;
+        }
+
         public static bool AllocationPhase(this GameModel gameModel)
         {
             return (gameModel.GameState == GameState.AllocateResourceForward || gameModel.GameState == GameState.AllocateResourceReverse ||
@@ -549,6 +662,148 @@ namespace Catan3.Shared.Extensions
             }
 
             return resources;
+        }
+
+        /// <summary>
+        /// Validates a GameModel's structural integrity for game operation.
+        /// Does not check GameId as that's assigned by the service layer.
+        /// </summary>
+        /// <param name="gameModel">The GameModel to validate (must not be null).</param>
+        /// <exception cref="GameException">Thrown with specific message when validation fails.</exception>
+        public static void Validate(this GameModel gameModel)
+        {
+            if (string.IsNullOrEmpty(gameModel.GameId))
+                throw new GameException("GameModel missing required GameID");
+            
+            
+            if (string.IsNullOrEmpty(gameModel.GameHash))
+                throw new GameException("GameModel missing required GameHash");
+            
+            // Check random state (needed for deterministic behavior)
+            if (gameModel.RandomSeed == 0)
+                throw new GameException("GameModel missing RandomSeed - required for deterministic game behavior");
+            
+            // Check essential collections exist and have content
+            if (gameModel.Players == null || gameModel.Players.Count == 0)
+                throw new GameException($"GameModel has no players (found: {gameModel.Players?.Count ?? 0})");
+            
+            if (gameModel.Tiles == null || gameModel.Tiles.Count == 0)
+                throw new GameException($"GameModel has no tiles (found: {gameModel.Tiles?.Count ?? 0})");
+            
+            if (gameModel.Roads == null || gameModel.Roads.Count == 0)
+                throw new GameException($"GameModel has no roads (found: {gameModel.Roads?.Count ?? 0})");
+            
+            if (gameModel.Buildings == null || gameModel.Buildings.Count == 0)
+                throw new GameException($"GameModel has no buildings (found: {gameModel.Buildings?.Count ?? 0})");
+            
+            // Check game type is valid
+            if (gameModel.GameType == GameType.Unset)
+                throw new GameException($"GameModel has invalid GameType: {gameModel.GameType}");
+            
+            // Check that players have IDs
+            for (int i = 0; i < gameModel.Players.Count; i++)
+            {
+                if (string.IsNullOrEmpty(gameModel.Players[i].Id))
+                    throw new GameException($"Player at index {i} missing required Id");
+            }
+        }
+
+        /// <summary>
+        /// Generates a descriptive filename for saving this GameModel.
+        /// Format: {GameName}-{GameType}-{GameId}.catan
+        /// Example: "MyGame-Regular-abc123.catan"
+        /// </summary>
+        public static string SaveFileName(this GameModel gameModel)
+        {
+            return $"{gameModel.GameName}-{gameModel.GameType}-{gameModel.GameId}.catan";
+        }
+
+        /// <summary>
+        /// Shuffles the content of a game model (tiles, numbers, resources).
+        /// Uses ReplayableRandom for deterministic behavior across platforms.
+        /// </summary>
+        public static void Shuffle(this GameModel game)
+        {
+            // CRITICAL FIX: Use ReplayableRandom with game's RandomSeed and RandomIterations
+            // This matches the Desktop app implementation exactly for deterministic behavior
+            var random = new ReplayableRandom(game.RandomSeed, game.RandomIterations);
+            int count = game.Tiles.Count;
+            
+            // NOTE: The validation loop below is INTENTIONALLY deterministic and thread-safe:
+            // - Each GameStateMachine instance operates on isolated game data (per-game concurrency isolation)
+            // - ReplayableRandom produces the same sequence for the same seed+iterations
+            // - The loop will always take the same number of iterations for the same starting conditions
+            // - This is NOT a race condition - it's deterministic game logic by design
+            do
+            {
+                ShuffleList<TileModel, ResourceType>(game.Tiles, random,
+                     tile => tile.ResourceTileType,
+                     (tile, type) => tile.ResourceTileType = type);
+                ShuffleList<TileModel, int>(game.Tiles, random,
+                    tile => tile.Number,
+                    (tile, number) => tile.Number = number);
+                ShuffleList<HarborModel, HarborType>(game.Harbors, random,
+                   harbor => harbor.HarborKey.HarborType,
+                   (harbor, type) => harbor.HarborKey.HarborType = type);
+                // Correct the placement of the number 7 on desert tiles
+                EnsureDesertSeven(game);
+            } while (!ValidateGame(game));
+
+            // CRITICAL: Update RandomIterations after shuffling, matching Desktop app
+            // This captures the total iterations needed (including validation loops) for replay consistency
+            game.RandomIterations = random.Iterations;
+            
+            // 1/14/2025: Robber starts off the board so the first move can be to a desert tile, so do NOT put the robber on a desert tile
+        }
+
+        /// <summary>
+        /// Validates that the game board doesn't have adjacent 6s and 8s.
+        /// </summary>
+        public static bool ValidateGame(this GameModel Game)
+        {
+            foreach (var tile in Game.Tiles.TilesWithNumber(6))
+            {
+                var adjacent = Game.Tiles.AdjacentTiles(tile);
+                if (adjacent != null && adjacent.TilesWithSixOrEight().Count != 0)
+                    return false;
+            }
+            
+            foreach (var tile in Game.Tiles.TilesWithNumber(8))
+            {
+                var adjacent = Game.Tiles.AdjacentTiles(tile);
+                if (adjacent != null && adjacent.TilesWithSixOrEight().Count != 0)
+                    return false;
+            }
+            
+            return true;
+        }
+
+        private static void ShuffleList<T, TValue>(IList<T> list, ReplayableRandom random, Func<T, TValue> valueSelector, Action<T, TValue> valueSetter)
+        {
+            int count = list.Count;
+            for (int i = 0; i < count; i++)
+            {
+                int j = random.Next(i, count); // Correct Fisher-Yates shuffle
+                var temp = valueSelector(list[j]);
+                valueSetter(list[j], valueSelector(list[i]));
+                valueSetter(list[i], temp);
+            }
+        }
+
+        private static void EnsureDesertSeven(GameModel game)
+        {
+            var deserts = game.Tiles.Where(t => t.ResourceTileType == ResourceType.Desert).ToList();
+            var sevens = game.Tiles.Where(t => t.Number == 7).ToList();
+            System.Diagnostics.Debug.Assert(deserts.Count == sevens.Count, "Mismatch between deserts and tiles with number 7");
+            
+            for (int i = 0; i < deserts.Count; i++)
+            {
+                if (deserts[i].Number != 7)
+                {
+                    sevens[i].Number = deserts[i].Number;
+                    deserts[i].Number = 7;
+                }
+            }
         }
     }
 }

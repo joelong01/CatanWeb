@@ -20,7 +20,7 @@ namespace Catan3.Shared.GameLogic
         private readonly GameModel _initialGameModel;
         private readonly List<IRecordedMessage> _recordedActions;
         private readonly string _outputPath;
-        private readonly IGameLogger _logger;
+        private readonly ICatanDebugTrace _logger;
         private readonly IFileOperations _fileOperations;
         private bool _isRecording;
 
@@ -31,14 +31,14 @@ namespace Catan3.Shared.GameLogic
         /// <param name="logFilePath">The path of the log file to use for generating the test file path</param>
         /// <param name="logger">Logger for recording operations</param>
         /// <param name="fileOperations">File operations service for saving recordings</param>
-        public GameRecorder(GameModel initialGameModel, string logFilePath, IGameLogger logger, IFileOperations fileOperations)
+        public GameRecorder(GameModel initialGameModel, string logFilePath, ICatanDebugTrace logger, IFileOperations fileOperations)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fileOperations = fileOperations ?? throw new ArgumentNullException(nameof(fileOperations));
 
             if (initialGameModel is null)
             {
-                _logger.LogError("Initial GameModel is null.");
+                _logger.TraceError("Initial GameModel is null.");
                 throw new ArgumentNullException(nameof(initialGameModel));
             }
 
@@ -51,8 +51,8 @@ namespace Catan3.Shared.GameLogic
             _outputPath = GenerateTestFilePath(logFilePath);
             _isRecording = true;
 
-            _logger.LogInformation($"🎬 Recording started from GameState: {_initialGameModel.GameState}");
-            _logger.LogInformation($"📁 Recording will be saved to: {_outputPath}");
+            _logger.TraceInfo($"🎬 Recording started from GameState: {_initialGameModel.GameState}");
+            _logger.TraceInfo($"📁 Recording will be saved to: {_outputPath}");
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace Catan3.Shared.GameLogic
         {
             if (!_isRecording)
             {
-                _logger.LogWarning($"⚠️ Attempted to record action while recording is stopped: {recordedMessage.RecordType}");
+                _logger.TraceWarning($"⚠️ Attempted to record action while recording is stopped: {recordedMessage.RecordType}");
                 return;
             }
 
@@ -74,7 +74,7 @@ namespace Catan3.Shared.GameLogic
             }
             catch (Exception ex)
             {
-                _logger.LogError($"❌ Error recording action {recordedMessage.RecordType}: {ex.Message}");
+                _logger.TraceError($"❌ Error recording action {recordedMessage.RecordType}: {ex.Message}");
                 // Don't throw - continue recording other actions
             }
         }
@@ -115,12 +115,12 @@ namespace Catan3.Shared.GameLogic
                 var actionCount = _recordedActions.Count;
                 _isRecording = false;
 
-                _logger.LogInformation($"🎬 Recording ended - saved {actionCount} actions to {_outputPath}");
+                _logger.TraceInfo($"🎬 Recording ended - saved {actionCount} actions to {_outputPath}");
                 return _outputPath;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"❌ Failed to save recording: {ex.Message}");
+                _logger.TraceError($"❌ Failed to save recording: {ex.Message}");
                 throw new InvalidOperationException($"Failed to save recording to {_outputPath}: {ex.Message}", ex);
             }
         }

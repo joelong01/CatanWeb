@@ -156,7 +156,7 @@ namespace Catan3.Controls
             //        // Get the URI of the image
             //        var uri = bitmapImage.UriSource;
 
-            //        // Log or handle the URI
+            //        // Trace or handle the URI
             //        this.TraceMessage($"Image Loaded: {uri}");
             //    }
             //}
@@ -171,7 +171,7 @@ namespace Catan3.Controls
                     // Get the URI of the image
                     var uri = bitmapImage.UriSource;
 
-                    // Log or handle the URI
+                    // Trace or handle the URI
                     this.TraceMessage($"Failed to Load: {uri}");
                 }
             }

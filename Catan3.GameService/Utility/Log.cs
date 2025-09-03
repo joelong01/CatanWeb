@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
+using Catan3.Shared.Extensions;
 using Catan3.GameService.Services;
 using Microsoft.Extensions.Logging;
 
@@ -69,6 +70,109 @@ namespace Catan3.GameService.Utility
             _logger = logger;
         }
 
+        /// <summary>
+        /// Constructor for loading existing GameModel from LoadGameModelMessage.
+        /// Handles deserialization, validation, file path generation, and initialization.
+        /// If message.IsTest is true, no file path is set (no saving). If false, uses GameModel.SaveFileName() for naming.
+        /// </summary>
+        public Log(IPersistenceService? PersistenceService, LoadGameModelMessage message, ILogger? logger = null)
+        {
+            PersistService = PersistenceService;
+            DoneStack.CollectionChanged += DoneStack_ListChanged;
+            RedoStack.CollectionChanged += RedoStack_ListChanged;
+            _logger = logger;
+            
+            // Deserialize the GameModel from the message
+            var gameModel = SerializationHelper.JsonDeserialize<GameModel>(message.GameModelJson)
+                ?? throw new InvalidOperationException("Failed to deserialize GameModel from LoadGameModelMessage JSON");
+            
+            // Validate the deserialized GameModel
+            gameModel.Validate();
+            
+            // Set file path based on test mode
+            if (message.IsTest)
+            {
+                FilePath = string.Empty; // No saving for tests
+            }
+            else
+            {
+                // Use GameModel extension method for consistent naming
+                FilePath = Path.Combine(Path.GetTempPath(), "Catan3Games", gameModel.SaveFileName());
+            }
+            
+            // Initialize with the provided GameModel
+            var json = SerializationHelper.JsonSerialize(gameModel);
+            var data = (T)(object)json;
+            DoneStack.Add(data);
+            GameType = gameModel.GameType;
+        }
+
+        /// <summary>
+        /// Constructor for loading existing GameModel with proper file path generation.
+        /// If isTest is true, no file path is set (no saving). If false, uses GameModel.SaveFileName() for naming.
+        /// </summary>
+        public Log(IPersistenceService? PersistenceService, GameModel gameModel, bool isTest, ILogger? logger = null)
+        {
+            PersistService = PersistenceService;
+            DoneStack.CollectionChanged += DoneStack_ListChanged;
+            RedoStack.CollectionChanged += RedoStack_ListChanged;
+            _logger = logger;
+            
+            // Set file path based on test mode
+            if (isTest)
+            {
+                FilePath = string.Empty; // No saving for tests
+            }
+            else
+            {
+                // Use GameModel extension method for consistent naming
+                FilePath = Path.Combine(Path.GetTempPath(), "Catan3Games", gameModel.SaveFileName());
+            }
+            
+            // Initialize with the provided GameModel
+            var json = SerializationHelper.JsonSerialize(gameModel);
+            var data = (T)(object)json;
+            DoneStack.Add(data);
+            GameType = gameModel.GameType;
+        }
+
+        /// <summary>
+        /// Constructor for loading from compressed game data (SerializableLog).
+        /// Creates a fully initialized Log with Done and Redo stacks from the SerializableLog.
+        /// </summary>
+        public Log(IPersistenceService? PersistenceService, Catan3.Shared.Interfaces.SerializableLog serializableLog, ILogger? logger = null)
+        {
+            PersistService = PersistenceService;
+            DoneStack.CollectionChanged += DoneStack_ListChanged;
+            RedoStack.CollectionChanged += RedoStack_ListChanged;
+            _logger = logger;
+            
+            // Set file path (empty for loaded games - they manage their own persistence)
+            FilePath = string.Empty;
+            
+            // Restore Done and Redo stacks from the SerializableLog
+            foreach (var item in serializableLog.DoneStack)
+            {
+                var data = (T)(object)item;
+                DoneStack.Add(data);
+            }
+            
+            foreach (var item in serializableLog.RedoStack)
+            {
+                var data = (T)(object)item;
+                RedoStack.Add(data);
+            }
+            
+            // Restore other properties
+            GameType = serializableLog.GameType;
+        }
+
+        private void UpdateFlags()
+        {
+            CanUndo = DoneStack.Count > 1;
+            CanRedo = RedoStack.Count > 0;
+        }
+
         public int DoneCount => DoneStack.Count;
         public int RedoCount => RedoStack.Count;
 
@@ -121,7 +225,7 @@ namespace Catan3.GameService.Utility
             {
                 if (_logger != null)
                 {
-                    _logger.LogError(ex, "[Log] Undo operation failed: {Message}", ex.Message);
+                    _logger.LogError(ex, "[Trace] Undo operation failed: {Message}", ex.Message);
                 }
                 else
                 {
@@ -221,9 +325,22 @@ namespace Catan3.GameService.Utility
             return log;
         }
 
+        public static Log<T> FromCompressedString(string compressedBase64, IPersistenceService PersistenceService)
+        {
+            var compressedBytes = Convert.FromBase64String(compressedBase64);
+            var json = SerializationHelper.Decompress(compressedBytes);
+            var serializableLog = SerializationHelper.JsonDeserialize<SerializableLog>(json)
+                ?? throw new InvalidOperationException("Failed to deserialize compressed log data");
+
+            return FromSerializableLog(serializableLog, PersistenceService, string.Empty);
+        }
+
         public async Task SaveAsync()
         {
             if (PersistService is null) return;
+            
+            // Don't save if FilePath is empty (test mode)
+            if (string.IsNullOrEmpty(FilePath)) return;
 
             try
             {
@@ -236,7 +353,7 @@ namespace Catan3.GameService.Utility
             {
                 if (_logger != null)
                 {
-                    _logger.LogError(ex, "[Log] Failed SaveAs: {Message}", ex.Message);
+                    _logger.LogError(ex, "[Trace] Failed SaveAs: {Message}", ex.Message);
                 }
                 else
                 {
