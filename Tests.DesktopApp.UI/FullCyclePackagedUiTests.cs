@@ -99,7 +99,6 @@ namespace Tests.DesktopApp.UI
     {
         private static int SHORT_WAIT = 250;
         private static int MEDIUM_WAIT = 750;
-        private static int LONG_WAIT = 1000;
         private UIA3Automation? _automation;
         private AutomationElement? _main;
         private bool _testSucceeded = false;

@@ -17,7 +17,6 @@ using Catan3.GameState;
 using Catan3.Shared.Utility;
 using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Windows.Storage;
 namespace Catan3.Utility
 {
     /// <summary>
@@ -93,24 +92,9 @@ namespace Catan3.Utility
             }
         }
 
-        public async Task<bool> InitializeAsync(string path)
+        public bool FileExists(string path)
         {
-            try
-            {
-                StorageFile file = await StorageFile.GetFileFromPathAsync(path);
-
-
-                return true;
-            }
-            catch (FileNotFoundException)
-            {
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error checking file existence: {ex.Message}");
-                return false;
-            }
+            return File.Exists(path);
         }
 
 
