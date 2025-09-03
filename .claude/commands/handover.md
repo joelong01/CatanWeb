@@ -1,10 +1,12 @@
 # Session Handover Command
 
-Prepare to end the current session by organizing work, documenting progress, and ensuring smooth continuation in the next session.
+Prepare to end the current session by organizing work, documenting progress,
+and ensuring smooth continuation in the next session.
 
 ## Command Purpose
 
-Create a comprehensive handover package that allows the next session (with you or another developer) to quickly understand and continue the work.
+Create a comprehensive handover package that allows the next session
+(with you or another developer) to quickly understand and continue the work.
 
 ## Actions to Perform
 
@@ -24,7 +26,8 @@ Create a comprehensive handover package that allows the next session (with you o
 
 ### 3. Update Project Documentation
 
-**IMPORTANT**: You MUST create or update these documentation files using the Write/Edit tools:
+**IMPORTANT**: You MUST create or update these documentation files using
+the Write/Edit tools:
 
 - **Update or create `CLAUDE.md`** in the project root (not .claude/) with:
   - Current project state
@@ -36,6 +39,7 @@ Create a comprehensive handover package that allows the next session (with you o
   - Key decisions made during this session
   - Unresolved issues
   - Next session priorities
+  - Follow all MD Linter rules.  in particular line length requirements.
   
   Note: This file is automatically loaded by Claude Code at the start of each session
   
@@ -46,7 +50,8 @@ Create a comprehensive handover package that allows the next session (with you o
 
 ### 4. Create Session Summary
 
-**CRITICAL**: You MUST create a file named `SESSION_SUMMARY.md` in the project root directory using the Write tool.
+**CRITICAL**: You MUST create a file named `SESSION_SUMMARY.md` in the
+project root directory using the Write tool.
 
 Create SESSION_SUMMARY.md with the following content:
 
@@ -113,7 +118,8 @@ Create SESSION_SUMMARY.md with the following content:
 
 ### 6. Create Session State File
 
-**Optional but recommended**: Create a `.claude/session-state.json` file with:
+**Optional but recommended**: Create a `.claude/session-state.json` file
+with:
 
 - List of files that were being actively worked on
 - Current directory context
@@ -143,7 +149,7 @@ Before ending session, verify:
 
 After creating all necessary files, provide a final report:
 
-```
+```text
 Session Handover Complete ✅
 
 📄 Files Created/Updated:

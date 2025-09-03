@@ -47,11 +47,13 @@ code --install-extension ms-dotnettools.vscode-dotnet-runtime
 ## Essential Extensions
 
 ### Required for C# Development
+
 - **C# Dev Kit** - Official Microsoft C# extension with IntelliSense and debugging
 - **C#** - Base C# language support (auto-installed with C# Dev Kit)
 - **.NET Install Tool** - Manages .NET runtime installations
 
 ### Recommended for Enhanced Development
+
 - **PowerShell** - PowerShell scripting support
 - **GitLens** - Enhanced Git capabilities
 - **NuGet Package Manager** - GUI for NuGet packages
@@ -72,6 +74,7 @@ If you see errors like "The type or namespace name 'Shared' does not exist":
    - The `Catan.sln` file should be in the workspace root
 
 3. **Clean and Rebuild**:
+
    ```bash
    dotnet clean
    dotnet restore  

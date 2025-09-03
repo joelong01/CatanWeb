@@ -3,6 +3,7 @@
 ## Handling FlipperCtrl Purchase Buttons
 
 ### Problem
+
 Purchase buttons in the Catan app are inside `FlipperCtrl` controls that can be "face down" (showing the back) or "face up" (showing the front with buttons). When face down, the buttons are not accessible via standard automation searches.
 
 ### Best Practice Solution: Dynamic Search with Fallback
@@ -10,6 +11,7 @@ Purchase buttons in the Catan app are inside `FlipperCtrl` controls that can be 
 Our implementation uses a multi-tier approach:
 
 #### Tier 1: Cache Lookup (Fast)
+
 ```csharp
 // First try cached elements from initial load
 if (_uiControlsCache.TryGetValue(automationId, out var cachedElement))
@@ -17,6 +19,7 @@ if (_uiControlsCache.TryGetValue(automationId, out var cachedElement))
 ```
 
 #### Tier 2: Fresh DOM Search (Medium)
+
 ```csharp
 // Perform fresh search of entire UI tree
 var allElements = _mainWindow.FindAllDescendants();
@@ -24,6 +27,7 @@ var allElements = _mainWindow.FindAllDescendants();
 ```
 
 #### Tier 3: FlipperCtrl Pattern Search (Thorough)
+
 ```csharp
 // Look for FlipperCtrl parent containers
 // Search children and grandchildren for target element
@@ -32,6 +36,7 @@ var allElements = _mainWindow.FindAllDescendants();
 ### Implementation Details
 
 **In UIAutomationHelper.cs:**
+
 - `ClickButton()` detects purchase buttons and uses `FindPurchaseButtonDynamically()`
 - `FindPurchaseButtonDynamically()` implements the 3-tier search
 - `FindByFlipperCtrlPattern()` handles FlipperCtrl-specific searching
@@ -48,14 +53,17 @@ var allElements = _mainWindow.FindAllDescendants();
 ### Alternative Approaches Considered
 
 #### Option A: Set AutomationId on FlipperCtrl Parent
+
 - **Pros**: Could click parent, navigate to button
 - **Cons**: Requires app changes, breaks encapsulation
 
 #### Option B: Wait for Flip Animation
+
 - **Pros**: Simple, waits for natural state changes  
 - **Cons**: Assumes state will change, adds test time
 
 #### Option C: Force Flip via Game State
+
 - **Pros**: Deterministic, controls when buttons appear
 - **Cons**: Requires game logic knowledge, fragile
 
@@ -71,6 +79,7 @@ uiHelper.ClickButton("UiPumpButton");         // ✅ Fast cache lookup
 ### Debugging
 
 When purchase buttons aren't found, look for these log messages:
+
 - "INFO: Purchase buttons not found in initial cache (may be face-down)"
 - "Performing dynamic search for purchase button"  
 - "Found via FlipperCtrl pattern search"
@@ -79,7 +88,7 @@ When purchase buttons aren't found, look for these log messages:
 ### Testing Different Scenarios
 
 1. **Face-up buttons**: Should use cache/fast path
-2. **Face-down buttons**: Should use dynamic search 
+2. **Face-down buttons**: Should use dynamic search
 3. **Animation in progress**: Should retry and eventually succeed
 4. **Disabled purchase**: Should provide clear error message
 

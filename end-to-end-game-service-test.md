@@ -1,17 +1,28 @@
 # End-to-End GameService Test Documentation
 
 ## Overview
-This document describes the complete flow of the GameService end-to-end tests, which verify that the multiplayer game service correctly handles game state synchronization across multiple clients using REST APIs and SignalR real-time communication.
+
+This document describes the complete flow of the GameService end-to-end tests,
+which verify that the multiplayer game service correctly handles game state
+synchronization across multiple clients using REST APIs and SignalR real-time
+communication.
 
 ## Test Architecture
 
 ### Key Components
-1. **GameServiceProxy** (`Catan3.Shared\Services\GameServiceProxy.cs`) - Client-side proxy for both REST and SignalR communication
-2. **GameHub** (`Catan3.GameService\Hubs\GameHub.cs`) - SignalR hub for real-time game updates
-3. **GameApiController** (`Catan3.GameService\Controllers\GameApiController.cs`) - REST API endpoints for game lifecycle
-4. **GameStateMachineService** (`Catan3.GameService\Services\GameStateMachineService.cs`) - Manages GameStateMachine instances per game
+
+1. **GameServiceProxy** (`Catan3.Shared\Services\GameServiceProxy.cs`) -
+   Client-side proxy for both REST and SignalR communication
+2. **GameHub** (`Catan3.GameService\Hubs\GameHub.cs`) - SignalR hub for
+   real-time game updates
+3. **GameApiController** (`Catan3.GameService\Controllers\GameApiController.cs`)
+   - REST API endpoints for game lifecycle
+4. **GameStateMachineService**
+   (`Catan3.GameService\Services\GameStateMachineService.cs`) - Manages
+   GameStateMachine instances per game
 
 ### Communication Pattern
+
 - **REST API**: Used for game lifecycle operations (create, load, discover)
 - **SignalR**: Used for all real-time gameplay commands and state updates
 - **Async Pattern**: Clients send commands and wait for SignalR broadcast updates
@@ -19,13 +30,16 @@ This document describes the complete flow of the GameService end-to-end tests, w
 ## Phase 1: Test Data Loading
 
 ### 1.1 Finding and Loading the Test File
+
 ```csharp
 // Load the shared test scenario from embedded resource
 var testScenario = await Catan3.Shared.TestData.TestDataLoader.LoadTestScenarioAsync("Expansion.catan_test");
 ```
 
 ### 1.2 Test File Structure
+
 The `.catan_test` file contains:
+
 ```json
 {
   "gameModel": { /* Complete GameModel object */ },
@@ -34,6 +48,7 @@ The `.catan_test` file contains:
 ```
 
 ### 1.3 Data Extraction
+
 ```csharp
 // Extract player IDs from the initial game model
 var playerIds = testScenario.InitialGameModel.Players.Select(p => p.Id).ToArray();
@@ -48,6 +63,7 @@ testScenario.InitialGameModel.GameName = $"Expansion Test {randomSalt}";
 ### 2.1 All Players Connect (Real-World Flow)
 
 #### Step 1: All Players Create SignalR Connections
+
 ```csharp
 // Create connections for ALL players first (like real users would)
 var allProxies = new Dictionary<string, GameServiceProxy>();
@@ -68,6 +84,7 @@ foreach (var playerId in playerIds)
 ### 2.2 One Player Creates/Loads the Game
 
 #### Step 2: First Player Loads GameModel via REST API
+
 ```csharp
 var firstPlayerProxy = allProxies[firstPlayerId];
 var loadResult = await firstPlayerProxy.LoadGameModelAsync(testScenario.InitialGameModel);
@@ -75,11 +92,13 @@ var actualGameId = firstPlayerProxy.GameId ?? throw new InvalidOperationExceptio
 ```
 
 **REST API Call**:
+
 - **Endpoint**: `POST /api/game/loadmodel`
 - **Request Body**: `LoadGameModelMessage` containing the complete GameModel (including its original GameId)
 - **Response**: `{ success: true, gameId: "original-gameid-from-gamemodel" }`
 
 **Internal Service Flow**:
+
 1. `GameApiController.LoadGameModel()` receives request with GameModel
 2. `GameStateMachineService.CreateNewGameAsync()` creates new GameStateMachine instance
 3. `GameStateMachine.HandleLoadGameModelAsync()` loads the GameModel with its existing GameId
@@ -90,6 +109,7 @@ var actualGameId = firstPlayerProxy.GameId ?? throw new InvalidOperationExceptio
 ### 2.3 All Players Discover and Join the Game
 
 #### Step 3: All Players Search for and Join the Game
+
 ```csharp
 // ALL players (including the one who loaded) now discover and join the game
 foreach (var playerId in playerIds)
@@ -114,11 +134,13 @@ foreach (var playerId in playerIds)
 ```
 
 **REST API Call for Each Player**:
+
 - **Endpoint**: `GET /api/companion/games`
 - **Purpose**: Each player independently discovers the available games
 - **Critical Test**: This proves game discovery works for all players
 
 **SignalR Hub Method**: `JoinGame(gameId, playerId)` (called for each player)
+
 - Adds each player's connection to SignalR group for the game
 - Broadcasts updated GameModel to all clients in group after each join
 - Notifies existing players of each new player joining
@@ -129,6 +151,7 @@ foreach (var playerId in playerIds)
 ### 2.4 All Players Successfully Joined
 
 At this point:
+
 - **SignalR Connections**: All players connected to SignalR hub first
 - **Game Loading**: One player loaded the GameModel via REST API  
 - **Game Discovery**: All players independently discovered the game via REST API
@@ -136,6 +159,7 @@ At this point:
 - **Game State**: Updated to include all players who have joined
 
 ### 2.5 Synchronization Verification
+
 ```csharp
 // Wait for SignalR notifications to propagate to all clients
 await Task.Delay(500);
@@ -149,6 +173,7 @@ VerifyAllProxiesHaveSameGameModel(allProxies, testScenario.InitialGameModel.Game
 ## Phase 3: Action Replay
 
 ### 3.1 Recorded Action Types
+
 The test replays these action types from the action stack:
 
 | Action Type | SignalR Method | Message Object |
@@ -166,6 +191,7 @@ The test replays these action types from the action stack:
 | MoveRobberRecord | ExecuteMoveRobber | MoveRobberMessage |
 
 ### 3.2 Replay Loop
+
 ```csharp
 foreach (var recordedMessage in testScenario.RecordedActions)
 {
@@ -190,12 +216,14 @@ foreach (var recordedMessage in testScenario.RecordedActions)
 ### 3.3 Example Action Execution
 
 #### Shuffle Action
+
 ```csharp
 case ShuffleRecord shuffle:
     var shuffleResult = await currentPlayerProxy.ExecuteShuffleAsync();
 ```
 
 **SignalR Flow**:
+
 1. **Client sends**: `connection.InvokeAsync("ExecuteDoAction", gameId, playerId, ShuffleMessage)`
 2. **Hub processes**: `GameHub.ExecuteDoAction()` receives message
 3. **Service executes**: `GameStateMachineService.ExecuteActionAsync()` → `GameStateMachine.HandleShuffleAsync()`
@@ -205,12 +233,14 @@ case ShuffleRecord shuffle:
 ## Phase 4: Message Flow Summary
 
 ### REST API Endpoints Used
+
 1. `POST /api/game/loadmodel` - Load GameModel to create game
 2. `GET /api/companion/games` - Discover available games
 3. `POST /api/game/new` - Create new game (alternative flow)
 4. `POST /api/game/load` - Load from compressed log (alternative flow)
 
 ### SignalR Hub Methods Called
+
 1. `JoinGame(gameId, playerId)` - Join game group
 2. `ExecuteDoAction(gameId, playerId, message)` - Execute Undo/Redo/Next/Shuffle/Balance
 3. `ExecutePurchase(gameId, playerId, message)` - Purchase entitlements
@@ -222,6 +252,7 @@ case ShuffleRecord shuffle:
 9. `LeaveGame(gameId, playerId)` - Leave game group
 
 ### SignalR Client Events Received
+
 1. `GameStateUpdated(GameModel)` - Broadcast after every game state change
 2. `CommandCompleted(commandId, success, message)` - Command execution result
 3. `CommandFailed(commandId, error)` - Command execution failure
@@ -230,7 +261,9 @@ case ShuffleRecord shuffle:
 ## Phase 5: Verification Process
 
 ### 5.1 State Consistency Check
+
 After each action:
+
 ```csharp
 VerifyAllProxiesHaveSameGameModel(allProxies)
 {
@@ -243,7 +276,9 @@ VerifyAllProxiesHaveSameGameModel(allProxies)
 ```
 
 ### 5.2 Hash Verification
+
 Each recorded action includes an expected GameHash:
+
 ```csharp
 if (recordedMessage.ExpectedGameHash != null)
 {
@@ -253,6 +288,7 @@ if (recordedMessage.ExpectedGameHash != null)
 ```
 
 ### 5.3 Complete Test Success Criteria
+
 1. All players successfully connect via SignalR
 2. Game is discoverable via REST API
 3. All players can join the game
@@ -263,41 +299,47 @@ if (recordedMessage.ExpectedGameHash != null)
 ## Test Patterns
 
 ### Pattern 1: Async Command Pattern
-```
+
+```text
 Client → SignalR Command → Server Processing → Broadcast Update → All Clients Updated
 ```
 
 ### Pattern 2: Game Lifecycle Pattern
-```
+
+```text
 REST API (Create/Load) → Get GameId → SignalR Join → SignalR Commands → SignalR Updates
 ```
 
 ### Pattern 3: Multi-Client Synchronization
-```
+
+```text
 Player A Action → Server Update → Broadcast to Players A, B, C → All Have Same State
 ```
 
 ## Common Failure Points
 
 ### 1. Timeout Issues
+
 - **Symptom**: "ShuffleMessage timed out after 10 seconds"
 - **Cause**: SignalR command not receiving CommandCompleted event
 - **Location**: `GameServiceProxy.ExecuteCommandAsync()` waiting for completion
 
 ### 2. Game Discovery Issues
+
 - **Symptom**: Game not found in available games list
 - **Cause**: GameId not properly preserved from loaded GameModel
 - **Location**: `GameStateMachineService.GetAvailableGames()`
 - **Critical**: The GameId from the loaded GameModel MUST be preserved, not regenerated
 
 ### 3. Validation Issues
+
 - **Symptom**: "ValidationVisitor exceeded the maximum configured"
 - **Cause**: Complex GameModel exceeds ASP.NET Core validation depth limits
 - **Location**: `GameApiController.LoadGameModel()` parameter binding
 
 ## Test Execution Flow Diagram
 
-```
+```text
 1. Load Expansion.catan_test
    ↓
 2. Extract GameModel and Players
@@ -320,4 +362,5 @@ Player A Action → Server Update → Broadcast to Players A, B, C → All Have 
 ```
 
 ## Conclusion
+
 The end-to-end tests verify that the GameService correctly handles multiplayer game synchronization using a hybrid REST/SignalR architecture. The tests ensure that game state remains consistent across all connected clients through a complete game replay sequence.

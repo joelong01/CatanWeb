@@ -42,11 +42,13 @@ The recording/replay system captures MVVM messages during gameplay and converts 
 ## Recording Flow
 
 ### 1. Enable Recording Mode
+
 - Start the desktop application
 - Enable recording mode via the UI toggle
 - GameRecorder begins capturing all MVVM messages
 
 ### 2. Play Through Scenario
+
 - Perform the actions you want to test (shuffle board, place buildings, roll dice, etc.)
 - Each action gets recorded with:
   - The MVVM message parameters
@@ -54,8 +56,10 @@ The recording/replay system captures MVVM messages during gameplay and converts 
   - Timestamp and action metadata
 
 ### 3. Stop Recording
+
 - Disable recording mode
 - GameRecorder saves the complete scenario to a `.catan_test` file containing:
+
   ```json
   {
     "gameModel": { /* Initial game state */ },
@@ -78,16 +82,19 @@ The recording/replay system captures MVVM messages during gameplay and converts 
 ## Replay Flow
 
 ### 1. Test Initialization
+
 - `FullCyclePackagedUiTests` loads the specified `.catan_test` file
 - `ScenarioLoader` deserializes the JSON into `List<IRecordedMessage>`
 - Test validates the scenario structure and action count
 
 ### 2. Game State Setup
+
 - Application launches with the recorded GameModel
 - Initial GameHash is computed and recorded
 - UI automation framework (FlaUI) connects to the application
 
 ### 3. Action Execution Loop
+
 For each recorded action:
 
 ```csharp
@@ -116,6 +123,7 @@ WaitForUiUpdate();
 ```
 
 ### 4. Validation & Completion  
+
 - Each action's result is validated against expected game state
 - Final game state is compared to expected end state
 - Test reports success/failure with detailed logging
@@ -123,10 +131,12 @@ WaitForUiUpdate();
 ## Key Design Principles
 
 ### Deterministic Randomization
+
 - **Problem**: Board shuffling uses random numbers, making replay non-deterministic
 - **Solution**: Record the random seed with shuffle actions and use UI binding to inject test data
 
 #### **Test Data Injection Pattern**
+
 For actions requiring deterministic behavior during testing, we use hidden UI elements bound to ViewModel properties:
 
 ```csharp
@@ -161,31 +171,38 @@ shuffleButton.Click(); // Uses injected seed
 This pattern allows tests to provide deterministic input while maintaining normal UI interactions.
 
 ### GameHash Validation
+
 - **Purpose**: Verify that game state exactly matches recorded state before each action
 - **Implementation**: Fast hash computed from all game state (tiles, buildings, roads, player data)
 - **Benefits**: Catches state drift, ensures reproducibility, validates game logic
 
 ### State-Before-Action Recording
+
 - **Critical**: Record GameHash **before** executing action, not after
 - **Reason**: During replay, we validate the pre-action state matches expectation
 - **Flow**: `GetCurrentState() → RecordAction() → ExecuteAction() → UpdateGameHash()`
 
 ### Type-Safe Message Conversion
+
 - **Pattern**: Extension methods convert MVVM messages to records
+
   ```csharp
   public static IRecordedMessage ToRecord(this ShuffleMessage msg, string gameHash)
       => new ShuffleRecord(gameHash, msg);
   ```
+
 - **Benefits**: Compile-time safety, easy to extend, consistent serialization
 
 ## File Organization
 
 ### Test Files
+
 - **`Regular.catan_test`**: Basic 3-player game scenarios
 - **`Expansion.catan_test`**: 5-player expansion pack scenarios  
 - **Custom files**: Add your own `.catan_test` files for specific test cases
 
 ### Utilities
+
 - **`copy-latest-catan-test.ps1`**: Copies most recent recording from Documents folder
 - **`ScenarioLoader.cs`**: Loads and validates `.catan_test` files
 - **`UIAutomationHelper.cs`**: Helper methods for FlaUI automation
@@ -215,11 +232,13 @@ dotnet test Tests.DesktopApp.UI -- --test-file Regular.catan_test
    - Stop recording (saves to Documents\Catan Saved Games)
 
 2. **Copy to test directory**:
+
    ```powershell
    .\copy-latest-catan-test.ps1
    ```
 
 3. **Run your test**:
+
    ```bash
    dotnet test Tests.DesktopApp.UI -- --test-file YourScenario.catan_test
    ```
@@ -236,6 +255,7 @@ When a test fails:
 ## Technical Implementation Details
 
 ### Message Serialization
+
 Uses System.Text.Json with polymorphic serialization:
 
 ```csharp
@@ -251,6 +271,7 @@ public interface IRecordedMessage
 ```
 
 ### AutomationId Patterns
+
 UI elements use consistent AutomationId patterns:
 
 - Buildings: `"Building-{q},{r},{s}-{position}"` (e.g., `"Building-2,-1,-1-TopRight"`)
@@ -259,6 +280,7 @@ UI elements use consistent AutomationId patterns:
 - Players: `"GoFirst-{playerId}"`, `"ParticipatingInSupplemental-{playerId}"`
 
 ### Error Handling
+
 - **Invalid GameHash**: Test stops immediately with clear error message
 - **Missing UI Elements**: Detailed logging shows which AutomationId failed
 - **Timeout Issues**: Configurable wait times for UI updates
@@ -269,6 +291,7 @@ UI elements use consistent AutomationId patterns:
 ### Adding New Message Types
 
 1. **Create Record Class**:
+
    ```csharp
    public sealed class YourActionRecord : IRecordedMessage
    {
@@ -280,17 +303,20 @@ UI elements use consistent AutomationId patterns:
    ```
 
 2. **Register Type**:
+
    ```csharp
    [JsonDerivedType(typeof(YourActionRecord), YourActionRecord.Discriminator)]
    ```
 
 3. **Add Extension Method**:
+
    ```csharp
    public static IRecordedMessage ToRecord(this YourMessage msg, string gameHash)
        => new YourActionRecord(gameHash, msg);
    ```
 
 4. **Handle in Tests**:
+
    ```csharp
    case YourActionRecord yourAction:
        Execute_YourAction(yourAction);

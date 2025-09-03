@@ -11,9 +11,10 @@ This document outlines the design for a multi-platform Settlers of Catan game sy
 **3. Shared Library (Catan3.Shared project):** Contains all shared data structures, game logic, and communication interfaces. This includes GameModel, PlayerModel, GameStateMachine, and the unified GameServiceProxy for client-server communication. The library is used by both the GameService and client applications.
 
 **4. Comprehensive Test Suite:** Multiple test projects ensure game logic correctness and API functionality:
-   - **Tests.DesktopApp.UI:** End-to-end UI automation tests 
-   - **Tests.GameService:** Integration and SignalR communication tests
-   - **Tests.Shared:** JSON serialization compatibility tests for .NET and JavaScript
+
+- **Tests.DesktopApp.UI:** End-to-end UI automation tests
+- **Tests.GameService:** Integration and SignalR communication tests
+- **Tests.Shared:** JSON serialization compatibility tests for .NET and JavaScript
 
 **5. CLI Tool (Catan3.CLI project):** Command-line interface for debugging and testing. Creates games and transitions them to debuggable states efficiently.
 
@@ -28,20 +29,25 @@ As this is initial implementation, sometimes the code is correct and the tests n
 The system uses **SignalR** for real-time bidirectional communication between clients and the GameService, replacing the previous hanging GET pattern:
 
 ### **SignalR Hub Communication**
+
 1. **Client Connection:** Clients connect to `/gameHub` and join game-specific groups
 2. **Action Execution:** Clients send game actions (Undo, Redo, Next, Purchase, etc.) via SignalR hub methods
 3. **Real-time Updates:** GameService immediately broadcasts `GameStateUpdated` events to all clients in the game group
 4. **Command Completion:** Clients receive `CommandCompleted` or `CommandFailed` notifications with results
 
 ### **GameServiceProxy - Unified Client Interface**
+
 The `GameServiceProxy` class in `Catan3.Shared.Services` provides a unified interface combining:
+
 - **SignalR Hub Methods:** Real-time game actions (Undo, Redo, Next, Roll, Purchase, etc.)
 - **REST API Calls:** Game management (CreateGame, GetAvailableGames, GetGame)
 - **Event Handling:** GameStateUpdated, CommandCompleted, PlayerPresenceChanged events
 - **Connection Management:** Automatic reconnection, proper resource disposal
 
 ### **Message Architecture**
+
 Game actions use specific message types instead of generic commands:
+
 - `UndoMessage` → `HandleUndoAsync()`
 - `RedoMessage` → `HandleRedoAsync()`
 - `NextMessage` → `HandleNextAsync()`
@@ -55,9 +61,11 @@ This provides compile-time type safety and eliminates string-based action matchi
 The system follows a clean separation between game lifecycle management (REST) and real-time gameplay (SignalR):
 
 ### **REST APIs - Game Lifecycle Management**
+
 These endpoints handle game creation, loading, and initial bootstrap operations:
 
 #### **Creating New Games**
+
 ```http
 POST /api/game/new
 Content-Type: application/json
@@ -71,6 +79,7 @@ Response: { "success": true, "gameId": "generated-uuid" }
 ```
 
 #### **Loading Existing Games**
+
 ```http
 POST /api/game/load
 Content-Type: application/json
@@ -94,12 +103,14 @@ Response: { "success": true, "gameId": "original-game-uuid" }
 ```
 
 #### **Key Design Principles**
+
 - **REST returns only `gameId`**: No GameModel data is returned from REST endpoints
-- **GameId preservation**: Loading existing games preserves their original GameId 
+- **GameId preservation**: Loading existing games preserves their original GameId
 - **No GameId extraction**: Service methods handle GameId internally from game data
 - **Bootstrap only**: REST APIs only create/load games, they don't handle gameplay
 
 ### **SignalR - Real-time Gameplay**
+
 After bootstrapping with REST, all game interactions use SignalR:
 
 1. **Join Game**: `JoinGame(gameId, playerId)` - Client joins game group
@@ -109,6 +120,7 @@ After bootstrapping with REST, all game interactions use SignalR:
 5. **Command Feedback**: `CommandCompleted` or `CommandFailed` notifications
 
 ### **Implementation Pattern**
+
 The clean pattern eliminates complex GameId extraction and tuple returns:
 
 ```csharp
@@ -120,7 +132,9 @@ return Ok(new { success = true, gameId = gameModel.GameId });
 ```
 
 ### **Test Pattern**
+
 Tests should follow this flow:
+
 1. Load `.catan_test` file and deserialize JSON
 2. Extract GameModel and action stack from test data
 3. Use REST API to load game: `POST /api/game/loadmodel`
@@ -242,12 +256,14 @@ This replaces the previous generic `ExecuteGameActionAsync(ExecuteGameActionMess
 The system uses SignalR for real-time client-server communication:
 
 **GameHub** (`Catan3.GameService.Hubs.GameHub`):
+
 - Handles client connections and game group management
 - Routes typed messages to appropriate GameStateMachine handlers
 - Broadcasts `GameStateUpdated` events to all clients in the game group
 - Provides command completion feedback via `CommandCompleted`/`CommandFailed` events
 
 **Message Routing**:
+
 ```csharp
 GameModel updatedGameModel = message switch
 {
@@ -307,6 +323,7 @@ public class NewGameRequest
 ### **Communication Flow**
 
 **SignalR Real-time Actions:**
+
 1. Client connects to `/gameHub` and joins game group via `JoinGame(gameId, playerId)`
 2. Client sends typed action messages (UndoMessage, NextMessage, etc.) via hub methods
 3. GameHub routes message to GameStateMachineService for the specific gameId
@@ -315,6 +332,7 @@ public class NewGameRequest
 6. GameHub sends `CommandCompleted(commandId, success, message)` to the originating client
 
 **REST API Operations:**
+
 - `POST /api/games` - Create new game
 - `GET /api/games/{gameId}` - Get game state  
 - `GET /api/companion/games` - List available games
@@ -324,7 +342,7 @@ public class NewGameRequest
 
 Here is the current layout of the project:
 
-```
+```text
 Catan/
 ├── .github/
 │   └── workflows/

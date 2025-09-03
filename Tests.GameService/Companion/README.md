@@ -9,9 +9,11 @@ This document describes the comprehensive test suite created to verify the compa
 The test suite is organized into three main test classes:
 
 ### 1. CompanionIntegrationTests.cs
+
 **Purpose**: High-level integration tests that verify the complete companion workflow
 
 **Key Tests**:
+
 - `CompanionWorkflow_ShouldConnectLoadGamesAndJoin_Successfully()` - Complete end-to-end workflow
 - `CompanionGameDiscovery_ShouldLoadAvailableGames_Successfully()` - Game discovery functionality
 - `CompanionGameJoining_ShouldConnectToSpecificGame_Successfully()` - Game selection and joining
@@ -24,9 +26,11 @@ The test suite is organized into three main test classes:
 - `CompanionDemoMode_ShouldWorkWithoutBackend_Successfully()` - Demo mode functionality
 
 ### 2. CompanionJavaScriptFunctionalityTests.cs
+
 **Purpose**: Unit tests for specific companion.js functionality and workflows
 
 **Key Tests**:
+
 - `CompanionJavaScript_GameSelectionWorkflow_ShouldWork()` - Game selection workflow
 - `CompanionJavaScript_SignalRConnection_ShouldFollowCorrectPattern()` - SignalR patterns
 - `CompanionJavaScript_PlayerSelection_ShouldUpdateCorrectly()` - Player selection logic
@@ -37,9 +41,11 @@ The test suite is organized into three main test classes:
 - `CompanionJavaScript_DemoMode_ShouldWorkIndependently()` - Demo mode independence
 
 ### 3. CompanionWorkflowTests.cs
+
 **Purpose**: End-to-end workflow tests that validate the complete companion user journey
 
 **Key Tests**:
+
 - `CompanionUserJourney_CompleteWorkflow_ShouldSucceed()` - Complete user journey simulation
 - `CompanionMultiPlayerScenario_ShouldSynchronizeCorrectly()` - Multi-player scenarios
 - `CompanionErrorRecovery_ShouldHandleFailuresGracefully()` - Error recovery
@@ -48,36 +54,42 @@ The test suite is organized into three main test classes:
 ## Test Scenarios Covered
 
 ### ?? Connection & Discovery
+
 - ? **Service Connection**: Companion connects to game service via SignalR
 - ? **Game Discovery**: Loading and displaying list of available games
 - ? **Game Selection**: Selecting a specific game to join
 - ? **Error Handling**: Graceful handling of connection failures
 
 ### ?? Player Management  
+
 - ? **Player Selection**: Choosing player identity from available players
 - ? **Player Switching**: Changing between different player identities
 - ? **Multi-player Sync**: Multiple companions connected to same game
 - ? **Turn-based Behavior**: Only current player can execute actions
 
 ### ?? Real-time Updates
+
 - ? **SignalR Connection**: Establishing and maintaining SignalR connection
 - ? **Game State Updates**: Receiving real-time game state changes
 - ? **Cross-companion Sync**: Updates propagated to all connected companions
 - ? **Connection Recovery**: Automatic reconnection after disconnects
 
 ### ?? Game Actions
+
 - ? **Basic Actions**: Next, Undo, Redo, Shuffle commands
 - ? **Game Progression**: State transitions and progression
 - ? **Command Feedback**: Success/failure notifications
 - ? **State-specific Actions**: Actions appropriate for current game state
 
 ### ?? User Interface
+
 - ? **Web Interface Serving**: HTML, CSS, JavaScript served correctly
 - ? **State-specific UI**: UI adapts to current game state
 - ? **Demo Mode**: Standalone demo functionality without backend
 - ? **Direct Game Links**: URLs with gameId parameter work correctly
 
 ### ?? Error Scenarios
+
 - ? **Invalid Game IDs**: Handling non-existent games
 - ? **Empty Game Lists**: No games available scenario
 - ? **Connection Failures**: Network issues and recovery
@@ -86,10 +98,12 @@ The test suite is organized into three main test classes:
 ## Test Execution Results
 
 ### ? Passing Tests
+
 - **CompanionGameDiscovery_ShouldLoadAvailableGames_Successfully** - PASSED (9.6s)
 - **CompanionSignalRConnection_ShouldConnectAndReceiveUpdates_Successfully** - PASSED (9.4s)
 
 ### ?? Test Infrastructure
+
 - Uses `WebApplicationFactory<Program>` for integration testing
 - Leverages `GameServiceProxy` from `Catan3.Shared` for SignalR testing
 - Implements proper test cleanup and resource disposal
@@ -98,6 +112,7 @@ The test suite is organized into three main test classes:
 ## Companion.js Functionality Verified
 
 ### 1. **Connection Management**
+
 ```javascript
 // Verified: SignalR connection establishment
 this.connection = new signalR.HubConnectionBuilder()
@@ -107,6 +122,7 @@ this.connection = new signalR.HubConnectionBuilder()
 ```
 
 ### 2. **Game Discovery**
+
 ```javascript
 // Verified: Loading available games
 const response = await fetch(`${this.config.apiBaseUrl}/api/companion/games`);
@@ -115,12 +131,14 @@ this.availableGames = data.games;
 ```
 
 ### 3. **Game Selection**
+
 ```javascript
 // Verified: Joining specific game
 await this.connection.invoke("JoinGame", this.gameId, this.selectedPlayerId);
 ```
 
 ### 4. **Real-time Updates**
+
 ```javascript
 // Verified: Receiving game state updates
 this.connection.on("GameStateUpdated", (gameModel) => {
@@ -129,6 +147,7 @@ this.connection.on("GameStateUpdated", (gameModel) => {
 ```
 
 ### 5. **Command Execution**
+
 ```javascript
 // Verified: Executing game actions
 await this.connection.invoke("ExecuteDoAction", gameId, playerId, { action: action });

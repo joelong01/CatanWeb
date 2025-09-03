@@ -4,14 +4,14 @@
 
 A PowerShell script that automates the complete end-to-end testing workflow for Catan3.
 
-### What it does:
+### What it does
 
 1. **Builds the solution** - Ensures all projects are compiled and ready
 2. **Checks GameService status** - Verifies if GameService is running on port 8080
 3. **Starts GameService if needed** - Automatically launches GameService in the background
 4. **Runs the CLI test** - Executes the Catan3.CLI with your specified arguments
 
-### Usage Examples:
+### Usage Examples
 
 ```powershell
 # Basic usage - run a regular game with default settings
@@ -30,12 +30,12 @@ A PowerShell script that automates the complete end-to-end testing workflow for 
 .\cli_e2e.ps1 expansion --complete --log-level DEBUG --no-exit
 ```
 
-### Parameters:
+### Parameters
 
 - **GameType** (Position 0): `regular` or `expansion` (default: `regular`)
 - **Arguments** (Remaining): All CLI arguments you want to pass through
 
-### Available CLI Arguments:
+### Available CLI Arguments
 
 - `--complete` - Run full end-to-end game progression
 - `--run-to <state>` - Stop at specific GameState (e.g., `WaitingForRoll`)
@@ -44,7 +44,7 @@ A PowerShell script that automates the complete end-to-end testing workflow for 
 - `--uri <url>` - GameService URL (default: auto-detected)
 - `--no-exit` - Keep game state alive after completion
 
-### Smart Features:
+### Smart Features
 
 - **Auto-detection**: Checks if GameService is already running
 - **Background management**: Starts GameService only if needed
@@ -52,7 +52,7 @@ A PowerShell script that automates the complete end-to-end testing workflow for 
 - **Status reporting**: Detailed progress and color-coded output
 - **Error handling**: Comprehensive error detection and reporting
 
-### Examples for Testing:
+### Examples for Testing
 
 ```powershell
 # Quick smoke test
@@ -71,24 +71,27 @@ A PowerShell script that automates the complete end-to-end testing workflow for 
 .\cli_e2e.ps1 expansion --run-to WaitingForNext --no-exit --log-level INFO
 ```
 
-### Integration with Development Workflow:
+### Integration with Development Workflow
 
 The script is designed for:
+
 - **Automated testing** during development
 - **Regression testing** before commits
 - **Integration testing** of CLI + GameService
 - **Demo preparation** with live game states
 - **Debugging** with persistent game sessions
 
-### Output:
+### Output
 
 The script provides color-coded, timestamped output showing:
+
 - Build progress and results
 - GameService startup status
 - CLI execution progress
 - Final summary with URLs for further testing
 
 When GameService is started by the script, it remains available at:
-- **Companion Interface**: http://localhost:8080/companion
-- **Game Discovery**: http://localhost:8080/api/companion/games
-- **Demo Interface**: http://localhost:8080/demo
+
+- **Companion Interface**: <http://localhost:8080/companion>
+- **Game Discovery**: <http://localhost:8080/api/companion/games>
+- **Demo Interface**: <http://localhost:8080/demo>

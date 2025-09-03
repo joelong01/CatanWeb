@@ -59,12 +59,14 @@ graph LR
 ## Key Architectural Differences
 
 ### Desktop App
+
 - **MVVM Messaging**: UI communicates via MVVM message pattern
 - **GameMessageService**: Owns GameStateMachine lifecycle
 - **File-based persistence**: Saves to local .catan files
 - **Direct UI updates**: UpdateGameModel message updates UI immediately
 
 ### GameService
+
 - **REST + SignalR**: REST for game creation, SignalR for real-time updates
 - **Static Registry**: GameStateMachineRegistry manages all game instances
 - **No direct persistence**: Games exist in memory, can be saved via API

@@ -172,7 +172,7 @@ namespace Catan3.GameService.Controllers
         }
 
         [HttpPost("game/new")]
-        public async Task<IActionResult> NewGame([FromBody] NewGameMessage newGameMessage)
+        public Task<IActionResult> NewGame([FromBody] NewGameMessage newGameMessage)
         {
             _logger.LogEvent("API Request", $"POST /api/game/new - Creating new game");
             
@@ -180,7 +180,7 @@ namespace Catan3.GameService.Controllers
             {
                 if (newGameMessage is null || newGameMessage.PlayerIds is null or { Count: 0 })
                 {
-                    return BadRequest("Invalid game creation request - must specify game type and players");
+                    return Task.FromResult<IActionResult>(BadRequest("Invalid game creation request - must specify game type and players"));
                 }
 
                 // Get the appropriate game metadata based on game type
@@ -203,17 +203,17 @@ namespace Catan3.GameService.Controllers
                 GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);
 
                 // Return minimal response - client must join via SignalR to get GameModel
-                return Ok(new { success = true, gameId = gameModel.GameId });
+                return Task.FromResult<IActionResult>(Ok(new { success = true, gameId = gameModel.GameId }));
             }
             catch (Exception ex)
             {
                 _logger.LogEvent("New Game Error", $"Error creating new game: {ex.Message}", LogLevel.Error);
-                return StatusCode(500, $"Error creating new game: {ex.Message}");
+                return Task.FromResult<IActionResult>(StatusCode(500, $"Error creating new game: {ex.Message}"));
             }
         }
 
         [HttpPost("game/load")]
-        public async Task<IActionResult> LoadGame([FromBody] LoadGameMessage loadGameMessage)
+        public Task<IActionResult> LoadGame([FromBody] LoadGameMessage loadGameMessage)
         {
             _logger.LogEvent("API Request", $"POST /api/game/load - Loading game from compressed log");
             
@@ -221,7 +221,7 @@ namespace Catan3.GameService.Controllers
             {
                 if (loadGameMessage?.CompressedLog is null or { Length: 0 })
                 {
-                    return BadRequest("Missing compressed game data");
+                    return Task.FromResult<IActionResult>(BadRequest("Missing compressed game data"));
                 }
 
                 // Create Log from compressed data
@@ -238,17 +238,17 @@ namespace Catan3.GameService.Controllers
                 GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);
 
                 // Return minimal response - client must join via SignalR to get GameModel
-                return Ok(new { success = true, gameId = gameModel.GameId });
+                return Task.FromResult<IActionResult>(Ok(new { success = true, gameId = gameModel.GameId }));
             }
             catch (Exception ex)
             {
                 _logger.LogEvent("Load Game Error", $"Error loading game: {ex.Message}", LogLevel.Error);
-                return StatusCode(500, $"Error loading game: {ex.Message}");
+                return Task.FromResult<IActionResult>(StatusCode(500, $"Error loading game: {ex.Message}"));
             }
         }
 
         [HttpPost("game/loadmodel")]
-        public async Task<IActionResult> LoadGameModel([FromBody] LoadGameModelMessage loadGameModelMessage)
+        public Task<IActionResult> LoadGameModel([FromBody] LoadGameModelMessage loadGameModelMessage)
         {
             _logger.LogEvent("API Request", $"POST /api/game/loadmodel - Loading game from GameModel JSON");
             
@@ -256,7 +256,7 @@ namespace Catan3.GameService.Controllers
             {
                 if (string.IsNullOrWhiteSpace(loadGameModelMessage?.GameModelJson))
                 {
-                    return BadRequest("Missing GameModel JSON data");
+                    return Task.FromResult<IActionResult>(BadRequest("Missing GameModel JSON data"));
                 }
 
                 // Deserialize the GameModel from the message
@@ -282,12 +282,12 @@ namespace Catan3.GameService.Controllers
                 GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);
 
                 // Return minimal response - client must join via SignalR to get GameModel
-                return Ok(new { success = true, gameId = gameModel.GameId });
+                return Task.FromResult<IActionResult>(Ok(new { success = true, gameId = gameModel.GameId }));
             }
             catch (Exception ex)
             {
                 _logger.LogEvent("Load GameModel Error", $"Error loading game from GameModel: {ex.Message}", LogLevel.Error);
-                return StatusCode(500, $"Error loading game from GameModel: {ex.Message}");
+                return Task.FromResult<IActionResult>(StatusCode(500, $"Error loading game from GameModel: {ex.Message}"));
             }
         }
 

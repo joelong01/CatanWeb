@@ -253,7 +253,7 @@ if ($Help) {
 # Configuration
 $NoRegister = $NoRegister -or $Unregister
 $Configuration = if ($Release) { "Release" } else { "Debug" }
-$ProjectPath = "DesktopApp\Catan Desktop.csproj"
+$ProjectPath = "Catan.sln"
 $RuntimeId = "win-$Platform"
 $OutputPath = "DesktopApp\bin\$Platform\$Configuration\net9.0-windows10.0.22621.0\$RuntimeId"
 $VerbosityLevel = if ($VerbosePreference -eq 'Continue') { "normal" } else { "minimal" }
