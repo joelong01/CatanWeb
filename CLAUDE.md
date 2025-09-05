@@ -1,72 +1,66 @@
 # Project Context for Claude Code
 
-## Current State (2025-08-30)
+## Current State (2025-09-05)
 
 The Catan3 project is a multi-platform Settlers of Catan game system with:
 
-- **Desktop App** (WinUI3) - Working reference implementation
+- **Desktop App** (WinUI3) - Working reference implementation  
 - **GameService** (ASP.NET Core) - SignalR + REST API backend
 - **Shared Library** - Common models and game logic
-- **Test Suite** - End-to-end tests for both UI and service
+- **Test Suite** - Unified test infrastructure with modern ReplayTest approach
 
-## Recent Architecture Changes (Current Session)
+## Recent Architecture Changes (September 5, 2025 Session)
 
-### Major Refactoring: Eliminated Lambda Patterns
+### Major Test Infrastructure Reorganization
 
-Removed lambda-based architecture in favor of clean message passing:
+Successfully completed comprehensive test infrastructure restructuring:
 
-- **Removed**: `GameStateMachineWrapper.cs` and `GameServiceFactoryAdapter.cs` -
-  unnecessary wrapper layers
-- **Pattern Change**: Old lambda approach
-  `ExecuteAction(gameId, gsm => gsm.DoSomething())` → Direct method calls
-- **New Structure**:
-  - `CreateNewGameAsync(NewGameMessage)` - for new games via GameFactory
-  - `LoadExistingGameAsync(LoadGameModelMessage)` - for loading existing GameModels
-  - Shared internal handler `HandleLoadGameModelInternalAsync(GameModel, bool isTest)`
+- **Directory Structure**: Moved all test projects from root level to Tests/ 
+  subdirectories using `git mv` to preserve history
+  - `Tests/Desktop` (formerly Tests.DesktopApp.UI) - UI automation tests
+  - `Tests/GameService` - Integration and SignalR ReplayTest infrastructure  
+  - `Tests/Shared` - JSON serialization compatibility tests
+  - `Tests/Data` - Centralized test scenario files (.catan_test)
+- **Build System**: Updated Catan.sln and all .csproj project references 
+  for new directory structure
+- **CLI Consolidation**: Removed duplicate Tests/Cli project, kept full-featured 
+  Catan3.CLI as single command-line interface
 
-### GameFactory Static Pattern
+### Test Data Architecture Migration
 
-- **Made GameFactory static** - no interface needed, direct static method calls
-- **Added GameName parameter** to `NewGameMessage` and `GameFactory.CreateGame`
-- **Centralized game creation logic** - GameFactory handles GameId,
-  GameName, CreatedTime
-- **Extension methods moved** to `GameModelExtensions.cs`: `Shuffle()`, `SaveFileName()`, `Validate()`
+Transitioned from embedded resources to filesystem-based test data loading:
 
-### Two Distinct Loading Paths
+- **TestDataLoader**: Modified to load .catan_test files from Tests/Data 
+  directory instead of embedded resources
+- **PowerShell Script**: Updated update-test-files.ps1 to copy test files 
+  to Tests/Data location
+- **Csproj Cleanup**: Removed embedded resource entries from 
+  Catan3.Shared.csproj
 
-1. **Path 1: From SerializableLog** (compressed .catan files) → Load via GameServiceLogAdapter.LoadFromSerializableLog
-2. **Path 2: From GameModel JSON** → LoadGameModelMessage → HandleLoadGameModelInternalAsync
+### Unified Log Implementation
 
-### IsTest Parameter Pattern
+Consolidated Log implementations into single shared approach:
 
-Added `IsTest` boolean throughout the stack:
+- **Single Log Class**: All projects now use `Catan3.Shared/Utility/Log.cs`
+- **Interface Standardization**: `IGameLog` interface used consistently 
+  across Desktop and GameService
+- **Architecture Cleanup**: Eliminated duplicate logging implementations 
+  and over-abstraction patterns
 
-- **LoadGameModelMessage.IsTest** - distinguishes test vs production scenarios
-- **Log constructor** - controls file path generation (empty for tests, temp path for production)
-- **Service layer** - passed through to control filesystem behavior
+### Modern Testing Approach
 
-## Known Issues
+Standardized on ReplayTest methodology:
 
-### Build Errors (IN PROGRESS)
-
-Current build failures that need fixing before commit:
-
-- **GameApiController.cs:182** - Still using old lambda pattern for
-  LoadExistingGameAsync
-- **Missing method** - Need LoadFromCompressedLogAsync or similar for
-  SerializableLog path
-- **Pattern confusion** - LoadGameMessage (CompressedLog) vs
-  LoadGameModelMessage (GameModelJson)
-
-### Architecture Cleanup Needed
-
-- **Two loading paths need clarification** - SerializableLog vs GameModel paths
-- **GameApiController needs proper method** for LoadGameMessage handling
-- **Remove all lambda patterns** - some may still exist
+- **ReplayTest Infrastructure**: Clean test approach using .catan_test files 
+  for behavioral consistency validation
+- **Legacy Cleanup**: Removed old SignalR testing patterns and 
+  EndToEndSignalRSession complexity
+- **Two Core Tests**: ReplayExpansionTest and ReplayRegularTest using 
+  modern ReplayTest pattern
 
 ## Important Files
 
-### Core Game Loading
+### Core Game Logic
 
 - `Catan3.GameService/Controllers/GameApiController.cs` - REST endpoints for
   game lifecycle
@@ -76,13 +70,21 @@ Current build failures that need fixing before commit:
 
 ### Test Infrastructure  
 
-- `Tests.GameService/SignalR/EndToEndGameTests.cs` - Failing multiplayer tests
-- `Tests.GameService/TestWebApplicationFactory.cs` - Test server setup with verbose logging
+- `Tests/GameService/ReplayTests/EndToEndGameTests.cs` - Modern ReplayTest approach
+- `Tests/GameService/TestWebApplicationFactory.cs` - Test server setup
+- `Tests/GameService/ReplayTest.cs` - Core ReplayTest infrastructure
+- `Tests/Data/*.catan_test` - Test scenario files for game validation
+
+### Unified Utilities
+
+- `Catan3.Shared/Utility/Log.cs` - Consolidated logging implementation
+- `Catan3.Shared/TestData/TestDataLoader.cs` - Filesystem-based test data loading
+- `Catan3.CLI/Program.cs` - Full-featured command-line interface
 
 ### Message Types
 
 - `Catan3.Shared/Models/MessageObjects.cs` - Request/response DTOs
-- `Catan3.Shared/Interfaces/IGameStateMachine.cs` - Service interface definitions
+- `Catan3.Shared/Interfaces/IGameLog.cs` - Unified logging interface
 
 ## Development Workflow
 
@@ -90,24 +92,49 @@ Current build failures that need fixing before commit:
 
 - **Quick build**: `./build.ps1 -NoTest`
 - **Clean build**: `./build.ps1 -NoTest -Clean`
+- **Full build with tests**: `./build.ps1`
 - **Inner loop**: `/inner_loop` command (build→fix→repeat until clean)
 
 ### Testing
 
-- **Specific test**: `dotnet test [project] --filter [name]`  
+- **GameService tests**: `dotnet test Tests/GameService --filter "ReplaySharedExpansionTestFile"`
 - **All tests**: `./build.ps1` (includes test run)
-- **Focus area**: GameService SignalR integration tests
+- **Shared tests**: `dotnet test Tests/Shared` (45 serialization tests)
+- **Test with verbose**: Add `--verbosity normal` to any dotnet test command
+
+### Test Data Management
+
+- **Update test files**: `./update-test-files.ps1` copies .catan_test files to Tests/Data
+- **Test data location**: Tests/Data directory contains all .catan_test scenario files
+
+## Current Issues
+
+### GameHash Investigation (Set Aside)
+
+ReplayTest occasionally shows GameHash mismatches, indicating behavioral 
+differences between Desktop and GameService implementations. Recent investigation 
+found Log consolidation was successful but didn't resolve all differences.
+User resolved specific Regular.catan_test issue by rerecording test data.
+
+### Build Status
+
+- **All projects build successfully**
+- **ReplayExpansionTest passes**
+- **Tests/Shared passes** (45 tests)
+- **Architecture is now unified and cleaner**
 
 ## Next Session Priorities
 
-1. **Fix GameService test timeouts** - Primary blocking issue
-2. **Investigate SignalR group membership** - Why commands don't reach GameHub
-3. **Complete end-to-end test validation** - Ensure multiplayer flow works
+1. **Continue GameHash difference investigation** if issues resurface
+2. **Look at other behavioral differences** beyond Log implementation
+3. **Consider initialization, RNG, or serialization order differences**
 
 ## Rules & Patterns
 
-- **No temporary GameStateMachine creation** - Always invalid pattern
-- **Direct domain object passing** - Controllers deserialize, services take domain objects
-- **JSON string pattern** - Use for ASP.NET validation bypass
+- **Use Tests/ directory structure** - All test projects under Tests/
+- **Single CLI tool** - Catan3.CLI for all command-line utilities
+- **Filesystem test data** - Tests/Data for all .catan_test files
+- **Unified logging** - IGameLog interface with shared Log implementation
+- **ReplayTest methodology** - Modern approach for behavioral validation
 - **Clean builds required** - Fix all errors, warnings, and lint issues
   before handover
