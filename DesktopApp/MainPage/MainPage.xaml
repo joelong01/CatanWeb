@@ -218,12 +218,6 @@
                         Command="{x:Bind MainPageModel.SaveAsCommand, Mode=OneWay}" />
                 <AppBarButton Label="Edit Players" Click="OnEditPlayers"
                         Icon="People" />
-                <AppBarButton Label="Flip Orientation" Icon="Clear"
-                        Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}" />
-
-                <AppBarButton Label="Flip Orientation" Icon="Clear"
-                        Command="{x:Bind MainPageModel.GameViewModel.FlipOrientationCommand, Mode=OneWay}" />
-
                 <AppBarButton Label="Balance"
                         Command="{x:Bind MainPageModel.GameViewModel.BalanceCommand, Mode=OneWay}"
                               AutomationProperties.AutomationId="BalanceBoardButton"

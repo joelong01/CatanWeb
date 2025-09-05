@@ -397,14 +397,6 @@ namespace Catan.Services
 
             // Try multiple methods to get the correct Documents path
             var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            
-            // Check if the path is truncated by looking for a username that's too short
-            if (documentsPath.Contains(@"C:\Users\joelo\") && !documentsPath.Contains(@"C:\Users\joelong\"))
-            {
-                // Fix truncated username
-                documentsPath = documentsPath.Replace(@"C:\Users\joelo\", @"C:\Users\joelong\");
-            }
-            
             typeof(FileService).TraceMessage($"Using default Documents path: '{documentsPath}'");
             return documentsPath;
         }
