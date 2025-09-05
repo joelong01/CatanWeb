@@ -2,15 +2,129 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Catan3",
+            "name": "Debug Catan Desktop",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/bin/x64/Debug/net8.0-windows10.0.22621.0/win-x64/Catan3.dll",
+            "program": "${workspaceFolder}/DesktopApp/bin/x64/Debug/net9.0-windows10.0.22621.0/win-x64/Catan Desktop.exe",
             "args": [],
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/DesktopApp",
             "stopAtEntry": false,
             "console": "internalConsole"
+        },
+        {
+            "name": "Debug UI Test - RegularGameTest",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-tests",
+            "program": "dotnet",
+            "args": [
+                "test",
+                "${workspaceFolder}/Tests.DesktopApp.UI/Tests.DesktopApp.UI.csproj",
+                "--no-build",
+                "--",
+                "--test-file", "RegularGameTest.catan_test"
+            ],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "externalTerminal",
+            "env": {
+                "CATAN_TEST_FILE": "Regular Game Test.catan_test"
+            }
+        },
+        {
+            "name": "Debug UI Test with App Attach - RegularGameTest",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-tests",
+            "program": "dotnet",
+            "args": [
+                "test",
+                "${workspaceFolder}/Tests.DesktopApp.UI/Tests.DesktopApp.UI.csproj",
+                "--no-build",
+                "--",
+                "--test-file", "RegularGameTest.catan_test"
+            ],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "externalTerminal",
+            "env": {
+                "CATAN_TEST_FILE": "Regular Game Test.catan_test",
+                "CATAN_DEBUG_WAIT": "true"
+            }
+        },
+        {
+            "name": "Debug UI Test - Default (Expansion-Test)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-tests",
+            "program": "dotnet",
+            "args": [
+                "test",
+                "${workspaceFolder}/Tests.DesktopApp.UI/Tests.DesktopApp.UI.csproj",
+                "--no-build"
+            ],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "externalTerminal"
+        },
+        {
+            "name": "Debug UI Test - Select File",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-tests",
+            "program": "dotnet",
+            "args": [
+                "test",
+                "${workspaceFolder}/Tests.DesktopApp.UI/Tests.DesktopApp.UI.csproj",
+                "--no-build",
+                "--",
+                "--test-file", "${input:testFileName}"
+            ],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "externalTerminal"
+        },
+        {
+            "name": "Attach to Catan Desktop",
+            "type": "coreclr",
+            "request": "attach",
+            "processName": "Catan Desktop.exe",
+            "justMyCode": false
+        },
+        {
+            "name": "Expansion-Replay-Test",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-tests",
+            "program": "dotnet",
+            "args": [
+                "test",
+                "${workspaceFolder}/Tests.GameService/Tests.GameService.csproj",
+                "--no-build",
+                "--filter",
+                "FullyQualifiedName~ReplaySharedExpansionTestFile",
+                "-v",
+                "normal",
+                "--logger",
+                "console;verbosity=detailed"
+            ],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "justMyCode": false
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testFileName",
+            "type": "pickString",
+            "description": "Select the test file to run",
+            "options": [
+                "RegularGameTest.catan_test",
+                "Expansion-Test.catan_test"
+            ],
+            "default": "RegularGameTest.catan_test"
         }
     ]
 } 

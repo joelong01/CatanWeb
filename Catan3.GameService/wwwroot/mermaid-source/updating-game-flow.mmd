@@ -1,0 +1,51 @@
+sequenceDiagram
+    participant C as Client Browser
+    participant API as GameApiController
+    participant ACP as AsyncCommandProcessor
+    participant GSM as GameStateMachine
+    participant SN as SignalRNotificationService
+    participant SH as SignalR Hub
+    participant AC as All Clients
+
+    Note over C,AC: Async Command Processing Flow
+    
+    C->>+API: POST /api/game/action<br/>{gameId, playerId, messageType, data}
+    Note right of C: Fire-and-forget command
+    
+    API->>API: Generate commandId
+    API->>API: Validate request & game exists
+    
+    API->>+ACP: ProcessAsync(request, commandId)
+    Note right of API: Fire-and-forget processing
+    
+    API-->>-C: Immediate Response<br/>{success: true, commandId, estimatedCompletionMs: 100}
+    Note left of API: Client gets instant acknowledgment
+    
+    rect rgb(255, 248, 240)
+        Note over ACP,AC: Async Processing (Parallel)
+        
+        ACP->>+GSM: Process game logic
+        Note right of ACP: Execute command on GameStateMachine
+        
+        GSM->>GSM: HandleDoAction/HandlePurchase/etc.
+        GSM->>GSM: Update game state
+        GSM-->>-ACP: Return updated GameModel
+        
+        par Parallel Notifications
+            ACP->>+SN: NotifyAsync(gameId, gameModel)
+            SN->>+SH: SendAsync("GameStateUpdated", gameModel)
+            SH->>AC: Push to all clients in game group
+            SH-->>-SN: Complete
+            SN-->>-ACP: Notification sent
+        and
+            ACP->>+SN: NotifyCommandCompletedAsync(gameId, commandId, true)
+            SN->>+SH: SendAsync("CommandCompleted", commandId, success, message)
+            SH->>C: Command completion notification
+            SH-->>-SN: Complete
+            SN-->>-ACP: Command completion sent
+        end
+        
+        ACP->>ACP: Process complete
+    end
+    
+    Note over C,AC: All clients receive real-time updates<br/>Original client gets command completion

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="Catan3.Controls.BoardMeasurementCtrl"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Catan3" xmlns:c="using:Catan3.Controls"
+        xmlns:Core="using:Microsoft.Xaml.Interactions.Core"
+        xmlns:Interactivity="using:Microsoft.Xaml.Interactivity"
+        xmlns:models="using:Catan3.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="StarStyle" TargetType="TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,5,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons" />
+            <Setter Property="FontSize" Value="14" />
+        </Style>
+        <Style x:Key="StarCountStyle" TargetType="TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style x:Key="GridStarCounterStyle" TargetType="Grid">
+            <Setter Property="Background"
+                    Value="{StaticResource ResourceCard.GoldMine}" />
+            <Setter Property="Height" Value="80" />
+            <Setter Property="Width" Value="80" />
+            <Setter Property="CornerRadius" Value="40" />
+            <Setter Property="Margin" Value="6, 0, 0, 0" />
+        </Style>
+    </UserControl.Resources>
+    <Grid Margin="0, 0, 0, 0" HorizontalAlignment="Center">
+        <StackPanel>
+            <GridView x:Name="GridView_Resources" SelectionMode="Multiple" Foreground="White"
+                    SelectionChanged="{x:Bind GameViewModel.GameResources.Resources_SelectionChanged, Mode=OneWay}"
+                    ItemsSource="{x:Bind GameViewModel.StarsResourceViewModel.ResourceCounters, Mode=OneWay}">
+               
+
+                <GridView.ItemTemplate>
+                    <DataTemplate x:DataType="models:ResourceCounterViewModel">
+                        <Grid
+                                Background="{x:Bind FrontImage(Resource), Mode=OneWay}"
+                                Style="{StaticResource Grid_ResourceCard}">
+                            <Viewbox Stretch="Uniform" Height="20"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Bottom">
+                                <Grid Background="Black">
+                                    <TextBlock
+                                            Text="{x:Bind Count, Mode=OneWay}"
+                                            Visibility="Visible" />
+                                </Grid>
+                            </Viewbox>
+                        </Grid>
+                    </DataTemplate>
+                </GridView.ItemTemplate>
+            </GridView>
+            <StackPanel Orientation="Horizontal">
+                <Grid Style="{StaticResource GridStarCounterStyle}">
+                    <TextBlock Style="{StaticResource StarStyle}"
+                            Foreground="Red"
+                            Text="&#xE00A;&#xE00A;&#xE00A;&#xE00A;&#xE00A;" />
+                    <TextBlock Text="13" Style="{StaticResource StarCountStyle}" />
+                    <TextBlock
+                            Text="{x:Bind GameViewModel.BIND_StarCount(13, GameViewModel.GameModel.Tiles), Mode=OneWay}"
+                            Style="{StaticResource StarCountStyle}"
+                            FontFamily="SegoeUi" VerticalAlignment="Bottom" />
+                </Grid>
+                <Grid Style="{StaticResource GridStarCounterStyle}">
+                    <TextBlock Style="{StaticResource StarStyle}"
+                            Foreground="Red"
+                            Text="&#xE00A;&#xE00A;&#xE00A;&#xE00A;&#xE00A;" />
+                    <TextBlock Text="12" Style="{StaticResource StarCountStyle}" />
+                    <TextBlock
+                            Text="{x:Bind GameViewModel.BIND_StarCount(12, GameViewModel.GameModel.Tiles), Mode=OneWay}"
+                            Style="{StaticResource StarCountStyle}"
+                            FontFamily="SegoeUi" VerticalAlignment="Bottom" />
+                </Grid>
+                <Grid Style="{StaticResource GridStarCounterStyle}">
+                    <TextBlock Style="{StaticResource StarStyle}"
+                            Foreground="Red"
+                            Text="&#xE00A;&#xE00A;&#xE00A;&#xE00A;&#xE00A;" />
+                    <TextBlock Text="11" Style="{StaticResource StarCountStyle}" />
+                    <TextBlock
+                            Text="{x:Bind GameViewModel.BIND_StarCount(11, GameViewModel.GameModel.Tiles), Mode=OneWay}"
+                            Style="{StaticResource StarCountStyle}"
+                            FontFamily="SegoeUi" VerticalAlignment="Bottom" />
+                </Grid>
+                <Grid Style="{StaticResource GridStarCounterStyle}">
+                    <TextBlock Style="{StaticResource StarStyle}"
+                            Foreground="Red"
+                            Text="&#xE00A;&#xE00A;&#xE00A;&#xE00A;&#xE00A;" />
+                    <TextBlock Text="10" Style="{StaticResource StarCountStyle}" />
+                    <TextBlock
+                            Text="{x:Bind GameViewModel.BIND_StarCount(10, GameViewModel.GameModel.Tiles), Mode=OneWay}"
+                            Style="{StaticResource StarCountStyle}"
+                            FontFamily="SegoeUi" VerticalAlignment="Bottom" />
+                </Grid>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,20,0,20"
+                    HorizontalAlignment="Center">
+                <StackPanel Orientation="Vertical" Margin="0,0,20,0">
+                    <Button Content="&#xE10E;"
+                            AutomationProperties.AutomationId="PreviousBoardButton"
+                            Command="{x:Bind GameViewModel.UndoCommand, Mode=OneWay}"
+                            Style="{StaticResource GameControllerStyle}"
+                            Background="Transparent" Foreground="White" />
+                    <TextBlock Margin="10, 5, 0, 0" Text="Previous Board"
+                            HorizontalAlignment="Center" Foreground="White"
+                            TextLineBounds="Tight" />
+                </StackPanel>
+                <StackPanel HorizontalAlignment="Center" Orientation="Vertical">
+                    <Button
+                            AutomationProperties.AutomationId="ShuffleButton"
+                            Command="{x:Bind GameViewModel.ShuffleCommand, Mode=OneWay}"
+                            Content="&#xE10D;"
+                            Style="{StaticResource GameControllerStyle}"
+                            Background="Transparent" Foreground="White" />
+                    <TextBlock Margin="10, 5, 0, 0" Text="Shuffle"
+                            HorizontalAlignment="Center" Foreground="White"
+                            TextLineBounds="Tight" />
+                </StackPanel>
+            </StackPanel>
+            <Slider HorizontalAlignment="Center" Width="300"
+                    IsDirectionReversed="false" Minimum="0" Maximum="14"
+                    Value="{x:Bind GameViewModel.ShownStars, Mode=TwoWay}"
+                    Orientation="Horizontal" SmallChange="1" TickFrequency="1" />
+        </StackPanel>
+    </Grid>
+</UserControl>
