@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Catan3.Shared\Catan3.Shared.csproj" />
+    <ProjectReference Include="..\..\Catan3.Shared\Catan3.Shared.csproj" />
   </ItemGroup>
 
 

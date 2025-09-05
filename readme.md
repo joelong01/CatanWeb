@@ -12,11 +12,15 @@ This document outlines the design for a multi-platform Settlers of Catan game sy
 
 **4. Comprehensive Test Suite:** Multiple test projects ensure game logic correctness and API functionality:
 
-- **Tests.DesktopApp.UI:** End-to-end UI automation tests
-- **Tests.GameService:** Integration and SignalR communication tests
-- **Tests.Shared:** JSON serialization compatibility tests for .NET and JavaScript
+- **Tests/Desktop:** End-to-end UI automation tests for the WinUI3 desktop application
+- **Tests/GameService:** Integration and SignalR communication tests using ReplayTest infrastructure  
+- **Tests/Shared:** JSON serialization compatibility tests for .NET and JavaScript
+- **Tests/Data:** Test scenario files (.catan_test) containing recorded game sessions for replay testing
 
-**5. CLI Tool (Catan3.CLI project):** Command-line interface for debugging and testing. Creates games and transitions them to debuggable states efficiently.
+**5. CLI Tool (Catan3.CLI project):** Command-line interface for debugging and testing. Provides commands for:
+- Running live game sessions against GameService (`expansion`, `regular`)
+- Testing MVVM object serialization (`test --mvvm-objects`)
+- Extracting GameModel data from .catan files (`extract`)
 
 At the stage we are in, DO NOT change the WinUI3 desktop app. That is the "source of truth" for how the game works, even though we are evolving it. We can always reference back to the game to see *WHAT* needs to be done, if not necessarily *HOW* it needs to be done.
 
@@ -381,7 +385,7 @@ Catan/
 │   ├── Interfaces/         # IGameStateMachine interface
 │   ├── Models/
 │   ├── Services/           # GameServiceProxy for client communication
-│   ├── TestData/           # Shared test scenarios
+│   ├── TestData/           # TestDataLoader utility class
 │   └── Utility/
 ├── DesktopApp/
 │   ├── Assets/
@@ -425,17 +429,17 @@ Catan/
 │   └── ValueConverters/
 ├── Docs/
 ├── Scripts/
-├── Tests.DesktopApp.UI/
-│   └── TestInfra/
-├── Tests.GameService/
-│   ├── Companion/
-│   ├── CompanionUI/
-│   ├── SignalR/
-│   └── TestClient/
-│       ├── Commands/
-│       └── Services/
-├── Tests.Shared/
-│   └── Serialization/
+├── Tests/
+│   ├── Data/               # Test scenario files (.catan_test)
+│   ├── Desktop/            # UI automation tests (Tests.DesktopApp.UI)
+│   │   ├── ScriptedTestData/
+│   │   └── TestInfra/
+│   ├── GameService/        # Integration and SignalR tests
+│   │   ├── Companion/
+│   │   ├── CompanionUI/
+│   │   └── ReplayTests/    # ReplayTest infrastructure
+│   └── Shared/            # Serialization compatibility tests
+│       └── Serialization/
 ├── build_worker.ps1
 ├── build.ps1
 ├── Catan.sln

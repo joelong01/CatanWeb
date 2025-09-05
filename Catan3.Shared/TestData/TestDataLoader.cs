@@ -11,21 +11,20 @@ namespace Catan3.Shared.TestData
     public static class TestDataLoader
     {
         /// <summary>
-        /// Loads a test scenario from an embedded resource file.
+        /// Loads a test scenario from the Tests/Data directory.
         /// </summary>
         /// <param name="testFileName">The name of the test file (e.g., "Expansion.catan_test")</param>
         /// <returns>The loaded test scenario with GameModel and action stack</returns>
         public static async Task<TestScenario> LoadTestScenarioAsync(string testFileName)
         {
-            // Get the Shared assembly where the test data is actually embedded
-            var assembly = typeof(TestDataLoader).Assembly;
-            var resourceName = $"Catan3.Shared.TestData.{testFileName}";
+            var testDataPath = Path.Combine(GetSolutionRoot(), "Tests", "Data", testFileName);
+            
+            if (!File.Exists(testDataPath))
+            {
+                throw new FileNotFoundException($"Test file '{testFileName}' not found at: {testDataPath}");
+            }
 
-            using var stream = assembly.GetManifestResourceStream(resourceName)
-                ?? throw new FileNotFoundException($"Test file '{testFileName}' not found as embedded resource");
-
-            using var reader = new StreamReader(stream);
-            var json = await reader.ReadToEndAsync();
+            var json = await File.ReadAllTextAsync(testDataPath);
 
             var document = JsonDocument.Parse(json);
             var root = document.RootElement;
@@ -55,44 +54,61 @@ namespace Catan3.Shared.TestData
         }
 
         /// <summary>
-        /// Gets the stream for a test file embedded resource.
+        /// Gets the stream for a test file from Tests/Data directory.
         /// </summary>
         /// <param name="testFileName">The name of the test file</param>
         /// <returns>Stream containing the test file data</returns>
         public static Stream GetTestFileStream(string testFileName)
         {
-            // Get the Shared assembly where the test data is actually embedded
-            var assembly = typeof(TestDataLoader).Assembly;
-            var resourceName = $"Catan3.Shared.TestData.{testFileName}";
+            var testDataPath = Path.Combine(GetSolutionRoot(), "Tests", "Data", testFileName);
+            
+            if (!File.Exists(testDataPath))
+            {
+                throw new FileNotFoundException($"Test file '{testFileName}' not found at: {testDataPath}");
+            }
 
-            return assembly.GetManifestResourceStream(resourceName)
-                ?? throw new FileNotFoundException($"Test file '{testFileName}' not found as embedded resource");
+            return File.OpenRead(testDataPath);
         }
 
         /// <summary>
-        /// Lists all available test files.
+        /// Lists all available test files in Tests/Data directory.
         /// </summary>
         /// <returns>Array of test file names</returns>
         public static string[] GetAvailableTestFiles()
         {
-            // Get the Shared assembly where the test data is actually embedded
-            var assembly = typeof(TestDataLoader).Assembly;
-            var prefix = "Catan3.Shared.TestData.";
-            var suffix = ".catan_test";
+            var testDataDir = Path.Combine(GetSolutionRoot(), "Tests", "Data");
             
-            var resources = assembly.GetManifestResourceNames();
-            var testFiles = new System.Collections.Generic.List<string>();
-
-            foreach (var resource in resources)
+            if (!Directory.Exists(testDataDir))
             {
-                if (resource.StartsWith(prefix) && resource.EndsWith(suffix))
-                {
-                    var fileName = resource.Substring(prefix.Length);
-                    testFiles.Add(fileName);
-                }
+                return Array.Empty<string>();
             }
 
-            return testFiles.ToArray();
+            return Directory.GetFiles(testDataDir, "*.catan_test")
+                .Select(Path.GetFileName)
+                .Where(name => name != null)
+                .Cast<string>()
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Gets the solution root directory by walking up from the current assembly location.
+        /// </summary>
+        /// <returns>Path to the solution root directory</returns>
+        private static string GetSolutionRoot()
+        {
+            var assemblyLocation = typeof(TestDataLoader).Assembly.Location;
+            var currentDir = Path.GetDirectoryName(assemblyLocation);
+            
+            while (currentDir != null)
+            {
+                if (File.Exists(Path.Combine(currentDir, "Catan.sln")))
+                {
+                    return currentDir;
+                }
+                currentDir = Path.GetDirectoryName(currentDir);
+            }
+            
+            throw new InvalidOperationException("Could not find solution root directory (Catan.sln not found)");
         }
     }
 

@@ -1,6 +1,6 @@
-# Script to copy latest saved games to shared test directory
+# Script to copy latest saved games to test data directory
 param(
-    [string]$TestDataPath = "Catan3.Shared\TestData"
+    [string]$TestDataPath = "Tests\Data"
 )
 
 Write-Host "Updating test files from latest saved games..." -ForegroundColor Green
