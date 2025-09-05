@@ -42,19 +42,11 @@ namespace Catan3.Shared.Models
         [ObservableProperty]
         public partial string GameHash { get; set; } = string.Empty;
         /// <summary>
-        ///     the Seed that was used to generate the random numbers for this game.  this will be carried
-        ///     from one GameModel to the next in the same game.  We do this because we are using a deterministic
-        ///     random class so that when we open files to replay a game for a test, we'll always get the same
-        ///     random numbers.
+        /// The random number generator used for all game randomization.
+        /// Tracks seed and iterations for deterministic replay across sessions.
         /// </summary>
         [ObservableProperty]
-        public partial int RandomSeed { get; set; } = 0;
-
-        /// <summary>
-        ///     the number of times we've called Next() on the Random class in this game.
-        /// </summary>
-        [ObservableProperty]
-        public partial int RandomIterations{ get; set; } = 0;
+        public partial ReplayableRandom Random { get; set; } = new ReplayableRandom();
 
         /// <summary>
         /// What kinds of things can be purchased in this game and if they are allowed to be purchased at this time?

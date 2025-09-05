@@ -1,18 +1,20 @@
-﻿namespace Catan3.Shared.Utility
+﻿using System.Text.Json.Serialization;
+
+namespace Catan3.Shared.Utility
 {
     public sealed class ReplayableRandom
     {
-        private readonly int _seed;
+        [JsonIgnore]
         private Random _rng = null!;
 
         public int Iterations { get; private set; }
-        public int Seed => _seed;
+        public int Seed { get; private set; }
 
-        public ReplayableRandom(int seed, int inter = 0)
+        [JsonConstructor]
+        public ReplayableRandom(int seed, int iterations = 0)
         {
-            _seed = seed;
-            Iterations = 0;
-            Restore(inter);
+            Seed = seed;
+            Restore(iterations);
         }
 
         // Default constructor for truly random games (not deterministic)
@@ -23,7 +25,7 @@
         // Call this on load: resets and advances to recorded Iterations
         public void Restore(int iterations)
         {
-            _rng = new Random(_seed);
+            _rng = new Random(Seed);
             Iterations = 0;
             for (int i = 0; i < iterations; i++)
             {

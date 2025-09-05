@@ -509,10 +509,15 @@ namespace Catan3.GameService.Hubs
             var commandId = Guid.NewGuid().ToString();
             try 
             {
-                LogEvent("GoFirst", $"SignalR Go First: {message.PlayerId} for {playerId} in {gameId}");
+                // Get GameStateMachine and current state first
+                var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
+                var currentGameModel = gameStateMachine.GetCurrentState();
+                
+                // Validate the message request
+                ValidateMessage(currentGameModel, playerId, "GoFirst", $"Target First Player={message.PlayerId}");
                 
                 // Process synchronously for real-time response
-                var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleGoFirstAsync(message);
+                var updatedGameModel = await gameStateMachine.HandleGoFirstAsync(message);
                 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -545,6 +550,31 @@ namespace Catan3.GameService.Hubs
         private void LogEvent(string eventType, string message, LogLevel logLevel = LogLevel.Information)
         {
             _logger.Log(logLevel, "[GameHub][{EventType}] {Message}", eventType, message);
+        }
+
+        /// <summary>
+        /// Validates message execution permissions and logs request details.
+        /// Centralized validation logic for all game actions.
+        /// </summary>
+        /// <param name="gameModel">The current game model</param>
+        /// <param name="requestingPlayerId">The player requesting the action</param>
+        /// <param name="actionType">The type of action being requested</param>
+        /// <param name="additionalInfo">Additional information about the action</param>
+        private void ValidateMessage(GameModel gameModel, string requestingPlayerId, string actionType, string additionalInfo = "")
+        {
+            var currentPlayerId = gameModel.CurrentPlayerId;
+            
+            var logMessage = $"{actionType}: Requesting Player={requestingPlayerId}, Current Player={currentPlayerId}, Game State={gameModel.GameState}";
+            if (!string.IsNullOrEmpty(additionalInfo))
+            {
+                logMessage += $", {additionalInfo}";
+            }
+            
+            // Use Warning level to ensure it shows during tests (test config suppresses lower levels)
+            LogEvent("Validation", logMessage, LogLevel.Warning);
+            
+            // Future: Add specific validation rules here based on action type
+            // For now, we just log the details for debugging
         }
 
         /// <summary>

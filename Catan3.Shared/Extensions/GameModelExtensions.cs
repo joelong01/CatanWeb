@@ -45,7 +45,8 @@ namespace Catan3.Shared.Extensions
                 GameResourcesModel = new ResourcesModel(),
                 RollModel = new RollModel(),
                 ActionFlags = new ActionFlags(),
-                Robber = new RobberModel { Coordinates = HexCoordinates.Default }
+                Robber = new RobberModel { Coordinates = HexCoordinates.Default },
+                Random = new ReplayableRandom()
             };
             
             // Initialize tiles
@@ -101,10 +102,6 @@ namespace Catan3.Shared.Extensions
             // Add harbors
             game.Harbors.AddRange(gameInfo.Harbors);
 
-            // Set random seed for new games
-            var random = new ReplayableRandom();
-            game.RandomSeed = random.Seed;
-            game.RandomIterations = 0;
 
             // Shuffle the board
             game.Shuffle();
@@ -128,29 +125,19 @@ namespace Catan3.Shared.Extensions
         /// <summary>
         /// gets the next Random number using the ReplayableRandom class and updates the game state
         /// </summary>
-        /// 
         public static int NextRandom(this GameModel gameModel)
         {
-            var random = new ReplayableRandom(gameModel.RandomSeed, gameModel.RandomIterations);
-            int result = random.Next();
-            gameModel.RandomIterations = random.Iterations;
-            return result;
+            return gameModel.Random.Next();
         }
 
         public static int NextRandom(this GameModel gameModel, int maxValue)
         {
-            var random = new ReplayableRandom(gameModel.RandomSeed, gameModel.RandomIterations);
-            int result = random.Next(maxValue);
-            gameModel.RandomIterations = random.Iterations;
-            return result;
+            return gameModel.Random.Next(maxValue);
         }
 
         public static int NextRandom(this GameModel gameModel, int minValue, int maxValue)
         {
-            var random = new ReplayableRandom(gameModel.RandomSeed, gameModel.RandomIterations);
-            int result = random.Next(minValue, maxValue);
-            gameModel.RandomIterations = random.Iterations;
-            return result;
+            return gameModel.Random.Next(minValue, maxValue);
         }
 
 
@@ -677,8 +664,8 @@ namespace Catan3.Shared.Extensions
                 throw new GameException("GameModel missing required GameHash");
             
             // Check random state (needed for deterministic behavior)
-            if (gameModel.RandomSeed == 0)
-                throw new GameException("GameModel missing RandomSeed - required for deterministic game behavior");
+            if (gameModel.Random?.Seed == 0)
+                throw new GameException("GameModel missing Random or RandomSeed - required for deterministic game behavior");
             
             // Check essential collections exist and have content
             if (gameModel.Players == null || gameModel.Players.Count == 0)
@@ -721,11 +708,6 @@ namespace Catan3.Shared.Extensions
         /// </summary>
         public static void Shuffle(this GameModel game)
         {
-            // CRITICAL FIX: Use ReplayableRandom with game's RandomSeed and RandomIterations
-            // This matches the Desktop app implementation exactly for deterministic behavior
-            var random = new ReplayableRandom(game.RandomSeed, game.RandomIterations);
-            int count = game.Tiles.Count;
-            
             // NOTE: The validation loop below is INTENTIONALLY deterministic and thread-safe:
             // - Each GameStateMachine instance operates on isolated game data (per-game concurrency isolation)
             // - ReplayableRandom produces the same sequence for the same seed+iterations
@@ -733,22 +715,18 @@ namespace Catan3.Shared.Extensions
             // - This is NOT a race condition - it's deterministic game logic by design
             do
             {
-                ShuffleList<TileModel, ResourceType>(game.Tiles, random,
+                ShuffleList<TileModel, ResourceType>(game.Tiles, game.Random,
                      tile => tile.ResourceTileType,
                      (tile, type) => tile.ResourceTileType = type);
-                ShuffleList<TileModel, int>(game.Tiles, random,
+                ShuffleList<TileModel, int>(game.Tiles, game.Random,
                     tile => tile.Number,
                     (tile, number) => tile.Number = number);
-                ShuffleList<HarborModel, HarborType>(game.Harbors, random,
+                ShuffleList<HarborModel, HarborType>(game.Harbors, game.Random,
                    harbor => harbor.HarborKey.HarborType,
                    (harbor, type) => harbor.HarborKey.HarborType = type);
                 // Correct the placement of the number 7 on desert tiles
                 EnsureDesertSeven(game);
             } while (!ValidateGame(game));
-
-            // CRITICAL: Update RandomIterations after shuffling, matching Desktop app
-            // This captures the total iterations needed (including validation loops) for replay consistency
-            game.RandomIterations = random.Iterations;
             
             // 1/14/2025: Robber starts off the board so the first move can be to a desert tile, so do NOT put the robber on a desert tile
         }

@@ -158,10 +158,13 @@ public class Program
 
         var outputOption = new Option<string>(
             "--out",
-            "Output JSON file path")
-        {
-            IsRequired = true
-        };
+            getDefaultValue: () => "stdout",
+            "Output destination: file path or 'stdout' for console output");
+        
+        var indexOption = new Option<int>(
+            "--index",
+            getDefaultValue: () => 0,
+            "Index of GameModel in DoneStack (0 = most recent)");
         
         var actionsOption = new Option<string?>(
             "--actions",
@@ -169,9 +172,10 @@ public class Program
         
         command.AddOption(inputOption);
         command.AddOption(outputOption);
+        command.AddOption(indexOption);
         command.AddOption(actionsOption);
 
-        command.SetHandler(async (input, output, actions) =>
+        command.SetHandler(async (input, output, index, actions) =>
         {
             try
             {
@@ -182,8 +186,8 @@ public class Program
                 }
                 else
                 {
-                    // Extract just the GameModel
-                    await ExtractCommand.ExtractGameModelAsync(input, output);
+                    // Extract specific GameModel by index
+                    await ExtractCommand.ExtractGameModelByIndexAsync(input, output, index);
                 }
             }
             catch (Exception ex)
@@ -191,7 +195,7 @@ public class Program
                 Console.WriteLine($"Extract Error: {ex.Message}");
                 Environment.Exit(1);
             }
-        }, inputOption, outputOption, actionsOption);
+        }, inputOption, outputOption, indexOption, actionsOption);
     }
 
     private static IHost CreateHost()

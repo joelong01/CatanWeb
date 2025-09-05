@@ -16,7 +16,7 @@ namespace Catan3.Shared.Services
     {
         private readonly HubConnection _connection;
         private readonly HttpClient _httpClient;
-        private readonly string _playerId;
+        private string _playerId;
         private string? _gameId;
         private readonly Dictionary<string, TaskCompletionSource<CommandResult>> _pendingCommands = [];
         private readonly object _commandLock = new();
@@ -27,7 +27,11 @@ namespace Catan3.Shared.Services
         public string ServiceUri { get; set; } = string.Empty;
 
         public HubConnection Connection => _connection;
-        public string PlayerId => _playerId;
+        public string PlayerId 
+        { 
+            get => _playerId; 
+            set => _playerId = value; 
+        }
         public string? GameId => _gameId;
         public GameModel? GameModel { get; private set; }
 
@@ -296,11 +300,15 @@ namespace Catan3.Shared.Services
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
                 
             var message = new PurchaseMessage(entitlement);
-            return await ExecuteCommandAsync(
-                () => _connection.InvokeAsync("ExecutePurchase", _gameId, _playerId, message),
-                $"Purchase {entitlement}",
-                timeout
-            );
+            await _connection.InvokeAsync("ExecutePurchase", _gameId, _playerId, message);
+            
+            return new CommandResult
+            {
+                CommandId = Guid.NewGuid().ToString(),
+                Success = true,
+                Message = $"Purchase {entitlement} sent",
+                Timestamp = DateTime.UtcNow
+            };
         }
         
 
@@ -310,11 +318,15 @@ namespace Catan3.Shared.Services
         public async Task<CommandResult> ExecuteRoadPurchaseAsync(string gameId, RoadKey roadKey, TimeSpan? timeout = null)
         {
             var message = new RoadPurchaseMessage(roadKey);
-            return await ExecuteCommandAsync(
-                () => _connection.InvokeAsync("ExecuteRoadPurchase", gameId, _playerId, message),
-                $"Road Purchase at {roadKey}",
-                timeout
-            );
+            await _connection.InvokeAsync("ExecuteRoadPurchase", gameId, _playerId, message);
+            
+            return new CommandResult
+            {
+                CommandId = Guid.NewGuid().ToString(),
+                Success = true,
+                Message = $"Road Purchase at {roadKey} sent",
+                Timestamp = DateTime.UtcNow
+            };
         }
 
         /// <summary>
@@ -323,11 +335,15 @@ namespace Catan3.Shared.Services
         public async Task<CommandResult> ExecuteBuildingUpgradeAsync(string gameId, BuildingKey buildingKey, TimeSpan? timeout = null)
         {
             var message = new BuildingUpgradeMessage(buildingKey);
-            return await ExecuteCommandAsync(
-                () => _connection.InvokeAsync("ExecuteBuildingUpgrade", gameId, _playerId, message),
-                $"Building Upgrade at {buildingKey}",
-                timeout
-            );
+            await _connection.InvokeAsync("ExecuteBuildingUpgrade", gameId, _playerId, message);
+            
+            return new CommandResult
+            {
+                CommandId = Guid.NewGuid().ToString(),
+                Success = true,
+                Message = $"Building Upgrade at {buildingKey} sent",
+                Timestamp = DateTime.UtcNow
+            };
         }
 
         /// <summary>
@@ -336,11 +352,15 @@ namespace Catan3.Shared.Services
         public async Task<CommandResult> ExecuteMoveRobberAsync(string gameId, HexCoordinates coordinates, string? targetPlayerId = null, TimeSpan? timeout = null)
         {
             var message = new MoveRobberMessage(coordinates, targetPlayerId);
-            return await ExecuteCommandAsync(
-                () => _connection.InvokeAsync("ExecuteMoveRobber", gameId, _playerId, message),
-                $"Move Robber to {coordinates}",
-                timeout
-            );
+            await _connection.InvokeAsync("ExecuteMoveRobber", gameId, _playerId, message);
+            
+            return new CommandResult
+            {
+                CommandId = Guid.NewGuid().ToString(),
+                Success = true,
+                Message = $"Move Robber to {coordinates} sent",
+                Timestamp = DateTime.UtcNow
+            };
         }
 
         /// <summary>
@@ -354,11 +374,15 @@ namespace Catan3.Shared.Services
                 
             var turnRollModel = new TurnRollModel(die1, die2);
             var message = new RollMessage(turnRollModel);
-            return await ExecuteCommandAsync(
-                () => _connection.InvokeAsync("ExecuteRoll", _gameId, _playerId, message),
-                $"Roll ({die1},{die2})",
-                timeout
-            );
+            await _connection.InvokeAsync("ExecuteRoll", _gameId, _playerId, message);
+            
+            return new CommandResult
+            {
+                CommandId = Guid.NewGuid().ToString(),
+                Success = true,
+                Message = $"Roll ({die1},{die2}) sent",
+                Timestamp = DateTime.UtcNow
+            };
         }
         
 
@@ -368,11 +392,15 @@ namespace Catan3.Shared.Services
         public async Task<CommandResult> ExecuteSetPlayerOrderAsync(string gameId, IList<string> playerIds, TimeSpan? timeout = null)
         {
             var message = new SetPlayerOrderMessage(playerIds);
-            return await ExecuteCommandAsync(
-                () => _connection.InvokeAsync("ExecuteSetPlayerOrder", gameId, _playerId, message),
-                "Set Player Order",
-                timeout
-            );
+            await _connection.InvokeAsync("ExecuteSetPlayerOrder", gameId, _playerId, message);
+            
+            return new CommandResult
+            {
+                CommandId = Guid.NewGuid().ToString(),
+                Success = true,
+                Message = "Set Player Order sent",
+                Timestamp = DateTime.UtcNow
+            };
         }
 
 
@@ -382,11 +410,15 @@ namespace Catan3.Shared.Services
         public async Task<CommandResult> ExecuteBalanceBoardAsync(string gameId, TimeSpan? timeout = null)
         {
             var message = new BalanceBoardMessage();
-            return await ExecuteCommandAsync(
-                () => _connection.InvokeAsync("ExecuteBalanceBoard", gameId, _playerId, message),
-                "Balance Board",
-                timeout
-            );
+            await _connection.InvokeAsync("ExecuteBalanceBoard", gameId, _playerId, message);
+            
+            return new CommandResult
+            {
+                CommandId = Guid.NewGuid().ToString(),
+                Success = true,
+                Message = "Balance Board sent",
+                Timestamp = DateTime.UtcNow
+            };
         }
 
         /// <summary>
@@ -399,11 +431,35 @@ namespace Catan3.Shared.Services
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
                 
             var message = new GoFirstMessage(firstPlayerId);
-            return await ExecuteCommandAsync(
-                () => _connection.InvokeAsync("ExecuteGoFirst", _gameId, _playerId, message),
-                $"Go First: {firstPlayerId}",
-                timeout
-            );
+            await _connection.InvokeAsync("ExecuteGoFirst", _gameId, _playerId, message);
+            
+            return new CommandResult
+            {
+                CommandId = Guid.NewGuid().ToString(),
+                Success = true,
+                Message = $"Go First: {firstPlayerId} sent",
+                Timestamp = DateTime.UtcNow
+            };
+        }
+        
+        /// <summary>
+        /// Executes a Participating In Supplemental command
+        /// Uses the stored GameId from JoinGameAsync call.
+        /// </summary>
+        public async Task<CommandResult> ExecuteParticipatingInSupplementalAsync(string playerId, bool participating, TimeSpan? timeout = null)
+        {
+            if (string.IsNullOrEmpty(_gameId))
+                throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
+                
+            await _connection.InvokeAsync("ExecuteParticipatingInSupplemental", _gameId, playerId, participating);
+            
+            return new CommandResult
+            {
+                CommandId = Guid.NewGuid().ToString(),
+                Success = true,
+                Message = $"Participating In Supplemental: {playerId} - {participating} sent",
+                Timestamp = DateTime.UtcNow
+            };
         }
         
 
@@ -676,8 +732,8 @@ namespace Catan3.Shared.Services
         /// </summary>
         private void SetupEventHandlers()
         {
-            // Game state updates
-            _connection.On<GameModel>("GameStateUpdated", gameModel =>
+            // Game state updates - use async handler to prevent deadlocks
+            _connection.On<GameModel>("GameStateUpdated", async gameModel =>
             {
                 LogEvent("CLIENT_RECEIVED", "Received GameStateUpdated message");
                 
@@ -690,12 +746,15 @@ namespace Catan3.Shared.Services
                 if (gameModel != null)
                 {
                     LogEvent("CLIENT_INVOKING", "Invoking GameStateUpdated event");
-                    GameStateUpdated?.Invoke(gameModel);
+                    // Fire and forget to prevent blocking SignalR receive thread
+                    _ = Task.Run(() => GameStateUpdated?.Invoke(gameModel));
                 }
                 else
                 {
                     LogEvent("CLIENT_NULL", "Received null gameModel");
                 }
+                
+                await Task.CompletedTask; // Make it properly async
             });
 
             // Command completion

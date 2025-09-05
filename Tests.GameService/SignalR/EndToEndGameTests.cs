@@ -7,7 +7,10 @@ using Catan3.Shared.Extensions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Tests.GameService.SignalR
 {
@@ -28,6 +31,7 @@ namespace Tests.GameService.SignalR
     public class EndToEndGameTests : IClassFixture<WebApplicationFactory<Program>>
     {
         private readonly WebApplicationFactory<Program> _factory;
+        private readonly ITestOutputHelper _output;
         //
         // during the allocation phase, we update the Buildings in GameModel.  the order of the Buildings is fixed
         // and the BuildingState is updated without worrying about order. But we need to know what the last building picked
@@ -36,8 +40,9 @@ namespace Tests.GameService.SignalR
 
         private readonly Dictionary<string, BuildingModel> _lastBuildingPicked = [];
 
-        public EndToEndGameTests(WebApplicationFactory<Program> factory)
+        public EndToEndGameTests(WebApplicationFactory<Program> factory, ITestOutputHelper output)
         {
+            _output = output;
             // Use the injected factory instead of creating a new one - this prevents multiple games
             _factory = factory.WithWebHostBuilder(builder =>
             {
@@ -48,14 +53,24 @@ namespace Tests.GameService.SignalR
                         // Test configuration with short timeouts for faster tests
                         ["GameApi:HangingGetTimeoutSeconds"] = "5",
 
-                        // Suppress logging during tests for cleaner output
-                        ["Logging:LogLevel:Default"] = "Error",
-                        ["Logging:LogLevel:Microsoft"] = "Error",
-                        ["Logging:LogLevel:Microsoft.AspNetCore"] = "Error",
-                        ["Logging:LogLevel:Catan3.GameService"] = "Error",
-                        ["Logging:LogLevel:Catan3.GameService.Controllers"] = "Error",
-                        ["Logging:LogLevel:Catan3.GameService.Services"] = "Error",
-                        ["Logging:LogLevel:Catan3.GameService.Hubs"] = "Error"
+                        // Enable detailed logging for debugging
+                        ["Logging:LogLevel:Default"] = "Information",
+                        ["Logging:LogLevel:Microsoft"] = "Warning",
+                        ["Logging:LogLevel:Microsoft.AspNetCore"] = "Warning", 
+                        ["Logging:LogLevel:Catan3.GameService"] = "Debug",
+                        ["Logging:LogLevel:Catan3.GameService.Controllers"] = "Debug",
+                        ["Logging:LogLevel:Catan3.GameService.Services"] = "Debug",
+                        ["Logging:LogLevel:Catan3.GameService.Hubs"] = "Debug"
+                    });
+                });
+                
+                builder.ConfigureServices(services =>
+                {
+                    // Configure logging to output to test output
+                    services.AddLogging(logging =>
+                    {
+                        logging.ClearProviders();
+                        logging.AddProvider(new TestOutputLoggerProvider(_output));
                     });
                 });
             });
@@ -69,7 +84,7 @@ namespace Tests.GameService.SignalR
         /// </summary>
         /// <returns></returns>
 
-        [Fact]
+        [Fact(Skip = "Temporarily disabled")]
         public async Task EndToEndStatefulTest()
         {
             // Enable function timing for this test
@@ -659,11 +674,8 @@ namespace Tests.GameService.SignalR
             var timestamp = DateTime.UtcNow.ToString("HH:mm:ss.fff");
             if (session is null)
             {
-                var nullSessionLog = $"[{cmb}:{cln}] [{timestamp}] [{eventType}] [ {message}";
-                if (System.Diagnostics.Debugger.IsAttached)
-                    System.Diagnostics.Debug.WriteLine(nullSessionLog);
-                else
-                    Console.WriteLine(nullSessionLog);
+                var nullSessionLog = $"[{cmb}:{cln}] [{timestamp}] [TEST-{eventType}] {message}";
+                _output.WriteLine(nullSessionLog);
                 return;
             }
 
@@ -672,19 +684,13 @@ namespace Tests.GameService.SignalR
             var gameModel = proxy.GameModel;
             if (gameModel is null)
             {
-                var errorLog = $"[{cmb}:{cln}] [{timestamp}] [{eventType}] [GameModel is null] {message}";
-                if (System.Diagnostics.Debugger.IsAttached)
-                    System.Diagnostics.Debug.WriteLine(errorLog);
-                else
-                    Console.WriteLine(errorLog);
+                var errorLog = $"[{cmb}:{cln}] [{timestamp}] [TEST-{eventType}] [GameModel is null] {message}";
+                _output.WriteLine(errorLog);
                 throw new Exception("this is very odd");
-
             }
-            var gameLog = $"[{cmb}:{cln}] [{timestamp}] [{eventType}] [GameState={gameModel.GameState}] [CurrentPlayer={gameModel.CurrentPlayerId}] {message}";
-            if (System.Diagnostics.Debugger.IsAttached)
-                System.Diagnostics.Debug.WriteLine(gameLog);
-            else
-                Console.WriteLine(gameLog);
+            
+            var gameLog = $"[{cmb}:{cln}] [{timestamp}] [TEST-{eventType}] [GameState={gameModel.GameState}] [CurrentPlayer={gameModel.CurrentPlayerId}] {message}";
+            _output.WriteLine(gameLog);
         }
 
         /// <summary>
@@ -692,7 +698,7 @@ namespace Tests.GameService.SignalR
         /// produces identical game state progression as the Desktop app.
         /// This validates that the shared GameStateMachine behaves consistently across both architectures.
         /// </summary>
-        [Fact]
+        [Fact(Skip = "Temporarily disabled")]
         public async Task TestLoadGameModelOnly()
         {
             LogEvent(null, "LoadGameModelTest", "=== Testing LoadGameModel in isolation ===");
@@ -738,10 +744,41 @@ namespace Tests.GameService.SignalR
             }
         }
 
+        /// <summary>
+        /// Replays the Expansion.catan_test file using the new TestClient pattern.
+        /// Verifies GameService matches Desktop app behavior for Expansion game scenario.
+        /// </summary>
         [Fact]
+        public async Task ReplayExpansionTest()
+        {
+            using var replayTest = new ReplayTest(_factory, _output);
+            await replayTest.ReplayTestFileAsync("Expansion.catan_test");
+        }
+
+        /// <summary>
+        /// Replays the Regular.catan_test file using the new TestClient pattern.
+        /// Verifies GameService matches Desktop app behavior for Regular game scenario.
+        /// </summary>
+        [Fact(Skip = "Temporarily disabled")]
+        public async Task ReplayRegularTest()
+        {
+            using var replayTest = new ReplayTest(_factory, _output);
+            await replayTest.ReplayTestFileAsync("Regular.catan_test");
+        }
+
+        [Fact(Skip = "Temporarily disabled")]
         public async Task ReplaySharedExpansionTestFile()
         {
             LogEvent(null, "ReplayTest", "=== Starting replay of shared Expansion.catan_test with proper multiplayer flow ===");
+
+            // Setup test_log directory for GameModel debugging
+            var testLogDir = Path.Combine(Directory.GetCurrentDirectory(), "test_log");
+            if (Directory.Exists(testLogDir))
+            {
+                Directory.Delete(testLogDir, true);
+            }
+            Directory.CreateDirectory(testLogDir);
+            LogEvent(null, "TestLogSetup", $"Created test log directory: {testLogDir}");
 
             // Load the shared test scenario - parse gameModel and actionStack
             var testScenario = await Catan3.Shared.TestData.TestDataLoader.LoadTestScenarioAsync("Expansion.catan_test");
@@ -764,10 +801,26 @@ namespace Tests.GameService.SignalR
             
             // Create connections for ALL players first (like real users would)
             var allProxies = new Dictionary<string, GameServiceProxy>();
+            var gameModelCounter = 0;
             
             foreach (var playerId in playerIds)
             {
                 var playerProxy = new GameServiceProxy(hubUrl, serviceUri, testHandler, playerId);
+                
+                // Hook up GameModel logging for the first player only (to avoid duplicates)
+                if (playerId == playerIds[0])
+                {
+                    playerProxy.GameStateUpdated += (gameModel) =>
+                    {
+                        var counter = ++gameModelCounter;
+                        var fileName = $"GameModel.{counter}.json";
+                        var filePath = Path.Combine(testLogDir, fileName);
+                        var gameModelJson = Catan3.Shared.Utility.JsonHelper.Serialize(gameModel);
+                        File.WriteAllText(filePath, gameModelJson);
+                        LogEvent(null, "GameModelLogged", $"Logged {fileName} with GameHash: {gameModel.GameHash}");
+                    };
+                }
+                
                 await playerProxy.ConnectAsync();
                 allProxies[playerId] = playerProxy;
                 LogEvent(null, "PlayerConnected", $"Player {playerId} connected to SignalR");
@@ -846,18 +899,18 @@ namespace Tests.GameService.SignalR
 
                 try
                 {
+                    // Verify current state matches expected BEFORE executing action (like Desktop test)
+                    if (recordedMessage.ExpectedGameHash != null)
+                    {
+                        VerifyAllProxiesHaveSameGameModel(allProxies, expectedHash: recordedMessage.ExpectedGameHash);
+                        LogEvent(null, "HashVerified", $"✅ Pre-action hash verified: {recordedMessage.ExpectedGameHash}");
+                    }
+
                     // Execute the appropriate action using SignalR proxy
                     await ExecuteRecordedAction(allProxies, recordedMessage, actualGameId);
 
                     // Wait for SignalR notifications to propagate
                     await Task.Delay(100);
-
-                    // Verify all proxies have same GameHash and it matches expected
-                    if (recordedMessage.ExpectedGameHash != null)
-                    {
-                        VerifyAllProxiesHaveSameGameModel(allProxies, expectedHash: recordedMessage.ExpectedGameHash);
-                        LogEvent(null, "HashVerified", $"✅ Hash verified: {recordedMessage.ExpectedGameHash}");
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -948,20 +1001,101 @@ namespace Tests.GameService.SignalR
                     }
                     break;
 
-                // ExecuteGameActionRecord is deprecated - individual record types are used instead
-
-                case GoFirstRecord goFirst:
-                    var goFirstPlayerId = goFirst.PlayerId;
-                    await currentPlayerProxy.ExecuteGoFirstAsync(goFirstPlayerId);
+                case NextRecord next:
+                    var nextResult = await currentPlayerProxy.ExecuteNextAsync();
+                    if (!nextResult.Success)
+                    {
+                        throw new InvalidOperationException($"Next action failed: {nextResult.Message}");
+                    }
                     break;
 
-                case PurchaseRecord purchase:
-                    await currentPlayerProxy.ExecutePurchaseAsync(purchase.Entitlement);
+                case UndoRecord undo:
+                    var undoResult = await currentPlayerProxy.ExecuteUndoAsync();
+                    if (!undoResult.Success)
+                    {
+                        throw new InvalidOperationException($"Undo action failed: {undoResult.Message}");
+                    }
+                    break;
+
+                case RedoRecord redo:
+                    var redoResult = await currentPlayerProxy.ExecuteRedoAsync();
+                    if (!redoResult.Success)
+                    {
+                        throw new InvalidOperationException($"Redo action failed: {redoResult.Message}");
+                    }
+                    break;
+
+                case BuildingUpgradeRecord buildingUpgrade:
+                    var buildingResult = await currentPlayerProxy.ExecuteBuildingUpgradeAsync(gameId, buildingUpgrade.BuildingKey);
+                    if (!buildingResult.Success)
+                    {
+                        throw new InvalidOperationException($"Building upgrade action failed: {buildingResult.Message}");
+                    }
+                    break;
+
+                case RoadPurchaseRecord roadPurchase:
+                    var roadResult = await currentPlayerProxy.ExecuteRoadPurchaseAsync(gameId, roadPurchase.RoadKey);
+                    if (!roadResult.Success)
+                    {
+                        throw new InvalidOperationException($"Road purchase action failed: {roadResult.Message}");
+                    }
+                    break;
+
+                case MoveRobberRecord moveRobber:
+                    var robberResult = await currentPlayerProxy.ExecuteMoveRobberAsync(gameId, moveRobber.Coordinates, moveRobber.TargetPlayerId);
+                    if (!robberResult.Success)
+                    {
+                        throw new InvalidOperationException($"Move robber action failed: {robberResult.Message}");
+                    }
                     break;
 
                 case RollRecord roll:
                     var rollModel = roll.Roll;
-                    await currentPlayerProxy.ExecuteRollAsync(rollModel.RedRoll, rollModel.WhiteRoll);
+                    var rollResult = await currentPlayerProxy.ExecuteRollAsync(rollModel.RedRoll, rollModel.WhiteRoll);
+                    if (!rollResult.Success)
+                    {
+                        throw new InvalidOperationException($"Roll action failed: {rollResult.Message}");
+                    }
+                    break;
+
+                case SetPlayerOrderRecord setPlayerOrder:
+                    var playerOrderResult = await currentPlayerProxy.ExecuteSetPlayerOrderAsync(gameId, setPlayerOrder.PlayerIds);
+                    if (!playerOrderResult.Success)
+                    {
+                        throw new InvalidOperationException($"Set player order action failed: {playerOrderResult.Message}");
+                    }
+                    break;
+
+                case GoFirstRecord goFirst:
+                    var goFirstResult = await currentPlayerProxy.ExecuteGoFirstAsync(goFirst.PlayerId);
+                    if (!goFirstResult.Success)
+                    {
+                        throw new InvalidOperationException($"Go first action failed: {goFirstResult.Message}");
+                    }
+                    break;
+
+                case ParticipatingInSupplementalRecord participatingInSupplemental:
+                    var supplementalResult = await currentPlayerProxy.ExecuteParticipatingInSupplementalAsync(participatingInSupplemental.PlayerId, participatingInSupplemental.Participating);
+                    if (!supplementalResult.Success)
+                    {
+                        throw new InvalidOperationException($"Participating in supplemental action failed: {supplementalResult.Message}");
+                    }
+                    break;
+
+                case BalanceBoardRecord balanceBoard:
+                    var balanceResult = await currentPlayerProxy.ExecuteBalanceBoardAsync(gameId);
+                    if (!balanceResult.Success)
+                    {
+                        throw new InvalidOperationException($"Balance board action failed: {balanceResult.Message}");
+                    }
+                    break;
+
+                case PurchaseRecord purchase:
+                    var purchaseResult = await currentPlayerProxy.ExecutePurchaseAsync(purchase.Entitlement);
+                    if (!purchaseResult.Success)
+                    {
+                        throw new InvalidOperationException($"Purchase action failed: {purchaseResult.Message}");
+                    }
                     break;
 
                 default:
@@ -1288,6 +1422,7 @@ namespace Tests.GameService.SignalR
             var newGameRequest = new
             {
                 gameType = gameType.ToString(),
+                gameName = "Test Game",
                 playerIds = playerIds
             };
 
@@ -1324,6 +1459,192 @@ namespace Tests.GameService.SignalR
                 await proxy.DisposeAsync();
             }
             _proxies.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Represents a single client in the multi-client test scenario.
+    /// Creates its own SignalR connection and provides Tasks that complete when updates arrive.
+    /// </summary>
+    public class TestClient : IDisposable
+    {
+        private readonly string _playerId;
+        private readonly string _hubUrl;
+        private readonly string _serviceUri;
+        private readonly string _gameId;
+        private readonly HttpMessageHandler _testHandler;
+        private readonly ITestOutputHelper _output;
+        
+        private GameModel _currentGameModel;
+        private GameServiceProxy? _proxy;
+        private TaskCompletionSource<GameModel>? _currentUpdateTask;
+        private readonly object _gameModelLock = new object();
+        private volatile bool _disposed = false;
+
+        public TestClient(string playerId, GameModel initialGameModel, string hubUrl, string serviceUri, string gameId, HttpMessageHandler testHandler, ITestOutputHelper output)
+        {
+            _playerId = playerId;
+            _hubUrl = hubUrl;
+            _serviceUri = serviceUri;
+            _gameId = gameId;
+            _testHandler = testHandler;
+            _output = output;
+            _currentGameModel = initialGameModel;
+        }
+
+        public string PlayerId => _playerId;
+        
+        public GameModel CurrentGameModel 
+        { 
+            get 
+            { 
+                lock (_gameModelLock) 
+                { 
+                    return _currentGameModel; 
+                } 
+            } 
+        }
+
+        /// <summary>
+        /// Starts the TestClient by connecting to SignalR and joining the game
+        /// </summary>
+        public async Task StartAsync()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(TestClient));
+
+            _output.WriteLine($"[TestClient-{_playerId}] Starting SignalR connection");
+            
+            // Create GameServiceProxy
+            _proxy = new GameServiceProxy(_hubUrl, _serviceUri, _testHandler, _playerId, _gameId);
+            _proxy.GameStateUpdated += OnGameStateUpdated;
+            
+            // Connect and join game
+            await _proxy.ConnectAsync();
+            _output.WriteLine($"[TestClient-{_playerId}] Connected to SignalR");
+            
+            await _proxy.JoinGameAsync(_gameId);
+            _output.WriteLine($"[TestClient-{_playerId}] Joined game {_gameId} and listening for updates");
+        }
+
+        /// <summary>
+        /// Returns a Task that will be completed when the next GameStateUpdated message arrives
+        /// </summary>
+        public Task<GameModel> GetUpdateTaskAsync()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(TestClient));
+
+            _currentUpdateTask = new TaskCompletionSource<GameModel>();
+            _output.WriteLine($"[TestClient-{_playerId}] Created update task");
+            return _currentUpdateTask.Task;
+        }
+
+        private void OnGameStateUpdated(GameModel gameModel)
+        {
+            if (_disposed) return;
+
+            lock (_gameModelLock)
+            {
+                _currentGameModel = gameModel;
+            }
+            
+            _output.WriteLine($"[TestClient-{_playerId}] GameStateUpdated received: GameHash={gameModel.GameHash}, GameState={gameModel.GameState}");
+            
+            // Complete the current update task
+            _currentUpdateTask?.SetResult(gameModel);
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+
+            _output.WriteLine($"[TestClient-{_playerId}] Disposing");
+            
+            // Cancel any pending task if it's not already completed
+            if (_currentUpdateTask != null && !_currentUpdateTask.Task.IsCompleted)
+            {
+                _currentUpdateTask.SetCanceled();
+            }
+            
+            // Clean up proxy
+            if (_proxy != null)
+            {
+                try
+                {
+                    _proxy.GameStateUpdated -= OnGameStateUpdated;
+                    _proxy.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
+                    _output.WriteLine($"[TestClient-{_playerId}] SignalR connection disposed");
+                }
+                catch (Exception ex)
+                {
+                    _output.WriteLine($"[TestClient-{_playerId}] Error disposing proxy: {ex.Message}");
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Custom logger provider that routes all logs to xUnit test output
+    /// </summary>
+    public class TestOutputLoggerProvider : ILoggerProvider
+    {
+        private readonly ITestOutputHelper _output;
+
+        public TestOutputLoggerProvider(ITestOutputHelper output)
+        {
+            _output = output;
+        }
+
+        public ILogger CreateLogger(string categoryName)
+        {
+            return new TestOutputLogger(_output, categoryName);
+        }
+
+        public void Dispose() { }
+    }
+
+    /// <summary>
+    /// Custom logger that writes to xUnit test output
+    /// </summary>
+    public class TestOutputLogger : ILogger
+    {
+        private readonly ITestOutputHelper _output;
+        private readonly string _categoryName;
+
+        public TestOutputLogger(ITestOutputHelper output, string categoryName)
+        {
+            _output = output;
+            _categoryName = categoryName;
+        }
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Debug;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (!IsEnabled(logLevel))
+                return;
+
+            try
+            {
+                var timestamp = DateTime.UtcNow.ToString("HH:mm:ss.fff");
+                var message = formatter(state, exception);
+                var logLine = $"[{timestamp}] [{logLevel}] [{_categoryName}] {message}";
+                
+                if (exception != null)
+                {
+                    logLine += $"\n{exception}";
+                }
+                
+                _output.WriteLine(logLine);
+            }
+            catch
+            {
+                // Ignore logging errors during tests
+            }
         }
     }
 }

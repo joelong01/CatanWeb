@@ -595,10 +595,6 @@ namespace Catan3.Shared.GameLogic
                 
             var gameModel = GameModelExtensions.CreateNew(gameInfo, playerIds, "New Game");
             _gameLog.GameType = selectedGame;
-            gameModel.GameType = selectedGame;
-            // Set random seed for truly random new games (not deterministic)
-            var random = new ReplayableRandom();
-            gameModel.RandomSeed = random.Seed;
 
             // Shuffle the board with the new random seed
             gameModel.Shuffle();
@@ -611,9 +607,6 @@ namespace Catan3.Shared.GameLogic
 
         public GameModel FromGameModel(GameModel gameModel)
         {
-            // Set random seed for truly random new games (not deterministic)
-            var random = new ReplayableRandom();
-            gameModel.RandomSeed = random.Seed;
 
             // Shuffle the board with the new random seed
             gameModel.Shuffle();
@@ -652,10 +645,9 @@ namespace Catan3.Shared.GameLogic
 
                         // CRITICAL: Initialize ReplayableRandom with saved seed for deterministic behavior
                         // This ensures GameHash consistency during test replay
-                        if (gm.RandomSeed != 0)
+                        if (gm.Random?.Seed != 0)
                         {
-                            _ = new ReplayableRandom(gm.RandomSeed, gm.RandomIterations);
-                            _logger.Trace(GameTraceLevel.Trace, $"Initialized ReplayableRandom with seed: {gm.RandomSeed}, iterations: {gm.RandomIterations}");
+                            _logger.Trace(GameTraceLevel.Trace, $"Loaded ReplayableRandom with seed: {gm.Random?.Seed}, iterations: {gm.Random?.Iterations}");
                         }
 
                         // Initialize the game log with the loaded GameModel
@@ -1162,11 +1154,13 @@ namespace Catan3.Shared.GameLogic
         /// <summary>
         /// Initializes the logging state for a loaded GameModel.
         /// This public method provides a robust alternative to reflection-based access.
+        /// Uses the Log's InitializeWithGameModel to preserve the original GameHash.
         /// </summary>
         /// <param name="gameModel">The GameModel to initialize logging state for</param>
         public void InitializeLoggingState(GameModel gameModel)
         {
-            LogGameModel(gameModel);
+            // Use the Log's initialization method to preserve the original GameModel
+            _gameLog.InitializeWithGameModel(gameModel);
         }
 
         private void LogGameModel(GameModel gameModel)
@@ -1182,7 +1176,7 @@ namespace Catan3.Shared.GameLogic
             // Update ExpectedGameHash after all game state modifications are complete
             gameModel.UpdateGameHash();
 
-            // remember the Random Seed and RandomIterations so that we can replay the game
+            // Random state is automatically maintained in gameModel.Random for replay consistency
 
 
             // this.TraceMessage($"GameState: {gameModel.GameState} OldHash={oldHash} newHash={gameModel.GameHash}");
@@ -1528,14 +1522,12 @@ namespace Catan3.Shared.GameLogic
                     }
                 }
 
-                // Initialize a random number generator.
-                var rand = new ReplayableRandom(gameModel.RandomSeed, gameModel.RandomIterations);
                 HashSet<int> usedIndices = [];
 
                 // Set new gold tiles while avoiding desert tiles, duplicates, and previously gold tiles.
                 while (usedIndices.Count < gameModel.HouseRules.GoldTiles)
                 {
-                    int index = rand.Next(gameModel.Tiles.Count);
+                    int index = gameModel.NextRandom(gameModel.Tiles.Count);
                     var tileModel = gameModel.Tiles[index];
 
                     if (previouslyGoldTiles.Contains(tileModel.TileKey))

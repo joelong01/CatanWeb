@@ -73,6 +73,13 @@ namespace Catan3.Shared.Interfaces
         void Done(GameModel model);
 
         /// <summary>
+        /// Initializes the log with an existing GameModel without any modifications.
+        /// Used during game loading to preserve the original GameModel state.
+        /// </summary>
+        /// <param name="gameModel">The GameModel to initialize the log with</param>
+        void InitializeWithGameModel(GameModel gameModel);
+
+        /// <summary>
         /// Gets the current game model state from the log.
         /// </summary>
         GameModel CurrentState();

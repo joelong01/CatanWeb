@@ -11,6 +11,77 @@ namespace Catan3.CLI.Commands
     public class ExtractCommand
     {
         /// <summary>
+        /// Extracts a specific GameModel by index from a .catan file.
+        /// </summary>
+        /// <param name="inputPath">Path to the input .catan file</param>
+        /// <param name="outputPath">Path to the output JSON file or "stdout"</param>
+        /// <param name="index">Index in DoneStack (0 = most recent)</param>
+        public static async Task ExtractGameModelByIndexAsync(string inputPath, string outputPath, int index)
+        {
+            try
+            {
+                // Validate input file exists
+                if (!File.Exists(inputPath))
+                {
+                    throw new FileNotFoundException($"Input file not found: {inputPath}");
+                }
+                
+                // Read and decompress the .catan file
+                var compressedBytes = await File.ReadAllBytesAsync(inputPath);
+                var decompressedJson = Decompress(compressedBytes);
+                
+                // Parse the decompressed data (this is a SerializableLog)
+                using var document = JsonDocument.Parse(decompressedJson);
+                var root = document.RootElement;
+                
+                // The .catan file contains a SerializableLog with doneStack
+                if (!root.TryGetProperty("doneStack", out var doneStack))
+                {
+                    var properties = root.EnumerateObject().Select(p => p.Name).ToArray();
+                    throw new InvalidOperationException($"No 'doneStack' property found. Available: {string.Join(", ", properties)}");
+                }
+                
+                var doneStackArray = doneStack.EnumerateArray().ToArray();
+                if (doneStackArray.Length == 0)
+                {
+                    throw new InvalidOperationException("DoneStack is empty - no GameModel to extract");
+                }
+                
+                if (index >= doneStackArray.Length || index < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(index), $"Index {index} out of range. DoneStack has {doneStackArray.Length} elements (0-{doneStackArray.Length - 1})");
+                }
+                
+                // Get the GameModel at the specified index
+                var gameModelJson = doneStackArray[index].GetString();
+                if (string.IsNullOrEmpty(gameModelJson))
+                {
+                    throw new InvalidOperationException($"GameModel at index {index} is null or empty");
+                }
+                
+                // Parse and format the GameModel JSON
+                using var gameModelDoc = JsonDocument.Parse(gameModelJson);
+                var formattedJson = JsonSerializer.Serialize(gameModelDoc.RootElement, JsonHelper.StandardOptions);
+                
+                // Output to stdout or file
+                if (outputPath == "stdout")
+                {
+                    Console.Write(formattedJson);
+                }
+                else
+                {
+                    await File.WriteAllTextAsync(outputPath, formattedJson, Encoding.UTF8);
+                    Console.WriteLine($"✅ Extracted GameModel[{index}] to: {outputPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"❌ Error extracting GameModel: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
         /// Extracts the current GameModel from a .catan file and saves it as JSON.
         /// </summary>
         /// <param name="inputPath">Path to the input .catan file</param>
@@ -35,13 +106,13 @@ namespace Catan3.CLI.Commands
                 using var document = JsonDocument.Parse(decompressedJson);
                 var root = document.RootElement;
                 
-                // The .catan file contains a SerializableLog with DoneStack, RedoStack, GameType, etc.
-                if (!root.TryGetProperty("DoneStack", out var doneStack))
+                // The .catan file contains a SerializableLog with doneStack, redoStack, gameType, etc.
+                if (!root.TryGetProperty("doneStack", out var doneStack))
                 {
                     // Trace available properties for debugging
                     var properties = root.EnumerateObject().Select(p => p.Name).ToArray();
                     Console.WriteLine($"Available properties in .catan file: {string.Join(", ", properties)}");
-                    throw new InvalidOperationException("No 'DoneStack' property found in the .catan file");
+                    throw new InvalidOperationException("No 'doneStack' property found in the .catan file");
                 }
                 
                 var doneStackArray = doneStack.EnumerateArray().ToArray();
@@ -115,7 +186,7 @@ namespace Catan3.CLI.Commands
                 
                 // Parse the decompressed data (this is a SerializableLog)
                 using var catanDoc = JsonDocument.Parse(decompressedJson);
-                var doneStack = catanDoc.RootElement.GetProperty("DoneStack");
+                var doneStack = catanDoc.RootElement.GetProperty("doneStack");
                 
                 if (doneStack.GetArrayLength() == 0)
                 {

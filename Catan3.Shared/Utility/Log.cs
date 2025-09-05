@@ -414,6 +414,37 @@ namespace Catan3.Shared.Utility
 
 
         }
+
+        /// <summary>
+        /// Initializes the log with an existing GameModel without any modifications.
+        /// Used during game loading to preserve the original GameModel state.
+        /// This method puts the GameModel directly into the DoneStack without processing.
+        /// </summary>
+        /// <param name="gameModel">The GameModel to initialize the log with</param>
+        public void InitializeWithGameModel(GameModel gameModel)
+        {
+            if (gameModel == null) throw new ArgumentNullException(nameof(gameModel), "Provided GameModel cannot be null.");
+            
+            // Clear any existing state
+            DoneStack.Clear();
+            RedoStack.Clear();
+            
+            // Put the original GameModel into the DoneStack without modification
+            T val;
+            try
+            {
+                val = FromGameModel(gameModel);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to serialize the GameModel during initialization.", ex);
+            }
+            
+            DoneStack.Push(val);
+            
+            // Set the GameType from the loaded model
+            GameType = gameModel.GameType;
+        }
         /// <summary>
         /// Performs an undo operation by restoring the state immediately preceding the current state
         /// This is achieved by moving the current state to the RedoStack and applying the previous state to the given viewModel.
