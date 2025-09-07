@@ -89,8 +89,17 @@ namespace Catan3
 
         private void OnCancel(object sender, RoutedEventArgs e)
         {
-
-            Frame.GoBack();
+            if (Frame.CanGoBack)
+            {
+                Frame.GoBack();
+            }
+            else
+            {
+                // Navigate to a fresh NewGamePage if we can't go back
+                NewGameViewModel viewModel = new(MainWindow.PlayerDatabase.AllPlayers);
+                Frame.Navigate(typeof(NewGamePage), viewModel);
+                Frame.BackStack.Clear();
+            }
         }
 
         private void OnManagePlayers(object sender, RoutedEventArgs e)
@@ -144,14 +153,19 @@ namespace Catan3
             }
         }
 
+        private void OnShowMenu(object sender, RoutedEventArgs e)
+        {
+            ViewModel.ShowMenu = !ViewModel.ShowMenu;
+        }
+
         private async void OnSettings(object sender, RoutedEventArgs e)
         {
             try
             {
-                // Show Settings dialog
+                // Show Settings dialog centered on screen
                 var settingsDialog = new Settings.SettingsDialog
                 {
-                    XamlRoot = this.XamlRoot
+                    XamlRoot = this.Content.XamlRoot
                 };
                 
                 await settingsDialog.ShowAsync();

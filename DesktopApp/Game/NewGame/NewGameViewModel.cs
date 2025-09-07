@@ -14,6 +14,9 @@ namespace Catan3.Models
         public partial ObservableCollection<GameType> Games { get; private set; } = [GameType.Regular, GameType.Expansion];
         [ObservableProperty]
         public partial GameType SelectedGame { get; set; } = GameType.Expansion;
+
+        [ObservableProperty]
+        public partial bool ShowMenu { get; set; } = false;
         public NewGameViewModel(IList<PlayerViewModel> players)
         {
 

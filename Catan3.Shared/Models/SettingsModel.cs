@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
+using System.Threading.Tasks;
 
 namespace Catan3.Shared.Models
 {
@@ -111,7 +113,13 @@ namespace Catan3.Shared.Models
                     break;
             }
         }
+
+        public override string ToString()
+        {
+            return $"[{SettingName}={ValueAsString}]";
+        }
     }
+
 
     public partial class SettingsModel : ObservableObject
     {
@@ -162,6 +170,64 @@ namespace Catan3.Shared.Models
                 setting.Value = value;
             }
         }
+
+        /// <summary>
+        /// Asynchronously retrieves current settings via MVVM messaging.
+        /// Registers for UpdateSettings response, sends GetSettingsMessage, waits for response,
+        /// then unregisters to prevent memory leaks.
+        /// </summary>
+        /// <returns>Task that completes with current settings</returns>
+        public static async Task<SettingsModel> GetAsync()
+        {
+            var tcs = new TaskCompletionSource<SettingsModel>();
+            var messenger = WeakReferenceMessenger.Default;
+            
+            // Create a temporary recipient for the response
+            var tempRecipient = new SettingsRequestRecipient(tcs, messenger);
+            
+            // Register the temporary recipient
+            messenger.Register<UpdateSettings>(tempRecipient, tempRecipient.HandleUpdateSettings);
+            
+            try
+            {
+                // Send the request
+                messenger.Send(new GetSettingsMessage());
+                
+                // Wait for the response
+                return await tcs.Task;
+            }
+            catch
+            {
+                // Ensure cleanup on any exception
+                messenger.Unregister<UpdateSettings>(tempRecipient);
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Temporary recipient for settings requests to handle messaging properly
+    /// </summary>
+    internal class SettingsRequestRecipient
+    {
+        private readonly TaskCompletionSource<SettingsModel> _tcs;
+        private readonly IMessenger _messenger;
+
+        public SettingsRequestRecipient(TaskCompletionSource<SettingsModel> tcs, IMessenger messenger)
+        {
+            _tcs = tcs;
+            _messenger = messenger;
+        }
+
+        public void HandleUpdateSettings(object recipient, UpdateSettings message)
+        {
+            // Unregister to prevent memory leaks
+            _messenger.Unregister<UpdateSettings>(this);
+            
+            // Complete the task with the settings
+            _tcs.SetResult(message.Settings);
+        }
+
     }
 
     public class ValidationRules

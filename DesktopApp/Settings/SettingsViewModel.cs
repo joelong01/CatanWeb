@@ -1,9 +1,12 @@
 using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
+using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Catan3.Settings
 {
@@ -22,17 +25,28 @@ namespace Catan3.Settings
         /// <summary>
         /// Original settings values for change detection and revert functionality
         /// </summary>
-        private SettingsModel _originalSettings;
+        private SettingsModel _originalSettings = new();
 
         /// <summary>
         /// Initializes a new instance of SettingsViewModel with current app settings
         /// </summary>
         public SettingsViewModel()
         {
-            // Add setting items directly from the app settings
-            if (App.Settings?.Settings != null)
+            _ = InitializeAsync();
+        }
+
+        /// <summary>
+        /// Asynchronously initializes the ViewModel with current settings
+        /// </summary>
+        private async Task InitializeAsync()
+        {
+            try
             {
-                foreach (var settingItem in App.Settings.Settings)
+                // Get current settings via messaging
+                var currentSettings = await SettingsModel.GetAsync();
+                
+                // Add setting items directly from the current settings
+                foreach (var settingItem in currentSettings.Settings)
                 {
                     if (settingItem != null)
                     {
@@ -40,19 +54,20 @@ namespace Catan3.Settings
                     }
                     else
                     {
-                        this.TraceMessage("Warning: Found null setting item in App.Settings.Settings");
+                        this.TraceMessage("Warning: Found null setting item in settings");
                     }
                 }
                 this.TraceMessage($"Added {SettingItems.Count} settings to ViewModel");
+                
+                // Create a deep copy for change tracking
+                var json = JsonSerializer.Serialize(currentSettings);
+                _originalSettings = JsonSerializer.Deserialize<SettingsModel>(json) ?? new SettingsModel();
             }
-            else
+            catch (Exception ex)
             {
-                this.TraceMessage("Warning: App.Settings or App.Settings.Settings is null");
+                this.TraceMessage($"Failed to initialize settings: {ex.Message}");
+                _originalSettings = new SettingsModel();
             }
-            
-            // Create a deep copy for change tracking
-            var json = JsonSerializer.Serialize(App.Settings);
-            _originalSettings = JsonSerializer.Deserialize<SettingsModel>(json) ?? new SettingsModel();
         }
 
         /// <summary>
@@ -141,26 +156,30 @@ namespace Catan3.Settings
         }
 
         /// <summary>
-        /// Saves the current settings to app storage and updates the global App.Settings
+        /// Saves the current settings via SettingsService
         /// </summary>
         public void SaveSettings()
         {
-            // Update the global app settings by copying our values to the global instance
-            foreach (var setting in SettingItems)
+            try
             {
-                var globalSetting = App.Settings.GetSetting(setting.SettingName);
-                if (globalSetting != null)
+                // Create a new settings model with our current values
+                var settingsToSave = new SettingsModel();
+                foreach (var setting in SettingItems)
                 {
-                    globalSetting.Value = setting.Value;
+                    settingsToSave.Settings.Add(setting);
                 }
+                
+                // Send to SettingsService for saving
+                WeakReferenceMessenger.Default.Send(new UpdateSettings(settingsToSave));
+                
+                // Update our original settings for future change detection
+                var json = JsonSerializer.Serialize(settingsToSave);
+                _originalSettings = JsonSerializer.Deserialize<SettingsModel>(json) ?? new SettingsModel();
             }
-            
-            // Save to persistent storage
-            App.SaveSettings();
-            
-            // Update our original settings for future change detection
-            var json = JsonSerializer.Serialize(App.Settings);
-            _originalSettings = JsonSerializer.Deserialize<SettingsModel>(json) ?? new SettingsModel();
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Failed to save settings: {ex.Message}");
+            }
         }
 
         /// <summary>

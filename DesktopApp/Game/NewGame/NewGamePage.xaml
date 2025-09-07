@@ -31,54 +31,72 @@
             </Grid>
         </DataTemplate>
     </Page.Resources>
-    <StackPanel Name="LayoutRoot" HorizontalAlignment="Center"
-            VerticalAlignment="Center">
-        <GridView Margin="10" HorizontalAlignment="Stretch" Width="624"
-                x:Name="ListView_Players" SelectionMode="Multiple"
-                AutomationProperties.AutomationId="PlayersGridView"
-                VerticalAlignment="Top" Background="Transparent"
-                SelectionChanged="{x:Bind ViewModel.Players_SelectionChanged}"
-                ItemsSource="{x:Bind ViewModel.Players, Mode=OneWay}"
-                ItemTemplate="{StaticResource PlayerDataTemplate}">
-            <GridView.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <WrapGrid MaximumRowsOrColumns="6" Orientation="Horizontal" />
-                </ItemsPanelTemplate>
-            </GridView.ItemsPanel>
+    <SplitView x:Name="NewGameSplitView" OpenPaneLength="75" CompactPaneLength="0" 
+            Margin="0" PanePlacement="Left"
+            IsPaneOpen="{x:Bind ViewModel.ShowMenu, Mode=OneWay}"
+            DisplayMode="CompactOverlay">
+        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <!-- Hamburger Menu Button -->
+            <AppBarButton Icon="GlobalNavigationButton" Click="OnShowMenu"
+     HorizontalAlignment="Left" VerticalAlignment="Top" 
+     Margin="0,0,0,20" />
 
-        </GridView>
+            <StackPanel Name="LayoutRoot" HorizontalAlignment="Center"
+                VerticalAlignment="Center">
 
-        <StackPanel Orientation="Horizontal">
-            <TextBlock Text="Game Type:" Foreground="White" FontSize="22"
-                    VerticalAlignment="Center" TextLineBounds="Tight"
-                    HorizontalAlignment="Left" Margin="10" />
+                <GridView Margin="10" HorizontalAlignment="Stretch" Width="624"
+                    x:Name="ListView_Players" SelectionMode="Multiple"
+                    AutomationProperties.AutomationId="PlayersGridView"
+                    VerticalAlignment="Top" Background="Transparent"
+                    SelectionChanged="{x:Bind ViewModel.Players_SelectionChanged}"
+                    ItemsSource="{x:Bind ViewModel.Players, Mode=OneWay}"
+                    ItemTemplate="{StaticResource PlayerDataTemplate}">
+                    <GridView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapGrid MaximumRowsOrColumns="6" Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </GridView.ItemsPanel>
 
-            <ComboBox ItemsSource="{x:Bind ViewModel.Games, Mode=OneWay}"
-                    AutomationProperties.AutomationId="GameTypeCombo"
-                    SelectedItem="{x:Bind ViewModel.SelectedGame, Mode=OneWay}"
-                    SelectionChanged="{x:Bind ViewModel.Game_SelectionChanged}"
-                    SelectionChangedTrigger="Always" HorizontalAlignment="Right"
-                    FontSize="22" Foreground="White" VerticalAlignment="Top"
-                    Width="200" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
-                Padding="20"
-                Width="{Binding ElementName=LayoutRoot, Path=Width}">
-            <Button Content="Manage Players" Width="125" Margin="5"
-                    Click="OnManagePlayers" />
-            <Button Content="Open" Width="125" Margin="5" Click="OnOpen" />
-            <Button Content="Settings" Width="100" Margin="5" Click="OnSettings" />
+                </GridView>
 
-            <Button Content="Cancel" Width="100" Click="OnCancel" Margin="5"
-                    Visibility="{x:Bind Frame.CanGoBack, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-            <Button Content="Start" Width="100" Click="OnStart" Margin="5"
-                    AutomationProperties.AutomationId="StartButton"
-                    AutomationProperties.Name="StartButton"
-                    HorizontalAlignment="Right" />
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Game Type:" Foreground="White" FontSize="22"
+                        VerticalAlignment="Center" TextLineBounds="Tight"
+                        HorizontalAlignment="Left" Margin="10" />
 
-            <Button Content="Load Test File" Width="120" Click="OnRunTests"
-                    Margin="5" HorizontalAlignment="Right" />
+                    <ComboBox ItemsSource="{x:Bind ViewModel.Games, Mode=OneWay}"
+                        AutomationProperties.AutomationId="GameTypeCombo"
+                        SelectedItem="{x:Bind ViewModel.SelectedGame, Mode=OneWay}"
+                        SelectionChanged="{x:Bind ViewModel.Game_SelectionChanged}"
+                        SelectionChangedTrigger="Always" HorizontalAlignment="Right"
+                        FontSize="22" Foreground="White" VerticalAlignment="Top"
+                        Width="200" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                    Padding="20"
+                    Width="{Binding ElementName=LayoutRoot, Path=Width}">
+                    <Button Content="Open" Width="125" Margin="5" Click="OnOpen" />
 
-        </StackPanel>
-    </StackPanel>
+                    <Button Content="Cancel" Width="100" Click="OnCancel" Margin="5"
+                        Visibility="{x:Bind Frame.CanGoBack, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    <Button Content="Start" Width="100" Click="OnStart" Margin="5"
+                        AutomationProperties.AutomationId="StartButton"
+                        AutomationProperties.Name="StartButton"
+                        HorizontalAlignment="Right" />
+
+                    <Button Content="Load Test File" Width="120" Click="OnRunTests"
+                        Margin="5" HorizontalAlignment="Right" />
+
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+        <SplitView.Pane>
+            <StackPanel>
+                <AppBarButton Label="Hide" Click="OnShowMenu" Icon="ClosePane" />
+                <AppBarButton Label="Settings" Click="OnSettings" Icon="Setting" />
+                <AppBarButton Label="Manage Players" Click="OnManagePlayers" Icon="People" />
+                <AppBarButton Label="Main Menu" Click="OnCancel" Icon="Back" />
+            </StackPanel>
+        </SplitView.Pane>
+    </SplitView>
 </Page>

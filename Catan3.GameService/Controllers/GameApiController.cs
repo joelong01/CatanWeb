@@ -511,5 +511,79 @@ namespace Catan3.GameService.Controllers
             var message = new GoFirstMessage(playerId);
             return gameStateMachine.HandleGoFirstAsync(message).Result;
         }
+
+        [HttpPost("game/end")]
+        public IActionResult EndGame([FromBody] JsonElement request)
+        {
+            _logger.LogEvent("API Request", $"POST /api/game/end - Ending game");
+            
+            try
+            {
+                var gameId = request.GetProperty("gameId").GetString();
+
+                if (string.IsNullOrEmpty(gameId))
+                {
+                    _logger.LogEvent("Validation Error", $"Missing gameId in end game request", LogLevel.Warning);
+                    return BadRequest("Missing gameId");
+                }
+
+                // Remove game from registry and dispose resources
+                bool gameRemoved = GameStateMachineRegistry.DeleteGameStateMachine(gameId);
+                
+                if (!gameRemoved)
+                {
+                    _logger.LogEvent("Game Not Found", $"Game not found: {gameId}", LogLevel.Warning);
+                    return NotFound($"Game {gameId} not found");
+                }
+
+                _logger.LogEvent("Game Ended", $"Game ended successfully - GameId: {gameId}");
+
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Game {gameId} ended successfully"
+                });
+            }
+            catch (GameException ex)
+            {
+                _logger.LogEvent("Game Not Found", $"Game not found: {ex.Message}", LogLevel.Warning);
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("End Game Error", $"Error ending game: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, $"Error ending game: {ex.Message}");
+            }
+        }
+
+        [HttpPost("settings/update")]
+        public IActionResult UpdateSettings([FromBody] JsonElement request)
+        {
+            _logger.LogEvent("API Request", $"POST /api/settings/update - Updating service settings");
+            
+            try
+            {
+                // For now, we'll just acknowledge the settings update
+                // In the future, this could store settings that affect game logic
+                var settingsCount = 0;
+                if (request.TryGetProperty("settings", out var settingsElement))
+                {
+                    settingsCount = settingsElement.EnumerateObject().Count();
+                }
+
+                _logger.LogEvent("Settings Updated", $"Service settings updated - {settingsCount} settings received");
+
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Settings updated successfully ({settingsCount} settings)"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Settings Update Error", $"Error updating settings: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, $"Error updating settings: {ex.Message}");
+            }
+        }
     }
 }

@@ -138,11 +138,6 @@ namespace Catan3.Models
             // Create GameMessageService with persistence service - it will manage GameStateMachine internally
             GameMessageService = new GameMessageService(fileService);
             
-            // Send current settings to GameMessageService after it's created and ready to receive messages
-            if (App.Settings != null)
-            {
-                Messenger.Send(new UpdateSettings(App.Settings));
-            }
             
             this.IsTest = isTest;
             if (selectedGame == GameType.SavedGame)
