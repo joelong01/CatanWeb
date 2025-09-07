@@ -92,54 +92,74 @@ namespace Catan3.GameState
         /// <summary>
         /// Initializes a new GameMessageService that handles MVVM messages.
         /// Creates GameStateMachine instances internally based on received messages.
+        /// Use CreateGameMessageService() static factory method to create instances.
         /// </summary>
         /// <param name="persistenceService">The persistence service for file operations.</param>
-        public GameMessageService(Catan3.Shared.Interfaces.IPersistenceService persistenceService)
+        private GameMessageService(Catan3.Shared.Interfaces.IPersistenceService persistenceService)
         {
             _persistenceService = persistenceService;
-            RegisterMessages();
+        }
+
+        /// <summary>
+        /// Creates a new GameMessageService with proper async initialization.
+        /// </summary>
+        /// <param name="persistenceService">The persistence service for file operations.</param>
+        /// <returns>A fully initialized GameMessageService.</returns>
+        public static async Task<GameMessageService> CreateGameMessageService(Catan3.Shared.Interfaces.IPersistenceService persistenceService)
+        {
+            var service = new GameMessageService(persistenceService);
+            await service.RegisterMessages();
+            return service;
         }
 
         /// <summary>
         /// Registers this service to receive all game-related MVVM messages.
         /// Checks ServiceGame setting to register either local or service handlers.
         /// </summary>
-        private void RegisterMessages()
+        private async Task RegisterMessages()
         {
             Debug.Assert(Messenger is not null);
             IsActive = true;
             
-            // Always register settings handler first
+            // Always register settings handler for runtime updates
             Messenger.Register<UpdateSettings>(this, HandleUpdateSettingsAsync);
             
-            // Initialize settings - handler will load if null
-            HandleUpdateSettingsAsync(this, null);
+            // Load initial settings via MVVM messaging
+            _currentSettings = await SettingsModel.GetAsync();
             
-            // Now initialize handlers based on current settings
-            InitializeHandlersBasedOnSettings();
+            // Initialize handlers based on current settings
+            await InitializeHandlersAsync();
         }
 
         /// <summary>
         /// Initializes message handlers based on current settings
         /// </summary>
-        private async void InitializeHandlersBasedOnSettings()
+        private async Task InitializeHandlersAsync()
         {
             // Unregister existing handlers if any
             if (_gameHandlersRegistered)
             {
                 UnregisterGameMessages();
+                
+                // Send EndGame message to properly clean up current game state before switching modes
+                Messenger.Send(new EndGame());
+                
+                // Dispose existing GameServiceProxy to prevent connection conflicts
+                await DisposeGameServiceProxyAsync();
             }
 
-            // Get current settings via messaging
-            var currentSettings = await SettingsModel.GetAsync();
-            _currentSettings = currentSettings;
+            // Use the already loaded settings
+            if (_currentSettings == null)
+            {
+                throw new InvalidOperationException("Settings must be loaded before initializing handlers");
+            }
 
             // Check ServiceGame setting and register appropriate handlers
-            bool useServiceGame = currentSettings.GetBoolValue("ServiceGame");
+            bool useServiceGame = _currentSettings.GetBoolValue("ServiceGame");
             
             if (useServiceGame)
             {
-                RegisterServiceGameMessages();
+                await RegisterServiceGameMessages();
             }
             else
             {
@@ -181,10 +201,11 @@ namespace Catan3.GameState
         /// Registers message handlers for GameService proxy operations.
         /// Each handler delegates to the GameServiceProxy instance.
         /// </summary>
-        private void RegisterServiceGameMessages()
+        private async Task RegisterServiceGameMessages()
         {
-            // Initialize the GameServiceProxy when service handlers are registered
-            InitializeGameServiceProxy();
+            // Initialize the GameServiceProxy when service handlers are registered  
+            string gameServiceUrl = _currentSettings!.GetStringValue("GameServiceUrl");
+            await InitializeGameServiceProxyAsync(gameServiceUrl);
             Messenger.Register<UndoMessage>(this, HandleUndoServiceAsync);
             Messenger.Register<RedoMessage>(this, HandleRedoServiceAsync);
             Messenger.Register<NextMessage>(this, HandleNextServiceAsync);
@@ -829,66 +850,16 @@ namespace Catan3.GameState
         /// <param name="cfp">The calling file path (auto-filled).</param>
         
         /// <summary>
-        /// Handles UpdateSettings message from the UI to receive current application settings.
-        /// Stores the settings for use in game creation and file path generation.
+        /// Handles UpdateSettings message from the UI to receive runtime settings changes.
         /// </summary>
         /// <param name="recipient">The message recipient (this service).</param>
         /// <param name="message">The settings update message containing current settings.</param>
-        private async void HandleUpdateSettingsAsync(object recipient, UpdateSettings? message)
+        private void HandleUpdateSettingsAsync(object recipient, UpdateSettings message)
         {
-            // Load settings if not provided and not already loaded
-            if (message?.Settings == null && _currentSettings == null)
-            {
-                // Load settings from storage (this will be handled by the settings system)
-                // For now, just create empty settings as a fallback
-                _currentSettings = new SettingsModel();
-                this.TraceMessage("Settings initialized with defaults");
-                return;
-            }
-            else if (message?.Settings != null)
-            {
-                _currentSettings = message.Settings;
-                this.TraceMessage($"Settings updated: {message.Settings.Settings.Count} settings received");
-                
-                // Update persistence service with save directory from settings
-                var saveDirectory = message.Settings.GetStringValue("SaveDirectory");
-                if (!string.IsNullOrEmpty(saveDirectory))
-                {
-                    try
-                    {
-                        _persistenceService.SaveDirectory = saveDirectory;
-                        this.TraceMessage($"✅ Game save directory configured: {saveDirectory}");
-                    }
-                    catch (Exception ex)
-                    {
-                        this.TraceMessage($"❌ Failed to set save directory '{saveDirectory}': {ex.Message}");
-                        // Don't throw - log the error and continue, but saves will fail until directory is fixed
-                    }
-                }
-                else
-                {
-                    this.TraceMessage("⚠️ No SaveDirectory setting found - file saves will require absolute paths");
-                }
-                
-                // Send settings to GameService if in service mode
-                bool useServiceGame = message.Settings.GetBoolValue("ServiceGame");
-                if (useServiceGame && _gameServiceProxy != null)
-                {
-                    try
-                    {
-                        await _gameServiceProxy.UpdateSettingsAsync(message.Settings.Settings);
-                        this.TraceMessage("✅ Settings sent to GameService");
-                    }
-                    catch (Exception ex)
-                    {
-                        this.TraceMessage($"⚠️ Failed to send settings to GameService: {ex.Message}");
-                    }
-                }
-                
-                // If this is a runtime update (not initialization), 
-                // we may need to re-initialize handlers for dynamic changes
-                InitializeHandlersBasedOnSettings();
-            }
+            if (message?.Settings == null) return;
+            
+            _currentSettings = message.Settings;
+            this.TraceMessage($"Settings updated: {message.Settings.Settings.Count} settings received");
         }
 
         /// <summary>

@@ -564,17 +564,12 @@ namespace Catan3.Shared.Services
             if (string.IsNullOrEmpty(ServiceUri))
                 throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
 
-            var createGameRequest = new
-            {
-                GameType = gameType.ToString(),
-                HasSupplemental = hasSupplemental,
-                PlayerNames = playerNames
-            };
+            var createGameRequest = new NewGameMessage(gameType, playerNames, "Service Game");
 
             var json = JsonHelper.Serialize(createGameRequest);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync($"{ServiceUri}/api/games", content);
+            var response = await _httpClient.PostAsync($"{ServiceUri}/api/game/new", content);
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -613,7 +608,7 @@ namespace Catan3.Shared.Services
             if (string.IsNullOrEmpty(ServiceUri))
                 throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
 
-            var response = await _httpClient.GetAsync($"{ServiceUri}/api/games/{gameId}");
+            var response = await _httpClient.GetAsync($"{ServiceUri}/api/gamestate/{gameId}");
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();

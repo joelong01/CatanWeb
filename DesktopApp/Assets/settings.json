@@ -52,6 +52,16 @@
       "validation": {
         "required": false
       }
+    },
+    {
+      "settingName": "GameServiceUrl",
+      "description": "URL of the GameService (e.g., http://localhost:8080)",
+      "inputType": "textbox",
+      "value": "http://localhost:8080",
+      "defaultValue": "http://localhost:8080",
+      "validation": {
+        "required": true
+      }
     }
   ]
 }

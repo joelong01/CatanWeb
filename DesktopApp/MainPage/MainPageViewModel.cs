@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Catan3.GameState;
 using Catan3.Shared.Utility;
 using Catan3.Shared.Interfaces;
@@ -97,10 +98,6 @@ namespace Catan3.Models
             }
         }
 
-        /// <summary>
-        /// Gets the game message service that handles MVVM messaging to the game logic.
-        /// </summary>
-        private GameMessageService GameMessageService { get; set; }
         public bool IsTest { get; private set; }
 
 
@@ -121,13 +118,14 @@ namespace Catan3.Models
 
         /// <summary>
         /// Initializes a new instance of the MainPageViewModel class with the specified file service, player database, selected game, playing player IDs, and file path.
+        /// Use CreateMainPageViewModel() static factory method to create instances.
         /// </summary>
         /// <param name="fileService">The file service.</param>
         /// <param name="playerDatabase">The player database.</param>
         /// <param name="selectedGame">The selected game type.</param>
         /// <param name="playingPlayerIds">The list of playing player IDs.</param>
         /// <param name="filePath">The file path.</param>
-        public MainPageViewModel(IPersistenceService fileService, IPlayerDatabase playerDatabase, GameType selectedGame, IList<string> playingPlayerIds, string filePath, bool isTest = false)
+        private MainPageViewModel(IPersistenceService fileService, IPlayerDatabase playerDatabase, GameType selectedGame, IList<string> playingPlayerIds, string filePath, bool isTest = false)
         {
             FunctionTimer.Enabled = false;
             WeakReferenceMessenger.Default.Send(new EndGame());
@@ -135,21 +133,35 @@ namespace Catan3.Models
             RegisterMessages();
             GameViewModel = new GameViewModel(playerDatabase);
             
-            // Create GameMessageService with persistence service - it will manage GameStateMachine internally
-            GameMessageService = new GameMessageService(fileService);
-            
-            
             this.IsTest = isTest;
+        }
+
+        /// <summary>
+        /// Creates a new MainPageViewModel with proper async initialization.
+        /// </summary>
+        /// <param name="fileService">The file service.</param>
+        /// <param name="playerDatabase">The player database.</param>
+        /// <param name="selectedGame">The selected game type.</param>
+        /// <param name="playingPlayerIds">The list of playing player IDs.</param>
+        /// <param name="filePath">The file path.</param>
+        /// <param name="isTest">Whether this is for test mode.</param>
+        /// <returns>A fully initialized MainPageViewModel.</returns>
+        public static MainPageViewModel CreateMainPageViewModel(IPersistenceService fileService, IPlayerDatabase playerDatabase, GameType selectedGame, IList<string> playingPlayerIds, string filePath, bool isTest = false)
+        {
+            var viewModel = new MainPageViewModel(fileService, playerDatabase, selectedGame, playingPlayerIds, filePath, isTest);
+            
             if (selectedGame == GameType.SavedGame)
             {
-                Messenger.Send(new LoadLocalCatanGameMessage(filePath));
+                viewModel.Messenger.Send(new LoadLocalCatanGameMessage(filePath));
             }
             else
             {
                 // For new games, send NewGame message with the playing player IDs
                 var gameName = selectedGame == GameType.Regular ? "New Regular Game" : "New Expansion Game";
-                Messenger.Send(new NewGameMessage(selectedGame, playingPlayerIds, gameName));
+                viewModel.Messenger.Send(new NewGameMessage(selectedGame, playingPlayerIds, gameName));
             }
+            
+            return viewModel;
         }
 
         /// <summary>

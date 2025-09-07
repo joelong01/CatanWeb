@@ -267,11 +267,10 @@ namespace Catan3.Shared.GameLogic
         /// <param name="message">The new game request with game type and player list.</param>
         /// <returns>The newly created GameModel in initial state.</returns>
         /// <exception cref="GameException">Thrown when game creation fails.</exception>
-        public Task<GameModel> HandleNewGameAsync(Catan3.Shared.Models.NewGameMessage message)
+        public Task<GameModel> HandleNewGameAsync(GameModel gameModel)
         {
-            var gameModel = NewGame(message.GameType, message.PlayerIds);
-            LogGameModel(gameModel);
-            _logger.Trace(GameTraceLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+           LogGameModel(gameModel);
+            _logger.Trace(GameTraceLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}]");
             return Task.FromResult(gameModel);
         }
 

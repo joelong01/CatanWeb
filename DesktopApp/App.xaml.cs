@@ -8,6 +8,7 @@ using System.Text.Json;
 using Windows.Storage;
 using Microsoft.Extensions.Logging;
 using Catan3.Services;
+using Catan3.GameState;
 using CommunityToolkit.Mvvm.Messaging;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -48,6 +49,21 @@ namespace Catan3
         private static Services.SettingsService? _settingsService;
 
         /// <summary>
+        /// Private game message service that handles all MVVM messaging between UI and game logic
+        /// </summary>
+        private static GameMessageService? _gameMessageService;
+
+        /// <summary>
+        /// Private file service that handles all file operations
+        /// </summary>
+        private static Catan.Services.FileService? _fileService;
+
+        /// <summary>
+        /// Public access to the FileService for other components
+        /// </summary>
+        public static Catan.Services.FileService FileService => _fileService ?? throw new InvalidOperationException("FileService not initialized");
+
+        /// <summary>
         /// Global logger instance accessible from anywhere in the app for TraceMessage extensions
         /// </summary>
         public static ILogger? Logger { get; private set; }
@@ -81,8 +97,9 @@ namespace Catan3
                 
                 this.TraceMessage($"Command Line arguments: {args?.Arguments}");
 
-                // Initialize settings service
+                // Initialize application services
                 _settingsService = new Services.SettingsService();
+                _fileService = new Catan.Services.FileService();
 
                 // Check for file activation arguments
                 CheckForFileActivation();
@@ -94,6 +111,24 @@ namespace Catan3
                 System.Diagnostics.Debug.WriteLine($"FATAL ERROR in OnLaunched: {ex}");
                 this.TraceMessage($"FATAL ERROR in OnLaunched: {ex}");
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Initializes the game message service asynchronously
+        /// </summary>
+        private async Task InitializeGameMessageServiceAsync()
+        {
+            try
+            {
+                // Create GameMessageService with our FileService
+                _gameMessageService = await GameMessageService.CreateGameMessageService(_fileService!);
+                this.TraceMessage("✅ GameMessageService initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"❌ Failed to initialize GameMessageService: {ex.Message}");
+                throw; // Re-throw to prevent app from continuing in broken state
             }
         }
 
@@ -206,6 +241,9 @@ namespace Catan3
         {
             // Wait for 1 ms to allow splash screen display and background initialization
             await Task.Delay(1);
+
+            // Initialize game message service asynchronously
+            await InitializeGameMessageServiceAsync();
 
             // Activate the window on the UI thread
             Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() =>

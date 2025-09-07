@@ -166,7 +166,7 @@ namespace Catan3.GameService.Controllers
         }
 
         [HttpPost("game/new")]
-        public Task<IActionResult> NewGame([FromBody] NewGameMessage newGameMessage)
+        public async Task<IActionResult> NewGame([FromBody] NewGameMessage newGameMessage)
         {
             _logger.LogEvent("API Request", $"POST /api/game/new - Creating new game");
             
@@ -174,7 +174,7 @@ namespace Catan3.GameService.Controllers
             {
                 if (newGameMessage is null || newGameMessage.PlayerIds is null or { Count: 0 })
                 {
-                    return Task.FromResult<IActionResult>(BadRequest("Invalid game creation request - must specify game type and players"));
+                    return BadRequest("Invalid game creation request - must specify game type and players");
                 }
 
                 // Get the appropriate game metadata based on game type
@@ -191,21 +191,29 @@ namespace Catan3.GameService.Controllers
                 // Create GameStateMachine with the Log
                 var gameStateMachine = CreateGameStateMachineWithServiceDependencies(gameLog);
                 
+                // Initialize logging state to set up proper GameModel state (stars, button enabling, etc.)
+                gameStateMachine.InitializeLoggingState(gameModel);
+
+                //
+                //  fix up the game model by processing a NewGameMessage
+                gameModel = await gameStateMachine.HandleNewGameAsync(gameModel);
+
+
                 // Store in registry
                 GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);
 
                 // Return minimal response - client must join via SignalR to get GameModel
-                return Task.FromResult<IActionResult>(Ok(new { success = true, gameId = gameModel.GameId }));
+                return Ok(new { success = true, gameId = gameModel.GameId });
             }
             catch (Exception ex)
             {
                 _logger.LogEvent("New Game Error", $"Error creating new game: {ex.Message}", LogLevel.Error);
-                return Task.FromResult<IActionResult>(StatusCode(500, $"Error creating new game: {ex.Message}"));
+                return StatusCode(500, $"Error creating new game: {ex.Message}");
             }
         }
 
         [HttpPost("game/load")]
-        public Task<IActionResult> LoadGame([FromBody] LoadGameMessage loadGameMessage)
+        public  Task<IActionResult> LoadGame([FromBody] LoadGameMessage loadGameMessage)
         {
             _logger.LogEvent("API Request", $"POST /api/game/load - Loading game from compressed log");
             
@@ -224,6 +232,8 @@ namespace Catan3.GameService.Controllers
 
                 // Get the current game state to determine GameId
                 var gameModel = gameStateMachine.GetCurrentState();
+
+              
                 
                 // Store GameStateMachine in registry
                 GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);

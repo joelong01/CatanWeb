@@ -9,7 +9,26 @@ The Catan3 project is a multi-platform Settlers of Catan game system with:
 - **Shared Library** - Common models and game logic
 - **Test Suite** - Unified test infrastructure with modern ReplayTest approach
 
-## Recent Architecture Changes (September 7, 2025 Session)
+## Latest Architecture Changes (September 7, 2025 - Session 2)
+
+### Critical GameService Fixes
+
+Fixed missing GameModel processing in service mode that was causing UI display issues:
+
+- **GameService New Game Processing**: Added missing `InitializeLoggingState` and `HandleNewGameAsync` calls to GameService's NewGame endpoint that were preventing stars from showing on buildings and Next button from enabling
+- **SignalR Threading Fix**: Resolved `RPC_E_WRONG_THREAD` COM exception by using MainWindow's DispatcherQueue for thread marshaling instead of GetForCurrentThread()
+- **Async Method Consistency**: Fixed all async method naming conventions and return types throughout codebase (GameApiController, GameMessageService)
+- **Build Error Resolution**: Eliminated all compilation errors and warnings - solution builds cleanly with `./build.ps1 -NoTest`
+
+### Root Cause Analysis
+
+The issue where new games from service didn't show stars on buildings or enable Next button was caused by:
+- GameService creating GameModel but not calling `HandleNewGameAsync` for display state processing
+- Local version calls: `CreateNew` → `InitializeLoggingState` → `HandleNewGameAsync` → shows stars/enables buttons  
+- Service version was missing: `HandleNewGameAsync` call after GameModel creation
+- Shuffle worked because it calls proper GameModel processing methods that new game creation was missing
+
+## Previous Architecture Changes (September 7, 2025 - Session 1)
 
 ### Service Game Mode Implementation
 

@@ -45,16 +45,17 @@ namespace Catan3.GameState
         /// Initializes the GameServiceProxy when service handlers are being used.
         /// Creates the proxy connection and wires up event handlers.
         /// </summary>
-        private async void InitializeGameServiceProxy()
+        /// <param name="baseUrl">The base URL of the GameService (e.g., "http://localhost:8080")</param>
+        private async Task InitializeGameServiceProxyAsync(string baseUrl)
         {
             if (_gameServiceProxy == null)
             {
                 try
                 {
-                    string serviceUrl = "https://localhost:7000";
-                    string hubUrl = $"{serviceUrl}/gameHub";
+                    // Derive all URLs from the base URL
+                    string hubUrl = $"{baseUrl.TrimEnd('/')}/gameHub";
                     
-                    _gameServiceProxy = new Catan3.Shared.Services.GameServiceProxy(hubUrl, serviceUrl, "desktop-player", null);
+                    _gameServiceProxy = new Catan3.Shared.Services.GameServiceProxy(hubUrl, baseUrl, "desktop-player", null);
                     
                     _gameServiceProxy.GameStateUpdated += OnGameServiceStateUpdated;
                     _gameServiceProxy.CommandCompleted += OnGameServiceCommandCompleted;
@@ -62,7 +63,7 @@ namespace Catan3.GameState
                     
                     await _gameServiceProxy.ConnectAsync();
                     
-                    this.TraceMessage($"✅ GameServiceProxy initialized and connected to {serviceUrl}");
+                    this.TraceMessage($"✅ GameServiceProxy initialized and connected to {baseUrl}");
                 }
                 catch (Exception ex)
                 {
@@ -74,7 +75,7 @@ namespace Catan3.GameState
         /// <summary>
         /// Disposes the GameServiceProxy and cleans up event subscriptions.
         /// </summary>
-        private void DisposeGameServiceProxy()
+        private async Task DisposeGameServiceProxyAsync()
         {
             if (_gameServiceProxy != null)
             {
@@ -84,7 +85,7 @@ namespace Catan3.GameState
                     _gameServiceProxy.CommandCompleted -= OnGameServiceCommandCompleted;
                     _gameServiceProxy.CommandFailed -= OnGameServiceCommandFailed;
                     
-                    _gameServiceProxy.DisposeAsync().AsTask().Wait();
+                    await _gameServiceProxy.DisposeAsync();
                     _gameServiceProxy = null;
                     
                     this.TraceMessage("✅ GameServiceProxy disposed");
@@ -98,10 +99,25 @@ namespace Catan3.GameState
 
         /// <summary>
         /// Handles GameServiceProxy GameStateUpdated events and converts them to UpdateGameModel messages.
+        /// Marshals to UI thread to avoid threading issues with WinUI controls.
         /// </summary>
         private void OnGameServiceStateUpdated(GameModel gameModel)
         {
-            Messenger.Send(new UpdateGameModel(gameModel));
+            // Marshal to UI thread since SignalR events come from background threads
+            // Use the MainWindow's dispatcher since we're application-wide now
+            if (((App)Microsoft.UI.Xaml.Application.Current).MainWindow?.DispatcherQueue != null)
+            {
+                ((App)Microsoft.UI.Xaml.Application.Current).MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    Messenger.Send(new UpdateGameModel(gameModel));
+                });
+            }
+            else
+            {
+                // Fallback - send directly if no dispatcher available (shouldn't happen in normal operation)
+                this.TraceMessage("⚠️ No UI dispatcher available, sending message directly");
+                Messenger.Send(new UpdateGameModel(gameModel));
+            }
         }
 
         /// <summary>
@@ -289,7 +305,8 @@ namespace Catan3.GameState
         {
             if (_gameServiceProxy == null)
             {
-                InitializeGameServiceProxy();
+                string gameServiceUrl = _currentSettings!.GetStringValue("GameServiceUrl");
+                await InitializeGameServiceProxyAsync(gameServiceUrl);
             }
 
             if (_gameServiceProxy == null)
@@ -300,7 +317,6 @@ namespace Catan3.GameState
 
             try
             {
-                await _gameServiceProxy.ConnectAsync();
                 var playerNames = message.PlayerIds.ToList();
                 var gameInfo = await _gameServiceProxy.CreateGameAsync(message.GameType, false, playerNames);
                 
@@ -318,7 +334,8 @@ namespace Catan3.GameState
         {
             if (_gameServiceProxy == null)
             {
-                InitializeGameServiceProxy();
+                string gameServiceUrl = _currentSettings!.GetStringValue("GameServiceUrl");
+                await InitializeGameServiceProxyAsync(gameServiceUrl);
             }
 
             if (_gameServiceProxy == null)
@@ -455,18 +472,18 @@ namespace Catan3.GameState
 
             try
             {
-                // End the game on the server first
-                await _gameServiceProxy.EndGameAsync(_gameServiceProxy.GameId!);
+                // End the game on the server first, but only if we have a valid GameId
+                if (!string.IsNullOrEmpty(_gameServiceProxy.GameId))
+                {
+                    await _gameServiceProxy.EndGameAsync(_gameServiceProxy.GameId);
+                }
+                // GameId will be cleared when we join a new game
             }
             catch (Exception ex)
             {
                 SendErrorMessage($"Failed to end game via service: {ex.Message}", ErrorLevel.Critical);
             }
-            finally
-            {
-                // Always dispose the local proxy regardless of server response
-                DisposeGameServiceProxy();
-            }
+            // Note: We don't dispose the GameServiceProxy here - keep connection alive for next game
         }
 
         private async void HandleGoFirstServiceAsync(object recipient, GoFirstMessage message)
