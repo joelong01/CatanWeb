@@ -1,0 +1,389 @@
+{
+    "metadata": {
+        "version": "1.0",
+        "description": "Scenario-based VS Code extension installer for development workflows",
+        "lastUpdated": "2025-01-12"
+    },
+    "alwaysInstall": [
+        {
+            "id": "shd101wyy.markdown-preview-enhanced",
+            "name": "Markdown Preview Enhanced",
+            "description": "Enhanced markdown preview with diagrams",
+            "required": false
+        },
+        {
+            "id": "github.copilot",
+            "name": "GitHub Copilot",
+            "description": "AI pair programmer",
+            "category": "AI Core"
+        },
+        {
+            "id": "github.copilot-chat",
+            "name": "GitHub Copilot Chat",
+            "description": "Chat interface for GitHub Copilot",
+            "category": "AI Core"
+        },
+        {
+            "id": "eamodio.gitlens",
+            "name": "GitLens",
+            "description": "Enhanced Git capabilities",
+            "category": "Source Control"
+        },
+        {
+            "id": "github.vscode-pull-request-github",
+            "name": "GitHub Pull Requests",
+            "description": "GitHub integration for PRs and issues",
+            "category": "Source Control"
+        },
+        {
+            "id": "streetsidesoftware.code-spell-checker",
+            "name": "Code Spell Checker",
+            "description": "Spell checking for code and comments",
+            "category": "Code Quality"
+        },
+        {
+            "id": "alefragnani.bookmarks",
+            "name": "Bookmarks",
+            "description": "Mark lines and jump to them",
+            "category": "Navigation"
+        },
+        {
+            "id": "ms-vscode.hexeditor",
+            "name": "Hex Editor",
+            "description": "View and edit binary files",
+            "category": "Utilities"
+        },
+        {
+            "id": "ms-vscode.powershell",
+            "name": "PowerShell",
+            "description": "PowerShell language support and debugging",
+            "category": "Generic Development"
+        },
+        {
+            "id": "ms-azuretools.vscode-docker",
+            "name": "Docker",
+            "description": "Docker support for containers",
+            "category": "Generic Development"
+        },
+        {
+            "id": "ms-vscode-remote.remote-containers",
+            "name": "Dev Containers",
+            "description": "Develop inside containers",
+            "category": "Generic Development"
+        },
+        {
+            "id": "mads-hartmann.bash-ide-vscode",
+            "name": "Bash IDE",
+            "description": "Bash scripting support",
+            "category": "Generic Development"
+        },
+        {
+            "id": "timonwong.shellcheck",
+            "name": "ShellCheck",
+            "description": "Shell script linting",
+            "category": "Generic Development"
+        },
+        {
+            "id": "foxundermoon.shell-format",
+            "name": "Shell Format",
+            "description": "Shell script formatting",
+            "category": "Generic Development"
+        },
+        {
+            "id": "redhat.vscode-yaml",
+            "name": "YAML Language Support",
+            "description": "YAML support for configs and pipelines",
+            "category": "Generic Development"
+        },
+        {
+            "id": "redhat.vscode-xml",
+            "name": "XML Language Support",
+            "description": "XML support for project files and configurations",
+            "category": "Generic Development"
+        },
+        {
+            "id": "yzhang.markdown-all-in-one",
+            "name": "Markdown All in One",
+            "description": "Comprehensive markdown support",
+            "category": "Documentation"
+        },
+        {
+            "id": "davidanson.vscode-markdownlint",
+            "name": "Markdownlint",
+            "description": "Markdown linting and style checking",
+            "category": "Documentation"
+        },
+        {
+            "id": "ms-playwright.playwright",
+            "name": "Playwright Test",
+            "description": "End-to-end testing framework",
+            "category": "Testing"
+        }
+    ],
+    "scenarios": {
+        "csharp-winui": {
+            "name": "C# & WinUI Development",
+            "description": "Full stack C# development with WinUI3, XAML, and desktop applications",
+            "extensions": [
+                {
+                    "id": "ms-dotnettools.vscodeintellicode-csharp",
+                    "name": "IntelliCode for C#",
+                    "description": "AI-assisted IntelliSense for C#",
+                    "category": "AI Core"
+                },
+                {
+                    "id": "ms-dotnettools.csdevkit",
+                    "name": "C# Dev Kit",
+                    "description": "Official C# extension with IntelliSense and debugging",
+                    "required": true
+                },
+                {
+                    "id": "ms-dotnettools.csharp",
+                    "name": "C#",
+                    "description": "Base C# language support",
+                    "required": true
+                },
+                {
+                    "id": "ms-dotnettools.vscode-dotnet-runtime",
+                    "name": ".NET Install Tool",
+                    "description": "Manages .NET runtime installations",
+                    "required": true
+                },
+                {
+                    "id": "ms-dotnettools.vscodeintellicode-csharp",
+                    "name": "IntelliCode for C#",
+                    "description": "AI-assisted IntelliSense for C#",
+                    "required": false
+                },
+                {
+                    "id": "jmrog.vscode-nuget-package-manager",
+                    "name": "NuGet Package Manager",
+                    "description": "GUI for managing NuGet packages",
+                    "required": false
+                },
+                {
+                    "id": "formulahendry.dotnet-test-explorer",
+                    "name": ".NET Core Test Explorer",
+                    "description": "Test discovery and execution for .NET Core",
+                    "required": false
+                },
+                {
+                    "id": "ms-vscode.test-adapter-converter",
+                    "name": "Test Adapter Converter",
+                    "description": "Converter extension from the Test Adapter UI to native VS Code testing",
+                    "required": false
+                },
+                {
+                    "id": "redhat.vscode-xml",
+                    "name": "XML Language Support",
+                    "description": "XML support for project files and XAML",
+                    "required": false
+                },
+                {
+                    "id": "prateekmahendrakar.prettyxml",
+                    "name": "Pretty XML",
+                    "description": "XML formatter extension for XAML files",
+                    "required": false
+                }
+            ]
+        },
+        "web-frontend": {
+            "name": "Web Frontend Development",
+            "description": "Modern web development with TypeScript, React, and tooling",
+            "extensions": [
+                {
+                    "id": "ms-vscode.vscode-typescript-next",
+                    "name": "TypeScript and JavaScript",
+                    "description": "Enhanced TypeScript/JavaScript support",
+                    "required": true
+                },
+                {
+                    "id": "esbenp.prettier-vscode",
+                    "name": "Prettier",
+                    "description": "Code formatter for web technologies",
+                    "required": true
+                },
+                {
+                    "id": "dbaeumer.vscode-eslint",
+                    "name": "ESLint",
+                    "description": "JavaScript/TypeScript linting",
+                    "required": true
+                },
+                {
+                    "id": "christian-kohler.npm-intellisense",
+                    "name": "npm Intellisense",
+                    "description": "Autocomplete npm modules in import statements",
+                    "required": false
+                },
+                {
+                    "id": "infeng.vscode-react-typescript",
+                    "name": "React TypeScript Snippets",
+                    "description": "Code snippets for React with TypeScript",
+                    "required": false
+                },
+                {
+                    "id": "ms-vscode.live-server",
+                    "name": "Live Server",
+                    "description": "Launch local development server with live reload",
+                    "required": false
+                },
+                {
+                    "id": "ms-edgedevtools.vscode-edge-devtools",
+                    "name": "Edge DevTools",
+                    "description": "Browser debugging tools",
+                    "required": false
+                }
+            ]
+        },
+        "rust": {
+            "name": "Rust Development",
+            "description": "Systems programming with Rust",
+            "extensions": [
+                {
+                    "id": "rust-lang.rust-analyzer",
+                    "name": "Rust Analyzer",
+                    "description": "Official Rust language server",
+                    "required": true
+                },
+                {
+                    "id": "tamasfe.even-better-toml",
+                    "name": "Even Better TOML",
+                    "description": "TOML language support for Cargo.toml",
+                    "required": true
+                },
+                {
+                    "id": "vadimcn.vscode-lldb",
+                    "name": "CodeLLDB",
+                    "description": "Native debugger for Rust",
+                    "required": false
+                }
+            ]
+        },
+        "go": {
+            "name": "Go Development",
+            "description": "Go programming language support",
+            "extensions": [
+                {
+                    "id": "golang.go",
+                    "name": "Go",
+                    "description": "Official Go extension",
+                    "required": true
+                },
+                {
+                    "id": "premparihar.gotestexplorer",
+                    "name": "Go Test Explorer",
+                    "description": "Test discovery and execution for Go",
+                    "required": false
+                }
+            ]
+        },
+        "devops-containers": {
+            "name": "DevOps & Containers",
+            "description": "Kubernetes, Azure, and cloud development tools",
+            "extensions": [
+                {
+                    "id": "ms-kubernetes-tools.vscode-kubernetes-tools",
+                    "name": "Kubernetes",
+                    "description": "Kubernetes cluster management and YAML support",
+                    "required": false
+                },
+                {
+                    "id": "ms-azuretools.vscode-bicep",
+                    "name": "Bicep",
+                    "description": "Azure Resource Manager templates",
+                    "required": false
+                },
+                {
+                    "id": "ms-azuretools.vscode-azureresourcegroups",
+                    "name": "Azure Resources",
+                    "description": "Manage Azure resources",
+                    "required": false
+                },
+                {
+                    "id": "ms-vscode.azure-account",
+                    "name": "Azure Account",
+                    "description": "Azure account management and authentication",
+                    "required": false
+                },
+                {
+                    "id": "hashicorp.terraform",
+                    "name": "HashiCorp Terraform",
+                    "description": "Infrastructure as code with Terraform",
+                    "required": false
+                },
+                {
+                    "id": "amazonwebservices.aws-toolkit-vscode",
+                    "name": "AWS Toolkit",
+                    "description": "AWS services integration",
+                    "required": false
+                },
+                {
+                    "id": "github.vscode-github-actions",
+                    "name": "GitHub Actions",
+                    "description": "GitHub Actions workflow support",
+                    "required": false
+                }
+            ]
+        },
+        "testing-qa": {
+            "name": "Testing & QA",
+            "description": "Specialized testing frameworks and quality assurance tools",
+            "extensions": [
+                {
+                    "id": "ms-vscode.test-adapter-converter",
+                    "name": "Test Adapter Converter",
+                    "description": "Universal test adapter",
+                    "required": false
+                },
+                {
+                    "id": "ms-vscode.azure-repos",
+                    "name": "Azure Repos",
+                    "description": "Azure DevOps integration",
+                    "required": false
+                }
+            ]
+        },
+        "utilities": {
+            "name": "Development Utilities",
+            "description": "Helpful tools and utilities for development",
+            "extensions": [
+                {
+                    "id": "janisdd.vscode-edit-csv",
+                    "name": "Edit CSV",
+                    "description": "CSV file editing with table view",
+                    "required": false
+                },
+                {
+                    "id": "ziyasal.vscode-open-in-github",
+                    "name": "Open in GitHub",
+                    "description": "Open files/lines in GitHub",
+                    "required": false
+                },
+                {
+                    "id": "codezombiech.gitignore",
+                    "name": "gitignore",
+                    "description": "Language support for .gitignore files",
+                    "required": false
+                },
+                {
+                    "id": "donjayamanne.githistory",
+                    "name": "Git History",
+                    "description": "View git log and file history",
+                    "required": false
+                },
+                {
+                    "id": "waderyan.gitblame",
+                    "name": "Git Blame",
+                    "description": "See git blame info inline",
+                    "required": false
+                }
+            ]
+        }
+    },
+    "settings": {
+        "defaultScenario": "csharp-winui",
+        "allowMultipleScenarios": true,
+        "skipIfInstalled": true,
+        "verbose": true
+    }
+}

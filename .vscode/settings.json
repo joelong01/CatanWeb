@@ -1,0 +1,32 @@
+{
+    "dotnet.defaultSolution": "Catan.sln",
+    "dotnet.server.useOmnisharp": false,
+    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+    "msbuild.configuration": "Debug",
+    "msbuild.platform": "x64",
+    
+    "github.copilot.nextEditSuggestions.enabled": false,
+    "files.associations": {
+        "*.catan_test": "json"
+    },
+    "files.exclude": {
+        "**/bin": true,
+        "**/obj": true
+    },
+    "cSpell.words": [
+        "csdevkit",
+        "csproj",
+        "dotnettools",
+        "msbuild",
+        "omnisharp",
+        "pscustomobject",
+        "refs",
+        "retarget",
+        "tfm",
+        "tfms",
+        "vscode",
+        "vswhere",
+        "winui",
+        "nologo"
+    ]
+}

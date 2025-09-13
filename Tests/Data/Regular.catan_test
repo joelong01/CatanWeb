@@ -1,0 +1,2595 @@
+{
+  "gameModel": {
+    "gameHash": "669B9FED",
+    "random": {
+      "iterations": 235,
+      "seed": 45918715
+    },
+    "entitlementPurchaseModel": [
+      {
+        "entitlement": "City",
+        "enabled": false
+      },
+      {
+        "entitlement": "Settlement",
+        "enabled": false
+      },
+      {
+        "entitlement": "Road",
+        "enabled": false
+      },
+      {
+        "entitlement": "Soldier",
+        "enabled": false
+      }
+    ],
+    "actionFlags": {
+      "undoEnabled": true,
+      "redoEnabled": false,
+      "nextEnabled": true,
+      "rollsEnabled": false
+    },
+    "gameType": "Regular",
+    "gameName": "New Regular Game",
+    "gameState": "FinishedRollOrder",
+    "hasSupplementalBuildPhase": false,
+    "players": [
+      {
+        "id": "Joe-001",
+        "name": "Joe",
+        "goldRolls": 0,
+        "goodRolls": 0,
+        "badRolls": 0,
+        "hasLongestRoad": false,
+        "islandsPlayed": 0,
+        "largestArmy": false,
+        "longestRoad": 0,
+        "maxNoResourceRolls": 0,
+        "noResourceCount": 0,
+        "stars": 0,
+        "score": 0,
+        "highestScore": true,
+        "timesTargeted": 0,
+        "participatingInSupplemental": false,
+        "finishedSupplemental": false,
+        "resourcesThisTurn": {
+          "brick": 0,
+          "goldMine": 0,
+          "ore": 0,
+          "sheep": 0,
+          "wheat": 0,
+          "wood": 0,
+          "paper": 0,
+          "cloth": 0,
+          "coin": 0,
+          "politics": 0,
+          "trade": 0,
+          "science": 0,
+          "victoryPoint": 0,
+          "anyDevCard": 0,
+          "robber": 0
+        },
+        "resourcesThisGame": {
+          "brick": 0,
+          "goldMine": 0,
+          "ore": 0,
+          "sheep": 0,
+          "wheat": 0,
+          "wood": 0,
+          "paper": 0,
+          "cloth": 0,
+          "coin": 0,
+          "politics": 0,
+          "trade": 0,
+          "science": 0,
+          "victoryPoint": 0,
+          "anyDevCard": 0,
+          "robber": 0
+        },
+        "unspentEntitlements": [],
+        "spentEntitlementsThisGame": [],
+        "spentEntitlementsThisTurn": [],
+        "ownedHarbors": []
+      },
+      {
+        "id": "Dodgy-001",
+        "name": "Dodgy",
+        "goldRolls": 0,
+        "goodRolls": 0,
+        "badRolls": 0,
+        "hasLongestRoad": false,
+        "islandsPlayed": 0,
+        "largestArmy": false,
+        "longestRoad": 0,
+        "maxNoResourceRolls": 0,
+        "noResourceCount": 0,
+        "stars": 0,
+        "score": 0,
+        "highestScore": true,
+        "timesTargeted": 0,
+        "participatingInSupplemental": false,
+        "finishedSupplemental": false,
+        "resourcesThisTurn": {
+          "brick": 0,
+          "goldMine": 0,
+          "ore": 0,
+          "sheep": 0,
+          "wheat": 0,
+          "wood": 0,
+          "paper": 0,
+          "cloth": 0,
+          "coin": 0,
+          "politics": 0,
+          "trade": 0,
+          "science": 0,
+          "victoryPoint": 0,
+          "anyDevCard": 0,
+          "robber": 0
+        },
+        "resourcesThisGame": {
+          "brick": 0,
+          "goldMine": 0,
+          "ore": 0,
+          "sheep": 0,
+          "wheat": 0,
+          "wood": 0,
+          "paper": 0,
+          "cloth": 0,
+          "coin": 0,
+          "politics": 0,
+          "trade": 0,
+          "science": 0,
+          "victoryPoint": 0,
+          "anyDevCard": 0,
+          "robber": 0
+        },
+        "unspentEntitlements": [],
+        "spentEntitlementsThisGame": [],
+        "spentEntitlementsThisTurn": [],
+        "ownedHarbors": []
+      },
+      {
+        "id": "Doug-001",
+        "name": "Doug",
+        "goldRolls": 0,
+        "goodRolls": 0,
+        "badRolls": 0,
+        "hasLongestRoad": false,
+        "islandsPlayed": 0,
+        "largestArmy": false,
+        "longestRoad": 0,
+        "maxNoResourceRolls": 0,
+        "noResourceCount": 0,
+        "stars": 0,
+        "score": 0,
+        "highestScore": true,
+        "timesTargeted": 0,
+        "participatingInSupplemental": false,
+        "finishedSupplemental": false,
+        "resourcesThisTurn": {
+          "brick": 0,
+          "goldMine": 0,
+          "ore": 0,
+          "sheep": 0,
+          "wheat": 0,
+          "wood": 0,
+          "paper": 0,
+          "cloth": 0,
+          "coin": 0,
+          "politics": 0,
+          "trade": 0,
+          "science": 0,
+          "victoryPoint": 0,
+          "anyDevCard": 0,
+          "robber": 0
+        },
+        "resourcesThisGame": {
+          "brick": 0,
+          "goldMine": 0,
+          "ore": 0,
+          "sheep": 0,
+          "wheat": 0,
+          "wood": 0,
+          "paper": 0,
+          "cloth": 0,
+          "coin": 0,
+          "politics": 0,
+          "trade": 0,
+          "science": 0,
+          "victoryPoint": 0,
+          "anyDevCard": 0,
+          "robber": 0
+        },
+        "unspentEntitlements": [],
+        "spentEntitlementsThisGame": [],
+        "spentEntitlementsThisTurn": [],
+        "ownedHarbors": []
+      }
+    ],
+    "tiles": [
+      {
+        "tileKey": {
+          "q": -2,
+          "r": 0,
+          "s": 2
+        },
+        "number": 9,
+        "resourceTileType": "Ore",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": -2,
+          "r": 1,
+          "s": 1
+        },
+        "number": 5,
+        "resourceTileType": "Sheep",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": -2,
+          "r": 2,
+          "s": 0
+        },
+        "number": 10,
+        "resourceTileType": "Brick",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": -1,
+          "r": -1,
+          "s": 2
+        },
+        "number": 6,
+        "resourceTileType": "Ore",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": -1,
+          "r": 0,
+          "s": 1
+        },
+        "number": 7,
+        "resourceTileType": "Desert",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": -1,
+          "r": 1,
+          "s": 0
+        },
+        "number": 8,
+        "resourceTileType": "Sheep",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": -1,
+          "r": 2,
+          "s": -1
+        },
+        "number": 12,
+        "resourceTileType": "Wood",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": -2,
+          "s": 2
+        },
+        "number": 11,
+        "resourceTileType": "Wheat",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": -1,
+          "s": 1
+        },
+        "number": 11,
+        "resourceTileType": "Wood",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": 0,
+          "s": 0
+        },
+        "number": 3,
+        "resourceTileType": "Sheep",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": 1,
+          "s": -1
+        },
+        "number": 2,
+        "resourceTileType": "Wheat",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 0,
+          "r": 2,
+          "s": -2
+        },
+        "number": 8,
+        "resourceTileType": "Brick",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 1,
+          "r": -2,
+          "s": 1
+        },
+        "number": 9,
+        "resourceTileType": "Wood",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 1,
+          "r": -1,
+          "s": 0
+        },
+        "number": 3,
+        "resourceTileType": "Wheat",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 1,
+          "r": 0,
+          "s": -1
+        },
+        "number": 5,
+        "resourceTileType": "Wood",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 1,
+          "r": 1,
+          "s": -2
+        },
+        "number": 4,
+        "resourceTileType": "Wheat",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 2,
+          "r": -2,
+          "s": 0
+        },
+        "number": 6,
+        "resourceTileType": "Brick",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 2,
+          "r": -1,
+          "s": -1
+        },
+        "number": 10,
+        "resourceTileType": "Ore",
+        "highlighted": false,
+        "temporarilyGold": false
+      },
+      {
+        "tileKey": {
+          "q": 2,
+          "r": 0,
+          "s": -2
+        },
+        "number": 4,
+        "resourceTileType": "Sheep",
+        "highlighted": false,
+        "temporarilyGold": false
+      }
+    ],
+    "buildings": [
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          },
+          "position": "BottomLeft"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          },
+          "position": "Left"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          },
+          "position": "TopLeft"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          },
+          "position": "TopRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 1,
+            "s": 1
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 1,
+            "s": 1
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 1,
+            "s": 1
+          },
+          "position": "BottomLeft"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 1,
+            "s": 1
+          },
+          "position": "Left"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 2,
+            "s": 0
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 2,
+            "s": 0
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 2,
+            "s": 0
+          },
+          "position": "BottomLeft"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 2,
+            "s": 0
+          },
+          "position": "Left"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -1,
+            "r": -1,
+            "s": 2
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -1,
+            "r": -1,
+            "s": 2
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -1,
+            "r": -1,
+            "s": 2
+          },
+          "position": "TopLeft"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -1,
+            "r": -1,
+            "s": 2
+          },
+          "position": "TopRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -1,
+            "r": 0,
+            "s": 1
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -1,
+            "r": 0,
+            "s": 1
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -1,
+            "r": 1,
+            "s": 0
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -1,
+            "r": 1,
+            "s": 0
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -1,
+            "r": 2,
+            "s": -1
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -1,
+            "r": 2,
+            "s": -1
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": -1,
+            "r": 2,
+            "s": -1
+          },
+          "position": "BottomLeft"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": -2,
+            "s": 2
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": -2,
+            "s": 2
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": -2,
+            "s": 2
+          },
+          "position": "TopLeft"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": -2,
+            "s": 2
+          },
+          "position": "TopRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": -1,
+            "s": 1
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": -1,
+            "s": 1
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": 0,
+            "s": 0
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": 0,
+            "s": 0
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": 1,
+            "s": -1
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": 1,
+            "s": -1
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": 2,
+            "s": -2
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": 2,
+            "s": -2
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": 2,
+            "s": -2
+          },
+          "position": "BottomLeft"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 1,
+            "r": -2,
+            "s": 1
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 1,
+            "r": -2,
+            "s": 1
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 1,
+            "r": -2,
+            "s": 1
+          },
+          "position": "TopRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 1,
+            "r": -1,
+            "s": 0
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 1,
+            "r": -1,
+            "s": 0
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 1,
+            "r": 0,
+            "s": -1
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 1,
+            "r": 0,
+            "s": -1
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 1,
+            "r": 1,
+            "s": -2
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 1,
+            "r": 1,
+            "s": -2
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 2,
+            "r": -2,
+            "s": 0
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 2,
+            "r": -2,
+            "s": 0
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 2,
+            "r": -2,
+            "s": 0
+          },
+          "position": "TopRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 2,
+            "r": -1,
+            "s": -1
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 2,
+            "r": -1,
+            "s": -1
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 2,
+            "r": 0,
+            "s": -2
+          },
+          "position": "Right"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      },
+      {
+        "buildingKey": {
+          "hexCoordinates": {
+            "q": 2,
+            "r": 0,
+            "s": -2
+          },
+          "position": "BottomRight"
+        },
+        "buildingState": "NotBuildable",
+        "wall": false,
+        "metropolis": false,
+        "ownerId": null,
+        "hasRobber": false
+      }
+    ],
+    "roads": [
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          },
+          "hexSide": "Top"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          },
+          "hexSide": "BottomLeft"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 0,
+            "s": 2
+          },
+          "hexSide": "TopLeft"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 1,
+            "s": 1
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 1,
+            "s": 1
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 1,
+            "s": 1
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 1,
+            "s": 1
+          },
+          "hexSide": "BottomLeft"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 1,
+            "s": 1
+          },
+          "hexSide": "TopLeft"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 2,
+            "s": 0
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 2,
+            "s": 0
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 2,
+            "s": 0
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 2,
+            "s": 0
+          },
+          "hexSide": "BottomLeft"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -2,
+            "r": 2,
+            "s": 0
+          },
+          "hexSide": "TopLeft"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": -1,
+            "s": 2
+          },
+          "hexSide": "Top"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": -1,
+            "s": 2
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": -1,
+            "s": 2
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": -1,
+            "s": 2
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": -1,
+            "s": 2
+          },
+          "hexSide": "TopLeft"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": 0,
+            "s": 1
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": 0,
+            "s": 1
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": 0,
+            "s": 1
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": 1,
+            "s": 0
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": 1,
+            "s": 0
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": 1,
+            "s": 0
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": 2,
+            "s": -1
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": 2,
+            "s": -1
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": 2,
+            "s": -1
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": -1,
+            "r": 2,
+            "s": -1
+          },
+          "hexSide": "BottomLeft"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": -2,
+            "s": 2
+          },
+          "hexSide": "Top"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": -2,
+            "s": 2
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": -2,
+            "s": 2
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": -2,
+            "s": 2
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": -2,
+            "s": 2
+          },
+          "hexSide": "TopLeft"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": -1,
+            "s": 1
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": -1,
+            "s": 1
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": -1,
+            "s": 1
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": 0,
+            "s": 0
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": 0,
+            "s": 0
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": 0,
+            "s": 0
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": 1,
+            "s": -1
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": 1,
+            "s": -1
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": 1,
+            "s": -1
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": 2,
+            "s": -2
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": 2,
+            "s": -2
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": 2,
+            "s": -2
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 0,
+            "r": 2,
+            "s": -2
+          },
+          "hexSide": "BottomLeft"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 1,
+            "r": -2,
+            "s": 1
+          },
+          "hexSide": "Top"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 1,
+            "r": -2,
+            "s": 1
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 1,
+            "r": -2,
+            "s": 1
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 1,
+            "r": -2,
+            "s": 1
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 1,
+            "r": -1,
+            "s": 0
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 1,
+            "r": -1,
+            "s": 0
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 1,
+            "r": -1,
+            "s": 0
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 1,
+            "r": 0,
+            "s": -1
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 1,
+            "r": 0,
+            "s": -1
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 1,
+            "r": 0,
+            "s": -1
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 1,
+            "r": 1,
+            "s": -2
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 1,
+            "r": 1,
+            "s": -2
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 1,
+            "r": 1,
+            "s": -2
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 2,
+            "r": -2,
+            "s": 0
+          },
+          "hexSide": "Top"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 2,
+            "r": -2,
+            "s": 0
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 2,
+            "r": -2,
+            "s": 0
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 2,
+            "r": -2,
+            "s": 0
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 2,
+            "r": -1,
+            "s": -1
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 2,
+            "r": -1,
+            "s": -1
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 2,
+            "r": -1,
+            "s": -1
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 2,
+            "r": 0,
+            "s": -2
+          },
+          "hexSide": "TopRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 2,
+            "r": 0,
+            "s": -2
+          },
+          "hexSide": "BottomRight"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      },
+      {
+        "roadKey": {
+          "tileKey": {
+            "q": 2,
+            "r": 0,
+            "s": -2
+          },
+          "hexSide": "Bottom"
+        },
+        "roadState": "Unowned",
+        "ownerId": null,
+        "buildIndex": 0
+      }
+    ],
+    "harbors": [
+      {
+        "harborKey": {
+          "hexCoordinates": {
+            "q": 0,
+            "r": -2,
+            "s": 2
+          },
+          "harborType": "Wood",
+          "side": "Top"
+        },
+        "owner": null
+      },
+      {
+        "harborKey": {
+          "hexCoordinates": {
+            "q": 1,
+            "r": -2,
+            "s": 1
+          },
+          "harborType": "Brick",
+          "side": "TopRight"
+        },
+        "owner": null
+      },
+      {
+        "harborKey": {
+          "hexCoordinates": {
+            "q": 2,
+            "r": -1,
+            "s": -1
+          },
+          "harborType": "ThreeForOne",
+          "side": "TopRight"
+        },
+        "owner": null
+      },
+      {
+        "harborKey": {
+          "hexCoordinates": {
+            "q": 2,
+            "r": 0,
+            "s": -2
+          },
+          "harborType": "ThreeForOne",
+          "side": "BottomRight"
+        },
+        "owner": null
+      },
+      {
+        "harborKey": {
+          "hexCoordinates": {
+            "q": 1,
+            "r": 1,
+            "s": -2
+          },
+          "harborType": "Wheat",
+          "side": "Bottom"
+        },
+        "owner": null
+      },
+      {
+        "harborKey": {
+          "hexCoordinates": {
+            "q": -1,
+            "r": 2,
+            "s": -1
+          },
+          "harborType": "Ore",
+          "side": "BottomLeft"
+        },
+        "owner": null
+      },
+      {
+        "harborKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 2,
+            "s": 0
+          },
+          "harborType": "ThreeForOne",
+          "side": "BottomLeft"
+        },
+        "owner": null
+      },
+      {
+        "harborKey": {
+          "hexCoordinates": {
+            "q": -2,
+            "r": 1,
+            "s": 1
+          },
+          "harborType": "Sheep",
+          "side": "TopLeft"
+        },
+        "owner": null
+      },
+      {
+        "harborKey": {
+          "hexCoordinates": {
+            "q": -1,
+            "r": -1,
+            "s": 2
+          },
+          "harborType": "ThreeForOne",
+          "side": "TopLeft"
+        },
+        "owner": null
+      }
+    ],
+    "robber": {
+      "coordinates": {
+        "q": -10,
+        "r": -10,
+        "s": -10
+      },
+      "movedBy": null,
+      "targeted": null,
+      "resourcesStolen": 0
+    },
+    "houseRules": {
+      "goldTiles": 1,
+      "wallsProtectCities": true,
+      "hideBaronBeforeInvasion": false,
+      "knightMovesBaronBeforeRoll": true,
+      "hideRobberBeforeInvasion": false,
+      "knightMovesRobberBeforeRoll": false
+    },
+    "resourceRules": {
+      "maxCities": 4,
+      "maxSettlements": 5,
+      "maxRoads": 15,
+      "minPlayers": 3,
+      "maxPlayers": 4
+    },
+    "currentPlayerId": "Joe-001",
+    "gameId": "c41f04ab-afe7-4333-914d-55cbffadcb67",
+    "createdTime": "2025-09-05T16:46:00.003101Z",
+    "gameStateMachineVersion": 1,
+    "rollModel": {
+      "turnRollModel": null,
+      "gameRollModel": {
+        "rollCounts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "totalRolls": 0
+      }
+    },
+    "nextPlayerToRollAfterSupplemental": "",
+    "gameResourcesModel": {
+      "brick": 0,
+      "goldMine": 0,
+      "ore": 0,
+      "sheep": 0,
+      "wheat": 0,
+      "wood": 0,
+      "paper": 0,
+      "cloth": 0,
+      "coin": 0,
+      "politics": 0,
+      "trade": 0,
+      "science": 0,
+      "victoryPoint": 0,
+      "anyDevCard": 0,
+      "robber": 0
+    },
+    "previousGameState": "Uninitialized"
+  },
+  "actionStack": [
+    {
+      "type": "nextRecord",
+      "expectedGameHash": "669B9FED",
+      "expectedGameState": "FinishedRollOrder"
+    },
+    {
+      "type": "nextRecord",
+      "expectedGameHash": "669B4581",
+      "expectedGameState": "BeginResourceAllocation"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "13E5FDEE",
+      "expectedGameState": "AllocateResourceForward",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -2,
+          "r": 0,
+          "s": 2
+        },
+        "position": "Right"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "0B121F7CA",
+      "expectedGameState": "AllocateResourceForward",
+      "roadKey": {
+        "tileKey": {
+          "q": -1,
+          "r": -1,
+          "s": 2
+        },
+        "hexSide": "Bottom"
+      }
+    },
+    {
+      "type": "nextRecord",
+      "expectedGameHash": "A39DFF2C",
+      "expectedGameState": "AllocateResourceForward"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "F27DDAB4B",
+      "expectedGameState": "AllocateResourceForward",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -2,
+          "r": 1,
+          "s": 1
+        },
+        "position": "Right"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "3EC9872",
+      "expectedGameState": "AllocateResourceForward",
+      "roadKey": {
+        "tileKey": {
+          "q": -1,
+          "r": 0,
+          "s": 1
+        },
+        "hexSide": "Bottom"
+      }
+    },
+    {
+      "type": "nextRecord",
+      "expectedGameHash": "F5EDDCE53",
+      "expectedGameState": "AllocateResourceForward"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "EA06D3BD9",
+      "expectedGameState": "AllocateResourceForward",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -2,
+          "r": 2,
+          "s": 0
+        },
+        "position": "Right"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "E7CA68C5B",
+      "expectedGameState": "AllocateResourceForward",
+      "roadKey": {
+        "tileKey": {
+          "q": -1,
+          "r": 1,
+          "s": 0
+        },
+        "hexSide": "Bottom"
+      }
+    },
+    {
+      "type": "nextRecord",
+      "expectedGameHash": "080ECAF0B",
+      "expectedGameState": "AllocateResourceForward"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "2BDD84FC",
+      "expectedGameState": "AllocateResourceReverse",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -1,
+          "r": -1,
+          "s": 2
+        },
+        "position": "Right"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "8135BD6D",
+      "expectedGameState": "AllocateResourceReverse",
+      "roadKey": {
+        "tileKey": {
+          "q": 0,
+          "r": -2,
+          "s": 2
+        },
+        "hexSide": "Bottom"
+      }
+    },
+    {
+      "type": "nextRecord",
+      "expectedGameHash": "EF011C008",
+      "expectedGameState": "AllocateResourceReverse"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "E323A760E",
+      "expectedGameState": "AllocateResourceReverse",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -1,
+          "r": 0,
+          "s": 1
+        },
+        "position": "Right"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "EF872585C",
+      "expectedGameState": "AllocateResourceReverse",
+      "roadKey": {
+        "tileKey": {
+          "q": 0,
+          "r": -1,
+          "s": 1
+        },
+        "hexSide": "Bottom"
+      }
+    },
+    {
+      "type": "nextRecord",
+      "expectedGameHash": "C296508E",
+      "expectedGameState": "AllocateResourceReverse"
+    },
+    {
+      "type": "buildingUpgrade",
+      "expectedGameHash": "0E3D4D19B",
+      "expectedGameState": "AllocateResourceReverse",
+      "buildingKey": {
+        "hexCoordinates": {
+          "q": -1,
+          "r": 1,
+          "s": 0
+        },
+        "position": "Right"
+      }
+    },
+    {
+      "type": "roadPurchase",
+      "expectedGameHash": "3351CE40",
+      "expectedGameState": "AllocateResourceReverse",
+      "roadKey": {
+        "tileKey": {
+          "q": 0,
+          "r": 0,
+          "s": 0
+        },
+        "hexSide": "Bottom"
+      }
+    },
+    {
+      "type": "nextRecord",
+      "expectedGameHash": "1D4DBBB7D",
+      "expectedGameState": "AllocateResourceReverse"
+    },
+    {
+      "type": "nextRecord",
+      "expectedGameHash": "1D4DBD218",
+      "expectedGameState": "DoneResourceAllocation"
+    },
+    {
+      "type": "purchase",
+      "expectedGameHash": "1D4DBE8B3",
+      "expectedGameState": "WaitingForRoll",
+      "entitlement": "Soldier"
+    },
+    {
+      "type": "moveRobber",
+      "expectedGameHash": "1928B132E",
+      "expectedGameState": "MustMoveRobber",
+      "coordinates": {
+        "q": -2,
+        "r": 1,
+        "s": 1
+      },
+      "targetPlayerId": "Dodgy-001"
+    },
+    {
+      "type": "roll",
+      "expectedGameHash": "1D4DBE89D",
+      "expectedGameState": "WaitingForRoll",
+      "roll": {
+        "redRoll": 7,
+        "whiteRoll": 0,
+        "specialDice": "None",
+        "normalRoll": "Seven"
+      }
+    },
+    {
+      "type": "moveRobber",
+      "expectedGameHash": "1928C353D",
+      "expectedGameState": "MustMoveRobber",
+      "coordinates": {
+        "q": 1,
+        "r": -1,
+        "s": 0
+      },
+      "targetPlayerId": null
+    },
+    {
+      "type": "nextRecord",
+      "expectedGameHash": "1D4DBFF56",
+      "expectedGameState": "WaitingForNext"
+    }
+  ]
+}

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catan Companion - UI Demo Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #4169E1, #6495ED);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 2rem;
+        }
+
+        h1 {
+            text-align: center;
+            color: #1E3A8A;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #6c757d;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .states-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .state-card {
+            border: 2px solid #dee2e6;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        .state-card:hover {
+            border-color: #4169E1;
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(65, 105, 225, 0.15);
+        }
+
+        .state-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #1E3A8A;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .state-description {
+            color: #6c757d;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .state-features {
+            list-style: none;
+        }
+
+        .state-features li {
+            padding: 0.25rem 0;
+            color: #495057;
+            font-size: 0.9rem;
+        }
+
+        .state-features li::before {
+            content: "? ";
+            color: #1E40AF;
+            font-weight: bold;
+        }
+
+        .info-section {
+            background: #EFF6FF;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-top: 2rem;
+            border: 1px solid #DBEAFE;
+        }
+
+        .info-section h3 {
+            color: #1E3A8A;
+            margin-bottom: 1rem;
+        }
+
+        .url-list {
+            list-style: none;
+            font-family: monospace;
+            background: white;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            border: 1px solid #DBEAFE;
+        }
+
+        .url-list li {
+            padding: 0.25rem 0;
+            word-break: break-all;
+        }
+
+        .real-game-link {
+            display: inline-block;
+            background: #4169E1;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 1rem;
+            transition: background 0.3s ease;
+        }
+
+        .real-game-link:hover {
+            background: #3B82F6;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .states-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            body {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>?? Catan Companion UI Demo</h1>
+        <p class="subtitle">Preview all the different game state interfaces</p>
+
+        <div class="states-grid">
+            <a href="/companion/demo/PickingBoard" class="state-card">
+                <div class="state-title">
+                    ?? Board Setup
+                </div>
+                <div class="state-description">
+                    Initial game setup phase where players can shuffle the board tiles and prepare for the game.
+                </div>
+                <ul class="state-features">
+                    <li>Shuffle board button</li>
+                    <li>Simple interface</li>
+                    <li>Game preparation controls</li>
+                </ul>
+            </a>
+
+            <a href="/companion/demo/AllocateResourceForward" class="state-card">
+                <div class="state-title">
+                    ?? Settlement Placement
+                </div>
+                <div class="state-description">
+                    Interactive settlement placement during the allocation phase with vertex selection and tile picking.
+                </div>
+                <ul class="state-features">
+                    <li>Hexagon vertex selector</li>
+                    <li>Tile number dropdown</li>
+                    <li>Touch-friendly interface</li>
+                    <li>Visual feedback</li>
+                </ul>
+            </a>
+
+            <a href="/companion/demo/PickSupplementalPlayers" class="state-card">
+                <div class="state-title">
+                    ?? Supplemental Choice
+                </div>
+                <div class="state-description">
+                    Timed decision phase for expansion games where players choose whether to participate in supplemental building.
+                </div>
+                <ul class="state-features">
+                    <li>10-second countdown timer</li>
+                    <li>Do/Decline buttons</li>
+                    <li>Auto-decline when timer expires</li>
+                    <li>Progress indicator</li>
+                </ul>
+            </a>
+
+            <a href="/companion/demo/WaitingForRoll" class="state-card">
+                <div class="state-title">
+                    ?? Dice Rolling
+                </div>
+                <div class="state-description">
+                    Dice selection interface where players choose their roll result (2-12) and can play knight cards.
+                </div>
+                <ul class="state-features">
+                    <li>Number buttons 2-12</li>
+                    <li>Knight card play button</li>
+                    <li>Visual roll selection</li>
+                    <li>Next disabled until roll</li>
+                </ul>
+            </a>
+
+            <a href="/companion/demo/WaitingForNext" class="state-card">
+                <div class="state-title">
+                    ?? Purchase & Actions
+                </div>
+                <div class="state-description">
+                    Main gameplay interface with purchase options and action buttons, smart-enabled based on game rules.
+                </div>
+                <ul class="state-features">
+                    <li>Settlement, City, Road buttons</li>
+                    <li>Smart enable/disable logic</li>
+                    <li>Visual availability indicators</li>
+                    <li>Special action buttons</li>
+                </ul>
+            </a>
+
+            <a href="/companion/demo/MustMoveRobber" class="state-card">
+                <div class="state-title">
+                    ?? Move Robber
+                </div>
+                <div class="state-description">
+                    Robber movement interface triggered by rolling 7 or playing a knight card.
+                </div>
+                <ul class="state-features">
+                    <li>Tile selection interface</li>
+                    <li>Player targeting</li>
+                    <li>Visual feedback</li>
+                    <li>Confirmation controls</li>
+                </ul>
+            </a>
+        </div>
+
+        <div class="info-section">
+            <h3>?? How to Test on Mobile</h3>
+            <p>To test these interfaces on your phone or tablet:</p>
+            <ol style="margin: 1rem 0; padding-left: 2rem;">
+                <li>Ensure your mobile device is on the same WiFi network</li>
+                <li>Use the network URLs shown when you start the service</li>
+                <li>Click any state card above to see the mobile-optimized interface</li>
+                <li>Test touch interactions, scrolling, and responsive design</li>
+            </ol>
+
+            <h3>?? Direct URLs</h3>
+            <ul class="url-list">
+                <li>/companion/demo/PickingBoard</li>
+                <li>/companion/demo/AllocateResourceForward</li>
+                <li>/companion/demo/AllocateResourceReverse</li>
+                <li>/companion/demo/PickSupplementalPlayers</li>
+                <li>/companion/demo/WaitingForRoll</li>
+                <li>/companion/demo/WaitingForNext</li>
+                <li>/companion/demo/MustMoveRobber</li>
+            </ul>
+
+            <a href="/companion" class="real-game-link">
+                ?? Try Real Game Interface
+            </a>
+        </div>
+    </div>
+</body>
+</html>

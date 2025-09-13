@@ -1,0 +1,143 @@
+{
+  "extensions": [
+    {
+      "id": "ms-dotnettools.csdevkit",
+      "name": "C# Dev Kit",
+      "description": "Official C# extension with IntelliSense, debugging, and project management",
+      "required": true,
+      "category": "Development"
+    },
+    {
+      "id": "ms-dotnettools.csharp",
+      "name": "C#",
+      "description": "Base C# language support (auto-installed with C# Dev Kit)",
+      "required": true,
+      "category": "Development"
+    },
+    {
+      "id": "ms-dotnettools.vscode-dotnet-runtime",
+      "name": ".NET Install Tool",
+      "description": "Manages .NET runtime installations",
+      "required": true,
+      "category": "Development"
+    },
+    {
+      "id": "ms-vscode.powershell",
+      "name": "PowerShell",
+      "description": "PowerShell language support for scripts and debugging",
+      "required": false,
+      "category": "Development"
+    },
+    {
+      "id": "redhat.vscode-xml",
+      "name": "XML",
+      "description": "XML language support for project files and manifests",
+      "required": false,
+      "category": "Language Support"
+    },
+    {
+      "id": "ms-vscode.hexeditor",
+      "name": "Hex Editor",
+      "description": "Useful for inspecting binary files and debugging",
+      "required": false,
+      "category": "Utilities"
+    },
+    {
+      "id": "ms-vscode.vscode-typescript-next",
+      "name": "TypeScript and JavaScript",
+      "description": "Enhanced TypeScript/JavaScript support",
+      "required": false,
+      "category": "Language Support"
+    },
+    {
+      "id": "ms-dotnettools.vscodeintellicode",
+      "name": "Visual Studio IntelliCode",
+      "description": "AI-assisted development for .NET (free Microsoft AI)",
+      "required": false,
+      "category": "AI Assistant"
+    },
+    {
+      "id": "github.copilot",
+      "name": "GitHub Copilot",
+      "description": "AI pair programmer (requires GitHub Copilot subscription)",
+      "required": false,
+      "category": "AI Assistant"
+    },
+    {
+      "id": "github.copilot-chat",
+      "name": "GitHub Copilot Chat",
+      "description": "Chat interface for GitHub Copilot",
+      "required": false,
+      "category": "AI Assistant"
+    },
+    {
+      "id": "continue.continue",
+      "name": "Continue",
+      "description": "Free AI coding assistant (works with multiple providers)",
+      "required": false,
+      "category": "AI Assistant"
+    },
+    {
+      "id": "ms-vscode.test-adapter-converter",
+      "name": "Test Adapter Converter",
+      "description": "Converts test results for Test Explorer (legacy support)",
+      "required": false,
+      "category": "Testing"
+    },
+    {
+      "id": "formulahendry.dotnet-test-explorer",
+      "name": ".NET Core Test Explorer",
+      "description": "Test discovery and execution (legacy - C# Dev Kit has built-in support)",
+      "required": false,
+      "category": "Testing"
+    },
+    {
+      "id": "jmrog.vscode-nuget-package-manager",
+      "name": "NuGet Package Manager",
+      "description": "GUI for managing NuGet packages",
+      "required": false,
+      "category": "Package Management"
+    },
+    {
+      "id": "github.vscode-pull-request-github",
+      "name": "GitHub Pull Requests and Issues",
+      "description": "GitHub integration for pull requests and issues",
+      "required": false,
+      "category": "Source Control"
+    },
+    {
+      "id": "eamodio.gitlens",
+      "name": "GitLens",
+      "description": "Enhanced Git capabilities with blame, history, and more",
+      "required": false,
+      "category": "Source Control"
+    },
+    {
+      "id": "yzhang.markdown-all-in-one",
+      "name": "Markdown All in One",
+      "description": "Markdown language support with preview",
+      "required": false,
+      "category": "Documentation"
+    },
+    {
+      "id": "davidanson.vscode-markdownlint",
+      "name": "markdownlint",
+      "description": "Markdown linting and style checking",
+      "required": false,
+      "category": "Documentation"
+    },
+    {
+      "id": "streetsidesoftware.code-spell-checker",
+      "name": "Code Spell Checker",
+      "description": "Spell checking for code and comments",
+      "required": false,
+      "category": "Code Quality"
+    }
+  ],
+  "settings": {
+    "skipIfInstalled": true,
+    "installRequired": true,
+    "installOptional": false,
+    "verbose": true
+  }
+}

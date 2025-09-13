@@ -1,0 +1,290 @@
+﻿using System;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media.Animation;
+using System.Threading.Tasks;
+using Catan3.Shared.Interfaces;
+using Microsoft.Extensions.Logging;
+using Catan3.Services;
+using Catan3.GameState;
+
+// To learn more about WinUI, the WinUI project structure,
+// and more about our project templates, see: http://aka.ms/winui-project-info.
+namespace Catan3
+{
+    /// <summary>
+    /// Provides application-specific behavior to supplement the default Application class.
+    /// </summary>
+    public partial class App : Application
+    {
+        /// <summary>
+        /// Global flag to enable recording of user actions for test scenario generation.
+        /// When true, disables normal trace messages and records actions instead.
+        /// Set to true manually when you want to record a game session.
+        /// </summary>
+        public static bool RecordMode { get; set; } = false;
+
+        /// <summary>
+        /// Path to test file to auto-load on startup (bypasses NewGame dialog)
+        /// </summary>
+
+        public static string? ActivatedFilePath { get; set; } = null;
+        public static bool IsTestMode { get; private set; } = false; // set based on extension
+        
+        /// <summary>
+        /// Global log level setting that controls which messages are displayed.
+        /// Only messages at or above this level will be shown.
+        /// </summary>
+        public static GameTraceLevel LogLevel { get; set; } = GameTraceLevel.Trace;
+
+        /// <summary>
+        /// Global application settings accessible from anywhere in the app
+        /// </summary>
+        /// <summary>
+        /// Private settings service that manages all application settings via MVVM messaging
+        /// </summary>
+        private static Services.SettingsService? _settingsService;
+
+        /// <summary>
+        /// Private game message service that handles all MVVM messaging between UI and game logic
+        /// </summary>
+        private static GameMessageService? _gameMessageService;
+
+        /// <summary>
+        /// Private file service that handles all file operations
+        /// </summary>
+        private static Catan.Services.FileService? _fileService;
+
+        /// <summary>
+        /// Public access to the FileService for other components
+        /// </summary>
+        public static Catan.Services.FileService FileService => _fileService ?? throw new InvalidOperationException("FileService not initialized");
+
+        /// <summary>
+        /// Global logger instance accessible from anywhere in the app for TraceMessage extensions
+        /// </summary>
+        public static ILogger? Logger { get; private set; }
+        /// <summary>
+        /// Initializes the singleton application object.  This is the first line of authored code
+        /// executed, and as such is the logical equivalent of main() or WinMain().
+        /// </summary>
+#nullable disable
+        public App()
+        {
+          //  System.Diagnostics.Debugger.Launch();
+            this.InitializeComponent();
+        }
+#nullable enable
+        /// <summary>
+        /// Invoked when the application is launched.
+        /// </summary>
+        /// <param name="args">Details about the launch request and process.</param>
+        protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
+        {
+            try
+            {
+#if DEBUG
+                DebugSettings.BindingFailed += (sender, e) =>
+                {
+                    System.Diagnostics.Debug.WriteLine(e.Message);
+                };
+#endif
+                // Initialize logger first, before any TraceMessage calls
+                InitializeLogger();
+                
+                this.TraceMessage($"Command Line arguments: {args?.Arguments}");
+
+                // Initialize application services
+                _settingsService = new Services.SettingsService();
+                _fileService = new Catan.Services.FileService();
+
+                // Check for file activation arguments
+                CheckForFileActivation();
+
+                InitializeWindow();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"FATAL ERROR in OnLaunched: {ex}");
+                this.TraceMessage($"FATAL ERROR in OnLaunched: {ex}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Initializes the game message service asynchronously
+        /// </summary>
+        private async Task InitializeGameMessageServiceAsync()
+        {
+            try
+            {
+                // Create GameMessageService with our FileService
+                _gameMessageService = await GameMessageService.CreateGameMessageService(_fileService!);
+                this.TraceMessage("✅ GameMessageService initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"❌ Failed to initialize GameMessageService: {ex.Message}");
+                throw; // Re-throw to prevent app from continuing in broken state
+            }
+        }
+
+        /// <summary>
+        /// Initializes the global logger instance with our custom DebugWindow provider
+        /// </summary>
+        private void InitializeLogger()
+        {
+            try
+            {
+                var loggerFactory = LoggerFactory.Create(builder =>
+                {
+                    builder.AddProvider(new DebugWindowLoggerProvider(LogLevel));
+                });
+
+                Logger = loggerFactory.CreateLogger("Catan3");
+                this.TraceMessage("Logger initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to initialize logger: {ex.Message}");
+                // Continue without logger - old TraceMessage will still work
+            }
+        }
+
+
+        /// <summary>
+        /// Checks if the app was activated to open a file.  We support 2 file types:
+        ///     .catan       Normal game file.
+        ///     .catan_test  Test scenario file.
+        /// </summary>
+        private void CheckForFileActivation()
+        {
+            try
+            {
+                var activationArgs = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
+                this.TraceMessage($"Activation kind: {activationArgs?.Kind}");
+
+                if (activationArgs?.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.File)
+                {
+                    if (activationArgs.Data is Windows.ApplicationModel.Activation.FileActivatedEventArgs fileArgs)
+                    {
+                        this.TraceMessage($"File activation detected with {fileArgs.Files?.Count} files");
+
+                        if (fileArgs.Files?.Count > 0)
+                        {
+                            var file = fileArgs.Files[0] as Windows.Storage.StorageFile;
+                            if (file is null)
+                            {
+                                this.TraceMessage("No valid file found in activation arguments.");
+                                return;
+                            }
+                            bool isNormalGameFile = file.Path.EndsWith(".catan", StringComparison.OrdinalIgnoreCase);
+                            bool isTestFile = file.Path.EndsWith(".catan_test", StringComparison.OrdinalIgnoreCase);
+                            this.TraceMessage($"File activation: {file.Path}");
+
+                            if (isTestFile || isNormalGameFile)
+                            {
+                                // Set the activated file path
+                                ActivatedFilePath = file.Path;
+                                this.TraceMessage($"Set ActivatedFilePath: {ActivatedFilePath}");
+                                
+                                if (isTestFile)
+                                {
+                                    // Disable recording mode when running tests
+                                    RecordMode = false;
+                                    IsTestMode = true;
+                                    this.TraceMessage("Test mode enabled via file activation");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Error checking file activation: {ex.Message}");
+            }
+        }
+
+
+        /// <summary>
+        /// Initializes the main window if not already initialized.
+        /// </summary>
+        private void InitializeWindow()
+        {
+            if (m_window == null)
+            {
+                m_window = new MainWindow();
+                
+                // Apply test mode settings after window creation but before activation
+                if (IsTestMode)
+                {
+                    Timeline.AllowDependentAnimations = false;
+                    Catan3.Utility.AnimationSpeed.SetTestMode(true);
+                    this.TraceMessage("Applied test mode UI settings (disabled animations)");
+                }
+                
+                // Delay window activation to allow splash screen to show and background tasks to run
+                _ = DelayedActivateAsync();
+            }
+            else
+            {
+                // If window already exists, just activate it
+                m_window.Activate();
+            }
+        }
+
+        private async Task DelayedActivateAsync()
+        {
+            // Wait for 1 ms to allow splash screen display and background initialization
+            await Task.Delay(1);
+
+            // Initialize game message service asynchronously
+            await InitializeGameMessageServiceAsync();
+
+            // Activate the window on the UI thread
+            Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() =>
+            {
+                m_window?.Activate();
+            });
+
+            // Give the main window time to fully initialize, then show debug window
+            await Task.Delay(100);
+
+            // Capture values before entering dispatcher context to avoid cross-thread issues
+            var isTestModeSnapshot = IsTestMode;
+            
+            Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() =>
+            {
+                // Show debug window by default (especially important during testing)
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine("App: About to show DebugWindow");
+
+                    // Show the window first
+                    DebugWindow.Show();
+
+
+
+                    // Give it a moment to create, then send messages
+                    Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() =>
+                    {
+                        DebugWindow.ShowMessage($"🪟 DebugWindow auto-opened (TestMode: {isTestModeSnapshot})");
+
+                        // For test mode, add additional message
+                        if (isTestModeSnapshot)
+                        {
+                            DebugWindow.ShowMessage("🧪 Test Mode: Enhanced debugging enabled");
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"App: Failed to show DebugWindow: {ex.Message}");
+                }
+            });
+        }
+        public Window m_window;
+        public Window MainWindow => m_window;
+
+    }
+}

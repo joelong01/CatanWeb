@@ -1,0 +1,67 @@
+{
+  "settings": [
+    {
+      "settingName": "SaveFileLocation",
+      "description": "Directory to save game files",
+      "inputType": "textbox",
+      "value": "",
+      "defaultValue": "",
+      "validation": {
+        "required": true,
+        "directoryMustExist": true
+      }
+    },
+    {
+      "settingName": "ExpansionGoldTiles",
+      "description": "Number of gold tiles in expansion games",
+      "inputType": "dropdown",
+      "options": ["0", "1", "2", "3", "4"],
+      "value": 2,
+      "defaultValue": 2,
+      "validation": {
+        "required": true
+      }
+    },
+    {
+      "settingName": "RegularGoldTiles",
+      "description": "Number of gold tiles in regular games",
+      "inputType": "dropdown",
+      "options": ["0", "1", "2"],
+      "value": 1,
+      "defaultValue": 1,
+      "validation": {
+        "required": true
+      }
+    },
+    {
+      "settingName": "ExpansionForLessThanFivePlayers",
+      "description": "Enable expansion mode for games with less than 5 players",
+      "inputType": "checkbox",
+      "value": false,
+      "defaultValue": false,
+      "validation": {
+        "required": false
+      }
+    },
+    {
+      "settingName": "ServiceGame",
+      "description": "Use GameService instead of local game logic",
+      "inputType": "checkbox",
+      "value": true,
+      "defaultValue": true,
+      "validation": {
+        "required": false
+      }
+    },
+    {
+      "settingName": "GameServiceUrl",
+      "description": "URL of the GameService (e.g., http://localhost:8080)",
+      "inputType": "textbox",
+      "value": "http://localhost:8080",
+      "defaultValue": "http://localhost:8080",
+      "validation": {
+        "required": true
+      }
+    }
+  ]
+}
