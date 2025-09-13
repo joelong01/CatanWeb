@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading.Tasks;
-using Catan3.GameState;
 using Catan3.Shared.Utility;
 using Catan3.Shared.Interfaces;
 using Catan3.Shared.Models;

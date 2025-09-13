@@ -26,7 +26,6 @@
  */
 
 using Catan3.Shared.Models;
-using Catan3.Shared.Utility;
 using Catan3.Models;
 using CommunityToolkit.Mvvm.Messaging;
 using System;

@@ -3,13 +3,9 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media.Animation;
 using System.Threading.Tasks;
 using Catan3.Shared.Interfaces;
-using Catan3.Shared.Models;
-using System.Text.Json;
-using Windows.Storage;
 using Microsoft.Extensions.Logging;
 using Catan3.Services;
 using Catan3.GameState;
-using CommunityToolkit.Mvvm.Messaging;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.

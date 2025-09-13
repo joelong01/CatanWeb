@@ -1,8 +1,6 @@
-using Catan.Services;
 using Catan3.Models;
 using Catan3.Shared.Models;
 using Microsoft.UI.Xaml;
-using System.Threading.Tasks;
 using WinUIEx;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.

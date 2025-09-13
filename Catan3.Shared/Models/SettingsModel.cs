@@ -1,7 +1,6 @@
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
-using System.Threading.Tasks;
 
 namespace Catan3.Shared.Models
 {

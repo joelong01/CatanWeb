@@ -23,6 +23,13 @@
   },
   "MsBuild": {
     "UseLegacySdkResolver": false,
-    "LoadProjectsOnDemand": false
+    "LoadProjectsOnDemand": false,
+    "Properties": {
+      "Platform": "x64",
+      "Configuration": "Debug"
+    }
+  },
+  "Sdk": {
+    "IncludePrereleases": false
   }
 }

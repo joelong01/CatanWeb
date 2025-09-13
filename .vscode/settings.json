@@ -1,9 +1,10 @@
 {
     "dotnet.defaultSolution": "Catan.sln",
-    "omnisharp.projectLoadTimeout": 300,
-    "omnisharp.enableEditorConfigSupport": true,
-    "omnisharp.enableRoslynAnalyzers": true,
-    "omnisharp.enableDecompilationSupport": true,
+    "dotnet.server.useOmnisharp": false,
+    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+    "msbuild.configuration": "Debug",
+    "msbuild.platform": "x64",
+    
     "github.copilot.nextEditSuggestions.enabled": false,
     "files.associations": {
         "*.catan_test": "json"
@@ -12,7 +13,6 @@
         "**/bin": true,
         "**/obj": true
     },
-    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
     "cSpell.words": [
         "csdevkit",
         "csproj",
