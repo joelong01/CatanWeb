@@ -1,68 +1,72 @@
-# Session Summary - September 13, 2025
+# Session Summary - September 13, 2025 (Settings Validation Session)
 
 ## Work Completed
 
-- **VS Code Symbol Resolution Analysis**: Investigated C# extension issues with WinUI3 projects, confirmed as known limitation
-- **Configuration Updates**: Updated .vscode/settings.json, omnisharp.json for platform consistency
-- **Branch Management**: Successfully merged Desktop-Service → DotNet-9 → master with conflict resolution
-- **Code Quality Improvements**: Ported CoPilot mathematical constant improvements from master branch
-- **Magic Number Elimination**: Replaced hardcoded 0.86 values with proper `Math.Sqrt(3)/2.0` constants in HarborViewModel.cs:26,32 and BoardVisualLayout.cs:85
-- **Branch Cleanup**: Deleted all merged branches (Desktop-Service, DotNet-9, ryanpe-*) leaving clean repository
-- **New Branch Creation**: Created jdl-test-cleanup branch for next session focus
-- **Build Verification**: Confirmed all projects build successfully without errors or warnings
-- **Documentation Updates**: Updated CLAUDE.md with current session details, removed outdated build errors
-- **File Cleanup**: Removed erroneous 'nul' file created by bad command redirection
+- **Settings Validation Architecture**: Implemented `SettingsModel.ValidateAsync()` with conditional validation logic where SaveFileLocation is only required when ServiceGame=false
+- **GameService Reachability**: Added HTTP connectivity checks with 3-second timeout for GameService URL validation in `SettingsModel.cs:325-356`
+- **Real-time Validation**: Added `SettingsViewModel.IsValid` property with automatic validation on setting changes via `OnSettingItemChanged` event handler
+- **Save Button Control**: Successfully implemented disabled Save button when validation fails using `IsPrimaryButtonEnabled="{x:Bind ViewModel.IsValid, Mode=OneWay}"` in `SettingsDialog.xaml:16`
+- **Auto-open Settings**: Added validation check in `NewGamePage.OnNavigatedTo` that automatically opens Settings dialog when validation fails on page load
+- **Validation Error Messages**: Added TextBlock elements in XAML DataTemplates showing ValidationErrorMessage with BoolToVisibilityConverter
+- **Build Fixes**: Suppressed NETSDK1057 warnings in `build_worker.ps1`, resolved MSBuild file locking issues
+- **Constructor Patterns**: Updated SettingsDialog with proper DependencyProperty ViewModel and constructor accepting SettingsModel
 
 ## Work in Progress
 
-- **Session Handover**: Currently executing handover command to prepare for next session
-- **Documentation Completion**: Finalizing SESSION_SUMMARY.md and handover checklist
+**Red Border Validation Feedback**: Started implementing red borders for invalid input fields but got interrupted due to architectural concerns
+- Issue: Need to fix validation architecture to support per-setting validation functions
+- Current limitation: Validation stops at first error, need to track ALL validation problems simultaneously
+- Missing: BorderBrush bindings for TextBox, ComboBox, and Directory Picker templates
 
 ## Decisions Made
 
-- **VS Code Limitation Acceptance**: Confirmed VS Code C# extension has limited WinUI3 support vs Visual Studio 2022
-- **Mathematical Accuracy**: Chose precise mathematical constants over approximated magic numbers
-- **Branch Strategy**: Used --ours strategy for project structure, manual porting for code improvements
-- **Repository Cleanup**: Aggressive branch deletion to maintain clean repository state
+- **No Nested ContentDialogs**: Rejected nested ContentDialog approach due to WinUI limitations, chose real-time validation with visual feedback instead
+- **x:Bind Functions Over Converters**: User preference for explicit `{x:Bind ViewModel.Method()}` calls over value converters for maintainability
+- **DependencyProperty ViewModel Pattern**: Established standard pattern for accessing ViewModel methods in DataTemplates
+- **Conditional Validation Logic**: SaveFileLocation validation depends on ServiceGame setting state (only required when ServiceGame=false)
+- **3-Second HTTP Timeout**: For GameService reachability checks to avoid blocking UI thread
 
 ## Blockers & Issues
 
-- **VS Code Symbol Resolution**: Remains unresolved due to tooling limitations (not project issue)
-- **No Technical Blockers**: All build and compilation issues have been resolved
+- **Validation Architecture Flaw**: Current validation returns only first error found, need individual validation function per setting to show all errors simultaneously with specific tooltips
+- **Context Loss**: Session context degraded when implementing red borders, need fresh start to complete visual feedback
+- **Missing Visual Feedback**: Red borders and hover tooltips for invalid fields not yet implemented
 
 ## Next Session Priority
 
-1. **Test Infrastructure Cleanup**: Review and modernize test suite structure and approaches
-2. **GameService Integration Testing**: Validate service mode functionality end-to-end
-3. **Code Quality Review**: Continue magic number elimination and code standardization
+1. **Fix validation architecture** - Create per-setting validation functions that return tooltip text for each setting's specific errors instead of stopping at first error
+2. **Complete red border implementation** - Use `BorderBrush="{x:Bind ViewModel.GetValidationBorderBrush(HasValidationError), Mode=OneWay}"` pattern in DataTemplates
+3. **Add validation error tooltips** - Implement hover tooltips showing specific validation messages with `ToolTipService.ToolTip` bindings
+4. **Test complete system** - Verify all validation scenarios work: ServiceGame toggling, directory validation, GameService reachability
 
 ## Important Context
 
-- **Build Status**: All projects compile cleanly (`dotnet build` succeeds)
-- **Branch State**: Repository cleaned up, currently on jdl-test-cleanup branch
-- **Mathematical Constants**: HarborViewModel and BoardVisualLayout now use proper trigonometric constants
-- **Project Structure**: Successfully merged new architecture while preserving code improvements
-- **VS Code vs VS2022**: Visual Studio 2022 recommended for WinUI3 development
-- **File Management**: Watch for erroneous files from bad command redirections
+- **WinUI Limitation**: Cannot show ContentDialog from within ContentDialog, requires inline validation approach
+- **Settings Dependencies**: SaveFileLocation validation is conditional on ServiceGame checkbox state
+- **Build Issues**: MSBuild can lock dll files during development, may need to kill processes
+- **User Preference**: Explicit x:Bind function calls preferred over value converters for maintainability
+- **ViewModel Helper Methods**: Already exist `GetValidationBorderBrush()` and `GetValidationErrorVisibility()` in SettingsViewModel
+- **Current Files Modified**: 9 files with uncommitted changes focused on settings validation
 
 ## Environment Notes
 
-- **SDK Version**: .NET 10.0.100-rc.1 (no global.json pinning)
-- **Platform Target**: Consistent x64 configuration for WinUI3 projects
-- **Build Configuration**: Debug configuration builds successfully
-- **No New Dependencies**: No package additions during this session
+- **MSBuild Process Locking**: May need to kill MSBuild processes that lock Catan3.Shared.dll during builds
+- **NETSDK1057 Warnings**: Suppressed in build_worker.ps1 with `-p:SuppressNETCoreSdkPreviewMessage=true`
+- **BrushCache Usage**: Use `BrushCache.GetSolidColorBrush(Colors.Red)` for red brush creation following project patterns
+- **Branch State**: Currently on jdl-test-cleanup branch with uncommitted validation work
 
 ## Quick Start for Next Session
 
 1. Pull latest changes: `git pull` (if working on different machine)
-2. Verify build: `dotnet build` (should succeed without errors)
-3. Run tests: `dotnet test` (test infrastructure review focus)
-4. Current branch: jdl-test-cleanup
-5. Continue with: Test cleanup and GameService improvements
+2. Build project: `dotnet build` (should succeed without errors)
+3. Focus on validation architecture in: `Catan3.Shared/Models/SettingsModel.cs`
+4. Continue with: Implementing per-setting validation functions that return individual error messages
+5. Test with: Open Settings dialog, uncheck ServiceGame, verify all validation feedback shows simultaneously
 
 ## Commands to Know
 
-- Run build: `dotnet build`
-- Run tests: `dotnet test` or `dotnet test Tests/GameService`
-- Run GameService: `dotnet run --project Catan3.GameService`
+- Build: `dotnet build`
+- Run tests: `./build.ps1`
+- Clean build: `./build.ps1 -NoTest -Clean`
+- Kill locked process: `taskkill /PID [process_id] /F`
 - Run Desktop App: `dotnet run --project DesktopApp`

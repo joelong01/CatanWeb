@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Controls;
@@ -17,10 +19,35 @@ namespace Catan3.Models
 
         [ObservableProperty]
         public partial bool ShowMenu { get; set; } = false;
+
+        /// <summary>
+        /// Gets whether the Start button should be enabled based on settings validation
+        /// </summary>
+        [ObservableProperty]
+        public partial bool IsStartEnabled { get; set; } = true;
         public NewGameViewModel(IList<PlayerViewModel> players)
         {
-
             Players.AddRange(players);
+            _ = CheckSettingsValidation();
+        }
+
+        /// <summary>
+        /// Checks if all settings are valid and updates IsStartEnabled accordingly
+        /// </summary>
+        public async Task<bool> CheckSettingsValidation()
+        {
+            try
+            {
+                var validationResult = await SettingsModel.ValidateAsync();
+                IsStartEnabled = validationResult.IsValid;
+                return validationResult.IsValid;
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Error checking settings validation: {ex.Message}");
+                IsStartEnabled = false;
+                return false;
+            }
         }
         public void Players_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {

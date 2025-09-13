@@ -1,3 +1,4 @@
+using Catan3.Shared.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -13,9 +14,19 @@ namespace Catan3.Settings
     public sealed partial class SettingsDialog : ContentDialog
     {
         /// <summary>
+        /// DependencyProperty for ViewModel binding
+        /// </summary>
+        public static readonly DependencyProperty ViewModelProperty =
+            DependencyProperty.Register("ViewModel", typeof(SettingsViewModel), typeof(SettingsDialog), new PropertyMetadata(null));
+
+        /// <summary>
         /// Gets or sets the view model containing the settings data and logic
         /// </summary>
-        public SettingsViewModel ViewModel { get; set; }
+        public SettingsViewModel ViewModel
+        {
+            get => (SettingsViewModel)GetValue(ViewModelProperty);
+            set => SetValue(ViewModelProperty, value);
+        }
 
         /// <summary>
         /// Initializes a new instance of the SettingsDialog
@@ -24,7 +35,16 @@ namespace Catan3.Settings
         {
             this.InitializeComponent();
             ViewModel = new SettingsViewModel();
-            this.DataContext = ViewModel;
+
+            // Wire up the button events
+            this.PrimaryButtonClick += OnPrimaryButtonClick;
+            this.SecondaryButtonClick += OnSecondaryButtonClick;
+        }
+
+        public SettingsDialog(SettingsModel settingsModel)
+        {
+            this.InitializeComponent();
+            ViewModel = new SettingsViewModel(settingsModel);
 
             // Wire up the button events
             this.PrimaryButtonClick += OnPrimaryButtonClick;
@@ -32,28 +52,28 @@ namespace Catan3.Settings
         }
 
         /// <summary>
-        /// Handles the Primary (Save) button click. Validates settings and saves them.
+        /// Handles the Primary (Save) button click. Saves validated settings.
         /// </summary>
         /// <param name="sender">The ContentDialog</param>
         /// <param name="args">Event arguments that can be used to defer or cancel the action</param>
         private async void OnPrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
         {
-            // Defer the close so we can perform validation
+            // Defer the close so we can perform save operation
             args.Cancel = true;
 
             try
             {
-                // Validate all settings before saving
-                var validationResult = ViewModel.ValidateSettings();
-                if (!validationResult.IsValid)
+                // Settings should already be validated (Save button is disabled when invalid)
+                // but double-check for safety
+                if (!ViewModel.IsValid)
                 {
-                    await ShowValidationErrorDialog(validationResult.ErrorMessage);
+                    Debug.WriteLine("Save attempted with invalid settings - this should not happen");
                     return;
                 }
 
-                // Save settings to storage and environment variables
+                // Save settings to storage
                 ViewModel.SaveSettings();
-                
+
                 // Close the dialog
                 this.Hide();
             }
@@ -124,22 +144,6 @@ namespace Catan3.Settings
             }
         }
 
-        /// <summary>
-        /// Shows a validation error dialog with the specified message
-        /// </summary>
-        /// <param name="errorMessage">The validation error message to display</param>
-        private async System.Threading.Tasks.Task ShowValidationErrorDialog(string errorMessage)
-        {
-            var dialog = new ContentDialog
-            {
-                Title = "Validation Error",
-                Content = errorMessage,
-                CloseButtonText = "OK",
-                XamlRoot = this.XamlRoot
-            };
-
-            await dialog.ShowAsync();
-        }
 
         /// <summary>
         /// Shows a confirmation dialog asking if the user wants to reset to defaults

@@ -1,8 +1,12 @@
 using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.UI;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -23,6 +27,12 @@ namespace Catan3.Settings
         public partial ObservableCollection<SettingItem> SettingItems { get; set; } = [];
 
         /// <summary>
+        /// Gets whether all settings are currently valid
+        /// </summary>
+        [ObservableProperty]
+        public partial bool IsValid { get; set; } = true;
+
+        /// <summary>
         /// Original settings values for change detection and revert functionality
         /// </summary>
         private SettingsModel _originalSettings = new();
@@ -36,6 +46,14 @@ namespace Catan3.Settings
         }
 
         /// <summary>
+        /// Initializes a new instance of SettingsViewModel with provided settings model
+        /// </summary>
+        public SettingsViewModel(SettingsModel settingsModel)
+        {
+            InitializeWithModel(settingsModel);
+        }
+
+        /// <summary>
         /// Asynchronously initializes the ViewModel with current settings
         /// </summary>
         private async Task InitializeAsync()
@@ -44,24 +62,7 @@ namespace Catan3.Settings
             {
                 // Get current settings via messaging
                 var currentSettings = await SettingsModel.GetAsync();
-                
-                // Add setting items directly from the current settings
-                foreach (var settingItem in currentSettings.Settings)
-                {
-                    if (settingItem != null)
-                    {
-                        SettingItems.Add(settingItem);
-                    }
-                    else
-                    {
-                        this.TraceMessage("Warning: Found null setting item in settings");
-                    }
-                }
-                this.TraceMessage($"Added {SettingItems.Count} settings to ViewModel");
-                
-                // Create a deep copy for change tracking
-                var json = JsonSerializer.Serialize(currentSettings);
-                _originalSettings = JsonSerializer.Deserialize<SettingsModel>(json) ?? new SettingsModel();
+                InitializeWithModel(currentSettings);
             }
             catch (Exception ex)
             {
@@ -71,43 +72,136 @@ namespace Catan3.Settings
         }
 
         /// <summary>
+        /// Initializes the ViewModel with a provided settings model
+        /// </summary>
+        private void InitializeWithModel(SettingsModel settingsModel)
+        {
+            try
+            {
+                // Add setting items directly from the provided settings
+                foreach (var settingItem in settingsModel.Settings)
+                {
+                    if (settingItem != null)
+                    {
+                        SettingItems.Add(settingItem);
+                        // Subscribe to property changes for real-time validation
+                        settingItem.PropertyChanged += OnSettingItemChanged;
+                    }
+                    else
+                    {
+                        this.TraceMessage("Warning: Found null setting item in settings");
+                    }
+                }
+
+                // Initial validation check
+                ValidateAllSettings();
+                this.TraceMessage($"Added {SettingItems.Count} settings to ViewModel");
+
+                // Create a deep copy for change tracking
+                var json = JsonSerializer.Serialize(settingsModel);
+                _originalSettings = JsonSerializer.Deserialize<SettingsModel>(json) ?? new SettingsModel();
+            }
+            catch (Exception ex)
+            {
+                this.TraceMessage($"Failed to initialize settings with model: {ex.Message}");
+                _originalSettings = new SettingsModel();
+            }
+        }
+
+        /// <summary>
+        /// Handles property changes on individual setting items for real-time validation
+        /// </summary>
+        private void OnSettingItemChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(SettingItem.Value) ||
+                e.PropertyName == nameof(SettingItem.TextValue) ||
+                e.PropertyName == nameof(SettingItem.BooleanValue))
+            {
+                ValidateAllSettings();
+            }
+        }
+
+        /// <summary>
+        /// Validates all settings and updates IsValid property and individual setting validation states
+        /// </summary>
+        private void ValidateAllSettings()
+        {
+            bool allValid = true;
+
+            foreach (var setting in SettingItems)
+            {
+                var validationResult = ValidateIndividualSetting(setting);
+                setting.HasValidationError = !validationResult.IsValid;
+                setting.ValidationErrorMessage = validationResult.ErrorMessage;
+
+                if (!validationResult.IsValid)
+                {
+                    allValid = false;
+                }
+            }
+
+            IsValid = allValid;
+        }
+
+        /// <summary>
+        /// Validates a single setting according to its validation rules with conditional logic
+        /// </summary>
+        /// <param name="setting">The setting to validate</param>
+        /// <returns>A validation result indicating success or failure with error message</returns>
+        private ValidationResult ValidateIndividualSetting(SettingItem setting)
+        {
+            var validation = setting.Validation;
+            if (validation == null) return new ValidationResult(true, string.Empty);
+
+            var value = setting.ValueAsString;
+
+            // Special case: SaveFileLocation is only required when ServiceGame is false
+            if (setting.SettingName == "SaveFileLocation")
+            {
+                var serviceGameSetting = SettingItems.FirstOrDefault(s => s.SettingName == "ServiceGame");
+                bool usingServiceGame = serviceGameSetting?.ValueAsBool ?? true;
+
+                if (usingServiceGame)
+                {
+                    // When using service game, SaveFileLocation is not required
+                    return new ValidationResult(true, string.Empty);
+                }
+            }
+
+            // Required field validation
+            if (validation.Required && string.IsNullOrWhiteSpace(value))
+            {
+                return new ValidationResult(false, $"{setting.Description} is required.");
+            }
+
+            // Length validation
+            if (validation.MinLength.HasValue && value.Length < validation.MinLength.Value)
+            {
+                return new ValidationResult(false, $"{setting.Description} must be at least {validation.MinLength} characters long.");
+            }
+
+            if (validation.MaxLength.HasValue && value.Length > validation.MaxLength.Value)
+            {
+                return new ValidationResult(false, $"{setting.Description} must be no more than {validation.MaxLength} characters long.");
+            }
+
+            // Directory existence validation
+            if (validation.DirectoryMustExist && !string.IsNullOrWhiteSpace(value) && !Directory.Exists(value))
+            {
+                return new ValidationResult(false, $"Directory '{value}' does not exist. Please choose a valid directory for {setting.Description}.");
+            }
+
+            return new ValidationResult(true, string.Empty);
+        }
+
+        /// <summary>
         /// Validates all settings according to their validation rules
         /// </summary>
         /// <returns>A validation result indicating success or failure with error message</returns>
         public ValidationResult ValidateSettings()
         {
-            foreach (var setting in SettingItems)
-            {
-                var validation = setting.Validation;
-                if (validation == null) continue;
-
-                var value = setting.ValueAsString;
-
-                // Required field validation
-                if (validation.Required && string.IsNullOrWhiteSpace(value))
-                {
-                    return new ValidationResult(false, $"{setting.Description} is required.");
-                }
-
-                // Length validation
-                if (validation.MinLength.HasValue && value.Length < validation.MinLength.Value)
-                {
-                    return new ValidationResult(false, $"{setting.Description} must be at least {validation.MinLength} characters long.");
-                }
-
-                if (validation.MaxLength.HasValue && value.Length > validation.MaxLength.Value)
-                {
-                    return new ValidationResult(false, $"{setting.Description} must be no more than {validation.MaxLength} characters long.");
-                }
-
-                // Directory existence validation
-                if (validation.DirectoryMustExist && !string.IsNullOrWhiteSpace(value) && !Directory.Exists(value))
-                {
-                    return new ValidationResult(false, $"Directory '{value}' does not exist. Please choose a valid directory for {setting.Description}.");
-                }
-            }
-
-            return new ValidationResult(true, string.Empty);
+            ValidateAllSettings();
+            return IsValid ? new ValidationResult(true, string.Empty) : new ValidationResult(false, "Please fix the validation errors shown.");
         }
 
         /// <summary>
@@ -193,32 +287,22 @@ namespace Catan3.Settings
                 setting.Value = setting.DefaultValue;
             }
         }
-    }
-
-    /// <summary>
-    /// Result of settings validation operation
-    /// </summary>
-    public class ValidationResult
-    {
-        /// <summary>
-        /// Gets whether the validation passed
-        /// </summary>
-        public bool IsValid { get; }
 
         /// <summary>
-        /// Gets the error message if validation failed
+        /// Gets the appropriate border brush for validation state
         /// </summary>
-        public string ErrorMessage { get; }
-
-        /// <summary>
-        /// Initializes a new ValidationResult
-        /// </summary>
-        /// <param name="isValid">Whether validation passed</param>
-        /// <param name="errorMessage">Error message if validation failed</param>
-        public ValidationResult(bool isValid, string errorMessage)
+        public Brush GetValidationBorderBrush(bool hasError)
         {
-            IsValid = isValid;
-            ErrorMessage = errorMessage;
+            return hasError ? BrushCache.GetSolidColorBrush(Colors.Red) :
+                   (Brush)Application.Current.Resources["TextControlBorderBrush"];
+        }
+
+        /// <summary>
+        /// Gets the appropriate visibility for validation error messages
+        /// </summary>
+        public Visibility GetValidationErrorVisibility(bool hasError)
+        {
+            return hasError ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 }

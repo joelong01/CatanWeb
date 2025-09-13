@@ -338,6 +338,7 @@ try {
             "-c", $Configuration,
             "-p:Platform=$Platform",
             "-p:GenerateAppxPackageOnBuild=true",
+            "-p:SuppressNETCoreSdkPreviewMessage=true",
             "--verbosity", $VerbosityLevel
         )
     Write-Command "dotnet build" $buildArgs

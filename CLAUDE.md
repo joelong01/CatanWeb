@@ -9,30 +9,37 @@ The Catan3 project is a multi-platform Settlers of Catan game system with:
 - **Shared Library** - Common models and game logic
 - **Test Suite** - Unified test infrastructure with modern ReplayTest approach
 
-## Latest Session (September 13, 2025)
+## Latest Session (September 13, 2025 - Settings Validation Session)
 
-### VS Code Symbol Resolution Issues
+### Settings Dialog UX Critical Fix
 
-Attempted to resolve VS Code C# extension symbol resolution issues where Desktop app couldn't resolve symbols from Shared project:
+Implemented comprehensive settings validation system to fix critical UX issue where nested ContentDialogs were causing WinUI exceptions:
 
-- **Problem Analysis**: VS Code C# extension has limited WinUI3 support compared to Visual Studio 2022
-- **Configuration Updates**: Updated .vscode/settings.json, omnisharp.json, created global.json
-- **Platform Consistency**: Fixed x64/Any CPU mismatches between VS Code and OmniSharp configurations
-- **Resolution**: Confirmed as VS Code limitation - Visual Studio 2022 works correctly
+- **Problem Analysis**: Users unchecking "Use GameService" got validation errors in nested ContentDialogs, which WinUI doesn't support
+- **Architecture Solution**: Replaced nested dialogs with real-time validation using red borders, disabled Save button, and inline error messages
+- **Conditional Validation**: SaveFileLocation only required when ServiceGame=false, with proper dependency logic
+- **GameService Connectivity**: Added HTTP reachability checks with 3-second timeout for service URLs
 
-### Branch Management and Code Quality
+### Real-time Validation Implementation
 
-Successfully completed major branch consolidation and code quality improvements:
+Successfully implemented MVVM-based validation architecture:
 
-- **Branch Hierarchy**: Corrected merge path from Desktop-Service → DotNet-9 → master
-- **CoPilot Improvements**: Ported mathematical constant improvements from master branch
-- **Magic Number Removal**: Replaced hardcoded values with named constants in Harbor and BoardLayout classes
-- **Branch Cleanup**: Deleted all merged branches, leaving only master and new jdl-test-cleanup branch
+- **SettingsModel.ValidateAsync()**: Centralized validation with conditional logic and service connectivity checks
+- **SettingsViewModel.IsValid**: Real-time validation state with automatic property change notifications
+- **Auto-open Settings**: NewGamePage automatically opens Settings dialog when validation fails on load
+- **Save Button Control**: IsPrimaryButtonEnabled binding prevents saving invalid settings
+- **Visual Feedback**: Added validation error TextBlocks with proper visibility binding
+
+### Technical Decisions
+
+- **x:Bind Functions**: User preference for explicit `{x:Bind ViewModel.Method()}` over value converters for maintainability
+- **DependencyProperty Pattern**: Established ViewModel property pattern for accessing methods in DataTemplates
+- **Build Improvements**: Suppressed NETSDK1057 warnings in build scripts, resolved MSBuild file locking issues
 
 ### Build Status
 
 - **Current Status**: All projects build successfully without errors or warnings
-- **Previous Issues**: Outdated build errors in documentation were resolved during branch merges
+- **Validation Work**: 9 files modified with comprehensive settings validation implementation
 - **Clean State**: Solution compiles cleanly with `dotnet build`
 
 ## Previous Architecture Changes (September 7, 2025 - Session 2)
@@ -236,3 +243,4 @@ Standardized on ReplayTest methodology:
 - **Message Flow**: UI Action → MVVM Message → Service Handler → GameServiceProxy → GameService → GameStateUpdated Event → UpdateGameModel Message → UI Update
 - **Async Initialization**: GameMessageService now properly waits for settings during startup via `await SettingsModel.GetAsync()`
 - **Performance**: Environment variable registry writes removed from settings save for better user experience
+- remember: build using the build script: ./build.ps1 -NoTest

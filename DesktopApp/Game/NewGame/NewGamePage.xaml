@@ -82,7 +82,8 @@
                     <Button Content="Start" Width="100" Click="OnStart" Margin="5"
                         AutomationProperties.AutomationId="StartButton"
                         AutomationProperties.Name="StartButton"
-                        HorizontalAlignment="Right" />
+                        HorizontalAlignment="Right"
+                        IsEnabled="{x:Bind ViewModel.IsStartEnabled, Mode=OneWay}" />
 
                     <Button Content="Load Test File" Width="120" Click="OnRunTests"
                         Margin="5" HorizontalAlignment="Right" />

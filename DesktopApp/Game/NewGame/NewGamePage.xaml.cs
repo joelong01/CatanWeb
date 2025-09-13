@@ -73,17 +73,43 @@ namespace Catan3
 
             await dialog.ShowAsync();
         }
-        protected override void OnNavigatedTo(NavigationEventArgs e)
+        protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
 
             if (e.Parameter is NewGameViewModel viewModel)
             {
                 ViewModel = viewModel;
+
+                // Check settings validation and auto-open Settings dialog if needed
+                await CheckSettingsAndOpenDialogIfNeeded();
             }
             else
             {
                 Debug.Assert(false, "the paramater should be a GameViewModel");
+            }
+        }
+
+        /// <summary>
+        /// Checks if settings are valid and opens Settings dialog automatically if not
+        /// </summary>
+        private async Task CheckSettingsAndOpenDialogIfNeeded()
+        {
+            try
+            {
+                bool settingsValid = await ViewModel.CheckSettingsValidation();
+
+                if (!settingsValid)
+                {
+                    // Auto-open Settings dialog
+                    OnSettings(null, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error checking settings on page load: {ex.Message}");
+                // Don't show error dialog here - just disable Start button
+                ViewModel.IsStartEnabled = false;
             }
         }
 
@@ -158,17 +184,21 @@ namespace Catan3
             ViewModel.ShowMenu = !ViewModel.ShowMenu;
         }
 
-        private async void OnSettings(object sender, RoutedEventArgs e)
+        private async void OnSettings(object? sender, RoutedEventArgs? e)
         {
             try
             {
-                // Show Settings dialog centered on screen
-                var settingsDialog = new Settings.SettingsDialog
+                // Get current settings model and create dialog with it
+                var settingsModel = await SettingsModel.GetAsync();
+                var settingsDialog = new Settings.SettingsDialog(settingsModel)
                 {
                     XamlRoot = this.Content.XamlRoot
                 };
-                
+
                 await settingsDialog.ShowAsync();
+
+                // After Settings dialog closes, re-check validation
+                await ViewModel.CheckSettingsValidation();
             }
             catch (Exception ex)
             {
