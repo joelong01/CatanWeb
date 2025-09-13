@@ -564,17 +564,12 @@ namespace Catan3.Shared.Services
             if (string.IsNullOrEmpty(ServiceUri))
                 throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
 
-            var createGameRequest = new
-            {
-                GameType = gameType.ToString(),
-                HasSupplemental = hasSupplemental,
-                PlayerNames = playerNames
-            };
+            var createGameRequest = new NewGameMessage(gameType, playerNames, "Service Game");
 
             var json = JsonHelper.Serialize(createGameRequest);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync($"{ServiceUri}/api/games", content);
+            var response = await _httpClient.PostAsync($"{ServiceUri}/api/game/new", content);
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -613,12 +608,79 @@ namespace Catan3.Shared.Services
             if (string.IsNullOrEmpty(ServiceUri))
                 throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
 
-            var response = await _httpClient.GetAsync($"{ServiceUri}/api/games/{gameId}");
+            var response = await _httpClient.GetAsync($"{ServiceUri}/api/gamestate/{gameId}");
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
             return JsonHelper.Deserialize<GameInfo>(responseJson) 
                 ?? throw new InvalidOperationException("Failed to deserialize GetGame response");
+        }
+
+        /// <summary>
+        /// Persists a game via REST API
+        /// </summary>
+        /// <param name="gameId">The game ID to persist</param>
+        /// <param name="action">The persistence action (Save, SaveAs)</param>
+        /// <param name="location">Optional location for SaveAs</param>
+        public async Task PersistGameAsync(string gameId, string action, string? location = null)
+        {
+            if (string.IsNullOrEmpty(ServiceUri))
+                throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
+
+            var persistRequest = new
+            {
+                gameId = gameId,
+                action = action,
+                location = location ?? ""
+            };
+
+            var json = JsonHelper.Serialize(persistRequest);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{ServiceUri}/api/game/persist", content);
+            response.EnsureSuccessStatusCode();
+        }
+
+        /// <summary>
+        /// Ends a game via REST API
+        /// </summary>
+        /// <param name="gameId">The game ID to end</param>
+        public async Task EndGameAsync(string gameId)
+        {
+            if (string.IsNullOrEmpty(ServiceUri))
+                throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
+
+            var endGameRequest = new
+            {
+                gameId = gameId
+            };
+
+            var json = JsonHelper.Serialize(endGameRequest);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{ServiceUri}/api/game/end", content);
+            response.EnsureSuccessStatusCode();
+        }
+
+        /// <summary>
+        /// Updates settings on the GameService via REST API
+        /// </summary>
+        /// <param name="settings">The settings to send to the service</param>
+        public async Task UpdateSettingsAsync(object settings)
+        {
+            if (string.IsNullOrEmpty(ServiceUri))
+                throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
+
+            var updateSettingsRequest = new
+            {
+                settings = settings
+            };
+
+            var json = JsonHelper.Serialize(updateSettingsRequest);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{ServiceUri}/api/settings/update", content);
+            response.EnsureSuccessStatusCode();
         }
 
         #endregion

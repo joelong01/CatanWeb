@@ -9,8 +9,7 @@
       "validation": {
         "required": true,
         "directoryMustExist": true
-      },
-      "environmentVariable": "CATAN_DOCUMENTS_PATH"
+      }
     },
     {
       "settingName": "ExpansionGoldTiles",
@@ -42,6 +41,26 @@
       "defaultValue": false,
       "validation": {
         "required": false
+      }
+    },
+    {
+      "settingName": "ServiceGame",
+      "description": "Use GameService instead of local game logic",
+      "inputType": "checkbox",
+      "value": true,
+      "defaultValue": true,
+      "validation": {
+        "required": false
+      }
+    },
+    {
+      "settingName": "GameServiceUrl",
+      "description": "URL of the GameService (e.g., http://localhost:8080)",
+      "inputType": "textbox",
+      "value": "http://localhost:8080",
+      "defaultValue": "http://localhost:8080",
+      "validation": {
+        "required": true
       }
     }
   ]

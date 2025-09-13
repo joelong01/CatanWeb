@@ -1,4 +1,3 @@
-using Catan.Services;
 using Catan3.Models;
 using Catan3.Shared.Models;
 using Microsoft.UI.Xaml;
@@ -10,7 +9,6 @@ namespace Catan3
     public partial class MainWindow : WindowEx
     {
         public static PlayerDatabase PlayerDatabase { get; private set; } = new();
-        public static FileService FileService { get; private set; } = new();
         public static MainPageViewModel? CurrentGame { get; set; } = null;
         public static MainWindow? Instance { get; private set; } = null;
         public MainWindow()
@@ -46,7 +44,7 @@ namespace Catan3
             {
                 // Create the main page view model for a saved game and navigate directly to game
                 // This mimics what NewGamePage does when loading a saved game
-                var mainPageViewModel = new MainPageViewModel(FileService, PlayerDatabase, GameType.SavedGame, [], activatedFilePath, App.IsTestMode);
+                var mainPageViewModel = MainPageViewModel.CreateMainPageViewModel(App.FileService, PlayerDatabase, GameType.SavedGame, [], activatedFilePath, App.IsTestMode);
                 CurrentGame = mainPageViewModel;
                 MainFrame.Navigate(typeof(MainPage), mainPageViewModel);
                 this.Title = $"Catan ({activatedFilePath})";

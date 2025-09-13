@@ -107,6 +107,17 @@ namespace Catan3.GameService.Hubs
 
         #region Direct MVVM Message Handlers - Same as Desktop App
 
+        private bool ValidateCaller(string callerId, string currentPlayerId)
+        {
+            if (callerId == currentPlayerId) return true;
+
+            if (callerId == "desktop-player") return true;
+
+            if (currentPlayerId == "desktop-player") return true;
+
+            return false;
+        }
+
         /// <summary>
         /// Executes a Shuffle action
         /// </summary>
@@ -118,7 +129,7 @@ namespace Catan3.GameService.Hubs
             var currentGameState = gameStateMachine.GetCurrentState();
             
             // Verify that the current player is the one sending the request
-            if (currentGameState.CurrentPlayerId != playerId)
+            if (!ValidateCaller(currentGameState.CurrentPlayerId, playerId))
             {
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
@@ -143,7 +154,7 @@ namespace Catan3.GameService.Hubs
             var currentGameState = gameStateMachine.GetCurrentState();
             
             // Verify that the current player is the one sending the request
-            if (currentGameState.CurrentPlayerId != playerId)
+            if (!ValidateCaller(currentGameState.CurrentPlayerId, playerId))
             {
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
@@ -168,7 +179,7 @@ namespace Catan3.GameService.Hubs
             var currentGameState = gameStateMachine.GetCurrentState();
             
             // Verify that the current player is the one sending the request
-            if (currentGameState.CurrentPlayerId != playerId)
+            if (!ValidateCaller(currentGameState.CurrentPlayerId, playerId))
             {
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
@@ -193,7 +204,7 @@ namespace Catan3.GameService.Hubs
             var currentGameState = gameStateMachine.GetCurrentState();
             
             // Verify that the current player is the one sending the request
-            if (currentGameState.CurrentPlayerId != playerId)
+            if (!ValidateCaller(currentGameState.CurrentPlayerId, playerId))
             {
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
@@ -251,7 +262,7 @@ namespace Catan3.GameService.Hubs
             var currentGameState = gameStateMachine.GetCurrentState();
             
             // Verify that the current player is the one sending the request
-            if (currentGameState.CurrentPlayerId != playerId)
+            if (!ValidateCaller(currentGameState.CurrentPlayerId, playerId))
             {
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }

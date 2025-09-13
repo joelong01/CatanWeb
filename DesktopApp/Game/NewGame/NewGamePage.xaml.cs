@@ -37,7 +37,7 @@ namespace Catan3
             try
             {
                 List<string> playerIds = ViewModel.PlayingPlayers.Select( p => p.Id ).ToList();
-                var mainPageModel = new MainPageViewModel(MainWindow.FileService, MainWindow.PlayerDatabase, ViewModel.SelectedGame, playerIds, GameName);
+                var mainPageModel = MainPageViewModel.CreateMainPageViewModel(App.FileService, MainWindow.PlayerDatabase, ViewModel.SelectedGame, playerIds, GameName);
                 Frame.Navigate(typeof(MainPage), mainPageModel);
                 Frame.BackStack.Clear();
             }
@@ -89,8 +89,17 @@ namespace Catan3
 
         private void OnCancel(object sender, RoutedEventArgs e)
         {
-
-            Frame.GoBack();
+            if (Frame.CanGoBack)
+            {
+                Frame.GoBack();
+            }
+            else
+            {
+                // Navigate to a fresh NewGamePage if we can't go back
+                NewGameViewModel viewModel = new(MainWindow.PlayerDatabase.AllPlayers);
+                Frame.Navigate(typeof(NewGamePage), viewModel);
+                Frame.BackStack.Clear();
+            }
         }
 
         private void OnManagePlayers(object sender, RoutedEventArgs e)
@@ -106,11 +115,11 @@ namespace Catan3
             try
             {
                 Debug.Assert(MainWindow.Instance is not null);
-                var filePath = await MainWindow.FileService.OpenFileAsync(MainWindow.Instance, [".catan"]);
+                var filePath = await App.FileService.OpenFileAsync(MainWindow.Instance, [".catan"]);
                 if (filePath is not null && filePath != "")
                 {
                     
-                    MainPageViewModel mpViewModel = new ( MainWindow.FileService, MainWindow.PlayerDatabase, GameType.SavedGame, [], filePath);
+                    MainPageViewModel mpViewModel = MainPageViewModel.CreateMainPageViewModel(App.FileService, MainWindow.PlayerDatabase, GameType.SavedGame, [], filePath);
                     Frame.Navigate(typeof(MainPage), mpViewModel);
                     Frame.BackStack.Clear();
                 }
@@ -129,11 +138,11 @@ namespace Catan3
             try
             {
                 Debug.Assert(MainWindow.Instance is not null);
-                var filePath = await MainWindow.FileService.OpenFileAsync(MainWindow.Instance, [".catan_test"]);
+                var filePath = await App.FileService.OpenFileAsync(MainWindow.Instance, [".catan_test"]);
                 if (filePath is not null && filePath != "")
                 {
                   // Navigate to MainPage with a minimal ViewModel for test mode
-                    MainPageViewModel mpViewModel = new(MainWindow.FileService, MainWindow.PlayerDatabase, GameType.SavedGame, [], filePath);
+                    MainPageViewModel mpViewModel = MainPageViewModel.CreateMainPageViewModel(App.FileService, MainWindow.PlayerDatabase, GameType.SavedGame, [], filePath);
                     Frame.Navigate(typeof(MainPage), mpViewModel);
                     Frame.BackStack.Clear();
                 }
@@ -144,14 +153,19 @@ namespace Catan3
             }
         }
 
+        private void OnShowMenu(object sender, RoutedEventArgs e)
+        {
+            ViewModel.ShowMenu = !ViewModel.ShowMenu;
+        }
+
         private async void OnSettings(object sender, RoutedEventArgs e)
         {
             try
             {
-                // Show Settings dialog
+                // Show Settings dialog centered on screen
                 var settingsDialog = new Settings.SettingsDialog
                 {
-                    XamlRoot = this.XamlRoot
+                    XamlRoot = this.Content.XamlRoot
                 };
                 
                 await settingsDialog.ShowAsync();

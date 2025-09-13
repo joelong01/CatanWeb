@@ -207,4 +207,12 @@ namespace Catan3.Shared.Models
         public SettingsModel Settings { get; } = settings;
         public override string ToString() => $"UpdateSettings: {Settings.Settings.Count} settings";
     }
+
+    /// <summary>
+    /// MVVM message to request current settings
+    /// </summary>
+    public class GetSettingsMessage
+    {
+        public override string ToString() => "GetSettingsMessage";
+    }
 }

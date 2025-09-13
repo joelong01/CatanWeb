@@ -58,15 +58,21 @@ namespace Catan3.GameState
     /// MVVM messaging service that bridges UI messages to game logic operations.
     /// This class handles all MVVM communication and manages the GameStateMachine lifecycle internally.
     /// Receives MVVM messages and creates/manages GameStateMachine instances as needed.
-    /// Future: Will be replaced with a proxy that delegates to GameService REST/SignalR APIs.
+    /// Service handlers are implemented in GameMessageServiceProxy.cs as a partial class.
     /// </summary>
-    internal class GameMessageService : ObservableRecipient
+    internal partial class GameMessageService : ObservableRecipient
     {
         /// <summary>
         /// The current game state machine that contains the core game logic.
         /// Created internally when game messages are received.
         /// </summary>
         private GameStateMachine? _gameStateMachine;
+
+        /// <summary>
+        /// The GameService proxy used when ServiceGame setting is enabled.
+        /// Delegates game operations to remote GameService instead of local GameStateMachine.
+        /// </summary>
+        private Catan3.Shared.Services.GameServiceProxy? _gameServiceProxy;
 
         /// <summary>
         /// The persistence service used for game operations.
@@ -79,25 +85,96 @@ namespace Catan3.GameState
         private SettingsModel? _currentSettings;
 
         /// <summary>
+        /// Tracks whether game message handlers are currently registered to prevent duplicate registration.
+        /// </summary>
+        private bool _gameHandlersRegistered = false;
+
+        /// <summary>
         /// Initializes a new GameMessageService that handles MVVM messages.
         /// Creates GameStateMachine instances internally based on received messages.
+        /// Use CreateGameMessageService() static factory method to create instances.
         /// </summary>
         /// <param name="persistenceService">The persistence service for file operations.</param>
-        public GameMessageService(Catan3.Shared.Interfaces.IPersistenceService persistenceService)
+        private GameMessageService(Catan3.Shared.Interfaces.IPersistenceService persistenceService)
         {
             _persistenceService = persistenceService;
-            RegisterMessages();
+        }
+
+        /// <summary>
+        /// Creates a new GameMessageService with proper async initialization.
+        /// </summary>
+        /// <param name="persistenceService">The persistence service for file operations.</param>
+        /// <returns>A fully initialized GameMessageService.</returns>
+        public static async Task<GameMessageService> CreateGameMessageService(Catan3.Shared.Interfaces.IPersistenceService persistenceService)
+        {
+            var service = new GameMessageService(persistenceService);
+            await service.RegisterMessages();
+            return service;
         }
 
         /// <summary>
         /// Registers this service to receive all game-related MVVM messages.
-        /// Each message type is mapped to a specific handler method that delegates to the GameStateMachine.
+        /// Checks ServiceGame setting to register either local or service handlers.
         /// </summary>
-        private void RegisterMessages()
+        private async Task RegisterMessages()
         {
             Debug.Assert(Messenger is not null);
             IsActive = true;
             
+            // Always register settings handler for runtime updates
+            Messenger.Register<UpdateSettings>(this, HandleUpdateSettingsAsync);
+            
+            // Load initial settings via MVVM messaging
+            _currentSettings = await SettingsModel.GetAsync();
+            
+            // Initialize handlers based on current settings
+            await InitializeHandlersAsync();
+        }
+
+        /// <summary>
+        /// Initializes message handlers based on current settings
+        /// </summary>
+        private async Task InitializeHandlersAsync()
+        {
+            // Unregister existing handlers if any
+            if (_gameHandlersRegistered)
+            {
+                UnregisterGameMessages();
+                
+                // Send EndGame message to properly clean up current game state before switching modes
+                Messenger.Send(new EndGame());
+                
+                // Dispose existing GameServiceProxy to prevent connection conflicts
+                await DisposeGameServiceProxyAsync();
+            }
+
+            // Use the already loaded settings
+            if (_currentSettings == null)
+            {
+                throw new InvalidOperationException("Settings must be loaded before initializing handlers");
+            }
+
+            // Check ServiceGame setting and register appropriate handlers
+            bool useServiceGame = _currentSettings.GetBoolValue("ServiceGame");
+            
+            if (useServiceGame)
+            {
+                await RegisterServiceGameMessages();
+            }
+            else
+            {
+                RegisterLocalGameMessages();
+            }
+
+            _gameHandlersRegistered = true;
+        }
+        
+        /// <summary>
+        /// Registers message handlers for local GameStateMachine operations.
+        /// Each handler delegates to the local GameStateMachine instance.
+        /// </summary>
+        private void RegisterLocalGameMessages()
+        {
             Messenger.Register<UndoMessage>(this, HandleUndoAsync);
             Messenger.Register<RedoMessage>(this, HandleRedoAsync);
             Messenger.Register<NextMessage>(this, HandleNextAsync);
@@ -117,8 +194,65 @@ namespace Catan3.GameState
             Messenger.Register<EndGame>(this, HandleEndGameAsync);
             Messenger.Register<GoFirstMessage>(this, HandleGoFirstAsync);
             Messenger.Register<PersistGameMessage>(this, HandlePersistGameAsync);
-            Messenger.Register<UpdateSettings>(this, HandleUpdateSettingsAsync);
             Messenger.Register<SaveAsRequestMessage>(this, HandleSaveAsRequestAsync);
+        }
+        
+        /// <summary>
+        /// Registers message handlers for GameService proxy operations.
+        /// Each handler delegates to the GameServiceProxy instance.
+        /// </summary>
+        private async Task RegisterServiceGameMessages()
+        {
+            // Initialize the GameServiceProxy when service handlers are registered  
+            string gameServiceUrl = _currentSettings!.GetStringValue("GameServiceUrl");
+            await InitializeGameServiceProxyAsync(gameServiceUrl);
+            Messenger.Register<UndoMessage>(this, HandleUndoServiceAsync);
+            Messenger.Register<RedoMessage>(this, HandleRedoServiceAsync);
+            Messenger.Register<NextMessage>(this, HandleNextServiceAsync);
+            Messenger.Register<ShuffleMessage>(this, HandleShuffleServiceAsync);
+            Messenger.Register<BuildingUpgradeMessage>(this, HandleBuildingUpgradeServiceAsync);
+            Messenger.Register<SetPlayerOrderMessage>(this, HandleSetPlayerOrderServiceAsync);
+            Messenger.Register<RoadPurchaseMessage>(this, HandleRoadPurchaseServiceAsync);
+            Messenger.Register<MoveRobberMessage>(this, HandleMoveRobberServiceAsync);
+            Messenger.Register<NewGameMessage>(this, HandleNewGameServiceAsync);
+            Messenger.Register<Catan3.Models.LoadLocalCatanGameMessage>(this, HandleLoadLocalCatanGameServiceAsync);
+            Messenger.Register<StartRecordingMessage>(this, HandleStartRecordingAsync);
+            Messenger.Register<StopRecordingMessage>(this, HandleStopRecordingAsync);
+            Messenger.Register<RollMessage>(this, HandleRollServiceAsync);
+            Messenger.Register<PurchaseMessage>(this, HandlePurchaseServiceAsync);
+            Messenger.Register<ParticipatingInSupplementalMessage>(this, HandleParticipatingInSupplementalServiceAsync);
+            Messenger.Register<BalanceBoardMessage>(this, HandleBalanceBoardServiceAsync);
+            Messenger.Register<EndGame>(this, HandleEndGameServiceAsync);
+            Messenger.Register<GoFirstMessage>(this, HandleGoFirstServiceAsync);
+            Messenger.Register<PersistGameMessage>(this, HandlePersistGameServiceAsync);
+            Messenger.Register<SaveAsRequestMessage>(this, HandleSaveAsRequestServiceAsync);
+        }
+
+        /// <summary>
+        /// Unregisters all game message handlers to prevent duplicate registration.
+        /// </summary>
+        private void UnregisterGameMessages()
+        {
+            Messenger.Unregister<UndoMessage>(this);
+            Messenger.Unregister<RedoMessage>(this);
+            Messenger.Unregister<NextMessage>(this);
+            Messenger.Unregister<ShuffleMessage>(this);
+            Messenger.Unregister<BuildingUpgradeMessage>(this);
+            Messenger.Unregister<SetPlayerOrderMessage>(this);
+            Messenger.Unregister<RoadPurchaseMessage>(this);
+            Messenger.Unregister<MoveRobberMessage>(this);
+            Messenger.Unregister<NewGameMessage>(this);
+            Messenger.Unregister<Catan3.Models.LoadLocalCatanGameMessage>(this);
+            Messenger.Unregister<StartRecordingMessage>(this);
+            Messenger.Unregister<StopRecordingMessage>(this);
+            Messenger.Unregister<RollMessage>(this);
+            Messenger.Unregister<PurchaseMessage>(this);
+            Messenger.Unregister<ParticipatingInSupplementalMessage>(this);
+            Messenger.Unregister<BalanceBoardMessage>(this);
+            Messenger.Unregister<EndGame>(this);
+            Messenger.Unregister<GoFirstMessage>(this);
+            Messenger.Unregister<PersistGameMessage>(this);
+            Messenger.Unregister<SaveAsRequestMessage>(this);
         }
 
         /// <summary>
@@ -716,35 +850,16 @@ namespace Catan3.GameState
         /// <param name="cfp">The calling file path (auto-filled).</param>
         
         /// <summary>
-        /// Handles UpdateSettings message from the UI to receive current application settings.
-        /// Stores the settings for use in game creation and file path generation.
+        /// Handles UpdateSettings message from the UI to receive runtime settings changes.
         /// </summary>
         /// <param name="recipient">The message recipient (this service).</param>
         /// <param name="message">The settings update message containing current settings.</param>
         private void HandleUpdateSettingsAsync(object recipient, UpdateSettings message)
         {
+            if (message?.Settings == null) return;
+            
             _currentSettings = message.Settings;
             this.TraceMessage($"Settings updated: {message.Settings.Settings.Count} settings received");
-            
-            // Update persistence service with save directory from settings
-            var saveDirectory = message.Settings.GetStringValue("SaveDirectory");
-            if (!string.IsNullOrEmpty(saveDirectory))
-            {
-                try
-                {
-                    _persistenceService.SaveDirectory = saveDirectory;
-                    this.TraceMessage($"✅ Game save directory configured: {saveDirectory}");
-                }
-                catch (Exception ex)
-                {
-                    this.TraceMessage($"❌ Failed to set save directory '{saveDirectory}': {ex.Message}");
-                    // Don't throw - log the error and continue, but saves will fail until directory is fixed
-                }
-            }
-            else
-            {
-                this.TraceMessage("⚠️ No SaveDirectory setting found - file saves will require absolute paths");
-            }
         }
 
         /// <summary>

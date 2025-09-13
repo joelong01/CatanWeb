@@ -166,7 +166,7 @@ namespace Catan3.GameService.Controllers
         }
 
         [HttpPost("game/new")]
-        public Task<IActionResult> NewGame([FromBody] NewGameMessage newGameMessage)
+        public async Task<IActionResult> NewGame([FromBody] NewGameMessage newGameMessage)
         {
             _logger.LogEvent("API Request", $"POST /api/game/new - Creating new game");
             
@@ -174,7 +174,7 @@ namespace Catan3.GameService.Controllers
             {
                 if (newGameMessage is null || newGameMessage.PlayerIds is null or { Count: 0 })
                 {
-                    return Task.FromResult<IActionResult>(BadRequest("Invalid game creation request - must specify game type and players"));
+                    return BadRequest("Invalid game creation request - must specify game type and players");
                 }
 
                 // Get the appropriate game metadata based on game type
@@ -191,21 +191,29 @@ namespace Catan3.GameService.Controllers
                 // Create GameStateMachine with the Log
                 var gameStateMachine = CreateGameStateMachineWithServiceDependencies(gameLog);
                 
+                // Initialize logging state to set up proper GameModel state (stars, button enabling, etc.)
+                gameStateMachine.InitializeLoggingState(gameModel);
+
+                //
+                //  fix up the game model by processing a NewGameMessage
+                gameModel = await gameStateMachine.HandleNewGameAsync(gameModel);
+
+
                 // Store in registry
                 GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);
 
                 // Return minimal response - client must join via SignalR to get GameModel
-                return Task.FromResult<IActionResult>(Ok(new { success = true, gameId = gameModel.GameId }));
+                return Ok(new { success = true, gameId = gameModel.GameId });
             }
             catch (Exception ex)
             {
                 _logger.LogEvent("New Game Error", $"Error creating new game: {ex.Message}", LogLevel.Error);
-                return Task.FromResult<IActionResult>(StatusCode(500, $"Error creating new game: {ex.Message}"));
+                return StatusCode(500, $"Error creating new game: {ex.Message}");
             }
         }
 
         [HttpPost("game/load")]
-        public Task<IActionResult> LoadGame([FromBody] LoadGameMessage loadGameMessage)
+        public  Task<IActionResult> LoadGame([FromBody] LoadGameMessage loadGameMessage)
         {
             _logger.LogEvent("API Request", $"POST /api/game/load - Loading game from compressed log");
             
@@ -224,6 +232,8 @@ namespace Catan3.GameService.Controllers
 
                 // Get the current game state to determine GameId
                 var gameModel = gameStateMachine.GetCurrentState();
+
+              
                 
                 // Store GameStateMachine in registry
                 GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);
@@ -510,6 +520,80 @@ namespace Catan3.GameService.Controllers
 
             var message = new GoFirstMessage(playerId);
             return gameStateMachine.HandleGoFirstAsync(message).Result;
+        }
+
+        [HttpPost("game/end")]
+        public IActionResult EndGame([FromBody] JsonElement request)
+        {
+            _logger.LogEvent("API Request", $"POST /api/game/end - Ending game");
+            
+            try
+            {
+                var gameId = request.GetProperty("gameId").GetString();
+
+                if (string.IsNullOrEmpty(gameId))
+                {
+                    _logger.LogEvent("Validation Error", $"Missing gameId in end game request", LogLevel.Warning);
+                    return BadRequest("Missing gameId");
+                }
+
+                // Remove game from registry and dispose resources
+                bool gameRemoved = GameStateMachineRegistry.DeleteGameStateMachine(gameId);
+                
+                if (!gameRemoved)
+                {
+                    _logger.LogEvent("Game Not Found", $"Game not found: {gameId}", LogLevel.Warning);
+                    return NotFound($"Game {gameId} not found");
+                }
+
+                _logger.LogEvent("Game Ended", $"Game ended successfully - GameId: {gameId}");
+
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Game {gameId} ended successfully"
+                });
+            }
+            catch (GameException ex)
+            {
+                _logger.LogEvent("Game Not Found", $"Game not found: {ex.Message}", LogLevel.Warning);
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("End Game Error", $"Error ending game: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, $"Error ending game: {ex.Message}");
+            }
+        }
+
+        [HttpPost("settings/update")]
+        public IActionResult UpdateSettings([FromBody] JsonElement request)
+        {
+            _logger.LogEvent("API Request", $"POST /api/settings/update - Updating service settings");
+            
+            try
+            {
+                // For now, we'll just acknowledge the settings update
+                // In the future, this could store settings that affect game logic
+                var settingsCount = 0;
+                if (request.TryGetProperty("settings", out var settingsElement))
+                {
+                    settingsCount = settingsElement.EnumerateObject().Count();
+                }
+
+                _logger.LogEvent("Settings Updated", $"Service settings updated - {settingsCount} settings received");
+
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Settings updated successfully ({settingsCount} settings)"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Settings Update Error", $"Error updating settings: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, $"Error updating settings: {ex.Message}");
+            }
         }
     }
 }

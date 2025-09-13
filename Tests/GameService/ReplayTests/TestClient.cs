@@ -1,10 +1,5 @@
 ﻿using Catan3.Shared.Models;
 using Catan3.Shared.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace Tests.GameService
