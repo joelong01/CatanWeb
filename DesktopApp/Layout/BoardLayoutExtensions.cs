@@ -1,3 +1,4 @@
+using System;
 using Catan3.Shared.Models;
 using Microsoft.UI.Xaml.Media;
 
@@ -8,6 +9,17 @@ namespace Catan3.DesktopApp.Layout
     /// </summary>
     public static class BoardVisualLayoutExtensions
     {
+        // --- Hex Layout Constants ---
+        /// <summary>
+        /// The vertical adjustment factor for centering a regular hexagon (flat-topped) is sqrt(3)/2.
+        /// This is the ratio of the height of an equilateral triangle to its side.
+        /// </summary>
+        private static readonly double HEX_VERTICAL_ADJUSTMENT = Math.Sqrt(3) / 2.0;
+
+        /// <summary>
+        /// The horizontal adjustment factor for centering a regular hexagon (flat-topped) is 1.0.
+        /// </summary>
+        private static readonly double HEX_HORIZONTAL_ADJUSTMENT = 1.0;
         /// <summary>
         /// A collection of points for the inner hexagon positioned relative to the outer hexagon
         /// </summary>
@@ -16,8 +28,8 @@ namespace Catan3.DesktopApp.Layout
             // Calculate the horizontal difference after accounting for the stroke
             double sizeDiff = (layout.OuterHexSize - layout.InnerHexSize);
             // The inner hexagon needs to be positioned such that the gap is equal on all sides.
-            double verticalAdjustment = (sizeDiff) * .86;
-            double horizontalAdjustment = (sizeDiff);
+            double verticalAdjustment = sizeDiff * HEX_VERTICAL_ADJUSTMENT;
+            double horizontalAdjustment = sizeDiff * HEX_HORIZONTAL_ADJUSTMENT;
             return HexGeometry.FlatTopHexPoints(layout.InnerHexSize, horizontalAdjustment, verticalAdjustment);
         }
 

@@ -18,6 +18,19 @@ namespace Catan3.Models
     /// </summary>
     public partial class HarborViewModel : ObservableRecipient
     {
+        // --- Harbor Layout Constants ---
+        /// <summary>
+        /// The ratio of the horizontal offset for a regular hexagon's vertex (sqrt(3)/2).
+        /// Used to position harbors on the correct edge.
+        /// </summary>
+        private static readonly double HEX_HORIZONTAL_RATIO = Math.Sqrt(3) / 2.0;
+
+        /// <summary>
+        /// The ratio of the vertical offset for a regular hexagon's vertex (1/2).
+        /// Used to position harbors on the correct edge.
+        /// </summary>
+        private static readonly double HEX_VERTICAL_RATIO = 0.5;
+
         /// <summary>
         /// Gets or sets the harbor model.
         /// </summary>
@@ -141,8 +154,8 @@ namespace Catan3.Models
             left += vertexPoint.X - size / 2.0; // Center horizontally
                                                 // Calculate the edge offset for the harbor's new center position
             double edgeOffset = size / 2.0; // Harbor's radius
-            double horizontalOffset = edgeOffset * Math.Sqrt(3) / 2;
-            double verticalOffset = edgeOffset / 2;
+            double horizontalOffset = edgeOffset * HEX_HORIZONTAL_RATIO; // sqrt(3)/2
+            double verticalOffset = edgeOffset * HEX_VERTICAL_RATIO;     // 1/2
             // Now adjust based on Harbor position so that it is on the "edge" of the pointy tip
             switch (side)
             {

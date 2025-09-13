@@ -124,7 +124,7 @@ namespace Tests.DesktopApp.UI
 
             // Wait a bit more for all UI elements to be fully rendered
             this.TraceMessage("Waiting for UI elements to be fully rendered...");
-
+            Thread.Sleep(5000);
 
             // Retry LoadAutomationObjects if TestAutomationActionButton is missing (UI might still be loading)
             int retryCount = 0;

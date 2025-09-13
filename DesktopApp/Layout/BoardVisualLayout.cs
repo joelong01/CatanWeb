@@ -64,7 +64,7 @@ namespace Catan3.DesktopApp.Layout
             {
                 // Adjust the inner hex size to exclude the stroke thickness from the hex itself.
                 // The outer hex size is reduced by the TileGap and the 1/2 stroke thickness 
-                double adjustedSize = OuterHexSize - TileGap - InnerHexStrokeThickness * .5;
+                double adjustedSize = OuterHexSize - TileGap - InnerHexStrokeThickness * 0.5;
                 return adjustedSize;
             }
         }
