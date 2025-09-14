@@ -267,10 +267,104 @@ namespace Catan3.Shared.GameLogic
         /// <param name="message">The new game request with game type and player list.</param>
         /// <returns>The newly created GameModel in initial state.</returns>
         /// <exception cref="GameException">Thrown when game creation fails.</exception>
-        public Task<GameModel> HandleNewGameAsync(GameModel gameModel)
+        public Task<GameModel> HandleNewGameAsync(IGameMetadata gameInfo, IList<string> playerIds, string gameName)
         {
-           LogGameModel(gameModel);
-            _logger.Trace(GameTraceLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}]");
+            Debug.Assert((gameInfo.TileKeys.Count == gameInfo.Numbers.Count) && (gameInfo.TileKeys.Count == gameInfo.Resources.Count));
+
+            if (playerIds.Count < gameInfo.ResourceRules.MinPlayers || playerIds.Count > gameInfo.ResourceRules.MaxPlayers)
+            {
+                throw new GameException($"{gameInfo.Description} must have players between {gameInfo.ResourceRules.MinPlayers} and {gameInfo.ResourceRules.MaxPlayers}. You gave {playerIds.Count}");
+            }
+
+            List<PlayerModel> playerModels = playerIds.Select(id => new PlayerModel { Id = id }).ToList();
+
+            GameModel gameModel = new()
+            {
+                GameId = Guid.NewGuid().ToString(),
+                GameName = gameName,
+                CreatedTime = DateTime.UtcNow,
+                GameType = gameInfo.GameType,
+                Players = playerModels,
+                CurrentPlayerId = playerModels.FirstOrDefault()?.Id ?? "",
+                HouseRules = gameInfo.HouseRules,
+                ResourceRules = gameInfo.ResourceRules,
+                HasSupplementalBuildPhase = gameInfo.HasSupplemental,
+                EntitlementPurchaseModel = gameInfo.PurchaseableEntitlements.ToList(),
+                Tiles = [],
+                Buildings = [],
+                Roads = [],
+                Harbors = [],
+                GameResourcesModel = new ResourcesModel(),
+                RollModel = new RollModel(),
+                ActionFlags = new ActionFlags(),
+                Robber = new RobberModel { Coordinates = HexCoordinates.Default },
+                Random = new ReplayableRandom()
+            };
+
+            // Initialize tiles
+            for (int i = 0; i < gameInfo.TileKeys.Count; i++)
+            {
+                var tile = new TileModel
+                {
+                    ResourceTileType = gameInfo.Resources[i],
+                    Number = gameInfo.Numbers[i],
+                    TileKey = gameInfo.TileKeys[i]
+                };
+                gameModel.Tiles.Add(tile);
+            }
+
+            // Initialize buildings and roads for each tile
+            foreach (var tile in gameModel.Tiles)
+            {
+                // Add buildings for each position on the tile
+                foreach (HexPosition buildingPosition in Enum.GetValues<HexPosition>())
+                {
+                    if (buildingPosition == HexPosition.None) continue;
+
+                    var buildingKey = new BuildingKey(tile.TileKey, buildingPosition);
+                    var building = gameModel.Buildings.FindBuildingModel(buildingKey);
+                    if (building is null)
+                    {
+                        gameModel.Buildings.Add(new BuildingModel
+                        {
+                            BuildingKey = buildingKey,
+                            BuildingState = BuildingState.NotBuildable
+                        });
+                    }
+                }
+
+                // Add roads for each side of the tile
+                foreach (HexSide roadPosition in Enum.GetValues<HexSide>())
+                {
+                    if (roadPosition == HexSide.None) continue;
+
+                    var roadKey = new RoadKey(tile.TileKey, roadPosition);
+                    var road = gameModel.Roads.FindRoad(roadKey);
+                    if (road is null)
+                    {
+                        gameModel.Roads.Add(new RoadModel
+                        {
+                            RoadKey = roadKey,
+                            RoadState = RoadState.Unowned
+                        });
+                    }
+                }
+            }
+
+            // Add harbors
+            gameModel.Harbors.AddRange(gameInfo.Harbors);
+
+
+            // Shuffle the board
+            gameModel.Shuffle();
+
+            // Set initial game state
+            gameModel.GameState = GameState.PickingBoard;
+
+            // Compute initial game hash
+            gameModel.UpdateGameHash();
+            InitializeLoggingState(gameModel);
+            LogGameModel(gameModel);
             return Task.FromResult(gameModel);
         }
 
@@ -588,10 +682,10 @@ namespace Catan3.Shared.GameLogic
         public GameModel NewGame(GameType selectedGame, IList<string> playerIds)
         {
             // Get the appropriate game metadata based on game type
-            IGameMetadata gameInfo = selectedGame == GameType.Regular 
-                ? RegularBoardInfo.Default 
+            IGameMetadata gameInfo = selectedGame == GameType.Regular
+                ? RegularBoardInfo.Default
                 : ExpansionBoardInfo.Default;
-                
+
             var gameModel = GameModelExtensions.CreateNew(gameInfo, playerIds, "New Game");
             _gameLog.GameType = selectedGame;
 

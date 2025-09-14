@@ -178,25 +178,21 @@ namespace Catan3.GameService.Controllers
                 }
 
                 // Get the appropriate game metadata based on game type
-                IGameMetadata gameInfo = newGameMessage.GameType == GameType.Regular 
-                    ? RegularBoardInfo.Default 
+                IGameMetadata gameInfo = newGameMessage.GameType == GameType.Regular
+                    ? RegularBoardInfo.Default
                     : ExpansionBoardInfo.Default;
-                
-                // Create new game model
-                var gameModel = GameModelExtensions.CreateNew(gameInfo, newGameMessage.PlayerIds, newGameMessage.GameName ?? "Untitled Game");
-                
+
+                // Generate a temporary save file path for the game log
+                var tempSaveFilePath = $"{newGameMessage.GameName ?? "Untitled Game"}-{Guid.NewGuid()}.catan";
+
                 // Create the Log for this game (no logger needed for basic functionality)
-                var gameLog = new Shared.Utility.Log<string>(_persistenceService, gameModel, isTest: false);
-                
+                var gameLog = new Shared.Utility.Log<string>(_persistenceService, tempSaveFilePath);
+
                 // Create GameStateMachine with the Log
                 var gameStateMachine = CreateGameStateMachineWithServiceDependencies(gameLog);
-                
-                // Initialize logging state to set up proper GameModel state (stars, button enabling, etc.)
-                gameStateMachine.InitializeLoggingState(gameModel);
 
-                //
-                //  fix up the game model by processing a NewGameMessage
-                gameModel = await gameStateMachine.HandleNewGameAsync(gameModel);
+                // Use the GameStateMachine to create the fully initialized game
+                var gameModel = await gameStateMachine.HandleNewGameAsync(gameInfo, newGameMessage.PlayerIds, newGameMessage.GameName ?? "Untitled Game");
 
 
                 // Store in registry

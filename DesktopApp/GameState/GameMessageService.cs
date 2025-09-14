@@ -563,13 +563,23 @@ namespace Catan3.GameState
             try
             {
                 // Get the appropriate game metadata based on game type
-                IGameMetadata gameInfo = message.GameType == GameType.Regular 
-                    ? RegularBoardInfo.Default 
+                IGameMetadata gameInfo = message.GameType == GameType.Regular
+                    ? RegularBoardInfo.Default
                     : ExpansionBoardInfo.Default;
-                
-                // Use the helper function to create the new game
-                var gameModel = await CreateNewGameAsync(gameInfo, message.PlayerIds, message.GameName ?? "Untitled Game");
-                
+
+                // Create GameStateMachine with Desktop dependencies
+                // Generate a temporary save file path (the GameModel will be created with its own ID)
+                var tempGameName = message.GameName ?? "Untitled Game";
+                var tempFileName = $"{tempGameName}-{Guid.NewGuid()}.catan";
+                var saveFilePath = System.IO.Path.Join(
+                    Catan.Services.FileService.GetCorrectDocumentsPath(),
+                    "Catan Saved Games",
+                    tempFileName);
+                _gameStateMachine = CreateGameStateMachineWithDesktopDependencies(saveFilePath);
+
+                // Use the GameStateMachine to create the fully initialized game
+                var gameModel = await _gameStateMachine.HandleNewGameAsync(gameInfo, message.PlayerIds, message.GameName ?? "Untitled Game");
+
                 // Send the current game state to the UI
                 Messenger.Send(new UpdateGameModel(gameModel));
             }
@@ -861,31 +871,6 @@ namespace Catan3.GameState
             return new GameStateMachine(gameLog, gameLogger, _persistenceService);
         }
 
-        /// <summary>
-        /// Creates a brand new game with the specified parameters.
-        /// Creates a fresh GameStateMachine instance for the new game.
-        /// </summary>
-        /// <param name="gameInfo">The game metadata containing board configuration.</param>
-        /// <param name="playerIds">The list of player IDs.</param>
-        /// <param name="gameName">The name of the game.</param>
-        /// <returns>The newly created GameModel.</returns>
-        private async Task<GameModel> CreateNewGameAsync(IGameMetadata gameInfo, IList<string> playerIds, string gameName)
-        {
-            // Create the new game model
-            var gameModel = GameModelExtensions.CreateNew(gameInfo, playerIds, gameName);
-            
-            // Generate save file path for the new game
-            var saveFilePath = Catan.Services.FileService.GenerateNewGameSaveFilePath(gameModel);
-            
-            // Create the GameStateMachine with Desktop dependencies
-            _gameStateMachine = CreateGameStateMachineWithDesktopDependencies(saveFilePath);
-            
-            // Initialize with the new game
-            _gameStateMachine.InitializeLoggingState(gameModel);
-            
-            // Return the current game state - wrapped in Task for async compatibility
-            return await Task.FromResult(_gameStateMachine.GetCurrentState());
-        }
 
         /// <summary>
         /// Loads a game from a compressed .catan file.
