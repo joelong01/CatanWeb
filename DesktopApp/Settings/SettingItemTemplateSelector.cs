@@ -49,11 +49,33 @@ namespace Catan3.Settings
             this.TraceMessage($"SelectTemplateCore called with item type: {item.GetType().Name}");
             Debug.Assert(container is not null, "Container should not be null");
 
+            // Check for SettingItemViewModel first
+            if (item is SettingItemViewModel settingItemViewModel)
+            {
+                var inputType = settingItemViewModel.InputType?.ToLowerInvariant();
+                var isDirectoryPicker = settingItemViewModel.Model.Validation?.DirectoryMustExist == true;
+
+                this.TraceMessage($"SettingItemViewModel: {settingItemViewModel.SettingName}, InputType: '{inputType}', IsDirectoryPicker: {isDirectoryPicker}");
+
+                var selectedTemplate = inputType switch
+                {
+                    "textbox" when isDirectoryPicker => DirectoryPickerTemplate,
+                    "textbox" => TextBoxTemplate,
+                    "dropdown" => DropdownTemplate,
+                    "checkbox" => CheckboxTemplate,
+                    _ => TextBoxTemplate // fallback to textbox template
+                };
+
+                this.TraceMessage($"Selected template: {selectedTemplate?.GetType().Name ?? "null"}");
+                return selectedTemplate ?? base.SelectTemplateCore(item, container);
+            }
+
+            // Fallback for legacy SettingItem usage
             if (item is Catan3.Shared.Models.SettingItem settingItem)
             {
                 var inputType = settingItem.InputType?.ToLowerInvariant();
                 var isDirectoryPicker = settingItem.Validation?.DirectoryMustExist == true;
-                
+
                 this.TraceMessage($"SettingItem: {settingItem.SettingName}, InputType: '{inputType}', IsDirectoryPicker: {isDirectoryPicker}");
 
                 var selectedTemplate = inputType switch
@@ -64,7 +86,7 @@ namespace Catan3.Settings
                     "checkbox" => CheckboxTemplate,
                     _ => TextBoxTemplate // fallback to textbox template
                 };
-                
+
                 this.TraceMessage($"Selected template: {selectedTemplate?.GetType().Name ?? "null"}");
                 return selectedTemplate ?? base.SelectTemplateCore(item, container);
             }

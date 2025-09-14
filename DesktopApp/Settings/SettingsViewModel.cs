@@ -5,10 +5,12 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -21,10 +23,10 @@ namespace Catan3.Settings
     public partial class SettingsViewModel : ObservableObject
     {
         /// <summary>
-        /// Gets or sets the collection of setting items for UI binding
+        /// Gets or sets the collection of setting item view models for UI binding
         /// </summary>
         [ObservableProperty]
-        public partial ObservableCollection<SettingItem> SettingItems { get; set; } = [];
+        public partial ObservableCollection<SettingItemViewModel> SettingItems { get; set; } = [];
 
         /// <summary>
         /// Gets whether all settings are currently valid
@@ -78,14 +80,20 @@ namespace Catan3.Settings
         {
             try
             {
-                // Add setting items directly from the provided settings
+                // Create a function to get all setting models for cross-setting validation
+                Func<IEnumerable<SettingItem>> getAllSettings = () =>
+                    SettingItems.Select(vm => vm.Model);
+
+                // Add setting items as view models
                 foreach (var settingItem in settingsModel.Settings)
                 {
                     if (settingItem != null)
                     {
-                        SettingItems.Add(settingItem);
-                        // Subscribe to property changes for real-time validation
-                        settingItem.PropertyChanged += OnSettingItemChanged;
+                        var settingViewModel = new SettingItemViewModel(settingItem, getAllSettings);
+                        SettingItems.Add(settingViewModel);
+
+                        // Subscribe to property changes for overall validation state
+                        settingViewModel.PropertyChanged += OnSettingViewModelChanged;
                     }
                     else
                     {
@@ -94,7 +102,7 @@ namespace Catan3.Settings
                 }
 
                 // Initial validation check
-                ValidateAllSettings();
+                _ = ValidateAllSettingsAsync();
                 this.TraceMessage($"Added {SettingItems.Count} settings to ViewModel");
 
                 // Create a deep copy for change tracking
@@ -109,46 +117,57 @@ namespace Catan3.Settings
         }
 
         /// <summary>
-        /// Handles property changes on individual setting items for real-time validation
+        /// Handles property changes on setting view models for overall validation state
         /// </summary>
-        private void OnSettingItemChanged(object? sender, PropertyChangedEventArgs e)
+        private void OnSettingViewModelChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(SettingItem.Value) ||
-                e.PropertyName == nameof(SettingItem.TextValue) ||
-                e.PropertyName == nameof(SettingItem.BooleanValue))
+            if (e.PropertyName == nameof(SettingItemViewModel.HasValidationError))
             {
-                ValidateAllSettings();
+                // Update overall IsValid based on all settings
+                IsValid = !SettingItems.Any(s => s.HasValidationError);
             }
-        }
 
-        /// <summary>
-        /// Validates all settings and updates IsValid property and individual setting validation states
-        /// </summary>
-        private void ValidateAllSettings()
-        {
-            bool allValid = true;
-
-            foreach (var setting in SettingItems)
+            // When ServiceGame changes, revalidate dependent settings
+            if (sender is SettingItemViewModel changedSetting &&
+                e.PropertyName == nameof(SettingItemViewModel.Value) &&
+                changedSetting.SettingName == "ServiceGame")
             {
-                var validationResult = ValidateIndividualSetting(setting);
-                setting.HasValidationError = !validationResult.IsValid;
-                setting.ValidationErrorMessage = validationResult.ErrorMessage;
-
-                if (!validationResult.IsValid)
+                // Trigger validation for SaveFileLocation and GameServiceUrl asynchronously but keep UI updates on main thread
+                _ = Task.Run(async () =>
                 {
-                    allValid = false;
-                }
-            }
+                    var saveFileLocation = SettingItems.FirstOrDefault(s => s.SettingName == "SaveFileLocation");
+                    var gameServiceUrl = SettingItems.FirstOrDefault(s => s.SettingName == "GameServiceUrl");
 
-            IsValid = allValid;
+                    if (saveFileLocation != null)
+                    {
+                        await saveFileLocation.ValidateAsync();
+                    }
+
+                    if (gameServiceUrl != null)
+                    {
+                        await gameServiceUrl.ValidateAsync();
+                    }
+                });
+            }
         }
 
         /// <summary>
-        /// Validates a single setting according to its validation rules with conditional logic
+        /// Validates all settings and updates IsValid property
+        /// </summary>
+        private async Task ValidateAllSettingsAsync()
+        {
+            var tasks = SettingItems.Select(s => s.ValidateAsync()).ToArray();
+            var results = await Task.WhenAll(tasks);
+            IsValid = results.All(r => r);
+        }
+
+        /// <summary>
+        /// Static validation method for a single setting with all validation rules including cross-setting dependencies
         /// </summary>
         /// <param name="setting">The setting to validate</param>
+        /// <param name="allSettings">All settings for cross-setting validation</param>
         /// <returns>A validation result indicating success or failure with error message</returns>
-        private ValidationResult ValidateIndividualSetting(SettingItem setting)
+        public static async Task<ValidationResult> ValidateSettingAsync(SettingItem setting, IEnumerable<SettingItem> allSettings)
         {
             var validation = setting.Validation;
             if (validation == null) return new ValidationResult(true, string.Empty);
@@ -158,13 +177,29 @@ namespace Catan3.Settings
             // Special case: SaveFileLocation is only required when ServiceGame is false
             if (setting.SettingName == "SaveFileLocation")
             {
-                var serviceGameSetting = SettingItems.FirstOrDefault(s => s.SettingName == "ServiceGame");
+                var serviceGameSetting = allSettings.FirstOrDefault(s => s.SettingName == "ServiceGame");
                 bool usingServiceGame = serviceGameSetting?.ValueAsBool ?? true;
 
                 if (usingServiceGame)
                 {
                     // When using service game, SaveFileLocation is not required
                     return new ValidationResult(true, string.Empty);
+                }
+            }
+
+            // Special case: GameServiceUrl needs reachability check when ServiceGame is true
+            if (setting.SettingName == "GameServiceUrl")
+            {
+                var serviceGameSetting = allSettings.FirstOrDefault(s => s.SettingName == "ServiceGame");
+                bool usingServiceGame = serviceGameSetting?.ValueAsBool ?? false;
+
+                if (usingServiceGame && !string.IsNullOrWhiteSpace(value))
+                {
+                    var reachabilityResult = await CheckGameServiceReachability(value);
+                    if (!reachabilityResult.IsValid)
+                    {
+                        return reachabilityResult;
+                    }
                 }
             }
 
@@ -195,12 +230,48 @@ namespace Catan3.Settings
         }
 
         /// <summary>
+        /// Checks if the GameService is reachable at the specified URL
+        /// </summary>
+        private static async Task<ValidationResult> CheckGameServiceReachability(string serviceUrl)
+        {
+            try
+            {
+                using var httpClient = new HttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(3);
+
+                // Try a simple GET to the base URL or health endpoint
+                var response = await httpClient.GetAsync(serviceUrl.TrimEnd('/'));
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return new ValidationResult(true, string.Empty);
+                }
+                else
+                {
+                    return new ValidationResult(false, $"GameService at {serviceUrl} returned {response.StatusCode}.");
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                return new ValidationResult(false, $"GameService not reachable at {serviceUrl}: {ex.Message}");
+            }
+            catch (TaskCanceledException)
+            {
+                return new ValidationResult(false, $"GameService at {serviceUrl} timed out (3 seconds).");
+            }
+            catch (Exception ex)
+            {
+                return new ValidationResult(false, $"Error connecting to GameService at {serviceUrl}: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Validates all settings according to their validation rules
         /// </summary>
         /// <returns>A validation result indicating success or failure with error message</returns>
-        public ValidationResult ValidateSettings()
+        public async Task<ValidationResult> ValidateSettingsAsync()
         {
-            ValidateAllSettings();
+            await ValidateAllSettingsAsync();
             return IsValid ? new ValidationResult(true, string.Empty) : new ValidationResult(false, "Please fix the validation errors shown.");
         }
 
@@ -211,15 +282,15 @@ namespace Catan3.Settings
         public bool HasUnsavedChanges()
         {
             // Compare current settings with original settings
-            foreach (var currentSetting in SettingItems)
+            foreach (var currentSettingVm in SettingItems)
             {
-                var originalSetting = _originalSettings.Settings.FirstOrDefault(s => 
-                    s.SettingName == currentSetting.SettingName);
+                var originalSetting = _originalSettings.Settings.FirstOrDefault(s =>
+                    s.SettingName == currentSettingVm.SettingName);
 
                 if (originalSetting == null) return true; // New setting
 
                 // Compare values
-                var currentValue = currentSetting.Value?.ToString() ?? "";
+                var currentValue = currentSettingVm.Value?.ToString() ?? "";
                 var originalValue = originalSetting.Value?.ToString() ?? "";
 
                 if (currentValue != originalValue)
@@ -237,14 +308,14 @@ namespace Catan3.Settings
         public void RevertChanges()
         {
             // Restore original values
-            foreach (var currentSetting in SettingItems)
+            foreach (var currentSettingVm in SettingItems)
             {
-                var originalSetting = _originalSettings.Settings.FirstOrDefault(s => 
-                    s.SettingName == currentSetting.SettingName);
+                var originalSetting = _originalSettings.Settings.FirstOrDefault(s =>
+                    s.SettingName == currentSettingVm.SettingName);
 
                 if (originalSetting != null)
                 {
-                    currentSetting.Value = originalSetting.Value;
+                    currentSettingVm.Value = originalSetting.Value;
                 }
             }
         }
@@ -258,14 +329,14 @@ namespace Catan3.Settings
             {
                 // Create a new settings model with our current values
                 var settingsToSave = new SettingsModel();
-                foreach (var setting in SettingItems)
+                foreach (var settingVm in SettingItems)
                 {
-                    settingsToSave.Settings.Add(setting);
+                    settingsToSave.Settings.Add(settingVm.Model);
                 }
-                
+
                 // Send to SettingsService for saving
                 WeakReferenceMessenger.Default.Send(new UpdateSettings(settingsToSave));
-                
+
                 // Update our original settings for future change detection
                 var json = JsonSerializer.Serialize(settingsToSave);
                 _originalSettings = JsonSerializer.Deserialize<SettingsModel>(json) ?? new SettingsModel();
@@ -281,28 +352,15 @@ namespace Catan3.Settings
         /// </summary>
         public void ResetToDefaults()
         {
-            foreach (var setting in SettingItems)
+            foreach (var settingVm in SettingItems)
             {
                 // Reset to default value
-                setting.Value = setting.DefaultValue;
+                settingVm.Value = settingVm.Model.DefaultValue;
             }
+
+            // Trigger revalidation
+            _ = ValidateAllSettingsAsync();
         }
 
-        /// <summary>
-        /// Gets the appropriate border brush for validation state
-        /// </summary>
-        public Brush GetValidationBorderBrush(bool hasError)
-        {
-            return hasError ? BrushCache.GetSolidColorBrush(Colors.Red) :
-                   (Brush)Application.Current.Resources["TextControlBorderBrush"];
-        }
-
-        /// <summary>
-        /// Gets the appropriate visibility for validation error messages
-        /// </summary>
-        public Visibility GetValidationErrorVisibility(bool hasError)
-        {
-            return hasError ? Visibility.Visible : Visibility.Collapsed;
-        }
     }
 }

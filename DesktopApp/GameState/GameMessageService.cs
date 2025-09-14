@@ -81,13 +81,109 @@ namespace Catan3.GameState
 
         /// <summary>
         /// Current application settings received from UpdateSettings messages.
+        /// When changed, automatically re-registers message handlers if ServiceGame setting changed.
         /// </summary>
-        private SettingsModel? _currentSettings;
+        [ObservableProperty]
+        public partial SettingsModel? CurrentSettings { get; set; } = null;
 
         /// <summary>
         /// Tracks whether game message handlers are currently registered to prevent duplicate registration.
         /// </summary>
         private bool _gameHandlersRegistered = false;
+
+        /// <summary>
+        /// Tracks whether we are currently in the process of registering handlers to prevent recursion.
+        /// </summary>
+        private bool _isRegisteringHandlers = false;
+
+        /// <summary>
+        /// Called when CurrentSettings changes. Sets up PropertyChanged subscription for ServiceGame setting.
+        /// </summary>
+        partial void OnCurrentSettingsChanged(SettingsModel? oldValue, SettingsModel? newValue)
+        {
+            // Unsubscribe from old ServiceGame setting if it exists
+            if (oldValue != null)
+            {
+                var oldServiceGameSetting = oldValue.GetSetting("ServiceGame");
+                if (oldServiceGameSetting != null)
+                {
+                    oldServiceGameSetting.PropertyChanged -= OnServiceGameSettingChanged;
+                }
+            }
+
+            // Subscribe to new ServiceGame setting and do initial setup
+            if (newValue != null)
+            {
+                var newServiceGameSetting = newValue.GetSetting("ServiceGame");
+                if (newServiceGameSetting != null)
+                {
+                    newServiceGameSetting.PropertyChanged += OnServiceGameSettingChanged;
+                }
+
+                // Perform initial setup if this is the first time
+                if (oldValue == null)
+                {
+                    this.TraceMessage("Initial setup - registering handlers");
+                    RegisterHandlersForCurrentSetting(newValue);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles PropertyChanged events from the ServiceGame setting item.
+        /// </summary>
+        private void OnServiceGameSettingChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            // Prevent recursion during handler registration
+            if (_isRegisteringHandlers) return;
+
+            // Only respond to Value changes (not TextValue, BooleanValue, etc.)
+            if (e.PropertyName == nameof(SettingItem.Value) || e.PropertyName == nameof(SettingItem.BooleanValue))
+            {
+                if (sender is SettingItem serviceGameSetting && CurrentSettings != null)
+                {
+                    bool newServiceGameValue = serviceGameSetting.ValueAsBool;
+                    this.TraceMessage($"ServiceGame setting changed to {newServiceGameValue} - re-registering handlers");
+
+                    // Register new handlers based on current setting
+                    RegisterHandlersForCurrentSetting(CurrentSettings);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Registers the appropriate message handlers based on current ServiceGame setting.
+        /// </summary>
+        private void RegisterHandlersForCurrentSetting(SettingsModel settings)
+        {
+            bool currentServiceGame = settings.GetBoolValue("ServiceGame");
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    _isRegisteringHandlers = true;
+
+                    // Dispose existing GameServiceProxy to prevent connection conflicts
+                    await DisposeGameServiceProxyAsync();
+
+                    if (currentServiceGame)
+                    {
+                        await RegisterServiceGameMessages();
+                    }
+                    else
+                    {
+                        RegisterLocalGameMessages();
+                    }
+
+                    _gameHandlersRegistered = true;
+                }
+                finally
+                {
+                    _isRegisteringHandlers = false;
+                }
+            });
+        }
 
         /// <summary>
         /// Initializes a new GameMessageService that handles MVVM messages.
@@ -113,22 +209,19 @@ namespace Catan3.GameState
         }
 
         /// <summary>
-        /// Registers this service to receive all game-related MVVM messages.
-        /// Checks ServiceGame setting to register either local or service handlers.
+        /// Registers this service to receive meta messages and initializes with current settings.
+        /// Game message handlers are registered automatically when CurrentSettings changes.
         /// </summary>
         private async Task RegisterMessages()
         {
             Debug.Assert(Messenger is not null);
             IsActive = true;
-            
-            // Always register settings handler for runtime updates
+
+            // Register meta messages (app-level) - these stay registered for the app lifetime
             Messenger.Register<UpdateSettings>(this, HandleUpdateSettingsAsync);
-            
-            // Load initial settings via MVVM messaging
-            _currentSettings = await SettingsModel.GetAsync();
-            
-            // Initialize handlers based on current settings
-            await InitializeHandlersAsync();
+
+            // Load initial settings via MVVM messaging - this will trigger OnCurrentSettingsChanged
+            CurrentSettings = await SettingsModel.GetAsync();
         }
 
         /// <summary>
@@ -149,13 +242,13 @@ namespace Catan3.GameState
             }
 
             // Use the already loaded settings
-            if (_currentSettings == null)
+            if (CurrentSettings == null)
             {
                 throw new InvalidOperationException("Settings must be loaded before initializing handlers");
             }
 
             // Check ServiceGame setting and register appropriate handlers
-            bool useServiceGame = _currentSettings.GetBoolValue("ServiceGame");
+            bool useServiceGame = CurrentSettings.GetBoolValue("ServiceGame");
             
             if (useServiceGame)
             {
@@ -175,6 +268,8 @@ namespace Catan3.GameState
         /// </summary>
         private void RegisterLocalGameMessages()
         {
+            Messenger.Send(new EndGame());
+            UnregisterGameMessages();
             Messenger.Register<UndoMessage>(this, HandleUndoAsync);
             Messenger.Register<RedoMessage>(this, HandleRedoAsync);
             Messenger.Register<NextMessage>(this, HandleNextAsync);
@@ -203,8 +298,10 @@ namespace Catan3.GameState
         /// </summary>
         private async Task RegisterServiceGameMessages()
         {
+            Messenger.Send(new EndGame());
+            UnregisterGameMessages();
             // Initialize the GameServiceProxy when service handlers are registered  
-            string gameServiceUrl = _currentSettings!.GetStringValue("GameServiceUrl");
+            string gameServiceUrl = CurrentSettings!.GetStringValue("GameServiceUrl");
             await InitializeGameServiceProxyAsync(gameServiceUrl);
             Messenger.Register<UndoMessage>(this, HandleUndoServiceAsync);
             Messenger.Register<RedoMessage>(this, HandleRedoServiceAsync);
@@ -851,15 +948,18 @@ namespace Catan3.GameState
         
         /// <summary>
         /// Handles UpdateSettings message from the UI to receive runtime settings changes.
+        /// Setting the CurrentSettings property will automatically trigger re-registration if ServiceGame changed.
         /// </summary>
         /// <param name="recipient">The message recipient (this service).</param>
         /// <param name="message">The settings update message containing current settings.</param>
         private void HandleUpdateSettingsAsync(object recipient, UpdateSettings message)
         {
             if (message?.Settings == null) return;
-            
-            _currentSettings = message.Settings;
+
             this.TraceMessage($"Settings updated: {message.Settings.Settings.Count} settings received");
+
+            // Setting this property will automatically trigger OnCurrentSettingsChanged if ServiceGame changed
+            CurrentSettings = message.Settings;
         }
 
         /// <summary>

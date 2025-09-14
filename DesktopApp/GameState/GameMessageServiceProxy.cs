@@ -304,7 +304,7 @@ namespace Catan3.GameState
         {
             if (_gameServiceProxy == null)
             {
-                string gameServiceUrl = _currentSettings!.GetStringValue("GameServiceUrl");
+                string gameServiceUrl = CurrentSettings!.GetStringValue("GameServiceUrl");
                 await InitializeGameServiceProxyAsync(gameServiceUrl);
             }
 
@@ -333,7 +333,7 @@ namespace Catan3.GameState
         {
             if (_gameServiceProxy == null)
             {
-                string gameServiceUrl = _currentSettings!.GetStringValue("GameServiceUrl");
+                string gameServiceUrl = CurrentSettings!.GetStringValue("GameServiceUrl");
                 await InitializeGameServiceProxyAsync(gameServiceUrl);
             }
 

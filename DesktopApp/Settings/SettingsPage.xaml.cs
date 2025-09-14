@@ -50,7 +50,7 @@ namespace Catan3.Settings
             try
             {
                 // Validate all settings before saving
-                var validationResult = ViewModel.ValidateSettings();
+                var validationResult = await ViewModel.ValidateSettingsAsync();
                 if (!validationResult.IsValid)
                 {
                     await ShowValidationErrorDialog(validationResult.ErrorMessage);

@@ -3,5 +3,13 @@
     <!-- Suppress preview .NET SDK warning globally -->
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
     <NoWarn>$(NoWarn);NETSDK1057</NoWarn>
+
+    <!-- Pin Windows SDK to stable version -->
+    <MicrosoftWindowsSDKBuildToolsPackageVersion>10.0.22621.3233</MicrosoftWindowsSDKBuildToolsPackageVersion>
+    <!-- Prevent automatic package upgrades -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
+    <!-- Lock to stable Windows App SDK -->
+    <WindowsAppSdkVersion>1.7.250606001</WindowsAppSdkVersion>
   </PropertyGroup>
 </Project>

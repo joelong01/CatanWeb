@@ -40,6 +40,14 @@ namespace Catan3.Shared.Models
         [JsonPropertyName("environmentVariable")]
         public partial string? EnvironmentVariable { get; set; }
 
+        [ObservableProperty]
+        [JsonPropertyName("tooltip")]
+        public partial string? Tooltip { get; set; }
+
+        [ObservableProperty]
+        [JsonPropertyName("errorTooltip")]
+        public partial string? ErrorTooltip { get; set; }
+
         /// <summary>
         /// Gets the value as a string, handling null and type conversion
         /// </summary>
@@ -237,21 +245,28 @@ namespace Catan3.Shared.Models
         }
 
         /// <summary>
-        /// Validates a settings model with all validation rules including service reachability
+        /// Validates all settings and updates their individual validation states
         /// </summary>
         private static async Task<ValidationResult> ValidateSettings(SettingsModel settings)
         {
-            // Check each setting's individual validation
+            bool allValid = true;
+            var firstErrorMessage = string.Empty;
+
+            // Validate each setting and update its validation state
             foreach (var setting in settings.Settings)
             {
                 var result = await ValidateIndividualSetting(setting, settings);
-                if (!result.IsValid)
+                setting.HasValidationError = !result.IsValid;
+                setting.ValidationErrorMessage = result.ErrorMessage;
+
+                if (!result.IsValid && allValid)
                 {
-                    return result;
+                    allValid = false;
+                    firstErrorMessage = result.ErrorMessage;
                 }
             }
 
-            return new ValidationResult(true, string.Empty);
+            return new ValidationResult(allValid, firstErrorMessage);
         }
 
         /// <summary>
