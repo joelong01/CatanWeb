@@ -9,7 +9,7 @@ The Catan3 project is a multi-platform Settlers of Catan game system with:
 - **Shared Library** - Common models and game logic
 - **Test Suite** - Unified test infrastructure with modern ReplayTest approach
 
-## Latest Session (September 13, 2025 - Settings Validation Session)
+## Latest Session (September 13, 2025 - Settings Validation & ServiceGame Handler Fix)
 
 ### Settings Dialog UX Critical Fix
 
@@ -24,22 +24,41 @@ Implemented comprehensive settings validation system to fix critical UX issue wh
 
 Successfully implemented MVVM-based validation architecture:
 
+- **SettingItemViewModel**: Per-setting validation logic with UI thread-safe updates using DispatcherQueue
+- **ObservableProperty Pattern**: Automatic change notifications throughout validation chain
+- **Data-driven Tooltips**: Enhanced settings.json with tooltip and errorTooltip properties
 - **SettingsModel.ValidateAsync()**: Centralized validation with conditional logic and service connectivity checks
-- **SettingsViewModel.IsValid**: Real-time validation state with automatic property change notifications
-- **Auto-open Settings**: NewGamePage automatically opens Settings dialog when validation fails on load
-- **Save Button Control**: IsPrimaryButtonEnabled binding prevents saving invalid settings
-- **Visual Feedback**: Added validation error TextBlocks with proper visibility binding
+- **Visual Feedback**: Red borders, disabled Save button, and inline error tooltips for invalid settings
+
+### Automatic ServiceGame Handler Re-registration
+
+Fixed critical issue where ServiceGame setting changes required app restart to take effect:
+
+- **ObservableProperty Integration**: CurrentSettings property in GameMessageService with automatic change detection
+- **PropertyChanged Subscription**: Direct subscription to individual ServiceGame SettingItem for immediate response
+- **Recursion Prevention**: Flag-based protection against infinite registration loops during handler switching
+- **Proper Cleanup Order**: EndGame message sent before UnregisterGameMessages to ensure handlers process cleanup
+- **Thread Safety**: All registration operations properly marshaled to background thread
+
+### Version Pinning for VS 2026 Compatibility
+
+Resolved auto-upgrade issues from Visual Studio 2026 Insiders:
+
+- **global.json**: Pin .NET SDK to 9.0.305 with latestPatch rollForward to prevent unwanted upgrades
+- **Directory.Build.props**: Pin Windows SDK to stable 10.0.22621.3233, enable package lock files
+- **Dependency Stability**: Package lock files prevent SDK upgrade cascading to dependencies
 
 ### Technical Decisions
 
-- **x:Bind Functions**: User preference for explicit `{x:Bind ViewModel.Method()}` over value converters for maintainability
-- **DependencyProperty Pattern**: Established ViewModel property pattern for accessing methods in DataTemplates
-- **Build Improvements**: Suppressed NETSDK1057 warnings in build scripts, resolved MSBuild file locking issues
+- **ObservableProperty over manual tracking**: Leverages CommunityToolkit.Mvvm for automatic change notifications
+- **PropertyChanged subscription to individual SettingItem**: More precise than SettingsModel-level change detection
+- **Data-driven validation approach**: Settings metadata in JSON drives UI behavior and validation rules
+- **Recursion prevention over complex state management**: Simple boolean flag prevents infinite loops
 
 ### Build Status
 
 - **Current Status**: All projects build successfully without errors or warnings
-- **Validation Work**: 9 files modified with comprehensive settings validation implementation
+- **Validation Work**: 19 files modified with comprehensive settings validation and handler architecture
 - **Clean State**: Solution compiles cleanly with `dotnet build`
 
 ## Previous Architecture Changes (September 7, 2025 - Session 2)
@@ -218,9 +237,9 @@ Standardized on ReplayTest methodology:
 
 ## Next Session Priorities
 
-1. **Complete Service Integration Testing** - Test end-to-end ServiceGame mode switching and verify UI behavior is identical between local and service execution
-2. **Update Client Logging** - Implement ILog model for unified logging between service and client
-3. **Verify Settings Synchronization** - Ensure settings properly sync to GameService when in service mode
+1. **Fix missing stars on buildings in local games** - GameModel not being added to DoneStack during NewGame path, causing display state not to be properly initialized. Add proper GameModel processing (HandleNewGameAsync call) to local NewGame path.
+2. **Verify ServiceGame setting propagation works end-to-end** - Test that UI changes immediately affect game creation behavior without requiring app restart
+3. **Address TaskCompletionSource race condition** - Implement proper synchronization in SettingsRequestRecipient when multiple UpdateSettings messages are sent
 
 ## Rules & Patterns
 
