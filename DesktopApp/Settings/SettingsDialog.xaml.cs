@@ -63,10 +63,23 @@ namespace Catan3.Settings
 
             try
             {
-                // Settings should already be validated (Save button is disabled when invalid)
-                // but double-check for safety
-                if (!ViewModel.IsValid)
+                // Check for service unavailability warning
+                var serviceWarning = ViewModel.GetServiceUnavailabilityWarning();
+                
+                if (!string.IsNullOrEmpty(serviceWarning))
                 {
+                    // Show warning but allow proceeding with local-only gameplay
+                    var result = await ShowServiceUnavailableDialog(serviceWarning);
+                    if (result != ContentDialogResult.Primary)
+                    {
+                        // User chose not to proceed
+                        return;
+                    }
+                    // User chose to save anyway - continue with save
+                }
+                else if (!ViewModel.IsValid)
+                {
+                    // Only block save if there are actual validation errors (not service unavailability)
                     Debug.WriteLine("Save attempted with invalid settings - this should not happen");
                     return;
                 }
@@ -179,6 +192,27 @@ namespace Catan3.Settings
             };
 
             await dialog.ShowAsync();
+        }
+
+        /// <summary>
+        /// Shows a warning dialog when the GameService is unavailable
+        /// Allows the user to save settings for local-only gameplay
+        /// </summary>
+        /// <param name="warningMessage">The warning message from the service availability check</param>
+        /// <returns>ContentDialogResult.Primary to proceed with save, otherwise Cancel</returns>
+        private async System.Threading.Tasks.Task<ContentDialogResult> ShowServiceUnavailableDialog(string warningMessage)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Game Service Unavailable",
+                Content = $"{warningMessage}\n\nYou can still save these settings and play a local game. Network features will be disabled.\n\nDo you want to continue?",
+                PrimaryButtonText = "Save for Local Play",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.XamlRoot
+            };
+
+            return await dialog.ShowAsync();
         }
     }
 }

@@ -362,5 +362,23 @@ namespace Catan3.Settings
             _ = ValidateAllSettingsAsync();
         }
 
+        /// <summary>
+        /// Checks if the GameService is unavailable and returns a message
+        /// This allows the user to save settings for local-only gameplay
+        /// </summary>
+        /// <returns>Error message if service is unavailable, empty string if available</returns>
+        public string GetServiceUnavailabilityWarning()
+        {
+            // Check if ServiceGame is enabled and GameServiceUrl is unreachable
+            var serviceGameSetting = SettingItems.FirstOrDefault(s => s.SettingName == "ServiceGame");
+            var gameServiceUrlSetting = SettingItems.FirstOrDefault(s => s.SettingName == "GameServiceUrl");
+
+            if (serviceGameSetting?.BooleanValue == true && gameServiceUrlSetting?.HasValidationError == true)
+            {
+                return gameServiceUrlSetting.ValidationErrorMessage;
+            }
+
+            return string.Empty;
+        }
     }
 }
