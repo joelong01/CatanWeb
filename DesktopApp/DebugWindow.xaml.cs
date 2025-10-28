@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using System;
+using System.Linq;
 using WinUIEx;
 using Windows.ApplicationModel.DataTransfer;
 
@@ -8,6 +9,7 @@ namespace Catan3
     public sealed partial class DebugWindow : WindowEx
     {
         private static DebugWindow? s_instance;
+        private static int s_lineNumber = 1; // Track line numbers
         
         public DebugWindow()
         {
@@ -76,9 +78,23 @@ namespace Catan3
                     s_instance.Activate();
                 }
 
-                // Add timestamp and append message
-                var timestampedMessage = $"[{DateTime.Now:HH:mm:ss.fff}] {message}";
+                // Add line number, timestamp, and message
+                var timestampedMessage = $"[{s_lineNumber:D5} {DateTime.Now:HH:mm:ss.fff}] {message}";
                 s_instance.MessagesTextBox.Text += timestampedMessage + Environment.NewLine;
+                s_lineNumber++;
+
+                // Check if truncation is enabled and we should truncate
+                if (s_instance.TruncateCheckBox.IsChecked == true)
+                {
+                    if (int.TryParse(s_instance.TruncateLimitBox.Text, out int truncateAfter) && truncateAfter > 0)
+                    {
+                        if (s_lineNumber % truncateAfter == 0)
+                        {
+                            s_instance.MessagesTextBox.Text = "";
+                        }
+
+                    }
+                }
                 
                 // Auto-scroll to bottom
                 s_instance.MessagesTextBox.Select(s_instance.MessagesTextBox.Text.Length, 0);
@@ -157,6 +173,16 @@ namespace Catan3
         private void OnClearClick(object sender, RoutedEventArgs e)
         {
             MessagesTextBox.Text = "";
+            // DO NOT reset s_lineNumber - keep counting for the entire game session
+        }
+        
+        /// <summary>
+        /// Handles the Truncate Lines checkbox toggle
+        /// </summary>
+        private void OnTruncateToggled(object sender, RoutedEventArgs e)
+        {
+            // Enable/disable the limit text box based on checkbox state
+            TruncateLimitBox?.IsEnabled = TruncateCheckBox.IsChecked == true;
         }
         
         /// <summary>
