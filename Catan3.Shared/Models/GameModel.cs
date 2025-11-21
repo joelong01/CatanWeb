@@ -239,14 +239,6 @@ namespace Catan3.Shared.Models
             };
         }
 
-        public bool ValidateGame()
-        {
-            // Simplified validation for now
-            return Players.Count > 0 && !string.IsNullOrEmpty(CurrentPlayerId);
-        }
-
-
-
         // BUGFIX 2025-01-15: Harbor ownership was assigned incorrectly because this
         // instance method returned the first harbor in the list. Use the shared
         // adjacency logic to find only a harbor truly adjacent to the building.

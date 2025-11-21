@@ -346,63 +346,20 @@ namespace Catan3.Controls
             var layout = GameViewModel?.BoardInfo?.Layout;
             if (layout == null || GameViewModel?.Tiles == null) return null;
 
-            // Convert pixel coordinates to fractional axial coordinates
-            // BoardVisualLayout.Left/Top give the TOP-LEFT corner of the bounding box:
-            //   Left = OuterHexSize * 1.5 * Q + TileXOffset
-            //   Top = (Q / 2.0 + R) * OuterHexSize * sqrt(3) + TileYOffset
-            // The CENTER of hex (0,0,0) is offset by (size, size*sqrt(3)/2) from that corner
             double size = layout.OuterHexSize;
 
-            // Translate to coordinates relative to the center of hex (0,0,0)
-            double relX = boardPoint.X - layout.TileXOffset - size;
-            double relY = boardPoint.Y - layout.TileYOffset - size * Math.Sqrt(3) / 2;
+            // Calculate the pixel position of hex (0,0,0) center
+            // TileXOffset/TileYOffset are the top-left corner of the bounding box,
+            // so the center is offset by (size, size*sqrt(3)/2) from that corner
+            double centerX = layout.TileXOffset + size;
+            double centerY = layout.TileYOffset + size * Math.Sqrt(3) / 2;
 
-            // Convert to fractional axial coordinates
-            double qf = relX / (1.5 * size);
-            double rf = relY / (size * Math.Sqrt(3)) - qf / 2.0;
-
-            // Convert axial (q, r) to cube coordinates (x, y, z) where x + y + z = 0
-            // For flat-top hex: x = q, z = r, y = -x - z
-            double x = qf;
-            double z = rf;
-            double y = -x - z;
-
-            // Round to nearest integers
-            int rx = (int)Math.Round(x);
-            int ry = (int)Math.Round(y);
-            int rz = (int)Math.Round(z);
-
-            // Fix rounding errors to maintain x + y + z = 0 constraint
-            double xDiff = Math.Abs(rx - x);
-            double yDiff = Math.Abs(ry - y);
-            double zDiff = Math.Abs(rz - z);
-
-            if (xDiff > yDiff && xDiff > zDiff)
-            {
-                rx = -ry - rz;
-            }
-            else if (yDiff > zDiff)
-            {
-                ry = -rx - rz;
-            }
-            else
-            {
-                rz = -rx - ry;
-            }
-
-            // Create HexCoordinates: Q = x, R = z, S = y
-            var coords = new HexCoordinates(rx, rz, ry);
+            // Use HexCoordinates.FromPixel for the conversion
+            var coords = HexCoordinates.FromPixel(boardPoint.X, boardPoint.Y, size, centerX, centerY);
 
             // Verify tile exists in game model
-            foreach (var tileVM in GameViewModel.Tiles)
-            {
-                if (tileVM.Tile.TileKey.Equals(coords))
-                {
-                    return coords;
-                }
-            }
-
-            return null;
+            var tile = GameViewModel.Tiles.TileFromCoords(coords);
+            return tile?.Tile.TileKey;
         }
     }
 }
