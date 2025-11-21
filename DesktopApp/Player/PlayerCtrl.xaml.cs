@@ -31,7 +31,20 @@ namespace Catan3.Controls
         {
             this.InitializeComponent();
         }
-        public static readonly DependencyProperty PlayerViewModelProperty = DependencyProperty.Register("PlayerViewModel", typeof(PlayerViewModel), typeof(PlayerCtrl), new PropertyMetadata(null));
+        public static readonly DependencyProperty PlayerViewModelProperty = DependencyProperty.Register("PlayerViewModel", typeof(PlayerViewModel), typeof(PlayerCtrl), new PropertyMetadata(null, OnPlayerViewModelChanged));
+
+        private static void OnPlayerViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is PlayerCtrl ctrl && e.NewValue != null)
+            {
+                // Force x:Bind to re-evaluate when PlayerViewModel changes from null to a value.
+                // This fixes an issue where nested property bindings (like PlayerViewModel.CroppedImageUri)
+                // fail to evaluate during InitializeComponent() when PlayerViewModel is still null,
+                // and don't re-evaluate when PlayerViewModel is subsequently set because the inner
+                // property value hasn't "changed".
+                ctrl.Bindings.Update();
+            }
+        }
         public static readonly DependencyProperty GameStateProperty = DependencyProperty.Register("GameState", typeof(Shared.Models.GameState), typeof(PlayerCtrl), new PropertyMetadata(Shared.Models.GameState.Uninitialized, GameStateChanged));
         public Shared.Models.GameState GameState
         {
