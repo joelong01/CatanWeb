@@ -464,6 +464,27 @@ namespace Catan3.Shared.Services
         
 
         /// <summary>
+        /// Executes a Swap Tile Resources command
+        /// Uses the stored GameId from JoinGameAsync call.
+        /// </summary>
+        public async Task<CommandResult> ExecuteSwapTileResourcesAsync(SwapTileResources message, TimeSpan? timeout = null)
+        {
+            if (string.IsNullOrEmpty(_gameId))
+                throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
+                
+            await _connection.InvokeAsync("ExecuteSwapTileResources", _gameId, _playerId, message);
+            
+            return new CommandResult
+            {
+                CommandId = Guid.NewGuid().ToString(),
+                Success = true,
+                Message = $"Swap Tile Resources: {message.SourceTileCoordinates} <-> {message.DestinationTileCoordinates} sent",
+                Timestamp = DateTime.UtcNow
+            };
+        }
+        
+
+        /// <summary>
         /// Loads a GameModel directly via REST API - primarily for testing purposes
         /// </summary>
         public async Task<CommandResult> LoadGameModelAsync(GameModel gameModel, TimeSpan? timeout = null)

@@ -183,21 +183,21 @@ using System.Runtime.InteropServices;
 public class FontRegistration {
     [DllImport("gdi32.dll", EntryPoint="AddFontResourceW", SetLastError=true)]
     public static extern int AddFontResource([MarshalAs(UnmanagedType.LPWStr)]string lpFileName);
-    
+
     [DllImport("user32.dll", SetLastError=true)]
-    public static extern int SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-    
+    public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
     public const int HWND_BROADCAST = 0xFFFF;
     public const uint WM_FONTCHANGE = 0x001D;
 }
 "@
-        
+
         # Register the font
         $result = [FontRegistration]::AddFontResource($FontPath)
-        
+
         if ($result -gt 0) {
-            # Notify all windows that fonts have changed
-            [FontRegistration]::SendMessage([IntPtr]0xFFFF, 0x001D, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+            # Notify all windows that fonts have changed (PostMessage is async, won't block)
+            [FontRegistration]::PostMessage([IntPtr]0xFFFF, 0x001D, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
             
             Write-Output "✅ Font registered successfully: $($fontFile.Name)"
             Write-Output "   Font families added: $result"

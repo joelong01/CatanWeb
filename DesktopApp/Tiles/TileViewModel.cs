@@ -25,6 +25,8 @@ namespace Catan3.Models
             {
                 rbl.PropertyChanged += Layout_PropertyChanged;
             }
+            // subscribe to Tile.Highlighted changes to propagate HighlightedEffective updates
+            Tile.PropertyChanged += Tile_PropertyChanged;
             UpdateLayout();
             Messenger.Register<UpdateOrientation>(this, (recipient, message) =>
             {
@@ -49,6 +51,19 @@ namespace Catan3.Models
                 }
             });
 
+            // Register for HighlightTile messages (client-side drag-and-drop highlighting)
+            Messenger.Register<HighlightTile>(this, (recipient, message) =>
+            {
+                var coord = message.TargetTileCoordinates;
+                if (coord is null)
+                {
+                    this.Highlighted = false;
+                }
+                else
+                {
+                    this.Highlighted = coord.Equals(Tile.TileKey);
+                }
+            });
         }
        
         private void RegisterTargetMessageResponse()
@@ -174,6 +189,24 @@ namespace Catan3.Models
             Debug.Assert(result is not null);
            
             return result;
+        }
+        private void Tile_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(TileModel.Highlighted))
+            {
+                OnPropertyChanged(nameof(HighlightedEffective));
+            }
+        }
+
+        // Effective highlight state used for UI binding
+        public bool HighlightedEffective => Tile.Highlighted || this.Highlighted;
+
+        // Called when the Tile reference changes (CommunityToolkit generated partial)
+        partial void OnTileChanged(TileModel oldValue, TileModel newValue)
+        {
+            if (oldValue != null) oldValue.PropertyChanged -= Tile_PropertyChanged;
+            if (newValue != null) newValue.PropertyChanged += Tile_PropertyChanged;
+            OnPropertyChanged(nameof(HighlightedEffective));
         }
     }
 }

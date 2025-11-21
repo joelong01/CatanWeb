@@ -19,6 +19,10 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Messages\" />
+  </ItemGroup>
+
 
   <Target Name="BuildAndDeploy" DependsOnTargets="Build">
     <Message Text="BuildOnly: Catan3.Shared" Importance="high" />

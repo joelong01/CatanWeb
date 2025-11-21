@@ -24,8 +24,12 @@
                     Duration="{StaticResource AnimationMedium}" From="0.0" To="1.0" />
         </Storyboard>
     </UserControl.Resources>
-    <Canvas Background="Transparent" HorizontalAlignment="Center"
+    <Canvas x:Name="BOARD_RootCanvas" Background="Transparent" HorizontalAlignment="Center"
             VerticalAlignment="Top"
+            PointerPressed="BOARD_RootCanvas_PointerPressed"
+            PointerReleased="BOARD_RootCanvas_PointerReleased"
+            PointerCanceled="BOARD_RootCanvas_PointerCanceled"
+            PointerMoved="OnBoardPointerMoved"
             Height="{x:Bind GameViewModel.BoardInfo.Layout.BoardHeight, Mode=OneWay}"
             Width="{x:Bind GameViewModel.BoardInfo.Layout.BoardWidth, Mode=OneWay}">
         <!--Harbors-->
@@ -140,6 +144,17 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <!--Drag Visual Overlay-->
+        <Border x:Name="DragVisual"
+                Width="50" Height="75"
+                CornerRadius="5"
+                Opacity="0.7"
+                IsHitTestVisible="False"
+                Visibility="Collapsed"
+                Canvas.ZIndex="1000">
+            <Rectangle x:Name="DragVisualImage"
+                       RadiusX="5" RadiusY="5" />
+        </Border>
         <!--Robber-->
         <Viewbox x:Name="VB_Robber" Stretch="Uniform"
                 Height="{x:Bind RobberHeight(GameViewModel.BoardInfo.Layout.OuterHexSize), Mode=OneWay}"

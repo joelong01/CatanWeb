@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using WinUIEx;
 using Windows.ApplicationModel.DataTransfer;
+using System.Collections.Generic;
 
 namespace Catan3
 {
@@ -10,11 +11,32 @@ namespace Catan3
     {
         private static DebugWindow? s_instance;
         private static int s_lineNumber = 1; // Track line numbers
-        
+        private static List<string> s_pendingBuffer = new();
+        private bool _isLoaded = false;
+
         public DebugWindow()
         {
             this.InitializeComponent();
             s_instance = this;
+            // Mark loaded immediately – InitializeComponent has created the visual tree
+            // Then enqueue a flush to ensure controls are ready
+            this.DispatcherQueue.TryEnqueue(() =>
+            {
+                _isLoaded = true;
+                FlushBufferIfNeeded();
+            });
+        }
+
+        private void FlushBufferIfNeeded()
+        {
+            if (!_isLoaded || MessagesTextBox == null) return;
+            if (s_pendingBuffer.Count == 0) return;
+            foreach (var line in s_pendingBuffer)
+            {
+                MessagesTextBox.Text += line + Environment.NewLine;
+            }
+            s_pendingBuffer.Clear();
+            MessagesTextBox.Select(MessagesTextBox.Text.Length, 0);
         }
 
         /// <summary>
@@ -77,31 +99,29 @@ namespace Catan3
                     s_instance = new DebugWindow();
                     s_instance.Activate();
                 }
-
-                // Add line number, timestamp, and message
                 var timestampedMessage = $"[{s_lineNumber:D5} {DateTime.Now:HH:mm:ss.fff}] {message}";
-                s_instance.MessagesTextBox.Text += timestampedMessage + Environment.NewLine;
                 s_lineNumber++;
-
-                // Check if truncation is enabled and we should truncate
-                if (s_instance.TruncateCheckBox.IsChecked == true)
+                // Buffer if controls not ready yet
+                if (!s_instance._isLoaded || s_instance.MessagesTextBox == null)
                 {
-                    if (int.TryParse(s_instance.TruncateLimitBox.Text, out int truncateAfter) && truncateAfter > 0)
+                    s_pendingBuffer.Add(timestampedMessage);
+                    return;
+                }
+                s_instance.MessagesTextBox.Text += timestampedMessage + Environment.NewLine;
+                if (s_instance.TruncateCheckBox?.IsChecked == true)
+                {
+                    if (int.TryParse(s_instance.TruncateLimitBox?.Text, out int truncateAfter) && truncateAfter > 0)
                     {
                         if (s_lineNumber % truncateAfter == 0)
                         {
-                            s_instance.MessagesTextBox.Text = "";
+                            s_instance.MessagesTextBox.Text = string.Empty;
                         }
-
                     }
                 }
-                
-                // Auto-scroll to bottom
                 s_instance.MessagesTextBox.Select(s_instance.MessagesTextBox.Text.Length, 0);
             }
             catch (Exception ex)
             {
-                // Final fallback
                 System.Diagnostics.Debug.WriteLine($"DebugWindow.ShowMessageInternal failed: {ex.Message}");
                 Console.WriteLine($"[DEBUG]: {message}");
             }

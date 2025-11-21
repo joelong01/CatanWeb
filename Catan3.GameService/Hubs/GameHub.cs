@@ -547,6 +547,46 @@ namespace Catan3.GameService.Hubs
             }
         }
 
+        /// <summary>
+        /// Executes Swap Tile Resources (drag-and-drop resource swapping during PickingBoard)
+        /// </summary>
+        /// <param name="gameId">The game ID</param>
+        /// <param name="playerId">The player initiating the swap</param>
+        /// <param name="message">SwapTileResources message containing source/destination coordinates and current resources</param>
+        public async Task ExecuteSwapTileResources(string gameId, string playerId, SwapTileResources message)
+        {
+            var commandId = Guid.NewGuid().ToString();
+            try
+            {
+                LogEvent("SwapTileResources", $"SignalR Swap Tile Resources: {message.SourceTileCoordinates} <-> {message.DestinationTileCoordinates} for {playerId} in {gameId}");
+
+                var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
+                var currentGameState = gameStateMachine.GetCurrentState();
+
+                // Validate caller (must be current player or desktop-player override)
+                if (!ValidateCaller(currentGameState.CurrentPlayerId, playerId))
+                {
+                    throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
+                }
+
+                // Process swap
+                var updatedGameModel = await gameStateMachine.HandleSwapResourcesAsync(message);
+
+                // Broadcast updated state
+                await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
+                LogEvent("Send Client Update", $"GameStateUpdated sent for SwapTileResources - PlayerId={playerId}, GameID={gameId}");
+
+                // Notify caller
+                await Clients.Caller.SendAsync("CommandCompleted", commandId, true, "Tile resources swapped successfully");
+                LogEvent("SwapTileResources", $"SwapTileResources completed successfully for game {gameId}", LogLevel.Debug);
+            }
+            catch (Exception ex)
+            {
+                LogEvent("SwapTileResources", $"Failed to execute SwapTileResources for {playerId} in {gameId}: {ex.Message}", LogLevel.Error);
+                var errorInfo = CreateDetailedErrorInfo(ex, "SwapTileResources", $"{message.SourceTileCoordinates} <-> {message.DestinationTileCoordinates}");
+                await Clients.Caller.SendAsync("CommandFailed", commandId, errorInfo);
+            }
+        }
 
         #endregion
 

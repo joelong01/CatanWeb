@@ -75,6 +75,14 @@ namespace Catan3.Models
         /// </summary>
         [ObservableProperty]
         public partial Visibility TileIndexVisibility { get; set; } = Visibility.Collapsed;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether this tile is currently highlighted during drag-and-drop operations.
+        /// This is a view-model-only property used for visual feedback and does not affect the data model.
+        /// </summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HighlightedEffective))]
+        public partial bool Highlighted { get; set; } = false;
     }
 
   

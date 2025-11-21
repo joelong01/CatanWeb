@@ -215,4 +215,82 @@ namespace Catan3.Shared.Models
     {
         public override string ToString() => "GetSettingsMessage";
     }
+
+    /// <summary>
+    /// MVVM Messenger message to highlight a specific tile during drag-and-drop operations.
+    /// This is a client-side only message (not sent to server).
+    /// When TargetTileCoordinates is null, all highlighting is cleared.
+    /// </summary>
+    public class HighlightTile
+    {
+        /// <summary>
+        /// The coordinates of the tile to highlight.
+        /// Set to null to clear all highlighting.
+        /// </summary>
+        public HexCoordinates? TargetTileCoordinates { get; set; }
+
+        /// <summary>
+        /// Creates a new HighlightTile message.
+        /// </summary>
+        /// <param name="targetTileCoordinates">The tile to highlight, or null to clear highlighting</param>
+        public HighlightTile(HexCoordinates? targetTileCoordinates)
+        {
+            TargetTileCoordinates = targetTileCoordinates;
+        }
+
+        public override string ToString() => $"HighlightTile: {TargetTileCoordinates?.ToString() ?? "None"}";
+    }
+
+    /// <summary>
+    /// MVVM Messenger message to swap resource types between two tiles.
+    /// This message is sent from the client during drag-and-drop, routed through GameMessageService
+    /// to the GameStateMachine (local or remote via GameService), and processed as a game action.
+    /// 
+    /// The message includes both current resource types for validation:
+    /// - Prevents race conditions if resources change during drag
+    /// - Server can verify the swap is valid before executing
+    /// </summary>
+    public class SwapTileResources
+    {
+        /// <summary>
+        /// Hex coordinates of the source tile (the one being dragged from)
+        /// </summary>
+        public HexCoordinates SourceTileCoordinates { get; set; }
+
+        /// <summary>
+        /// Hex coordinates of the destination tile (the one being dropped onto)
+        /// </summary>
+        public HexCoordinates DestinationTileCoordinates { get; set; }
+
+        /// <summary>
+        /// The resource type currently on the source tile (for validation)
+        /// </summary>
+        public ResourceType SourceCurrentResource { get; set; }
+
+        /// <summary>
+        /// The resource type currently on the destination tile (for validation)
+        /// </summary>
+        public ResourceType DestinationCurrentResource { get; set; }
+
+        /// <summary>
+        /// Creates a new SwapTileResources message.
+        /// </summary>
+        /// <param name="sourceTileCoordinates">Hex coordinates of source tile</param>
+        /// <param name="destinationTileCoordinates">Hex coordinates of destination tile</param>
+        /// <param name="sourceCurrentResource">Current resource type on source tile</param>
+        /// <param name="destinationCurrentResource">Current resource type on destination tile</param>
+        public SwapTileResources(
+            HexCoordinates sourceTileCoordinates,
+            HexCoordinates destinationTileCoordinates,
+            ResourceType sourceCurrentResource,
+            ResourceType destinationCurrentResource)
+        {
+            SourceTileCoordinates = sourceTileCoordinates;
+            DestinationTileCoordinates = destinationTileCoordinates;
+            SourceCurrentResource = sourceCurrentResource;
+            DestinationCurrentResource = destinationCurrentResource;
+        }
+
+        public override string ToString() => $"SwapTileResources: {SourceTileCoordinates} <-> {DestinationTileCoordinates}";
+    }
 }

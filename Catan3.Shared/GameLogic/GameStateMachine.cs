@@ -584,6 +584,74 @@ namespace Catan3.Shared.GameLogic
                     break;
             }
         }
+
+        /// <summary>
+        /// Handles swapping tiles between two positions during board setup.
+        /// Validates that both tiles exist and swaps their resource types AND numbers.
+        /// Only allowed during PickingBoard state.
+        /// </summary>
+        /// <param name="message">The swap request with source and destination tile coordinates.</param>
+        /// <returns>The updated GameModel after swapping tiles.</returns>
+        /// <exception cref="GameException">Thrown when swap is not valid or tiles cannot be found.</exception>
+        public Task<GameModel> HandleSwapResourcesAsync(SwapTileResources message)
+        {
+            var gameModel = _gameLog.CopyCurrent();
+            _logger.Trace(GameTraceLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            // Validate we're in PickingBoard state
+            ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.PickingBoard]);
+
+            // Find the tiles
+            var sourceTile = gameModel.Tiles.FirstOrDefault(t => t.TileKey == message.SourceTileCoordinates);
+            var destTile = gameModel.Tiles.FirstOrDefault(t => t.TileKey == message.DestinationTileCoordinates);
+
+            if (sourceTile == null || destTile == null)
+            {
+                throw new GameException("One or both tiles not found in game model");
+            }
+
+            // Validate current resources match what was sent (prevents race conditions)
+            if (sourceTile.ResourceTileType != message.SourceCurrentResource ||
+                destTile.ResourceTileType != message.DestinationCurrentResource)
+            {
+
+                throw new GameException("Tile resources changed during drag - swap cancelled");
+            }
+
+            // Save original values for potential revert
+            var sourceResource = sourceTile.ResourceTileType;
+            var sourceNumber = sourceTile.Number;
+            var destResource = destTile.ResourceTileType;
+            var destNumber = destTile.Number;
+
+            // Perform the swap - both resource type and number
+            sourceTile.ResourceTileType = destResource;
+            sourceTile.Number = destNumber;
+            destTile.ResourceTileType = sourceResource;
+            destTile.Number = sourceNumber;
+
+            // Validate the board (no adjacent 6s and 8s)
+            var isValid = gameModel.ValidateGame();
+            _logger.Trace(GameTraceLevel.Trace,
+                $"Board validation after swap: {isValid} - Source now {sourceTile.Number}, Dest now {destTile.Number}");
+
+            if (!isValid)
+            {
+                _logger.Trace(GameTraceLevel.Trace,
+                    $"Swap rejected - would create adjacent 6/8: {message.SourceTileCoordinates} <-> {message.DestinationTileCoordinates}");
+
+                // Throw without logging - changes discarded, error shown to user
+                throw new GameException("Invalid swap - would place 6 and 8 adjacent to each other");
+            }
+
+            _logger.Trace(GameTraceLevel.Trace,
+                $"Tiles swapped: {message.SourceTileCoordinates} now has {sourceTile.ResourceTileType}/{sourceTile.Number}, " +
+                $"{message.DestinationTileCoordinates} now has {destTile.ResourceTileType}/{destTile.Number}");
+
+            LogGameModel(gameModel);
+            return Task.FromResult(gameModel);
+        }
         private GameModel OnPurchase(PurchaseMessage message)
         {
             GameModel gameModel = _gameLog.CopyCurrent();

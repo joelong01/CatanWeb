@@ -290,6 +290,7 @@ namespace Catan3.GameState
             Messenger.Register<GoFirstMessage>(this, HandleGoFirstAsync);
             Messenger.Register<PersistGameMessage>(this, HandlePersistGameAsync);
             Messenger.Register<SaveAsRequestMessage>(this, HandleSaveAsRequestAsync);
+            Messenger.Register<SwapTileResources>(this, HandleSwapTileResourcesAsync);
         }
         
         /// <summary>
@@ -323,6 +324,7 @@ namespace Catan3.GameState
             Messenger.Register<GoFirstMessage>(this, HandleGoFirstServiceAsync);
             Messenger.Register<PersistGameMessage>(this, HandlePersistGameServiceAsync);
             Messenger.Register<SaveAsRequestMessage>(this, HandleSaveAsRequestServiceAsync);
+            Messenger.Register<SwapTileResources>(this, HandleSwapTileResourcesServiceAsync);
         }
 
         /// <summary>
@@ -350,6 +352,7 @@ namespace Catan3.GameState
             Messenger.Unregister<GoFirstMessage>(this);
             Messenger.Unregister<PersistGameMessage>(this);
             Messenger.Unregister<SaveAsRequestMessage>(this);
+            Messenger.Unregister<SwapTileResources>(this);
         }
 
         /// <summary>
@@ -849,6 +852,31 @@ namespace Catan3.GameState
             try
             {
                 await _gameStateMachine.HandlePersistGameAsync(message);
+            }
+            catch (GameException e)
+            {
+                SendErrorMessage(e.Message, e.ErrorLevel);
+            }
+        }
+
+        /// <summary>
+        /// Handles SwapTileResources message from the UI to swap tile resources during board setup.
+        /// Delegates to GameStateMachine and sends the result back to the UI.
+        /// </summary>
+        /// <param name="recipient">The message recipient (this service).</param>
+        /// <param name="message">The swap tile resources message from the UI.</param>
+        private async void HandleSwapTileResourcesAsync(object recipient, SwapTileResources message)
+        {
+            if (_gameStateMachine == null)
+            {
+                SendErrorMessage("No active game. Please start a new game or load an existing one.", ErrorLevel.Critical);
+                return;
+            }
+
+            try
+            {
+                var gameModel = await _gameStateMachine.HandleSwapResourcesAsync(message);
+                Messenger.Send(new UpdateGameModel(gameModel));
             }
             catch (GameException e)
             {

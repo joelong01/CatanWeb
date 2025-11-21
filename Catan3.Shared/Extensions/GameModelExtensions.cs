@@ -736,20 +736,42 @@ namespace Catan3.Shared.Extensions
         /// </summary>
         public static bool ValidateGame(this GameModel Game)
         {
-            foreach (var tile in Game.Tiles.TilesWithNumber(6))
+            var tiles6 = Game.Tiles.TilesWithNumber(6);
+            System.Diagnostics.Debug.WriteLine($"ValidateGame: Found {tiles6.Count} tiles with number 6");
+
+            foreach (var tile in tiles6)
             {
                 var adjacent = Game.Tiles.AdjacentTiles(tile);
-                if (adjacent != null && adjacent.TilesWithSixOrEight().Count != 0)
+                var badAdjacent = adjacent?.TilesWithSixOrEight() ?? new List<TileModel>();
+                System.Diagnostics.Debug.WriteLine($"  Tile 6 at {tile.TileKey}: {adjacent?.Count ?? 0} adjacent, {badAdjacent.Count} with 6/8");
+                if (badAdjacent.Count != 0)
+                {
+                    foreach (var bad in badAdjacent)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"    -> Adjacent {bad.TileKey} has number {bad.Number}");
+                    }
                     return false;
+                }
             }
-            
-            foreach (var tile in Game.Tiles.TilesWithNumber(8))
+
+            var tiles8 = Game.Tiles.TilesWithNumber(8);
+            System.Diagnostics.Debug.WriteLine($"ValidateGame: Found {tiles8.Count} tiles with number 8");
+
+            foreach (var tile in tiles8)
             {
                 var adjacent = Game.Tiles.AdjacentTiles(tile);
-                if (adjacent != null && adjacent.TilesWithSixOrEight().Count != 0)
+                var badAdjacent = adjacent?.TilesWithSixOrEight() ?? new List<TileModel>();
+                System.Diagnostics.Debug.WriteLine($"  Tile 8 at {tile.TileKey}: {adjacent?.Count ?? 0} adjacent, {badAdjacent.Count} with 6/8");
+                if (badAdjacent.Count != 0)
+                {
+                    foreach (var bad in badAdjacent)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"    -> Adjacent {bad.TileKey} has number {bad.Number}");
+                    }
                     return false;
+                }
             }
-            
+
             return true;
         }
 

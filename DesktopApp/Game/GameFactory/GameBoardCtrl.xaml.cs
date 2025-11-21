@@ -1,26 +1,30 @@
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using Catan3.Models;
+using Catan3.Shared.Utility;
+using Catan3.Shared.Models; // HighlightTile & SwapTileResources
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
+using CommunityToolkit.Mvvm.Messaging;
+using Windows.Foundation;
 namespace Catan3.Controls
 {
+    public delegate void TileRightMouseClicked(TileCtrl tileCtrl, RightTappedRoutedEventArgs e);
     public delegate void BuildingClicked(BuildingViewModel viewModel);
     public delegate void BuildingMouseEnter(BuildingViewModel viewModel);
     public delegate void BuildingMouseLeave(BuildingViewModel viewModel);
-    public delegate void TileRightMouseClicked(TileCtrl tileCtrl, RightTappedRoutedEventArgs e);
-    /// <summary>
-    /// Interaction logic for GameBoardCtrl.xaml
-    /// </summary>
+
     public partial class GameBoardCtrl : UserControl
     {
         public event TileRightMouseClicked? TileRightMouseClicked;
         public GameBoardCtrl()
         {
             InitializeComponent();
-            VB_Robber.Loaded += VB_Robber_Loaded;
+            VB_Robber.Loaded += VB_Robber_Loaded; // Pointer events wired in XAML only
         }
         private void VB_Robber_Loaded(object sender, RoutedEventArgs e)
         {
@@ -146,6 +150,259 @@ namespace Catan3.Controls
             var result =  hexSize * .8;
             if (result < 10) return 10;
             return result;
+        }
+
+        private HexCoordinates? _lastHighlighted;
+        private HexCoordinates? _currentHover; // last hover for enter/leave tracing
+        private bool _isDragging = false;
+        private Windows.Foundation.Point _dragStartPoint;
+        private HexCoordinates? _dragSourceHex;
+        private ResourceType _dragSourceResource;
+        private const double DragThreshold = 10.0;
+
+        private bool CanStartDrag()
+        {
+            var state = GameViewModel?.GameModel?.GameState;
+            return state == Shared.Models.GameState.PickingBoard; // only allow during PickingBoard
+        }
+
+        private void TraceDrag(string msg)
+        {
+            this.TraceMessage(msg);
+        }
+
+        private void OnBoardPointerMoved(object sender, PointerRoutedEventArgs e)
+        {
+            if (GameViewModel?.Tiles == null || GameViewModel.BoardInfo?.Layout == null) return;
+            if (!CanStartDrag()) return; // only do logic in PickingBoard phase
+            var pt = e.GetCurrentPoint(BOARD_RootCanvas).Position;
+            var hit = HitTestBoard(pt);
+
+            // No drag in progress - nothing to do
+            if (_dragSourceHex is null)
+            {
+                return;
+            }
+
+            // Drag in progress (or threshold not yet crossed)
+            if (!_isDragging)
+            {
+                double dx = pt.X - _dragStartPoint.X;
+                double dy = pt.Y - _dragStartPoint.Y;
+                double dist = Math.Sqrt(dx * dx + dy * dy);
+                if (dist < DragThreshold) return; // still below threshold
+                _isDragging = true;
+                TraceDrag($"DragStartThresholdReached: Source={_dragSourceHex} Resource={_dragSourceResource} Threshold={DragThreshold} Dist={dist:F1}");
+                ShowDragVisual(_dragSourceResource, pt);
+            }
+
+            // Update drag visual position
+            UpdateDragVisualPosition(pt);
+
+            if (!Equals(hit, _lastHighlighted))
+            {
+                // leaving previous highlight
+                if (_lastHighlighted is not null && !_lastHighlighted.Equals(hit))
+                {
+                    TraceDrag($"DragLeave: {_lastHighlighted}");
+                }
+                _lastHighlighted = hit;
+                if (hit is not null && !_dragSourceHex!.Equals(hit))
+                {
+                    WeakReferenceMessenger.Default.Send(new HighlightTile(hit));
+                    TraceDrag($"DragHover: {hit}");
+                }
+                else
+                {
+                    WeakReferenceMessenger.Default.Send(new HighlightTile(null));
+                }
+            }
+        }
+
+        private void BOARD_RootCanvas_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            if (!CanStartDrag()) return;
+            var pt = e.GetCurrentPoint(BOARD_RootCanvas).Position;
+            var hit = HitTestBoard(pt);
+            if (hit is null)
+            {
+                TraceDrag("PointerPressed: No tile under cursor");
+                return;
+            }
+            var sourceTileVM = GameViewModel!.Tiles.TileFromCoords(hit);
+            if (sourceTileVM is null)
+            {
+                TraceDrag($"PointerPressed: Tile VM not found for {hit}");
+                return;
+            }
+            _dragSourceHex = hit;
+            _dragSourceResource = sourceTileVM.Tile.ResourceTileType;
+            _dragStartPoint = pt;
+            _isDragging = false;
+            BOARD_RootCanvas.CapturePointer(e.Pointer);
+            TraceDrag($"PointerPressed: Source={_dragSourceHex} Resource={_dragSourceResource}");
+        }
+
+        private void BOARD_RootCanvas_PointerReleased(object sender, PointerRoutedEventArgs e)
+        {
+            if (!CanStartDrag()) { BOARD_RootCanvas.ReleasePointerCapture(e.Pointer); return; }
+            var pt = e.GetCurrentPoint(BOARD_RootCanvas).Position;
+            var destHex = HitTestBoard(pt);
+            WeakReferenceMessenger.Default.Send(new HighlightTile(null));
+
+            if (_dragSourceHex is null)
+            {
+                TraceDrag("PointerReleased: No drag source set");
+            }
+            else if (!_isDragging)
+            {
+                TraceDrag($"PointerReleased: Drag threshold not met (treated as click) Source={_dragSourceHex}");
+            }
+            else if (destHex is null)
+            {
+                TraceDrag($"PointerReleased: No destination tile under cursor Source={_dragSourceHex}");
+            }
+            else if (_dragSourceHex.Equals(destHex))
+            {
+                TraceDrag($"PointerReleased: Destination equals source; no swap Source={_dragSourceHex}");
+            }
+            else
+            {
+                var sourceTile = GameViewModel!.Tiles.TileFromCoords(_dragSourceHex);
+                var destTile = GameViewModel!.Tiles.TileFromCoords(destHex);
+                if (sourceTile is not null && destTile is not null)
+                {
+                    TraceDrag($"SwapAttempt: {sourceTile.Tile.TileKey}({sourceTile.Tile.ResourceTileType}) -> {destTile.Tile.TileKey}({destTile.Tile.ResourceTileType})");
+                    WeakReferenceMessenger.Default.Send(new SwapTileResources(
+                        _dragSourceHex!,
+                        destHex!,
+                        sourceTile.Tile.ResourceTileType,
+                        destTile.Tile.ResourceTileType));
+                }
+                else
+                {
+                    TraceDrag($"SwapAborted: Missing VM. SourceVM={(sourceTile!=null)} DestVM={(destTile!=null)}");
+                }
+            }
+
+            // cleanup
+            HideDragVisual();
+            _dragSourceHex = null;
+            _isDragging = false;
+            _lastHighlighted = null;
+            _currentHover = null;
+            BOARD_RootCanvas.ReleasePointerCapture(e.Pointer);
+        }
+
+        private void BOARD_RootCanvas_PointerCanceled(object sender, PointerRoutedEventArgs e)
+        {
+            TraceDrag("PointerCanceled: Drag aborted");
+            WeakReferenceMessenger.Default.Send(new HighlightTile(null));
+            HideDragVisual();
+            _dragSourceHex = null;
+            _isDragging = false;
+            _lastHighlighted = null;
+            _currentHover = null;
+            BOARD_RootCanvas.ReleasePointerCapture(e.Pointer);
+        }
+
+        private void ShowDragVisual(ResourceType resourceType, Windows.Foundation.Point position)
+        {
+            // Get the resource image brush
+            string key = $"ResourceCard.{resourceType}";
+            if (Application.Current.Resources.TryGetValue(key, out var resource) && resource is ImageBrush brush)
+            {
+                DragVisualImage.Fill = brush;
+            }
+            else
+            {
+                // Fallback to a solid color if image not found
+                DragVisualImage.Fill = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+            }
+
+            DragVisual.Visibility = Visibility.Visible;
+            UpdateDragVisualPosition(position);
+        }
+
+        private void UpdateDragVisualPosition(Windows.Foundation.Point position)
+        {
+            // Offset slightly so cursor isn't hidden by the visual
+            Canvas.SetLeft(DragVisual, position.X + 10);
+            Canvas.SetTop(DragVisual, position.Y + 10);
+        }
+
+        private void HideDragVisual()
+        {
+            DragVisual.Visibility = Visibility.Collapsed;
+        }
+        private HexCoordinates? HitTestBoard(Windows.Foundation.Point boardPoint)
+        {
+            // Quick bounds check
+            if (boardPoint.X < 0 || boardPoint.Y < 0 ||
+                boardPoint.X > BOARD_RootCanvas.ActualWidth ||
+                boardPoint.Y > BOARD_RootCanvas.ActualHeight)
+                return null;
+
+            var layout = GameViewModel?.BoardInfo?.Layout;
+            if (layout == null || GameViewModel?.Tiles == null) return null;
+
+            // Convert pixel coordinates to fractional axial coordinates
+            // BoardVisualLayout.Left/Top give the TOP-LEFT corner of the bounding box:
+            //   Left = OuterHexSize * 1.5 * Q + TileXOffset
+            //   Top = (Q / 2.0 + R) * OuterHexSize * sqrt(3) + TileYOffset
+            // The CENTER of hex (0,0,0) is offset by (size, size*sqrt(3)/2) from that corner
+            double size = layout.OuterHexSize;
+
+            // Translate to coordinates relative to the center of hex (0,0,0)
+            double relX = boardPoint.X - layout.TileXOffset - size;
+            double relY = boardPoint.Y - layout.TileYOffset - size * Math.Sqrt(3) / 2;
+
+            // Convert to fractional axial coordinates
+            double qf = relX / (1.5 * size);
+            double rf = relY / (size * Math.Sqrt(3)) - qf / 2.0;
+
+            // Convert axial (q, r) to cube coordinates (x, y, z) where x + y + z = 0
+            // For flat-top hex: x = q, z = r, y = -x - z
+            double x = qf;
+            double z = rf;
+            double y = -x - z;
+
+            // Round to nearest integers
+            int rx = (int)Math.Round(x);
+            int ry = (int)Math.Round(y);
+            int rz = (int)Math.Round(z);
+
+            // Fix rounding errors to maintain x + y + z = 0 constraint
+            double xDiff = Math.Abs(rx - x);
+            double yDiff = Math.Abs(ry - y);
+            double zDiff = Math.Abs(rz - z);
+
+            if (xDiff > yDiff && xDiff > zDiff)
+            {
+                rx = -ry - rz;
+            }
+            else if (yDiff > zDiff)
+            {
+                ry = -rx - rz;
+            }
+            else
+            {
+                rz = -rx - ry;
+            }
+
+            // Create HexCoordinates: Q = x, R = z, S = y
+            var coords = new HexCoordinates(rx, rz, ry);
+
+            // Verify tile exists in game model
+            foreach (var tileVM in GameViewModel.Tiles)
+            {
+                if (tileVM.Tile.TileKey.Equals(coords))
+                {
+                    return coords;
+                }
+            }
+
+            return null;
         }
     }
 }

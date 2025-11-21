@@ -66,6 +66,7 @@ namespace Catan3.Shared.Models
     [JsonDerivedType(typeof(GoFirstRecord), GoFirstRecord.Discriminator)]
     [JsonDerivedType(typeof(ParticipatingInSupplementalRecord), ParticipatingInSupplementalRecord.Discriminator)]
     [JsonDerivedType(typeof(BalanceBoardRecord), BalanceBoardRecord.Discriminator)]
+    [JsonDerivedType(typeof(SwapTileResourcesRecord), SwapTileResourcesRecord.Discriminator)]
     public interface IRecordedMessage
     {
         /// <summary>
@@ -545,6 +546,46 @@ namespace Catan3.Shared.Models
     }
 
     /// <summary>
+    /// Snapshot of a <c>SwapTileResources</c> message suitable for recording and replay.
+    /// </summary>
+    public sealed class SwapTileResourcesRecord : IRecordedMessage
+    {
+        public const string Discriminator = "swapTileResources";
+
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
+        public HexCoordinates SourceTileCoordinates { get; init; } = default!;
+        public HexCoordinates DestinationTileCoordinates { get; init; } = default!;
+        public ResourceType SourceCurrentResource { get; init; }
+        public ResourceType DestinationCurrentResource { get; init; }
+
+        [JsonIgnore]
+        public string RecordType => Discriminator;
+
+        [JsonConstructor]
+        public SwapTileResourcesRecord(string expectedGameHash, GameState expectedGameState, HexCoordinates sourceTileCoordinates, HexCoordinates destinationTileCoordinates, ResourceType sourceCurrentResource, ResourceType destinationCurrentResource)
+        {
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
+            SourceTileCoordinates = sourceTileCoordinates;
+            DestinationTileCoordinates = destinationTileCoordinates;
+            SourceCurrentResource = sourceCurrentResource;
+            DestinationCurrentResource = destinationCurrentResource;
+        }
+
+        public SwapTileResourcesRecord(GameModel gameModel, SwapTileResources message)
+        {
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
+            SourceTileCoordinates = message.SourceTileCoordinates;
+            DestinationTileCoordinates = message.DestinationTileCoordinates;
+            SourceCurrentResource = message.SourceCurrentResource;
+            DestinationCurrentResource = message.DestinationCurrentResource;
+        }
+    }
+
+    /// <summary>
     /// Builders that convert live MVVM messages into their recorded snapshots.
     /// Used while the game runs to append to a recording.
     /// </summary>
@@ -627,6 +668,12 @@ namespace Catan3.Shared.Models
         /// </summary>
         public static IRecordedMessage ToRecord(this BalanceBoardMessage msg, GameModel gameModel)
             => new BalanceBoardRecord(gameModel, msg);
+
+        /// <summary>
+        /// Capture a <see cref="SwapTileResources"/> message as a <see cref="SwapTileResourcesRecord"/>.
+        /// </summary>
+        public static IRecordedMessage ToRecord(this SwapTileResources msg, GameModel gameModel)
+            => new SwapTileResourcesRecord(gameModel, msg);
     }
 
     

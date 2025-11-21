@@ -504,7 +504,7 @@ namespace Catan3.GameState
             }
         }
 
-        private async void HandlePersistGameServiceAsync(object recipient, PersistGameMessage message)
+        private async void HandleSwapTileResourcesServiceAsync(object recipient, SwapTileResources message)
         {
             if (_gameServiceProxy == null)
             {
@@ -514,34 +514,29 @@ namespace Catan3.GameState
 
             try
             {
-                await _gameServiceProxy.PersistGameAsync(_gameServiceProxy.GameId!, message.Action.ToString(), message.Location);
-                // Result comes via persistence completion
+                // Send swap message via the GameServiceProxy method
+                // The GameService will handle the actual swap logic
+                await _gameServiceProxy.ExecuteSwapTileResourcesAsync(message);
+                // Result comes via GameStateUpdated event
             }
             catch (Exception ex)
             {
-                SendErrorMessage($"Failed to persist game via service: {ex.Message}", ErrorLevel.Critical);
+                SendErrorMessage($"Failed to swap tile resources via service: {ex.Message}", ErrorLevel.Critical);
             }
+        }
+
+        private async void HandlePersistGameServiceAsync(object recipient, PersistGameMessage message)
+        {
+            // Persistence operations are local-only in service mode
+            // The service maintains its own game state persistence
+            await Task.CompletedTask;
         }
 
         private async void HandleSaveAsRequestServiceAsync(object recipient, SaveAsRequestMessage message)
         {
-            if (_gameServiceProxy == null)
-            {
-                SendErrorMessage("No active GameService connection", ErrorLevel.Critical);
-                return;
-            }
-
-            try
-            {
-                // SaveAs in service mode would require UI integration for file picker
-                // For now, just perform a regular save
-                await _gameServiceProxy.PersistGameAsync(_gameServiceProxy.GameId!, "Save", "");
-                SendErrorMessage("SaveAs performed as Save in GameService mode", ErrorLevel.Information);
-            }
-            catch (Exception ex)
-            {
-                SendErrorMessage($"Failed to save-as via service: {ex.Message}", ErrorLevel.Critical);
-            }
+            // SaveAs is local-only in service mode
+            // The service manages persistence on its side
+            await Task.CompletedTask;
         }
     }
 }
