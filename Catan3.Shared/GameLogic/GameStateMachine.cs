@@ -1105,7 +1105,8 @@ namespace Catan3.Shared.GameLogic
                     // it is controlled by hitting a roll UI
                     break;
                 case Shared.Models.GameState.WaitingForNext:
-                    if (gameModel.HasSupplementalBuildPhase)
+                    // Supplemental build phase requires at least 5 players to be meaningful
+                    if (gameModel.HasSupplementalBuildPhase && gameModel.Players.Count >= 5)
                     {
 
                         gameModel.GameState = Shared.Models.GameState.PickSupplementalPlayers;
