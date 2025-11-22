@@ -1,0 +1,230 @@
+@page "/newgame"
+@using Catan3.Shared.Models
+@using Catan3.Shared.ViewData
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>New Game - Catan</PageTitle>
+
+<div class="new-game-container">
+    <h1>New Game</h1>
+
+    @if (IsLoading)
+    {
+        <div class="loading">Loading players...</div>
+    }
+    else if (ErrorMessage != null)
+    {
+        <div class="error">@ErrorMessage</div>
+    }
+    else
+    {
+        <div class="players-section">
+            <h2>Select Players</h2>
+            <div class="players-grid">
+                @foreach (var player in Players)
+                {
+                    <div class="player-card @(IsSelected(player.Id) ? "selected" : "")"
+                         @onclick="() => TogglePlayer(player.Id)"
+                         style="background-color: @player.BackgroundColor">
+                        <div class="player-avatar" style="border-color: @player.ForegroundColor">
+                            <img src="@GetFullImageUri(player.ImageUri)" alt="@player.Name" />
+                        </div>
+                        <div class="player-name" style="color: @player.ForegroundColor">
+                            @player.Name
+                        </div>
+                        @if (IsSelected(player.Id))
+                        {
+                            <div class="selection-indicator">✓</div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="options-section">
+            <div class="option-row">
+                <label for="gameType">Game Type:</label>
+                <select id="gameType" @bind="SelectedGameType">
+                    <option value="@GameType.Regular">Regular</option>
+                    <option value="@GameType.Expansion">Expansion</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="actions-section">
+            <button class="btn btn-secondary" @onclick="OnCancel" disabled="@IsCreatingGame">Cancel</button>
+            <button class="btn btn-primary" @onclick="OnStart" disabled="@(!CanStart)">
+                @if (IsCreatingGame)
+                {
+                    <span>Creating Game...</span>
+                }
+                else
+                {
+                    <span>Start Game</span>
+                }
+            </button>
+        </div>
+
+        @if (SelectedPlayers.Count > 0)
+        {
+            <div class="selected-info">
+                Selected: @string.Join(", ", SelectedPlayers.Select(id => Players.First(p => p.Id == id).Name))
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<PlayerData> Players { get; set; } = new();
+    private HashSet<string> SelectedPlayers { get; set; } = new();
+    private GameType SelectedGameType { get; set; } = GameType.Expansion;
+    private bool IsLoading { get; set; } = true;
+    private bool IsCreatingGame { get; set; } = false;
+    private string? ErrorMessage { get; set; }
+
+    // GameService base URL - should come from configuration
+    private const string GameServiceBaseUrl = "http://localhost:8080";
+
+    private bool CanStart => SelectedPlayers.Count >= 3 && SelectedPlayers.Count <= 6 && !IsCreatingGame;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPlayersAsync();
+    }
+
+    private async Task LoadPlayersAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            var response = await Http.GetFromJsonAsync<GetPlayersApiResponse>($"{GameServiceBaseUrl}/api/players");
+
+            if (response?.Success == true && response.Players != null)
+            {
+                Players = response.Players;
+            }
+            else
+            {
+                ErrorMessage = "Failed to load players from GameService";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error loading players: {ex.Message}";
+            Console.WriteLine($"Error loading players: {ex}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private string GetFullImageUri(string relativeUri)
+    {
+        // Combine GameService base URL with relative image path
+        if (string.IsNullOrEmpty(relativeUri))
+            return string.Empty;
+
+        return $"{GameServiceBaseUrl}{relativeUri}";
+    }
+
+    private bool IsSelected(string playerId) => SelectedPlayers.Contains(playerId);
+
+    private void TogglePlayer(string playerId)
+    {
+        if (SelectedPlayers.Contains(playerId))
+        {
+            SelectedPlayers.Remove(playerId);
+        }
+        else
+        {
+            SelectedPlayers.Add(playerId);
+        }
+    }
+
+    private void OnCancel()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task OnStart()
+    {
+        if (!CanStart) return;
+
+        try
+        {
+            IsCreatingGame = true;
+            ErrorMessage = null;
+
+            // Get player names from selected IDs
+            var playerNames = SelectedPlayers
+                .Select(id => Players.First(p => p.Id == id).Name)
+                .ToList();
+
+            // Create the new game request
+            var request = new NewGameRequest
+            {
+                GameType = SelectedGameType,
+                PlayerIds = playerNames,
+                GameName = $"Game {DateTime.Now:HH:mm}"
+            };
+
+            // Call the GameService API
+            var response = await Http.PostAsJsonAsync($"{GameServiceBaseUrl}/api/game/new", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<NewGameResponse>();
+                if (result?.Success == true && !string.IsNullOrEmpty(result.GameId))
+                {
+                    // Navigate to the game page
+                    Navigation.NavigateTo($"/game/{result.GameId}");
+                }
+                else
+                {
+                    ErrorMessage = "Failed to create game - invalid response";
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                ErrorMessage = $"Failed to create game: {response.StatusCode} - {errorContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error creating game: {ex.Message}";
+            Console.WriteLine($"Error creating game: {ex}");
+        }
+        finally
+        {
+            IsCreatingGame = false;
+        }
+    }
+
+    // Response classes for the API
+    private class GetPlayersApiResponse
+    {
+        public bool Success { get; set; }
+        public List<PlayerData> Players { get; set; } = new();
+        public int Count { get; set; }
+        public string Timestamp { get; set; } = string.Empty;
+    }
+
+    private class NewGameRequest
+    {
+        public GameType GameType { get; set; }
+        public List<string> PlayerIds { get; set; } = new();
+        public string GameName { get; set; } = string.Empty;
+    }
+
+    private class NewGameResponse
+    {
+        public bool Success { get; set; }
+        public string GameId { get; set; } = string.Empty;
+    }
+}

@@ -1,10 +1,18 @@
 #!/usr/bin/env pwsh
-# Thin wrapper that executes build_worker.ps1 and tees output to build.log,
+# Thin wrapper that executes build_worker.ps1 and tees output to a timestamped log,
 # preserving the worker's exit code.
 
-# Remove existing log
-$LogFile = Join-Path $PSScriptRoot "build.log"
-if (Test-Path $LogFile) { Remove-Item -Path $LogFile -Force -ErrorAction SilentlyContinue }
+# Create BuildLogs directory if it doesn't exist
+$LogDir = Join-Path $PSScriptRoot "BuildLogs"
+if (-not (Test-Path $LogDir)) {
+    New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+}
+
+# Create timestamped log file
+$timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+$LogFile = Join-Path $LogDir "build_$timestamp.log"
+
+Write-Host "Build log: $LogFile" -ForegroundColor Cyan
 
 # Join arguments as typed to forward to worker
 $argLine = ($args | ForEach-Object {

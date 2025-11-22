@@ -1,0 +1,270 @@
+@page "/game/{GameId}"
+@using Microsoft.AspNetCore.SignalR.Client
+@using Catan3.Shared.Models
+@using Catan3.Shared.Utility
+@using Catan3.WebUI.Services
+@inject GameServiceConfig Config
+@inject GameCommandProxy CommandProxy
+@implements IAsyncDisposable
+
+<PageTitle>Catan Game</PageTitle>
+
+<div class="game-container">
+    @if (IsConnecting)
+    {
+        <div class="loading">
+            <h2>Connecting to game...</h2>
+            <p>Game ID: @GameId</p>
+        </div>
+    }
+    else if (ErrorMessage != null)
+    {
+        <div class="error">
+            <h2>Error</h2>
+            <p>@ErrorMessage</p>
+            <button class="btn btn-primary" @onclick="RetryConnection">Retry</button>
+        </div>
+    }
+    else if (GameModel != null)
+    {
+        <div class="game-info">
+            <h1>@GameModel.GameName</h1>
+            <div class="game-status">
+                <span class="state-badge">@GameModel.GameState</span>
+            </div>
+        </div>
+
+        <div class="raw-json-panel">
+            <details>
+                <summary>Raw GameModel JSON</summary>
+                <pre style="max-height: 400px; overflow: auto; background: #f5f5f5; padding: 10px; font-size: 12px;">@GetGameModelJson()</pre>
+            </details>
+        </div>
+
+        <div class="players-panel">
+            <h2>Players</h2>
+            <div class="players-list">
+                @foreach (var player in GameModel.Players)
+                {
+                    <div class="player-row @(player.Id == GameModel.CurrentPlayerId ? "current-player" : "")">
+                        <span class="player-name">@player.Name</span>
+                        <span class="player-score">Score: @player.Score</span>
+                        @if (player.Id == GameModel.CurrentPlayerId)
+                        {
+                            <span class="current-indicator">◀</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="board-panel">
+            <h2>Game Board</h2>
+            <div class="board-info">
+                <p>Tiles: @GameModel.Tiles.Count</p>
+                <p>Buildings: @GameModel.Buildings.Count</p>
+                <p>Roads: @GameModel.Roads.Count</p>
+            </div>
+
+            @* TODO: Render actual game board with SVG *@
+            <div class="board-placeholder">
+                <p>Board rendering coming soon...</p>
+                <p>Game Type: @(GameModel.Tiles.Count > 19 ? "Expansion" : "Regular")</p>
+            </div>
+        </div>
+
+        <div class="actions-panel">
+            <h2>Actions</h2>
+            @if (CommandError != null)
+            {
+                <div class="command-error" style="color: red; margin-bottom: 10px;">
+                    @CommandError
+                </div>
+            }
+            @if (GameModel.GameState == GameState.WaitingForNewGame || GameModel.GameState == GameState.PickingBoard)
+            {
+                <button class="btn btn-primary" @onclick="OnNextClick">Next</button>
+            }
+            @if (GameModel.GameState == GameState.PickingBoard)
+            {
+                <button class="btn btn-secondary" @onclick="OnShuffleClick">Shuffle Board</button>
+            }
+        </div>
+
+        <div class="debug-panel">
+            <details>
+                <summary>Debug Info</summary>
+                <pre>@GetDebugInfo()</pre>
+            </details>
+        </div>
+    }
+    else
+    {
+        <div class="loading">
+            <h2>Waiting for game data...</h2>
+            <p>Connection State: @(_hubConnection?.State.ToString() ?? "Not created")</p>
+            <p>Game ID: @GameId</p>
+            @if (_hubConnection?.State == HubConnectionState.Connected)
+            {
+                <p>Connected to SignalR - waiting for GameStateUpdated event...</p>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string GameId { get; set; } = string.Empty;
+
+    private HubConnection? _hubConnection;
+    private GameModel? GameModel { get; set; }
+    private bool IsConnecting { get; set; } = true;
+    private string? ErrorMessage { get; set; }
+    private string? CommandError { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ConnectToGameAsync();
+    }
+
+    private async Task ConnectToGameAsync()
+    {
+        try
+        {
+            IsConnecting = true;
+            ErrorMessage = null;
+
+            // Create SignalR connection with matching JSON options
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(Config.HubUrl)
+                .WithAutomaticReconnect()
+                .AddJsonProtocol(options =>
+                {
+                    JsonHelper.ConfigureOptions(options.PayloadSerializerOptions);
+                })
+                .Build();
+
+            // Register handler for game state updates
+            _hubConnection.On<GameModel>("GameStateUpdated", OnGameStateUpdated);
+
+            // Start connection
+            await _hubConnection.StartAsync();
+            Console.WriteLine($"SignalR connected, state: {_hubConnection.State}");
+
+            // Join the game (playerId is for SignalR group management, use a client identifier)
+            Console.WriteLine($"Joining game: {GameId}");
+            await _hubConnection.InvokeAsync("JoinGame", GameId, "WebUI-Client");
+            Console.WriteLine("JoinGame completed");
+
+            IsConnecting = false;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to connect to game: {ex.Message}";
+            Console.WriteLine($"SignalR connection error: {ex}");
+            IsConnecting = false;
+        }
+    }
+
+    private void OnGameStateUpdated(GameModel gameModel)
+    {
+        Console.WriteLine($"=== GameStateUpdated RECEIVED ===");
+        if (gameModel == null)
+        {
+            Console.WriteLine("ERROR: GameModel is NULL after deserialization!");
+        }
+        else
+        {
+            Console.WriteLine($"SUCCESS: Deserialized GameModel:");
+            Console.WriteLine($"  - GameId: {gameModel.GameId}");
+            Console.WriteLine($"  - GameState: {gameModel.GameState}");
+            Console.WriteLine($"  - Players: {gameModel.Players?.Count ?? 0}");
+            Console.WriteLine($"  - Tiles: {gameModel.Tiles?.Count ?? 0}");
+            Console.WriteLine($"  - CurrentPlayerId: {gameModel.CurrentPlayerId}");
+        }
+        Console.WriteLine($"=================================");
+
+        GameModel = gameModel;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RetryConnection()
+    {
+        await ConnectToGameAsync();
+    }
+
+    private async Task OnNextClick()
+    {
+        if (_hubConnection?.State == HubConnectionState.Connected && GameModel != null)
+        {
+            try
+            {
+                await _hubConnection.InvokeAsync("Next", GameId, GameModel.CurrentPlayerId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending Next: {ex}");
+            }
+        }
+    }
+
+    private async Task OnShuffleClick()
+    {
+        if (GameModel != null)
+        {
+            try
+            {
+                CommandError = null;
+                var result = await CommandProxy.ShuffleAsync(GameId, GameModel.CurrentPlayerId);
+                if (!result.Success)
+                {
+                    CommandError = result.Error;
+                    Console.WriteLine($"Shuffle failed: {result.Error} ({result.ErrorCode})");
+                }
+                // GameModel update comes via SignalR GameStateUpdated event
+            }
+            catch (Exception ex)
+            {
+                CommandError = ex.Message;
+                Console.WriteLine($"Error sending Shuffle: {ex}");
+            }
+        }
+    }
+
+    private string GetDebugInfo()
+    {
+        if (GameModel == null) return "No game data";
+
+        return $@"Game ID: {GameModel.GameId}
+State: {GameModel.GameState}
+Current Player: {GameModel.CurrentPlayerId}
+Version: {GameModel.GameStateMachineVersion}
+Game Hash: {GameModel.GameHash}
+Players: {GameModel.Players.Count}
+Tiles: {GameModel.Tiles.Count}
+Buildings: {GameModel.Buildings.Count}
+Roads: {GameModel.Roads.Count}";
+    }
+
+    private string GetGameModelJson()
+    {
+        if (GameModel == null) return "null";
+        try
+        {
+            var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
+            return System.Text.Json.JsonSerializer.Serialize(GameModel, options);
+        }
+        catch (Exception ex)
+        {
+            return $"Error serializing: {ex.Message}";
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}

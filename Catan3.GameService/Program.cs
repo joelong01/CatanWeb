@@ -1,8 +1,10 @@
 using Catan3.GameService.Controllers;
 using Catan3.GameService.Services;
+using Catan3.GameService.Data;
 using Catan3.Shared.Interfaces;
 using Catan3.GameService.Hubs;
 using Catan3.Shared.Utility;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -69,8 +71,9 @@ builder.Services.Configure<GameApiOptions>(options =>
     // No hanging GET timeout needed - SignalR handles all real-time updates
 });
 
-// Register persistence service for save/load functionality
-builder.Services.AddSingleton<IPersistenceService, GameServicePersistenceService>();
+// Register persistence services
+builder.Services.AddScoped<IGamePersistence, GamePersistenceService>();
+builder.Services.AddSingleton<IPersistenceService, NullPersistenceService>();
 
 // Register SignalR-based client notification service for real-time updates
 builder.Services.AddSingleton<SignalRNotificationService>();
@@ -79,8 +82,30 @@ builder.Services.AddSingleton<IClientNotification>(provider => provider.GetRequi
 // Register async command processor for fire-and-forget command execution
 builder.Services.AddSingleton<AsyncCommandProcessor>();
 
+// Register SQLite database context
+var dataDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Data");
+var dbPath = Path.Combine(dataDir, "catan.db");
+builder.Services.AddDbContext<CatanDbContext>(options =>
+    options.UseSqlite($"Data Source={dbPath}"));
 
 var app = builder.Build();
+
+// Handle --seed-database command
+if (args.Contains("--seed-database"))
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
+
+    // Find images source path (relative to project root)
+    var projectRoot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..");
+    var imagesPath = Path.Combine(projectRoot, "DesktopApp", "Assets", "DefaultPlayers");
+
+    // Ensure Data directory exists
+    Directory.CreateDirectory(dataDir);
+
+    await DatabaseSeeder.SeedAsync(context, imagesPath);
+    return; // Exit after seeding
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -186,6 +211,9 @@ app.MapGet("/companion/demo/{state}", async (HttpContext context) =>
 });
 
 app.MapStaticAssets();
+
+// Health check endpoint for service readiness
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
 // Map SignalR GameHub
 app.MapHub<GameHub>("/gameHub");

@@ -175,6 +175,84 @@
 				"showReuseMessage": true,
 				"clear": false
 			}
+		},
+		{
+			"label": "run-gameservice",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"Catan3.GameService/Catan3.GameService.csproj"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": true,
+			"problemMatcher": {
+				"pattern": {
+					"regexp": "^$"
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^.*Building.*$",
+					"endsPattern": "^.*Now listening on.*$"
+				}
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated",
+				"showReuseMessage": false,
+				"clear": true
+			}
+		},
+		{
+			"label": "run-webui",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"WebUI/Catan3.WebUI.csproj"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": true,
+			"problemMatcher": {
+				"pattern": {
+					"regexp": "^$"
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^.*Building.*$",
+					"endsPattern": "^.*Now listening on.*$"
+				}
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated",
+				"showReuseMessage": false,
+				"clear": true
+			}
+		},
+		{
+			"label": "build-webui",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"WebUI/Catan3.WebUI.csproj"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": "$msCompile",
+			"group": "build"
 		}
 	]
 }

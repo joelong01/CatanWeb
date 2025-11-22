@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Catan3.Shared.Models;
+using Catan3.Shared.ViewData;
 using System.Text.Json;
 using Catan3.Shared.Utility;
 
@@ -611,12 +612,33 @@ namespace Catan3.Shared.Services
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
-            
+
             // The API returns a wrapper object: { success: true, games: [...], count: N, timestamp: "..." }
             var apiResponse = JsonHelper.Deserialize<GetAvailableGamesResponse>(responseJson)
                 ?? throw new InvalidOperationException("Failed to deserialize GetAvailableGames response");
-                
+
             return apiResponse.Games;
+        }
+
+        /// <summary>
+        /// Gets all available players via REST API
+        /// </summary>
+        /// <returns>List of player data</returns>
+        public async Task<List<PlayerData>> GetPlayersAsync()
+        {
+            if (string.IsNullOrEmpty(ServiceUri))
+                throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
+
+            var response = await _httpClient.GetAsync($"{ServiceUri}/api/players");
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+
+            // The API returns a wrapper object: { success: true, players: [...], count: N, timestamp: "..." }
+            var apiResponse = JsonHelper.Deserialize<GetPlayersResponse>(responseJson)
+                ?? throw new InvalidOperationException("Failed to deserialize GetPlayers response");
+
+            return apiResponse.Players;
         }
 
         /// <summary>
@@ -1005,6 +1027,17 @@ namespace Catan3.Shared.Services
     {
         public bool Success { get; set; }
         public List<GameInfo> Games { get; set; } = [];
+        public int Count { get; set; }
+        public string Timestamp { get; set; } = "";
+    }
+
+    /// <summary>
+    /// Response format for the /api/players endpoint
+    /// </summary>
+    public class GetPlayersResponse
+    {
+        public bool Success { get; set; }
+        public List<PlayerData> Players { get; set; } = [];
         public int Count { get; set; }
         public string Timestamp { get; set; } = "";
     }

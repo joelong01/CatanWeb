@@ -1,13 +1,18 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
+using Catan3.Shared.ViewData;
 using Catan3.Shared.GameLogic;
 using Catan3.Shared.Extensions;
 using Catan3.Shared.Interfaces;
 using Catan3.GameService.Services;
 using Catan3.GameService.Utility;
+using Catan3.GameService.Data;
+using Catan3.GameService.Hubs;
 
 namespace Catan3.GameService.Controllers
 {
@@ -17,15 +22,35 @@ namespace Catan3.GameService.Controllers
         /// Timeout for hanging GET requests. Default is 15 minutes for production, should be much shorter for tests.
         /// </summary>
         public TimeSpan HangingGetTimeout { get; set; } = TimeSpan.FromMinutes(15);
-        
+
         /// <summary>
         /// Timeout in seconds for hanging GET requests. This is used for configuration binding.
         /// </summary>
-        public int HangingGetTimeoutSeconds 
-        { 
+        public int HangingGetTimeoutSeconds
+        {
             get => (int)HangingGetTimeout.TotalSeconds;
             set => HangingGetTimeout = TimeSpan.FromSeconds(value);
         }
+    }
+
+    /// <summary>
+    /// Base request for game commands
+    /// </summary>
+    public class CommandRequest
+    {
+        public string PlayerId { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Response for game commands
+    /// </summary>
+    public class CommandResponse
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+        public string? Error { get; set; }
+        public string? ErrorCode { get; set; }
+        public string? GameId { get; set; }
     }
 
     [ApiController]
@@ -36,13 +61,72 @@ namespace Catan3.GameService.Controllers
         private readonly IPersistenceService _persistenceService;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<GameApiController> _logger;
+        private readonly CatanDbContext _dbContext;
+        private readonly IHubContext<GameHub> _hubContext;
+        private readonly IGamePersistence _gamePersistence;
 
-        public GameApiController(IOptions<GameApiOptions> options, IPersistenceService persistenceService, ILoggerFactory loggerFactory, ILogger<GameApiController> logger)
+        public GameApiController(
+            IOptions<GameApiOptions> options,
+            IPersistenceService persistenceService,
+            ILoggerFactory loggerFactory,
+            ILogger<GameApiController> logger,
+            CatanDbContext dbContext,
+            IHubContext<GameHub> hubContext,
+            IGamePersistence gamePersistence)
         {
             _options = options.Value;
             _persistenceService = persistenceService;
             _loggerFactory = loggerFactory;
             _logger = logger;
+            _dbContext = dbContext;
+            _hubContext = hubContext;
+            _gamePersistence = gamePersistence;
+        }
+
+        /// <summary>
+        /// Common post-action processing: save to database and broadcast to clients
+        /// </summary>
+        private async Task ProcessGameActionResult(GameStateMachine gameStateMachine, GameModel gameModel, string actionName)
+        {
+            // Save to database
+            await SaveGameToDatabase(gameStateMachine, gameModel);
+
+            // Broadcast to all clients in game group
+            await _hubContext.Clients.Group(gameModel.GameId).SendAsync("GameStateUpdated", gameModel);
+            _logger.LogEvent("Send Client Update", $"GameStateUpdated sent for {actionName} - GameId={gameModel.GameId}");
+        }
+
+        /// <summary>
+        /// Saves the full game log (with undo/redo stacks) to the database
+        /// </summary>
+        private async Task SaveGameToDatabase(GameStateMachine gameStateMachine, GameModel gameModel)
+        {
+            try
+            {
+                // Get the full serializable log (preserves undo/redo stacks)
+                var serializableLog = gameStateMachine.GetSerializableLog();
+                var json = JsonHelper.Serialize(serializableLog);
+                var compressed = JsonHelper.Compress(json);
+
+                // Create metadata for queryability
+                var metadata = new GameMetadata
+                {
+                    GameName = gameModel.GameName,
+                    GameState = gameModel.GameState.ToString(),
+                    StartedBy = gameModel.Players.FirstOrDefault()?.Id ?? "",
+                    PlayerCount = gameModel.Players.Count,
+                    GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular"
+                };
+
+                // Save to database
+                await _gamePersistence.SaveAsync(gameModel.GameId, compressed, metadata);
+                _logger.LogEvent("Database Save", $"Game saved to database: {gameModel.GameId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Database Save Error", $"Failed to save game to database: {ex.Message}", LogLevel.Error);
+                // Don't throw - database save failure shouldn't break the game operation
+            }
         }
 
         /// <summary>
@@ -208,6 +292,95 @@ namespace Catan3.GameService.Controllers
             }
         }
 
+        /// <summary>
+        /// Shuffles the board tiles during game setup
+        /// </summary>
+        [HttpPost("game/{gameId}/shuffle")]
+        public async Task<IActionResult> Shuffle(string gameId, [FromBody] CommandRequest request)
+        {
+            _logger.LogEvent("API Request", $"POST /api/game/{gameId}/shuffle - Shuffling board");
+
+            try
+            {
+                // Validate request
+                if (string.IsNullOrEmpty(request.PlayerId))
+                {
+                    return BadRequest(new CommandResponse
+                    {
+                        Success = false,
+                        Error = "Missing playerId",
+                        ErrorCode = "INVALID_PARAMETERS",
+                        GameId = gameId
+                    });
+                }
+
+                // Get game state machine
+                GameStateMachine gameStateMachine;
+                try
+                {
+                    gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
+                }
+                catch (GameException)
+                {
+                    return NotFound(new CommandResponse
+                    {
+                        Success = false,
+                        Error = $"Game {gameId} not found",
+                        ErrorCode = "GAME_NOT_FOUND",
+                        GameId = gameId
+                    });
+                }
+
+                // Validate player is current player
+                var currentState = gameStateMachine.GetCurrentState();
+                if (currentState.CurrentPlayerId != request.PlayerId)
+                {
+                    return StatusCode(403, new CommandResponse
+                    {
+                        Success = false,
+                        Error = $"Player {request.PlayerId} cannot act - current player is {currentState.CurrentPlayerId}",
+                        ErrorCode = "INVALID_PLAYER",
+                        GameId = gameId
+                    });
+                }
+
+                // Execute shuffle
+                var updatedGameModel = await gameStateMachine.HandleShuffleAsync(new ShuffleMessage());
+
+                // Save to database and broadcast to clients
+                await ProcessGameActionResult(gameStateMachine, updatedGameModel, "Shuffle");
+
+                return Ok(new CommandResponse
+                {
+                    Success = true,
+                    Message = "Board shuffled successfully",
+                    GameId = gameId
+                });
+            }
+            catch (GameException ex)
+            {
+                _logger.LogEvent("Shuffle Error", $"Game error during shuffle: {ex.Message}", LogLevel.Warning);
+                return BadRequest(new CommandResponse
+                {
+                    Success = false,
+                    Error = ex.Message,
+                    ErrorCode = "INVALID_STATE",
+                    GameId = gameId
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Shuffle Error", $"Error shuffling board: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new CommandResponse
+                {
+                    Success = false,
+                    Error = $"Error shuffling board: {ex.Message}",
+                    ErrorCode = "INTERNAL_ERROR",
+                    GameId = gameId
+                });
+            }
+        }
+
         [HttpPost("game/load")]
         public  Task<IActionResult> LoadGame([FromBody] LoadGameMessage loadGameMessage)
         {
@@ -340,13 +513,13 @@ namespace Catan3.GameService.Controllers
         public IActionResult GetAvailableGames()
         {
             _logger.LogEvent("API Request", $"GET /api/companion/games - Getting available games");
-            
+
             try
             {
                 var availableGames = GameStateMachineRegistry.GetAvailableGames().OrderByDescending(g => g.CreatedTime).ToList();
-                
+
                 _logger.LogEvent("Available Games", $"Found {availableGames.Count} available games");
-                
+
                 return Ok(new
                 {
                     success = true,
@@ -359,6 +532,181 @@ namespace Catan3.GameService.Controllers
             {
                 _logger.LogEvent("Get Available Games Error", $"Error getting available games: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, $"Error getting available games: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Loads a game from database into memory (creates GameStateMachine in registry).
+        /// Must be called before joining the game via SignalR.
+        /// </summary>
+        [HttpPost("game/{gameId}/load")]
+        public async Task<IActionResult> LoadGameFromDatabase(string gameId)
+        {
+            _logger.LogEvent("API Request", $"POST /api/game/{gameId}/load - Loading game from database");
+
+            try
+            {
+                // Check if already loaded
+                try
+                {
+                    GameStateMachineRegistry.GetGameStateMachine(gameId);
+                    _logger.LogEvent("Game Already Loaded", $"Game {gameId} already in memory");
+                    return Ok(new { success = true, gameId = gameId, message = "Game already loaded" });
+                }
+                catch (GameException)
+                {
+                    // Not loaded, continue to load from database
+                }
+
+                // Load from database
+                var gameSave = await _dbContext.GameSaves.FirstOrDefaultAsync(g => g.GameId == gameId);
+                if (gameSave == null)
+                {
+                    _logger.LogEvent("Game Not Found", $"Game {gameId} not found in database", LogLevel.Warning);
+                    return NotFound(new { success = false, error = $"Game {gameId} not found in database" });
+                }
+
+                // Decompress and deserialize the log
+                var decompressedJson = JsonHelper.Decompress(gameSave.CompressedData);
+                var serializableLog = JsonHelper.Deserialize<Catan3.Shared.Interfaces.SerializableLog>(decompressedJson);
+                if (serializableLog == null)
+                {
+                    return StatusCode(500, new { success = false, error = "Failed to deserialize game log" });
+                }
+
+                // Create Log from serializable log
+                var gameLog = Catan3.Shared.Utility.Log<string>.FromSerializableLog(serializableLog, _persistenceService, string.Empty);
+
+                // Create GameStateMachine with the log
+                var gameStateMachine = CreateGameStateMachineWithServiceDependencies(gameLog);
+
+                // Get the current game state
+                var gameModel = gameStateMachine.GetCurrentState();
+
+                // Store in registry
+                GameStateMachineRegistry.AddGameStateMachine(gameId, gameStateMachine);
+
+                _logger.LogEvent("Game Loaded", $"Game {gameId} loaded from database - State: {gameModel.GameState}, Players: {gameModel.Players.Count}");
+
+                return Ok(new { success = true, gameId = gameId, message = "Game loaded successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Load Game Error", $"Error loading game {gameId} from database: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new { success = false, error = $"Error loading game: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Gets saved games from database for Load Game page.
+        /// Pass playerId="*" to get all games, or a specific playerId to filter.
+        /// </summary>
+        [HttpGet("games")]
+        public async Task<IActionResult> GetSavedGames([FromQuery] string playerId = "*")
+        {
+            _logger.LogEvent("API Request", $"GET /api/games - Getting saved games (playerId={playerId})");
+
+            try
+            {
+                var query = _dbContext.GameSaves.AsQueryable();
+
+                // Filter by playerId unless "*" (get all)
+                if (playerId != "*" && !string.IsNullOrEmpty(playerId))
+                {
+                    query = query.Where(g => g.StartedBy == playerId);
+                }
+
+                var games = await query
+                    .OrderByDescending(g => g.SavedAt)
+                    .Select(g => new
+                    {
+                        g.Id,
+                        g.GameId,
+                        g.GameName,
+                        g.GameState,
+                        g.PlayerCount,
+                        g.GameType,
+                        g.SavedAt,
+                        g.CreatedAt,
+                        g.StartedBy
+                    })
+                    .ToListAsync();
+
+                _logger.LogEvent("Saved Games", $"Found {games.Count} saved games");
+
+                return Ok(new
+                {
+                    success = true,
+                    games = games,
+                    count = games.Count,
+                    timestamp = DateTime.UtcNow.ToString("O")
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Get Saved Games Error", $"Error getting saved games: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, $"Error getting saved games: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gets all available players for game creation.
+        /// Returns player profiles with relative image URIs.
+        /// </summary>
+        [HttpGet("players")]
+        public async Task<IActionResult> GetPlayers()
+        {
+            _logger.LogEvent("API Request", $"GET /api/players - Getting available players");
+
+            try
+            {
+                // Get players from database
+                var playerEntities = await _dbContext.Players.ToListAsync();
+                var players = playerEntities
+                    .Select(e => JsonHelper.Deserialize<PlayerData>(e.Data))
+                    .Where(p => p != null)
+                    .ToList();
+
+                _logger.LogEvent("Players Retrieved", $"Returning {players.Count} players from database");
+
+                return Ok(new
+                {
+                    success = true,
+                    players = players,
+                    count = players.Count,
+                    timestamp = DateTime.UtcNow.ToString("O")
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Get Players Error", $"Error getting players: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, $"Error getting players: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gets an image by ID from the database.
+        /// </summary>
+        [HttpGet("images/{id}")]
+        public async Task<IActionResult> GetImage(string id)
+        {
+            _logger.LogEvent("API Request", $"GET /api/images/{id} - Getting image");
+
+            try
+            {
+                var imageEntity = await _dbContext.Images.FindAsync(id);
+                if (imageEntity == null)
+                {
+                    _logger.LogEvent("Image Not Found", $"Image not found: {id}", LogLevel.Warning);
+                    return NotFound($"Image {id} not found");
+                }
+
+                return File(imageEntity.Data, imageEntity.ContentType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Get Image Error", $"Error getting image {id}: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, $"Error getting image: {ex.Message}");
             }
         }
 

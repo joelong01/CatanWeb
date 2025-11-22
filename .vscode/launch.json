@@ -113,6 +113,67 @@
             "stopAtEntry": false,
             "console": "internalConsole",
             "justMyCode": false
+        },
+        {
+            "name": "Debug GameService",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/Catan3.GameService/bin/Debug/net9.0/Catan3.GameService.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/Catan3.GameService",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "console": "internalConsole"
+        },
+        {
+            "name": "Debug WebUI",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-webui",
+            "program": "${workspaceFolder}/WebUI/bin/Debug/net9.0/Catan3.WebUI.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/WebUI",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "console": "internalConsole"
+        },
+        {
+            "name": "Debug WebUI (with GameService)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "run-gameservice",
+            "program": "${workspaceFolder}/WebUI/bin/Debug/net9.0/Catan3.WebUI.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/WebUI",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "console": "internalConsole"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "WebUI + GameService",
+            "configurations": ["Debug GameService", "Debug WebUI"],
+            "stopAll": true
         }
     ],
     "inputs": [

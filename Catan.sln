@@ -25,6 +25,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Catan3.CLI", "Catan3.CLI\Catan3.CLI.csproj", "{14CC0188-C1CF-2F88-1ADE-89BC88389600}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebUI", "WebUI", "{7E46470A-DE14-085D-F0DF-9D428E2CAD5E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Catan3.WebUI", "WebUI\Catan3.WebUI.csproj", "{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -157,9 +161,28 @@ Global
 		{14CC0188-C1CF-2F88-1ADE-89BC88389600}.Release|x64.Build.0 = Release|Any CPU
 		{14CC0188-C1CF-2F88-1ADE-89BC88389600}.Release|x86.ActiveCfg = Release|Any CPU
 		{14CC0188-C1CF-2F88-1ADE-89BC88389600}.Release|x86.Build.0 = Release|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Debug|x64.Build.0 = Debug|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Debug|x86.Build.0 = Debug|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Release|ARM64.Build.0 = Release|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Release|x64.ActiveCfg = Release|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Release|x64.Build.0 = Release|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Release|x86.ActiveCfg = Release|Any CPU
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{601F34F3-D4EF-41E5-9CDF-1D77443EA3ED} = {7E46470A-DE14-085D-F0DF-9D428E2CAD5E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {74EF7650-5148-46B4-ACF8-C886F3717121}

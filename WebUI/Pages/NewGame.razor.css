@@ -1,0 +1,156 @@
+.new-game-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 30px;
+}
+
+h2 {
+    color: #555;
+    margin-bottom: 15px;
+}
+
+.players-section {
+    margin-bottom: 30px;
+}
+
+.players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+}
+
+.player-card {
+    padding: 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    text-align: center;
+}
+
+.player-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.player-card.selected {
+    box-shadow: 0 0 0 3px #007bff, 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.player-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid;
+    overflow: hidden;
+    margin: 0 auto 10px;
+    background-color: #f0f0f0;
+}
+
+.player-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.player-name {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.selection-indicator {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: #007bff;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.options-section {
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.option-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.option-row label {
+    font-weight: bold;
+    color: #333;
+    min-width: 100px;
+}
+
+.option-row select {
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+    font-size: 16px;
+    min-width: 150px;
+}
+
+.actions-section {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.2s;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+.btn-primary:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #545b62;
+}
+
+.selected-info {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 10px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+}

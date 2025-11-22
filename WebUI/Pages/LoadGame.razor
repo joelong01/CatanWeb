@@ -1,0 +1,127 @@
+@page "/loadgame"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject WebUI.Services.GameServiceConfig Config
+@inject WebUI.Services.GameCommandProxy CommandProxy
+
+<PageTitle>Load Game</PageTitle>
+
+<h1>Load Game</h1>
+
+@if (isLoading)
+{
+    <p><em>Loading saved games...</em></p>
+}
+else if (errorMessage != null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (savedGames == null || savedGames.Count == 0)
+{
+    <p>No saved games found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>State</th>
+                <th>Players</th>
+                <th>Type</th>
+                <th>Saved</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var game in savedGames)
+            {
+                <tr>
+                    <td>@game.GameName</td>
+                    <td>@game.GameState</td>
+                    <td>@game.PlayerCount</td>
+                    <td>@game.GameType</td>
+                    <td>@game.SavedAt.ToLocalTime().ToString("g")</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" @onclick="() => OnLoadGameClick(game.GameId)">
+                            Load
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<GameSaveInfo>? savedGames;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSavedGames();
+    }
+
+    private async Task LoadSavedGames()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<GamesResponse>($"{Config.BaseUrl}/api/games");
+            if (response?.Success == true)
+            {
+                savedGames = response.Games;
+            }
+            else
+            {
+                errorMessage = "Failed to load saved games";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading games: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnLoadGameClick(string gameId)
+    {
+        try
+        {
+            // Load game from database into memory
+            var result = await CommandProxy.LoadGameAsync(gameId);
+            if (!result.Success)
+            {
+                errorMessage = result.Error ?? "Failed to load game";
+                return;
+            }
+
+            // Navigate to game page
+            Navigation.NavigateTo($"/game/{gameId}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading game: {ex.Message}";
+        }
+    }
+
+    private class GamesResponse
+    {
+        public bool Success { get; set; }
+        public List<GameSaveInfo> Games { get; set; } = new();
+    }
+
+    private class GameSaveInfo
+    {
+        public int Id { get; set; }
+        public string GameId { get; set; } = string.Empty;
+        public string GameName { get; set; } = string.Empty;
+        public string GameState { get; set; } = string.Empty;
+        public int PlayerCount { get; set; }
+        public string GameType { get; set; } = string.Empty;
+        public DateTime SavedAt { get; set; }
+    }
+}

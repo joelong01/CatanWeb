@@ -636,27 +636,6 @@ namespace Catan3.Shared.GameLogic
             _logger.Trace(GameTraceLevel.Trace,
                 $"Board validation after swap: {isValid} - Source now {sourceTile.Number}, Dest now {destTile.Number}");
 
-            // Debug: show all 6s and 8s with their adjacent tiles
-            var tiles6 = gameModel.Tiles.TilesWithNumber(6);
-            var tiles8 = gameModel.Tiles.TilesWithNumber(8);
-            _logger.Trace(GameTraceLevel.Trace, $"All tiles with 6: [{string.Join(", ", tiles6.Select(t => t.TileKey.ToString()))}]");
-            _logger.Trace(GameTraceLevel.Trace, $"All tiles with 8: [{string.Join(", ", tiles8.Select(t => t.TileKey.ToString()))}]");
-
-            foreach (var tile in tiles6)
-            {
-                var adjacent = gameModel.Tiles.AdjacentTiles(tile);
-                var bad8s = adjacent.Where(a => a.Number == 8).ToList(); // Only 8s are bad for a 6
-                _logger.Trace(GameTraceLevel.Trace,
-                    $"  Tile 6 at {tile.TileKey}: adjacent 8s=[{string.Join(", ", bad8s.Select(a => $"{a.TileKey}"))}]");
-            }
-            foreach (var tile in tiles8)
-            {
-                var adjacent = gameModel.Tiles.AdjacentTiles(tile);
-                var bad6s = adjacent.Where(a => a.Number == 6).ToList(); // Only 6s are bad for an 8
-                _logger.Trace(GameTraceLevel.Trace,
-                    $"  Tile 8 at {tile.TileKey}: adjacent 6s=[{string.Join(", ", bad6s.Select(a => $"{a.TileKey}"))}]");
-            }
-
             if (!isValid)
             {
                 _logger.Trace(GameTraceLevel.Trace,

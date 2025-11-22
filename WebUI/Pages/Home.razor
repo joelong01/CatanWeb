@@ -1,0 +1,98 @@
+@page "/"
+
+<PageTitle>Catan - Home</PageTitle>
+
+<div class="home-container">
+    <h1>Catan</h1>
+    <p class="subtitle">Settlers of Catan - Web Edition</p>
+
+    <div class="menu-options">
+        <a href="/newgame" class="menu-button">
+            <span class="icon">🎮</span>
+            <span class="text">New Game</span>
+        </a>
+
+        <button class="menu-button" disabled>
+            <span class="icon">📂</span>
+            <span class="text">Load Game</span>
+        </button>
+
+        <button class="menu-button" disabled>
+            <span class="icon">⚙️</span>
+            <span class="text">Settings</span>
+        </button>
+    </div>
+
+    <div class="info-section">
+        <p>WebUI connected to GameService at <code>http://localhost:8080</code></p>
+    </div>
+</div>
+
+<style>
+    .home-container {
+        text-align: center;
+        padding: 40px 20px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    h1 {
+        font-size: 3rem;
+        color: #8B4513;
+        margin-bottom: 10px;
+    }
+
+    .subtitle {
+        font-size: 1.2rem;
+        color: #666;
+        margin-bottom: 40px;
+    }
+
+    .menu-options {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 40px;
+    }
+
+    .menu-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+        padding: 20px 30px;
+        font-size: 1.2rem;
+        border: 2px solid #8B4513;
+        border-radius: 8px;
+        background-color: #FFF8DC;
+        color: #8B4513;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .menu-button:hover:not(:disabled) {
+        background-color: #8B4513;
+        color: white;
+    }
+
+    .menu-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .menu-button .icon {
+        font-size: 1.5rem;
+    }
+
+    .info-section {
+        color: #888;
+        font-size: 0.9rem;
+    }
+
+    .info-section code {
+        background-color: #f4f4f4;
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+</style>

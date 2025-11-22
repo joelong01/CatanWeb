@@ -45,6 +45,9 @@ Generated\ Files/
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 
+# Build logs directory
+BuildLogs/
+
 # NUnit
 *.VisualState.xml
 TestResult.xml
@@ -366,3 +369,8 @@ FodyWeavers.xsd
 desktop_gamestateMachine_backup.cs
 temp_old_gameservice_statemachine.cs
 /nul
+
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
