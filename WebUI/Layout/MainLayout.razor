@@ -1,11 +1,15 @@
-﻿@inherits LayoutComponentBase
-<div class="page">
+@inherits LayoutComponentBase
+
+<div class="page @(sidebarCollapsed ? "sidebar-collapsed" : "")">
     <div class="sidebar">
         <NavMenu />
     </div>
 
     <main>
         <div class="top-row px-4">
+            <button class="hamburger-btn" @onclick="ToggleSidebar">
+                ☰
+            </button>
             <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
         </div>
 
@@ -14,3 +18,12 @@
         </article>
     </main>
 </div>
+
+@code {
+    private bool sidebarCollapsed = true;
+
+    private void ToggleSidebar()
+    {
+        sidebarCollapsed = !sidebarCollapsed;
+    }
+}

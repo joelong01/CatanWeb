@@ -122,7 +122,23 @@ else
     // Skip HTTPS redirection to avoid the "Failed to determine https port" warning
 }
 
-app.UseStaticFiles();
+// Configure static files with caching for images
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        // Cache images for 7 days (they rarely change)
+        if (ctx.File.Name.EndsWith(".png") ||
+            ctx.File.Name.EndsWith(".jpg") ||
+            ctx.File.Name.EndsWith(".jpeg") ||
+            ctx.File.Name.EndsWith(".ttf") ||
+            ctx.File.Name.EndsWith(".woff") ||
+            ctx.File.Name.EndsWith(".woff2"))
+        {
+            ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=604800");
+        }
+    }
+});
 
 app.UseCors("AllowLocalhost");
 

@@ -374,3 +374,4 @@ temp_old_gameservice_statemachine.cs
 *.db
 *.db-shm
 *.db-wal
+.test_images/*.*

@@ -21,6 +21,20 @@ main {
     align-items: center;
 }
 
+.hamburger-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    margin-right: auto;
+    color: #333;
+}
+
+.hamburger-btn:hover {
+    color: #0066cc;
+}
+
     .top-row ::deep a, .top-row ::deep .btn-link {
         white-space: nowrap;
         margin-left: 1.5rem;
@@ -73,5 +87,10 @@ main {
     .top-row, article {
         padding-left: 2rem !important;
         padding-right: 1.5rem !important;
+    }
+
+    .page.sidebar-collapsed .sidebar {
+        width: 0;
+        overflow: hidden;
     }
 }
