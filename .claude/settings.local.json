@@ -1,5 +1,10 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(npx markdownlint-cli2:*)",
+      "Bash(dir D:GitHubCatanDesktopApp /s /b 2)",
+      "Bash(nul)"
+    ],
     "Read": "always",
     "Search": "always",
     "Find": "always",
@@ -86,9 +91,6 @@
     "Build": "prompt",
     "Test": "prompt",
     "Deploy": "prompt",
-    "Publish": "prompt",
-    "allow": [
-      "Bash(npx markdownlint-cli2:*)"
-    ]
+    "Publish": "prompt"
   }
 }
