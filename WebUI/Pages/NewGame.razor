@@ -27,7 +27,7 @@
                 {
                     <div class="player-card @(IsSelected(player.Id) ? "selected" : "")"
                          @onclick="() => TogglePlayer(player.Id)"
-                         style="background-color: @player.BackgroundColor">
+                         style="background: linear-gradient(135deg, @player.PrimaryBackgroundColor, @player.SecondaryBackgroundColor)">
                         <div class="player-avatar" style="border-color: @player.ForegroundColor">
                             <img src="@GetFullImageUri(player.ImageUri)" alt="@player.Name" />
                         </div>
@@ -160,16 +160,14 @@
             IsCreatingGame = true;
             ErrorMessage = null;
 
-            // Get player names from selected IDs
-            var playerNames = SelectedPlayers
-                .Select(id => Players.First(p => p.Id == id).Name)
-                .ToList();
+            // Send the actual player IDs (e.g., "joe-001"), not display names
+            var playerIds = SelectedPlayers.ToList();
 
             // Create the new game request
             var request = new NewGameRequest
             {
                 GameType = SelectedGameType,
-                PlayerIds = playerNames,
+                PlayerIds = playerIds,
                 GameName = $"Game {DateTime.Now:HH:mm}"
             };
 

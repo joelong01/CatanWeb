@@ -90,21 +90,24 @@ builder.Services.AddDbContext<CatanDbContext>(options =>
 
 var app = builder.Build();
 
-// Handle --seed-database command
-if (args.Contains("--seed-database"))
+// Ensure Data directory exists
+Directory.CreateDirectory(dataDir);
+
+// Find images source path (relative to project root)
+var projectRoot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..");
+var imagesPath = Path.Combine(projectRoot, "DesktopApp", "Assets", "DefaultPlayers");
+
+// Always auto-seed on startup if database is empty (idempotent operation)
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
-
-    // Find images source path (relative to project root)
-    var projectRoot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..");
-    var imagesPath = Path.Combine(projectRoot, "DesktopApp", "Assets", "DefaultPlayers");
-
-    // Ensure Data directory exists
-    Directory.CreateDirectory(dataDir);
-
     await DatabaseSeeder.SeedAsync(context, imagesPath);
-    return; // Exit after seeding
+}
+
+// Handle --seed-database command (exit after seeding for explicit seed-only mode)
+if (args.Contains("--seed-database"))
+{
+    return;
 }
 
 // Configure the HTTP request pipeline.

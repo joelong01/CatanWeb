@@ -17,7 +17,7 @@
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("build", "run", "debug", "clean", "stop", "update")]
+    [ValidateSet("build", "run", "debug", "clean", "stop", "update", "help")]
     [string]$Verb = "run"
 )
 
@@ -169,6 +169,18 @@ function Stop-Services {
         }
     }
 
+    # Wait for ports to be released
+    Start-Sleep -Milliseconds 500
+
+    # Verify ports are free
+    $gameStillRunning = Test-PortInUse -Port $GameServicePort
+    $webUIStillRunning = Test-PortInUse -Port $WebUIPort
+
+    if ($gameStillRunning -or $webUIStillRunning) {
+        Write-Host "  Waiting for ports to be released..." -ForegroundColor Yellow
+        Start-Sleep -Seconds 2
+    }
+
     Write-Host "Services stopped." -ForegroundColor Green
 }
 
@@ -303,5 +315,31 @@ switch ($Verb) {
         else {
             Write-Host "WebUI rebuilt successfully! Run './webui.ps1 run' to start." -ForegroundColor Green
         }
+    }
+
+    "help" {
+        Write-Host ""
+        Write-Host "WebUI Development Script" -ForegroundColor Cyan
+        Write-Host "========================" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "Commands:" -ForegroundColor Yellow
+        Write-Host "  ./webui.ps1 run      - Start GameService + WebUI, launch browser"
+        Write-Host "  ./webui.ps1 stop     - Stop running services"
+        Write-Host "  ./webui.ps1 update   - Rebuild WebUI and restart (for code changes)"
+        Write-Host "  ./webui.ps1 build    - Build all projects (full solution)"
+        Write-Host "  ./webui.ps1 clean    - Stop services, delete database, clean build"
+        Write-Host "  ./webui.ps1 debug    - Instructions for VS Code debugging"
+        Write-Host "  ./webui.ps1 help     - Show this help"
+        Write-Host ""
+        Write-Host "Typical workflow:" -ForegroundColor Yellow
+        Write-Host "  1. ./webui.ps1 run           - Start services"
+        Write-Host "  2. Make code changes"
+        Write-Host "  3. ./webui.ps1 update        - Rebuild and restart WebUI"
+        Write-Host "  4. Refresh browser"
+        Write-Host ""
+        Write-Host "URLs:" -ForegroundColor Yellow
+        Write-Host "  GameService: $GameServiceUrl"
+        Write-Host "  WebUI:       $WebUIUrl"
+        Write-Host ""
     }
 }

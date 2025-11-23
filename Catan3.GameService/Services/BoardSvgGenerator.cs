@@ -17,7 +17,7 @@ public static class BoardSvgConstants
     // Board positioning
     public const double CenterX = 800;
     public const double CenterY = 700;
-    public const double Padding = 40;
+    public const double Padding = 5;  // Minimal padding - harbors already extend to edges
 
     // Inner/Outer hex geometry - SAME AS DESKTOP APP
     // From BoardVisualLayout.cs: InnerHexSize = OuterHexSize - TileGap - InnerHexStrokeThickness * 0.5
@@ -29,15 +29,15 @@ public static class BoardSvgConstants
     public const double BuildingSize = 40;
     public const double SettlementRadius = BuildingSize / 2;  // = 20
 
-    // Number token
-    public const double NumberTokenRadius = 30;
+    // Number token - matches Desktop CatanNumber.xaml (65x65 ellipse with opacity 0.75)
+    public const double NumberTokenRadius = 32.5;  // 65/2
     public const double NumberTokenOffsetY = 50;
-    public const double NumberTokenOpacity = 0.85;
+    public const double NumberTokenOpacity = 0.75;  // Matches Desktop
 
-    // Font sizes
-    public const double NumberFontSize = 24;
-    public const double PipsFontSize = 24;
-    public const double PipsOffsetY = 20;
+    // Font sizes - matches Desktop CatanNumber.xaml
+    public const double NumberFontSize = 24;  // Same as Desktop
+    public const double PipsFontSize = 10;    // Desktop uses 10pt for stars
+    public const double PipsOffsetY = 12;
 
     // Stroke widths
     public const double HexStrokeWidth = 6;
@@ -49,7 +49,13 @@ public static class BoardSvgConstants
     public const string NumberTokenStroke = "white";
     public const string HighProbColor = "#c00";
     public const string NormalNumberColor = "#fff";
-    public const string BackgroundColor = "#1e90ff";
+    public const string BackgroundColor = "transparent";  // Black/transparent like Desktop app
+
+    // Harbor rendering - based on Desktop app HarborCtrl.xaml
+    public const double HarborCircleRadius = 45;  // Similar to Desktop's 60x60 ellipse scaled by 1.5
+    public const double HarborOffset = 70;  // Distance from edge midpoint toward water
+    public const double WaterTriangleSize = 60;  // Size of water background triangle
+    public const string WaterColor = "#4169e1";  // Royal blue for water triangle
 }
 
 /// <summary>
@@ -86,6 +92,37 @@ public class BoardSvgGenerator
                 minY = Math.Min(minY, v.y);
                 maxY = Math.Max(maxY, v.y);
             }
+        }
+
+        // Include harbor positions in bounds calculation
+        foreach (var harbor in gameModel.Harbors)
+        {
+            if (harbor.HarborKey.HarborType == HarborType.None)
+                continue;
+
+            var (cx, cy) = AxialToPixel(harbor.HarborKey.HexCoordinates.Q, harbor.HarborKey.HexCoordinates.R);
+            var hexVertices = GetHexVertices(cx, cy);
+            var (v1Idx, v2Idx) = GetEdgeVerticesForSide(harbor.HarborKey.Side);
+            var v1 = hexVertices[v1Idx];
+            var v2 = hexVertices[v2Idx];
+
+            var midX = (v1.x + v2.x) / 2;
+            var midY = (v1.y + v2.y) / 2;
+            var dx = midX - cx;
+            var dy = midY - cy;
+            var length = Math.Sqrt(dx * dx + dy * dy);
+            var normX = dx / length;
+            var normY = dy / length;
+
+            // Harbor center position
+            var harborX = midX + normX * BoardSvgConstants.HarborOffset;
+            var harborY = midY + normY * BoardSvgConstants.HarborOffset;
+
+            // Include harbor circle bounds
+            minX = Math.Min(minX, harborX - BoardSvgConstants.HarborCircleRadius);
+            maxX = Math.Max(maxX, harborX + BoardSvgConstants.HarborCircleRadius);
+            minY = Math.Min(minY, harborY - BoardSvgConstants.HarborCircleRadius);
+            maxY = Math.Max(maxY, harborY + BoardSvgConstants.HarborCircleRadius);
         }
 
         // Add padding
@@ -198,10 +235,76 @@ public class BoardSvgGenerator
             sb.AppendLine($@"  <circle cx=""{v.x:F1}"" cy=""{v.y:F1}"" r=""{BoardSvgConstants.SettlementRadius}"" class=""settlement""/>");
         }
 
+        // Render harbors AFTER tiles but positioned at board edge
+        RenderHarbors(sb, gameModel);
+
         // Close SVG
         sb.AppendLine("</svg>");
 
         return sb.ToString();
+    }
+
+    private void RenderHarbors(StringBuilder sb, GameModel gameModel)
+    {
+        foreach (var harbor in gameModel.Harbors)
+        {
+            if (harbor.HarborKey.HarborType == HarborType.None)
+                continue;
+
+            // Get tile center position
+            var (cx, cy) = AxialToPixel(harbor.HarborKey.HexCoordinates.Q, harbor.HarborKey.HexCoordinates.R);
+            var hexVertices = GetHexVertices(cx, cy);
+
+            // Get the two vertices for this edge based on HexSide
+            var (v1Idx, v2Idx) = GetEdgeVerticesForSide(harbor.HarborKey.Side);
+            var v1 = hexVertices[v1Idx];
+            var v2 = hexVertices[v2Idx];
+
+            // Calculate edge midpoint
+            var midX = (v1.x + v2.x) / 2;
+            var midY = (v1.y + v2.y) / 2;
+
+            // Calculate direction from tile center to edge midpoint (outward direction)
+            var dx = midX - cx;
+            var dy = midY - cy;
+            var length = Math.Sqrt(dx * dx + dy * dy);
+            var normX = dx / length;
+            var normY = dy / length;
+
+            // Harbor position is offset outward from edge midpoint
+            var harborX = midX + normX * BoardSvgConstants.HarborOffset;
+            var harborY = midY + normY * BoardSvgConstants.HarborOffset;
+
+            // Draw water triangle background connecting tile edge to harbor circle
+            // Base = full hex edge (v1 to v2), apex = harbor center
+            var trianglePoints = $"{v1.x:F1},{v1.y:F1} {v2.x:F1},{v2.y:F1} {harborX:F1},{harborY:F1}";
+            sb.AppendLine($@"  <polygon points=""{trianglePoints}"" fill=""{BoardSvgConstants.WaterColor}""/>");
+
+            // Draw harbor circle with pattern
+            var patternId = GetHarborPatternId(harbor.HarborKey.HarborType);
+            sb.AppendLine($@"  <circle cx=""{harborX:F1}"" cy=""{harborY:F1}"" r=""{BoardSvgConstants.HarborCircleRadius}"" fill=""url(#{patternId})"" stroke=""#2a5d8f"" stroke-width=""3""/>");
+        }
+    }
+
+    /// <summary>
+    /// Maps HexSide to the two vertex indices (0-5) for flat-top hex orientation.
+    /// HexSide names are based on pointy-top orientation, but the HexPosition mapping works for flat-top.
+    /// </summary>
+    private static (int, int) GetEdgeVerticesForSide(HexSide side)
+    {
+        // For flat-top hex, vertices are numbered 0-5 starting from right (3 o'clock), going clockwise
+        // HexPosition to vertex index: Right=0, BottomRight=1, BottomLeft=2, Left=3, TopLeft=4, TopRight=5
+        // HexSide to (HexPosition, HexPosition) from HarborModel.cs SideToVertices:
+        return side switch
+        {
+            HexSide.Top => (4, 5),        // TopLeft, TopRight
+            HexSide.TopRight => (5, 0),   // TopRight, Right
+            HexSide.BottomRight => (0, 1), // Right, BottomRight
+            HexSide.Bottom => (1, 2),     // BottomRight, BottomLeft
+            HexSide.BottomLeft => (2, 3), // BottomLeft, Left
+            HexSide.TopLeft => (3, 4),    // Left, TopLeft
+            _ => (0, 1)
+        };
     }
 
     private void GenerateTilePatterns(StringBuilder sb)
@@ -229,6 +332,26 @@ public class BoardSvgGenerator
             sb.AppendLine($@"      <image href=""/images/tiles/{filename}"" width=""{patternWidth:F0}"" height=""{patternHeight:F0}"" preserveAspectRatio=""xMidYMid slice""/>");
             sb.AppendLine("    </pattern>");
         }
+
+        // Harbor patterns - circular images
+        var harborTypes = new[]
+        {
+            (HarborType.Brick, "2 for 1 brick.png"),
+            (HarborType.Ore, "2 for 1 ore.png"),
+            (HarborType.Sheep, "2 for 1 sheep.png"),
+            (HarborType.Wheat, "2 for 1 wheat.png"),
+            (HarborType.Wood, "2 for 1 wood.png"),
+            (HarborType.ThreeForOne, "3 for 1.png"),
+        };
+
+        var harborSize = BoardSvgConstants.HarborCircleRadius * 2;
+        foreach (var (harborType, filename) in harborTypes)
+        {
+            var patternId = GetHarborPatternId(harborType);
+            sb.AppendLine($@"    <pattern id=""{patternId}"" patternUnits=""objectBoundingBox"" width=""1"" height=""1"">");
+            sb.AppendLine($@"      <image href=""/images/harbors/{filename}"" width=""{harborSize:F0}"" height=""{harborSize:F0}"" preserveAspectRatio=""xMidYMid slice""/>");
+            sb.AppendLine("    </pattern>");
+        }
     }
 
     private string GetPatternId(ResourceType resourceType)
@@ -244,6 +367,20 @@ public class BoardSvgGenerator
             ResourceType.GoldMine => "tile-goldmine",
             ResourceType.Sea => "tile-sea",
             _ => "tile-default"
+        };
+    }
+
+    private static string GetHarborPatternId(HarborType harborType)
+    {
+        return harborType switch
+        {
+            HarborType.Brick => "harbor-brick",
+            HarborType.Ore => "harbor-ore",
+            HarborType.Sheep => "harbor-sheep",
+            HarborType.Wheat => "harbor-wheat",
+            HarborType.Wood => "harbor-wood",
+            HarborType.ThreeForOne => "harbor-3for1",
+            _ => "harbor-3for1"
         };
     }
 
@@ -293,13 +430,14 @@ public class BoardSvgGenerator
 
     private string GetPips(int number)
     {
+        // Use Unicode star character (U+2605) to match Desktop app's Segoe Fluent Icons star
         return number switch
         {
-            2 or 12 => "•",
-            3 or 11 => "••",
-            4 or 10 => "•••",
-            5 or 9 => "••••",
-            6 or 8 => "•••••",
+            2 or 12 => "★",
+            3 or 11 => "★★",
+            4 or 10 => "★★★",
+            5 or 9 => "★★★★",
+            6 or 8 => "★★★★★",
             _ => ""
         };
     }

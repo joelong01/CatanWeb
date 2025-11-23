@@ -50,8 +50,7 @@ the Write/Edit tools:
 
 ### 4. Create Session Summary
 
-**CRITICAL**: You MUST create a file named `SESSION_SUMMARY.md` in the
-project root directory using the Write tool.
+**CRITICAL**: You MUST create a file named `SESSION_SUMMARY-{current date}-{time}.md` in the ./.claude/sessions directory using the Write tool.
 
 Create SESSION_SUMMARY.md with the following content:
 

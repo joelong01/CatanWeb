@@ -19,12 +19,17 @@ namespace Catan3.Shared.ViewData
         public string Name { get; set; } = string.Empty;
 
         /// <summary>
-        /// Background color as hex string (e.g., "#0000FF")
+        /// Primary background color for gradient (e.g., "#0000FF")
         /// </summary>
-        public string BackgroundColor { get; set; } = "#FFFFFF";
+        public string PrimaryBackgroundColor { get; set; } = "#FFFFFF";
 
         /// <summary>
-        /// Foreground/accent color as hex string (e.g., "#FFFFFF")
+        /// Secondary background color for gradient (e.g., "#000080")
+        /// </summary>
+        public string SecondaryBackgroundColor { get; set; } = "#CCCCCC";
+
+        /// <summary>
+        /// Foreground/text color as hex string (e.g., "#FFFFFF")
         /// </summary>
         public string ForegroundColor { get; set; } = "#000000";
 
@@ -36,11 +41,12 @@ namespace Catan3.Shared.ViewData
 
         public PlayerData() { }
 
-        public PlayerData(string id, string name, string backgroundColor, string foregroundColor, string imageUri)
+        public PlayerData(string id, string name, string primaryBackgroundColor, string secondaryBackgroundColor, string foregroundColor, string imageUri)
         {
             Id = id;
             Name = name;
-            BackgroundColor = backgroundColor;
+            PrimaryBackgroundColor = primaryBackgroundColor;
+            SecondaryBackgroundColor = secondaryBackgroundColor;
             ForegroundColor = foregroundColor;
             ImageUri = imageUri;
         }

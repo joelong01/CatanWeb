@@ -1,15 +1,69 @@
 # Project Context for Claude Code
 
-## Current State (2025-09-14)
+## Current State (2025-11-23)
 
 The Catan3 project is a multi-platform Settlers of Catan game system with:
 
 - **Desktop App** (WinUI3) - Working reference implementation with service mode capability
 - **GameService** (ASP.NET Core) - SignalR + REST API backend
+- **WebUI** (Blazor WASM) - Browser-based client with SVG board rendering
 - **Shared Library** - Common models and game logic
 - **Test Suite** - Unified test infrastructure with modern ReplayTest approach
 
-## Latest Session (September 14, 2025 - Missing Stars Bug Fix & Architecture Consolidation)
+## Latest Session (November 23, 2025 - WebUI Player Colors & Database Design)
+
+### Player Color Gradient System
+
+Implemented player profile colors for WebUI gradient backgrounds:
+
+- **PlayerData Model Update**: Changed from single BackgroundColor to
+  PrimaryBackgroundColor, SecondaryBackgroundColor, ForegroundColor
+- **DatabaseSeeder Update**: Default players have proper gradient colors
+- **NewGame Page**: Player cards display with CSS linear-gradient backgrounds
+- **Game Page**: Left panel controls use current player's gradient colors
+- **Data Flow**: Game page lazy-loads PlayerProfiles, joins to GameModel by ID
+
+### Critical Bug Fix - Player ID Mismatch
+
+Fixed bug where game creation used wrong player identifiers:
+
+- **Root Cause**: NewGame.razor converted IDs to Names before sending to API
+- **Symptom**: Game created with "Adrian" but profiles stored as "adrian-001"
+- **Fix**: Send actual PlayerData IDs (e.g., "joe-001") not display names
+- **Debug Tool**: Added player click test to verify gradient colors
+
+### Database Design Documentation
+
+Created comprehensive database-design.md documenting:
+
+- **Tables**: Players, Images, GameSaves with full schema and indices
+- **PlayerData Document**: JSON structure with gradient color fields
+- **Data Management**: CRUD APIs, bootstrap seeding, maintenance tasks
+- **Statistics Architecture**: Game stats in GameModel vs lifetime stats in
+  PlayerData (future)
+- **CosmosDB Migration Path**: Document-style storage mirrors future cloud model
+
+### Harbor Rendering Complete
+
+Finished SVG harbor rendering in BoardSvgGenerator:
+
+- **Water Triangle Shape**: Base at hex edge vertices, apex at harbor center
+- **ViewBox Bounds**: Include harbor circle positions to prevent clipping
+- **Harbor Images**: Copied to GameService/wwwroot/images/harbors/
+
+### Developer Experience Improvements
+
+- **Auto-seeding**: Database seeds on GameService startup if empty (idempotent)
+- **webui.ps1 help**: New command showing all available commands and workflow
+- **Stop-Services**: Improved to wait for ports to be released
+
+### Build Status
+
+- **All projects build successfully** without errors
+- **Database auto-seeds** on first run
+- **WebUI functional** with player selection and game creation
+
+## Previous Session (September 14, 2025 - Missing Stars Bug Fix & Architecture Consolidation)
 
 ### Missing Stars on Buildings Bug Resolution
 
@@ -305,9 +359,13 @@ Standardized on ReplayTest methodology:
 
 ## Next Session Priorities
 
-1. **Fix Desktop UI test failures** - Default MainGameModel shows longer before new game loads, causing test failures. Need to prevent showing default MainPage game model and update tests for new game latency
-2. **Verify ServiceGame setting propagation works end-to-end** - Test that UI changes immediately affect game creation behavior without requiring app restart
-3. **Address TaskCompletionSource race condition** - Implement proper synchronization in SettingsRequestRecipient when multiple UpdateSettings messages are sent
+1. **Verify gradient colors display** - After ID mismatch fix, confirm left panel
+   controls show current player's gradient colors
+2. **Fix Blazor hot reload** - Currently requires stop/clean/run cycle for changes
+3. **Add player avatars to Game page** - Show player images in the player list
+4. **Implement Game page controls** - Roll entry, purchase buttons, undo/redo
+5. **Fix Desktop UI test failures** - Default MainGameModel shows longer before
+   new game loads, causing test failures
 
 ## Rules & Patterns
 

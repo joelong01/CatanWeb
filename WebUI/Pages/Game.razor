@@ -2,9 +2,11 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @using Catan3.Shared.Models
 @using Catan3.Shared.Utility
+@using Catan3.Shared.ViewData
 @using Catan3.WebUI.Services
 @inject GameServiceConfig Config
 @inject GameCommandProxy CommandProxy
+@inject HttpClient Http
 @implements IAsyncDisposable
 
 <PageTitle>Catan Game</PageTitle>
@@ -30,8 +32,8 @@
         <!-- LEFT PANEL -->
         <div class="left-panel">
             <!-- Game Controls (Undo/Next/Redo) -->
-            <div class="panel-section game-controls" style="background: #FF7F50;">
-                <div class="panel-label">Game Controls</div>
+            <div class="panel-section game-controls" style="@GetCurrentPlayerGradient()">
+                <div class="panel-label" style="color: @GetCurrentPlayerForeground()">Game Controls</div>
                 <div class="panel-content">
                     <div class="control-buttons">
                         <button class="game-btn" disabled="@(!GameModel.ActionFlags.UndoEnabled)">
@@ -47,13 +49,13 @@
                             <span class="btn-label">Redo</span>
                         </button>
                     </div>
-                    <div class="state-message">@GetStateMessage()</div>
+                    <div class="state-message" style="color: @GetCurrentPlayerForeground()">@GetStateMessage()</div>
                 </div>
             </div>
 
             <!-- Purchase Controls -->
-            <div class="panel-section purchase-controls" style="background: #FFD700;">
-                <div class="panel-label">Purchase Controls</div>
+            <div class="panel-section purchase-controls" style="@GetCurrentPlayerGradient()">
+                <div class="panel-label" style="color: @GetCurrentPlayerForeground()">Purchase Controls</div>
                 <div class="panel-content">
                     <div class="purchase-grid">
                         <div class="purchase-card">Road</div>
@@ -65,8 +67,8 @@
             </div>
 
             <!-- Roll Entry -->
-            <div class="panel-section roll-entry" style="background: #FF6347;">
-                <div class="panel-label">Roll Entry (2-12)</div>
+            <div class="panel-section roll-entry" style="@GetCurrentPlayerGradient()">
+                <div class="panel-label" style="color: @GetCurrentPlayerForeground()">Roll Entry (2-12)</div>
                 <div class="panel-content">
                     <div class="roll-grid">
                         @for (int i = 2; i <= 12; i++)
@@ -84,11 +86,11 @@
             <!-- Board Measurements (only during PickingBoard) -->
             @if (GameModel.GameState == GameState.PickingBoard)
             {
-                <div class="panel-section board-measurements" style="background: #FFA500;">
-                    <div class="panel-label">Board Measurements</div>
+                <div class="panel-section board-measurements" style="@GetCurrentPlayerGradient()">
+                    <div class="panel-label" style="color: @GetCurrentPlayerForeground()">Board Measurements</div>
                     <div class="panel-content">
                         <button class="btn btn-sm" @onclick="OnShuffleClick">Shuffle</button>
-                        <div class="star-counts">Star balance info here</div>
+                        <div class="star-counts" style="color: @GetCurrentPlayerForeground()">Star balance info here</div>
                     </div>
                 </div>
             }
@@ -96,7 +98,7 @@
 
         <!-- CENTER PANEL - Game Board -->
         <div class="center-panel">
-            <div class="panel-section game-board" style="background: #1E90FF;">
+            <div class="panel-section game-board" style="background: #000000;">
                 <div class="board-container">
                     <object data="@($"{Config.BaseUrl}/api/game/{GameId}/board.svg?v={GameModel.GameHash}")"
                             type="image/svg+xml"
@@ -129,7 +131,9 @@
                 <div class="panel-content">
                     @foreach (var player in GameModel.Players)
                     {
-                        <div class="player-row @(player.Id == GameModel.CurrentPlayerId ? "current-player" : "")">
+                        <div class="player-row @(player.Id == GameModel.CurrentPlayerId ? "current-player" : "") @(player.Id == TestOverridePlayerId ? "test-selected" : "")"
+                             @onclick="() => OnPlayerClick(player.Id)"
+                             style="cursor: pointer;">
                             <div class="player-avatar">👤</div>
                             <div class="player-info">
                                 <span class="player-name">@player.Name</span>
@@ -138,6 +142,10 @@
                             @if (player.Id == GameModel.CurrentPlayerId)
                             {
                                 <span class="current-indicator">◀</span>
+                            }
+                            @if (player.Id == TestOverridePlayerId)
+                            {
+                                <span class="test-indicator">🎨</span>
                             }
                         </div>
                     }
@@ -393,6 +401,19 @@
         font-size: 12px;
     }
 
+    .player-row.test-selected {
+        border: 2px solid #FFD700;
+        background: rgba(255,215,0,0.3);
+    }
+
+    .test-indicator {
+        font-size: 12px;
+    }
+
+    .player-row:hover {
+        background: rgba(255,255,255,0.3);
+    }
+
     /* Loading/Error overlays */
     .loading-overlay, .error-overlay {
         grid-column: 1 / -1;
@@ -414,6 +435,8 @@
 
     private HubConnection? _hubConnection;
     private GameModel? GameModel { get; set; }
+    private Dictionary<string, PlayerData> PlayerProfiles { get; set; } = new();
+    private string? TestOverridePlayerId { get; set; } // For testing: click player to see their colors
     private bool IsConnecting { get; set; } = true;
     private string? ErrorMessage { get; set; }
     private string? CommandError { get; set; }
@@ -421,6 +444,77 @@
     protected override async Task OnInitializedAsync()
     {
         await ConnectToGameAsync();
+    }
+
+    private async Task EnsurePlayerProfilesLoadedAsync()
+    {
+        // Check if we need to load profiles for current game players
+        if (GameModel == null) return;
+
+        var missingProfiles = GameModel.Players
+            .Where(p => !PlayerProfiles.ContainsKey(p.Id))
+            .Select(p => p.Id)
+            .ToList();
+
+        if (missingProfiles.Count == 0) return;
+
+        try
+        {
+            var response = await Http.GetFromJsonAsync<PlayersResponse>($"{Config.BaseUrl}/api/players");
+            if (response?.Players != null)
+            {
+                foreach (var player in response.Players)
+                {
+                    PlayerProfiles[player.Id] = player;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load player profiles: {ex.Message}");
+        }
+    }
+
+    private string GetCurrentPlayerGradient()
+    {
+        if (GameModel == null) return "background: #666;";
+
+        // Use test override if set, otherwise use current player
+        var playerId = TestOverridePlayerId ?? GameModel.CurrentPlayerId;
+
+        if (PlayerProfiles.TryGetValue(playerId, out var player))
+        {
+            return $"background: linear-gradient(135deg, {player.PrimaryBackgroundColor}, {player.SecondaryBackgroundColor});";
+        }
+
+        return "background: #666;";
+    }
+
+    private string GetCurrentPlayerForeground()
+    {
+        if (GameModel == null) return "#FFFFFF";
+
+        // Use test override if set, otherwise use current player
+        var playerId = TestOverridePlayerId ?? GameModel.CurrentPlayerId;
+
+        if (PlayerProfiles.TryGetValue(playerId, out var player))
+        {
+            return player.ForegroundColor;
+        }
+
+        return "#FFFFFF";
+    }
+
+    private void OnPlayerClick(string playerId)
+    {
+        // Toggle: if clicking same player, clear override; otherwise set it
+        TestOverridePlayerId = (TestOverridePlayerId == playerId) ? null : playerId;
+        StateHasChanged();
+    }
+
+    private class PlayersResponse
+    {
+        public List<PlayerData> Players { get; set; } = new();
     }
 
     private async Task ConnectToGameAsync()
@@ -456,7 +550,11 @@
     private void OnGameStateUpdated(GameModel gameModel)
     {
         GameModel = gameModel;
-        InvokeAsync(StateHasChanged);
+        InvokeAsync(async () =>
+        {
+            await EnsurePlayerProfilesLoadedAsync();
+            StateHasChanged();
+        });
     }
 
     private async Task RetryConnection()
@@ -530,7 +628,17 @@
     private string GetDebugInfo()
     {
         if (GameModel == null) return "No game data";
-        return $"State: {GameModel.GameState}\nPlayers: {GameModel.Players.Count}\nTiles: {GameModel.Tiles.Count}";
+
+        var profileIds = string.Join(", ", PlayerProfiles.Keys);
+        var gamePlayerIds = string.Join(", ", GameModel.Players.Select(p => p.Id));
+        var currentId = TestOverridePlayerId ?? GameModel.CurrentPlayerId;
+        var hasProfile = PlayerProfiles.ContainsKey(currentId);
+
+        return $"State: {GameModel.GameState}\n" +
+               $"Game Players: {gamePlayerIds}\n" +
+               $"Profiles Loaded: {PlayerProfiles.Count} [{profileIds}]\n" +
+               $"Current/Override: {currentId}\n" +
+               $"Has Profile: {hasProfile}";
     }
 
     public async ValueTask DisposeAsync()

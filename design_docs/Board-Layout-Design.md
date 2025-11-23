@@ -517,22 +517,116 @@ Settlements are circles at hex vertices:
 
 ### Harbor Rendering
 
+Harbors are positioned on hex edges, showing trading ports with image patterns.
+
+#### Harbor Data Model
+
+From `HarborModel.cs`:
+- **HarborKey**: Contains HexCoordinates, HarborType, and Side (HexSide)
+- **HarborType enum**: `Sheep, Wood, Ore, Wheat, Brick, ThreeForOne, None`
+
+#### Harbor Positioning
+
+Harbors are positioned at the midpoint of hex edges, offset outward to sit "on" the edge:
+
+```csharp
+// Get vertex position for the side using PointyHexPoints
+WinPoint vertexPoint = pointDictionary[side];
+
+// Center harbor on vertex, then offset to edge
+top += vertexPoint.Y - size / 2.0;
+left += vertexPoint.X - size / 2.0;
+
+// Edge offset calculations
+double edgeOffset = size / 2.0;  // Harbor's radius
+double horizontalOffset = edgeOffset * Math.Sqrt(3) / 2;  // sqrt(3)/2
+double verticalOffset = edgeOffset * 0.5;  // 1/2
+
+// Adjust based on side
+switch (side) {
+    case HexSide.Top:        top -= edgeOffset; break;
+    case HexSide.TopRight:   left += horizontalOffset; top -= verticalOffset; break;
+    case HexSide.BottomRight: left += horizontalOffset; top += verticalOffset; break;
+    case HexSide.Bottom:     top += edgeOffset; break;
+    case HexSide.BottomLeft: left -= horizontalOffset; top += verticalOffset; break;
+    case HexSide.TopLeft:    left -= horizontalOffset; top -= verticalOffset; break;
+}
+```
+
+#### Visual Elements
+
+Each harbor consists of:
+
+1. **Water background triangle (HarborPoints)**: Connects harbor center to the two adjacent hex vertices
+2. **Harbor circle**: Ellipse with harbor type image
+   - Size = BuildingSize (40 in Desktop app)
+   - Scaled 1.5x for visibility
+   - Translated to center properly
+
+#### Harbor Images
+
+| HarborType | Image File | Trade Rate |
+|------------|------------|------------|
+| Brick | `2 for 1 brick.png` | 2:1 Brick |
+| Ore | `2 for 1 ore.png` | 2:1 Ore |
+| Sheep | `2 for 1 sheep.png` | 2:1 Sheep |
+| Wheat | `2 for 1 wheat.png` | 2:1 Wheat |
+| Wood | `2 for 1 wood.png` | 2:1 Wood |
+| ThreeForOne | `3 for 1.png` | 3:1 Any |
+| None | `water.png` | (No harbor) |
+
+#### SVG Implementation
+
 ```xml
 <defs>
+  <!-- Harbor image patterns -->
   <pattern id="harbor-brick" patternUnits="objectBoundingBox" width="1" height="1">
-    <image href="/images/harbors/2-for-1-brick.png" width="40" height="40"/>
+    <image href="/images/harbors/2-for-1-brick.png" width="60" height="60"
+           preserveAspectRatio="xMidYMid slice"/>
   </pattern>
+  <!-- ... other harbor types ... -->
 </defs>
 
-<!-- Harbor at vertex, rotated to face sea -->
-<g transform="translate(vx, vy) rotate(angle)">
-  <circle r="20" fill="url(#harbor-brick)"/>
+<!-- For each harbor -->
+<g class="harbor">
+  <!-- Water background triangle -->
+  <polygon points="cx,cy v1x,v1y v2x,v2y" fill="#3498db" opacity="0.7"/>
+
+  <!-- Harbor circle with image -->
+  <circle cx="hx" cy="hy" r="30" fill="url(#harbor-brick)"
+          stroke="#333" stroke-width="1"/>
 </g>
 ```
 
-**Harbor Direction:**
-- Rotation angle based on which edge faces the sea
-- 0°, 60°, 120°, 180°, 240°, 300° for the 6 possible directions
+#### Harbor Position by Side
+
+For a flat-top hex, harbors on each side face outward:
+
+```
+         TopLeft    Top    TopRight
+              \      |      /
+               \     |     /
+                +----+----+
+               /           \
+      Left    |    Hex     |   Right (not a side)
+               \           /
+                +----+----+
+               /     |     \
+              /      |      \
+      BottomLeft  Bottom  BottomRight
+```
+
+**Edge-to-vertex mapping:**
+- Top: TopLeft ↔ TopRight vertices
+- TopRight: TopRight ↔ Right vertices
+- BottomRight: Right ↔ BottomRight vertices
+- Bottom: BottomRight ↔ BottomLeft vertices
+- BottomLeft: BottomLeft ↔ Left vertices
+- TopLeft: Left ↔ TopLeft vertices
+
+#### Desktop Implementation Reference
+
+See `DesktopApp/Harbors/HarborViewModel.cs` for positioning logic and `HarborCtrl.xaml` for visual structure.
 
 ## Game State Visualization
 

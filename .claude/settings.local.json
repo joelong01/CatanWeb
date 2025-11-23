@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npx markdownlint-cli2:*)",
       "Bash(dir D:GitHubCatanDesktopApp /s /b 2)",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)"
     ],
     "Read": "always",
     "Search": "always",

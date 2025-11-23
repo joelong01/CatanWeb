@@ -19,16 +19,16 @@ public static class DatabaseSeeder
 
         Console.WriteLine($"Seeding database from: {imagesSourcePath}");
 
-        // Default players with their colors
+        // Default players with their colors (primary, secondary for gradient, foreground)
         var players = new[]
         {
-            new PlayerData("joe-001", "Joe", "#0000FF", "#FFFFFF", "/api/images/joe-001"),
-            new PlayerData("dodgy-001", "Dodgy", "#FF0000", "#FFFFFF", "/api/images/dodgy-001"),
-            new PlayerData("doug-001", "Doug", "#008000", "#FFFFFF", "/api/images/doug-001"),
-            new PlayerData("ryan-001", "Ryan", "#A9A9A9", "#FFFFFF", "/api/images/ryan-001"),
-            new PlayerData("adrian-001", "Adrian", "#800080", "#FFFFFF", "/api/images/adrian-001"),
-            new PlayerData("chris-001", "Chris", "#000000", "#FFFFFF", "/api/images/chris-001"),
-            new PlayerData("guest-001", "Guest", "#FFA500", "#000000", "/api/images/guest-001")
+            new PlayerData("joe-001", "Joe", "#0000FF", "#000080", "#FFFFFF", "/api/images/joe-001"),
+            new PlayerData("dodgy-001", "Dodgy", "#FF0000", "#800000", "#FFFFFF", "/api/images/dodgy-001"),
+            new PlayerData("doug-001", "Doug", "#008000", "#004000", "#FFFFFF", "/api/images/doug-001"),
+            new PlayerData("ryan-001", "Ryan", "#A9A9A9", "#696969", "#FFFFFF", "/api/images/ryan-001"),
+            new PlayerData("adrian-001", "Adrian", "#800080", "#400040", "#FFFFFF", "/api/images/adrian-001"),
+            new PlayerData("chris-001", "Chris", "#000000", "#333333", "#FFFFFF", "/api/images/chris-001"),
+            new PlayerData("guest-001", "Guest", "#FFA500", "#CC8400", "#000000", "/api/images/guest-001")
         };
 
         // Map player IDs to image file names
