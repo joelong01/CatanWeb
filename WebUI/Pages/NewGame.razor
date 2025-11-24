@@ -77,6 +77,10 @@
 </div>
 
 @code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
     private List<PlayerData> Players { get; set; } = new();
     private HashSet<string> SelectedPlayers { get; set; } = new();
     private GameType SelectedGameType { get; set; } = GameType.Expansion;
@@ -148,7 +152,14 @@
 
     private void OnCancel()
     {
-        Navigation.NavigateTo("/");
+        Console.WriteLine($"OnCancel - ReturnUrl parameter: '{ReturnUrl}'");
+        Console.WriteLine($"OnCancel - ReturnUrl is null: {ReturnUrl == null}");
+        Console.WriteLine($"OnCancel - ReturnUrl is empty: {string.IsNullOrEmpty(ReturnUrl)}");
+        
+        // If we have a return URL, go back there, otherwise go to root
+        var destination = ReturnUrl ?? "/";
+        Console.WriteLine($"OnCancel - Navigating to: {destination}");
+        Navigation.NavigateTo(destination);
     }
 
     private async Task OnStart()

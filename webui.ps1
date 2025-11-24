@@ -17,7 +17,7 @@
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("build", "run", "debug", "clean", "stop", "update", "help")]
+    [ValidateSet("build", "run", "debug", "clean", "stop", "restart", "update", "help")]
     [string]$Verb = "run"
 )
 
@@ -28,7 +28,7 @@ $WebUIPort = 5296
 $GameServiceUrl = "http://localhost:$GameServicePort"
 $WebUIUrl = "http://localhost:$WebUIPort"
 $DatabasePath = Join-Path $PSScriptRoot "Catan3.GameService\Data\catan.db"
-$PlayerImagesSource = Join-Path $PSScriptRoot "DesktopApp\Assets\DefaultPlayers"
+$PidFile = Join-Path $PSScriptRoot ".webui-pids.json"
 
 function Test-PortInUse {
     param([int]$Port)
@@ -58,13 +58,38 @@ function Wait-ForService {
     return $false
 }
 
+function Save-Pids {
+    param(
+        [int]$GameServicePid = 0,
+        [int]$WebUIPid = 0
+    )
+
+    $pids = @{}
+    if (Test-Path $PidFile) {
+        $pids = Get-Content $PidFile | ConvertFrom-Json -AsHashtable
+    }
+
+    if ($GameServicePid -gt 0) { $pids.GameService = $GameServicePid }
+    if ($WebUIPid -gt 0) { $pids.WebUI = $WebUIPid }
+
+    $pids | ConvertTo-Json | Set-Content $PidFile
+}
+
+function Get-SavedPids {
+    if (Test-Path $PidFile) {
+        return Get-Content $PidFile | ConvertFrom-Json -AsHashtable
+    }
+    return @{}
+}
+
 function Start-GameService {
     Write-Host "Starting GameService on port $GameServicePort..." -ForegroundColor Cyan
 
     $gameServicePath = Join-Path $PSScriptRoot "Catan3.GameService"
 
-    # Start GameService in a new window
-    Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$gameServicePath'; dotnet run" -WindowStyle Normal
+    # Start GameService in a new window and track the process
+    $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$gameServicePath'; dotnet run" -WindowStyle Normal -PassThru
+    Save-Pids -GameServicePid $process.Id
 
     Write-Host "Waiting for GameService to be ready..." -ForegroundColor Yellow
     if (Wait-ForService -Url "$GameServiceUrl/health" -TimeoutSeconds 30) {
@@ -82,13 +107,17 @@ function Start-WebUI {
 
     $webUIPath = Join-Path $PSScriptRoot "WebUI"
 
-    # Start WebUI
-    Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$webUIPath'; dotnet run" -WindowStyle Normal
+    # Start WebUI with hot reload using dotnet watch and track the process
+    $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$webUIPath'; dotnet watch run" -WindowStyle Normal -PassThru
+    Save-Pids -WebUIPid $process.Id
 
     Write-Host "Waiting for WebUI to be ready..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 3  # Give it a moment to start
-
-    Write-Host "WebUI is starting at $WebUIUrl (with hot reload)" -ForegroundColor Green
+    if (Wait-ForService -Url $WebUIUrl -TimeoutSeconds 30) {
+        Write-Host "WebUI is running at $WebUIUrl (with hot reload)" -ForegroundColor Green
+    }
+    else {
+        Write-Host "Warning: WebUI may not be fully ready" -ForegroundColor Yellow
+    }
 }
 
 function Initialize-Database {
@@ -151,7 +180,24 @@ function Clear-Database {
 function Stop-Services {
     Write-Host "Stopping services..." -ForegroundColor Yellow
 
-    # Kill processes on GameService port
+    # First try to kill tracked PowerShell processes (closes windows properly)
+    $savedPids = Get-SavedPids
+    if ($savedPids.GameService) {
+        $proc = Get-Process -Id $savedPids.GameService -ErrorAction SilentlyContinue
+        if ($proc) {
+            Stop-Process -Id $savedPids.GameService -Force -ErrorAction SilentlyContinue
+            Write-Host "  Killed GameService window (PID $($savedPids.GameService))" -ForegroundColor Gray
+        }
+    }
+    if ($savedPids.WebUI) {
+        $proc = Get-Process -Id $savedPids.WebUI -ErrorAction SilentlyContinue
+        if ($proc) {
+            Stop-Process -Id $savedPids.WebUI -Force -ErrorAction SilentlyContinue
+            Write-Host "  Killed WebUI window (PID $($savedPids.WebUI))" -ForegroundColor Gray
+        }
+    }
+
+    # Fallback: kill any remaining processes on ports
     $gameServicePids = (Get-NetTCPConnection -LocalPort $GameServicePort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
     if ($gameServicePids) {
         foreach ($processId in $gameServicePids) {
@@ -160,13 +206,17 @@ function Stop-Services {
         }
     }
 
-    # Kill processes on WebUI port
     $webUIPids = (Get-NetTCPConnection -LocalPort $WebUIPort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
     if ($webUIPids) {
         foreach ($processId in $webUIPids) {
             Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
             Write-Host "  Killed process $processId (WebUI port)" -ForegroundColor Gray
         }
+    }
+
+    # Clean up PID file
+    if (Test-Path $PidFile) {
+        Remove-Item $PidFile -Force
     }
 
     # Wait for ports to be released
@@ -292,28 +342,66 @@ switch ($Verb) {
         Stop-Services
     }
 
+    "restart" {
+        Write-Host "Restarting services..." -ForegroundColor Cyan
+        Stop-Services
+        Start-Sleep -Milliseconds 500
+
+        # Ensure database is initialized
+        if (-not (Initialize-Database)) {
+            Write-Host "Failed to initialize database. Cannot start services." -ForegroundColor Red
+            exit 1
+        }
+
+        Start-GameService
+        Start-WebUI
+
+        Write-Host ""
+        Write-Host "Services restarted:" -ForegroundColor Green
+        Write-Host "  GameService: $GameServiceUrl" -ForegroundColor White
+        Write-Host "  WebUI:       $WebUIUrl" -ForegroundColor White
+    }
+
     "update" {
-        Write-Host "Rebuilding WebUI..." -ForegroundColor Cyan
+        Write-Host "Rebuilding WebUI and GameService..." -ForegroundColor Cyan
+
+        # Build GameService first
+        $gameServicePath = Join-Path $PSScriptRoot "Catan3.GameService"
+        & dotnet build $gameServicePath --verbosity quiet
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "GameService build failed!" -ForegroundColor Red
+            exit 1
+        }
+        Write-Host "GameService rebuilt." -ForegroundColor Green
+
+        # Build WebUI
         $webUIPath = Join-Path $PSScriptRoot "WebUI"
         & dotnet build $webUIPath --verbosity quiet
         if ($LASTEXITCODE -ne 0) {
             Write-Host "WebUI build failed!" -ForegroundColor Red
             exit 1
         }
+        Write-Host "WebUI rebuilt." -ForegroundColor Green
 
-        # Restart WebUI server if running to serve fresh files
-        if (Test-PortInUse -Port $WebUIPort) {
-            Write-Host "Restarting WebUI server..." -ForegroundColor Yellow
-            $webUIPids = (Get-NetTCPConnection -LocalPort $WebUIPort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
-            foreach ($processId in $webUIPids) {
-                Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
-            }
+        # Restart both services if running
+        $gameRunning = Test-PortInUse -Port $GameServicePort
+        $webRunning = Test-PortInUse -Port $WebUIPort
+
+        if ($gameRunning -or $webRunning) {
+            Write-Host "Restarting services..." -ForegroundColor Yellow
+            Stop-Services
             Start-Sleep -Milliseconds 500
-            Start-WebUI
-            Write-Host "WebUI rebuilt and restarted! Refresh browser to load changes." -ForegroundColor Green
+
+            if ($gameRunning) {
+                Start-GameService
+            }
+            if ($webRunning) {
+                Start-WebUI
+            }
+            Write-Host "Services rebuilt and restarted! Refresh browser to load changes." -ForegroundColor Green
         }
         else {
-            Write-Host "WebUI rebuilt successfully! Run './webui.ps1 run' to start." -ForegroundColor Green
+            Write-Host "Projects rebuilt successfully! Run './webui.ps1 run' to start." -ForegroundColor Green
         }
     }
 
@@ -325,17 +413,19 @@ switch ($Verb) {
         Write-Host "Commands:" -ForegroundColor Yellow
         Write-Host "  ./webui.ps1 run      - Start GameService + WebUI, launch browser"
         Write-Host "  ./webui.ps1 stop     - Stop running services"
-        Write-Host "  ./webui.ps1 update   - Rebuild WebUI and restart (for code changes)"
+        Write-Host "  ./webui.ps1 restart  - Stop and restart services"
+        Write-Host "  ./webui.ps1 update   - Rebuild projects and restart services"
         Write-Host "  ./webui.ps1 build    - Build all projects (full solution)"
         Write-Host "  ./webui.ps1 clean    - Stop services, delete database, clean build"
         Write-Host "  ./webui.ps1 debug    - Instructions for VS Code debugging"
         Write-Host "  ./webui.ps1 help     - Show this help"
         Write-Host ""
         Write-Host "Typical workflow:" -ForegroundColor Yellow
-        Write-Host "  1. ./webui.ps1 run           - Start services"
-        Write-Host "  2. Make code changes"
-        Write-Host "  3. ./webui.ps1 update        - Rebuild and restart WebUI"
-        Write-Host "  4. Refresh browser"
+        Write-Host "  1. ./webui.ps1 run           - Start services (hot reload enabled)"
+        Write-Host "  2. Make code changes         - Browser auto-refreshes on save"
+        Write-Host ""
+        Write-Host "  If hot reload fails (e.g., rude edits):"
+        Write-Host "  3. ./webui.ps1 update        - Rebuild and restart services"
         Write-Host ""
         Write-Host "URLs:" -ForegroundColor Yellow
         Write-Host "  GameService: $GameServiceUrl"

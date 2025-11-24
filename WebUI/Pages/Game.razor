@@ -98,7 +98,7 @@
 
         <!-- CENTER PANEL - Game Board -->
         <div class="center-panel">
-            <div class="panel-section game-board" style="background: #000000;">
+            <div class="panel-section game-board">
                 <div class="board-container">
                     <object data="@($"{Config.BaseUrl}/api/game/{GameId}/board.svg?v={GameModel.GameHash}")"
                             type="image/svg+xml"
@@ -112,7 +112,7 @@
         <!-- RIGHT PANEL -->
         <div class="right-panel">
             <!-- Tracked Resources -->
-            <div class="panel-section tracked-resources" style="background: #3CB371;">
+            <div class="panel-section tracked-resources">
                 <div class="panel-label">Tracked Resources</div>
                 <div class="panel-content">
                     <div class="resource-cards">
@@ -126,7 +126,7 @@
             </div>
 
             <!-- Player List -->
-            <div class="panel-section player-list" style="background: #6A5ACD;">
+            <div class="panel-section player-list">
                 <div class="panel-label">Player List & Stats</div>
                 <div class="panel-content">
                     @foreach (var player in GameModel.Players)
@@ -153,10 +153,10 @@
             </div>
 
             <!-- Debug Panel -->
-            <div class="panel-section debug-panel" style="background: #444;">
+            <div class="panel-section debug-panel">
                 <details>
-                    <summary style="color: white; cursor: pointer;">Debug Info</summary>
-                    <pre style="color: #aaa; font-size: 10px; margin: 5px 0;">@GetDebugInfo()</pre>
+                    <summary style="cursor: pointer;">Debug Info</summary>
+                    <pre style="font-size: 10px; margin: 5px 0;">@GetDebugInfo()</pre>
                 </details>
             </div>
         </div>
@@ -175,9 +175,10 @@
         display: grid;
         grid-template-columns: 280px 1fr 280px;
         gap: 10px;
-        height: calc(100vh - 60px);
+        height: 100vh;
         padding: 10px;
-        background: #222;
+        background: var(--game-bg-primary);
+        box-sizing: border-box;
     }
 
     .left-panel, .right-panel {
@@ -185,6 +186,7 @@
         flex-direction: column;
         gap: 10px;
         overflow-y: auto;
+        background: #000;
     }
 
     .center-panel {
@@ -192,6 +194,7 @@
         flex-direction: column;
         overflow: hidden;
         min-height: 0; /* Allow flex item to shrink below content size */
+        background: #000;
     }
 
     .panel-section {
@@ -206,7 +209,7 @@
         font-size: 12px;
         text-align: center;
         margin-bottom: 8px;
-        color: #333;
+        color: var(--text-secondary);
         text-transform: uppercase;
     }
 
@@ -236,8 +239,8 @@
         padding: 8px 12px;
         border: none;
         border-radius: 4px;
-        background: rgba(0,0,0,0.3);
-        color: white;
+        background: var(--overlay-dark);
+        color: var(--text-primary);
         cursor: pointer;
     }
 
@@ -257,7 +260,6 @@
     .state-message {
         font-size: 11px;
         text-align: center;
-        color: #333;
     }
 
     /* Purchase Controls */
@@ -272,8 +274,8 @@
     }
 
     .purchase-card {
-        background: rgba(0,0,0,0.3);
-        color: white;
+        background: var(--overlay-dark);
+        color: var(--text-primary);
         padding: 15px 10px;
         border-radius: 4px;
         text-align: center;
@@ -292,8 +294,8 @@
     }
 
     .roll-button {
-        background: rgba(0,0,0,0.5);
-        color: white;
+        background: var(--overlay-darker);
+        color: var(--text-primary);
         padding: 8px;
         border-radius: 50%;
         width: 50px;
@@ -306,7 +308,7 @@
     }
 
     .roll-button.high-prob {
-        color: #ff4444;
+        color: var(--accent-error);
     }
 
     .roll-number {
@@ -349,7 +351,7 @@
     }
 
     .resource-card {
-        background: rgba(0,0,0,0.3);
+        background: var(--overlay-dark);
         padding: 10px;
         border-radius: 4px;
         font-size: 20px;
@@ -361,20 +363,25 @@
         min-height: 200px;
     }
 
+    .player-list .panel-content {
+        justify-content: flex-start;
+        align-items: stretch;
+    }
+
     .player-row {
         display: flex;
         align-items: center;
         gap: 10px;
         padding: 8px;
-        background: rgba(0,0,0,0.2);
+        background: var(--overlay-dark);
         border-radius: 4px;
         margin-bottom: 5px;
-        color: white;
+        color: var(--text-primary);
     }
 
     .player-row.current-player {
-        background: rgba(255,255,255,0.2);
-        border: 1px solid white;
+        background: var(--overlay-lighter);
+        border: 1px solid var(--text-primary);
     }
 
     .player-avatar {
@@ -402,8 +409,8 @@
     }
 
     .player-row.test-selected {
-        border: 2px solid #FFD700;
-        background: rgba(255,215,0,0.3);
+        border: 2px solid var(--accent-success);
+        background: rgba(76, 175, 80, 0.3);
     }
 
     .test-indicator {
@@ -411,7 +418,24 @@
     }
 
     .player-row:hover {
-        background: rgba(255,255,255,0.3);
+        background: var(--overlay-lighter);
+    }
+
+    /* Panel-specific backgrounds */
+    .game-board {
+        background: #000 !important;
+    }
+
+    .debug-panel {
+        background: var(--game-bg-secondary) !important;
+    }
+
+    .debug-panel summary {
+        color: var(--text-primary);
+    }
+
+    .debug-panel pre {
+        color: var(--text-muted);
     }
 
     /* Loading/Error overlays */

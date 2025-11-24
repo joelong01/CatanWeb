@@ -1,5 +1,36 @@
+:root {
+    /* Game Background Colors */
+    --game-bg-primary: #222;
+    --game-bg-secondary: #333;
+    --game-bg-panel: #2a2a2a;
+    
+    /* Text Colors */
+    --text-primary: #eee;
+    --text-secondary: #ccc;
+    --text-muted: #999;
+    
+    /* Accent Colors */
+    --accent-primary: #007bff;
+    --accent-hover: #0056b3;
+    --accent-success: #4CAF50;
+    --accent-error: #f44336;
+    
+    /* Overlay/Transparent Backgrounds */
+    --overlay-dark: rgba(0, 0, 0, 0.6);
+    --overlay-darker: rgba(0, 0, 0, 0.8);
+    --overlay-light: rgba(255, 255, 255, 0.1);
+    --overlay-lighter: rgba(255, 255, 255, 0.2);
+    
+    /* Icon Styles */
+    --icon-font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol', sans-serif;
+    --icon-font-size: 20px;
+}
+
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: var(--game-bg-primary);
+    margin: 0;
+    padding: 0;
 }
 
 h1:focus {
@@ -8,6 +39,16 @@ h1:focus {
 
 a, .btn-link {
     color: #0071c1;
+}
+
+a.nav-menu-item {
+    text-decoration: none !important;
+}
+
+a.nav-menu-item:hover,
+a.nav-menu-item:active,
+a.nav-menu-item:visited {
+    text-decoration: none !important;
 }
 
 .btn-primary {

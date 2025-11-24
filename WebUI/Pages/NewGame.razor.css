@@ -2,16 +2,18 @@
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
+    background: var(--game-bg-primary);
+    min-height: 100vh;
 }
 
 h1 {
     text-align: center;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 30px;
 }
 
 h2 {
-    color: #555;
+    color: var(--text-secondary);
     margin-bottom: 15px;
 }
 
@@ -40,7 +42,7 @@ h2 {
 }
 
 .player-card.selected {
-    box-shadow: 0 0 0 3px #007bff, 0 4px 12px rgba(0, 123, 255, 0.3);
+    box-shadow: 0 0 0 3px var(--accent-primary), 0 4px 12px rgba(0, 123, 255, 0.3);
 }
 
 .player-avatar {
@@ -68,7 +70,7 @@ h2 {
     position: absolute;
     top: 5px;
     right: 5px;
-    background-color: #007bff;
+    background-color: var(--accent-primary);
     color: white;
     width: 24px;
     height: 24px;
@@ -82,7 +84,7 @@ h2 {
 .options-section {
     margin-bottom: 30px;
     padding: 20px;
-    background-color: #f8f9fa;
+    background-color: var(--game-bg-secondary);
     border-radius: 8px;
 }
 
@@ -94,7 +96,7 @@ h2 {
 
 .option-row label {
     font-weight: bold;
-    color: #333;
+    color: var(--text-primary);
     min-width: 100px;
 }
 
@@ -124,12 +126,12 @@ h2 {
 }
 
 .btn-primary {
-    background-color: #007bff;
+    background-color: var(--accent-primary);
     color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-    background-color: #0056b3;
+    background-color: var(--accent-hover);
 }
 
 .btn-primary:disabled {
@@ -148,9 +150,26 @@ h2 {
 
 .selected-info {
     text-align: center;
-    color: #666;
+    color: var(--text-secondary);
     font-style: italic;
     padding: 10px;
-    background-color: #e9ecef;
+    background-color: var(--game-bg-secondary);
     border-radius: 4px;
+}
+
+.loading, .error {
+    text-align: center;
+    padding: 20px;
+    border-radius: 8px;
+    font-size: 18px;
+}
+
+.loading {
+    color: var(--accent-success);
+    background-color: var(--game-bg-secondary);
+}
+
+.error {
+    color: var(--accent-error);
+    background-color: var(--game-bg-secondary);
 }

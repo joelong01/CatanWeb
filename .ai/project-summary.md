@@ -1,4 +1,4 @@
-# Project Context for Claude Code
+# Catan Project Summary
 
 ## Current State (2025-11-23)
 
@@ -9,6 +9,33 @@ The Catan3 project is a multi-platform Settlers of Catan game system with:
 - **WebUI** (Blazor WASM) - Browser-based client with SVG board rendering
 - **Shared Library** - Common models and game logic
 - **Test Suite** - Unified test infrastructure with modern ReplayTest approach
+
+## Latest Session (November 24, 2025 - Settings Seeding & Layout Consolidation)
+
+### Environment Default Handling
+
+- `DesktopApp/Services/SettingsService.cs` now defers seeding the environment defaults file until user settings are merged, so initial exports include customized values while still honoring the "write once" contract.
+- Added guards to remember the external defaults path and emit formatted JSON only when the file is missing, keeping existing configurations untouched.
+
+### WebUI Navigation and Styling Updates
+
+- Refined layout components (`WebUI/Layout/MainLayout.razor`, `NavMenu.razor`, and scoped CSS) to stabilize navigation styling and align spacing with the Desktop reference.
+- Adjusted `WebUI/Pages/NewGame.razor`, `Game.razor`, and related styles to follow CSS variable usage, improve responsive behavior, and prep for board measurement integration.
+- Expanded `WebUI/wwwroot/css/app.css` with supporting variables and utility classes consistent with project theming rules.
+
+### SVG & Board Measurement Planning
+
+- Documented the forthcoming Board Measurement feature in `design_docs/board-measurement-design.md`, mapping Desktop behaviors to planned Blazor components and detailing SVG rendering requirements.
+- Updated `Catan3.GameService/Services/BoardSvgGenerator.cs` to keep harbor math and future building display in sync with the design plan.
+
+### AI Assistant Workflow Realignment
+
+- Migrated project rules and command templates into `.ai/` to enforce agent-agnostic guidance, with corresponding `.github` prompt bindings for Copilot.
+- Refreshed handover and start-session prompts so all assistants reference `.ai` as the canonical source of truth.
+
+### Build & Test Status (November 24, 2025)
+
+- `pwsh ./build.ps1 -NoTest` passes; automated tests were skipped per session directive.
 
 ## Latest Session (November 23, 2025 - WebUI Player Colors & Database Design)
 
@@ -57,7 +84,7 @@ Finished SVG harbor rendering in BoardSvgGenerator:
 - **webui.ps1 help**: New command showing all available commands and workflow
 - **Stop-Services**: Improved to wait for ports to be released
 
-### Build Status
+### Build Status (November 23, 2025)
 
 - **All projects build successfully** without errors
 - **Database auto-seeds** on first run
@@ -124,7 +151,7 @@ Verified fix through comprehensive testing:
 - **Anti-pattern Resolution**: Eliminated temporary GameModel creation by using
   proper file path generation
 
-### Build Status
+### Build Status (September 13, 2025)
 
 - **Current Status**: All projects build successfully without errors or warnings
 - **Architecture Complete**: Missing stars bug resolved, consolidation implemented
@@ -177,7 +204,7 @@ Resolved auto-upgrade issues from Visual Studio 2026 Insiders:
 - **Data-driven validation approach**: Settings metadata in JSON drives UI behavior and validation rules
 - **Recursion prevention over complex state management**: Simple boolean flag prevents infinite loops
 
-### Build Status
+### Build Status (September 7, 2025 - Session 2)
 
 - **Current Status**: All projects build successfully without errors or warnings
 - **Validation Work**: 19 files modified with comprehensive settings validation and handler architecture
@@ -197,8 +224,9 @@ Fixed missing GameModel processing in service mode that was causing UI display i
 ### Root Cause Analysis
 
 The issue where new games from service didn't show stars on buildings or enable Next button was caused by:
+
 - GameService creating GameModel but not calling `HandleNewGameAsync` for display state processing
-- Local version calls: `CreateNew` → `InitializeLoggingState` → `HandleNewGameAsync` → shows stars/enables buttons  
+- Local version calls: `CreateNew` → `InitializeLoggingState` → `HandleNewGameAsync` → shows stars/enables buttons
 - Service version was missing: `HandleNewGameAsync` call after GameModel creation
 - Shuffle worked because it calls proper GameModel processing methods that new game creation was missing
 
@@ -234,6 +262,7 @@ Replaced direct App.Settings access with proper MVVM messaging-based async archi
 ### API Enhancements
 
 Added new GameService REST endpoints:
+
 - `POST /api/game/end` - Proper server-side game cleanup and resource disposal
 - `POST /api/settings/update` - Settings synchronization between client and server
 
@@ -243,26 +272,26 @@ Added new GameService REST endpoints:
 
 Successfully completed comprehensive test infrastructure restructuring:
 
-- **Directory Structure**: Moved all test projects from root level to Tests/ 
+- **Directory Structure**: Moved all test projects from root level to Tests/
   subdirectories using `git mv` to preserve history
   - `Tests/Desktop` (formerly Tests.DesktopApp.UI) - UI automation tests
-  - `Tests/GameService` - Integration and SignalR ReplayTest infrastructure  
+  - `Tests/GameService` - Integration and SignalR ReplayTest infrastructure
   - `Tests/Shared` - JSON serialization compatibility tests
   - `Tests/Data` - Centralized test scenario files (.catan_test)
-- **Build System**: Updated Catan.sln and all .csproj project references 
+- **Build System**: Updated Catan.sln and all .csproj project references
   for new directory structure
-- **CLI Consolidation**: Removed duplicate Tests/Cli project, kept full-featured 
+- **CLI Consolidation**: Removed duplicate Tests/Cli project, kept full-featured
   Catan3.CLI as single command-line interface
 
 ### Test Data Architecture Migration
 
 Transitioned from embedded resources to filesystem-based test data loading:
 
-- **TestDataLoader**: Modified to load .catan_test files from Tests/Data 
+- **TestDataLoader**: Modified to load .catan_test files from Tests/Data
   directory instead of embedded resources
-- **PowerShell Script**: Updated update-test-files.ps1 to copy test files 
+- **PowerShell Script**: Updated update-test-files.ps1 to copy test files
   to Tests/Data location
-- **Csproj Cleanup**: Removed embedded resource entries from 
+- **Csproj Cleanup**: Removed embedded resource entries from
   Catan3.Shared.csproj
 
 ### Unified Log Implementation
@@ -270,20 +299,20 @@ Transitioned from embedded resources to filesystem-based test data loading:
 Consolidated Log implementations into single shared approach:
 
 - **Single Log Class**: All projects now use `Catan3.Shared/Utility/Log.cs`
-- **Interface Standardization**: `IGameLog` interface used consistently 
+- **Interface Standardization**: `IGameLog` interface used consistently
   across Desktop and GameService
-- **Architecture Cleanup**: Eliminated duplicate logging implementations 
+- **Architecture Cleanup**: Eliminated duplicate logging implementations
   and over-abstraction patterns
 
 ### Modern Testing Approach
 
 Standardized on ReplayTest methodology:
 
-- **ReplayTest Infrastructure**: Clean test approach using .catan_test files 
+- **ReplayTest Infrastructure**: Clean test approach using .catan_test files
   for behavioral consistency validation
-- **Legacy Cleanup**: Removed old SignalR testing patterns and 
+- **Legacy Cleanup**: Removed old SignalR testing patterns and
   EndToEndSignalRSession complexity
-- **Two Core Tests**: ReplayExpansionTest and ReplayRegularTest using 
+- **Two Core Tests**: ReplayExpansionTest and ReplayRegularTest using
   modern ReplayTest pattern
 
 ## Important Files
@@ -351,7 +380,7 @@ Standardized on ReplayTest methodology:
 
 ## Current Issues
 
-### Build Status
+### Build Status (September 7, 2025 - Session 1)
 
 - **All projects build successfully** - All compilation errors resolved
 - **Architecture is complete** - Service mode implementation ready for testing

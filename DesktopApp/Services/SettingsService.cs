@@ -2,6 +2,7 @@ using Catan3.Shared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using System;
+using System.IO;
 using System.Text.Json;
 using Windows.Storage;
 
@@ -18,6 +19,26 @@ namespace Catan3.Services
         /// Current settings cached by the service
         /// </summary>
         private SettingsModel _currentSettings;
+
+        /// <summary>
+        /// Indicates whether we should seed the environment defaults file after user settings are loaded.
+        /// </summary>
+        private bool _shouldSeedEnvironmentDefaults;
+
+        /// <summary>
+        /// Cached path to the environment defaults file when it needs to be created.
+        /// </summary>
+        private string? _environmentDefaultsPath;
+
+        /// <summary>
+        /// Environment variable that points to an optional external settings directory.
+        /// </summary>
+        private const string EnvironmentDefaultsVariableName = "CATAN_SETTINGS_PATH";
+
+        /// <summary>
+        /// File name that stores the serialized default settings within the external directory.
+        /// </summary>
+        private const string EnvironmentDefaultsFileName = "default_catan_settings.json";
 
         /// <summary>
         /// Initializes the SettingsService and registers for messages
@@ -45,9 +66,15 @@ namespace Catan3.Services
             {
                 // First, load default settings from Assets/settings.json
                 LoadDefaultSettings();
+
+                // Then, optionally hydrate defaults from environment-provided file
+                LoadEnvironmentDefaultSettings();
                 
                 // Then, load user settings from storage and merge
                 LoadUserSettings();
+
+                // If no environment defaults existed, seed them with the merged defaults + user preferences.
+                SeedEnvironmentDefaultsIfNeeded();
                 
                 // Apply environment variable overrides
                 ApplyEnvironmentOverrides();
@@ -59,6 +86,99 @@ namespace Catan3.Services
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to load settings, using defaults: {ex.Message}");
                 _currentSettings = new SettingsModel();
+            }
+        }
+
+        /// <summary>
+        /// Loads defaults from the environment-specific directory or writes current defaults if the file is missing.
+        /// </summary>
+        private void LoadEnvironmentDefaultSettings()
+        {
+            try
+            {
+                var settingsRoot = Environment.GetEnvironmentVariable(EnvironmentDefaultsVariableName);
+                if (string.IsNullOrWhiteSpace(settingsRoot))
+                {
+                    return;
+                }
+
+                var directory = settingsRoot.Trim();
+                var defaultsPath = Path.Combine(directory, EnvironmentDefaultsFileName);
+
+                if (File.Exists(defaultsPath))
+                {
+                    // An existing defaults file takes precedence over the packaged defaults.
+                    using var stream = File.OpenRead(defaultsPath);
+                    var environmentDefaults = JsonSerializer.Deserialize<SettingsModel>(stream);
+                    if (environmentDefaults != null)
+                    {
+                        MergeSettings(_currentSettings, environmentDefaults);
+                    }
+                }
+                else
+                {
+                    // Record the path so we can create the seed file after user settings are loaded.
+                    Directory.CreateDirectory(directory);
+                    _shouldSeedEnvironmentDefaults = true;
+                    _environmentDefaultsPath = defaultsPath;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to process environment default settings: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Seeds the environment defaults file with the fully merged settings if it did not exist.
+        /// </summary>
+        private void SeedEnvironmentDefaultsIfNeeded()
+        {
+            if (!_shouldSeedEnvironmentDefaults || string.IsNullOrEmpty(_environmentDefaultsPath))
+            {
+                return;
+            }
+
+            try
+            {
+                var json = JsonSerializer.Serialize(_currentSettings, new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+                File.WriteAllText(_environmentDefaultsPath, json);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to seed environment default settings: {ex.Message}");
+            }
+            finally
+            {
+                _shouldSeedEnvironmentDefaults = false;
+                _environmentDefaultsPath = null;
+            }
+        }
+
+        /// <summary>
+        /// Copies values from an external settings model into the current defaults, creating entries when necessary.
+        /// </summary>
+        /// <param name="target">The current settings object that will be updated.</param>
+        /// <param name="source">The external settings object providing override values.</param>
+        private static void MergeSettings(SettingsModel target, SettingsModel source)
+        {
+            foreach (var sourceSetting in source.Settings)
+            {
+                var targetSetting = target.GetSetting(sourceSetting.SettingName);
+                if (targetSetting != null)
+                {
+                    // Preserve the external value and adopt any explicit default overrides.
+                    targetSetting.Value = sourceSetting.Value;
+                    targetSetting.DefaultValue = sourceSetting.DefaultValue ?? targetSetting.DefaultValue;
+                }
+                else
+                {
+                    // Unknown settings are appended so they become available to the rest of the app.
+                    target.Settings.Add(sourceSetting);
+                }
             }
         }
 

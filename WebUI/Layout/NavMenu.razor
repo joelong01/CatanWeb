@@ -1,34 +1,143 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Catan3.WebUI</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
+@inject NavigationManager Navigation
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="newgame" Match="NavLinkMatch.All">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> New Game
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="loadgame">
-                <span class="bi bi-folder-open-nav-menu" aria-hidden="true"></span> Load Game
-            </NavLink>
-        </div>
-    </nav>
-</div>
+<nav class="nav-menu">
+    <button class="nav-menu-item" @onclick="OnHideMenu">
+        <div class="nav-icon">&#xE89F;</div>
+        <div class="nav-label">Hide</div>
+    </button>
+    <button class="nav-menu-item" @onclick="OnNewGame">
+        <div class="nav-icon">&#xE710;</div>
+        <div class="nav-label">New Game</div>
+    </button>
+    <button class="nav-menu-item" @onclick="OnOpenGame">
+        <div class="nav-icon">&#xE8E5;</div>
+        <div class="nav-label">Open...</div>
+    </button>
+    <button class="nav-menu-item" @onclick="OnSave">
+        <div class="nav-icon">&#xE78C;</div>
+        <div class="nav-label">Save</div>
+    </button>
+    <button class="nav-menu-item" @onclick="OnSaveAs">
+        <div class="nav-icon">&#xE74E;</div>
+        <div class="nav-label">Save As...</div>
+    </button>
+    <button class="nav-menu-item" @onclick="OnEditPlayers">
+        <div class="nav-icon">&#xE716;</div>
+        <div class="nav-label">Edit Players</div>
+    </button>
+    <button class="nav-menu-item" @onclick="OnBalance">
+        <div class="nav-icon">&#xE90F;</div>
+        <div class="nav-label">Balance</div>
+    </button>
+    <button class="nav-menu-item" @onclick="OnToggleTitlebar">
+        <div class="nav-icon">&#xE740;</div>
+        <div class="nav-label">Toggle Titlebar</div>
+    </button>
+    <button class="nav-menu-item" @onclick="OnShowDebugWindow">
+        <div class="nav-icon">&#xE8A9;</div>
+        <div class="nav-label">Show Debug Window</div>
+    </button>
+    <button class="nav-menu-item" @onclick="OnToggleRecordMode">
+        <div class="nav-icon">&#xE714;</div>
+        <div class="nav-label">Record Mode</div>
+    </button>
+    <button class="nav-menu-item" @onclick="OnSettings">
+        <div class="nav-icon">&#xE713;</div>
+        <div class="nav-label">Settings</div>
+    </button>
+    <button class="nav-menu-item" @onclick="OnQuit">
+        <div class="nav-icon">&#xE89F;</div>
+        <div class="nav-label">Quit</div>
+    </button>
+    <button class="nav-menu-item menu-separator" @onclick="OnRunTests">
+        <div class="nav-icon">&#xE7C1;</div>
+        <div class="nav-label">Run Tests</div>
+    </button>
+</nav>
 
 @code {
-    private bool collapseNavMenu = true;
+    [Parameter]
+    public EventCallback OnMenuAction { get; set; }
 
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
+    private async Task OnHideMenu()
     {
-        collapseNavMenu = !collapseNavMenu;
+        await OnMenuAction.InvokeAsync();
+    }
+
+    private async Task OnNewGame()
+    {
+        await OnMenuAction.InvokeAsync(); // Close menu first
+        
+        // If we're on a game page, pass it as returnUrl
+        var currentUri = Navigation.Uri;
+        Console.WriteLine($"OnNewGame - Current URI: {currentUri}");
+        
+        if (currentUri.Contains("/game/"))
+        {
+            var returnUrl = Uri.EscapeDataString(currentUri);
+            var newUrl = $"/newgame?returnUrl={returnUrl}";
+            Console.WriteLine($"OnNewGame - Navigating to: {newUrl}");
+            Navigation.NavigateTo(newUrl);
+        }
+        else
+        {
+            Console.WriteLine($"OnNewGame - Navigating to: /newgame");
+            Navigation.NavigateTo("/newgame");
+        }
+    }
+
+    private void OnOpenGame()
+    {
+        Console.WriteLine("Open... - Not implemented");
+    }
+
+    private void OnSave()
+    {
+        Console.WriteLine("Save - Not implemented");
+    }
+
+    private void OnSaveAs()
+    {
+        Console.WriteLine("Save As... - Not implemented");
+    }
+
+    private void OnEditPlayers()
+    {
+        Console.WriteLine("Edit Players - Not implemented");
+    }
+
+    private void OnBalance()
+    {
+        Console.WriteLine("Balance - Not implemented");
+    }
+
+    private void OnToggleTitlebar()
+    {
+        Console.WriteLine("Toggle Titlebar - Not applicable for web");
+    }
+
+    private void OnShowDebugWindow()
+    {
+        Console.WriteLine("Show Debug Window - Not implemented");
+    }
+
+    private void OnToggleRecordMode()
+    {
+        Console.WriteLine("Record Mode - Not implemented");
+    }
+
+    private void OnSettings()
+    {
+        Console.WriteLine("Settings - Not implemented");
+    }
+
+    private void OnQuit()
+    {
+        Console.WriteLine("Quit - Not applicable for web (close browser tab)");
+    }
+
+    private void OnRunTests()
+    {
+        Console.WriteLine("Run Tests - Not implemented");
     }
 }

@@ -29,15 +29,24 @@ public static class BoardSvgConstants
     public const double BuildingSize = 40;
     public const double SettlementRadius = BuildingSize / 2;  // = 20
 
-    // Number token - matches Desktop CatanNumber.xaml (65x65 ellipse with opacity 0.75)
+    // Number token - matches Desktop CatanNumber.xaml (65x65 grid)
     public const double NumberTokenRadius = 32.5;  // 65/2
-    public const double NumberTokenOffsetY = 50;
+    // Desktop positions number token with: NumberTop = tileGap + hexStroke + 5
+    // With HexStrokeWidth=6: 0 + 6 + 5 = 11 pixels from top of hex stroke
+    // From hex center to top stroke edge = -HexHeight/2 + HexStrokeWidth/2 = -86.6 + 3 = -83.6
+    // So offset from center = 83.6 - 11 - 32.5 (to get to circle center) = 40.1, rounded to 40
+    public const double NumberTokenOffsetY = 40;
     public const double NumberTokenOpacity = 0.75;  // Matches Desktop
 
-    // Font sizes - matches Desktop CatanNumber.xaml
+    // Font sizes and positioning - matches Desktop CatanNumber.xaml
+    // Within the 65x65 Grid:
     public const double NumberFontSize = 24;  // Same as Desktop
-    public const double PipsFontSize = 10;    // Desktop uses 10pt for stars
-    public const double PipsOffsetY = 12;
+    public const double PipsFontSize = 14;    // Star font size
+    // Number: VerticalAlignment="Top" in the 65px grid, with font-size 24, text sits ~8px from top
+    public const double NumberOffsetFromCircleCenter = -24;  // Adjusted to match visual
+    // Stars: Margin="0,10,0,0" + VerticalAlignment="Center" = 10 + (65-10)/2 = 37.5 from top of grid
+    // From circle center: -32.5 + 37.5 = 5
+    public const double PipsOffsetFromCircleCenter = 15;  // Adjusted to match visual
 
     // Stroke widths
     public const double HexStrokeWidth = 6;
@@ -417,13 +426,13 @@ public class BoardSvgGenerator
             // Number token background
             sb.AppendLine($@"  <circle cx=""{x}"" cy=""{numberY}"" r=""{BoardSvgConstants.NumberTokenRadius}"" fill=""{BoardSvgConstants.NumberTokenFill}"" opacity=""{BoardSvgConstants.NumberTokenOpacity}"" stroke=""{BoardSvgConstants.NumberTokenStroke}"" stroke-width=""{BoardSvgConstants.NumberTokenStrokeWidth}""/>");
 
-            // Number
-            sb.AppendLine($@"  <text x=""{x}"" y=""{numberY - 1}"" text-anchor=""middle"" dominant-baseline=""middle"" font-family=""sans-serif"" font-size=""{BoardSvgConstants.NumberFontSize}"" font-weight=""bold"" fill=""{numberColor}"">{tile.Number}</text>");
+            // Number - VerticalAlignment="Top" within the 65px grid
+            sb.AppendLine($@"  <text x=""{x}"" y=""{numberY + BoardSvgConstants.NumberOffsetFromCircleCenter}"" text-anchor=""middle"" dominant-baseline=""middle"" font-family=""sans-serif"" font-size=""{BoardSvgConstants.NumberFontSize}"" font-weight=""bold"" fill=""{numberColor}"">{tile.Number}</text>");
 
-            // Probability pips
+            // Probability pips - Margin="0,10,0,0" VerticalAlignment="Center" within the 65px grid
             if (!string.IsNullOrEmpty(pips))
             {
-                sb.AppendLine($@"  <text x=""{x}"" y=""{numberY + BoardSvgConstants.PipsOffsetY}"" text-anchor=""middle"" font-size=""{BoardSvgConstants.PipsFontSize}"" fill=""{numberColor}"">{pips}</text>");
+                sb.AppendLine($@"  <text x=""{x}"" y=""{numberY + BoardSvgConstants.PipsOffsetFromCircleCenter}"" text-anchor=""middle"" font-size=""{BoardSvgConstants.PipsFontSize}"" fill=""{numberColor}"">{pips}</text>");
             }
         }
     }
