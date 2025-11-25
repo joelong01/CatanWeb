@@ -1,5 +1,8 @@
 # Start Session Command
 
+> **Important:** Before executing this command, read `.ai/ai-rules.md` for project
+> conventions, patterns, and workflow standards that govern all development work.
+
 ## Quick Start Instructions for New AI Sessions
 
 When starting a new session on the Catan project, follow these steps to get oriented efficiently:
@@ -10,7 +13,7 @@ Read these files in order to understand the current project state:
 
 - `./design_docs` - a set of files the describe the design of the game.
 - `./design_docs/WebUi-Design.md` is the overall design document
-- `.ai-prompts/sessions/` - Find the most recent timestamped session context file (SESSION_SUMMARY-{data}-{time}.md format)
+- `.ai/sessions/` - Find the most recent timestamped session context file (SESSION_SUMMARY-{date}-{hhmm}.md format)
 - Check recent commits with `git log --oneline` to understand latest work
 
 ### 2. Check Git Status and Project Structure
