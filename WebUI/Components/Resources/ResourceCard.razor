@@ -1,0 +1,44 @@
+@using Catan3.Shared.Models
+
+<div class="resource-card" data-testid="resource-card-@Resource.ToString().ToLower()">
+    <div class="resource-image" style="background-image: url('@GetResourceImageUrl()')"></div>
+    <div class="resource-count-badge">@Count</div>
+</div>
+
+@code {
+    /// <summary>
+    /// The type of resource this card represents (Wheat, Wood, Ore, Brick, Sheep).
+    /// </summary>
+    [Parameter]
+    public ResourceType Resource { get; set; }
+
+    /// <summary>
+    /// The count of this resource type currently on the game board.
+    /// </summary>
+    [Parameter]
+    public int Count { get; set; }
+
+    /// <summary>
+    /// The base URL of the GameService for fetching resource images.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string ServiceUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Constructs the full URL for the resource image based on the resource type.
+    /// </summary>
+    /// <returns>Full URL to the resource image asset.</returns>
+    private string GetResourceImageUrl()
+    {
+        var imageName = Resource switch
+        {
+            ResourceType.Wheat => "wheat",
+            ResourceType.Wood => "wood",
+            ResourceType.Ore => "ore",
+            ResourceType.Brick => "brick",
+            ResourceType.Sheep => "sheep",
+            _ => "default"
+        };
+        return $"{ServiceUrl}/api/assets/resources/{imageName}.png";
+    }
+}

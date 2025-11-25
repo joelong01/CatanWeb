@@ -288,6 +288,45 @@ Harbors are ellipses filled with harbor type images:
 
 ## WebUI SVG Rendering Architecture
 
+### Compositional Design (Mirrors Desktop XAML)
+
+The SVG rendering uses a **compositional approach** that mirrors the Desktop XAML control structure:
+
+```
+BoardSvgGenerator (like BoardLayoutCtrl.xaml)
+├── TileSvgRenderer (like TileCtrl.xaml)
+│   ├── Renders hex geometry (outer and inner polygons)
+│   ├── Applies resource texture patterns
+│   ├── Positions number tokens with probability pips
+│   └── Handles tile-specific visuals
+├── BuildingSvgRenderer (like BuildingCtrl.xaml)
+│   ├── Renders settlements, cities, knights
+│   ├── Uses SVG files (settlement.svg, city.svg, knight.svg)
+│   ├── Applies player gradient colors
+│   └── Handles visual states (highlighted, hidden, stars, normal)
+├── RoadSvgRenderer (like RoadCtrl.xaml)
+│   ├── Calculates 6-point road polygon using inner/outer hex geometry
+│   ├── Applies player colors when placed
+│   └── Handles road states (transparent, hover, placed)
+└── HarborSvgRenderer (like HarborCtrl.xaml)
+    ├── Positions harbors on hex edges
+    ├── Renders water triangle background
+    └── Applies harbor type patterns
+
+```
+
+**Benefits:**
+- **Testable** - Each renderer can be unit tested independently
+- **Reusable** - Components can be used outside board context
+- **Maintainable** - Clear separation of concerns
+- **Consistent** - Direct mapping to Desktop XAML controls
+- **SVG-native** - Uses embedded SVG files instead of icon fonts (no CatanFont dependency)
+
+**SVG File Strategy:**
+- Use SVG files from `DesktopApp/Assets/SVG/` directory (settlement.svg, city.svg, knight.svg, road.svg, star.svg)
+- Avoid CatanFont for game pieces - web has native SVG support
+- Standard icon fonts (Segoe MDL2 Assets) still used for UI controls (shuffle, undo buttons)
+
 ### Layer Order (Z-Index)
 
 SVG elements are rendered in document order (later = on top):
@@ -300,6 +339,68 @@ SVG elements are rendered in document order (later = on top):
 6. **Harbors** - Trading port images
 7. **Roads** - Player-colored edge paths
 8. **Settlements/Cities** - Player-colored vertex circles
+
+### Temporary Gold Tiles Feature
+
+**House Rule**: Some game variants allow random tiles to temporarily become gold mines during a turn.
+
+**Visual Behavior:**
+1. When `TileModel.TemporarilyGold` is true:
+   - Tile's main texture changes to gold mine pattern
+   - A small resource card (67×100) appears on the tile showing the **original** resource type
+   - The card is positioned at tile center with 50px offset downward
+   - Card flips over with 3D animation to reveal the resource
+
+2. **Desktop Implementation** (`TileCtrl.xaml`):
+   ```xml
+   <Viewbox Height="50" Stretch="Uniform"
+           HorizontalAlignment="Center"
+           VerticalAlignment="Center" Margin="0, 50, 0, 0">
+       <u:FlipperCtrl Orientation="{x:Bind TileViewModel.TempGoldOrientation(...)}">
+           <u:FlipperCtrl.Front>
+               <Border CornerRadius="5" Width="67" Height="100">
+                   <Rectangle Fill="{x:Bind TileViewModel.GetResourceImage(...)}"/>
+               </Border>
+           </u:FlipperCtrl.Front>
+           <u:FlipperCtrl.Back>
+               <Grid Opacity="0" Background="Black" Width="67" Height="100"/>
+           </u:FlipperCtrl.Back>
+       </u:FlipperCtrl>
+   </Viewbox>
+   ```
+
+3. **WebUI Implementation Strategy:**
+   - TileSvgRenderer checks `tile.TemporarilyGold`
+   - If true, render gold mine texture as base
+   - Add embedded `<image>` element showing original resource card
+   - Position at `(cx, cy + 50)` - 50px below tile center
+   - Use CSS animation or SMIL for flip effect
+   - Card size: 67×100 (matches Desktop resource card dimensions)
+
+4. **Data Flow:**
+   - GameService sets `TileModel.TemporarilyGold = true` based on house rules
+   - Original resource type preserved in `TileModel.ResourceTileType`
+   - Gold mine becomes the **displayed** resource (for roll resolution)
+   - Small card shows **original** resource (for player reference)
+
+**Purpose**: Adds variability to game strategy by temporarily changing tile production.
+
+### Tile Visual States and Animations
+
+**Desktop Features Ported to WebUI** (`TileCtrl.xaml`):
+
+1. **Dim/Revert Animations** (Gameplay Highlighting):
+   - `DimAnimation`: Fade tile to 0.5 opacity (de-emphasize unrolled tiles)
+   - `RevertAnimation`: Restore to 1.0 opacity (normal state)
+   - **Usage**: After dice roll, all tiles NOT matching the roll dim so active tiles stand out
+   - **WebUI**: CSS opacity transition on tile `<g>` element or class toggle
+
+2. **Tile Coordinates Display** (Debug/Communication Tool):
+   - Shows tile index (sequential number, e.g., "0", "1", "2")
+   - Shows hex coordinates in q,r format (e.g., "0,0")
+   - Positioned at bottom of tile with black background
+   - **Purpose**: Useful for debugging layouts and communicating tile positions to AI
+   - **WebUI**: SVG `<text>` elements at bottom of tile, visibility controlled by query param or setting
 
 ### Tile Rendering
 
@@ -489,31 +590,156 @@ Roads are rendered BEFORE settlements/cities, ensuring buildings appear on top o
 
 See `DesktopApp/Roads/RoadViewModel.cs` `PointsForSide()` method for the authoritative implementation that builds road polygons using `outerHexPoints`, `innerHexPoints`, and adjacent tile deltas.
 
-### Settlement/City Rendering
+### Road Rendering Features
 
-Settlements are circles at hex vertices:
+**All 4 Desktop Features Ported** (`RoadCtrl.xaml`):
+
+#### 1. Player Colors (Fill and Stroke)
+- Desktop:
+  - `Fill="{x:Bind GetBackgroundBrush(RoadState, OwnerId, CurrentPlayer)}"`
+  - `Stroke="{x:Bind GetForegroundBrush(RoadState, OwnerId, CurrentPlayer)}"`
+- Uses player's colors when road is owned
+- **WebUI**: Apply `PlayerData.PrimaryBackgroundColor` (or gradient) for fill, `ForegroundColor` for stroke
+
+#### 2. Stroke Thickness
+- Desktop: `StrokeThickness="{x:Bind Layout.RoadStrokeThickness}"`
+- Consistent stroke width from layout constants
+- **WebUI**: Apply to polygon `stroke-width` attribute
+
+#### 3. Opacity Based on Road State (Optional)
+- Desktop: `Opacity="{x:Bind Opacity(Road, RoadState)}"`
+- Different opacity for different states (buildable, unowned, owned)
+- **WebUI**: CSS class or inline `opacity` attribute
+- **Status**: Optional - may not be needed initially
+
+#### 4. Build Index Display
+- Desktop: Viewbox at `RoadCenter` with black rounded background
+  ```xml
+  <Viewbox Canvas.Left="{RoadCenter.X}" Canvas.Top="{RoadCenter.Y}">
+    <Grid Background="Black" CornerRadius="5">
+      <TextBlock Text="{BuildIndex}" Foreground="White"/>
+    </Grid>
+  </Viewbox>
+  ```
+- Shows build order number at road midpoint
+- **Purpose**: Player can say "Build road 7" instead of describing position
+- **WebUI**: SVG `<text>` with black rounded `<rect>` background, positioned at road center
+
+**Road Center Calculation:**
+```csharp
+// Midpoint of the 6-point polygon
+var roadCenter = new Point(
+    (v1.X + v2.X) / 2,  // Average of outer vertices
+    (v1.Y + v2.Y) / 2
+);
+```
+
+**WebUI SVG Implementation Example:**
 
 ```xml
-<!-- Settlement at vertex -->
-<g class="settlement" transform="translate(vx, vy)">
-  <circle r="12" fill="transparent" stroke="transparent"/>
+<g class="road" data-road-id="0,0,0-1,0,-1">
+  <!-- 6-point road polygon with player colors -->
+  <polygon points="100,50 105,55 105,65 100,70 95,65 95,55"
+           fill="#FF0000"
+           stroke="#FFFFFF"
+           stroke-width="2"
+           opacity="1.0"/>
 
-  <!-- When placed, show player color and icon -->
-  <circle r="12" fill="#FF0000" stroke="#333" stroke-width="1"/>
-  <text text-anchor="middle" dominant-baseline="central"
-        font-family="Catan" font-size="16" fill="white">&#xE926;</text>
+  <!-- Build index (optional, visibility controlled) -->
+  <g transform="translate(100, 60)">
+    <rect x="-10" y="-10" width="20" height="20" rx="5" fill="black"/>
+    <text x="0" y="0" text-anchor="middle" dominant-baseline="central"
+          font-size="12" fill="white">7</text>
+  </g>
 </g>
 ```
 
-**Building Icons (Catan Font):**
-- Settlement: `\uE926`
-- City: `\uE900`
+**Road States:**
+- **Unowned/Buildable**: Transparent or semi-transparent
+- **Owned**: Player colors with full opacity
+- **Hover**: Highlighted for placement preview
 
-**Settlement States:**
-- **Empty**: Transparent (hidden)
-- **Hover**: White semi-transparent (shows placement option)
-- **Placed Settlement**: Player color with settlement icon
-- **Placed City**: Player color with city icon
+### Building Rendering (Settlements/Cities/Knights)
+
+**All 5 Desktop Features Ported** (`BuildingCtrl.xaml`):
+
+#### 1. Circular Shape (CornerRadius="20")
+- Desktop: `Grid` with `CornerRadius="20"`, `Width="40"`, `Height="40"`
+- WebUI: SVG `<circle>` with `r="20"` (radius = BuildingSize/2)
+
+#### 2. Player Gradient Backgrounds
+- Desktop: `Background="{x:Bind BIND_Background(VisualState, OwnerId, CurrentPlayer)}"`
+- Gradient from `PlayerData.PrimaryBackgroundColor` to `PlayerData.SecondaryBackgroundColor`
+- WebUI: SVG `<linearGradient>` defined per player, referenced in circle fill
+
+#### 3. Player Foreground Colors
+- Desktop: `Foreground="{x:Bind BIND_Foreground(VisualState, OwnerId, CurrentPlayer)}"`
+- Uses `PlayerData.ForegroundColor` for text, icons, and border
+- WebUI: Apply to SVG `stroke`, `<text>` fill, or `<image>` filter
+
+#### 4. State Glyph Rendering (Icon or Star Number)
+- Desktop: `Text="{x:Bind BIND_StateGlyph(BuildingState, VisualState, Stars)}"`
+- Logic:
+  - If `VisualState == Stars`: Display star number (e.g., "13")
+  - If `VisualState == Highlighted/Normal`: Display building icon from CatanFont
+  - If `VisualState == Hidden`: Display nothing
+- **WebUI Replacement**: Use SVG files instead of CatanFont
+  - `settlement.svg` for Settlement
+  - `city.svg` for City
+  - `knight.svg` for Knight (Cities & Knights expansion - activated knights placed on vertices)
+  - Or plain `<text>` for star numbers
+- **Note**: `robber.svg` is separate - it's the piece on tiles that blocks production, not a building
+
+#### 5. Build Index Display (Optional)
+- Desktop: `Text="{x:Bind BuildIndex}"` with visibility binding
+- Small number on right side showing build order
+- Useful for debugging/game analysis
+- WebUI: Optional `<text>` element positioned at right edge
+
+**Visual State Logic** (`BuildingVisualState` enum):
+
+| State | When Used | Background | Content |
+|-------|-----------|------------|---------|
+| **Highlighted** | Normal gameplay | Player gradient | Building icon |
+| **Hidden** | Building not visible | Transparent | None |
+| **Stars** | During PickingBoard | Player gradient | Star number (10-13) |
+| **Normal** | Default state | Player gradient | Building icon |
+
+**WebUI SVG Implementation Example:**
+
+```xml
+<defs>
+  <!-- Player gradient (define once per player) -->
+  <linearGradient id="player-alice-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#0000FF"/> <!-- PrimaryBackgroundColor -->
+    <stop offset="100%" stop-color="#000080"/> <!-- SecondaryBackgroundColor -->
+  </linearGradient>
+</defs>
+
+<g class="building" data-building-id="0,0,0:TopRight">
+  <!-- 1. Circle with player gradient background -->
+  <circle cx="100" cy="100" r="20"
+          fill="url(#player-alice-gradient)"
+          stroke="#FFFFFF" stroke-width="1"/> <!-- 3. Player foreground color -->
+
+  <!-- 4. State glyph: Either icon or star number -->
+  <!-- If VisualState = Stars: -->
+  <text x="100" y="100" text-anchor="middle" dominant-baseline="central"
+        font-size="16" font-weight="bold" fill="#FFFFFF">13</text>
+
+  <!-- OR if VisualState = Highlighted: -->
+  <!-- settlement.svg, city.svg, or knight.svg depending on BuildingState -->
+  <image href="/images/svg/settlement.svg" x="90" y="90" width="20" height="20"/>
+
+  <!-- 5. Build index (optional) -->
+  <text x="115" y="100" font-size="10" fill="#FFFFFF">1</text>
+</g>
+```
+
+**Building States:**
+- **Empty/Not Built**: No circle rendered (or transparent circle for hover preview)
+- **Possible Settlement**: Semi-transparent white circle (placement preview)
+- **Placed**: Player gradient + icon or star count based on visual state
 
 ### Harbor Rendering
 

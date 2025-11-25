@@ -22,34 +22,274 @@ React/TypeScript would require:
 
 Blazor eliminates this translation layer entirely.
 
+## Client Architecture: Thick Client with State Service
+
+### Design Decision: Client-Side Rendering
+
+**WebUI uses a "thick client" architecture** where the client handles all rendering and UI state management:
+
+```
+Server (GameService)
+    ↓ SignalR
+Sends: GameModel only (game state)
+    ↓
+GameStateService (Blazor singleton)
+    ├── Holds: GameModel (authoritative game state)
+    ├── Holds: PlayerData[] (for colors, images, names)
+    ├── Holds: UI state (shownStars, selected tiles, etc.)
+    ├── Renders: SVG client-side using shared C# code
+    └── Triggers: Component re-renders via OnStateChanged event
+    ↓
+Components (Game.razor, BoardMeasurement.razor, etc.)
+    ├── Subscribe to GameStateService.OnStateChanged
+    ├── Call service methods to update state
+    └── Service handles rendering and notifies all subscribers
+```
+
+### Benefits of Thick Client Architecture
+
+✅ **Instant UI feedback** - No server round-trip for UI-only changes (slider, highlighting)
+✅ **Animations trivial** - CSS transitions between DOM states
+✅ **Code reuse** - Same C# rendering code (BoardSvgGenerator, TileSvgRenderer) runs in browser via Blazor WASM
+✅ **Scales better** - Server only handles game logic, rendering distributed to clients
+✅ **Modern device power** - Phones and PCs have plenty of compute capacity
+✅ **Offline potential** - PWA capability with cached state
+✅ **Simplified server** - GameService only sends GameModel updates, no SVG generation
+
+### Server Responsibilities (GameService)
+
+- **Game logic** - GameStateMachine processes actions, validates moves
+- **State updates** - Sends GameModel via SignalR when state changes
+- **Player data** - Provides PlayerData via REST API for profile selection
+- **Asset serving** - Serves static images, SVG files (settlement.svg, city.svg, etc.)
+
+**What server does NOT do:**
+- ❌ Generate SVG
+- ❌ Manage UI state (shownStars, highlighting, etc.)
+- ❌ Handle animations
+
+### Client Responsibilities (WebUI)
+
+- **State management** - GameStateService holds GameModel and PlayerData
+- **SVG rendering** - Client-side SVG generation using shared C# renderers
+- **UI state** - Track slider positions, selections, hover states
+- **Animations** - CSS transitions and animations
+- **User input** - Send game actions to server via SignalR
+
+### GameStateService (Singleton)
+
+**Purpose**: Central state manager that holds game state and coordinates rendering across all components.
+
+```csharp
+public class GameStateService
+{
+    // Game state
+    private GameModel _gameModel;
+    private Dictionary<string, PlayerData> _playerData;
+
+    // UI state (not in GameModel)
+    public int ShownStars { get; private set; }
+
+    // Rendering components (client-side)
+    private readonly BoardSvgGenerator _boardGenerator;
+    private readonly TileSvgRenderer _tileRenderer;
+    private readonly BuildingSvgRenderer _buildingRenderer;
+    private readonly RoadSvgRenderer _roadRenderer;
+    private readonly HarborSvgRenderer _harborRenderer;
+
+    // State change notifications
+    public event Action? OnStateChanged;
+
+    // Called by SignalR when server sends update
+    public void UpdateGameState(GameModel gameModel)
+    {
+        _gameModel = gameModel;
+        NotifyStateChanged();
+    }
+
+    // Client-side rendering
+    public string GenerateBoardSvg()
+    {
+        return _boardGenerator.GenerateBoardSvg(_gameModel, _playerData, ShownStars);
+    }
+
+    public string GeneratePlayerStatsSvg(string playerId)
+    {
+        return _playerStatsRenderer.Render(_gameModel, _playerData[playerId]);
+    }
+
+    // UI actions (client-only, no server call)
+    public void SetShownStars(int stars)
+    {
+        ShownStars = stars;
+        NotifyStateChanged(); // All subscribed components re-render
+    }
+
+    private void NotifyStateChanged() => OnStateChanged?.Invoke();
+}
+```
+
+### Component Pattern
+
+All components that display game state subscribe to `GameStateService`:
+
+```csharp
+@inject GameStateService GameState
+@implements IDisposable
+
+<div class="game-board">
+    @((MarkupString)GameState.GenerateBoardSvg())
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        GameState.OnStateChanged += HandleStateChanged;
+    }
+
+    private void HandleStateChanged()
+    {
+        StateHasChanged(); // Re-render this component
+    }
+
+    public void Dispose()
+    {
+        GameState.OnStateChanged -= HandleStateChanged;
+    }
+}
+```
+
+### Animation Strategy
+
+**Client-side CSS animations triggered by state changes:**
+
+```css
+.tile {
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.tile.dimmed {
+    opacity: 0.5;
+}
+
+@keyframes flip-card {
+    0% { transform: rotateY(0deg); }
+    50% { transform: rotateY(90deg); }
+    100% { transform: rotateY(180deg); }
+}
+
+.resource-card.flipping {
+    animation: flip-card 0.5s ease;
+}
+```
+
+**Flow:**
+1. Server sends updated GameModel via SignalR
+2. GameStateService.UpdateGameState() called
+3. Components detect state change and re-render
+4. DOM diff shows what changed (e.g., tile now has "dimmed" class)
+5. Browser CSS handles animation automatically
+
+### SignalR Integration
+
+**Server → Client (GameModel updates):**
+
+```csharp
+// GameService sends only GameModel
+await Clients.Group(gameId).SendAsync("GameStateUpdated", gameModel);
+```
+
+**Client receives and updates state:**
+
+```csharp
+public class GameHubService
+{
+    private readonly GameStateService _gameState;
+
+    public async Task ConnectAsync(string gameId)
+    {
+        _connection.On<GameModel>("GameStateUpdated", gameModel =>
+        {
+            _gameState.UpdateGameState(gameModel);
+        });
+
+        await _connection.StartAsync();
+    }
+}
+```
+
+**Client → Server (User actions):**
+
+```csharp
+// User clicks to place settlement
+await _hubConnection.InvokeAsync("PlaceSettlement", buildingCoords);
+// Server processes, updates GameModel, broadcasts to all clients
+```
+
+### Why This Works Better Than Thin Client
+
+**Thin client approach we considered:**
+- Server generates SVG for every update
+- Client just displays SVG
+- Animations require complex coordination
+
+**Problems with thin client:**
+- Network latency for every UI change
+- Complex animation coordination
+- Server does rendering work for all clients
+- No instant feedback
+
+**Thick client advantages:**
+- UI changes instant (no network)
+- Animations are just CSS
+- Server scales better (less work per client)
+- Modern web app pattern (React, Vue, Angular all work this way)
+- Blazor WASM advantage: can run same C# rendering code client-side
+
 ## Project Structure
 
 ```
 Catan/
 ├── Catan3.Shared/           # Shared models, logic, utilities (REUSE)
-├── Catan3.GameService/      # SignalR + REST backend (NO CHANGES)
+├── Catan3.GameService/      # SignalR + REST backend
+│   └── Services/            # Game state management only (NO rendering)
 ├── DesktopApp/              # WinUI3 client (REFERENCE)
 ├── WebUI/                   # Blazor WebAssembly client (NEW)
 │   ├── Components/          # Reusable Blazor components
-│   │   ├── Board/           # Game board components
-│   │   │   ├── HexTile.razor
-│   │   │   ├── GameBoard.razor
-│   │   │   ├── Harbor.razor
-│   │   │   └── Robber.razor
-│   │   ├── Player/          # Player-related components
-│   │   │   ├── PlayerCard.razor
-│   │   │   └── PlayerHand.razor
+│   │   ├── Board/           # Board measurement, game board display
+│   │   │   └── BoardMeasurement.razor
+│   │   ├── Resources/       # Resource cards, star counters
+│   │   │   ├── ResourceCard.razor
+│   │   │   └── StarCounter.razor
 │   │   └── Shared/          # Common UI components
+│   │       └── IconButton.razor
 │   ├── Pages/               # Routable pages
 │   │   ├── Home.razor
 │   │   ├── NewGame.razor
+│   │   ├── LoadGame.razor
 │   │   └── Game.razor
-│   ├── Services/            # Client-side services
-│   │   └── GameHubService.cs
+│   ├── Services/            # Client-side services (THICK CLIENT)
+│   │   ├── GameStateService.cs      # State manager (singleton)
+│   │   ├── GameHubService.cs        # SignalR connection
+│   │   └── Rendering/               # SVG generation (client-side)
+│   │       ├── BoardSvgConstants.cs # Rendering constants
+│   │       ├── BoardSvgGenerator.cs # Main board compositor
+│   │       ├── TileSvgRenderer.cs   # Tile rendering
+│   │       ├── BuildingSvgRenderer.cs # Building rendering
+│   │       ├── RoadSvgRenderer.cs   # Road rendering
+│   │       ├── HarborSvgRenderer.cs # Harbor rendering
+│   │       └── PlayerStatsSvgRenderer.cs # Player stats
 │   ├── Layout/              # App layout
-│   ├── wwwroot/             # Static assets (CSS, images)
-│   └── Program.cs           # App entry point
+│   │   ├── MainLayout.razor
+│   │   └── NavMenu.razor
+│   ├── wwwroot/             # Static assets
+│   │   ├── css/            # Stylesheets
+│   │   ├── images/         # Game assets (tiles, resources, SVG files)
+│   │   └── index.html      # App entry point
+│   └── Program.cs           # Service registration, DI setup
 └── Tests/
+    └── WebUI/              # WebUI tests (bUnit, Playwright)
 ```
 
 ## What's Already Done

@@ -4,9 +4,11 @@
 @using Catan3.Shared.Utility
 @using Catan3.Shared.ViewData
 @using Catan3.WebUI.Services
+@using Catan3.WebUI.Services.Rendering
 @inject GameServiceConfig Config
 @inject GameCommandProxy CommandProxy
 @inject HttpClient Http
+@inject GameStateService GameStateService
 @implements IAsyncDisposable
 
 <PageTitle>Catan Game</PageTitle>
@@ -100,11 +102,7 @@
         <div class="center-panel">
             <div class="panel-section game-board">
                 <div class="board-container">
-                    <object data="@($"{Config.BaseUrl}/api/game/{GameId}/board.svg?v={GameModel.GameHash}")"
-                            type="image/svg+xml"
-                            style="max-width: 100%; max-height: 100%; width: auto; height: auto;">
-                        Game Board
-                    </object>
+                    @((MarkupString)GenerateBoardSvg())
                 </div>
             </div>
         </div>
@@ -574,11 +572,34 @@
     private void OnGameStateUpdated(GameModel gameModel)
     {
         GameModel = gameModel;
+        GameStateService.UpdateGameModel(gameModel);
+
         InvokeAsync(async () =>
         {
             await EnsurePlayerProfilesLoadedAsync();
+            GameStateService.UpdatePlayerData(PlayerProfiles);
             StateHasChanged();
         });
+    }
+
+    private string GenerateBoardSvg()
+    {
+        if (GameModel == null)
+            return "<svg><text x='50' y='50'>Waiting for game data...</text></svg>";
+
+        try
+        {
+            return GameModel.GenerateSvg(
+                PlayerProfiles,
+                Config.BaseUrl,
+                shownStars: 0,
+                dimmedTiles: null
+            );
+        }
+        catch (Exception ex)
+        {
+            return $"<svg><text x='50' y='50'>Error generating board: {ex.Message}</text></svg>";
+        }
     }
 
     private async Task RetryConnection()

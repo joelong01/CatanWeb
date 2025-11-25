@@ -1,0 +1,50 @@
+<button class="icon-button"
+        @onclick="HandleClick"
+        disabled="@Disabled"
+        data-testid="@AutomationId">
+    <div class="icon">@((MarkupString)Icon)</div>
+    <div class="label">@Label</div>
+</button>
+
+@code {
+    /// <summary>
+    /// The icon to display (HTML entity format, e.g., "&#xE710;" for Segoe MDL2 Assets).
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Icon { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The text label to display below the icon.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Event callback triggered when the button is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    /// <summary>
+    /// Whether the button is disabled (default is false).
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Automation ID for testing purposes (data-testid attribute).
+    /// </summary>
+    [Parameter]
+    public string AutomationId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Handles the button click event and invokes the OnClick callback.
+    /// </summary>
+    private async Task HandleClick()
+    {
+        if (!Disabled)
+        {
+            await OnClick.InvokeAsync();
+        }
+    }
+}

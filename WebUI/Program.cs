@@ -13,4 +13,7 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 builder.Services.AddSingleton<GameServiceConfig>();
 builder.Services.AddScoped<GameCommandProxy>();
 
+// Register GameStateService as singleton for thick client state management
+builder.Services.AddSingleton<GameStateService>();
+
 await builder.Build().RunAsync();

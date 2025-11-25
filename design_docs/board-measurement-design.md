@@ -20,7 +20,7 @@ The Board Measurement control appears during the `PickingBoard` game state, allo
 
 ### Component Structure
 
-```
+```text
 WebUI/
 ├── Components/
 │   ├── Board/
@@ -132,7 +132,7 @@ Blazor supports reusable components similar to React components and XAML UserCon
 
 **Layout:**
 
-```
+```text
 ┌─────────────────────────────────────┐
 │ [Resource Cards Row]                │
 │  🌾  🪵  🪨  🧱  🐑                 │
@@ -161,7 +161,7 @@ Buildings are rendered in SVG by `BoardSvgGenerator.RenderBuilding()` with basic
 
 ### Required Changes
 
-**1. Add Building Visual State**
+1. Add Building Visual State**
 
 ```csharp
 public enum BuildingVisualState
@@ -172,7 +172,7 @@ public enum BuildingVisualState
 }
 ```
 
-**2. Building Rendering Logic**
+2. Building Rendering Logic**
 
 ```csharp
 private void RenderBuilding(BuildingModel building, GameModel gameModel, int shownStars)

@@ -1,0 +1,159 @@
+@using Catan3.Shared.Models
+@using Catan3.WebUI.Components.Resources
+@using Catan3.WebUI.Components.Shared
+
+<div class="board-measurement-panel" data-testid="board-measurement-panel">
+    <!-- Resource Cards Row -->
+    <div class="resource-cards-row">
+        @foreach (var resourceType in GetDisplayedResources())
+        {
+            var count = GetResourceCount(resourceType);
+            <ResourceCard Resource="@resourceType" Count="@count" ServiceUrl="@ServiceUrl" />
+        }
+    </div>
+
+    <!-- Star Counters Row -->
+    <div class="star-counters-row">
+        @foreach (var starValue in new[] { 13, 12, 11, 10 })
+        {
+            var count = GetStarCount(starValue);
+            <StarCounter StarValue="@starValue" Count="@count" />
+        }
+    </div>
+
+    <!-- Action Buttons Row -->
+    <div class="action-buttons-row">
+        <IconButton Icon="&#xE10E;"
+                    Label="Previous Board"
+                    OnClick="OnUndo"
+                    AutomationId="btn-undo-board" />
+        <IconButton Icon="&#xE10D;"
+                    Label="Shuffle"
+                    OnClick="OnShuffle"
+                    AutomationId="btn-shuffle-board" />
+    </div>
+
+    <!-- Star Threshold Slider -->
+    <div class="star-slider-container">
+        <label for="star-slider" class="slider-label">Show Buildings (Stars)</label>
+        <input type="range"
+               id="star-slider"
+               class="star-slider"
+               min="0"
+               max="14"
+               value="@ShownStars"
+               @oninput="HandleSliderInput"
+               data-testid="star-threshold-slider" />
+        <div class="slider-value">@ShownStars</div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The current game model containing board and tile data.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public GameModel GameModel { get; set; } = null!;
+
+    /// <summary>
+    /// The base URL of the GameService for fetching assets.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string ServiceUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Event callback triggered when the shuffle button is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnShuffle { get; set; }
+
+    /// <summary>
+    /// Event callback triggered when the undo (previous board) button is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnUndo { get; set; }
+
+    /// <summary>
+    /// The current star threshold value for building visibility (0-14).
+    /// </summary>
+    [Parameter]
+    public int ShownStars { get; set; } = 0;
+
+    /// <summary>
+    /// Event callback triggered when the ShownStars value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> ShownStarsChanged { get; set; }
+
+    /// <summary>
+    /// Gets the list of resource types to display in the resource cards row.
+    /// </summary>
+    /// <returns>Array of ResourceType values for display.</returns>
+    private ResourceType[] GetDisplayedResources()
+    {
+        return new[]
+        {
+            ResourceType.Wheat,
+            ResourceType.Wood,
+            ResourceType.Ore,
+            ResourceType.Brick,
+            ResourceType.Sheep
+        };
+    }
+
+    /// <summary>
+    /// Calculates the count of tiles with the specified resource type.
+    /// </summary>
+    /// <param name="resourceType">The resource type to count.</param>
+    /// <returns>Number of tiles with the specified resource type.</returns>
+    private int GetResourceCount(ResourceType resourceType)
+    {
+        return GameModel.Tiles
+            .Count(t => t.ResourceTileType == resourceType);
+    }
+
+    /// <summary>
+    /// Calculates the count of tiles with exactly the specified star value.
+    /// </summary>
+    /// <param name="threshold">The star threshold to count (10, 11, 12, or 13).</param>
+    /// <returns>Number of tiles with exactly this star value.</returns>
+    private int GetStarCount(int threshold)
+    {
+        return GameModel.Tiles
+            .Count(t => t.ResourceTileType != ResourceType.Desert
+                     && t.ResourceTileType != ResourceType.Sea
+                     && GetTileStars(t) == threshold);
+    }
+
+    /// <summary>
+    /// Calculates the star value for a tile based on its number.
+    /// Star values are based on probability: 6 or 8 = 5 stars, 5 or 9 = 4 stars, etc.
+    /// </summary>
+    /// <param name="tile">The tile to calculate stars for.</param>
+    /// <returns>Star value from 0 to 5.</returns>
+    private int GetTileStars(TileModel tile)
+    {
+        return tile.Number switch
+        {
+            6 or 8 => 5,
+            5 or 9 => 4,
+            4 or 10 => 3,
+            3 or 11 => 2,
+            2 or 12 => 1,
+            _ => 0
+        };
+    }
+
+    /// <summary>
+    /// Handles slider input events and updates the ShownStars value.
+    /// </summary>
+    /// <param name="e">The change event arguments containing the new value.</param>
+    private async Task HandleSliderInput(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var newValue))
+        {
+            ShownStars = newValue;
+            await ShownStarsChanged.InvokeAsync(newValue);
+        }
+    }
+}

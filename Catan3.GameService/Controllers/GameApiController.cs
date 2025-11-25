@@ -509,36 +509,6 @@ namespace Catan3.GameService.Controllers
             }
         }
 
-        /// <summary>
-        /// Gets the game board as SVG
-        /// </summary>
-        [HttpGet("game/{gameId}/board.svg")]
-        public IActionResult GetBoardSvg(string gameId)
-        {
-            _logger.LogEvent("API Request", $"GET /api/game/{gameId}/board.svg - Getting board SVG");
-
-            try
-            {
-                var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
-                var gameModel = gameStateMachine.GetCurrentState();
-
-                var svgGenerator = new BoardSvgGenerator();
-                var svg = svgGenerator.GenerateBoardSvg(gameModel);
-
-                return Content(svg, "image/svg+xml");
-            }
-            catch (GameException)
-            {
-                _logger.LogEvent("Game Not Found", $"Game {gameId} not found", LogLevel.Warning);
-                return NotFound($"Game {gameId} not found");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogEvent("SVG Error", $"Error generating board SVG: {ex.Message}", LogLevel.Error);
-                return StatusCode(500, $"Error generating SVG: {ex.Message}");
-            }
-        }
-
         [HttpGet("companion/games")]
         public IActionResult GetAvailableGames()
         {
