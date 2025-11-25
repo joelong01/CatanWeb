@@ -1,14 +1,62 @@
 # Catan Project Summary
 
-## Current State (2025-11-23)
+## Current State (2025-11-25)
 
 The Catan3 project is a multi-platform Settlers of Catan game system with:
 
 - **Desktop App** (WinUI3) - Working reference implementation with service mode capability
 - **GameService** (ASP.NET Core) - SignalR + REST API backend
-- **WebUI** (Blazor WASM) - Browser-based client with SVG board rendering
+- **WebUI** (Blazor WASM) - **Thick client** with client-side SVG board rendering
 - **Shared Library** - Common models and game logic
 - **Test Suite** - Unified test infrastructure with modern ReplayTest approach
+
+## Latest Session (November 25, 2025 - WebUI Thick Client SVG Rendering)
+
+### Thick Client Architecture Implementation
+
+Completed migration from server-side to client-side SVG rendering:
+
+- **GameStateService**: Singleton managing GameModel, PlayerData, and UI state
+  - Lazy evaluation pattern for calculated properties (e.g., `CalculateStars()`)
+  - Provides `OnStateChanged` event for component subscriptions
+- **Extension Method Renderers**: Compositional SVG generation
+  - `tile.RenderSvg()`, `building.RenderSvg()`, `road.RenderSvg()`, `harbor.RenderSvg()`
+  - `gameModel.GenerateSvg()` - main compositor
+  - All renderers are static extension methods (stateless)
+- **Static Assets**: SVG images bundled in `WebUI/wwwroot/images/svg/`
+  - Buildings, roads, cities rendered from local assets (not server)
+  - Tiles and harbors fetch images from GameService (temporary - could be bundled)
+
+### Server-Side Changes
+
+- **Removed**: `GET /api/game/{gameId}/board.svg` endpoint
+- **Deleted**: Old `BoardSvgGenerator` class from GameService
+- Server now only sends `GameModel` via SignalR
+
+### Number Token Layout Specification
+
+Created `catan-number-design.md` documenting exact CatanNumber layout:
+
+- Based on original working server-side code (commit 37acf5f)
+- Radius: 30 (not 32.5) for proper visual balance
+- Font sizes: Number=24, Pips=12 (user-adjusted for SVG vs XAML rendering)
+- Offsets: NumberOffsetY=-10, PipsOffsetY=10 (visually verified against Desktop)
+- **No magic numbers**: All constants derived from XAML or original working code
+
+### Design Documentation Updates
+
+- **WebUI-Design.md**: Reflects thick client architecture, removed server SVG generation
+- **Board-Layout-Design.md**: Updated with extension method approach
+- **catan-number-design.md**: New specification for number token positioning
+- **Diagrams**: Moved from `GameService/wwwroot/diagrams/` to `design_docs/`
+
+### Build & Test Status (November 25, 2025)
+
+- **Build**: ✅ All projects build successfully
+- **Tests**:
+  - Shared tests: ✅ 45/45 passed
+  - GameService tests: ❌ 26/32 failed (pre-existing Companion test failures)
+  - Desktop tests: Not run (UI automation)
 
 ## Latest Session (November 24, 2025 - Settings Seeding & Layout Consolidation)
 
@@ -240,7 +288,7 @@ Completed comprehensive architecture for Desktop app to delegate game logic to r
 - **Conditional Handler Registration**: GameMessageService dynamically registers local vs service handlers based on ServiceGame setting
 - **Partial Classes**: Split GameMessageService into main class and GameMessageServiceProxy.cs for service handlers
 - **GameServiceProxy Integration**: Enhanced existing proxy with EndGame, PersistGame, and UpdateSettings API endpoints
-- **Duplicate Handler Prevention**: Implemented proper unregistration to avoid `InvalidOperationException` on setting changes
+- **Duplicate Handler Prevention**: Implemented proper registration to avoid `InvalidOperationException` on setting changes
 
 ### Settings Architecture Overhaul
 
