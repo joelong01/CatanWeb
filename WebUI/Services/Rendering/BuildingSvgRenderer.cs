@@ -39,15 +39,13 @@ public static class BuildingSvgRenderer
     /// <param name="visualState">Visual state controlling visibility and rendering mode.</param>
     /// <param name="stars">Number of stars for this building (-1 = not calculated/not needed).</param>
     /// <param name="buildIndex">Build order index to display (0 = don't show).</param>
-    /// <param name="serviceUrl">Base URL for fetching SVG assets.</param>
     /// <returns>SVG markup string for the building.</returns>
     public static string RenderSvg(
         this BuildingModel building,
         PlayerData? playerData,
         BuildingVisualState visualState,
         int stars = -1,
-        int buildIndex = 0,
-        string serviceUrl = "")
+        int buildIndex = 0)
     {
         if (visualState == BuildingVisualState.Hidden)
             return string.Empty;
@@ -67,7 +65,7 @@ public static class BuildingSvgRenderer
         else
         {
             // Render full building with player colors
-            RenderBuildingGlyph(sb, building, playerData, x, y, serviceUrl);
+            RenderBuildingGlyph(sb, building, playerData, x, y);
 
             // Render build index if provided
             if (buildIndex > 0)
@@ -83,7 +81,7 @@ public static class BuildingSvgRenderer
     /// <summary>
     /// Renders the building glyph (settlement or city SVG) with player gradient background.
     /// </summary>
-    private static void RenderBuildingGlyph(StringBuilder sb, BuildingModel building, PlayerData? playerData, double x, double y, string serviceUrl)
+    private static void RenderBuildingGlyph(StringBuilder sb, BuildingModel building, PlayerData? playerData, double x, double y)
     {
         var radius = BuildingSize / 2;
         var gradientId = $"gradient-{building.OwnerId}";

@@ -19,14 +19,12 @@ public static class BoardSvgGenerator
     /// </summary>
     /// <param name="gameModel">The game model containing all board state.</param>
     /// <param name="playerData">Dictionary of player profile data keyed by player ID.</param>
-    /// <param name="serviceUrl">Base URL for fetching image assets.</param>
     /// <param name="shownStars">Star threshold for building visibility (0-14).</param>
     /// <param name="dimmedTiles">Set of tile keys that should be dimmed.</param>
     /// <returns>Complete SVG markup string.</returns>
     public static string GenerateSvg(
         this GameModel gameModel,
         IReadOnlyDictionary<string, PlayerData> playerData,
-        string serviceUrl,
         int shownStars = 0,
         HashSet<HexCoordinates>? dimmedTiles = null)
     {
@@ -50,8 +48,8 @@ public static class BoardSvgGenerator
 
         // Defs section with patterns and gradients
         sb.AppendLine("  <defs>");
-        GenerateTilePatterns(sb, serviceUrl);
-        GenerateHarborPatterns(sb, serviceUrl);
+        GenerateTilePatterns(sb);
+        GenerateHarborPatterns(sb);
         GeneratePlayerGradients(sb, playerData);
         sb.AppendLine("  </defs>");
 
@@ -87,7 +85,7 @@ public static class BoardSvgGenerator
         {
             var player = playerData.TryGetValue(building.OwnerId ?? "", out var pd) ? pd : null;
             var visualState = GetBuildingVisualState(building, shownStars);
-            sb.Append(building.RenderSvg(player, visualState, serviceUrl: serviceUrl));
+            sb.Append(building.RenderSvg(player, visualState));
         }
 
         // Close SVG
@@ -176,7 +174,7 @@ public static class BoardSvgGenerator
     /// <summary>
     /// Generates SVG patterns for tile resource images.
     /// </summary>
-    private static void GenerateTilePatterns(StringBuilder sb, string serviceUrl)
+    private static void GenerateTilePatterns(StringBuilder sb)
     {
         var patternWidth = HexSize * 2;
         var patternHeight = HexHeight;
@@ -197,7 +195,7 @@ public static class BoardSvgGenerator
         {
             var patternId = GetPatternId(resourceType);
             sb.AppendLine($@"    <pattern id=""{patternId}"" patternUnits=""objectBoundingBox"" width=""1"" height=""1"">");
-            sb.AppendLine($@"      <image href=""{serviceUrl}/images/tiles/{filename}"" width=""{patternWidth:F0}"" height=""{patternHeight:F0}"" preserveAspectRatio=""xMidYMid slice""/>");
+            sb.AppendLine($@"      <image href=""/images/tiles/{filename}"" width=""{patternWidth:F0}"" height=""{patternHeight:F0}"" preserveAspectRatio=""xMidYMid slice""/>");
             sb.AppendLine("    </pattern>");
         }
     }
@@ -205,7 +203,7 @@ public static class BoardSvgGenerator
     /// <summary>
     /// Generates SVG patterns for harbor images.
     /// </summary>
-    private static void GenerateHarborPatterns(StringBuilder sb, string serviceUrl)
+    private static void GenerateHarborPatterns(StringBuilder sb)
     {
         var harborTypes = new[]
         {
@@ -222,7 +220,7 @@ public static class BoardSvgGenerator
         {
             var patternId = GetHarborPatternId(harborType);
             sb.AppendLine($@"    <pattern id=""{patternId}"" patternUnits=""objectBoundingBox"" width=""1"" height=""1"">");
-            sb.AppendLine($@"      <image href=""{serviceUrl}/images/harbors/{filename}"" width=""{harborSize:F0}"" height=""{harborSize:F0}"" preserveAspectRatio=""xMidYMid slice""/>");
+            sb.AppendLine($@"      <image href=""/images/harbors/{filename}"" width=""{harborSize:F0}"" height=""{harborSize:F0}"" preserveAspectRatio=""xMidYMid slice""/>");
             sb.AppendLine("    </pattern>");
         }
     }
