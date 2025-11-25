@@ -1,4 +1,4 @@
-You are executing the session-start command.
+# You are executing the session-start command
 
 1. Open and read the file `.ai/commands/start-session.md`.
 2. Treat that file as the authoritative specification for how to begin

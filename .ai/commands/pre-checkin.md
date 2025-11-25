@@ -95,6 +95,7 @@ cannot.
 ### 4. Run All Relevant Test Suites
 
 **Test Structure:**
+
 - `Tests/GameService/` - Integration tests with ReplayTest pattern
 - `Tests/Shared/` - Shared library tests (45 serialization tests)
 - `Tests/Desktop/` - Desktop UI automation tests
@@ -103,14 +104,17 @@ cannot.
 **Running Tests:**
 
 1. **Full test suite** (recommended):
+
    ```powershell
    pwsh ./build.ps1
    ```
+
    - Builds and runs all tests
    - Takes 2-3 minutes
    - Most comprehensive validation
 
 2. **Specific test projects**:
+
    ```powershell
    dotnet test Tests/GameService
    dotnet test Tests/Shared
@@ -118,12 +122,14 @@ cannot.
    ```
 
 3. **Specific tests** (for targeted validation):
+
    ```powershell
    dotnet test Tests/GameService --filter "ReplaySharedExpansionTestFile"
    dotnet test Tests/GameService --filter "TestName"
    ```
 
 4. **Verbose output** (for debugging):
+
    ```powershell
    dotnet test --verbosity normal
    ```
@@ -140,6 +146,7 @@ cannot.
 - **UI automation issues**: Desktop tests may need updating after UI changes
 
 **Known test issues:**
+
 - Desktop UI tests can be timing-sensitive
 - Some tests may fail if services are running during test execution
 

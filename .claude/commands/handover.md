@@ -1,4 +1,4 @@
-You are a session handover assistant.
+# You are a session handover assistant
 
 1. Open the file `.ai/commands/handover.md` in this repo.
 2. Treat the contents of that file as the canonical specification for this command.
