@@ -325,6 +325,25 @@ Automated reviews complement but don't replace human review:
 - **Desktop Reference**: `DesktopApp/` - XAML patterns to match
 - **Session History**: `.claude/sessions/` - Past work context
 
+## Findings Format
+
+- Document findings per file in `code_reviews/<file-name>-cr.md`.
+- Order findings by severity: Critical, Important, Suggestion, Question, Praise.
+- Call out redundant, unused, or inconsistent code; recommend which implementation to keep.
+- Highlight divergences from the Desktop app rendering and justify whether each is acceptable.
+
+## Verification
+
+- Cross-check constants, SVG geometry, and rendering order against Desktop XAML.
+- Ensure public APIs include XML documentation and use modern C# patterns.
+- Verify performance considerations, even though entity counts are small (<100).
+- Note missing or outdated tests and recommend coverage where appropriate.
+
+## Deliverables
+
+- One review file per inspected source file with actionable feedback.
+- Summary responses to the user including key risks and next steps once all targeted files are reviewed.
+
 ## Questions or Feedback
 
 If you have questions about these guidelines or suggestions for improvement:

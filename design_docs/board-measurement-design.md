@@ -4,6 +4,27 @@
 
 The Board Measurement control appears during the `PickingBoard` game state, allowing players to evaluate board quality before starting the game. It displays resource distribution statistics, star counts for tile quality, and controls for shuffling or reverting the board layout.
 
+**Updated: 2025-11-26** - Revised for client-side rendering architecture (thick client)
+
+## Key Architecture Changes from Original Design
+
+This design document has been updated to reflect the WebUI's **thick client architecture**:
+
+### What Changed
+
+- ❌ **Removed**: Server-side SVG generation endpoint (`GET /api/game/{gameId}/board.svg`)
+- ❌ **Removed**: Server-side cache strategy for SVG variants
+- ✅ **Added**: `GameStateService.ShownStars` property for UI state management
+- ✅ **Added**: Direct binding to `GameStateService` instead of component parameters
+- ✅ **Updated**: All SVG rendering happens client-side in browser via Blazor WASM
+
+### Benefits of Client-Side Approach
+
+- **Instant feedback**: Slider changes immediately update building visibility (no network latency)
+- **Simpler architecture**: No server caching, no query parameters, no API versioning
+- **Better UX**: Smooth animations and transitions using CSS
+- **Reduced server load**: Server only handles game logic, not rendering
+
 ## Desktop Implementation Reference
 
 **Location:** `DesktopApp\Resources\BoardMeasurementCtrl.xaml`
@@ -16,12 +37,26 @@ The Board Measurement control appears during the `PickingBoard` game state, allo
 4. **Star Threshold Slider** - Range 0-14, filters buildings by minimum stars to display
 5. **Building Visualization** - Buildings show star count when slider threshold is active
 
-## WebUI Architecture
+## WebUI Architecture (Thick Client)
+
+### Client-Side Rendering Model
+
+WebUI uses a thick client architecture where all SVG rendering happens in the browser:
+
+- **GameStateService**: Singleton managing GameModel, PlayerData, and UI state (ShownStars)
+- **Extension Method Renderers**: `gameModel.GenerateSvg()`, `tile.RenderSvg()`, `building.RenderSvg()`
+- **Instant UI Updates**: Slider changes trigger re-render via `GameStateService.OnStateChanged` event
+- **No Server Round-Trip**: Building visibility filtering happens entirely client-side
 
 ### Component Structure
 
 ```text
 WebUI/
+├── Services/
+│   ├── GameStateService.cs                 # State manager with ShownStars property
+│   └── Rendering/
+│       ├── BoardSvgGenerator.cs            # gameModel.GenerateSvg() extension
+│       └── BuildingSvgRenderer.cs          # building.RenderSvg() extension
 ├── Components/
 │   ├── Board/
 │   │   └── BoardMeasurement.razor          # Main measurement panel
@@ -41,6 +76,7 @@ Blazor supports reusable components similar to React components and XAML UserCon
 - **Data Binding**: Two-way binding with `@bind` directive
 - **Events**: `EventCallback` for parent-child communication
 - **Styling**: Scoped CSS via `.razor.css` files
+- **State Management**: Components subscribe to `GameStateService.OnStateChanged` event
 
 ## Component Specifications
 
@@ -55,7 +91,7 @@ Blazor supports reusable components similar to React components and XAML UserCon
 
 **Features:**
 
-- Background image from GameService (same as tile rendering)
+- Background image from `/images/tiles/` (bundled in wwwroot, matches tile rendering)
 - Black background count badge at bottom
 - CSS grid layout for card styling
 - Hover effects for interactivity
@@ -123,12 +159,16 @@ Blazor supports reusable components similar to React components and XAML UserCon
 
 **Purpose:** Container for all board measurement UI
 
+**Dependencies:**
+
+- `@inject GameStateService GameState` - Accesses GameModel, PlayerData, ShownStars
+
 **Parameters:**
 
-- `GameModel GameModel` - Current game state
 - `EventCallback OnShuffle` - Shuffle command
 - `EventCallback OnUndo` - Previous board command
-- `int ShownStars { get; set; }` - Slider value (0-14)
+
+**Note:** Component subscribes to `GameState.OnStateChanged` to re-render when GameModel or ShownStars changes
 
 **Layout:**
 
@@ -150,8 +190,9 @@ Blazor supports reusable components similar to React components and XAML UserCon
 
 **Conditional Rendering:**
 
-- Only visible when `GameModel.GameState == GameState.PickingBoard`
+- Only visible when `GameState.GameModel?.GameState == GameState.PickingBoard`
 - Replaces normal left panel content during board picking phase
+- Auto-updates when GameModel changes via SignalR
 
 ## SVG Building Rendering Updates
 
@@ -263,37 +304,59 @@ private (string Background, string Foreground) GetPlayerColors(
 }
 ```
 
-## Data Flow
+## Data Flow (Client-Side)
+
+### Architecture Overview
+
+```text
+User moves slider
+    ↓
+GameStateService.ShownStars = value
+    ↓
+OnStateChanged event fires
+    ↓
+Game.razor re-renders
+    ↓
+Calls gameModel.GenerateSvg(playerData, GameState.ShownStars)
+    ↓
+SVG updated with filtered buildings (instant, no server call)
+```
 
 ### Star Count Calculation
 
 Desktop uses: `GameViewModel.BIND_StarCount(int threshold, List<TileModel> tiles)`
 
-WebUI equivalent:
+WebUI equivalent in `BoardMeasurement.razor`:
 
 ```csharp
-// In BoardMeasurement.razor @code block
-private int GetStarCount(int threshold)
-{
-    return GameModel.Tiles
-        .Count(t => t.ResourceTileType != ResourceType.Desert 
-                 && t.ResourceTileType != ResourceType.Sea
-                 && GetTileStars(t) == threshold);
-}
+@inject GameStateService GameState
 
-private int GetTileStars(TileModel tile)
-{
-    // Calculate stars based on probability
-    // 6 or 8 = 5 stars, 5 or 9 = 4 stars, etc.
-    return tile.Number switch
+@code {
+    private int GetStarCount(int threshold)
     {
-        6 or 8 => 5,
-        5 or 9 => 4,
-        4 or 10 => 3,
-        3 or 11 => 2,
-        2 or 12 => 1,
-        _ => 0
-    };
+        if (GameState.GameModel == null)
+            return 0;
+
+        return GameState.GameModel.Tiles
+            .Count(t => t.ResourceTileType != ResourceType.Desert
+                     && t.ResourceTileType != ResourceType.Sea
+                     && GetTileStars(t) == threshold);
+    }
+
+    private int GetTileStars(TileModel tile)
+    {
+        // Calculate stars based on probability
+        // 6 or 8 = 5 stars, 5 or 9 = 4 stars, etc.
+        return tile.Number switch
+        {
+            6 or 8 => 5,
+            5 or 9 => 4,
+            4 or 10 => 3,
+            3 or 11 => 2,
+            2 or 12 => 1,
+            _ => 0
+        };
+    }
 }
 ```
 
@@ -302,56 +365,56 @@ private int GetTileStars(TileModel tile)
 ```csharp
 private Dictionary<ResourceType, int> GetResourceCounts()
 {
-    return GameModel.Tiles
-        .Where(t => t.ResourceTileType != ResourceType.Desert 
+    if (GameState.GameModel == null)
+        return new();
+
+    return GameState.GameModel.Tiles
+        .Where(t => t.ResourceTileType != ResourceType.Desert
                  && t.ResourceTileType != ResourceType.Sea)
         .GroupBy(t => t.ResourceTileType)
         .ToDictionary(g => g.Key, g => g.Count());
 }
 ```
 
-### Slider Integration
+### Slider Integration with GameStateService
 
 ```csharp
-<input type="range" 
-       min="0" 
-       max="14" 
-       @bind="ShownStars" 
-       @bind:event="oninput"
+@inject GameStateService GameState
+
+<input type="range"
+       min="0"
+       max="14"
+       value="@GameState.ShownStars"
+       @oninput="@(e => GameState.ShownStars = int.Parse(e.Value?.ToString() ?? "0"))"
        class="star-slider" />
 
+<span>@GameState.ShownStars</span>
+
 @code {
-    [Parameter]
-    public int ShownStars { get; set; } = 0;
-    
-    [Parameter]
-    public EventCallback<int> ShownStarsChanged { get; set; }
+    protected override void OnInitialized()
+    {
+        // Subscribe to state changes
+        GameState.OnStateChanged += HandleStateChanged;
+    }
+
+    private void HandleStateChanged(object? sender, EventArgs e)
+    {
+        StateHasChanged(); // Trigger Blazor re-render
+    }
+
+    public void Dispose()
+    {
+        GameState.OnStateChanged -= HandleStateChanged;
+    }
 }
 ```
 
-## API Updates
+**Benefits of GameStateService Integration:**
 
-### GameService Board SVG Endpoint
-
-Current: `GET /api/game/{gameId}/board.svg`
-
-Enhancement: Add query parameter for star threshold
-
-```
-GET /api/game/{gameId}/board.svg?shownStars={value}
-```
-
-**Benefits:**
-
-- SVG regenerated with filtered buildings
-- No client-side manipulation needed
-- Consistent with existing caching strategy using `GameHash`
-
-**Cache Strategy:**
-
-- Include `shownStars` in cache key: `{gameId}_{gameHash}_{shownStars}`
-- Only cache for `PickingBoard` state
-- Normal games use `shownStars=0` (default, show all)
+- ✅ Single source of truth for ShownStars value
+- ✅ Automatic propagation to Game.razor for SVG re-rendering
+- ✅ No prop drilling through component hierarchy
+- ✅ Instant UI feedback (no server round-trip)
 
 ## Styling Guidelines
 
@@ -417,52 +480,58 @@ public void ResourceCard_DisplaysCorrectCount()
 
 ### Phase 1: Reusable Components (Foundation)
 
-1. Create `WebUI/Components/Resources/ResourceCard.razor`
-2. Create `WebUI/Components/Resources/StarCounter.razor`
-3. Create `WebUI/Components/Shared/IconButton.razor`
-4. Add component unit tests
+1. Create `WebUI/Components/Resources/ResourceCard.razor` and `.razor.css`
+2. Create `WebUI/Components/Resources/StarCounter.razor` and `.razor.css`
+3. Create `WebUI/Components/Shared/IconButton.razor` and `.razor.css`
+4. Add CSS variables to `wwwroot/css/app.css`
+5. Add component unit tests (optional, can defer)
 
 ### Phase 2: Board Measurement Panel
 
-1. Create `WebUI/Components/Board/BoardMeasurement.razor`
-2. Integrate reusable components
-3. Implement star count calculations
-4. Add slider with two-way binding
-5. Wire up shuffle/undo commands
+1. Create `WebUI/Components/Board/BoardMeasurement.razor` and `.razor.css`
+2. Integrate reusable components (ResourceCard, StarCounter, IconButton)
+3. Inject `GameStateService` dependency
+4. Implement star count calculations using `GameState.GameModel`
+5. Add slider bound to `GameState.ShownStars`
+6. Wire up shuffle/undo EventCallbacks (to be handled by Game.razor)
+7. Subscribe to `GameState.OnStateChanged` event
 
-### Phase 3: SVG Building Updates
+### Phase 3: SVG Building Updates (Already Partially Done)
 
-1. Add `shownStars` parameter to SVG generation
-2. Implement building visual state logic
-3. Add player gradient color extraction
-4. Update building rendering for star display
-5. Test building visibility filtering
+1. ✅ `shownStars` parameter already exists in `BoardSvgGenerator.GenerateSvg()`
+2. ✅ `GetBuildingVisualState()` already implemented
+3. Enhance building visual state logic to handle star display (may need updates)
+4. Test building visibility filtering with different ShownStars values
+5. Verify buildings show star counts in PickingBoard state
 
-### Phase 4: Integration
+### Phase 4: Integration with Game.razor
 
-1. Conditionally show Board Measurement in Game page left panel
-2. Connect to GameService commands (shuffle, undo)
-3. Update SVG endpoint with query parameter
-4. Implement proper cache invalidation
-5. End-to-end testing
+1. Conditionally render Board Measurement in Game page left panel
+2. Pass OnShuffle/OnUndo EventCallbacks to BoardMeasurement
+3. Update Game.razor to pass `GameState.ShownStars` to `GenerateSvg()`
+4. Connect shuffle command to GameHub SignalR call
+5. Connect undo command to GameHub SignalR call
+6. Test complete workflow: slider → building visibility → shuffle → undo
 
 ## Open Questions
 
-1. **Resource Card Images**: Use same SVG patterns as tiles, or separate image assets?
-   - **Recommendation**: Reuse tile patterns for consistency
+1. **Resource Card Images**: Use same image files as tiles from `/images/tiles/`?
+   - **Answer**: Yes, reuse existing tile images for consistency
 
-2. **Star Calculation Location**: Client-side or server-side?
-   - **Recommendation**: Both - client for display, server validates
+2. **Star Calculation**: Client-side only or validate server-side?
+   - **Answer**: Client-side for display, server validates on shuffle/undo commands
 
-3. **Slider Debouncing**: Should slider changes debounce before updating SVG?
-   - **Recommendation**: Yes, 150ms debounce to prevent excessive regeneration
+3. **Slider Debouncing**: Should slider changes debounce before re-rendering SVG?
+   - **Answer**: Not needed - Blazor WASM handles re-renders efficiently, instant feedback is better UX
 
 4. **Mobile Layout**: How should board measurement adapt for small screens?
-   - **Recommendation**: Vertical stack instead of horizontal, smaller components
+   - **Answer**: Defer to future, current focus is desktop/tablet layout
 
 ## References
 
 - Desktop Implementation: `DesktopApp\Resources\BoardMeasurementCtrl.xaml`
 - Building Control: `DesktopApp\Buildings\BuildingCtrl.xaml`
 - Building View Model: `DesktopApp\Buildings\BuildingViewModel\BuildingViewModel.cs`
-- SVG Generator: `Catan3.GameService\Services\BoardSvgGenerator.cs`
+- Client-Side SVG Generator: `WebUI\Services\Rendering\BoardSvgGenerator.cs`
+- Building Renderer: `WebUI\Services\Rendering\BuildingSvgRenderer.cs`
+- Game State Service: `WebUI\Services\GameStateService.cs`
