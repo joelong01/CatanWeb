@@ -6,7 +6,7 @@ namespace Catan3.Shared.ViewData
     /// Used by GameService API and consumed by WebUI/Desktop clients.
     /// Will be stored in CosmosDB as player profiles.
     /// </summary>
-    public class PlayerData
+    public class PlayerProfile
     {
         /// <summary>
         /// Unique identifier for the player
@@ -39,9 +39,9 @@ namespace Catan3.Shared.ViewData
         /// </summary>
         public string ImageUri { get; set; } = string.Empty;
 
-        public PlayerData() { }
+        public PlayerProfile() { }
 
-        public PlayerData(string id, string name, string primaryBackgroundColor, string secondaryBackgroundColor, string foregroundColor, string imageUri)
+        public PlayerProfile(string id, string name, string primaryBackgroundColor, string secondaryBackgroundColor, string foregroundColor, string imageUri)
         {
             Id = id;
             Name = name;

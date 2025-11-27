@@ -457,7 +457,7 @@
 
     private HubConnection? _hubConnection;
     private GameModel? GameModel { get; set; }
-    private Dictionary<string, PlayerData> PlayerProfiles { get; set; } = new();
+    private Dictionary<string, PlayerProfile> PlayerProfiles { get; set; } = new();
     private string? TestOverridePlayerId { get; set; } // For testing: click player to see their colors
     private bool IsConnecting { get; set; } = true;
     private string? ErrorMessage { get; set; }
@@ -536,7 +536,7 @@
 
     private class PlayersResponse
     {
-        public List<PlayerData> Players { get; set; } = new();
+        public List<PlayerProfile> Players { get; set; } = new();
     }
 
     private async Task ConnectToGameAsync()

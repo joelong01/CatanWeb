@@ -81,7 +81,7 @@
     [SupplyParameterFromQuery(Name = "returnUrl")]
     public string? ReturnUrl { get; set; }
 
-    private List<PlayerData> Players { get; set; } = new();
+    private List<PlayerProfile> Players { get; set; } = new();
     private HashSet<string> SelectedPlayers { get; set; } = new();
     private GameType SelectedGameType { get; set; } = GameType.Expansion;
     private bool IsLoading { get; set; } = true;
@@ -219,7 +219,7 @@
     private class GetPlayersApiResponse
     {
         public bool Success { get; set; }
-        public List<PlayerData> Players { get; set; } = new();
+        public List<PlayerProfile> Players { get; set; } = new();
         public int Count { get; set; }
         public string Timestamp { get; set; } = string.Empty;
     }

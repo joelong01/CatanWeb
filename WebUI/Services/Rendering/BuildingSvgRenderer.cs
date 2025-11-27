@@ -42,7 +42,7 @@ public static class BuildingSvgRenderer
     /// <returns>SVG markup string for the building.</returns>
     public static string RenderSvg(
         this BuildingModel building,
-        PlayerData? playerData,
+        PlayerProfile? playerData,
         BuildingVisualState visualState,
         int stars = -1,
         int buildIndex = 0)
@@ -81,7 +81,7 @@ public static class BuildingSvgRenderer
     /// <summary>
     /// Renders the building glyph (settlement or city SVG) with player gradient background.
     /// </summary>
-    private static void RenderBuildingGlyph(StringBuilder sb, BuildingModel building, PlayerData? playerData, double x, double y)
+    private static void RenderBuildingGlyph(StringBuilder sb, BuildingModel building, PlayerProfile? playerData, double x, double y)
     {
         var radius = BuildingSize / 2;
         var gradientId = $"gradient-{building.OwnerId}";
@@ -108,21 +108,22 @@ public static class BuildingSvgRenderer
     }
 
     /// <summary>
-    /// Renders stars only (for Stars visual state).
+    /// Renders stars as numeric count (for Stars visual state).
+    /// Matches Desktop BuildingViewModel.BIND_StateGlyph (line 110): glyph = stars.ToString()
     /// </summary>
     private static void RenderStars(StringBuilder sb, int stars, double x, double y)
     {
         if (stars <= 0)
             return;
 
-        var starText = new string('★', stars);
-        sb.AppendLine($@"    <text x=""{x}"" y=""{y}"" text-anchor=""middle"" dominant-baseline=""middle"" font-size=""16"" fill=""gold"" stroke=""black"" stroke-width=""0.5"">{starText}</text>");
+        // Desktop renders numeric star count, not star symbols
+        sb.AppendLine($@"    <text x=""{x}"" y=""{y}"" text-anchor=""middle"" dominant-baseline=""middle"" font-size=""20"" font-weight=""bold"" fill=""gold"" stroke=""black"" stroke-width=""0.8"">{stars}</text>");
     }
 
     /// <summary>
     /// Renders build index number inside or near the building.
     /// </summary>
-    private static void RenderBuildIndex(StringBuilder sb, double x, double y, int buildIndex, PlayerData? playerData)
+    private static void RenderBuildIndex(StringBuilder sb, double x, double y, int buildIndex, PlayerProfile? playerData)
     {
         var textColor = playerData?.ForegroundColor ?? "#FFFFFF";
         sb.AppendLine($@"    <text x=""{x}"" y=""{y}"" text-anchor=""middle"" dominant-baseline=""middle"" font-family=""sans-serif"" font-size=""14"" font-weight=""bold"" fill=""{textColor}"" stroke=""black"" stroke-width=""0.5"">{buildIndex}</text>");

@@ -25,7 +25,7 @@ public static class BoardSvgGenerator
     /// <returns>Complete SVG markup string.</returns>
     public static string GenerateSvg(
         this GameModel gameModel,
-        IReadOnlyDictionary<string, PlayerData> playerData,
+        IReadOnlyDictionary<string, PlayerProfile> playerData,
         int shownStars = 0,
         HashSet<HexCoordinates>? dimmedTiles = null)
     {
@@ -75,9 +75,21 @@ public static class BoardSvgGenerator
         }
 
         // Render roads (below buildings for proper z-order)
+        var currentPlayer = gameModel.CurrentPlayer();
+        var currentPlayerData = playerData.TryGetValue(currentPlayer.Id, out var cpd) ? cpd : null;
+
         foreach (var road in gameModel.Roads)
         {
-            var player = playerData.TryGetValue(road.OwnerId ?? "", out var pd) ? pd : null;
+            // Owned roads use owner colors, non-owned roads use current player colors (matches Desktop RoadViewModel)
+            PlayerProfile? player;
+            if (road.OwnerId != null && playerData.TryGetValue(road.OwnerId, out var ownerData))
+            {
+                player = ownerData;  // Owned road - use owner's colors
+            }
+            else
+            {
+                player = currentPlayerData;  // Non-owned road (buildable, etc) - use current player's colors
+            }
 
             // Calculate opacity based on road state (matches Desktop RoadViewModel.Opacity)
             var opacity = road.RoadState switch
@@ -92,19 +104,19 @@ public static class BoardSvgGenerator
         }
 
         // Render buildings (on top)
-        // TODO: Future optimization - filter buildings to only render those that are built or buildable in current state
+        int buildingIndex = 1;  // Build index counter for highlighted buildings (matches Desktop logic)
         foreach (var building in gameModel.Buildings)
         {
             var player = playerData.TryGetValue(building.OwnerId ?? "", out var pd) ? pd : null;
-            var visualState = GetBuildingVisualState(building, shownStars);
 
             // Calculate stars using extension methods (sum of pips from adjacent tiles)
-            var stars = visualState == BuildingVisualState.Stars
-                ? gameModel.TilesForBuildings(building.BuildingKey).Stars()
-                : -1;
+            var stars = gameModel.TilesForBuildings(building.BuildingKey).Stars();
 
-            // BuildIndex is a view concern - currently not tracked for WebUI server rendering
-            var buildIndex = 0;
+            // Determine visual state based on entitlements, phase, and star threshold
+            var visualState = GetBuildingVisualState(building, gameModel, stars, shownStars);
+
+            // Assign build index only for highlighted buildings (matches Desktop GameViewModel.MergeBuildings:416, 434)
+            var buildIndex = visualState == BuildingVisualState.Highlighted ? buildingIndex++ : 0;
 
             sb.Append(building.RenderSvg(player, visualState, stars, buildIndex));
         }
@@ -116,23 +128,42 @@ public static class BoardSvgGenerator
     }
 
     /// <summary>
-    /// Determines building visual state based on building state and star threshold.
-    /// Shows only buildings that are actually built. Potential locations and
-    /// highlights will be added later when implementing entitlements logic.
+    /// Determines building visual state based on building state, entitlements, and star threshold.
+    /// Matches Desktop GameViewModel.MergeBuildings logic (DesktopApp/Game/GameView/GameViewModel.cs:410-444).
     /// </summary>
-    private static BuildingVisualState GetBuildingVisualState(BuildingModel building, int shownStars)
+    /// <param name="building">The building model.</param>
+    /// <param name="gameModel">The game model (for current player and phase).</param>
+    /// <param name="stars">Stars value for this building (pip sum of adjacent tiles).</param>
+    /// <param name="shownStars">Star threshold from board measurement slider.</param>
+    /// <returns>Visual state for rendering.</returns>
+    private static BuildingVisualState GetBuildingVisualState(
+        BuildingModel building,
+        GameModel gameModel,
+        int stars,
+        int shownStars)
     {
-        // Only show buildings that are actually built
+        var currentPlayer = gameModel.CurrentPlayer();
+        var hasCityEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.City);
+        var hasSettlementEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.Settlement);
+
         return building.BuildingState switch
         {
-            BuildingState.Settlement => BuildingVisualState.Normal,
+            BuildingState.PossibleSettlement => hasSettlementEntitlement && gameModel.Phase() != GamePhase.PickingResources
+                ? BuildingVisualState.Highlighted
+                : stars >= shownStars && hasSettlementEntitlement
+                    ? BuildingVisualState.Stars
+                    : BuildingVisualState.Hidden,
+
+            BuildingState.Settlement => hasCityEntitlement && building.OwnerId == currentPlayer.Id
+                ? BuildingVisualState.Highlighted
+                : BuildingVisualState.Normal,
+
             BuildingState.City => BuildingVisualState.Normal,
             BuildingState.Metropolis => BuildingVisualState.Normal,
             BuildingState.Knight => BuildingVisualState.Normal,
 
-            // Hide potential locations and non-buildable spots
-            // TODO: Add Highlighted state for entitlements during placement phases
-            // TODO: Add Stars state for board measurement (when shownStars > 0)
+            BuildingState.NotBuildable => BuildingVisualState.Hidden,
+
             _ => BuildingVisualState.Hidden
         };
     }
@@ -269,7 +300,7 @@ public static class BoardSvgGenerator
     /// <summary>
     /// Generates linear gradients for player backgrounds.
     /// </summary>
-    private static void GeneratePlayerGradients(StringBuilder sb, IReadOnlyDictionary<string, PlayerData> playerData)
+    private static void GeneratePlayerGradients(StringBuilder sb, IReadOnlyDictionary<string, PlayerProfile> playerData)
     {
         foreach (var (playerId, player) in playerData)
         {

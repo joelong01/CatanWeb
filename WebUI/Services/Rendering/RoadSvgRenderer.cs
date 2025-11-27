@@ -25,7 +25,7 @@ public static class RoadSvgRenderer
     /// <returns>SVG markup string for the road.</returns>
     public static string RenderSvg(
         this RoadModel road,
-        PlayerData? playerData,
+        PlayerProfile? playerData,
         int buildIndex = 0,
         double opacity = 0.0)
     {
@@ -52,7 +52,7 @@ public static class RoadSvgRenderer
     /// Renders the road polygon with player colors.
     /// Uses 6-point polygon: tips at outer vertices, body at inner hex boundaries.
     /// </summary>
-    private static void RenderRoadPolygon(StringBuilder sb, (double x, double y) v1, (double x, double y) v2, PlayerData? playerData, double opacity)
+    private static void RenderRoadPolygon(StringBuilder sb, (double x, double y) v1, (double x, double y) v2, PlayerProfile? playerData, double opacity)
     {
         var roadPolygon = GenerateRoadPolygon(v1, v2);
 
@@ -67,7 +67,7 @@ public static class RoadSvgRenderer
     /// <summary>
     /// Renders build index number on the road, rotated to match road orientation.
     /// </summary>
-    private static void RenderBuildIndex(StringBuilder sb, (double x, double y) v1, (double x, double y) v2, int buildIndex, PlayerData? playerData)
+    private static void RenderBuildIndex(StringBuilder sb, (double x, double y) v1, (double x, double y) v2, int buildIndex, PlayerProfile? playerData)
     {
         // Calculate road midpoint
         var midX = (v1.x + v2.x) / 2;

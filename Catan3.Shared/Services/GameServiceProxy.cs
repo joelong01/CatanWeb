@@ -624,7 +624,7 @@ namespace Catan3.Shared.Services
         /// Gets all available players via REST API
         /// </summary>
         /// <returns>List of player data</returns>
-        public async Task<List<PlayerData>> GetPlayersAsync()
+        public async Task<List<PlayerProfile>> GetPlayersAsync()
         {
             if (string.IsNullOrEmpty(ServiceUri))
                 throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
@@ -1037,7 +1037,7 @@ namespace Catan3.Shared.Services
     public class GetPlayersResponse
     {
         public bool Success { get; set; }
-        public List<PlayerData> Players { get; set; } = [];
+        public List<PlayerProfile> Players { get; set; } = [];
         public int Count { get; set; }
         public string Timestamp { get; set; } = "";
     }

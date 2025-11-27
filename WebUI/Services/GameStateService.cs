@@ -12,7 +12,7 @@ namespace Catan3.WebUI.Services;
 public class GameStateService
 {
     private GameModel? _gameModel;
-    private Dictionary<string, PlayerData> _playerData = new();
+    private Dictionary<string, PlayerProfile> _playerData = new();
     private int _shownStars = 0;
 
     /// <summary>
@@ -31,7 +31,7 @@ public class GameStateService
     /// Gets the player profile data dictionary keyed by player ID.
     /// Contains display colors, names, and image URIs for all players.
     /// </summary>
-    public IReadOnlyDictionary<string, PlayerData> PlayerData => _playerData;
+    public IReadOnlyDictionary<string, PlayerProfile> PlayerData => _playerData;
 
     /// <summary>
     /// Gets or sets the current star threshold for building visibility (0-14).
@@ -66,7 +66,7 @@ public class GameStateService
     /// Called when player data is loaded from the server or modified.
     /// </summary>
     /// <param name="playerData">Dictionary of player data keyed by player ID.</param>
-    public void UpdatePlayerData(Dictionary<string, PlayerData> playerData)
+    public void UpdatePlayerData(Dictionary<string, PlayerProfile> playerData)
     {
         _playerData = playerData;
         NotifyStateChanged();
@@ -85,11 +85,11 @@ public class GameStateService
     }
 
     /// <summary>
-    /// Gets the PlayerData for a specific player ID.
+    /// Gets the PlayerProfile for a specific player ID.
     /// </summary>
     /// <param name="playerId">The player ID to look up.</param>
-    /// <returns>PlayerData if found, null otherwise.</returns>
-    public PlayerData? GetPlayerData(string playerId)
+    /// <returns>PlayerProfile if found, null otherwise.</returns>
+    public PlayerProfile? GetPlayerData(string playerId)
     {
         return _playerData.TryGetValue(playerId, out var data) ? data : null;
     }

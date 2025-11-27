@@ -663,7 +663,7 @@ namespace Catan3.GameService.Controllers
                 // Get players from database
                 var playerEntities = await _dbContext.Players.ToListAsync();
                 var players = playerEntities
-                    .Select(e => JsonHelper.Deserialize<PlayerData>(e.Data))
+                    .Select(e => JsonHelper.Deserialize<PlayerProfile>(e.Data))
                     .Where(p => p != null)
                     .ToList();
 
