@@ -91,6 +91,31 @@ When creating or updating content in `.ai/`:
 - Suppress verbose output (use `--quiet`, `--no-pager`, pipe to `grep`/`head` when appropriate)
 - Stay in current working directory or child directories unless absolutely necessary
 
+### Refactoring with Visual Studio
+
+**IMPORTANT:** When code changes involve renaming symbols (classes, methods, properties, namespaces):
+
+- **Ask the developer to use Visual Studio's Rename Symbol feature** (Ctrl+R, Ctrl+R)
+- This is **faster, more efficient, and less error-prone** than manual refactoring
+- Visual Studio updates all references across the entire solution automatically
+- AI assistants should:
+  1. Identify that a rename is needed
+  2. Specify exactly what symbol to rename and to what
+  3. Let the developer execute the rename in Visual Studio
+  4. Continue with remaining implementation after rename is complete
+
+**Example:**
+```text
+"I need to rename the PlayerData class to PlayerProfile. Please use Visual Studio's
+Rename Symbol feature:
+1. Open PlayerData.cs
+2. Right-click on 'PlayerData' class name
+3. Select 'Rename...' (or Ctrl+R, Ctrl+R)
+4. Enter 'PlayerProfile'
+5. Check 'Rename file' option
+6. Let me know when complete and I'll continue with the next steps."
+```
+
 ## Code Quality Standards
 
 ### C# Coding Standards
