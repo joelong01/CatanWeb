@@ -32,8 +32,8 @@ public static class RoadSvgRenderer
         var sb = new StringBuilder();
         var (v1, v2) = GetEdgeVertices(road.RoadKey);
 
-        // Road group with CSS class
-        sb.AppendLine($@"  <g class=""road"" data-player=""{road.OwnerId}"">");
+        // Road group with CSS class and hover support
+        sb.AppendLine($@"  <g class=""road road-hover"" data-player=""{road.OwnerId}"">");
 
         // Render road polygon with player colors
         RenderRoadPolygon(sb, v1, v2, playerData, opacity);
@@ -90,10 +90,10 @@ public static class RoadSvgRenderer
     private static ((double x, double y) v1, (double x, double y) v2) GetEdgeVertices(RoadKey roadKey)
     {
         // Convert tile axial coordinates to pixel position
-        var (tileX, tileY) = AxialToPixel(roadKey.TileKey.Q, roadKey.TileKey.R);
+        var (tileX, tileY) = BoardGeometry.AxialToPixel(roadKey.TileKey.Q, roadKey.TileKey.R);
 
         // Get hex vertices
-        var vertices = GetHexVertices(tileX, tileY);
+        var vertices = BoardGeometry.GetHexVertices(tileX, tileY);
 
         // Map HexSide to vertex indices
         var (v1Idx, v2Idx) = roadKey.HexSide switch
@@ -161,29 +161,4 @@ public static class RoadSvgRenderer
         return string.Join(" ", points);
     }
 
-    /// <summary>
-    /// Converts axial coordinates to pixel position.
-    /// </summary>
-    private static (double x, double y) AxialToPixel(int q, int r)
-    {
-        double x = HexSize * (3.0 / 2 * q);
-        double y = HexSize * (Math.Sqrt(3) / 2 * q + Math.Sqrt(3) * r);
-        return (x + CenterX, y + CenterY);
-    }
-
-    /// <summary>
-    /// Gets hex vertices for a tile at the given center position.
-    /// </summary>
-    private static List<(double x, double y)> GetHexVertices(double cx, double cy)
-    {
-        var vertices = new List<(double x, double y)>();
-        for (int i = 0; i < 6; i++)
-        {
-            double angle = Math.PI / 180 * (60 * i);
-            double x = cx + HexSize * Math.Cos(angle);
-            double y = cy + HexSize * Math.Sin(angle);
-            vertices.Add((x, y));
-        }
-        return vertices;
-    }
 }

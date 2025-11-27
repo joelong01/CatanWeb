@@ -1,4 +1,5 @@
 using System.Text;
+using Catan3.Shared.Extensions;
 using Catan3.Shared.Models;
 using Catan3.Shared.ViewData;
 using Catan3.Shared.Utility;
@@ -48,6 +49,7 @@ public static class BoardSvgGenerator
 
         // Defs section with patterns and gradients
         sb.AppendLine("  <defs>");
+        GenerateCherryPattern(sb);  // Cherry wood border texture
         GenerateTilePatterns(sb);
         GenerateHarborPatterns(sb);
         GeneratePlayerGradients(sb, playerData);
@@ -76,7 +78,17 @@ public static class BoardSvgGenerator
         foreach (var road in gameModel.Roads)
         {
             var player = playerData.TryGetValue(road.OwnerId ?? "", out var pd) ? pd : null;
-            sb.Append(road.RenderSvg(player, road.BuildIndex));
+
+            // Calculate opacity based on road state (matches Desktop RoadViewModel.Opacity)
+            var opacity = road.RoadState switch
+            {
+                RoadState.Road => 1.0,      // Owned road - fully visible
+                RoadState.Ship => 1.0,      // Owned ship - fully visible
+                RoadState.Buildable => 0.5, // Buildable location - semi-transparent
+                _ => 0.0                     // Unowned/hidden - transparent (shows on hover via CSS)
+            };
+
+            sb.Append(road.RenderSvg(player, road.BuildIndex, opacity));
         }
 
         // Render buildings (on top)
@@ -85,7 +97,16 @@ public static class BoardSvgGenerator
         {
             var player = playerData.TryGetValue(building.OwnerId ?? "", out var pd) ? pd : null;
             var visualState = GetBuildingVisualState(building, shownStars);
-            sb.Append(building.RenderSvg(player, visualState));
+
+            // Calculate stars using extension methods (sum of pips from adjacent tiles)
+            var stars = visualState == BuildingVisualState.Stars
+                ? gameModel.TilesForBuildings(building.BuildingKey).Stars()
+                : -1;
+
+            // BuildIndex is a view concern - currently not tracked for WebUI server rendering
+            var buildIndex = 0;
+
+            sb.Append(building.RenderSvg(player, visualState, stars, buildIndex));
         }
 
         // Close SVG
@@ -96,25 +117,24 @@ public static class BoardSvgGenerator
 
     /// <summary>
     /// Determines building visual state based on building state and star threshold.
-    /// Simplified version - full highlighting logic requires game state/entitlements.
+    /// Shows only buildings that are actually built. Potential locations and
+    /// highlights will be added later when implementing entitlements logic.
     /// </summary>
     private static BuildingVisualState GetBuildingVisualState(BuildingModel building, int shownStars)
     {
-        // Show buildings that are actually built (Settlement or City)
-        if (building.BuildingState == BuildingState.Settlement ||
-            building.BuildingState == BuildingState.City)
+        // Only show buildings that are actually built
+        return building.BuildingState switch
         {
-            return BuildingVisualState.Normal;
-        }
+            BuildingState.Settlement => BuildingVisualState.Normal,
+            BuildingState.City => BuildingVisualState.Normal,
+            BuildingState.Metropolis => BuildingVisualState.Normal,
+            BuildingState.Knight => BuildingVisualState.Normal,
 
-        // Show possible settlement locations during allocation phases
-        if (building.BuildingState == BuildingState.PossibleSettlement)
-        {
-            return BuildingVisualState.Normal;
-        }
-
-        // Hide unbuilt buildings
-        return BuildingVisualState.Hidden;
+            // Hide potential locations and non-buildable spots
+            // TODO: Add Highlighted state for entitlements during placement phases
+            // TODO: Add Stars state for board measurement (when shownStars > 0)
+            _ => BuildingVisualState.Hidden
+        };
     }
 
     /// <summary>
@@ -128,8 +148,8 @@ public static class BoardSvgGenerator
         // Include tiles
         foreach (var tile in gameModel.Tiles)
         {
-            var (cx, cy) = AxialToPixel(tile.TileKey.Q, tile.TileKey.R);
-            var vertices = GetHexVertices(cx, cy);
+            var (cx, cy) = BoardGeometry.AxialToPixel(tile.TileKey.Q, tile.TileKey.R);
+            var vertices = BoardGeometry.GetHexVertices(cx, cy);
             foreach (var v in vertices)
             {
                 minX = Math.Min(minX, v.x);
@@ -145,9 +165,9 @@ public static class BoardSvgGenerator
             if (harbor.HarborKey.HarborType == HarborType.None)
                 continue;
 
-            var (cx, cy) = AxialToPixel(harbor.HarborKey.HexCoordinates.Q, harbor.HarborKey.HexCoordinates.R);
-            var hexVertices = GetHexVertices(cx, cy);
-            var (v1Idx, v2Idx) = GetEdgeVerticesForSide(harbor.HarborKey.Side);
+            var (cx, cy) = BoardGeometry.AxialToPixel(harbor.HarborKey.HexCoordinates.Q, harbor.HarborKey.HexCoordinates.R);
+            var hexVertices = BoardGeometry.GetHexVertices(cx, cy);
+            var (v1Idx, v2Idx) = BoardGeometry.GetEdgeVerticesForSide(harbor.HarborKey.Side);
             var v1 = hexVertices[v1Idx];
             var v2 = hexVertices[v2Idx];
 
@@ -172,12 +192,31 @@ public static class BoardSvgGenerator
     }
 
     /// <summary>
+    /// Generates SVG patterns for wood border textures.
+    /// Matches Desktop's bmMaple and bmCherry ImageBrush resources.
+    /// </summary>
+    private static void GenerateCherryPattern(StringBuilder sb)
+    {
+        // Maple - used as FILL for outer hex border
+        sb.AppendLine($@"    <pattern id=""{BoardSvgConstants.HexBorderFillPattern}"" patternUnits=""userSpaceOnUse"" width=""100"" height=""100"">");
+        sb.AppendLine($@"      <image href=""/images/maple.jpg"" width=""100"" height=""100"" preserveAspectRatio=""xMidYMid slice""/>");
+        sb.AppendLine("    </pattern>");
+
+        // Cherry - used as STROKE for outer hex border
+        sb.AppendLine($@"    <pattern id=""{BoardSvgConstants.HexBorderStrokePattern}"" patternUnits=""userSpaceOnUse"" width=""100"" height=""100"">");
+        sb.AppendLine($@"      <image href=""/images/cherry.jpg"" width=""100"" height=""100"" preserveAspectRatio=""xMidYMid slice""/>");
+        sb.AppendLine("    </pattern>");
+    }
+
+    /// <summary>
     /// Generates SVG patterns for tile resource images.
     /// </summary>
     private static void GenerateTilePatterns(StringBuilder sb)
     {
-        var patternWidth = HexSize * 2;
-        var patternHeight = HexHeight;
+        // Pattern sized for INNER hex to reveal maple border
+        var innerHexSize = BoardSvgConstants.InnerHexSize;
+        var patternWidth = innerHexSize * 2;
+        var patternHeight = Math.Sqrt(3) * innerHexSize;
 
         var tileTypes = new[]
         {
@@ -194,6 +233,8 @@ public static class BoardSvgGenerator
         foreach (var (resourceType, filename) in tileTypes)
         {
             var patternId = GetPatternId(resourceType);
+            // Match Desktop's ImageBrush Stretch="UniformToFill"
+            // Whole image, centered, scaled to fill, clipped at edges
             sb.AppendLine($@"    <pattern id=""{patternId}"" patternUnits=""objectBoundingBox"" width=""1"" height=""1"">");
             sb.AppendLine($@"      <image href=""/images/tiles/{filename}"" width=""{patternWidth:F0}"" height=""{patternHeight:F0}"" preserveAspectRatio=""xMidYMid slice""/>");
             sb.AppendLine("    </pattern>");
@@ -295,46 +336,4 @@ public static class BoardSvgGenerator
         };
     }
 
-    /// <summary>
-    /// Converts axial coordinates to pixel position.
-    /// </summary>
-    private static (double x, double y) AxialToPixel(int q, int r)
-    {
-        double x = HexSize * (3.0 / 2 * q);
-        double y = HexSize * (Math.Sqrt(3) / 2 * q + Math.Sqrt(3) * r);
-        return (x + BoardSvgConstants.CenterX, y + BoardSvgConstants.CenterY);
-    }
-
-    /// <summary>
-    /// Gets hex vertices for a tile at the given center position.
-    /// </summary>
-    private static List<(double x, double y)> GetHexVertices(double cx, double cy)
-    {
-        var vertices = new List<(double x, double y)>();
-        for (int i = 0; i < 6; i++)
-        {
-            double angle = Math.PI / 180 * (60 * i);
-            double x = cx + HexSize * Math.Cos(angle);
-            double y = cy + HexSize * Math.Sin(angle);
-            vertices.Add((x, y));
-        }
-        return vertices;
-    }
-
-    /// <summary>
-    /// Maps HexSide to the two vertex indices for flat-top hex orientation.
-    /// </summary>
-    private static (int, int) GetEdgeVerticesForSide(HexSide side)
-    {
-        return side switch
-        {
-            HexSide.Top => (4, 5),
-            HexSide.TopRight => (5, 0),
-            HexSide.BottomRight => (0, 1),
-            HexSide.Bottom => (1, 2),
-            HexSide.BottomLeft => (2, 3),
-            HexSide.TopLeft => (3, 4),
-            _ => (0, 1)
-        };
-    }
 }

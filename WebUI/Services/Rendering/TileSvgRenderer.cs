@@ -23,7 +23,7 @@ public static class TileSvgRenderer
     public static string RenderSvg(this TileModel tile, bool isDimmed = false)
     {
         var sb = new StringBuilder();
-        var (x, y) = AxialToPixel(tile.TileKey.Q, tile.TileKey.R);
+        var (x, y) = BoardGeometry.AxialToPixel(tile.TileKey.Q, tile.TileKey.R);
 
         // Tile group with CSS class for animations
         var cssClass = isDimmed ? "tile tile-dimmed" : "tile";
@@ -57,20 +57,35 @@ public static class TileSvgRenderer
     }
 
     /// <summary>
-    /// Renders the hexagonal tile background with resource pattern/color fill.
-    /// Uses GoldMine pattern if TemporarilyGold is true, otherwise uses tile's ResourceTileType.
+    /// Renders the hexagonal tile background with two polygons:
+    /// 1. Outer hex (wood border, can be highlighted yellow)
+    /// 2. Inner hex (resource fill, creates clean spacing)
+    /// Matches Desktop TileCtrl.xaml two-polygon rendering (lines 53-60).
     /// </summary>
     private static void RenderHexBackground(StringBuilder sb, TileModel tile, double x, double y)
     {
         // Use gold pattern if this is a temporary gold tile, otherwise use tile's resource type
         var displayResource = tile.TemporarilyGold ? ResourceType.GoldMine : tile.ResourceTileType;
         var patternId = GetPatternId(displayResource);
-        var fill = patternId != "tile-default"
+        var resourceFill = patternId != "tile-default"
             ? $"url(#{patternId})"
             : GetResourceColor(displayResource);
 
-        var hexPath = GenerateHexPath(x, y);
-        sb.AppendLine($@"    <path d=""{hexPath}"" fill=""{fill}"" stroke=""{BoardSvgConstants.HexStrokeColor}"" stroke-width=""{BoardSvgConstants.HexStrokeWidth}""/>");
+        // Outer hex border (maple fill + cherry stroke, or highlight color)
+        var borderFill = tile.Highlighted
+            ? BoardSvgConstants.HexHighlightColor  // Highlight color for selected/valid tiles
+            : $"url(#{BoardSvgConstants.HexBorderFillPattern})";  // Maple wood texture fill
+
+        var borderStroke = tile.Highlighted
+            ? BoardSvgConstants.HexHighlightColor  // Highlight color for selected/valid tiles
+            : $"url(#{BoardSvgConstants.HexBorderStrokePattern})";  // Cherry wood texture stroke
+
+        var outerPath = BoardGeometry.GenerateHexPath(x, y, HexSize);
+        sb.AppendLine($@"    <path d=""{outerPath}"" fill=""{borderFill}"" stroke=""{borderStroke}"" stroke-width=""{BoardSvgConstants.TileGap}""/>");
+
+        // Inner hex - resource fill with transparent stroke creating gap
+        var innerPath = BoardGeometry.GenerateHexPath(x, y, BoardSvgConstants.InnerHexSize);
+        sb.AppendLine($@"    <path d=""{innerPath}"" fill=""{resourceFill}"" stroke=""transparent"" stroke-width=""{BoardSvgConstants.InnerHexStrokeThickness}""/>");
     }
 
     /// <summary>
@@ -145,42 +160,6 @@ public static class TileSvgRenderer
             6 or 8 => "★★★★★",
             _ => ""
         };
-    }
-
-    /// <summary>
-    /// Converts axial coordinates to pixel position.
-    /// </summary>
-    private static (double x, double y) AxialToPixel(int q, int r)
-    {
-        double x = HexSize * (3.0 / 2 * q);
-        double y = HexSize * (Math.Sqrt(3) / 2 * q + Math.Sqrt(3) * r);
-        return (x + CenterX, y + CenterY);
-    }
-
-    /// <summary>
-    /// Gets hex vertices for a tile at the given center position.
-    /// </summary>
-    private static List<(double x, double y)> GetHexVertices(double cx, double cy)
-    {
-        var vertices = new List<(double x, double y)>();
-        for (int i = 0; i < 6; i++)
-        {
-            double angle = Math.PI / 180 * (60 * i);
-            double x = cx + HexSize * Math.Cos(angle);
-            double y = cy + HexSize * Math.Sin(angle);
-            vertices.Add((x, y));
-        }
-        return vertices;
-    }
-
-    /// <summary>
-    /// Generates SVG path for hexagon at given center position.
-    /// </summary>
-    private static string GenerateHexPath(double cx, double cy)
-    {
-        var vertices = GetHexVertices(cx, cy);
-        var points = vertices.Select(v => $"{v.x:F1},{v.y:F1}").ToList();
-        return $"M {points[0]} L {string.Join(" L ", points.Skip(1))} Z";
     }
 
     /// <summary>

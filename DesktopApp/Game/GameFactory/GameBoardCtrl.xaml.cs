@@ -153,7 +153,6 @@ namespace Catan3.Controls
         }
 
         private HexCoordinates? _lastHighlighted;
-        private HexCoordinates? _currentHover; // last hover for enter/leave tracing
         private bool _isDragging = false;
         private Windows.Foundation.Point _dragStartPoint;
         private HexCoordinates? _dragSourceHex;
@@ -290,7 +289,6 @@ namespace Catan3.Controls
             _dragSourceHex = null;
             _isDragging = false;
             _lastHighlighted = null;
-            _currentHover = null;
             BOARD_RootCanvas.ReleasePointerCapture(e.Pointer);
         }
 
@@ -302,7 +300,6 @@ namespace Catan3.Controls
             _dragSourceHex = null;
             _isDragging = false;
             _lastHighlighted = null;
-            _currentHover = null;
             BOARD_RootCanvas.ReleasePointerCapture(e.Pointer);
         }
 

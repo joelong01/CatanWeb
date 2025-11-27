@@ -177,24 +177,50 @@ function Clear-Database {
     }
 }
 
+function Stop-ChildProcesses {
+    param([int]$ParentPid)
+
+    $children = Get-CimInstance Win32_Process -Filter "ParentProcessId=$ParentPid" -ErrorAction SilentlyContinue
+    foreach ($child in $children) {
+        Stop-ChildProcesses -ParentPid $child.ProcessId  # Recursive
+        Stop-Process -Id $child.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Stop-Services {
     Write-Host "Stopping services..." -ForegroundColor Yellow
 
-    # First try to kill tracked PowerShell processes (closes windows properly)
-    $savedPids = Get-SavedPids
-    if ($savedPids.GameService) {
-        $proc = Get-Process -Id $savedPids.GameService -ErrorAction SilentlyContinue
-        if ($proc) {
-            Stop-Process -Id $savedPids.GameService -Force -ErrorAction SilentlyContinue
-            Write-Host "  Killed GameService window (PID $($savedPids.GameService))" -ForegroundColor Gray
+    # Kill ALL PowerShell processes running GameService or WebUI (and their children)
+    $allProcesses = Get-CimInstance Win32_Process -Filter "Name='pwsh.exe' OR Name='powershell.exe' OR Name='dotnet.exe'" -ErrorAction SilentlyContinue
+
+    $killedCount = 0
+    foreach ($proc in $allProcesses) {
+        $cmdLine = $proc.CommandLine
+        if ($cmdLine) {
+            # Check if this process is running GameService or WebUI
+            if ($cmdLine -match "Catan3\.GameService" -or
+                $cmdLine -match "WebUI.*dotnet.*watch.*run" -or
+                $cmdLine -match "dotnet.*run.*GameService" -or
+                $cmdLine -match "dotnet.*watch.*run.*WebUI") {
+
+                try {
+                    # Kill all child processes first
+                    Stop-ChildProcesses -ParentPid $proc.ProcessId
+
+                    # Then kill the parent
+                    Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
+                    Write-Host "  Killed process $($proc.ProcessId): $(($cmdLine -split ' ')[0..5] -join ' ')..." -ForegroundColor Gray
+                    $killedCount++
+                }
+                catch {
+                    Write-Host "  Failed to kill process $($proc.ProcessId)" -ForegroundColor Yellow
+                }
+            }
         }
     }
-    if ($savedPids.WebUI) {
-        $proc = Get-Process -Id $savedPids.WebUI -ErrorAction SilentlyContinue
-        if ($proc) {
-            Stop-Process -Id $savedPids.WebUI -Force -ErrorAction SilentlyContinue
-            Write-Host "  Killed WebUI window (PID $($savedPids.WebUI))" -ForegroundColor Gray
-        }
+
+    if ($killedCount -gt 0) {
+        Write-Host "  Killed $killedCount remnant process(es)" -ForegroundColor Gray
     }
 
     # Fallback: kill any remaining processes on ports
@@ -246,6 +272,16 @@ switch ($Verb) {
     }
 
     "run" {
+        # Build solution first
+        Write-Host "Building solution..." -ForegroundColor Cyan
+        & "$PSScriptRoot\build.ps1" -NoTest
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Build failed! Cannot start services." -ForegroundColor Red
+            exit 1
+        }
+        Write-Host "Build completed successfully!" -ForegroundColor Green
+        Write-Host ""
+
         # Ensure database is initialized
         if (-not (Initialize-Database)) {
             Write-Host "Failed to initialize database. Cannot start services." -ForegroundColor Red

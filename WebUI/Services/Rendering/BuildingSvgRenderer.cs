@@ -134,10 +134,10 @@ public static class BuildingSvgRenderer
     private static (double x, double y)GetVertexPosition(BuildingKey buildingKey)
     {
         // Convert tile axial coordinates to pixel position
-        var (tileX, tileY) = AxialToPixel(buildingKey.HexCoordinates.Q, buildingKey.HexCoordinates.R);
+        var (tileX, tileY) = BoardGeometry.AxialToPixel(buildingKey.HexCoordinates.Q, buildingKey.HexCoordinates.R);
 
         // Get hex vertices
-        var vertices = GetHexVertices(tileX, tileY);
+        var vertices = BoardGeometry.GetHexVertices(tileX, tileY);
 
         // Map HexPosition to vertex index (0-5)
         var vertexIndex = buildingKey.Position switch
@@ -154,29 +154,4 @@ public static class BuildingSvgRenderer
         return vertices[vertexIndex];
     }
 
-    /// <summary>
-    /// Converts axial coordinates to pixel position.
-    /// </summary>
-    private static (double x, double y)AxialToPixel(int q, int r)
-    {
-        double x = HexSize * (3.0 / 2 * q);
-        double y = HexSize * (Math.Sqrt(3) / 2 * q + Math.Sqrt(3) * r);
-        return (x + CenterX, y + CenterY);
-    }
-
-    /// <summary>
-    /// Gets hex vertices for a tile at the given center position.
-    /// </summary>
-    private static List<(double x, double y)> GetHexVertices(double cx, double cy)
-    {
-        var vertices = new List<(double x, double y)>();
-        for (int i = 0; i < 6; i++)
-        {
-            double angle = Math.PI / 180 * (60 * i);
-            double x = cx + HexSize * Math.Cos(angle);
-            double y = cy + HexSize * Math.Sin(angle);
-            vertices.Add((x, y));
-        }
-        return vertices;
-    }
 }

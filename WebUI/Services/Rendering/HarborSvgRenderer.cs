@@ -26,11 +26,11 @@ public static class HarborSvgRenderer
         var sb = new StringBuilder();
 
         // Get tile center position
-        var (cx, cy) = AxialToPixel(harbor.HarborKey.HexCoordinates.Q, harbor.HarborKey.HexCoordinates.R);
-        var hexVertices = GetHexVertices(cx, cy);
+        var (cx, cy) = BoardGeometry.AxialToPixel(harbor.HarborKey.HexCoordinates.Q, harbor.HarborKey.HexCoordinates.R);
+        var hexVertices = BoardGeometry.GetHexVertices(cx, cy);
 
         // Get the two vertices for this edge based on HexSide
-        var (v1Idx, v2Idx) = GetEdgeVerticesForSide(harbor.HarborKey.Side);
+        var (v1Idx, v2Idx) = BoardGeometry.GetEdgeVerticesForSide(harbor.HarborKey.Side);
         var v1 = hexVertices[v1Idx];
         var v2 = hexVertices[v2Idx];
 
@@ -65,23 +65,6 @@ public static class HarborSvgRenderer
     }
 
     /// <summary>
-    /// Maps HexSide to the two vertex indices (0-5) for flat-top hex orientation.
-    /// </summary>
-    private static (int, int) GetEdgeVerticesForSide(HexSide side)
-    {
-        return side switch
-        {
-            HexSide.Top => (4, 5),          // TopLeft, TopRight
-            HexSide.TopRight => (5, 0),     // TopRight, Right
-            HexSide.BottomRight => (0, 1),  // Right, BottomRight
-            HexSide.Bottom => (1, 2),       // BottomRight, BottomLeft
-            HexSide.BottomLeft => (2, 3),   // BottomLeft, Left
-            HexSide.TopLeft => (3, 4),      // Left, TopLeft
-            _ => (0, 1)
-        };
-    }
-
-    /// <summary>
     /// Gets SVG pattern ID for a harbor type.
     /// </summary>
     private static string GetHarborPatternId(HarborType harborType)
@@ -98,29 +81,4 @@ public static class HarborSvgRenderer
         };
     }
 
-    /// <summary>
-    /// Converts axial coordinates to pixel position.
-    /// </summary>
-    private static (double x, double y) AxialToPixel(int q, int r)
-    {
-        double x = HexSize * (3.0 / 2 * q);
-        double y = HexSize * (Math.Sqrt(3) / 2 * q + Math.Sqrt(3) * r);
-        return (x + CenterX, y + CenterY);
-    }
-
-    /// <summary>
-    /// Gets hex vertices for a tile at the given center position.
-    /// </summary>
-    private static List<(double x, double y)> GetHexVertices(double cx, double cy)
-    {
-        var vertices = new List<(double x, double y)>();
-        for (int i = 0; i < 6; i++)
-        {
-            double angle = Math.PI / 180 * (60 * i);
-            double x = cx + HexSize * Math.Cos(angle);
-            double y = cy + HexSize * Math.Sin(angle);
-            vertices.Add((x, y));
-        }
-        return vertices;
-    }
 }

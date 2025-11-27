@@ -21,9 +21,16 @@ public static class BoardSvgConstants
 
     // Inner/Outer hex geometry - SAME AS DESKTOP APP
     // From BoardVisualLayout.cs: InnerHexSize = OuterHexSize - TileGap - InnerHexStrokeThickness * 0.5
-    public const double TileGap = 2;
-    public const double InnerHexStrokeThickness = 16;
-    public const double InnerHexSize = HexSize - TileGap - InnerHexStrokeThickness * 0.5;  // = 90
+    /// <summary>
+    /// Tile gap creates the thin wood border between hexes (1px).
+    /// Used as StrokeThickness for outer hex polygon (matches Desktop TileCtrl.xaml line 54).
+    /// The gap becomes visible when roads render in the space between tiles.
+    /// </summary>
+    public const double TileGap = 1;
+    // Inner hex stroke creates the gap where maple border shows and roads render
+    // Gap should be wide enough for road visibility (road-width space)
+    public const double InnerHexStrokeThickness = 10;  // Creates ~5 unit border on each side
+    public const double InnerHexSize = HexSize - TileGap - InnerHexStrokeThickness * 0.5;  // = 94
 
     // Settlement/City - SAME AS DESKTOP APP
     public const double BuildingSize = 40;
@@ -46,11 +53,14 @@ public static class BoardSvgConstants
     public const double PipsOffsetY = 10;  // Below circle center
 
     // Stroke widths
-    public const double HexStrokeWidth = 6;
+    // Note: Outer hex stroke uses TileGap (2px). Inner hex stroke uses InnerHexStrokeThickness (16px, transparent).
+    // Two-polygon rendering matches Desktop TileCtrl.xaml (lines 53-60).
     public const double NumberTokenStrokeWidth = 0.5;
 
-    // Colors
-    public const string HexStrokeColor = "#8B4513";  // Reddish-brown like bmCherry
+    // Colors and patterns
+    public const string HexBorderFillPattern = "pattern-maple";  // Maple wood texture for border fill (matches Desktop bmMaple)
+    public const string HexBorderStrokePattern = "pattern-cherry";  // Cherry wood texture for border stroke (matches Desktop bmCherry)
+    public const string HexHighlightColor = "#FFD700";  // Gold/yellow for highlighted tiles (robber placement)
     public const string NumberTokenFill = "#2F6999";
     public const string NumberTokenStroke = "white";
     public const string HighProbColor = "#c00";
