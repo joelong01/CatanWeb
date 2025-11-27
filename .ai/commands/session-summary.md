@@ -320,7 +320,7 @@ Example: `.ai/sessions/SESSION_SUMMARY-2025-11-27-1430.md`
 2. **Review These Files First:**
    - `.ai/project-summary.md` - Current project state
    - `design_docs/[file].md` - Recent design decisions
-   - `code_reviews/[file]-cr.md` - Outstanding review items
+   - `code-reviews/[file]-cr.md` - Outstanding review items
 
 3. **Current Focus Area:**
    - Working on: [component/feature]

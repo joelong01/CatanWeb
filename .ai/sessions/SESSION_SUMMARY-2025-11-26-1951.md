@@ -102,7 +102,7 @@
    ```
 
 2. Continue code review work:
-   - Open code_reviews/BuildingSvgRenderer.cs-cr.md
+   - Open code-reviews/BuildingSvgRenderer.cs-cr.md
    - Address any identified issues
    - Update resolution section with fixes
 
@@ -117,4 +117,4 @@
 4. Key files to review:
    - WebUI/Services/Rendering/BoardGeometry.cs (new centralized helpers)
    - WebUI/Services/Rendering/BoardSvgGenerator.cs (stars + opacity logic)
-   - code_reviews/*.md (systematic analysis docs)
+   - code-reviews/*.md (systematic analysis docs)

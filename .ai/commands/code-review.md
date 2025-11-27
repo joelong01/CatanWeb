@@ -13,7 +13,7 @@ Code reviews ensure:
 - **Early detection of bugs** - Identify logic errors, edge cases, and potential issues before they reach production
 - **Knowledge sharing** - Document decisions and patterns for future reference
 - **Security best practices** - No vulnerabilities or data exposure
-- **Thorough documentation** - All findings documented in `code_reviews/` directory for tracking and follow-up
+- **Thorough documentation** - All findings documented in `code-reviews/` directory for tracking and follow-up
 
 ## Review Checklist
 
@@ -242,10 +242,10 @@ Code reviews ensure:
 
 ### Phase 3: Documentation
 
-**Document all findings in `code_reviews/` directory:**
+**Document all findings in `code-reviews/` directory:**
 
 1. **Create Review Files**
-   - One file per reviewed source: `code_reviews/<file-name>-cr.md`
+   - One file per reviewed source: `code-reviews/<file-name>-cr.md`
    - Use consistent format (see Findings Format below)
    - Include file path, review date, and reviewer
 
@@ -428,7 +428,7 @@ Before reviewing code, read these files using the Read tool:
 - Document findings as you go
 
 **Phase 3: Documentation (15-20% of time)**
-- Create one `code_reviews/<file>-cr.md` per reviewed file
+- Create one `code-reviews/<file>-cr.md` per reviewed file
 - Use the standard template (see Review File Template section)
 - Organize findings by severity
 - Provide actionable recommendations with examples
@@ -507,7 +507,7 @@ Generate review files in this exact format:
    - Consolidate duplicate or related issues
 
 4. **Document in Standard Format**
-   - Save AI findings to `code_reviews/<file>-cr.md`
+   - Save AI findings to `code-reviews/<file>-cr.md`
    - Organize by severity (Critical → Praise)
    - Include file location references (file:line)
    - Add follow-up action items
@@ -518,7 +518,7 @@ Generate review files in this exact format:
 
 - **Coding Standards**: `.ai/ai-rules.md` - Comprehensive coding standards and conventions
 - **Project State**: `.ai/project-summary.md` - Current architecture and status
-- **Code Reviews**: `code_reviews/` - Past code review findings
+- **Code Reviews**: `code-reviews/` - Past code review findings
 - **Design Docs**: `design_docs/` - Architecture decisions and rationale
 - **Session History**: `.ai/sessions/` - Past work context and decisions
 
@@ -539,10 +539,10 @@ Generate review files in this exact format:
 
 ### File Structure
 
-All code review findings must be documented in the `code_reviews/` directory:
+All code review findings must be documented in the `code-reviews/` directory:
 
 ```text
-code_reviews/
+code-reviews/
 ├── BoardSvgGenerator.cs-cr.md
 ├── BuildingSvgRenderer.cs-cr.md
 ├── GameStateService.cs-cr.md
@@ -551,7 +551,7 @@ code_reviews/
 
 ### Review File Template
 
-Each `code_reviews/<file-name>-cr.md` should follow this structure:
+Each `code-reviews/<file-name>-cr.md` should follow this structure:
 
 ```markdown
 # Code Review: <FileName>
@@ -713,8 +713,8 @@ After reviewing all target files, create a summary response to the user:
 - [ ] Verify fixes with build and test run
 
 ### Detailed Reviews
-- See `code_reviews/File1.cs-cr.md`
-- See `code_reviews/File2.cs-cr.md`
+- See `code-reviews/File1.cs-cr.md`
+- See `code-reviews/File2.cs-cr.md`
 - [etc.]
 ```
 

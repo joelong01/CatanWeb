@@ -117,7 +117,7 @@
 
 5. **Code Review Files Updated**
    - Updated various code review markdown files based on implemented changes
-   - Files in `code_reviews/` directory
+   - Files in `code-reviews/` directory
 
 ## Work in Progress
 
@@ -211,7 +211,7 @@ None - all planned work for this session completed.
 
 2. **Code Review Files Not Checked In**
    - Severity: Minor
-   - Location: `code_reviews/` directory
+   - Location: `code-reviews/` directory
    - Impact: Many new code review markdown files untracked
    - Plan: Will be staged and committed in checkin step
 
@@ -243,7 +243,7 @@ None - all planned work for this session completed.
 
 3. **Address Code Review Findings**
    - Why: Multiple code review files updated/created during session
-   - Approach: Review `code_reviews/*.md` files and address critical/important issues
+   - Approach: Review `code-reviews/*.md` files and address critical/important issues
    - Priority: After handover workflow completes
 
 ### Follow-Up Tasks
@@ -411,7 +411,7 @@ None - all changes use existing .NET 9.0 APIs
 3. **Review These Files First:**
    - `.ai/workflows/handover.md` - Current workflow status
    - This session summary - Context for all changes
-   - `code_reviews/*.md` - Outstanding review items
+   - `code-reviews/*.md` - Outstanding review items
    - `.ai/commands/pre-checkin.md` - Next step instructions
 
 ### Commands & Workflows
@@ -457,7 +457,7 @@ None - all changes use existing .NET 9.0 APIs
 - Focus: Build validation, GameService/Shared tests, code quality
 
 **If addressing code reviews:**
-- Scan `code_reviews/*.md` files
+- Scan `code-reviews/*.md` files
 - Prioritize Critical/Important findings
 - Reference Desktop implementation for patterns
 
