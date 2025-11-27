@@ -15,13 +15,13 @@ namespace Catan3.Controls
         public static readonly DependencyProperty StarsProperty = DependencyProperty.Register("Stars", typeof(string), typeof(CatanNumber), new PropertyMetadata(""));
         public string Stars
         {
-            get => ( string )GetValue(StarsProperty);
+            get => (string)GetValue(StarsProperty);
             set => SetValue(StarsProperty, value);
         }
         public static readonly DependencyProperty NumberProperty = DependencyProperty.Register("Number", typeof(int), typeof(CatanNumber), new PropertyMetadata(7, NumberChanged));
         public int Number
         {
-            get => ( int )GetValue(NumberProperty);
+            get => (int)GetValue(NumberProperty);
             set => SetValue(NumberProperty, value);
         }
         private static void NumberChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -32,9 +32,9 @@ namespace Catan3.Controls
         }
         private void SetNumber(int value)
         {
-            
+
             int count = 0;
-           
+
             switch (value)
             {
                 case 2:

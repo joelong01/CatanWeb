@@ -96,7 +96,7 @@ namespace Catan3.Shared.Utility
             target.MaxDepth = StandardOptions.MaxDepth;
             target.DefaultBufferSize = StandardOptions.DefaultBufferSize;
             target.ReferenceHandler = StandardOptions.ReferenceHandler;
-            
+
             // Copy converters
             target.Converters.Clear();
             foreach (var converter in StandardOptions.Converters)

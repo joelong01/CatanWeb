@@ -6,7 +6,7 @@ namespace Catan3.Shared.Models
 
 
 
-   
+
 
     /// <summary>
     ///     Note: System.Text.Json cares that the ctor parameters have the same names as the fields, so they need to be spelled this way.
@@ -105,5 +105,5 @@ namespace Catan3.Shared.Models
         public List<EntitlementPurchaseModel> PurchaseableEntitlements { get; }
     }
 
-    
+
 }

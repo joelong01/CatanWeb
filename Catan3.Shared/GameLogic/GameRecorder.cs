@@ -39,7 +39,7 @@ namespace Catan3.Shared.GameLogic
 
             // Create a deep copy of the GameModel via serialize/deserialize to ensure immutability
             var jsonString = JsonHelper.Serialize(initialGameModel);
-            _initialGameModel = JsonHelper.Deserialize<GameModel>(jsonString) 
+            _initialGameModel = JsonHelper.Deserialize<GameModel>(jsonString)
                 ?? throw new InvalidOperationException("Failed to deserialize GameModel during deep copy");
 
             _recordedActions = [];
@@ -99,7 +99,7 @@ namespace Catan3.Shared.GameLogic
 
                 // Convert full path to relative path for file operations
                 var relativePath = GetRelativePathFromFullPath(_outputPath);
-                
+
                 // Save the file using persistence service
                 var success = await _persistenceService.WriteTextAsync(_outputPath, jsonContent);
                 if (!success)
@@ -159,13 +159,13 @@ namespace Catan3.Shared.GameLogic
             // Find the index of "Catan Saved Games" in the path
             const string catanFolder = "Catan Saved Games";
             var catanIndex = fullPath.IndexOf(catanFolder, StringComparison.OrdinalIgnoreCase);
-            
+
             if (catanIndex >= 0)
             {
                 // Return the path starting from "Catan Saved Games"
                 return fullPath.Substring(catanIndex);
             }
-            
+
             // Fallback: return just the filename if we can't find the expected structure
             return Path.GetFileName(fullPath);
         }

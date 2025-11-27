@@ -97,13 +97,13 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             var tileElements = _uiControlsCache.Values.Count(obj => obj.AutomationId.StartsWith("Tile"));
             var rollElements = _uiControlsCache.Values.Count(obj => obj.AutomationId.StartsWith("Roll"));
             var purchaseElements = _uiControlsCache.Values.Count(obj => obj.AutomationId.StartsWith("Purchase"));
-            
+
             // Also count coordinate-based building elements (format like (-3,3,0)-Right)
-            var coordinateBuildingElements = _uiControlsCache.Values.Count(obj => 
+            var coordinateBuildingElements = _uiControlsCache.Values.Count(obj =>
                 obj.AutomationId.Contains("(") && obj.AutomationId.Contains(")") && obj.AutomationId.Contains("-"));
 
             TraceMessage($"  Roads: {roadElements}, Buildings: {buildingElements}, CoordinateBuildings: {coordinateBuildingElements}, Tiles: {tileElements}, Rolls: {rollElements}, Purchase: {purchaseElements}");
-            
+
             // DEBUG: List ALL AutomationIds to see what's actually being found
             //TraceMessage($"=== DEBUG: ALL AUTOMATION IDs FOUND ===");
             //var allIds = _uiControlsCache.Keys.OrderBy(k => k).ToArray();
@@ -113,16 +113,16 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             //    TraceMessage($"  Batch {(i/10) + 1}: {string.Join(", ", batch)}");
             //}
             //TraceMessage($"=== END DEBUG LISTING ===");
-            
+
             // Check for critical buttons - TestAutomationActionButton is essential, purchase buttons may be face-down
             var essentialControls = new[] { "TestAutomationActionButton", "SmuggledTestData", "BalanceBoardButton" };
             var purchaseButtons = new[] { "PurchaseRoadButton", "PurchaseSettlementButton", "PurchaseCityButton", "PurchaseSoldierButton" };
-            
+
             var missingEssential = essentialControls.Where(automationId => !_uiControlsCache.ContainsKey(automationId)).ToArray();
             var missingPurchase = purchaseButtons.Where(buttonId => !_uiControlsCache.ContainsKey(buttonId)).ToArray();
-            
+
             var foundPurchaseButtons = _uiControlsCache.Keys.Where(k => k.StartsWith("Purchase")).ToArray();
-            
+
             // TestAutomationActionButton is absolutely critical - fail if missing
             if (missingEssential.Any())
             {
@@ -130,7 +130,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 TraceMessage($"❌ All automation IDs containing 'Test': {string.Join(", ", _uiControlsCache.Keys.Where(k => k.Contains("Ui")))}");
                 throw new Exception($"Essential buttons not found in automation cache: {string.Join(", ", missingEssential)}. Test cannot proceed.");
             }
-            
+
             // Purchase buttons may be face-down (inside FlipperCtrl), so warn but don't fail
             if (missingPurchase.Any())
             {
@@ -142,18 +142,18 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             {
                 TraceMessage($"✅ All purchase buttons found in cache: {string.Join(", ", purchaseButtons)}");
             }
-            
+
             TraceMessage($"✅ Essential buttons verified: {string.Join(", ", essentialControls)}");
             TraceMessage($"✅ Total purchase buttons in cache: {foundPurchaseButtons.Length}");
-            
+
             // Show sample AutomationIds for debugging
             var sampleIds = _uiControlsCache.Keys.Take(10).ToArray();
             TraceMessage($"  Sample AutomationIds: {string.Join(", ", sampleIds)}");
-            
+
             // Extra debug info for specific missing elements
             var allButtonIds = _uiControlsCache.Keys.Where(k => k.Contains("Button")).ToArray();
             TraceMessage($"  All Button AutomationIds found: {string.Join(", ", allButtonIds)}");
-            
+
             // Show coordinate building samples specifically
             var coordinateSamples = _uiControlsCache.Keys
                 .Where(id => id.Contains("(") && id.Contains(")") && id.Contains("-"))
@@ -172,9 +172,9 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         public void ClickButton(string automationId)
         {
             TraceMessage($"Clicking button: {automationId}");
-            
+
             AutomationElement button;
-            
+
             // For purchase buttons, try dynamic search if not in cache
             if (automationId.StartsWith("Purchase") && automationId.EndsWith("Button"))
             {
@@ -184,21 +184,21 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             {
                 button = FindByAutomationId(automationId);
             }
-            
+
             var buttonElement = button.AsButton();
             Assert.NotNull(buttonElement);
-            
+
             // Diagnostic: Check current button state
             TraceMessage($"Button '{automationId}' current state - IsEnabled: {buttonElement.IsEnabled}, IsOffscreen: {buttonElement.IsOffscreen}");
-            
+
             // Wait for button to become enabled with proper message pumping
             WaitHelper.WaitUntilOrThrow(() => buttonElement.IsEnabled, TimeSpan.FromMilliseconds(LONG_WAIT), $"Button '{automationId}' to become enabled");
-            
+
             TraceMessage($"Button '{automationId}' is now enabled, invoking...");
             buttonElement.Invoke();
             UiPump.DelayWithPump(SHORT_WAIT);
         }
-        
+
         /// <summary>
         /// Dynamically searches for purchase buttons that may be face-down in FlipperCtrl.
         /// This method performs a fresh search of the UI tree instead of relying on cache.
@@ -206,14 +206,14 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         private AutomationElement FindPurchaseButtonDynamically(string automationId)
         {
             TraceMessage($"Performing dynamic search for purchase button: {automationId}");
-            
+
             // First try the cache (in case it's face-up now)
             if (_uiControlsCache.TryGetValue(automationId, out var cachedElement))
             {
                 TraceMessage($"Found {automationId} in cache");
                 return cachedElement;
             }
-            
+
             // Perform fresh search for FlipperCtrl elements that might contain purchase buttons
             var allElements = _mainWindow.FindAllDescendants();
             foreach (var element in allElements)
@@ -235,7 +235,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                     TraceMessage($"Skipped element during dynamic search: {ex.Message}");
                 }
             }
-            
+
             // If still not found, try alternative approach: find by FlipperCtrl parent
             var flipperElement = FindByFlipperCtrlPattern(automationId);
             if (flipperElement != null)
@@ -244,11 +244,11 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 _uiControlsCache[automationId] = flipperElement;
                 return flipperElement;
             }
-            
+
             // If still not found, provide helpful error message
             throw new TimeoutException($"Purchase button '{automationId}' not found via dynamic search. The FlipperCtrl may still be face-down, or the purchase action may not be available in the current game state.");
         }
-        
+
         /// <summary>
         /// Alternative search method: Look for FlipperCtrl elements and check their Front content
         /// for purchase buttons. This handles the case where buttons are in FlipperCtrl.Front
@@ -257,17 +257,17 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         private AutomationElement? FindByFlipperCtrlPattern(string automationId)
         {
             TraceMessage($"Searching for {automationId} via FlipperCtrl pattern");
-            
+
             // Find all elements that might be FlipperCtrl (look for elements with Front/Back children)
             var allElements = _mainWindow.FindAllDescendants();
-            
+
             foreach (var element in allElements)
             {
                 try
                 {
                     // Look for elements that have children suggesting they're FlipperCtrl
                     var children = element.FindAllChildren();
-                    
+
                     // Check if any child contains our target AutomationId
                     foreach (var child in children)
                     {
@@ -277,7 +277,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                             TraceMessage($"Found {automationId} as child of potential FlipperCtrl");
                             return child;
                         }
-                        
+
                         // Also check grandchildren (for nested structures)
                         var grandchildren = child.FindAllChildren();
                         foreach (var grandchild in grandchildren)
@@ -297,7 +297,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                     TraceMessage($"Skipped element in FlipperCtrl search: {ex.Message}");
                 }
             }
-            
+
             return null;
         }
 
@@ -323,7 +323,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
 
             // Locate the roll card by AutomationId
             var card = FindByAutomationId(id);
-            
+
             // Prefer the inner Button under the card
             var btn = card.FindFirstDescendant(cf => cf.ByControlType(ControlType.Button))?.AsButton()
                      ?? card.AsButton();
@@ -347,9 +347,9 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
 
             // Prefer Invoke; fall back to Click
             var inv = btn.Patterns.Invoke.PatternOrDefault;
-            if (inv != null) 
+            if (inv != null)
                 inv.Invoke();
-            else 
+            else
                 btn.Click();
 
             // Wait for the model to change
@@ -372,18 +372,18 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         public void ClickBuilding(string buildingKey)
         {
             TraceMessage($"Clicking building: {buildingKey}");
-            
-            var buildingElement = _uiControlsCache.ContainsKey(buildingKey) 
-                ? _uiControlsCache[buildingKey] 
+
+            var buildingElement = _uiControlsCache.ContainsKey(buildingKey)
+                ? _uiControlsCache[buildingKey]
                 : FindByAutomationId(buildingKey);
-                
+
             Assert.NotNull(buildingElement);
-            
+
             // Snapshot pre-action state
             var preHash = GetCurrentGameModel().GameHash;
-            
+
             buildingElement.Click();
-            
+
             // Wait for the model to change
             var changed = WaitHelper.WaitUntil(
                 () => !string.Equals(GetCurrentGameModel().GameHash, preHash, StringComparison.Ordinal),
@@ -393,7 +393,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             {
                 throw new Exception($"Building click '{buildingKey}' did not change the GameModel within timeout.");
             }
-            
+
             UiPump.DelayWithPump(SHORT_WAIT);
         }
 
@@ -403,18 +403,18 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         public void ClickRoad(string roadKey)
         {
             TraceMessage($"Clicking road: {roadKey}");
-            
-            var roadElement = _uiControlsCache.ContainsKey(roadKey) 
-                ? _uiControlsCache[roadKey] 
+
+            var roadElement = _uiControlsCache.ContainsKey(roadKey)
+                ? _uiControlsCache[roadKey]
                 : FindByAutomationId(roadKey);
-                
+
             Assert.NotNull(roadElement);
-            
+
             // Snapshot pre-action state
             var preHash = GetCurrentGameModel().GameHash;
-            
+
             roadElement.Click();
-            
+
             // Wait for the model to change
             var changed = WaitHelper.WaitUntil(
                 () => !string.Equals(GetCurrentGameModel().GameHash, preHash, StringComparison.Ordinal),
@@ -424,7 +424,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             {
                 throw new Exception($"Road click '{roadKey}' did not change the GameModel within timeout.");
             }
-            
+
             UiPump.DelayWithPump(SHORT_WAIT);
         }
 
@@ -436,7 +436,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         {
             var nextButton = FindByAutomationId("NextButton");
             Assert.NotNull(nextButton);
-            
+
             if (nextButton.Properties.ItemStatus.TryGetValue(out var buttonGameModelValue))
             {
                 var buttonGameModelJson = buttonGameModelValue as string;
@@ -457,10 +457,10 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         public void VerifyGameState(GameState expectedState)
         {
             TraceMessage($"Verifying expected GameState: {expectedState}");
-            
+
             var currentGameState = GetCurrentGameModel().GameState;
             TraceMessage($"Current GameState: {currentGameState}, Expected: {expectedState}");
-            
+
             Assert.Equal(expectedState, currentGameState);
         }
 
@@ -544,12 +544,12 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         private void WaitForConditionWithPump(Func<bool> condition, TimeSpan timeout, string description)
         {
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            
+
             while (!condition() && stopwatch.Elapsed < timeout)
             {
                 UiPump.DelayWithPump(50); // Pump messages while waiting
             }
-            
+
             if (!condition())
             {
                 throw new TimeoutException($"Timeout waiting for {description} after {timeout.TotalSeconds} seconds");

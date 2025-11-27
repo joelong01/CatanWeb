@@ -30,9 +30,9 @@ namespace Catan3.Shared.Models
     {
         public string Id { get; set; } = "";
         public string Name { get; set; } = "";
-        
+
         public PlayerInfo() { }
-        
+
         public PlayerInfo(string id, string name)
         {
             Id = id;
@@ -50,7 +50,7 @@ namespace Catan3.Shared.Models
         public GameType GameType { get; set; } = GameType.Regular;
         public List<string>? PlayerIds { get; set; }
         public List<PlayerInfo>? Players { get; set; }
-        
+
         /// <summary>
         /// Gets the effective player IDs from either PlayerIds or Players
         /// </summary>
@@ -60,7 +60,7 @@ namespace Catan3.Shared.Models
             {
                 return Players.Select(p => p.Id).Where(id => !string.IsNullOrEmpty(id)).ToList();
             }
-            
+
             return PlayerIds?.Where(id => !string.IsNullOrEmpty(id)).ToList() ?? [];
         }
 
@@ -74,19 +74,19 @@ namespace Catan3.Shared.Models
             {
                 return Players.Select(p => !string.IsNullOrEmpty(p.Name) ? p.Name : ExtractNameFromId(p.Id)).ToList();
             }
-            
+
             if (PlayerIds != null && PlayerIds.Count > 0)
             {
                 return PlayerIds.Select(ExtractNameFromId).ToList();
             }
-            
+
             return [];
         }
 
         private static string ExtractNameFromId(string id)
         {
             if (string.IsNullOrEmpty(id)) return "Unknown";
-            
+
             // Desktop app pattern: "Joe-001" -> "Joe"
             if (id.Contains('-'))
             {
@@ -96,7 +96,7 @@ namespace Catan3.Shared.Models
                     return parts[0];
                 }
             }
-            
+
             return id;
         }
     }

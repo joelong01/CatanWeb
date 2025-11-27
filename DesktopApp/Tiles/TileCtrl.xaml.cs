@@ -149,11 +149,11 @@ namespace Catan3.Controls
                     Command = TileViewModel.TargetPickedCommand,
                     CommandParameter = target.Id
                 };
-                
+
                 // Set AutomationId for UI testing
-                menuItem.SetValue(AutomationProperties.AutomationIdProperty, 
+                menuItem.SetValue(AutomationProperties.AutomationIdProperty,
                     TileModelExtensions.GetRobberTargetAutomationId(target.Id));
-                
+
                 flyout.Items.Add(menuItem);
             }
             // Add a separator

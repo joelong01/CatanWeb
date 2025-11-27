@@ -1,6 +1,7 @@
 using System.Text;
 using Catan3.Shared.Models;
-using Catan3.Shared.ViewData;
+using Catan3.Shared.Profiles;
+using Catan3.WebUI.Models;
 
 namespace Catan3.WebUI.Services.Rendering;
 
@@ -19,13 +20,13 @@ public static class RoadSvgRenderer
     /// Renders this road as SVG markup.
     /// </summary>
     /// <param name="road">The road model to render.</param>
-    /// <param name="playerData">Player profile data for colors.</param>
+    /// <param name="playerViewModel">Player view model for colors.</param>
     /// <param name="buildIndex">Build order index to display (0 = don't show).</param>
     /// <param name="opacity">Optional opacity override (default 0.0 for debugging - shows on hover).</param>
     /// <returns>SVG markup string for the road.</returns>
     public static string RenderSvg(
         this RoadModel road,
-        PlayerProfile? playerData,
+        PlayerViewModel? playerViewModel,
         int buildIndex = 0,
         double opacity = 0.0)
     {
@@ -36,12 +37,12 @@ public static class RoadSvgRenderer
         sb.AppendLine($@"  <g class=""road road-hover"" data-player=""{road.OwnerId}"">");
 
         // Render road polygon with player colors
-        RenderRoadPolygon(sb, v1, v2, playerData, opacity);
+        RenderRoadPolygon(sb, v1, v2, playerViewModel, opacity);
 
         // Render build index if provided
         if (buildIndex > 0)
         {
-            RenderBuildIndex(sb, v1, v2, buildIndex, playerData);
+            RenderBuildIndex(sb, v1, v2, buildIndex, playerViewModel);
         }
 
         sb.AppendLine("  </g>");
@@ -52,13 +53,13 @@ public static class RoadSvgRenderer
     /// Renders the road polygon with player colors.
     /// Uses 6-point polygon: tips at outer vertices, body at inner hex boundaries.
     /// </summary>
-    private static void RenderRoadPolygon(StringBuilder sb, (double x, double y) v1, (double x, double y) v2, PlayerProfile? playerData, double opacity)
+    private static void RenderRoadPolygon(StringBuilder sb, (double x, double y) v1, (double x, double y) v2, PlayerViewModel? playerViewModel, double opacity)
     {
         var roadPolygon = GenerateRoadPolygon(v1, v2);
 
         // Use player colors if available, otherwise fallback to gray
-        var fillColor = playerData?.PrimaryBackgroundColor ?? "#999999";
-        var strokeColor = playerData?.SecondaryBackgroundColor ?? "#666666";
+        var fillColor = playerViewModel?.Colors.Primary ?? "#999999";
+        var strokeColor = playerViewModel?.Colors.Secondary ?? "#666666";
         var strokeWidth = 2;
 
         sb.AppendLine($@"    <polygon points=""{roadPolygon}"" fill=""{fillColor}"" stroke=""{strokeColor}"" stroke-width=""{strokeWidth}"" opacity=""{opacity}""/>");
@@ -67,7 +68,7 @@ public static class RoadSvgRenderer
     /// <summary>
     /// Renders build index number on the road, rotated to match road orientation.
     /// </summary>
-    private static void RenderBuildIndex(StringBuilder sb, (double x, double y) v1, (double x, double y) v2, int buildIndex, PlayerProfile? playerData)
+    private static void RenderBuildIndex(StringBuilder sb, (double x, double y) v1, (double x, double y) v2, int buildIndex, PlayerViewModel? playerViewModel)
     {
         // Calculate road midpoint
         var midX = (v1.x + v2.x) / 2;
@@ -78,7 +79,7 @@ public static class RoadSvgRenderer
         var dy = v2.y - v1.y;
         var angle = Math.Atan2(dy, dx) * 180 / Math.PI;
 
-        var textColor = playerData?.ForegroundColor ?? "#FFFFFF";
+        var textColor = playerViewModel?.Colors.Foreground ?? "#FFFFFF";
 
         // Render text with rotation transform
         sb.AppendLine($@"    <text x=""{midX}"" y=""{midY}"" text-anchor=""middle"" dominant-baseline=""middle"" font-family=""sans-serif"" font-size=""14"" font-weight=""bold"" fill=""{textColor}"" stroke=""black"" stroke-width=""0.5"" transform=""rotate({angle:F1} {midX} {midY})"">{buildIndex}</text>");

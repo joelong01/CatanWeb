@@ -16,7 +16,7 @@ Console.OutputEncoding = Encoding.UTF8;
 
 // Configure logging based on environment
 // Allow verbose logging when explicitly requested via environment variable or command line
-var suppressTestLogging = builder.Environment.EnvironmentName == "Testing" 
+var suppressTestLogging = builder.Environment.EnvironmentName == "Testing"
     && Environment.GetEnvironmentVariable("CATAN_TEST_VERBOSE") != "true"
     && !args.Contains("--verbose");
 
@@ -156,11 +156,11 @@ app.MapGet("/companion", async (HttpContext context, string? gameId = null) =>
     if (File.Exists(filePath))
     {
         var content = await File.ReadAllTextAsync(filePath, Encoding.UTF8);
-        
+
         // Fix CSS and JS paths to be absolute
         content = content.Replace("href=\"companion.css\"", "href=\"/companion.css\"");
         content = content.Replace("src=\"companion.js\"", "src=\"/companion.js\"");
-        
+
         // Inject gameId if provided
         if (!string.IsNullOrEmpty(gameId))
         {
@@ -171,7 +171,7 @@ app.MapGet("/companion", async (HttpContext context, string? gameId = null) =>
 </head>";
             content = content.Replace("</head>", gameIdScript);
         }
-        
+
         context.Response.ContentType = "text/html; charset=utf-8";
         await context.Response.WriteAsync(content, Encoding.UTF8);
     }
@@ -206,11 +206,11 @@ app.MapGet("/companion/demo/{state}", async (HttpContext context) =>
     if (File.Exists(filePath))
     {
         var content = await File.ReadAllTextAsync(filePath, Encoding.UTF8);
-        
+
         // Fix CSS and JS paths to be absolute
         content = content.Replace("href=\"companion.css\"", "href=\"/companion.css\"");
         content = content.Replace("src=\"companion.js\"", "src=\"/companion.js\"");
-        
+
         // Add demo mode script injection
         var demoScript = $@"
     <script>
@@ -276,7 +276,7 @@ if (builder.Environment.EnvironmentName != "Testing")
             }
             catch { }
         }
-        
+
         return "localhost";
     }
 

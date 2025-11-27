@@ -51,7 +51,7 @@ namespace Tests.GameService.Companion
                 // Test that action flags come from GameModel
                 Assert.NotNull(gameModel.ActionFlags);
                 var actionFlags = gameModel.ActionFlags;
-                
+
                 // Companion should use these flags for UI state, not maintain separate state
                 Assert.True(actionFlags.NextEnabled || actionFlags.UndoEnabled || actionFlags.RedoEnabled);
 
@@ -60,10 +60,10 @@ namespace Tests.GameService.Companion
                 if (result.Success)
                 {
                     await Task.Delay(500); // Wait for update
-                    
+
                     var updatedGameModel = companion.GameModel;
                     Assert.NotNull(updatedGameModel);
-                    
+
                     // Verify GameModel version changed (new state received)
                     Assert.True(updatedGameModel.GameStateMachineVersion >= gameModel.GameStateMachineVersion);
                 }
@@ -86,19 +86,19 @@ namespace Tests.GameService.Companion
 
                 var gameModel = companion.GameModel;
                 Assert.NotNull(gameModel);
-                
+
                 // In allocation states, GameModel should provide building options
-                if (gameModel.GameState == GameState.AllocateResourceForward || 
+                if (gameModel.GameState == GameState.AllocateResourceForward ||
                     gameModel.GameState == GameState.AllocateResourceReverse)
                 {
                     // Verify companion gets building data from GameModel
                     // This tests the getBuildableBuildings() method in companion.js
-                    
+
                     // NOTE: In real implementation, this would come from gameModel.PossibleBuildings
                     // For now, verify the pattern is followed
                     Assert.NotNull(gameModel.Players);
                     Assert.True(gameModel.Players.Count > 0);
-                    
+
                     // Test that companion doesn't maintain building state locally
                     // All building options should derive from GameModel
                 }
@@ -126,9 +126,9 @@ namespace Tests.GameService.Companion
                 if (gameModel.EntitlementPurchaseModel != null && gameModel.EntitlementPurchaseModel.Count > 0)
                 {
                     var entitlements = gameModel.EntitlementPurchaseModel;
-                    
+
                     // Verify companion uses these entitlements for UI
-                    Assert.All(entitlements, entitlement => 
+                    Assert.All(entitlements, entitlement =>
                     {
                         // Companion should show enabled/disabled based on GameModel, not local logic
                         // Note: Entitlement is an enum (value type), so no need for Assert.NotNull
@@ -192,7 +192,7 @@ namespace Tests.GameService.Companion
                     // Verify companion2 receives update via SignalR
                     var updatedGameModel = await updateReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
                     Assert.NotNull(updatedGameModel);
-                    
+
                     // Both companions should have same GameModel data
                     Assert.Equal(companion1.GameModel?.GameStateMachineVersion, updatedGameModel.GameStateMachineVersion);
                     Assert.Equal(companion1.GameModel?.GameState, updatedGameModel.GameState);
@@ -220,7 +220,7 @@ namespace Tests.GameService.Companion
 
                 // Test that companion correctly identifies if it's the current player's turn
                 var isCurrentPlayer = companion.PlayerId == currentPlayerId;
-                
+
                 // Action flags should be considered along with current player status
                 var actionFlags = gameModel.ActionFlags;
                 Assert.NotNull(actionFlags);
@@ -286,18 +286,18 @@ namespace Tests.GameService.Companion
 
                 // Test that demo pages load correctly
                 var demoStates = new[] { "PickingBoard", "WaitingForRoll", "WaitingForNext", "AllocateResourceForward" };
-                
+
                 foreach (var state in demoStates)
                 {
                     var response = await httpClient.GetAsync($"/companion/demo/{state}");
                     Assert.True(response.IsSuccessStatusCode, $"Demo state {state} should load");
 
                     var content = await response.Content.ReadAsStringAsync();
-                    
+
                     // Verify demo mode injection
                     Assert.Contains("window.DEMO_MODE = true", content);
                     Assert.Contains($"window.DEMO_STATE = '{state}'", content);
-                    
+
                     // Demo should create mock GameModel that follows real structure
                     // This tests companion.js createMockGameState() method
                 }
@@ -336,17 +336,17 @@ namespace Tests.GameService.Companion
 
             var proxy = new GameServiceProxy(hubUrl, "http://localhost", testHandler, playerId, gameId);
             await proxy.ConnectAsync();
-            
+
             // Wait for initial GameStateUpdated event after joining
             var maxWaitTime = TimeSpan.FromSeconds(5);
             var waitInterval = TimeSpan.FromMilliseconds(100);
             var startTime = DateTime.UtcNow;
-            
+
             while (proxy.GameModel == null && DateTime.UtcNow - startTime < maxWaitTime)
             {
                 await Task.Delay(waitInterval);
             }
-            
+
             return proxy;
         }
 
@@ -359,7 +359,7 @@ namespace Tests.GameService.Companion
             while (attempts < maxAttempts)
             {
                 var gameModel = companion.GameModel;
-                if (gameModel?.GameState == GameState.AllocateResourceForward || 
+                if (gameModel?.GameState == GameState.AllocateResourceForward ||
                     gameModel?.GameState == GameState.AllocateResourceReverse)
                 {
                     return; // Reached allocation state
@@ -388,7 +388,7 @@ namespace Tests.GameService.Companion
             while (attempts < maxAttempts)
             {
                 var gameModel = companion.GameModel;
-                if (gameModel?.GameState == GameState.WaitingForNext || 
+                if (gameModel?.GameState == GameState.WaitingForNext ||
                     gameModel?.GameState == GameState.WaitingForRoll)
                 {
                     return; // Reached main gameplay

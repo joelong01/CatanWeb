@@ -15,7 +15,7 @@ namespace Catan3
         {
             Instance = this;
             this.InitializeComponent();
-            
+
             // Subscribe to window closing event
             this.Closed += OnMainWindowClosed;
         }
@@ -23,7 +23,7 @@ namespace Catan3
         private async void OnLoaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
             await PlayerDatabase.LoadPlayerDatabase();
-            
+
             // Check if we should auto-load a test file
             if (!string.IsNullOrEmpty(App.ActivatedFilePath))
             {
@@ -37,7 +37,7 @@ namespace Catan3
                 MainFrame.Navigate(typeof(NewGamePage), viewModel);
             }
         }
-        
+
         private void LoadActivatedFile(string activatedFilePath)
         {
             try
@@ -56,7 +56,7 @@ namespace Catan3
                 MainFrame.Navigate(typeof(NewGamePage), viewModel);
             }
         }
-        
+
         private void OnMainWindowClosed(object sender, WindowEventArgs args)
         {
             // Close the DebugWindow if it's open

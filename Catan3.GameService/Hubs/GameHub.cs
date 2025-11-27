@@ -31,21 +31,21 @@ namespace Catan3.GameService.Hubs
         public async Task JoinGame(string gameId, string playerId)
         {
             LogEvent("JoinGame", $"Player {playerId} requesting to join game {gameId} via SignalR");
-            
+
             // Validate GameId - fail fast if empty or null
             if (string.IsNullOrEmpty(gameId))
             {
                 LogEvent("JoinGame", $"ERROR: Player {playerId} attempted to join with empty/null gameId", LogLevel.Error);
                 throw new ArgumentException($"GameId cannot be null or empty. Player {playerId} must provide a valid GameId to join a game.");
             }
-            
+
             await Groups.AddToGroupAsync(Context.ConnectionId, gameId);
             LogEvent("JoinGame", $"Player {playerId} added to SignalR group {gameId}");
 
             // Send current game state to ALL clients in the group (since player joining updates the GameModel)
             var currentGameState = GameStateMachineRegistry.GetGameStateMachine(gameId).GetCurrentState();
             LogEvent("JoinGame", $"Retrieved game state for {gameId}: {currentGameState?.GameState.ToString() ?? "NULL"}");
-            
+
             if (currentGameState != null)
             {
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", currentGameState);
@@ -59,7 +59,7 @@ namespace Catan3.GameService.Hubs
             // Notify other players about presence
             await Clients.GroupExcept(gameId, Context.ConnectionId)
                 .SendAsync("PlayerPresenceChanged", playerId, true);
-            
+
             LogEvent("JoinGame", $"Player {playerId} successfully joined game {gameId} and other players notified");
         }
 
@@ -124,22 +124,22 @@ namespace Catan3.GameService.Hubs
         public async Task Shuffle(string gameId, string playerId)
         {
             LogEvent("GameCommand", $"SignalR Shuffle: for {playerId} in {gameId}");
-            
+
             var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
             var currentGameState = gameStateMachine.GetCurrentState();
-            
+
             // Verify that the current player is the one sending the request
             if (!ValidateCaller(currentGameState.CurrentPlayerId, playerId))
             {
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
-            
+
             var updatedGameModel = await gameStateMachine.HandleShuffleAsync(new ShuffleMessage());
-            
+
             // Notify all clients in game group of the updated GameModel
             await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
             LogEvent("Send Client Update", $"GameStateUpdated sent for Shuffle - PlayerId={playerId}, GameID={gameId}");
-            
+
             LogEvent("GameCommand", $"Shuffle completed successfully for game {gameId}", LogLevel.Debug);
         }
 
@@ -149,22 +149,22 @@ namespace Catan3.GameService.Hubs
         public async Task Undo(string gameId, string playerId)
         {
             LogEvent("GameCommand", $"SignalR Undo: for {playerId} in {gameId}");
-            
+
             var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
             var currentGameState = gameStateMachine.GetCurrentState();
-            
+
             // Verify that the current player is the one sending the request
             if (!ValidateCaller(currentGameState.CurrentPlayerId, playerId))
             {
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
-            
+
             var updatedGameModel = await gameStateMachine.HandleUndoAsync(new UndoMessage());
-            
+
             // Notify all clients in game group of the updated GameModel
             await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
             LogEvent("Send Client Update", $"GameStateUpdated sent for Undo - PlayerId={playerId}, GameID={gameId}");
-            
+
             LogEvent("GameCommand", $"Undo completed successfully for game {gameId}", LogLevel.Debug);
         }
 
@@ -174,22 +174,22 @@ namespace Catan3.GameService.Hubs
         public async Task Redo(string gameId, string playerId)
         {
             LogEvent("GameCommand", $"SignalR Redo: for {playerId} in {gameId}");
-            
+
             var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
             var currentGameState = gameStateMachine.GetCurrentState();
-            
+
             // Verify that the current player is the one sending the request
             if (!ValidateCaller(currentGameState.CurrentPlayerId, playerId))
             {
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
-            
+
             var updatedGameModel = await gameStateMachine.HandleRedoAsync(new RedoMessage());
-            
+
             // Notify all clients in game group of the updated GameModel
             await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
             LogEvent("Send Client Update", $"GameStateUpdated sent for Redo - PlayerId={playerId}, GameID={gameId}");
-            
+
             LogEvent("GameCommand", $"Redo completed successfully for game {gameId}", LogLevel.Debug);
         }
 
@@ -199,22 +199,22 @@ namespace Catan3.GameService.Hubs
         public async Task Next(string gameId, string playerId)
         {
             LogEvent("GameCommand", $"SignalR Next: for {playerId} in {gameId}");
-            
+
             var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
             var currentGameState = gameStateMachine.GetCurrentState();
-            
+
             // Verify that the current player is the one sending the request
             if (!ValidateCaller(currentGameState.CurrentPlayerId, playerId))
             {
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
-            
+
             var updatedGameModel = await gameStateMachine.HandleNextAsync(new NextMessage());
-            
+
             // Notify all clients in game group of the updated GameModel
             await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
             LogEvent("Send Client Update", $"GameStateUpdated sent for Next - PlayerId={playerId}, GameID={gameId}");
-            
+
             LogEvent("GameCommand", $"Next completed successfully for game {gameId}", LogLevel.Debug);
         }
 
@@ -227,20 +227,20 @@ namespace Catan3.GameService.Hubs
         public async Task ExecutePurchase(string gameId, string playerId, PurchaseMessage message)
         {
             var commandId = Guid.NewGuid().ToString();
-            try 
+            try
             {
                 LogEvent("Purchase", $"SignalR Purchase: {message.Entitlement} for {playerId} in {gameId}");
-                
+
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandlePurchaseAsync(message);
-                
+
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 LogEvent("Send Client Update", $"GameStateUpdated sent for Purchase: {message.Entitlement} - PlayerId={playerId}, GameID={gameId}");
-                
+
                 // Notify command completion to original client
                 await Clients.Caller.SendAsync("CommandCompleted", commandId, true, $"Purchased {message.Entitlement}");
-                
+
                 LogEvent("Purchase", $"Purchase {message.Entitlement} completed successfully for game {gameId}", LogLevel.Debug);
             }
             catch (Exception ex)
@@ -257,22 +257,22 @@ namespace Catan3.GameService.Hubs
         public async Task BalanceBoard(string gameId, string playerId)
         {
             LogEvent("GameCommand", $"SignalR BalanceBoard: for {playerId} in {gameId}");
-            
+
             var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
             var currentGameState = gameStateMachine.GetCurrentState();
-            
+
             // Verify that the current player is the one sending the request
             if (!ValidateCaller(currentGameState.CurrentPlayerId, playerId))
             {
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
-            
+
             var updatedGameModel = await gameStateMachine.HandleBalanceBoardAsync(new BalanceBoardMessage());
-            
+
             // Notify all clients in game group of the updated GameModel
             await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
             LogEvent("Send Client Update", $"GameStateUpdated sent for BalanceBoard - PlayerId={playerId}, GameID={gameId}");
-            
+
             LogEvent("GameCommand", $"BalanceBoard completed successfully for game {gameId}", LogLevel.Debug);
         }
 
@@ -285,20 +285,20 @@ namespace Catan3.GameService.Hubs
         public async Task ExecuteRoadPurchase(string gameId, string playerId, RoadPurchaseMessage message)
         {
             var commandId = Guid.NewGuid().ToString();
-            try 
+            try
             {
                 LogEvent("RoadPurchase", $"SignalR Road Purchase: {message.RoadKey} for {playerId} in {gameId}");
-                
+
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleRoadPurchaseAsync(message);
-                
+
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 LogEvent("Send Client Update", $"GameStateUpdated sent for RoadPurchase: {message.RoadKey} - PlayerId={playerId}, GameID={gameId}");
-                
+
                 // Notify command completion to original client
                 await Clients.Caller.SendAsync("CommandCompleted", commandId, true, "Road placed successfully");
-                
+
                 LogEvent("RoadPurchase", $"Road purchase completed successfully for game {gameId}", LogLevel.Debug);
             }
             catch (Exception ex)
@@ -318,20 +318,20 @@ namespace Catan3.GameService.Hubs
         public async Task ExecuteBuildingUpgrade(string gameId, string playerId, BuildingUpgradeMessage message)
         {
             var commandId = Guid.NewGuid().ToString();
-            try 
+            try
             {
                 LogEvent("BuildingUpgrade", $"SignalR Building Upgrade: {message.BuildingKey} for {playerId} in {gameId}");
-                
+
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleBuildingUpgradeAsync(message);
-                
+
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 LogEvent("Send Client Update", $"GameStateUpdated sent for BuildingUpgrade: {message.BuildingKey} - PlayerId={playerId}, GameID={gameId}");
-                
+
                 // Notify command completion to original client
                 await Clients.Caller.SendAsync("CommandCompleted", commandId, true, "Building placed successfully");
-                
+
                 LogEvent("BuildingUpgrade", $"Building upgrade completed successfully for game {gameId}", LogLevel.Debug);
             }
             catch (Exception ex)
@@ -351,20 +351,20 @@ namespace Catan3.GameService.Hubs
         public async Task ExecuteMoveRobber(string gameId, string playerId, MoveRobberMessage message)
         {
             var commandId = Guid.NewGuid().ToString();
-            try 
+            try
             {
                 LogEvent("MoveRobber", $"SignalR Move Robber: {message.Coordinates} for {playerId} in {gameId}");
-                
+
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleMoveRobberAsync(message);
-                
+
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 LogEvent("Send Client Update", $"GameStateUpdated sent for MoveRobber: {message.Coordinates} - PlayerId={playerId}, GameID={gameId}");
-                
+
                 // Notify command completion to original client
                 await Clients.Caller.SendAsync("CommandCompleted", commandId, true, "Robber moved successfully");
-                
+
                 LogEvent("MoveRobber", $"Move Robber completed successfully for game {gameId}", LogLevel.Debug);
             }
             catch (Exception ex)
@@ -384,20 +384,20 @@ namespace Catan3.GameService.Hubs
         public async Task ExecuteRoll(string gameId, string playerId, RollMessage message)
         {
             var commandId = Guid.NewGuid().ToString();
-            try 
+            try
             {
                 LogEvent("Roll", $"SignalR Roll: {message.Roll.NormalRoll} for {playerId} in {gameId}");
-                
+
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleRollAsync(message);
-                
+
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 LogEvent("Send Client Update", $"GameStateUpdated sent for Roll: {message.Roll.NormalRoll} - PlayerId={playerId}, GameID={gameId}");
-                
+
                 // Notify command completion to original client
                 await Clients.Caller.SendAsync("CommandCompleted", commandId, true, $"Rolled {message.Roll.NormalRoll}");
-                
+
                 LogEvent("Roll", $"Roll completed successfully for game {gameId}", LogLevel.Debug);
             }
             catch (Exception ex)
@@ -417,20 +417,20 @@ namespace Catan3.GameService.Hubs
         public async Task ExecuteSetPlayerOrder(string gameId, string playerId, SetPlayerOrderMessage message)
         {
             var commandId = Guid.NewGuid().ToString();
-            try 
+            try
             {
                 LogEvent("SetPlayerOrder", $"SignalR Set Player Order for {playerId} in {gameId}");
-                
+
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleSetPlayerOrderAsync(message);
-                
+
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 LogEvent("Send Client Update", $"GameStateUpdated sent for SetPlayerOrder - PlayerId={playerId}, GameID={gameId}");
-                
+
                 // Notify command completion to original client
                 await Clients.Caller.SendAsync("CommandCompleted", commandId, true, "Player order set successfully");
-                
+
                 LogEvent("SetPlayerOrder", $"Set Player Order completed successfully for game {gameId}", LogLevel.Debug);
             }
             catch (Exception ex)
@@ -450,22 +450,22 @@ namespace Catan3.GameService.Hubs
         public async Task ExecuteParticipatingInSupplemental(string gameId, string playerId, bool participating)
         {
             var commandId = Guid.NewGuid().ToString();
-            try 
+            try
             {
                 LogEvent("ParticipatingInSupplemental", $"SignalR Participating In Supplemental for {playerId} in {gameId}: {participating}");
-                
+
                 var message = new ParticipatingInSupplementalMessage(playerId, participating);
-                
+
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleParticipatingInSupplementalAsync(message);
-                
+
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 LogEvent("Send Client Update", $"GameStateUpdated sent for ParticipatingInSupplemental - PlayerId={playerId}, GameID={gameId}");
-                
+
                 // Notify command completion to original client
                 await Clients.Caller.SendAsync("CommandCompleted", commandId, true, "Supplemental participation set");
-                
+
                 LogEvent("ParticipatingInSupplemental", $"Participating In Supplemental completed successfully for game {gameId}", LogLevel.Debug);
             }
             catch (Exception ex)
@@ -485,20 +485,20 @@ namespace Catan3.GameService.Hubs
         public async Task ExecuteBalanceBoard(string gameId, string playerId, BalanceBoardMessage message)
         {
             var commandId = Guid.NewGuid().ToString();
-            try 
+            try
             {
                 LogEvent("BalanceBoard", $"SignalR Balance Board for {playerId} in {gameId}");
-                
+
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleBalanceBoardAsync(message);
-                
+
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 LogEvent("Send Client Update", $"GameStateUpdated sent for BalanceBoard - PlayerId={playerId}, GameID={gameId}");
-                
+
                 // Notify command completion to original client
                 await Clients.Caller.SendAsync("CommandCompleted", commandId, true, "Board balanced successfully");
-                
+
                 LogEvent("BalanceBoard", $"Balance Board completed successfully for game {gameId}", LogLevel.Debug);
             }
             catch (Exception ex)
@@ -518,25 +518,25 @@ namespace Catan3.GameService.Hubs
         public async Task ExecuteGoFirst(string gameId, string playerId, GoFirstMessage message)
         {
             var commandId = Guid.NewGuid().ToString();
-            try 
+            try
             {
                 // Get GameStateMachine and current state first
                 var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
                 var currentGameModel = gameStateMachine.GetCurrentState();
-                
+
                 // Validate the message request
                 ValidateMessage(currentGameModel, playerId, "GoFirst", $"Target First Player={message.PlayerId}");
-                
+
                 // Process synchronously for real-time response
                 var updatedGameModel = await gameStateMachine.HandleGoFirstAsync(message);
-                
+
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 LogEvent("Send Client Update", $"GameStateUpdated sent for GoFirst: {message.PlayerId} - PlayerId={playerId}, GameID={gameId}");
-                
+
                 // Notify command completion to original client
                 await Clients.Caller.SendAsync("CommandCompleted", commandId, true, "Turn order set successfully");
-                
+
                 LogEvent("GoFirst", $"Go First completed successfully for game {gameId}", LogLevel.Debug);
             }
             catch (Exception ex)
@@ -614,16 +614,16 @@ namespace Catan3.GameService.Hubs
         private void ValidateMessage(GameModel gameModel, string requestingPlayerId, string actionType, string additionalInfo = "")
         {
             var currentPlayerId = gameModel.CurrentPlayerId;
-            
+
             var logMessage = $"{actionType}: Requesting Player={requestingPlayerId}, Current Player={currentPlayerId}, Game State={gameModel.GameState}";
             if (!string.IsNullOrEmpty(additionalInfo))
             {
                 logMessage += $", {additionalInfo}";
             }
-            
+
             // Use Warning level to ensure it shows during tests (test config suppresses lower levels)
             LogEvent("Validation", logMessage, LogLevel.Warning);
-            
+
             // Future: Add specific validation rules here based on action type
             // For now, we just log the details for debugging
         }
@@ -662,9 +662,9 @@ namespace Catan3.GameService.Hubs
                 innerException = ex.InnerException?.Message,
                 innerExceptionType = ex.InnerException?.GetType().Name,
                 // Include stack trace only in development for security
-                #if DEBUG
+#if DEBUG
                 stackTrace = ex.StackTrace,
-                #endif
+#endif
             };
 
             // Trace the detailed error for server-side debugging

@@ -21,10 +21,10 @@ namespace Tests.GameService
         {
             // Hard-coded verbose logging for debugging test failures
             var enableVerboseLogging = true; // TEMPORARY: Always enable to debug timeout/discovery issues
-            
+
             var logLevel = enableVerboseLogging ? "Information" : "Error";
             var gameServiceLogLevel = enableVerboseLogging ? "Information" : "Error";
-            
+
             return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             {
                 // Configure application settings for tests
@@ -43,7 +43,7 @@ namespace Tests.GameService
                         ["Logging:LogLevel:Microsoft.AspNetCore.HttpsPolicy"] = "Error",
                         ["Logging:LogLevel:Microsoft.Extensions.Hosting"] = "Error",
                         ["Logging:LogLevel:Microsoft.Hosting.Lifetime"] = "Error",
-                        
+
                         // Enable application-specific logging when debugging
                         ["Logging:LogLevel:Catan3"] = gameServiceLogLevel,
                         ["Logging:LogLevel:Catan3.GameService"] = gameServiceLogLevel,
@@ -54,28 +54,28 @@ namespace Tests.GameService
                         ["Logging:LogLevel:Catan3.GameService.Services.AsyncCommandProcessor"] = gameServiceLogLevel,
                         ["Logging:LogLevel:Catan3.GameService.Hubs"] = gameServiceLogLevel,
                         ["Logging:LogLevel:Catan3.GameService.Hubs.GameHub"] = gameServiceLogLevel,
-                        
+
                         // Console output configuration
                         ["Logging:Console:LogLevel:Default"] = logLevel,
                         ["Console:LogLevel:Default"] = logLevel
                     });
                 });
-                
+
                 // Configure services for testing
                 builder.ConfigureServices(services =>
                 {
                     // Configure logging services directly through dependency injection
                     var minLogLevel = enableVerboseLogging ? LogLevel.Information : LogLevel.Error;
-                    
+
                     services.Configure<LoggerFilterOptions>(options =>
                     {
                         options.MinLevel = minLogLevel;
-                        
+
                         // Add filters for specific categories
                         options.AddFilter("Microsoft", LogLevel.Error); // Keep Microsoft quiet
                         options.AddFilter("Microsoft.AspNetCore", LogLevel.Error);
                         options.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Error);
-                        
+
                         // Enable our application logging when verbose mode is active
                         if (enableVerboseLogging)
                         {
@@ -92,12 +92,12 @@ namespace Tests.GameService
                             options.AddFilter("Catan3.GameService.Hubs", LogLevel.Error);
                         }
                     });
-                    
+
                     // Override any specific service configurations for testing if needed
                 });
             });
         }
-        
+
         /// <summary>
         /// Creates a factory with verbose logging enabled regardless of environment
         /// Use this for debugging specific failing tests

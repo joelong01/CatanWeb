@@ -40,6 +40,6 @@ namespace Catan3.Utility
             {Entitlement.Soldier, Pirate },
             {Entitlement.Road, Road }
         };
-        
+
     }
 }

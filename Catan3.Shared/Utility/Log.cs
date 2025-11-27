@@ -30,7 +30,7 @@ namespace Catan3.Shared.Utility
         private ObservableCollection<T> DoneStack { get; set; } = [];
         private ObservableCollection<T> RedoStack { get; set; } = [];
         public GameType GameType { get; set; } = GameType.Regular;
-        
+
         /// <summary>
         /// When true, the log will skip saving to prevent overwriting test files
         /// </summary>
@@ -92,7 +92,7 @@ namespace Catan3.Shared.Utility
             _logger = logger;
             DoneStack.CollectionChanged += DoneStack_ListChanged;
             RedoStack.CollectionChanged += RedoStack_ListChanged;
-            
+
             // Set file path based on test mode
             if (isTest)
             {
@@ -103,7 +103,7 @@ namespace Catan3.Shared.Utility
                 // Use GameModel extension method for consistent naming
                 FilePath = Path.Combine(Path.GetTempPath(), "Catan3Games", gameModel.SaveFileName());
             }
-            
+
             // Initialize with the provided GameModel
             var json = JsonHelper.Serialize(gameModel);
             var data = (T)(object)json;
@@ -424,11 +424,11 @@ namespace Catan3.Shared.Utility
         public void InitializeWithGameModel(GameModel gameModel)
         {
             if (gameModel == null) throw new ArgumentNullException(nameof(gameModel), "Provided GameModel cannot be null.");
-            
+
             // Clear any existing state
             DoneStack.Clear();
             RedoStack.Clear();
-            
+
             // Put the original GameModel into the DoneStack without modification
             T val;
             try
@@ -439,9 +439,9 @@ namespace Catan3.Shared.Utility
             {
                 throw new InvalidOperationException("Failed to serialize the GameModel during initialization.", ex);
             }
-            
+
             DoneStack.Push(val);
-            
+
             // Set the GameType from the loaded model
             GameType = gameModel.GameType;
         }
@@ -572,9 +572,9 @@ namespace Catan3.Shared.Utility
         public async Task SaveAsync()
         {
             _logger?.TraceMessage($"SaveAsync called - FilePath: {FilePath}, InTestMode: {InTestMode}");
-            
+
             if (PersistService is null) return;
-            
+
             // Skip saving when in test mode to prevent overwriting test files
             if (InTestMode)
             {

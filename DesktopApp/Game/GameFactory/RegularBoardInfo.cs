@@ -79,6 +79,6 @@ namespace Catan3.DesktopApp.Models
                 new EntitlementPurchaseModel(Entitlement.Road),
                 new EntitlementPurchaseModel(Entitlement.Soldier),
             ];
-      //  public Dictionary<GameState, Entitlement[]> StateToPurchaseMap { get; } = [GameState.WaitingForNext, [Entitlement.City, Entitlement.Settlement, Entitlement.Road]];
+        //  public Dictionary<GameState, Entitlement[]> StateToPurchaseMap { get; } = [GameState.WaitingForNext, [Entitlement.City, Entitlement.Settlement, Entitlement.Road]];
     }
 }

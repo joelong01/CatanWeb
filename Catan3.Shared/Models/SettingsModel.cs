@@ -389,7 +389,7 @@ namespace Catan3.Shared.Models
         {
             // Unregister to prevent memory leaks
             _messenger.Unregister<UpdateSettings>(this);
-            
+
             // Complete the task with the settings
             _tcs.SetResult(message.Settings);
         }

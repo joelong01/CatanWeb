@@ -64,10 +64,10 @@ namespace Catan3.Models
             DimTileTimer.Interval = TILE_DIM_TIME;
             DimTileTimer.Tick += DimTileTimer_Tick;
 
-            foreach(ValidCatanRoll roll in Enum.GetValues(typeof(ValidCatanRoll)))
+            foreach (ValidCatanRoll roll in Enum.GetValues(typeof(ValidCatanRoll)))
             {
                 if (roll == ValidCatanRoll.None) continue;
-               
+
                 ValidRolls.Add(new UiRollModel(this.RollViewModel, (int)roll));
             }
         }
@@ -79,7 +79,7 @@ namespace Catan3.Models
             {
                 tile.Dimmed = false;
             }
-           
+
         }
 
         private void RegisterMessages()
@@ -110,7 +110,7 @@ namespace Catan3.Models
         }
         partial void OnGameModelChanged(GameModel? oldValue, GameModel? newValue)
         {
-            if ( newValue is null)
+            if (newValue is null)
             {
                 // ending game?
                 return;
@@ -128,7 +128,7 @@ namespace Catan3.Models
                         Players.Add(playerViewModel);
                     }
                 }
-               
+
                 if (BoardInfo is null)
                 {
                     if (newValue.GameType == GameType.Regular)
@@ -229,11 +229,11 @@ namespace Catan3.Models
             }
             for (int i = 0; i < gameModel.EntitlementPurchaseModel.Count; i++)
             {
-                var unspent = currentPlayer.UnspentEntitlements.Count( e => e == gameModel.EntitlementPurchaseModel[i].Entitlement );
+                var unspent = currentPlayer.UnspentEntitlements.Count(e => e == gameModel.EntitlementPurchaseModel[i].Entitlement);
                 this.PurchasableEntitlements[i].Merge(gameModel.EntitlementPurchaseModel[i], unspent, this.CurrentPlayer.PlayerColors.ForegroundBrush, this.CurrentPlayer.PlayerColors.BackgroundBrush);
             }
         }
-        
+
         private void FixupState(GameModel gameModel)
         {
             Debug.Assert(GameModel is not null);
@@ -261,7 +261,7 @@ namespace Catan3.Models
                         tile.Dimmed = false;
                         continue;
                     }
-                    tile.Dimmed =  tile.Tile.Number != (int)gameModel.RollModel.TurnRollModel.NormalRoll;
+                    tile.Dimmed = tile.Tile.Number != (int)gameModel.RollModel.TurnRollModel.NormalRoll;
                 }
 
                 DimTileTimer.Start();
@@ -310,7 +310,7 @@ namespace Catan3.Models
             {
                 Players[i].Player = gameModel.Players[i]; // triggers PlayerViewModel.PlayerChanged
                 Debug.Assert(Players[i].Id == gameModel.Players[i].Id);
-                Players[i].IsCurrentPlayer = ( gameModel.Players[i].Id == gameModel.CurrentPlayerId );
+                Players[i].IsCurrentPlayer = (gameModel.Players[i].Id == gameModel.CurrentPlayerId);
                 if (Players[i].IsCurrentPlayer)
                 {
                     this.CurrentPlayer = Players[i]; // triggers OnCurrentPlayerChanged
@@ -322,12 +322,12 @@ namespace Catan3.Models
         }
         public void SetPlayerOrder(GameModel gameModel)
         {
-            List<PlayerViewModel> orderedPlayerList =[];
+            List<PlayerViewModel> orderedPlayerList = [];
             //
             // make the GameViewModel.Players collection match the order of the GameModel.Players
             for (int order = 0; order < gameModel.Players.Count; order++)
             {
-                var playerViewModel = Players.First((p)=> p.Id == gameModel.Players[order].Id) ?? throw new GameException($"Cannot find PlayerId {gameModel.Players[order].Id} in the playing players.  bad. very bad.");
+                var playerViewModel = Players.First((p) => p.Id == gameModel.Players[order].Id) ?? throw new GameException($"Cannot find PlayerId {gameModel.Players[order].Id} in the playing players.  bad. very bad.");
                 orderedPlayerList.Add(playerViewModel);
             }
             for (int i = 0; i < Players.Count; ++i)
@@ -355,7 +355,7 @@ namespace Catan3.Models
                     // Contract.Assert(Tiles[i].Tile.TileKey == gameModel.Tiles[i].TileKey);
                     Tiles[i].Tile = gameModel.Tiles[i];
                     Tiles[i].AllowTargeting = gameModel.GameState == Shared.Models.GameState.MustMoveRobber;
-                   // Debug.Assert(Tiles[i].Tile == gameModel.Tiles[i]);
+                    // Debug.Assert(Tiles[i].Tile == gameModel.Tiles[i]);
                 }
             }
         }
@@ -396,7 +396,7 @@ namespace Catan3.Models
             }
             Debug.Assert(Buildings.Count == gameModel.Buildings.Count);
             int buildingIndex = 1;
-            var currentPlayer =  gameModel.CurrentPlayer();
+            var currentPlayer = gameModel.CurrentPlayer();
             //
             //  if they have a City entitlement, highlight and mark each Settlement
             bool hasCityEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.City);
@@ -484,7 +484,7 @@ namespace Catan3.Models
             {
                 viewModel.Stars = GameModel.TilesForBuildings(viewModel.Building.BuildingKey).Stars();
             }
-            
+
             // After updating Stars values, trigger re-evaluation of building visibility
             // This ensures that buildings with changed Stars values update their VisualState appropriately
             OnShownStarsChanged(ShownStars);
@@ -604,7 +604,7 @@ namespace Catan3.Models
             //
             //  calculate the Width
             var rightTile = Tiles.LastColumn().First();
-            double left = BoardInfo.Layout.Left(rightTile.Tile.TileKey) ;
+            double left = BoardInfo.Layout.Left(rightTile.Tile.TileKey);
             BoardInfo.Layout.BoardWidth = left + 2 * hexSize + harborSize / 2.0;
             foreach (var tile in Tiles.LastColumn())
             {

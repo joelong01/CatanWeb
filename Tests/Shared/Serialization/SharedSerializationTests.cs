@@ -562,7 +562,7 @@ namespace Tests.Shared.Serialization
                 {
                     // Test individual action messages
                     TestMessageSerialization(new UndoMessage(), nameof(UndoMessage));
-                    TestMessageSerialization(new RedoMessage(), nameof(RedoMessage)); 
+                    TestMessageSerialization(new RedoMessage(), nameof(RedoMessage));
                     TestMessageSerialization(new NextMessage(), nameof(NextMessage));
 
                     // Test PurchaseMessage

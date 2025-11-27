@@ -69,16 +69,16 @@ namespace Catan3.Services
 
                 // Then, optionally hydrate defaults from environment-provided file
                 LoadEnvironmentDefaultSettings();
-                
+
                 // Then, load user settings from storage and merge
                 LoadUserSettings();
 
                 // If no environment defaults existed, seed them with the merged defaults + user preferences.
                 SeedEnvironmentDefaultsIfNeeded();
-                
+
                 // Apply environment variable overrides
                 ApplyEnvironmentOverrides();
-                
+
                 // Always save settings after loading to ensure new defaults are persisted
                 SaveSettings();
             }
@@ -194,7 +194,7 @@ namespace Catan3.Services
                 var uri = new Uri("ms-appx:///Assets/settings.json");
                 var file = StorageFile.GetFileFromApplicationUriAsync(uri).AsTask().Result;
                 var json = FileIO.ReadTextAsync(file).AsTask().Result;
-                
+
                 var defaultSettings = JsonSerializer.Deserialize<SettingsModel>(json);
                 if (defaultSettings != null)
                 {
@@ -218,7 +218,7 @@ namespace Catan3.Services
             try
             {
                 var localSettings = ApplicationData.Current.LocalSettings;
-                
+
                 if (localSettings.Values.TryGetValue("UserSettingsJson", out var userSettingsJson))
                 {
                     var userSettings = JsonSerializer.Deserialize<SettingsModel>(userSettingsJson.ToString()!);
@@ -275,7 +275,7 @@ namespace Catan3.Services
             try
             {
                 var localSettings = ApplicationData.Current.LocalSettings;
-                
+
                 // Save settings as JSON
                 var settingsJson = JsonSerializer.Serialize(_currentSettings);
                 localSettings.Values["UserSettingsJson"] = settingsJson;
@@ -302,7 +302,7 @@ namespace Catan3.Services
         private void HandleUpdateSettings(object recipient, UpdateSettings message)
         {
             _currentSettings = message.Settings;
-            
+
             // Save to persistent storage whenever settings are updated
             SaveSettings();
         }

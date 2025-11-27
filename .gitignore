@@ -379,3 +379,4 @@ temp_old_gameservice_statemachine.cs
 # WebUI development files
 .webui-pids.json
 code-reviews/
+.claude/settings.local.json

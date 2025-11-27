@@ -29,7 +29,7 @@ namespace Catan3
 
         public static string? ActivatedFilePath { get; set; } = null;
         public static bool IsTestMode { get; private set; } = false; // set based on extension
-        
+
         /// <summary>
         /// Global log level setting that controls which messages are displayed.
         /// Only messages at or above this level will be shown.
@@ -70,7 +70,7 @@ namespace Catan3
 #nullable disable
         public App()
         {
-          //  System.Diagnostics.Debugger.Launch();
+            //  System.Diagnostics.Debugger.Launch();
             this.InitializeComponent();
         }
 #nullable enable
@@ -90,7 +90,7 @@ namespace Catan3
 #endif
                 // Initialize logger first, before any TraceMessage calls
                 InitializeLogger();
-                
+
                 this.TraceMessage($"Command Line arguments: {args?.Arguments}");
 
                 // Initialize application services
@@ -186,7 +186,7 @@ namespace Catan3
                                 // Set the activated file path
                                 ActivatedFilePath = file.Path;
                                 this.TraceMessage($"Set ActivatedFilePath: {ActivatedFilePath}");
-                                
+
                                 if (isTestFile)
                                 {
                                     // Disable recording mode when running tests
@@ -214,7 +214,7 @@ namespace Catan3
             if (m_window == null)
             {
                 m_window = new MainWindow();
-                
+
                 // Apply test mode settings after window creation but before activation
                 if (IsTestMode)
                 {
@@ -222,7 +222,7 @@ namespace Catan3
                     Catan3.Utility.AnimationSpeed.SetTestMode(true);
                     this.TraceMessage("Applied test mode UI settings (disabled animations)");
                 }
-                
+
                 // Delay window activation to allow splash screen to show and background tasks to run
                 _ = DelayedActivateAsync();
             }
@@ -252,7 +252,7 @@ namespace Catan3
 
             // Capture values before entering dispatcher context to avoid cross-thread issues
             var isTestModeSnapshot = IsTestMode;
-            
+
             Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() =>
             {
                 // Show debug window by default (especially important during testing)

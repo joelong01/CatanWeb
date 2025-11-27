@@ -10,7 +10,7 @@ namespace Catan3.Models
 {
     public partial class GameViewModel : ObservableRecipient
     {
-       
+
         private void OnRequestTileOwners(TileViewModel tileViewModel)
         {
             Debug.Assert(GameModel is not null);
@@ -20,7 +20,7 @@ namespace Catan3.Models
             {
                 if (building.OwnerId is not null)
                 {
-                    var p = Players.First( player => player.Id == building.OwnerId );
+                    var p = Players.First(player => player.Id == building.OwnerId);
                     Debug.Assert(p is not null);
                     if (p.Id != CurrentPlayer.Id)
                     {
@@ -30,6 +30,6 @@ namespace Catan3.Models
             }
             Messenger.Send(new TileOwnersResponse(owners));
         }
-       
+
     }
 }

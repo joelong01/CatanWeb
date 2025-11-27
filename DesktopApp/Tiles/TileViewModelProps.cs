@@ -85,9 +85,9 @@ namespace Catan3.Models
         public partial bool Highlighted { get; set; } = false;
     }
 
-  
 
-/// <summary>
+
+    /// <summary>
     /// Represents the view model for a target, including its properties and equality comparison.
     /// </summary>
     public partial class TargetViewModel : ObservableObject, IEquatable<TargetViewModel?>
@@ -165,7 +165,7 @@ namespace Catan3.Models
         /// <returns>True if the specified TargetViewModel instances are not equal; otherwise, false.</returns>
         public static bool operator !=(TargetViewModel? left, TargetViewModel? right)
         {
-            return !( left == right );
+            return !(left == right);
         }
     }
 }

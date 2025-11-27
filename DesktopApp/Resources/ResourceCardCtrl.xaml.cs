@@ -15,15 +15,15 @@ namespace Catan3.Controls
         public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(ResourceCounterViewModel), typeof(ResourceCardCtrl), new PropertyMetadata(ResourceCounterViewModel.Default));
         public ResourceCounterViewModel ViewModel
         {
-            get => ( ResourceCounterViewModel )GetValue(ViewModelProperty);
+            get => (ResourceCounterViewModel)GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
         public static readonly DependencyProperty ResourceTypeProperty = DependencyProperty.Register("ResourceType", typeof(ResourceType), typeof(ResourceCardCtrl), new PropertyMetadata(ResourceType.None));
         public ResourceType ResourceType
         {
-            get => ( ResourceType )GetValue(ResourceTypeProperty);
+            get => (ResourceType)GetValue(ResourceTypeProperty);
             set => SetValue(ResourceTypeProperty, value);
         }
-       
+
     }
 }

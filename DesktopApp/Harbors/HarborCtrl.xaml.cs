@@ -16,16 +16,16 @@ namespace Catan3.Controls
         public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(HarborViewModel), typeof(HarborCtrl), new PropertyMetadata(null));
         public HarborViewModel ViewModel
         {
-            get => ( HarborViewModel )GetValue(ViewModelProperty);
+            get => (HarborViewModel)GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
-  
-       
+
+
         public ImageBrush Bind_HarborImage(HarborType harborType)
         {
             string assetName = harborType.ToString();
             string key = $"HarborType.{assetName}";
-            return ( ImageBrush )Application.Current.Resources[key];
+            return (ImageBrush)Application.Current.Resources[key];
         }
     }
 }

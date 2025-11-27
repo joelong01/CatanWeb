@@ -84,11 +84,11 @@ namespace Catan3.GameService.Services
             // Execute synchronously but wrap in Task for async interface
             return await Task.Run(() =>
             {
-                var gameId = request.GetProperty("gameId").GetString() ?? 
+                var gameId = request.GetProperty("gameId").GetString() ??
                     throw new ArgumentException("gameId is required");
-                var playerId = request.GetProperty("playerId").GetString() ?? 
+                var playerId = request.GetProperty("playerId").GetString() ??
                     throw new ArgumentException("playerId is required");
-                var messageType = request.GetProperty("messageType").GetString() ?? 
+                var messageType = request.GetProperty("messageType").GetString() ??
                     throw new ArgumentException("messageType is required");
                 var messageData = request.GetProperty("messageData");
 
@@ -212,7 +212,7 @@ namespace Catan3.GameService.Services
         {
             var rollData = messageData.GetProperty("roll");
             var normalRollStr = rollData.GetProperty("normalRoll").GetString();
-            
+
             if (!Enum.TryParse<ValidCatanRoll>(normalRollStr, out var normalRoll))
             {
                 throw new ArgumentException($"Invalid roll: {normalRollStr}");

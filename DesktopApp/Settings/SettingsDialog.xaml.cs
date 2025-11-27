@@ -65,7 +65,7 @@ namespace Catan3.Settings
             {
                 // Check for service unavailability warning
                 var serviceWarning = ViewModel.GetServiceUnavailabilityWarning();
-                
+
                 if (!string.IsNullOrEmpty(serviceWarning))
                 {
                     // Show warning but allow proceeding with local-only gameplay

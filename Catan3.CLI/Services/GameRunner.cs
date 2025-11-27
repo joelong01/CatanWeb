@@ -784,7 +784,7 @@ public class GameRunner
 
         // ASSERTION 2: Verify game structure for reverse allocation
         await session.VerifyGameConsistency();
-        
+
         var gameModel = session.Proxies.Values.GetGameModel();
         if (gameModel == null)
         {

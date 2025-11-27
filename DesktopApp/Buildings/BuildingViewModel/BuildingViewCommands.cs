@@ -40,7 +40,7 @@ namespace Catan3.Models
         private void HandleCurrentPlayerChanged(PlayerViewModel newCurrentPlayer)
         {
             CurrentPlayer = newCurrentPlayer;
-           
+
         }
         //
         //  used for MouseEnter/Mouse leave log
@@ -61,7 +61,7 @@ namespace Catan3.Models
         {
             if (Building.BuildingState == BuildingState.NotBuildable) return;
             _oldState = VisualState;
-            if ( VisualState == BuildingVisualState.Hidden)
+            if (VisualState == BuildingVisualState.Hidden)
             {
                 VisualState = BuildingVisualState.Stars;
             }

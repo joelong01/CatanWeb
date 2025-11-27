@@ -1,5 +1,5 @@
 using Catan3.Shared.Utility;
-using Catan3.Shared.ViewData;
+using Catan3.Shared.Profiles;
 
 namespace Catan3.GameService.Data;
 
@@ -25,10 +25,10 @@ public static class DatabaseSeeder
             new PlayerProfile("joe-001", "Joe", "#0000FF", "#000080", "#FFFFFF", "/api/images/joe-001"),
             new PlayerProfile("dodgy-001", "Dodgy", "#FF0000", "#800000", "#FFFFFF", "/api/images/dodgy-001"),
             new PlayerProfile("doug-001", "Doug", "#008000", "#004000", "#FFFFFF", "/api/images/doug-001"),
-            new PlayerProfile("ryan-001", "Ryan", "#A9A9A9", "#696969", "#FFFFFF", "/api/images/ryan-001"),
+            new PlayerProfile("ryan-001", "Ryan", "#d0ac35ff", "#000000ff", "#FFFFFF", "/api/images/ryan-001"),
             new PlayerProfile("adrian-001", "Adrian", "#800080", "#400040", "#FFFFFF", "/api/images/adrian-001"),
             new PlayerProfile("chris-001", "Chris", "#000000", "#333333", "#FFFFFF", "/api/images/chris-001"),
-            new PlayerProfile("guest-001", "Guest", "#FFA500", "#CC8400", "#000000", "/api/images/guest-001")
+            new PlayerProfile("guest-001", "Guest", "#ff008cff", "#CC8400", "#000000", "/api/images/guest-001")
         };
 
         // Map player IDs to image file names

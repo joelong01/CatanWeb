@@ -38,7 +38,7 @@ namespace Catan3.Models
             });
             Messenger.Register(this, (object recipient, GameStateChanged message) =>
             {
-               switch (message.State)
+                switch (message.State)
                 {
                     case Shared.Models.GameState.AllocateResourceForward:
                     case Shared.Models.GameState.AllocateResourceReverse:
@@ -65,7 +65,7 @@ namespace Catan3.Models
                 }
             });
         }
-       
+
         private void RegisterTargetMessageResponse()
         {
             if (this.Messenger.IsRegistered<TileOwnersResponse>(this))
@@ -95,7 +95,7 @@ namespace Catan3.Models
                 }
                 finally
                 {
-                   // this.TraceMessage($"{this} unregistering for response");
+                    // this.TraceMessage($"{this} unregistering for response");
                     this.Messenger.Unregister<TileOwnersResponse>(this);
                 }
             });
@@ -110,7 +110,7 @@ namespace Catan3.Models
         [RelayCommand]
         public void TargetPicked(string? id)
         {
-         //   this.TraceMessage($"targeting {id}");
+            //   this.TraceMessage($"targeting {id}");
             this.Messenger.Send<MoveRobberMessage>(new MoveRobberMessage(this.Tile.TileKey, id));
         }
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -152,8 +152,8 @@ namespace Catan3.Models
         public CatanOrientation TempGoldOrientation(TileModel _, bool tempGold)
         {
             Debug.Assert(tempGold == this.Tile.TemporarilyGold);
-            
-            var orientation =  tempGold ? CatanOrientation.FaceUp : CatanOrientation.FaceDown;
+
+            var orientation = tempGold ? CatanOrientation.FaceUp : CatanOrientation.FaceDown;
             return orientation;
         }
         /// <summary>
@@ -165,29 +165,29 @@ namespace Catan3.Models
         /// <returns></returns>
         public Brush GetTileResourceType(TileModel _, bool tempGold, ResourceType resourceTileType)
         {
-           
-        
+
+
             var resourceType = tempGold ? ResourceType.GoldMine : resourceTileType;
             string key = $"ResourceTileType.{resourceType}";
-            var brush =  ( ImageBrush )Application.Current.Resources[key];
-            return ( Brush )brush;
+            var brush = (ImageBrush)Application.Current.Resources[key];
+            return (Brush)brush;
         }
         public Brush GetTileBorderBrush(TileModel _, bool highlighted)
         {
             if (!highlighted)
             {
-                return ( Brush )Application.Current.Resources["bmMaple"];
+                return (Brush)Application.Current.Resources["bmMaple"];
             }
-          
-            return ( Brush )BrushCache.GetSolidColorBrush(Colors.Yellow);
+
+            return (Brush)BrushCache.GetSolidColorBrush(Colors.Yellow);
         }
         public ImageBrush GetResourceImage(TileModel tileModel, ResourceType resourceType)
         {
             // this.TraceMessage($"Resource: {resourceCardType}");
             string key = $"ResourceCard.{resourceType}";
-            var result =  ( ImageBrush )Application.Current.Resources[key];
+            var result = (ImageBrush)Application.Current.Resources[key];
             Debug.Assert(result is not null);
-           
+
             return result;
         }
         private void Tile_PropertyChanged(object? sender, PropertyChangedEventArgs e)

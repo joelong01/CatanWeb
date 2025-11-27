@@ -36,7 +36,7 @@ namespace Catan3.GameService.Services
 
             // Push update to all clients in the game group
             await _hubContext.Clients.Group(gameId).SendAsync("GameStateUpdated", gameModel);
-            
+
             _logger.LogDebug("Pushed game state update to all clients in game {GameId} via SignalR", gameId);
         }
 
@@ -60,7 +60,7 @@ namespace Catan3.GameService.Services
             {
                 _gameStates[gameId] = gameModel;
             }
-            
+
             _logger.LogDebug("Set current game state for game {GameId}", gameId);
         }
 
@@ -87,7 +87,7 @@ namespace Catan3.GameService.Services
         public async Task NotifyCommandCompletedAsync(string gameId, Guid commandId, bool success, string? message = null)
         {
             await _hubContext.Clients.Group(gameId).SendAsync("CommandCompleted", commandId, success, message);
-            _logger.LogDebug("Notified command completion for command {CommandId} in game {GameId}: {Success}", 
+            _logger.LogDebug("Notified command completion for command {CommandId} in game {GameId}: {Success}",
                 commandId, gameId, success);
         }
 
@@ -100,7 +100,7 @@ namespace Catan3.GameService.Services
         public async Task NotifyCommandFailedAsync(string gameId, Guid commandId, string error)
         {
             await _hubContext.Clients.Group(gameId).SendAsync("CommandFailed", commandId, error);
-            _logger.LogDebug("Notified command failure for command {CommandId} in game {GameId}: {Error}", 
+            _logger.LogDebug("Notified command failure for command {CommandId} in game {GameId}: {Error}",
                 commandId, gameId, error);
         }
     }

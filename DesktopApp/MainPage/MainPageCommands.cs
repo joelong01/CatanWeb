@@ -41,9 +41,9 @@ namespace Catan3.Models
             }
         }
 
-      
 
-       
+
+
         [RelayCommand]
         private void ToggleShowCommands()
         {

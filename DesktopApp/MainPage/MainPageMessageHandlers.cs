@@ -2,9 +2,9 @@
 {
     public partial class MainPageViewModel
     {
-        
-      
-   
-      
+
+
+
+
     }
 }

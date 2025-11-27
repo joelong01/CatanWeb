@@ -43,13 +43,13 @@ namespace Catan3.DesktopApp.Layout
         /// <returns></returns>
         public double Top(HexCoordinates key)
         {
-            var top =  (key.Q / 2.0 +  key.R)*OuterHexSize*Math.Sqrt(3) ;
+            var top = (key.Q / 2.0 + key.R) * OuterHexSize * Math.Sqrt(3);
             top += TileYOffset;
             return Math.Round(top, 2);
         }
         public double Left(HexCoordinates key)
         {
-            var left = OuterHexSize * 1.5 * key.Q ;
+            var left = OuterHexSize * 1.5 * key.Q;
             left += TileXOffset;
             return Math.Round(left, 2);
         }
@@ -82,8 +82,8 @@ namespace Catan3.DesktopApp.Layout
                 // Calculate the horizontal difference after accounting for the stroke
                 double sizeDiff = (OuterHexSize - InnerHexSize);
                 // The inner hexagon needs to be positioned such that the gap is equal on all sides.
-                double verticalAdjustment = (sizeDiff ) * .86;
-                double horizontalAdjustment = (sizeDiff )  ;
+                double verticalAdjustment = (sizeDiff) * .86;
+                double horizontalAdjustment = (sizeDiff);
                 return HexGeometry.FlatTopHexPoints(InnerHexSize, horizontalAdjustment, verticalAdjustment);
             }
         }

@@ -45,7 +45,7 @@ namespace Catan3.DesktopApp.Layout
             CacheMiss++;
             points = [];
             // Calculate the width and height for positioning adjustments
-  
+
             double height = Math.Sqrt(3) * size;
             // The angle between vertices in a hexagon in radians, starting from the horizontal right (for a flat top)
             double angleRadians = Math.PI / 3;
@@ -108,7 +108,7 @@ namespace Catan3.DesktopApp.Layout
             HexCache[(size, false)] = points;
             return points;
         }
-        
+
         /// <summary>
         /// Calculates the height of a regular hexagon given its size.
         /// </summary>

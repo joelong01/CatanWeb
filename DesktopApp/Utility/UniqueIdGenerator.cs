@@ -32,10 +32,10 @@ namespace Catan3.Utility
             var sb = new StringBuilder();
             do
             {
-                uint index = (uint) value % 62;
+                uint index = (uint)value % 62;
                 System.Diagnostics.Debug.Assert(index >= 0);
                 System.Diagnostics.Debug.Assert(index < Base62Chars.Length);
-                sb.Insert(0, Base62Chars[( int )( value % 62 )]);
+                sb.Insert(0, Base62Chars[(int)(value % 62)]);
                 value /= 62;
             } while (value > 0);
             return sb.ToString();
@@ -46,7 +46,7 @@ namespace Catan3.Utility
             // Pad the byte array to ensure it is at least 8 bytes long
             var paddedBytes = PadToLong(bytes);
             var value = BitConverter.ToUInt64(paddedBytes, 0);
-            return Base62Encode(( ulong )value);
+            return Base62Encode((ulong)value);
         }
         private static byte[] PadToLong(byte[] bytes)
         {

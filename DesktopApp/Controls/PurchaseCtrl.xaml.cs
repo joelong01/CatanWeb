@@ -16,7 +16,7 @@ namespace Catan3.Controls
         public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(EntitlementPurchaseViewModel), typeof(PurchaseCtrl), new PropertyMetadata(null));
         public EntitlementPurchaseViewModel ViewModel
         {
-            get => ( EntitlementPurchaseViewModel )GetValue(ViewModelProperty);
+            get => (EntitlementPurchaseViewModel)GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
 
@@ -31,7 +31,7 @@ namespace Catan3.Controls
             return viewModel.EntitlementPurchaseModel.Entitlement.ToString() switch
             {
                 "Road" => "PurchaseRoadButton",
-                "Settlement" => "PurchaseSettlementButton", 
+                "Settlement" => "PurchaseSettlementButton",
                 "City" => "PurchaseCityButton",
                 "Soldier" => "PurchaseSoldierButton",
                 _ => $"Purchase{viewModel.EntitlementPurchaseModel.Entitlement}Button"
@@ -73,7 +73,7 @@ namespace Catan3.Controls
                         var point = origE.GetCurrentPoint(releasedGrid).Position;
                         bool isInside = point.X >= 0 && point.X <= releasedGrid.ActualWidth &&
                                 point.Y >= 0 && point.Y <= releasedGrid.ActualHeight;
-                        if (( PointerEventHandler? )pointerReleasedHandler is not null)
+                        if ((PointerEventHandler?)pointerReleasedHandler is not null)
                         {
                             releasedGrid.PointerReleased -= pointerReleasedHandler;
                         }
@@ -107,7 +107,7 @@ namespace Catan3.Controls
                 {
                     temp = tb.Foreground;
                     tb.Foreground = grid.Background;
-                   
+
                 }
             }
             grid.Background = temp;

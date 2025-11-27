@@ -28,7 +28,7 @@ namespace Catan3
         public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(NewGameViewModel), typeof(NewGamePage), new PropertyMetadata(null));
         public NewGameViewModel ViewModel
         {
-            get => ( NewGameViewModel )GetValue(ViewModelProperty);
+            get => (NewGameViewModel)GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
 
@@ -36,7 +36,7 @@ namespace Catan3
         {
             try
             {
-                List<string> playerIds = ViewModel.PlayingPlayers.Select( p => p.Id ).ToList();
+                List<string> playerIds = ViewModel.PlayingPlayers.Select(p => p.Id).ToList();
                 var mainPageModel = MainPageViewModel.CreateMainPageViewModel(App.FileService, MainWindow.PlayerDatabase, ViewModel.SelectedGame, playerIds, GameName);
                 Frame.Navigate(typeof(MainPage), mainPageModel);
                 Frame.BackStack.Clear();
@@ -55,7 +55,7 @@ namespace Catan3
                 // Use corrected Documents path to avoid truncation issues
                 var documentsPath = Catan.Services.FileService.GetCorrectDocumentsPath();
                 var fileName = $"{ViewModel.SelectedGame}-{UniqueIdGenerator.GenerateUniqueId()}.catan";
-                
+
                 return Path.Join(documentsPath, "Catan Saved Games", fileName);
             }
         }
@@ -131,7 +131,7 @@ namespace Catan3
         private void OnManagePlayers(object sender, RoutedEventArgs e)
         {
             PlayerEditorWindow window = new();
-            PlayerSettingsViewModel viewModel = new(window,  MainWindow.PlayerDatabase);
+            PlayerSettingsViewModel viewModel = new(window, MainWindow.PlayerDatabase);
             window.ViewModel = viewModel;
             window.Activate();
         }
@@ -144,7 +144,7 @@ namespace Catan3
                 var filePath = await App.FileService.OpenFileAsync(MainWindow.Instance, [".catan"]);
                 if (filePath is not null && filePath != "")
                 {
-                    
+
                     MainPageViewModel mpViewModel = MainPageViewModel.CreateMainPageViewModel(App.FileService, MainWindow.PlayerDatabase, GameType.SavedGame, [], filePath);
                     Frame.Navigate(typeof(MainPage), mpViewModel);
                     Frame.BackStack.Clear();
@@ -167,7 +167,7 @@ namespace Catan3
                 var filePath = await App.FileService.OpenFileAsync(MainWindow.Instance, [".catan_test"]);
                 if (filePath is not null && filePath != "")
                 {
-                  // Navigate to MainPage with a minimal ViewModel for test mode
+                    // Navigate to MainPage with a minimal ViewModel for test mode
                     MainPageViewModel mpViewModel = MainPageViewModel.CreateMainPageViewModel(App.FileService, MainWindow.PlayerDatabase, GameType.SavedGame, [], filePath);
                     Frame.Navigate(typeof(MainPage), mpViewModel);
                     Frame.BackStack.Clear();

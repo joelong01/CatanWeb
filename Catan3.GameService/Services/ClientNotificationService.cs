@@ -34,7 +34,7 @@ namespace Catan3.GameService.Services
         public async Task<GameModel> WaitForNotificationAsync(string gameId, string clientId, int currentVersion, CancellationToken cancellationToken)
         {
             var clientManager = _gameClientManagers.GetOrAdd(gameId, _ => new ClientManager(_logger, gameId));
-            
+
             try
             {
                 return await clientManager.WaitForUpdateAsync(clientId, currentVersion, cancellationToken);
@@ -110,9 +110,9 @@ namespace Catan3.GameService.Services
             foreach (var tcs in clientsToNotify)
             {
                 // Each client gets their own copy of the GameModel
-                var clientGameModel = JsonSerializer.Deserialize<GameModel>(_latestGameModelJson!) 
+                var clientGameModel = JsonSerializer.Deserialize<GameModel>(_latestGameModelJson!)
                     ?? throw new InvalidOperationException("Failed to deserialize GameModel for client notification");
-                
+
                 tcs.SetResult(clientGameModel);
             }
 
@@ -124,10 +124,10 @@ namespace Catan3.GameService.Services
             // Note: We ignore currentVersion since Version is constant (software version = 1)
             // The hanging GET pattern waits for ANY GameModel change, not version comparison
             // This follows the infinite loop pattern where client continuously polls until GameState == GameOver
-            
+
             // Always wait for notification - no immediate return based on version
             var tcs = new TaskCompletionSource<GameModel>();
-            
+
             _waitingClients[clientId] = tcs;
             _logger.LogDebug("Client {ClientId} waiting for updates on gameId: {GameId} (version comparison disabled - waiting for any change)", clientId, _gameId);
 

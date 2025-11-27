@@ -13,22 +13,22 @@ namespace Catan3.Utility
             this.DefaultStyleKey = typeof(FlipperCtrl);
         }
         public static readonly DependencyProperty FlipsProperty = DependencyProperty.Register("Flips", typeof(bool), typeof(FlipperCtrl), new PropertyMetadata(true));
-           public static readonly DependencyProperty OrientationProperty = DependencyProperty.Register("Orientation", typeof(CatanOrientation), typeof(FlipperCtrl), new PropertyMetadata(CatanOrientation.FaceDown, OrientationChanged));
+        public static readonly DependencyProperty OrientationProperty = DependencyProperty.Register("Orientation", typeof(CatanOrientation), typeof(FlipperCtrl), new PropertyMetadata(CatanOrientation.FaceDown, OrientationChanged));
         public CatanOrientation Orientation
         {
-            get => ( CatanOrientation )GetValue(OrientationProperty);
+            get => (CatanOrientation)GetValue(OrientationProperty);
             set => SetValue(OrientationProperty, value);
         }
         private static void OrientationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as FlipperCtrl;
-            depPropClass?.SetOrientation(( CatanOrientation )e.OldValue, ( CatanOrientation )e.NewValue);
+            depPropClass?.SetOrientation((CatanOrientation)e.OldValue, (CatanOrientation)e.NewValue);
         }
         private void SetOrientation(CatanOrientation oldValue, CatanOrientation newValue)
         {
             if (oldValue == newValue) return;
-         
-          //  this.TraceMessage($"old orientation: {oldValue} New:{newValue}");
+
+            //  this.TraceMessage($"old orientation: {oldValue} New:{newValue}");
             if (Orientation == CatanOrientation.FaceUp)
             {
                 FlipToFaceUp(Back, Front);
@@ -57,7 +57,7 @@ namespace Catan3.Utility
         }
         private static void AnimateRotation(FrameworkElement element, double from, double to, Action? onAnimationCompleted)
         {
-//            element.TraceMessage($"From:{from} To:{to} for:{element.Name}");
+            //            element.TraceMessage($"From:{from} To:{to} for:{element.Name}");
             if (element.Projection == null)
             {
                 element.Projection = new PlaneProjection();
@@ -81,7 +81,7 @@ namespace Catan3.Utility
         public static readonly DependencyProperty FrontProperty = DependencyProperty.Register("Front", typeof(FrameworkElement), typeof(FlipperCtrl), new PropertyMetadata(null, FrontChanged));
         public FrameworkElement Front
         {
-            get => ( FrameworkElement )GetValue(FrontProperty);
+            get => (FrameworkElement)GetValue(FrontProperty);
             set => SetValue(FrontProperty, value);
         }
         private static void FrontChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -99,13 +99,13 @@ namespace Catan3.Utility
                     projection = new PlaneProjection();
                     front.Projection = projection;
                 }
-                projection.RotationY = ( this.Orientation == CatanOrientation.FaceDown ) ? -90 : 0;
+                projection.RotationY = (this.Orientation == CatanOrientation.FaceDown) ? -90 : 0;
             }
         }
         public static readonly DependencyProperty BackProperty = DependencyProperty.Register("Back", typeof(FrameworkElement), typeof(FlipperCtrl), new PropertyMetadata(null, BackChanged));
         public FrameworkElement Back
         {
-            get => ( FrameworkElement )GetValue(BackProperty);
+            get => (FrameworkElement)GetValue(BackProperty);
             set => SetValue(BackProperty, value);
         }
         private static void BackChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -123,7 +123,7 @@ namespace Catan3.Utility
                     projection = new PlaneProjection();
                     back.Projection = projection;
                 }
-                projection.RotationY = ( this.Orientation == CatanOrientation.FaceDown ) ? 0 : 90;
+                projection.RotationY = (this.Orientation == CatanOrientation.FaceDown) ? 0 : 90;
             }
         }
     }

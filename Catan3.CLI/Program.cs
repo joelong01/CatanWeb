@@ -36,7 +36,7 @@ public class Program
 
         // Add test command options
         AddTestOptions(testCommand, host);
-        
+
         // Add extract command options
         AddExtractOptions(extractCommand);
 
@@ -160,16 +160,16 @@ public class Program
             "--out",
             getDefaultValue: () => "stdout",
             "Output destination: file path or 'stdout' for console output");
-        
+
         var indexOption = new Option<int>(
             "--index",
             getDefaultValue: () => 0,
             "Index of GameModel in DoneStack (0 = most recent)");
-        
+
         var actionsOption = new Option<string?>(
             "--actions",
             "Optional: JSON file with actions to create a .catan_test file");
-        
+
         command.AddOption(inputOption);
         command.AddOption(outputOption);
         command.AddOption(indexOption);

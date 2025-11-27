@@ -9,7 +9,7 @@ namespace Catan3.Controls
     public class StatusButtonAutomationPeer : ButtonAutomationPeer
     {
         public StatusButtonAutomationPeer(StatusButton owner) : base(owner) { }
-        
+
         private StatusButton Btn => (StatusButton)Owner;
 
         protected override string GetItemStatusCore()
@@ -20,14 +20,14 @@ namespace Catan3.Controls
         {
             var baseName = base.GetNameCore();
             var modelId = Btn.ModelId;
-            
+
             if (!string.IsNullOrEmpty(modelId))
             {
                 // Include a hint about the data length for debugging
                 var dataLength = modelId.Length;
                 return $"{baseName} [Data:{dataLength}]";
             }
-            
+
             return baseName;
         }
     }

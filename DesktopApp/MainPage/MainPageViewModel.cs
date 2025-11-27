@@ -41,7 +41,7 @@ namespace Catan3.Models
         /// </summary>
         [ObservableProperty]
         public partial string GameModelJson { get; set; } = string.Empty;
-        
+
         /// <summary>
         /// Gets or sets a value indicating whether recording mode is enabled.
         /// When true, all game actions are recorded for test scenario generation.
@@ -61,12 +61,12 @@ namespace Catan3.Models
         partial void OnIsRecordModeChanged(bool value)
         {
             App.RecordMode = value;
-            
+
             if (value)
             {
                 // Show debug window when recording starts so user can see recording messages
                 DebugWindow.Show();
-                
+
                 // Send message to start recording from current game state
                 try
                 {
@@ -130,7 +130,7 @@ namespace Catan3.Models
             _playerDatabase = playerDatabase;
             RegisterMessages();
             GameViewModel = new GameViewModel(playerDatabase);
-            
+
             this.IsTest = isTest;
         }
 
@@ -147,7 +147,7 @@ namespace Catan3.Models
         public static MainPageViewModel CreateMainPageViewModel(IPersistenceService fileService, IPlayerDatabase playerDatabase, GameType selectedGame, IList<string> playingPlayerIds, string filePath, bool isTest = false)
         {
             var viewModel = new MainPageViewModel(fileService, playerDatabase, selectedGame, playingPlayerIds, filePath, isTest);
-            
+
             if (selectedGame == GameType.SavedGame)
             {
                 viewModel.Messenger.Send(new LoadLocalCatanGameMessage(filePath));
@@ -158,7 +158,7 @@ namespace Catan3.Models
                 var gameName = selectedGame == GameType.Regular ? "New Regular Game" : "New Expansion Game";
                 viewModel.Messenger.Send(new NewGameMessage(selectedGame, playingPlayerIds, gameName));
             }
-            
+
             return viewModel;
         }
 

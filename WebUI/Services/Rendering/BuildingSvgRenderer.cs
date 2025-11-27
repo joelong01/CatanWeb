@@ -1,6 +1,7 @@
 using System.Text;
 using Catan3.Shared.Models;
-using Catan3.Shared.ViewData;
+using Catan3.Shared.Profiles;
+using Catan3.WebUI.Models;
 
 namespace Catan3.WebUI.Services.Rendering;
 
@@ -35,14 +36,14 @@ public static class BuildingSvgRenderer
     /// Renders this building as SVG markup.
     /// </summary>
     /// <param name="building">The building model to render.</param>
-    /// <param name="playerData">Player profile data for colors.</param>
+    /// <param name="playerViewModel">Player view model for colors.</param>
     /// <param name="visualState">Visual state controlling visibility and rendering mode.</param>
     /// <param name="stars">Number of stars for this building (-1 = not calculated/not needed).</param>
     /// <param name="buildIndex">Build order index to display (0 = don't show).</param>
     /// <returns>SVG markup string for the building.</returns>
     public static string RenderSvg(
         this BuildingModel building,
-        PlayerProfile? playerData,
+        PlayerViewModel? playerViewModel,
         BuildingVisualState visualState,
         int stars = -1,
         int buildIndex = 0)
@@ -65,12 +66,12 @@ public static class BuildingSvgRenderer
         else
         {
             // Render full building with player colors
-            RenderBuildingGlyph(sb, building, playerData, x, y);
+            RenderBuildingGlyph(sb, building, playerViewModel, x, y);
 
             // Render build index if provided
             if (buildIndex > 0)
             {
-                RenderBuildIndex(sb, x, y, buildIndex, playerData);
+                RenderBuildIndex(sb, x, y, buildIndex, playerViewModel);
             }
         }
 
@@ -81,15 +82,15 @@ public static class BuildingSvgRenderer
     /// <summary>
     /// Renders the building glyph (settlement or city SVG) with player gradient background.
     /// </summary>
-    private static void RenderBuildingGlyph(StringBuilder sb, BuildingModel building, PlayerProfile? playerData, double x, double y)
+    private static void RenderBuildingGlyph(StringBuilder sb, BuildingModel building, PlayerViewModel? playerViewModel, double x, double y)
     {
         var radius = BuildingSize / 2;
         var gradientId = $"gradient-{building.OwnerId}";
 
         // Render circular gradient background
-        if (playerData != null)
+        if (playerViewModel != null)
         {
-            sb.AppendLine($@"    <circle cx=""{x}"" cy=""{y}"" r=""{radius}"" fill=""url(#{gradientId})"" stroke=""{playerData.ForegroundColor}"" stroke-width=""2""/>");
+            sb.AppendLine($@"    <circle cx=""{x}"" cy=""{y}"" r=""{radius}"" fill=""url(#{gradientId})"" stroke=""{playerViewModel.Colors.Foreground}"" stroke-width=""2""/>");
         }
         else
         {
@@ -123,16 +124,16 @@ public static class BuildingSvgRenderer
     /// <summary>
     /// Renders build index number inside or near the building.
     /// </summary>
-    private static void RenderBuildIndex(StringBuilder sb, double x, double y, int buildIndex, PlayerProfile? playerData)
+    private static void RenderBuildIndex(StringBuilder sb, double x, double y, int buildIndex, PlayerViewModel? playerViewModel)
     {
-        var textColor = playerData?.ForegroundColor ?? "#FFFFFF";
+        var textColor = playerViewModel?.Colors.Foreground ?? "#FFFFFF";
         sb.AppendLine($@"    <text x=""{x}"" y=""{y}"" text-anchor=""middle"" dominant-baseline=""middle"" font-family=""sans-serif"" font-size=""14"" font-weight=""bold"" fill=""{textColor}"" stroke=""black"" stroke-width=""0.5"">{buildIndex}</text>");
     }
 
     /// <summary>
     /// Gets pixel position for a building vertex.
     /// </summary>
-    private static (double x, double y)GetVertexPosition(BuildingKey buildingKey)
+    private static (double x, double y) GetVertexPosition(BuildingKey buildingKey)
     {
         // Convert tile axial coordinates to pixel position
         var (tileX, tileY) = BoardGeometry.AxialToPixel(buildingKey.HexCoordinates.Q, buildingKey.HexCoordinates.R);

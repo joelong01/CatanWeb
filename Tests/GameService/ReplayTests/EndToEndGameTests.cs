@@ -96,7 +96,7 @@ namespace Tests.GameService.SignalR
 
 
 
-    
+
 
         /// <summary>
         /// Custom logger provider that routes all logs to xUnit test output

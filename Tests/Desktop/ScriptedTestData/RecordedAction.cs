@@ -13,10 +13,10 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
     {
         [JsonPropertyName("type")]
         public ActionType Type { get; set; }
-        
+
         [JsonPropertyName("parameters")]
         public Dictionary<string, object>? Parameters { get; set; }
-        
+
         [JsonPropertyName("timestamp")]
         public DateTime Timestamp { get; set; }
     }

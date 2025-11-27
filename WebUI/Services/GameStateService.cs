@@ -1,6 +1,7 @@
 using Catan3.Shared.Models;
-using Catan3.Shared.ViewData;
+using Catan3.Shared.Profiles;
 using Catan3.Shared.Extensions;
+using Catan3.WebUI.Models;
 
 namespace Catan3.WebUI.Services;
 
@@ -12,7 +13,7 @@ namespace Catan3.WebUI.Services;
 public class GameStateService
 {
     private GameModel? _gameModel;
-    private Dictionary<string, PlayerProfile> _playerData = new();
+    private List<PlayerViewModel> _playerViewModels = new();
     private int _shownStars = 0;
 
     /// <summary>
@@ -28,10 +29,11 @@ public class GameStateService
     public GameModel? GameModel => _gameModel;
 
     /// <summary>
-    /// Gets the player profile data dictionary keyed by player ID.
+    /// Gets the player view models in game order.
     /// Contains display colors, names, and image URIs for all players.
+    /// Players are ordered according to GameModel.Players order.
     /// </summary>
-    public IReadOnlyDictionary<string, PlayerProfile> PlayerData => _playerData;
+    public IReadOnlyList<PlayerViewModel> Players => _playerViewModels;
 
     /// <summary>
     /// Gets or sets the current star threshold for building visibility (0-14).
@@ -62,13 +64,31 @@ public class GameStateService
     }
 
     /// <summary>
-    /// Updates the player profile data dictionary.
+    /// Updates the player view models from server profile data.
     /// Called when player data is loaded from the server or modified.
+    /// Preserves player order from GameModel.Players if available.
     /// </summary>
-    /// <param name="playerData">Dictionary of player data keyed by player ID.</param>
-    public void UpdatePlayerData(Dictionary<string, PlayerProfile> playerData)
+    /// <param name="playerProfiles">Dictionary of player profiles from server keyed by player ID.</param>
+    /// <param name="baseUrl">Optional base URL for image resolution.</param>
+    public void UpdatePlayerData(Dictionary<string, PlayerProfile> playerProfiles, string? baseUrl = null)
     {
-        _playerData = playerData;
+        // If we have a game model, preserve player order; otherwise use dictionary order
+        if (_gameModel != null)
+        {
+            // Create PlayerViewModels in game player order
+            _playerViewModels = _gameModel.Players
+                .Where(p => playerProfiles.ContainsKey(p.Id))
+                .Select(p => PlayerViewModel.FromProfile(playerProfiles[p.Id], baseUrl))
+                .ToList();
+        }
+        else
+        {
+            // No game model yet - use dictionary order
+            _playerViewModels = playerProfiles.Values
+                .Select(p => PlayerViewModel.FromProfile(p, baseUrl))
+                .ToList();
+        }
+
         NotifyStateChanged();
     }
 
@@ -79,19 +99,19 @@ public class GameStateService
     public void ClearState()
     {
         _gameModel = null;
-        _playerData.Clear();
+        _playerViewModels.Clear();
         _shownStars = 0;
         NotifyStateChanged();
     }
 
     /// <summary>
-    /// Gets the PlayerProfile for a specific player ID.
+    /// Gets the player view model for a specific player ID.
     /// </summary>
     /// <param name="playerId">The player ID to look up.</param>
-    /// <returns>PlayerProfile if found, null otherwise.</returns>
-    public PlayerProfile? GetPlayerData(string playerId)
+    /// <returns>PlayerViewModel if found, null otherwise.</returns>
+    public PlayerViewModel? GetPlayerViewModel(string playerId)
     {
-        return _playerData.TryGetValue(playerId, out var data) ? data : null;
+        return _playerViewModels.FirstOrDefault(p => p.Id == playerId);
     }
 
     /// <summary>

@@ -18,14 +18,14 @@ namespace Catan3.Shared.Extensions
         public static GameModel CreateNew(IGameMetadata gameInfo, IList<string> playerIds, string gameName)
         {
             Debug.Assert((gameInfo.TileKeys.Count == gameInfo.Numbers.Count) && (gameInfo.TileKeys.Count == gameInfo.Resources.Count));
-            
+
             if (playerIds.Count < gameInfo.ResourceRules.MinPlayers || playerIds.Count > gameInfo.ResourceRules.MaxPlayers)
             {
                 throw new GameException($"{gameInfo.Description} must have players between {gameInfo.ResourceRules.MinPlayers} and {gameInfo.ResourceRules.MaxPlayers}. You gave {playerIds.Count}");
             }
-            
+
             List<PlayerModel> playerModels = playerIds.Select(id => new PlayerModel { Id = id }).ToList();
-            
+
             GameModel game = new()
             {
                 GameId = Guid.NewGuid().ToString(),
@@ -48,7 +48,7 @@ namespace Catan3.Shared.Extensions
                 Robber = new RobberModel { Coordinates = HexCoordinates.Default },
                 Random = new ReplayableRandom()
             };
-            
+
             // Initialize tiles
             for (int i = 0; i < gameInfo.TileKeys.Count; i++)
             {
@@ -60,7 +60,7 @@ namespace Catan3.Shared.Extensions
                 };
                 game.Tiles.Add(tile);
             }
-            
+
             // Initialize buildings and roads for each tile
             foreach (var tile in game.Tiles)
             {
@@ -68,47 +68,47 @@ namespace Catan3.Shared.Extensions
                 foreach (HexPosition buildingPosition in Enum.GetValues<HexPosition>())
                 {
                     if (buildingPosition == HexPosition.None) continue;
-                    
+
                     var buildingKey = new BuildingKey(tile.TileKey, buildingPosition);
                     var building = game.Buildings.FindBuildingModel(buildingKey);
                     if (building is null)
                     {
-                        game.Buildings.Add(new BuildingModel 
-                        { 
-                            BuildingKey = buildingKey, 
-                            BuildingState = BuildingState.NotBuildable 
+                        game.Buildings.Add(new BuildingModel
+                        {
+                            BuildingKey = buildingKey,
+                            BuildingState = BuildingState.NotBuildable
                         });
                     }
                 }
-                
+
                 // Add roads for each side of the tile
                 foreach (HexSide roadPosition in Enum.GetValues<HexSide>())
                 {
                     if (roadPosition == HexSide.None) continue;
-                    
+
                     var roadKey = new RoadKey(tile.TileKey, roadPosition);
                     var road = game.Roads.FindRoad(roadKey);
                     if (road is null)
                     {
-                        game.Roads.Add(new RoadModel 
-                        { 
+                        game.Roads.Add(new RoadModel
+                        {
                             RoadKey = roadKey,
                             RoadState = RoadState.Unowned
                         });
                     }
                 }
             }
-            
+
             // Add harbors
             game.Harbors.AddRange(gameInfo.Harbors);
 
 
             // Shuffle the board
             game.Shuffle();
-            
+
             // Set initial game state
             game.GameState = GameState.PickingBoard;
-            
+
             // Compute initial game hash
             game.UpdateGameHash();
 
@@ -185,7 +185,7 @@ namespace Catan3.Shared.Extensions
         private static int GetDeterministicStringHash(string? input)
         {
             if (string.IsNullOrEmpty(input)) return 0;
-            
+
             int hash = 0;
             const int prime = 31;
             foreach (char c in input)
@@ -210,35 +210,35 @@ namespace Catan3.Shared.Extensions
             // Prime numbers for unique hash computation
             // Need enough primes for: tiles (60), harbors (22), roads (~100), buildings (80), entitlements (~50), etc.
             var primes = new Stack<int>(First750Primes.AsEnumerable());
-            
+
             BigInteger hash = 0;
-            
+
             // Include GameState and CurrentPlayerId for state verification
             hash += (int)gameModel.GameState * primes.Pop();
             hash += GetDeterministicStringHash(gameModel.CurrentPlayerId) * primes.Pop();
-            
-            
+
+
             // Include HasSupplementalBuildPhase for game configuration consistency
             hash += (gameModel.HasSupplementalBuildPhase ? 1 : 0) * primes.Pop();
-            
+
             // Process tiles with unique prime multipliers (sorted by coordinates for consistency)
             var sortedTiles = gameModel.Tiles.OrderBy(t => t.TileKey.Q)
                 .ThenBy(t => t.TileKey.R)
                 .ThenBy(t => t.TileKey.S);
-            
+
             foreach (var tile in sortedTiles)
             {
                 // Each tile gets 2 unique primes: one for resource, one for number
                 hash += primes.Pop() * (int)tile.ResourceTileType;
                 hash += primes.Pop() * tile.Number;
             }
-            
+
             // Include Harbors (sorted by coordinates for consistency) 
             if (gameModel.Harbors?.Any() == true)
             {
                 var sortedHarbors = gameModel.Harbors.OrderBy(h => h.HarborKey.HexCoordinates.Q)
                     .ThenBy(h => h.HarborKey.HexCoordinates.R).ThenBy(h => h.HarborKey.Side);
-                
+
                 int harborIndex = 0;
                 foreach (var harbor in sortedHarbors)
                 {
@@ -248,7 +248,7 @@ namespace Catan3.Shared.Extensions
                     harborIndex++;
                 }
             }
-            
+
             // Include Owned Roads (sorted by coordinates for consistency)
             if (gameModel.Roads?.Any() == true)
             {
@@ -257,7 +257,7 @@ namespace Catan3.Shared.Extensions
                     .OrderBy(r => r.RoadKey.TileKey.Q)
                     .ThenBy(r => r.RoadKey.TileKey.R)
                     .ThenBy(r => r.RoadKey.HexSide);
-                
+
                 int roadIndex = 0;
                 foreach (var road in ownedRoads)
                 {
@@ -267,7 +267,7 @@ namespace Catan3.Shared.Extensions
                     roadIndex++;
                 }
             }
-            
+
             // Include Buildings (sorted by coordinates for consistency)
             if (gameModel.Buildings?.Any() == true)
             {
@@ -276,7 +276,7 @@ namespace Catan3.Shared.Extensions
                     .OrderBy(b => b.BuildingKey.HexCoordinates.Q)
                     .ThenBy(b => b.BuildingKey.HexCoordinates.R)
                     .ThenBy(b => b.BuildingKey.Position);
-                
+
                 int buildingIndex = 0;
                 foreach (var building in ownedBuildings)
                 {
@@ -287,12 +287,12 @@ namespace Catan3.Shared.Extensions
                     buildingIndex++;
                 }
             }
-            
+
             // Include Player Entitlements (sorted by player ID for consistency)
             if (gameModel.Players?.Any() == true)
             {
                 var sortedPlayers = gameModel.Players.OrderBy(p => p.Id);
-                
+
                 foreach (var player in sortedPlayers)
                 {
                     // Include ParticipatingInSupplemental flag for supplemental phase consistency
@@ -300,8 +300,8 @@ namespace Catan3.Shared.Extensions
                     // Include FinishedSupplemental flag for supplemental phase state tracking
                     hash += primes.Pop() * (player.FinishedSupplemental ? 1 : 0);
                     hash += primes.Pop() * GetDeterministicStringHash(player.Id);
-                    
-                    
+
+
                     if (player.UnspentEntitlements?.Any() == true)
                     {
                         var sortedEntitlements = player.UnspentEntitlements.OrderBy(e => (int)e);
@@ -313,9 +313,9 @@ namespace Catan3.Shared.Extensions
                     }
                 }
             }
-            
+
             // Include Robber position if set
-            if (gameModel.Robber?.Coordinates is not null && 
+            if (gameModel.Robber?.Coordinates is not null &&
                 !gameModel.Robber.Coordinates.Equals(HexCoordinates.Default))
             {
                 hash += primes.Pop() * gameModel.Robber.Coordinates.Q;
@@ -636,10 +636,10 @@ namespace Catan3.Shared.Extensions
         /// 
         public static ResourcesModel ResourcesForBuilding(this GameModel gameModel, BuildingModel building)
         {
-            var resources = new     ResourcesModel();
+            var resources = new ResourcesModel();
             // Get the building model from the game model
             int count = building.BuildingState == BuildingState.City ? 2 : 1;
-            var tiles = gameModel.TilesForBuildings (building.BuildingKey);
+            var tiles = gameModel.TilesForBuildings(building.BuildingKey);
             foreach (var tile in tiles)
             {
                 resources.AddResource(tile.ResourceTileType, count);
@@ -658,32 +658,32 @@ namespace Catan3.Shared.Extensions
         {
             if (string.IsNullOrEmpty(gameModel.GameId))
                 throw new GameException("GameModel missing required GameID");
-            
-            
+
+
             if (string.IsNullOrEmpty(gameModel.GameHash))
                 throw new GameException("GameModel missing required GameHash");
-            
+
             // Check random state (needed for deterministic behavior)
             if (gameModel.Random?.Seed == 0)
                 throw new GameException("GameModel missing Random or RandomSeed - required for deterministic game behavior");
-            
+
             // Check essential collections exist and have content
             if (gameModel.Players == null || gameModel.Players.Count == 0)
                 throw new GameException($"GameModel has no players (found: {gameModel.Players?.Count ?? 0})");
-            
+
             if (gameModel.Tiles == null || gameModel.Tiles.Count == 0)
                 throw new GameException($"GameModel has no tiles (found: {gameModel.Tiles?.Count ?? 0})");
-            
+
             if (gameModel.Roads == null || gameModel.Roads.Count == 0)
                 throw new GameException($"GameModel has no roads (found: {gameModel.Roads?.Count ?? 0})");
-            
+
             if (gameModel.Buildings == null || gameModel.Buildings.Count == 0)
                 throw new GameException($"GameModel has no buildings (found: {gameModel.Buildings?.Count ?? 0})");
-            
+
             // Check game type is valid
             if (gameModel.GameType == GameType.Unset)
                 throw new GameException($"GameModel has invalid GameType: {gameModel.GameType}");
-            
+
             // Check that players have IDs
             for (int i = 0; i < gameModel.Players.Count; i++)
             {
@@ -727,7 +727,7 @@ namespace Catan3.Shared.Extensions
                 // Correct the placement of the number 7 on desert tiles
                 EnsureDesertSeven(game);
             } while (!ValidateGame(game));
-            
+
             // 1/14/2025: Robber starts off the board so the first move can be to a desert tile, so do NOT put the robber on a desert tile
         }
 
@@ -792,7 +792,7 @@ namespace Catan3.Shared.Extensions
             var deserts = game.Tiles.Where(t => t.ResourceTileType == ResourceType.Desert).ToList();
             var sevens = game.Tiles.Where(t => t.Number == 7).ToList();
             System.Diagnostics.Debug.Assert(deserts.Count == sevens.Count, "Mismatch between deserts and tiles with number 7");
-            
+
             for (int i = 0; i < deserts.Count; i++)
             {
                 if (deserts[i].Number != 7)

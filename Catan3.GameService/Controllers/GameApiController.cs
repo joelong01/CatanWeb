@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
-using Catan3.Shared.ViewData;
+using Catan3.Shared.Profiles;
 using Catan3.Shared.GameLogic;
 using Catan3.Shared.Extensions;
 using Catan3.Shared.Interfaces;
@@ -154,9 +154,9 @@ namespace Catan3.GameService.Controllers
         public Task<IActionResult> ExecuteGameAction([FromBody] JsonElement request)
         {
             var commandId = Guid.NewGuid();
-            
+
             _logger.LogEvent("API Request", $"POST /api/game/action - Processing async command {commandId}");
-            
+
             try
             {
                 var gameId = request.GetProperty("gameId").GetString();
@@ -217,16 +217,16 @@ namespace Catan3.GameService.Controllers
         public IActionResult GetGameState(string gameId)
         {
             _logger.LogEvent("API Request", $"GET /api/gamestate/{gameId} - Getting game state");
-            
+
             try
             {
                 var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
                 var gameModel = gameStateMachine.GetCurrentState();
 
                 var result = CreateGameStateResponse(gameId, gameModel);
-                
+
                 _logger.LogEvent("Game State Retrieved", $"Game state retrieved successfully - GameId: {gameId}, State: {gameModel.GameState}, Players: {gameModel.Players.Count}, GameStateMachineVersion: {gameModel.GameStateMachineVersion}");
-                
+
                 return Ok(result);
             }
             catch (GameException)
@@ -245,7 +245,7 @@ namespace Catan3.GameService.Controllers
         public IActionResult RegisterGame([FromBody] JsonElement request)
         {
             _logger.LogEvent("API Request", $"POST /api/game/register - This endpoint is deprecated, use /api/game/new instead");
-            
+
             return BadRequest("This endpoint is deprecated. Use /api/game/new instead, which will return a server-generated gameId.");
         }
 
@@ -253,7 +253,7 @@ namespace Catan3.GameService.Controllers
         public async Task<IActionResult> NewGame([FromBody] NewGameMessage newGameMessage)
         {
             _logger.LogEvent("API Request", $"POST /api/game/new - Creating new game");
-            
+
             try
             {
                 if (newGameMessage is null || newGameMessage.PlayerIds is null or { Count: 0 })
@@ -382,10 +382,10 @@ namespace Catan3.GameService.Controllers
         }
 
         [HttpPost("game/load")]
-        public  Task<IActionResult> LoadGame([FromBody] LoadGameMessage loadGameMessage)
+        public Task<IActionResult> LoadGame([FromBody] LoadGameMessage loadGameMessage)
         {
             _logger.LogEvent("API Request", $"POST /api/game/load - Loading game from compressed log");
-            
+
             try
             {
                 if (loadGameMessage?.CompressedLog is null or { Length: 0 })
@@ -402,8 +402,8 @@ namespace Catan3.GameService.Controllers
                 // Get the current game state to determine GameId
                 var gameModel = gameStateMachine.GetCurrentState();
 
-              
-                
+
+
                 // Store GameStateMachine in registry
                 GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);
 
@@ -421,7 +421,7 @@ namespace Catan3.GameService.Controllers
         public Task<IActionResult> LoadGameModel([FromBody] LoadGameModelMessage loadGameModelMessage)
         {
             _logger.LogEvent("API Request", $"POST /api/game/loadmodel - Loading game from GameModel JSON");
-            
+
             try
             {
                 if (string.IsNullOrWhiteSpace(loadGameModelMessage?.GameModelJson))
@@ -432,21 +432,21 @@ namespace Catan3.GameService.Controllers
                 // Deserialize the GameModel from the message
                 var gameModel = JsonHelper.Deserialize<GameModel>(loadGameModelMessage.GameModelJson)
                     ?? throw new InvalidOperationException("Failed to deserialize GameModel from LoadGameModelMessage JSON");
-                
+
                 // Validate the deserialized GameModel
                 gameModel.Validate();
-                
+
                 // Create Log WITHOUT the GameModel (matches Desktop pattern)
                 // Use empty string for file path when IsTest is true, otherwise use temp path
                 var filePath = loadGameModelMessage.IsTest ? string.Empty : Path.Combine(Path.GetTempPath(), "Catan3Games", gameModel.SaveFileName());
                 var gameLog = new Shared.Utility.Log<string>(_persistenceService, filePath);
-                
+
                 // Create GameStateMachine with initialized dependencies
                 var gameStateMachine = CreateGameStateMachineWithServiceDependencies(gameLog);
-                
+
                 // Initialize the logging state with the GameModel (matches Desktop pattern)
                 gameStateMachine.InitializeLoggingState(gameModel);
-                
+
                 // Store GameStateMachine in registry
                 GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);
 
@@ -464,13 +464,13 @@ namespace Catan3.GameService.Controllers
         public async Task<IActionResult> PersistGame([FromBody] JsonElement request)
         {
             _logger.LogEvent("API Request", $"POST /api/game/persist - Persisting game");
-            
+
             try
             {
                 var gameId = request.GetProperty("gameId").GetString();
                 var actionStr = request.GetProperty("action").GetString();
                 var location = "";
-                
+
                 if (request.TryGetProperty("location", out var locationElement))
                 {
                     location = locationElement.GetString() ?? "";
@@ -715,7 +715,7 @@ namespace Catan3.GameService.Controllers
             // Rule 7 Compliance: Return GameModel as-is since it contains all necessary data
             // GameModel already has GameId, Version (incrementing with each change), and CreatedTime (as timestamp)
             // No need to add API-specific metadata - GameModel is the single source of truth
-            
+
             // Return the GameModel directly - ASP.NET Core will serialize it properly
             // with the configured JsonSerializerOptions in Program.cs
             return gameModel;
@@ -808,7 +808,7 @@ namespace Catan3.GameService.Controllers
         {
             var rollData = messageData.GetProperty("roll");
             var normalRollStr = rollData.GetProperty("normalRoll").GetString();
-            
+
             if (!Enum.TryParse<ValidCatanRoll>(normalRollStr, out var normalRoll))
             {
                 throw new ArgumentException($"Invalid roll: {normalRollStr}");
@@ -870,7 +870,7 @@ namespace Catan3.GameService.Controllers
         public IActionResult EndGame([FromBody] JsonElement request)
         {
             _logger.LogEvent("API Request", $"POST /api/game/end - Ending game");
-            
+
             try
             {
                 var gameId = request.GetProperty("gameId").GetString();
@@ -883,7 +883,7 @@ namespace Catan3.GameService.Controllers
 
                 // Remove game from registry and dispose resources
                 bool gameRemoved = GameStateMachineRegistry.DeleteGameStateMachine(gameId);
-                
+
                 if (!gameRemoved)
                 {
                     _logger.LogEvent("Game Not Found", $"Game not found: {gameId}", LogLevel.Warning);
@@ -914,7 +914,7 @@ namespace Catan3.GameService.Controllers
         public IActionResult UpdateSettings([FromBody] JsonElement request)
         {
             _logger.LogEvent("API Request", $"POST /api/settings/update - Updating service settings");
-            
+
             try
             {
                 // For now, we'll just acknowledge the settings update

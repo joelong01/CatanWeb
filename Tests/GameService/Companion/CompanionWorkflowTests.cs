@@ -176,14 +176,14 @@ namespace Tests.GameService.Companion
                 Console.WriteLine("?? Testing connection recovery...");
                 var gameId = await CreateSingleTestGame();
                 var companion = await CreateCompanionConnection(gameId, "Alice");
-                
+
                 // Simulate connection issues and recovery
                 await companion.Connection.StopAsync();
                 Assert.Equal(HubConnectionState.Disconnected, companion.Connection.State);
-                
+
                 await companion.Connection.StartAsync();
                 Assert.Equal(HubConnectionState.Connected, companion.Connection.State);
-                
+
                 await companion.DisposeAsync();
                 Console.WriteLine("? Connection recovery working");
 
@@ -204,13 +204,13 @@ namespace Tests.GameService.Companion
 
                 // Wait for initial GameModel to be populated
                 await Task.Delay(1000); // Give time for SignalR GameStateUpdated event
-                
+
                 // If still null, wait for a GameStateUpdated event
                 if (companion.GameModel == null)
                 {
                     var gameModelReceived = new TaskCompletionSource<GameModel>();
                     companion.GameStateUpdated += gameModelReceived.SetResult;
-                    
+
                     var gameModel = await gameModelReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
                     Assert.NotNull(gameModel);
                 }
@@ -227,9 +227,9 @@ namespace Tests.GameService.Companion
                 // Progress to next state and verify UI data changes
                 var result = await companion.ExecuteNextAsync();
                 Assert.True(result.Success);
-                
+
                 await Task.Delay(500); // Wait for update
-                
+
                 var updatedGameModel = companion.GameModel;
                 Assert.NotNull(updatedGameModel);
                 Assert.Equal(GameState.WaitingForRollForOrder, updatedGameModel.GameState);
@@ -245,7 +245,7 @@ namespace Tests.GameService.Companion
         private async Task<List<string>> CreateMultipleTestGames()
         {
             var gameIds = new List<string>();
-            
+
             // Create Regular game
             var regularGame = await CreateGame("Regular", new[] { "Alice", "Bob", "Charlie", "David" });
             gameIds.Add(regularGame);
@@ -296,7 +296,7 @@ namespace Tests.GameService.Companion
         {
             var httpClient = _factory.CreateClient();
             var response = await httpClient.GetAsync("/api/companion/games");
-            
+
             Assert.True(response.IsSuccessStatusCode, $"Games discovery should succeed. Status: {response.StatusCode}");
 
             var content = await response.Content.ReadAsStringAsync();
@@ -312,7 +312,7 @@ namespace Tests.GameService.Companion
         {
             var httpClient = _factory.CreateClient();
             var response = await httpClient.GetAsync($"/api/gamestate/{gameId}");
-            
+
             Assert.True(response.IsSuccessStatusCode, $"Game selection should succeed. Status: {response.StatusCode}");
 
             var content = await response.Content.ReadAsStringAsync();
@@ -328,7 +328,7 @@ namespace Tests.GameService.Companion
         private async Task<GameServiceProxy> TestPlayerSelection(string gameId, string playerId)
         {
             var companion = await CreateCompanionConnection(gameId, playerId);
-            
+
             Assert.NotNull(companion);
             Assert.Equal(HubConnectionState.Connected, companion.Connection.State);
             Assert.Equal(playerId, companion.PlayerId);
@@ -345,14 +345,14 @@ namespace Tests.GameService.Companion
 
             var proxy = new GameServiceProxy(hubUrl, "http://localhost", testHandler, playerId, gameId);
             await proxy.ConnectAsync();
-            
+
             return proxy;
         }
 
         private async Task TestRealTimeGameUpdates(GameServiceProxy companion, string gameId)
         {
             var updateReceived = new TaskCompletionSource<GameModel>();
-            companion.GameStateUpdated += (gameModel) => 
+            companion.GameStateUpdated += (gameModel) =>
             {
                 updateReceived.TrySetResult(gameModel);
             };
@@ -378,7 +378,7 @@ namespace Tests.GameService.Companion
                 ("Undo", (Func<Task<CommandResult>>)(() => companion.ExecuteUndoAsync())),
                 ("Next", (Func<Task<CommandResult>>)(() => companion.ExecuteNextAsync()))
             };
-            
+
             foreach (var (actionName, actionFunc) in testActions)
             {
                 try
@@ -398,15 +398,15 @@ namespace Tests.GameService.Companion
         private async Task TestGameStateProgression(GameServiceProxy companion, string gameId)
         {
             var initialState = companion.GameModel?.GameState;
-            
+
             // Try to advance the game state
             var result = await companion.ExecuteNextAsync();
-            
+
             if (result.Success)
             {
                 await Task.Delay(500); // Wait for update
                 var newState = companion.GameModel?.GameState;
-                
+
                 // Verify state changed or stayed the same (depending on game logic)
                 Assert.NotNull(newState);
             }
@@ -416,7 +416,7 @@ namespace Tests.GameService.Companion
         {
             // Verify all companions see the same game state
             var gameModels = companions.Select(c => c.GameModel).Where(gm => gm != null).ToList();
-            
+
             if (gameModels.Count > 1)
             {
                 var referenceModel = gameModels.First();
@@ -434,11 +434,11 @@ namespace Tests.GameService.Companion
             if (companions.Count < 2) return;
 
             var updatesReceived = companions.Skip(1).Select(c => new TaskCompletionSource<GameModel>()).ToList();
-            
+
             for (int i = 1; i < companions.Count; i++)
             {
                 var index = i - 1;
-                companions[i].GameStateUpdated += (gameModel) => 
+                companions[i].GameStateUpdated += (gameModel) =>
                 {
                     updatesReceived[index].TrySetResult(gameModel);
                 };
@@ -449,7 +449,7 @@ namespace Tests.GameService.Companion
 
             // Verify other companions received updates
             var updateTasks = updatesReceived.Select(tcs => tcs.Task).ToArray();
-            var completedUpdates = await Task.WhenAll(updateTasks.Select(task => 
+            var completedUpdates = await Task.WhenAll(updateTasks.Select(task =>
                 task.WaitAsync(TimeSpan.FromSeconds(5)).ContinueWith(t => t.IsCompletedSuccessfully)));
 
             Assert.True(completedUpdates.Any(completed => completed), "At least one companion should receive updates");

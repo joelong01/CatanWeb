@@ -26,7 +26,7 @@ namespace Tests.GameService
         public ReplayTest(WebApplicationFactory<Program> factory, ITestOutputHelper output)
         {
             _output = output;
-            
+
             // Configure factory with detailed logging for debugging
             _factory = factory.WithWebHostBuilder(builder =>
             {
@@ -35,18 +35,18 @@ namespace Tests.GameService
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["GameApi:HangingGetTimeoutSeconds"] = "5",
-                        
+
                         // Enable detailed logging for debugging
                         ["Logging:LogLevel:Default"] = "Information",
                         ["Logging:LogLevel:Microsoft"] = "Warning",
-                        ["Logging:LogLevel:Microsoft.AspNetCore"] = "Warning", 
+                        ["Logging:LogLevel:Microsoft.AspNetCore"] = "Warning",
                         ["Logging:LogLevel:Catan3.GameService"] = "Debug",
                         ["Logging:LogLevel:Catan3.GameService.Controllers"] = "Debug",
                         ["Logging:LogLevel:Catan3.GameService.Services"] = "Debug",
                         ["Logging:LogLevel:Catan3.GameService.Hubs"] = "Debug"
                     });
                 });
-                
+
                 builder.ConfigureServices(services =>
                 {
                     // Configure logging to output to test output
@@ -128,20 +128,20 @@ namespace Tests.GameService
             var mainProxy = new GameServiceProxy(hubUrl, serviceUri, testHandler, playerIds[0]);
             await mainProxy.ConnectAsync();
             LogEvent("MainProxyConnected", $"Main proxy connected for player {playerIds[0]}");
-            
+
             // Main proxy loads the game (like a real primary player would)
             var loadResult = await mainProxy.LoadGameModelAsync(initialGameModel);
             if (!loadResult.Success)
             {
                 throw new InvalidOperationException($"Failed to load GameModel: {loadResult.Message}");
             }
-            
+
             var gameId = mainProxy.GameId ?? throw new InvalidOperationException("GameId not set after loading");
             LogEvent("GameCreated", $"✅ Main proxy created game with GameId: {gameId}");
 
             // Create TestClients for remaining players to simulate companion clients watching the game
             var companionPlayerIds = playerIds.Skip(1).ToList(); // All players except the main one
-            var testClients = companionPlayerIds.Select(playerId => 
+            var testClients = companionPlayerIds.Select(playerId =>
                 new TestClient(playerId, initialGameModel, hubUrl, serviceUri, gameId, testHandler, _output)).ToList();
             _activeTestClients.AddRange(testClients);
 
@@ -375,12 +375,12 @@ namespace Tests.GameService
                 var timestamp = DateTime.UtcNow.ToString("HH:mm:ss.fff");
                 var message = formatter(state, exception);
                 var logLine = $"[{timestamp}] [{logLevel}] [{_categoryName}] {message}";
-                
+
                 if (exception != null)
                 {
                     logLine += $"\n{exception}";
                 }
-                
+
                 _output.WriteLine(logLine);
             }
             catch

@@ -58,7 +58,7 @@ namespace Catan3.Models
 
         partial void OnParticipatingInSupplementalChanged(bool oldValue, bool newValue)
         {
-          // send the MVVM message
+            // send the MVVM message
             WeakReferenceMessenger.Default.Send(new ParticipatingInSupplementalMessage(this.Id, newValue));
         }
 
@@ -129,7 +129,7 @@ namespace Catan3.Models
         /// <param name="newValue">The new cropped image URI.</param>
         partial void OnCroppedImageUriChanged(string oldValue, string newValue)
         {
-           // this.TraceMessage($"Player {Name} CroppedImageUri changed: '{oldValue}' → '{newValue}'");
+            // this.TraceMessage($"Player {Name} CroppedImageUri changed: '{oldValue}' → '{newValue}'");
             if (newValue is not null)
             {
                 CroppedBitmapImage = CreateBitmapImage(newValue);
@@ -163,7 +163,7 @@ namespace Catan3.Models
                     DecodePixelWidth = 200,
                     CreateOptions = BitmapCreateOptions.IgnoreImageCache
                 };
-               // this.TraceMessage($"✅ Player {Name} BitmapImage created successfully");
+                // this.TraceMessage($"✅ Player {Name} BitmapImage created successfully");
                 return bitmapImage;
             }
             catch (Exception ex)
@@ -198,9 +198,9 @@ namespace Catan3.Models
             ImageUri = imageUri;
             PlayerColors = playerColors;
             IsActive = isActive;
-            
-           // this.TraceMessage($"🏗️ Player {name} constructor: ImageUri='{imageUri}', CroppedImageUri='{croppedImageUri}'");
-            
+
+            // this.TraceMessage($"🏗️ Player {name} constructor: ImageUri='{imageUri}', CroppedImageUri='{croppedImageUri}'");
+
             CroppedImageUri = croppedImageUri; // This will trigger OnCroppedImageUriChanged
             CroppedBitmapImage = CreateBitmapImage(CroppedImageUri);
             CreateStats();

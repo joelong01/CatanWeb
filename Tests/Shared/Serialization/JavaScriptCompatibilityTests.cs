@@ -92,15 +92,15 @@ namespace Tests.Shared.Serialization
         private Task TestEnumJavaScriptCompatibility(Type enumType)
         {
             var enumValues = Enum.GetValues(enumType);
-            
+
             foreach (var enumValue in enumValues)
             {
                 var json = JsonSerializer.Serialize(enumValue, _jsonOptions);
-                
+
                 // Enums should serialize as strings for JavaScript compatibility
-                Assert.True(json.StartsWith('"') && json.EndsWith('"'), 
+                Assert.True(json.StartsWith('"') && json.EndsWith('"'),
                     $"Enum {enumType.Name}.{enumValue} should serialize as string, got: {json}");
-                
+
                 // Should not contain numeric values that would break JavaScript
                 Assert.DoesNotMatch(@"^\d+$", json.Trim('"'));
             }
@@ -116,7 +116,7 @@ namespace Tests.Shared.Serialization
 
             // Verify no undefined values
             Assert.DoesNotContain("undefined", json);
-            
+
             // Verify proper string escaping
             Assert.DoesNotContain("\\u0000", json); // No null characters
         }
@@ -137,7 +137,7 @@ namespace Tests.Shared.Serialization
             // Should not contain C#-specific artifacts
             Assert.DoesNotContain("$type", json); // No type annotations
             Assert.DoesNotContain("$id", json);   // No reference handling
-            
+
             // Dates should be in ISO format for JavaScript compatibility
             if (json.Contains("createdTime"))
             {
@@ -245,7 +245,7 @@ try {{
                 catch { } // Ignore cleanup errors
 
                 // Verify Node.js could parse the JSON
-                Assert.True(process.ExitCode == 0, 
+                Assert.True(process.ExitCode == 0,
                     $"Node.js failed to parse {modelType}: {error}\nOutput: {output}");
 
                 Console.WriteLine($"Node.js test for {modelType}: {output.Trim()}");

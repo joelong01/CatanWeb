@@ -51,7 +51,7 @@ public class PlayerEntity
     public string Id { get; set; } = string.Empty;
 
     /// <summary>
-    /// JSON document containing PlayerProfile
+    /// JSON document containing Profiles
     /// </summary>
     public string Data { get; set; } = string.Empty;
 }

@@ -146,7 +146,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 }
 
                 TraceMessage($"✅ Action completed successfully: {action.Type}");
-                
+
                 // Force UI message pumping after action completion
                 try
                 {
@@ -156,7 +156,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 {
                     TraceMessage($"⚠️ TestAutomationActionButton click failed (non-critical): {pumpEx.Message}");
                 }
-                
+
                 return true;
             }
             catch (Exception ex)
@@ -192,7 +192,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         {
             // Find GoFirst buttons and click the appropriate one
             var goFirstButtons = _uiHelper.FindAllByText("Go First").ToList();
-            
+
             if (action.Parameters.TryGetValue("playerIndex", out var indexValue))
             {
                 var playerIndex = Convert.ToInt32(indexValue);
@@ -207,16 +207,16 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             {
                 var playerId = playerIdValue?.ToString();
                 TraceMessage($"Looking for GoFirst button for player {playerId}");
-                
+
                 // Get current game model to find player index
                 var gameModel = _uiHelper.GetCurrentGameModel();
                 var player = gameModel.Players.FirstOrDefault(p => p.Id == playerId);
-                
+
                 if (player != null)
                 {
                     var playerIndex = gameModel.Players.ToList().IndexOf(player);
                     TraceMessage($"Found player {playerId} at index {playerIndex}");
-                    
+
                     if (playerIndex < goFirstButtons.Count)
                     {
                         var button = goFirstButtons[playerIndex].AsButton();
@@ -292,9 +292,9 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
 
             var coordinates = coordinatesValue.ToString();
             var tileAutomationId = $"Tile{coordinates}";
-            
+
             _uiHelper.ClickButton(tileAutomationId);
-            
+
             // If target player is specified, handle that selection
             if (action.Parameters.TryGetValue(ActionParameters.TargetPlayer, out var targetPlayerValue))
             {
@@ -351,13 +351,13 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             // Verify resources allocated this turn match expected values
             var gameModel = _uiHelper.GetCurrentGameModel();
             var currentPlayer = gameModel.CurrentPlayer();
-            
+
             if (action.Parameters.TryGetValue(ActionParameters.ResourceType, out var resourceTypeValue) &&
                 action.Parameters.TryGetValue(ActionParameters.ResourceCount, out var resourceCountValue))
             {
                 var resourceType = Enum.Parse<ResourceType>(resourceTypeValue.ToString()!);
                 var expectedCount = Convert.ToInt32(resourceCountValue);
-                
+
                 TraceMessage($"Verifying turn resources for {currentPlayer.Name}: {resourceType} = {expectedCount}");
                 // TODO: Implement actual verification logic
             }
@@ -368,13 +368,13 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             // Verify total game resources match expected values
             var gameModel = _uiHelper.GetCurrentGameModel();
             var currentPlayer = gameModel.CurrentPlayer();
-            
+
             if (action.Parameters.TryGetValue(ActionParameters.ResourceType, out var resourceTypeValue) &&
                 action.Parameters.TryGetValue(ActionParameters.ResourceCount, out var resourceCountValue))
             {
                 var resourceType = Enum.Parse<ResourceType>(resourceTypeValue.ToString()!);
                 var expectedCount = Convert.ToInt32(resourceCountValue);
-                
+
                 TraceMessage($"Verifying game resources for {currentPlayer.Name}: {resourceType} = {expectedCount}");
                 // TODO: Implement actual verification logic
             }
@@ -387,7 +387,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
             {
                 waitMs = Convert.ToInt32(waitMsValue);
             }
-            
+
             Thread.Sleep(waitMs);
         }
 

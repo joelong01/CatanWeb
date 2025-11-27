@@ -8,31 +8,31 @@ namespace Catan3.Controls
 {
     public sealed partial class BoardMeasurementCtrl : UserControl
     {
-     
+
         public BoardMeasurementCtrl()
         {
-           
+
             this.InitializeComponent();
         }
         public static readonly DependencyProperty GameViewModelProperty = DependencyProperty.Register("GameViewModel", typeof(GameViewModel), typeof(BoardMeasurementCtrl), new PropertyMetadata(null, GameViewModelChanged));
         public GameViewModel GameViewModel
         {
-            get => ( GameViewModel )GetValue(GameViewModelProperty);
+            get => (GameViewModel)GetValue(GameViewModelProperty);
             set => SetValue(GameViewModelProperty, value);
         }
         private static void GameViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as BoardMeasurementCtrl;
             var depPropValue = (GameViewModel)e.NewValue;
-            depPropClass?.SetGameViewModel(( GameViewModel )e.OldValue, ( GameViewModel )e.NewValue);
+            depPropClass?.SetGameViewModel((GameViewModel)e.OldValue, (GameViewModel)e.NewValue);
         }
-        private void SetGameViewModel(GameViewModel old, GameViewModel newGameViewModel) 
+        private void SetGameViewModel(GameViewModel old, GameViewModel newGameViewModel)
         {
             if (old is not null)
             {
                 old.PropertyChanged -= GameViewModel_PropertyChanged;
             }
-            if ( newGameViewModel is not null)
+            if (newGameViewModel is not null)
             {
                 newGameViewModel.PropertyChanged += GameViewModel_PropertyChanged;
             }
@@ -47,6 +47,6 @@ namespace Catan3.Controls
             }
         }
 
-       
+
     }
 }

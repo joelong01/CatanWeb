@@ -60,7 +60,7 @@ namespace Catan3.Services
                 return;
 
             var message = formatter(state, exception);
-            
+
             if (exception != null)
             {
                 message += Environment.NewLine + exception.ToString();
@@ -69,7 +69,7 @@ namespace Catan3.Services
             // Write the message as-is to both outputs (it already has file/line info from TraceMessage)
             // Write to Debug output (goes to VS Code Debug Window)
             System.Diagnostics.Debug.WriteLine(message);
-            
+
             // Write to DebugWindow (goes to Catan Debug Messages)
             DebugWindow.ShowMessage(message);
         }

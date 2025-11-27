@@ -58,7 +58,7 @@ public class MvvmObjectTester
 
         Console.WriteLine();
         var finalTimestamp = DateTime.UtcNow.ToString("HH:mm:ss.fff");
-        
+
         if (testResults.FailedTests == 0)
         {
             Console.WriteLine($"[{finalTimestamp}] [? SUCCESS] All {testResults.TotalTests} MVVM object tests passed!");
@@ -79,7 +79,7 @@ public class MvvmObjectTester
     {
         testResults.TotalTests++;
         var timestamp = DateTime.UtcNow.ToString("HH:mm:ss.fff");
-        
+
         try
         {
             // Create original object
@@ -129,7 +129,7 @@ public class MvvmObjectTester
             // Create a basic GameModel for testing
             var gameModel = CreateTestGameModel();
             var original = new UpdateGameModel(gameModel);
-            
+
             LogEvent("?? CREATING", "Testing UpdateGameModel with test GameModel");
 
             // Serialize to JSON
@@ -203,7 +203,7 @@ public class MvvmObjectTester
         }
 
         var type = typeof(T);
-        
+
         // Use reflection to check key properties
         foreach (var property in type.GetProperties())
         {

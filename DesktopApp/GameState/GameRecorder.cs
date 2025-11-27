@@ -35,7 +35,7 @@ namespace Catan3.Utility
     /// </summary>
     public class GameRecorder
     {
-       
+
         private readonly GameModel _initialGameModel;
         private readonly List<IRecordedMessage> _recordedActions;
         private readonly string _outputPath;
@@ -57,7 +57,7 @@ namespace Catan3.Utility
 
             // Create a deep copy of the GameModel via serialize/deserialize to ensure immutability
             var jsonString = JsonHelper.Serialize(initialGameModel);
-            _initialGameModel = JsonHelper.Deserialize<GameModel>(jsonString) 
+            _initialGameModel = JsonHelper.Deserialize<GameModel>(jsonString)
                 ?? throw new InvalidOperationException("Failed to deserialize GameModel during deep copy");
 
             _recordedActions = [];

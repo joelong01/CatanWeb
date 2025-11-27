@@ -17,8 +17,11 @@
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("build", "run", "debug", "clean", "stop", "restart", "update", "help")]
-    [string]$Verb = "run"
+    [ValidateSet("build", "run", "debug", "clean", "stop", "restart", "update", "database", "help")]
+    [string]$Verb = "run",
+
+    [Parameter(Position = 1)]
+    [string]$SubCommand
 )
 
 $ErrorActionPreference = "Stop"
@@ -120,8 +123,8 @@ function Start-WebUI {
     }
 }
 
-function Initialize-Database {
-    Write-Host "Checking database..." -ForegroundColor Cyan
+function Install-Database {
+    Write-Host "Installing database..." -ForegroundColor Cyan
 
     $dataDir = Split-Path $DatabasePath -Parent
 
@@ -131,32 +134,38 @@ function Initialize-Database {
         New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
     }
 
-    # Check if database exists
-    if (Test-Path $DatabasePath) {
-        Write-Host "Database exists at $DatabasePath" -ForegroundColor Green
-        return $true
-    }
-
-    Write-Host "Database not found. Initializing..." -ForegroundColor Yellow
-
     # Run the database seed tool
     $gameServicePath = Join-Path $PSScriptRoot "Catan3.GameService"
 
     Push-Location $gameServicePath
     try {
         # Use dotnet run with a seed argument to initialize the database
+        Write-Host "Seeding database with default data..." -ForegroundColor Yellow
         $result = & dotnet run -- --seed-database 2>&1
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "Database initialization failed!" -ForegroundColor Red
+            Write-Host "Database installation failed!" -ForegroundColor Red
             Write-Host $result -ForegroundColor Red
             return $false
         }
-        Write-Host "Database initialized successfully!" -ForegroundColor Green
+        Write-Host "Database installed successfully at $DatabasePath" -ForegroundColor Green
         return $true
     }
     finally {
         Pop-Location
     }
+}
+
+function Initialize-Database {
+    Write-Host "Checking database..." -ForegroundColor Cyan
+
+    # Check if database exists
+    if (Test-Path $DatabasePath) {
+        Write-Host "Database exists at $DatabasePath" -ForegroundColor Green
+        return $true
+    }
+
+    Write-Host "Database not found. Installing..." -ForegroundColor Yellow
+    return Install-Database
 }
 
 function Clear-Database {
@@ -174,6 +183,44 @@ function Clear-Database {
     $dbDir = Split-Path $DatabasePath -Parent
     if (Test-Path $dbDir) {
         Get-ChildItem $dbDir -Filter "*.db-*" | Remove-Item -Force
+    }
+}
+
+function Test-Database {
+    Write-Host "Validating database schema..." -ForegroundColor Cyan
+
+    if (-not (Test-Path $DatabasePath)) {
+        Write-Host "Database not found at $DatabasePath" -ForegroundColor Red
+        Write-Host "Run './webui.ps1 database install' to create the database" -ForegroundColor Yellow
+        return $false
+    }
+
+    # Run GameService tests that validate the database schema
+    Write-Host "Running database schema validation tests..." -ForegroundColor Yellow
+
+    $testProject = Join-Path $PSScriptRoot "Tests\GameService\Tests.GameService.csproj"
+
+    if (-not (Test-Path $testProject)) {
+        Write-Host "Test project not found: $testProject" -ForegroundColor Red
+        return $false
+    }
+
+    # Run tests with a filter for database-related tests
+    $result = & dotnet test $testProject --filter "Category=Database" --verbosity quiet --nologo 2>&1
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Database schema validation passed!" -ForegroundColor Green
+        return $true
+    }
+    else {
+        Write-Host "Database schema validation failed!" -ForegroundColor Red
+        Write-Host "The database may need to be rebuilt:" -ForegroundColor Yellow
+        Write-Host "  1. ./webui.ps1 database clean" -ForegroundColor White
+        Write-Host "  2. ./webui.ps1 database install" -ForegroundColor White
+        Write-Host ""
+        Write-Host "Test output:" -ForegroundColor Yellow
+        Write-Host $result -ForegroundColor Gray
+        return $false
     }
 }
 
@@ -441,20 +488,71 @@ switch ($Verb) {
         }
     }
 
+    "database" {
+        switch ($SubCommand) {
+            "check" {
+                $valid = Test-Database
+                if (-not $valid) {
+                    exit 1
+                }
+            }
+            "clean" {
+                Clear-Database
+            }
+            "install" {
+                # Clean first, then install fresh
+                Clear-Database
+                $installed = Install-Database
+                if (-not $installed) {
+                    exit 1
+                }
+            }
+            default {
+                Write-Host ""
+                Write-Host "Database Commands" -ForegroundColor Cyan
+                Write-Host "=================" -ForegroundColor Cyan
+                Write-Host ""
+                Write-Host "Usage: ./webui.ps1 database <subcommand>" -ForegroundColor Yellow
+                Write-Host ""
+                Write-Host "Subcommands:" -ForegroundColor Yellow
+                Write-Host "  check    - Validate database schema matches app requirements"
+                Write-Host "  clean    - Delete the database (wipes all data)"
+                Write-Host "  install  - Clean and reinstall database with default data"
+                Write-Host ""
+                Write-Host "Examples:" -ForegroundColor Yellow
+                Write-Host "  ./webui.ps1 database check     - Check if database is valid"
+                Write-Host "  ./webui.ps1 database clean     - Delete database"
+                Write-Host "  ./webui.ps1 database install   - Fresh install with default players"
+                Write-Host ""
+
+                if ($SubCommand) {
+                    Write-Host "Unknown subcommand: $SubCommand" -ForegroundColor Red
+                    exit 1
+                }
+            }
+        }
+    }
+
     "help" {
         Write-Host ""
         Write-Host "WebUI Development Script" -ForegroundColor Cyan
         Write-Host "========================" -ForegroundColor Cyan
         Write-Host ""
         Write-Host "Commands:" -ForegroundColor Yellow
-        Write-Host "  ./webui.ps1 run      - Start GameService + WebUI, launch browser"
-        Write-Host "  ./webui.ps1 stop     - Stop running services"
-        Write-Host "  ./webui.ps1 restart  - Stop and restart services"
-        Write-Host "  ./webui.ps1 update   - Rebuild projects and restart services"
-        Write-Host "  ./webui.ps1 build    - Build all projects (full solution)"
-        Write-Host "  ./webui.ps1 clean    - Stop services, delete database, clean build"
-        Write-Host "  ./webui.ps1 debug    - Instructions for VS Code debugging"
-        Write-Host "  ./webui.ps1 help     - Show this help"
+        Write-Host "  ./webui.ps1 run              - Start GameService + WebUI, launch browser"
+        Write-Host "  ./webui.ps1 stop             - Stop running services"
+        Write-Host "  ./webui.ps1 restart          - Stop and restart services"
+        Write-Host "  ./webui.ps1 update           - Rebuild projects and restart services"
+        Write-Host "  ./webui.ps1 build            - Build all projects (full solution)"
+        Write-Host "  ./webui.ps1 clean            - Stop services, delete database, clean build"
+        Write-Host "  ./webui.ps1 database <cmd>   - Database management (check/clean/install)"
+        Write-Host "  ./webui.ps1 debug            - Instructions for VS Code debugging"
+        Write-Host "  ./webui.ps1 help             - Show this help"
+        Write-Host ""
+        Write-Host "Database Commands:" -ForegroundColor Yellow
+        Write-Host "  ./webui.ps1 database check   - Validate database schema"
+        Write-Host "  ./webui.ps1 database clean   - Delete database"
+        Write-Host "  ./webui.ps1 database install - Fresh install with default data"
         Write-Host ""
         Write-Host "Typical workflow:" -ForegroundColor Yellow
         Write-Host "  1. ./webui.ps1 run           - Start services (hot reload enabled)"
@@ -462,6 +560,9 @@ switch ($Verb) {
         Write-Host ""
         Write-Host "  If hot reload fails (e.g., rude edits):"
         Write-Host "  3. ./webui.ps1 update        - Rebuild and restart services"
+        Write-Host ""
+        Write-Host "  If database schema changed:"
+        Write-Host "  4. ./webui.ps1 database install - Rebuild database"
         Write-Host ""
         Write-Host "URLs:" -ForegroundColor Yellow
         Write-Host "  GameService: $GameServiceUrl"

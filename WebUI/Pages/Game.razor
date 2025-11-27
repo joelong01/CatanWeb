@@ -2,7 +2,7 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @using Catan3.Shared.Models
 @using Catan3.Shared.Utility
-@using Catan3.Shared.ViewData
+@using Catan3.Shared.Profiles
 @using Catan3.WebUI.Services
 @using Catan3.WebUI.Services.Rendering
 @inject GameServiceConfig Config
@@ -590,7 +590,7 @@
         try
         {
             return GameModel.GenerateSvg(
-                PlayerProfiles,
+                GameStateService.Players,
                 shownStars: 0,
                 dimmedTiles: null
             );

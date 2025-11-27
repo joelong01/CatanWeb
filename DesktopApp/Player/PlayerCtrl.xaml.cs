@@ -59,12 +59,12 @@ namespace Catan3.Controls
         }
         private void SetGameState(Shared.Models.GameState value)
         {
-           
+
         }
 
         public PlayerViewModel PlayerViewModel
         {
-            get => ( PlayerViewModel )GetValue(PlayerViewModelProperty);
+            get => (PlayerViewModel)GetValue(PlayerViewModelProperty);
             set => SetValue(PlayerViewModelProperty, value);
         }
 
@@ -73,7 +73,7 @@ namespace Catan3.Controls
             if (state != Shared.Models.GameState.Supplemental) return Visibility.Visible;
 
             var ret = ParticipatingInSupplemental ? Visibility.Visible : Visibility.Collapsed;
-          //  this.TraceMessage($"{PlayerViewModel.Player} Suppl={PlayerViewModel.ParticipatingInSupplemental} SupplementalVisibility={ret}");
+            //  this.TraceMessage($"{PlayerViewModel.Player} Suppl={PlayerViewModel.ParticipatingInSupplemental} SupplementalVisibility={ret}");
             return ret;
 
         }

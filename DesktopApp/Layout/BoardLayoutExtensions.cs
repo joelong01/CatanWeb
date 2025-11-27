@@ -60,7 +60,7 @@ namespace Catan3.DesktopApp.Layout
         /// Height of the hexagon control
         /// </summary>
         public static double ControlHeight(this BoardVisualLayout layout) => HexGeometry.Height(layout.OuterHexSize);
-        
+
         /// <summary>
         /// Converts a HexSide to the primary HexPosition (vertex) for that side.
         /// Used for positioning harbors which are placed at vertices rather than edges.

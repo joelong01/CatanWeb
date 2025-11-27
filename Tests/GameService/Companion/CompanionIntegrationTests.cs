@@ -87,7 +87,7 @@ namespace Tests.GameService.Companion
                 var httpClient = _factory.CreateClient();
                 var response = await httpClient.GetAsync("/api/companion/games");
 
-                Assert.True(response.IsSuccessStatusCode, 
+                Assert.True(response.IsSuccessStatusCode,
                     $"Games API should succeed. Status: {response.StatusCode}");
 
                 var content = await response.Content.ReadAsStringAsync();
@@ -95,7 +95,7 @@ namespace Tests.GameService.Companion
 
                 Assert.NotNull(gamesResponse);
                 Assert.NotNull(gamesResponse.Games);
-                Assert.True(gamesResponse.Games.Count >= 2, 
+                Assert.True(gamesResponse.Games.Count >= 2,
                     $"Should have at least 2 games, found {gamesResponse.Games.Count}");
 
                 // Verify game data structure for companion
@@ -121,10 +121,10 @@ namespace Tests.GameService.Companion
 
                 // Test the companion joining a specific game
                 var httpClient = _factory.CreateClient();
-                
+
                 // Test getting specific game state
                 var response = await httpClient.GetAsync($"/api/gamestate/{gameSession.GameId}");
-                Assert.True(response.IsSuccessStatusCode, 
+                Assert.True(response.IsSuccessStatusCode,
                     $"Game state API should succeed. Status: {response.StatusCode}");
 
                 var content = await response.Content.ReadAsStringAsync();
@@ -136,7 +136,7 @@ namespace Tests.GameService.Companion
                 Assert.Equal(5, gameModel.Players.Count);
 
                 // Verify companion can access player information
-                Assert.All(gameModel.Players, player => 
+                Assert.All(gameModel.Players, player =>
                 {
                     Assert.NotNull(player.Id);
                     Assert.NotNull(player.Name);
@@ -167,7 +167,7 @@ namespace Tests.GameService.Companion
 
                 // Test that companion receives game state updates
                 var gameStateUpdateReceived = new TaskCompletionSource<GameModel>();
-                companionProxy.GameStateUpdated += (gameModel) => 
+                companionProxy.GameStateUpdated += (gameModel) =>
                 {
                     gameStateUpdateReceived.TrySetResult(gameModel);
                 };
@@ -217,7 +217,7 @@ namespace Tests.GameService.Companion
                 commandResults.Add(("Next", nextResult.Success));
 
                 // Verify all commands executed successfully
-                Assert.All(commandResults, result => 
+                Assert.All(commandResults, result =>
                 {
                     Assert.True(result.Success, $"Command {result.Command} should succeed");
                 });
@@ -319,7 +319,7 @@ namespace Tests.GameService.Companion
                 // Test companion with gameId parameter
                 var httpClient = _factory.CreateClient();
                 var response = await httpClient.GetAsync($"/companion?gameId={gameSession.GameId}");
-                
+
                 Assert.True(response.IsSuccessStatusCode, $"Direct game connection should work. Status: {response.StatusCode}");
 
                 var content = await response.Content.ReadAsStringAsync();
@@ -422,7 +422,7 @@ namespace Tests.GameService.Companion
 
             Assert.NotNull(gameModel);
             Assert.True(gameModel.Players.Count > 0);
-            Assert.All(gameModel.Players, player => 
+            Assert.All(gameModel.Players, player =>
             {
                 Assert.NotEmpty(player.Id);
                 Assert.NotEmpty(player.Name);
@@ -505,7 +505,7 @@ namespace Tests.GameService.Companion
                 var testHandler = _factory.Server.CreateHandler();
                 var proxy = new GameServiceProxy(hubUrl, "http://localhost", testHandler, playerId, gameId);
                 await proxy.ConnectAsync();
-                
+
                 lock (_proxies)
                 {
                     _proxies[playerId] = proxy;

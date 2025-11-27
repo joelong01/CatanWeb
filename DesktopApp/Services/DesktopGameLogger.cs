@@ -8,9 +8,9 @@ namespace Catan3.Services
     /// </summary>
     public class DesktopGameLogger : ICatanDebugTrace
     {
-        public void Trace(GameTraceLevel logLevel, string message, int indentLevel = 0, 
-            [CallerMemberName] string callerMemberName = "", 
-            [CallerLineNumber] int callerLineNumber = 0, 
+        public void Trace(GameTraceLevel logLevel, string message, int indentLevel = 0,
+            [CallerMemberName] string callerMemberName = "",
+            [CallerLineNumber] int callerLineNumber = 0,
             [CallerFilePath] string callerFilePath = "")
         {
             // Use the extended Desktop extension method with log level support

@@ -19,7 +19,7 @@ namespace Catan3.Models
         /// <summary>
         /// List of resource types tracked by players.
         /// </summary>
-        public static ResourceType[] PlayerTrackResourceList = [..StarsTrackResourceList, ResourceType.GoldMine, ResourceType.Robber];
+        public static ResourceType[] PlayerTrackResourceList = [.. StarsTrackResourceList, ResourceType.GoldMine, ResourceType.Robber];
     }
 
     /// <summary>
@@ -205,7 +205,7 @@ namespace Catan3.Models
                 // I want the Stars to hide after the user builds their settlement in the allocation phase as 
                 // showing them makes the game look too busy.  But we also want to do queries/look at Stars
                 // when we pick the board.
-                if (building.Stars >= value && ( hasEntitlement || GameModel.GameState == Shared.Models.GameState.PickingBoard ))
+                if (building.Stars >= value && (hasEntitlement || GameModel.GameState == Shared.Models.GameState.PickingBoard))
                 {
                     building.VisualState = BuildingVisualState.Stars;
                 }

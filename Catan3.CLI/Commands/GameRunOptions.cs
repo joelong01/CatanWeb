@@ -106,7 +106,7 @@ public class GameRunOptions
             throw new ArgumentException("Cannot specify both --run-to and --complete");
         }
 
-        if (!Uri.TryCreate(ServerUri, UriKind.Absolute, out var uri) || 
+        if (!Uri.TryCreate(ServerUri, UriKind.Absolute, out var uri) ||
             (uri.Scheme != "http" && uri.Scheme != "https"))
         {
             throw new ArgumentException($"Invalid server URI: {ServerUri}. Must be a valid HTTP/HTTPS URL.");

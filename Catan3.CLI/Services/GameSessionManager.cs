@@ -23,11 +23,11 @@ public class GameSessionManager
     {
         var session = new RealGameSession(options, _logger);
         await session.InitializeAsync();
-        
+
         _activeSessions[session.GameId] = session;
-        _logger.LogInformation("Created session {GameId} with {PlayerCount} players", 
+        _logger.LogInformation("Created session {GameId} with {PlayerCount} players",
             session.GameId, session.PlayerCount);
-        
+
         return session;
     }
 
@@ -67,7 +67,7 @@ public class GameSessionManager
     {
         var disposeTasks = _activeSessions.Values.Select(session => session.DisposeAsync().AsTask());
         await Task.WhenAll(disposeTasks);
-        
+
         _activeSessions.Clear();
         _logger.LogInformation("Disposed all active sessions");
     }

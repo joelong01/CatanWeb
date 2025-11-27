@@ -2,9 +2,9 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Catan3.Shared.Models;
-using Catan3.Shared.ViewData;
 using System.Text.Json;
 using Catan3.Shared.Utility;
+using PlayerProfile = Catan3.Shared.Profiles.PlayerProfile;  // Alias to resolve namespace/class name collision
 
 namespace Catan3.Shared.Services
 {
@@ -21,17 +21,17 @@ namespace Catan3.Shared.Services
         private string? _gameId;
         private readonly Dictionary<string, TaskCompletionSource<CommandResult>> _pendingCommands = [];
         private readonly object _commandLock = new();
-        
+
         /// <summary>
         /// The base URI for the game service REST API (e.g., "https://localhost:8080")
         /// </summary>
         public string ServiceUri { get; set; } = string.Empty;
 
         public HubConnection Connection => _connection;
-        public string PlayerId 
-        { 
-            get => _playerId; 
-            set => _playerId = value; 
+        public string PlayerId
+        {
+            get => _playerId;
+            set => _playerId = value;
         }
         public string? GameId => _gameId;
         public GameModel? GameModel { get; private set; }
@@ -186,12 +186,12 @@ namespace Catan3.Shared.Services
         {
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
-            
+
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
 
             await _connection.InvokeAsync("Undo", _gameId, _playerId);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -209,12 +209,12 @@ namespace Catan3.Shared.Services
         {
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
-            
+
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
 
             await _connection.InvokeAsync("Redo", _gameId, _playerId);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -232,12 +232,12 @@ namespace Catan3.Shared.Services
         {
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
-            
+
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
 
             await _connection.InvokeAsync("Next", _gameId, _playerId);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -255,9 +255,9 @@ namespace Catan3.Shared.Services
         {
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
-            
+
             await _connection.InvokeAsync("Shuffle", _gameId, _playerId);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -275,12 +275,12 @@ namespace Catan3.Shared.Services
         {
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
-            
+
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
 
             await _connection.InvokeAsync("BalanceBoard", _gameId, _playerId);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -299,10 +299,10 @@ namespace Catan3.Shared.Services
         {
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
-                
+
             var message = new PurchaseMessage(entitlement);
             await _connection.InvokeAsync("ExecutePurchase", _gameId, _playerId, message);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -311,7 +311,7 @@ namespace Catan3.Shared.Services
                 Timestamp = DateTime.UtcNow
             };
         }
-        
+
 
         /// <summary>
         /// Executes a Road Purchase command
@@ -320,7 +320,7 @@ namespace Catan3.Shared.Services
         {
             var message = new RoadPurchaseMessage(roadKey);
             await _connection.InvokeAsync("ExecuteRoadPurchase", gameId, _playerId, message);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -337,7 +337,7 @@ namespace Catan3.Shared.Services
         {
             var message = new BuildingUpgradeMessage(buildingKey);
             await _connection.InvokeAsync("ExecuteBuildingUpgrade", gameId, _playerId, message);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -354,7 +354,7 @@ namespace Catan3.Shared.Services
         {
             var message = new MoveRobberMessage(coordinates, targetPlayerId);
             await _connection.InvokeAsync("ExecuteMoveRobber", gameId, _playerId, message);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -372,11 +372,11 @@ namespace Catan3.Shared.Services
         {
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
-                
+
             var turnRollModel = new TurnRollModel(die1, die2);
             var message = new RollMessage(turnRollModel);
             await _connection.InvokeAsync("ExecuteRoll", _gameId, _playerId, message);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -385,7 +385,7 @@ namespace Catan3.Shared.Services
                 Timestamp = DateTime.UtcNow
             };
         }
-        
+
 
         /// <summary>
         /// Executes a Set Player Order command
@@ -394,7 +394,7 @@ namespace Catan3.Shared.Services
         {
             var message = new SetPlayerOrderMessage(playerIds);
             await _connection.InvokeAsync("ExecuteSetPlayerOrder", gameId, _playerId, message);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -412,7 +412,7 @@ namespace Catan3.Shared.Services
         {
             var message = new BalanceBoardMessage();
             await _connection.InvokeAsync("ExecuteBalanceBoard", gameId, _playerId, message);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -430,10 +430,10 @@ namespace Catan3.Shared.Services
         {
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
-                
+
             var message = new GoFirstMessage(firstPlayerId);
             await _connection.InvokeAsync("ExecuteGoFirst", _gameId, _playerId, message);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -442,7 +442,7 @@ namespace Catan3.Shared.Services
                 Timestamp = DateTime.UtcNow
             };
         }
-        
+
         /// <summary>
         /// Executes a Participating In Supplemental command
         /// Uses the stored GameId from JoinGameAsync call.
@@ -451,9 +451,9 @@ namespace Catan3.Shared.Services
         {
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
-                
+
             await _connection.InvokeAsync("ExecuteParticipatingInSupplemental", _gameId, playerId, participating);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -462,7 +462,7 @@ namespace Catan3.Shared.Services
                 Timestamp = DateTime.UtcNow
             };
         }
-        
+
 
         /// <summary>
         /// Executes a Swap Tile Resources command
@@ -472,9 +472,9 @@ namespace Catan3.Shared.Services
         {
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
-                
+
             await _connection.InvokeAsync("ExecuteSwapTileResources", _gameId, _playerId, message);
-            
+
             return new CommandResult
             {
                 CommandId = Guid.NewGuid().ToString(),
@@ -483,7 +483,7 @@ namespace Catan3.Shared.Services
                 Timestamp = DateTime.UtcNow
             };
         }
-        
+
 
         /// <summary>
         /// Loads a GameModel directly via REST API - primarily for testing purposes
@@ -494,71 +494,71 @@ namespace Catan3.Shared.Services
             {
                 // Serialize GameModel to JSON string to avoid ASP.NET validation issues
                 var gameModelJson = JsonSerializer.Serialize(gameModel, JsonHelper.StandardOptions);
-                
+
                 // Create LoadGameModelMessage with JSON string
                 var loadGameModelMessage = new LoadGameModelMessage(gameModelJson);
-                
+
                 // Use REST API to load the game
                 var response = await _httpClient.PostAsJsonAsync("/api/game/loadmodel", loadGameModelMessage);
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    return new CommandResult 
-                    { 
-                        Success = false, 
+                    return new CommandResult
+                    {
+                        Success = false,
                         Message = $"Failed to load GameModel via REST: {response.StatusCode}. {errorContent}",
                         Timestamp = DateTime.UtcNow
                     };
                 }
-                
+
                 // Parse response to get gameId
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var responseJson = JsonDocument.Parse(responseContent);
-                
+
                 if (!responseJson.RootElement.TryGetProperty("gameId", out var gameIdElement))
                 {
-                    return new CommandResult 
-                    { 
-                        Success = false, 
+                    return new CommandResult
+                    {
+                        Success = false,
                         Message = "LoadGameModel response missing gameId",
                         Timestamp = DateTime.UtcNow
                     };
                 }
-                
+
                 var actualGameId = gameIdElement.GetString();
                 if (string.IsNullOrEmpty(actualGameId))
                 {
-                    return new CommandResult 
-                    { 
-                        Success = false, 
+                    return new CommandResult
+                    {
+                        Success = false,
                         Message = "LoadGameModel returned null/empty gameId",
                         Timestamp = DateTime.UtcNow
                     };
                 }
-                
+
                 // Update our internal gameId and join the game via SignalR
                 _gameId = actualGameId;
                 await JoinGameAsync(actualGameId);
-                
-                return new CommandResult 
-                { 
-                    Success = true, 
+
+                return new CommandResult
+                {
+                    Success = true,
                     Message = $"GameModel loaded successfully with GameId: {actualGameId}",
                     Timestamp = DateTime.UtcNow
                 };
             }
             catch (Exception ex)
             {
-                return new CommandResult 
-                { 
-                    Success = false, 
+                return new CommandResult
+                {
+                    Success = false,
                     Message = $"Error loading GameModel: {ex.Message}",
                     Timestamp = DateTime.UtcNow
                 };
             }
         }
-        
+
         private string ExtractGameIdFromMessage(string message)
         {
             // Message format: "GameModel loaded successfully with GameId: a4066571-5ddc-4321-b68a-2920b8e9d53d"
@@ -595,7 +595,7 @@ namespace Catan3.Shared.Services
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
-            return JsonHelper.Deserialize<GameInfo>(responseJson) 
+            return JsonHelper.Deserialize<GameInfo>(responseJson)
                 ?? throw new InvalidOperationException("Failed to deserialize CreateGame response");
         }
 
@@ -655,7 +655,7 @@ namespace Catan3.Shared.Services
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
-            return JsonHelper.Deserialize<GameInfo>(responseJson) 
+            return JsonHelper.Deserialize<GameInfo>(responseJson)
                 ?? throw new InvalidOperationException("Failed to deserialize GetGame response");
         }
 
@@ -767,7 +767,7 @@ namespace Catan3.Shared.Services
                 {
                     var remainingTime = endTime - DateTime.UtcNow;
                     var waitTime = remainingTime > TimeSpan.FromSeconds(5) ? TimeSpan.FromSeconds(5) : remainingTime;
-                    
+
                     try
                     {
                         var result = await stateReachedTcs.Task.WaitAsync(waitTime);
@@ -841,13 +841,13 @@ namespace Catan3.Shared.Services
             _connection.On<GameModel>("GameStateUpdated", async gameModel =>
             {
                 LogEvent("CLIENT_RECEIVED", "Received GameStateUpdated message");
-                
+
                 GameModel = gameModel;
-                
+
                 // Trace the update with gameId and playerId
                 var gameState = gameModel?.GameState.ToString() ?? "null";
                 LogEvent("GAME_STATE_UPDATED", $"Received GameState: {gameState}");
-                
+
                 if (gameModel != null)
                 {
                     LogEvent("CLIENT_INVOKING", "Invoking GameStateUpdated event");
@@ -858,7 +858,7 @@ namespace Catan3.Shared.Services
                 {
                     LogEvent("CLIENT_NULL", "Received null gameModel");
                 }
-                
+
                 await Task.CompletedTask; // Make it properly async
             });
 
@@ -875,7 +875,7 @@ namespace Catan3.Shared.Services
 
                 // Complete the specific pending command that matches this commandId
                 TaskCompletionSource<CommandResult>? pendingCommand = null;
-                
+
                 lock (_commandLock)
                 {
                     if (_pendingCommands.TryGetValue(commandId, out pendingCommand))
@@ -883,13 +883,13 @@ namespace Catan3.Shared.Services
                         _pendingCommands.Remove(commandId);
                     }
                 }
-                
+
                 // Complete command and invoke events outside of lock to prevent deadlocks
                 if (pendingCommand != null)
                 {
                     pendingCommand.TrySetResult(result);
                 }
-                
+
                 try
                 {
                     CommandCompleted?.Invoke(commandId, success, message);
@@ -913,7 +913,7 @@ namespace Catan3.Shared.Services
 
                 // Complete the specific pending command that matches this commandId with failure
                 TaskCompletionSource<CommandResult>? pendingCommand = null;
-                
+
                 lock (_commandLock)
                 {
                     if (_pendingCommands.TryGetValue(commandId, out pendingCommand))
@@ -921,13 +921,13 @@ namespace Catan3.Shared.Services
                         _pendingCommands.Remove(commandId);
                     }
                 }
-                
+
                 // Complete command and invoke events outside of lock to prevent deadlocks
                 if (pendingCommand != null)
                 {
                     pendingCommand.TrySetResult(result);
                 }
-                
+
                 try
                 {
                     CommandFailed?.Invoke(commandId, error);
@@ -1001,7 +1001,7 @@ namespace Catan3.Shared.Services
                 await _connection.StopAsync();
             }
             await _connection.DisposeAsync();
-            
+
             // Dispose HttpClient to properly close TCP connections and release resources
             _httpClient.Dispose();
         }

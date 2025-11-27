@@ -20,10 +20,12 @@ namespace Catan3.Shared.Models
     {
         Highlighted,
         Hidden,
-        Stars, 
+        Stars,
         Normal
     }
-    public enum GameType { Regular, Expansion, Unset,
+    public enum GameType
+    {
+        Regular, Expansion, Unset,
         SavedGame
     }
     public enum RoadState { Unowned, Road, Ship, Buildable };
@@ -96,8 +98,8 @@ namespace Catan3.Shared.Models
         GameOver
     };
     public enum GamePhase { Starting, PickingBoard, PickingResources, Rolling, Purchase, ActionRequired, Unspecified }
-    public enum SpecialDice { Trade=0, Politics=1, Science=2, Pirate=3, None=-1 };
-    public enum ValidCatanRoll { Two=2, Three=3, Four=4, Five=5, Six=6, Seven=7, Eight=8, Nine=9, Ten=10, Eleven=11, Twelve=12, None=-1 };
+    public enum SpecialDice { Trade = 0, Politics = 1, Science = 2, Pirate = 3, None = -1 };
+    public enum ValidCatanRoll { Two = 2, Three = 3, Four = 4, Five = 5, Six = 6, Seven = 7, Eight = 8, Nine = 9, Ten = 10, Eleven = 11, Twelve = 12, None = -1 };
     public enum Entitlement
     {
         [Description("Undefined")]
@@ -152,7 +154,7 @@ namespace Catan3.Shared.Models
     }
 
     public enum ErrorLevel { Information, Protection, Critical }
-    public enum LocalPersistActions { Save, SaveAs, Open}
+    public enum LocalPersistActions { Save, SaveAs, Open }
 
     // Hex positioning enums
     public enum HexPosition

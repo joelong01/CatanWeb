@@ -20,10 +20,10 @@ namespace Catan3.GameService.Services
         {
             // Convert our GameTraceLevel to Microsoft.Extensions.Logging.LogLevel
             var msLogLevel = ConvertLogLevel(logLevel);
-            
+
             // Format message with indentation if specified
-            var formattedMessage = indentLevel > 0 
-                ? new string(' ', indentLevel * 2) + message 
+            var formattedMessage = indentLevel > 0
+                ? new string(' ', indentLevel * 2) + message
                 : message;
 
             // Add caller information for trace/debug levels

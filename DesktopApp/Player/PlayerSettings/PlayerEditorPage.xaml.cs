@@ -17,23 +17,23 @@ namespace Catan3.Player
             {
                 page.DataContext = viewModel;
             }
-         
+
         }
 
         public PlayerSettingsViewModel ViewModel
         {
-            get => ( PlayerSettingsViewModel )GetValue(ViewModelProperty);
+            get => (PlayerSettingsViewModel)GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
         public PlayerEditorPage()
         {
             this.InitializeComponent();
-           
+
         }
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             PlayerEditorWindow.EditorWindow?.Close();
         }
-        
+
     }
 }

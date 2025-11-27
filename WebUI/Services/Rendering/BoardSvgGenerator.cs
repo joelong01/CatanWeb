@@ -1,8 +1,9 @@
 using System.Text;
 using Catan3.Shared.Extensions;
 using Catan3.Shared.Models;
-using Catan3.Shared.ViewData;
+using Catan3.Shared.Profiles;
 using Catan3.Shared.Utility;
+using Catan3.WebUI.Models;
 
 namespace Catan3.WebUI.Services.Rendering;
 
@@ -19,17 +20,21 @@ public static class BoardSvgGenerator
     /// Generates complete SVG markup for the game board.
     /// </summary>
     /// <param name="gameModel">The game model containing all board state.</param>
-    /// <param name="playerData">Dictionary of player profile data keyed by player ID.</param>
+    /// <param name="players">List of player view models (already in game order).</param>
     /// <param name="shownStars">Star threshold for building visibility (0-14).</param>
     /// <param name="dimmedTiles">Set of tile keys that should be dimmed.</param>
     /// <returns>Complete SVG markup string.</returns>
     public static string GenerateSvg(
         this GameModel gameModel,
-        IReadOnlyDictionary<string, PlayerProfile> playerData,
+        IReadOnlyList<PlayerViewModel> players,
         int shownStars = 0,
         HashSet<HexCoordinates>? dimmedTiles = null)
     {
         dimmedTiles ??= new HashSet<HexCoordinates>();
+
+        // Convert player list to dictionary for efficient lookup
+        var playerLookup = players.ToDictionary(p => p.Id);
+
         var sb = new StringBuilder();
 
         // Calculate viewBox bounds
@@ -52,7 +57,7 @@ public static class BoardSvgGenerator
         GenerateCherryPattern(sb);  // Cherry wood border texture
         GenerateTilePatterns(sb);
         GenerateHarborPatterns(sb);
-        GeneratePlayerGradients(sb, playerData);
+        GeneratePlayerGradients(sb, playerLookup);
         sb.AppendLine("  </defs>");
 
         // CSS styles for animations and states
@@ -76,19 +81,19 @@ public static class BoardSvgGenerator
 
         // Render roads (below buildings for proper z-order)
         var currentPlayer = gameModel.CurrentPlayer();
-        var currentPlayerData = playerData.TryGetValue(currentPlayer.Id, out var cpd) ? cpd : null;
+        var currentPlayerViewModel = playerLookup.TryGetValue(currentPlayer.Id, out var cpvm) ? cpvm : null;
 
         foreach (var road in gameModel.Roads)
         {
             // Owned roads use owner colors, non-owned roads use current player colors (matches Desktop RoadViewModel)
-            PlayerProfile? player;
-            if (road.OwnerId != null && playerData.TryGetValue(road.OwnerId, out var ownerData))
+            PlayerViewModel? player;
+            if (road.OwnerId != null && playerLookup.TryGetValue(road.OwnerId, out var ownerViewModel))
             {
-                player = ownerData;  // Owned road - use owner's colors
+                player = ownerViewModel;  // Owned road - use owner's colors
             }
             else
             {
-                player = currentPlayerData;  // Non-owned road (buildable, etc) - use current player's colors
+                player = currentPlayerViewModel;  // Non-owned road (buildable, etc) - use current player's colors
             }
 
             // Calculate opacity based on road state (matches Desktop RoadViewModel.Opacity)
@@ -107,7 +112,7 @@ public static class BoardSvgGenerator
         int buildingIndex = 1;  // Build index counter for highlighted buildings (matches Desktop logic)
         foreach (var building in gameModel.Buildings)
         {
-            var player = playerData.TryGetValue(building.OwnerId ?? "", out var pd) ? pd : null;
+            var player = playerLookup.TryGetValue(building.OwnerId ?? "", out var playerViewModel) ? playerViewModel : null;
 
             // Calculate stars using extension methods (sum of pips from adjacent tiles)
             var stars = gameModel.TilesForBuildings(building.BuildingKey).Stars();
@@ -300,14 +305,14 @@ public static class BoardSvgGenerator
     /// <summary>
     /// Generates linear gradients for player backgrounds.
     /// </summary>
-    private static void GeneratePlayerGradients(StringBuilder sb, IReadOnlyDictionary<string, PlayerProfile> playerData)
+    private static void GeneratePlayerGradients(StringBuilder sb, IReadOnlyDictionary<string, PlayerViewModel> playerLookup)
     {
-        foreach (var (playerId, player) in playerData)
+        foreach (var (playerId, player) in playerLookup)
         {
             var gradientId = $"gradient-{playerId}";
             sb.AppendLine($@"    <linearGradient id=""{gradientId}"" x1=""0%"" y1=""0%"" x2=""100%"" y2=""100%"">");
-            sb.AppendLine($@"      <stop offset=""0%"" style=""stop-color:{player.PrimaryBackgroundColor};stop-opacity:1"" />");
-            sb.AppendLine($@"      <stop offset=""100%"" style=""stop-color:{player.SecondaryBackgroundColor};stop-opacity:1"" />");
+            sb.AppendLine($@"      <stop offset=""0%"" style=""stop-color:{player.Colors.Primary};stop-opacity:1"" />");
+            sb.AppendLine($@"      <stop offset=""100%"" style=""stop-color:{player.Colors.Secondary};stop-opacity:1"" />");
             sb.AppendLine("    </linearGradient>");
         }
     }

@@ -51,7 +51,7 @@ namespace Catan3.Settings
             {
                 // Check for service unavailability warning
                 var serviceWarning = ViewModel.GetServiceUnavailabilityWarning();
-                
+
                 if (!string.IsNullOrEmpty(serviceWarning))
                 {
                     // Show warning but allow proceeding with local-only gameplay
@@ -76,7 +76,7 @@ namespace Catan3.Settings
 
                 // Save settings to storage and environment variables
                 ViewModel.SaveSettings();
-                
+
                 // Close the settings page
                 await CloseSettingsPage();
             }
@@ -115,7 +115,7 @@ namespace Catan3.Settings
                     return;
                 }
             }
-            
+
             await CloseSettingsPage();
         }
 
@@ -160,10 +160,10 @@ namespace Catan3.Settings
         private async System.Threading.Tasks.Task CloseSettingsPage()
         {
             SlideOutStoryboard.Begin();
-            
+
             // Wait for animation to complete before navigating
             await System.Threading.Tasks.Task.Delay(300);
-            
+
             if (Frame.CanGoBack)
             {
                 Frame.GoBack();

@@ -16,10 +16,10 @@ namespace Catan3.Models
         [RelayCommand]
         public void Shuffle()
         {
-           
+
             Messenger.Send(new ShuffleMessage());
         }
-        
+
         [RelayCommand]
         public void Undo()
         {

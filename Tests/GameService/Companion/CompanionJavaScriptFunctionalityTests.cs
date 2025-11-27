@@ -56,7 +56,7 @@ namespace Tests.GameService.Companion
 
                 var gamesContent = await gamesResponse.Content.ReadAsStringAsync();
                 var gamesData = JsonHelper.Deserialize<JsonElement>(gamesContent);
-                
+
                 Assert.True(gamesData.TryGetProperty("games", out var gamesArray));
                 Assert.True(gamesArray.GetArrayLength() >= 2);
 
@@ -73,7 +73,7 @@ namespace Tests.GameService.Companion
                 Assert.True(selectedGameModel.Players.Count > 0);
 
                 // 4. Verify player information is available for selection
-                Assert.All(selectedGameModel.Players, player => 
+                Assert.All(selectedGameModel.Players, player =>
                 {
                     Assert.NotEmpty(player.Id);
                     Assert.NotEmpty(player.Name);
@@ -94,10 +94,10 @@ namespace Tests.GameService.Companion
 
                 // Verify initial connection and state
                 Assert.Equal(HubConnectionState.Connected, proxy.Connection.State);
-                
+
                 // Wait for the initial game state to be received (PickingBoard state)
                 await proxy.WaitForGameStateAsync(GameState.PickingBoard, TimeSpan.FromSeconds(5));
-                
+
                 // Verify we have the game model
                 Assert.NotNull(proxy.GameModel);
                 Assert.Equal(GameState.PickingBoard, proxy.GameModel.GameState);
@@ -155,7 +155,7 @@ namespace Tests.GameService.Companion
                 var gameModel = JsonHelper.Deserialize<GameModel>(gameStateContent);
 
                 Assert.NotNull(gameModel);
-                
+
                 // Verify companion can determine current player and action availability
                 var currentPlayerId = gameModel.CurrentPlayerId;
                 var actionFlags = gameModel.ActionFlags;
@@ -177,7 +177,7 @@ namespace Tests.GameService.Companion
                 var gameId = await CreateTestGame("Regular", new[] { "Alice", "Bob", "Charlie", "David" });
 
                 var httpClient = _factory.CreateClient();
-                
+
                 // Test PickingBoard state (initial state)
                 var gameStateResponse = await httpClient.GetAsync($"/api/gamestate/{gameId}");
                 var gameStateContent = await gameStateResponse.Content.ReadAsStringAsync();
@@ -188,13 +188,13 @@ namespace Tests.GameService.Companion
 
                 // Verify companion gets action flags for UI state
                 Assert.NotNull(gameModel.ActionFlags);
-                Assert.True(gameModel.ActionFlags.NextEnabled || 
-                           gameModel.ActionFlags.UndoEnabled || 
+                Assert.True(gameModel.ActionFlags.NextEnabled ||
+                           gameModel.ActionFlags.UndoEnabled ||
                            gameModel.ActionFlags.RedoEnabled);
 
                 // Test state progression and UI data
                 var proxy = await CreateGameServiceProxy(gameId, "Alice");
-                
+
                 // Advance to next state
                 var result = await proxy.ExecuteNextAsync();
                 Assert.True(result.Success);
@@ -226,7 +226,7 @@ namespace Tests.GameService.Companion
                     ("Undo", (Func<Task<CommandResult>>)(() => proxy.ExecuteUndoAsync())),
                     ("Next", (Func<Task<CommandResult>>)(() => proxy.ExecuteNextAsync()))
                 };
-                
+
                 foreach (var (actionName, actionFunc) in testActions)
                 {
                     try
@@ -305,7 +305,7 @@ namespace Tests.GameService.Companion
                 {
                     var latest1 = companion1Updates.Last();
                     var latest2 = companion2Updates.Last();
-                    
+
                     Assert.Equal(latest1.GameId, latest2.GameId);
                     Assert.Equal(latest1.GameStateMachineVersion, latest2.GameStateMachineVersion);
                     Assert.Equal(latest1.GameState, latest2.GameState);

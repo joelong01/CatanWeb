@@ -233,10 +233,10 @@ namespace Catan3.GameState
             if (_gameHandlersRegistered)
             {
                 UnregisterGameMessages();
-                
+
                 // Send EndGame message to properly clean up current game state before switching modes
                 Messenger.Send(new EndGame());
-                
+
                 // Dispose existing GameServiceProxy to prevent connection conflicts
                 await DisposeGameServiceProxyAsync();
             }
@@ -249,7 +249,7 @@ namespace Catan3.GameState
 
             // Check ServiceGame setting and register appropriate handlers
             bool useServiceGame = CurrentSettings.GetBoolValue("ServiceGame");
-            
+
             if (useServiceGame)
             {
                 await RegisterServiceGameMessages();
@@ -261,7 +261,7 @@ namespace Catan3.GameState
 
             _gameHandlersRegistered = true;
         }
-        
+
         /// <summary>
         /// Registers message handlers for local GameStateMachine operations.
         /// Each handler delegates to the local GameStateMachine instance.
@@ -292,7 +292,7 @@ namespace Catan3.GameState
             Messenger.Register<SaveAsRequestMessage>(this, HandleSaveAsRequestAsync);
             Messenger.Register<SwapTileResources>(this, HandleSwapTileResourcesAsync);
         }
-        
+
         /// <summary>
         /// Registers message handlers for GameService proxy operations.
         /// Each handler delegates to the GameServiceProxy instance.
@@ -619,16 +619,16 @@ namespace Catan3.GameState
                         // Use helper function for compressed games
                         gameModel = await LoadCompressedGameAsync(filePath);
                         break;
-                        
+
                     case ".catan_test":
                         // Use helper function for test scenarios
                         gameModel = await LoadTestScenarioAsync(filePath);
                         break;
-                        
+
                     default:
                         throw new GameException($"Unsupported file extension: {extension}. Only .catan and .catan_test files are supported.");
                 }
-                
+
                 // Send the loaded game state to the UI
                 Messenger.Send(new UpdateGameModel(gameModel));
             }
@@ -910,11 +910,11 @@ namespace Catan3.GameState
         {
             // Create a fresh GameStateMachine for the loaded game
             _gameStateMachine = CreateGameStateMachineWithDesktopDependencies(filePath);
-            
+
             // Read and convert to Base64 for compatibility with existing code
             var compressedBytes = await System.IO.File.ReadAllBytesAsync(filePath);
             var base64CompressedLog = Convert.ToBase64String(compressedBytes);
-            
+
             // Load the compressed log and return the game state
             return await _gameStateMachine.HandleLoadCompressedLogAsync(base64CompressedLog);
         }
@@ -931,20 +931,20 @@ namespace Catan3.GameState
             var fileContent = await System.IO.File.ReadAllTextAsync(filePath);
             using var document = System.Text.Json.JsonDocument.Parse(fileContent);
             var root = document.RootElement;
-            
+
             if (!root.TryGetProperty("gameModel", out var gameModelElement))
                 throw new GameException(".catan_test file must contain a 'gameModel' property");
-            
+
             var extractedGameModel = JsonHelper.Deserialize<GameModel>(gameModelElement.GetRawText());
             if (extractedGameModel == null)
                 throw new GameException("Failed to deserialize GameModel from .catan_test file");
-            
+
             // Create GameStateMachine with Desktop dependencies
             _gameStateMachine = CreateGameStateMachineWithDesktopDependencies(filePath);
-            
+
             // Initialize the log with the GameModel
             _gameStateMachine.InitializeLoggingState(extractedGameModel);
-            
+
             return extractedGameModel;
         }
 
@@ -958,7 +958,7 @@ namespace Catan3.GameState
         /// <param name="cmb">The calling member name (auto-filled).</param>
         /// <param name="cln">The calling line number (auto-filled).</param>
         /// <param name="cfp">The calling file path (auto-filled).</param>
-        
+
         /// <summary>
         /// Handles UpdateSettings message from the UI to receive runtime settings changes.
         /// Setting the CurrentSettings property will automatically trigger re-registration if ServiceGame changed.

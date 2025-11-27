@@ -53,15 +53,15 @@ namespace Catan3.GameState
                 {
                     // Derive all URLs from the base URL
                     string hubUrl = $"{baseUrl.TrimEnd('/')}/gameHub";
-                    
+
                     _gameServiceProxy = new Catan3.Shared.Services.GameServiceProxy(hubUrl, baseUrl, "desktop-player", null);
-                    
+
                     _gameServiceProxy.GameStateUpdated += OnGameServiceStateUpdated;
                     _gameServiceProxy.CommandCompleted += OnGameServiceCommandCompleted;
                     _gameServiceProxy.CommandFailed += OnGameServiceCommandFailed;
-                    
+
                     await _gameServiceProxy.ConnectAsync();
-                    
+
                     this.TraceMessage($"✅ GameServiceProxy initialized and connected to {baseUrl}");
                 }
                 catch (Exception ex)
@@ -83,10 +83,10 @@ namespace Catan3.GameState
                     _gameServiceProxy.GameStateUpdated -= OnGameServiceStateUpdated;
                     _gameServiceProxy.CommandCompleted -= OnGameServiceCommandCompleted;
                     _gameServiceProxy.CommandFailed -= OnGameServiceCommandFailed;
-                    
+
                     await _gameServiceProxy.DisposeAsync();
                     _gameServiceProxy = null;
-                    
+
                     this.TraceMessage("✅ GameServiceProxy disposed");
                 }
                 catch (Exception ex)
@@ -318,7 +318,7 @@ namespace Catan3.GameState
             {
                 var playerNames = message.PlayerIds.ToList();
                 var gameInfo = await _gameServiceProxy.CreateGameAsync(message.GameType, false, playerNames);
-                
+
                 // Connect to the created game
                 await _gameServiceProxy.JoinGameAsync(gameInfo.GameId);
                 // Result comes via GameStateUpdated event
@@ -346,7 +346,7 @@ namespace Catan3.GameState
             try
             {
                 await _gameServiceProxy.ConnectAsync();
-                
+
                 // Load the GameModel from the local file first
                 var filePath = message.LocalFile;
                 if (!System.IO.File.Exists(filePath))
@@ -370,7 +370,7 @@ namespace Catan3.GameState
                         SendErrorMessage($"Unsupported file extension: {extension}. Only .catan and .catan_test files are supported.", ErrorLevel.Critical);
                         return;
                 }
-                
+
                 // Now load the GameModel via the service
                 var result = await _gameServiceProxy.LoadGameModelAsync(gameModel);
                 if (!result.Success)

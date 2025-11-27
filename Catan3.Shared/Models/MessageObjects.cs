@@ -13,12 +13,12 @@ namespace Catan3.Shared.Models
         /// The type name of the message (e.g., "ShuffleMessage", "NextMessage")
         /// </summary>
         public string MessageType { get; set; } = string.Empty;
-        
+
         /// <summary>
         /// The MVVM message serialized as JSON string using JsonHelper.StandardOptions
         /// </summary>
         public string MessageJson { get; set; } = string.Empty;
-        
+
         /// <summary>
         /// Creates a SignalR message wrapper from an MVVM message object
         /// </summary>
@@ -30,7 +30,7 @@ namespace Catan3.Shared.Models
                 MessageJson = JsonHelper.Serialize(message)
             };
         }
-        
+
         /// <summary>
         /// Deserializes the JSON back to the original message type
         /// </summary>
@@ -38,7 +38,7 @@ namespace Catan3.Shared.Models
         {
             return JsonHelper.Deserialize<T>(MessageJson) ?? throw new InvalidOperationException($"Failed to deserialize {MessageType}");
         }
-        
+
         /// <summary>
         /// Deserializes the JSON back to a specific type
         /// </summary>
@@ -179,15 +179,15 @@ namespace Catan3.Shared.Models
     {
         public string GameModelJson { get; set; } = string.Empty;
         public bool IsTest { get; set; } = false;
-        
+
         public LoadGameModelMessage() { }
-        
+
         public LoadGameModelMessage(string gameModelJson, bool isTest = false)
         {
             GameModelJson = gameModelJson;
             IsTest = isTest;
         }
-        
+
         public override string ToString() => $"LoadGameModelMessage: {GameModelJson.Length} characters";
     }
 

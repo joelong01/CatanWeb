@@ -79,7 +79,7 @@ namespace Catan3.Models
         public RoadViewModel(RoadModel road, BoardVisualLayout layout)
         {
             Road = road ?? throw new ArgumentNullException(nameof(road), "road cannot be null"); ;
-      
+
             IsActive = true;
             Messenger.Register<CurrentPlayerChanged>(this, (recipient, message) =>
             {

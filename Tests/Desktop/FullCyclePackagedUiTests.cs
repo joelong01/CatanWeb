@@ -239,7 +239,7 @@ namespace Tests.DesktopApp.UI
                 using var stream = Catan3.Shared.TestData.TestDataLoader.GetTestFileStream(testFileName);
                 using var reader = new System.IO.StreamReader(stream);
                 var json = reader.ReadToEnd();
-                
+
                 var document = System.Text.Json.JsonDocument.Parse(json);
                 var root = document.RootElement;
 
@@ -265,7 +265,7 @@ namespace Tests.DesktopApp.UI
                     InitialGameModel = gameModel,
                     RecordedActions = actions
                 };
-                
+
                 this.TraceMessage($"Loaded scenario with {sharedScenario.RecordedActions.Length} actions");
             }
             catch (Exception ex)
@@ -629,12 +629,12 @@ namespace Tests.DesktopApp.UI
             // Extract the test file from the Shared assembly embedded resources
             var tempPath = Path.Combine(Path.GetTempPath(), "CatanTests", testFileName);
             Directory.CreateDirectory(Path.GetDirectoryName(tempPath)!);
-            
+
             // Load from shared embedded resources (TestData files: Expansion.catan_test, Regular.catan_test)
             using var stream = Catan3.Shared.TestData.TestDataLoader.GetTestFileStream(testFileName);
             using var fileStream = File.Create(tempPath);
             stream.CopyTo(fileStream);
-            
+
             this.TraceMessage($"Extracted shared test file to: {tempPath}");
             return tempPath;
         }
@@ -994,7 +994,7 @@ namespace Tests.DesktopApp.UI
             for (int i = 0; i < sharedScenario.RecordedActions.Length; i++)
             {
                 var recordedMessage = sharedScenario.RecordedActions[i];
-                
+
                 ValidateMessage(recordedMessage);
                 // Validate that current ExpectedGameHash matches recorded ExpectedGameHash
                 var currentGameHash = GetCurrentGameHash();
@@ -1033,7 +1033,7 @@ namespace Tests.DesktopApp.UI
 
             if (currentGameModel.GameHash != recordedMessage.ExpectedGameHash || currentGameModel.GameState != recordedMessage.ExpectedGameState)
             {
-                string message=($"[Expected GameHash ={recordedMessage.ExpectedGameHash}][Current Hash={currentGameModel.GameHash}][Expected GameState={recordedMessage.ExpectedGameState}] [Current GameState=[{currentGameModel.GameState}]");
+                string message = ($"[Expected GameHash ={recordedMessage.ExpectedGameHash}][Current Hash={currentGameModel.GameHash}][Expected GameState={recordedMessage.ExpectedGameState}] [Current GameState=[{currentGameModel.GameState}]");
                 this.TraceMessage(message);
                 throw new InvalidOperationException($"message");
             }
@@ -1302,8 +1302,8 @@ namespace Tests.DesktopApp.UI
                 throw new InvalidOperationException($"Supplemental player checkbox not found: {automationId}");
 
             // Check if the checkbox is already in the correct state
-            bool isChecked = checkbox.Patterns.Toggle.IsSupported ? 
-                checkbox.Patterns.Toggle.Pattern.ToggleState == ToggleState.On : 
+            bool isChecked = checkbox.Patterns.Toggle.IsSupported ?
+                checkbox.Patterns.Toggle.Pattern.ToggleState == ToggleState.On :
                 false;
 
             if (isChecked != supplemental.Participating)
@@ -1320,7 +1320,7 @@ namespace Tests.DesktopApp.UI
                     checkbox.Click();
                     this.TraceMessage($"Clicked checkbox (no Toggle pattern) for {supplemental.PlayerId}");
                 }
-                
+
                 // Wait for XAML bindings to update after checkbox click
                 ShortWait(_uiHelper!);
             }

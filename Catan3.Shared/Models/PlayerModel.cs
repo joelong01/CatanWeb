@@ -180,7 +180,7 @@ namespace Catan3.Shared.Models
         private static string ExtractNameFromId(string id)
         {
             if (string.IsNullOrEmpty(id)) return "Unknown";
-            
+
             // Desktop app pattern: "Joe-001" -> "Joe"
             if (id.Contains('-'))
             {
@@ -190,12 +190,12 @@ namespace Catan3.Shared.Models
                     return parts[0];
                 }
             }
-            
+
             return id;
         }
     }
 
-   
 
-   
+
+
 }

@@ -34,18 +34,18 @@ namespace Catan3.Controls
         public static readonly DependencyProperty GameViewModelProperty = DependencyProperty.Register("GameViewModel", typeof(GameViewModel), typeof(GameBoardCtrl), new PropertyMetadata(null, GameViewModelChanged));
         public GameViewModel? GameViewModel
         {
-            get => ( GameViewModel )GetValue(GameViewModelProperty);
+            get => (GameViewModel)GetValue(GameViewModelProperty);
             set => SetValue(GameViewModelProperty, value);
         }
         private static void GameViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as GameBoardCtrl;
-            depPropClass?.SetGameViewModel(( GameViewModel )e.OldValue, ( GameViewModel )e.NewValue);
+            depPropClass?.SetGameViewModel((GameViewModel)e.OldValue, (GameViewModel)e.NewValue);
         }
         private void SetGameViewModel(GameViewModel? oldValue, GameViewModel? newValue)
         {
             if (newValue is null) return; // happens when we force binding in Shuffle
-          //  this.TraceMessage($"GameViewModel changed first Tile={newValue.Tiles[0]}");
+                                          //  this.TraceMessage($"GameViewModel changed first Tile={newValue.Tiles[0]}");
             if (oldValue is not null)
             {
                 oldValue.PropertyChanged -= GameViewModel_PropertyChanged;
@@ -57,7 +57,7 @@ namespace Catan3.Controls
                 {
                     oldValue.RobberViewModel.RobberModel.PropertyChanged -= RobberModel_PropertyChanged;
                     oldValue.RobberViewModel.PropertyChanged -= RobberViewModel_PropertyChanged;
-                   
+
                 }
             }
             if (newValue is not null)
@@ -72,7 +72,7 @@ namespace Catan3.Controls
                     newValue.RobberViewModel.RobberModel.PropertyChanged += RobberModel_PropertyChanged;
                     newValue.RobberViewModel.PropertyChanged += RobberViewModel_PropertyChanged;
                 }
-              
+
             }
             UpdateRobberTileLocation();
             //
@@ -86,11 +86,11 @@ namespace Catan3.Controls
             //  we use Binding in some places where it is convenient and x:Bind in others. Binding needs data context, so set it here
             this.DataContext = newValue;
         }
-    
+
         private void RobberModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-           
-            if (e.PropertyName == nameof(GameViewModel.RobberViewModel.RobberModel.Coordinates) )
+
+            if (e.PropertyName == nameof(GameViewModel.RobberViewModel.RobberModel.Coordinates))
             {
                 UpdateRobberTileLocation();
             }
@@ -98,7 +98,7 @@ namespace Catan3.Controls
         private void RobberViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (GameViewModel is null) return;
-         //   this.TraceMessage($"robber changed: {e.PropertyName}");
+            //   this.TraceMessage($"robber changed: {e.PropertyName}");
             if (e.PropertyName == nameof(GameViewModel.RobberViewModel.RobberModel))
             {
                 GameViewModel.RobberViewModel.RobberModel.PropertyChanged += RobberModel_PropertyChanged;
@@ -122,14 +122,14 @@ namespace Catan3.Controls
             if (this.Resources["MoveRobberAnimation"] is Storyboard storyboard && GameViewModel is not null)
             {
                 Debug.Assert(GameViewModel.RobberViewModel.RobberModel is not null);
-             //   this.TraceMessage($"Moving Robber to {GameViewModel.RobberViewModel.RobberModel.Coordinates}");
+                //   this.TraceMessage($"Moving Robber to {GameViewModel.RobberViewModel.RobberModel.Coordinates}");
                 // Assuming the first two children are the X and Y animations
                 if (storyboard.Children[0] is DoubleAnimation animationX && storyboard.Children[1] is DoubleAnimation animationY)
                 {
                     if (VB_Robber.ActualWidth > 0 && VB_Robber.ActualHeight > 0 && GameViewModel.BoardInfo is not null && GameViewModel.RobberViewModel.RobberModel is not null)
                     {
                         double x = GameViewModel.BoardInfo.Layout.Left(GameViewModel.RobberViewModel.RobberModel.Coordinates) + GameViewModel.BoardInfo.Layout.OuterHexSize - VB_Robber.ActualWidth / 2.0;
-                        double y =  GameViewModel.BoardInfo.Layout.Top(GameViewModel.RobberViewModel.RobberModel.Coordinates) + GameViewModel.BoardInfo.Layout.OuterHexSize - VB_Robber.ActualHeight / 2.0;
+                        double y = GameViewModel.BoardInfo.Layout.Top(GameViewModel.RobberViewModel.RobberModel.Coordinates) + GameViewModel.BoardInfo.Layout.OuterHexSize - VB_Robber.ActualHeight / 2.0;
                         animationX.To = x;
                         animationY.To = y;
                         storyboard.Begin();
@@ -147,7 +147,7 @@ namespace Catan3.Controls
         private double RobberHeight(double hexSize)
         {
             if (GameViewModel is null || GameViewModel.BoardInfo is null) return 80;
-            var result =  hexSize * .8;
+            var result = hexSize * .8;
             if (result < 10) return 10;
             return result;
         }
@@ -280,7 +280,7 @@ namespace Catan3.Controls
                 }
                 else
                 {
-                    TraceDrag($"SwapAborted: Missing VM. SourceVM={(sourceTile!=null)} DestVM={(destTile!=null)}");
+                    TraceDrag($"SwapAborted: Missing VM. SourceVM={(sourceTile != null)} DestVM={(destTile != null)}");
                 }
             }
 

@@ -62,7 +62,7 @@ namespace Catan3.Utility
         public static void SetTestMode(bool testMode)
         {
             _testMode = testMode;
-            
+
             if (testMode)
             {
                 // In test mode, all animations are instant
@@ -85,7 +85,7 @@ namespace Catan3.Utility
                 ColorTransition = TimeSpan.FromSeconds(0.3);
                 Delay = TimeSpan.FromSeconds(1.0);
             }
-            
+
             // Update Application Resources
             UpdateApplicationResources();
         }
@@ -98,9 +98,9 @@ namespace Catan3.Utility
         {
             if (Application.Current?.Resources == null)
                 return;
-            
+
             var resources = Application.Current.Resources;
-            
+
             // Update the duration resources
             resources["AnimationFast"] = new Duration(Fast);
             resources["AnimationMedium"] = new Duration(Medium);

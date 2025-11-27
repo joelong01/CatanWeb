@@ -48,14 +48,14 @@ namespace Catan3
             {
                 // Try multiple approaches to get a valid dispatcher queue
                 Microsoft.UI.Dispatching.DispatcherQueue? dispatcherQueue = null;
-                
+
                 // First try current thread dispatcher
                 try
                 {
                     dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
                 }
                 catch { /* Ignore and try next approach */ }
-                
+
                 // If that fails, try MainWindow dispatcher if available
                 if (dispatcherQueue == null && Application.Current is App app && app.MainWindow != null)
                 {
@@ -65,7 +65,7 @@ namespace Catan3
                     }
                     catch { /* Ignore and try next approach */ }
                 }
-                
+
                 if (dispatcherQueue != null)
                 {
                     dispatcherQueue.TryEnqueue(() =>
@@ -86,7 +86,7 @@ namespace Catan3
                 System.Diagnostics.Debug.WriteLine($"DebugWindow.ShowMessage failed: {ex.Message}");
             }
         }
-        
+
         /// <summary>
         /// Internal method to actually show the message - must be called on UI thread
         /// </summary>
@@ -180,7 +180,7 @@ namespace Catan3
                 var dataPackage = new DataPackage();
                 dataPackage.SetText(MessagesTextBox.Text);
                 Clipboard.SetContent(dataPackage);
-                
+
                 // Show a brief confirmation message
                 ShowMessage("📋 Trace content copied to clipboard");
             }
@@ -195,7 +195,7 @@ namespace Catan3
             MessagesTextBox.Text = "";
             // DO NOT reset s_lineNumber - keep counting for the entire game session
         }
-        
+
         /// <summary>
         /// Handles the Truncate Lines checkbox toggle
         /// </summary>
@@ -204,7 +204,7 @@ namespace Catan3
             // Enable/disable the limit text box based on checkbox state
             TruncateLimitBox?.IsEnabled = TruncateCheckBox.IsChecked == true;
         }
-        
+
         /// <summary>
         /// Closes the DebugWindow instance if it exists
         /// </summary>

@@ -22,7 +22,7 @@ namespace Catan3.GameService.Services
             {
                 var fullPath = GetFullPath(relativePath);
                 EnsureDirectoryExists(relativePath);
-                
+
                 await File.WriteAllTextAsync(fullPath, content);
                 return true;
             }
@@ -39,7 +39,7 @@ namespace Catan3.GameService.Services
                 var fullPath = GetFullPath(relativePath);
                 if (!File.Exists(fullPath))
                     return null;
-                    
+
                 return await File.ReadAllTextAsync(fullPath);
             }
             catch

@@ -66,7 +66,7 @@ namespace Catan3.Models
         {
             if (e.AddedItems.Count == 1 && e.AddedItems[0] is not null)
             {
-                SelectedGame = ( GameType )( object )e.AddedItems[0];
+                SelectedGame = (GameType)(object)e.AddedItems[0];
             }
         }
     }

@@ -101,13 +101,13 @@ namespace Catan3
         public static readonly DependencyProperty MainPageModelProperty = DependencyProperty.Register("MainPageModel", typeof(MainPageViewModel), typeof(MainPage), new PropertyMetadata(null, MainPageModelChanged));
         public MainPageViewModel MainPageModel
         {
-            get => ( MainPageViewModel )GetValue(MainPageModelProperty);
+            get => (MainPageViewModel)GetValue(MainPageModelProperty);
             set => SetValue(MainPageModelProperty, value);
         }
         private static void MainPageModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as MainPage;
-            depPropClass?.SetMainPageModel(( MainPageViewModel )e.OldValue, ( MainPageViewModel )e.NewValue);
+            depPropClass?.SetMainPageModel((MainPageViewModel)e.OldValue, (MainPageViewModel)e.NewValue);
         }
         private void SetMainPageModel(MainPageViewModel oldValue, MainPageViewModel newValue)
         {
@@ -256,7 +256,7 @@ namespace Catan3
         private void OnEditPlayers(object sender, RoutedEventArgs e)
         {
             PlayerEditorWindow window = new();
-            PlayerSettingsViewModel viewModel = new(window,  MainWindow.PlayerDatabase);
+            PlayerSettingsViewModel viewModel = new(window, MainWindow.PlayerDatabase);
             window.ViewModel = viewModel;
             window.Activate();
             HideMenu();
@@ -293,7 +293,7 @@ namespace Catan3
             if (string.IsNullOrEmpty(json))
             {
                 this.TraceMessage($"Empty Json for TestCommandModel, direct text: {_txtSmuggledData.Text}");
-                
+
                 return;
             }
             try
@@ -326,9 +326,9 @@ namespace Catan3
                 return;
             }
 
-           
 
-           
+
+
         }
         private void OnToggleTitleBar(object sender, RoutedEventArgs e)
         {
@@ -395,7 +395,7 @@ namespace Catan3
             DebugWindow.Show();
             HideMenu(); // Close the menu after opening debug window
         }
-        
+
         private void OnToggleRecordMode(object sender, RoutedEventArgs e)
         {
             // The toggle is handled via binding to MainPageModel.IsRecordMode
@@ -418,9 +418,9 @@ namespace Catan3
                 {
                     XamlRoot = this.XamlRoot
                 };
-                
+
                 await settingsDialog.ShowAsync();
-                
+
                 // Hide the app bar menu after dialog closes
                 HideMenu();
             }

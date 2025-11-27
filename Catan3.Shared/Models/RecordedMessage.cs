@@ -676,6 +676,6 @@ namespace Catan3.Shared.Models
             => new SwapTileResourcesRecord(gameModel, msg);
     }
 
-    
+
 
 }

@@ -27,14 +27,14 @@ namespace Catan3.Controls
         public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(PlayerSettingsViewModel), typeof(PlayerSettingsCtrl), new PropertyMetadata(null, ViewModelChanged));
         public PlayerSettingsViewModel ViewModel
         {
-            get => ( PlayerSettingsViewModel )GetValue(ViewModelProperty);
+            get => (PlayerSettingsViewModel)GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
         private static void ViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var depPropClass = d as PlayerSettingsCtrl;
 
-            depPropClass?.SetViewModel(( PlayerSettingsViewModel )e.OldValue, ( PlayerSettingsViewModel )e.NewValue);
+            depPropClass?.SetViewModel((PlayerSettingsViewModel)e.OldValue, (PlayerSettingsViewModel)e.NewValue);
         }
         private void SetViewModel(PlayerSettingsViewModel? oldViewModel, PlayerSettingsViewModel? newViewModel)
         {
@@ -134,7 +134,7 @@ namespace Catan3.Controls
         {
             MemoryStream memoryStream = await SaveToStream();
             await ViewModel.SaveCroppedImage(memoryStream);
-          
+
         }
 
 

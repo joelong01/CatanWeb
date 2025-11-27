@@ -5,4 +5,4 @@
 namespace Tests.DesktopApp.UI.ScriptedTestData
 {
     // Type aliases for backward compatibility
-    }
+}

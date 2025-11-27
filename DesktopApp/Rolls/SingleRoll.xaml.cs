@@ -16,19 +16,19 @@ namespace Catan3.Controls
         public static readonly DependencyProperty TurnRollProperty = DependencyProperty.Register("TurnRoll", typeof(TurnRollViewModel), typeof(SingleRoll), new PropertyMetadata(null));
         public TurnRollViewModel TurnRoll
         {
-            get => ( TurnRollViewModel )GetValue(TurnRollProperty);
+            get => (TurnRollViewModel)GetValue(TurnRollProperty);
             set => SetValue(TurnRollProperty, value);
         }
         public static readonly DependencyProperty GameRollsProperty = DependencyProperty.Register("GameRolls", typeof(GameRollViewModel), typeof(SingleRoll), new PropertyMetadata(null));
         public GameRollViewModel GameRolls
         {
-            get => ( GameRollViewModel )GetValue(GameRollsProperty);
+            get => (GameRollViewModel)GetValue(GameRollsProperty);
             set => SetValue(GameRollsProperty, value);
         }
         public static readonly DependencyProperty NumberProperty = DependencyProperty.Register("Number", typeof(int), typeof(SingleRoll), new PropertyMetadata(0, NumberChanged));
         public int Number
         {
-            get => ( int )GetValue(NumberProperty);
+            get => (int)GetValue(NumberProperty);
             set => SetValue(NumberProperty, value);
         }
         private static void NumberChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -57,10 +57,10 @@ namespace Catan3.Controls
         public static readonly DependencyProperty ValidCatanRollProperty = DependencyProperty.Register("ValidCatanRoll", typeof(ValidCatanRoll), typeof(SingleRoll), new PropertyMetadata(ValidCatanRoll.None));
         public ValidCatanRoll ValidCatanRoll
         {
-            get => ( ValidCatanRoll )GetValue(ValidCatanRollProperty);
+            get => (ValidCatanRoll)GetValue(ValidCatanRollProperty);
             set => SetValue(ValidCatanRollProperty, value);
         }
-      
+
         private void OnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             if (sender is Button ctrl)

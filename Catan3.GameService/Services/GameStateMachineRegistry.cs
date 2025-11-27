@@ -40,13 +40,13 @@ namespace Catan3.GameService.Services
         public static List<GameInfo> GetAvailableGames()
         {
             var availableGames = new List<GameInfo>();
-            
+
             foreach (var kvp in _games)
             {
                 var gameId = kvp.Key;
                 var gameStateMachine = kvp.Value;
                 var gameModel = gameStateMachine.GetCurrentState();
-                
+
                 var gameInfo = new GameInfo
                 {
                     GameId = gameId,
@@ -63,10 +63,10 @@ namespace Catan3.GameService.Services
                     GameStateMachineVersion = gameModel.GameStateMachineVersion,
                     Summary = $"{gameModel.Players.Count} players, {gameModel.GameState}"
                 };
-                
+
                 availableGames.Add(gameInfo);
             }
-            
+
             return availableGames;
         }
 

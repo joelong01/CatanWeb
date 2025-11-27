@@ -9,7 +9,7 @@ namespace Catan3.Controls
     public delegate void RoadMouseLeave(RoadViewModel viewModel);
     public partial class RoadCtrl : UserControl
     {
-       
+
         public RoadCtrl()
         {
             InitializeComponent();
@@ -18,7 +18,7 @@ namespace Catan3.Controls
         public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(RoadViewModel), typeof(RoadCtrl), new PropertyMetadata(null, ViewModelChanged));
         public RoadViewModel ViewModel
         {
-            get => ( RoadViewModel )GetValue(ViewModelProperty);
+            get => (RoadViewModel)GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
         private static void ViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -36,7 +36,7 @@ namespace Catan3.Controls
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-      
+
         private void OnPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             ViewModel.MouseClickedCommand.Execute(ViewModel);

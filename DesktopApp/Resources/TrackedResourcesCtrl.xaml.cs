@@ -11,11 +11,11 @@ namespace Catan3.Controls
         {
             this.InitializeComponent();
         }
-       
+
         public static readonly DependencyProperty ResourcesViewModelProperty = DependencyProperty.Register("ResourcesViewModel", typeof(ResourcesViewModel), typeof(TrackedResourcesCtrl), new PropertyMetadata(null, ResourcesViewModelChanged));
         public ResourcesViewModel ResourcesViewModel
         {
-            get => ( ResourcesViewModel )GetValue(ResourcesViewModelProperty);
+            get => (ResourcesViewModel)GetValue(ResourcesViewModelProperty);
             set => SetValue(ResourcesViewModelProperty, value);
         }
         private static void ResourcesViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -28,6 +28,6 @@ namespace Catan3.Controls
         {
             this.DataContext = value;
         }
-      
+
     }
 }

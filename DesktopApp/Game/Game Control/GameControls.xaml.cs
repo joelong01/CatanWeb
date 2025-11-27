@@ -14,7 +14,7 @@ namespace Catan3.Controls
         public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register("ViewModel", typeof(MainPageViewModel), typeof(GameControls), new PropertyMetadata(null, ViewModelChanged));
         public MainPageViewModel ViewModel
         {
-            get => ( MainPageViewModel )GetValue(ViewModelProperty);
+            get => (MainPageViewModel)GetValue(ViewModelProperty);
             set => SetValue(ViewModelProperty, value);
         }
         private static void ViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -25,7 +25,7 @@ namespace Catan3.Controls
         }
         private void SetViewModel(MainPageViewModel value)
         {
-          // this.TraceMessage($"{value.GetHashCode()}");
+            // this.TraceMessage($"{value.GetHashCode()}");
         }
     }
 }

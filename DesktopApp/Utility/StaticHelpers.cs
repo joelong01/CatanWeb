@@ -227,7 +227,7 @@ namespace Catan3
                 // Write to Debug output (for VS Code Debug Window)
                 Debug.WriteLine(fullMessage);
                 // App.Logger.Trace would also write but we're already handling it
-              //  App.Logger.Trace(msLogLevel, fullMessage);
+                //  App.Logger.Trace(msLogLevel, fullMessage);
                 DebugWindow.ShowMessage(fullMessage);
             }
             else

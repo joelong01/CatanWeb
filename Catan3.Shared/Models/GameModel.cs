@@ -126,7 +126,7 @@ namespace Catan3.Shared.Models
         /// </summary>
         public int GameStateMachineVersion { get; } = 1;
 
-       
+
 
         [ObservableProperty]
         public partial RollModel RollModel { get; set; } = new();
@@ -151,7 +151,7 @@ namespace Catan3.Shared.Models
             HouseRules = gameInfo.HouseRules ?? throw new GameException("House Rules cannot be null!");
             CurrentPlayerId = players.Count > 0 ? players[0].Id : string.Empty;
             EntitlementPurchaseModel.AddRange(GetDefaultPurchaseableEntitlements());
-            
+
             // Initialize new fields for Rule 7 compliance
             CreatedTime = DateTime.UtcNow;
             GameStateMachineVersion = 1;
@@ -165,7 +165,7 @@ namespace Catan3.Shared.Models
             GameType = GameType.Regular;
             HasSupplementalBuildPhase = false;
             ResourceRules = new ResourceRules();
-            
+
             // Initialize new fields for Rule 7 compliance
             CreatedTime = DateTime.UtcNow;
             GameStateMachineVersion = 1;
@@ -201,10 +201,10 @@ namespace Catan3.Shared.Models
         {
             var currentIndex = Players.FindIndex(p => p.Id == currentPlayerId);
             if (currentIndex == -1) return Players.FirstOrDefault()?.Id ?? string.Empty;
-            
+
             var nextIndex = (currentIndex + direction) % Players.Count;
             if (nextIndex < 0) nextIndex = Players.Count - 1;
-            
+
             return Players[nextIndex].Id;
         }
 
@@ -223,7 +223,7 @@ namespace Catan3.Shared.Models
 
         public EntitlementPurchaseModel PurchaseModel(Entitlement entitlement)
         {
-            return EntitlementPurchaseModel.FirstOrDefault(e => e.Entitlement == entitlement) 
+            return EntitlementPurchaseModel.FirstOrDefault(e => e.Entitlement == entitlement)
                 ?? new EntitlementPurchaseModel { Entitlement = entitlement, Enabled = false };
         }
 
@@ -247,7 +247,7 @@ namespace Catan3.Shared.Models
             return Catan3.Shared.Extensions.GameModelExtensions.FindAdjacentHarbor(this, buildingKey);
         }
 
-      
+
 
         private List<EntitlementPurchaseModel> GetDefaultPurchaseableEntitlements()
         {
@@ -270,7 +270,7 @@ namespace Catan3.Shared.Models
         public static string ExtractNameFromId(string id)
         {
             if (string.IsNullOrEmpty(id)) return "Unknown";
-            
+
             // Desktop app pattern: "Joe-001" -> "Joe"
             if (id.Contains('-'))
             {
@@ -280,7 +280,7 @@ namespace Catan3.Shared.Models
                     return parts[0];
                 }
             }
-            
+
             return id;
         }
 
@@ -297,7 +297,7 @@ namespace Catan3.Shared.Models
             {
                 return GameName;
             }
-            
+
             // Otherwise use the default format
             var timeStr = CreatedTime.ToString("HH:mm");
             var playersStr = Players.Count > 0 ? Players[0].Name : "Unknown";
@@ -305,7 +305,7 @@ namespace Catan3.Shared.Models
             {
                 playersStr += $" +{Players.Count - 1}";
             }
-            
+
             return $"{GameType} - {playersStr} ({timeStr})";
         }
 
@@ -382,5 +382,5 @@ namespace Catan3.Shared.Models
         }
     }
 
-   
+
 }

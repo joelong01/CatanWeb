@@ -35,7 +35,7 @@ namespace Catan3.Models
             {
                 Layout = DesktopApp.Layout.BoardVisualLayout.Default;
             }
-           
+
             UpdateLayout();
         }
         private void Layout_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -58,10 +58,10 @@ namespace Catan3.Models
         /// <returns></returns>
         private double GetTop(BuildingKey key)
         {
-            var top =  Layout.Top(key.HexCoordinates);
+            var top = Layout.Top(key.HexCoordinates);
             var center = Layout.OuterHexPoints().FlatTopListToDictionary()[key.Position];
             top += center.Y;
-            top -= ( Layout.BuildingSize ) * 0.5;
+            top -= (Layout.BuildingSize) * 0.5;
             return top;
         }
         /// <summary>
@@ -71,8 +71,8 @@ namespace Catan3.Models
         /// <returns></returns>
         private double GetLeft(BuildingKey key)
         {
-            var left =  Layout.Left(key.HexCoordinates) ;
-            var center =  Layout.OuterHexPoints().FlatTopListToDictionary()[key.Position];
+            var left = Layout.Left(key.HexCoordinates);
+            var center = Layout.OuterHexPoints().FlatTopListToDictionary()[key.Position];
             left -= Layout.BuildingSize / 2.0;
             left += center.X;
             return left;
@@ -206,6 +206,6 @@ namespace Catan3.Models
         }
         public override string? ToString() => $"B={Building} VS={VisualState} S={Stars} I={BuildIndex}";
 
-        
+
     }
 }

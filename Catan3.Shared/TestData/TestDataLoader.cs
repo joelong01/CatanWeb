@@ -18,7 +18,7 @@ namespace Catan3.Shared.TestData
         public static async Task<TestScenario> LoadTestScenarioAsync(string testFileName)
         {
             var testDataPath = Path.Combine(GetSolutionRoot(), "Tests", "Data", testFileName);
-            
+
             if (!File.Exists(testDataPath))
             {
                 throw new FileNotFoundException($"Test file '{testFileName}' not found at: {testDataPath}");
@@ -61,7 +61,7 @@ namespace Catan3.Shared.TestData
         public static Stream GetTestFileStream(string testFileName)
         {
             var testDataPath = Path.Combine(GetSolutionRoot(), "Tests", "Data", testFileName);
-            
+
             if (!File.Exists(testDataPath))
             {
                 throw new FileNotFoundException($"Test file '{testFileName}' not found at: {testDataPath}");
@@ -77,7 +77,7 @@ namespace Catan3.Shared.TestData
         public static string[] GetAvailableTestFiles()
         {
             var testDataDir = Path.Combine(GetSolutionRoot(), "Tests", "Data");
-            
+
             if (!Directory.Exists(testDataDir))
             {
                 return Array.Empty<string>();
@@ -98,7 +98,7 @@ namespace Catan3.Shared.TestData
         {
             var assemblyLocation = typeof(TestDataLoader).Assembly.Location;
             var currentDir = Path.GetDirectoryName(assemblyLocation);
-            
+
             while (currentDir != null)
             {
                 if (File.Exists(Path.Combine(currentDir, "Catan.sln")))
@@ -107,7 +107,7 @@ namespace Catan3.Shared.TestData
                 }
                 currentDir = Path.GetDirectoryName(currentDir);
             }
-            
+
             throw new InvalidOperationException("Could not find solution root directory (Catan.sln not found)");
         }
     }

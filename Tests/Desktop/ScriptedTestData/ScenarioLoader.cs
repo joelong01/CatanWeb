@@ -22,51 +22,51 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         {
             if (!File.Exists(testFilePath))
                 throw new FileNotFoundException($"Test file not found: {testFilePath}");
-            
+
             // Validate file extension
             if (!Path.GetExtension(testFilePath).Equals(".catan_test", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException($"Test file must have .catan_test extension: {testFilePath}");
             }
-                
+
             try
             {
                 var jsonContent = File.ReadAllText(testFilePath);
                 using var document = JsonDocument.Parse(jsonContent);
                 var root = document.RootElement;
-                
+
                 // Extract GameModel and ActionStack from the .catan_test file
                 if (!root.TryGetProperty("gameModel", out var gameModel))
                 {
                     throw new InvalidOperationException(".catan_test file must contain a 'gameModel' property");
                 }
-                
+
                 if (!root.TryGetProperty("actionStack", out var actionStack))
                 {
                     throw new InvalidOperationException(".catan_test file must contain an 'actionStack' property");
                 }
-                
+
                 // Deserialize the recorded messages using polymorphic JSON serialization
                 var recordedMessages = JsonSerializer.Deserialize<List<IRecordedMessage>>(actionStack.GetRawText(), JsonHelper.StandardOptions);
                 if (recordedMessages == null)
                 {
                     throw new InvalidOperationException("Failed to deserialize ActionStack");
                 }
-                
+
                 // Store recorded messages directly for replay validation and UI interaction
                 var actions = recordedMessages;
-                
+
                 // Extract game metadata from GameModel
-                var gameType = gameModel.TryGetProperty("gameType", out var gt) 
+                var gameType = gameModel.TryGetProperty("gameType", out var gt)
                     ? gt.GetString() ?? "Regular"
                     : "Regular";
-                    
+
                 var playerCount = 0;
                 if (gameModel.TryGetProperty("players", out var players))
                 {
                     playerCount = players.GetArrayLength();
                 }
-                
+
                 // Create TestScenario from the loaded data
                 var scenario = new TestScenario
                 {
@@ -80,14 +80,14 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                     RecordMode = false,
                     Actions = actions
                 };
-                
+
                 // Validate the loaded scenario
                 var validationErrors = scenario.Validate();
                 if (validationErrors.Any())
                 {
                     throw new InvalidOperationException($"Scenario validation failed:\n{string.Join("\n", validationErrors)}");
                 }
-                
+
                 return scenario;
             }
             catch (JsonException ex)
@@ -95,7 +95,7 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
                 throw new InvalidOperationException($"Failed to parse .catan_test file: {ex.Message}", ex);
             }
         }
-        
+
         /// <summary>
         /// Validate that a .catan_test file exists for the scenario
         /// </summary>
@@ -104,20 +104,20 @@ namespace Tests.DesktopApp.UI.ScriptedTestData
         /// <returns>Full path to the .catan_test file if it exists</returns>
         public static string ValidateTestFile(TestScenario scenario, string baseDirectory)
         {
-            var testFilePath = Path.IsPathRooted(scenario.TestFilePath) 
-                ? scenario.TestFilePath 
+            var testFilePath = Path.IsPathRooted(scenario.TestFilePath)
+                ? scenario.TestFilePath
                 : Path.Combine(baseDirectory, scenario.TestFilePath);
-                
+
             if (!File.Exists(testFilePath))
             {
                 throw new FileNotFoundException($"Test file not found: {testFilePath}");
             }
-            
+
             if (!Path.GetExtension(testFilePath).Equals(".catan_test", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException($"Test file must have .catan_test extension: {testFilePath}");
             }
-            
+
             return testFilePath;
         }
 

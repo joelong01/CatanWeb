@@ -70,7 +70,7 @@ namespace Catan.Services
                     var documentsFolder = await StorageFolder.GetFolderFromPathAsync(documentsPath);
                     StorageFile storageFile = await documentsFolder.CreateFileAsync(path, CreationCollisionOption.OpenIfExists);
                     fullPath = storageFile.Path;
-                    
+
                     //this.TraceMessage($"🗂️ FileHandler: Using corrected Documents path: '{documentsPath}'");
                     //this.TraceMessage($"🗂️ FileHandler: Full file path: '{fullPath}'");
                 }
@@ -206,17 +206,17 @@ namespace Catan.Services
         /// Gets or sets the base directory where files should be saved.
         /// Used as the root for relative paths in save operations.
         /// </summary>
-        public string SaveDirectory 
-        { 
+        public string SaveDirectory
+        {
             get => _saveDirectory;
-            set 
+            set
             {
                 if (string.IsNullOrWhiteSpace(value))
                     throw new ArgumentException("SaveDirectory cannot be null or empty", nameof(value));
-                
+
                 if (!Directory.Exists(value))
                     throw new DirectoryNotFoundException($"SaveDirectory does not exist: {value}");
-                
+
                 _saveDirectory = value;
                 this.TraceMessage($"SaveDirectory set to: {value}");
             }
@@ -299,7 +299,7 @@ namespace Catan.Services
                 // Fail fast if SaveDirectory is not configured
                 if (string.IsNullOrEmpty(_saveDirectory))
                     throw new InvalidOperationException("SaveDirectory must be set before saving files with relative paths");
-                
+
                 location = Path.Combine(_saveDirectory, location);
                 this.TraceMessage($"🗂️ SaveAsync: Using configured SaveDirectory: '{_saveDirectory}'");
                 this.TraceMessage($"🗂️ SaveAsync: Full save path: '{location}'");
@@ -319,7 +319,7 @@ namespace Catan.Services
                     using var fileStream = new FileStream(location, FileMode.Create, FileAccess.Write, FileShare.None);
                     await fileStream.WriteAsync(data.AsMemory(0, data.Length));
                     await fileStream.FlushAsync(); // Ensure all data is written to the file
-                  //  this.TraceMessage($"✅ SaveAsync: Successfully saved file '{location}' on attempt {attempt + 1}");
+                                                   //  this.TraceMessage($"✅ SaveAsync: Successfully saved file '{location}' on attempt {attempt + 1}");
                     return true;
                 }
                 catch (IOException ex) when (attempt < maxRetries - 1)
@@ -378,12 +378,12 @@ namespace Catan.Services
             // Check for custom path override via environment variable
             var customPath = Environment.GetEnvironmentVariable("CATAN_DOCUMENTS_PATH");
             typeof(FileService).TraceMessage($"CATAN_DOCUMENTS_PATH env var: '{customPath}'");
-            
+
             if (!string.IsNullOrEmpty(customPath))
             {
                 // Trim any trailing backslash for consistency
                 customPath = customPath.TrimEnd('\\');
-                
+
                 if (Directory.Exists(customPath))
                 {
                     typeof(FileService).TraceMessage($"Using custom path: '{customPath}'");
@@ -413,7 +413,7 @@ namespace Catan.Services
             {
                 var fullPath = GetFullPath(relativePath);
                 EnsureDirectoryExists(relativePath);
-                
+
                 await File.WriteAllTextAsync(fullPath, content);
                 return true;
             }
@@ -436,7 +436,7 @@ namespace Catan.Services
                 var fullPath = GetFullPath(relativePath);
                 if (!File.Exists(fullPath))
                     return null;
-                    
+
                 return await File.ReadAllTextAsync(fullPath);
             }
             catch (Exception ex)
