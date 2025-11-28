@@ -5,6 +5,7 @@
 @using Catan3.Shared.Profiles
 @using Catan3.WebUI.Services
 @using Catan3.WebUI.Services.Rendering
+@using Catan3.WebUI.Components.Board
 @inject GameServiceConfig Config
 @inject GameCommandProxy CommandProxy
 @inject HttpClient Http
@@ -38,16 +39,16 @@
                 <div class="panel-label" style="color: @GetCurrentPlayerForeground()">Game Controls</div>
                 <div class="panel-content">
                     <div class="control-buttons">
-                        <button class="game-btn" disabled="@(!GameModel.ActionFlags.UndoEnabled)">
-                            <span class="btn-icon">↶</span>
+                        <button class="game-btn" @onclick="OnUndoClick" disabled="@(!GameModel.ActionFlags.UndoEnabled)">
+                            <span class="btn-icon">&#xE10E;</span>
                             <span class="btn-label">Undo</span>
                         </button>
                         <button class="game-btn" @onclick="OnNextClick" disabled="@(!GameModel.ActionFlags.NextEnabled)">
-                            <span class="btn-icon">▶</span>
+                            <span class="btn-icon">&#xE768;</span>
                             <span class="btn-label">Next</span>
                         </button>
-                        <button class="game-btn" disabled="@(!GameModel.ActionFlags.RedoEnabled)">
-                            <span class="btn-icon">↷</span>
+                        <button class="game-btn" @onclick="OnRedoClick" disabled="@(!GameModel.ActionFlags.RedoEnabled)">
+                            <span class="btn-icon">&#xE10D;</span>
                             <span class="btn-label">Redo</span>
                         </button>
                     </div>
@@ -76,7 +77,7 @@
                         @for (int i = 2; i <= 12; i++)
                         {
                             var roll = i;
-                            <div class="roll-button @(roll == 6 || roll == 8 ? "high-prob" : "")">
+                            <div class="roll-button @(roll == 6 || roll == 8 ? "high-prob" : "")" @onclick="() => OnRollClick(roll)">
                                 <span class="roll-number">@roll</span>
                                 <span class="roll-pips">@GetPips(roll)</span>
                             </div>
@@ -91,8 +92,11 @@
                 <div class="panel-section board-measurements" style="@GetCurrentPlayerGradient()">
                     <div class="panel-label" style="color: @GetCurrentPlayerForeground()">Board Measurements</div>
                     <div class="panel-content">
-                        <button class="btn btn-sm" @onclick="OnShuffleClick">Shuffle</button>
-                        <div class="star-counts" style="color: @GetCurrentPlayerForeground()">Star balance info here</div>
+                        <BoardMeasurement GameModel="@GameModel"
+                                          OnShuffle="OnShuffleClick"
+                                          OnUndo="OnUndoClick"
+                                          ShownStars="@ShownStars"
+                                          ShownStarsChanged="HandleShownStarsChanged" />
                     </div>
                 </div>
             }
@@ -132,18 +136,18 @@
                         <div class="player-row @(player.Id == GameModel.CurrentPlayerId ? "current-player" : "") @(player.Id == TestOverridePlayerId ? "test-selected" : "")"
                              @onclick="() => OnPlayerClick(player.Id)"
                              style="cursor: pointer;">
-                            <div class="player-avatar">👤</div>
+                            <div class="player-avatar">&#xE77B;</div>
                             <div class="player-info">
                                 <span class="player-name">@player.Name</span>
                                 <span class="player-score">Score: @player.Score</span>
                             </div>
                             @if (player.Id == GameModel.CurrentPlayerId)
                             {
-                                <span class="current-indicator">◀</span>
+                                <span class="current-indicator">&#xE76B;</span>
                             }
                             @if (player.Id == TestOverridePlayerId)
                             {
-                                <span class="test-indicator">🎨</span>
+                                <span class="test-indicator">&#xE790;</span>
                             }
                         </div>
                     }
@@ -151,10 +155,10 @@
             </div>
 
             <!-- Debug Panel -->
-            <div class="panel-section debug-panel">
-                <details>
+            <div class="panel-section debug-panel @(CommandError != null ? "has-error" : "")">
+                <details open="@(CommandError != null)">
                     <summary style="cursor: pointer;">Debug Info</summary>
-                    <pre style="font-size: 10px; margin: 5px 0;">@GetDebugInfo()</pre>
+                    <pre style="font-size: 10px; margin: 5px 0;">@((MarkupString)GetDebugInfo())</pre>
                 </details>
             </div>
         </div>
@@ -248,6 +252,7 @@
     }
 
     .btn-icon {
+        font-family: 'Segoe MDL2 Assets';
         font-size: 20px;
     }
 
@@ -383,6 +388,7 @@
     }
 
     .player-avatar {
+        font-family: 'Segoe MDL2 Assets';
         font-size: 24px;
     }
 
@@ -402,17 +408,14 @@
         opacity: 0.8;
     }
 
-    .current-indicator {
+    .current-indicator, .test-indicator {
+        font-family: 'Segoe MDL2 Assets';
         font-size: 12px;
     }
 
     .player-row.test-selected {
         border: 2px solid var(--accent-success);
         background: rgba(76, 175, 80, 0.3);
-    }
-
-    .test-indicator {
-        font-size: 12px;
     }
 
     .player-row:hover {
@@ -426,6 +429,17 @@
 
     .debug-panel {
         background: var(--game-bg-secondary) !important;
+        transition: background-color 0.3s ease;
+    }
+
+    .debug-panel.has-error {
+        background: rgba(255, 107, 107, 0.3) !important;
+        animation: flash-error 0.5s ease-in-out 3;
+    }
+
+    @@keyframes flash-error {
+        0%, 100% { background: var(--game-bg-secondary); }
+        50% { background: rgba(255, 107, 107, 0.5); }
     }
 
     .debug-panel summary {
@@ -434,6 +448,11 @@
 
     .debug-panel pre {
         color: var(--text-muted);
+    }
+
+    .debug-panel .error-line {
+        color: #ff6b6b;
+        font-weight: bold;
     }
 
     /* Loading/Error overlays */
@@ -462,6 +481,7 @@
     private bool IsConnecting { get; set; } = true;
     private string? ErrorMessage { get; set; }
     private string? CommandError { get; set; }
+    private int ShownStars { get; set; } = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -534,6 +554,13 @@
         StateHasChanged();
     }
 
+    private async Task HandleShownStarsChanged(int newValue)
+    {
+        ShownStars = newValue;
+        StateHasChanged(); // Trigger re-render with new star threshold
+        await Task.CompletedTask;
+    }
+
     private class PlayersResponse
     {
         public List<PlayerProfile> Players { get; set; } = new();
@@ -591,7 +618,7 @@
         {
             return GameModel.GenerateSvg(
                 GameStateService.Players,
-                shownStars: 0,
+                shownStars: ShownStars,
                 dimmedTiles: null
             );
         }
@@ -606,17 +633,66 @@
         await ConnectToGameAsync();
     }
 
+    private async Task OnUndoClick()
+    {
+        if (_hubConnection?.State == HubConnectionState.Connected && GameModel != null)
+        {
+            try
+            {
+                CommandError = null;
+                await _hubConnection.InvokeAsync("Undo", GameId, GameModel.CurrentPlayerId);
+            }
+            catch (Exception ex)
+            {
+                CommandError = $"Undo failed: {ex.Message}";
+            }
+        }
+    }
+
+    private async Task OnRedoClick()
+    {
+        if (_hubConnection?.State == HubConnectionState.Connected && GameModel != null)
+        {
+            try
+            {
+                CommandError = null;
+                await _hubConnection.InvokeAsync("Redo", GameId, GameModel.CurrentPlayerId);
+            }
+            catch (Exception ex)
+            {
+                CommandError = $"Redo failed: {ex.Message}";
+            }
+        }
+    }
+
     private async Task OnNextClick()
     {
         if (_hubConnection?.State == HubConnectionState.Connected && GameModel != null)
         {
             try
             {
+                CommandError = null;
                 await _hubConnection.InvokeAsync("Next", GameId, GameModel.CurrentPlayerId);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error sending Next: {ex}");
+                CommandError = $"Next failed: {ex.Message}";
+            }
+        }
+    }
+
+    private async Task OnRollClick(int roll)
+    {
+        if (_hubConnection?.State == HubConnectionState.Connected && GameModel != null)
+        {
+            try
+            {
+                CommandError = null;
+                await _hubConnection.InvokeAsync("Roll", GameId, GameModel.CurrentPlayerId, roll);
+            }
+            catch (Exception ex)
+            {
+                CommandError = $"Roll failed: {ex.Message}";
             }
         }
     }
@@ -678,11 +754,18 @@
         var currentId = TestOverridePlayerId ?? GameModel.CurrentPlayerId;
         var hasProfile = PlayerProfiles.ContainsKey(currentId);
 
-        return $"State: {GameModel.GameState}\n" +
+        var debugInfo = $"State: {GameModel.GameState}\n" +
                $"Game Players: {gamePlayerIds}\n" +
                $"Profiles Loaded: {PlayerProfiles.Count} [{profileIds}]\n" +
                $"Current/Override: {currentId}\n" +
                $"Has Profile: {hasProfile}";
+
+        if (!string.IsNullOrEmpty(CommandError))
+        {
+            debugInfo += $"\n<span class=\"error-line\">ERROR: {CommandError}</span>";
+        }
+
+        return debugInfo;
     }
 
     public async ValueTask DisposeAsync()

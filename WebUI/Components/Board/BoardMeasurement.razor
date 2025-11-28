@@ -1,4 +1,5 @@
 @using Catan3.Shared.Models
+@using Catan3.Shared.Extensions
 @using Catan3.WebUI.Components.Resources
 @using Catan3.WebUI.Components.Shared
 
@@ -8,7 +9,7 @@
         @foreach (var resourceType in GetDisplayedResources())
         {
             var count = GetResourceCount(resourceType);
-            <ResourceCard Resource="@resourceType" Count="@count" ServiceUrl="@ServiceUrl" />
+            <ResourceCard Resource="@resourceType" Count="@count" />
         }
     </div>
 
@@ -54,12 +55,6 @@
     /// </summary>
     [Parameter, EditorRequired]
     public GameModel GameModel { get; set; } = null!;
-
-    /// <summary>
-    /// The base URL of the GameService for fetching assets.
-    /// </summary>
-    [Parameter, EditorRequired]
-    public string ServiceUrl { get; set; } = string.Empty;
 
     /// <summary>
     /// Event callback triggered when the shuffle button is clicked.
@@ -113,35 +108,20 @@
     }
 
     /// <summary>
-    /// Calculates the count of tiles with exactly the specified star value.
+    /// Calculates the count of building sites with total adjacent tile stars matching the threshold.
+    /// Mirrors Desktop implementation: GameViewModel.cs:392-395
     /// </summary>
-    /// <param name="threshold">The star threshold to count (10, 11, 12, or 13).</param>
-    /// <returns>Number of tiles with exactly this star value.</returns>
+    /// <param name="threshold">The star threshold to count (typically 10, 11, 12, or 13).</param>
+    /// <returns>Number of buildings whose adjacent tiles sum to exactly this star value.</returns>
     private int GetStarCount(int threshold)
     {
-        return GameModel.Tiles
-            .Count(t => t.ResourceTileType != ResourceType.Desert
-                     && t.ResourceTileType != ResourceType.Sea
-                     && GetTileStars(t) == threshold);
-    }
-
-    /// <summary>
-    /// Calculates the star value for a tile based on its number.
-    /// Star values are based on probability: 6 or 8 = 5 stars, 5 or 9 = 4 stars, etc.
-    /// </summary>
-    /// <param name="tile">The tile to calculate stars for.</param>
-    /// <returns>Star value from 0 to 5.</returns>
-    private int GetTileStars(TileModel tile)
-    {
-        return tile.Number switch
-        {
-            6 or 8 => 5,
-            5 or 9 => 4,
-            4 or 10 => 3,
-            3 or 11 => 2,
-            2 or 12 => 1,
-            _ => 0
-        };
+        return GameModel.Buildings
+            .Count(building =>
+            {
+                var adjacentTiles = GameModel.TilesForBuildings(building.BuildingKey);
+                var totalStars = adjacentTiles.Stars();
+                return totalStars == threshold;
+            });
     }
 
     /// <summary>

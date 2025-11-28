@@ -19,15 +19,9 @@
     public int Count { get; set; }
 
     /// <summary>
-    /// The base URL of the GameService for fetching resource images.
+    /// Constructs the full URL for the resource image from local assets.
     /// </summary>
-    [Parameter, EditorRequired]
-    public string ServiceUrl { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Constructs the full URL for the resource image based on the resource type.
-    /// </summary>
-    /// <returns>Full URL to the resource image asset.</returns>
+    /// <returns>Local path to the resource image asset.</returns>
     private string GetResourceImageUrl()
     {
         var imageName = Resource switch
@@ -39,6 +33,6 @@
             ResourceType.Sheep => "sheep",
             _ => "default"
         };
-        return $"{ServiceUrl}/api/assets/resources/{imageName}.png";
+        return $"/images/resources/{imageName}.png";
     }
 }
