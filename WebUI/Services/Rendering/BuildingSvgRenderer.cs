@@ -43,7 +43,8 @@ public static class BuildingSvgRenderer
     /// <returns>SVG markup string for the building.</returns>
     public static string RenderSvg(
         this BuildingModel building,
-        PlayerViewModel? playerViewModel,
+        PlayerColors? currentPlayerColors,
+        PlayerColors? ownerColors,
         BuildingVisualState visualState,
         int stars = -1,
         int buildIndex = 0)
@@ -54,25 +55,31 @@ public static class BuildingSvgRenderer
         var sb = new StringBuilder();
         var (x, y) = GetVertexPosition(building.BuildingKey);
 
-        // Building group with CSS class for animations
+        // Building group with CSS class for animations and SVG transform for scaling
         var cssClass = visualState == BuildingVisualState.Highlighted ? "building building-highlighted" : "building";
-        sb.AppendLine($@"  <g class=""{cssClass}"" data-player=""{building.OwnerId}"">");
+        var scaleTransform = $"translate({x},{y}) scale(1.1) translate({-x},{-y})";
+        sb.AppendLine($@"  <g class=""{cssClass}"" data-player=""{building.OwnerId}"" transform=""{scaleTransform}"">");
 
         if (visualState == BuildingVisualState.Stars)
         {
-            // Render stars only (no building glyph)
-            RenderStars(sb, stars, x, y);
+            // Render stars with current player's colored circle background
+            RenderStars(sb, building, currentPlayerColors, stars, x, y);
+        }
+        else if (visualState == BuildingVisualState.Highlighted)
+        {
+            // Render building glyph with current player colors (not owner - this is placement phase)
+            RenderBuildingGlyph(sb, building, currentPlayerColors, x, y);
+
+            // Render build index if provided (Highlighted buildings during placement phase)
+            if (buildIndex > 0)
+            {
+                RenderBuildIndex(sb, x, y, buildIndex, currentPlayerColors);
+            }
         }
         else
         {
-            // Render full building with player colors
-            RenderBuildingGlyph(sb, building, playerViewModel, x, y);
-
-            // Render build index if provided
-            if (buildIndex > 0)
-            {
-                RenderBuildIndex(sb, x, y, buildIndex, playerViewModel);
-            }
+            // Normal/owned buildings - use owner colors
+            RenderBuildingGlyph(sb, building, ownerColors, x, y);
         }
 
         sb.AppendLine("  </g>");
@@ -82,21 +89,15 @@ public static class BuildingSvgRenderer
     /// <summary>
     /// Renders the building glyph (settlement or city SVG) with player gradient background.
     /// </summary>
-    private static void RenderBuildingGlyph(StringBuilder sb, BuildingModel building, PlayerViewModel? playerViewModel, double x, double y)
+    private static void RenderBuildingGlyph(StringBuilder sb, BuildingModel building, PlayerColors? ownerColors, double x, double y)
     {
+        ArgumentNullException.ThrowIfNull(ownerColors, nameof(ownerColors));
+
         var radius = BuildingSize / 2;
         var gradientId = $"gradient-{building.OwnerId}";
 
         // Render circular gradient background
-        if (playerViewModel != null)
-        {
-            sb.AppendLine($@"    <circle cx=""{x}"" cy=""{y}"" r=""{radius}"" fill=""url(#{gradientId})"" stroke=""{playerViewModel.Colors.Foreground}"" stroke-width=""2""/>");
-        }
-        else
-        {
-            // Fallback: gray circle if no player data
-            sb.AppendLine($@"    <circle cx=""{x}"" cy=""{y}"" r=""{radius}"" fill=""#cccccc"" stroke=""#333333"" stroke-width=""2""/>");
-        }
+        sb.AppendLine($@"    <circle cx=""{x}"" cy=""{y}"" r=""{radius}"" fill=""url(#{gradientId})"" stroke=""{ownerColors.Foreground}"" stroke-width=""2""/>");
 
         // Render settlement or city SVG inside circle
         var svgFile = building.BuildingState == BuildingState.City ? "city.svg" : "settlement.svg";
@@ -109,25 +110,38 @@ public static class BuildingSvgRenderer
     }
 
     /// <summary>
-    /// Renders stars as numeric count (for Stars visual state).
+    /// Renders stars as numeric count with colored circle background (for Stars visual state).
     /// Matches Desktop BuildingViewModel.BIND_StateGlyph (line 110): glyph = stars.ToString()
+    /// Circle uses player gradient (owner if owned, current player if unowned).
     /// </summary>
-    private static void RenderStars(StringBuilder sb, int stars, double x, double y)
+    private static void RenderStars(StringBuilder sb, BuildingModel building, PlayerColors? currentPlayerColors, int stars, double x, double y)
     {
+        ArgumentNullException.ThrowIfNull(currentPlayerColors, nameof(currentPlayerColors));
+
         if (stars <= 0)
             return;
 
-        // Desktop renders numeric star count, not star symbols
-        sb.AppendLine($@"    <text x=""{x}"" y=""{y}"" text-anchor=""middle"" dominant-baseline=""middle"" font-size=""20"" font-weight=""bold"" fill=""gold"" stroke=""black"" stroke-width=""0.8"">{stars}</text>");
+        var radius = BuildingSize / 2;
+
+        // Stars buildings always use current player's gradient (not owner's)
+        var gradientId = "gradient-current-player";
+
+        // Render circular gradient background with current player colors
+        sb.AppendLine($@"    <circle cx=""{x}"" cy=""{y}"" r=""{radius}"" fill=""url(#{gradientId})"" stroke=""{currentPlayerColors.Foreground}"" stroke-width=""2""/>");
+
+        // Render numeric star count on top of circle
+        sb.AppendLine($@"    <text x=""{x}"" y=""{y}"" text-anchor=""middle"" dominant-baseline=""middle"" font-size=""20"" font-weight=""bold"" fill=""{currentPlayerColors.Foreground}"" stroke=""black"" stroke-width=""0.5"">{stars}</text>");
     }
 
     /// <summary>
     /// Renders build index number inside or near the building.
+    /// Build index only appears during placement phase (Highlighted state), so uses current player colors.
     /// </summary>
-    private static void RenderBuildIndex(StringBuilder sb, double x, double y, int buildIndex, PlayerViewModel? playerViewModel)
+    private static void RenderBuildIndex(StringBuilder sb, double x, double y, int buildIndex, PlayerColors? currentPlayerColors)
     {
-        var textColor = playerViewModel?.Colors.Foreground ?? "#FFFFFF";
-        sb.AppendLine($@"    <text x=""{x}"" y=""{y}"" text-anchor=""middle"" dominant-baseline=""middle"" font-family=""sans-serif"" font-size=""14"" font-weight=""bold"" fill=""{textColor}"" stroke=""black"" stroke-width=""0.5"">{buildIndex}</text>");
+        ArgumentNullException.ThrowIfNull(currentPlayerColors, nameof(currentPlayerColors));
+
+        sb.AppendLine($@"    <text x=""{x}"" y=""{y}"" text-anchor=""middle"" dominant-baseline=""middle"" font-family=""sans-serif"" font-size=""14"" font-weight=""bold"" fill=""{currentPlayerColors.Foreground}"" stroke=""black"" stroke-width=""0.5"">{buildIndex}</text>");
     }
 
     /// <summary>
