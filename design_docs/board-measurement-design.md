@@ -447,6 +447,42 @@ Each component gets a `.razor.css` file:
 
 Blazor automatically scopes these styles to prevent conflicts.
 
+## Call Flow Analysis
+
+**See comprehensive call flow documentation:** [`board-measurement-call-flow.md`](./board-measurement-call-flow.md)
+
+This separate document contains:
+- Complete step-by-step trace of slider movement (0 → 10)
+- Mermaid sequence diagrams for both WebUI and Desktop
+- Side-by-side comparison of architectural approaches
+- Detailed analysis of building visual state logic
+- Performance comparison and optimization notes
+
+### Quick Summary
+
+**WebUI Flow:**
+```
+User moves slider → @oninput event → HandleSliderInput()
+→ ShownStarsChanged.InvokeAsync(10) → Game.HandleShownStarsChanged()
+→ StateHasChanged() → GenerateBoardSvg()
+→ gameModel.GenerateSvg(shownStars: 10)
+→ GetBuildingVisualState() for each building
+→ building.RenderSvg() → SVG markup → DOM update
+```
+
+**Desktop Flow:**
+```
+User moves slider → TwoWay binding → GameViewModel.ShownStars = 10
+→ OnShownStarsChanged(10) → Loop through Buildings collection
+→ Set building.VisualState (Stars or Hidden)
+→ PropertyChanged events → XAML re-evaluates bindings
+→ BIND_StateGlyph() returns glyph → WinUI3 renders
+```
+
+**Key Architectural Difference:**
+- Desktop: Property-based reactivity with granular updates
+- WebUI: Full SVG regeneration with DOM diffing
+
 ## Testing Considerations
 
 ### Component Unit Tests
@@ -459,7 +495,7 @@ public void ResourceCard_DisplaysCorrectCount()
     var cut = RenderComponent<ResourceCard>(parameters => parameters
         .Add(p => p.Resource, ResourceType.Wheat)
         .Add(p => p.Count, 4));
-        
+
     cut.Find(".resource-count").TextContent.Should().Be("4");
 }
 ```
@@ -469,12 +505,14 @@ public void ResourceCard_DisplaysCorrectCount()
 - Verify slider updates building visibility
 - Confirm star counts match Desktop calculations
 - Test shuffle/undo button commands
+- Validate gradient-current-player definition exists
 
 ### E2E Tests
 
 - Navigate through board picking workflow
 - Adjust slider and verify visual changes
 - Complete game start after board selection
+- Test default slider value (should be 13, not 0)
 
 ## Implementation Phases
 
@@ -500,9 +538,9 @@ public void ResourceCard_DisplaysCorrectCount()
 
 1. ✅ `shownStars` parameter already exists in `BoardSvgGenerator.GenerateSvg()`
 2. ✅ `GetBuildingVisualState()` already implemented
-3. Enhance building visual state logic to handle star display (may need updates)
-4. Test building visibility filtering with different ShownStars values
-5. Verify buildings show star counts in PickingBoard state
+3. ✅ Enhance building visual state logic to handle star display (completed)
+4. ✅ Test building visibility filtering with different ShownStars values (completed)
+5. ✅ Verify buildings show star counts in PickingBoard state (completed)
 
 ### Phase 4: Integration with Game.razor
 
@@ -512,6 +550,321 @@ public void ResourceCard_DisplaysCorrectCount()
 4. Connect shuffle command to GameHub SignalR call
 5. Connect undo command to GameHub SignalR call
 6. Test complete workflow: slider → building visibility → shuffle → undo
+
+## Resource Filtering Feature
+
+### Desktop Implementation Reference
+
+**Location:** `DesktopApp/Game/GameView/GameViewModel.cs:634-665` (ExecuteQuery method)
+
+Desktop allows multi-select on resource cards to filter buildings by adjacent tile resources. Buildings are shown if they have ALL selected resources (AND logic).
+
+**Key Features:**
+
+1. **Multi-select GridView** with `SelectionMode="Multiple"`
+2. **Maximum 3 resources** can be selected at once (oldest selection auto-removed)
+3. **AND logic**: Building must have ALL selected resources to be visible
+4. **Empty selection**: Shows all buildings based on star threshold (normal behavior)
+5. **Visual feedback**: Selected cards show checkmark overlay
+
+### Blazor Implementation Approach
+
+#### Component: ResourceCard.razor (Enhanced)
+
+Add selection state and click handling to ResourceCard:
+
+**New Parameters:**
+
+```csharp
+[Parameter]
+public bool IsSelected { get; set; } = false;
+
+[Parameter]
+public EventCallback<ResourceType> OnToggleSelection { get; set; }
+```
+
+**Markup Changes:**
+
+```html
+<div class="resource-card @(IsSelected ? "resource-card-selected" : "")"
+     @onclick="HandleClick"
+     data-testid="resource-card-@Resource.ToString().ToLower()">
+    <div class="resource-image" style="background-image: url('@GetResourceImageUrl()')"></div>
+    <div class="resource-count-badge">@Count</div>
+    @if (IsSelected)
+    {
+        <div class="selection-indicator">
+            <span class="checkmark">&#xE10B;</span> <!-- Segoe Fluent Icons checkmark -->
+        </div>
+    }
+</div>
+
+@code {
+    private async Task HandleClick()
+    {
+        await OnToggleSelection.InvokeAsync(Resource);
+    }
+}
+```
+
+**CSS for Selection State:**
+
+```css
+.resource-card-selected {
+    outline: 3px solid var(--accent-primary);
+    outline-offset: -3px;
+}
+
+.selection-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    background: var(--accent-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.checkmark {
+    font-family: 'Segoe Fluent Icons', var(--icon-font-family);
+    color: white;
+    font-size: 16px;
+}
+```
+
+#### Component: BoardMeasurement.razor (Enhanced)
+
+Track selected resources and expose filter event:
+
+**New State:**
+
+```csharp
+private HashSet<ResourceType> SelectedResources { get; set; } = new();
+```
+
+**New Parameter:**
+
+```csharp
+[Parameter]
+public EventCallback<HashSet<ResourceType>> SelectedResourcesChanged { get; set; }
+```
+
+**Selection Handler:**
+
+```csharp
+private async Task HandleResourceToggle(ResourceType resource)
+{
+    if (SelectedResources.Contains(resource))
+    {
+        SelectedResources.Remove(resource);
+    }
+    else
+    {
+        SelectedResources.Add(resource);
+
+        // Enforce max 3 selections (match Desktop behavior)
+        if (SelectedResources.Count > 3)
+        {
+            // Remove oldest selection (first item in HashSet)
+            var oldest = SelectedResources.First();
+            SelectedResources.Remove(oldest);
+        }
+    }
+
+    await SelectedResourcesChanged.InvokeAsync(SelectedResources);
+}
+```
+
+**Updated Markup:**
+
+```html
+<div class="resource-cards-row">
+    @foreach (var resourceType in GetDisplayedResources())
+    {
+        <ResourceCard
+            Resource="@resourceType"
+            Count="@GameModel.StarCount(resourceType)"
+            IsSelected="@SelectedResources.Contains(resourceType)"
+            OnToggleSelection="@HandleResourceToggle" />
+    }
+</div>
+```
+
+#### Game.razor Integration
+
+Track filter state and pass to SVG generator:
+
+**New State:**
+
+```csharp
+private HashSet<ResourceType> FilteredResources { get; set; } = new();
+```
+
+**Handler:**
+
+```csharp
+private void HandleSelectedResourcesChanged(HashSet<ResourceType> selectedResources)
+{
+    FilteredResources = selectedResources;
+    StateHasChanged(); // Trigger SVG re-render
+}
+```
+
+**Pass to SVG Generator:**
+
+```csharp
+@gameModel.GenerateSvg(
+    players: playersInGameOrder,
+    shownStars: ShownStars,
+    filteredResources: FilteredResources
+)
+```
+
+#### BoardSvgGenerator.cs Updates
+
+Add filtering logic to building visibility:
+
+**Method Signature:**
+
+```csharp
+public static string GenerateSvg(
+    this GameModel gameModel,
+    IReadOnlyList<PlayerViewModel> players,
+    int shownStars = 0,
+    HashSet<HexCoordinates>? dimmedTiles = null,
+    HashSet<ResourceType>? filteredResources = null)  // NEW
+```
+
+**Updated GetBuildingVisualState:**
+
+```csharp
+private static BuildingVisualState GetBuildingVisualState(
+    BuildingModel building,
+    GameModel gameModel,
+    int stars,
+    int shownStars,
+    HashSet<ResourceType>? filteredResources)  // NEW
+{
+    var currentPlayer = gameModel.CurrentPlayer();
+    var hasCityEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.City);
+    var hasSettlementEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.Settlement);
+    var isPickingBoard = gameModel.GameState == GameState.PickingBoard;
+
+    // NEW: Check resource filter (AND logic)
+    if (filteredResources != null && filteredResources.Count > 0 && building.OwnerId == null)
+    {
+        var adjacentTiles = gameModel.TilesForBuildings(building.BuildingKey);
+        var tileResources = adjacentTiles
+            .Select(t => t.ResourceTileType)
+            .Where(rt => rt != ResourceType.Desert && rt != ResourceType.Sea)
+            .ToHashSet();
+
+        // Building must have ALL filtered resources (AND logic)
+        bool hasAllResources = filteredResources.All(resource => tileResources.Contains(resource));
+
+        if (!hasAllResources)
+        {
+            return BuildingVisualState.Hidden;  // Filter out buildings without all resources
+        }
+    }
+
+    // Existing logic continues...
+    return building.BuildingState switch
+    {
+        BuildingState.PossibleSettlement => hasSettlementEntitlement && gameModel.Phase() != GamePhase.PickingResources
+            ? BuildingVisualState.Highlighted
+            : stars >= shownStars && (hasSettlementEntitlement || isPickingBoard)
+                ? BuildingVisualState.Stars
+                : BuildingVisualState.Hidden,
+        // ... rest of switch statement
+    };
+}
+```
+
+### Filter Logic Explanation
+
+**Desktop Behavior (GameViewModel.cs:634-665):**
+
+```csharp
+// Get resources from adjacent tiles
+var tiles = TilesForBuildings(building.BuildingKey);
+List<ResourceType> tileResources = tiles.Select(tile => tile.ResourceTileType).ToList();
+
+// Check if building has ALL selected resources
+bool containsAllResources = resources.All(resource => tileResources.Contains(resource));
+
+if (containsAllResources)
+{
+    building.VisualState = BuildingVisualState.Stars;
+}
+else
+{
+    building.VisualState = BuildingVisualState.Hidden;
+}
+```
+
+**WebUI Equivalent:**
+
+Same logic, applied in `GetBuildingVisualState()` before normal star threshold checks. If filter is active and building doesn't have all resources, return Hidden immediately.
+
+### User Experience Flow
+
+1. **User clicks Wheat card** → Wheat selected → Buildings with Wheat (and stars >= threshold) shown
+2. **User clicks Wood card** → Wheat + Wood selected → Only buildings with BOTH Wheat AND Wood shown
+3. **User clicks Brick card** → Wheat + Wood + Brick selected → Only buildings with all 3 resources shown
+4. **User clicks Ore card (4th)** → Wheat removed (oldest), now Wood + Brick + Ore selected
+5. **User clicks Wheat again (deselect)** → Wheat removed → Filter cleared, all buildings by star threshold shown
+6. **Slider still active** → Buildings must meet BOTH resource filter AND star threshold
+
+### Testing Strategy
+
+**Unit Tests:**
+
+```csharp
+[Fact]
+public void ResourceCard_ShowsCheckmarkWhenSelected()
+{
+    var cut = RenderComponent<ResourceCard>(parameters => parameters
+        .Add(p => p.Resource, ResourceType.Wheat)
+        .Add(p => p.IsSelected, true));
+
+    cut.Find(".selection-indicator").Should().NotBeNull();
+}
+
+[Fact]
+public void BoardMeasurement_EnforcesMaxThreeSelections()
+{
+    // Select 4 resources, verify oldest is removed
+}
+```
+
+**Integration Tests:**
+
+- Select resource → verify filtered buildings shown
+- Select multiple resources → verify AND logic
+- Deselect resource → verify filter updated
+- Select 4 resources → verify oldest removed
+
+### Implementation Phases
+
+1. **Enhance ResourceCard component** with selection state and click handler
+2. **Update BoardMeasurement** to track selections and enforce max-3 rule
+3. **Add CSS** for selected state visual feedback
+4. **Update Game.razor** to handle SelectedResourcesChanged event
+5. **Extend BoardSvgGenerator** to accept filteredResources parameter
+6. **Update GetBuildingVisualState** to apply resource filter with AND logic
+7. **Test** all scenarios (single, multiple, deselect, max-3 enforcement)
+
+### CSS Visual Design
+
+Selected resource cards should have:
+- **Outline**: 3px solid accent color (blue/purple)
+- **Checkmark indicator**: Top-right corner, circular badge
+- **Hover state**: Slightly brighter outline
+- **Transition**: Smooth 150ms animation
 
 ## Open Questions
 
@@ -526,6 +879,9 @@ public void ResourceCard_DisplaysCorrectCount()
 
 4. **Mobile Layout**: How should board measurement adapt for small screens?
    - **Answer**: Defer to future, current focus is desktop/tablet layout
+
+5. **Resource Filter Interaction**: Should filter persist after board shuffle/undo?
+   - **Answer**: Match Desktop - filter persists until user manually deselects resources
 
 ## References
 
