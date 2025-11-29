@@ -8,8 +8,11 @@
     <div class="resource-cards-row">
         @foreach (var resourceType in GetDisplayedResources())
         {
-            var count = GetResourceCount(resourceType);
-            <ResourceCard Resource="@resourceType" Count="@count" />
+            <ResourceCard
+                Resource="@resourceType"
+                Count="@GameModel.StarCount(resourceType)"
+                IsSelected="@SelectedResources.Contains(resourceType)"
+                OnToggleSelection="@HandleResourceToggle" />
         }
     </div>
 
@@ -81,7 +84,19 @@
     public EventCallback<int> ShownStarsChanged { get; set; }
 
     /// <summary>
+    /// Event callback triggered when the selected resources change.
+    /// </summary>
+    [Parameter]
+    public EventCallback<HashSet<ResourceType>> SelectedResourcesChanged { get; set; }
+
+    /// <summary>
+    /// Set of currently selected resources for filtering buildings (max 3).
+    /// </summary>
+    private HashSet<ResourceType> SelectedResources { get; set; } = new();
+
+    /// <summary>
     /// Gets the list of resource types to display in the resource cards row.
+    /// Matches Desktop order: Wheat, Wood, Sheep, Brick, Ore
     /// </summary>
     /// <returns>Array of ResourceType values for display.</returns>
     private ResourceType[] GetDisplayedResources()
@@ -90,21 +105,10 @@
         {
             ResourceType.Wheat,
             ResourceType.Wood,
-            ResourceType.Ore,
+            ResourceType.Sheep,
             ResourceType.Brick,
-            ResourceType.Sheep
+            ResourceType.Ore
         };
-    }
-
-    /// <summary>
-    /// Calculates the count of tiles with the specified resource type.
-    /// </summary>
-    /// <param name="resourceType">The resource type to count.</param>
-    /// <returns>Number of tiles with the specified resource type.</returns>
-    private int GetResourceCount(ResourceType resourceType)
-    {
-        return GameModel.Tiles
-            .Count(t => t.ResourceTileType == resourceType);
     }
 
     /// <summary>
@@ -135,5 +139,32 @@
             ShownStars = newValue;
             await ShownStarsChanged.InvokeAsync(newValue);
         }
+    }
+
+    /// <summary>
+    /// Handles resource card selection toggle events.
+    /// Enforces max 3 selections (Desktop parity: DesktopApp/Resources/ResourceViewModel.cs:120-127).
+    /// </summary>
+    /// <param name="resource">The resource type being toggled.</param>
+    private async Task HandleResourceToggle(ResourceType resource)
+    {
+        if (SelectedResources.Contains(resource))
+        {
+            SelectedResources.Remove(resource);
+        }
+        else
+        {
+            SelectedResources.Add(resource);
+
+            // Enforce max 3 selections (match Desktop behavior)
+            if (SelectedResources.Count > 3)
+            {
+                // Remove oldest selection (first item in HashSet)
+                var oldest = SelectedResources.First();
+                SelectedResources.Remove(oldest);
+            }
+        }
+
+        await SelectedResourcesChanged.InvokeAsync(SelectedResources);
     }
 }

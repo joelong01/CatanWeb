@@ -1,8 +1,16 @@
 @using Catan3.Shared.Models
 
-<div class="resource-card" data-testid="resource-card-@Resource.ToString().ToLower()">
+<div class="resource-card @(IsSelected ? "resource-card-selected" : "")"
+     @onclick="HandleClick"
+     data-testid="resource-card-@Resource.ToString().ToLower()">
     <div class="resource-image" style="background-image: url('@GetResourceImageUrl()')"></div>
     <div class="resource-count-badge">@Count</div>
+    @if (IsSelected)
+    {
+        <div class="selection-indicator">
+            <span class="checkmark">&#xE10B;</span>
+        </div>
+    }
 </div>
 
 @code {
@@ -17,6 +25,18 @@
     /// </summary>
     [Parameter]
     public int Count { get; set; }
+
+    /// <summary>
+    /// Whether this resource card is currently selected for filtering.
+    /// </summary>
+    [Parameter]
+    public bool IsSelected { get; set; } = false;
+
+    /// <summary>
+    /// Event callback triggered when the card is clicked to toggle selection.
+    /// </summary>
+    [Parameter]
+    public EventCallback<ResourceType> OnToggleSelection { get; set; }
 
     /// <summary>
     /// Constructs the full URL for the resource image from local assets.
@@ -34,5 +54,13 @@
             _ => "default"
         };
         return $"/images/resources/{imageName}.png";
+    }
+
+    /// <summary>
+    /// Handles click events on the resource card and invokes the toggle callback.
+    /// </summary>
+    private async Task HandleClick()
+    {
+        await OnToggleSelection.InvokeAsync(Resource);
     }
 }

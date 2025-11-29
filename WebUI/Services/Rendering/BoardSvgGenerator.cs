@@ -23,14 +23,17 @@ public static class BoardSvgGenerator
     /// <param name="players">List of player view models (already in game order).</param>
     /// <param name="shownStars">Star threshold for building visibility (0-14).</param>
     /// <param name="dimmedTiles">Set of tile keys that should be dimmed.</param>
+    /// <param name="filteredResources">Resources selected for filtering buildings (max 3, AND logic).</param>
     /// <returns>Complete SVG markup string.</returns>
     public static string GenerateSvg(
         this GameModel gameModel,
         IReadOnlyList<PlayerViewModel> players,
         int shownStars = 0,
-        HashSet<HexCoordinates>? dimmedTiles = null)
+        HashSet<HexCoordinates>? dimmedTiles = null,
+        HashSet<ResourceType>? filteredResources = null)
     {
         dimmedTiles ??= new HashSet<HexCoordinates>();
+        filteredResources ??= new HashSet<ResourceType>();
 
         // Convert player list to dictionary for efficient lookup
         var playerLookup = players.ToDictionary(p => p.Id);
@@ -52,12 +55,16 @@ public static class BoardSvgGenerator
         // SVG header - responsive, fills container
         sb.AppendLine($@"<svg xmlns=""http://www.w3.org/2000/svg"" xmlns:xlink=""http://www.w3.org/1999/xlink"" viewBox=""{minX:F0} {minY:F0} {width:F0} {height:F0}"" preserveAspectRatio=""xMidYMid meet"" style=""width: 100%; height: 100%;"">");
 
+        // Get current player for gradient generation and building rendering
+        var currentPlayer = gameModel.CurrentPlayer();
+        var currentPlayerViewModel = playerLookup.TryGetValue(currentPlayer.Id, out var cpvm) ? cpvm : null;
+
         // Defs section with patterns and gradients
         sb.AppendLine("  <defs>");
         GenerateCherryPattern(sb);  // Cherry wood border texture
         GenerateTilePatterns(sb);
         GenerateHarborPatterns(sb);
-        GeneratePlayerGradients(sb, playerLookup);
+        GeneratePlayerGradients(sb, playerLookup, currentPlayerViewModel);
         sb.AppendLine("  </defs>");
 
         // CSS styles for animations and states
@@ -80,8 +87,6 @@ public static class BoardSvgGenerator
         }
 
         // Render roads (below buildings for proper z-order)
-        var currentPlayer = gameModel.CurrentPlayer();
-        var currentPlayerViewModel = playerLookup.TryGetValue(currentPlayer.Id, out var cpvm) ? cpvm : null;
 
         foreach (var road in gameModel.Roads)
         {
@@ -112,18 +117,20 @@ public static class BoardSvgGenerator
         int buildingIndex = 1;  // Build index counter for highlighted buildings (matches Desktop logic)
         foreach (var building in gameModel.Buildings)
         {
-            var player = playerLookup.TryGetValue(building.OwnerId ?? "", out var playerViewModel) ? playerViewModel : null;
-
             // Calculate stars using extension methods (sum of pips from adjacent tiles)
             var stars = gameModel.TilesForBuildings(building.BuildingKey).Stars();
 
-            // Determine visual state based on entitlements, phase, and star threshold
-            var visualState = GetBuildingVisualState(building, gameModel, stars, shownStars);
+            // Determine visual state based on entitlements, phase, star threshold, and resource filter
+            var visualState = GetBuildingVisualState(building, gameModel, stars, shownStars, filteredResources);
+
+            // Get current player colors and owner colors (null if unowned)
+            var currentPlayerColors = currentPlayerViewModel?.Colors;
+            var ownerColors = playerLookup.TryGetValue(building.OwnerId ?? "", out var owner) ? owner.Colors : null;
 
             // Assign build index only for highlighted buildings (matches Desktop GameViewModel.MergeBuildings:416, 434)
             var buildIndex = visualState == BuildingVisualState.Highlighted ? buildingIndex++ : 0;
 
-            sb.Append(building.RenderSvg(player, visualState, stars, buildIndex));
+            sb.Append(building.RenderSvg(currentPlayerColors, ownerColors, visualState, stars, buildIndex));
         }
 
         // Close SVG
@@ -133,31 +140,59 @@ public static class BoardSvgGenerator
     }
 
     /// <summary>
-    /// Determines building visual state based on building state, entitlements, and star threshold.
-    /// Matches Desktop GameViewModel.MergeBuildings logic (DesktopApp/Game/GameView/GameViewModel.cs:410-444).
+    /// Determines building visual state based on building state, entitlements, star threshold, and resource filter.
+    /// Matches Desktop GameViewModel.MergeBuildings logic (DesktopApp/Game/GameView/GameViewModel.cs:410-444)
+    /// and ExecuteQuery logic (DesktopApp/Game/GameView/GameViewModel.cs:634-665).
     /// </summary>
     /// <param name="building">The building model.</param>
     /// <param name="gameModel">The game model (for current player and phase).</param>
     /// <param name="stars">Stars value for this building (pip sum of adjacent tiles).</param>
     /// <param name="shownStars">Star threshold from board measurement slider.</param>
+    /// <param name="filteredResources">Resources selected for filtering (AND logic, max 3).</param>
     /// <returns>Visual state for rendering.</returns>
     private static BuildingVisualState GetBuildingVisualState(
         BuildingModel building,
         GameModel gameModel,
         int stars,
-        int shownStars)
+        int shownStars,
+        HashSet<ResourceType> filteredResources)
     {
         var currentPlayer = gameModel.CurrentPlayer();
         var hasCityEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.City);
         var hasSettlementEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.Settlement);
+        var isPickingBoard = gameModel.GameState == GameState.PickingBoard;
+
+        // Apply resource filter (AND logic) - only for unowned buildings
+        // Desktop: GameViewModel.cs:634-665 (ExecuteQuery method)
+        if (filteredResources.Count > 0 && building.OwnerId == null)
+        {
+            var adjacentTiles = gameModel.TilesForBuildings(building.BuildingKey);
+            var tileResources = adjacentTiles
+                .Select(t => t.ResourceTileType)
+                .Where(rt => rt != ResourceType.Desert && rt != ResourceType.Sea)
+                .ToHashSet();
+
+            // Building must have ALL filtered resources (AND logic)
+            bool hasAllResources = filteredResources.All(resource => tileResources.Contains(resource));
+
+            if (!hasAllResources)
+            {
+                return BuildingVisualState.Hidden;  // Filter out buildings without all resources
+            }
+        }
 
         return building.BuildingState switch
         {
             BuildingState.PossibleSettlement => hasSettlementEntitlement && gameModel.Phase() != GamePhase.PickingResources
                 ? BuildingVisualState.Highlighted
-                : stars >= shownStars && hasSettlementEntitlement
+                : stars >= shownStars && (hasSettlementEntitlement || isPickingBoard)
                     ? BuildingVisualState.Stars
                     : BuildingVisualState.Hidden,
+
+            // During PickingBoard, even NotBuildable buildings can show stars (Desktop: GameViewProps.cs:201)
+            BuildingState.NotBuildable => isPickingBoard && stars >= shownStars
+                ? BuildingVisualState.Stars
+                : BuildingVisualState.Hidden,
 
             BuildingState.Settlement => hasCityEntitlement && building.OwnerId == currentPlayer.Id
                 ? BuildingVisualState.Highlighted
@@ -166,8 +201,6 @@ public static class BoardSvgGenerator
             BuildingState.City => BuildingVisualState.Normal,
             BuildingState.Metropolis => BuildingVisualState.Normal,
             BuildingState.Knight => BuildingVisualState.Normal,
-
-            BuildingState.NotBuildable => BuildingVisualState.Hidden,
 
             _ => BuildingVisualState.Hidden
         };
@@ -304,15 +337,27 @@ public static class BoardSvgGenerator
 
     /// <summary>
     /// Generates linear gradients for player backgrounds.
+    /// Includes gradient-current-player for Stars state buildings.
     /// </summary>
-    private static void GeneratePlayerGradients(StringBuilder sb, IReadOnlyDictionary<string, PlayerViewModel> playerLookup)
+    private static void GeneratePlayerGradients(
+        StringBuilder sb,
+        IReadOnlyDictionary<string, PlayerViewModel> playerLookup,
+        PlayerViewModel? currentPlayerViewModel)
     {
+        // Generate current player gradient (for Stars state buildings)
+        if (currentPlayerViewModel != null)
+        {
+            sb.AppendLine($@"    <linearGradient id=""gradient-current-player"" x1=""0%"" y1=""0%"" x2=""100%"" y2=""100%"">");
+            sb.AppendLine($@"      {currentPlayerViewModel.Colors.SvgGradientStops}");
+            sb.AppendLine("    </linearGradient>");
+        }
+
+        // Generate per-player gradients (for owned buildings)
         foreach (var (playerId, player) in playerLookup)
         {
             var gradientId = $"gradient-{playerId}";
             sb.AppendLine($@"    <linearGradient id=""{gradientId}"" x1=""0%"" y1=""0%"" x2=""100%"" y2=""100%"">");
-            sb.AppendLine($@"      <stop offset=""0%"" style=""stop-color:{player.Colors.Primary};stop-opacity:1"" />");
-            sb.AppendLine($@"      <stop offset=""100%"" style=""stop-color:{player.Colors.Secondary};stop-opacity:1"" />");
+            sb.AppendLine($@"      {player.Colors.SvgGradientStops}");
             sb.AppendLine("    </linearGradient>");
         }
     }
