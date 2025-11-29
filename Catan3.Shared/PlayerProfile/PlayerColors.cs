@@ -15,4 +15,18 @@ public record PlayerColors(
     /// Default gray color scheme.
     /// </summary>
     public static PlayerColors Default { get; } = new("#CCCCCC", "#999999", "#000000");
+
+    /// <summary>
+    /// SVG linearGradient stop elements (cached, computed once at construction).
+    /// Use inside &lt;linearGradient&gt; element.
+    /// </summary>
+    public string SvgGradientStops { get; } =
+        $@"<stop offset=""0%"" style=""stop-color:{Primary};stop-opacity:1"" />" +
+        $@"<stop offset=""100%"" style=""stop-color:{Secondary};stop-opacity:1"" />";
+
+    /// <summary>
+    /// CSS linear-gradient value (cached, computed once at construction).
+    /// Use in style attributes.
+    /// </summary>
+    public string CssGradient { get; } = $"linear-gradient(135deg, {Primary}, {Secondary})";
 }
