@@ -4,6 +4,860 @@
 
 This document describes the asset architecture for the Catan game, covering the existing Desktop app's resource system and the planned approach for WebUI asset delivery. The goal is to reuse the high-resolution tile images from the Desktop app in the WebUI with efficient caching and rendering.
 
+**Update 2025-11-30**: Added theme system design to support multiple visual themes (e.g., "Classic", "StarTrek").
+
+## Theme System Architecture
+
+### Design Goals
+
+1. **Theme Switching**: Allow users to select different visual themes (e.g., "Classic", "StarTrek", "Minimal")
+2. **Strongly Typed**: All asset references use enums - no magic strings
+3. **Fallback Support**: Themes can inherit from a base theme, only overriding specific assets
+4. **Consistent Interface**: Single `IAssetService` provides all asset paths
+5. **Organized Directory Structure**: Assets organized by usage, not file type
+
+### Asset Name Enum
+
+All assets are referenced via a strongly-typed enum:
+
+```csharp
+/// <summary>
+/// Strongly-typed identifiers for all game assets.
+/// Used by IAssetService to resolve asset paths for the current theme.
+/// </summary>
+public enum AssetName
+{
+    // === Tiles (hex backgrounds) ===
+    TileBrick,
+    TileWheat,
+    TileWood,
+    TileOre,
+    TileSheep,
+    TileDesert,
+    TileGoldMine,
+    TileSea,
+    TileInvasion,
+
+    // === Harbors (trade port images) ===
+    HarborBrick,
+    HarborOre,
+    HarborSheep,
+    HarborWheat,
+    HarborWood,
+    HarborThreeForOne,
+
+    // === Resource Cards (player hand) ===
+    CardBrick,
+    CardWheat,
+    CardWood,
+    CardOre,
+    CardSheep,
+    CardGoldMine,
+    CardCloth,
+    CardPaper,
+    CardCoin,
+    CardTrade,
+    CardPolitics,
+    CardScience,
+    CardVictoryPoint,
+    CardBack,
+    CardRobber,
+    CardAnyDev,
+
+    // === Stats (player statistics icons) ===
+    StatScore,
+    StatRoads,
+    StatKnights,
+    StatCities,
+    StatSettlements,
+    StatShips,
+    StatDevCards,
+    StatResourceCards,
+    StatHarbors,
+    StatLongestRoad,
+    StatLargestArmy,
+    StatMetropolis,
+    StatGoodRoll,
+    StatBadRoll,
+    StatTargetted,
+    StatRobber,
+
+    // === Buildings (board pieces) ===
+    BuildingCity,
+    BuildingSettlement,
+    BuildingRoad,
+    BuildingShip,
+
+    // === Backgrounds ===
+    BackgroundWater,
+    BackgroundBorder,
+
+    // === Miscellaneous ===
+    IconCheck,
+    IconStar,
+    FontCatan
+}
+```
+
+### IAssetService Interface
+
+The `AssetService` is **format-agnostic**. It knows about themes, file paths, and metadata - but nothing
+about how assets are rendered (SVG, CSS, XAML, etc.). Consumers take the path and wrap it in whatever
+format they need.
+
+```csharp
+/// <summary>
+/// Provides theme-aware asset path resolution.
+/// All game code requests assets through this service rather than hardcoding paths.
+/// This service is format-agnostic - it returns paths, not rendered output.
+/// </summary>
+public interface IAssetService
+{
+    /// <summary>
+    /// Gets the current theme name (e.g., "classic", "startrek").
+    /// </summary>
+    string CurrentTheme { get; }
+
+    /// <summary>
+    /// Gets the URL path to an asset for use in HTML/CSS (e.g., "/themes/classic/tiles/brick.png").
+    /// </summary>
+    /// <param name="asset">The asset to retrieve.</param>
+    /// <returns>URL path relative to wwwroot.</returns>
+    string GetAssetPath(AssetName asset);
+
+    /// <summary>
+    /// Gets the MIME type for an asset based on file extension.
+    /// </summary>
+    /// <param name="asset">The asset to query.</param>
+    /// <returns>MIME type string (e.g., "image/png", "image/svg+xml").</returns>
+    string GetMimeType(AssetName asset);
+
+    /// <summary>
+    /// Gets all available theme names (internal identifiers).
+    /// </summary>
+    IReadOnlyList<string> AvailableThemes { get; }
+
+    /// <summary>
+    /// Gets metadata for a specific theme (display name, description, preview path).
+    /// </summary>
+    /// <param name="themeName">Theme name (case-insensitive).</param>
+    ThemeMetadata GetThemeMetadata(string themeName);
+
+    /// <summary>
+    /// Gets metadata for the current theme.
+    /// </summary>
+    ThemeMetadata GetCurrentThemeMetadata();
+
+    /// <summary>
+    /// Sets the current theme.
+    /// </summary>
+    /// <param name="themeName">Theme name (case-insensitive).</param>
+    void SetTheme(string themeName);
+
+    /// <summary>
+    /// Event raised when theme changes.
+    /// </summary>
+    event Action<string> ThemeChanged;
+}
+```
+
+**Separation of Concerns:**
+
+| Responsibility | Owner |
+|----------------|-------|
+| Theme selection, inheritance, fallback | `AssetService` |
+| Asset name → file path mapping | `AssetService` |
+| Theme metadata (JSON) loading | `AssetService` |
+| SVG pattern generation | `BoardSvgGenerator` / `TileSvgRenderer` |
+| CSS background/brush syntax | Blazor components |
+| XAML ImageBrush syntax | Desktop app converters |
+
+The consumer knows its output format; the service knows where files live.
+
+### AssetService Implementation
+
+Uses a two-level lookup: theme overrides → base fallback. No recursion, no file system probing at runtime.
+All mappings loaded from JSON at startup.
+
+**Data Model:**
+
+```csharp
+/// <summary>
+/// Default implementation of IAssetService with two-level lookup.
+/// Base theme contains ALL assets. Other themes only contain overrides.
+/// All mappings are loaded from theme.json files at startup.
+/// </summary>
+public class AssetService : IAssetService
+{
+    /// <summary>
+    /// Complete asset set from "base" theme. Every AssetName has an entry.
+    /// </summary>
+    private readonly Dictionary<AssetName, string> _baseAssets;
+
+    /// <summary>
+    /// Sparse override dictionaries for each theme. Only contains assets declared in theme.json.
+    /// </summary>
+    private readonly Dictionary<string, Dictionary<AssetName, string>> _themeOverrides;
+
+    /// <summary>
+    /// Theme metadata (display name, description, preview) for each theme.
+    /// </summary>
+    private readonly Dictionary<string, ThemeMetadata> _themeMetadata;
+
+    private string _currentTheme = "classic";
+
+    public string CurrentTheme => _currentTheme;
+    public IReadOnlyList<string> AvailableThemes => _themeMetadata.Keys.Where(k => k != "base").ToList();
+    public event Action<string>? ThemeChanged;
+
+    public AssetService(IWebHostEnvironment env)
+    {
+        (_baseAssets, _themeOverrides, _themeMetadata) = LoadThemes(env.WebRootPath);
+    }
+
+    public string GetAssetPath(AssetName asset)
+    {
+        // Check theme overrides first (sparse - may not contain this asset)
+        if (_themeOverrides.TryGetValue(_currentTheme, out var overrides)
+            && overrides.TryGetValue(asset, out var path))
+        {
+            return path;
+        }
+
+        // Fall back to base (always complete)
+        return _baseAssets[asset];
+    }
+
+    public ThemeMetadata GetThemeMetadata(string themeName)
+    {
+        return _themeMetadata.GetValueOrDefault(themeName.ToLowerInvariant())
+            ?? throw new ArgumentException($"Unknown theme: {themeName}");
+    }
+
+    public ThemeMetadata GetCurrentThemeMetadata() => GetThemeMetadata(_currentTheme);
+
+    public string GetMimeType(AssetName asset)
+    {
+        var path = GetAssetPath(asset);
+        return path switch
+        {
+            _ when path.EndsWith(".svg") => "image/svg+xml",
+            _ when path.EndsWith(".png") => "image/png",
+            _ when path.EndsWith(".jpg") or path.EndsWith(".jpeg") => "image/jpeg",
+            _ when path.EndsWith(".webp") => "image/webp",
+            _ when path.EndsWith(".ttf") => "font/ttf",
+            _ => "application/octet-stream"
+        };
+    }
+
+    public void SetTheme(string themeName)
+    {
+        var normalized = themeName.ToLowerInvariant();
+        if (_themeMetadata.ContainsKey(normalized) && normalized != "base")
+        {
+            _currentTheme = normalized;
+            ThemeChanged?.Invoke(_currentTheme);
+        }
+    }
+
+    private static (Dictionary<AssetName, string>, Dictionary<string, Dictionary<AssetName, string>>,
+                    Dictionary<string, ThemeMetadata>) LoadThemes(string webRootPath)
+    {
+        var baseAssets = new Dictionary<AssetName, string>();
+        var themeOverrides = new Dictionary<string, Dictionary<AssetName, string>>();
+        var themeMetadata = new Dictionary<string, ThemeMetadata>();
+
+        var themesDir = Path.Combine(webRootPath, "themes");
+
+        // Load all theme.json files
+        foreach (var themeDir in Directory.GetDirectories(themesDir))
+        {
+            var themeName = Path.GetFileName(themeDir).ToLowerInvariant();
+            var jsonPath = Path.Combine(themeDir, "theme.json");
+
+            if (!File.Exists(jsonPath)) continue;
+
+            var json = File.ReadAllText(jsonPath);
+            var definition = JsonSerializer.Deserialize<ThemeDefinition>(json,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+
+            // Store metadata
+            themeMetadata[themeName] = new ThemeMetadata
+            {
+                Name = definition.Name,
+                DisplayName = definition.DisplayName,
+                Description = definition.Description,
+                Preview = definition.Preview
+            };
+
+            // Parse asset mappings
+            var assets = new Dictionary<AssetName, string>();
+            foreach (var (key, value) in definition.Assets)
+            {
+                if (Enum.TryParse<AssetName>(key, ignoreCase: true, out var assetName))
+                {
+                    assets[assetName] = value;
+                }
+            }
+
+            if (themeName == "base")
+            {
+                baseAssets = assets;
+            }
+            else
+            {
+                themeOverrides[themeName] = assets;
+            }
+        }
+
+        // Verify base theme is complete
+        foreach (AssetName asset in Enum.GetValues<AssetName>())
+        {
+            if (!baseAssets.ContainsKey(asset))
+                throw new InvalidOperationException($"Base theme missing required asset: {asset}");
+        }
+
+        return (baseAssets, themeOverrides, themeMetadata);
+    }
+}
+```
+
+**ThemeMetadata Record:**
+
+```csharp
+/// <summary>
+/// Theme metadata extracted from theme.json for UI display.
+/// </summary>
+public record ThemeMetadata
+{
+    public required string Name { get; init; }
+    public required string DisplayName { get; init; }
+    public string? Description { get; init; }
+    public string Preview { get; init; } = "preview.png";
+}
+```
+
+**Lookup Performance:**
+
+| Operation | Complexity |
+|-----------|------------|
+| GetAssetPath (theme has override) | O(1) - two hash lookups |
+| GetAssetPath (fallback to base) | O(1) - two hash lookups |
+| SetTheme | O(1) - one hash lookup |
+| Memory | O(base assets) + O(sum of overrides) |
+| Startup | O(themes × assets) - one-time JSON parsing |
+
+### Theme Definition
+
+Each theme is defined by a `theme.json` file containing metadata AND asset mappings. The JSON is the
+single source of truth - "any problem in computer science can be solved by adding a layer of indirection."
+
+**Key Design Points:**
+
+1. **Explicit mappings**: All asset paths are declared in JSON, not discovered by scanning
+2. **Complete decoupling**: Logical `AssetName` has no relationship to physical file path or name
+3. **Base is complete**: Base theme must map every `AssetName` to a path
+4. **Themes are sparse**: Other themes only list overrides, falling back to base for unlisted assets
+5. **Cross-theme references**: A theme can point to files in any location, including other themes
+
+**ThemeDefinition Model:**
+
+```csharp
+/// <summary>
+/// Represents a theme's metadata and asset mappings.
+/// Loaded from theme.json in each theme directory.
+/// </summary>
+public record ThemeDefinition
+{
+    /// <summary>
+    /// Internal theme identifier (lowercase, no spaces). E.g., "base", "classic", "startrek".
+    /// </summary>
+    public required string Name { get; init; }
+
+    /// <summary>
+    /// Human-readable display name. E.g., "Classic", "Star Trek".
+    /// </summary>
+    public required string DisplayName { get; init; }
+
+    /// <summary>
+    /// Optional description shown in theme picker tooltip.
+    /// </summary>
+    public string? Description { get; init; }
+
+    /// <summary>
+    /// Path to preview thumbnail relative to wwwroot. E.g., "/themes/classic/preview.png".
+    /// </summary>
+    public string Preview { get; init; } = "preview.png";
+
+    /// <summary>
+    /// Asset mappings. Key is AssetName enum string, value is path relative to wwwroot.
+    /// Base theme must have ALL assets. Other themes only include overrides.
+    /// </summary>
+    public Dictionary<string, string> Assets { get; init; } = new();
+}
+```
+
+**Example theme.json (base) - COMPLETE:**
+
+```json
+{
+  "name": "base",
+  "displayName": "Base",
+  "description": "Complete asset set - all other themes inherit from this",
+  "preview": "/themes/base/preview.png",
+  "assets": {
+    "TileBrick": "/themes/base/tiles/brick.png",
+    "TileWheat": "/themes/base/tiles/wheat.png",
+    "TileWood": "/themes/base/tiles/wood.png",
+    "TileOre": "/themes/base/tiles/ore.png",
+    "TileSheep": "/themes/base/tiles/sheep.png",
+    "TileDesert": "/themes/base/tiles/desert.png",
+    "TileGoldMine": "/themes/base/tiles/goldmine.png",
+    "TileSea": "/themes/base/tiles/sea.jpg",
+    "TileInvasion": "/themes/base/tiles/invasion.png",
+
+    "HarborBrick": "/themes/base/harbors/brick.png",
+    "HarborOre": "/themes/base/harbors/ore.png",
+    "HarborSheep": "/themes/base/harbors/sheep.png",
+    "HarborWheat": "/themes/base/harbors/wheat.png",
+    "HarborWood": "/themes/base/harbors/wood.png",
+    "HarborThreeForOne": "/themes/base/harbors/threeforone.png",
+
+    "CardBrick": "/themes/base/resources/brick.png",
+    "CardWheat": "/themes/base/resources/wheat.png",
+    "...": "... (all AssetName values mapped)"
+  }
+}
+```
+
+**Example theme.json (classic) - SPARSE:**
+
+```json
+{
+  "name": "classic",
+  "displayName": "Classic",
+  "description": "The original Catan look and feel",
+  "preview": "/themes/classic/preview.png",
+  "assets": {
+  }
+}
+```
+
+Classic has no overrides - it uses base for everything. It exists as a named theme users can select.
+
+**Example theme.json (startrek) - SPARSE with overrides:**
+
+```json
+{
+  "name": "startrek",
+  "displayName": "Star Trek",
+  "description": "Boldly go where no settler has gone before",
+  "preview": "/themes/startrek/preview.png",
+  "assets": {
+    "TileBrick": "/themes/startrek/tiles/dilithium.png",
+    "TileWheat": "/themes/startrek/tiles/tritanium.svg",
+    "TileWood": "/themes/startrek/tiles/duranium.png",
+    "TileOre": "/themes/startrek/tiles/latinum.png",
+    "TileSheep": "/themes/startrek/tiles/biomatter.png",
+    "TileDesert": "/themes/startrek/tiles/nebula.svg",
+    "BackgroundWater": "/themes/startrek/backgrounds/space.jpg"
+  }
+}
+```
+
+Star Trek overrides 7 assets. Everything else (harbors, stats, cards, etc.) falls back to base.
+
+**Flexibility Examples:**
+
+A theme can reference assets from anywhere:
+
+```json
+{
+  "name": "remix",
+  "displayName": "Remix",
+  "description": "Mix and match from different themes",
+  "assets": {
+    "TileBrick": "/themes/startrek/tiles/dilithium.png",
+    "TileWheat": "/themes/base/tiles/wheat.png",
+    "TileWood": "/shared/special/custom-wood.svg",
+    "BackgroundWater": "https://cdn.example.com/water.jpg"
+  }
+}
+```
+
+### Directory Structure
+
+Suggested wwwroot organization. Since JSON contains explicit paths, files can be organized any way
+that makes sense - the structure below is a recommendation, not a requirement.
+
+```text
+WebUI/wwwroot/
+├── themes/
+│   ├── base/                       # Base theme - JSON maps ALL AssetName values
+│   │   ├── theme.json              # Complete asset mappings (see example above)
+│   │   ├── preview.png             # Theme thumbnail
+│   │   ├── tiles/
+│   │   │   ├── brick.png
+│   │   │   ├── wheat.png
+│   │   │   ├── wood.png
+│   │   │   ├── ore.png
+│   │   │   ├── sheep.png
+│   │   │   ├── desert.png
+│   │   │   ├── goldmine.png
+│   │   │   ├── sea.jpg
+│   │   │   └── invasion.png
+│   │   ├── harbors/
+│   │   │   ├── brick.png
+│   │   │   ├── ore.png
+│   │   │   ├── sheep.png
+│   │   │   ├── wheat.png
+│   │   │   ├── wood.png
+│   │   │   └── threeforone.png
+│   │   ├── resources/              # Resource cards
+│   │   │   ├── brick.png
+│   │   │   ├── wheat.png
+│   │   │   └── ... (all card types)
+│   │   ├── stats/                  # Player stat icons
+│   │   │   ├── score.svg
+│   │   │   ├── roads.svg
+│   │   │   └── ... (all stat types)
+│   │   ├── buildings/              # Board pieces
+│   │   │   ├── city.svg
+│   │   │   ├── settlement.svg
+│   │   │   ├── road.svg
+│   │   │   └── ship.svg
+│   │   ├── backgrounds/
+│   │   │   ├── water.jpg
+│   │   │   └── border.jpg
+│   │   └── fonts/
+│   │       └── catan.ttf
+│   │
+│   ├── classic/                    # Classic theme - sparse JSON (may be empty assets:{})
+│   │   ├── theme.json              # Metadata only, no overrides
+│   │   └── preview.png
+│   │
+│   ├── startrek/                   # Star Trek theme - sparse JSON with overrides
+│   │   ├── theme.json              # Only lists assets that differ from base
+│   │   ├── preview.png
+│   │   └── tiles/                  # Override files (any name - JSON has the mapping)
+│   │       ├── dilithium.png
+│   │       ├── tritanium.svg
+│   │       ├── duranium.png
+│   │       ├── latinum.png
+│   │       ├── biomatter.png
+│   │       └── nebula.svg
+│   │
+│   └── minimal/                    # Minimal theme
+│       ├── theme.json
+│       ├── preview.png
+│       └── tiles/
+│           └── *.svg               # Vector alternatives
+│
+├── shared/                         # Assets NOT part of theme system
+│   ├── players/                    # Player avatars (user-specific, not themed)
+│   │   ├── adrian.jpg
+│   │   ├── chris.jpg
+│   │   └── ...
+│   └── ui/                         # UI chrome (buttons, etc. - not themed)
+│       └── ...
+│
+├── css/
+│   └── app.css
+└── index.html
+```
+
+**Key Points:**
+
+1. **JSON is the source of truth** - file organization is flexible
+2. **Base theme must be complete** - JSON must map every `AssetName` to a path
+3. **Other themes are sparse** - JSON only lists overrides
+4. **Files can be anywhere** - JSON paths can point to `/themes/base/...`, `/shared/...`, or even CDN URLs
+5. **No naming conventions required** - Star Trek can use `dilithium.png` for brick since JSON maps it
+
+### Usage Examples
+
+**In Blazor Component (consumer owns the HTML/CSS syntax):**
+
+```csharp
+@inject IAssetService Assets
+
+<img src="@Assets.GetAssetPath(AssetName.CardBrick)" alt="Brick" />
+
+<div style="background-image: url('@Assets.GetAssetPath(AssetName.BackgroundWater)')"></div>
+```
+
+**In BoardSvgGenerator (consumer owns the SVG syntax):**
+
+```csharp
+public class BoardSvgGenerator
+{
+    private readonly IAssetService _assets;
+
+    public BoardSvgGenerator(IAssetService assets)
+    {
+        _assets = assets;
+    }
+
+    /// <summary>
+    /// Generates SVG pattern definition for a tile type.
+    /// The SVG syntax is owned by this renderer, not the AssetService.
+    /// </summary>
+    private string CreateTilePattern(AssetName asset, string patternId)
+    {
+        var path = _assets.GetAssetPath(asset);
+        return $"""
+            <pattern id="{patternId}" patternUnits="objectBoundingBox" width="1" height="1">
+              <image href="{path}" preserveAspectRatio="xMidYMid slice" width="100%" height="100%"/>
+            </pattern>
+            """;
+    }
+
+    private string GenerateTilePatterns()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("<defs>");
+        sb.AppendLine(CreateTilePattern(AssetName.TileBrick, "tile-brick"));
+        sb.AppendLine(CreateTilePattern(AssetName.TileWheat, "tile-wheat"));
+        // ... etc
+        sb.AppendLine("</defs>");
+        return sb.ToString();
+    }
+}
+```
+
+### Theme Picker UI
+
+The theme picker should be accessible from the game UI, likely in a settings/options area or as a toolbar button.
+
+**ThemePicker.razor:**
+
+```razor
+@inject IAssetService Assets
+@implements IDisposable
+
+<div class="theme-picker">
+    <button class="theme-picker-button" @onclick="ToggleDropdown"
+            title="@Assets.GetCurrentThemeMetadata().Description">
+        <span class="theme-icon">&#xE771;</span> <!-- Segoe MDL2 Color icon -->
+        <span class="theme-name">@Assets.GetCurrentThemeMetadata().DisplayName</span>
+    </button>
+
+    @if (_isOpen)
+    {
+        <div class="theme-dropdown">
+            @foreach (var themeName in Assets.AvailableThemes)
+            {
+                var metadata = Assets.GetThemeMetadata(themeName);
+                <button class="theme-option @(themeName == Assets.CurrentTheme ? "selected" : "")"
+                        @onclick="() => SelectTheme(themeName)"
+                        title="@metadata.Description">
+                    <img src="/themes/@themeName/@metadata.Preview" alt="@metadata.DisplayName"
+                         class="theme-preview" />
+                    <span>@metadata.DisplayName</span>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private bool _isOpen = false;
+
+    protected override void OnInitialized()
+    {
+        Assets.ThemeChanged += OnThemeChanged;
+    }
+
+    private void ToggleDropdown() => _isOpen = !_isOpen;
+
+    private void SelectTheme(string theme)
+    {
+        Assets.SetTheme(theme);
+        _isOpen = false;
+    }
+
+    private void OnThemeChanged(string newTheme)
+    {
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Assets.ThemeChanged -= OnThemeChanged;
+    }
+}
+```
+
+All display names, descriptions, and preview paths come from `theme.json` - no hardcoded strings.
+
+**ThemePicker.razor.css:**
+
+```css
+.theme-picker {
+    position: relative;
+    display: inline-block;
+}
+
+.theme-picker-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--game-bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.theme-picker-button:hover {
+    background: var(--accent-hover);
+}
+
+.theme-icon {
+    font-family: "Segoe MDL2 Assets";
+    font-size: 16px;
+}
+
+.theme-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background: var(--game-bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    min-width: 160px;
+}
+
+.theme-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    text-align: left;
+}
+
+.theme-option:hover {
+    background: var(--accent-hover);
+}
+
+.theme-option.selected {
+    background: var(--accent-primary);
+}
+
+.theme-preview {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+```
+
+**Placement Options:**
+
+1. **Game Page Toolbar**: Add to existing toolbar/header area on Game.razor
+2. **Settings Panel**: If a settings/options panel exists, add there
+3. **Left Panel**: Add below or above existing controls in the left panel
+
+**Integration in Game.razor:**
+
+```razor
+<div class="game-toolbar">
+    <!-- Other toolbar items -->
+    <ThemePicker />
+</div>
+```
+
+**Theme Preview Images:**
+
+Each theme should include a `preview.png` (e.g., 64x64 or 128x128) showing a representative sample:
+- Classic: A wheat or brick tile
+- StarTrek: A dilithium crystal or starship
+- Minimal: Abstract colored hexagon
+
+```text
+themes/
+├── classic/
+│   ├── preview.png      # 64x64 preview thumbnail
+│   └── ...
+├── startrek/
+│   ├── preview.png
+│   └── ...
+```
+
+### ASP.NET Core Best Practices Applied
+
+1. **Dependency Injection**: `IAssetService` registered as a scoped service
+2. **Configuration-Driven**: Themes defined in JSON, loaded at startup
+3. **Immutable Theme Data**: Theme definitions are read-only after load
+4. **Event-Based Updates**: `ThemeChanged` event for reactive UI updates
+5. **Fallback Chain**: Theme → BaseTheme → Classic (always present)
+
+### Migration Plan
+
+**Phase 1: Create Directory Structure**
+
+1. Create `wwwroot/themes/base/` directory tree with subdirectories
+2. Move existing assets to base theme:
+   - `images/tiles/*` → `themes/base/tiles/`
+   - `images/harbors/*` → `themes/base/harbors/`
+   - `images/resources/*` → `themes/base/resources/`
+   - `images/svg/*` → `themes/base/stats/` and `themes/base/buildings/` (split by purpose)
+   - `images/textures/*` → `themes/base/backgrounds/`
+   - `fonts/*` → `themes/base/fonts/`
+3. Create `themes/base/theme.json` with COMPLETE asset mappings (every `AssetName` → path)
+4. Create `themes/classic/theme.json` with metadata only (empty `assets: {}`)
+5. Create `themes/classic/preview.png`
+6. Move `images/players/*` → `shared/players/`
+7. Remove orphaned files: `images/cherry.jpg`, `images/maple.jpg`
+8. Delete old `images/` directory structure after migration verified
+
+**Phase 2: Implement AssetService**
+
+1. Create `AssetName` enum in `Shared/` project (or `GameService/`)
+2. Create `ThemeDefinition` record (for JSON deserialization)
+3. Create `ThemeMetadata` record (for UI display)
+4. Create `IAssetService` interface with metadata methods
+5. Implement `AssetService`:
+   - Constructor loads all `theme.json` files
+   - Parses asset mappings into `_baseAssets` (from base) and `_themeOverrides` (from others)
+   - Validates base theme has all `AssetName` values
+6. Register as singleton in DI container (theme data is immutable after load)
+
+**Phase 3: Update Consumers**
+
+1. Update `BoardSvgGenerator` to inject `IAssetService`:
+   - Replace hardcoded paths with `_assets.GetAssetPath(AssetName.TileBrick)`
+   - SVG pattern generation stays in BoardSvgGenerator (separation of concerns)
+2. Update Blazor components:
+   - `ResourceCard.razor` - use `Assets.GetAssetPath(AssetName.CardBrick)`
+   - `PlayerTile.razor` - use `Assets.GetAssetPath(AssetName.StatScore)` etc.
+3. Update any CSS that references image paths (may need CSS variables set from AssetService)
+
+**Phase 4: Add Theme Picker UI**
+
+1. Create `ThemePicker.razor` component
+2. Add `ThemePicker.razor.css` styles
+3. Add ThemePicker to Game.razor toolbar or settings area
+4. Wire up `ThemeChanged` event to trigger re-render of themed components
+
+**Phase 5: Create Additional Themes**
+
+1. Create `themes/startrek/` as proof of concept:
+   - Add `theme.json` with metadata and sparse overrides
+   - Add `preview.png`
+   - Add override image files (any names - JSON maps them)
+2. Document theme creation process in this design doc
+3. Consider a "minimal" theme with SVG geometric shapes instead of textures
+
 ## Desktop App Resource Architecture
 
 ### Resource Dictionary Structure
