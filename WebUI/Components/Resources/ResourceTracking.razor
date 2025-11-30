@@ -1,0 +1,53 @@
+@using Catan3.Shared.Models
+@using Catan3.WebUI.Components.Resources
+
+<div class="resource-tracking-panel" data-testid="resource-tracking-panel">
+    <div class="resource-cards-row">
+        @foreach (var resourceType in GetTrackedResources())
+        {
+            var count = GetResourceCount(resourceType);
+            <div class="resource-card-wrapper">
+                <ResourceCard
+                    Resource="@resourceType"
+                    Count="@count"
+                    IsSelected="false"
+                    OnToggleSelection="@(() => Task.CompletedTask)" />
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The current game model containing all game state.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public GameModel GameModel { get; set; } = null!;
+
+    /// <summary>
+    /// Gets the list of resource types to track (includes Gold).
+    /// </summary>
+    /// <returns>Array of ResourceType values: Wheat, Wood, Sheep, Brick, Ore, GoldMine</returns>
+    private ResourceType[] GetTrackedResources()
+    {
+        return new[]
+        {
+            ResourceType.Wheat,
+            ResourceType.Wood,
+            ResourceType.Sheep,
+            ResourceType.Brick,
+            ResourceType.Ore,
+            ResourceType.GoldMine
+        };
+    }
+
+    /// <summary>
+    /// Gets the count of tiles with the specified resource type on the board.
+    /// </summary>
+    /// <param name="resource">The resource type to count.</param>
+    /// <returns>Number of tiles with this resource.</returns>
+    private int GetResourceCount(ResourceType resource)
+    {
+        return GameModel.Tiles.Count(t => t.ResourceTileType == resource);
+    }
+}

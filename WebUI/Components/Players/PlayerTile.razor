@@ -1,0 +1,294 @@
+@using Catan3.Shared.Models
+@using Catan3.Shared.Profiles
+@using Catan3.WebUI.Components.Resources
+@using Catan3.WebUI.Services
+@inject GameServiceConfig Config
+
+<div class="player-tile" data-testid="player-tile-@Player.Id">
+    <!-- Row 1: Player Info and Stats -->
+    <div class="player-info-row">
+        <!-- Avatar -->
+        <div class="player-avatar" style="@GetAvatarStyle()">
+            @if (!string.IsNullOrEmpty(GetPlayerImageUrl()))
+            {
+                <img src="@GetPlayerImageUrl()" alt="@Player.Name" />
+            }
+            else
+            {
+                <div class="avatar-placeholder">@Player.Name.Substring(0, 1).ToUpper()</div>
+            }
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="player-stats-grid">
+            @foreach (var stat in GetPlayerStats())
+            {
+                <div class="stat-tile @(stat.IsHighlighted ? "highlighted" : "")"
+                     style="@GetStatStyle(stat.IsHighlighted)"
+                     data-testid="stat-@stat.Name">
+                    @if (!string.IsNullOrEmpty(stat.SvgPath))
+                    {
+                        <img src="@stat.SvgPath" class="stat-icon-svg" alt="@stat.Name" style="@GetSvgFilterStyle()" />
+                    }
+                    else
+                    {
+                        <div class="stat-icon">@((MarkupString)stat.Glyph)</div>
+                    }
+                    <div class="stat-count">@stat.Count</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Row 2: Resources This Turn -->
+    @if (GameModel.GameState != GameState.Supplemental)
+    {
+        <div class="resources-this-turn-row">
+            @foreach (var resourceType in GetTrackedResources())
+            {
+                var count = GetResourceThisTurn(resourceType);
+                <div class="resource-card-wrapper">
+                    <ResourceCard
+                        Resource="@resourceType"
+                        Count="@count"
+                        IsSelected="false"
+                        OnToggleSelection="@(() => Task.CompletedTask)" />
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The player model containing game statistics and state.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public PlayerModel Player { get; set; } = null!;
+
+    /// <summary>
+    /// The current game model for calculating derived stats.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public GameModel GameModel { get; set; } = null!;
+
+    /// <summary>
+    /// The player's gradient colors for visual styling.
+    /// </summary>
+    [Parameter]
+    public PlayerColors? PlayerColors { get; set; }
+
+    /// <summary>
+    /// The player's profile information including image URI.
+    /// </summary>
+    [Parameter]
+    public PlayerProfile? PlayerProfile { get; set; }
+
+    /// <summary>
+    /// Represents a single player statistic for display.
+    /// </summary>
+    private class PlayerStat
+    {
+        public required string Name { get; init; }
+        public required string Glyph { get; init; }
+        public string? SvgPath { get; init; }
+        public required int Count { get; init; }
+        public required bool IsHighlighted { get; init; }
+    }
+
+    /// <summary>
+    /// Gets all player statistics for display in the stats grid.
+    /// Uses SVG icons from wwwroot/images/svg/ directory.
+    /// </summary>
+    /// <returns>List of 12 player statistics with SVG paths and counts.</returns>
+    private List<PlayerStat> GetPlayerStats()
+    {
+        return new List<PlayerStat>
+        {
+            new() { Name = "Score", Glyph = "", SvgPath = "/images/svg/star.svg", Count = Player.Score, IsHighlighted = Player.HighestScore },
+            new() { Name = "Roads", Glyph = "", SvgPath = "/images/svg/road.svg", Count = GetRoadsPlayed(), IsHighlighted = false },
+            new() { Name = "Cities", Glyph = "", SvgPath = "/images/svg/city.svg", Count = GetCitiesPlayed(), IsHighlighted = false },
+            new() { Name = "Settlements", Glyph = "", SvgPath = "/images/svg/settlement.svg", Count = GetSettlementsPlayed(), IsHighlighted = false },
+            new() { Name = "Soldiers", Glyph = "", SvgPath = "/images/svg/knight.svg", Count = GetSoldiersPlayed(), IsHighlighted = Player.LargestArmy },
+            new() { Name = "Robber", Glyph = "", SvgPath = "/images/svg/robber.svg", Count = GetResourcesLost(), IsHighlighted = false },
+            new() { Name = "Targeted", Glyph = "", SvgPath = "/images/svg/targetted.svg", Count = Player.TimesTargeted, IsHighlighted = false },
+            new() { Name = "Total", Glyph = "", SvgPath = "/images/svg/sum of resources.svg", Count = GetTotalResources(), IsHighlighted = false },
+            new() { Name = "LongestRoad", Glyph = "", SvgPath = "/images/svg/longest road.svg", Count = Player.LongestRoad, IsHighlighted = Player.HasLongestRoad },
+            new() { Name = "GoodRolls", Glyph = "", SvgPath = "/images/svg/good roll.svg", Count = Player.GoodRolls, IsHighlighted = false },
+            new() { Name = "BadRolls", Glyph = "", SvgPath = "/images/svg/bad roll.svg", Count = Player.BadRolls, IsHighlighted = false },
+            new() { Name = "Stars", Glyph = "", SvgPath = "/images/svg/star.svg", Count = Player.Stars, IsHighlighted = false }
+        };
+    }
+
+    /// <summary>
+    /// Gets inline CSS style for the player avatar border.
+    /// </summary>
+    /// <returns>CSS style string with border color from player's foreground color.</returns>
+    private string GetAvatarStyle()
+    {
+        if (PlayerColors == null) return "";
+        return $"border: 1px solid {PlayerColors.Foreground};";
+    }
+
+    /// <summary>
+    /// Gets inline CSS style for a stat tile based on highlighted state.
+    /// All tiles: player's primary color background with foreground color for SVG/text.
+    /// Highlighted: adds gradient overlay or border effect.
+    /// </summary>
+    /// <param name="isHighlighted">True if stat should be highlighted.</param>
+    /// <returns>CSS style string for background and color.</returns>
+    private string GetStatStyle(bool isHighlighted)
+    {
+        if (PlayerColors == null) return "background: #666;";
+
+        // All stat tiles get primary background color
+        if (isHighlighted)
+        {
+            // Highlighted: use gradient background
+            return $"background: {PlayerColors.CssGradient}; color: {PlayerColors.Foreground};";
+        }
+        else
+        {
+            // Normal: use solid primary color
+            return $"background: {PlayerColors.Primary}; color: {PlayerColors.Foreground};";
+        }
+    }
+
+    /// <summary>
+    /// Gets the full URL for the player's profile image from PlayerProfile.
+    /// Combines GameService base URL with relative image path.
+    /// </summary>
+    /// <returns>Full URL to player image from GameService, or empty string if not available.</returns>
+    private string GetPlayerImageUrl()
+    {
+        if (PlayerProfile != null && !string.IsNullOrEmpty(PlayerProfile.ImageUri))
+        {
+            // Combine GameService base URL with relative image path
+            return $"{Config.BaseUrl}{PlayerProfile.ImageUri}";
+        }
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// Gets CSS filter style to colorize SVG icons to match player foreground color.
+    /// Black SVGs need to be inverted to white for light foregrounds.
+    /// </summary>
+    /// <returns>CSS filter style string.</returns>
+    private string GetSvgFilterStyle()
+    {
+        if (PlayerColors == null) return "filter: brightness(0) invert(1);";
+
+        // For black/dark foregrounds, keep SVG black (no invert)
+        // For white/light foregrounds, invert SVG to white
+        // This is a simple heuristic - check if foreground is light colored
+        var fg = PlayerColors.Foreground.TrimStart('#');
+        if (fg.Length >= 6)
+        {
+            var r = Convert.ToInt32(fg.Substring(0, 2), 16);
+            var g = Convert.ToInt32(fg.Substring(2, 2), 16);
+            var b = Convert.ToInt32(fg.Substring(4, 2), 16);
+            var brightness = (r + g + b) / 3.0;
+
+            if (brightness > 127)
+            {
+                // Light foreground: invert black SVG to white
+                return "filter: brightness(0) invert(1);";
+            }
+        }
+
+        // Dark foreground: keep SVG black
+        return "filter: none;";
+    }
+
+    /// <summary>
+    /// Gets the list of resource types to track (includes Gold).
+    /// </summary>
+    /// <returns>Array of ResourceType values: Wheat, Wood, Sheep, Brick, Ore, GoldMine</returns>
+    private ResourceType[] GetTrackedResources()
+    {
+        return new[]
+        {
+            ResourceType.Wheat,
+            ResourceType.Wood,
+            ResourceType.Sheep,
+            ResourceType.Brick,
+            ResourceType.Ore,
+            ResourceType.GoldMine
+        };
+    }
+
+    /// <summary>
+    /// Gets the count of resources granted this turn for the specified resource type.
+    /// Data source: PlayerModel.ResourcesThisTurn
+    /// </summary>
+    /// <param name="resource">The resource type to get count for.</param>
+    /// <returns>Count of this resource granted in the current turn.</returns>
+    private int GetResourceThisTurn(ResourceType resource)
+    {
+        return resource switch
+        {
+            ResourceType.Wheat => Player.ResourcesThisTurn.Wheat,
+            ResourceType.Wood => Player.ResourcesThisTurn.Wood,
+            ResourceType.Sheep => Player.ResourcesThisTurn.Sheep,
+            ResourceType.Brick => Player.ResourcesThisTurn.Brick,
+            ResourceType.Ore => Player.ResourcesThisTurn.Ore,
+            ResourceType.GoldMine => Player.ResourcesThisTurn.GoldMine,
+            _ => 0
+        };
+    }
+
+    // Stat calculation helper methods
+
+    /// <summary>
+    /// Calculates the number of roads played by this player.
+    /// </summary>
+    /// <returns>Count of roads owned by this player in GameModel.</returns>
+    private int GetRoadsPlayed() =>
+        GameModel.Roads.Count(r => r.OwnerId == Player.Id);
+
+    /// <summary>
+    /// Calculates the number of cities played by this player.
+    /// </summary>
+    /// <returns>Count of cities owned by this player in GameModel.</returns>
+    private int GetCitiesPlayed() =>
+        GameModel.Buildings.Count(b => b.OwnerId == Player.Id && b.BuildingState == BuildingState.City);
+
+    /// <summary>
+    /// Calculates the number of settlements played by this player.
+    /// </summary>
+    /// <returns>Count of settlements owned by this player in GameModel.</returns>
+    private int GetSettlementsPlayed() =>
+        GameModel.Buildings.Count(b => b.OwnerId == Player.Id && b.BuildingState == BuildingState.Settlement);
+
+    /// <summary>
+    /// Gets the number of soldier cards played by this player.
+    /// </summary>
+    /// <returns>Soldier card count (currently 0, TODO: implement development card tracking).</returns>
+    private int GetSoldiersPlayed()
+    {
+        // TODO: Implement soldier tracking from development cards
+        // This will require GameModel to expose dev card history
+        return 0;
+    }
+
+    /// <summary>
+    /// Gets the number of resources lost to the robber by this player.
+    /// </summary>
+    /// <returns>Resources lost count (currently 0, TODO: implement robber tracking).</returns>
+    private int GetResourcesLost()
+    {
+        // TODO: Implement robber resource tracking
+        // This will require GameModel to track robber events
+        return 0;
+    }
+
+    /// <summary>
+    /// Calculates the total cumulative resources granted to this player.
+    /// </summary>
+    /// <returns>Sum of all resources in ResourcesThisGame.</returns>
+    private int GetTotalResources()
+    {
+        var r = Player.ResourcesThisGame;
+        return r.Wheat + r.Wood + r.Sheep + r.Brick + r.Ore;
+    }
+}

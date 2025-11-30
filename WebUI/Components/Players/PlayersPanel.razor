@@ -1,0 +1,54 @@
+@using Catan3.Shared.Models
+@using Catan3.Shared.Profiles
+
+<div class="players-panel" data-testid="players-panel">
+    @foreach (var player in GameModel.Players)
+    {
+        var playerColors = GetPlayerColors(player.Id);
+        var playerProfile = GetPlayerProfile(player.Id);
+        <PlayerTile Player="@player"
+                    GameModel="@GameModel"
+                    PlayerColors="@playerColors"
+                    PlayerProfile="@playerProfile" />
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The current game model containing all players and game state.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public GameModel GameModel { get; set; } = null!;
+
+    /// <summary>
+    /// Dictionary mapping player IDs to their PlayerColors for gradient display.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Dictionary<string, PlayerColors> PlayerColorMap { get; set; } = new();
+
+    /// <summary>
+    /// Dictionary mapping player IDs to their full PlayerProfile data.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Dictionary<string, PlayerProfile> PlayerProfiles { get; set; } = new();
+
+    /// <summary>
+    /// Gets the PlayerColors for a specific player ID.
+    /// </summary>
+    /// <param name="playerId">The player ID to look up colors for.</param>
+    /// <returns>PlayerColors if found in map, null otherwise.</returns>
+    private PlayerColors? GetPlayerColors(string playerId)
+    {
+        return PlayerColorMap.TryGetValue(playerId, out var colors) ? colors : null;
+    }
+
+    /// <summary>
+    /// Gets the PlayerProfile for a specific player ID.
+    /// </summary>
+    /// <param name="playerId">The player ID to look up profile for.</param>
+    /// <returns>PlayerProfile if found in map, null otherwise.</returns>
+    private PlayerProfile? GetPlayerProfile(string playerId)
+    {
+        return PlayerProfiles.TryGetValue(playerId, out var profile) ? profile : null;
+    }
+}

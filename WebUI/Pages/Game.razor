@@ -6,6 +6,8 @@
 @using Catan3.WebUI.Services
 @using Catan3.WebUI.Services.Rendering
 @using Catan3.WebUI.Components.Board
+@using Catan3.WebUI.Components.Resources
+@using Catan3.WebUI.Components.Players
 @inject GameServiceConfig Config
 @inject GameCommandProxy CommandProxy
 @inject HttpClient Http
@@ -92,6 +94,15 @@
                                       SelectedResourcesChanged="HandleSelectedResourcesChanged" />
                 </div>
             }
+
+            <!-- Player Tracking (always visible during gameplay) -->
+            @if (GameModel.GameState != GameState.PickingBoard && CurrentPlayer != null)
+            {
+                <div class="player-tracking" style="@GetCurrentPlayerGradient()">
+                    <PlayerTracking GameModel="@GameModel"
+                                    CurrentPlayerId="@CurrentPlayer.Id" />
+                </div>
+            }
         </div>
 
         <!-- CENTER PANEL - Game Board -->
@@ -105,54 +116,13 @@
 
         <!-- RIGHT PANEL -->
         <div class="right-panel">
-            <!-- Tracked Resources -->
-            <div class="panel-section tracked-resources">
-                <div class="panel-label">Tracked Resources</div>
-                <div class="panel-content">
-                    <div class="resource-cards">
-                        <div class="resource-card">🌾</div>
-                        <div class="resource-card">🪵</div>
-                        <div class="resource-card">🪨</div>
-                        <div class="resource-card">🧱</div>
-                        <div class="resource-card">🐑</div>
-                    </div>
-                </div>
-            </div>
+            <!-- Resource Tracking -->
+            <ResourceTracking GameModel="@GameModel" />
 
-            <!-- Player List -->
-            <div class="panel-section player-list">
-                <div class="panel-label">Player List & Stats</div>
-                <div class="panel-content">
-                    @foreach (var player in GameModel.Players)
-                    {
-                        <div class="player-row @(player.Id == GameModel.CurrentPlayerId ? "current-player" : "") @(player.Id == TestOverridePlayerId ? "test-selected" : "")"
-                             @onclick="() => OnPlayerClick(player.Id)"
-                             style="cursor: pointer;">
-                            <div class="player-avatar">&#xE77B;</div>
-                            <div class="player-info">
-                                <span class="player-name">@player.Name</span>
-                                <span class="player-score">Score: @player.Score</span>
-                            </div>
-                            @if (player.Id == GameModel.CurrentPlayerId)
-                            {
-                                <span class="current-indicator">&#xE76B;</span>
-                            }
-                            @if (player.Id == TestOverridePlayerId)
-                            {
-                                <span class="test-indicator">&#xE790;</span>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
-
-            <!-- Debug Panel -->
-            <div class="panel-section debug-panel @(CommandError != null ? "has-error" : "")">
-                <details open="@(CommandError != null)">
-                    <summary style="cursor: pointer;">Debug Info</summary>
-                    <pre style="font-size: 10px; margin: 5px 0;">@((MarkupString)GetDebugInfo())</pre>
-                </details>
-            </div>
+            <!-- Players Panel -->
+            <PlayersPanel GameModel="@GameModel"
+                          PlayerColorMap="@PlayerColorMap"
+                          PlayerProfiles="@PlayerProfiles" />
         </div>
     }
     else
@@ -167,28 +137,47 @@
 <style>
     .game-layout {
         display: grid;
-        grid-template-columns: 280px 1fr 280px;
-        gap: 10px;
+        grid-template-columns: auto 1fr auto;
+        gap: 0;
         height: 100vh;
-        padding: 10px;
+        width: 100vw;
+        padding: 0;
         background: var(--game-bg-primary);
         box-sizing: border-box;
+        overflow: hidden;
     }
 
-    .left-panel, .right-panel {
+    .left-panel {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 5px;
+        width: 325px;
         overflow-y: auto;
+        overflow-x: hidden;
         background: #000;
+        padding: 0px;
+    }
+
+    .right-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 0px;
+        width: 510px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        background: #000;
+        padding: 0px;
     }
 
     .center-panel {
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        min-width: 0; /* Allow flex to shrink */
         min-height: 0; /* Allow flex item to shrink below content size */
         background: #000;
+        align-items: center;
+        justify-content: center;
     }
 
     /* Section containers - no borders, natural flow */
@@ -316,6 +305,14 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        position: relative;
+    }
+
+    .board-container svg {
+        max-width: 95%;
+        max-height: 95vh;
+        width: auto;
+        height: auto;
     }
 
     /* Tracked Resources */
@@ -452,6 +449,13 @@
     private HubConnection? _hubConnection;
     private GameModel? GameModel { get; set; }
     private Dictionary<string, PlayerProfile> PlayerProfiles { get; set; } = new();
+
+    /// <summary>
+    /// Dictionary mapping player IDs to their PlayerColors for gradient display.
+    /// Populated during OnInitializedAsync when loading player profiles.
+    /// </summary>
+    private Dictionary<string, PlayerColors> PlayerColorMap { get; set; } = new();
+
     private string? TestOverridePlayerId { get; set; } // For testing: click player to see their colors
     private bool IsConnecting { get; set; } = true;
     private string? ErrorMessage { get; set; }
@@ -484,12 +488,28 @@
                 foreach (var player in response.Players)
                 {
                     PlayerProfiles[player.Id] = player;
+
+                    // Populate PlayerColorMap for PlayersPanel component
+                    // PlayerProfile.Colors already contains the PlayerColors record
+                    PlayerColorMap[player.Id] = player.Colors;
                 }
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to load player profiles: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Gets the current player from the GameModel.
+    /// </summary>
+    private PlayerModel? CurrentPlayer
+    {
+        get
+        {
+            if (GameModel == null) return null;
+            return GameModel.Players.FirstOrDefault(p => p.Id == GameModel.CurrentPlayerId);
         }
     }
 

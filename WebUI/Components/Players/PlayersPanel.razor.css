@@ -1,0 +1,8 @@
+.players-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    overflow-y: auto;
+    height: 100%;
+}

@@ -16,6 +16,11 @@
     flex-wrap: wrap;
 }
 
+.resource-card-wrapper {
+    width: 45px;
+    height: 67px; /* Aspect ratio ~1:1.5 for resource cards */
+}
+
 .star-counters-row {
     display: flex;
     flex-direction: row;

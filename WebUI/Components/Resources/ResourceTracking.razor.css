@@ -1,0 +1,19 @@
+.resource-tracking-panel {
+    background: var(--game-bg-panel);
+    border-radius: 5px;
+    padding: 5px;
+    margin-bottom: 5px;
+}
+
+.resource-cards-row {
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+    justify-content: space-between;
+}
+
+.resource-card-wrapper {
+    flex: 1;
+    min-width: 0;
+    aspect-ratio: 1 / 1.5; /* Taller cards - matches resource card proportions */
+}

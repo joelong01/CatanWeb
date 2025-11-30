@@ -1,0 +1,101 @@
+.player-tile {
+    background: url('/images/textures/maple.jpg') center/cover;
+    border-radius: 3px;
+    margin: 1px;
+    padding: 3px;
+    visibility: visible;
+}
+
+.player-info-row {
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+    align-items: flex-start;
+    margin-bottom: 2px;
+}
+
+.player-avatar {
+    --stat-scale: 2.0; /* Same scale as stats */
+    width: calc(25px * var(--stat-scale));
+    height: calc(25px * var(--stat-scale));
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #333;
+}
+
+.player-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    color: white;
+    font-size: calc(12px * var(--stat-scale));
+    font-weight: bold;
+}
+
+.player-stats-grid {
+    --stat-scale: 1.6; /* Scale factor for stat tiles - adjust to tune size */
+    display: grid;
+    grid-template-columns: repeat(12, calc(22px * var(--stat-scale)));
+    grid-template-rows: calc(27px * var(--stat-scale));
+    gap: calc(1px * var(--stat-scale));
+    flex: 1;
+}
+
+.stat-tile {
+    width: calc(22px * var(--stat-scale));
+    height: calc(27px * var(--stat-scale));
+    border-radius: calc(5px * var(--stat-scale));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: calc(2px * var(--stat-scale)) 0 calc(3px * var(--stat-scale)) 0;
+}
+
+.stat-tile.highlighted {
+    /* Background and color set via inline style for gradient */
+}
+
+.stat-icon {
+    font-family: var(--icon-font-family);
+    font-size: calc(14px * var(--stat-scale));
+    line-height: calc(14px * var(--stat-scale));
+    text-align: center;
+}
+
+.stat-icon-svg {
+    width: calc(14px * var(--stat-scale));
+    height: calc(14px * var(--stat-scale));
+    object-fit: contain;
+    /* Filter will be overridden by inline style based on foreground color */
+    filter: brightness(0) invert(1); /* Default: convert to white */
+}
+
+.stat-count {
+    font-size: calc(9px * var(--stat-scale));
+    line-height: calc(9px * var(--stat-scale));
+    text-align: center;
+}
+
+.resources-this-turn-row {
+    display: flex;
+    flex-direction: row;
+    gap: 1px;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    height: 118px;
+}
+
+.resource-card-wrapper {
+    height: 100%; /* Fill the 118px height */
+    width: calc(122px / 1.5); /* Width calculated from height to maintain 1:1.5 aspect ratio */
+    flex-shrink: 0; /* Don't shrink - maintain aspect ratio */
+}

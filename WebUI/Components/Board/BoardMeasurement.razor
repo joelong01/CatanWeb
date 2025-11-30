@@ -8,11 +8,13 @@
     <div class="resource-cards-row">
         @foreach (var resourceType in GetDisplayedResources())
         {
-            <ResourceCard
-                Resource="@resourceType"
-                Count="@GameModel.StarCount(resourceType)"
-                IsSelected="@SelectedResources.Contains(resourceType)"
-                OnToggleSelection="@HandleResourceToggle" />
+            <div class="resource-card-wrapper">
+                <ResourceCard
+                    Resource="@resourceType"
+                    Count="@GameModel.StarCount(resourceType)"
+                    IsSelected="@SelectedResources.Contains(resourceType)"
+                    OnToggleSelection="@HandleResourceToggle" />
+            </div>
         }
     </div>
 

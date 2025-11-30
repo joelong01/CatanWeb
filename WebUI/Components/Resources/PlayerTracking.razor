@@ -1,0 +1,101 @@
+@using Catan3.Shared.Models
+@using Catan3.WebUI.Components.Resources
+
+<div class="player-tracking-panel" data-testid="player-tracking-panel">
+    <div class="panel-header">Player Tracking</div>
+    <div class="resource-cards-row">
+        @foreach (var resourceType in GetTrackedResources())
+        {
+            var count = GetResourceCount(resourceType);
+            var hasHarbor = HasHarbor(resourceType);
+            <div class="tracked-resource-card">
+                <ResourceCard
+                    Resource="@resourceType"
+                    Count="@count"
+                    IsSelected="false"
+                    OnToggleSelection="@(() => Task.CompletedTask)" />
+                @if (hasHarbor)
+                {
+                    <div class="harbor-indicator" title="2:1 Harbor">&#xE128;</div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The current game model containing all game state.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public GameModel GameModel { get; set; } = null!;
+
+    /// <summary>
+    /// The ID of the current player whose resources to track.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string CurrentPlayerId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets the list of resource types to track (includes Gold).
+    /// </summary>
+    /// <returns>Array of ResourceType values: Wheat, Wood, Sheep, Brick, Ore, GoldMine</returns>
+    private ResourceType[] GetTrackedResources()
+    {
+        return new[]
+        {
+            ResourceType.Wheat,
+            ResourceType.Wood,
+            ResourceType.Sheep,
+            ResourceType.Brick,
+            ResourceType.Ore,
+            ResourceType.GoldMine
+        };
+    }
+
+    /// <summary>
+    /// Gets the cumulative count of resources granted for the specified resource type.
+    /// Data source: PlayerModel.ResourcesThisGame
+    /// </summary>
+    /// <param name="resource">The resource type to get count for.</param>
+    /// <returns>Total count of this resource granted throughout the game.</returns>
+    private int GetResourceCount(ResourceType resource)
+    {
+        var player = GameModel.Players.FirstOrDefault(p => p.Id == CurrentPlayerId);
+        if (player == null) return 0;
+
+        return resource switch
+        {
+            ResourceType.Wheat => player.ResourcesThisGame.Wheat,
+            ResourceType.Wood => player.ResourcesThisGame.Wood,
+            ResourceType.Sheep => player.ResourcesThisGame.Sheep,
+            ResourceType.Brick => player.ResourcesThisGame.Brick,
+            ResourceType.Ore => player.ResourcesThisGame.Ore,
+            ResourceType.GoldMine => player.ResourcesThisGame.GoldMine,
+            _ => 0
+        };
+    }
+
+    /// <summary>
+    /// Checks if the current player owns a 2:1 harbor for the specified resource.
+    /// </summary>
+    /// <param name="resource">The resource type to check harbor ownership for.</param>
+    /// <returns>True if player owns the corresponding 2:1 harbor, false otherwise.</returns>
+    private bool HasHarbor(ResourceType resource)
+    {
+        var player = GameModel.Players.FirstOrDefault(p => p.Id == CurrentPlayerId);
+        if (player == null) return false;
+
+        var harborType = resource switch
+        {
+            ResourceType.Wheat => HarborType.Wheat,
+            ResourceType.Wood => HarborType.Wood,
+            ResourceType.Sheep => HarborType.Sheep,
+            ResourceType.Brick => HarborType.Brick,
+            ResourceType.Ore => HarborType.Ore,
+            _ => HarborType.None
+        };
+
+        return player.OwnedHarbors.Any(h => h.HarborType == harborType);
+    }
+}
