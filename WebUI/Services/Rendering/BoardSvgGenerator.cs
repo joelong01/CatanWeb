@@ -62,6 +62,7 @@ public static class BoardSvgGenerator
         // Defs section with patterns and gradients
         sb.AppendLine("  <defs>");
         GenerateCherryPattern(sb);  // Cherry wood border texture
+        GenerateWaterPattern(sb);   // Water texture for harbor triangles
         GenerateTilePatterns(sb);
         GenerateHarborPatterns(sb);
         GeneratePlayerGradients(sb, playerLookup, currentPlayerViewModel);
@@ -274,6 +275,17 @@ public static class BoardSvgGenerator
         // Cherry - used as STROKE for outer hex border
         sb.AppendLine($@"    <pattern id=""{BoardSvgConstants.HexBorderStrokePattern}"" patternUnits=""userSpaceOnUse"" width=""100"" height=""100"">");
         sb.AppendLine($@"      <image href=""/images/cherry.jpg"" width=""100"" height=""100"" preserveAspectRatio=""xMidYMid slice""/>");
+        sb.AppendLine("    </pattern>");
+    }
+
+    /// <summary>
+    /// Generates SVG pattern for water texture used in harbor triangles.
+    /// </summary>
+    private static void GenerateWaterPattern(StringBuilder sb)
+    {
+        // Water pattern - used for harbor triangle backgrounds
+        sb.AppendLine($@"    <pattern id=""pattern-water"" patternUnits=""userSpaceOnUse"" width=""100"" height=""100"">");
+        sb.AppendLine($@"      <image href=""/images/tiles/back.jpg"" width=""100"" height=""100"" preserveAspectRatio=""xMidYMid slice""/>");
         sb.AppendLine("    </pattern>");
     }
 

@@ -54,7 +54,7 @@ public static class HarborSvgRenderer
 
         // Draw water triangle background connecting tile edge to harbor circle
         var trianglePoints = $"{v1.x:F1},{v1.y:F1} {v2.x:F1},{v2.y:F1} {harborX:F1},{harborY:F1}";
-        sb.AppendLine($@"    <polygon points=""{trianglePoints}"" fill=""{BoardSvgConstants.WaterColor}""/>");
+        sb.AppendLine($@"    <polygon points=""{trianglePoints}"" fill=""url(#pattern-water)""/>");
 
         // Draw harbor circle with pattern
         var patternId = GetHarborPatternId(harbor.HarborKey.HarborType);
