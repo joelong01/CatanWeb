@@ -21,6 +21,7 @@ public static class BoardSvgGenerator
     /// </summary>
     /// <param name="gameModel">The game model containing all board state.</param>
     /// <param name="players">List of player view models (already in game order).</param>
+    /// <param name="assetService">Asset service for theme-aware path resolution (optional for backwards compatibility).</param>
     /// <param name="shownStars">Star threshold for building visibility (0-14).</param>
     /// <param name="dimmedTiles">Set of tile keys that should be dimmed.</param>
     /// <param name="filteredResources">Resources selected for filtering buildings (max 3, AND logic).</param>
@@ -28,6 +29,7 @@ public static class BoardSvgGenerator
     public static string GenerateSvg(
         this GameModel gameModel,
         IReadOnlyList<PlayerViewModel> players,
+        IAssetService? assetService = null,
         int shownStars = 0,
         HashSet<HexCoordinates>? dimmedTiles = null,
         HashSet<ResourceType>? filteredResources = null)
@@ -53,7 +55,7 @@ public static class BoardSvgGenerator
         double height = maxY - minY;
 
         // SVG header - responsive, fills container
-        sb.AppendLine($@"<svg xmlns=""http://www.w3.org/2000/svg"" xmlns:xlink=""http://www.w3.org/1999/xlink"" viewBox=""{minX:F0} {minY:F0} {width:F0} {height:F0}"" preserveAspectRatio=""xMidYMid meet"" style=""width: 100%; height: 100%;"">");
+        sb.AppendLine($@"<svg xmlns=""http://www.w3.org/2000/svg"" xmlns:xlink=""http://www.w3.org/1999/xlink"" viewBox=""{minX:F0} {minY:F0} {width:F0} {height:F0}"" preserveAspectRatio=""xMidYMid meet"" shape-rendering=""geometricPrecision"" style=""width: 100%; height: 100%;"">");
 
         // Get current player for gradient generation and building rendering
         var currentPlayer = gameModel.CurrentPlayer();
@@ -61,10 +63,10 @@ public static class BoardSvgGenerator
 
         // Defs section with patterns and gradients
         sb.AppendLine("  <defs>");
-        GenerateCherryPattern(sb);  // Cherry wood border texture
-        GenerateWaterPattern(sb);   // Water texture for harbor triangles
-        GenerateTilePatterns(sb);
-        GenerateHarborPatterns(sb);
+        GenerateCherryPattern(sb, assetService);  // Cherry wood border texture
+        GenerateWaterPattern(sb, assetService);   // Water texture for harbor triangles
+        GenerateTilePatterns(sb, assetService);
+        GenerateHarborPatterns(sb, assetService);
         GeneratePlayerGradients(sb, playerLookup, currentPlayerViewModel);
         sb.AppendLine("  </defs>");
 
@@ -265,34 +267,40 @@ public static class BoardSvgGenerator
     /// Generates SVG patterns for wood border textures.
     /// Matches Desktop's bmMaple and bmCherry ImageBrush resources.
     /// </summary>
-    private static void GenerateCherryPattern(StringBuilder sb)
+    private static void GenerateCherryPattern(StringBuilder sb, IAssetService? assetService)
     {
+        // Get paths from asset service or use defaults for backwards compatibility
+        var maplePath = assetService?.GetAssetPath(AssetName.BackgroundBorderFill) ?? "/images/maple.jpg";
+        var cherryPath = assetService?.GetAssetPath(AssetName.BackgroundBorderStroke) ?? "/images/cherry.jpg";
+
         // Maple - used as FILL for outer hex border
         sb.AppendLine($@"    <pattern id=""{BoardSvgConstants.HexBorderFillPattern}"" patternUnits=""userSpaceOnUse"" width=""100"" height=""100"">");
-        sb.AppendLine($@"      <image href=""/images/maple.jpg"" width=""100"" height=""100"" preserveAspectRatio=""xMidYMid slice""/>");
+        sb.AppendLine($@"      <image href=""{maplePath}"" width=""100"" height=""100"" preserveAspectRatio=""xMidYMid slice""/>");
         sb.AppendLine("    </pattern>");
 
-        // Cherry - used as STROKE for outer hex border
+        // Cherry - used as STROKE for outer hex border (using same texture for now)
         sb.AppendLine($@"    <pattern id=""{BoardSvgConstants.HexBorderStrokePattern}"" patternUnits=""userSpaceOnUse"" width=""100"" height=""100"">");
-        sb.AppendLine($@"      <image href=""/images/cherry.jpg"" width=""100"" height=""100"" preserveAspectRatio=""xMidYMid slice""/>");
+        sb.AppendLine($@"      <image href=""{cherryPath}"" width=""100"" height=""100"" preserveAspectRatio=""xMidYMid slice""/>");
         sb.AppendLine("    </pattern>");
     }
 
     /// <summary>
     /// Generates SVG pattern for water texture used in harbor triangles.
     /// </summary>
-    private static void GenerateWaterPattern(StringBuilder sb)
+    private static void GenerateWaterPattern(StringBuilder sb, IAssetService? assetService)
     {
+        var waterPath = assetService?.GetAssetPath(AssetName.BackgroundWater) ?? "/images/tiles/back.jpg";
+
         // Water pattern - used for harbor triangle backgrounds
         sb.AppendLine($@"    <pattern id=""pattern-water"" patternUnits=""userSpaceOnUse"" width=""100"" height=""100"">");
-        sb.AppendLine($@"      <image href=""/images/tiles/back.jpg"" width=""100"" height=""100"" preserveAspectRatio=""xMidYMid slice""/>");
+        sb.AppendLine($@"      <image href=""{waterPath}"" width=""100"" height=""100"" preserveAspectRatio=""xMidYMid slice""/>");
         sb.AppendLine("    </pattern>");
     }
 
     /// <summary>
     /// Generates SVG patterns for tile resource images.
     /// </summary>
-    private static void GenerateTilePatterns(StringBuilder sb)
+    private static void GenerateTilePatterns(StringBuilder sb, IAssetService? assetService)
     {
         // Pattern sized for INNER hex to reveal maple border
         var innerHexSize = BoardSvgConstants.InnerHexSize;
@@ -301,23 +309,25 @@ public static class BoardSvgGenerator
 
         var tileTypes = new[]
         {
-            (ResourceType.Brick, "brick.png"),
-            (ResourceType.Wheat, "wheat.png"),
-            (ResourceType.Wood, "wood.png"),
-            (ResourceType.Ore, "ore.png"),
-            (ResourceType.Sheep, "sheep.png"),
-            (ResourceType.Desert, "desert.png"),
-            (ResourceType.GoldMine, "goldMine.png"),
-            (ResourceType.Sea, "back.jpg"),
+            (ResourceType.Brick, AssetName.TileBrick, "/images/tiles/brick.png"),
+            (ResourceType.Wheat, AssetName.TileWheat, "/images/tiles/wheat.png"),
+            (ResourceType.Wood, AssetName.TileWood, "/images/tiles/wood.png"),
+            (ResourceType.Ore, AssetName.TileOre, "/images/tiles/ore.png"),
+            (ResourceType.Sheep, AssetName.TileSheep, "/images/tiles/sheep.png"),
+            (ResourceType.Desert, AssetName.TileDesert, "/images/tiles/desert.png"),
+            (ResourceType.GoldMine, AssetName.TileGoldMine, "/images/tiles/goldMine.png"),
+            (ResourceType.Sea, AssetName.TileSea, "/images/tiles/back.jpg"),
         };
 
-        foreach (var (resourceType, filename) in tileTypes)
+        foreach (var (resourceType, assetName, defaultPath) in tileTypes)
         {
             var patternId = GetPatternId(resourceType);
+            var tilePath = assetService?.GetAssetPath(assetName) ?? defaultPath;
+
             // Match Desktop's ImageBrush Stretch="UniformToFill"
             // Whole image, centered, scaled to fill, clipped at edges
             sb.AppendLine($@"    <pattern id=""{patternId}"" patternUnits=""objectBoundingBox"" width=""1"" height=""1"">");
-            sb.AppendLine($@"      <image href=""/images/tiles/{filename}"" width=""{patternWidth:F0}"" height=""{patternHeight:F0}"" preserveAspectRatio=""xMidYMid slice""/>");
+            sb.AppendLine($@"      <image href=""{tilePath}"" width=""{patternWidth:F0}"" height=""{patternHeight:F0}"" preserveAspectRatio=""xMidYMid slice""/>");
             sb.AppendLine("    </pattern>");
         }
     }
@@ -325,24 +335,26 @@ public static class BoardSvgGenerator
     /// <summary>
     /// Generates SVG patterns for harbor images.
     /// </summary>
-    private static void GenerateHarborPatterns(StringBuilder sb)
+    private static void GenerateHarborPatterns(StringBuilder sb, IAssetService? assetService)
     {
         var harborTypes = new[]
         {
-            (HarborType.Brick, "2 for 1 brick.png"),
-            (HarborType.Ore, "2 for 1 ore.png"),
-            (HarborType.Sheep, "2 for 1 sheep.png"),
-            (HarborType.Wheat, "2 for 1 wheat.png"),
-            (HarborType.Wood, "2 for 1 wood.png"),
-            (HarborType.ThreeForOne, "3 for 1.png"),
+            (HarborType.Brick, AssetName.HarborBrick, "/images/harbors/2 for 1 brick.png"),
+            (HarborType.Ore, AssetName.HarborOre, "/images/harbors/2 for 1 ore.png"),
+            (HarborType.Sheep, AssetName.HarborSheep, "/images/harbors/2 for 1 sheep.png"),
+            (HarborType.Wheat, AssetName.HarborWheat, "/images/harbors/2 for 1 wheat.png"),
+            (HarborType.Wood, AssetName.HarborWood, "/images/harbors/2 for 1 wood.png"),
+            (HarborType.ThreeForOne, AssetName.HarborThreeForOne, "/images/harbors/3 for 1.png"),
         };
 
         var harborSize = BoardSvgConstants.HarborCircleRadius * 2;
-        foreach (var (harborType, filename) in harborTypes)
+        foreach (var (harborType, assetName, defaultPath) in harborTypes)
         {
             var patternId = GetHarborPatternId(harborType);
+            var harborPath = assetService?.GetAssetPath(assetName) ?? defaultPath;
+
             sb.AppendLine($@"    <pattern id=""{patternId}"" patternUnits=""objectBoundingBox"" width=""1"" height=""1"">");
-            sb.AppendLine($@"      <image href=""/images/harbors/{filename}"" width=""{harborSize:F0}"" height=""{harborSize:F0}"" preserveAspectRatio=""xMidYMid slice""/>");
+            sb.AppendLine($@"      <image href=""{harborPath}"" width=""{harborSize:F0}"" height=""{harborSize:F0}"" preserveAspectRatio=""xMidYMid slice""/>");
             sb.AppendLine("    </pattern>");
         }
     }

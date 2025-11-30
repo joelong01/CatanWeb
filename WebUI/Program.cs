@@ -1,13 +1,14 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Catan3.WebUI;
+using Catan3.WebUI.Models;
 using Catan3.WebUI.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+builder.Services.AddSingleton(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
 // Register GameService configuration and proxy
 builder.Services.AddSingleton<GameServiceConfig>();
@@ -16,4 +17,14 @@ builder.Services.AddScoped<GameCommandProxy>();
 // Register GameStateService as singleton for thick client state management
 builder.Services.AddSingleton<GameStateService>();
 
-await builder.Build().RunAsync();
+// Register theme-aware asset service for resolving asset paths
+builder.Services.AddSingleton<ClientAssetService>();
+builder.Services.AddSingleton<IAssetService>(sp => sp.GetRequiredService<ClientAssetService>());
+
+var host = builder.Build();
+
+// Initialize asset service (load theme.json files)
+var assetService = host.Services.GetRequiredService<ClientAssetService>();
+await assetService.InitializeAsync();
+
+await host.RunAsync();

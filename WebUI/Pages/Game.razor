@@ -3,6 +3,7 @@
 @using Catan3.Shared.Models
 @using Catan3.Shared.Utility
 @using Catan3.Shared.Profiles
+@using Catan3.WebUI.Models
 @using Catan3.WebUI.Services
 @using Catan3.WebUI.Services.Rendering
 @using Catan3.WebUI.Components.Board
@@ -12,6 +13,7 @@
 @inject GameCommandProxy CommandProxy
 @inject HttpClient Http
 @inject GameStateService GameStateService
+@inject IAssetService AssetService
 @implements IAsyncDisposable
 
 <PageTitle>Catan Game</PageTitle>
@@ -309,8 +311,8 @@
     }
 
     .board-container svg {
-        max-width: 95%;
-        max-height: 95vh;
+        max-width: 100%;
+        max-height: 100%;
         width: auto;
         height: auto;
     }
@@ -621,6 +623,7 @@
         {
             return GameModel.GenerateSvg(
                 GameStateService.Players,
+                assetService: AssetService,
                 shownStars: ShownStars,
                 dimmedTiles: null,
                 filteredResources: FilteredResources
