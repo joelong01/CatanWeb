@@ -1,0 +1,129 @@
+@using Catan3.Shared.Models
+@using Catan3.Shared.Extensions
+@using Catan3.Shared.Profiles
+@using Catan3.WebUI.Models
+@using Catan3.WebUI.Services.Rendering
+@using BuildingVisualState = Catan3.WebUI.Services.Rendering.BuildingVisualState
+
+@*
+    BuildingsLayer - Renders OWNED buildings only (settlements, cities, metropolis, knights).
+    Unowned/hoverable buildings (Stars, Highlighted states) are now rendered by BuildingOverlay
+    as HTML elements for isolated repaint on hover.
+*@
+
+<g class="buildings-layer">
+    @foreach (var building in Buildings)
+    {
+        // Only render owned buildings in SVG - they don't need hover animations
+        if (string.IsNullOrEmpty(building.OwnerId)) continue;
+
+        var ownerColors = GetOwnerColors(building);
+        var visualState = GetOwnedBuildingVisualState(building);
+
+        @((MarkupString)building.RenderSvg(CurrentPlayer?.Colors, ownerColors, visualState, -1, 0, false))
+    }
+</g>
+
+@code {
+    /// <summary>
+    /// List of building models to render.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<BuildingModel> Buildings { get; set; } = [];
+
+    /// <summary>
+    /// List of player view models for color lookup.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<PlayerViewModel> Players { get; set; } = [];
+
+    /// <summary>
+    /// Current player view model (for city upgrade highlighting).
+    /// </summary>
+    [Parameter]
+    public PlayerViewModel? CurrentPlayer { get; set; }
+
+    /// <summary>
+    /// The full game model (for entitlement checking).
+    /// </summary>
+    [Parameter]
+    public GameModel? GameModel { get; set; }
+
+    // Track previous state for ShouldRender optimization
+    private int _previousOwnedBuildingHash;
+    private string? _previousCurrentPlayerId;
+
+    /// <summary>
+    /// Only re-render when owned buildings change or current player changes.
+    /// Stars/filter changes don't affect this layer anymore.
+    /// </summary>
+    protected override bool ShouldRender()
+    {
+        var ownedHash = ComputeOwnedBuildingHash();
+
+        bool buildingsChanged = ownedHash != _previousOwnedBuildingHash;
+        bool playerChanged = CurrentPlayer?.Id != _previousCurrentPlayerId;
+
+        bool changed = buildingsChanged || playerChanged;
+
+        if (changed)
+        {
+            Console.WriteLine($"[BuildingsLayer] RE-RENDERING: ownedBuildings={buildingsChanged}, player={playerChanged}");
+            _previousOwnedBuildingHash = ownedHash;
+            _previousCurrentPlayerId = CurrentPlayer?.Id;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Gets owner colors for a building.
+    /// </summary>
+    private PlayerColors? GetOwnerColors(BuildingModel building)
+    {
+        if (string.IsNullOrEmpty(building.OwnerId)) return null;
+        return Players.FirstOrDefault(p => p.Id == building.OwnerId)?.Colors;
+    }
+
+    /// <summary>
+    /// Gets visual state for owned buildings only.
+    /// Settlements owned by current player with city entitlement are highlighted.
+    /// </summary>
+    private BuildingVisualState GetOwnedBuildingVisualState(BuildingModel building)
+    {
+        if (GameModel == null) return BuildingVisualState.Normal;
+
+        var currentPlayer = GameModel.CurrentPlayer();
+        var hasCityEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.City);
+
+        // Settlement owned by current player with city entitlement = highlighted for upgrade
+        if (building.BuildingState == BuildingState.Settlement
+            && building.OwnerId == currentPlayer.Id
+            && hasCityEntitlement)
+        {
+            return BuildingVisualState.Highlighted;
+        }
+
+        return BuildingVisualState.Normal;
+    }
+
+    /// <summary>
+    /// Computes hash based on owned building states only.
+    /// </summary>
+    private int ComputeOwnedBuildingHash()
+    {
+        unchecked
+        {
+            int hash = 17;
+            foreach (var building in Buildings.Where(b => !string.IsNullOrEmpty(b.OwnerId)))
+            {
+                hash = hash * 31 + (int)building.BuildingState;
+                hash = hash * 31 + building.OwnerId!.GetHashCode();
+            }
+            // Include city entitlement state since it affects highlighting
+            var hasCityEntitlement = GameModel?.CurrentPlayer()?.UnspentEntitlements.Contains(Entitlement.City) ?? false;
+            hash = hash * 31 + (hasCityEntitlement ? 1 : 0);
+            return hash;
+        }
+    }
+}

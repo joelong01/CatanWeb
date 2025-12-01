@@ -1,0 +1,101 @@
+@using Catan3.Shared.Models
+@using Catan3.WebUI.Models
+@using Catan3.WebUI.Services.Rendering
+
+@*
+    RoadsLayer - Renders all roads with player colors and build indices.
+    Only re-renders when road states, ownership, or build indices change.
+*@
+
+<g class="roads-layer">
+    @foreach (var road in Roads)
+    {
+        var player = GetPlayerForRoad(road);
+        var opacity = GetRoadOpacity(road);
+        @((MarkupString)road.RenderSvg(player, road.BuildIndex, opacity))
+    }
+</g>
+
+@code {
+    /// <summary>
+    /// List of road models to render.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<RoadModel> Roads { get; set; } = [];
+
+    /// <summary>
+    /// List of player view models for color lookup.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<PlayerViewModel> Players { get; set; } = [];
+
+    /// <summary>
+    /// Current player view model (for buildable road colors).
+    /// </summary>
+    [Parameter]
+    public PlayerViewModel? CurrentPlayer { get; set; }
+
+    // Track previous state for ShouldRender optimization
+    private int _previousRoadHash;
+
+    /// <summary>
+    /// Only re-render when road states, ownership, or build indices change.
+    /// </summary>
+    protected override bool ShouldRender()
+    {
+        var currentHash = ComputeRoadHash(Roads);
+        if (currentHash != _previousRoadHash)
+        {
+            _previousRoadHash = currentHash;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Gets the player view model for a road (owner or current player for buildable).
+    /// </summary>
+    private PlayerViewModel? GetPlayerForRoad(RoadModel road)
+    {
+        // Owned roads use owner colors
+        if (road.OwnerId != null)
+        {
+            return Players.FirstOrDefault(p => p.Id == road.OwnerId);
+        }
+        // Non-owned roads (buildable, etc) use current player's colors
+        return CurrentPlayer;
+    }
+
+    /// <summary>
+    /// Gets the opacity for a road based on its state.
+    /// Matches Desktop RoadViewModel.Opacity logic.
+    /// </summary>
+    private static double GetRoadOpacity(RoadModel road)
+    {
+        return road.RoadState switch
+        {
+            RoadState.Road => 1.0,      // Owned road - fully visible
+            RoadState.Ship => 1.0,      // Owned ship - fully visible
+            RoadState.Buildable => 0.5, // Buildable location - semi-transparent
+            _ => 0.01                    // Unowned/hidden - nearly invisible but receives mouse events
+        };
+    }
+
+    /// <summary>
+    /// Computes hash based on road states, ownership, and build indices.
+    /// </summary>
+    private static int ComputeRoadHash(IReadOnlyList<RoadModel> roads)
+    {
+        unchecked
+        {
+            int hash = 17;
+            foreach (var road in roads)
+            {
+                hash = hash * 31 + (int)road.RoadState;
+                hash = hash * 31 + (road.OwnerId?.GetHashCode() ?? 0);
+                hash = hash * 31 + road.BuildIndex;
+            }
+            return hash;
+        }
+    }
+}

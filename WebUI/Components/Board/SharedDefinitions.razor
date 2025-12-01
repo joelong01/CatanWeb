@@ -1,0 +1,192 @@
+@using Catan3.Shared.Models
+@using Catan3.WebUI.Models
+@using Catan3.WebUI.Services
+@using Catan3.WebUI.Services.Rendering
+
+@*
+    SharedDefinitions - Renders the <defs> section containing patterns and gradients.
+    Only re-renders when Players, CurrentPlayer, or Theme changes.
+*@
+
+<defs>
+    @* Wood border patterns *@
+    <pattern id="@BoardSvgConstants.HexBorderFillPattern" patternUnits="userSpaceOnUse" width="100" height="100">
+        <image href="@GetAssetPath(AssetName.BackgroundBorderFill, "/themes/base/backgrounds/maple.jpg")"
+               width="100" height="100" preserveAspectRatio="xMidYMid slice" />
+    </pattern>
+    <pattern id="@BoardSvgConstants.HexBorderStrokePattern" patternUnits="userSpaceOnUse" width="100" height="100">
+        <image href="@GetAssetPath(AssetName.BackgroundBorderStroke, "/themes/base/backgrounds/cherry.jpg")"
+               width="100" height="100" preserveAspectRatio="xMidYMid slice" />
+    </pattern>
+
+    @* Water pattern for harbor triangles *@
+    <pattern id="pattern-water" patternUnits="userSpaceOnUse" width="100" height="100">
+        <image href="@GetAssetPath(AssetName.BackgroundWater, "/themes/base/tiles/back.jpg")"
+               width="100" height="100" preserveAspectRatio="xMidYMid slice" />
+    </pattern>
+
+    @* Tile patterns *@
+    @foreach (var (resourceType, assetName, defaultPath) in TileTypes)
+    {
+        <pattern id="@GetPatternId(resourceType)" patternUnits="objectBoundingBox" width="1" height="1">
+            <image href="@GetAssetPath(assetName, defaultPath)"
+                   width="@PatternWidth" height="@PatternHeight" preserveAspectRatio="xMidYMid slice" />
+        </pattern>
+    }
+
+    @* Harbor patterns *@
+    @foreach (var (harborType, assetName, defaultPath) in HarborTypes)
+    {
+        <pattern id="@GetHarborPatternId(harborType)" patternUnits="objectBoundingBox" width="1" height="1">
+            <image href="@GetAssetPath(assetName, defaultPath)"
+                   width="@HarborSize" height="@HarborSize" preserveAspectRatio="xMidYMid slice" />
+        </pattern>
+    }
+
+    @* Current player gradient (for Stars state buildings) *@
+    @if (CurrentPlayer != null)
+    {
+        <linearGradient id="gradient-current-player" x1="0%" y1="0%" x2="100%" y2="100%">
+            @((MarkupString)CurrentPlayer.Colors.SvgGradientStops)
+        </linearGradient>
+    }
+
+    @* Per-player gradients (for owned buildings) *@
+    @foreach (var player in Players)
+    {
+        <linearGradient id="gradient-@player.Id" x1="0%" y1="0%" x2="100%" y2="100%">
+            @((MarkupString)player.Colors.SvgGradientStops)
+        </linearGradient>
+    }
+</defs>
+
+@* CSS styles for animations and states *@
+<style>
+    .tile { transition: opacity 0.3s ease; }
+    .tile-dimmed { opacity: 0.5; }
+    .building { transition: opacity 0.15s ease; }
+    .building-highlighted { filter: brightness(1.5); }
+    .building-hoverable { opacity: 0; cursor: pointer; }
+    .building-hoverable:hover { opacity: 1; }
+    .gold-indicator { animation: flip-card 0.5s ease; }
+    .road { transition: opacity 0.2s ease; }
+    .road:hover { opacity: 1.0 !important; }
+    @@keyframes flip-card {
+        0% { transform: rotateY(0deg); }
+        100% { transform: rotateY(180deg); }
+    }
+    /* Compositor layer hints for better performance */
+    .base-layer { will-change: contents; }
+    .buildings-layer { will-change: contents; }
+    .roads-layer { will-change: contents; }
+</style>
+
+@code {
+    /// <summary>
+    /// List of player view models for gradient generation.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<PlayerViewModel> Players { get; set; } = [];
+
+    /// <summary>
+    /// Current player for the gradient-current-player definition.
+    /// </summary>
+    [Parameter]
+    public PlayerViewModel? CurrentPlayer { get; set; }
+
+    /// <summary>
+    /// Asset service for theme-aware path resolution.
+    /// </summary>
+    [Parameter]
+    public IAssetService? AssetService { get; set; }
+
+    // Track previous state for ShouldRender optimization
+    private int _previousPlayerCount;
+    private string? _previousCurrentPlayerId;
+    private string? _previousTheme;
+
+    /// <summary>
+    /// Only re-render when players, current player, or theme changes.
+    /// </summary>
+    protected override bool ShouldRender()
+    {
+        var currentTheme = AssetService?.CurrentTheme;
+
+        bool playersChanged = Players.Count != _previousPlayerCount;
+        bool currentPlayerChanged = CurrentPlayer?.Id != _previousCurrentPlayerId;
+        bool themeChanged = currentTheme != _previousTheme;
+
+        if (playersChanged || currentPlayerChanged || themeChanged)
+        {
+            _previousPlayerCount = Players.Count;
+            _previousCurrentPlayerId = CurrentPlayer?.Id;
+            _previousTheme = currentTheme;
+            Console.WriteLine($"[SharedDefinitions] RE-RENDERING: players={playersChanged}, currentPlayer={currentPlayerChanged}, theme={themeChanged}");
+            return true;
+        }
+        return false;
+    }
+
+    // Computed values for pattern sizing
+    private static double InnerHexSize => BoardSvgConstants.InnerHexSize;
+    private static double PatternWidth => InnerHexSize * 2;
+    private static double PatternHeight => Math.Sqrt(3) * InnerHexSize;
+    private static double HarborSize => BoardSvgConstants.HarborCircleRadius * 2;
+
+    // Tile type definitions for pattern generation
+    private static readonly (ResourceType, AssetName, string)[] TileTypes =
+    [
+        (ResourceType.Brick, AssetName.TileBrick, "/themes/base/tiles/brick.png"),
+        (ResourceType.Wheat, AssetName.TileWheat, "/themes/base/tiles/wheat.png"),
+        (ResourceType.Wood, AssetName.TileWood, "/themes/base/tiles/wood.png"),
+        (ResourceType.Ore, AssetName.TileOre, "/themes/base/tiles/ore.png"),
+        (ResourceType.Sheep, AssetName.TileSheep, "/themes/base/tiles/sheep.png"),
+        (ResourceType.Desert, AssetName.TileDesert, "/themes/base/tiles/desert.png"),
+        (ResourceType.GoldMine, AssetName.TileGoldMine, "/themes/base/tiles/goldMine.png"),
+        (ResourceType.Sea, AssetName.TileSea, "/themes/base/tiles/back.jpg"),
+    ];
+
+    // Harbor type definitions for pattern generation
+    private static readonly (HarborType, AssetName, string)[] HarborTypes =
+    [
+        (HarborType.Brick, AssetName.HarborBrick, "/themes/base/harbors/2 for 1 brick.png"),
+        (HarborType.Ore, AssetName.HarborOre, "/themes/base/harbors/2 for 1 ore.png"),
+        (HarborType.Sheep, AssetName.HarborSheep, "/themes/base/harbors/2 for 1 sheep.png"),
+        (HarborType.Wheat, AssetName.HarborWheat, "/themes/base/harbors/2 for 1 wheat.png"),
+        (HarborType.Wood, AssetName.HarborWood, "/themes/base/harbors/2 for 1 wood.png"),
+        (HarborType.ThreeForOne, AssetName.HarborThreeForOne, "/themes/base/harbors/3 for 1.png"),
+    ];
+
+    private string GetAssetPath(AssetName assetName, string defaultPath)
+        => AssetService?.GetAssetPath(assetName) ?? defaultPath;
+
+    private static string GetPatternId(ResourceType resourceType)
+    {
+        return resourceType switch
+        {
+            ResourceType.Brick => "tile-brick",
+            ResourceType.Wheat => "tile-wheat",
+            ResourceType.Wood => "tile-wood",
+            ResourceType.Ore => "tile-ore",
+            ResourceType.Sheep => "tile-sheep",
+            ResourceType.Desert => "tile-desert",
+            ResourceType.GoldMine => "tile-goldmine",
+            ResourceType.Sea => "tile-sea",
+            _ => "tile-default"
+        };
+    }
+
+    private static string GetHarborPatternId(HarborType harborType)
+    {
+        return harborType switch
+        {
+            HarborType.Brick => "harbor-brick",
+            HarborType.Ore => "harbor-ore",
+            HarborType.Sheep => "harbor-sheep",
+            HarborType.Wheat => "harbor-wheat",
+            HarborType.Wood => "harbor-wood",
+            HarborType.ThreeForOne => "harbor-3for1",
+            _ => "harbor-3for1"
+        };
+    }
+}

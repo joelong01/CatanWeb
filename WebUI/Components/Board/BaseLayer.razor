@@ -1,0 +1,122 @@
+@using Catan3.Shared.Models
+@using Catan3.WebUI.Models
+@using Catan3.WebUI.Services
+@using Catan3.WebUI.Services.Rendering
+
+@*
+    BaseLayer - Renders tiles (without gold overlay), numbers, and harbors.
+    Only re-renders when tile layout changes (board shuffle/resize).
+    Gold tile appearance is handled by GoldTilesLayer.
+*@
+
+<g class="base-layer">
+    @* Background rect *@
+    <rect width="100%" height="100%" fill="@BoardSvgConstants.BackgroundColor" />
+
+    @* Render tiles (non-gold state only - GoldTilesLayer handles gold overlay) *@
+    @foreach (var tile in Tiles)
+    {
+        @((MarkupString)RenderTileWithoutGold(tile))
+    }
+
+    @* Render harbors *@
+    @foreach (var harbor in Harbors)
+    {
+        @((MarkupString)harbor.RenderSvg())
+    }
+</g>
+
+@code {
+    /// <summary>
+    /// List of tile models to render.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<TileModel> Tiles { get; set; } = [];
+
+    /// <summary>
+    /// List of harbor models to render.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<HarborModel> Harbors { get; set; } = [];
+
+    /// <summary>
+    /// Asset service for theme-aware path resolution.
+    /// </summary>
+    [Parameter]
+    public IAssetService? AssetService { get; set; }
+
+    // Track previous state for ShouldRender optimization
+    private int _previousTileHash;
+    private int _previousHarborHash;
+
+    /// <summary>
+    /// Only re-render when tile or harbor layout changes (board shuffle/resize).
+    /// Does NOT re-render when tiles become gold (that's GoldTilesLayer's job).
+    /// </summary>
+    protected override bool ShouldRender()
+    {
+        var tileHash = ComputeTileHash(Tiles);
+        var harborHash = ComputeHarborHash(Harbors);
+
+        if (tileHash != _previousTileHash || harborHash != _previousHarborHash)
+        {
+            Console.WriteLine($"[BaseLayer] RE-RENDERING: tileHash changed={tileHash != _previousTileHash}, harborHash changed={harborHash != _previousHarborHash}");
+            _previousTileHash = tileHash;
+            _previousHarborHash = harborHash;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Renders a tile in its base state (ignoring TemporarilyGold flag).
+    /// GoldTilesLayer will overlay gold appearance when needed.
+    /// </summary>
+    private string RenderTileWithoutGold(TileModel tile)
+    {
+        // Use the existing TileSvgRenderer but we render the base resource
+        // The gold overlay is handled by GoldTilesLayer
+        return tile.RenderSvg(isDimmed: false);
+    }
+
+    /// <summary>
+    /// Computes hash based on tile layout (position, resource type, number).
+    /// Excludes TemporarilyGold since that's handled by GoldTilesLayer.
+    /// </summary>
+    private static int ComputeTileHash(IReadOnlyList<TileModel> tiles)
+    {
+        unchecked
+        {
+            int hash = 17;
+            foreach (var tile in tiles)
+            {
+                hash = hash * 31 + (int)tile.ResourceTileType;
+                hash = hash * 31 + tile.Number;
+                hash = hash * 31 + tile.TileKey.Q;
+                hash = hash * 31 + tile.TileKey.R;
+                // Include Highlighted state since it affects tile border
+                hash = hash * 31 + (tile.Highlighted ? 1 : 0);
+            }
+            return hash;
+        }
+    }
+
+    /// <summary>
+    /// Computes hash based on harbor layout (position, type).
+    /// </summary>
+    private static int ComputeHarborHash(IReadOnlyList<HarborModel> harbors)
+    {
+        unchecked
+        {
+            int hash = 17;
+            foreach (var harbor in harbors)
+            {
+                hash = hash * 31 + (int)harbor.HarborKey.HarborType;
+                hash = hash * 31 + harbor.HarborKey.HexCoordinates.Q;
+                hash = hash * 31 + harbor.HarborKey.HexCoordinates.R;
+                hash = hash * 31 + (int)harbor.HarborKey.Side;
+            }
+            return hash;
+        }
+    }
+}

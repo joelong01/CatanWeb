@@ -1,0 +1,213 @@
+@using Catan3.Shared.Models
+@using Catan3.Shared.Extensions
+@using Catan3.Shared.Profiles
+@using Catan3.WebUI.Models
+@using Catan3.WebUI.Services.Rendering
+
+@*
+    BuildingOverlay - Renders hoverable building spots as HTML elements.
+
+    Performance approach:
+    - Buildings are positioned using CSS transforms matching SVG viewBox coordinates
+    - Each building is an independent HTML element = isolated repaint on hover
+    - Only renders buildings that pass the star threshold filter
+    - No SVG re-rasterization on hover
+*@
+
+<div class="building-overlay">
+    @foreach (var spot in GetVisibleBuildingSpots())
+    {
+        var spotId = $"{spot.Building.BuildingKey.HexCoordinates.Q}_{spot.Building.BuildingKey.HexCoordinates.R}_{spot.Building.BuildingKey.Position}";
+        var isHovered = _hoveredSpotId == spotId;
+        <div class="building-spot @GetSpotClass(spot)"
+             style="@GetSpotStyle(spot, isHovered)"
+             title="@spot.Stars stars"
+             @onmouseenter="() => OnSpotMouseEnter(spotId)"
+             @onmouseleave="OnSpotMouseLeave">
+            <span class="building-spot-text">@spot.Stars</span>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// List of building models to consider for rendering.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<BuildingModel> Buildings { get; set; } = [];
+
+    /// <summary>
+    /// The full game model for star calculation and phase detection.
+    /// </summary>
+    [Parameter]
+    public GameModel? GameModel { get; set; }
+
+    /// <summary>
+    /// Star threshold for building visibility (0-14).
+    /// </summary>
+    [Parameter]
+    public int ShownStars { get; set; }
+
+    /// <summary>
+    /// Resources selected for filtering buildings (max 3, AND logic).
+    /// </summary>
+    [Parameter]
+    public HashSet<ResourceType>? FilteredResources { get; set; }
+
+    /// <summary>
+    /// Current player colors for the building spots.
+    /// </summary>
+    [Parameter]
+    public PlayerViewModel? CurrentPlayer { get; set; }
+
+    /// <summary>
+    /// ViewBox bounds from the parent SVG (minX, minY, width, height).
+    /// </summary>
+    [Parameter]
+    public (double minX, double minY, double width, double height) ViewBoxBounds { get; set; }
+
+    // Track hovered spot for hover-to-reveal behavior
+    private string? _hoveredSpotId;
+
+    /// <summary>
+    /// Handle mouse enter on a building spot.
+    /// </summary>
+    private void OnSpotMouseEnter(string spotId)
+    {
+        _hoveredSpotId = spotId;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Handle mouse leave from a building spot.
+    /// </summary>
+    private void OnSpotMouseLeave()
+    {
+        _hoveredSpotId = null;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Only re-render when buildings, ShownStars, FilteredResources, or current player changes.
+    /// Note: Hover changes trigger StateHasChanged directly.
+    /// </summary>
+    protected override bool ShouldRender()
+    {
+        // Always render if hover state changed (StateHasChanged was called)
+        return true;
+    }
+
+    /// <summary>
+    /// Represents a building spot to render.
+    /// </summary>
+    private record BuildingSpot(BuildingModel Building, int Stars, double X, double Y, bool IsHighlighted, bool IsHidden = false);
+
+    /// <summary>
+    /// Gets all building spots that should be rendered.
+    /// Includes both visible spots (above threshold) and hidden spots (for hover-to-reveal).
+    /// </summary>
+    private IEnumerable<BuildingSpot> GetVisibleBuildingSpots()
+    {
+        if (GameModel == null) yield break;
+
+        var currentPlayer = GameModel.CurrentPlayer();
+        var hasSettlementEntitlement = currentPlayer.UnspentEntitlements.Contains(Entitlement.Settlement);
+        var isPickingBoard = GameModel.GameState == GameState.PickingBoard;
+        var isAllocationPhase = GameModel.AllocationPhase();
+        var filteredResources = FilteredResources ?? new HashSet<ResourceType>();
+
+        foreach (var building in Buildings)
+        {
+            // Only process unowned buildings that could show stars
+            if (building.OwnerId != null) continue;
+            if (building.BuildingState != BuildingState.PossibleSettlement &&
+                building.BuildingState != BuildingState.NotBuildable) continue;
+
+            var stars = GameModel.TilesForBuildings(building.BuildingKey).Stars();
+            if (stars <= 0) continue; // Skip buildings with no stars
+
+            // Apply resource filter (AND logic) - completely hide filtered buildings
+            if (filteredResources.Count > 0)
+            {
+                var adjacentTiles = GameModel.TilesForBuildings(building.BuildingKey);
+                var tileResources = adjacentTiles
+                    .Select(t => t.ResourceTileType)
+                    .Where(rt => rt != ResourceType.Desert && rt != ResourceType.Sea)
+                    .ToHashSet();
+
+                if (!filteredResources.All(resource => tileResources.Contains(resource)))
+                    continue;
+            }
+
+            // Determine visibility: above threshold = visible, below = hidden (hover-to-reveal)
+            var isAboveThreshold = stars >= ShownStars;
+
+            // Only include hidden spots during allocation phase (for hover-to-reveal)
+            if (!isAboveThreshold && !isAllocationPhase)
+                continue;
+
+            // Determine if this is highlighted (buildable now) or just showing stars
+            var isHighlighted = building.BuildingState == BuildingState.PossibleSettlement
+                && hasSettlementEntitlement
+                && GameModel.Phase() != GamePhase.PickingResources;
+
+            // Get position in SVG coordinates
+            var (x, y) = BoardGeometry.GetVertexPosition(building.BuildingKey);
+
+            yield return new BuildingSpot(building, stars, x, y, isHighlighted, IsHidden: !isAboveThreshold);
+        }
+    }
+
+    /// <summary>
+    /// Gets the CSS class for a building spot.
+    /// </summary>
+    private string GetSpotClass(BuildingSpot spot)
+    {
+        return spot.IsHighlighted ? "building-spot-highlighted" : "building-spot-stars";
+    }
+
+    /// <summary>
+    /// Gets the inline style for positioning a building spot.
+    /// Converts SVG coordinates to percentage-based CSS positioning.
+    /// Hidden spots are invisible until hovered.
+    /// </summary>
+    private string GetSpotStyle(BuildingSpot spot, bool isHovered)
+    {
+        if (ViewBoxBounds.width <= 0 || ViewBoxBounds.height <= 0)
+            return "display: none;";
+
+        // Convert SVG coordinates to percentages within the viewBox
+        var percentX = (spot.X - ViewBoxBounds.minX) / ViewBoxBounds.width * 100;
+        var percentY = (spot.Y - ViewBoxBounds.minY) / ViewBoxBounds.height * 100;
+
+        var colors = CurrentPlayer?.Colors;
+        var bgColor = colors != null
+            ? $"linear-gradient(135deg, {colors.Primary}, {colors.Secondary})"
+            : "linear-gradient(135deg, #666, #444)";
+        var fgColor = colors?.Foreground ?? "#fff";
+
+        // Hidden spots: invisible until hovered, then show with scale effect
+        // Visible spots: always visible, scale up on hover
+        string opacity;
+        string transform;
+        string zIndex;
+
+        if (spot.IsHidden)
+        {
+            // Hidden spot: only visible when hovered
+            opacity = isHovered ? "opacity: 1;" : "opacity: 0;";
+            transform = "";
+            zIndex = isHovered ? "z-index: 100;" : "";
+        }
+        else
+        {
+            // Visible spot: always visible, scale on hover
+            opacity = isHovered ? "opacity: 1;" : "opacity: 0.85;";
+            transform = "";
+            zIndex = isHovered ? "z-index: 100;" : "";
+        }
+
+        return $"left: {percentX:F2}%; top: {percentY:F2}%; background: {bgColor}; color: {fgColor}; border-color: {fgColor}; pointer-events: auto; cursor: pointer; {transform} {opacity} {zIndex}";
+    }
+
+}

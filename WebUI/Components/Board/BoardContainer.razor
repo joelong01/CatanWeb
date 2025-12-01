@@ -1,0 +1,308 @@
+@using Catan3.Shared.Models
+@using Catan3.Shared.Extensions
+@using Catan3.WebUI.Models
+@using Catan3.WebUI.Services
+@using Catan3.WebUI.Services.Rendering
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+@*
+    BoardContainer - Parent component that owns the SVG element and orchestrates layer rendering.
+    Each layer is a child component that only re-renders when its specific data changes.
+
+    Performance optimization: The static layer (tiles, harbors) is rasterized to a canvas
+    after initial render to eliminate expensive SVG repaint costs during interactions.
+*@
+
+@if (GameModel != null)
+{
+    <div class="board-svg-container">
+        @* Static layer - tiles, harbors - rendered to SVG then rasterized to canvas *@
+        <svg xmlns="http://www.w3.org/2000/svg"
+             xmlns:xlink="http://www.w3.org/1999/xlink"
+             viewBox="@ViewBox"
+             preserveAspectRatio="xMidYMid meet"
+             shape-rendering="geometricPrecision"
+             class="board-static-layer">
+
+            <SharedDefinitions Players="@Players"
+                              CurrentPlayer="@CurrentPlayerViewModel"
+                              AssetService="@AssetService" />
+
+            <BaseLayer Tiles="@GameModel.Tiles"
+                       Harbors="@GameModel.Harbors"
+                       AssetService="@AssetService" />
+
+            <GoldTilesLayer Tiles="@GameModel.Tiles"
+                            AssetService="@AssetService" />
+        </svg>
+
+        @* Canvas for rasterized static layer - hidden initially, shown by JS after rasterization *@
+        <canvas class="board-static-canvas" style="display: none;"></canvas>
+
+        @* Interactive SVG layer - roads, owned buildings, robber *@
+        <svg xmlns="http://www.w3.org/2000/svg"
+             xmlns:xlink="http://www.w3.org/1999/xlink"
+             viewBox="@ViewBox"
+             preserveAspectRatio="xMidYMid meet"
+             shape-rendering="geometricPrecision"
+             class="board-interactive-layer">
+
+            @* Need defs for player gradients in this SVG too *@
+            <defs>
+                @if (CurrentPlayerViewModel != null)
+                {
+                    <linearGradient id="gradient-current-player" x1="0%" y1="0%" x2="100%" y2="100%">
+                        @((MarkupString)CurrentPlayerViewModel.Colors.SvgGradientStops)
+                    </linearGradient>
+                }
+                @foreach (var player in Players)
+                {
+                    <linearGradient id="gradient-@player.Id" x1="0%" y1="0%" x2="100%" y2="100%">
+                        @((MarkupString)player.Colors.SvgGradientStops)
+                    </linearGradient>
+                }
+            </defs>
+
+            <RoadsLayer Roads="@GameModel.Roads"
+                        Players="@Players"
+                        CurrentPlayer="@CurrentPlayerViewModel" />
+
+            <BuildingsLayer Buildings="@GameModel.Buildings"
+                            Players="@Players"
+                            CurrentPlayer="@CurrentPlayerViewModel"
+                            GameModel="@GameModel" />
+
+            <RobberLayer RobberCoordinates="@GameModel.Robber.Coordinates" />
+        </svg>
+
+        @* HTML overlay for hoverable building spots - isolated repaint on hover *@
+        <BuildingOverlay Buildings="@GameModel.Buildings"
+                         GameModel="@GameModel"
+                         ShownStars="@ShownStars"
+                         FilteredResources="@FilteredResources"
+                         CurrentPlayer="@CurrentPlayerViewModel"
+                         ViewBoxBounds="@ViewBoxBounds" />
+    </div>
+}
+else
+{
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">
+        <text x="100" y="50" text-anchor="middle" fill="white">Waiting for game data...</text>
+    </svg>
+}
+
+@code {
+    /// <summary>
+    /// The game model containing all board state.
+    /// </summary>
+    [Parameter]
+    public GameModel? GameModel { get; set; }
+
+    /// <summary>
+    /// List of player view models (already in game order).
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<PlayerViewModel> Players { get; set; } = [];
+
+    /// <summary>
+    /// Asset service for theme-aware path resolution.
+    /// </summary>
+    [Parameter]
+    public IAssetService? AssetService { get; set; }
+
+    /// <summary>
+    /// Star threshold for building visibility (0-14).
+    /// </summary>
+    [Parameter]
+    public int ShownStars { get; set; }
+
+    /// <summary>
+    /// Resources selected for filtering buildings (max 3, AND logic).
+    /// </summary>
+    [Parameter]
+    public HashSet<ResourceType>? FilteredResources { get; set; }
+
+    /// <summary>
+    /// Computed viewBox string for the SVG.
+    /// </summary>
+    private string ViewBox => CalculateViewBox();
+
+    /// <summary>
+    /// ViewBox bounds as a tuple for the BuildingOverlay.
+    /// </summary>
+    private (double minX, double minY, double width, double height) ViewBoxBounds => CalculateViewBoxBounds();
+
+    /// <summary>
+    /// Delay in ms to ensure SVG is fully rendered before rasterization.
+    /// </summary>
+    private const int RasterizationDelayMs = 150;
+
+    /// <summary>
+    /// Whether the static layer has been rasterized to canvas.
+    /// </summary>
+    private bool IsRasterized { get; set; }
+
+    /// <summary>
+    /// Track tile hash to detect when re-rasterization is needed.
+    /// </summary>
+    private int _previousTileHash;
+
+
+    /// <summary>
+    /// Current player view model (for building/road highlighting).
+    /// </summary>
+    private PlayerViewModel? CurrentPlayerViewModel
+    {
+        get
+        {
+            if (GameModel == null) return null;
+            var currentPlayer = GameModel.CurrentPlayer();
+            return Players.FirstOrDefault(p => p.Id == currentPlayer.Id);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Check if tiles changed (board shuffle) - need to re-rasterize
+        var tileHash = ComputeTileHash();
+        if (tileHash != _previousTileHash)
+        {
+            _previousTileHash = tileHash;
+            if (IsRasterized)
+            {
+                // Board was already rasterized - immediately show SVG so new tiles render
+                // Use synchronous JS call to swap visibility before Blazor renders
+                ((IJSInProcessRuntime)JSRuntime).InvokeVoid(
+                    "svgRasterizer.reset",
+                    ".board-static-layer",
+                    ".board-static-canvas");
+            }
+            IsRasterized = false; // Will trigger re-rasterization in OnAfterRenderAsync
+        }
+    }
+
+    /// <summary>
+    /// Rasterize the static SVG layer after render.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (GameModel != null && !IsRasterized)
+        {
+            // Small delay to ensure SVG is fully rendered and laid out
+            await Task.Delay(RasterizationDelayMs);
+
+            try
+            {
+                var success = await JSRuntime.InvokeAsync<bool>(
+                    "svgRasterizer.rasterize",
+                    ".board-static-layer",
+                    ".board-static-canvas");
+
+                if (success)
+                {
+                    IsRasterized = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BoardContainer] Rasterization error: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Compute hash for tile layout to detect changes requiring re-rasterization.
+    /// </summary>
+    private int ComputeTileHash()
+    {
+        if (GameModel == null) return 0;
+        unchecked
+        {
+            int hash = 17;
+            foreach (var tile in GameModel.Tiles)
+            {
+                hash = hash * 31 + (int)tile.ResourceTileType;
+                hash = hash * 31 + tile.Number;
+                hash = hash * 31 + tile.TileKey.Q;
+                hash = hash * 31 + tile.TileKey.R;
+            }
+            return hash;
+        }
+    }
+
+    /// <summary>
+    /// Calculates the viewBox string for the SVG elements.
+    /// </summary>
+    private string CalculateViewBox()
+    {
+        var bounds = CalculateViewBoxBounds();
+        return $"{bounds.minX:F0} {bounds.minY:F0} {bounds.width:F0} {bounds.height:F0}";
+    }
+
+    /// <summary>
+    /// Calculates the viewBox bounds as a tuple for both SVG and BuildingOverlay.
+    /// </summary>
+    private (double minX, double minY, double width, double height) CalculateViewBoxBounds()
+    {
+        if (GameModel == null)
+            return (0, 0, 200, 100);
+
+        double minX = double.MaxValue, maxX = double.MinValue;
+        double minY = double.MaxValue, maxY = double.MinValue;
+
+        // Include tiles
+        foreach (var tile in GameModel.Tiles)
+        {
+            var (cx, cy) = BoardGeometry.AxialToPixel(tile.TileKey.Q, tile.TileKey.R);
+            var vertices = BoardGeometry.GetHexVertices(cx, cy);
+            foreach (var v in vertices)
+            {
+                minX = Math.Min(minX, v.x);
+                maxX = Math.Max(maxX, v.x);
+                minY = Math.Min(minY, v.y);
+                maxY = Math.Max(maxY, v.y);
+            }
+        }
+
+        // Include harbors
+        foreach (var harbor in GameModel.Harbors)
+        {
+            if (harbor.HarborKey.HarborType == HarborType.None)
+                continue;
+
+            var (cx, cy) = BoardGeometry.AxialToPixel(harbor.HarborKey.HexCoordinates.Q, harbor.HarborKey.HexCoordinates.R);
+            var hexVertices = BoardGeometry.GetHexVertices(cx, cy);
+            var (v1Idx, v2Idx) = BoardGeometry.GetEdgeVerticesForSide(harbor.HarborKey.Side);
+            var v1 = hexVertices[v1Idx];
+            var v2 = hexVertices[v2Idx];
+
+            var midX = (v1.x + v2.x) / 2;
+            var midY = (v1.y + v2.y) / 2;
+            var dx = midX - cx;
+            var dy = midY - cy;
+            var length = Math.Sqrt(dx * dx + dy * dy);
+            var normX = dx / length;
+            var normY = dy / length;
+
+            var harborX = midX + normX * BoardSvgConstants.HarborOffset;
+            var harborY = midY + normY * BoardSvgConstants.HarborOffset;
+
+            minX = Math.Min(minX, harborX - BoardSvgConstants.HarborCircleRadius);
+            maxX = Math.Max(maxX, harborX + BoardSvgConstants.HarborCircleRadius);
+            minY = Math.Min(minY, harborY - BoardSvgConstants.HarborCircleRadius);
+            maxY = Math.Max(maxY, harborY + BoardSvgConstants.HarborCircleRadius);
+        }
+
+        // Add padding
+        minX -= BoardSvgConstants.Padding;
+        minY -= BoardSvgConstants.Padding;
+        maxX += BoardSvgConstants.Padding;
+        maxY += BoardSvgConstants.Padding;
+
+        double width = maxX - minX;
+        double height = maxY - minY;
+
+        return (minX, minY, width, height);
+    }
+}

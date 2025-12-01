@@ -62,7 +62,10 @@ public static class RoadSvgRenderer
         var strokeColor = playerViewModel?.Colors.Secondary ?? "#666666";
         var strokeWidth = 2;
 
-        sb.AppendLine($@"    <polygon points=""{roadPolygon}"" fill=""{fillColor}"" stroke=""{strokeColor}"" stroke-width=""{strokeWidth}"" opacity=""{opacity}""/>");
+        // Use CSS class for opacity so hover can override it
+        var opacityClass = opacity < 0.5 ? "road-hidden" : "";
+
+        sb.AppendLine($@"    <polygon class=""{opacityClass}"" points=""{roadPolygon}"" fill=""{fillColor}"" stroke=""{strokeColor}"" stroke-width=""{strokeWidth}""/>");
     }
 
     /// <summary>

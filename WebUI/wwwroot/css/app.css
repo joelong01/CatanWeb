@@ -153,3 +153,20 @@ code {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* Road hover-to-reveal: hidden roads dimmed, full on hover */
+.roads-layer {
+    pointer-events: auto;
+}
+
+.road-hidden {
+    fill-opacity: 0.01;
+    stroke-opacity: 0.01;
+    transition: fill-opacity 0.15s ease, stroke-opacity 0.15s ease;
+    pointer-events: auto;
+}
+
+.road-hidden:hover {
+    fill-opacity: 1;
+    stroke-opacity: 1;
+}

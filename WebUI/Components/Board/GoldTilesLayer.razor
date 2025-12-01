@@ -1,0 +1,123 @@
+@using Catan3.Shared.Models
+@using Catan3.WebUI.Models
+@using Catan3.WebUI.Services
+@using Catan3.WebUI.Services.Rendering
+
+@*
+    GoldTilesLayer - Renders gold tile overlays when tiles are temporarily gold.
+    Only re-renders when the set of gold tiles changes (turn start/end).
+*@
+
+<g class="gold-tiles-layer">
+    @foreach (var tile in GoldTiles)
+    {
+        @((MarkupString)RenderGoldOverlay(tile))
+    }
+</g>
+
+@code {
+    /// <summary>
+    /// List of all tile models (we filter for TemporarilyGold tiles).
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<TileModel> Tiles { get; set; } = [];
+
+    /// <summary>
+    /// Asset service for theme-aware path resolution.
+    /// </summary>
+    [Parameter]
+    public IAssetService? AssetService { get; set; }
+
+    /// <summary>
+    /// Filtered list of tiles that are currently gold.
+    /// </summary>
+    private IEnumerable<TileModel> GoldTiles => Tiles.Where(t => t.TemporarilyGold);
+
+    // Track previous state for ShouldRender optimization
+    private HashSet<HexCoordinates>? _previousGoldTileKeys;
+
+    /// <summary>
+    /// Only re-render when the set of gold tiles changes.
+    /// </summary>
+    protected override bool ShouldRender()
+    {
+        var currentGoldKeys = Tiles
+            .Where(t => t.TemporarilyGold)
+            .Select(t => t.TileKey)
+            .ToHashSet();
+
+        if (!SetEquals(_previousGoldTileKeys, currentGoldKeys))
+        {
+            Console.WriteLine($"[GoldTilesLayer] RE-RENDERING: gold tiles changed, count={currentGoldKeys.Count}");
+            _previousGoldTileKeys = currentGoldKeys;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Renders the gold overlay for a tile - gold mine background + original resource indicator.
+    /// </summary>
+    private string RenderGoldOverlay(TileModel tile)
+    {
+        var sb = new System.Text.StringBuilder();
+        var (x, y) = BoardGeometry.AxialToPixel(tile.TileKey.Q, tile.TileKey.R);
+
+        sb.AppendLine($@"  <g class=""gold-overlay"" data-q=""{tile.TileKey.Q}"" data-r=""{tile.TileKey.R}"">");
+
+        // Gold mine inner hex overlay (covers the original resource)
+        var innerPath = BoardGeometry.GenerateHexPath(x, y, BoardSvgConstants.InnerHexSize);
+        sb.AppendLine($@"    <path d=""{innerPath}"" fill=""url(#tile-goldmine)"" stroke=""transparent"" stroke-width=""{BoardSvgConstants.InnerHexStrokeThickness}""/>");
+
+        // Small card showing original resource type
+        RenderOriginalResourceCard(sb, x, y, tile.ResourceTileType);
+
+        sb.AppendLine("  </g>");
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Renders a small card showing the original resource type before it became gold.
+    /// </summary>
+    private void RenderOriginalResourceCard(System.Text.StringBuilder sb, double x, double y, ResourceType originalResource)
+    {
+        const double cardWidth = 40;
+        const double cardHeight = 60;
+        var cardX = x - cardWidth / 2;
+        var cardY = y + 30;  // Positioned below number token
+
+        // Card background with flip animation
+        sb.AppendLine($@"    <rect x=""{cardX}"" y=""{cardY}"" width=""{cardWidth}"" height=""{cardHeight}"" fill=""white"" stroke=""black"" stroke-width=""2"" rx=""4"" class=""gold-indicator""/>");
+
+        // Original resource pattern inside card
+        var patternId = GetPatternId(originalResource);
+        var cardPatternX = cardX + 5;
+        var cardPatternY = cardY + 5;
+        var cardPatternSize = cardWidth - 10;
+        sb.AppendLine($@"    <rect x=""{cardPatternX}"" y=""{cardPatternY}"" width=""{cardPatternSize}"" height=""{cardPatternSize}"" fill=""url(#{patternId})"" rx=""2""/>");
+    }
+
+    private static string GetPatternId(ResourceType resourceType)
+    {
+        return resourceType switch
+        {
+            ResourceType.Brick => "tile-brick",
+            ResourceType.Wheat => "tile-wheat",
+            ResourceType.Wood => "tile-wood",
+            ResourceType.Ore => "tile-ore",
+            ResourceType.Sheep => "tile-sheep",
+            ResourceType.Desert => "tile-desert",
+            ResourceType.GoldMine => "tile-goldmine",
+            ResourceType.Sea => "tile-sea",
+            _ => "tile-default"
+        };
+    }
+
+    private static bool SetEquals<T>(HashSet<T>? a, HashSet<T>? b)
+    {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        if (a.Count != b.Count) return false;
+        return a.SetEquals(b);
+    }
+}

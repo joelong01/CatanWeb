@@ -75,10 +75,9 @@ public static class BuildingSvgRenderer
         var sb = new StringBuilder();
         var (x, y) = GetVertexPosition(building.BuildingKey);
 
-        // Building group with CSS class for animations and SVG transform for scaling
+        // Building group with CSS class for animations
         var cssClass = visualState == BuildingVisualState.Highlighted ? "building building-highlighted" : "building";
-        var scaleTransform = $"translate({x},{y}) scale(1.1) translate({-x},{-y})";
-        sb.AppendLine($@"  <g class=""{cssClass}"" data-player=""{building.OwnerId}"" transform=""{scaleTransform}"">");
+        sb.AppendLine($@"  <g class=""{cssClass}"" data-player=""{building.OwnerId}"">");
 
         if (visualState == BuildingVisualState.Stars)
         {

@@ -1,0 +1,66 @@
+@using Catan3.Shared.Models
+@using Catan3.WebUI.Models
+@using Catan3.WebUI.Services
+@using Catan3.WebUI.Services.Rendering
+
+@*
+    RobberLayer - Renders the robber piece on its current tile.
+    Only re-renders when the robber moves to a new tile.
+*@
+
+<g class="robber-layer">
+    @if (RobberCoordinates != HexCoordinates.Default)
+    {
+        var (x, y) = BoardGeometry.AxialToPixel(RobberCoordinates.Q, RobberCoordinates.R);
+
+        @* Robber SVG image centered on the tile *@
+        <image href="@RobberImagePath"
+               x="@(x - RobberSize / 2)"
+               y="@(y - RobberSize / 2)"
+               width="@RobberSize"
+               height="@RobberSize"
+               class="robber" />
+    }
+</g>
+
+@code {
+    /// <summary>
+    /// The robber's current tile coordinates.
+    /// </summary>
+    [Parameter]
+    public HexCoordinates RobberCoordinates { get; set; } = HexCoordinates.Default;
+
+    /// <summary>
+    /// Asset service for theme-aware path resolution.
+    /// </summary>
+    [Parameter]
+    public IAssetService? AssetService { get; set; }
+
+    // Track previous state for ShouldRender optimization
+    private HexCoordinates _previousCoordinates = HexCoordinates.Default;
+
+    /// <summary>
+    /// Size of the robber image in SVG units.
+    /// </summary>
+    private const double RobberSize = 50;
+
+    /// <summary>
+    /// Path to the robber image.
+    /// </summary>
+    private string RobberImagePath => AssetService?.GetAssetPath(Models.AssetName.StatRobber)
+        ?? "/themes/base/stats/robber.svg";
+
+    /// <summary>
+    /// Only re-render when the robber moves to a different tile.
+    /// </summary>
+    protected override bool ShouldRender()
+    {
+        if (!_previousCoordinates.Equals(RobberCoordinates))
+        {
+            Console.WriteLine($"[RobberLayer] RE-RENDERING: position changed from ({_previousCoordinates.Q},{_previousCoordinates.R}) to ({RobberCoordinates.Q},{RobberCoordinates.R})");
+            _previousCoordinates = RobberCoordinates;
+            return true;
+        }
+        return false;
+    }
+}

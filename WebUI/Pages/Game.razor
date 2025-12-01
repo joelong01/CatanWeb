@@ -115,7 +115,11 @@
         <div class="center-panel">
             <div class="panel-section game-board">
                 <div class="board-container">
-                    @((MarkupString)GenerateBoardSvg())
+                    <BoardContainer GameModel="@GameModel"
+                                    Players="@GameStateService.Players"
+                                    AssetService="@AssetService"
+                                    ShownStars="@ShownStars"
+                                    FilteredResources="@FilteredResources" />
                 </div>
             </div>
         </div>
@@ -634,27 +638,6 @@
             GameStateService.UpdatePlayerData(PlayerProfiles);
             StateHasChanged();
         });
-    }
-
-    private string GenerateBoardSvg()
-    {
-        if (GameModel == null)
-            return "<svg><text x='50' y='50'>Waiting for game data...</text></svg>";
-
-        try
-        {
-            return GameModel.GenerateSvg(
-                GameStateService.Players,
-                assetService: AssetService,
-                shownStars: ShownStars,
-                dimmedTiles: null,
-                filteredResources: FilteredResources
-            );
-        }
-        catch (Exception ex)
-        {
-            return $"<svg><text x='50' y='50'>Error generating board: {ex.Message}</text></svg>";
-        }
     }
 
     private async Task RetryConnection()

@@ -71,4 +71,30 @@ public static class BoardGeometry
             _ => (0, 1)
         };
     }
+
+    /// <summary>
+    /// Gets pixel position for a building vertex in SVG coordinate space.
+    /// </summary>
+    public static (double x, double y) GetVertexPosition(BuildingKey buildingKey)
+    {
+        // Convert tile axial coordinates to pixel position
+        var (tileX, tileY) = AxialToPixel(buildingKey.HexCoordinates.Q, buildingKey.HexCoordinates.R);
+
+        // Get hex vertices
+        var vertices = GetHexVertices(tileX, tileY);
+
+        // Map HexPosition to vertex index (0-5)
+        var vertexIndex = buildingKey.Position switch
+        {
+            HexPosition.Right => 0,
+            HexPosition.BottomRight => 1,
+            HexPosition.BottomLeft => 2,
+            HexPosition.Left => 3,
+            HexPosition.TopLeft => 4,
+            HexPosition.TopRight => 5,
+            _ => 0
+        };
+
+        return vertices[vertexIndex];
+    }
 }
