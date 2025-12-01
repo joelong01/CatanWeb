@@ -28,7 +28,7 @@ Key principles:
 - Make minimal, surgical changes
 - Use CSS variables for all styling (defined in `wwwroot/css/app.css`)
 - Document all public APIs with XML comments
-- Use Segoe MDL2 Assets for icons (HTML entities, not emoji)
+- Use Unicode glyphs (in black and white) instead of Segoe MDL2 Assets because the app has to run on iOS, Mac, Windows, and Android
 - Use `pwsh` for PowerShell scripts, not `powershell`
 - Match Desktop XAML patterns when building WebUI features
 

@@ -132,7 +132,7 @@ Blazor supports reusable components similar to React components and XAML UserCon
 
 ### 3. IconButton.razor (Reusable)
 
-**Purpose:** Button with Segoe MDL2 Assets icon and label below
+**Purpose:** Button with Unicode black and white icon and label below. Must work on iOS, Android, Mac, and Windows.
 
 **Parameters:**
 

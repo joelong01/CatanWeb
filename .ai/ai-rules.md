@@ -488,7 +488,7 @@ git --no-pager log --oneline -10
 
 1. Find corresponding XAML file in `DesktopApp/`
 2. Note colors, sizes, fonts, spacing
-3. Extract Segoe MDL2 Assets icon codes
+3. Use Unicode glyphs (in black and white) instead of Segoe MDL2 Assets because the app has to run on iOS, Mac, Windows, and Android
 4. Use CSS variables for colors
 5. Test visual match with screenshots
 6. Document any differences
