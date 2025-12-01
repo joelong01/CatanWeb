@@ -163,12 +163,10 @@ namespace Tests.DesktopApp.UI
         {
             try
             {
-
                 if (_testSucceeded)
                 {
                     this.TraceMessage("Test succeeded - closing app");
-                    // leave app open for manual testing
-                    // _main?.AsWindow()?.Close();
+                    _main?.AsWindow()?.Close();
                 }
                 else
                 {
@@ -181,6 +179,7 @@ namespace Tests.DesktopApp.UI
         [Fact]
         public void Expansion_End_To_End_Test()
         {
+            this.LogTestStart(nameof(Expansion_End_To_End_Test));
             Sta.Run(() =>
             {
                 DoFullTestWithScriptedActions("Expansion.catan_test");
@@ -190,21 +189,13 @@ namespace Tests.DesktopApp.UI
         [Fact]
         public void Regular_End_To_End_Test()
         {
+            this.LogTestStart(nameof(Regular_End_To_End_Test));
             Sta.Run(() =>
             {
                 DoFullTestWithScriptedActions("Regular.catan_test");
             });
         }
 
-        [Fact]
-        [Obsolete("Use Expansion_End_To_End_Test or Regular_End_To_End_Test instead")]
-        public void Full_Stateful_Flow_PackagedApp_Expansion_FivePlayers()
-        {
-            Sta.Run(() =>
-            {
-                DoFullTestWithScriptedActions();
-            });
-        }
         /// <summary>
         /// Main test method using the new scripted action methodology.
         /// 
@@ -1031,11 +1022,14 @@ namespace Tests.DesktopApp.UI
 
             var currentGameModel = GetCurrentGameModel() ?? throw new InvalidOperationException("Current GameModel cannot be null");
 
+            this.TraceMessage($"[ValidateGameState] Current: Hash={currentGameModel.GameHash}, State={currentGameModel.GameState}");
+            this.TraceMessage($"[ValidateGameState] Expected: Hash={recordedMessage.ExpectedGameHash}, State={recordedMessage.ExpectedGameState}");
+
             if (currentGameModel.GameHash != recordedMessage.ExpectedGameHash || currentGameModel.GameState != recordedMessage.ExpectedGameState)
             {
-                string message = ($"[Expected GameHash ={recordedMessage.ExpectedGameHash}][Current Hash={currentGameModel.GameHash}][Expected GameState={recordedMessage.ExpectedGameState}] [Current GameState=[{currentGameModel.GameState}]");
+                string message = $"Game state mismatch: [Expected GameHash={recordedMessage.ExpectedGameHash}][Current Hash={currentGameModel.GameHash}][Expected GameState={recordedMessage.ExpectedGameState}][Current GameState={currentGameModel.GameState}]";
                 this.TraceMessage(message);
-                throw new InvalidOperationException($"message");
+                throw new InvalidOperationException(message);
             }
         }
 
@@ -1172,7 +1166,7 @@ namespace Tests.DesktopApp.UI
             if (element == null)
                 throw new InvalidOperationException($"Building element not found: {automationId}");
 
-            element.Click();
+            element.SafeClick(this);
         }
 
         private void Execute_RoadPurchase(RoadPurchaseRecord road, UIAutomationHelper uiHelper)
@@ -1184,7 +1178,7 @@ namespace Tests.DesktopApp.UI
             if (element == null)
                 throw new InvalidOperationException($"Road element not found: {automationId}");
 
-            element.Click();
+            element.SafeClick(this);
         }
 
         private void Execute_MoveRobber(MoveRobberRecord robber, UIAutomationHelper uiHelper)
@@ -1289,7 +1283,7 @@ namespace Tests.DesktopApp.UI
             if (goFirstButton == null)
                 throw new InvalidOperationException($"Go First button not found for player: {automationId}");
 
-            goFirstButton.Click();
+            goFirstButton.SafeClick(this);
         }
 
         private void Execute_ParticipatingInSupplemental(ParticipatingInSupplementalRecord supplemental)
@@ -1388,21 +1382,53 @@ namespace Tests.DesktopApp.UI
     /// </summary>
     public static class TestExtensions
     {
+        private static readonly object _logLock = new object();
+        private static string? _currentLogFile;
+        private static readonly string LogDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "CatanTests", "Logs");
+
+        /// <summary>
+        /// Gets the path to the current log file
+        /// </summary>
+        public static string CurrentLogFile => _currentLogFile ?? InitializeLogFile();
+
+        private static string InitializeLogFile()
+        {
+            Directory.CreateDirectory(LogDirectory);
+            _currentLogFile = Path.Combine(LogDirectory, $"CatanUITest_{DateTime.Now:yyyyMMdd_HHmmss}.log");
+            File.WriteAllText(_currentLogFile, $"=== Catan UI Test Log Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss} ==={Environment.NewLine}");
+            return _currentLogFile;
+        }
+
         public static void TraceMessage(this object o, string toWrite, int indentLevel = 0, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0, [CallerFilePath] string cfp = "")
         {
-            var message = $"{Path.GetFileNameWithoutExtension(cfp)}({cln}):{toWrite}\t\t[Caller={cmb}]";
+            var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+            var indent = new string(' ', indentLevel * 2);
+            var message = $"[{timestamp}] {indent}{Path.GetFileNameWithoutExtension(cfp)}({cln}): {toWrite}\t\t[Caller={cmb}]";
 
-            // Write to both debug output and console for test visibility
+            // Write to debug output
             for (int i = 0; i < indentLevel; i++)
             {
                 System.Diagnostics.Debug.Indent();
-
             }
             System.Diagnostics.Debug.WriteLine(message);
-
             for (int i = 0; i < indentLevel; i++)
             {
                 System.Diagnostics.Debug.Unindent();
+            }
+
+            // Write to log file
+            lock (_logLock)
+            {
+                try
+                {
+                    File.AppendAllText(CurrentLogFile, message + Environment.NewLine);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to write to log file: {ex.Message}");
+                }
             }
         }
 
@@ -1423,6 +1449,63 @@ namespace Tests.DesktopApp.UI
                 output = attrs[0].Description;
             }
             return output;
+        }
+
+        /// <summary>
+        /// Performs a click with detailed logging for debugging
+        /// </summary>
+        public static void SafeClick(this AutomationElement element, object logger, [CallerMemberName] string cmb = "", [CallerLineNumber] int cln = 0)
+        {
+            var automationId = element.Properties.AutomationId.ValueOrDefault ?? "unknown";
+            var name = element.Properties.Name.ValueOrDefault ?? "";
+            var bounds = element.Properties.BoundingRectangle.ValueOrDefault;
+            var isOffscreen = element.Properties.IsOffscreen.ValueOrDefault;
+            var isEnabled = element.Properties.IsEnabled.ValueOrDefault;
+
+            logger.TraceMessage($"SafeClick: AutomationId={automationId}, Name={name}, Bounds={bounds}, IsOffscreen={isOffscreen}, IsEnabled={isEnabled}", cmb: cmb, cln: cln);
+
+            if (isOffscreen)
+            {
+                logger.TraceMessage($"⚠️ Element is offscreen! Attempting scroll into view...", cmb: cmb, cln: cln);
+                try
+                {
+                    if (element.Patterns.ScrollItem.IsSupported)
+                    {
+                        element.Patterns.ScrollItem.Pattern.ScrollIntoView();
+                        Thread.Sleep(200);
+                        bounds = element.Properties.BoundingRectangle.ValueOrDefault;
+                        logger.TraceMessage($"After scroll: Bounds={bounds}, IsOffscreen={element.Properties.IsOffscreen.ValueOrDefault}", cmb: cmb, cln: cln);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.TraceMessage($"ScrollIntoView failed: {ex.Message}", cmb: cmb, cln: cln);
+                }
+            }
+
+            try
+            {
+                element.Click();
+                logger.TraceMessage($"✅ Click successful on {automationId}", cmb: cmb, cln: cln);
+            }
+            catch (FlaUI.Core.Exceptions.NoClickablePointException ex)
+            {
+                logger.TraceMessage($"❌ NoClickablePointException on {automationId}: {ex.Message}", cmb: cmb, cln: cln);
+                logger.TraceMessage($"   Element details: ClassName={element.Properties.ClassName.ValueOrDefault}, ControlType={element.Properties.ControlType.ValueOrDefault}", cmb: cmb, cln: cln);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Logs the start of a test and returns the log file path
+        /// </summary>
+        public static void LogTestStart(this object logger, string testName)
+        {
+            logger.TraceMessage($"");
+            logger.TraceMessage($"========================================");
+            logger.TraceMessage($"TEST STARTED: {testName}");
+            logger.TraceMessage($"Log file: {CurrentLogFile}");
+            logger.TraceMessage($"========================================");
         }
     }
 }

@@ -2279,9 +2279,9 @@
     ],
     "robber": {
       "coordinates": {
-        "q": -10,
-        "r": -10,
-        "s": -10
+        "q": -99,
+        "r": 99,
+        "s": 0
       },
       "movedBy": null,
       "targeted": null,

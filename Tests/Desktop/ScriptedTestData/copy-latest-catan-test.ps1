@@ -1,24 +1,38 @@
 # PowerShell script to copy the most recent .catan_test file from saved games directory
 # and rename it based on game type (Regular or Expansion)
 
-# Try to find Catan Saved Games directory in common locations
-$possiblePaths = @(
-    [System.IO.Path]::Combine([Environment]::GetFolderPath("MyDocuments"), "Catan Saved Games"),
-    "C:\Users\$env:USERNAME\OneDrive\Documents\Catan Saved Games",
-    "C:\Users\$env:USERNAME\Documents\Catan Saved Games"
-)
+# Check for CATAN_DOCUMENTS_PATH environment variable first
+$documentsPath = $env:CATAN_DOCUMENTS_PATH
+if ($documentsPath) {
+    $sourceDir = Join-Path $documentsPath "Catan Saved Games"
+    if (Test-Path $sourceDir) {
+        Write-Host "Using CATAN_DOCUMENTS_PATH: $sourceDir" -ForegroundColor Green
+    } else {
+        Write-Host "CATAN_DOCUMENTS_PATH set but directory not found: $sourceDir" -ForegroundColor Red
+        $sourceDir = $null
+    }
+}
 
-$sourceDir = $null
-foreach ($path in $possiblePaths) {
-    if (Test-Path $path) {
-        $sourceDir = $path
-        Write-Host "Found Catan Saved Games at: $sourceDir" -ForegroundColor Green
-        break
+# If no env var or path doesn't exist, try common locations
+if ($null -eq $sourceDir) {
+    $possiblePaths = @(
+        [System.IO.Path]::Combine([Environment]::GetFolderPath("MyDocuments"), "Catan Saved Games"),
+        "C:\Users\$env:USERNAME\OneDrive\Documents\Catan Saved Games",
+        "C:\Users\$env:USERNAME\Documents\Catan Saved Games"
+    )
+
+    foreach ($path in $possiblePaths) {
+        if (Test-Path $path) {
+            $sourceDir = $path
+            Write-Host "Found Catan Saved Games at: $sourceDir" -ForegroundColor Green
+            break
+        }
     }
 }
 
 if ($null -eq $sourceDir) {
-    Write-Host "Could not find Catan Saved Games directory. Tried:" -ForegroundColor Red
+    Write-Host "Could not find Catan Saved Games directory." -ForegroundColor Red
+    Write-Host "Set CATAN_DOCUMENTS_PATH environment variable or ensure saved games exist in:" -ForegroundColor Yellow
     foreach ($path in $possiblePaths) {
         Write-Host "  $path" -ForegroundColor Gray
     }
