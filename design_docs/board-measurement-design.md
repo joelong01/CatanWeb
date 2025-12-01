@@ -91,7 +91,7 @@ Blazor supports reusable components similar to React components and XAML UserCon
 
 **Features:**
 
-- Background image from `/images/tiles/` (bundled in wwwroot, matches tile rendering)
+- Background image from `/themes/base/tiles/` (matches tile rendering via IAssetService)
 - Black background count badge at bottom
 - CSS grid layout for card styling
 - Hover effects for interactivity

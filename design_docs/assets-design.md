@@ -1121,29 +1121,21 @@ ResourceCard.Robber  → "../Assets/ResourceCards/robber.png"
 
 ### Architecture
 
+**Note:** This section describes the legacy layout before the theme system migration. The current architecture uses the theme system described above with all assets under `/themes/base/`.
+
 ```
 WebUI/
 ├── wwwroot/
-│   ├── images/
-│   │   ├── tiles/           # Copied from DesktopApp/Assets/Tiles/
-│   │   │   ├── brick.png
-│   │   │   ├── wheat.png
-│   │   │   ├── wood.png
-│   │   │   ├── ore.png
-│   │   │   ├── sheep.png
-│   │   │   ├── desert.png
-│   │   │   ├── goldMine.png
-│   │   │   └── back.jpg
-│   │   ├── harbors/         # Copied from DesktopApp/Assets/Harbors/
-│   │   │   ├── 2-for-1-brick.png
-│   │   │   ├── 2-for-1-ore.png
-│   │   │   ├── 2-for-1-sheep.png
-│   │   │   ├── 2-for-1-wheat.png
-│   │   │   ├── 2-for-1-wood.png
-│   │   │   └── 3-for-1.png
-│   │   └── cards/           # Copied from DesktopApp/Assets/ResourceCards/
-│   ├── fonts/
-│   │   └── Catan.ttf        # Copied from DesktopApp/Assets/Fonts/
+│   ├── themes/
+│   │   └── base/            # All themed assets organized by category
+│   │       ├── tiles/       # Tile texture images (brick.png, wheat.png, etc.)
+│   │       ├── harbors/     # Harbor images (brick.png, ore.png, etc.)
+│   │       ├── resources/   # Resource card images
+│   │       ├── stats/       # Player stat icons (SVGs)
+│   │       ├── buildings/   # Building SVGs (settlement.svg, city.svg)
+│   │       ├── backgrounds/ # Background textures (water.jpg, maple.jpg)
+│   │       ├── fonts/       # Custom fonts (catan.ttf)
+│   │       └── theme.json   # Theme asset mappings
 │   └── css/
 │       └── app.css          # @font-face for Catan font
 ```
@@ -1155,7 +1147,7 @@ Register the Catan font in CSS:
 ```css
 @font-face {
     font-family: 'Catan';
-    src: url('/fonts/Catan.ttf') format('truetype');
+    src: url('/themes/base/fonts/catan.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 }
@@ -1203,12 +1195,12 @@ The BoardSvgGenerator creates SVG with `<defs>` containing pattern definitions f
 <svg>
   <defs>
     <pattern id="tile-brick" patternUnits="objectBoundingBox" width="1" height="1">
-      <image href="/images/tiles/brick.png"
+      <image href="/themes/base/tiles/brick.png"
              preserveAspectRatio="xMidYMid slice"
              width="100" height="87"/>
     </pattern>
     <pattern id="tile-wheat" ...>
-      <image href="/images/tiles/wheat.png" .../>
+      <image href="/themes/base/tiles/wheat.png" .../>
     </pattern>
     <!-- ... other tile patterns -->
   </defs>
@@ -1281,7 +1273,7 @@ Harbors are positioned at tile vertices with rotation based on direction:
 ```xml
 <defs>
   <pattern id="harbor-brick" patternUnits="objectBoundingBox" width="1" height="1">
-    <image href="/images/harbors/2-for-1-brick.png" width="40" height="60"/>
+    <image href="/themes/base/harbors/brick.png" width="40" height="60"/>
   </pattern>
 </defs>
 
@@ -1298,18 +1290,21 @@ Harbors are positioned at tile vertices with rotation based on direction:
 
 ## Implementation Plan
 
-### Phase 1: Copy Assets to WebUI
+### Phase 1: Copy Assets to WebUI (COMPLETED)
 
-1. Create directory structure:
-   - `WebUI/wwwroot/images/tiles/`
-   - `WebUI/wwwroot/images/harbors/`
-   - `WebUI/wwwroot/images/cards/`
-   - `WebUI/wwwroot/fonts/`
-2. Copy tile images from `DesktopApp/Assets/Tiles/`
-3. Copy harbor images from `DesktopApp/Assets/Harbors/`
-4. Copy Catan font from `DesktopApp/Assets/Fonts/Catan.ttf`
-5. Register font in `app.css` with `@font-face`
-6. Copy resource card images (for player hand display)
+Assets have been migrated to the theme system under `WebUI/wwwroot/themes/base/`:
+
+1. ✅ Created directory structure under `themes/base/`:
+   - `themes/base/tiles/` - Hex tile textures
+   - `themes/base/harbors/` - Harbor images
+   - `themes/base/resources/` - Resource card images
+   - `themes/base/stats/` - Player stat icons (SVG)
+   - `themes/base/buildings/` - Building SVGs
+   - `themes/base/backgrounds/` - Background textures
+   - `themes/base/fonts/` - Custom fonts
+2. ✅ Copied and organized all assets from Desktop app
+3. ✅ Created `theme.json` with asset mappings
+4. ✅ Removed legacy `/images/` and `/fonts/` directories
 
 ### Phase 2: Update BoardSvgGenerator
 
@@ -1403,12 +1398,12 @@ For maximum efficiency, could combine all tiles into single sprite sheet:
 - `DesktopApp/Assets/Harbors/*.png` - Harbor images
 - `DesktopApp/Assets/ResourceCards/*.png` - Card images
 
-### WebUI Files (to be created/modified)
+### WebUI Files
 
-- `WebUI/wwwroot/images/tiles/` - Copied tile images
-- `WebUI/wwwroot/images/harbors/` - Copied harbor images
-- `WebUI/Program.cs` - Static file caching configuration
-- `Catan3.GameService/Services/BoardSvgGenerator.cs` - SVG pattern generation
+- `WebUI/wwwroot/themes/base/` - All themed assets (tiles, harbors, resources, stats, buildings, backgrounds, fonts)
+- `WebUI/wwwroot/themes/base/theme.json` - Asset mappings for base theme
+- `WebUI/Services/ClientAssetService.cs` - Theme-aware asset path resolution
+- `WebUI/Services/Rendering/BoardSvgGenerator.cs` - SVG pattern generation using IAssetService
 
 ## References
 

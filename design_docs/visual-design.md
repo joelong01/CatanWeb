@@ -597,8 +597,8 @@ Each stat tile:
     private string GetPlayerImageUrl()
     {
         // TODO: Implement player profile image loading
-        // For now, return default guest image
-        return "/images/players/guest.png";
+        // For now, return default guest image from shared assets
+        return "/shared/players/guest.png";
     }
 
     private ResourceType[] GetTrackedResources()
@@ -662,7 +662,7 @@ Each stat tile:
 
 ```css
 .player-tile {
-    background: url('/images/textures/maple.jpg') center/cover;
+    background: url('/themes/base/backgrounds/maple.jpg') center/cover;
     border-radius: 5px;
     margin: 2px;
     padding: 5px;
@@ -873,7 +873,7 @@ Add to `:root` section:
     --game-bg-panel-hover: rgba(30, 30, 30, 0.9);
 
     /* Player tile backgrounds */
-    --player-tile-bg: url('/images/textures/maple.jpg');
+    --player-tile-bg: url('/themes/base/backgrounds/maple.jpg');
 
     /* Stat tile styling */
     --stat-tile-radius: 10px;
@@ -966,24 +966,28 @@ Child components are **stateless presentational components** that receive data v
 
 ## Section 6: Missing Assets
 
-### Required Images
+### Required Images (COMPLETED)
 
-1. **Maple Wood Texture**: `wwwroot/images/textures/maple.jpg`
-   - Source: Copy from `DesktopApp/Assets/Textures/maple.jpg`
+Assets have been migrated to the theme system:
+
+1. **Maple Wood Texture**: `wwwroot/themes/base/backgrounds/maple.jpg`
+   - ✅ Copied and organized under theme system
    - Usage: Player tile background
-   - Size: Original (will be tiled/scaled via CSS)
 
-2. **Default Player Images**: `wwwroot/images/players/`
-   - Source: Copy from `DesktopApp/Assets/DefaultPlayers/*.png`
+2. **Default Player Images**: `wwwroot/shared/players/`
+   - Note: Player avatars are NOT themed (user-specific, not themed content)
    - Files: guest.png, joe.png, ryan.png, adrian.png, dndav.png
    - Usage: Player avatar fallbacks
 
-### Copy Commands
+### Asset Locations
 
-```bash
-# From repository root
-cp DesktopApp/Assets/Textures/maple.jpg WebUI/wwwroot/images/textures/
-cp DesktopApp/Assets/DefaultPlayers/*.png WebUI/wwwroot/images/players/
+```text
+# Theme-managed assets (use IAssetService)
+WebUI/wwwroot/themes/base/backgrounds/maple.jpg
+WebUI/wwwroot/themes/base/backgrounds/cherry.jpg
+
+# Non-themed shared assets (direct paths)
+WebUI/wwwroot/shared/players/*.png
 ```
 
 ## Section 7: Testing Strategy
@@ -1243,12 +1247,9 @@ WebUI/Pages/Game.razor.css
 WebUI/wwwroot/css/app.css
 ```
 
-### Assets to Copy
+### Assets (MIGRATED)
 
-```text
-WebUI/wwwroot/images/textures/maple.jpg (from DesktopApp/Assets/Textures/)
-WebUI/wwwroot/images/players/*.png (from DesktopApp/Assets/DefaultPlayers/)
-```
+Assets have been migrated to theme system. See `WebUI/wwwroot/themes/base/` for themed assets and `WebUI/wwwroot/shared/` for non-themed assets like player avatars.
 
 ### Documentation to Update
 

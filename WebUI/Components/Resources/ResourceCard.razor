@@ -1,4 +1,7 @@
 @using Catan3.Shared.Models
+@using Catan3.WebUI.Models
+@using Catan3.WebUI.Services
+@inject IAssetService AssetService
 
 <div class="resource-card @(IsSelected ? "resource-card-selected" : "")"
      @onclick="HandleClick"
@@ -39,22 +42,22 @@
     public EventCallback<ResourceType> OnToggleSelection { get; set; }
 
     /// <summary>
-    /// Constructs the full URL for the resource image from local assets.
+    /// Gets the resource image URL from the theme asset service.
     /// </summary>
-    /// <returns>Local path to the resource image asset.</returns>
+    /// <returns>Themed path to the resource card image.</returns>
     private string GetResourceImageUrl()
     {
-        var imageName = Resource switch
+        var assetName = Resource switch
         {
-            ResourceType.Wheat => "wheat",
-            ResourceType.Wood => "wood",
-            ResourceType.Ore => "ore",
-            ResourceType.Brick => "brick",
-            ResourceType.Sheep => "sheep",
-            ResourceType.GoldMine => "goldMine",
-            _ => "default"
+            ResourceType.Wheat => AssetName.CardWheat,
+            ResourceType.Wood => AssetName.CardWood,
+            ResourceType.Ore => AssetName.CardOre,
+            ResourceType.Brick => AssetName.CardBrick,
+            ResourceType.Sheep => AssetName.CardSheep,
+            ResourceType.GoldMine => AssetName.CardGoldMine,
+            _ => AssetName.CardBack
         };
-        return $"/images/resources/{imageName}.png";
+        return AssetService.GetAssetPath(assetName);
     }
 
     /// <summary>

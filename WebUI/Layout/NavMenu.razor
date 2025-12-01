@@ -1,4 +1,6 @@
 @inject NavigationManager Navigation
+@using Catan3.WebUI.Models
+@inject IAssetService AssetService
 
 <nav class="nav-menu">
     <button class="nav-menu-item" @onclick="OnHideMenu">
@@ -45,6 +47,22 @@
         <div class="nav-icon">&#xE713;</div>
         <div class="nav-label">Settings</div>
     </button>
+    <button class="nav-menu-item" @onclick="ToggleThemeSubmenu">
+        <div class="nav-icon">&#xE771;</div>
+        <div class="nav-label">Theme: @AssetService.GetCurrentThemeMetadata().DisplayName</div>
+    </button>
+    @if (_showThemeSubmenu)
+    {
+        @foreach (var themeName in AssetService.AvailableThemes)
+        {
+            var metadata = AssetService.GetThemeMetadata(themeName);
+            var isSelected = themeName == AssetService.CurrentTheme;
+            <button class="nav-menu-item theme-option @(isSelected ? "selected" : "")" @onclick="() => SelectTheme(themeName)">
+                <div class="nav-icon">@(isSelected ? "\uE73E" : "")</div>
+                <div class="nav-label">@metadata.DisplayName</div>
+            </button>
+        }
+    }
     <button class="nav-menu-item" @onclick="OnQuit">
         <div class="nav-icon">&#xE89F;</div>
         <div class="nav-label">Quit</div>
@@ -58,6 +76,20 @@
 @code {
     [Parameter]
     public EventCallback OnMenuAction { get; set; }
+
+    private bool _showThemeSubmenu = false;
+
+    private void ToggleThemeSubmenu()
+    {
+        _showThemeSubmenu = !_showThemeSubmenu;
+    }
+
+    private async Task SelectTheme(string themeName)
+    {
+        AssetService.SetTheme(themeName);
+        _showThemeSubmenu = false;
+        await OnMenuAction.InvokeAsync(); // Close menu after selection
+    }
 
     private async Task OnHideMenu()
     {

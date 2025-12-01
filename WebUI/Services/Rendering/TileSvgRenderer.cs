@@ -90,26 +90,16 @@ public static class TileSvgRenderer
 
     /// <summary>
     /// Renders the number token with roll number and probability stars.
+    /// Uses CatanNumberSvg for consistent rendering across the app.
     /// </summary>
     private static void RenderNumberToken(StringBuilder sb, TileModel tile, double x, double y)
     {
-        var isHighProb = tile.Number == 6 || tile.Number == 8;
-        var numberColor = isHighProb ? BoardSvgConstants.HighProbColor : BoardSvgConstants.NormalNumberColor;
-        var pips = GetPips(tile.Number);
-
         var numberY = y - BoardSvgConstants.NumberTokenOffsetY;
 
-        // Number token background circle
-        sb.AppendLine($@"    <circle cx=""{x}"" cy=""{numberY}"" r=""{BoardSvgConstants.NumberTokenRadius}"" fill=""{BoardSvgConstants.NumberTokenFill}"" opacity=""{BoardSvgConstants.NumberTokenOpacity}"" stroke=""{BoardSvgConstants.NumberTokenStroke}"" stroke-width=""{BoardSvgConstants.NumberTokenStrokeWidth}""/>");
-
-        // Roll number
-        sb.AppendLine($@"    <text x=""{x}"" y=""{numberY + BoardSvgConstants.NumberOffsetY}"" text-anchor=""middle"" dominant-baseline=""middle"" font-family=""sans-serif"" font-size=""{BoardSvgConstants.NumberFontSize}"" font-weight=""bold"" fill=""{numberColor}"">{tile.Number}</text>");
-
-        // Probability pips (stars)
-        if (!string.IsNullOrEmpty(pips))
-        {
-            sb.AppendLine($@"    <text x=""{x}"" y=""{numberY + BoardSvgConstants.PipsOffsetY}"" text-anchor=""middle"" font-size=""{BoardSvgConstants.PipsFontSize}"" fill=""{numberColor}"">{pips}</text>");
-        }
+        // Render as a positioned group using the shared CatanNumberSvg helper
+        sb.AppendLine($@"    <g transform=""translate({x},{numberY})"">");
+        sb.Append(CatanNumberSvg.Render(tile.Number, BoardSvgConstants.NumberTokenRadius));
+        sb.AppendLine("    </g>");
     }
 
     /// <summary>
@@ -143,23 +133,6 @@ public static class TileSvgRenderer
         var cardPatternY = cardY + 5;
         var cardPatternSize = cardWidth - 10;
         sb.AppendLine($@"    <rect x=""{cardPatternX}"" y=""{cardPatternY}"" width=""{cardPatternSize}"" height=""{cardPatternSize}"" fill=""url(#{patternId})"" rx=""2""/>");
-    }
-
-    /// <summary>
-    /// Gets probability pips (stars) for a given roll number.
-    /// Uses Unicode star character to match Desktop app.
-    /// </summary>
-    private static string GetPips(int number)
-    {
-        return number switch
-        {
-            2 or 12 => "★",
-            3 or 11 => "★★",
-            4 or 10 => "★★★",
-            5 or 9 => "★★★★",
-            6 or 8 => "★★★★★",
-            _ => ""
-        };
     }
 
     /// <summary>

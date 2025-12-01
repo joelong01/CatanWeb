@@ -117,6 +117,8 @@ public static class BoardSvgGenerator
         }
 
         // Render buildings (on top)
+        // During AllocationPhase, hidden buildings can show stars on hover (Desktop BuildingViewCommands.MouseEnter)
+        var isAllocationPhase = gameModel.AllocationPhase();
         int buildingIndex = 1;  // Build index counter for highlighted buildings (matches Desktop logic)
         foreach (var building in gameModel.Buildings)
         {
@@ -133,7 +135,7 @@ public static class BoardSvgGenerator
             // Assign build index only for highlighted buildings (matches Desktop GameViewModel.MergeBuildings:416, 434)
             var buildIndex = visualState == BuildingVisualState.Highlighted ? buildingIndex++ : 0;
 
-            sb.Append(building.RenderSvg(currentPlayerColors, ownerColors, visualState, stars, buildIndex));
+            sb.Append(building.RenderSvg(currentPlayerColors, ownerColors, visualState, stars, buildIndex, isAllocationPhase));
         }
 
         // Close SVG
@@ -270,8 +272,8 @@ public static class BoardSvgGenerator
     private static void GenerateCherryPattern(StringBuilder sb, IAssetService? assetService)
     {
         // Get paths from asset service or use defaults for backwards compatibility
-        var maplePath = assetService?.GetAssetPath(AssetName.BackgroundBorderFill) ?? "/images/maple.jpg";
-        var cherryPath = assetService?.GetAssetPath(AssetName.BackgroundBorderStroke) ?? "/images/cherry.jpg";
+        var maplePath = assetService?.GetAssetPath(AssetName.BackgroundBorderFill) ?? "/themes/base/backgrounds/maple.jpg";
+        var cherryPath = assetService?.GetAssetPath(AssetName.BackgroundBorderStroke) ?? "/themes/base/backgrounds/cherry.jpg";
 
         // Maple - used as FILL for outer hex border
         sb.AppendLine($@"    <pattern id=""{BoardSvgConstants.HexBorderFillPattern}"" patternUnits=""userSpaceOnUse"" width=""100"" height=""100"">");
@@ -289,7 +291,7 @@ public static class BoardSvgGenerator
     /// </summary>
     private static void GenerateWaterPattern(StringBuilder sb, IAssetService? assetService)
     {
-        var waterPath = assetService?.GetAssetPath(AssetName.BackgroundWater) ?? "/images/tiles/back.jpg";
+        var waterPath = assetService?.GetAssetPath(AssetName.BackgroundWater) ?? "/themes/base/tiles/back.jpg";
 
         // Water pattern - used for harbor triangle backgrounds
         sb.AppendLine($@"    <pattern id=""pattern-water"" patternUnits=""userSpaceOnUse"" width=""100"" height=""100"">");
@@ -309,14 +311,14 @@ public static class BoardSvgGenerator
 
         var tileTypes = new[]
         {
-            (ResourceType.Brick, AssetName.TileBrick, "/images/tiles/brick.png"),
-            (ResourceType.Wheat, AssetName.TileWheat, "/images/tiles/wheat.png"),
-            (ResourceType.Wood, AssetName.TileWood, "/images/tiles/wood.png"),
-            (ResourceType.Ore, AssetName.TileOre, "/images/tiles/ore.png"),
-            (ResourceType.Sheep, AssetName.TileSheep, "/images/tiles/sheep.png"),
-            (ResourceType.Desert, AssetName.TileDesert, "/images/tiles/desert.png"),
-            (ResourceType.GoldMine, AssetName.TileGoldMine, "/images/tiles/goldMine.png"),
-            (ResourceType.Sea, AssetName.TileSea, "/images/tiles/back.jpg"),
+            (ResourceType.Brick, AssetName.TileBrick, "/themes/base/tiles/brick.png"),
+            (ResourceType.Wheat, AssetName.TileWheat, "/themes/base/tiles/wheat.png"),
+            (ResourceType.Wood, AssetName.TileWood, "/themes/base/tiles/wood.png"),
+            (ResourceType.Ore, AssetName.TileOre, "/themes/base/tiles/ore.png"),
+            (ResourceType.Sheep, AssetName.TileSheep, "/themes/base/tiles/sheep.png"),
+            (ResourceType.Desert, AssetName.TileDesert, "/themes/base/tiles/desert.png"),
+            (ResourceType.GoldMine, AssetName.TileGoldMine, "/themes/base/tiles/goldMine.png"),
+            (ResourceType.Sea, AssetName.TileSea, "/themes/base/tiles/back.jpg"),
         };
 
         foreach (var (resourceType, assetName, defaultPath) in tileTypes)
@@ -339,12 +341,12 @@ public static class BoardSvgGenerator
     {
         var harborTypes = new[]
         {
-            (HarborType.Brick, AssetName.HarborBrick, "/images/harbors/2 for 1 brick.png"),
-            (HarborType.Ore, AssetName.HarborOre, "/images/harbors/2 for 1 ore.png"),
-            (HarborType.Sheep, AssetName.HarborSheep, "/images/harbors/2 for 1 sheep.png"),
-            (HarborType.Wheat, AssetName.HarborWheat, "/images/harbors/2 for 1 wheat.png"),
-            (HarborType.Wood, AssetName.HarborWood, "/images/harbors/2 for 1 wood.png"),
-            (HarborType.ThreeForOne, AssetName.HarborThreeForOne, "/images/harbors/3 for 1.png"),
+            (HarborType.Brick, AssetName.HarborBrick, "/themes/base/harbors/2 for 1 brick.png"),
+            (HarborType.Ore, AssetName.HarborOre, "/themes/base/harbors/2 for 1 ore.png"),
+            (HarborType.Sheep, AssetName.HarborSheep, "/themes/base/harbors/2 for 1 sheep.png"),
+            (HarborType.Wheat, AssetName.HarborWheat, "/themes/base/harbors/2 for 1 wheat.png"),
+            (HarborType.Wood, AssetName.HarborWood, "/themes/base/harbors/2 for 1 wood.png"),
+            (HarborType.ThreeForOne, AssetName.HarborThreeForOne, "/themes/base/harbors/3 for 1.png"),
         };
 
         var harborSize = BoardSvgConstants.HarborCircleRadius * 2;
@@ -394,7 +396,10 @@ public static class BoardSvgGenerator
         sb.AppendLine(@"  <style>
     .tile { transition: opacity 0.3s ease; }
     .tile-dimmed { opacity: 0.5; }
+    .building { transition: opacity 0.15s ease; }
     .building-highlighted { filter: brightness(1.5); }
+    .building-hoverable { opacity: 0; cursor: pointer; }
+    .building-hoverable:hover { opacity: 1; }
     .gold-indicator { animation: flip-card 0.5s ease; }
     .road { transition: opacity 0.2s ease; }
     .road:hover { opacity: 1.0 !important; }

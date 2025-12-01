@@ -8,13 +8,14 @@
 
 <h1>Load Game</h1>
 
+@if (errorMessage != null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
 @if (isLoading)
 {
     <p><em>Loading saved games...</em></p>
-}
-else if (errorMessage != null)
-{
-    <div class="alert alert-danger">@errorMessage</div>
 }
 else if (savedGames == null || savedGames.Count == 0)
 {
@@ -89,6 +90,7 @@ else
 
     private async Task OnLoadGameClick(string gameId)
     {
+        errorMessage = null;  // Clear previous error before new attempt
         try
         {
             // Load game from database into memory

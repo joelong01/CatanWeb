@@ -408,7 +408,7 @@ SVG elements are rendered in document order (later = on top):
 <defs>
   <!-- Define patterns for each resource type -->
   <pattern id="tile-brick" patternUnits="objectBoundingBox" width="1" height="1">
-    <image href="/images/tiles/brick.png" preserveAspectRatio="xMidYMid slice"
+    <image href="/themes/base/tiles/brick.png" preserveAspectRatio="xMidYMid slice"
            width="100" height="87"/>
   </pattern>
   <!-- ... other patterns -->
@@ -729,7 +729,7 @@ var roadCenter = new Point(
 
   <!-- OR if VisualState = Highlighted: -->
   <!-- settlement.svg, city.svg, or knight.svg depending on BuildingState -->
-  <image href="/images/svg/settlement.svg" x="90" y="90" width="20" height="20"/>
+  <image href="/themes/base/buildings/settlement.svg" x="90" y="90" width="20" height="20"/>
 
   <!-- 5. Build index (optional) -->
   <text x="115" y="100" font-size="10" fill="#FFFFFF">1</text>
@@ -1069,8 +1069,8 @@ For more complex animations (card flips, dice rolls):
 
 - `Catan3.GameService/Services/BoardSvgGenerator.cs` - SVG generation
 - `WebUI/Pages/Game.razor` - Game page with SVG display
-- `WebUI/wwwroot/images/` - Static image assets
-- `WebUI/wwwroot/fonts/Catan.ttf` - Catan font
+- `WebUI/wwwroot/themes/base/` - Themed static image assets
+- `WebUI/wwwroot/themes/base/fonts/catan.ttf` - Catan font
 
 ### Shared Logic
 

@@ -1,8 +1,10 @@
 @using Catan3.Shared.Models
 @using Catan3.Shared.Profiles
 @using Catan3.WebUI.Components.Resources
+@using Catan3.WebUI.Models
 @using Catan3.WebUI.Services
 @inject GameServiceConfig Config
+@inject IAssetService AssetService
 
 <div class="player-tile" data-testid="player-tile-@Player.Id">
     <!-- Row 1: Player Info and Stats -->
@@ -26,14 +28,7 @@
                 <div class="stat-tile @(stat.IsHighlighted ? "highlighted" : "")"
                      style="@GetStatStyle(stat.IsHighlighted)"
                      data-testid="stat-@stat.Name">
-                    @if (!string.IsNullOrEmpty(stat.SvgPath))
-                    {
-                        <img src="@stat.SvgPath" class="stat-icon-svg" alt="@stat.Name" style="@GetSvgFilterStyle()" />
-                    }
-                    else
-                    {
-                        <div class="stat-icon">@((MarkupString)stat.Glyph)</div>
-                    }
+                    <img src="@stat.SvgPath" class="stat-icon-svg" alt="@stat.Name" style="@GetSvgFilterStyle()" />
                     <div class="stat-count">@stat.Count</div>
                 </div>
             }
@@ -90,33 +85,32 @@
     private class PlayerStat
     {
         public required string Name { get; init; }
-        public required string Glyph { get; init; }
-        public string? SvgPath { get; init; }
+        public required string SvgPath { get; init; }
         public required int Count { get; init; }
         public required bool IsHighlighted { get; init; }
     }
 
     /// <summary>
     /// Gets all player statistics for display in the stats grid.
-    /// Uses SVG icons from wwwroot/images/svg/ directory.
+    /// Uses themed SVG icons via AssetService.
     /// </summary>
     /// <returns>List of 12 player statistics with SVG paths and counts.</returns>
     private List<PlayerStat> GetPlayerStats()
     {
         return new List<PlayerStat>
         {
-            new() { Name = "Score", Glyph = "", SvgPath = "/images/svg/star.svg", Count = Player.Score, IsHighlighted = Player.HighestScore },
-            new() { Name = "Roads", Glyph = "", SvgPath = "/images/svg/road.svg", Count = GetRoadsPlayed(), IsHighlighted = false },
-            new() { Name = "Cities", Glyph = "", SvgPath = "/images/svg/city.svg", Count = GetCitiesPlayed(), IsHighlighted = false },
-            new() { Name = "Settlements", Glyph = "", SvgPath = "/images/svg/settlement.svg", Count = GetSettlementsPlayed(), IsHighlighted = false },
-            new() { Name = "Soldiers", Glyph = "", SvgPath = "/images/svg/knight.svg", Count = GetSoldiersPlayed(), IsHighlighted = Player.LargestArmy },
-            new() { Name = "Robber", Glyph = "", SvgPath = "/images/svg/robber.svg", Count = GetResourcesLost(), IsHighlighted = false },
-            new() { Name = "Targeted", Glyph = "", SvgPath = "/images/svg/targetted.svg", Count = Player.TimesTargeted, IsHighlighted = false },
-            new() { Name = "Total", Glyph = "", SvgPath = "/images/svg/sum of resources.svg", Count = GetTotalResources(), IsHighlighted = false },
-            new() { Name = "LongestRoad", Glyph = "", SvgPath = "/images/svg/longest road.svg", Count = Player.LongestRoad, IsHighlighted = Player.HasLongestRoad },
-            new() { Name = "GoodRolls", Glyph = "", SvgPath = "/images/svg/good roll.svg", Count = Player.GoodRolls, IsHighlighted = false },
-            new() { Name = "BadRolls", Glyph = "", SvgPath = "/images/svg/bad roll.svg", Count = Player.BadRolls, IsHighlighted = false },
-            new() { Name = "Stars", Glyph = "", SvgPath = "/images/svg/star.svg", Count = Player.Stars, IsHighlighted = false }
+            new() { Name = "Score", SvgPath = AssetService.GetAssetPath(AssetName.StatStar), Count = Player.Score, IsHighlighted = Player.HighestScore },
+            new() { Name = "Roads", SvgPath = AssetService.GetAssetPath(AssetName.BuildingRoad), Count = GetRoadsPlayed(), IsHighlighted = false },
+            new() { Name = "Cities", SvgPath = AssetService.GetAssetPath(AssetName.BuildingCity), Count = GetCitiesPlayed(), IsHighlighted = false },
+            new() { Name = "Settlements", SvgPath = AssetService.GetAssetPath(AssetName.BuildingSettlement), Count = GetSettlementsPlayed(), IsHighlighted = false },
+            new() { Name = "Soldiers", SvgPath = AssetService.GetAssetPath(AssetName.StatKnights), Count = GetSoldiersPlayed(), IsHighlighted = Player.LargestArmy },
+            new() { Name = "Robber", SvgPath = AssetService.GetAssetPath(AssetName.StatRobber), Count = GetResourcesLost(), IsHighlighted = false },
+            new() { Name = "Targeted", SvgPath = AssetService.GetAssetPath(AssetName.StatTargetted), Count = Player.TimesTargeted, IsHighlighted = false },
+            new() { Name = "Total", SvgPath = AssetService.GetAssetPath(AssetName.StatResourceCards), Count = GetTotalResources(), IsHighlighted = false },
+            new() { Name = "LongestRoad", SvgPath = AssetService.GetAssetPath(AssetName.StatLongestRoad), Count = Player.LongestRoad, IsHighlighted = Player.HasLongestRoad },
+            new() { Name = "GoodRolls", SvgPath = AssetService.GetAssetPath(AssetName.StatGoodRoll), Count = Player.GoodRolls, IsHighlighted = false },
+            new() { Name = "BadRolls", SvgPath = AssetService.GetAssetPath(AssetName.StatBadRoll), Count = Player.BadRolls, IsHighlighted = false },
+            new() { Name = "Stars", SvgPath = AssetService.GetAssetPath(AssetName.StatStar), Count = Player.Stars, IsHighlighted = false }
         };
     }
 

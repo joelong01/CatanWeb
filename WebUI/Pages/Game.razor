@@ -55,6 +55,10 @@
                     </button>
                 </div>
                 <div class="state-message" style="color: @GetCurrentPlayerForeground()">@GetStateMessage()</div>
+                @if (!string.IsNullOrEmpty(CommandError))
+                {
+                    <div class="command-error">@CommandError</div>
+                }
             </div>
 
             <!-- Purchase Controls -->
@@ -229,6 +233,17 @@
     }
 
     .state-message {
+        font-size: 11px;
+        text-align: center;
+    }
+
+    .command-error {
+        color: #ff6b6b;
+        background: rgba(255, 107, 107, 0.2);
+        border: 1px solid #ff6b6b;
+        border-radius: 4px;
+        padding: 5px 10px;
+        margin-top: 5px;
         font-size: 11px;
         text-align: center;
     }
@@ -467,7 +482,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to theme changes to re-render the board
+        AssetService.ThemeChanged += OnThemeChanged;
         await ConnectToGameAsync();
+    }
+
+    private void OnThemeChanged(string themeName)
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     private async Task EnsurePlayerProfilesLoadedAsync()
@@ -738,34 +760,6 @@
         };
     }
 
-    private int GetStarCountForNumber(int number)
-    {
-        // Uses the same logic as TileModel.Stars property
-        return number switch
-        {
-            2 or 12 => 1,
-            3 or 11 => 2,
-            4 or 10 => 3,
-            5 or 9 => 4,
-            6 or 8 => 5,
-            7 => 0,
-            _ => 0
-        };
-    }
-
-    private string GetStarsString(int starCount)
-    {
-        return starCount switch
-        {
-            1 => "★",
-            2 => "★★",
-            3 => "★★★",
-            4 => "★★★★",
-            5 => "★★★★★",
-            _ => ""
-        };
-    }
-
     private string GetRollCount(int roll)
     {
         if (GameModel?.RollModel?.GameRollModel?.RollCounts == null) return "0";
@@ -792,34 +786,8 @@
 
     private string RenderCatanNumberSvg(int number)
     {
-        // Render a standalone CatanNumber SVG matching tile number tokens
-        var isHighProb = number == 6 || number == 8;
-        var numberColor = isHighProb ? "#DC143C" : "white"; // Crimson for 6/8, white for others
-        var starCount = GetStarCountForNumber(number);
-        var starsString = GetStarsString(starCount);
-
-        const int radius = 30;
-        const int centerX = 30;
-        const int centerY = 30;
-        const int svgSize = 60;
-
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine($@"<svg width=""{svgSize}"" height=""{svgSize}"" viewBox=""0 0 {svgSize} {svgSize}"">");
-
-        // Background circle (matches tile number token)
-        sb.AppendLine($@"  <circle cx=""{centerX}"" cy=""{centerY}"" r=""{radius}"" fill=""#2B4F81"" opacity=""0.9"" stroke=""black"" stroke-width=""2""/>");
-
-        // Number
-        sb.AppendLine($@"  <text x=""{centerX}"" y=""{centerY - 10}"" text-anchor=""middle"" dominant-baseline=""middle"" font-family=""sans-serif"" font-size=""24"" font-weight=""bold"" fill=""{numberColor}"">{number}</text>");
-
-        // Stars (if any)
-        if (!string.IsNullOrEmpty(starsString))
-        {
-            sb.AppendLine($@"  <text x=""{centerX}"" y=""{centerY + 10}"" text-anchor=""middle"" font-size=""12"" fill=""{numberColor}"">{starsString}</text>");
-        }
-
-        sb.AppendLine("</svg>");
-        return sb.ToString();
+        // Use the shared CatanNumberSvg helper for consistent rendering
+        return CatanNumberSvg.RenderStandalone(number, 60);
     }
 
     private string GetDebugInfo()
@@ -847,6 +815,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        AssetService.ThemeChanged -= OnThemeChanged;
         if (_hubConnection != null)
         {
             await _hubConnection.DisposeAsync();

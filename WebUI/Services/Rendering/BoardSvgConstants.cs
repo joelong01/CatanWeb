@@ -39,7 +39,7 @@ public static class BoardSvgConstants
     // Number token - matches original working server-side rendering
     // Note: XAML uses 65x65 grid, but we render with radius 30 (not 32.5) for proper visual balance
     public const double NumberTokenRadius = 30;  // From original working code
-    public const double NumberTokenOffsetY = 50;  // Circle center offset from tile center
+    public const double NumberTokenOffsetY = 40;  // Circle center offset from tile center (moved down 10px from 50)
     public const double NumberTokenOpacity = 0.85;  // From original working code
 
     // Font sizes - matches Desktop CatanNumber.xaml

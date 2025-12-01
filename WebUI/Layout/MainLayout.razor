@@ -1,4 +1,8 @@
 @inherits LayoutComponentBase
+@using Blazored.LocalStorage
+@using Catan3.WebUI.Services
+@inject ISyncLocalStorageService LocalStorage
+@inject ClientAssetService AssetService
 
 <div class="page">
     <button class="hamburger-btn" @onclick="ToggleSidebar">
@@ -23,6 +27,18 @@
 
 @code {
     private bool showMenu = false;
+    private bool _localStorageInitialized = false;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && !_localStorageInitialized)
+        {
+            // Initialize localStorage after first render when JS interop is available
+            AssetService.SetLocalStorage(LocalStorage);
+            AssetService.LoadThemeFromStorage();
+            _localStorageInitialized = true;
+        }
+    }
 
     private void ToggleSidebar()
     {

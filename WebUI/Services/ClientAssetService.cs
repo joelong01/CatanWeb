@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Blazored.LocalStorage;
 using Catan3.WebUI.Models;
 
 namespace Catan3.WebUI.Services
@@ -7,10 +8,14 @@ namespace Catan3.WebUI.Services
     /// <summary>
     /// Client-side implementation of IAssetService for Blazor WebAssembly.
     /// Loads theme configurations via HTTP from the server.
+    /// Persists theme selection to localStorage.
     /// </summary>
     public class ClientAssetService : IAssetService
     {
+        private const string ThemeStorageKey = "catan-theme";
+
         private readonly HttpClient _httpClient;
+        private ISyncLocalStorageService? _localStorage;
         private Dictionary<AssetName, string> _baseAssets = new();
         private Dictionary<string, Dictionary<AssetName, string>> _themeOverrides = new();
         private Dictionary<string, ThemeMetadata> _themeMetadata = new();
@@ -27,6 +32,36 @@ namespace Catan3.WebUI.Services
         }
 
         /// <summary>
+        /// Sets the localStorage service. Called after first render when JS interop is available.
+        /// </summary>
+        public void SetLocalStorage(ISyncLocalStorageService localStorage)
+        {
+            _localStorage = localStorage;
+        }
+
+        /// <summary>
+        /// Loads theme preference from localStorage. Called after JS interop is available.
+        /// </summary>
+        public void LoadThemeFromStorage()
+        {
+            if (_localStorage == null) return;
+
+            try
+            {
+                var savedTheme = _localStorage.GetItem<string>(ThemeStorageKey);
+                if (!string.IsNullOrEmpty(savedTheme) && _themeMetadata.ContainsKey(savedTheme) && savedTheme != "base")
+                {
+                    _currentTheme = savedTheme;
+                    ThemeChanged?.Invoke(_currentTheme);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to load theme from storage: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Initialize the asset service by loading theme configurations.
         /// Should be called early in app startup.
         /// </summary>
@@ -36,11 +71,16 @@ namespace Catan3.WebUI.Services
 
             try
             {
-                // Load base theme
+                // Load base theme (required - provides fallbacks)
                 await LoadThemeAsync("base");
 
-                // Load classic theme
+                // Load available themes
                 await LoadThemeAsync("classic");
+                await LoadThemeAsync("svg-theme");
+                await LoadThemeAsync("black-and-white");
+
+                // Theme preference is loaded later via LoadThemeFromStorage()
+                // after JS interop is available
 
                 _isInitialized = true;
             }
@@ -115,34 +155,34 @@ namespace Catan3.WebUI.Services
         }
 
         /// <summary>
-        /// Returns legacy image paths for backwards compatibility when theme is not loaded.
+        /// Returns fallback paths from themes/base when theme is not loaded.
         /// </summary>
         private static string GetLegacyFallbackPath(AssetName asset)
         {
             return asset switch
             {
-                AssetName.TileBrick => "/images/tiles/brick.png",
-                AssetName.TileWheat => "/images/tiles/wheat.png",
-                AssetName.TileWood => "/images/tiles/wood.png",
-                AssetName.TileOre => "/images/tiles/ore.png",
-                AssetName.TileSheep => "/images/tiles/sheep.png",
-                AssetName.TileDesert => "/images/tiles/desert.png",
-                AssetName.TileGoldMine => "/images/tiles/goldMine.png",
-                AssetName.TileSea => "/images/tiles/back.jpg",
-                AssetName.TileInvasion => "/images/tiles/invasion.png",
+                AssetName.TileBrick => "/themes/base/tiles/brick.png",
+                AssetName.TileWheat => "/themes/base/tiles/wheat.png",
+                AssetName.TileWood => "/themes/base/tiles/wood.png",
+                AssetName.TileOre => "/themes/base/tiles/ore.png",
+                AssetName.TileSheep => "/themes/base/tiles/sheep.png",
+                AssetName.TileDesert => "/themes/base/tiles/desert.png",
+                AssetName.TileGoldMine => "/themes/base/tiles/goldMine.png",
+                AssetName.TileSea => "/themes/base/tiles/back.jpg",
+                AssetName.TileInvasion => "/themes/base/tiles/invasion.png",
 
-                AssetName.HarborBrick => "/images/harbors/2 for 1 brick.png",
-                AssetName.HarborOre => "/images/harbors/2 for 1 ore.png",
-                AssetName.HarborSheep => "/images/harbors/2 for 1 sheep.png",
-                AssetName.HarborWheat => "/images/harbors/2 for 1 wheat.png",
-                AssetName.HarborWood => "/images/harbors/2 for 1 wood.png",
-                AssetName.HarborThreeForOne => "/images/harbors/3 for 1.png",
+                AssetName.HarborBrick => "/themes/base/harbors/2 for 1 brick.png",
+                AssetName.HarborOre => "/themes/base/harbors/2 for 1 ore.png",
+                AssetName.HarborSheep => "/themes/base/harbors/2 for 1 sheep.png",
+                AssetName.HarborWheat => "/themes/base/harbors/2 for 1 wheat.png",
+                AssetName.HarborWood => "/themes/base/harbors/2 for 1 wood.png",
+                AssetName.HarborThreeForOne => "/themes/base/harbors/3 for 1.png",
 
-                AssetName.BackgroundWater => "/images/tiles/back.jpg",
-                AssetName.BackgroundBorderFill => "/images/maple.jpg",
-                AssetName.BackgroundBorderStroke => "/images/cherry.jpg",
+                AssetName.BackgroundWater => "/themes/base/tiles/back.jpg",
+                AssetName.BackgroundBorderFill => "/themes/base/backgrounds/maple.jpg",
+                AssetName.BackgroundBorderStroke => "/themes/base/backgrounds/cherry.jpg",
 
-                _ => $"/images/missing-{asset}.png"
+                _ => $"/themes/base/missing-{asset}.png"
             };
         }
 
@@ -160,7 +200,7 @@ namespace Catan3.WebUI.Services
                 Name = themeName,
                 DisplayName = themeName,
                 Description = null,
-                Preview = "/images/tiles/wheat.png"
+                Preview = "/themes/base/tiles/wheat.png"
             };
         }
 
@@ -187,6 +227,8 @@ namespace Catan3.WebUI.Services
             if (_themeMetadata.ContainsKey(normalized) && normalized != "base")
             {
                 _currentTheme = normalized;
+                // Save to localStorage
+                _localStorage?.SetItem(ThemeStorageKey, normalized);
                 ThemeChanged?.Invoke(_currentTheme);
             }
         }

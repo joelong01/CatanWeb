@@ -75,3 +75,17 @@
 .menu-separator {
     margin-top: 30px !important;
 }
+
+.theme-option {
+    padding-left: 20px;
+    min-height: 50px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.theme-option.selected {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.theme-option .nav-icon {
+    color: var(--accent-success);
+}

@@ -2,8 +2,10 @@
 @using Catan3.Shared.Models
 @using Catan3.Shared.Profiles
 @using System.Net.Http.Json
+@using Catan3.WebUI.Services
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject GameServiceConfig Config
 
 <PageTitle>New Game - Catan</PageTitle>
 
@@ -29,7 +31,14 @@
                          @onclick="() => TogglePlayer(player.Id)"
                          style="background: linear-gradient(135deg, @player.PrimaryBackgroundColor, @player.SecondaryBackgroundColor)">
                         <div class="player-avatar" style="border-color: @player.ForegroundColor">
-                            <img src="@GetFullImageUri(player.ImageUri)" alt="@player.Name" />
+                            @if (!string.IsNullOrEmpty(player.ImageUri))
+                            {
+                                <img src="@GetFullImageUri(player.ImageUri)" alt="@player.Name" />
+                            }
+                            else
+                            {
+                                <span class="avatar-initials" style="color: @player.ForegroundColor">@GetInitials(player.Name)</span>
+                            }
                         </div>
                         <div class="player-name" style="color: @player.ForegroundColor">
                             @player.Name
@@ -88,9 +97,6 @@
     private bool IsCreatingGame { get; set; } = false;
     private string? ErrorMessage { get; set; }
 
-    // GameService base URL - should come from configuration
-    private const string GameServiceBaseUrl = "http://localhost:8080";
-
     private bool CanStart => SelectedPlayers.Count >= 3 && SelectedPlayers.Count <= 6 && !IsCreatingGame;
 
     protected override async Task OnInitializedAsync()
@@ -105,7 +111,7 @@
             IsLoading = true;
             ErrorMessage = null;
 
-            var response = await Http.GetFromJsonAsync<GetPlayersApiResponse>($"{GameServiceBaseUrl}/api/players");
+            var response = await Http.GetFromJsonAsync<GetPlayersApiResponse>($"{Config.BaseUrl}/api/players");
 
             if (response?.Success == true && response.Players != null)
             {
@@ -133,10 +139,19 @@
         if (string.IsNullOrEmpty(relativeUri))
             return string.Empty;
 
-        return $"{GameServiceBaseUrl}{relativeUri}";
+        return $"{Config.BaseUrl}{relativeUri}";
     }
 
     private bool IsSelected(string playerId) => SelectedPlayers.Contains(playerId);
+
+    private string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
+            return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return string.Concat(parts[0][0], parts[^1][0]).ToUpperInvariant();
+    }
 
     private void TogglePlayer(string playerId)
     {
@@ -183,7 +198,7 @@
             };
 
             // Call the GameService API
-            var response = await Http.PostAsJsonAsync($"{GameServiceBaseUrl}/api/game/new", request);
+            var response = await Http.PostAsJsonAsync($"{Config.BaseUrl}/api/game/new", request);
 
             if (response.IsSuccessStatusCode)
             {
