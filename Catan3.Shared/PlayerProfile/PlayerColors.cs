@@ -26,7 +26,8 @@ public record PlayerColors(
 
     /// <summary>
     /// CSS linear-gradient value (cached, computed once at construction).
+    /// Goes from Primary through Secondary to black for depth.
     /// Use in style attributes.
     /// </summary>
-    public string CssGradient { get; } = $"linear-gradient(135deg, {Primary}, {Secondary})";
+    public string CssGradient { get; } = $"linear-gradient(135deg, {Primary}, {Secondary}, #000000)";
 }

@@ -7,6 +7,11 @@
  */
 
 window.svgRasterizer = {
+    // Track selectors for resize handling
+    _svgSelector: null,
+    _canvasSelector: null,
+    _resizeHandler: null,
+    _resizeDebounceTimer: null,
     /**
      * Rasterizes an SVG element to a canvas element.
      * @param {string} svgSelector - CSS selector for the SVG element to rasterize
@@ -95,6 +100,10 @@ window.svgRasterizer = {
                     canvas.style.display = 'block';
 
                     console.log('[svgRasterizer] Rasterization complete:', canvasWidth, 'x', canvasHeight, 'backing pixels');
+
+                    // Set up resize handler if not already registered
+                    this._setupResizeHandler(svgSelector, canvasSelector);
+
                     resolve(true);
                 };
 
@@ -197,5 +206,45 @@ window.svgRasterizer = {
         console.log('[svgRasterizer] Resetting for re-rasterization');
         if (svg) svg.style.display = '';
         if (canvas) canvas.style.display = 'none';
+    },
+
+    /**
+     * Sets up a resize handler that triggers re-rasterization on window resize.
+     * @param {string} svgSelector - CSS selector for the SVG element
+     * @param {string} canvasSelector - CSS selector for the canvas element
+     */
+    _setupResizeHandler: function (svgSelector, canvasSelector) {
+        // Store selectors for use in resize handler
+        this._svgSelector = svgSelector;
+        this._canvasSelector = canvasSelector;
+
+        // Remove existing handler if any
+        if (this._resizeHandler) {
+            window.removeEventListener('resize', this._resizeHandler);
+        }
+
+        // Create debounced resize handler
+        this._resizeHandler = () => {
+            // Debounce: clear previous timer
+            if (this._resizeDebounceTimer) {
+                clearTimeout(this._resizeDebounceTimer);
+            }
+
+            // Wait 200ms after resize stops before re-rasterizing
+            this._resizeDebounceTimer = setTimeout(() => {
+                console.log('[svgRasterizer] Window resized, re-rasterizing...');
+
+                // Reset to show SVG, hide canvas
+                this.reset(this._svgSelector, this._canvasSelector);
+
+                // Small delay to let SVG resize, then re-rasterize
+                setTimeout(() => {
+                    this.rasterize(this._svgSelector, this._canvasSelector);
+                }, 50);
+            }, 200);
+        };
+
+        window.addEventListener('resize', this._resizeHandler);
+        console.log('[svgRasterizer] Resize handler registered');
     }
 };

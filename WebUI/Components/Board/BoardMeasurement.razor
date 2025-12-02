@@ -20,7 +20,7 @@
 
     <!-- Star Counters Row -->
     <div class="star-counters-row">
-        @foreach (var starValue in new[] { 13, 12, 11, 10 })
+        @foreach (var starValue in new[] { 13, 12, 11 })
         {
             var count = GetStarCount(starValue);
             <StarCounter StarValue="@starValue" Count="@count" />

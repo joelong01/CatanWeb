@@ -181,9 +181,7 @@
         var percentY = (spot.Y - ViewBoxBounds.minY) / ViewBoxBounds.height * 100;
 
         var colors = CurrentPlayer?.Colors;
-        var bgColor = colors != null
-            ? $"linear-gradient(135deg, {colors.Primary}, {colors.Secondary})"
-            : "linear-gradient(135deg, #666, #444)";
+        var bgColor = colors?.CssGradient ?? "linear-gradient(135deg, #666, #444)";
         var fgColor = colors?.Foreground ?? "#fff";
 
         // Hidden spots: invisible until hovered, then show with scale effect

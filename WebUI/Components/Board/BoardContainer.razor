@@ -5,6 +5,7 @@
 @using Catan3.WebUI.Services.Rendering
 @using Microsoft.JSInterop
 @inject IJSRuntime JSRuntime
+@implements IDisposable
 
 @*
     BoardContainer - Parent component that owns the SVG element and orchestrates layer rendering.
@@ -17,6 +18,13 @@
 @if (GameModel != null)
 {
     <div class="board-svg-container">
+        @if (IsLoading)
+        {
+            <div class="board-loading-overlay">
+                <div class="loading-spinner"></div>
+                <span>Loading theme...</span>
+            </div>
+        }
         @* Static layer - tiles, harbors - rendered to SVG then rasterized to canvas *@
         <svg xmlns="http://www.w3.org/2000/svg"
              xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -144,6 +152,11 @@ else
     private bool IsRasterized { get; set; }
 
     /// <summary>
+    /// Whether the board is loading (theme change in progress).
+    /// </summary>
+    private bool IsLoading { get; set; }
+
+    /// <summary>
     /// Track tile hash to detect when re-rasterization is needed.
     /// </summary>
     private int _previousTileHash;
@@ -160,6 +173,30 @@ else
             var currentPlayer = GameModel.CurrentPlayer();
             return Players.FirstOrDefault(p => p.Id == currentPlayer.Id);
         }
+    }
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to theme changes to trigger re-rasterization
+        if (AssetService != null)
+        {
+            AssetService.ThemeChanged += OnThemeChanged;
+        }
+    }
+
+    private void OnThemeChanged(string themeName)
+    {
+        // Theme changed - need to re-rasterize with new tile images
+        IsLoading = true;
+        if (IsRasterized)
+        {
+            ((IJSInProcessRuntime)JSRuntime).InvokeVoid(
+                "svgRasterizer.reset",
+                ".board-static-layer",
+                ".board-static-canvas");
+        }
+        IsRasterized = false;
+        InvokeAsync(StateHasChanged);
     }
 
     protected override void OnParametersSet()
@@ -202,6 +239,11 @@ else
                 if (success)
                 {
                     IsRasterized = true;
+                    if (IsLoading)
+                    {
+                        IsLoading = false;
+                        StateHasChanged();
+                    }
                 }
             }
             catch (Exception ex)
@@ -304,5 +346,13 @@ else
         double height = maxY - minY;
 
         return (minX, minY, width, height);
+    }
+
+    public void Dispose()
+    {
+        if (AssetService != null)
+        {
+            AssetService.ThemeChanged -= OnThemeChanged;
+        }
     }
 }

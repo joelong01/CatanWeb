@@ -29,7 +29,7 @@
                 {
                     <div class="player-card @(IsSelected(player.Id) ? "selected" : "")"
                          @onclick="() => TogglePlayer(player.Id)"
-                         style="background: linear-gradient(135deg, @player.PrimaryBackgroundColor, @player.SecondaryBackgroundColor)">
+                         style="background: @player.Colors.CssGradient">
                         <div class="player-avatar" style="border-color: @player.ForegroundColor">
                             @if (!string.IsNullOrEmpty(player.ImageUri))
                             {

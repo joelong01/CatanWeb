@@ -38,10 +38,9 @@ public class PlayerViewModel
 
     /// <summary>
     /// CSS linear gradient string for player card backgrounds.
-    /// Format: "linear-gradient(135deg, {Primary} 0%, {Secondary} 100%)"
+    /// Delegates to PlayerColors.CssGradient (single source of truth).
     /// </summary>
-    public string CssGradient =>
-        $"linear-gradient(135deg, {Colors.Primary} 0%, {Colors.Secondary} 100%)";
+    public string CssGradient => Colors.CssGradient;
 
     /// <summary>
     /// Full image URL combining base URL with relative URI.
