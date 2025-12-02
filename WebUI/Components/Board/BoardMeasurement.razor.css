@@ -36,6 +36,14 @@
     justify-content: center;
 }
 
+.action-buttons-row ::deep .icon {
+    font-size: 64px;
+}
+
+.action-buttons-row ::deep .label {
+    font-size: 14px;
+}
+
 .star-slider-container {
     display: flex;
     flex-direction: column;
