@@ -4,51 +4,51 @@
 
 <nav class="nav-menu">
     <button class="nav-menu-item" @onclick="OnHideMenu">
-        <div class="nav-icon">&#xE89F;</div>
+        <div class="nav-icon">&#x2715;</div>
         <div class="nav-label">Hide</div>
     </button>
     <button class="nav-menu-item" @onclick="OnNewGame">
-        <div class="nav-icon">&#xE710;</div>
+        <div class="nav-icon">&#x2795;</div>
         <div class="nav-label">New Game</div>
     </button>
     <button class="nav-menu-item" @onclick="OnOpenGame">
-        <div class="nav-icon">&#xE8E5;</div>
+        <div class="nav-icon">&#x1F4C2;</div>
         <div class="nav-label">Open...</div>
     </button>
     <button class="nav-menu-item" @onclick="OnSave">
-        <div class="nav-icon">&#xE78C;</div>
+        <div class="nav-icon">&#x1F4BE;</div>
         <div class="nav-label">Save</div>
     </button>
     <button class="nav-menu-item" @onclick="OnSaveAs">
-        <div class="nav-icon">&#xE74E;</div>
+        <div class="nav-icon">&#x1F4E5;</div>
         <div class="nav-label">Save As...</div>
     </button>
     <button class="nav-menu-item" @onclick="OnEditPlayers">
-        <div class="nav-icon">&#xE716;</div>
+        <div class="nav-icon">&#x1F465;</div>
         <div class="nav-label">Edit Players</div>
     </button>
     <button class="nav-menu-item" @onclick="OnBalance">
-        <div class="nav-icon">&#xE90F;</div>
+        <div class="nav-icon">&#x2696;</div>
         <div class="nav-label">Balance</div>
     </button>
     <button class="nav-menu-item" @onclick="OnToggleTitlebar">
-        <div class="nav-icon">&#xE740;</div>
+        <div class="nav-icon">&#x2B1C;</div>
         <div class="nav-label">Toggle Titlebar</div>
     </button>
     <button class="nav-menu-item" @onclick="OnShowDebugWindow">
-        <div class="nav-icon">&#xE8A9;</div>
+        <div class="nav-icon">&#x1F41B;</div>
         <div class="nav-label">Show Debug Window</div>
     </button>
     <button class="nav-menu-item" @onclick="OnToggleRecordMode">
-        <div class="nav-icon">&#xE714;</div>
+        <div class="nav-icon">&#x23FA;</div>
         <div class="nav-label">Record Mode</div>
     </button>
     <button class="nav-menu-item" @onclick="OnSettings">
-        <div class="nav-icon">&#xE713;</div>
+        <div class="nav-icon">&#x2699;</div>
         <div class="nav-label">Settings</div>
     </button>
     <button class="nav-menu-item" @onclick="ToggleThemeSubmenu">
-        <div class="nav-icon">&#xE771;</div>
+        <div class="nav-icon">&#x1F3A8;</div>
         <div class="nav-label">Theme: @AssetService.GetCurrentThemeMetadata().DisplayName</div>
     </button>
     @if (_showThemeSubmenu)
@@ -58,17 +58,17 @@
             var metadata = AssetService.GetThemeMetadata(themeName);
             var isSelected = themeName == AssetService.CurrentTheme;
             <button class="nav-menu-item theme-option @(isSelected ? "selected" : "")" @onclick="() => SelectTheme(themeName)">
-                <div class="nav-icon">@(isSelected ? "\uE73E" : "")</div>
+                <div class="nav-icon">@(isSelected ? "✓" : "")</div>
                 <div class="nav-label">@metadata.DisplayName</div>
             </button>
         }
     }
     <button class="nav-menu-item" @onclick="OnQuit">
-        <div class="nav-icon">&#xE89F;</div>
+        <div class="nav-icon">&#x2715;</div>
         <div class="nav-label">Quit</div>
     </button>
     <button class="nav-menu-item menu-separator" @onclick="OnRunTests">
-        <div class="nav-icon">&#xE7C1;</div>
+        <div class="nav-icon">&#x25B6;</div>
         <div class="nav-label">Run Tests</div>
     </button>
 </nav>

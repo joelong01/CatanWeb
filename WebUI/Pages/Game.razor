@@ -42,15 +42,15 @@
             <div class="game-controls" style="@GetCurrentPlayerGradient()">
                 <div class="control-buttons">
                     <button class="game-btn" @onclick="OnUndoClick" disabled="@(!GameModel.ActionFlags.UndoEnabled)">
-                        <span class="btn-icon">&#xE10E;</span>
+                        <span class="btn-icon">&#x21A9;</span>
                         <span class="btn-label">Undo</span>
                     </button>
                     <button class="game-btn" @onclick="OnNextClick" disabled="@(!GameModel.ActionFlags.NextEnabled)">
-                        <span class="btn-icon">&#xE768;</span>
+                        <span class="btn-icon">&#x25B6;</span>
                         <span class="btn-label">Next</span>
                     </button>
                     <button class="game-btn" @onclick="OnRedoClick" disabled="@(!GameModel.ActionFlags.RedoEnabled)">
-                        <span class="btn-icon">&#xE10D;</span>
+                        <span class="btn-icon">&#x21AA;</span>
                         <span class="btn-label">Redo</span>
                     </button>
                 </div>
@@ -94,7 +94,6 @@
                 <div class="board-measurements" style="@GetCurrentPlayerGradient()">
                     <BoardMeasurement GameModel="@GameModel"
                                       OnShuffle="OnShuffleClick"
-                                      OnUndo="OnUndoClick"
                                       ShownStars="@ShownStars"
                                       ShownStarsChanged="HandleShownStarsChanged"
                                       SelectedResourcesChanged="HandleSelectedResourcesChanged" />
