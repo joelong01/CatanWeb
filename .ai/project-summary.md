@@ -1,6 +1,6 @@
 # Catan Project Summary
 
-## Current State (2025-11-25)
+## Current State (2025-12-02)
 
 The Catan3 project is a multi-platform Settlers of Catan game system with:
 
@@ -10,7 +10,43 @@ The Catan3 project is a multi-platform Settlers of Catan game system with:
 - **Shared Library** - Common models and game logic
 - **Test Suite** - Unified test infrastructure with modern ReplayTest approach
 
-## Latest Session (November 25, 2025 - Client Self-Contained Assets)
+## Latest Session (December 2, 2025 - macOS/Linux Cross-Platform Support)
+
+### Cross-Platform Build and Run Scripts
+
+Made webui.ps1 and build_worker.ps1 fully cross-platform:
+
+- **Platform Detection**: Added PowerShell Core automatic variable detection (`$IsMacOS`, `$IsLinux`, `$IsWindows`)
+- **webui.ps1 macOS Support**:
+  - Uses `lsof` instead of `Get-NetTCPConnection` for port checking
+  - Uses `pgrep` instead of `Get-CimInstance Win32_Process` for process management
+  - Launches services in separate Terminal.app windows via AppleScript
+  - Closes Terminal windows and kills processes on `./webui.ps1 stop`
+  - Uses `open` command instead of `Start-Process` for browser launch
+- **build_worker.ps1 macOS Support**:
+  - Builds individual cross-platform projects instead of full solution (skips DesktopApp)
+  - Auto-installs .NET SDK via Homebrew (`brew install dotnet-sdk@9`)
+  - Skips MSIX packaging and Windows-specific registration
+- **global.json Update**: Changed `rollForward` from `latestPatch` to `latestFeature` to accept any 9.0.x SDK
+
+### Cross-Platform Unicode Icons
+
+Replaced all Segoe MDL2 Assets icons with Unicode characters for iOS/macOS/Android/Linux compatibility:
+
+- **Game Controls**: Undo (↩), Next (▶), Redo (↪) - symmetric hook arrows
+- **Nav Menu**: All menu icons replaced with standard Unicode (✕, ➕, 📂, 💾, ⚙, etc.)
+
+### BoardMeasurement UI Refinement
+
+- **Removed Previous Board button**: Redundant with Undo in game controls
+- **Enlarged Shuffle button**: 64px icon, 14px label for better visibility
+
+### Cleanup
+
+- **Deleted duplicate Controls directory**: `./Controls/` was duplicate of `DesktopApp/Controls/`
+- **Updated .gitignore**: Added macOS service logs, pid files, and `.DS_Store`
+
+## Previous Session (November 25, 2025 - Client Self-Contained Assets)
 
 ### True Thick Client Architecture Achieved
 
