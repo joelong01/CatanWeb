@@ -17,6 +17,105 @@ param(
     [string]$Platform = "x64"
 )
 
+# Platform detection (use built-in automatic variables in PS Core, fallback for PS 5.1)
+if (-not (Test-Path variable:IsMacOS)) { $script:IsMacOS = $false }
+if (-not (Test-Path variable:IsLinux)) { $script:IsLinux = $false }
+if (-not (Test-Path variable:IsWindows)) { $script:IsWindows = $true }
+
+# Function to check and install .NET SDK if needed
+function Ensure-DotNetSdk {
+    # Read required version from global.json
+    $globalJsonPath = Join-Path $PSScriptRoot "global.json"
+    if (-not (Test-Path $globalJsonPath)) {
+        Write-Output "⚠️  No global.json found, skipping SDK version check"
+        return $true
+    }
+
+    $globalJson = Get-Content $globalJsonPath | ConvertFrom-Json
+    $requiredVersion = $globalJson.sdk.version
+    $majorVersion = $requiredVersion.Split('.')[0]
+
+    # Check if dotnet command exists
+    $dotnetCmd = Get-Command dotnet -ErrorAction SilentlyContinue
+    if (-not $dotnetCmd) {
+        Write-Output "⚠️  dotnet command not found"
+        return Install-DotNetSdk -MajorVersion $majorVersion
+    }
+
+    # Check if required SDK is installed
+    $installedSdks = & dotnet --list-sdks 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Output "⚠️  dotnet --list-sdks failed"
+        return Install-DotNetSdk -MajorVersion $majorVersion
+    }
+
+    $hasRequiredSdk = $installedSdks | Where-Object { $_ -match "^$majorVersion\." }
+
+    if ($hasRequiredSdk) {
+        Write-Output "✅ .NET $majorVersion SDK found"
+        return $true
+    }
+
+    Write-Output "⚠️  .NET $majorVersion SDK not found"
+    return Install-DotNetSdk -MajorVersion $majorVersion
+}
+
+function Install-DotNetSdk {
+    param([string]$MajorVersion)
+
+    if ($IsWindows) {
+        Write-Output "❌ .NET $MajorVersion SDK is required but not installed"
+        Write-Output "💡 Download from: https://dotnet.microsoft.com/download/dotnet/$MajorVersion.0"
+        return $false
+    }
+
+    if ($IsMacOS) {
+        # macOS: Use Homebrew (installs to standard PATH location)
+        $brewCmd = Get-Command brew -ErrorAction SilentlyContinue
+        if (-not $brewCmd) {
+            Write-Output "❌ Homebrew not found. Install from https://brew.sh"
+            Write-Output "💡 Or manually install .NET from: https://dotnet.microsoft.com/download/dotnet/$MajorVersion.0"
+            return $false
+        }
+
+        Write-Output "📦 Installing .NET $MajorVersion SDK via Homebrew..."
+        & brew install "dotnet-sdk@$MajorVersion"
+
+        if ($LASTEXITCODE -eq 0) {
+            Write-Output "✅ .NET $MajorVersion SDK installed via Homebrew"
+            # Homebrew may require linking
+            & brew link --overwrite "dotnet-sdk@$MajorVersion" 2>$null
+            return $true
+        } else {
+            Write-Output "❌ Homebrew installation failed"
+            return $false
+        }
+    } else {
+        # Linux: Use dotnet-install script
+        Write-Output "📦 Installing .NET $MajorVersion SDK via dotnet-install script..."
+        $installDir = "$HOME/.dotnet"
+        $installScript = "/tmp/dotnet-install.sh"
+
+        try {
+            Invoke-WebRequest -Uri "https://dot.net/v1/dotnet-install.sh" -OutFile $installScript -ErrorAction Stop
+            & chmod +x $installScript
+            & bash $installScript --channel "$MajorVersion.0" --install-dir $installDir
+
+            if ($LASTEXITCODE -eq 0) {
+                $env:DOTNET_ROOT = $installDir
+                $env:PATH = "${installDir}:$env:PATH"
+                Write-Output "✅ .NET SDK installed to $installDir"
+                Write-Output "💡 Add to ~/.bashrc: export PATH=`$HOME/.dotnet:`$PATH"
+                return $true
+            }
+        } catch {
+            Write-Output "❌ Failed: $($_.Exception.Message)"
+        }
+        Write-Output "💡 Install manually from: https://dotnet.microsoft.com/download/dotnet/$MajorVersion.0"
+        return $false
+    }
+}
+
 # Custom error handling for parameter validation
 trap {
     if ($_.Exception.Message -like "*cannot validate argument*" -and $_.Exception.Message -like "*--*") {
@@ -259,47 +358,73 @@ $OutputPath = "DesktopApp\bin\$Platform\$Configuration\net9.0-windows10.0.22621.
 $VerbosityLevel = if ($VerbosePreference -eq 'Continue') { "normal" } else { "minimal" }
 $PackageId = "606d7833-a1be-4389-aa5f-fe8dd1dd1da3"
 
-Write-Output "🏗️  Catan Desktop App Build Script"
-Write-Output "Configuration: $Configuration | Platform: $Platform | Runtime: $RuntimeId"
+# Cross-platform project list (excludes Windows-only DesktopApp)
+$CrossPlatformProjects = @(
+    "Catan3.Shared/Catan3.Shared.csproj",
+    "Catan3.GameService/Catan3.GameService.csproj",
+    "WebUI/Catan3.WebUI.csproj",
+    "Catan3.CLI/Catan3.CLI.csproj"
+)
 
-# Check Visual Studio environment for symbol generation
-$systemVCToolsDir = [System.Environment]::GetEnvironmentVariable("VCToolsInstallDir", "Machine")
-if ($systemVCToolsDir) {
-    Write-Output "🔧 Visual Studio environment found for symbol generation"
-    Write-Output "   VCToolsInstallDir: $systemVCToolsDir"
-    
-    # Ensure the current session has the environment variable
-    if (-not $env:VCToolsInstallDir) {
-        $env:VCToolsInstallDir = $systemVCToolsDir
-        Write-Output "   ↳ Applied to current session"
-    }
+if ($IsWindows) {
+    Write-Output "🏗️  Catan Desktop App Build Script"
+    Write-Output "Configuration: $Configuration | Platform: $Platform | Runtime: $RuntimeId"
 } else {
-    Write-Output "⚠️  VCToolsInstallDir system environment variable not set"
-    $vsInstallPath = "C:\Apps\VS2025"
-    if (Test-Path $vsInstallPath) {
-        $vcToolsPath = Get-ChildItem -Path "$vsInstallPath\VC\Tools\MSVC" -Directory | Sort-Object Name -Descending | Select-Object -First 1
-        if ($vcToolsPath) {
-            Write-Output "💡 To fix symbol generation warnings, run this command as Administrator:"
-            Write-Output "   [System.Environment]::SetEnvironmentVariable('VCToolsInstallDir', '$($vcToolsPath.FullName)\', 'Machine')"
-            Write-Output "   Then restart your terminal/IDE for the change to take effect."
-            Write-Output ""
-            Write-Output "🔧 Using temporary environment setup for this build..."
-            $env:VCToolsInstallDir = $vcToolsPath.FullName + "\"
-            $env:VCINSTALLDIR = "$vsInstallPath\VC\"
-        } else {
-            Write-Output "❌ Visual Studio installation not found at $vsInstallPath"
-            Write-Output "💡 Symbols package generation may fail due to missing mspdbcmf.exe"
+    Write-Output "🏗️  Catan Build Script (Cross-Platform Mode)"
+    Write-Output "Configuration: $Configuration | Platform: $(if ($IsMacOS) { 'macOS' } else { 'Linux' })"
+    Write-Output "ℹ️  Desktop app build skipped (Windows only)"
+}
+
+# Check Visual Studio environment for symbol generation (Windows only)
+if ($IsWindows) {
+    $systemVCToolsDir = [System.Environment]::GetEnvironmentVariable("VCToolsInstallDir", "Machine")
+    if ($systemVCToolsDir) {
+        Write-Output "🔧 Visual Studio environment found for symbol generation"
+        Write-Output "   VCToolsInstallDir: $systemVCToolsDir"
+
+        # Ensure the current session has the environment variable
+        if (-not $env:VCToolsInstallDir) {
+            $env:VCToolsInstallDir = $systemVCToolsDir
+            Write-Output "   ↳ Applied to current session"
         }
     } else {
-        Write-Output "❌ Visual Studio installation not found at $vsInstallPath"
-        Write-Output "💡 Install Visual Studio with C++ tools or set VCToolsInstallDir environment variable"
-        Write-Output "   Example: [System.Environment]::SetEnvironmentVariable('VCToolsInstallDir', 'C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\[version]\\', 'Machine')"
+        Write-Output "⚠️  VCToolsInstallDir system environment variable not set"
+        $vsInstallPath = "C:\Apps\VS2025"
+        if (Test-Path $vsInstallPath) {
+            $vcToolsPath = Get-ChildItem -Path "$vsInstallPath\VC\Tools\MSVC" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+            if ($vcToolsPath) {
+                Write-Output "💡 To fix symbol generation warnings, run this command as Administrator:"
+                Write-Output "   [System.Environment]::SetEnvironmentVariable('VCToolsInstallDir', '$($vcToolsPath.FullName)\', 'Machine')"
+                Write-Output "   Then restart your terminal/IDE for the change to take effect."
+                Write-Output ""
+                Write-Output "🔧 Using temporary environment setup for this build..."
+                $env:VCToolsInstallDir = $vcToolsPath.FullName + "\"
+                $env:VCINSTALLDIR = "$vsInstallPath\VC\"
+            } else {
+                Write-Output "❌ Visual Studio installation not found at $vsInstallPath"
+                Write-Output "💡 Symbols package generation may fail due to missing mspdbcmf.exe"
+            }
+        } else {
+            Write-Output "❌ Visual Studio installation not found at $vsInstallPath"
+            Write-Output "💡 Install Visual Studio with C++ tools or set VCToolsInstallDir environment variable"
+            Write-Output "   Example: [System.Environment]::SetEnvironmentVariable('VCToolsInstallDir', 'C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\[version]\\', 'Machine')"
+        }
     }
 }
 
 try {
-    # Unregister app if requested (and exit immediately)
+    # Ensure .NET SDK is installed before any operations
+    if (-not (Ensure-DotNetSdk)) {
+        throw ".NET SDK installation failed or is not available"
+    }
+
+    # Unregister app if requested (and exit immediately) - Windows only
     if ($Unregister) {
+        if (-not $IsWindows) {
+            Write-Output "ℹ️  App unregistration is only available on Windows"
+            Stop-Log
+            exit 0
+        }
         Write-Output "🗑️  Unregistering app..."
         $existingApp = Get-AppxPackage | Where-Object {$_.PackageFullName -like "*$PackageId*"}
         if ($existingApp) {
@@ -318,41 +443,66 @@ try {
 
     # Clean if requested
     if ($Clean) {
-    Write-Output "🧹 Cleaning project..."
-        $cleanArgs = @(
-            $ProjectPath,
-            "-c", $Configuration,
-            "-p:Platform=$Platform",
-            "--verbosity", $VerbosityLevel
-        )
-    Write-Command "dotnet clean" $cleanArgs
-    dotnet clean @cleanArgs
-    if ($LASTEXITCODE -ne 0) { throw "Clean failed with exit code: $LASTEXITCODE" }
+        Write-Output "🧹 Cleaning project..."
+        if ($IsWindows) {
+            $cleanArgs = @(
+                $ProjectPath,
+                "-c", $Configuration,
+                "-p:Platform=$Platform",
+                "--verbosity", $VerbosityLevel
+            )
+            Write-Command "dotnet clean" $cleanArgs
+            dotnet clean @cleanArgs
+            if ($LASTEXITCODE -ne 0) { throw "Clean failed with exit code: $LASTEXITCODE" }
+        } else {
+            # Clean individual cross-platform projects
+            foreach ($proj in $CrossPlatformProjects) {
+                $projPath = Join-Path $PSScriptRoot $proj
+                if (Test-Path $projPath) {
+                    $cleanArgs = @($projPath, "-c", $Configuration, "--verbosity", $VerbosityLevel)
+                    Write-Command "dotnet clean" $cleanArgs
+                    dotnet clean @cleanArgs
+                }
+            }
+        }
     }
 
     # Build step
     if (!$NoBuild) {
-    Write-Output "🔨 Building project..."
-        $buildArgs = @(
-            $ProjectPath,
-            "-c", $Configuration,
-            "-p:Platform=$Platform",
-            "-p:GenerateAppxPackageOnBuild=true",
-            "-p:SuppressNETCoreSdkPreviewMessage=true",
-            "--verbosity", $VerbosityLevel
-        )
-    Write-Command "dotnet build" $buildArgs
-    dotnet build @buildArgs
-    if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code: $LASTEXITCODE" }
-    Write-Output "✅ Build completed successfully"
+        Write-Output "🔨 Building project..."
+        if ($IsWindows) {
+            $buildArgs = @(
+                $ProjectPath,
+                "-c", $Configuration,
+                "-p:Platform=$Platform",
+                "-p:GenerateAppxPackageOnBuild=true",
+                "-p:SuppressNETCoreSdkPreviewMessage=true",
+                "--verbosity", $VerbosityLevel
+            )
+            Write-Command "dotnet build" $buildArgs
+            dotnet build @buildArgs
+            if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code: $LASTEXITCODE" }
+        } else {
+            # Build individual cross-platform projects
+            foreach ($proj in $CrossPlatformProjects) {
+                $projPath = Join-Path $PSScriptRoot $proj
+                if (Test-Path $projPath) {
+                    $buildArgs = @($projPath, "-c", $Configuration, "--verbosity", $VerbosityLevel)
+                    Write-Command "dotnet build" $buildArgs
+                    dotnet build @buildArgs
+                    if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code: $LASTEXITCODE" }
+                }
+            }
+        }
+        Write-Output "✅ Build completed successfully"
 
-    # Register the Catan font for UI consistency (unless skipped)
-    if (-not $NoFontRegister) {
-        $fontPath = Join-Path $PSScriptRoot "DesktopApp\Assets\Fonts\Catan.ttf"
-        Register-Font -FontPath $fontPath
-    } else {
-        Write-Output "⏭️  Font registration skipped (flag: -NoFontRegister)"
-    }
+        # Register the Catan font for UI consistency (Windows only, unless skipped)
+        if ($IsWindows -and -not $NoFontRegister) {
+            $fontPath = Join-Path $PSScriptRoot "DesktopApp\Assets\Fonts\Catan.ttf"
+            Register-Font -FontPath $fontPath
+        } elseif ($IsWindows) {
+            Write-Output "⏭️  Font registration skipped (flag: -NoFontRegister)"
+        }
 
         # Run tests if not skipped
         if (!$NoTest) {
@@ -427,134 +577,140 @@ try {
         }
     }
 
-    # MSIX Package Installation step
-    Write-Output "📦 Installing MSIX application..."
-    
-    # Find the generated MSIX package
-    $appPackagesPath = Join-Path (Split-Path $OutputPath) "AppPackages"
-    $packageDirs = Get-ChildItem -Path $appPackagesPath -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*Debug_Test" }
-    
-    if ($packageDirs.Count -eq 0) {
-        throw "No MSIX package directory found in $appPackagesPath"
-    }
-    
-    $packageDir = $packageDirs[0].FullName
-    $addAppScript = Join-Path $packageDir "Add-AppDevPackage.ps1"
-    $msixFile = Get-ChildItem -Path $packageDir -Filter "*.msix" | Select-Object -First 1
-    
-    if (-not (Test-Path $addAppScript)) {
-        throw "Add-AppDevPackage.ps1 not found in $packageDir"
-    }
-    
-    if (-not $msixFile) {
-        throw "No MSIX file found in $packageDir"
-    }
-    
-    # Remove any existing version first
-    $existingApp = Get-AppxPackage | Where-Object { $_.Name -eq $PackageId }
-    if ($existingApp) {
-        Write-Output "🔄 Unregistering previous version..."
-        $existingApp | ForEach-Object { 
-            Write-Command "Remove-AppxPackage" @($_.PackageFullName)
-            Remove-AppxPackage -Package $_.PackageFullName -ErrorAction SilentlyContinue
-        }
-    }
-    
-    Write-Output "📦 Installing MSIX package: $($msixFile.Name)"
-    Write-Command "Add-AppxPackage" @("-Path", $msixFile.FullName)
-    
-    try {
-        # Try direct installation first
-        Add-AppxPackage -Path $msixFile.FullName -ErrorAction Stop
-        Write-Output "✅ MSIX package installed successfully"
-    } catch {
-        Write-Output "⚠️  Direct installation failed: $($_.Exception.Message)"
-        Write-Output "🔄 Trying developer package script..."
-        
-        # Fallback to the developer script
-        $originalLocation = Get-Location
-        try {
-            Set-Location $packageDir
-            # Run with -Force to skip interactive prompts
-            $process = Start-Process -FilePath "powershell.exe" -ArgumentList @("-ExecutionPolicy", "Bypass", "-File", "Add-AppDevPackage.ps1", "-Force") -Wait -PassThru -WindowStyle Hidden
-            if ($process.ExitCode -ne 0) {
-                throw "Developer package script failed with exit code: $($process.ExitCode)"
-            }
-            Write-Output "✅ MSIX package installed via developer script"
-        } finally {
-            Set-Location $originalLocation
-        }
-    }
+    # MSIX Package Installation step (Windows only)
+    if ($IsWindows) {
+        Write-Output "📦 Installing MSIX application..."
 
-    # Verify MSIX package
-    Write-Output "🔍 Verifying MSIX package..."
-    $appPackagesPath = Join-Path (Split-Path $OutputPath) "AppPackages"
-    $packageDirs = Get-ChildItem -Path $appPackagesPath -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*Debug_Test" }
-    
-    if ($packageDirs.Count -gt 0) {
+        # Find the generated MSIX package
+        $appPackagesPath = Join-Path (Split-Path $OutputPath) "AppPackages"
+        $packageDirs = Get-ChildItem -Path $appPackagesPath -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*Debug_Test" }
+
+        if ($packageDirs.Count -eq 0) {
+            throw "No MSIX package directory found in $appPackagesPath"
+        }
+
         $packageDir = $packageDirs[0].FullName
-        $msixFiles = Get-ChildItem -Path $packageDir -Filter "*.msix"
-        
-        if ($msixFiles.Count -gt 0) {
-            $msixFile = $msixFiles[0]
-            
-            Write-Output "`n📋 MSIX Package Information:"
-            Write-Output "┌─────────────────────────────────────────────────────────────────┐"
-            Write-Output "│ Property              │ Value                                   │"
-            Write-Output "├─────────────────────────────────────────────────────────────────┤"
-            Write-Output "│ Package Path          │ $($msixFile.FullName.Substring(0, [Math]::Min(39, $msixFile.FullName.Length)).PadRight(39)) │"
-            Write-Output "│ Package Size          │ $([Math]::Round($msixFile.Length / 1MB, 2).ToString().PadLeft(6)) MB".PadRight(39) + " │"
-            Write-Output "│ Last Modified         │ $($msixFile.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss').PadRight(39)) │"
-            Write-Output "│ Configuration         │ $($Configuration.PadRight(39)) │"
-            Write-Output "│ Target Platform       │ $($Platform.PadRight(39)) │"
-            Write-Output "│ Runtime Identifier    │ $($RuntimeId.PadRight(39)) │"
-            Write-Output "└─────────────────────────────────────────────────────────────────┘"
-        } else {
-            Write-Output "⚠️  Warning: No MSIX package found in $packageDir"
-        }
-    } else {
-        Write-Output "⚠️  Warning: No MSIX package directory found"
-    }
+        $addAppScript = Join-Path $packageDir "Add-AppDevPackage.ps1"
+        $msixFile = Get-ChildItem -Path $packageDir -Filter "*.msix" | Select-Object -First 1
 
-    # Register app by default unless -NoRegister specified
-    if (-not $NoRegister) {
-        Write-Output "`n📱 Verifying app registration..."
-        
-        # Verify app installation
-        Write-Output "🔍 Checking app installation..."
-        $installedApp = Get-AppxPackage | Where-Object { $_.Name -eq $PackageId }
-        
-        if ($installedApp) {
-            Write-Output "📋 Installed App Info:"
-            Write-Output "   Name: $($installedApp.Name)"
-            Write-Output "   Version: $($installedApp.Version)"
-            Write-Output "   Status: $($installedApp.Status)"
-            Write-Output "   Install Location: $($installedApp.InstallLocation)"
-            Write-Output "✅ App successfully installed and registered in Start menu"
-            $installationSuccessful = $true
+        if (-not (Test-Path $addAppScript)) {
+            throw "Add-AppDevPackage.ps1 not found in $packageDir"
+        }
+
+        if (-not $msixFile) {
+            throw "No MSIX file found in $packageDir"
+        }
+
+        # Remove any existing version first
+        $existingApp = Get-AppxPackage | Where-Object { $_.Name -eq $PackageId }
+        if ($existingApp) {
+            Write-Output "🔄 Unregistering previous version..."
+            $existingApp | ForEach-Object {
+                Write-Command "Remove-AppxPackage" @($_.PackageFullName)
+                Remove-AppxPackage -Package $_.PackageFullName -ErrorAction SilentlyContinue
+            }
+        }
+
+        Write-Output "📦 Installing MSIX package: $($msixFile.Name)"
+        Write-Command "Add-AppxPackage" @("-Path", $msixFile.FullName)
+
+        try {
+            # Try direct installation first
+            Add-AppxPackage -Path $msixFile.FullName -ErrorAction Stop
+            Write-Output "✅ MSIX package installed successfully"
+        } catch {
+            Write-Output "⚠️  Direct installation failed: $($_.Exception.Message)"
+            Write-Output "🔄 Trying developer package script..."
+
+            # Fallback to the developer script
+            $originalLocation = Get-Location
+            try {
+                Set-Location $packageDir
+                # Run with -Force to skip interactive prompts
+                $process = Start-Process -FilePath "powershell.exe" -ArgumentList @("-ExecutionPolicy", "Bypass", "-File", "Add-AppDevPackage.ps1", "-Force") -Wait -PassThru -WindowStyle Hidden
+                if ($process.ExitCode -ne 0) {
+                    throw "Developer package script failed with exit code: $($process.ExitCode)"
+                }
+                Write-Output "✅ MSIX package installed via developer script"
+            } finally {
+                Set-Location $originalLocation
+            }
+        }
+
+        # Verify MSIX package
+        Write-Output "🔍 Verifying MSIX package..."
+        $appPackagesPath = Join-Path (Split-Path $OutputPath) "AppPackages"
+        $packageDirs = Get-ChildItem -Path $appPackagesPath -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*Debug_Test" }
+
+        if ($packageDirs.Count -gt 0) {
+            $packageDir = $packageDirs[0].FullName
+            $msixFiles = Get-ChildItem -Path $packageDir -Filter "*.msix"
+
+            if ($msixFiles.Count -gt 0) {
+                $msixFile = $msixFiles[0]
+
+                Write-Output "`n📋 MSIX Package Information:"
+                Write-Output "┌─────────────────────────────────────────────────────────────────┐"
+                Write-Output "│ Property              │ Value                                   │"
+                Write-Output "├─────────────────────────────────────────────────────────────────┤"
+                Write-Output "│ Package Path          │ $($msixFile.FullName.Substring(0, [Math]::Min(39, $msixFile.FullName.Length)).PadRight(39)) │"
+                Write-Output "│ Package Size          │ $([Math]::Round($msixFile.Length / 1MB, 2).ToString().PadLeft(6)) MB".PadRight(39) + " │"
+                Write-Output "│ Last Modified         │ $($msixFile.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss').PadRight(39)) │"
+                Write-Output "│ Configuration         │ $($Configuration.PadRight(39)) │"
+                Write-Output "│ Target Platform       │ $($Platform.PadRight(39)) │"
+                Write-Output "│ Runtime Identifier    │ $($RuntimeId.PadRight(39)) │"
+                Write-Output "└─────────────────────────────────────────────────────────────────┘"
+            } else {
+                Write-Output "⚠️  Warning: No MSIX package found in $packageDir"
+            }
         } else {
-            Write-Output "❌ App installation verification failed - app not found in installed packages"
+            Write-Output "⚠️  Warning: No MSIX package directory found"
+        }
+
+        # Register app by default unless -NoRegister specified
+        if (-not $NoRegister) {
+            Write-Output "`n📱 Verifying app registration..."
+
+            # Verify app installation
+            Write-Output "🔍 Checking app installation..."
+            $installedApp = Get-AppxPackage | Where-Object { $_.Name -eq $PackageId }
+
+            if ($installedApp) {
+                Write-Output "📋 Installed App Info:"
+                Write-Output "   Name: $($installedApp.Name)"
+                Write-Output "   Version: $($installedApp.Version)"
+                Write-Output "   Status: $($installedApp.Status)"
+                Write-Output "   Install Location: $($installedApp.InstallLocation)"
+                Write-Output "✅ App successfully installed and registered in Start menu"
+                $installationSuccessful = $true
+            } else {
+                Write-Output "❌ App installation verification failed - app not found in installed packages"
+                $installationSuccessful = $false
+            }
+        } else {
             $installationSuccessful = $false
         }
-    } else {
-        $installationSuccessful = $false
-    }
 
-    Write-Output "`n🎉 Build process completed successfully!"
-    
-    # Find the MSIX package location for final message
-    $appPackagesPath = Join-Path (Split-Path $OutputPath) "AppPackages"
-    Write-Output "📦 MSIX package location: $appPackagesPath"
-    
-    if (-not $NoRegister) {
-        if ($installationSuccessful) {
-            Write-Output "🚀 App is now available in Start menu"
+        Write-Output "`n🎉 Build process completed successfully!"
+
+        # Find the MSIX package location for final message
+        $appPackagesPath = Join-Path (Split-Path $OutputPath) "AppPackages"
+        Write-Output "📦 MSIX package location: $appPackagesPath"
+
+        if (-not $NoRegister) {
+            if ($installationSuccessful) {
+                Write-Output "🚀 App is now available in Start menu"
+            } else {
+                Write-Output "⚠️  App build succeeded but installation failed - check the logs above"
+                Write-Output "💡 You can try manual installation from: $appPackagesPath"
+            }
         } else {
-            Write-Output "⚠️  App build succeeded but installation failed - check the logs above"
-            Write-Output "💡 You can try manual installation from: $appPackagesPath"
+            Write-Output "💡 Registration skipped (remove -NoRegister to install the app in Start menu)"
         }
     } else {
-        Write-Output "💡 Registration skipped (remove -NoRegister to install the app in Start menu)"
+        # Non-Windows: just report success
+        Write-Output "`n🎉 Build process completed successfully!"
+        Write-Output "ℹ️  Cross-platform projects built: Shared, GameService, WebUI, CLI"
     }
 
 } catch {

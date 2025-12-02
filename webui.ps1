@@ -26,6 +26,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Platform detection (use built-in automatic variables in PS Core, fallback for PS 5.1)
+if (-not (Test-Path variable:IsMacOS)) { $script:IsMacOS = $false }
+if (-not (Test-Path variable:IsLinux)) { $script:IsLinux = $false }
+if (-not (Test-Path variable:IsWindows)) { $script:IsWindows = $true }
+
 $GameServicePort = 8080
 $WebUIPort = 5296
 $GameServiceUrl = "http://localhost:$GameServicePort"
@@ -35,8 +40,14 @@ $PidFile = Join-Path $PSScriptRoot ".webui-pids.json"
 
 function Test-PortInUse {
     param([int]$Port)
-    $connection = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
-    return $null -ne $connection
+    if ($IsWindows) {
+        $connection = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
+        return $null -ne $connection
+    } else {
+        # macOS/Linux: use lsof to check if port is in use
+        $result = lsof -i ":$Port" 2>$null
+        return $null -ne $result -and $result.Count -gt 0
+    }
 }
 
 function Wait-ForService {
@@ -69,11 +80,15 @@ function Save-Pids {
 
     $pids = @{}
     if (Test-Path $PidFile) {
-        $pids = Get-Content $PidFile | ConvertFrom-Json -AsHashtable
+        try {
+            $existing = Get-Content $PidFile -Raw | ConvertFrom-Json
+            if ($existing.GameService) { $pids["GameService"] = $existing.GameService }
+            if ($existing.WebUI) { $pids["WebUI"] = $existing.WebUI }
+        } catch { }
     }
 
-    if ($GameServicePid -gt 0) { $pids.GameService = $GameServicePid }
-    if ($WebUIPid -gt 0) { $pids.WebUI = $WebUIPid }
+    if ($GameServicePid -gt 0) { $pids["GameService"] = $GameServicePid }
+    if ($WebUIPid -gt 0) { $pids["WebUI"] = $WebUIPid }
 
     $pids | ConvertTo-Json | Set-Content $PidFile
 }
@@ -86,41 +101,55 @@ function Get-SavedPids {
 }
 
 function Start-GameService {
-    Write-Host "Starting GameService on port $GameServicePort..." -ForegroundColor Cyan
+    Write-Host "Starting GameService..." -ForegroundColor Cyan
 
     $gameServicePath = Join-Path $PSScriptRoot "Catan3.GameService"
 
-    # Start GameService in a new window and track the process
-    $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$gameServicePath'; dotnet run" -WindowStyle Normal -PassThru
-    Save-Pids -GameServicePid $process.Id
+    if ($IsWindows) {
+        $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$gameServicePath'; dotnet run" -WindowStyle Normal -PassThru
+        Save-Pids -GameServicePid $process.Id
+    } else {
+        # macOS: Open new Terminal window
+        $pidFile = Join-Path $PSScriptRoot ".gameservice.pid"
+        $script = "cd '$gameServicePath' && echo `$`$ > '$pidFile' && dotnet run"
+        & osascript -e "tell application `"Terminal`" to do script `"$script`""
+        # Wait for PID file to be created
+        Start-Sleep -Milliseconds 500
+        if (Test-Path $pidFile) {
+            $procId = [int](Get-Content $pidFile).Trim()
+            Save-Pids -GameServicePid $procId
+        }
+    }
 
-    Write-Host "Waiting for GameService to be ready..." -ForegroundColor Yellow
-    if (Wait-ForService -Url "$GameServiceUrl/health" -TimeoutSeconds 30) {
-        Write-Host "GameService is running at $GameServiceUrl" -ForegroundColor Green
-        return $true
-    }
-    else {
-        Write-Host "Warning: GameService may not be fully ready" -ForegroundColor Yellow
-        return $true  # Continue anyway
-    }
+    Write-Host "Waiting for GameService..." -ForegroundColor Yellow
+    Wait-ForService -Url "$GameServiceUrl/health" -TimeoutSeconds 30 | Out-Null
+    Write-Host "GameService running at $GameServiceUrl" -ForegroundColor Green
 }
 
 function Start-WebUI {
-    Write-Host "Starting WebUI on port $WebUIPort..." -ForegroundColor Cyan
+    Write-Host "Starting WebUI..." -ForegroundColor Cyan
 
     $webUIPath = Join-Path $PSScriptRoot "WebUI"
 
-    # Start WebUI with hot reload using dotnet watch and track the process
-    $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$webUIPath'; dotnet watch run" -WindowStyle Normal -PassThru
-    Save-Pids -WebUIPid $process.Id
+    if ($IsWindows) {
+        $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$webUIPath'; dotnet watch run" -WindowStyle Normal -PassThru
+        Save-Pids -WebUIPid $process.Id
+    } else {
+        # macOS: Open new Terminal window
+        $pidFile = Join-Path $PSScriptRoot ".webui.pid"
+        $script = "cd '$webUIPath' && echo `$`$ > '$pidFile' && dotnet watch run"
+        & osascript -e "tell application `"Terminal`" to do script `"$script`""
+        # Wait for PID file to be created
+        Start-Sleep -Milliseconds 500
+        if (Test-Path $pidFile) {
+            $procId = [int](Get-Content $pidFile).Trim()
+            Save-Pids -WebUIPid $procId
+        }
+    }
 
-    Write-Host "Waiting for WebUI to be ready..." -ForegroundColor Yellow
-    if (Wait-ForService -Url $WebUIUrl -TimeoutSeconds 30) {
-        Write-Host "WebUI is running at $WebUIUrl (with hot reload)" -ForegroundColor Green
-    }
-    else {
-        Write-Host "Warning: WebUI may not be fully ready" -ForegroundColor Yellow
-    }
+    Write-Host "Waiting for WebUI..." -ForegroundColor Yellow
+    Wait-ForService -Url $WebUIUrl -TimeoutSeconds 30 | Out-Null
+    Write-Host "WebUI running at $WebUIUrl" -ForegroundColor Green
 }
 
 function Install-Database {
@@ -227,70 +256,148 @@ function Test-Database {
 function Stop-ChildProcesses {
     param([int]$ParentPid)
 
-    $children = Get-CimInstance Win32_Process -Filter "ParentProcessId=$ParentPid" -ErrorAction SilentlyContinue
-    foreach ($child in $children) {
-        Stop-ChildProcesses -ParentPid $child.ProcessId  # Recursive
-        Stop-Process -Id $child.ProcessId -Force -ErrorAction SilentlyContinue
+    if ($IsWindows) {
+        $children = Get-CimInstance Win32_Process -Filter "ParentProcessId=$ParentPid" -ErrorAction SilentlyContinue
+        foreach ($child in $children) {
+            Stop-ChildProcesses -ParentPid $child.ProcessId  # Recursive
+            Stop-Process -Id $child.ProcessId -Force -ErrorAction SilentlyContinue
+        }
+    } else {
+        # macOS/Linux: use pgrep to find child processes
+        $children = pgrep -P $ParentPid 2>$null
+        foreach ($childPid in $children) {
+            if ($childPid) {
+                Stop-ChildProcesses -ParentPid $childPid  # Recursive
+                Stop-Process -Id $childPid -Force -ErrorAction SilentlyContinue
+            }
+        }
     }
 }
 
 function Stop-Services {
     Write-Host "Stopping services..." -ForegroundColor Yellow
 
-    # Kill ALL PowerShell processes running GameService or WebUI (and their children)
-    $allProcesses = Get-CimInstance Win32_Process -Filter "Name='pwsh.exe' OR Name='powershell.exe' OR Name='dotnet.exe'" -ErrorAction SilentlyContinue
-
     $killedCount = 0
-    foreach ($proc in $allProcesses) {
-        $cmdLine = $proc.CommandLine
-        if ($cmdLine) {
-            # Check if this process is running GameService or WebUI
-            if ($cmdLine -match "Catan3\.GameService" -or
-                $cmdLine -match "WebUI.*dotnet.*watch.*run" -or
-                $cmdLine -match "dotnet.*run.*GameService" -or
-                $cmdLine -match "dotnet.*watch.*run.*WebUI") {
 
-                try {
-                    # Kill all child processes first
-                    Stop-ChildProcesses -ParentPid $proc.ProcessId
+    if ($IsWindows) {
+        # Kill ALL PowerShell processes running GameService or WebUI (and their children)
+        $allProcesses = Get-CimInstance Win32_Process -Filter "Name='pwsh.exe' OR Name='powershell.exe' OR Name='dotnet.exe'" -ErrorAction SilentlyContinue
 
-                    # Then kill the parent
-                    Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
-                    Write-Host "  Killed process $($proc.ProcessId): $(($cmdLine -split ' ')[0..5] -join ' ')..." -ForegroundColor Gray
-                    $killedCount++
-                }
-                catch {
-                    Write-Host "  Failed to kill process $($proc.ProcessId)" -ForegroundColor Yellow
+        foreach ($proc in $allProcesses) {
+            $cmdLine = $proc.CommandLine
+            if ($cmdLine) {
+                # Check if this process is running GameService or WebUI
+                if ($cmdLine -match "Catan3\.GameService" -or
+                    $cmdLine -match "WebUI.*dotnet.*watch.*run" -or
+                    $cmdLine -match "dotnet.*run.*GameService" -or
+                    $cmdLine -match "dotnet.*watch.*run.*WebUI") {
+
+                    try {
+                        # Kill all child processes first
+                        Stop-ChildProcesses -ParentPid $proc.ProcessId
+
+                        # Then kill the parent
+                        Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
+                        Write-Host "  Killed process $($proc.ProcessId): $(($cmdLine -split ' ')[0..5] -join ' ')..." -ForegroundColor Gray
+                        $killedCount++
+                    }
+                    catch {
+                        Write-Host "  Failed to kill process $($proc.ProcessId)" -ForegroundColor Yellow
+                    }
                 }
             }
         }
-    }
 
-    if ($killedCount -gt 0) {
-        Write-Host "  Killed $killedCount remnant process(es)" -ForegroundColor Gray
-    }
+        if ($killedCount -gt 0) {
+            Write-Host "  Killed $killedCount remnant process(es)" -ForegroundColor Gray
+        }
 
-    # Fallback: kill any remaining processes on ports
-    $gameServicePids = (Get-NetTCPConnection -LocalPort $GameServicePort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
-    if ($gameServicePids) {
-        foreach ($processId in $gameServicePids) {
-            Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
-            Write-Host "  Killed process $processId (GameService port)" -ForegroundColor Gray
+        # Fallback: kill any remaining processes on ports
+        $gameServicePids = (Get-NetTCPConnection -LocalPort $GameServicePort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
+        if ($gameServicePids) {
+            foreach ($processId in $gameServicePids) {
+                Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+                Write-Host "  Killed process $processId (GameService port)" -ForegroundColor Gray
+            }
+        }
+
+        $webUIPids = (Get-NetTCPConnection -LocalPort $WebUIPort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
+        if ($webUIPids) {
+            foreach ($processId in $webUIPids) {
+                Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+                Write-Host "  Killed process $processId (WebUI port)" -ForegroundColor Gray
+            }
+        }
+    } else {
+        # macOS: Kill processes and close Terminal windows
+
+        # Kill processes by port
+        $gameServicePids = lsof -ti ":$GameServicePort" 2>$null
+        foreach ($procId in $gameServicePids) {
+            if ($procId) {
+                Stop-ChildProcesses -ParentPid $procId
+                & kill -9 $procId 2>$null
+                Write-Host "  Killed process $procId (GameService port)" -ForegroundColor Gray
+                $killedCount++
+            }
+        }
+
+        $webUIPids = lsof -ti ":$WebUIPort" 2>$null
+        foreach ($procId in $webUIPids) {
+            if ($procId) {
+                Stop-ChildProcesses -ParentPid $procId
+                & kill -9 $procId 2>$null
+                Write-Host "  Killed process $procId (WebUI port)" -ForegroundColor Gray
+                $killedCount++
+            }
+        }
+
+        # Kill any dotnet processes running GameService or WebUI
+        $procIds = pgrep -f "Catan3.GameService|Catan3.WebUI|dotnet.*watch.*run" 2>$null
+        foreach ($procId in $procIds) {
+            if ($procId) {
+                & kill -9 $procId 2>$null
+                Write-Host "  Killed process $procId" -ForegroundColor Gray
+                $killedCount++
+            }
+        }
+
+        # Close Terminal windows that are running our commands
+        $closeScript = @'
+tell application "Terminal"
+    set windowsToClose to {}
+    repeat with w in windows
+        repeat with t in tabs of w
+            set tabProcs to processes of t
+            repeat with p in tabProcs
+                if p contains "dotnet" then
+                    set end of windowsToClose to w
+                    exit repeat
+                end if
+            end repeat
+        end repeat
+    end repeat
+    repeat with w in windowsToClose
+        close w
+    end repeat
+end tell
+'@
+        & osascript -e $closeScript 2>$null
+
+        if ($killedCount -gt 0) {
+            Write-Host "  Killed $killedCount process(es)" -ForegroundColor Gray
         }
     }
 
-    $webUIPids = (Get-NetTCPConnection -LocalPort $WebUIPort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
-    if ($webUIPids) {
-        foreach ($processId in $webUIPids) {
-            Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
-            Write-Host "  Killed process $processId (WebUI port)" -ForegroundColor Gray
-        }
-    }
-
-    # Clean up PID file
+    # Clean up PID files
     if (Test-Path $PidFile) {
         Remove-Item $PidFile -Force
     }
+    # Clean up macOS pid files
+    $gameServicePidFile = Join-Path $PSScriptRoot ".gameservice.pid"
+    $webUIPidFile = Join-Path $PSScriptRoot ".webui.pid"
+    if (Test-Path $gameServicePidFile) { Remove-Item $gameServicePidFile -Force }
+    if (Test-Path $webUIPidFile) { Remove-Item $webUIPidFile -Force }
 
     # Wait for ports to be released
     Start-Sleep -Milliseconds 500
@@ -356,14 +463,24 @@ switch ($Verb) {
 
         $browserUrl = "$WebUIUrl/newgame"
         Write-Host "Launching browser to $browserUrl..." -ForegroundColor Cyan
-        Start-Process $browserUrl
+        if ($IsMacOS) {
+            & open $browserUrl
+        } elseif ($IsLinux) {
+            & xdg-open $browserUrl
+        } else {
+            Start-Process $browserUrl
+        }
 
         Write-Host ""
         Write-Host "Services running:" -ForegroundColor Green
         Write-Host "  GameService: $GameServiceUrl" -ForegroundColor White
         Write-Host "  WebUI:       $WebUIUrl" -ForegroundColor White
         Write-Host ""
-        Write-Host "Press Ctrl+C in service windows to stop them." -ForegroundColor Yellow
+        if ($IsWindows) {
+            Write-Host "Press Ctrl+C in service windows to stop them." -ForegroundColor Yellow
+        } else {
+            Write-Host "Use './webui.ps1 stop' to stop services. Logs: .gameservice.log, .webui.log" -ForegroundColor Yellow
+        }
     }
 
     "debug" {
