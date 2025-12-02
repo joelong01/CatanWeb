@@ -8,8 +8,7 @@
     /* Fixed internal width: 50 avatar + 2 gap + 12*40 stats + 11*1 gaps + 10 padding = 553px */
     width: 553px;
     box-sizing: border-box;
-    /* DEBUG: Set to 1 to verify layout, then restore var(--tile-scale, 1) */
-    zoom: 1;
+    zoom: var(--tile-scale, 1);
 }
 
 .player-info-row {
