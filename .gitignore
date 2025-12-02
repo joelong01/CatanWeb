@@ -381,3 +381,14 @@ temp_old_gameservice_statemachine.cs
 code-reviews/
 .claude/settings.local.json
 
+# macOS/Linux service logs and pid files
+.gameservice.log
+.gameservice.log.err
+.gameservice.pid
+.webui.log
+.webui.log.err
+.webui.pid
+
+# macOS metadata
+.DS_Store
+

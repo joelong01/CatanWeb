@@ -27,13 +27,9 @@
         }
     </div>
 
-    <!-- Action Buttons Row -->
+    <!-- Shuffle Button -->
     <div class="action-buttons-row">
-        <IconButton Icon="&#xE10E;"
-                    Label="Previous Board"
-                    OnClick="OnUndo"
-                    AutomationId="btn-undo-board" />
-        <IconButton Icon="&#xE10D;"
+        <IconButton Icon="&#x27F3;"
                     Label="Shuffle"
                     OnClick="OnShuffle"
                     AutomationId="btn-shuffle-board" />
@@ -67,11 +63,6 @@
     [Parameter]
     public EventCallback OnShuffle { get; set; }
 
-    /// <summary>
-    /// Event callback triggered when the undo (previous board) button is clicked.
-    /// </summary>
-    [Parameter]
-    public EventCallback OnUndo { get; set; }
 
     /// <summary>
     /// The current star threshold value for building visibility (0-14).
