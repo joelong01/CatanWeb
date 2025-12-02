@@ -1,0 +1,138 @@
+@using Catan3.WebUI.Models
+@using Catan3.Shared.Models
+@using Catan3.Shared.Profiles
+@inject IAssetService AssetService
+
+<div class="purchase-button @(IsFaceUp ? "face-up" : "")"
+     @oncontextmenu="HandleRightClick"
+     @oncontextmenu:preventDefault="true"
+     data-testid="@($"purchase-{Entitlement.ToString().ToLower()}")">
+    <div class="purchase-button-inner">
+        @* Back face - shows icon in top right corner with player gradient, count in bottom third *@
+        <div class="purchase-button-back"
+             style="background-image: url('@AssetService.GetAssetPath(AssetName.CardBack)');">
+            <div class="back-icon-wrapper" style="background: @Colors.CssGradient;">
+                <img class="back-icon" src="@GetBuildingIconPath()" alt="@GetLabel()" style="@GetSvgFilterStyle()" />
+            </div>
+            <span class="count-text">@GetCountDisplay()</span>
+        </div>
+        @* Front face - shows building icon with player gradient and border *@
+        <div class="purchase-button-front"
+             style="background: @Colors.CssGradient; border-color: @Colors.Foreground; color: @Colors.Foreground;">
+            <span class="unspent-count">@UnspentCount</span>
+            <img class="icon" src="@GetBuildingIconPath()" alt="@GetLabel()" style="@GetSvgFilterStyle()" />
+            <span class="label">@GetLabel()</span>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The entitlement type (Road, Settlement, City, or Soldier).
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Entitlement Entitlement { get; set; }
+
+    /// <summary>
+    /// Whether the card is face up (showing front) or face down (showing back).
+    /// </summary>
+    [Parameter]
+    public bool IsFaceUp { get; set; }
+
+    /// <summary>
+    /// Number of this item the player has built/played.
+    /// </summary>
+    [Parameter]
+    public int SpentCount { get; set; }
+
+    /// <summary>
+    /// Maximum allowed (from ResourceRules). For Soldier, this is ignored.
+    /// </summary>
+    [Parameter]
+    public int MaxCount { get; set; }
+
+    /// <summary>
+    /// Player colors for gradient background and foreground text/icons.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public PlayerColors Colors { get; set; } = PlayerColors.Default;
+
+    /// <summary>
+    /// Number of unspent entitlements of this type the player has.
+    /// </summary>
+    [Parameter]
+    public int UnspentCount { get; set; }
+
+    /// <summary>
+    /// Event callback triggered on right-click to toggle flip (for testing).
+    /// </summary>
+    [Parameter]
+    public EventCallback OnRightClick { get; set; }
+
+    private async Task HandleRightClick()
+    {
+        await OnRightClick.InvokeAsync();
+    }
+
+    private string GetCountDisplay()
+    {
+        // Soldier has no max, just show count
+        if (Entitlement == Entitlement.Soldier)
+        {
+            return SpentCount.ToString();
+        }
+        return $"{SpentCount} of {MaxCount}";
+    }
+
+    private string GetLabel()
+    {
+        return Entitlement switch
+        {
+            Entitlement.Road => "Road",
+            Entitlement.Settlement => "Settlement",
+            Entitlement.City => "City",
+            Entitlement.Soldier => "Soldier",
+            _ => string.Empty
+        };
+    }
+
+    private string GetBuildingIconPath()
+    {
+        return Entitlement switch
+        {
+            Entitlement.Road => AssetService.GetAssetPath(AssetName.BuildingRoad),
+            Entitlement.Settlement => AssetService.GetAssetPath(AssetName.BuildingSettlement),
+            Entitlement.City => AssetService.GetAssetPath(AssetName.BuildingCity),
+            Entitlement.Soldier => AssetService.GetAssetPath(AssetName.BuildingKnight),
+            _ => string.Empty
+        };
+    }
+
+    /// <summary>
+    /// Gets CSS filter style to colorize SVG icons to match player foreground color.
+    /// Black SVGs need to be inverted to white for light foregrounds.
+    /// Same pattern as PlayerTile.GetSvgFilterStyle().
+    /// </summary>
+    private string GetSvgFilterStyle()
+    {
+        // For black/dark foregrounds, keep SVG black (no invert)
+        // For white/light foregrounds, invert SVG to white
+        var fg = Colors.Foreground.TrimStart('#');
+        if (fg.Length >= 6)
+        {
+            var r = Convert.ToInt32(fg.Substring(0, 2), 16);
+            var g = Convert.ToInt32(fg.Substring(2, 2), 16);
+            var b = Convert.ToInt32(fg.Substring(4, 2), 16);
+            var brightness = (r + g + b) / 3.0;
+
+            if (brightness > 127)
+            {
+                // Light foreground: invert black SVG to white
+                return "filter: brightness(0) invert(1);";
+            }
+        }
+
+        // Dark foreground: keep SVG black
+        return "filter: none;";
+    }
+}

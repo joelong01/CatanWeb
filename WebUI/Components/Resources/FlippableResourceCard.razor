@@ -1,0 +1,58 @@
+@using Catan3.Shared.Models
+@using Catan3.WebUI.Models
+@using Catan3.WebUI.Services
+@inject IAssetService AssetService
+
+<div class="flippable-card @(IsFaceUp ? "face-up" : "")"
+     data-testid="flippable-card-@Resource.ToString().ToLower()">
+    <div class="flippable-card-inner">
+        <!-- Back face (shown when count = 0) -->
+        <div class="flippable-card-back">
+            <div class="card-image" style="background-image: url('@AssetService.GetAssetPath(AssetName.CardBack)')"></div>
+        </div>
+        <!-- Front face (shown when count > 0) -->
+        <div class="flippable-card-front">
+            <div class="card-image" style="background-image: url('@GetResourceImageUrl()')"></div>
+            <div class="card-count-badge">@Count</div>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The type of resource this card represents.
+    /// </summary>
+    [Parameter]
+    public ResourceType Resource { get; set; }
+
+    /// <summary>
+    /// The count to display on the card.
+    /// </summary>
+    [Parameter]
+    public int Count { get; set; }
+
+    /// <summary>
+    /// Whether the card is face-up (showing resource) or face-down (showing back).
+    /// Computed from Count > 0.
+    /// </summary>
+    private bool IsFaceUp => Count > 0;
+
+    /// <summary>
+    /// Gets the resource image URL from the theme asset service.
+    /// </summary>
+    private string GetResourceImageUrl()
+    {
+        var assetName = Resource switch
+        {
+            ResourceType.Wheat => AssetName.CardWheat,
+            ResourceType.Wood => AssetName.CardWood,
+            ResourceType.Ore => AssetName.CardOre,
+            ResourceType.Brick => AssetName.CardBrick,
+            ResourceType.Sheep => AssetName.CardSheep,
+            ResourceType.GoldMine => AssetName.CardGoldMine,
+            ResourceType.Robber => AssetName.CardRobber,
+            _ => AssetName.CardBack
+        };
+        return AssetService.GetAssetPath(assetName);
+    }
+}

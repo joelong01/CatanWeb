@@ -1,0 +1,57 @@
+@using Catan3.Shared.Models
+@using Catan3.WebUI.Components.Resources
+
+<div class="game-resources-header" data-testid="game-resources-header">
+    <div class="resources-row">
+        @foreach (var resourceType in GetTrackedResources())
+        {
+            var count = GetResourceCount(resourceType);
+            <div class="resource-card-wrapper">
+                <FlippableResourceCard Resource="@resourceType" Count="@count" />
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The game-level resources model containing totals for all players.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public ResourcesModel GameResources { get; set; } = null!;
+
+    /// <summary>
+    /// Gets the list of resource types to track (includes Robber).
+    /// </summary>
+    private ResourceType[] GetTrackedResources()
+    {
+        return new[]
+        {
+            ResourceType.Wheat,
+            ResourceType.Wood,
+            ResourceType.Sheep,
+            ResourceType.Brick,
+            ResourceType.Ore,
+            ResourceType.GoldMine,
+            ResourceType.Robber
+        };
+    }
+
+    /// <summary>
+    /// Gets the count for a specific resource type from GameResources.
+    /// </summary>
+    private int GetResourceCount(ResourceType resource)
+    {
+        return resource switch
+        {
+            ResourceType.Wheat => GameResources.Wheat,
+            ResourceType.Wood => GameResources.Wood,
+            ResourceType.Sheep => GameResources.Sheep,
+            ResourceType.Brick => GameResources.Brick,
+            ResourceType.Ore => GameResources.Ore,
+            ResourceType.GoldMine => GameResources.GoldMine,
+            ResourceType.Robber => GameResources.Robber,
+            _ => 0
+        };
+    }
+}

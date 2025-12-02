@@ -1,0 +1,98 @@
+.purchase-button {
+    width: 70px;
+    height: 90px;
+    perspective: 1000px;
+    cursor: pointer;
+}
+
+.purchase-button-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+}
+
+.purchase-button.face-up .purchase-button-inner {
+    transform: rotateY(180deg);
+}
+
+.purchase-button-front,
+.purchase-button-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+/* Back face - card back image with icon in top right corner, count in bottom third */
+.purchase-button-back {
+    background-size: cover;
+    background-position: center;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.purchase-button-back .back-icon-wrapper {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.purchase-button-back .back-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+.purchase-button-back .count-text {
+    position: absolute;
+    bottom: 10px;
+    color: var(--text-primary, #ffffff);
+    font-weight: bold;
+    font-size: 12px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.4);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* Front face - player gradient inside a rounded border */
+.purchase-button-front {
+    transform: rotateY(180deg);
+    /* Border is in foreground color, gradient fills inside */
+    border: 3px solid currentColor;
+    padding: 4px;
+}
+
+.purchase-button-front .unspent-count {
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.purchase-button-front .icon {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+}
+
+.purchase-button-front .label {
+    font-size: 11px;
+    margin-top: 4px;
+    font-weight: 600;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+}

@@ -1,0 +1,19 @@
+.game-resources-header {
+    background: var(--game-bg-panel);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.resources-row {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.resource-card-wrapper {
+    width: 40px;
+    height: 60px;
+}
