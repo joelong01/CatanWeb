@@ -1,0 +1,357 @@
+/* Viewport wrapper - handles scaling the entire layout */
+.game-viewport {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #000;
+}
+
+/* CSS version indicator - helps detect stale cached CSS */
+.game-viewport::after {
+    content: "CSS v2024-12-02-1";
+    position: fixed;
+    bottom: 5px;
+    right: 5px;
+    font-size: 10px;
+    color: #666;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+/* Layout designed for 4K (3840x2160) using fr units, then scaled to fit viewport */
+.game-layout {
+    display: grid;
+    /* fr-based columns that work well at 4K: ~14% left, ~58% center, ~28% right */
+    grid-template-columns: 14fr 58fr 28fr;
+    gap: 20px;
+    height: 100%;
+    width: 100%;
+    background: #000;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #000;
+    padding: 0px;
+}
+
+.left-panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-left: 50px;
+}
+
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; /* Right-align content */
+    gap: 0px;
+    width: 100%;
+    overflow: hidden;
+    background: #000;
+    padding: 0px;
+    /* No more dynamic scaling - whole layout scales together */
+}
+
+.center-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    background: #000;
+    align-items: center;
+    justify-content: center;
+    margin-left: 75px;
+}
+
+/* Section containers - no borders, natural flow */
+.game-controls,
+.roll-entry,
+.board-measurements {
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Offset game-controls to clear the hamburger menu (50px hamburger + 10px gap) */
+.game-controls {
+    margin-top: 60px;
+    padding-top: 5px;
+}
+
+/* Purchase controls float on black background without container */
+.purchase-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 5px;
+    width: 100%;
+}
+
+/* Game Controls */
+.control-buttons {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 5px;
+    width: 100%;
+    justify-content: center;
+}
+
+.game-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    max-width: 80px;
+    aspect-ratio: 1;
+    padding: 5px;
+    border: none;
+    border-radius: 8px;
+    background: var(--overlay-dark);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.game-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-icon {
+    font-family: 'Segoe MDL2 Assets';
+    font-size: 36px; /* Fixed for 4K */
+}
+
+.btn-label {
+    font-size: 12px; /* Fixed for 4K */
+    margin-top: 2px;
+}
+
+.state-message {
+    font-size: 11px;
+    text-align: center;
+}
+
+.command-error {
+    color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.2);
+    border: 1px solid #ff6b6b;
+    border-radius: 4px;
+    padding: 5px 10px;
+    margin-top: 5px;
+    font-size: 11px;
+    text-align: center;
+}
+
+/* Purchase Controls */
+.purchase-grid {
+    display: flex;
+    gap: 2px;
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+/* Roll Entry */
+.roll-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    width: 100%;
+}
+
+.roll-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 5px;
+    background: var(--overlay-darker);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.roll-cell:hover {
+    background: var(--overlay-dark);
+}
+
+.roll-count {
+    font-size: 1em;
+    font-weight: bold;
+    color: var(--text-secondary);
+    min-height: 1em;
+}
+
+.roll-catan-number svg {
+    display: block;
+}
+
+.roll-percentage {
+    font-size: 1em;
+    font-weight: bold;
+    color: var(--text-secondary);
+    min-height: 1em;
+}
+
+/* Board Measurements */
+.board-measurements {
+    min-height: 100px;
+}
+
+/* Game Board */
+.game-board {
+    flex: 1;
+    min-height: 0; /* Allow flex item to shrink */
+    overflow: hidden;
+}
+
+.board-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* Tracked Resources */
+.tracked-resources {
+    min-height: 100px;
+}
+
+.resource-cards {
+    display: flex;
+    gap: 5px;
+}
+
+.resource-card {
+    background: var(--overlay-dark);
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 20px;
+}
+
+/* Player List */
+.player-list {
+    flex: 1;
+    min-height: 200px;
+}
+
+.player-list .panel-content {
+    justify-content: flex-start;
+    align-items: stretch;
+}
+
+.player-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    background: var(--overlay-dark);
+    border-radius: 4px;
+    margin-bottom: 5px;
+    color: var(--text-primary);
+}
+
+.player-row.current-player {
+    background: var(--overlay-lighter);
+    border: 1px solid var(--text-primary);
+}
+
+.player-avatar {
+    font-family: 'Segoe MDL2 Assets';
+    font-size: 24px;
+}
+
+.player-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.player-name {
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.player-score {
+    font-size: 10px;
+    opacity: 0.8;
+}
+
+.current-indicator, .test-indicator {
+    font-family: 'Segoe MDL2 Assets';
+    font-size: 12px;
+}
+
+.player-row.test-selected {
+    border: 2px solid var(--accent-success);
+    background: rgba(76, 175, 80, 0.3);
+}
+
+.player-row:hover {
+    background: var(--overlay-lighter);
+}
+
+/* Panel-specific backgrounds */
+.game-board {
+    background: #000 !important;
+}
+
+.debug-panel {
+    background: var(--game-bg-secondary) !important;
+    transition: background-color 0.3s ease;
+}
+
+.debug-panel.has-error {
+    background: rgba(255, 107, 107, 0.3) !important;
+    animation: flash-error 0.5s ease-in-out 3;
+}
+
+@keyframes flash-error {
+    0%, 100% { background: var(--game-bg-secondary); }
+    50% { background: rgba(255, 107, 107, 0.5); }
+}
+
+.debug-panel summary {
+    color: var(--text-primary);
+}
+
+.debug-panel pre {
+    color: var(--text-muted);
+}
+
+.debug-panel .error-line {
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+/* Loading/Error overlays */
+.loading-overlay, .error-overlay {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.error-overlay {
+    color: #ff6b6b;
+}

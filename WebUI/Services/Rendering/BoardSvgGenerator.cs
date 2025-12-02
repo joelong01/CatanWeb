@@ -326,9 +326,9 @@ public static class BoardSvgGenerator
             var patternId = GetPatternId(resourceType);
             var tilePath = assetService?.GetAssetPath(assetName) ?? defaultPath;
 
-            // Match Desktop's ImageBrush Stretch="UniformToFill"
-            // Whole image, centered, scaled to fill, clipped at edges
-            sb.AppendLine($@"    <pattern id=""{patternId}"" patternUnits=""objectBoundingBox"" width=""1"" height=""1"">");
+            // Use userSpaceOnUse so pattern dimensions are in SVG units, not bounding box percentages
+            // This prevents stretching when the hex bounding box doesn't match hex proportions
+            sb.AppendLine($@"    <pattern id=""{patternId}"" patternUnits=""userSpaceOnUse"" width=""{patternWidth:F0}"" height=""{patternHeight:F0}"">");
             sb.AppendLine($@"      <image href=""{tilePath}"" width=""{patternWidth:F0}"" height=""{patternHeight:F0}"" preserveAspectRatio=""xMidYMid slice""/>");
             sb.AppendLine("    </pattern>");
         }

@@ -50,42 +50,23 @@ public static class CatanNumberSvg
     /// <summary>
     /// Renders a CatanNumber token as a complete standalone SVG element.
     /// Useful for embedding in HTML outside of an existing SVG context.
+    /// Uses the same rendering as Render() for visual consistency with board tiles.
     /// </summary>
     /// <param name="number">The roll number (2-12).</param>
-    /// <param name="size">SVG width and height. Default 60.</param>
+    /// <param name="radius">Circle radius. Default matches BoardSvgConstants.NumberTokenRadius (30).</param>
     /// <returns>Complete SVG element string.</returns>
-    public static string RenderStandalone(int number, int size = 60)
+    public static string RenderStandalone(int number, double radius = BoardSvgConstants.NumberTokenRadius)
     {
-        var radius = size / 2.0;
-        var center = size / 2.0;
+        // Add padding around the circle for the stroke
+        var padding = 2.0;
+        var size = (radius + padding) * 2;
 
         var sb = new StringBuilder();
         sb.AppendLine($@"<svg width=""{size}"" height=""{size}"" viewBox=""0 0 {size} {size}"">");
-        sb.AppendLine($@"  <g transform=""translate({center},{center})"">");
+        sb.AppendLine($@"  <g transform=""translate({size / 2},{size / 2})"">");
 
-        // Reuse the core rendering with appropriate radius
-        var isHighProb = number == 6 || number == 8;
-        var numberColor = isHighProb ? BoardSvgConstants.HighProbColor : BoardSvgConstants.NormalNumberColor;
-        var pips = GetPips(number);
-
-        // Scale font sizes proportionally (base radius = 30 for size = 60)
-        var scale = radius / 30.0;
-        var numberFontSize = BoardSvgConstants.NumberFontSize * scale;
-        var pipsFontSize = BoardSvgConstants.PipsFontSize * scale;
-        var numberOffsetY = BoardSvgConstants.NumberOffsetY * scale;
-        var pipsOffsetY = BoardSvgConstants.PipsOffsetY * scale;
-
-        // Background circle
-        sb.AppendLine($@"    <circle cx=""0"" cy=""0"" r=""{radius - 1}"" fill=""{BoardSvgConstants.NumberTokenFill}"" opacity=""{BoardSvgConstants.NumberTokenOpacity}"" stroke=""black"" stroke-width=""2""/>");
-
-        // Roll number
-        sb.AppendLine($@"    <text x=""0"" y=""{numberOffsetY}"" text-anchor=""middle"" dominant-baseline=""middle"" font-family=""sans-serif"" font-size=""{numberFontSize}"" font-weight=""bold"" fill=""{numberColor}"">{number}</text>");
-
-        // Probability pips (stars)
-        if (!string.IsNullOrEmpty(pips))
-        {
-            sb.AppendLine($@"    <text x=""0"" y=""{pipsOffsetY}"" text-anchor=""middle"" font-size=""{pipsFontSize}"" fill=""{numberColor}"">{pips}</text>");
-        }
+        // Reuse the core Render method for identical output
+        sb.Append(Render(number, radius));
 
         sb.AppendLine("  </g>");
         sb.AppendLine("</svg>");

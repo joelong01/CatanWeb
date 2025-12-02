@@ -1,6 +1,6 @@
 .board-measurement-panel {
     background: var(--game-bg-panel);
-    padding: 20px;
+    padding: 5px;
     border-radius: 8px;
     display: flex;
     flex-direction: column;
@@ -17,31 +17,26 @@
 }
 
 .resource-card-wrapper {
-    width: 45px;
-    height: 67px; /* Aspect ratio ~1:1.5 for resource cards */
+    width: 54px;
+    height: 81px; /* Max size for 5 cards in 290px row with 5px gaps. Aspect ratio ~1:1.5 */
 }
 
 .star-counters-row {
     display: flex;
     flex-direction: row;
-    gap: 15px;
+    gap: 8px;
     justify-content: center;
-    flex-wrap: wrap;
 }
 
 .action-buttons-row {
     display: flex;
     flex-direction: row;
-    gap: 20px;
+    margin: 20px;
     justify-content: center;
-}
-
-.action-buttons-row ::deep .icon {
-    font-size: 64px;
-}
-
-.action-buttons-row ::deep .label {
-    font-size: 14px;
+    align-items: center;
+    align-self: center;
+    width: fit-content;
+    height: 20px;
 }
 
 .star-slider-container {

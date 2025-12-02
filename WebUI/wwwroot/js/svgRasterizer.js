@@ -59,8 +59,7 @@ window.svgRasterizer = {
             canvas.width = canvasWidth;
             canvas.height = canvasHeight;
 
-            // Set explicit CSS dimensions to match SVG's rendered size exactly
-            // This prevents CSS Grid from stretching the canvas and causing object-fit issues
+            // Set explicit CSS dimensions to match SVG's actual rendered size
             canvas.style.width = displayWidth + 'px';
             canvas.style.height = displayHeight + 'px';
 
@@ -98,6 +97,14 @@ window.svgRasterizer = {
                     // Swap visibility: hide SVG, show canvas
                     svg.style.display = 'none';
                     canvas.style.display = 'block';
+
+                    // Set explicit dimensions on interactive SVG layer to match canvas
+                    // This ensures roads/buildings align with rasterized tiles
+                    const interactiveSvg = document.querySelector('.board-interactive-layer');
+                    if (interactiveSvg) {
+                        interactiveSvg.style.width = displayWidth + 'px';
+                        interactiveSvg.style.height = displayHeight + 'px';
+                    }
 
                     console.log('[svgRasterizer] Rasterization complete:', canvasWidth, 'x', canvasHeight, 'backing pixels');
 

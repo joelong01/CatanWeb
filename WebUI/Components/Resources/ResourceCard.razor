@@ -3,28 +3,45 @@
 @using Catan3.WebUI.Services
 @inject IAssetService AssetService
 
-<div class="resource-card @(IsSelected ? "resource-card-selected" : "")"
+<div class="resource-card @GetCssClasses()"
      @onclick="HandleClick"
+     @oncontextmenu="HandleRightClick"
+     @oncontextmenu:preventDefault="true"
      data-testid="resource-card-@Resource.ToString().ToLower()">
-    <div class="resource-image" style="background-image: url('@GetResourceImageUrl()')"></div>
-    <div class="resource-count-badge">@Count</div>
-    @if (IsSelected)
-    {
-        <div class="selection-indicator">
-            <span class="checkmark">&#xE10B;</span>
+    <div class="resource-card-inner">
+        @* Front face - resource image with count badge *@
+        <div class="resource-card-front">
+            <div class="resource-image" style="background-image: url('@GetResourceImageUrl()')"></div>
+            <div class="resource-count-badge">@Count</div>
+            @if (IsSelected)
+            {
+                <div class="selection-indicator">
+                    <span class="checkmark">&#xE10B;</span>
+                </div>
+            }
+            @if (HasHarbor)
+            {
+                <div class="harbor-indicator">
+                    <span class="harbor-glyph">&#xE90D;</span>
+                </div>
+            }
         </div>
-    }
+        @* Back face - card back image *@
+        <div class="resource-card-back">
+            <div class="resource-image" style="background-image: url('@AssetService.GetAssetPath(AssetName.CardBack)')"></div>
+        </div>
+    </div>
 </div>
 
 @code {
     /// <summary>
-    /// The type of resource this card represents (Wheat, Wood, Ore, Brick, Sheep).
+    /// The type of resource this card represents (Wheat, Wood, Ore, Brick, Sheep, GoldMine, Robber).
     /// </summary>
     [Parameter]
     public ResourceType Resource { get; set; }
 
     /// <summary>
-    /// The count of this resource type currently on the game board.
+    /// The count to display on the card.
     /// </summary>
     [Parameter]
     public int Count { get; set; }
@@ -42,6 +59,59 @@
     public EventCallback<ResourceType> OnToggleSelection { get; set; }
 
     /// <summary>
+    /// Whether the card can be flipped via right-click. Default is false.
+    /// </summary>
+    [Parameter]
+    public bool CanFlip { get; set; } = false;
+
+    /// <summary>
+    /// Whether the card automatically flips based on Count > 0. Default is false.
+    /// When true, card shows back when Count = 0, front when Count > 0.
+    /// </summary>
+    [Parameter]
+    public bool AutoFlip { get; set; } = false;
+
+    /// <summary>
+    /// Whether the player owns a 2:1 harbor for this resource type.
+    /// When true, displays a ship glyph indicator on the card.
+    /// </summary>
+    [Parameter]
+    public bool HasHarbor { get; set; } = false;
+
+    /// <summary>
+    /// Manual override for flip state (toggled by right-click).
+    /// Null means use automatic behavior.
+    /// </summary>
+    private bool? ManualFlipOverride { get; set; } = null;
+
+    /// <summary>
+    /// Whether the card is showing front face.
+    /// Priority: ManualFlipOverride > AutoFlip logic > always front
+    /// </summary>
+    private bool IsShowingFront
+    {
+        get
+        {
+            if (ManualFlipOverride.HasValue)
+                return ManualFlipOverride.Value;
+            if (AutoFlip)
+                return Count > 0;
+            return true; // Default: always show front
+        }
+    }
+
+    /// <summary>
+    /// Gets CSS classes for the card based on state.
+    /// </summary>
+    private string GetCssClasses()
+    {
+        var classes = new List<string>();
+        if (IsSelected) classes.Add("resource-card-selected");
+        if (IsShowingFront) classes.Add("face-up");
+        return string.Join(" ", classes);
+    }
+
+    /// <summary>
     /// Gets the resource image URL from the theme asset service.
     /// </summary>
     /// <returns>Themed path to the resource card image.</returns>
@@ -55,6 +125,7 @@
             ResourceType.Brick => AssetName.CardBrick,
             ResourceType.Sheep => AssetName.CardSheep,
             ResourceType.GoldMine => AssetName.CardGoldMine,
+            ResourceType.Robber => AssetName.CardRobber,
             _ => AssetName.CardBack
         };
         return AssetService.GetAssetPath(assetName);
@@ -65,6 +136,20 @@
     /// </summary>
     private async Task HandleClick()
     {
-        await OnToggleSelection.InvokeAsync(Resource);
+        if (OnToggleSelection.HasDelegate)
+        {
+            await OnToggleSelection.InvokeAsync(Resource);
+        }
+    }
+
+    /// <summary>
+    /// Handles right-click to toggle flip animation (if enabled).
+    /// </summary>
+    private void HandleRightClick()
+    {
+        if (CanFlip)
+        {
+            ManualFlipOverride = !IsShowingFront;
+        }
     }
 }

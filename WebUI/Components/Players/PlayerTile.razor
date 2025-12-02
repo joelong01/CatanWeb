@@ -55,8 +55,9 @@
             @foreach (var resourceType in GetTrackedResources())
             {
                 var count = GetResourceThisTurn(resourceType);
+                var hasHarbor = PlayerHasHarborForResource(resourceType);
                 <div class="resource-card-wrapper">
-                    <FlippableResourceCard Resource="@resourceType" Count="@count" />
+                    <ResourceCard Resource="@resourceType" Count="@count" AutoFlip="true" CanFlip="true" HasHarbor="@hasHarbor" />
                 </div>
             }
         </div>
@@ -284,5 +285,38 @@
     {
         var r = Player.ResourcesThisGame;
         return r.Wheat + r.Wood + r.Sheep + r.Brick + r.Ore;
+    }
+
+    /// <summary>
+    /// Checks if the player owns a 2:1 harbor for the specified resource type.
+    /// </summary>
+    /// <param name="resource">The resource type to check.</param>
+    /// <returns>True if player owns a harbor for this resource.</returns>
+    private bool PlayerHasHarborForResource(ResourceType resource)
+    {
+        if (Player.OwnedHarbors == null || Player.OwnedHarbors.Count == 0)
+            return false;
+
+        return Player.OwnedHarbors.Any(harborKey =>
+            HarborTypeToResourceType(harborKey.HarborType) == resource);
+    }
+
+    /// <summary>
+    /// Converts a HarborType to its corresponding ResourceType.
+    /// Matches Desktop implementation: HarborViewModel.ToResourceType()
+    /// </summary>
+    /// <param name="harborType">The harbor type to convert.</param>
+    /// <returns>The corresponding ResourceType, or None for generic harbors.</returns>
+    private static ResourceType HarborTypeToResourceType(HarborType harborType)
+    {
+        return harborType switch
+        {
+            HarborType.Brick => ResourceType.Brick,
+            HarborType.Ore => ResourceType.Ore,
+            HarborType.Sheep => ResourceType.Sheep,
+            HarborType.Wheat => ResourceType.Wheat,
+            HarborType.Wood => ResourceType.Wood,
+            _ => ResourceType.None,
+        };
     }
 }

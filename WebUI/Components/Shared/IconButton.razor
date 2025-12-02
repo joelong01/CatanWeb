@@ -1,4 +1,4 @@
-<button class="icon-button"
+<button class="@ButtonClass"
         @onclick="HandleClick"
         disabled="@Disabled"
         data-testid="@AutomationId">
@@ -36,6 +36,17 @@
     /// </summary>
     [Parameter]
     public string AutomationId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional CSS class to add to the button. Use "icon-button-tight" for minimal padding.
+    /// </summary>
+    [Parameter]
+    public string CssClass { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Computed class combining base class with optional additional class.
+    /// </summary>
+    private string ButtonClass => string.IsNullOrEmpty(CssClass) ? "icon-button" : $"icon-button {CssClass}";
 
     /// <summary>
     /// Handles the button click event and invokes the OnClick callback.

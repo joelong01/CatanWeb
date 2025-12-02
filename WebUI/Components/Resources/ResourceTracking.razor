@@ -7,7 +7,7 @@
         {
             var count = GetResourceCount(resourceType);
             <div class="resource-card-wrapper">
-                <FlippableResourceCard Resource="@resourceType" Count="@count" />
+                <ResourceCard Resource="@resourceType" Count="@count" AutoFlip="true" CanFlip="true" />
             </div>
         }
     </div>

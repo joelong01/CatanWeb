@@ -31,7 +31,8 @@
              viewBox="@ViewBox"
              preserveAspectRatio="xMidYMid meet"
              shape-rendering="geometricPrecision"
-             class="board-static-layer">
+             class="board-static-layer"
+             style="@AspectRatioStyle">
 
             <SharedDefinitions Players="@Players"
                               CurrentPlayer="@CurrentPlayerViewModel"
@@ -54,7 +55,8 @@
              viewBox="@ViewBox"
              preserveAspectRatio="xMidYMid meet"
              shape-rendering="geometricPrecision"
-             class="board-interactive-layer">
+             class="board-interactive-layer"
+             style="@AspectRatioStyle">
 
             @* Need defs for player gradients in this SVG too *@
             <defs>
@@ -142,9 +144,30 @@ else
     private (double minX, double minY, double width, double height) ViewBoxBounds => CalculateViewBoxBounds();
 
     /// <summary>
+    /// Inline style for SVG aspect-ratio based on viewBox dimensions.
+    /// Ensures SVG maintains correct proportions within the container.
+    /// </summary>
+    private string AspectRatioStyle
+    {
+        get
+        {
+            var bounds = ViewBoxBounds;
+            if (bounds.width <= 0 || bounds.height <= 0)
+                return "";
+            return $"aspect-ratio: {bounds.width / bounds.height:F4};";
+        }
+    }
+
+    /// <summary>
     /// Delay in ms to ensure SVG is fully rendered before rasterization.
     /// </summary>
     private const int RasterizationDelayMs = 150;
+
+    /// <summary>
+    /// Whether to use offscreen canvas rasterization for the static layer.
+    /// Set to false to render SVG directly in browser (simpler, avoids alignment issues).
+    /// </summary>
+    private const bool UseOffscreenRendering = false;
 
     /// <summary>
     /// Whether the static layer has been rasterized to canvas.
@@ -206,7 +229,7 @@ else
         if (tileHash != _previousTileHash)
         {
             _previousTileHash = tileHash;
-            if (IsRasterized)
+            if (UseOffscreenRendering && IsRasterized)
             {
                 // Board was already rasterized - immediately show SVG so new tiles render
                 // Use synchronous JS call to swap visibility before Blazor renders
@@ -220,10 +243,21 @@ else
     }
 
     /// <summary>
-    /// Rasterize the static SVG layer after render.
+    /// Rasterize the static SVG layer after render (when offscreen rendering is enabled).
     /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // Skip rasterization if disabled - just render SVG directly
+        if (!UseOffscreenRendering)
+        {
+            if (IsLoading)
+            {
+                IsLoading = false;
+                StateHasChanged();
+            }
+            return;
+        }
+
         if (GameModel != null && !IsRasterized)
         {
             // Small delay to ensure SVG is fully rendered and laid out

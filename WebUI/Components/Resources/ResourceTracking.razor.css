@@ -7,7 +7,7 @@
     /* Fixed width matching player tile */
     width: 553px;
     box-sizing: border-box;
-    zoom: var(--tile-scale, 1);
+    /* No zoom - whole layout scales together via viewport transform */
 }
 
 .resource-cards-row {

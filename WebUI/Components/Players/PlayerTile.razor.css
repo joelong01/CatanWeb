@@ -8,7 +8,7 @@
     /* Fixed internal width: 50 avatar + 2 gap + 12*40 stats + 11*1 gaps + 10 padding = 553px */
     width: 553px;
     box-sizing: border-box;
-    zoom: var(--tile-scale, 1);
+    /* No zoom - whole layout scales together via viewport transform */
 }
 
 .player-info-row {
@@ -80,6 +80,7 @@
     font-weight: bold;
     line-height: 1;
     text-align: center;
+    margin-top: 2px;
 }
 
 /* Score tile: laurel wreath with number centered inside */

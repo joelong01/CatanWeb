@@ -1,26 +1,21 @@
 @using Catan3.Shared.Models
 
-<div class="star-counter" data-testid="star-counter-@StarValue">
-    <div class="star-row">@StarIcons</div>
+<div class="star-counter star-counter-@StarValue" data-testid="star-counter-@StarValue">
     <div class="star-value">@StarValue</div>
+    <div class="star-separator"></div>
     <div class="star-count">@Count</div>
 </div>
 
 @code {
     /// <summary>
-    /// The star threshold value this counter represents (10, 11, 12, or 13).
+    /// The star threshold value this counter represents (11, 12, or 13).
     /// </summary>
     [Parameter]
     public int StarValue { get; set; }
 
     /// <summary>
-    /// The number of tiles on the board that meet this star threshold.
+    /// The number of building sites on the board that meet this star threshold.
     /// </summary>
     [Parameter]
     public int Count { get; set; }
-
-    /// <summary>
-    /// Generates the star icon string (5 stars using Segoe Fluent Icons).
-    /// </summary>
-    private string StarIcons => new string('\uE00A', 5);
 }
