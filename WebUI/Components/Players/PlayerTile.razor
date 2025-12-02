@@ -4,7 +4,6 @@
 @using Catan3.WebUI.Models
 @using Catan3.WebUI.Services
 @inject GameServiceConfig Config
-@inject IAssetService AssetService
 
 <div class="player-tile" data-testid="player-tile-@Player.Id">
     <!-- Row 1: Player Info and Stats -->
@@ -25,12 +24,26 @@
         <div class="player-stats-grid">
             @foreach (var stat in GetPlayerStats())
             {
-                <div class="stat-tile @(stat.IsHighlighted ? "highlighted" : "")"
-                     style="@GetStatStyle(stat.IsHighlighted)"
-                     data-testid="stat-@stat.Name">
-                    <img src="@stat.SvgPath" class="stat-icon-svg" alt="@stat.Name" style="@GetSvgFilterStyle()" />
-                    <div class="stat-count">@stat.Count</div>
-                </div>
+                @if (stat.Name == "Score")
+                {
+                    <!-- Score stat: laurel wreath with number centered inside -->
+                    <div class="stat-tile score-tile @(stat.IsHighlighted ? "highlighted" : "")"
+                         style="@GetStatStyle(stat.IsHighlighted)"
+                         data-testid="stat-@stat.Name">
+                        <span class="stat-glyph laurel-bg">@stat.Glyph</span>
+                        <div class="score-number">@stat.Count</div>
+                    </div>
+                }
+                else
+                {
+                    <!-- Normal stat tile: icon above count -->
+                    <div class="stat-tile @(stat.IsHighlighted ? "highlighted" : "")"
+                         style="@GetStatStyle(stat.IsHighlighted)"
+                         data-testid="stat-@stat.Name">
+                        <span class="stat-glyph">@stat.Glyph</span>
+                        <div class="stat-count">@stat.Count</div>
+                    </div>
+                }
             }
         </div>
     </div>
@@ -43,11 +56,7 @@
             {
                 var count = GetResourceThisTurn(resourceType);
                 <div class="resource-card-wrapper">
-                    <ResourceCard
-                        Resource="@resourceType"
-                        Count="@count"
-                        IsSelected="false"
-                        OnToggleSelection="@(() => Task.CompletedTask)" />
+                    <FlippableResourceCard Resource="@resourceType" Count="@count" />
                 </div>
             }
         </div>
@@ -85,32 +94,52 @@
     private class PlayerStat
     {
         public required string Name { get; init; }
-        public required string SvgPath { get; init; }
+        public required string Glyph { get; init; }
         public required int Count { get; init; }
         public required bool IsHighlighted { get; init; }
     }
 
     /// <summary>
-    /// Gets all player statistics for display in the stats grid.
-    /// Uses themed SVG icons via AssetService.
+    /// Catan font glyph codes for stat icons.
+    /// Mapped from DesktopApp/Layout/CatanFont.cs
     /// </summary>
-    /// <returns>List of 12 player statistics with SVG paths and counts.</returns>
+    private static class CatanGlyph
+    {
+        public const string City = "\uE900";
+        public const string Laurel = "\uE907";
+        public const string Road = "\uE909";
+        public const string Pirate = "\uE90C";
+        public const string Settlement = "\uE926";
+        public const string Soldier = "\uE90E";
+        public const string Sum = "\uE910";
+        public const string BadRoll = "\uE913";
+        public const string GoodRoll = "\uE914";
+        public const string LongestRoad = "\uE915";
+        public const string Target = "\uE916";
+        public const string Star = "\uE911";
+    }
+
+    /// <summary>
+    /// Gets all player statistics for display in the stats grid.
+    /// Uses Catan font glyphs for icons.
+    /// </summary>
+    /// <returns>List of 12 player statistics with glyph codes and counts.</returns>
     private List<PlayerStat> GetPlayerStats()
     {
         return new List<PlayerStat>
         {
-            new() { Name = "Score", SvgPath = AssetService.GetAssetPath(AssetName.StatStar), Count = Player.Score, IsHighlighted = Player.HighestScore },
-            new() { Name = "Roads", SvgPath = AssetService.GetAssetPath(AssetName.BuildingRoad), Count = GetRoadsPlayed(), IsHighlighted = false },
-            new() { Name = "Cities", SvgPath = AssetService.GetAssetPath(AssetName.BuildingCity), Count = GetCitiesPlayed(), IsHighlighted = false },
-            new() { Name = "Settlements", SvgPath = AssetService.GetAssetPath(AssetName.BuildingSettlement), Count = GetSettlementsPlayed(), IsHighlighted = false },
-            new() { Name = "Soldiers", SvgPath = AssetService.GetAssetPath(AssetName.StatKnights), Count = GetSoldiersPlayed(), IsHighlighted = Player.LargestArmy },
-            new() { Name = "Robber", SvgPath = AssetService.GetAssetPath(AssetName.StatRobber), Count = GetResourcesLost(), IsHighlighted = false },
-            new() { Name = "Targeted", SvgPath = AssetService.GetAssetPath(AssetName.StatTargetted), Count = Player.TimesTargeted, IsHighlighted = false },
-            new() { Name = "Total", SvgPath = AssetService.GetAssetPath(AssetName.StatResourceCards), Count = GetTotalResources(), IsHighlighted = false },
-            new() { Name = "LongestRoad", SvgPath = AssetService.GetAssetPath(AssetName.StatLongestRoad), Count = Player.LongestRoad, IsHighlighted = Player.HasLongestRoad },
-            new() { Name = "GoodRolls", SvgPath = AssetService.GetAssetPath(AssetName.StatGoodRoll), Count = Player.GoodRolls, IsHighlighted = false },
-            new() { Name = "BadRolls", SvgPath = AssetService.GetAssetPath(AssetName.StatBadRoll), Count = Player.BadRolls, IsHighlighted = false },
-            new() { Name = "Stars", SvgPath = AssetService.GetAssetPath(AssetName.StatStar), Count = Player.Stars, IsHighlighted = false }
+            new() { Name = "Score", Glyph = CatanGlyph.Laurel, Count = Player.Score, IsHighlighted = Player.HighestScore },
+            new() { Name = "Roads", Glyph = CatanGlyph.Road, Count = GetRoadsPlayed(), IsHighlighted = false },
+            new() { Name = "Cities", Glyph = CatanGlyph.City, Count = GetCitiesPlayed(), IsHighlighted = false },
+            new() { Name = "Settlements", Glyph = CatanGlyph.Settlement, Count = GetSettlementsPlayed(), IsHighlighted = false },
+            new() { Name = "Soldiers", Glyph = CatanGlyph.Soldier, Count = GetSoldiersPlayed(), IsHighlighted = Player.LargestArmy },
+            new() { Name = "Robber", Glyph = CatanGlyph.Pirate, Count = GetResourcesLost(), IsHighlighted = false },
+            new() { Name = "Targeted", Glyph = CatanGlyph.Target, Count = Player.TimesTargeted, IsHighlighted = false },
+            new() { Name = "Total", Glyph = CatanGlyph.Sum, Count = GetTotalResources(), IsHighlighted = false },
+            new() { Name = "LongestRoad", Glyph = CatanGlyph.LongestRoad, Count = Player.LongestRoad, IsHighlighted = Player.HasLongestRoad },
+            new() { Name = "GoodRolls", Glyph = CatanGlyph.GoodRoll, Count = Player.GoodRolls, IsHighlighted = false },
+            new() { Name = "BadRolls", Glyph = CatanGlyph.BadRoll, Count = Player.BadRolls, IsHighlighted = false },
+            new() { Name = "Stars", Glyph = CatanGlyph.Star, Count = Player.Stars, IsHighlighted = false }
         };
     }
 
@@ -164,40 +193,9 @@
     }
 
     /// <summary>
-    /// Gets CSS filter style to colorize SVG icons to match player foreground color.
-    /// Black SVGs need to be inverted to white for light foregrounds.
+    /// Gets the list of resource types to track (includes Gold and Robber).
     /// </summary>
-    /// <returns>CSS filter style string.</returns>
-    private string GetSvgFilterStyle()
-    {
-        if (PlayerColors == null) return "filter: brightness(0) invert(1);";
-
-        // For black/dark foregrounds, keep SVG black (no invert)
-        // For white/light foregrounds, invert SVG to white
-        // This is a simple heuristic - check if foreground is light colored
-        var fg = PlayerColors.Foreground.TrimStart('#');
-        if (fg.Length >= 6)
-        {
-            var r = Convert.ToInt32(fg.Substring(0, 2), 16);
-            var g = Convert.ToInt32(fg.Substring(2, 2), 16);
-            var b = Convert.ToInt32(fg.Substring(4, 2), 16);
-            var brightness = (r + g + b) / 3.0;
-
-            if (brightness > 127)
-            {
-                // Light foreground: invert black SVG to white
-                return "filter: brightness(0) invert(1);";
-            }
-        }
-
-        // Dark foreground: keep SVG black
-        return "filter: none;";
-    }
-
-    /// <summary>
-    /// Gets the list of resource types to track (includes Gold).
-    /// </summary>
-    /// <returns>Array of ResourceType values: Wheat, Wood, Sheep, Brick, Ore, GoldMine</returns>
+    /// <returns>Array of ResourceType values: Wheat, Wood, Sheep, Brick, Ore, GoldMine, Robber</returns>
     private ResourceType[] GetTrackedResources()
     {
         return new[]
@@ -207,7 +205,8 @@
             ResourceType.Sheep,
             ResourceType.Brick,
             ResourceType.Ore,
-            ResourceType.GoldMine
+            ResourceType.GoldMine,
+            ResourceType.Robber
         };
     }
 
@@ -227,6 +226,7 @@
             ResourceType.Brick => Player.ResourcesThisTurn.Brick,
             ResourceType.Ore => Player.ResourcesThisTurn.Ore,
             ResourceType.GoldMine => Player.ResourcesThisTurn.GoldMine,
+            ResourceType.Robber => Player.ResourcesThisTurn.Robber,
             _ => 0
         };
     }

@@ -45,6 +45,7 @@ namespace Catan3.WebUI.Models
 
         // === Stats (player statistics icons) ===
         StatScore,
+        StatLaurel,
         StatRoads,
         StatKnights,
         StatCities,

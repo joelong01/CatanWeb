@@ -2,8 +2,14 @@
     background: url('/themes/base/backgrounds/maple.jpg') center/cover;
     border-radius: 3px;
     margin: 1px;
-    padding: 3px;
+    padding: 5px;
     visibility: visible;
+    overflow: visible;
+    /* Fixed internal width: 50 avatar + 2 gap + 12*40 stats + 11*1 gaps + 10 padding = 553px */
+    width: 553px;
+    box-sizing: border-box;
+    /* DEBUG: Set to 1 to verify layout, then restore var(--tile-scale, 1) */
+    zoom: 1;
 }
 
 .player-info-row {
@@ -12,12 +18,12 @@
     gap: 2px;
     align-items: flex-start;
     margin-bottom: 2px;
+    width: 100%;
 }
 
 .player-avatar {
-    --stat-scale: 2.0; /* Same scale as stats */
-    width: calc(25px * var(--stat-scale));
-    height: calc(25px * var(--stat-scale));
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     overflow: hidden;
     flex-shrink: 0;
@@ -35,67 +41,80 @@
 
 .avatar-placeholder {
     color: white;
-    font-size: calc(12px * var(--stat-scale));
+    font-size: 1.2em;
     font-weight: bold;
 }
 
 .player-stats-grid {
-    --stat-scale: 1.6; /* Scale factor for stat tiles - adjust to tune size */
     display: grid;
-    grid-template-columns: repeat(12, calc(22px * var(--stat-scale)));
-    grid-template-rows: calc(27px * var(--stat-scale));
-    gap: calc(1px * var(--stat-scale));
-    flex: 1;
+    grid-template-columns: repeat(12, 40px);
+    gap: 1px;
 }
 
 .stat-tile {
-    width: calc(22px * var(--stat-scale));
-    height: calc(27px * var(--stat-scale));
-    border-radius: calc(5px * var(--stat-scale));
+    width: 40px;
+    height: 50px;
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    padding: calc(2px * var(--stat-scale)) 0 calc(3px * var(--stat-scale)) 0;
+    padding: 4px 0 6px 0;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .stat-tile.highlighted {
     /* Background and color set via inline style for gradient */
 }
 
-.stat-icon {
-    font-family: var(--icon-font-family);
-    font-size: calc(14px * var(--stat-scale));
-    line-height: calc(14px * var(--stat-scale));
+.stat-glyph {
+    font-family: 'Catan', sans-serif;
+    font-size: 1.5em;
+    line-height: 1;
     text-align: center;
-}
-
-.stat-icon-svg {
-    width: calc(14px * var(--stat-scale));
-    height: calc(14px * var(--stat-scale));
-    object-fit: contain;
-    /* Filter will be overridden by inline style based on foreground color */
-    filter: brightness(0) invert(1); /* Default: convert to white */
+    /* Color inherited from parent stat-tile via inline style */
 }
 
 .stat-count {
-    font-size: calc(9px * var(--stat-scale));
-    line-height: calc(9px * var(--stat-scale));
+    font-size: 1em;
+    font-weight: bold;
+    line-height: 1;
+    text-align: center;
+}
+
+/* Score tile: laurel wreath with number centered inside */
+.score-tile {
+    position: relative;
+    justify-content: center; /* Override space-between to center the number */
+}
+
+.laurel-bg {
+    position: absolute;
+    font-size: 2.5em;
+    /* Center the laurel glyph behind the score number */
+}
+
+.score-number {
+    position: relative;
+    z-index: 1;
+    font-size: 1em;
+    font-weight: bold;
     text-align: center;
 }
 
 .resources-this-turn-row {
     display: flex;
     flex-direction: row;
-    gap: 1px;
+    gap: 2px;
     padding: 0;
     margin: 0;
-    width: 100%;
-    height: 118px;
+    margin-top: 3px;
 }
 
 .resource-card-wrapper {
-    height: 100%; /* Fill the 118px height */
-    width: calc(122px / 1.5); /* Width calculated from height to maintain 1:1.5 aspect ratio */
-    flex-shrink: 0; /* Don't shrink - maintain aspect ratio */
+    /* 7 cards with fixed pixel size, card aspect ratio 5:7 */
+    /* height increased by 20px (105->125), width = 125 * 5/7 = 89 */
+    width: 89px;
+    height: 125px;
 }

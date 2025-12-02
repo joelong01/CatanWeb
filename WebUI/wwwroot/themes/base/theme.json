@@ -38,7 +38,8 @@
     "CardRobber": "/themes/base/resources/robber.png",
     "CardAnyDev": "/themes/base/resources/anydevcard.png",
 
-    "StatScore": "/themes/base/stats/star.svg",
+    "StatScore": "/themes/base/stats/laurel.svg",
+    "StatLaurel": "/themes/base/stats/laurel.svg",
     "StatRoads": "/themes/base/stats/roads.svg",
     "StatKnights": "/themes/base/stats/knight.svg",
     "StatCities": "/themes/base/stats/multiple cities.svg",

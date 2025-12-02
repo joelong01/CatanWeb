@@ -2,6 +2,7 @@
 @using Catan3.Shared.Profiles
 
 <div class="players-panel" data-testid="players-panel">
+    <!-- Per-player tiles -->
     @foreach (var player in GameModel.Players)
     {
         var playerColors = GetPlayerColors(player.Id);

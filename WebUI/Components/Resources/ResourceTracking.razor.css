@@ -3,17 +3,24 @@
     border-radius: 5px;
     padding: 5px;
     margin-bottom: 5px;
+    overflow: visible;
+    /* Fixed width matching player tile */
+    width: 553px;
+    box-sizing: border-box;
+    /* DEBUG: Set to 1 to verify layout, then restore var(--tile-scale, 1) */
+    zoom: 1;
 }
 
 .resource-cards-row {
     display: flex;
     flex-direction: row;
     gap: 2px;
-    justify-content: space-between;
+    justify-content: flex-start;
 }
 
 .resource-card-wrapper {
-    flex: 1;
-    min-width: 0;
-    aspect-ratio: 1 / 1.5; /* Taller cards - matches resource card proportions */
+    /* 7 cards with fixed pixel size, card aspect ratio 5:7 */
+    /* height increased by 20px (105->125), width = 125 * 5/7 = 89 */
+    width: 89px;
+    height: 125px;
 }

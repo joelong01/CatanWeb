@@ -1,3 +1,11 @@
+/* Catan Icon Font */
+@font-face {
+    font-family: 'Catan';
+    src: url('/themes/base/fonts/Catan.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 :root {
     /* Game Background Colors */
     --game-bg-primary: #222;

@@ -9,6 +9,7 @@
 @using Catan3.WebUI.Components.Board
 @using Catan3.WebUI.Components.Resources
 @using Catan3.WebUI.Components.Players
+@using Catan3.WebUI.Components.Shared
 @inject GameServiceConfig Config
 @inject GameCommandProxy CommandProxy
 @inject HttpClient Http
@@ -62,12 +63,36 @@
             </div>
 
             <!-- Purchase Controls -->
-            <div class="purchase-controls" style="@GetCurrentPlayerGradient()">
+            <div class="purchase-controls">
                 <div class="purchase-grid">
-                    <div class="purchase-card">Road</div>
-                    <div class="purchase-card">Settlement</div>
-                    <div class="purchase-card">City</div>
-                    <div class="purchase-card">Dev Card</div>
+                    <PurchaseButton Entitlement="Entitlement.Road"
+                                    SpentCount="@GetSpentCount(Entitlement.Road)"
+                                    MaxCount="@(GameModel?.ResourceRules?.MaxRoads ?? 15)"
+                                    UnspentCount="@GetUnspentCount(Entitlement.Road)"
+                                    Colors="@GetCurrentPlayerColors()"
+                                    IsFaceUp="@GetIsFaceUp(Entitlement.Road)"
+                                    OnRightClick="@(() => ToggleFaceUp(Entitlement.Road))" />
+                    <PurchaseButton Entitlement="Entitlement.Settlement"
+                                    SpentCount="@GetSpentCount(Entitlement.Settlement)"
+                                    MaxCount="@(GameModel?.ResourceRules?.MaxSettlements ?? 5)"
+                                    UnspentCount="@GetUnspentCount(Entitlement.Settlement)"
+                                    Colors="@GetCurrentPlayerColors()"
+                                    IsFaceUp="@GetIsFaceUp(Entitlement.Settlement)"
+                                    OnRightClick="@(() => ToggleFaceUp(Entitlement.Settlement))" />
+                    <PurchaseButton Entitlement="Entitlement.City"
+                                    SpentCount="@GetSpentCount(Entitlement.City)"
+                                    MaxCount="@(GameModel?.ResourceRules?.MaxCities ?? 4)"
+                                    UnspentCount="@GetUnspentCount(Entitlement.City)"
+                                    Colors="@GetCurrentPlayerColors()"
+                                    IsFaceUp="@GetIsFaceUp(Entitlement.City)"
+                                    OnRightClick="@(() => ToggleFaceUp(Entitlement.City))" />
+                    <PurchaseButton Entitlement="Entitlement.Soldier"
+                                    SpentCount="@GetSpentCount(Entitlement.Soldier)"
+                                    MaxCount="0"
+                                    UnspentCount="@GetUnspentCount(Entitlement.Soldier)"
+                                    Colors="@GetCurrentPlayerColors()"
+                                    IsFaceUp="@GetIsFaceUp(Entitlement.Soldier)"
+                                    OnRightClick="@(() => ToggleFaceUp(Entitlement.Soldier))" />
                 </div>
             </div>
 
@@ -147,7 +172,7 @@
 <style>
     .game-layout {
         display: grid;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: 10% 60% 30%;
         gap: 0;
         height: 100vh;
         width: 100vw;
@@ -161,7 +186,7 @@
         display: flex;
         flex-direction: column;
         gap: 5px;
-        width: 325px;
+        width: 100%;
         overflow-y: auto;
         overflow-x: hidden;
         background: #000;
@@ -172,19 +197,22 @@
         display: flex;
         flex-direction: column;
         gap: 0px;
-        width: 510px;
+        width: 100%;
         overflow-y: auto;
         overflow-x: hidden;
         background: #000;
         padding: 0px;
+        /* Scale factor for player tiles: right panel is 30vw, tile is 580px */
+        --tile-scale: calc(30vw / 580px);
     }
 
     .center-panel {
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        min-width: 0; /* Allow flex to shrink */
-        min-height: 0; /* Allow flex item to shrink below content size */
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
         background: #000;
         align-items: center;
         justify-content: center;
@@ -192,31 +220,53 @@
 
     /* Section containers - no borders, natural flow */
     .game-controls,
-    .purchase-controls,
     .roll-entry,
     .board-measurements {
-        padding: 10px;
+        padding: 5px;
         display: flex;
         flex-direction: column;
         align-items: center;
         border-radius: 4px;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Offset game-controls to clear the hamburger menu */
+    .game-controls {
+        margin-top: 40px;
+        padding-top: 5px;
+    }
+
+    /* Purchase controls float on black background without container */
+    .purchase-controls {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 5px;
+        width: 100%;
     }
 
     /* Game Controls */
     .control-buttons {
         display: flex;
-        gap: 5px;
-        margin-bottom: 10px;
+        gap: 4px;
+        margin-bottom: 5px;
+        width: 100%;
+        justify-content: center;
     }
 
     .game-btn {
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 8px 12px;
+        justify-content: center;
+        flex: 1;
+        max-width: 80px;
+        aspect-ratio: 1;
+        padding: 5px;
         border: none;
-        border-radius: 4px;
+        border-radius: 8px;
         background: var(--overlay-dark);
         color: var(--text-primary);
         cursor: pointer;
@@ -229,11 +279,12 @@
 
     .btn-icon {
         font-family: 'Segoe MDL2 Assets';
-        font-size: 20px;
+        font-size: clamp(16px, 4vw, 36px);
     }
 
     .btn-label {
-        font-size: 10px;
+        font-size: clamp(8px, 1vw, 12px);
+        margin-top: 2px;
     }
 
     .state-message {
@@ -254,26 +305,18 @@
 
     /* Purchase Controls */
     .purchase-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 5px;
+        display: flex;
+        gap: 2px;
+        justify-content: center;
+        flex-wrap: wrap;
         width: 100%;
-    }
-
-    .purchase-card {
-        background: var(--overlay-dark);
-        color: var(--text-primary);
-        padding: 15px 10px;
-        border-radius: 4px;
-        text-align: center;
-        font-size: 11px;
     }
 
     /* Roll Entry */
     .roll-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 5px;
+        gap: 2px;
         width: 100%;
     }
 
@@ -327,13 +370,6 @@
         align-items: center;
         justify-content: center;
         position: relative;
-    }
-
-    .board-container svg {
-        max-width: 100%;
-        max-height: 100%;
-        width: auto;
-        height: auto;
     }
 
     /* Tracked Resources */
@@ -484,6 +520,16 @@
     private int ShownStars { get; set; } = 13;  // Default to 13 to show only premium building sites (matches Desktop)
     private HashSet<ResourceType> FilteredResources { get; set; } = new();  // Resources selected for filtering buildings (max 3)
 
+    // Purchase button test override state (null = use game state, true = force face up, false = force face down)
+    // Right-click toggles the override to flip the card for testing
+    private Dictionary<Entitlement, bool?> _purchaseTestOverride = new()
+    {
+        { Entitlement.Road, null },
+        { Entitlement.Settlement, null },
+        { Entitlement.City, null },
+        { Entitlement.Soldier, null }
+    };
+
     protected override async Task OnInitializedAsync()
     {
         // Subscribe to theme changes to re-render the board
@@ -550,10 +596,10 @@
 
         if (PlayerProfiles.TryGetValue(playerId, out var player))
         {
-            return $"background: linear-gradient(135deg, {player.PrimaryBackgroundColor}, {player.SecondaryBackgroundColor});";
+            return $"background: {player.Colors.CssGradient};";
         }
 
-        return "background: #666;";
+        return $"background: {PlayerColors.Default.CssGradient};";
     }
 
     private string GetCurrentPlayerForeground()
@@ -571,10 +617,71 @@
         return "#FFFFFF";
     }
 
+    private PlayerColors GetCurrentPlayerColors()
+    {
+        if (GameModel == null) return PlayerColors.Default;
+
+        // Use test override if set, otherwise use current player
+        var playerId = TestOverridePlayerId ?? GameModel.CurrentPlayerId;
+
+        if (PlayerProfiles.TryGetValue(playerId, out var player))
+        {
+            return player.Colors;
+        }
+
+        return PlayerColors.Default;
+    }
+
     private void OnPlayerClick(string playerId)
     {
         // Toggle: if clicking same player, clear override; otherwise set it
         TestOverridePlayerId = (TestOverridePlayerId == playerId) ? null : playerId;
+        StateHasChanged();
+    }
+
+    private int GetSpentCount(Entitlement entitlement)
+    {
+        if (GameModel == null) return 0;
+
+        // Use test override if set, otherwise use current player
+        var playerId = TestOverridePlayerId ?? GameModel.CurrentPlayerId;
+        var player = GameModel.Players.FirstOrDefault(p => p.Id == playerId);
+
+        return player?.SpentEntitlementsThisGame?.Count(e => e == entitlement) ?? 0;
+    }
+
+    private int GetUnspentCount(Entitlement entitlement)
+    {
+        if (GameModel == null) return 0;
+
+        // Use test override if set, otherwise use current player
+        var playerId = TestOverridePlayerId ?? GameModel.CurrentPlayerId;
+        var player = GameModel.Players.FirstOrDefault(p => p.Id == playerId);
+
+        return player?.UnspentEntitlements?.Count(e => e == entitlement) ?? 0;
+    }
+
+    private bool GetIsFaceUp(Entitlement entitlement)
+    {
+        // Get the game's actual enabled state for this entitlement
+        var gameEnabled = GameModel?.PurchaseModel(entitlement).Enabled ?? false;
+
+        // Check if there's a test override
+        if (_purchaseTestOverride.TryGetValue(entitlement, out var testOverride) && testOverride.HasValue)
+        {
+            // Override is set - use it (XOR with game state to toggle)
+            return testOverride.Value;
+        }
+
+        // No override - use game state
+        return gameEnabled;
+    }
+
+    private void ToggleFaceUp(Entitlement entitlement)
+    {
+        // Get current displayed state and toggle it as the override
+        var currentState = GetIsFaceUp(entitlement);
+        _purchaseTestOverride[entitlement] = !currentState;
         StateHasChanged();
     }
 

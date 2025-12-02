@@ -7,11 +7,7 @@
         {
             var count = GetResourceCount(resourceType);
             <div class="resource-card-wrapper">
-                <ResourceCard
-                    Resource="@resourceType"
-                    Count="@count"
-                    IsSelected="false"
-                    OnToggleSelection="@(() => Task.CompletedTask)" />
+                <FlippableResourceCard Resource="@resourceType" Count="@count" />
             </div>
         }
     </div>
@@ -25,9 +21,9 @@
     public GameModel GameModel { get; set; } = null!;
 
     /// <summary>
-    /// Gets the list of resource types to track (includes Gold).
+    /// Gets the list of resource types to track (includes Gold and Robber).
     /// </summary>
-    /// <returns>Array of ResourceType values: Wheat, Wood, Sheep, Brick, Ore, GoldMine</returns>
+    /// <returns>Array of ResourceType values: Wheat, Wood, Sheep, Brick, Ore, GoldMine, Robber</returns>
     private ResourceType[] GetTrackedResources()
     {
         return new[]
@@ -37,17 +33,29 @@
             ResourceType.Sheep,
             ResourceType.Brick,
             ResourceType.Ore,
-            ResourceType.GoldMine
+            ResourceType.GoldMine,
+            ResourceType.Robber
         };
     }
 
     /// <summary>
-    /// Gets the count of tiles with the specified resource type on the board.
+    /// Gets the count from GameResourcesModel (total resources this game for all players).
     /// </summary>
-    /// <param name="resource">The resource type to count.</param>
-    /// <returns>Number of tiles with this resource.</returns>
+    /// <param name="resource">The resource type to get count for.</param>
+    /// <returns>Total count of this resource generated in the game.</returns>
     private int GetResourceCount(ResourceType resource)
     {
-        return GameModel.Tiles.Count(t => t.ResourceTileType == resource);
+        var r = GameModel.GameResourcesModel;
+        return resource switch
+        {
+            ResourceType.Wheat => r.Wheat,
+            ResourceType.Wood => r.Wood,
+            ResourceType.Sheep => r.Sheep,
+            ResourceType.Brick => r.Brick,
+            ResourceType.Ore => r.Ore,
+            ResourceType.GoldMine => r.GoldMine,
+            ResourceType.Robber => r.Robber,
+            _ => 0
+        };
     }
 }
