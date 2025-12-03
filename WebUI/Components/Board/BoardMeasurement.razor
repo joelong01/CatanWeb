@@ -32,6 +32,7 @@
         <IconButton Icon="&#x27F3;"
                     Label="Shuffle"
                     OnClick="OnShuffle"
+                    Disabled="@(!CanShuffle)"
                     CssClass="icon-button-tight"
                     AutomationId="btn-shuffle-board" />
     </div>
@@ -63,6 +64,12 @@
     /// </summary>
     [Parameter]
     public EventCallback OnShuffle { get; set; }
+
+    /// <summary>
+    /// Whether shuffle is allowed (only during PickingBoard state).
+    /// </summary>
+    [Parameter]
+    public bool CanShuffle { get; set; } = true;
 
 
     /// <summary>

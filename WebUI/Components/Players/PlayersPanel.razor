@@ -2,15 +2,17 @@
 @using Catan3.Shared.Profiles
 
 <div class="players-panel" data-testid="players-panel">
-    <!-- Per-player tiles -->
     @foreach (var player in GameModel.Players)
     {
         var playerColors = GetPlayerColors(player.Id);
         var playerProfile = GetPlayerProfile(player.Id);
-        <PlayerTile Player="@player"
+        var isFlipped = GameModel.GameState == GameState.FinishedRollOrder;
+        <PlayerCard Player="@player"
                     GameModel="@GameModel"
                     PlayerColors="@playerColors"
-                    PlayerProfile="@playerProfile" />
+                    PlayerProfile="@playerProfile"
+                    IsFlipped="@isFlipped"
+                    OnGoFirst="@OnGoFirst" />
     }
 </div>
 
@@ -32,6 +34,12 @@
     /// </summary>
     [Parameter, EditorRequired]
     public Dictionary<string, PlayerProfile> PlayerProfiles { get; set; } = new();
+
+    /// <summary>
+    /// Callback when a player clicks "Go First" during roll order selection.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnGoFirst { get; set; }
 
     /// <summary>
     /// Gets the PlayerColors for a specific player ID.

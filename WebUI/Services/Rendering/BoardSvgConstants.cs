@@ -72,4 +72,11 @@ public static class BoardSvgConstants
     public const double HarborOffset = 70;  // Distance from edge midpoint toward water
     public const double WaterTriangleSize = 60;  // Size of water background triangle
     public const string WaterColor = "#4169e1";  // Royal blue for water triangle
+
+    // Animation settings
+    /// <summary>
+    /// Duration in seconds for tile dimming animation after a dice roll.
+    /// Non-matching tiles dim for this duration, then return to normal.
+    /// </summary>
+    public const int TileDimDurationSeconds = 5;
 }

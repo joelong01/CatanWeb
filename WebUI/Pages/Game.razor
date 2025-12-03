@@ -1,20 +1,23 @@
 @page "/game/{GameId}"
 @using Microsoft.AspNetCore.SignalR.Client
 @using Catan3.Shared.Models
+@using Catan3.Shared.Extensions
 @using Catan3.Shared.Utility
 @using Catan3.Shared.Profiles
 @using Catan3.WebUI.Models
 @using Catan3.WebUI.Services
 @using Catan3.WebUI.Services.Rendering
 @using Catan3.WebUI.Components.Board
+@using Microsoft.JSInterop
 @using Catan3.WebUI.Components.Resources
 @using Catan3.WebUI.Components.Players
 @using Catan3.WebUI.Components.Shared
 @inject GameServiceConfig Config
-@inject GameCommandProxy CommandProxy
+@inject GameConnectionService Connection
 @inject HttpClient Http
 @inject GameStateService GameStateService
 @inject IAssetService AssetService
+@inject IJSRuntime JSRuntime
 @implements IAsyncDisposable
 
 <PageTitle>Catan Game</PageTitle>
@@ -73,6 +76,8 @@
                                     UnspentCount="@GetUnspentCount(Entitlement.Road)"
                                     Colors="@GetCurrentPlayerColors()"
                                     IsFaceUp="@GetIsFaceUp(Entitlement.Road)"
+                                    CanPurchase="@CanPurchase(Entitlement.Road)"
+                                    OnPurchase="@OnPurchaseClick"
                                     OnRightClick="@(() => ToggleFaceUp(Entitlement.Road))" />
                     <PurchaseButton Entitlement="Entitlement.Settlement"
                                     SpentCount="@GetSpentCount(Entitlement.Settlement)"
@@ -80,6 +85,8 @@
                                     UnspentCount="@GetUnspentCount(Entitlement.Settlement)"
                                     Colors="@GetCurrentPlayerColors()"
                                     IsFaceUp="@GetIsFaceUp(Entitlement.Settlement)"
+                                    CanPurchase="@CanPurchase(Entitlement.Settlement)"
+                                    OnPurchase="@OnPurchaseClick"
                                     OnRightClick="@(() => ToggleFaceUp(Entitlement.Settlement))" />
                     <PurchaseButton Entitlement="Entitlement.City"
                                     SpentCount="@GetSpentCount(Entitlement.City)"
@@ -87,6 +94,8 @@
                                     UnspentCount="@GetUnspentCount(Entitlement.City)"
                                     Colors="@GetCurrentPlayerColors()"
                                     IsFaceUp="@GetIsFaceUp(Entitlement.City)"
+                                    CanPurchase="@CanPurchase(Entitlement.City)"
+                                    OnPurchase="@OnPurchaseClick"
                                     OnRightClick="@(() => ToggleFaceUp(Entitlement.City))" />
                     <PurchaseButton Entitlement="Entitlement.Soldier"
                                     SpentCount="@GetSpentCount(Entitlement.Soldier)"
@@ -94,6 +103,8 @@
                                     UnspentCount="@GetUnspentCount(Entitlement.Soldier)"
                                     Colors="@GetCurrentPlayerColors()"
                                     IsFaceUp="@GetIsFaceUp(Entitlement.Soldier)"
+                                    CanPurchase="@CanPurchase(Entitlement.Soldier)"
+                                    OnPurchase="@OnPurchaseClick"
                                     OnRightClick="@(() => ToggleFaceUp(Entitlement.Soldier))" />
                 </div>
             </div>
@@ -115,41 +126,65 @@
                 </div>
             </div>
 
-            <!-- Board Measurements (only during PickingBoard) -->
-            @if (GameModel?.GameState == GameState.PickingBoard)
+            <!-- Board Measurements (visible during entire allocation phase) -->
+            @if (GameModel?.AllocationPhase() == true)
             {
                 <div class="board-measurements" style="@GetCurrentPlayerGradient()">
                     <BoardMeasurement GameModel="@GameModel"
                                       OnShuffle="OnShuffleClick"
+                                      CanShuffle="@(GameModel?.GameState == GameState.PickingBoard)"
                                       ShownStars="@ShownStars"
                                       ShownStarsChanged="HandleShownStarsChanged"
                                       SelectedResourcesChanged="HandleSelectedResourcesChanged" />
                 </div>
             }
 
-            <!-- Player Tracking (always visible during gameplay) -->
-            @if (GameModel.GameState != GameState.PickingBoard && CurrentPlayer != null)
-            {
-                <div class="player-tracking" style="@GetCurrentPlayerGradient()">
-                    <PlayerTracking GameModel="@GameModel"
-                                    CurrentPlayerId="@CurrentPlayer.Id" />
-                </div>
-            }
             </div>
         </div>
 
         <!-- CENTER PANEL - Game Board -->
         <div class="center-panel">
             <div class="panel-section game-board">
-                <div class="board-container">
+                <div class="board-container"
+                     @oncontextmenu="OnBoardRightClick"
+                     @oncontextmenu:preventDefault="true">
                     <BoardContainer GameModel="@GameModel"
                                     Players="@GameStateService.Players"
                                     AssetService="@AssetService"
                                     ShownStars="@ShownStars"
-                                    FilteredResources="@FilteredResources" />
+                                    FilteredResources="@FilteredResources"
+                                    RolledNumber="@GetRolledNumber()"
+                                    OnBuildingClick="@OnBuildingSpotClick"
+                                    OnRoadClick="@OnRoadSpotClick" />
                 </div>
             </div>
         </div>
+
+        @* Robber target selection menu *@
+        @if (_robberMenuVisible && _robberMenuTile != null)
+        {
+            <div class="robber-menu-backdrop" @onclick="CloseRobberMenu"></div>
+            <div class="robber-menu" style="left: @(_robberMenuX)px; top: @(_robberMenuY)px;">
+                <div class="robber-menu-header">Move Robber to Tile @GetTileIndex(_robberMenuTile)</div>
+                @foreach (var target in _robberMenuTargets)
+                {
+                    <div class="robber-menu-item" @onclick="() => SelectRobberTarget(target.Id)">
+                        Target @target.Name
+                    </div>
+                }
+                @if (_robberMenuTargets.Count > 0)
+                {
+                    <div class="robber-menu-separator"></div>
+                }
+                <div class="robber-menu-item robber-menu-nobody" @onclick="() => SelectRobberTarget(null)">
+                    Nobody. Hatred Deferred.
+                </div>
+                <div class="robber-menu-separator"></div>
+                <div class="robber-menu-item robber-menu-cancel" @onclick="CloseRobberMenu">
+                    Cancel
+                </div>
+            </div>
+        }
 
         <!-- RIGHT PANEL -->
         <div class="right-panel">
@@ -159,14 +194,15 @@
             <!-- Players Panel -->
             <PlayersPanel GameModel="@GameModel"
                           PlayerColorMap="@PlayerColorMap"
-                          PlayerProfiles="@PlayerProfiles" />
+                          PlayerProfiles="@PlayerProfiles"
+                          OnGoFirst="@OnGoFirstClick" />
         </div>
     }
     else
     {
         <div class="loading-overlay">
             <h2>Waiting for game data...</h2>
-            <p>Connection State: @(_hubConnection?.State.ToString() ?? "Not created")</p>
+            <p>Connection State: @Connection.State</p>
         </div>
     }
 </div>
@@ -176,7 +212,6 @@
     [Parameter]
     public string GameId { get; set; } = string.Empty;
 
-    private HubConnection? _hubConnection;
     private GameModel? GameModel { get; set; }
     private Dictionary<string, PlayerProfile> PlayerProfiles { get; set; } = new();
 
@@ -193,6 +228,10 @@
     private int ShownStars { get; set; } = 13;  // Default to 13 to show only premium building sites (matches Desktop)
     private HashSet<ResourceType> FilteredResources { get; set; } = new();  // Resources selected for filtering buildings (max 3)
 
+    // Roll dimming: track last roll and timer (duration set in BoardSvgConstants.TileDimDurationSeconds)
+    private int? _lastKnownRoll;
+    private CancellationTokenSource? _rollDimCts;
+
     // Purchase button test override state (null = use game state, true = force face up, false = force face down)
     // Right-click toggles the override to flip the card for testing
     private Dictionary<Entitlement, bool?> _purchaseTestOverride = new()
@@ -202,6 +241,14 @@
         { Entitlement.City, null },
         { Entitlement.Soldier, null }
     };
+
+    // Robber placement menu state
+    private bool _robberMenuVisible;
+    private TileModel? _robberMenuTile;
+    private double _robberMenuX;
+    private double _robberMenuY;
+    private List<RobberTarget> _robberMenuTargets = [];
+    private record RobberTarget(string Name, string Id);
 
     protected override async Task OnInitializedAsync()
     {
@@ -273,6 +320,15 @@
         }
 
         return $"background: {PlayerColors.Default.CssGradient};";
+    }
+
+    /// <summary>
+    /// Gets the last rolled number (2-12) or null if no roll or timer expired.
+    /// Used to dim non-matching tiles after a dice roll.
+    /// </summary>
+    private int? GetRolledNumber()
+    {
+        return _lastKnownRoll;
     }
 
     private string GetCurrentPlayerForeground()
@@ -384,19 +440,11 @@
             IsConnecting = true;
             ErrorMessage = null;
 
-            _hubConnection = new HubConnectionBuilder()
-                .WithUrl(Config.HubUrl)
-                .WithAutomaticReconnect()
-                .AddJsonProtocol(options =>
-                {
-                    JsonHelper.ConfigureOptions(options.PayloadSerializerOptions);
-                })
-                .Build();
+            // Subscribe to game state updates from the connection service
+            Connection.GameStateUpdated += OnGameStateUpdated;
 
-            _hubConnection.On<GameModel>("GameStateUpdated", OnGameStateUpdated);
-
-            await _hubConnection.StartAsync();
-            await _hubConnection.InvokeAsync("JoinGame", GameId, "WebUI-Client");
+            // Connect and join the game
+            await Connection.ConnectAndJoinAsync(GameId, "WebUI-Client");
 
             IsConnecting = false;
         }
@@ -412,12 +460,41 @@
         GameModel = gameModel;
         GameStateService.UpdateGameModel(gameModel);
 
+        // Note: Tile dimming is triggered directly from OnRollClick, not from GameModel state
+
         InvokeAsync(async () =>
         {
             await EnsurePlayerProfilesLoadedAsync();
             GameStateService.UpdatePlayerData(PlayerProfiles);
             StateHasChanged();
         });
+    }
+    /// <summary>
+    /// Starts a timer to clear tile dimming after configured duration.
+    /// </summary>
+    private void StartRollDimTimer()
+    {
+        // Cancel any existing timer
+        _rollDimCts?.Cancel();
+        _rollDimCts = new CancellationTokenSource();
+        var token = _rollDimCts.Token;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(BoardSvgConstants.TileDimDurationSeconds), token);
+                if (!token.IsCancellationRequested)
+                {
+                    _lastKnownRoll = null;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // Timer was cancelled, ignore
+            }
+        }, token);
     }
 
     private async Task RetryConnection()
@@ -427,12 +504,12 @@
 
     private async Task OnUndoClick()
     {
-        if (_hubConnection?.State == HubConnectionState.Connected && GameModel != null)
+        if (Connection.State == ConnectionState.InGame)
         {
             try
             {
                 CommandError = null;
-                await _hubConnection.InvokeAsync("Undo", GameId, GameModel.CurrentPlayerId);
+                await Connection.UndoAsync();
             }
             catch (Exception ex)
             {
@@ -443,12 +520,12 @@
 
     private async Task OnRedoClick()
     {
-        if (_hubConnection?.State == HubConnectionState.Connected && GameModel != null)
+        if (Connection.State == ConnectionState.InGame)
         {
             try
             {
                 CommandError = null;
-                await _hubConnection.InvokeAsync("Redo", GameId, GameModel.CurrentPlayerId);
+                await Connection.RedoAsync();
             }
             catch (Exception ex)
             {
@@ -459,12 +536,12 @@
 
     private async Task OnNextClick()
     {
-        if (_hubConnection?.State == HubConnectionState.Connected && GameModel != null)
+        if (Connection.State == ConnectionState.InGame)
         {
             try
             {
                 CommandError = null;
-                await _hubConnection.InvokeAsync("Next", GameId, GameModel.CurrentPlayerId);
+                await Connection.NextAsync();
             }
             catch (Exception ex)
             {
@@ -475,12 +552,18 @@
 
     private async Task OnRollClick(int roll)
     {
-        if (_hubConnection?.State == HubConnectionState.Connected && GameModel != null)
+        if (Connection.State == ConnectionState.InGame)
         {
             try
             {
                 CommandError = null;
-                await _hubConnection.InvokeAsync("Roll", GameId, GameModel.CurrentPlayerId, roll);
+                // Convert single roll value to two dice (simple split for now)
+                var die1 = roll / 2;
+                var die2 = roll - die1;
+                await Connection.RollAsync(die1, die2);
+
+                // Trigger tile dimming animation (purely UI, not tied to GameModel state)
+                DimTiles(roll);
             }
             catch (Exception ex)
             {
@@ -489,18 +572,25 @@
         }
     }
 
+    /// <summary>
+    /// Triggers tile dimming animation for tiles that don't match the rolled number.
+    /// Dimming clears after BoardSvgConstants.TileDimDurationSeconds.
+    /// </summary>
+    private void DimTiles(int rollNumber)
+    {
+        _lastKnownRoll = rollNumber;
+        StartRollDimTimer();
+        StateHasChanged();
+    }
+
     private async Task OnShuffleClick()
     {
-        if (GameModel != null)
+        if (Connection.State == ConnectionState.InGame)
         {
             try
             {
                 CommandError = null;
-                var result = await CommandProxy.ShuffleAsync(GameId, GameModel.CurrentPlayerId);
-                if (!result.Success)
-                {
-                    CommandError = result.Error;
-                }
+                await Connection.ShuffleAsync();
             }
             catch (Exception ex)
             {
@@ -509,17 +599,271 @@
         }
     }
 
+    private async Task OnGoFirstClick(string targetPlayerId)
+    {
+        if (Connection.State == ConnectionState.InGame)
+        {
+            try
+            {
+                CommandError = null;
+                await Connection.GoFirstAsync(targetPlayerId);
+            }
+            catch (Exception ex)
+            {
+                CommandError = $"Go First failed: {ex.Message}";
+            }
+        }
+    }
+
+    private async Task OnBuildingSpotClick(BuildingKey buildingKey)
+    {
+        if (Connection.State == ConnectionState.InGame)
+        {
+            try
+            {
+                CommandError = null;
+                await Connection.BuildingUpgradeAsync(buildingKey);
+            }
+            catch (Exception ex)
+            {
+                CommandError = $"Building failed: {ex.Message}";
+            }
+        }
+    }
+
+    private async Task OnRoadSpotClick(RoadKey roadKey)
+    {
+        if (Connection.State == ConnectionState.InGame)
+        {
+            try
+            {
+                CommandError = null;
+                await Connection.RoadPurchaseAsync(roadKey);
+            }
+            catch (Exception ex)
+            {
+                CommandError = $"Road failed: {ex.Message}";
+            }
+        }
+    }
+
+    /// <summary>
+    /// Handles right-click on the board for robber placement.
+    /// Converts screen coordinates to hex coordinates and shows target menu.
+    /// </summary>
+    private async Task OnBoardRightClick(MouseEventArgs e)
+    {
+        // Only handle during MustMoveRobber state
+        if (GameModel?.GameState != GameState.MustMoveRobber) return;
+
+        // Get the board container element bounds
+        // For now, use the click position directly for the menu
+        _robberMenuX = e.ClientX;
+        _robberMenuY = e.ClientY;
+
+        // Get viewBox bounds from GameModel tiles
+        var viewBoxBounds = CalculateViewBoxBounds();
+        if (viewBoxBounds.width <= 0) return;
+
+        // Get actual container bounds via JS interop
+        var containerBounds = await JSRuntime.InvokeAsync<ContainerBounds?>("boardSizer.getBounds");
+        if (containerBounds == null) return;
+
+        // Convert client coordinates to position within container
+        var containerX = e.ClientX - containerBounds.Left;
+        var containerY = e.ClientY - containerBounds.Top;
+
+        // Convert to viewBox coordinates
+        var svgX = viewBoxBounds.minX + (containerX / containerBounds.Width) * viewBoxBounds.width;
+        var svgY = viewBoxBounds.minY + (containerY / containerBounds.Height) * viewBoxBounds.height;
+
+        // Convert to axial coordinates
+        var (q, r) = BoardGeometry.PixelToAxial(svgX, svgY);
+
+        // Find the tile at these coordinates
+        var tile = GameModel.Tiles.FirstOrDefault(t => t.TileKey.Q == q && t.TileKey.R == r);
+
+        if (tile == null) return;
+
+        // Can't place on sea
+        if (tile.ResourceTileType == ResourceType.Sea) return;
+
+        // Can't place on current robber location unless it's desert (house rule)
+        if (tile.TileKey.Equals(GameModel.Robber.Coordinates) && tile.ResourceTileType != ResourceType.Desert) return;
+
+        // Get target players (players with buildings on this tile, excluding current player)
+        _robberMenuTargets = GetRobberTargetsForTile(tile);
+        _robberMenuTile = tile;
+        _robberMenuVisible = true;
+        StateHasChanged();
+    }
+
+    private record ContainerBounds(double Width, double Height, double Left, double Top);
+
+    /// <summary>
+    /// Gets players who can be targeted on the selected tile.
+    /// </summary>
+    private List<RobberTarget> GetRobberTargetsForTile(TileModel tile)
+    {
+        var targets = new List<RobberTarget>();
+        if (GameModel == null) return targets;
+
+        // Desert has no targets
+        if (tile.ResourceTileType == ResourceType.Desert) return targets;
+
+        // Get buildings on this tile
+        var buildings = GameModel.Buildings.OwnedBuildings(tile.TileKey);
+
+        // Get unique owners (excluding current player)
+        var ownerIds = buildings
+            .Where(b => b.OwnerId != null && b.OwnerId != GameModel.CurrentPlayerId)
+            .Select(b => b.OwnerId!)
+            .Distinct();
+
+        foreach (var ownerId in ownerIds)
+        {
+            var player = GameStateService.Players.First(p => p.Id == ownerId);
+            targets.Add(new RobberTarget(player.Name, ownerId));
+        }
+
+        return targets;
+    }
+
+    /// <summary>
+    /// Gets the tile index for display in the robber menu.
+    /// </summary>
+    private int GetTileIndex(TileModel tile)
+    {
+        if (GameModel == null) return 0;
+        var landTiles = GameModel.Tiles
+            .Where(t => t.ResourceTileType != ResourceType.Sea)
+            .ToList();
+        return landTiles.IndexOf(tile) + 1;
+    }
+
+    /// <summary>
+    /// Handles target selection from robber menu.
+    /// </summary>
+    private async Task SelectRobberTarget(string? targetPlayerId)
+    {
+        if (_robberMenuTile != null && Connection.State == ConnectionState.InGame)
+        {
+            try
+            {
+                CommandError = null;
+                await Connection.MoveRobberAsync(_robberMenuTile.TileKey, targetPlayerId);
+            }
+            catch (Exception ex)
+            {
+                CommandError = $"Move robber failed: {ex.Message}";
+            }
+        }
+        CloseRobberMenu();
+    }
+
+    /// <summary>
+    /// Closes the robber target menu.
+    /// </summary>
+    private void CloseRobberMenu()
+    {
+        _robberMenuVisible = false;
+        _robberMenuTile = null;
+        _robberMenuTargets.Clear();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Calculates viewBox bounds for coordinate conversion.
+    /// </summary>
+    private (double minX, double minY, double width, double height) CalculateViewBoxBounds()
+    {
+        if (GameModel == null) return (0, 0, 0, 0);
+
+        double minX = double.MaxValue, maxX = double.MinValue;
+        double minY = double.MaxValue, maxY = double.MinValue;
+
+        foreach (var tile in GameModel.Tiles)
+        {
+            var (cx, cy) = BoardGeometry.AxialToPixel(tile.TileKey.Q, tile.TileKey.R);
+            var vertices = BoardGeometry.GetHexVertices(cx, cy);
+            foreach (var v in vertices)
+            {
+                minX = Math.Min(minX, v.x);
+                maxX = Math.Max(maxX, v.x);
+                minY = Math.Min(minY, v.y);
+                maxY = Math.Max(maxY, v.y);
+            }
+        }
+
+        minX -= BoardSvgConstants.Padding;
+        minY -= BoardSvgConstants.Padding;
+        maxX += BoardSvgConstants.Padding;
+        maxY += BoardSvgConstants.Padding;
+
+        return (minX, minY, maxX - minX, maxY - minY);
+    }
+
+    private async Task OnPurchaseClick(Entitlement entitlement)
+    {
+        if (Connection.State == ConnectionState.InGame)
+        {
+            try
+            {
+                CommandError = null;
+                await Connection.PurchaseAsync(entitlement);
+            }
+            catch (Exception ex)
+            {
+                CommandError = $"Purchase failed: {ex.Message}";
+            }
+        }
+    }
+
+    /// <summary>
+    /// Determines if the current player can purchase this entitlement.
+    /// Uses GameModel.PurchaseModel(entitlement).Enabled which is set by the server.
+    /// </summary>
+    private bool CanPurchase(Entitlement entitlement)
+    {
+        if (GameModel == null) return false;
+        if (Connection.State != ConnectionState.InGame) return false;
+
+        // The server sets Enabled based on game state, resources, and max counts
+        return GameModel.PurchaseModel(entitlement).Enabled;
+    }
+
     private string GetStateMessage()
     {
-        return GameModel?.GameState switch
+        if (GameModel == null) return "Unknown";
+
+        var state = GameModel.GameState;
+
+        // During allocation or WaitingForNext, show unspent entitlements count
+        if (state == GameState.WaitingForNext ||
+            state == GameState.AllocateResourceForward ||
+            state == GameState.AllocateResourceReverse)
+        {
+            var player = GameModel.CurrentPlayer();
+            var count = player.UnspentEntitlements.Count;
+            if (count == 1)
+                return $"[{count} Unspent Entitlement]";
+            if (count > 1)
+                return $"[{count} Unspent Entitlements]";
+            // count == 0, fall through to default description
+        }
+
+        // Use Description attribute from GameState enum
+        return state switch
         {
             GameState.WaitingForNewGame => "New Game",
             GameState.PickingBoard => "Accept Board",
-            GameState.AllocateResourceForward => "Place Settlement",
-            GameState.AllocateResourceReverse => "Place Settlement",
+            GameState.FinishedRollOrder => "Order Done",
+            GameState.AllocateResourceForward => "Next",
+            GameState.AllocateResourceReverse => "Next",
             GameState.WaitingForRoll => "Roll Dice",
-            GameState.Supplemental => "Supplemental Phase",
-            _ => GameModel?.GameState.ToString() ?? "Unknown"
+            GameState.WaitingForNext => "Next",
+            GameState.Supplemental => "Supplemental",
+            _ => state.ToString()
         };
     }
 
@@ -580,9 +924,10 @@
     public async ValueTask DisposeAsync()
     {
         AssetService.ThemeChanged -= OnThemeChanged;
-        if (_hubConnection != null)
-        {
-            await _hubConnection.DisposeAsync();
-        }
+        Connection.GameStateUpdated -= OnGameStateUpdated;
+        _rollDimCts?.Cancel();
+        _rollDimCts?.Dispose();
+        // Don't dispose the Connection service - it's a singleton that persists across pages
+        await Task.CompletedTask;
     }
 }

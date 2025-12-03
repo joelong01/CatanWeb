@@ -105,8 +105,13 @@ public static class BuildingSvgRenderer
         return sb.ToString();
     }
 
+    // Catan font glyph codes (matches PlayerTile.razor CatanGlyphs)
+    private const string SettlementGlyph = "\uE926";
+    private const string CityGlyph = "\uE900";
+
     /// <summary>
-    /// Renders the building glyph (settlement or city SVG) with player gradient background.
+    /// Renders the building glyph (settlement or city) with player gradient background.
+    /// Uses Catan font for the glyph icon.
     /// </summary>
     private static void RenderBuildingGlyph(StringBuilder sb, BuildingModel building, PlayerColors? colors, double x, double y, bool useCurrentPlayerGradient = false)
     {
@@ -123,14 +128,9 @@ public static class BuildingSvgRenderer
         // Render circular gradient background
         sb.AppendLine($@"    <circle cx=""{x}"" cy=""{y}"" r=""{radius}"" fill=""url(#{gradientId})"" stroke=""{effectiveColors.Foreground}"" stroke-width=""2""/>");
 
-        // Render settlement or city SVG inside circle
-        var svgFile = building.BuildingState == BuildingState.City ? "city.svg" : "settlement.svg";
-        var svgSize = BuildingSize * 0.6;  // SVG takes 60% of circle
-        var svgX = x - svgSize / 2;
-        var svgY = y - svgSize / 2;
-
-        // Embed SVG as image - loaded from themed buildings folder
-        sb.AppendLine($@"    <image href=""/themes/base/buildings/{svgFile}"" x=""{svgX}"" y=""{svgY}"" width=""{svgSize}"" height=""{svgSize}""/>");
+        // Render settlement or city glyph using Catan font with foreground color
+        var glyph = building.BuildingState == BuildingState.City ? CityGlyph : SettlementGlyph;
+        sb.AppendLine($@"    <text x=""{x}"" y=""{y}"" text-anchor=""middle"" dominant-baseline=""central"" font-family=""Catan"" font-size=""24"" fill=""{effectiveColors.Foreground}"">{glyph}</text>");
     }
 
     /// <summary>

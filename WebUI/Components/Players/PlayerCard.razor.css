@@ -1,0 +1,105 @@
+/*
+ * PlayerCard: Flipping container for PlayerTile (front) and action views (back)
+ * Fixed dimensions match PlayerTile: 553px width, ~190px height
+ * Height = info row (50px) + gap (5px) + resources row (125px) + padding (10px) = 190px
+ */
+.player-card {
+    perspective: 1000px;
+    width: 553px;
+    height: 190px;
+    margin: 1px;
+}
+
+.card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.6s ease-in-out;
+    transform-style: preserve-3d;
+}
+
+.player-card.flipped .card-inner {
+    transform: rotateY(180deg);
+}
+
+.card-front,
+.card-back {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+.card-front {
+    z-index: 2;
+}
+
+.card-back {
+    transform: rotateY(180deg);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 10px;
+    border-radius: 3px;
+    box-sizing: border-box;
+    gap: 20px;
+}
+
+.go-first-btn {
+    padding: 12px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--game-bg-secondary);
+    border: 2px solid var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    white-space: nowrap;
+}
+
+.go-first-btn:hover {
+    background: var(--accent-primary);
+    transform: scale(1.05);
+}
+
+.go-first-btn:active {
+    transform: scale(0.98);
+}
+
+.player-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.player-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    font-weight: bold;
+    color: var(--text-primary);
+    background: var(--game-bg-secondary);
+}
+
+.player-name {
+    color: white;
+    font-size: 24px;
+    font-weight: 600;
+    flex: 1;
+}

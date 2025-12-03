@@ -1,35 +1,47 @@
-/* BuildingOverlay - HTML-based building spots for isolated repaint on hover */
+/* BuildingOverlay - HTML-based buildings for isolated repaint */
 
 .building-overlay {
     position: relative;
     width: 100%;
     height: 100%;
-    pointer-events: none; /* Let clicks pass through to SVG, except on spots */
-    z-index: 10; /* Ensure overlay is above SVG layers */
+    pointer-events: none;
 }
 
-.building-spot {
+/* Owned buildings (settlements/cities) */
+.building-owned {
     position: absolute;
-    /* Size as percentage of container (matches SVG viewBox scaling) */
-    /* BuildingSize=40 / viewBox width ~1200 ≈ 3.3% */
     width: 3.3%;
     height: 3.3%;
-    margin-left: -1.65%; /* Center horizontally */
-    margin-top: -1.65%;  /* Center vertically */
+    margin-left: -1.65%;
+    margin-top: -1.65%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.building-glyph {
+    font-family: 'Catan', sans-serif;
+    font-size: 1vw;
+    user-select: none;
+}
+
+/* Buildable/star spots */
+.building-spot {
+    position: absolute;
+    width: 3.3%;
+    height: 3.3%;
+    margin-left: -1.65%;
+    margin-top: -1.65%;
     border-radius: 50%;
     border: 2px solid;
     display: flex;
     align-items: center;
     justify-content: center;
-    pointer-events: auto; /* This element receives hover/click */
+    pointer-events: auto;
     cursor: pointer;
     transition: transform 0.15s ease, opacity 0.15s ease;
-    opacity: 0.85;
-}
-
-.building-spot:hover {
-    opacity: 1;
-    z-index: 10;
 }
 
 .building-spot-text {
@@ -39,23 +51,53 @@
     user-select: none;
 }
 
-/* Stars state - normal visibility */
+/* Stars state - showing board quality */
 .building-spot-stars {
     opacity: 0.8;
+    cursor: default;
 }
 
-.building-spot-stars:hover {
+/* Buildable state - clickable */
+.building-spot-buildable {
     opacity: 1;
+    cursor: pointer;
 }
 
-/* Highlighted state - fully visible, ready to build */
-.building-spot-highlighted {
+.building-spot-buildable:hover {
+    filter: brightness(1.2);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    z-index: 10;
+}
+
+/* Hidden state - invisible until hovered */
+.building-spot-hidden {
+    opacity: 0;
+    pointer-events: auto;
+}
+
+.building-spot-hidden:hover {
     opacity: 1;
     filter: brightness(1.2);
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    z-index: 10;
 }
 
-.building-spot-highlighted:hover {
-    filter: brightness(1.4);
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.7);
+/* Build index - centered in spot, same style as stars text */
+/* Must be visible on 85" TV from 15 feet away */
+.build-index {
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    user-select: none;
+}
+
+/* Spots with build index - full opacity, always visible */
+.building-spot-indexed {
+    opacity: 1;
+}
+
+.building-spot-indexed:hover {
+    filter: brightness(1.2);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    z-index: 10;
 }

@@ -36,6 +36,13 @@ namespace Catan3.Shared.Services
         public string? GameId => _gameId;
         public GameModel? GameModel { get; private set; }
 
+        /// <summary>
+        /// Gets the effective player ID for commands.
+        /// Uses GameModel.CurrentPlayerId if available (for controller clients like WebUI),
+        /// falls back to the configured PlayerId (for player-specific clients like phone app).
+        /// </summary>
+        private string EffectivePlayerId => GameModel?.CurrentPlayerId ?? _playerId;
+
         // Events for game state updates and command results
         public event Action<GameModel>? GameStateUpdated;
         public event Action<string, bool, string>? CommandCompleted;
@@ -190,7 +197,7 @@ namespace Catan3.Shared.Services
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
 
-            await _connection.InvokeAsync("Undo", _gameId, _playerId);
+            await _connection.InvokeAsync("Undo", _gameId, EffectivePlayerId);
 
             return new CommandResult
             {
@@ -213,7 +220,7 @@ namespace Catan3.Shared.Services
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
 
-            await _connection.InvokeAsync("Redo", _gameId, _playerId);
+            await _connection.InvokeAsync("Redo", _gameId, EffectivePlayerId);
 
             return new CommandResult
             {
@@ -236,7 +243,7 @@ namespace Catan3.Shared.Services
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
 
-            await _connection.InvokeAsync("Next", _gameId, _playerId);
+            await _connection.InvokeAsync("Next", _gameId, EffectivePlayerId);
 
             return new CommandResult
             {
@@ -256,7 +263,7 @@ namespace Catan3.Shared.Services
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
 
-            await _connection.InvokeAsync("Shuffle", _gameId, _playerId);
+            await _connection.InvokeAsync("Shuffle", _gameId, EffectivePlayerId);
 
             return new CommandResult
             {
@@ -279,7 +286,7 @@ namespace Catan3.Shared.Services
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
 
-            await _connection.InvokeAsync("BalanceBoard", _gameId, _playerId);
+            await _connection.InvokeAsync("BalanceBoard", _gameId, EffectivePlayerId);
 
             return new CommandResult
             {
@@ -301,7 +308,7 @@ namespace Catan3.Shared.Services
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
 
             var message = new PurchaseMessage(entitlement);
-            await _connection.InvokeAsync("ExecutePurchase", _gameId, _playerId, message);
+            await _connection.InvokeAsync("ExecutePurchase", _gameId, EffectivePlayerId, message);
 
             return new CommandResult
             {
@@ -319,7 +326,7 @@ namespace Catan3.Shared.Services
         public async Task<CommandResult> ExecuteRoadPurchaseAsync(string gameId, RoadKey roadKey, TimeSpan? timeout = null)
         {
             var message = new RoadPurchaseMessage(roadKey);
-            await _connection.InvokeAsync("ExecuteRoadPurchase", gameId, _playerId, message);
+            await _connection.InvokeAsync("ExecuteRoadPurchase", gameId, EffectivePlayerId, message);
 
             return new CommandResult
             {
@@ -336,7 +343,7 @@ namespace Catan3.Shared.Services
         public async Task<CommandResult> ExecuteBuildingUpgradeAsync(string gameId, BuildingKey buildingKey, TimeSpan? timeout = null)
         {
             var message = new BuildingUpgradeMessage(buildingKey);
-            await _connection.InvokeAsync("ExecuteBuildingUpgrade", gameId, _playerId, message);
+            await _connection.InvokeAsync("ExecuteBuildingUpgrade", gameId, EffectivePlayerId, message);
 
             return new CommandResult
             {
@@ -353,7 +360,7 @@ namespace Catan3.Shared.Services
         public async Task<CommandResult> ExecuteMoveRobberAsync(string gameId, HexCoordinates coordinates, string? targetPlayerId = null, TimeSpan? timeout = null)
         {
             var message = new MoveRobberMessage(coordinates, targetPlayerId);
-            await _connection.InvokeAsync("ExecuteMoveRobber", gameId, _playerId, message);
+            await _connection.InvokeAsync("ExecuteMoveRobber", gameId, EffectivePlayerId, message);
 
             return new CommandResult
             {
@@ -375,7 +382,7 @@ namespace Catan3.Shared.Services
 
             var turnRollModel = new TurnRollModel(die1, die2);
             var message = new RollMessage(turnRollModel);
-            await _connection.InvokeAsync("ExecuteRoll", _gameId, _playerId, message);
+            await _connection.InvokeAsync("ExecuteRoll", _gameId, EffectivePlayerId, message);
 
             return new CommandResult
             {
@@ -393,7 +400,7 @@ namespace Catan3.Shared.Services
         public async Task<CommandResult> ExecuteSetPlayerOrderAsync(string gameId, IList<string> playerIds, TimeSpan? timeout = null)
         {
             var message = new SetPlayerOrderMessage(playerIds);
-            await _connection.InvokeAsync("ExecuteSetPlayerOrder", gameId, _playerId, message);
+            await _connection.InvokeAsync("ExecuteSetPlayerOrder", gameId, EffectivePlayerId, message);
 
             return new CommandResult
             {
@@ -411,7 +418,7 @@ namespace Catan3.Shared.Services
         public async Task<CommandResult> ExecuteBalanceBoardAsync(string gameId, TimeSpan? timeout = null)
         {
             var message = new BalanceBoardMessage();
-            await _connection.InvokeAsync("ExecuteBalanceBoard", gameId, _playerId, message);
+            await _connection.InvokeAsync("ExecuteBalanceBoard", gameId, EffectivePlayerId, message);
 
             return new CommandResult
             {
@@ -432,7 +439,7 @@ namespace Catan3.Shared.Services
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
 
             var message = new GoFirstMessage(firstPlayerId);
-            await _connection.InvokeAsync("ExecuteGoFirst", _gameId, _playerId, message);
+            await _connection.InvokeAsync("ExecuteGoFirst", _gameId, EffectivePlayerId, message);
 
             return new CommandResult
             {
@@ -473,7 +480,7 @@ namespace Catan3.Shared.Services
             if (string.IsNullOrEmpty(_gameId))
                 throw new InvalidOperationException("Must join a game before executing actions. Call JoinGameAsync first.");
 
-            await _connection.InvokeAsync("ExecuteSwapTileResources", _gameId, _playerId, message);
+            await _connection.InvokeAsync("ExecuteSwapTileResources", _gameId, EffectivePlayerId, message);
 
             return new CommandResult
             {

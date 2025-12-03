@@ -23,6 +23,46 @@ public static class BoardGeometry
     }
 
     /// <summary>
+    /// Converts pixel position to axial coordinates (inverse of AxialToPixel).
+    /// Returns the nearest hex tile coordinates using cube rounding.
+    /// </summary>
+    public static (int q, int r) PixelToAxial(double px, double py)
+    {
+        // Remove center offset
+        double x = px - CenterX;
+        double y = py - CenterY;
+
+        // Convert to fractional axial coordinates
+        double q = (2.0 / 3.0) * x / HexSize;
+        double r = (-1.0 / 3.0 * x + Math.Sqrt(3) / 3.0 * y) / HexSize;
+
+        // Convert to cube coordinates for rounding
+        double cubeX = q;
+        double cubeZ = r;
+        double cubeY = -cubeX - cubeZ;
+
+        // Round cube coordinates
+        int rx = (int)Math.Round(cubeX);
+        int ry = (int)Math.Round(cubeY);
+        int rz = (int)Math.Round(cubeZ);
+
+        // Fix rounding errors by adjusting the coordinate with largest diff
+        double xDiff = Math.Abs(rx - cubeX);
+        double yDiff = Math.Abs(ry - cubeY);
+        double zDiff = Math.Abs(rz - cubeZ);
+
+        if (xDiff > yDiff && xDiff > zDiff)
+            rx = -ry - rz;
+        else if (yDiff > zDiff)
+            ry = -rx - rz;
+        else
+            rz = -rx - ry;
+
+        // Convert back to axial (q = cubeX, r = cubeZ)
+        return (rx, rz);
+    }
+
+    /// <summary>
     /// Gets hex vertices for a tile at the given center position and size.
     /// </summary>
     /// <param name="cx">Center X coordinate</param>

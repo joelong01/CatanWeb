@@ -178,3 +178,21 @@ code {
     fill-opacity: 1;
     stroke-opacity: 1;
 }
+
+/* Tile index labels - hidden by default, shown via parent class */
+.tile-index {
+    display: none;
+}
+
+.show-tile-indexes .tile-index {
+    display: block;
+}
+
+/* Road build index labels - hidden by default, shown via parent class */
+.road-build-index {
+    display: none;
+}
+
+.show-road-indexes .road-build-index {
+    display: block;
+}

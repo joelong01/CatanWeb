@@ -1,0 +1,111 @@
+@using Catan3.Shared.Models
+@using Catan3.Shared.Profiles
+@using Catan3.WebUI.Models
+@using Catan3.WebUI.Services
+
+@inject GameServiceConfig Config
+
+<div class="player-card @(IsFlipped ? "flipped" : "")" data-testid="player-card-@Player.Id">
+    <div class="card-inner">
+        <!-- Front: Normal player tile with stats -->
+        <div class="card-front">
+            <PlayerTile Player="@Player"
+                        GameModel="@GameModel"
+                        PlayerColors="@PlayerColors"
+                        PlayerProfile="@PlayerProfile" />
+        </div>
+
+        <!-- Back: Roll order selection with Go First button (horizontal layout) -->
+        <div class="card-back" style="@GetBackgroundStyle()">
+            <button class="go-first-btn" @onclick="OnGoFirstClick" data-testid="go-first-@Player.Id">
+                Go First
+            </button>
+            <div class="player-avatar">
+                @if (!string.IsNullOrEmpty(GetPlayerImageUrl()))
+                {
+                    <img src="@GetPlayerImageUrl()" alt="@Player.Name" />
+                }
+                else
+                {
+                    <div class="avatar-placeholder">@GetInitial()</div>
+                }
+            </div>
+            <div class="player-name">@Player.Name</div>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The player model for this card.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public PlayerModel Player { get; set; } = null!;
+
+    /// <summary>
+    /// The current game model for calculating derived stats.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public GameModel GameModel { get; set; } = null!;
+
+    /// <summary>
+    /// The player's gradient colors for visual styling.
+    /// </summary>
+    [Parameter]
+    public PlayerColors? PlayerColors { get; set; }
+
+    /// <summary>
+    /// The player's profile information including image URI.
+    /// </summary>
+    [Parameter]
+    public PlayerProfile? PlayerProfile { get; set; }
+
+    /// <summary>
+    /// Whether the card should show the flipped (Go First) side.
+    /// </summary>
+    [Parameter]
+    public bool IsFlipped { get; set; }
+
+    /// <summary>
+    /// Callback when the "Go First" button is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnGoFirst { get; set; }
+
+    /// <summary>
+    /// Gets inline CSS style for the card back using player colors.
+    /// </summary>
+    private string GetBackgroundStyle()
+    {
+        if (PlayerColors == null) return "background: #666;";
+        return $"background: {PlayerColors.CssGradient}; border-color: {PlayerColors.Foreground};";
+    }
+
+    /// <summary>
+    /// Gets the full URL for the player's profile image.
+    /// </summary>
+    private string GetPlayerImageUrl()
+    {
+        if (PlayerProfile != null && !string.IsNullOrEmpty(PlayerProfile.ImageUri))
+        {
+            return $"{Config.BaseUrl}{PlayerProfile.ImageUri}";
+        }
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// Gets the first character of the player's name for the avatar placeholder.
+    /// </summary>
+    private string GetInitial()
+    {
+        return string.IsNullOrEmpty(Player.Name) ? "?" : Player.Name.Substring(0, 1).ToUpper();
+    }
+
+    /// <summary>
+    /// Handles the Go First button click.
+    /// </summary>
+    private async Task OnGoFirstClick()
+    {
+        await OnGoFirst.InvokeAsync(Player.Id);
+    }
+}

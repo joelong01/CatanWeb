@@ -3,7 +3,8 @@
 @using Catan3.Shared.Profiles
 @inject IAssetService AssetService
 
-<div class="purchase-button @(IsFaceUp ? "face-up" : "")"
+<div class="purchase-button @(IsFaceUp ? "face-up" : "") @(CanPurchase ? "can-purchase" : "")"
+     @onclick="HandleClick"
      @oncontextmenu="HandleRightClick"
      @oncontextmenu:preventDefault="true"
      data-testid="@($"purchase-{Entitlement.ToString().ToLower()}")">
@@ -68,6 +69,26 @@
     /// </summary>
     [Parameter]
     public EventCallback OnRightClick { get; set; }
+
+    /// <summary>
+    /// Event callback triggered when the button is clicked to purchase.
+    /// </summary>
+    [Parameter]
+    public EventCallback<Entitlement> OnPurchase { get; set; }
+
+    /// <summary>
+    /// Whether the player can currently purchase this entitlement.
+    /// </summary>
+    [Parameter]
+    public bool CanPurchase { get; set; }
+
+    private async Task HandleClick()
+    {
+        if (CanPurchase && OnPurchase.HasDelegate)
+        {
+            await OnPurchase.InvokeAsync(Entitlement);
+        }
+    }
 
     private async Task HandleRightClick()
     {

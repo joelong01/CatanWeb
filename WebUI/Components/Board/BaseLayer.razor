@@ -14,9 +14,10 @@
     <rect width="100%" height="100%" fill="@BoardSvgConstants.BackgroundColor" />
 
     @* Render tiles (non-gold state only - GoldTilesLayer handles gold overlay) *@
+    @{ var tileIndex = 1; }
     @foreach (var tile in Tiles)
     {
-        @((MarkupString)RenderTileWithoutGold(tile))
+        @((MarkupString)RenderTileWithoutGold(tile, tileIndex++))
     }
 
     @* Render harbors *@
@@ -45,24 +46,35 @@
     [Parameter]
     public IAssetService? AssetService { get; set; }
 
+    /// <summary>
+    /// The last rolled number (2-12). When set, tiles not matching this number are dimmed.
+    /// </summary>
+    [Parameter]
+    public int? RolledNumber { get; set; }
+
     // Track previous state for ShouldRender optimization
     private int _previousTileHash;
     private int _previousHarborHash;
 
+    // Track previous rolled number for ShouldRender
+    private int? _previousRolledNumber;
+
     /// <summary>
-    /// Only re-render when tile or harbor layout changes (board shuffle/resize).
+    /// Re-render when tile/harbor layout changes OR when rolled number changes.
     /// Does NOT re-render when tiles become gold (that's GoldTilesLayer's job).
     /// </summary>
     protected override bool ShouldRender()
     {
         var tileHash = ComputeTileHash(Tiles);
         var harborHash = ComputeHarborHash(Harbors);
+        var rolledNumberChanged = RolledNumber != _previousRolledNumber;
 
-        if (tileHash != _previousTileHash || harborHash != _previousHarborHash)
+        if (tileHash != _previousTileHash || harborHash != _previousHarborHash || rolledNumberChanged)
         {
-            Console.WriteLine($"[BaseLayer] RE-RENDERING: tileHash changed={tileHash != _previousTileHash}, harborHash changed={harborHash != _previousHarborHash}");
+            Console.WriteLine($"[BaseLayer] RE-RENDERING: tileHash changed={tileHash != _previousTileHash}, harborHash changed={harborHash != _previousHarborHash}, rolledNumber changed={rolledNumberChanged}");
             _previousTileHash = tileHash;
             _previousHarborHash = harborHash;
+            _previousRolledNumber = RolledNumber;
             return true;
         }
         return false;
@@ -71,12 +83,14 @@
     /// <summary>
     /// Renders a tile in its base state (ignoring TemporarilyGold flag).
     /// GoldTilesLayer will overlay gold appearance when needed.
+    /// Includes tile index label (visibility controlled by CSS class on parent).
+    /// Dims tiles that don't match the rolled number.
     /// </summary>
-    private string RenderTileWithoutGold(TileModel tile)
+    private string RenderTileWithoutGold(TileModel tile, int index)
     {
-        // Use the existing TileSvgRenderer but we render the base resource
-        // The gold overlay is handled by GoldTilesLayer
-        return tile.RenderSvg(isDimmed: false);
+        // Dim tiles that don't match the rolled number (if a number was rolled)
+        var isDimmed = RolledNumber.HasValue && tile.Number != RolledNumber.Value && tile.Number > 0;
+        return tile.RenderSvg(isDimmed: isDimmed, index: index);
     }
 
     /// <summary>

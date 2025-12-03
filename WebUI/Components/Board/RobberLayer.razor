@@ -1,25 +1,45 @@
 @using Catan3.Shared.Models
+@using Catan3.Shared.Profiles
 @using Catan3.WebUI.Models
 @using Catan3.WebUI.Services
 @using Catan3.WebUI.Services.Rendering
 
 @*
     RobberLayer - Renders the robber piece on its current tile.
-    Only re-renders when the robber moves to a new tile.
+    Uses CatanFont glyphs (SolidShield + Pirate) with player colors.
+    Covers 75% of the tile, shows resources stolen count.
+    Only re-renders when the robber moves or player changes.
 *@
 
 <g class="robber-layer">
     @if (RobberCoordinates != HexCoordinates.Default)
     {
         var (x, y) = BoardGeometry.AxialToPixel(RobberCoordinates.Q, RobberCoordinates.R);
+        var colors = GetMovedByColors();
 
-        @* Robber SVG image centered on the tile *@
-        <image href="@RobberImagePath"
-               x="@(x - RobberSize / 2)"
-               y="@(y - RobberSize / 2)"
-               width="@RobberSize"
-               height="@RobberSize"
-               class="robber" />
+        @* Robber using CatanFont glyphs - background shield + foreground pirate *@
+        <g class="robber" transform="translate(@x.ToString("F1"), @y.ToString("F1"))" opacity="0.75">
+            @* Background: SolidShield glyph (E925) with player gradient *@
+            <text class="robber-shield"
+                  x="0" y="0"
+                  text-anchor="middle"
+                  dominant-baseline="central"
+                  font-family="Catan"
+                  font-size="@RobberFontSize"
+                  fill="url(#gradient-@MovedByPlayerId)">&#xE925;</text>
+
+            @* Foreground: Pirate glyph (E90C) with player foreground color *@
+            <text class="robber-pirate"
+                  x="0" y="0"
+                  text-anchor="middle"
+                  dominant-baseline="central"
+                  font-family="Catan"
+                  font-size="@(RobberFontSize * 0.8)"
+                  fill="@colors.Foreground">&#xE90C;</text>
+
+            @* Resources stolen count *@
+            @((MarkupString)RenderResourcesStolen(colors.Foreground))
+        </g>
     }
 </g>
 
@@ -31,34 +51,76 @@
     public HexCoordinates RobberCoordinates { get; set; } = HexCoordinates.Default;
 
     /// <summary>
-    /// Asset service for theme-aware path resolution.
+    /// ID of the player who last moved the robber.
     /// </summary>
     [Parameter]
-    public IAssetService? AssetService { get; set; }
+    public string? MovedByPlayerId { get; set; }
+
+    /// <summary>
+    /// Number of resources stolen by the robber.
+    /// </summary>
+    [Parameter]
+    public int ResourcesStolen { get; set; }
+
+    /// <summary>
+    /// List of all players for color lookup.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<PlayerViewModel> Players { get; set; } = [];
 
     // Track previous state for ShouldRender optimization
     private HexCoordinates _previousCoordinates = HexCoordinates.Default;
+    private string? _previousMovedBy;
+    private int _previousResourcesStolen;
 
     /// <summary>
-    /// Size of the robber image in SVG units.
+    /// Font size for the robber glyph - 50% of hex height (smaller to show tile number).
     /// </summary>
-    private const double RobberSize = 50;
+    private double RobberFontSize => BoardSvgConstants.HexHeight * 0.50;
 
     /// <summary>
-    /// Path to the robber image.
+    /// Gets the player colors for the player who moved the robber.
     /// </summary>
-    private string RobberImagePath => AssetService?.GetAssetPath(Models.AssetName.StatRobber)
-        ?? "/themes/base/stats/robber.svg";
+    private PlayerColors GetMovedByColors()
+    {
+        if (MovedByPlayerId != null)
+        {
+            var player = Players.FirstOrDefault(p => p.Id == MovedByPlayerId);
+            if (player != null)
+            {
+                return player.Colors;
+            }
+        }
+        // Default colors if no player (red foreground on black/white gradient)
+        return new PlayerColors("#000000", "#FFFFFF", "#FF0000");
+    }
 
     /// <summary>
-    /// Only re-render when the robber moves to a different tile.
+    /// Renders the resources stolen count SVG text element.
+    /// Separate method to avoid Razor <text> directive conflict.
+    /// </summary>
+    private string RenderResourcesStolen(string foregroundColor)
+    {
+        if (ResourcesStolen <= 0) return "";
+
+        var y = RobberFontSize * 0.35;
+        return $@"<text class=""robber-count"" x=""0"" y=""{y:F1}"" text-anchor=""middle"" dominant-baseline=""central"" font-family=""Segoe UI, sans-serif"" font-size=""22"" font-weight=""bold"" fill=""{foregroundColor}"">{ResourcesStolen}</text>";
+    }
+
+    /// <summary>
+    /// Only re-render when the robber state changes.
     /// </summary>
     protected override bool ShouldRender()
     {
-        if (!_previousCoordinates.Equals(RobberCoordinates))
+        var changed = !_previousCoordinates.Equals(RobberCoordinates) ||
+                      _previousMovedBy != MovedByPlayerId ||
+                      _previousResourcesStolen != ResourcesStolen;
+
+        if (changed)
         {
-            Console.WriteLine($"[RobberLayer] RE-RENDERING: position changed from ({_previousCoordinates.Q},{_previousCoordinates.R}) to ({RobberCoordinates.Q},{RobberCoordinates.R})");
             _previousCoordinates = RobberCoordinates;
+            _previousMovedBy = MovedByPlayerId;
+            _previousResourcesStolen = ResourcesStolen;
             return true;
         }
         return false;

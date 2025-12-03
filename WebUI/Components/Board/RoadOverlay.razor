@@ -1,0 +1,172 @@
+@using Catan3.Shared.Models
+@using Catan3.Shared.Utility
+@using Catan3.Shared.Profiles
+@using Catan3.WebUI.Models
+@using Catan3.WebUI.Services.Rendering
+
+@*
+    RoadOverlay - Renders ALL roads as HTML elements with CSS clip-path.
+
+    Renders:
+    - Owned roads with owner colors (fully visible)
+    - Buildable roads with current player colors (50% opacity, clickable)
+
+    Performance approach:
+    - Roads are positioned using CSS percentage coordinates matching SVG viewBox
+    - Each road uses CSS clip-path: polygon() for the 6-point road shape
+    - Click handling for buildable roads
+*@
+
+<div class="road-overlay" style="@Style">
+    @foreach (var road in GetVisibleRoads())
+    {
+        var colors = GetRoadColors(road);
+        <div class="road @GetRoadClass(road)"
+             style="@GetRoadStyle(road, colors)"
+             @onclick="() => HandleRoadClick(road)">
+            @if (road.BuildIndex > 0)
+            {
+                <span class="road-index" style="@GetIndexCounterRotation(road)">@road.BuildIndex</span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<RoadModel> Roads { get; set; } = [];
+
+    [Parameter]
+    public PlayerViewModel? CurrentPlayer { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<PlayerViewModel> Players { get; set; } = [];
+
+    [Parameter]
+    public (double minX, double minY, double width, double height) ViewBoxBounds { get; set; }
+
+    [Parameter]
+    public string? Style { get; set; }
+
+    [Parameter]
+    public EventCallback<RoadKey> OnRoadClick { get; set; }
+
+    /// <summary>
+    /// Gets roads that should be visible (owned or buildable).
+    /// </summary>
+    private IEnumerable<RoadModel> GetVisibleRoads()
+    {
+        return Roads.Where(r => r.OwnerId != null || r.RoadState == RoadState.Buildable);
+    }
+
+    /// <summary>
+    /// Gets the player colors for a road.
+    /// </summary>
+    private PlayerColors? GetRoadColors(RoadModel road)
+    {
+        if (road.OwnerId != null)
+        {
+            return Players.FirstOrDefault(p => p.Id == road.OwnerId)?.Colors;
+        }
+        return CurrentPlayer?.Colors;
+    }
+
+    /// <summary>
+    /// Gets the CSS class for a road.
+    /// </summary>
+    private string GetRoadClass(RoadModel road)
+    {
+        if (road.OwnerId != null)
+            return "road-owned";
+        if (road.RoadState == RoadState.Buildable)
+            return "road-buildable";
+        return "";
+    }
+
+    /// <summary>
+    /// Cached angle for the current road being styled.
+    /// </summary>
+    private double _currentRoadAngle;
+
+    /// <summary>
+    /// Gets the inline style for a road (position, color, clip-path).
+    /// </summary>
+    private string GetRoadStyle(RoadModel road, PlayerColors? colors)
+    {
+        if (ViewBoxBounds.width <= 0 || ViewBoxBounds.height <= 0)
+            return "display: none;";
+
+        // Get road edge vertices
+        var (v1, v2) = GetEdgeVertices(road.RoadKey);
+
+        // Calculate road center and dimensions
+        var centerX = (v1.x + v2.x) / 2;
+        var centerY = (v1.y + v2.y) / 2;
+
+        // Road length and angle
+        var dx = v2.x - v1.x;
+        var dy = v2.y - v1.y;
+        var length = Math.Sqrt(dx * dx + dy * dy);
+        _currentRoadAngle = Math.Atan2(dy, dx) * 180 / Math.PI;
+
+        // Convert to percentages
+        var percentX = (centerX - ViewBoxBounds.minX) / ViewBoxBounds.width * 100;
+        var percentY = (centerY - ViewBoxBounds.minY) / ViewBoxBounds.height * 100;
+        var widthPercent = length / ViewBoxBounds.width * 100;
+        var heightPercent = 12 / ViewBoxBounds.height * 100; // Road thickness
+
+        var bgColor = colors?.Primary ?? "#999";
+        var borderColor = colors?.Secondary ?? "#666";
+
+        return $"left: {percentX:F2}%; top: {percentY:F2}%; " +
+               $"width: {widthPercent:F2}%; height: {heightPercent:F2}%; " +
+               $"transform: translate(-50%, -50%) rotate({_currentRoadAngle:F1}deg); " +
+               $"background: {bgColor}; border-color: {borderColor};";
+    }
+
+    /// <summary>
+    /// Gets counter-rotation style for the build index to keep text horizontal.
+    /// </summary>
+    private string GetIndexCounterRotation(RoadModel road)
+    {
+        // Recalculate angle for this road
+        var (v1, v2) = GetEdgeVertices(road.RoadKey);
+        var dx = v2.x - v1.x;
+        var dy = v2.y - v1.y;
+        var angle = Math.Atan2(dy, dx) * 180 / Math.PI;
+        return $"transform: rotate({-angle:F1}deg);";
+    }
+
+    /// <summary>
+    /// Gets the two vertex positions for a road edge.
+    /// </summary>
+    private ((double x, double y) v1, (double x, double y) v2) GetEdgeVertices(RoadKey roadKey)
+    {
+        var (tileX, tileY) = BoardGeometry.AxialToPixel(roadKey.TileKey.Q, roadKey.TileKey.R);
+        var vertices = BoardGeometry.GetHexVertices(tileX, tileY);
+
+        var (v1Idx, v2Idx) = roadKey.HexSide switch
+        {
+            HexSide.Top => (4, 5),
+            HexSide.TopRight => (5, 0),
+            HexSide.BottomRight => (0, 1),
+            HexSide.Bottom => (1, 2),
+            HexSide.BottomLeft => (2, 3),
+            HexSide.TopLeft => (3, 4),
+            _ => (0, 1)
+        };
+
+        return (vertices[v1Idx], vertices[v2Idx]);
+    }
+
+    /// <summary>
+    /// Handle click on a buildable road.
+    /// </summary>
+    private async Task HandleRoadClick(RoadModel road)
+    {
+        if (road.RoadState == RoadState.Buildable && OnRoadClick.HasDelegate)
+        {
+            await OnRoadClick.InvokeAsync(road.RoadKey);
+        }
+    }
+}

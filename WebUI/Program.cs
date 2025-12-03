@@ -12,9 +12,9 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddSingleton(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
-// Register GameService configuration and proxy
+// Register GameService configuration and connection service
 builder.Services.AddSingleton<GameServiceConfig>();
-builder.Services.AddScoped<GameCommandProxy>();
+builder.Services.AddSingleton<GameConnectionService>();
 
 // Register GameStateService as singleton for thick client state management
 builder.Services.AddSingleton<GameStateService>();

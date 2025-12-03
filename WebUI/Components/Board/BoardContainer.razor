@@ -1,5 +1,6 @@
 @using Catan3.Shared.Models
 @using Catan3.Shared.Extensions
+@using Catan3.Shared.Utility
 @using Catan3.WebUI.Models
 @using Catan3.WebUI.Services
 @using Catan3.WebUI.Services.Rendering
@@ -17,7 +18,7 @@
 
 @if (GameModel != null)
 {
-    <div class="board-svg-container">
+    <div class="board-svg-container" style="@AspectRatioStyle">
         @if (IsLoading)
         {
             <div class="board-loading-overlay">
@@ -31,7 +32,7 @@
              viewBox="@ViewBox"
              preserveAspectRatio="xMidYMid meet"
              shape-rendering="geometricPrecision"
-             class="board-static-layer"
+             class="board-static-layer @TileIndexClass"
              style="@AspectRatioStyle">
 
             <SharedDefinitions Players="@Players"
@@ -40,7 +41,8 @@
 
             <BaseLayer Tiles="@GameModel.Tiles"
                        Harbors="@GameModel.Harbors"
-                       AssetService="@AssetService" />
+                       AssetService="@AssetService"
+                       RolledNumber="@RolledNumber" />
 
             <GoldTilesLayer Tiles="@GameModel.Tiles"
                             AssetService="@AssetService" />
@@ -74,25 +76,32 @@
                 }
             </defs>
 
-            <RoadsLayer Roads="@GameModel.Roads"
-                        Players="@Players"
-                        CurrentPlayer="@CurrentPlayerViewModel" />
+            @* Roads and buildings now rendered as HTML overlays *@
 
-            <BuildingsLayer Buildings="@GameModel.Buildings"
-                            Players="@Players"
-                            CurrentPlayer="@CurrentPlayerViewModel"
-                            GameModel="@GameModel" />
-
-            <RobberLayer RobberCoordinates="@GameModel.Robber.Coordinates" />
+            <RobberLayer RobberCoordinates="@GameModel.Robber.Coordinates"
+                         MovedByPlayerId="@GameModel.Robber.MovedBy"
+                         ResourcesStolen="@GameModel.Robber.ResourcesStolen"
+                         Players="@Players" />
         </svg>
 
-        @* HTML overlay for hoverable building spots - isolated repaint on hover *@
+        @* HTML overlay for roads (owned + buildable) *@
+        <RoadOverlay Roads="@GameModel.Roads"
+                     CurrentPlayer="@CurrentPlayerViewModel"
+                     Players="@Players"
+                     ViewBoxBounds="@ViewBoxBounds"
+                     OnRoadClick="@OnRoadClick"
+                     Style="@AspectRatioStyle" />
+
+        @* HTML overlay for all buildings (owned + buildable) *@
         <BuildingOverlay Buildings="@GameModel.Buildings"
                          GameModel="@GameModel"
                          ShownStars="@ShownStars"
                          FilteredResources="@FilteredResources"
                          CurrentPlayer="@CurrentPlayerViewModel"
-                         ViewBoxBounds="@ViewBoxBounds" />
+                         Players="@Players"
+                         ViewBoxBounds="@ViewBoxBounds"
+                         OnBuildingClick="@OnBuildingClick"
+                         Style="@AspectRatioStyle" />
     </div>
 }
 else
@@ -134,6 +143,24 @@ else
     public HashSet<ResourceType>? FilteredResources { get; set; }
 
     /// <summary>
+    /// The last rolled number (2-12). When set, tiles not matching this number are dimmed.
+    /// </summary>
+    [Parameter]
+    public int? RolledNumber { get; set; }
+
+    /// <summary>
+    /// Callback when a building spot is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback<BuildingKey> OnBuildingClick { get; set; }
+
+    /// <summary>
+    /// Callback when a road is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback<RoadKey> OnRoadClick { get; set; }
+
+    /// <summary>
     /// Computed viewBox string for the SVG.
     /// </summary>
     private string ViewBox => CalculateViewBox();
@@ -142,6 +169,20 @@ else
     /// ViewBox bounds as a tuple for the BuildingOverlay.
     /// </summary>
     private (double minX, double minY, double width, double height) ViewBoxBounds => CalculateViewBoxBounds();
+
+    /// <summary>
+    /// CSS class to show/hide tile indexes based on game state.
+    /// Shows during allocation phases and robber movement.
+    /// </summary>
+    private string TileIndexClass => ShouldShowTileIndexes ? "show-tile-indexes" : "";
+
+    /// <summary>
+    /// Determines if tile indexes should be shown based on current game state.
+    /// </summary>
+    private bool ShouldShowTileIndexes => GameModel?.GameState is
+        GameState.AllocateResourceForward or
+        GameState.AllocateResourceReverse or
+        GameState.MustMoveRobber;
 
     /// <summary>
     /// Inline style for SVG aspect-ratio based on viewBox dimensions.
@@ -154,7 +195,8 @@ else
             var bounds = ViewBoxBounds;
             if (bounds.width <= 0 || bounds.height <= 0)
                 return "";
-            return $"aspect-ratio: {bounds.width / bounds.height:F4};";
+            var aspectRatio = bounds.width / bounds.height;
+            return $"--board-aspect-ratio: {aspectRatio:F4}; aspect-ratio: {aspectRatio:F4};";
         }
     }
 
@@ -183,6 +225,11 @@ else
     /// Track tile hash to detect when re-rasterization is needed.
     /// </summary>
     private int _previousTileHash;
+
+    /// <summary>
+    /// Whether the board sizer has been initialized.
+    /// </summary>
+    private bool _boardSizerInitialized;
 
 
     /// <summary>
@@ -243,10 +290,33 @@ else
     }
 
     /// <summary>
-    /// Rasterize the static SVG layer after render (when offscreen rendering is enabled).
+    /// Initialize board sizer and optionally rasterize the static SVG layer after render.
     /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // Initialize board sizer on first render with valid game model
+        if (GameModel != null && !_boardSizerInitialized)
+        {
+            var bounds = ViewBoxBounds;
+            if (bounds.width > 0 && bounds.height > 0)
+            {
+                var aspectRatio = bounds.width / bounds.height;
+                try
+                {
+                    await JSRuntime.InvokeVoidAsync(
+                        "boardSizer.initialize",
+                        ".board-svg-container",
+                        aspectRatio,
+                        null);
+                    _boardSizerInitialized = true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[BoardContainer] Board sizer init error: {ex.Message}");
+                }
+            }
+        }
+
         // Skip rasterization if disabled - just render SVG directly
         if (!UseOffscreenRendering)
         {
@@ -258,6 +328,7 @@ else
             return;
         }
 
+#if false // Rasterization disabled - enable UseOffscreenRendering to use
         if (GameModel != null && !IsRasterized)
         {
             // Small delay to ensure SVG is fully rendered and laid out
@@ -285,6 +356,7 @@ else
                 Console.WriteLine($"[BoardContainer] Rasterization error: {ex.Message}");
             }
         }
+#endif
     }
 
     /// <summary>
@@ -387,6 +459,12 @@ else
         if (AssetService != null)
         {
             AssetService.ThemeChanged -= OnThemeChanged;
+        }
+
+        // Clean up board sizer
+        if (_boardSizerInitialized)
+        {
+            ((IJSInProcessRuntime)JSRuntime).InvokeVoid("boardSizer.dispose");
         }
     }
 }

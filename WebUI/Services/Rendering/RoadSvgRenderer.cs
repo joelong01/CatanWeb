@@ -69,7 +69,8 @@ public static class RoadSvgRenderer
     }
 
     /// <summary>
-    /// Renders build index number on the road, rotated to match road orientation.
+    /// Renders build index number on the road.
+    /// Text is always horizontal (not rotated) for readability, matching Desktop RoadCtrl.xaml.
     /// </summary>
     private static void RenderBuildIndex(StringBuilder sb, (double x, double y) v1, (double x, double y) v2, int buildIndex, PlayerViewModel? playerViewModel)
     {
@@ -77,15 +78,13 @@ public static class RoadSvgRenderer
         var midX = (v1.x + v2.x) / 2;
         var midY = (v1.y + v2.y) / 2;
 
-        // Calculate rotation angle to align text with road
-        var dx = v2.x - v1.x;
-        var dy = v2.y - v1.y;
-        var angle = Math.Atan2(dy, dx) * 180 / Math.PI;
+        // Render black rounded rect background with white text (always horizontal, no rotation)
+        var rectSize = 20;
+        var rectX = midX - rectSize / 2;
+        var rectY = midY - rectSize / 2;
 
-        var textColor = playerViewModel?.Colors.Foreground ?? "#FFFFFF";
-
-        // Render text with rotation transform
-        sb.AppendLine($@"    <text x=""{midX}"" y=""{midY}"" text-anchor=""middle"" dominant-baseline=""middle"" font-family=""sans-serif"" font-size=""14"" font-weight=""bold"" fill=""{textColor}"" stroke=""black"" stroke-width=""0.5"" transform=""rotate({angle:F1} {midX} {midY})"">{buildIndex}</text>");
+        sb.AppendLine($@"    <rect x=""{rectX:F1}"" y=""{rectY:F1}"" width=""{rectSize}"" height=""{rectSize}"" rx=""5"" fill=""black""/>");
+        sb.AppendLine($@"    <text x=""{midX:F1}"" y=""{midY:F1}"" text-anchor=""middle"" dominant-baseline=""central"" font-family=""sans-serif"" font-size=""14"" font-weight=""bold"" fill=""white"">{buildIndex}</text>");
     }
 
     /// <summary>

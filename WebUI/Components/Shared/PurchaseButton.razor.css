@@ -96,3 +96,32 @@
     font-weight: 600;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
 }
+
+/* Can purchase state - clickable with visual feedback */
+.purchase-button.can-purchase {
+    cursor: pointer;
+}
+
+.purchase-button.can-purchase .purchase-button-front {
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+}
+
+.purchase-button.can-purchase:hover .purchase-button-front {
+    filter: brightness(1.15);
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.8);
+    transform: rotateY(180deg) scale(1.05);
+}
+
+.purchase-button.can-purchase:active .purchase-button-front {
+    filter: brightness(0.95);
+    transform: rotateY(180deg) scale(0.98);
+}
+
+/* Not purchasable - dim and no pointer */
+.purchase-button:not(.can-purchase) {
+    cursor: default;
+}
+
+.purchase-button:not(.can-purchase) .purchase-button-front {
+    opacity: 0.7;
+}

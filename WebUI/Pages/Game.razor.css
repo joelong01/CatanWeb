@@ -8,7 +8,7 @@
 
 /* CSS version indicator - helps detect stale cached CSS */
 .game-viewport::after {
-    content: "CSS v2024-12-02-1";
+    content: "CSS v2025-12-02-4";
     position: fixed;
     bottom: 5px;
     right: 5px;
@@ -62,15 +62,14 @@
 }
 
 .center-panel {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    place-items: center;
     overflow: hidden;
     width: 100%;
+    height: 100%;
     min-width: 0;
     min-height: 0;
     background: #000;
-    align-items: center;
-    justify-content: center;
     margin-left: 75px;
 }
 
@@ -216,18 +215,15 @@
 
 /* Game Board */
 .game-board {
-    flex: 1;
-    min-height: 0; /* Allow flex item to shrink */
+    height: 100%;
     overflow: hidden;
 }
 
 .board-container {
     width: 100%;
     height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
+    display: grid;
+    place-items: center;
 }
 
 /* Tracked Resources */
@@ -354,4 +350,60 @@
 
 .error-overlay {
     color: #ff6b6b;
+}
+
+/* Robber target selection menu */
+.robber-menu-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 999;
+}
+
+.robber-menu {
+    position: fixed;
+    min-width: 200px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.robber-menu-header {
+    padding: 10px 15px;
+    font-weight: bold;
+    background: #333;
+    color: #fff;
+    border-bottom: 1px solid #444;
+}
+
+.robber-menu-item {
+    padding: 10px 15px;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.robber-menu-item:hover {
+    background: #3a3a3a;
+}
+
+.robber-menu-nobody {
+    color: #aaa;
+    font-style: italic;
+}
+
+.robber-menu-cancel {
+    color: #888;
+}
+
+.robber-menu-separator {
+    height: 1px;
+    background: #444;
+    margin: 5px 0;
 }

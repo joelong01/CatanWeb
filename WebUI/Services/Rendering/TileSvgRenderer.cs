@@ -19,8 +19,9 @@ public static class TileSvgRenderer
     /// </summary>
     /// <param name="tile">The tile model to render.</param>
     /// <param name="isDimmed">If true, applies dim CSS class for dim animation.</param>
+    /// <param name="index">Tile index for verbal reference (always rendered, visibility controlled by CSS).</param>
     /// <returns>SVG markup string for the tile.</returns>
-    public static string RenderSvg(this TileModel tile, bool isDimmed = false)
+    public static string RenderSvg(this TileModel tile, bool isDimmed = false, int index = 0)
     {
         var sb = new StringBuilder();
         var (x, y) = BoardGeometry.AxialToPixel(tile.TileKey.Q, tile.TileKey.R);
@@ -46,11 +47,15 @@ public static class TileSvgRenderer
             RenderCoordinates(sb, tile, x, y);
         }
 
-        // Render temporary gold resource indicator (if TemporarilyGold is true)
-        if (tile.TemporarilyGold)
+        // Always render tile index (visibility controlled by CSS class on parent)
+        // Only for resource tiles (not sea/desert)
+        if (tile.ResourceTileType != ResourceType.Sea)
         {
-            RenderTemporaryGoldIndicator(sb, x, y, tile.ResourceTileType);
+            RenderTileIndex(sb, x, y, index);
         }
+
+        // Note: Gold indicator card is rendered by GoldTilesLayer, not here,
+        // to avoid duplication and ensure proper image rendering
 
         sb.AppendLine("  </g>");
         return sb.ToString();
@@ -113,26 +118,27 @@ public static class TileSvgRenderer
     }
 
     /// <summary>
-    /// Renders the temporary gold tile indicator showing the original resource type.
-    /// Displays as a small flipped card showing the original resource.
+    /// Renders tile index label at bottom of tile (white text on black rounded rect).
+    /// Hidden by default; visibility controlled by CSS class "show-tile-indexes" on parent.
     /// </summary>
-    private static void RenderTemporaryGoldIndicator(StringBuilder sb, double x, double y, ResourceType originalResource)
+    private static void RenderTileIndex(StringBuilder sb, double x, double y, int index)
     {
-        // Small card at bottom of tile showing original resource
-        const double cardWidth = 40;
-        const double cardHeight = 60;
-        var cardX = x - cardWidth / 2;
-        var cardY = y + 30;  // Positioned below number token
+        // Position at bottom of tile
+        var indexY = y + HexHeight / 2 - 15;
+        const double rectWidth = 28;
+        const double rectHeight = 22;
+        const double rectRadius = 5;
 
-        // Card background
-        sb.AppendLine($@"    <rect x=""{cardX}"" y=""{cardY}"" width=""{cardWidth}"" height=""{cardHeight}"" fill=""white"" stroke=""black"" stroke-width=""2"" rx=""4"" class=""gold-indicator""/>");
+        // Group with class for CSS visibility control
+        sb.AppendLine($@"    <g class=""tile-index"">");
 
-        // Original resource pattern inside card
-        var patternId = GetPatternId(originalResource);
-        var cardPatternX = cardX + 5;
-        var cardPatternY = cardY + 5;
-        var cardPatternSize = cardWidth - 10;
-        sb.AppendLine($@"    <rect x=""{cardPatternX}"" y=""{cardPatternY}"" width=""{cardPatternSize}"" height=""{cardPatternSize}"" fill=""url(#{patternId})"" rx=""2""/>");
+        // Black rounded rect background
+        sb.AppendLine($@"      <rect x=""{x - rectWidth / 2}"" y=""{indexY - rectHeight / 2 - 2}"" width=""{rectWidth}"" height=""{rectHeight}"" rx=""{rectRadius}"" fill=""black"" opacity=""0.8""/>");
+
+        // White text
+        sb.AppendLine($@"      <text x=""{x}"" y=""{indexY + 5}"" text-anchor=""middle"" font-family=""sans-serif"" font-size=""18"" font-weight=""bold"" fill=""white"">{index}</text>");
+
+        sb.AppendLine("    </g>");
     }
 
     /// <summary>

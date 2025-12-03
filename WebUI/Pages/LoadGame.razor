@@ -2,7 +2,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject WebUI.Services.GameServiceConfig Config
-@inject WebUI.Services.GameCommandProxy CommandProxy
+@inject WebUI.Services.GameConnectionService Connection
 
 <PageTitle>Load Game</PageTitle>
 
@@ -94,10 +94,10 @@ else
         try
         {
             // Load game from database into memory
-            var result = await CommandProxy.LoadGameAsync(gameId);
-            if (!result.Success)
+            var success = await Connection.LoadGameFromDatabaseAsync(gameId);
+            if (!success)
             {
-                errorMessage = result.Error ?? "Failed to load game";
+                errorMessage = "Failed to load game";
                 return;
             }
 

@@ -1,0 +1,44 @@
+/* RoadOverlay - HTML-based roads */
+
+.road-overlay {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.road {
+    position: absolute;
+    border: 2px solid;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Owned roads - fully visible */
+.road-owned {
+    opacity: 1;
+    pointer-events: none;
+}
+
+/* Buildable roads - semi-transparent, clickable */
+.road-buildable {
+    opacity: 0.5;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+/* Road build index - white text on black rounded rectangle */
+/* Must be visible on 85" TV from 15 feet away */
+.road-index {
+    position: absolute;
+    background: black;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 6px;
+    user-select: none;
+    white-space: nowrap;
+}

@@ -56,7 +56,9 @@
     }
 
     /// <summary>
-    /// Renders the gold overlay for a tile - gold mine background + original resource indicator.
+    /// Renders the gold overlay for a tile - just the original resource card indicator.
+    /// The gold mine background is already rendered by TileSvgRenderer when TemporarilyGold is true.
+    /// We do NOT render a hex overlay here as it would cover the number token.
     /// </summary>
     private string RenderGoldOverlay(TileModel tile)
     {
@@ -65,11 +67,7 @@
 
         sb.AppendLine($@"  <g class=""gold-overlay"" data-q=""{tile.TileKey.Q}"" data-r=""{tile.TileKey.R}"">");
 
-        // Gold mine inner hex overlay (covers the original resource)
-        var innerPath = BoardGeometry.GenerateHexPath(x, y, BoardSvgConstants.InnerHexSize);
-        sb.AppendLine($@"    <path d=""{innerPath}"" fill=""url(#tile-goldmine)"" stroke=""transparent"" stroke-width=""{BoardSvgConstants.InnerHexStrokeThickness}""/>");
-
-        // Small card showing original resource type
+        // Small card showing original resource type (number token stays in place from BaseLayer)
         RenderOriginalResourceCard(sb, x, y, tile.ResourceTileType);
 
         sb.AppendLine("  </g>");
@@ -78,39 +76,45 @@
 
     /// <summary>
     /// Renders a small card showing the original resource type before it became gold.
+    /// Matches the style of resource cards - just the image, no white border.
     /// </summary>
     private void RenderOriginalResourceCard(System.Text.StringBuilder sb, double x, double y, ResourceType originalResource)
     {
         const double cardWidth = 40;
         const double cardHeight = 60;
+        const double cornerRadius = 4;
         var cardX = x - cardWidth / 2;
-        var cardY = y + 30;  // Positioned below number token
+        // Positioned below number token, moved up by half road width so it doesn't sit under roads
+        var cardY = y + 30 - BoardSvgConstants.InnerHexStrokeThickness / 2;
 
-        // Card background with flip animation
-        sb.AppendLine($@"    <rect x=""{cardX}"" y=""{cardY}"" width=""{cardWidth}"" height=""{cardHeight}"" fill=""white"" stroke=""black"" stroke-width=""2"" rx=""4"" class=""gold-indicator""/>");
+        var imagePath = GetResourceCardPath(originalResource);
+        var clipId = $"gold-card-clip-{x:F0}-{y:F0}";
 
-        // Original resource pattern inside card
-        var patternId = GetPatternId(originalResource);
-        var cardPatternX = cardX + 5;
-        var cardPatternY = cardY + 5;
-        var cardPatternSize = cardWidth - 10;
-        sb.AppendLine($@"    <rect x=""{cardPatternX}"" y=""{cardPatternY}"" width=""{cardPatternSize}"" height=""{cardPatternSize}"" fill=""url(#{patternId})"" rx=""2""/>");
+        // Define clip path for rounded corners
+        sb.AppendLine($@"    <defs>");
+        sb.AppendLine($@"      <clipPath id=""{clipId}"">");
+        sb.AppendLine($@"        <rect x=""{cardX}"" y=""{cardY}"" width=""{cardWidth}"" height=""{cardHeight}"" rx=""{cornerRadius}""/>");
+        sb.AppendLine($@"      </clipPath>");
+        sb.AppendLine($@"    </defs>");
+
+        // Resource image with rounded corners, no border
+        sb.AppendLine($@"    <image href=""{imagePath}"" x=""{cardX}"" y=""{cardY}"" width=""{cardWidth}"" height=""{cardHeight}"" preserveAspectRatio=""xMidYMid slice"" clip-path=""url(#{clipId})"" class=""gold-indicator""/>");
     }
 
-    private static string GetPatternId(ResourceType resourceType)
+    private string GetResourceCardPath(ResourceType resourceType)
     {
-        return resourceType switch
+        if (AssetService == null) return "";
+
+        var assetName = resourceType switch
         {
-            ResourceType.Brick => "tile-brick",
-            ResourceType.Wheat => "tile-wheat",
-            ResourceType.Wood => "tile-wood",
-            ResourceType.Ore => "tile-ore",
-            ResourceType.Sheep => "tile-sheep",
-            ResourceType.Desert => "tile-desert",
-            ResourceType.GoldMine => "tile-goldmine",
-            ResourceType.Sea => "tile-sea",
-            _ => "tile-default"
+            ResourceType.Brick => AssetName.CardBrick,
+            ResourceType.Wheat => AssetName.CardWheat,
+            ResourceType.Wood => AssetName.CardWood,
+            ResourceType.Ore => AssetName.CardOre,
+            ResourceType.Sheep => AssetName.CardSheep,
+            _ => AssetName.CardBack
         };
+        return AssetService.GetAssetPath(assetName);
     }
 
     private static bool SetEquals<T>(HashSet<T>? a, HashSet<T>? b)
