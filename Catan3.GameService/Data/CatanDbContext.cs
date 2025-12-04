@@ -6,7 +6,8 @@ public class CatanDbContext : DbContext
 {
     public DbSet<PlayerEntity> Players { get; set; } = null!;
     public DbSet<ImageEntity> Images { get; set; } = null!;
-    public DbSet<GameSaveEntity> GameSaves { get; set; } = null!;
+    public DbSet<GameSaveDataEntity> GameSaveData { get; set; } = null!;
+    public DbSet<GameSaveMetadataEntity> GameSaveMetadata { get; set; } = null!;
 
     public CatanDbContext(DbContextOptions<CatanDbContext> options) : base(options)
     {
@@ -27,15 +28,25 @@ public class CatanDbContext : DbContext
             entity.Property(e => e.Data).IsRequired();
         });
 
-        modelBuilder.Entity<GameSaveEntity>(entity =>
+        modelBuilder.Entity<GameSaveDataEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
             entity.Property(e => e.CompressedData).IsRequired();
-            entity.Property(e => e.SavedAt).IsRequired();
-            entity.HasIndex(e => e.GameId);
-            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        modelBuilder.Entity<GameSaveMetadataEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.HasIndex(e => e.GameId).IsUnique();
             entity.HasIndex(e => e.StartedBy);
+            entity.HasIndex(e => e.GameState);
+            entity.HasIndex(e => e.SavedAt);
+            entity.HasOne(e => e.GameData)
+                  .WithMany()
+                  .HasForeignKey(e => e.GameDataId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
@@ -78,27 +89,48 @@ public class ImageEntity
 }
 
 /// <summary>
-/// Game save entity for persisting game state
+/// Stores the compressed game log data (heavy blob storage).
 /// </summary>
-public class GameSaveEntity
+public class GameSaveDataEntity
 {
     /// <summary>
-    /// Auto-increment primary key for efficient indexing
+    /// Auto-increment primary key
     /// </summary>
     public int Id { get; set; }
 
     /// <summary>
-    /// Game ID (indexed for lookups)
-    /// </summary>
-    public string GameId { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Compressed game data (.catan format)
+    /// Compressed SerializableLog JSON (.catan format)
     /// </summary>
     public byte[] CompressedData { get; set; } = [];
 
     /// <summary>
-    /// When the game was last saved
+    /// Size of compressed data in bytes (for display without loading blob)
+    /// </summary>
+    public int Size { get; set; }
+}
+
+/// <summary>
+/// Lightweight metadata for querying and displaying saved games.
+/// </summary>
+public class GameSaveMetadataEntity
+{
+    /// <summary>
+    /// Auto-increment primary key
+    /// </summary>
+    public int Id { get; set; }
+
+    /// <summary>
+    /// Unique game identifier (indexed)
+    /// </summary>
+    public string GameId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// User who created the game - "WebUI" for now, user ID when auth is added (indexed)
+    /// </summary>
+    public string StartedBy { get; set; } = string.Empty;
+
+    /// <summary>
+    /// When the game was last saved (indexed for sorting)
     /// </summary>
     public DateTime SavedAt { get; set; }
 
@@ -108,19 +140,14 @@ public class GameSaveEntity
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
-    /// Game name for display
-    /// </summary>
-    public string GameName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Current game state (for filtering/cleanup)
+    /// Current game state for filtering (indexed)
     /// </summary>
     public string GameState { get; set; } = string.Empty;
 
     /// <summary>
-    /// Player ID who started the game (for "My games" filter)
+    /// Game type: "Regular" or "Expansion"
     /// </summary>
-    public string StartedBy { get; set; } = string.Empty;
+    public string GameType { get; set; } = string.Empty;
 
     /// <summary>
     /// Number of players in the game
@@ -128,7 +155,27 @@ public class GameSaveEntity
     public int PlayerCount { get; set; }
 
     /// <summary>
-    /// Game type (Regular or Expansion)
+    /// Comma-separated list of player names for display
     /// </summary>
-    public string GameType { get; set; } = string.Empty;
+    public string PlayerNames { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Number of state transitions (DoneStack count)
+    /// </summary>
+    public int TurnCount { get; set; }
+
+    /// <summary>
+    /// Display name for the game
+    /// </summary>
+    public string GameName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Foreign key to GameSaveData
+    /// </summary>
+    public int GameDataId { get; set; }
+
+    /// <summary>
+    /// Navigation property to the game data
+    /// </summary>
+    public GameSaveDataEntity GameData { get; set; } = null!;
 }

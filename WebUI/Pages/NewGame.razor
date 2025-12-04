@@ -6,6 +6,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject GameServiceConfig Config
+@inject IJSRuntime JS
 
 <PageTitle>New Game - Catan</PageTitle>
 
@@ -59,6 +60,10 @@
                     <option value="@GameType.Regular">Regular</option>
                     <option value="@GameType.Expansion">Expansion</option>
                 </select>
+                <label class="checkbox-label">
+                    <input type="checkbox" @bind="UseHouseRules" />
+                    <span>House Rules</span>
+                </label>
             </div>
         </div>
 
@@ -82,6 +87,36 @@
                 Selected: @string.Join(", ", SelectedPlayers.Select(id => Players.First(p => p.Id == id).Name))
             </div>
         }
+
+        @if (SavedGames.Count > 0)
+        {
+            <div class="saved-games-section">
+                <h2>Continue Game</h2>
+                <table class="saved-games-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Size</th>
+                            <th>Type</th>
+                            <th>Players</th>
+                            <th>Turns</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var game in SavedGames)
+                        {
+                            <tr @onclick="() => LoadSavedGame(game.GameId)" class="saved-game-row">
+                                <td>@game.SavedAt.ToLocalTime().ToString("M/d HH:mm")</td>
+                                <td>@FormatSize(game.Size)</td>
+                                <td>@game.GameType</td>
+                                <td>@game.PlayerNames</td>
+                                <td>@game.TurnCount</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
     }
 </div>
 
@@ -95,13 +130,21 @@
     private GameType SelectedGameType { get; set; } = GameType.Expansion;
     private bool IsLoading { get; set; } = true;
     private bool IsCreatingGame { get; set; } = false;
+    private bool IsLoadingGame { get; set; } = false;
     private string? ErrorMessage { get; set; }
+    private List<SavedGameInfo> SavedGames { get; set; } = new();
 
-    private bool CanStart => SelectedPlayers.Count >= 3 && SelectedPlayers.Count <= 6 && !IsCreatingGame;
+    // House Rules option
+    private bool UseHouseRules { get; set; } = true;
+
+    private bool CanStart => SelectedPlayers.Count >= 3 && SelectedPlayers.Count <= 6 && !IsCreatingGame && !IsLoadingGame;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadPlayersAsync();
+        // Load players and saved games in parallel
+        var playersTask = LoadPlayersAsync();
+        var savedGamesTask = LoadSavedGamesAsync();
+        await Task.WhenAll(playersTask, savedGamesTask);
     }
 
     private async Task LoadPlayersAsync()
@@ -189,12 +232,30 @@
             // Send the actual player IDs (e.g., "joe-001"), not display names
             var playerIds = SelectedPlayers.ToList();
 
+            // Build HouseRules from Settings page if enabled
+            HouseRules? houseRules = null;
+            if (UseHouseRules)
+            {
+                var goldTilesSetting = SelectedGameType == GameType.Expansion
+                    ? "setting_ExpansionGoldTiles"
+                    : "setting_RegularGoldTiles";
+                var goldTilesStr = await JS.InvokeAsync<string?>("localStorage.getItem", goldTilesSetting);
+                var supplementalStr = await JS.InvokeAsync<string?>("localStorage.getItem", "setting_SupplementalMinPlayers");
+
+                houseRules = new HouseRules
+                {
+                    GoldTiles = int.TryParse(goldTilesStr, out var gt) ? gt : (SelectedGameType == GameType.Expansion ? 2 : 1),
+                    SupplementalMinPlayers = int.TryParse(supplementalStr, out var sm) ? sm : 5
+                };
+            }
+
             // Create the new game request
             var request = new NewGameRequest
             {
                 GameType = SelectedGameType,
                 PlayerIds = playerIds,
-                GameName = $"Game {DateTime.Now:HH:mm}"
+                GameName = $"Game {DateTime.Now:HH:mm}",
+                HouseRules = houseRules
             };
 
             // Call the GameService API
@@ -244,11 +305,93 @@
         public GameType GameType { get; set; }
         public List<string> PlayerIds { get; set; } = new();
         public string GameName { get; set; } = string.Empty;
+        public HouseRules? HouseRules { get; set; }
     }
 
     private class NewGameResponse
     {
         public bool Success { get; set; }
         public string GameId { get; set; } = string.Empty;
+    }
+
+    private async Task LoadSavedGamesAsync()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<GetSavedGamesResponse>($"{Config.BaseUrl}/api/games?playerId=WebUI");
+            if (response?.Success == true && response.Games != null)
+            {
+                SavedGames = response.Games;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Don't show error for saved games - just log it
+            Console.WriteLine($"Error loading saved games: {ex.Message}");
+        }
+    }
+
+    private async Task LoadSavedGame(string gameId)
+    {
+        if (IsLoadingGame) return;
+
+        try
+        {
+            IsLoadingGame = true;
+            ErrorMessage = null;
+
+            // Load the game from database into memory
+            var response = await Http.PostAsync($"{Config.BaseUrl}/api/game/{gameId}/load", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Navigate to the game page
+                Navigation.NavigateTo($"/game/{gameId}");
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                ErrorMessage = $"Failed to load game: {response.StatusCode} - {errorContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error loading game: {ex.Message}";
+            Console.WriteLine($"Error loading game: {ex}");
+        }
+        finally
+        {
+            IsLoadingGame = false;
+        }
+    }
+
+    private static string FormatSize(int bytes)
+    {
+        if (bytes < 1024)
+            return $"{bytes} B";
+        var kb = bytes / 1024.0;
+        return $"{kb:F1} KB";
+    }
+
+    private class GetSavedGamesResponse
+    {
+        public bool Success { get; set; }
+        public List<SavedGameInfo> Games { get; set; } = new();
+        public int Count { get; set; }
+        public string Timestamp { get; set; } = string.Empty;
+    }
+
+    private class SavedGameInfo
+    {
+        public string GameId { get; set; } = string.Empty;
+        public string GameName { get; set; } = string.Empty;
+        public string GameState { get; set; } = string.Empty;
+        public string GameType { get; set; } = string.Empty;
+        public int PlayerCount { get; set; }
+        public string PlayerNames { get; set; } = string.Empty;
+        public int TurnCount { get; set; }
+        public int Size { get; set; }
+        public DateTime SavedAt { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

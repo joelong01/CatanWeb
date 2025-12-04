@@ -1,0 +1,292 @@
+@page "/settings"
+@using Catan3.Shared.Models
+@using Catan3.WebUI.Services
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject GameServiceConfig Config
+
+<PageTitle>Settings</PageTitle>
+
+<div class="settings-page">
+    <h1>Settings</h1>
+    <p class="subtitle">Configure game preferences</p>
+
+    @if (isLoading)
+    {
+        <p>Loading settings...</p>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="error-message">@errorMessage</div>
+    }
+    else if (settings != null)
+    {
+        @foreach (var category in settings.Select(s => s.Category ?? "Other").Distinct())
+        {
+            <div class="settings-category">
+                <h2>@category</h2>
+                <div class="settings-list">
+                    @foreach (var setting in settings.Where(s => (s.Category ?? "Other") == category))
+                    {
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-description">@setting.Description</span>
+                                @if (!string.IsNullOrEmpty(setting.Tooltip))
+                                {
+                                    <span class="setting-tooltip" title="@setting.Tooltip">?</span>
+                                }
+                            </div>
+                            <div class="setting-control">
+                                @switch (setting.InputType?.ToLowerInvariant())
+                                {
+                                    case "checkbox":
+                                        <label class="checkbox-container">
+                                            <input type="checkbox"
+                                                   checked="@GetBoolValue(setting)"
+                                                   @onchange="(e) => SetBoolValue(setting, (bool)e.Value!)" />
+                                            <span class="checkmark"></span>
+                                        </label>
+                                        break;
+                                    case "dropdown":
+                                        <select class="dropdown-select"
+                                                value="@GetStringValue(setting)"
+                                                @onchange="(e) => SetStringValue(setting, e.Value?.ToString())">
+                                            @if (setting.Options != null)
+                                            {
+                                                @foreach (var option in setting.Options)
+                                                {
+                                                    <option value="@option" selected="@(GetStringValue(setting) == option)">@option</option>
+                                                }
+                                            }
+                                        </select>
+                                        break;
+                                    default:
+                                        <input type="text"
+                                               class="text-input"
+                                               value="@GetStringValue(setting)"
+                                               @onchange="(e) => SetStringValue(setting, e.Value?.ToString())" />
+                                        break;
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="button-row">
+            <button class="btn btn-secondary" @onclick="ResetToDefaults">Reset to Defaults</button>
+            <button class="btn btn-primary" @onclick="SaveSettings">Save</button>
+        </div>
+
+        @if (saveMessage != null)
+        {
+            <div class="save-message @(saveSuccess ? "success" : "error")">@saveMessage</div>
+        }
+    }
+</div>
+
+@code {
+    private List<SettingItem>? settings;
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? saveMessage;
+    private bool saveSuccess;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            // Load default settings from JSON
+            var defaultSettings = await Http.GetFromJsonAsync<SettingsResponse>("settings.json");
+
+            if (defaultSettings?.Settings != null)
+            {
+                settings = defaultSettings.Settings;
+
+                // Override with saved values from localStorage
+                foreach (var setting in settings)
+                {
+                    var savedValue = await JS.InvokeAsync<string?>("localStorage.getItem", $"setting_{setting.SettingName}");
+                    if (!string.IsNullOrEmpty(savedValue))
+                    {
+                        setting.Value = setting.InputType?.ToLowerInvariant() == "checkbox"
+                            ? bool.Parse(savedValue)
+                            : savedValue;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading settings: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        try
+        {
+            if (settings == null) return;
+
+            // Save to localStorage for future games
+            foreach (var setting in settings)
+            {
+                var value = setting.Value?.ToString() ?? "";
+                await JS.InvokeVoidAsync("localStorage.setItem", $"setting_{setting.SettingName}", value);
+            }
+
+            // If there's a current game, update its house rules
+            var currentGameId = await JS.InvokeAsync<string?>("localStorage.getItem", "current_gameId");
+            Console.WriteLine($"[Settings] current_gameId from localStorage: '{currentGameId}'");
+            if (!string.IsNullOrEmpty(currentGameId))
+            {
+                await UpdateCurrentGameHouseRules(currentGameId);
+                saveMessage = $"Settings saved and applied to game {currentGameId}";
+            }
+            else
+            {
+                saveMessage = "Settings saved (no active game)";
+            }
+            saveSuccess = true;
+
+            // Clear message after 3 seconds
+            _ = Task.Delay(3000).ContinueWith(_ =>
+            {
+                saveMessage = null;
+                InvokeAsync(StateHasChanged);
+            });
+        }
+        catch (Exception ex)
+        {
+            saveMessage = $"Error saving settings: {ex.Message}";
+            saveSuccess = false;
+        }
+    }
+
+    private async Task UpdateCurrentGameHouseRules(string gameId)
+    {
+        if (settings == null) return;
+
+        // Build HouseRules from current settings - use Expansion setting (covers both since limit is just UI)
+        var expansionGoldTiles = GetSettingValue("ExpansionGoldTiles");
+        var regularGoldTiles = GetSettingValue("RegularGoldTiles");
+        var supplementalStr = GetSettingValue("SupplementalMinPlayers");
+
+        // Try expansion first, then regular
+        var goldTilesStr = expansionGoldTiles ?? regularGoldTiles;
+
+        var houseRules = new HouseRules
+        {
+            GoldTiles = int.TryParse(goldTilesStr, out var gt) ? gt : 2,
+            SupplementalMinPlayers = int.TryParse(supplementalStr, out var sm) ? sm : 5
+        };
+
+        Console.WriteLine($"[Settings] Updating game {gameId} with HouseRules: GoldTiles={houseRules.GoldTiles}, SupplementalMinPlayers={houseRules.SupplementalMinPlayers}");
+
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"{Config.BaseUrl}/api/game/{gameId}/houserules", houseRules);
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[Settings] Successfully updated house rules for game {gameId}");
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[Settings] Failed to update house rules for game {gameId}: {response.StatusCode} - {errorContent}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Settings] Error updating house rules: {ex.Message}");
+        }
+    }
+
+    private string? GetSettingValue(string settingName)
+    {
+        var setting = settings?.FirstOrDefault(s => s.SettingName == settingName);
+        return setting?.Value?.ToString() ?? setting?.DefaultValue?.ToString();
+    }
+
+    private async Task ResetToDefaults()
+    {
+        if (settings == null) return;
+
+        foreach (var setting in settings)
+        {
+            setting.Value = setting.DefaultValue;
+            await JS.InvokeVoidAsync("localStorage.removeItem", $"setting_{setting.SettingName}");
+        }
+
+        // If there's a current game, update its house rules with defaults
+        var currentGameId = await JS.InvokeAsync<string?>("localStorage.getItem", "current_gameId");
+        if (!string.IsNullOrEmpty(currentGameId))
+        {
+            await UpdateCurrentGameHouseRules(currentGameId);
+        }
+
+        saveMessage = "Settings reset to defaults";
+        saveSuccess = true;
+
+        _ = Task.Delay(3000).ContinueWith(_ =>
+        {
+            saveMessage = null;
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private string GetStringValue(SettingItem setting)
+    {
+        return setting.Value?.ToString() ?? setting.DefaultValue?.ToString() ?? "";
+    }
+
+    private bool GetBoolValue(SettingItem setting)
+    {
+        if (setting.Value is bool boolVal) return boolVal;
+        if (setting.Value is string strVal && bool.TryParse(strVal, out var parsed)) return parsed;
+        if (setting.DefaultValue is bool defBool) return defBool;
+        return false;
+    }
+
+    private void SetStringValue(SettingItem setting, string? value)
+    {
+        setting.Value = value;
+    }
+
+    private void SetBoolValue(SettingItem setting, bool value)
+    {
+        setting.Value = value;
+    }
+
+    private class SettingsResponse
+    {
+        public List<SettingItem>? Settings { get; set; }
+    }
+
+    private class SettingItem
+    {
+        public string SettingName { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string? InputType { get; set; }
+        public string[]? Options { get; set; }
+        public object? Value { get; set; }
+        public object? DefaultValue { get; set; }
+        public string? Tooltip { get; set; }
+        public string? Category { get; set; }
+    }
+}

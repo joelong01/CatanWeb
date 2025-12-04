@@ -99,6 +99,7 @@ private async Task HandleSliderInput(ChangeEventArgs e)
 ```
 
 **Actions:**
+
 1. Parse event value string → integer 10
 2. Update local `ShownStars` parameter to 10
 3. Invoke parent callback `ShownStarsChanged` with value 10
@@ -118,6 +119,7 @@ private async Task HandleShownStarsChanged(int newValue)
 ```
 
 **Actions:**
+
 1. Update `Game.razor` local `ShownStars` field to 10
 2. Call `StateHasChanged()` to queue Blazor re-render
 3. Return completed task
@@ -125,6 +127,7 @@ private async Task HandleShownStarsChanged(int newValue)
 ---
 
 ### 4. Blazor Re-Render Cycle
+
 **Location:** `Game.razor:100`
 
 ```csharp
@@ -132,12 +135,14 @@ private async Task HandleShownStarsChanged(int newValue)
 ```
 
 **Blazor automatically re-executes:**
+
 - All `@` expressions in the render tree
 - Calls `GenerateBoardSvg()` method with current state
 
 ---
 
 ### 5. SVG Generation Orchestration
+
 **Location:** `Game.razor:586-603`
 
 ```csharp
@@ -155,6 +160,8 @@ private string GenerateBoardSvg()
         );
     }
     catch (Exception ex)
+        ```csharp
+
     {
         return $"<svg><text x='50' y='50'>Error generating board: {ex.Message}</text></svg>";
     }
@@ -162,6 +169,7 @@ private string GenerateBoardSvg()
 ```
 
 **Actions:**
+
 1. Null check GameModel
 2. Call extension method on GameModel
 3. Pass `ShownStars = 10` as parameter
@@ -170,6 +178,7 @@ private string GenerateBoardSvg()
 ---
 
 ### 6. Board SVG Generator Main Loop
+
 **Location:** `BoardSvgGenerator.cs:27-135`
 
 ```csharp
@@ -222,6 +231,7 @@ public static string GenerateSvg(
 ---
 
 ### 7. Building Visual State Logic
+
 **Location:** `BoardSvgGenerator.cs:146-180`
 
 ```csharp
@@ -271,12 +281,14 @@ private static BuildingVisualState GetBuildingVisualState(
 **Decision Tree Example:**
 
 For a PossibleSettlement building with 12 stars:
+
 - hasSettlementEntitlement? → No (during PickingBoard)
 - stars >= shownStars? → 12 >= 10 → **YES**
 - isPickingBoard? → **YES**
 - **Result:** BuildingVisualState.Stars
 
 For a PossibleSettlement building with 7 stars:
+
 - hasSettlementEntitlement? → No
 - stars >= shownStars? → 7 >= 10 → **NO**
 - **Result:** BuildingVisualState.Hidden
@@ -284,6 +296,7 @@ For a PossibleSettlement building with 7 stars:
 ---
 
 ### 8. Building SVG Rendering
+
 **Location:** `BuildingSvgRenderer.cs:44-86`
 
 ```csharp
@@ -332,6 +345,7 @@ public static string RenderSvg(
 ```
 
 **For Stars Visual State:**
+
 ```csharp
 private static void RenderStars(StringBuilder sb, BuildingModel building,
                                 PlayerColors? currentPlayerColors, int stars,
@@ -356,6 +370,7 @@ private static void RenderStars(StringBuilder sb, BuildingModel building,
 ---
 
 ### 9. DOM Update
+
 **Final Step:**
 
 Blazor receives complete SVG markup string and updates:
@@ -384,7 +399,8 @@ User sees board with only buildings >= 10 stars visible.
 
 ## Desktop Call Flow: Slider Value 0 → 10
 
-### Overview
+### Desktop Overview
+
 Desktop uses XAML data binding with MVVM pattern and WinUI3 framework.
 
 ### Mermaid Sequence Diagram
@@ -431,19 +447,20 @@ sequenceDiagram
 
 ### Key Differences
 
-| Aspect | Desktop | WebUI |
-|--------|---------|-------|
-| **Binding** | TwoWay XAML binding | EventCallback pattern |
-| **Property Change** | Auto INotifyPropertyChanged | Manual StateHasChanged() |
-| **Update Mechanism** | Individual BuildingViewModel updates | Full SVG regeneration |
-| **Granularity** | Per-building property changes | Entire board re-render |
-| **Performance** | Only changed buildings re-render | All buildings re-evaluated |
+|Aspect|Desktop|WebUI|
+|------|-------|-----|
+|**Binding**|TwoWay XAML binding|EventCallback pattern|
+|**Property Change**|Auto INotifyPropertyChanged|Manual StateHasChanged()|
+|**Update Mechanism**|Individual BuildingViewModel updates|Full SVG regeneration|
+|**Granularity**|Per-building property changes|Entire board re-render|
+|**Performance**|Only changed buildings re-render|All buildings re-evaluated|
 
 ---
 
 ## Desktop Implementation Details
 
 ### 1. Slider Binding
+
 **Location:** `BoardMeasurementCtrl.xaml:130-133`
 
 ```xml
@@ -454,6 +471,7 @@ sequenceDiagram
 ```
 
 **TwoWay Binding:**
+
 - Slider.Value ↔ GameViewModel.ShownStars
 - Changes in either direction propagate automatically
 - No manual event handler needed
@@ -461,6 +479,7 @@ sequenceDiagram
 ---
 
 ### 2. ViewModel Property
+
 **Location:** `GameViewProps.cs:116-119`
 
 ```csharp
@@ -469,14 +488,16 @@ public partial int ShownStars { get; set; } = 13;  // Default = 13!
 ```
 
 **MVVM Toolkit Magic:**
+
 - `[ObservableProperty]` generates:
-  - Private backing field `_shownStars`
-  - Public property with INotifyPropertyChanged
-  - `partial void OnShownStarsChanged(int value)` hook
+    - Private backing field `_shownStars`
+    - Public property with INotifyPropertyChanged
+    - `partial void OnShownStarsChanged(int value)` hook
 
 ---
 
 ### 3. Property Change Handler
+
 **Location:** `GameViewProps.cs:194-217`
 
 ```csharp
@@ -513,6 +534,7 @@ partial void OnShownStarsChanged(int value)
 ```
 
 **Process:**
+
 1. Loop through all BuildingViewModels in collection
 2. Skip owned buildings (already visible)
 3. Skip NotBuildable unless PickingBoard state
@@ -524,6 +546,7 @@ partial void OnShownStarsChanged(int value)
 ---
 
 ### 4. Building Rendering
+
 **Location:** `BuildingCtrl.xaml:27-80` (simplified)
 
 ```xml
@@ -545,6 +568,7 @@ partial void OnShownStarsChanged(int value)
 ```
 
 **BIND_StateGlyph Logic:**
+
 ```csharp
 public string BIND_StateGlyph(BuildingState state, BuildingVisualState visualState, int stars)
 {
@@ -576,6 +600,7 @@ public string BIND_StateGlyph(BuildingState state, BuildingVisualState visualSta
 ## Issues Identified
 
 ### Issue 1: Missing Gradient Definition (CRITICAL)
+
 **Location:** `BuildingSvgRenderer.cs:126`
 
 ```csharp
@@ -603,12 +628,15 @@ var gradientId = "gradient-current-player";  // ← NOT DEFINED!
 ---
 
 ### Issue 2: Default Slider Value (HIGH)
+
 **WebUI:** `BoardMeasurement.razor:74`
+
 ```csharp
 public int ShownStars { get; set; } = 0;
 ```
 
 **Desktop:** `GameViewProps.cs:119`
+
 ```csharp
 public partial int ShownStars { get; set; } = 13;
 ```
@@ -629,6 +657,7 @@ public partial int ShownStars { get; set; } = 13;
 ---
 
 ### Issue 3: StateHasChanged Redundancy (LOW)
+
 **Location:** `Game.razor:531-536`
 
 ```csharp
@@ -647,12 +676,14 @@ private async Task HandleShownStarsChanged(int newValue)
 - Not a bug, just potentially redundant
 
 **Recommendation:**
+
 - Keep `StateHasChanged()` for clarity and guaranteed behavior
 - Document why it's needed (if it is)
 
 ---
 
 ### Issue 4: No Initialization Logic (MEDIUM)
+
 **Desktop:** `GameViewModel.cs:247-250`
 
 ```csharp
@@ -665,10 +696,12 @@ if (gameModel.Phase() == GamePhase.PickingBoard || gameModel.Phase() == GamePhas
 ```
 
 **Purpose:**
+
 - Forces re-evaluation of building visual states
 - Ensures buildings update when entering PickingBoard phase
 
 **WebUI Equivalent:**
+
 - Missing this initialization logic
 - Buildings may not update correctly when game state changes
 
@@ -680,17 +713,20 @@ if (gameModel.Phase() == GamePhase.PickingBoard || gameModel.Phase() == GamePhas
 ## Performance Comparison
 
 ### Desktop
+
 - **Granular Updates:** Only changed BuildingViewModels re-render
 - **XAML Efficiency:** WinUI3 rendering engine optimizes updates
 - **Memory:** Maintains ViewModel collection in memory
 
 ### WebUI
+
 - **Full Regeneration:** Entire SVG string rebuilt on every slider change
 - **String Building:** StringBuilder creates new string each render
 - **DOM Diffing:** Blazor diffs SVG markup to minimize DOM updates
 - **Memory:** Temporary string garbage collected after render
 
 **Performance Impact:**
+
 - WebUI generates ~50-100KB SVG string per slider change
 - Modern browsers handle this efficiently (< 16ms)
 - Acceptable for 60 FPS UI responsiveness
@@ -701,15 +737,15 @@ if (gameModel.Phase() == GamePhase.PickingBoard || gameModel.Phase() == GamePhas
 
 ### Call Flow Comparison Table
 
-| Step | Desktop | WebUI |
-|------|---------|-------|
-| **1. User Input** | Slider Value property | @oninput event |
-| **2. Property Update** | TwoWay binding | EventCallback invoke |
-| **3. Change Notification** | INotifyPropertyChanged | StateHasChanged() |
-| **4. Logic Execution** | OnShownStarsChanged() loop | GenerateBoardSvg() call |
-| **5. Building Update** | Set VisualState property | Generate SVG markup |
-| **6. UI Rendering** | XAML re-evaluates bindings | Blazor diffs DOM |
-| **7. Final Display** | WinUI3 compositor | Browser rendering engine |
+|Step|Desktop|WebUI|
+|----|-------|-----|
+|**1. User Input**|Slider Value property|@oninput event|
+|**2. Property Update**|TwoWay binding|EventCallback invoke|
+|**3. Change Notification**|INotifyPropertyChanged|StateHasChanged()|
+|**4. Logic Execution**|OnShownStarsChanged() loop|GenerateBoardSvg() call|
+|**5. Building Update**|Set VisualState property|Generate SVG markup|
+|**6. UI Rendering**|XAML re-evaluates bindings|Blazor diffs DOM|
+|**7. Final Display**|WinUI3 compositor|Browser rendering engine|
 
 ### Architectural Differences
 
@@ -739,4 +775,4 @@ Both achieve the same user experience through different architectural patterns.
 
 ---
 
-**End of Call Flow Analysis**
+## End of Call Flow Analysis

@@ -103,3 +103,59 @@
     font-weight: 600;
     flex: 1;
 }
+
+.player-name.grayed {
+    opacity: 0.4;
+}
+
+/* Supplemental back styles */
+.card-back-supplemental {
+    flex-direction: row;
+    justify-content: flex-start;
+}
+
+.card-back-supplemental.disabled {
+    opacity: 0.5;
+}
+
+.supplemental-checkbox-area {
+    display: flex;
+    align-items: center;
+    min-width: 200px;
+}
+
+.supplemental-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-size: 16px;
+    color: white;
+    user-select: none;
+}
+
+.supplemental-checkbox.disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.supplemental-checkbox input[type="checkbox"] {
+    width: 24px;
+    height: 24px;
+    accent-color: var(--accent-success, #28a745);
+    cursor: pointer;
+}
+
+.supplemental-checkbox.disabled input[type="checkbox"] {
+    cursor: not-allowed;
+}
+
+.checkbox-label {
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.player-avatar.grayed {
+    opacity: 0.4;
+    filter: grayscale(70%);
+}

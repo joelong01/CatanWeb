@@ -115,7 +115,7 @@
         var widthPercent = length / ViewBoxBounds.width * 100;
         var heightPercent = 12 / ViewBoxBounds.height * 100; // Road thickness
 
-        var bgColor = colors?.Primary ?? "#999";
+        var bgColor = colors?.CssGradient ?? "linear-gradient(135deg, #999, #666)";
         var borderColor = colors?.Secondary ?? "#666";
 
         return $"left: {percentX:F2}%; top: {percentY:F2}%; " +

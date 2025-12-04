@@ -1,75 +1,175 @@
 @inject NavigationManager Navigation
+@inject HttpClient Http
+@inject IJSRuntime JS
 @using Catan3.WebUI.Models
 @inject IAssetService AssetService
+@inject WebUI.Services.GameServiceConfig Config
+@inject WebUI.Services.GameConnectionService GameConnection
 
 <nav class="nav-menu">
+    <!-- Always visible: Hide -->
     <button class="nav-menu-item" @onclick="OnHideMenu">
         <div class="nav-icon">&#x2715;</div>
         <div class="nav-label">Hide</div>
     </button>
-    <button class="nav-menu-item" @onclick="OnNewGame">
-        <div class="nav-icon">&#x2795;</div>
-        <div class="nav-label">New Game</div>
-    </button>
-    <button class="nav-menu-item" @onclick="OnOpenGame">
-        <div class="nav-icon">&#x1F4C2;</div>
-        <div class="nav-label">Open...</div>
-    </button>
-    <button class="nav-menu-item" @onclick="OnSave">
-        <div class="nav-icon">&#x1F4BE;</div>
-        <div class="nav-label">Save</div>
-    </button>
-    <button class="nav-menu-item" @onclick="OnSaveAs">
-        <div class="nav-icon">&#x1F4E5;</div>
-        <div class="nav-label">Save As...</div>
-    </button>
-    <button class="nav-menu-item" @onclick="OnEditPlayers">
-        <div class="nav-icon">&#x1F465;</div>
-        <div class="nav-label">Edit Players</div>
-    </button>
-    <button class="nav-menu-item" @onclick="OnBalance">
-        <div class="nav-icon">&#x2696;</div>
-        <div class="nav-label">Balance</div>
-    </button>
-    <button class="nav-menu-item" @onclick="OnToggleTitlebar">
-        <div class="nav-icon">&#x2B1C;</div>
-        <div class="nav-label">Toggle Titlebar</div>
-    </button>
+
+    @if (CurrentPage == PageContext.EditPlayers)
+    {
+        <!-- Edit Players -->
+        <button class="nav-menu-item" @onclick="OnHome">
+            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-label">Home</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnNewGame">
+            <div class="nav-icon">&#x2795;</div>
+            <div class="nav-label">New Game</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnOpenGame">
+            <div class="nav-icon">&#x1F4C2;</div>
+            <div class="nav-label">Open...</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnSavePlayers">
+            <div class="nav-icon">&#x1F4BE;</div>
+            <div class="nav-label">Save Players</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnReturnToGame">
+            <div class="nav-icon">&#x25B6;</div>
+            <div class="nav-label">Return to Game</div>
+        </button>
+    }
+    else if (CurrentPage == PageContext.Game)
+    {
+        <!-- Game page -->
+        <button class="nav-menu-item" @onclick="OnHome">
+            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-label">Home</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnNewGame">
+            <div class="nav-icon">&#x2795;</div>
+            <div class="nav-label">New Game</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnOpenGame">
+            <div class="nav-icon">&#x1F4C2;</div>
+            <div class="nav-label">Open...</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnSaveGame">
+            <div class="nav-icon">&#x1F4BE;</div>
+            <div class="nav-label">Save</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnSaveCopy">
+            <div class="nav-icon">&#x1F4E5;</div>
+            <div class="nav-label">Save Copy</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnEditPlayers">
+            <div class="nav-icon">&#x1F465;</div>
+            <div class="nav-label">Edit Players</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnBalance">
+            <div class="nav-icon">&#x2696;</div>
+            <div class="nav-label">Balance</div>
+        </button>
+        <button class="nav-menu-item" @onclick="ToggleThemeSubmenu">
+            <div class="nav-icon">&#x1F3A8;</div>
+            <div class="nav-label">Theme: @AssetService.GetCurrentThemeMetadata().DisplayName</div>
+        </button>
+        @if (_showThemeSubmenu)
+        {
+            @foreach (var themeName in AssetService.AvailableThemes)
+            {
+                var metadata = AssetService.GetThemeMetadata(themeName);
+                var isSelected = themeName == AssetService.CurrentTheme;
+                <button class="nav-menu-item theme-option @(isSelected ? "selected" : "")" @onclick="() => SelectTheme(themeName)">
+                    <div class="nav-icon">@(isSelected ? "✓" : "")</div>
+                    <div class="nav-label">@metadata.DisplayName</div>
+                </button>
+            }
+        }
+    }
+    else if (CurrentPage == PageContext.Home)
+    {
+        <!-- Home page (no Home button needed) -->
+        <button class="nav-menu-item" @onclick="OnNewGame">
+            <div class="nav-icon">&#x2795;</div>
+            <div class="nav-label">New Game</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnOpenGame">
+            <div class="nav-icon">&#x1F4C2;</div>
+            <div class="nav-label">Open...</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnEditPlayers">
+            <div class="nav-icon">&#x1F465;</div>
+            <div class="nav-label">Edit Players</div>
+        </button>
+    }
+    else if (CurrentPage == PageContext.NewGame)
+    {
+        <!-- New Game page -->
+        <button class="nav-menu-item" @onclick="OnHome">
+            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-label">Home</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnOpenGame">
+            <div class="nav-icon">&#x1F4C2;</div>
+            <div class="nav-label">Open...</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnEditPlayers">
+            <div class="nav-icon">&#x1F465;</div>
+            <div class="nav-label">Edit Players</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnReturnToGame">
+            <div class="nav-icon">&#x25B6;</div>
+            <div class="nav-label">Return to Game</div>
+        </button>
+    }
+    else if (CurrentPage == PageContext.LoadGame)
+    {
+        <!-- Load Game page -->
+        <button class="nav-menu-item" @onclick="OnHome">
+            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-label">Home</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnNewGame">
+            <div class="nav-icon">&#x2795;</div>
+            <div class="nav-label">New Game</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnEditPlayers">
+            <div class="nav-icon">&#x1F465;</div>
+            <div class="nav-label">Edit Players</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnReturnToGame">
+            <div class="nav-icon">&#x25B6;</div>
+            <div class="nav-label">Return to Game</div>
+        </button>
+    }
+    else if (CurrentPage == PageContext.Settings)
+    {
+        <!-- Settings page -->
+        <button class="nav-menu-item" @onclick="OnHome">
+            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-label">Home</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnNewGame">
+            <div class="nav-icon">&#x2795;</div>
+            <div class="nav-label">New Game</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnOpenGame">
+            <div class="nav-icon">&#x1F4C2;</div>
+            <div class="nav-label">Open...</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnReturnToGame">
+            <div class="nav-icon">&#x25B6;</div>
+            <div class="nav-label">Return to Game</div>
+        </button>
+    }
+
+    <!-- Always visible: Debug, Settings -->
     <button class="nav-menu-item" @onclick="OnShowDebugWindow">
         <div class="nav-icon">&#x1F41B;</div>
-        <div class="nav-label">Show Debug Window</div>
-    </button>
-    <button class="nav-menu-item" @onclick="OnToggleRecordMode">
-        <div class="nav-icon">&#x23FA;</div>
-        <div class="nav-label">Record Mode</div>
+        <div class="nav-label">Debug Window</div>
     </button>
     <button class="nav-menu-item" @onclick="OnSettings">
         <div class="nav-icon">&#x2699;</div>
         <div class="nav-label">Settings</div>
-    </button>
-    <button class="nav-menu-item" @onclick="ToggleThemeSubmenu">
-        <div class="nav-icon">&#x1F3A8;</div>
-        <div class="nav-label">Theme: @AssetService.GetCurrentThemeMetadata().DisplayName</div>
-    </button>
-    @if (_showThemeSubmenu)
-    {
-        @foreach (var themeName in AssetService.AvailableThemes)
-        {
-            var metadata = AssetService.GetThemeMetadata(themeName);
-            var isSelected = themeName == AssetService.CurrentTheme;
-            <button class="nav-menu-item theme-option @(isSelected ? "selected" : "")" @onclick="() => SelectTheme(themeName)">
-                <div class="nav-icon">@(isSelected ? "✓" : "")</div>
-                <div class="nav-label">@metadata.DisplayName</div>
-            </button>
-        }
-    }
-    <button class="nav-menu-item" @onclick="OnQuit">
-        <div class="nav-icon">&#x2715;</div>
-        <div class="nav-label">Quit</div>
-    </button>
-    <button class="nav-menu-item menu-separator" @onclick="OnRunTests">
-        <div class="nav-icon">&#x25B6;</div>
-        <div class="nav-label">Run Tests</div>
     </button>
 </nav>
 
@@ -78,6 +178,28 @@
     public EventCallback OnMenuAction { get; set; }
 
     private bool _showThemeSubmenu = false;
+
+    // Page context enum for menu switching
+    private enum PageContext { Home, Game, NewGame, LoadGame, EditPlayers, Settings, Other }
+
+    // Determine current page from URL
+    private PageContext CurrentPage
+    {
+        get
+        {
+            var uri = Navigation.Uri.ToLowerInvariant();
+            if (uri.Contains("/game/")) return PageContext.Game;
+            if (uri.Contains("/newgame")) return PageContext.NewGame;
+            if (uri.Contains("/loadgame") || uri.Contains("/opengame")) return PageContext.LoadGame;
+            if (uri.Contains("/editplayers")) return PageContext.EditPlayers;
+            if (uri.Contains("/settings")) return PageContext.Settings;
+            if (uri.EndsWith("/") || uri.EndsWith(":5000") || uri.EndsWith(":5001")) return PageContext.Home;
+            return PageContext.Other;
+        }
+    }
+
+    // Check if there's an active game we can return to
+    private bool HasActiveGame => !string.IsNullOrEmpty(GameConnection.GameId);
 
     private void ToggleThemeSubmenu()
     {
@@ -96,80 +218,158 @@
         await OnMenuAction.InvokeAsync();
     }
 
+    private async Task OnHome()
+    {
+        await OnMenuAction.InvokeAsync(); // Close menu first
+        Navigation.NavigateTo("/");
+    }
+
     private async Task OnNewGame()
     {
         await OnMenuAction.InvokeAsync(); // Close menu first
-        
+
         // If we're on a game page, pass it as returnUrl
         var currentUri = Navigation.Uri;
-        Console.WriteLine($"OnNewGame - Current URI: {currentUri}");
-        
+
         if (currentUri.Contains("/game/"))
         {
             var returnUrl = Uri.EscapeDataString(currentUri);
-            var newUrl = $"/newgame?returnUrl={returnUrl}";
-            Console.WriteLine($"OnNewGame - Navigating to: {newUrl}");
-            Navigation.NavigateTo(newUrl);
+            Navigation.NavigateTo($"/newgame?returnUrl={returnUrl}");
         }
         else
         {
-            Console.WriteLine($"OnNewGame - Navigating to: /newgame");
             Navigation.NavigateTo("/newgame");
         }
     }
 
-    private void OnOpenGame()
+    private async Task OnOpenGame()
     {
-        Console.WriteLine("Open... - Not implemented");
+        await OnMenuAction.InvokeAsync(); // Close menu first
+        Navigation.NavigateTo("/loadgame");
     }
 
-    private void OnSave()
+    private async Task OnReturnToGame()
     {
-        Console.WriteLine("Save - Not implemented");
+        await OnMenuAction.InvokeAsync(); // Close menu first
+        if (HasActiveGame)
+        {
+            Navigation.NavigateTo($"/game/{GameConnection.GameId}");
+        }
+        else
+        {
+            Navigation.NavigateTo("/newgame");
+        }
     }
 
-    private void OnSaveAs()
+    private async Task OnSaveGame()
     {
-        Console.WriteLine("Save As... - Not implemented");
+        // TODO: Implement game save via GameConnection
+        Console.WriteLine("Save Game - Not implemented yet");
+        await OnMenuAction.InvokeAsync();
     }
 
-    private void OnEditPlayers()
+    private async Task OnSavePlayers()
     {
-        Console.WriteLine("Edit Players - Not implemented");
+        // This triggers a save on the EditPlayers page
+        // For now, just close the menu - the page handles its own save
+        Console.WriteLine("Save Players - Use the Save button on the page");
+        await OnMenuAction.InvokeAsync();
     }
 
-    private void OnBalance()
+    private async Task OnSaveCopy()
+    {
+        // Extract gameId from current URL (e.g., /game/{gameId})
+        var currentUri = Navigation.Uri;
+        var gameIdMatch = System.Text.RegularExpressions.Regex.Match(currentUri, @"/game/([^/\?]+)");
+
+        if (!gameIdMatch.Success)
+        {
+            Console.WriteLine("Save Copy - Not on a game page");
+            await OnMenuAction.InvokeAsync();
+            return;
+        }
+
+        var gameId = gameIdMatch.Groups[1].Value;
+
+        // Prompt for new name (null/empty means user cancelled or wants default)
+        var newName = await JS.InvokeAsync<string?>("prompt", "Enter name for the copy:", "");
+
+        await OnMenuAction.InvokeAsync(); // Close menu after prompt
+
+        // If user cancelled the prompt, abort
+        if (newName == null)
+        {
+            return;
+        }
+
+        try
+        {
+            // Build URL with optional name parameter
+            var url = $"{Config.BaseUrl}/api/game/{gameId}/copy";
+            if (!string.IsNullOrWhiteSpace(newName))
+            {
+                url += $"?newName={Uri.EscapeDataString(newName)}";
+            }
+
+            // Call the copy endpoint
+            var response = await Http.PostAsync(url, null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<CopyGameResponse>(json,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (result?.Success == true && !string.IsNullOrEmpty(result.NewGameId))
+                {
+                    Console.WriteLine($"Game copied: {gameId} -> {result.NewGameId} ({result.GameName})");
+                    Navigation.NavigateTo($"/game/{result.NewGameId}");
+                }
+                else
+                {
+                    Console.WriteLine($"Save Copy failed: {result?.Message}");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"Save Copy failed: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Save Copy error: {ex.Message}");
+        }
+    }
+
+    private class CopyGameResponse
+    {
+        public bool Success { get; set; }
+        public string? NewGameId { get; set; }
+        public string? GameName { get; set; }
+        public string? Message { get; set; }
+    }
+
+    private async Task OnEditPlayers()
+    {
+        await OnMenuAction.InvokeAsync(); // Close menu first
+        Navigation.NavigateTo("/editplayers");
+    }
+
+    private async Task OnBalance()
     {
         Console.WriteLine("Balance - Not implemented");
+        await OnMenuAction.InvokeAsync();
     }
 
-    private void OnToggleTitlebar()
-    {
-        Console.WriteLine("Toggle Titlebar - Not applicable for web");
-    }
-
-    private void OnShowDebugWindow()
+    private async Task OnShowDebugWindow()
     {
         Console.WriteLine("Show Debug Window - Not implemented");
+        await OnMenuAction.InvokeAsync();
     }
 
-    private void OnToggleRecordMode()
+    private async Task OnSettings()
     {
-        Console.WriteLine("Record Mode - Not implemented");
-    }
-
-    private void OnSettings()
-    {
-        Console.WriteLine("Settings - Not implemented");
-    }
-
-    private void OnQuit()
-    {
-        Console.WriteLine("Quit - Not applicable for web (close browser tab)");
-    }
-
-    private void OnRunTests()
-    {
-        Console.WriteLine("Run Tests - Not implemented");
+        await OnMenuAction.InvokeAsync(); // Close menu first
+        Navigation.NavigateTo("/settings");
     }
 }

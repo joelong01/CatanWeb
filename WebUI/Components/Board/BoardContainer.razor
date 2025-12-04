@@ -172,17 +172,36 @@ else
 
     /// <summary>
     /// CSS class to show/hide tile indexes based on game state.
-    /// Shows during allocation phases and robber movement.
+    /// Shows during allocation (building placement) and robber movement.
     /// </summary>
     private string TileIndexClass => ShouldShowTileIndexes ? "show-tile-indexes" : "";
 
     /// <summary>
     /// Determines if tile indexes should be shown based on current game state.
+    /// During allocation: show when placing buildings (for communication), hide when placing roads.
     /// </summary>
-    private bool ShouldShowTileIndexes => GameModel?.GameState is
-        GameState.AllocateResourceForward or
-        GameState.AllocateResourceReverse or
-        GameState.MustMoveRobber;
+    private bool ShouldShowTileIndexes
+    {
+        get
+        {
+            if (GameModel == null) return false;
+
+            // Always show during robber movement
+            if (GameModel.GameState == GameState.MustMoveRobber) return true;
+
+            // During allocation phases
+            if (GameModel.GameState is GameState.AllocateResourceForward or GameState.AllocateResourceReverse)
+            {
+                // Show tile indexes when player has Settlement entitlement (placing building)
+                // Helps players communicate: "build on tile 3" or "upper right of tile 5"
+                // Hide when placing roads - road indexes on the roads themselves are sufficient
+                var hasSettlementEntitlement = GameModel.CurrentPlayer().UnspentEntitlements.Contains(Entitlement.Settlement);
+                return hasSettlementEntitlement;
+            }
+
+            return false;
+        }
+    }
 
     /// <summary>
     /// Inline style for SVG aspect-ratio based on viewBox dimensions.

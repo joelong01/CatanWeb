@@ -247,6 +247,52 @@ namespace Catan3.Shared.Models
     }
 
     /// <summary>
+    /// Records an UpdateHouseRulesMessage for playback/undo support.
+    /// </summary>
+    public sealed class UpdateHouseRulesRecord : IRecordedMessage
+    {
+        /// <summary>
+        /// Discriminator value written to/expected from JSON: <c>"updateHouseRulesRecord"</c>.
+        /// </summary>
+        public const string Discriminator = "updateHouseRulesRecord";
+
+        /// <inheritdoc />
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
+
+        /// <summary>
+        /// The house rules being applied.
+        /// </summary>
+        public HouseRules HouseRules { get; init; } = new();
+
+        /// <inheritdoc />
+        [JsonIgnore]
+        public string RecordType => Discriminator;
+
+        /// <summary>
+        /// Constructor used during deserialization and for programmatic creation.
+        /// </summary>
+        [JsonConstructor]
+        public UpdateHouseRulesRecord(string expectedGameHash, GameState expectedGameState, HouseRules houseRules)
+        {
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
+            HouseRules = houseRules;
+        }
+
+        /// <summary>
+        /// Convenience constructor to capture a <see cref="UpdateHouseRulesMessage"/> at runtime.
+        /// </summary>
+        public UpdateHouseRulesRecord(GameModel gameModel, UpdateHouseRulesMessage message)
+        {
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
+            HouseRules = message.HouseRules;
+        }
+    }
+
+    /// <summary>
     /// Snapshot of a <c>PurchaseMessage</c> suitable for recording and replay.
     /// </summary>
     public sealed class PurchaseRecord : IRecordedMessage
@@ -614,6 +660,12 @@ namespace Catan3.Shared.Models
         /// </summary>
         public static IRecordedMessage ToRecord(this ShuffleMessage msg, GameModel gameModel)
             => new ShuffleRecord(gameModel, msg);
+
+        /// <summary>
+        /// Capture a <see cref="UpdateHouseRulesMessage"/> as a <see cref="UpdateHouseRulesRecord"/>.
+        /// </summary>
+        public static IRecordedMessage ToRecord(this UpdateHouseRulesMessage msg, GameModel gameModel)
+            => new UpdateHouseRulesRecord(gameModel, msg);
 
         /// <summary>
         /// Capture a <see cref="PurchaseMessage"/> as a <see cref="PurchaseRecord"/>.

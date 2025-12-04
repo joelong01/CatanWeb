@@ -5,6 +5,17 @@
     gap: 0;
     padding: 0;
     overflow: hidden;
-    height: 100%;
     width: fit-content; /* Only take width needed for content */
+}
+
+/* CSS version indicator */
+.players-panel::after {
+    content: "PlayersPanel CSS v2025-12-04";
+    position: fixed;
+    bottom: 25px;
+    right: 5px;
+    font-size: 10px;
+    color: #666;
+    z-index: 9999;
+    pointer-events: none;
 }

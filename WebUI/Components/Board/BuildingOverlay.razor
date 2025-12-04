@@ -179,7 +179,10 @@
             }
 
             var spotStars = GameModel.TilesForBuildings(building.BuildingKey).Stars();
-            if (spotStars <= 0) continue;
+
+            // During PickingBoard: skip 0-star spots (no production value to evaluate)
+            // During allocation/gameplay: allow 0-star spots if buildable (e.g., harbor access)
+            if (spotStars <= 0 && isPickingBoard) continue;
 
             // Apply resource filter
             if (filteredResources.Count > 0)
@@ -225,7 +228,10 @@
                 }
                 else
                 {
-                    // During allocation: use star threshold for visibility
+                    // During allocation: use star threshold for default visibility
+                    // Spots >= ShownStars: always visible with star count
+                    // Spots < ShownStars: hidden but hoverable (CSS reveals on hover)
+                    // All buildable spots remain clickable regardless of visibility
                     isHidden = spotStars < ShownStars;
                 }
             }

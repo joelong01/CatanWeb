@@ -1,0 +1,53 @@
+{
+  "settings": [
+    {
+      "settingName": "ExpansionGoldTiles",
+      "description": "Gold tiles (Expansion)",
+      "inputType": "dropdown",
+      "options": ["0", "1", "2", "3", "4"],
+      "value": 2,
+      "defaultValue": 2,
+      "tooltip": "Gold tiles produce any resource when rolled. Expansion games support 0-4 gold tiles",
+      "category": "House Rules"
+    },
+    {
+      "settingName": "RegularGoldTiles",
+      "description": "Gold tiles (Regular)",
+      "inputType": "dropdown",
+      "options": ["0", "1", "2"],
+      "value": 1,
+      "defaultValue": 1,
+      "tooltip": "Gold tiles produce any resource when rolled. Regular games support 0-2 gold tiles",
+      "category": "House Rules"
+    },
+    {
+      "settingName": "SupplementalMinPlayers",
+      "description": "Supplemental build min players",
+      "inputType": "dropdown",
+      "options": ["3", "4", "5", "6"],
+      "value": 5,
+      "defaultValue": 5,
+      "tooltip": "The minimum number of players required to enable the supplemental build phase in expansion games",
+      "category": "House Rules"
+    },
+    {
+      "settingName": "ShowDebugInfo",
+      "description": "Show debug information",
+      "inputType": "checkbox",
+      "value": false,
+      "defaultValue": false,
+      "tooltip": "Display additional debug information on the game page for troubleshooting",
+      "category": "Game Configuration"
+    },
+    {
+      "settingName": "AnimationSpeed",
+      "description": "Animation speed",
+      "inputType": "dropdown",
+      "options": ["Slow", "Normal", "Fast", "None"],
+      "value": "Normal",
+      "defaultValue": "Normal",
+      "tooltip": "Controls the speed of UI animations",
+      "category": "Game Configuration"
+    }
+  ]
+}

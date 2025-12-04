@@ -1,63 +1,98 @@
+@page "/opengame"
 @page "/loadgame"
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject WebUI.Services.GameServiceConfig Config
 @inject WebUI.Services.GameConnectionService Connection
+@inject IJSRuntime JS
 
-<PageTitle>Load Game</PageTitle>
+<PageTitle>Open Game</PageTitle>
 
-<h1>Load Game</h1>
+<div class="load-game-page">
+    <h1>Open Game</h1>
 
-@if (errorMessage != null)
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
+    @if (errorMessage != null)
+    {
+        <div class="error-message">@errorMessage</div>
+    }
 
-@if (isLoading)
-{
-    <p><em>Loading saved games...</em></p>
-}
-else if (savedGames == null || savedGames.Count == 0)
-{
-    <p>No saved games found.</p>
-}
-else
-{
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>State</th>
-                <th>Players</th>
-                <th>Type</th>
-                <th>Saved</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var game in savedGames)
-            {
+    @if (isLoading)
+    {
+        <p>Loading saved games...</p>
+    }
+    else if (savedGames == null || savedGames.Count == 0)
+    {
+        <p>No saved games found.</p>
+    }
+    else
+    {
+        <table class="game-table" @onkeydown="OnTableKeyDown" tabindex="0">
+            <thead>
                 <tr>
-                    <td>@game.GameName</td>
-                    <td>@game.GameState</td>
-                    <td>@game.PlayerCount</td>
-                    <td>@game.GameType</td>
-                    <td>@game.SavedAt.ToLocalTime().ToString("g")</td>
-                    <td>
-                        <button class="btn btn-primary btn-sm" @onclick="() => OnLoadGameClick(game.GameId)">
-                            Load
-                        </button>
-                    </td>
+                    <th class="icon-col"></th>
+                    <th>Name</th>
+                    <th>Players</th>
+                    <th>Moves</th>
+                    <th>State</th>
+                    <th>Type</th>
+                    <th>Saved</th>
+                    <th class="icon-col"></th>
                 </tr>
-            }
-        </tbody>
-    </table>
-}
+            </thead>
+            <tbody>
+                @foreach (var game in savedGames)
+                {
+                    var isSelected = selectedGameId == game.GameId;
+                    var isEditing = isSelected && _isEditingName;
+                    var gameId = game.GameId;
+                    <tr class="@(isSelected ? "selected" : "")"
+                        @onclick="() => SelectGame(gameId)"
+                        @ondblclick="() => OpenGame(gameId)">
+                        <td class="icon-cell">
+                            <span class="row-icon" title="Edit name" @onclick="() => EditGameName(gameId)" @onclick:stopPropagation="true">✏️</span>
+                            <span class="row-icon" title="Open game" @onclick="() => OpenGame(gameId)" @onclick:stopPropagation="true">▶️</span>
+                        </td>
+                        <td class="name-cell">
+                            @if (isEditing)
+                            {
+                                <input type="text"
+                                       class="name-input"
+                                       @bind="_editingName"
+                                       @onblur="OnNameBlur"
+                                       @onkeydown="OnNameKeyDown"
+                                       @onclick:stopPropagation="true" />
+                            }
+                            else
+                            {
+                                @game.GameName
+                            }
+                        </td>
+                        <td>@game.PlayerNames</td>
+                        <td class="center">@game.TurnCount</td>
+                        <td>@game.GameState</td>
+                        <td>@game.GameType</td>
+                        <td>@game.SavedAt.ToLocalTime().ToString("g")</td>
+                        <td class="icon-cell">
+                            <span class="row-icon delete-icon" title="Delete game" @onclick="() => DeleteGame(gameId)" @onclick:stopPropagation="true">🗑️</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="help-text">Double-click to open · F2 to rename · Delete key to remove</div>
+    }
+</div>
 
 @code {
     private List<GameSaveInfo>? savedGames;
     private bool isLoading = true;
     private string? errorMessage;
+    private string? selectedGameId;
+
+    // Inline editing state
+    private bool _isEditingName;
+    private string _editingName = string.Empty;
+    private string _originalName = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -72,6 +107,10 @@ else
             if (response?.Success == true)
             {
                 savedGames = response.Games;
+                if (savedGames?.Count > 0)
+                {
+                    selectedGameId = savedGames[0].GameId;
+                }
             }
             else
             {
@@ -88,26 +127,186 @@ else
         }
     }
 
-    private async Task OnLoadGameClick(string gameId)
+    private void SelectGame(string gameId)
     {
-        errorMessage = null;  // Clear previous error before new attempt
+        if (_isEditingName) return; // Don't change selection while editing
+        selectedGameId = gameId;
+    }
+
+    private async Task OpenGame(string gameId)
+    {
+        errorMessage = null;
         try
         {
-            // Load game from database into memory
             var success = await Connection.LoadGameFromDatabaseAsync(gameId);
             if (!success)
             {
                 errorMessage = "Failed to load game";
                 return;
             }
-
-            // Navigate to game page
             Navigation.NavigateTo($"/game/{gameId}");
         }
         catch (Exception ex)
         {
             errorMessage = $"Error loading game: {ex.Message}";
         }
+    }
+
+    private async Task EditGameName(string gameId)
+    {
+        selectedGameId = gameId;
+        await StartEditingName();
+    }
+
+    private async Task DeleteGame(string gameId)
+    {
+        if (savedGames == null) return;
+
+        var game = savedGames.FirstOrDefault(g => g.GameId == gameId);
+        if (game == null) return;
+
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Delete game '{game.GameName}'?");
+        if (!confirmed) return;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"{Config.BaseUrl}/api/game/{gameId}");
+            if (response.IsSuccessStatusCode)
+            {
+                var currentIndex = savedGames.FindIndex(g => g.GameId == gameId);
+                savedGames.Remove(game);
+
+                if (savedGames.Count > 0)
+                {
+                    var newIndex = Math.Min(currentIndex, savedGames.Count - 1);
+                    selectedGameId = savedGames[newIndex].GameId;
+                }
+                else
+                {
+                    selectedGameId = null;
+                }
+            }
+            else
+            {
+                errorMessage = "Failed to delete game";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting game: {ex.Message}";
+        }
+    }
+
+    private async Task OnTableKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "F2" && selectedGameId != null && !_isEditingName)
+        {
+            await StartEditingName();
+        }
+        else if (e.Key == "Enter" && selectedGameId != null && !_isEditingName)
+        {
+            await OpenGame(selectedGameId);
+        }
+        else if (e.Key == "Delete" && selectedGameId != null && !_isEditingName)
+        {
+            await DeleteGame(selectedGameId);
+        }
+        else if (e.Key == "ArrowDown" && !_isEditingName)
+        {
+            SelectNextGame(1);
+        }
+        else if (e.Key == "ArrowUp" && !_isEditingName)
+        {
+            SelectNextGame(-1);
+        }
+    }
+
+    private void SelectNextGame(int direction)
+    {
+        if (savedGames == null || selectedGameId == null) return;
+
+        var currentIndex = savedGames.FindIndex(g => g.GameId == selectedGameId);
+        var newIndex = currentIndex + direction;
+
+        if (newIndex >= 0 && newIndex < savedGames.Count)
+        {
+            selectedGameId = savedGames[newIndex].GameId;
+        }
+    }
+
+    private async Task StartEditingName()
+    {
+        if (selectedGameId == null) return;
+
+        var game = savedGames?.FirstOrDefault(g => g.GameId == selectedGameId);
+        if (game == null) return;
+
+        _originalName = game.GameName;
+        _editingName = game.GameName;
+        _isEditingName = true;
+        StateHasChanged();
+
+        await Task.Delay(50);
+        try
+        {
+            await JS.InvokeVoidAsync("eval", @"
+                var input = document.querySelector('.name-input');
+                if (input) { input.focus(); input.select(); }
+            ");
+        }
+        catch { }
+    }
+
+    private async Task OnNameBlur()
+    {
+        await SaveName();
+    }
+
+    private async Task OnNameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveName();
+        }
+        else if (e.Key == "Escape")
+        {
+            _isEditingName = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveName()
+    {
+        _isEditingName = false;
+
+        if (string.IsNullOrWhiteSpace(_editingName) || _editingName == _originalName || selectedGameId == null)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        try
+        {
+            var url = $"{Config.BaseUrl}/api/game/{selectedGameId}/rename?newName={Uri.EscapeDataString(_editingName)}";
+            var request = new HttpRequestMessage(HttpMethod.Patch, url);
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Update local list
+                var game = savedGames?.FirstOrDefault(g => g.GameId == selectedGameId);
+                if (game != null)
+                {
+                    game.GameName = _editingName;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error renaming: {ex.Message}");
+        }
+
+        StateHasChanged();
     }
 
     private class GamesResponse
@@ -118,11 +317,12 @@ else
 
     private class GameSaveInfo
     {
-        public int Id { get; set; }
         public string GameId { get; set; } = string.Empty;
         public string GameName { get; set; } = string.Empty;
         public string GameState { get; set; } = string.Empty;
         public int PlayerCount { get; set; }
+        public string PlayerNames { get; set; } = string.Empty;
+        public int TurnCount { get; set; }
         public string GameType { get; set; } = string.Empty;
         public DateTime SavedAt { get; set; }
     }

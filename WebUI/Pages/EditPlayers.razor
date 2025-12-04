@@ -1,0 +1,415 @@
+@page "/editplayers"
+@using Catan3.Shared.Profiles
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject WebUI.Services.GameServiceConfig Config
+@inject IJSRuntime JS
+
+<PageTitle>Edit Players</PageTitle>
+
+<div class="page-viewport">
+    <div class="page-main">
+        <h1>Edit Players</h1>
+
+    @if (_errorMessage != null)
+    {
+        <div class="error-message">@_errorMessage</div>
+    }
+
+    @if (_isLoading)
+    {
+        <p>Loading players...</p>
+    }
+    else
+    {
+        <div class="players-layout">
+            <!-- Left: Player List -->
+            <div class="player-list-section">
+                <div class="section-header">
+                    <span>Players</span>
+                    <div class="header-buttons">
+                        <button class="icon-btn" title="Add Player" @onclick="AddPlayer">+</button>
+                        <button class="icon-btn" title="Delete Player" @onclick="DeletePlayer" disabled="@(_selectedPlayer == null)">&#x1F5D1;</button>
+                    </div>
+                </div>
+                <div class="player-list">
+                    @foreach (var player in _players)
+                    {
+                        <div class="player-item @(_selectedPlayer?.Id == player.Id ? "selected" : "")"
+                             @onclick="() => SelectPlayer(player)">
+                            <div class="player-color-stripe" style="background: linear-gradient(180deg, @player.Colors.Primary 0%, @player.Colors.Secondary 100%);"></div>
+                            <div class="player-avatar" style="@GetAvatarStyle(player)">
+                                @if (!string.IsNullOrEmpty(player.ImageUri))
+                                {
+                                    <img src="@GetImageUrl(player.ImageUri)" alt="@player.Name" />
+                                }
+                                else
+                                {
+                                    <span class="avatar-initials">@GetInitials(player.Name)</span>
+                                }
+                            </div>
+                            <span class="player-name">@player.Name</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Right: Player Editor -->
+            <div class="player-editor-section">
+                @if (_selectedPlayer != null)
+                {
+                    <div class="section-header">Edit Player</div>
+
+                    <!-- Name -->
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" @bind="_editName" @bind:event="oninput" />
+                    </div>
+
+                    <!-- Colors -->
+                    <div class="form-group">
+                        <label>Primary Color</label>
+                        <div class="color-row">
+                            <input type="color" @bind="_editPrimaryColor" />
+                            <input type="text" @bind="_editPrimaryColor" class="color-text" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Secondary Color</label>
+                        <div class="color-row">
+                            <input type="color" @bind="_editSecondaryColor" />
+                            <input type="text" @bind="_editSecondaryColor" class="color-text" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Foreground Color</label>
+                        <div class="color-row">
+                            <input type="color" @bind="_editForegroundColor" />
+                            <input type="text" @bind="_editForegroundColor" class="color-text" />
+                        </div>
+                    </div>
+
+                    <!-- Color Preview -->
+                    <div class="form-group">
+                        <label>Preview</label>
+                        <div class="color-preview" style="background: linear-gradient(135deg, @_editPrimaryColor 0%, @_editSecondaryColor 100%); color: @_editForegroundColor;">
+                            @_editName
+                        </div>
+                    </div>
+
+                    <!-- Image - click to upload -->
+                    <div class="form-group">
+                        <label>Image (click to change)</label>
+                        <div class="image-upload-area">
+                            <div class="current-image clickable" style="@GetAvatarStyle(_selectedPlayer)" @onclick="TriggerImageUpload">
+                                @if (!string.IsNullOrEmpty(_selectedPlayer.ImageUri))
+                                {
+                                    <img src="@GetImageUrl(_selectedPlayer.ImageUri)?v=@_imageVersion" alt="@_selectedPlayer.Name" />
+                                }
+                                else
+                                {
+                                    <span class="avatar-initials large">@GetInitials(_editName)</span>
+                                }
+                            </div>
+                        </div>
+                        <InputFile @ref="_fileInput" OnChange="OnImageSelected" accept="image/*" style="display:none" />
+                    </div>
+
+                    <!-- Save/Cancel -->
+                    <div class="button-row">
+                        <button class="btn-save" @onclick="SavePlayer" disabled="@(!HasChanges())">Save</button>
+                        <button class="btn-cancel" @onclick="CancelEdit">Cancel</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="no-selection">
+                        <p>Select a player to edit</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+    }
+    </div>
+</div>
+
+@code {
+    private List<PlayerProfile> _players = new();
+    private PlayerProfile? _selectedPlayer;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private InputFile? _fileInput;
+    private int _imageVersion = 0; // Cache buster for image reload
+
+    // Edit fields
+    private string _editName = "";
+    private string _editPrimaryColor = "#FFFFFF";
+    private string _editSecondaryColor = "#CCCCCC";
+    private string _editForegroundColor = "#000000";
+
+    // Original values for change detection
+    private string _originalName = "";
+    private string _originalPrimaryColor = "";
+    private string _originalSecondaryColor = "";
+    private string _originalForegroundColor = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPlayers();
+    }
+
+    private async Task LoadPlayers()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<PlayersResponse>($"{Config.BaseUrl}/api/players");
+            if (response?.Success == true && response.Players != null)
+            {
+                _players = response.Players;
+                if (_players.Count > 0 && _selectedPlayer == null)
+                {
+                    SelectPlayer(_players[0]);
+                }
+            }
+            else
+            {
+                _errorMessage = "Failed to load players";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void SelectPlayer(PlayerProfile player)
+    {
+        _selectedPlayer = player;
+        _editName = player.Name;
+        _editPrimaryColor = player.Colors.Primary;
+        _editSecondaryColor = player.Colors.Secondary;
+        _editForegroundColor = player.Colors.Foreground;
+
+        _originalName = player.Name;
+        _originalPrimaryColor = player.Colors.Primary;
+        _originalSecondaryColor = player.Colors.Secondary;
+        _originalForegroundColor = player.Colors.Foreground;
+    }
+
+    private bool HasChanges()
+    {
+        return _editName != _originalName ||
+               _editPrimaryColor != _originalPrimaryColor ||
+               _editSecondaryColor != _originalSecondaryColor ||
+               _editForegroundColor != _originalForegroundColor;
+    }
+
+    private async Task SavePlayer()
+    {
+        if (_selectedPlayer == null) return;
+
+        try
+        {
+            var updatedPlayer = new PlayerProfile(
+                _selectedPlayer.Id,
+                _editName,
+                new PlayerColors(_editPrimaryColor, _editSecondaryColor, _editForegroundColor),
+                _selectedPlayer.ImageUri,
+                _selectedPlayer.LifetimeStats
+            );
+
+            var response = await Http.PutAsJsonAsync($"{Config.BaseUrl}/api/players/{_selectedPlayer.Id}", updatedPlayer);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Update local list
+                var index = _players.FindIndex(p => p.Id == _selectedPlayer.Id);
+                if (index >= 0)
+                {
+                    _players[index] = updatedPlayer;
+                }
+                _selectedPlayer = updatedPlayer;
+                _originalName = _editName;
+                _originalPrimaryColor = _editPrimaryColor;
+                _originalSecondaryColor = _editSecondaryColor;
+                _originalForegroundColor = _editForegroundColor;
+            }
+            else
+            {
+                _errorMessage = "Failed to save player";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private void CancelEdit()
+    {
+        if (_selectedPlayer != null)
+        {
+            SelectPlayer(_selectedPlayer);
+        }
+    }
+
+    private async Task AddPlayer()
+    {
+        var newId = $"player-{Guid.NewGuid():N}".Substring(0, 16);
+        var newPlayer = new PlayerProfile(
+            newId,
+            "New Player",
+            PlayerColors.Default,
+            null,
+            null
+        );
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync($"{Config.BaseUrl}/api/players", newPlayer);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _players.Add(newPlayer);
+                SelectPlayer(newPlayer);
+            }
+            else
+            {
+                _errorMessage = "Failed to create player";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task DeletePlayer()
+    {
+        if (_selectedPlayer == null) return;
+
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Delete player '{_selectedPlayer.Name}'?");
+        if (!confirmed) return;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"{Config.BaseUrl}/api/players/{_selectedPlayer.Id}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var index = _players.FindIndex(p => p.Id == _selectedPlayer.Id);
+                _players.Remove(_selectedPlayer);
+
+                // Select adjacent player
+                if (_players.Count > 0)
+                {
+                    var newIndex = Math.Min(index, _players.Count - 1);
+                    SelectPlayer(_players[newIndex]);
+                }
+                else
+                {
+                    _selectedPlayer = null;
+                }
+            }
+            else
+            {
+                _errorMessage = "Failed to delete player";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task TriggerImageUpload()
+    {
+        // Trigger the hidden file input via JS
+        await JS.InvokeVoidAsync("eval", "document.querySelector('.edit-players-page input[type=file]')?.click()");
+    }
+
+    private async Task OnImageSelected(InputFileChangeEventArgs e)
+    {
+        if (_selectedPlayer == null) return;
+
+        var file = e.File;
+        if (file == null) return;
+
+        try
+        {
+            // Limit to 5MB
+            var maxSize = 5 * 1024 * 1024;
+            if (file.Size > maxSize)
+            {
+                _errorMessage = "Image must be less than 5MB";
+                return;
+            }
+
+            using var content = new MultipartFormDataContent();
+            var stream = file.OpenReadStream(maxSize);
+            var streamContent = new StreamContent(stream);
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            content.Add(streamContent, "file", file.Name);
+
+            var response = await Http.PostAsync($"{Config.BaseUrl}/api/players/{_selectedPlayer.Id}/image", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Increment version to bust cache
+                _imageVersion++;
+
+                // Reload players to get updated image URI
+                await LoadPlayers();
+
+                // Re-select the current player
+                var updated = _players.FirstOrDefault(p => p.Id == _selectedPlayer.Id);
+                if (updated != null)
+                {
+                    SelectPlayer(updated);
+                }
+            }
+            else
+            {
+                _errorMessage = "Failed to upload image";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private string GetImageUrl(string? imageUri)
+    {
+        if (string.IsNullOrEmpty(imageUri)) return "";
+        if (imageUri.StartsWith("http")) return imageUri;
+        return $"{Config.BaseUrl}{imageUri}";
+    }
+
+    private string GetAvatarStyle(PlayerProfile player)
+    {
+        return $"border-color: {player.Colors.Primary}; background: linear-gradient(135deg, {player.Colors.Primary} 0%, {player.Colors.Secondary} 100%);";
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        return name.Length >= 2 ? name.Substring(0, 2).ToUpper() : name.ToUpper();
+    }
+
+    private class PlayersResponse
+    {
+        public bool Success { get; set; }
+        public List<PlayerProfile>? Players { get; set; }
+    }
+}

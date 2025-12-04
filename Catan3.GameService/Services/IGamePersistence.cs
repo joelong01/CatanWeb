@@ -9,28 +9,28 @@ namespace Catan3.GameService.Services;
 public interface IGamePersistence
 {
     /// <summary>
-    /// Save game state to database
+    /// Save game state to database (two-table upsert: metadata + data)
     /// </summary>
     Task<bool> SaveAsync(string gameId, byte[] data, GameMetadata metadata);
 
     /// <summary>
-    /// Load game state from database
+    /// Load compressed game data from database
     /// </summary>
     Task<byte[]?> LoadAsync(string gameId);
 
     /// <summary>
-    /// Get list of saved games for Join Game page
+    /// Get list of saved games metadata for display (excludes GameOver games)
     /// </summary>
-    Task<List<GameSaveEntity>> GetGamesAsync(string? startedBy = null, string? gameState = null);
+    Task<List<GameSaveMetadataEntity>> GetGamesAsync(string? startedBy = null);
 
     /// <summary>
-    /// Delete a game save
+    /// Delete a game save (cascades to data table)
     /// </summary>
     Task<bool> DeleteAsync(string gameId);
 }
 
 /// <summary>
-/// Metadata for saving a game
+/// Metadata for saving a game - passed to SaveAsync
 /// </summary>
 public class GameMetadata
 {
@@ -39,4 +39,6 @@ public class GameMetadata
     public string StartedBy { get; set; } = string.Empty;
     public int PlayerCount { get; set; }
     public string GameType { get; set; } = string.Empty;
+    public string PlayerNames { get; set; } = string.Empty;
+    public int TurnCount { get; set; }
 }

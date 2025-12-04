@@ -100,11 +100,21 @@ namespace Catan3.Shared.Models
         public override string ToString() => $"ShuffleMessage";
     }
 
-    public class NewGameMessage(GameType GameType, IList<string> PlayerIds, string GameName)
+    public class UpdateHouseRulesMessage(HouseRules houseRules)
+    {
+        public HouseRules HouseRules { get; } = houseRules;
+        public override string ToString() => $"UpdateHouseRulesMessage: GoldTiles={HouseRules.GoldTiles}, SupplementalMinPlayers={HouseRules.SupplementalMinPlayers}";
+    }
+
+    public class NewGameMessage(GameType GameType, IList<string> PlayerIds, string GameName, HouseRules? HouseRules = null)
     {
         public GameType GameType { get; } = GameType;
         public IList<string> PlayerIds { get; set; } = PlayerIds;
         public string GameName { get; } = GameName;
+        /// <summary>
+        /// Optional house rules to override defaults. If null, uses default house rules for the game type.
+        /// </summary>
+        public HouseRules? HouseRules { get; set; } = HouseRules;
         public override string ToString() => $"NewGameMessage: {GameName} ({GameType}), Players: {PlayerIds.Count}";
     }
 

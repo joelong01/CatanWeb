@@ -93,15 +93,16 @@ var app = builder.Build();
 // Ensure Data directory exists
 Directory.CreateDirectory(dataDir);
 
-// Find images source path (relative to project root)
+// Find default data path (relative to project root)
 var projectRoot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..");
-var imagesPath = Path.Combine(projectRoot, "DesktopApp", "Assets", "DefaultPlayers");
+var defaultDataPath = Path.Combine(projectRoot, "Catan3.GameService", "Default Data");
 
 // Always auto-seed on startup if database is empty (idempotent operation)
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
-    await DatabaseSeeder.SeedAsync(context, imagesPath);
+    var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
+    await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence);
 }
 
 // Handle --seed-database command (exit after seeding for explicit seed-only mode)

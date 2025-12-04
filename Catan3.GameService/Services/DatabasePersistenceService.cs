@@ -7,6 +7,7 @@ namespace Catan3.GameService.Services;
 
 /// <summary>
 /// Database persistence implementation for game state.
+/// Uses two-table design: GameSaveMetadata (queryable) + GameSaveData (blob storage).
 /// </summary>
 public class GamePersistenceService : IGamePersistence
 {
@@ -26,30 +27,51 @@ public class GamePersistenceService : IGamePersistence
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
 
-            var existingSave = await dbContext.GameSaves.FirstOrDefaultAsync(g => g.GameId == gameId);
+            // Check if metadata already exists for this game
+            var existingMetadata = await dbContext.GameSaveMetadata
+                .Include(m => m.GameData)
+                .FirstOrDefaultAsync(m => m.GameId == gameId);
 
-            if (existingSave != null)
+            if (existingMetadata != null)
             {
-                existingSave.CompressedData = data;
-                existingSave.SavedAt = DateTime.UtcNow;
-                existingSave.GameState = metadata.GameState;
-                existingSave.PlayerCount = metadata.PlayerCount;
+                // Update existing records
+                existingMetadata.GameData.CompressedData = data;
+                existingMetadata.GameData.Size = data.Length;
+
+                existingMetadata.SavedAt = DateTime.UtcNow;
+                existingMetadata.GameName = metadata.GameName;
+                existingMetadata.GameState = metadata.GameState;
+                existingMetadata.PlayerCount = metadata.PlayerCount;
+                existingMetadata.PlayerNames = metadata.PlayerNames;
+                existingMetadata.TurnCount = metadata.TurnCount;
             }
             else
             {
-                var newSave = new GameSaveEntity
+                // Create new data record
+                var gameData = new GameSaveDataEntity
+                {
+                    CompressedData = data,
+                    Size = data.Length
+                };
+                dbContext.GameSaveData.Add(gameData);
+                await dbContext.SaveChangesAsync(); // Save to get the ID
+
+                // Create new metadata record with FK
+                var gameMetadata = new GameSaveMetadataEntity
                 {
                     GameId = gameId,
-                    CompressedData = data,
+                    StartedBy = metadata.StartedBy,
                     SavedAt = DateTime.UtcNow,
                     CreatedAt = DateTime.UtcNow,
-                    GameName = metadata.GameName,
                     GameState = metadata.GameState,
-                    StartedBy = metadata.StartedBy,
+                    GameType = metadata.GameType,
                     PlayerCount = metadata.PlayerCount,
-                    GameType = metadata.GameType
+                    PlayerNames = metadata.PlayerNames,
+                    TurnCount = metadata.TurnCount,
+                    GameName = metadata.GameName,
+                    GameDataId = gameData.Id
                 };
-                dbContext.GameSaves.Add(newSave);
+                dbContext.GameSaveMetadata.Add(gameMetadata);
             }
 
             await dbContext.SaveChangesAsync();
@@ -70,15 +92,18 @@ public class GamePersistenceService : IGamePersistence
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
 
-            var save = await dbContext.GameSaves.FirstOrDefaultAsync(g => g.GameId == gameId);
-            if (save == null)
+            var metadata = await dbContext.GameSaveMetadata
+                .Include(m => m.GameData)
+                .FirstOrDefaultAsync(m => m.GameId == gameId);
+
+            if (metadata == null)
             {
                 _logger.LogEvent("DatabaseOperation", $"Game not found: {gameId}", LogLevel.Warning);
                 return null;
             }
 
             _logger.LogEvent("DatabaseOperation", $"Loaded game: {gameId}");
-            return save.CompressedData;
+            return metadata.GameData.CompressedData;
         }
         catch (Exception ex)
         {
@@ -87,20 +112,19 @@ public class GamePersistenceService : IGamePersistence
         }
     }
 
-    public async Task<List<GameSaveEntity>> GetGamesAsync(string? startedBy = null, string? gameState = null)
+    public async Task<List<GameSaveMetadataEntity>> GetGamesAsync(string? startedBy = null)
     {
         using var scope = _serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
 
-        var query = dbContext.GameSaves.AsQueryable();
+        var query = dbContext.GameSaveMetadata
+            .Include(m => m.GameData)
+            .Where(m => m.GameState != "GameOver"); // Exclude completed games
 
-        if (!string.IsNullOrEmpty(startedBy))
-            query = query.Where(g => g.StartedBy == startedBy);
+        if (!string.IsNullOrEmpty(startedBy) && startedBy != "*")
+            query = query.Where(m => m.StartedBy == startedBy);
 
-        if (!string.IsNullOrEmpty(gameState))
-            query = query.Where(g => g.GameState == gameState);
-
-        return await query.OrderByDescending(g => g.SavedAt).ToListAsync();
+        return await query.OrderByDescending(m => m.SavedAt).ToListAsync();
     }
 
     public async Task<bool> DeleteAsync(string gameId)
@@ -110,11 +134,15 @@ public class GamePersistenceService : IGamePersistence
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
 
-            var save = await dbContext.GameSaves.FirstOrDefaultAsync(g => g.GameId == gameId);
-            if (save == null)
+            var metadata = await dbContext.GameSaveMetadata
+                .Include(m => m.GameData)
+                .FirstOrDefaultAsync(m => m.GameId == gameId);
+
+            if (metadata == null)
                 return false;
 
-            dbContext.GameSaves.Remove(save);
+            // Remove metadata (cascade delete will remove data)
+            dbContext.GameSaveMetadata.Remove(metadata);
             await dbContext.SaveChangesAsync();
             _logger.LogEvent("DatabaseOperation", $"Deleted game: {gameId}");
             return true;

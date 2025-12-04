@@ -69,6 +69,11 @@ public class GameConnectionService : IAsyncDisposable
     /// </summary>
     public event Action<ConnectionState>? StateChanged;
 
+    /// <summary>
+    /// Event fired when player profiles are updated (name, colors, image changed).
+    /// </summary>
+    public event Action<List<Catan3.Shared.Profiles.PlayerProfile>>? PlayersUpdated;
+
     public GameConnectionService(GameServiceConfig config)
     {
         _config = config;
@@ -96,6 +101,7 @@ public class GameConnectionService : IAsyncDisposable
             _proxy.GameStateUpdated += OnGameStateUpdated;
             _proxy.CommandCompleted += OnCommandCompleted;
             _proxy.CommandFailed += OnCommandFailed;
+            _proxy.PlayersUpdated += OnPlayersUpdated;
 
             await _proxy.ConnectAsync();
             SetState(ConnectionState.Connected);
@@ -135,7 +141,9 @@ public class GameConnectionService : IAsyncDisposable
             await ConnectAsync(playerId);
         }
 
-        if (State == ConnectionState.Connected || (State == ConnectionState.InGame && GameId != gameId))
+        // Always join the game - even if we're already "in" this game,
+        // rejoining forces the server to resend the current state
+        if (State == ConnectionState.Connected || State == ConnectionState.InGame)
         {
             await JoinGameAsync(gameId);
         }
@@ -165,6 +173,7 @@ public class GameConnectionService : IAsyncDisposable
             _proxy.GameStateUpdated -= OnGameStateUpdated;
             _proxy.CommandCompleted -= OnCommandCompleted;
             _proxy.CommandFailed -= OnCommandFailed;
+            _proxy.PlayersUpdated -= OnPlayersUpdated;
 
             await _proxy.DisposeAsync();
             _proxy = null;
@@ -287,6 +296,15 @@ public class GameConnectionService : IAsyncDisposable
         return await _proxy!.ExecutePurchaseAsync(entitlement);
     }
 
+    /// <summary>
+    /// Executes a Participating In Supplemental command.
+    /// </summary>
+    public async Task<CommandResult> ParticipatingInSupplementalAsync(string playerId, bool participating)
+    {
+        EnsureInGame();
+        return await _proxy!.ExecuteParticipatingInSupplementalAsync(playerId, participating);
+    }
+
     #endregion
 
     #region Private Methods
@@ -327,6 +345,11 @@ public class GameConnectionService : IAsyncDisposable
     private void OnCommandFailed(string commandId, string error)
     {
         CommandFailed?.Invoke(commandId, error);
+    }
+
+    private void OnPlayersUpdated(List<Catan3.Shared.Profiles.PlayerProfile> players)
+    {
+        PlayersUpdated?.Invoke(players);
     }
 
     #endregion

@@ -1,18 +1,23 @@
 @using Catan3.Shared.Models
 @using Catan3.Shared.Profiles
+@using static Catan3.WebUI.Components.Players.PlayerCard
 
-<div class="players-panel" data-testid="players-panel">
-    @foreach (var player in GameModel.Players)
+<div class="players-panel @(IsSupplementalPhase ? "supplemental-phase" : "")" data-testid="players-panel">
+    <!-- DEBUG: State=@GameModel.GameState, IsSupp=@IsSupplementalPhase, Visible=@GetVisiblePlayers().Count() -->
+    @foreach (var player in GetVisiblePlayers())
     {
         var playerColors = GetPlayerColors(player.Id);
         var playerProfile = GetPlayerProfile(player.Id);
-        var isFlipped = GameModel.GameState == GameState.FinishedRollOrder;
+        var flipMode = GetFlipMode();
+        var isCurrentPlayer = player.Id == GameModel.CurrentPlayerId;
         <PlayerCard Player="@player"
                     GameModel="@GameModel"
                     PlayerColors="@playerColors"
                     PlayerProfile="@playerProfile"
-                    IsFlipped="@isFlipped"
-                    OnGoFirst="@OnGoFirst" />
+                    FlipMode="@flipMode"
+                    IsCurrentPlayer="@isCurrentPlayer"
+                    OnGoFirst="@OnGoFirst"
+                    OnSupplementalChanged="@OnSupplementalChanged" />
     }
 </div>
 
@@ -40,6 +45,44 @@
     /// </summary>
     [Parameter]
     public EventCallback<string> OnGoFirst { get; set; }
+
+    /// <summary>
+    /// Callback when a player's supplemental participation changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string PlayerId, bool Participating)> OnSupplementalChanged { get; set; }
+
+    /// <summary>
+    /// Whether we're in the Supplemental build phase (not PickSupplementalPlayers).
+    /// </summary>
+    private bool IsSupplementalPhase => GameModel.GameState == GameState.Supplemental;
+
+    /// <summary>
+    /// Gets the players to display. During Supplemental phase, only show participating players.
+    /// </summary>
+    private IEnumerable<PlayerModel> GetVisiblePlayers()
+    {
+        // During the Supplemental build phase, only show participating players
+        if (IsSupplementalPhase)
+        {
+            return GameModel.Players.Where(p => p.ParticipatingInSupplemental);
+        }
+        // All other states show all players
+        return GameModel.Players;
+    }
+
+    /// <summary>
+    /// Determines the flip mode based on game state.
+    /// </summary>
+    private CardFlipMode GetFlipMode()
+    {
+        return GameModel.GameState switch
+        {
+            GameState.FinishedRollOrder => CardFlipMode.GoFirst,
+            GameState.PickSupplementalPlayers => CardFlipMode.Supplemental,
+            _ => CardFlipMode.None
+        };
+    }
 
     /// <summary>
     /// Gets the PlayerColors for a specific player ID.

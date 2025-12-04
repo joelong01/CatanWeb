@@ -1,0 +1,132 @@
+.load-game-page {
+    padding: 50px 0 0 50px;
+    max-width: 1000px;
+}
+
+.load-game-page h1 {
+    color: white;
+    margin-bottom: 20px;
+}
+
+.load-game-page p {
+    color: #ccc;
+}
+
+.error-message {
+    background: #dc3545;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+/* Excel-like table */
+.game-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    color: black;
+    font-size: 14px;
+    outline: none;
+}
+
+.game-table th,
+.game-table td {
+    border: 1px solid #d0d0d0;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.game-table thead tr {
+    background: #f0f0f0;
+}
+
+.game-table th {
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid #999;
+}
+
+.game-table tbody tr {
+    cursor: pointer;
+}
+
+.game-table tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.game-table tbody tr:hover {
+    background: #e8f4fc;
+}
+
+.game-table tbody tr.selected {
+    background: #0078d4;
+    color: white;
+}
+
+.game-table tbody tr.selected:hover {
+    background: #006cbd;
+}
+
+.game-table td.center {
+    text-align: center;
+}
+
+/* Name cell editing */
+.name-cell {
+    min-width: 150px;
+}
+
+.name-input {
+    width: 100%;
+    padding: 4px 6px;
+    border: 2px solid #0078d4;
+    border-radius: 2px;
+    font-size: 14px;
+    background: white;
+    color: black;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.name-input:focus {
+    border-color: #005a9e;
+    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.3);
+}
+
+/* Icon columns */
+.icon-col {
+    width: 60px;
+    text-align: center;
+}
+
+.icon-cell {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.row-icon {
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 16px;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+}
+
+.row-icon:hover {
+    opacity: 1;
+}
+
+.game-table tbody tr.selected .row-icon {
+    opacity: 0.9;
+}
+
+.game-table tbody tr.selected .row-icon:hover {
+    opacity: 1;
+}
+
+.help-text {
+    margin-top: 15px;
+    font-size: 12px;
+    color: #888;
+}

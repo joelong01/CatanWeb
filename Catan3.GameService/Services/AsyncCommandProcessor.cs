@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Catan3.Shared.Models;
 using Catan3.Shared.GameLogic;
 using Catan3.Shared.Utility;
@@ -14,13 +15,16 @@ namespace Catan3.GameService.Services
     public class AsyncCommandProcessor
     {
         private readonly SignalRNotificationService _signalRNotification;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<AsyncCommandProcessor> _logger;
 
         public AsyncCommandProcessor(
             SignalRNotificationService signalRNotification,
+            IServiceScopeFactory scopeFactory,
             ILogger<AsyncCommandProcessor> logger)
         {
             _signalRNotification = signalRNotification;
+            _scopeFactory = scopeFactory;
             _logger = logger;
         }
 
@@ -33,6 +37,7 @@ namespace Catan3.GameService.Services
         public async Task ProcessAsync(JsonElement request, Guid commandId, Func<string, GameStateMachine> getGameStateMachine)
         {
             string? gameId = null;
+            GameStateMachine? gameStateMachine = null;
             try
             {
                 // Extract gameId for error reporting
@@ -44,18 +49,17 @@ namespace Catan3.GameService.Services
                 _logger.LogEvent("Process Command", $"Processing command {commandId} for game {gameId}");
 
                 // Execute game logic using the provided GameStateMachine function
-                var gameModel = await ExecuteGameLogicAsync(request, getGameStateMachine);
+                var (gameModel, stateMachine) = await ExecuteGameLogicAsync(request, getGameStateMachine);
+                gameStateMachine = stateMachine;
                 gameId = gameModel.GameId; // Ensure we have the correct gameId
 
-                // Parallel operations: Notify clients + command completion
+                // Parallel operations: Notify clients + command completion + persistence
                 var tasks = new List<Task>
                 {
                     _signalRNotification.NotifyAsync(gameId, gameModel),
-                    _signalRNotification.NotifyCommandCompletedAsync(gameId, commandId, true, "Command executed successfully")
+                    _signalRNotification.NotifyCommandCompletedAsync(gameId, commandId, true, "Command executed successfully"),
+                    SaveGameToDatabaseAsync(gameStateMachine, gameModel)
                 };
-
-                // TODO: Add persistence task when implemented
-                // tasks.Add(_persistenceService.SaveAsync(gameModel));
 
                 await Task.WhenAll(tasks);
 
@@ -74,12 +78,51 @@ namespace Catan3.GameService.Services
         }
 
         /// <summary>
+        /// Saves the full game log (with undo/redo stacks) to the database
+        /// </summary>
+        private async Task SaveGameToDatabaseAsync(GameStateMachine gameStateMachine, GameModel gameModel)
+        {
+            try
+            {
+                // Create a new scope for database operations (since we're a singleton)
+                using var scope = _scopeFactory.CreateScope();
+                var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
+
+                // Get the full serializable log (preserves undo/redo stacks)
+                var serializableLog = gameStateMachine.GetSerializableLog();
+                var json = JsonHelper.Serialize(serializableLog);
+                var compressed = JsonHelper.Compress(json);
+
+                // Create metadata for queryability
+                var metadata = new GameMetadata
+                {
+                    GameName = gameModel.GameName,
+                    GameState = gameModel.GameState.ToString(),
+                    StartedBy = "WebUI", // Placeholder until user auth is implemented
+                    PlayerCount = gameModel.Players.Count,
+                    GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
+                    PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
+                    TurnCount = serializableLog.DoneCount
+                };
+
+                // Save to database
+                await gamePersistence.SaveAsync(gameModel.GameId, compressed, metadata);
+                _logger.LogEvent("Database Save", $"Game saved to database: {gameModel.GameId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Database Save Error", $"Failed to save game to database: {ex.Message}", LogLevel.Error);
+                // Don't throw - database save failure shouldn't break the game operation
+            }
+        }
+
+        /// <summary>
         /// Executes the game logic using the provided GameStateMachine function
         /// </summary>
         /// <param name="request">The game command request</param>
         /// <param name="getGameStateMachine">Function to get GameStateMachine by gameId</param>
-        /// <returns>The updated game model</returns>
-        private async Task<GameModel> ExecuteGameLogicAsync(JsonElement request, Func<string, GameStateMachine> getGameStateMachine)
+        /// <returns>The updated game model and the game state machine (for persistence)</returns>
+        private async Task<(GameModel gameModel, GameStateMachine stateMachine)> ExecuteGameLogicAsync(JsonElement request, Func<string, GameStateMachine> getGameStateMachine)
         {
             // Execute synchronously but wrap in Task for async interface
             return await Task.Run(() =>
@@ -114,7 +157,8 @@ namespace Catan3.GameService.Services
                     _ => throw new ArgumentException($"Unknown message type: {messageType}")
                 };
 
-                return updatedGameModel ?? throw new InvalidOperationException("Game action failed to return updated model");
+                var result = updatedGameModel ?? throw new InvalidOperationException("Game action failed to return updated model");
+                return (result, gameStateMachine);
             });
         }
 

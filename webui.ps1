@@ -9,10 +9,11 @@
     The action to perform: build, run, or debug
 
 .EXAMPLE
-    ./webui.ps1 build    # Build all projects
-    ./webui.ps1 run      # Initialize database, run GameService and WebUI, launch browser
-    ./webui.ps1 debug    # Instructions for debugging
-    ./webui.ps1 clean    # Delete database and clean build artifacts
+    ./webui.ps1 build           # Build all projects
+    ./webui.ps1 run             # Initialize database, run GameService and WebUI, launch browser
+    ./webui.ps1 debug           # Instructions for debugging
+    ./webui.ps1 clean           # Clean build artifacts (preserves database)
+    ./webui.ps1 clean database  # Clean build artifacts AND database
 #>
 
 param(
@@ -253,6 +254,243 @@ function Test-Database {
     }
 }
 
+function Invoke-DatabaseDoctor {
+    param(
+        [switch]$UseApi  # Force using API instead of sqlite3
+    )
+
+    Write-Host ""
+    Write-Host "Database Doctor" -ForegroundColor Cyan
+    Write-Host "===============" -ForegroundColor Cyan
+    Write-Host ""
+
+    $healthy = $true
+    $needsGames = $false
+
+    # Check if GameService is running - prefer API for authoritative results
+    $serviceRunning = Test-PortInUse -Port $GameServicePort
+
+    if ($serviceRunning -or $UseApi) {
+        Write-Host "Checking via GameService API..." -ForegroundColor Yellow
+
+        try {
+            $healthResponse = Invoke-RestMethod -Uri "$GameServiceUrl/api/database/health" -Method Get -TimeoutSec 5
+
+            if ($healthResponse.healthy) {
+                Write-Host "  [OK] Database is healthy" -ForegroundColor Green
+                Write-Host "  Players: $($healthResponse.playerCount)" -ForegroundColor Gray
+                Write-Host "  Games:   $($healthResponse.gameCount)" -ForegroundColor Gray
+
+                if ($healthResponse.needsSeeding) {
+                    Write-Host "  [WARN] No players configured - run './webui.ps1 database install'" -ForegroundColor Yellow
+                    $healthy = $false
+                }
+
+                if ($healthResponse.needsGames) {
+                    Write-Host "  [INFO] No saved games in database" -ForegroundColor Cyan
+                    $needsGames = $true
+                }
+            }
+            else {
+                Write-Host "  [FAIL] Database is unhealthy: $($healthResponse.error)" -ForegroundColor Red
+                $healthy = $false
+            }
+
+            # Return object with status
+            return @{
+                Healthy = $healthy
+                NeedsGames = $needsGames
+                PlayerCount = $healthResponse.playerCount
+                GameCount = $healthResponse.gameCount
+            }
+        }
+        catch {
+            Write-Host "  [FAIL] Could not reach health endpoint: $_" -ForegroundColor Red
+            if (-not $serviceRunning) {
+                Write-Host "  GameService is not running - start with './webui.ps1 run'" -ForegroundColor Yellow
+            }
+            return @{ Healthy = $false; NeedsGames = $true; PlayerCount = 0; GameCount = 0 }
+        }
+    }
+
+    # Fallback: Check database file exists
+    Write-Host "Checking database file..." -ForegroundColor Yellow
+    if (Test-Path $DatabasePath) {
+        $fileInfo = Get-Item $DatabasePath
+        Write-Host "  [OK] Database exists: $DatabasePath ($([math]::Round($fileInfo.Length / 1024, 1)) KB)" -ForegroundColor Green
+    }
+    else {
+        Write-Host "  [FAIL] Database not found: $DatabasePath" -ForegroundColor Red
+        Write-Host "  Fix: Run './webui.ps1 database install'" -ForegroundColor Yellow
+        return @{ Healthy = $false; NeedsGames = $true; PlayerCount = 0; GameCount = 0 }
+    }
+
+    # Try to find sqlite3 for offline inspection
+    Write-Host ""
+    Write-Host "Checking database tables..." -ForegroundColor Yellow
+
+    $sqlite3 = $null
+    if ($IsWindows) {
+        $possiblePaths = @(
+            "sqlite3.exe",
+            "C:\ProgramData\chocolatey\bin\sqlite3.exe",
+            "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\*\sqlite3.exe"
+        )
+        foreach ($path in $possiblePaths) {
+            if (Get-Command $path -ErrorAction SilentlyContinue) {
+                $sqlite3 = $path
+                break
+            }
+        }
+    }
+    else {
+        if (Get-Command sqlite3 -ErrorAction SilentlyContinue) {
+            $sqlite3 = "sqlite3"
+        }
+    }
+
+    $playerCount = 0
+    $gameCount = 0
+
+    if ($sqlite3) {
+        $tables = & $sqlite3 $DatabasePath ".tables" 2>&1
+        $requiredTables = @("Players", "Images", "GameSaveData", "GameSaveMetadata")
+
+        foreach ($table in $requiredTables) {
+            if ($tables -match $table) {
+                Write-Host "  [OK] Table exists: $table" -ForegroundColor Green
+            }
+            else {
+                Write-Host "  [FAIL] Table missing: $table" -ForegroundColor Red
+                $healthy = $false
+            }
+        }
+
+        Write-Host ""
+        Write-Host "Checking table contents..." -ForegroundColor Yellow
+
+        $playerCountResult = & $sqlite3 $DatabasePath "SELECT COUNT(*) FROM Players;" 2>&1
+        if ($playerCountResult -match '^\d+$') {
+            $playerCount = [int]$playerCountResult
+            if ($playerCount -gt 0) {
+                Write-Host "  [OK] Players: $playerCount players configured" -ForegroundColor Green
+            }
+            else {
+                Write-Host "  [WARN] Players: No players configured" -ForegroundColor Yellow
+                $healthy = $false
+            }
+        }
+
+        $metadataCountResult = & $sqlite3 $DatabasePath "SELECT COUNT(*) FROM GameSaveMetadata;" 2>&1
+        if ($metadataCountResult -match '^\d+$') {
+            $gameCount = [int]$metadataCountResult
+            Write-Host "  [INFO] Saved games: $gameCount game(s) in database" -ForegroundColor Cyan
+            $needsGames = ($gameCount -eq 0)
+
+            if ($gameCount -gt 0) {
+                Write-Host ""
+                Write-Host "Recent saved games:" -ForegroundColor Yellow
+                $recentGames = & $sqlite3 $DatabasePath -header -column "SELECT GameId, GameState, PlayerNames, TurnCount, datetime(SavedAt) as SavedAt FROM GameSaveMetadata ORDER BY SavedAt DESC LIMIT 5;" 2>&1
+                Write-Host $recentGames -ForegroundColor Gray
+            }
+        }
+    }
+    else {
+        Write-Host "  [SKIP] sqlite3 not found - cannot verify tables" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "To check database health, either:" -ForegroundColor Yellow
+        Write-Host "  1. Start GameService: ./webui.ps1 run" -ForegroundColor White
+        Write-Host "  2. Install sqlite3 for offline checks" -ForegroundColor White
+        Write-Host ""
+        Write-Host "Database health: UNKNOWN (cannot verify)" -ForegroundColor Yellow
+        return @{
+            Healthy = $true  # Assume healthy if file exists, let service verify
+            NeedsGames = $true  # Assume games needed
+            PlayerCount = 0
+            GameCount = 0
+        }
+    }
+
+    # Summary
+    Write-Host ""
+    if ($healthy) {
+        Write-Host "Database health: GOOD" -ForegroundColor Green
+    }
+    else {
+        Write-Host "Database health: ISSUES FOUND" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "To fix, run:" -ForegroundColor Yellow
+        Write-Host "  ./webui.ps1 database install" -ForegroundColor White
+    }
+    Write-Host ""
+
+    return @{
+        Healthy = $healthy
+        NeedsGames = $needsGames
+        PlayerCount = $playerCount
+        GameCount = $gameCount
+    }
+}
+
+function Import-DefaultGames {
+    $defaultGamesPath = Join-Path $PSScriptRoot "Catan3.GameService\Default Data\Games"
+
+    if (-not (Test-Path $defaultGamesPath)) {
+        return  # No games folder, nothing to import
+    }
+
+    $catanFiles = Get-ChildItem -Path $defaultGamesPath -Filter "*.catan" -ErrorAction SilentlyContinue
+
+    if ($catanFiles.Count -eq 0) {
+        return  # No .catan files, nothing to import
+    }
+
+    Write-Host ""
+    Write-Host "Importing default games..." -ForegroundColor Cyan
+
+    # Wait for service to be ready (in case we just started it)
+    $ready = Wait-ForService -Url "$GameServiceUrl/health" -TimeoutSeconds 10
+    if (-not $ready) {
+        Write-Host "  [WARN] GameService not responding, skipping game import" -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "  Found $($catanFiles.Count) game file(s)" -ForegroundColor Yellow
+
+    foreach ($file in $catanFiles) {
+        try {
+            Write-Host "  Importing: $($file.Name)..." -ForegroundColor Gray -NoNewline
+
+            # Use PowerShell 7's -Form parameter for proper multipart handling
+            $form = @{
+                file = Get-Item -Path $file.FullName
+            }
+
+            $response = Invoke-RestMethod -Uri "$GameServiceUrl/api/game/import" `
+                -Method Post `
+                -Form $form `
+                -TimeoutSec 30
+
+            if ($response.success) {
+                if ($response.message -eq "Game already exists") {
+                    Write-Host " already exists" -ForegroundColor Gray
+                }
+                else {
+                    Write-Host " imported ($($response.playerNames), $($response.turnCount) turns)" -ForegroundColor Green
+                }
+            }
+            else {
+                Write-Host " failed: $($response.error)" -ForegroundColor Red
+            }
+        }
+        catch {
+            Write-Host " error: $_" -ForegroundColor Red
+        }
+    }
+
+    Write-Host ""
+}
+
 function Stop-ChildProcesses {
     param([int]$ParentPid)
 
@@ -442,33 +680,56 @@ switch ($Verb) {
             exit 1
         }
 
-        # Check if GameService is already running
+        # Check if GameService is already running AND responding
+        $gameServiceRunning = $false
         if (Test-PortInUse -Port $GameServicePort) {
-            Write-Host "GameService already running on port $GameServicePort" -ForegroundColor Green
+            # Port is in use - verify service is actually responding
+            $responding = Wait-ForService -Url "$GameServiceUrl/health" -TimeoutSeconds 3
+            if ($responding) {
+                Write-Host "GameService already running on port $GameServicePort" -ForegroundColor Green
+                $gameServiceRunning = $true
+            }
+            else {
+                Write-Host "Port $GameServicePort in use but service not responding. Killing stale process..." -ForegroundColor Yellow
+                # Kill whatever is on that port
+                if ($IsWindows) {
+                    $procIds = (Get-NetTCPConnection -LocalPort $GameServicePort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
+                    foreach ($procId in $procIds) {
+                        Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+                    }
+                }
+                Start-Sleep -Milliseconds 500
+            }
         }
-        else {
+
+        if (-not $gameServiceRunning) {
             Start-GameService
         }
 
-        # Check if WebUI is already running
+        # Check if WebUI is already running AND responding
+        $webUIRunning = $false
         if (Test-PortInUse -Port $WebUIPort) {
-            Write-Host "WebUI already running on port $WebUIPort" -ForegroundColor Green
+            # Port is in use - verify service is actually responding
+            $responding = Wait-ForService -Url $WebUIUrl -TimeoutSeconds 3
+            if ($responding) {
+                Write-Host "WebUI already running on port $WebUIPort" -ForegroundColor Green
+                $webUIRunning = $true
+            }
+            else {
+                Write-Host "Port $WebUIPort in use but service not responding. Killing stale process..." -ForegroundColor Yellow
+                # Kill whatever is on that port
+                if ($IsWindows) {
+                    $procIds = (Get-NetTCPConnection -LocalPort $WebUIPort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
+                    foreach ($procId in $procIds) {
+                        Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+                    }
+                }
+                Start-Sleep -Milliseconds 500
+            }
         }
-        else {
+
+        if (-not $webUIRunning) {
             Start-WebUI
-        }
-
-        # Wait a moment then launch browser
-        Start-Sleep -Seconds 2
-
-        $browserUrl = "$WebUIUrl/newgame"
-        Write-Host "Launching browser to $browserUrl..." -ForegroundColor Cyan
-        if ($IsMacOS) {
-            & open $browserUrl
-        } elseif ($IsLinux) {
-            & xdg-open $browserUrl
-        } else {
-            Start-Process $browserUrl
         }
 
         Write-Host ""
@@ -508,13 +769,21 @@ switch ($Verb) {
     }
 
     "clean" {
-        Write-Host "Cleaning project..." -ForegroundColor Cyan
+        $cleanDatabase = ($SubCommand -eq "database")
+
+        if ($cleanDatabase) {
+            Write-Host "Cleaning project (including database)..." -ForegroundColor Cyan
+        } else {
+            Write-Host "Cleaning project (preserving database)..." -ForegroundColor Cyan
+        }
 
         # Stop any running services first
         Stop-Services
 
-        # Clean database
-        Clear-Database
+        # Only clean database if explicitly requested
+        if ($cleanDatabase) {
+            Clear-Database
+        }
 
         # Clean build artifacts
         Write-Host "Cleaning build artifacts..." -ForegroundColor Yellow
@@ -535,6 +804,9 @@ switch ($Verb) {
 
         Write-Host ""
         Write-Host "Clean completed!" -ForegroundColor Green
+        if (-not $cleanDatabase) {
+            Write-Host "Database preserved. Use './webui.ps1 clean database' to also clean database." -ForegroundColor Gray
+        }
         Write-Host "Run './webui.ps1 build' to rebuild, or './webui.ps1 run' to rebuild and run." -ForegroundColor White
     }
 
@@ -624,6 +896,12 @@ switch ($Verb) {
                     exit 1
                 }
             }
+            "doctor" {
+                $status = Invoke-DatabaseDoctor
+                if (-not $status.Healthy) {
+                    exit 1
+                }
+            }
             default {
                 Write-Host ""
                 Write-Host "Database Commands" -ForegroundColor Cyan
@@ -632,12 +910,14 @@ switch ($Verb) {
                 Write-Host "Usage: ./webui.ps1 database <subcommand>" -ForegroundColor Yellow
                 Write-Host ""
                 Write-Host "Subcommands:" -ForegroundColor Yellow
+                Write-Host "  doctor   - Diagnose database health and show contents"
                 Write-Host "  check    - Validate database schema matches app requirements"
                 Write-Host "  clean    - Delete the database (wipes all data)"
                 Write-Host "  install  - Clean and reinstall database with default data"
                 Write-Host ""
                 Write-Host "Examples:" -ForegroundColor Yellow
-                Write-Host "  ./webui.ps1 database check     - Check if database is valid"
+                Write-Host "  ./webui.ps1 database doctor    - Check database health and contents"
+                Write-Host "  ./webui.ps1 database check     - Run schema validation tests"
                 Write-Host "  ./webui.ps1 database clean     - Delete database"
                 Write-Host "  ./webui.ps1 database install   - Fresh install with default players"
                 Write-Host ""
@@ -661,12 +941,14 @@ switch ($Verb) {
         Write-Host "  ./webui.ps1 restart          - Stop and restart services"
         Write-Host "  ./webui.ps1 update           - Rebuild projects and restart services"
         Write-Host "  ./webui.ps1 build            - Build all projects (full solution)"
-        Write-Host "  ./webui.ps1 clean            - Stop services, delete database, clean build"
-        Write-Host "  ./webui.ps1 database <cmd>   - Database management (check/clean/install)"
+        Write-Host "  ./webui.ps1 clean            - Stop services, clean build (preserves database)"
+        Write-Host "  ./webui.ps1 clean database   - Stop services, clean build AND database"
+        Write-Host "  ./webui.ps1 database <cmd>   - Database management (doctor/check/clean/install)"
         Write-Host "  ./webui.ps1 debug            - Instructions for VS Code debugging"
         Write-Host "  ./webui.ps1 help             - Show this help"
         Write-Host ""
         Write-Host "Database Commands:" -ForegroundColor Yellow
+        Write-Host "  ./webui.ps1 database doctor  - Diagnose database health and contents"
         Write-Host "  ./webui.ps1 database check   - Validate database schema"
         Write-Host "  ./webui.ps1 database clean   - Delete database"
         Write-Host "  ./webui.ps1 database install - Fresh install with default data"

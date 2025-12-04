@@ -5,7 +5,7 @@
 
 @inject GameServiceConfig Config
 
-<div class="player-card @(IsFlipped ? "flipped" : "")" data-testid="player-card-@Player.Id">
+<div class="player-card @GetFlipClass()" data-testid="player-card-@Player.Id">
     <div class="card-inner">
         <!-- Front: Normal player tile with stats -->
         <div class="card-front">
@@ -15,27 +15,76 @@
                         PlayerProfile="@PlayerProfile" />
         </div>
 
-        <!-- Back: Roll order selection with Go First button (horizontal layout) -->
-        <div class="card-back" style="@GetBackgroundStyle()">
-            <button class="go-first-btn" @onclick="OnGoFirstClick" data-testid="go-first-@Player.Id">
-                Go First
-            </button>
-            <div class="player-avatar">
-                @if (!string.IsNullOrEmpty(GetPlayerImageUrl()))
-                {
-                    <img src="@GetPlayerImageUrl()" alt="@Player.Name" />
-                }
-                else
-                {
-                    <div class="avatar-placeholder">@GetInitial()</div>
-                }
+        <!-- Back: Either GoFirst or Supplemental, depending on FlipMode -->
+        @if (FlipMode == CardFlipMode.GoFirst)
+        {
+            <!-- GoFirst back: Go First button + avatar + name -->
+            <div class="card-back card-back-gofirst" style="@GetBackgroundStyle()">
+                <button class="go-first-btn" @onclick="OnGoFirstClick" data-testid="go-first-@Player.Id">
+                    Go First
+                </button>
+                <div class="player-avatar">
+                    @if (!string.IsNullOrEmpty(GetPlayerImageUrl()))
+                    {
+                        <img src="@GetPlayerImageUrl()" alt="@Player.Name" />
+                    }
+                    else
+                    {
+                        <div class="avatar-placeholder">@GetInitial()</div>
+                    }
+                </div>
+                <div class="player-name">@Player.Name</div>
             </div>
-            <div class="player-name">@Player.Name</div>
-        </div>
+        }
+        else if (FlipMode == CardFlipMode.Supplemental)
+        {
+            <!-- Supplemental back: Checkbox + avatar + name -->
+            <div class="card-back card-back-supplemental @(IsCurrentPlayer ? "disabled" : "")" style="@GetBackgroundStyle()">
+                <div class="supplemental-checkbox-area">
+                    <label class="supplemental-checkbox @(IsCurrentPlayer ? "disabled" : "")">
+                        <input type="checkbox"
+                               checked="@Player.ParticipatingInSupplemental"
+                               disabled="@IsCurrentPlayer"
+                               @onchange="OnSupplementalCheckChanged" />
+                        <span class="checkmark"></span>
+                        <span class="checkbox-label">Participate in Supplemental</span>
+                    </label>
+                </div>
+                <div class="player-avatar @(IsCurrentPlayer ? "grayed" : "")">
+                    @if (!string.IsNullOrEmpty(GetPlayerImageUrl()))
+                    {
+                        <img src="@GetPlayerImageUrl()" alt="@Player.Name" />
+                    }
+                    else
+                    {
+                        <div class="avatar-placeholder">@GetInitial()</div>
+                    }
+                </div>
+                <div class="player-name @(IsCurrentPlayer ? "grayed" : "")">@Player.Name</div>
+            </div>
+        }
+        else
+        {
+            <!-- Normal (hidden) back - just a placeholder for non-flipped state -->
+            <div class="card-back" style="@GetBackgroundStyle()"></div>
+        }
     </div>
 </div>
 
 @code {
+    /// <summary>
+    /// Defines the flip modes for the player card.
+    /// </summary>
+    public enum CardFlipMode
+    {
+        /// <summary>Normal display - no flip, showing player stats.</summary>
+        None,
+        /// <summary>Flip to show "Go First" button for roll order selection.</summary>
+        GoFirst,
+        /// <summary>Flip to show supplemental participation checkbox.</summary>
+        Supplemental
+    }
+
     /// <summary>
     /// The player model for this card.
     /// </summary>
@@ -61,16 +110,36 @@
     public PlayerProfile? PlayerProfile { get; set; }
 
     /// <summary>
-    /// Whether the card should show the flipped (Go First) side.
+    /// The flip mode for this card (None, GoFirst, or Supplemental).
     /// </summary>
     [Parameter]
-    public bool IsFlipped { get; set; }
+    public CardFlipMode FlipMode { get; set; } = CardFlipMode.None;
+
+    /// <summary>
+    /// Whether this is the current player (used for supplemental - current player can't participate).
+    /// </summary>
+    [Parameter]
+    public bool IsCurrentPlayer { get; set; }
 
     /// <summary>
     /// Callback when the "Go First" button is clicked.
     /// </summary>
     [Parameter]
     public EventCallback<string> OnGoFirst { get; set; }
+
+    /// <summary>
+    /// Callback when the supplemental participation checkbox changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string PlayerId, bool Participating)> OnSupplementalChanged { get; set; }
+
+    /// <summary>
+    /// Gets the CSS class for the flip state.
+    /// </summary>
+    private string GetFlipClass()
+    {
+        return FlipMode != CardFlipMode.None ? "flipped" : "";
+    }
 
     /// <summary>
     /// Gets inline CSS style for the card back using player colors.
@@ -107,5 +176,14 @@
     private async Task OnGoFirstClick()
     {
         await OnGoFirst.InvokeAsync(Player.Id);
+    }
+
+    /// <summary>
+    /// Handles the supplemental checkbox change.
+    /// </summary>
+    private async Task OnSupplementalCheckChanged(ChangeEventArgs e)
+    {
+        var isChecked = (bool)(e.Value ?? false);
+        await OnSupplementalChanged.InvokeAsync((Player.Id, isChecked));
     }
 }

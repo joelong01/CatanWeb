@@ -44,8 +44,26 @@
         <!-- LEFT PANEL -->
         <div class="left-panel">
             <div class="left-panel-content">
+            <!-- Editable Game Name -->
+            <div class="game-name-container">
+                @if (_isEditingName)
+                {
+                    <input type="text"
+                           class="game-name-input"
+                           @bind="_editingName"
+                           @onblur="OnGameNameBlur"
+                           @onkeydown="OnGameNameKeyDown"
+                           @ref="_nameInputRef" />
+                }
+                else
+                {
+                    <div class="game-name" @ondblclick="StartEditingName">@GameModel.GameName</div>
+                }
+            </div>
+
             <!-- Game Controls (Undo/Next/Redo) -->
             <div class="game-controls" style="@GetCurrentPlayerGradient()">
+                <div class="current-player-name" style="color: @GetCurrentPlayerForeground()">@GetCurrentPlayerFirstName()</div>
                 <div class="control-buttons">
                     <button class="game-btn" @onclick="OnUndoClick" disabled="@(!GameModel.ActionFlags.UndoEnabled)">
                         <span class="btn-icon">&#x21A9;</span>
@@ -195,7 +213,8 @@
             <PlayersPanel GameModel="@GameModel"
                           PlayerColorMap="@PlayerColorMap"
                           PlayerProfiles="@PlayerProfiles"
-                          OnGoFirst="@OnGoFirstClick" />
+                          OnGoFirst="@OnGoFirstClick"
+                          OnSupplementalChanged="@OnSupplementalChanged" />
         </div>
     }
     else
@@ -250,10 +269,20 @@
     private List<RobberTarget> _robberMenuTargets = [];
     private record RobberTarget(string Name, string Id);
 
+    // Game name editing state
+    private bool _isEditingName;
+    private string _editingName = string.Empty;
+    private string _originalName = string.Empty;
+    private ElementReference _nameInputRef;
+
     protected override async Task OnInitializedAsync()
     {
         // Subscribe to theme changes to re-render the board
         AssetService.ThemeChanged += OnThemeChanged;
+
+        // Store current game ID so Settings page can update this game's house rules
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "current_gameId", GameId);
+
         await ConnectToGameAsync();
     }
 
@@ -344,6 +373,32 @@
         }
 
         return "#FFFFFF";
+    }
+
+    private string GetCurrentPlayerFirstName()
+    {
+        if (GameModel == null) return "";
+
+        var playerId = TestOverridePlayerId ?? GameModel.CurrentPlayerId;
+
+        if (PlayerProfiles.TryGetValue(playerId, out var player))
+        {
+            // Get first name (first word of name)
+            var name = player.Name ?? "";
+            var firstSpace = name.IndexOf(' ');
+            return firstSpace > 0 ? name.Substring(0, firstSpace) : name;
+        }
+
+        // Fallback to player from GameModel
+        var gamePlayer = GameModel.Players.FirstOrDefault(p => p.Id == playerId);
+        if (gamePlayer != null)
+        {
+            var name = gamePlayer.Name ?? "";
+            var firstSpace = name.IndexOf(' ');
+            return firstSpace > 0 ? name.Substring(0, firstSpace) : name;
+        }
+
+        return "";
     }
 
     private PlayerColors GetCurrentPlayerColors()
@@ -611,6 +666,22 @@
             catch (Exception ex)
             {
                 CommandError = $"Go First failed: {ex.Message}";
+            }
+        }
+    }
+
+    private async Task OnSupplementalChanged((string PlayerId, bool Participating) args)
+    {
+        if (Connection.State == ConnectionState.InGame)
+        {
+            try
+            {
+                CommandError = null;
+                await Connection.ParticipatingInSupplementalAsync(args.PlayerId, args.Participating);
+            }
+            catch (Exception ex)
+            {
+                CommandError = $"Supplemental participation failed: {ex.Message}";
             }
         }
     }
@@ -920,6 +991,84 @@
 
         return debugInfo;
     }
+
+    #region Game Name Editing
+
+    private async Task StartEditingName()
+    {
+        if (GameModel == null) return;
+
+        _originalName = GameModel.GameName;
+        _editingName = GameModel.GameName;
+        _isEditingName = true;
+        StateHasChanged();
+
+        // Focus the input and select all text after render
+        await Task.Delay(50); // Small delay to ensure render completes
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                var input = document.querySelector('.game-name-input');
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            ");
+        }
+        catch { /* ignore focus errors */ }
+    }
+
+    private async Task OnGameNameBlur()
+    {
+        await SaveGameName();
+    }
+
+    private async Task OnGameNameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveGameName();
+        }
+        else if (e.Key == "Escape")
+        {
+            _editingName = _originalName;
+            _isEditingName = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveGameName()
+    {
+        _isEditingName = false;
+
+        // Only save if name changed and not empty
+        if (string.IsNullOrWhiteSpace(_editingName) || _editingName == _originalName)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        try
+        {
+            var url = $"{Config.BaseUrl}/api/game/{GameId}/rename?newName={Uri.EscapeDataString(_editingName)}";
+            var request = new HttpRequestMessage(HttpMethod.Patch, url);
+            var response = await Http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Failed to rename game: {response.StatusCode}");
+                // The SignalR update will refresh the name anyway
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error renaming game: {ex.Message}");
+        }
+
+        StateHasChanged();
+    }
+
+    #endregion
 
     public async ValueTask DisposeAsync()
     {

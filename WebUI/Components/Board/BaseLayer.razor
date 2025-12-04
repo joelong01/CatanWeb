@@ -4,20 +4,20 @@
 @using Catan3.WebUI.Services.Rendering
 
 @*
-    BaseLayer - Renders tiles (without gold overlay), numbers, and harbors.
-    Only re-renders when tile layout changes (board shuffle/resize).
-    Gold tile appearance is handled by GoldTilesLayer.
+    BaseLayer - Renders tiles (including gold tile backgrounds), numbers, and harbors.
+    Re-renders when tile layout changes OR when tiles become gold.
+    GoldTilesLayer renders the small resource card indicator on gold tiles.
 *@
 
 <g class="base-layer">
     @* Background rect *@
     <rect width="100%" height="100%" fill="@BoardSvgConstants.BackgroundColor" />
 
-    @* Render tiles (non-gold state only - GoldTilesLayer handles gold overlay) *@
+    @* Render tiles (including gold backgrounds when TemporarilyGold is true) *@
     @{ var tileIndex = 1; }
     @foreach (var tile in Tiles)
     {
-        @((MarkupString)RenderTileWithoutGold(tile, tileIndex++))
+        @((MarkupString)RenderTile(tile, tileIndex++))
     }
 
     @* Render harbors *@
@@ -60,8 +60,7 @@
     private int? _previousRolledNumber;
 
     /// <summary>
-    /// Re-render when tile/harbor layout changes OR when rolled number changes.
-    /// Does NOT re-render when tiles become gold (that's GoldTilesLayer's job).
+    /// Re-render when tile/harbor layout changes, tiles become gold, OR rolled number changes.
     /// </summary>
     protected override bool ShouldRender()
     {
@@ -81,12 +80,11 @@
     }
 
     /// <summary>
-    /// Renders a tile in its base state (ignoring TemporarilyGold flag).
-    /// GoldTilesLayer will overlay gold appearance when needed.
+    /// Renders a tile including gold background if TemporarilyGold is true.
     /// Includes tile index label (visibility controlled by CSS class on parent).
     /// Dims tiles that don't match the rolled number.
     /// </summary>
-    private string RenderTileWithoutGold(TileModel tile, int index)
+    private string RenderTile(TileModel tile, int index)
     {
         // Dim tiles that don't match the rolled number (if a number was rolled)
         var isDimmed = RolledNumber.HasValue && tile.Number != RolledNumber.Value && tile.Number > 0;
@@ -94,8 +92,8 @@
     }
 
     /// <summary>
-    /// Computes hash based on tile layout (position, resource type, number).
-    /// Excludes TemporarilyGold since that's handled by GoldTilesLayer.
+    /// Computes hash based on tile layout (position, resource type, number, gold state).
+    /// Includes TemporarilyGold so TileSvgRenderer can render gold backgrounds.
     /// </summary>
     private static int ComputeTileHash(IReadOnlyList<TileModel> tiles)
     {
@@ -110,6 +108,8 @@
                 hash = hash * 31 + tile.TileKey.R;
                 // Include Highlighted state since it affects tile border
                 hash = hash * 31 + (tile.Highlighted ? 1 : 0);
+                // Include TemporarilyGold so TileSvgRenderer renders gold backgrounds
+                hash = hash * 31 + (tile.TemporarilyGold ? 1 : 0);
             }
             return hash;
         }

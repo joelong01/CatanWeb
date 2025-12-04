@@ -113,9 +113,11 @@ namespace Catan3.GameService.Controllers
                 {
                     GameName = gameModel.GameName,
                     GameState = gameModel.GameState.ToString(),
-                    StartedBy = gameModel.Players.FirstOrDefault()?.Id ?? "",
+                    StartedBy = "WebUI", // Placeholder until user auth is implemented
                     PlayerCount = gameModel.Players.Count,
-                    GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular"
+                    GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
+                    PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
+                    TurnCount = serializableLog.DoneCount
                 };
 
                 // Save to database
@@ -276,7 +278,8 @@ namespace Catan3.GameService.Controllers
                 var gameStateMachine = CreateGameStateMachineWithServiceDependencies(gameLog);
 
                 // Use the GameStateMachine to create the fully initialized game
-                var gameModel = await gameStateMachine.HandleNewGameAsync(gameInfo, newGameMessage.PlayerIds, newGameMessage.GameName ?? "Untitled Game");
+                // Pass client-provided HouseRules if present, otherwise use defaults from gameInfo
+                var gameModel = await gameStateMachine.HandleNewGameAsync(gameInfo, newGameMessage.PlayerIds, newGameMessage.GameName ?? "Untitled Game", newGameMessage.HouseRules);
 
 
                 // Store in registry
@@ -289,6 +292,44 @@ namespace Catan3.GameService.Controllers
             {
                 _logger.LogEvent("New Game Error", $"Error creating new game: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, $"Error creating new game: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Updates the house rules for an active game. Can be called mid-game.
+        /// Routes through GameStateMachine to maintain undo/redo support.
+        /// </summary>
+        [HttpPut("game/{gameId}/houserules")]
+        public async Task<IActionResult> UpdateHouseRules(string gameId, [FromBody] HouseRules houseRules)
+        {
+            _logger.LogEvent("API Request", $"PUT /api/game/{gameId}/houserules - Received: GoldTiles={houseRules?.GoldTiles}, SupplementalMinPlayers={houseRules?.SupplementalMinPlayers}");
+
+            try
+            {
+                if (houseRules == null)
+                {
+                    return BadRequest("HouseRules cannot be null");
+                }
+
+                var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
+                if (gameStateMachine == null)
+                {
+                    return NotFound($"Game {gameId} not found in registry");
+                }
+
+                // Route through GameStateMachine to maintain undo/redo support
+                var message = new UpdateHouseRulesMessage(houseRules);
+                var gameModel = await gameStateMachine.HandleUpdateHouseRulesAsync(message);
+
+                // Save to database and broadcast to all clients
+                await ProcessGameActionResult(gameStateMachine, gameModel, "UpdateHouseRules");
+
+                return Ok(new { success = true, message = $"House rules updated: GoldTiles={houseRules.GoldTiles}" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Update HouseRules Error", $"Error updating house rules: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, $"Error updating house rules: {ex.Message}");
             }
         }
 
@@ -558,16 +599,19 @@ namespace Catan3.GameService.Controllers
                     // Not loaded, continue to load from database
                 }
 
-                // Load from database
-                var gameSave = await _dbContext.GameSaves.FirstOrDefaultAsync(g => g.GameId == gameId);
-                if (gameSave == null)
+                // Load from database using two-table structure
+                var gameMetadata = await _dbContext.GameSaveMetadata
+                    .Include(m => m.GameData)
+                    .FirstOrDefaultAsync(m => m.GameId == gameId);
+
+                if (gameMetadata == null)
                 {
                     _logger.LogEvent("Game Not Found", $"Game {gameId} not found in database", LogLevel.Warning);
                     return NotFound(new { success = false, error = $"Game {gameId} not found in database" });
                 }
 
-                // Decompress and deserialize the log
-                var decompressedJson = JsonHelper.Decompress(gameSave.CompressedData);
+                // Decompress and deserialize the log from the data table
+                var decompressedJson = JsonHelper.Decompress(gameMetadata.GameData.CompressedData);
                 var serializableLog = JsonHelper.Deserialize<Catan3.Shared.Interfaces.SerializableLog>(decompressedJson);
                 if (serializableLog == null)
                 {
@@ -600,6 +644,7 @@ namespace Catan3.GameService.Controllers
         /// <summary>
         /// Gets saved games from database for Load Game page.
         /// Pass playerId="*" to get all games, or a specific playerId to filter.
+        /// Excludes games where GameState == "GameOver".
         /// </summary>
         [HttpGet("games")]
         public async Task<IActionResult> GetSavedGames([FromQuery] string playerId = "*")
@@ -608,27 +653,30 @@ namespace Catan3.GameService.Controllers
 
             try
             {
-                var query = _dbContext.GameSaves.AsQueryable();
+                var query = _dbContext.GameSaveMetadata
+                    .Include(m => m.GameData)
+                    .Where(m => m.GameState != "GameOver"); // Exclude completed games
 
                 // Filter by playerId unless "*" (get all)
                 if (playerId != "*" && !string.IsNullOrEmpty(playerId))
                 {
-                    query = query.Where(g => g.StartedBy == playerId);
+                    query = query.Where(m => m.StartedBy == playerId);
                 }
 
                 var games = await query
-                    .OrderByDescending(g => g.SavedAt)
-                    .Select(g => new
+                    .OrderByDescending(m => m.SavedAt)
+                    .Select(m => new
                     {
-                        g.Id,
-                        g.GameId,
-                        g.GameName,
-                        g.GameState,
-                        g.PlayerCount,
-                        g.GameType,
-                        g.SavedAt,
-                        g.CreatedAt,
-                        g.StartedBy
+                        m.GameId,
+                        m.GameName,
+                        m.GameState,
+                        m.GameType,
+                        m.PlayerCount,
+                        m.PlayerNames,
+                        m.TurnCount,
+                        Size = m.GameData.Size,
+                        m.SavedAt,
+                        m.CreatedAt
                     })
                     .ToListAsync();
 
@@ -681,6 +729,223 @@ namespace Catan3.GameService.Controllers
             {
                 _logger.LogEvent("Get Players Error", $"Error getting players: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, $"Error getting players: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Creates a new player.
+        /// </summary>
+        [HttpPost("players")]
+        public async Task<IActionResult> CreatePlayer([FromBody] PlayerProfile player)
+        {
+            _logger.LogEvent("API Request", $"POST /api/players - Creating player: {player.Name}");
+
+            try
+            {
+                // Check if player ID already exists
+                var existing = await _dbContext.Players.FindAsync(player.Id);
+                if (existing != null)
+                {
+                    return BadRequest(new { success = false, error = $"Player with ID '{player.Id}' already exists" });
+                }
+
+                // Create player entity
+                var playerEntity = new PlayerEntity
+                {
+                    Id = player.Id,
+                    Data = JsonHelper.Serialize(player)
+                };
+
+                _dbContext.Players.Add(playerEntity);
+                await _dbContext.SaveChangesAsync();
+
+                _logger.LogEvent("Player Created", $"Created player: {player.Id} ({player.Name})");
+
+                return Ok(new { success = true, player = player });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Create Player Error", $"Error creating player: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new { success = false, error = $"Error creating player: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Updates an existing player.
+        /// Broadcasts PlayersUpdated to all games containing this player.
+        /// </summary>
+        [HttpPut("players/{id}")]
+        public async Task<IActionResult> UpdatePlayer(string id, [FromBody] PlayerProfile player)
+        {
+            _logger.LogEvent("API Request", $"PUT /api/players/{id} - Updating player");
+
+            try
+            {
+                var existing = await _dbContext.Players.FindAsync(id);
+                if (existing == null)
+                {
+                    return NotFound(new { success = false, error = $"Player '{id}' not found" });
+                }
+
+                // Update the data
+                existing.Data = JsonHelper.Serialize(player);
+                await _dbContext.SaveChangesAsync();
+
+                _logger.LogEvent("Player Updated", $"Updated player: {id} ({player.Name})");
+
+                // Notify all games containing this player
+                await NotifyPlayersUpdated(new[] { player });
+
+                return Ok(new { success = true, player = player });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Update Player Error", $"Error updating player {id}: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new { success = false, error = $"Error updating player: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Deletes a player.
+        /// </summary>
+        [HttpDelete("players/{id}")]
+        public async Task<IActionResult> DeletePlayer(string id)
+        {
+            _logger.LogEvent("API Request", $"DELETE /api/players/{id} - Deleting player");
+
+            try
+            {
+                var existing = await _dbContext.Players.FindAsync(id);
+                if (existing == null)
+                {
+                    return NotFound(new { success = false, error = $"Player '{id}' not found" });
+                }
+
+                _dbContext.Players.Remove(existing);
+
+                // Also delete associated image if exists
+                var image = await _dbContext.Images.FindAsync(id);
+                if (image != null)
+                {
+                    _dbContext.Images.Remove(image);
+                }
+
+                await _dbContext.SaveChangesAsync();
+
+                _logger.LogEvent("Player Deleted", $"Deleted player: {id}");
+
+                return Ok(new { success = true, message = $"Player '{id}' deleted" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Delete Player Error", $"Error deleting player {id}: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new { success = false, error = $"Error deleting player: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Uploads an image for a player.
+        /// </summary>
+        [HttpPost("players/{id}/image")]
+        public async Task<IActionResult> UploadPlayerImage(string id, IFormFile file)
+        {
+            _logger.LogEvent("API Request", $"POST /api/players/{id}/image - Uploading image");
+
+            try
+            {
+                // Verify player exists
+                var player = await _dbContext.Players.FindAsync(id);
+                if (player == null)
+                {
+                    return NotFound(new { success = false, error = $"Player '{id}' not found" });
+                }
+
+                // Validate file
+                if (file == null || file.Length == 0)
+                {
+                    return BadRequest(new { success = false, error = "No file uploaded" });
+                }
+
+                var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif" };
+                if (!allowedTypes.Contains(file.ContentType.ToLower()))
+                {
+                    return BadRequest(new { success = false, error = "Invalid file type. Allowed: JPEG, PNG, GIF" });
+                }
+
+                // Read file data
+                using var memoryStream = new MemoryStream();
+                await file.CopyToAsync(memoryStream);
+                var imageData = memoryStream.ToArray();
+
+                // Create or update image entity
+                var existingImage = await _dbContext.Images.FindAsync(id);
+                if (existingImage != null)
+                {
+                    existingImage.Data = imageData;
+                    existingImage.ContentType = file.ContentType;
+                }
+                else
+                {
+                    var imageEntity = new ImageEntity
+                    {
+                        Id = id,
+                        Data = imageData,
+                        ContentType = file.ContentType
+                    };
+                    _dbContext.Images.Add(imageEntity);
+                }
+
+                // Update player's ImageUri
+                var playerProfile = JsonHelper.Deserialize<PlayerProfile>(player.Data);
+                if (playerProfile != null)
+                {
+                    var updatedProfile = new PlayerProfile(
+                        playerProfile.Id,
+                        playerProfile.Name,
+                        playerProfile.Colors,
+                        $"/api/images/{id}",
+                        playerProfile.LifetimeStats
+                    );
+                    player.Data = JsonHelper.Serialize(updatedProfile);
+                }
+
+                await _dbContext.SaveChangesAsync();
+
+                _logger.LogEvent("Image Uploaded", $"Uploaded image for player: {id} ({imageData.Length} bytes)");
+
+                // Notify games with this player about the image change
+                var profileToNotify = JsonHelper.Deserialize<PlayerProfile>(player.Data);
+                if (profileToNotify != null)
+                {
+                    await NotifyPlayersUpdated(new[] { profileToNotify });
+                }
+
+                return Ok(new { success = true, imageUri = $"/api/images/{id}" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Upload Image Error", $"Error uploading image for {id}: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new { success = false, error = $"Error uploading image: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Notifies all games containing the specified players that their profiles have been updated.
+        /// Sends a PlayersUpdated SignalR message to each affected game's group.
+        /// </summary>
+        private async Task NotifyPlayersUpdated(IEnumerable<PlayerProfile> updatedPlayers)
+        {
+            var playerList = updatedPlayers.ToList();
+            if (playerList.Count == 0) return;
+
+            var playerIds = playerList.Select(p => p.Id);
+            var affectedGameIds = GameStateMachineRegistry.GetGamesWithPlayers(playerIds);
+
+            _logger.LogEvent("PlayersUpdated", $"Notifying {affectedGameIds.Count} game(s) about {playerList.Count} updated player(s)");
+
+            foreach (var gameId in affectedGameIds)
+            {
+                await _hubContext.Clients.Group(gameId).SendAsync("PlayersUpdated", playerList);
             }
         }
 
@@ -937,6 +1202,431 @@ namespace Catan3.GameService.Controllers
             {
                 _logger.LogEvent("Settings Update Error", $"Error updating settings: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, $"Error updating settings: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Returns database health status for script decisions.
+        /// Used by webui.ps1 to determine if games need to be seeded.
+        /// </summary>
+        [HttpGet("database/health")]
+        public async Task<IActionResult> GetDatabaseHealth()
+        {
+            _logger.LogEvent("API Request", $"GET /api/database/health - Checking database health");
+
+            try
+            {
+                var playerCount = await _dbContext.Players.CountAsync();
+                var gameCount = await _dbContext.GameSaveMetadata.CountAsync();
+
+                var result = new
+                {
+                    healthy = true,
+                    playerCount = playerCount,
+                    gameCount = gameCount,
+                    needsSeeding = playerCount == 0,
+                    needsGames = gameCount == 0,
+                    timestamp = DateTime.UtcNow.ToString("O")
+                };
+
+                _logger.LogEvent("Database Health", $"Players: {playerCount}, Games: {gameCount}, NeedsSeeding: {playerCount == 0}, NeedsGames: {gameCount == 0}");
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Database Health Error", $"Error checking database health: {ex.Message}", LogLevel.Error);
+                return Ok(new
+                {
+                    healthy = false,
+                    error = ex.Message,
+                    needsSeeding = true,
+                    needsGames = true
+                });
+            }
+        }
+
+        /// <summary>
+        /// Renames a game. Updates both the in-memory GameModel (if loaded) and database.
+        /// Works for games that are only in the database (not yet loaded into memory).
+        /// </summary>
+        [HttpPatch("game/{gameId}/rename")]
+        public async Task<IActionResult> RenameGame(string gameId, [FromQuery] string newName)
+        {
+            _logger.LogEvent("API Request", $"PATCH /api/game/{gameId}/rename - Renaming to '{newName}'");
+
+            if (string.IsNullOrWhiteSpace(newName))
+            {
+                return BadRequest(new { success = false, error = "Name cannot be empty" });
+            }
+
+            try
+            {
+                // Check if game is loaded in memory
+                GameStateMachine? gameStateMachine = null;
+                try
+                {
+                    gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
+                }
+                catch (GameException)
+                {
+                    // Game not in registry - that's OK, we'll update database directly
+                    _logger.LogEvent("Rename Game", $"Game {gameId} not in memory, updating database only");
+                }
+
+                if (gameStateMachine != null)
+                {
+                    // Game is loaded - update both in-memory and database
+                    var currentState = gameStateMachine.GetCurrentState();
+                    var oldName = currentState.GameName;
+
+                    if (oldName == newName)
+                    {
+                        return Ok(new { success = true, gameId, gameName = newName, message = "Name unchanged" });
+                    }
+
+                    // Get the serializable log and update all GameNames
+                    var sourceLog = gameStateMachine.GetSerializableLog();
+
+                    var newDoneStack = new List<string>();
+                    foreach (var gameModelJson in sourceLog.DoneStack)
+                    {
+                        var updatedJson = gameModelJson.Replace($"\"GameName\":\"{oldName}\"", $"\"GameName\":\"{newName}\"");
+                        newDoneStack.Add(updatedJson);
+                    }
+
+                    var newRedoStack = new List<string>();
+                    foreach (var gameModelJson in sourceLog.RedoStack)
+                    {
+                        var updatedJson = gameModelJson.Replace($"\"GameName\":\"{oldName}\"", $"\"GameName\":\"{newName}\"");
+                        newRedoStack.Add(updatedJson);
+                    }
+
+                    // Create updated SerializableLog
+                    var updatedSerializableLog = new SerializableLog
+                    {
+                        DoneStack = newDoneStack,
+                        RedoStack = newRedoStack,
+                        GameType = sourceLog.GameType,
+                        DoneCount = sourceLog.DoneCount,
+                        RedoCount = sourceLog.RedoCount
+                    };
+
+                    // Create new Log and GameStateMachine with updated data
+                    var newGameLog = Log<string>.FromSerializableLog(updatedSerializableLog, _persistenceService, string.Empty);
+                    var newGameStateMachine = CreateGameStateMachineWithServiceDependencies(newGameLog);
+
+                    // Replace in registry
+                    GameStateMachineRegistry.DeleteGameStateMachine(gameId);
+                    GameStateMachineRegistry.AddGameStateMachine(gameId, newGameStateMachine);
+
+                    // Get updated game model
+                    var updatedGameModel = newGameStateMachine.GetCurrentState();
+
+                    // Save to database
+                    var json = JsonHelper.Serialize(updatedSerializableLog);
+                    var compressed = JsonHelper.Compress(json);
+
+                    var metadata = new GameMetadata
+                    {
+                        GameName = newName,
+                        GameState = updatedGameModel.GameState.ToString(),
+                        StartedBy = "Rename",
+                        PlayerCount = updatedGameModel.Players.Count,
+                        GameType = updatedGameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
+                        PlayerNames = string.Join(", ", updatedGameModel.Players.Select(p => p.Name)),
+                        TurnCount = updatedSerializableLog.DoneCount
+                    };
+
+                    await _gamePersistence.SaveAsync(gameId, compressed, metadata);
+
+                    // Broadcast updated game state to all clients
+                    await _hubContext.Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
+
+                    _logger.LogEvent("Game Renamed", $"Renamed game {gameId}: '{oldName}' -> '{newName}' (in-memory + database)");
+                }
+                else
+                {
+                    // Game not loaded - update database directly
+                    var gameMetadata = await _dbContext.GameSaveMetadata
+                        .Include(m => m.GameData)
+                        .FirstOrDefaultAsync(m => m.GameId == gameId);
+
+                    if (gameMetadata == null)
+                    {
+                        return NotFound(new { success = false, error = $"Game {gameId} not found" });
+                    }
+
+                    var oldName = gameMetadata.GameName;
+                    if (oldName == newName)
+                    {
+                        return Ok(new { success = true, gameId, gameName = newName, message = "Name unchanged" });
+                    }
+
+                    // Update the game name in the compressed data
+                    var decompressedJson = JsonHelper.Decompress(gameMetadata.GameData.CompressedData);
+                    var serializableLog = JsonHelper.Deserialize<SerializableLog>(decompressedJson);
+
+                    if (serializableLog != null)
+                    {
+                        // Update GameName in all states
+                        var newDoneStack = serializableLog.DoneStack
+                            .Select(json => json.Replace($"\"GameName\":\"{oldName}\"", $"\"GameName\":\"{newName}\""))
+                            .ToList();
+                        var newRedoStack = serializableLog.RedoStack
+                            .Select(json => json.Replace($"\"GameName\":\"{oldName}\"", $"\"GameName\":\"{newName}\""))
+                            .ToList();
+
+                        var updatedLog = new SerializableLog
+                        {
+                            DoneStack = newDoneStack,
+                            RedoStack = newRedoStack,
+                            GameType = serializableLog.GameType,
+                            DoneCount = serializableLog.DoneCount,
+                            RedoCount = serializableLog.RedoCount
+                        };
+
+                        var updatedJson = JsonHelper.Serialize(updatedLog);
+                        var compressed = JsonHelper.Compress(updatedJson);
+
+                        // Update database
+                        gameMetadata.GameName = newName;
+                        gameMetadata.GameData.CompressedData = compressed;
+                        gameMetadata.GameData.Size = compressed.Length;
+                        gameMetadata.SavedAt = DateTime.UtcNow;
+
+                        await _dbContext.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        // Just update metadata if we can't parse the log
+                        gameMetadata.GameName = newName;
+                        gameMetadata.SavedAt = DateTime.UtcNow;
+                        await _dbContext.SaveChangesAsync();
+                    }
+
+                    _logger.LogEvent("Game Renamed", $"Renamed game {gameId}: '{oldName}' -> '{newName}' (database only)");
+                }
+
+                return Ok(new { success = true, gameId, gameName = newName, message = "Game renamed successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Rename Game Error", $"Error renaming game {gameId}: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new { success = false, error = $"Error renaming game: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Creates a deep copy of a game with a new GameId.
+        /// Useful for creating common starting positions for tests.
+        /// </summary>
+        [HttpPost("game/{gameId}/copy")]
+        public async Task<IActionResult> CopyGame(string gameId, [FromQuery] string? newName = null)
+        {
+            _logger.LogEvent("API Request", $"POST /api/game/{gameId}/copy - Copying game");
+
+            try
+            {
+                // Get the game state machine from registry
+                GameStateMachine sourceGameStateMachine;
+                try
+                {
+                    sourceGameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
+                }
+                catch (GameException)
+                {
+                    _logger.LogEvent("Game Not Found", $"Game {gameId} not found in registry", LogLevel.Warning);
+                    return NotFound(new { success = false, error = $"Game {gameId} not found" });
+                }
+
+                // Get the serializable log (contains DoneStack and RedoStack of serialized GameModels)
+                var sourceLog = sourceGameStateMachine.GetSerializableLog();
+
+                // Get original game info for name replacement
+                var originalGameModel = sourceGameStateMachine.GetCurrentState();
+                var originalName = originalGameModel.GameName;
+
+                // Generate a new GameId and determine new name
+                var newGameId = Guid.NewGuid().ToString();
+                var gameName = !string.IsNullOrWhiteSpace(newName)
+                    ? newName
+                    : $"{originalName} (Copy)";
+
+                // Deep copy by serializing and replacing GameId and GameName in the JSON
+                var newDoneStack = new List<string>();
+                foreach (var gameModelJson in sourceLog.DoneStack)
+                {
+                    var updatedJson = gameModelJson
+                        .Replace($"\"GameId\":\"{gameId}\"", $"\"GameId\":\"{newGameId}\"")
+                        .Replace($"\"GameName\":\"{originalName}\"", $"\"GameName\":\"{gameName}\"");
+                    newDoneStack.Add(updatedJson);
+                }
+
+                var newRedoStack = new List<string>();
+                foreach (var gameModelJson in sourceLog.RedoStack)
+                {
+                    var updatedJson = gameModelJson
+                        .Replace($"\"GameId\":\"{gameId}\"", $"\"GameId\":\"{newGameId}\"")
+                        .Replace($"\"GameName\":\"{originalName}\"", $"\"GameName\":\"{gameName}\"");
+                    newRedoStack.Add(updatedJson);
+                }
+
+                // Create new SerializableLog with updated data
+                var newSerializableLog = new SerializableLog
+                {
+                    DoneStack = newDoneStack,
+                    RedoStack = newRedoStack,
+                    GameType = sourceLog.GameType,
+                    DoneCount = sourceLog.DoneCount,
+                    RedoCount = sourceLog.RedoCount
+                };
+
+                // Create a new Log from the serializable log
+                var newGameLog = Log<string>.FromSerializableLog(newSerializableLog, _persistenceService, string.Empty);
+
+                // Create new GameStateMachine
+                var newGameStateMachine = CreateGameStateMachineWithServiceDependencies(newGameLog);
+
+                // Get the current state of the new game
+                var newGameModel = newGameStateMachine.GetCurrentState();
+
+                // Register in the registry
+                GameStateMachineRegistry.AddGameStateMachine(newGameId, newGameStateMachine);
+
+                // Save to database
+                var json = JsonHelper.Serialize(newSerializableLog);
+                var compressed = JsonHelper.Compress(json);
+
+                var metadata = new GameMetadata
+                {
+                    GameName = gameName,
+                    GameState = newGameModel.GameState.ToString(),
+                    StartedBy = "Copy",
+                    PlayerCount = newGameModel.Players.Count,
+                    GameType = newGameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
+                    PlayerNames = string.Join(", ", newGameModel.Players.Select(p => p.Name)),
+                    TurnCount = newSerializableLog.DoneCount
+                };
+
+                await _gamePersistence.SaveAsync(newGameId, compressed, metadata);
+
+                _logger.LogEvent("Game Copied", $"Copied game {gameId} to {newGameId} - {metadata.PlayerNames}, {metadata.TurnCount} turns");
+
+                return Ok(new
+                {
+                    success = true,
+                    sourceGameId = gameId,
+                    newGameId = newGameId,
+                    gameName = metadata.GameName,
+                    playerNames = metadata.PlayerNames,
+                    turnCount = metadata.TurnCount,
+                    message = "Game copied successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Copy Game Error", $"Error copying game {gameId}: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new { success = false, error = $"Error copying game: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Imports a .catan file into the database.
+        /// Used for seeding default games and future user uploads.
+        /// </summary>
+        [HttpPost("game/import")]
+        public async Task<IActionResult> ImportGame(IFormFile file)
+        {
+            _logger.LogEvent("API Request", $"POST /api/game/import - Importing game file: {file?.FileName}");
+
+            try
+            {
+                if (file == null || file.Length == 0)
+                {
+                    return BadRequest(new { success = false, error = "No file provided" });
+                }
+
+                // Read the compressed .catan file bytes
+                byte[] compressedData;
+                using (var memoryStream = new MemoryStream())
+                {
+                    await file.CopyToAsync(memoryStream);
+                    compressedData = memoryStream.ToArray();
+                }
+
+                // Decompress to get the SerializableLog JSON
+                var json = JsonHelper.Decompress(compressedData);
+                var serializableLog = JsonHelper.Deserialize<Catan3.Shared.Interfaces.SerializableLog>(json);
+
+                if (serializableLog == null || serializableLog.DoneCount == 0)
+                {
+                    return BadRequest(new { success = false, error = "Invalid or empty .catan file" });
+                }
+
+                // Get the current game state from the top of the done stack
+                var currentGameJson = serializableLog.DoneStack.LastOrDefault();
+                if (currentGameJson == null)
+                {
+                    return BadRequest(new { success = false, error = "No game states in file" });
+                }
+
+                var gameModel = JsonHelper.Deserialize<GameModel>(currentGameJson);
+                if (gameModel == null)
+                {
+                    return BadRequest(new { success = false, error = "Could not deserialize game model" });
+                }
+
+                // Use the GameId from the file
+                var gameId = gameModel.GameId;
+
+                // Check if game already exists
+                var existingGame = await _dbContext.GameSaveMetadata.FirstOrDefaultAsync(m => m.GameId == gameId);
+                if (existingGame != null)
+                {
+                    _logger.LogEvent("Game Already Exists", $"Game {gameId} already exists in database, skipping import");
+                    return Ok(new
+                    {
+                        success = true,
+                        gameId = gameId,
+                        gameName = gameModel.GameName,
+                        playerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
+                        turnCount = serializableLog.DoneCount,
+                        message = "Game already exists"
+                    });
+                }
+
+                // Build metadata from GameModel properties
+                var metadata = new GameMetadata
+                {
+                    GameName = gameModel.GameName,
+                    GameState = gameModel.GameState.ToString(),
+                    StartedBy = "Import",
+                    PlayerCount = gameModel.Players.Count,
+                    GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
+                    PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
+                    TurnCount = serializableLog.DoneCount
+                };
+
+                // Save to database
+                await _gamePersistence.SaveAsync(gameId, compressedData, metadata);
+
+                _logger.LogEvent("Game Imported", $"Imported game: {gameId} ({metadata.PlayerNames}) - {metadata.TurnCount} turns");
+
+                return Ok(new
+                {
+                    success = true,
+                    gameId = gameId,
+                    gameName = gameModel.GameName,
+                    playerNames = metadata.PlayerNames,
+                    turnCount = metadata.TurnCount,
+                    message = "Game imported successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Import Game Error", $"Error importing game: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new { success = false, error = $"Error importing game: {ex.Message}" });
             }
         }
     }

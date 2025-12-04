@@ -70,7 +70,8 @@ a.nav-menu-item:visited {
 }
 
 .content {
-    padding-top: 1.1rem;
+    padding-top: 2rem;
+    padding-left: 2rem;
 }
 
 .valid.modified:not([type=checkbox]) {

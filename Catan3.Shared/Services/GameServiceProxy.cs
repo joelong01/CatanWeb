@@ -48,6 +48,7 @@ namespace Catan3.Shared.Services
         public event Action<string, bool, string>? CommandCompleted;
         public event Action<string, string>? CommandFailed;
         public event Action<string, bool>? PlayerPresenceChanged;
+        public event Action<List<PlayerProfile>>? PlayersUpdated;
 
         /// <summary>
         /// Creates a GameServiceProxy for the Catan3 GameHub with REST API support
@@ -867,6 +868,20 @@ namespace Catan3.Shared.Services
                 }
 
                 await Task.CompletedTask; // Make it properly async
+            });
+
+            // Player profile updates - fired when a player's profile (name, colors, image) changes
+            _connection.On<List<PlayerProfile>>("PlayersUpdated", async players =>
+            {
+                LogEvent("CLIENT_RECEIVED", $"Received PlayersUpdated message with {players?.Count ?? 0} player(s)");
+
+                if (players != null && players.Count > 0)
+                {
+                    // Fire and forget to prevent blocking SignalR receive thread
+                    _ = Task.Run(() => PlayersUpdated?.Invoke(players));
+                }
+
+                await Task.CompletedTask;
             });
 
             // Command completion

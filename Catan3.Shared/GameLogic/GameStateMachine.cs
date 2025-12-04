@@ -189,6 +189,28 @@ namespace Catan3.Shared.GameLogic
         }
 
         /// <summary>
+        /// Handles updating house rules for the current game.
+        /// This allows mid-game changes to rules like gold tile count and supplemental build phase minimum.
+        /// </summary>
+        /// <param name="message">The house rules update request.</param>
+        /// <returns>The updated GameModel with new house rules.</returns>
+        public Task<GameModel> HandleUpdateHouseRulesAsync(UpdateHouseRulesMessage message)
+        {
+            var gameModel = _gameLog.CopyCurrent();
+            var oldGoldTiles = gameModel.HouseRules.GoldTiles;
+            var oldSupplemental = gameModel.HouseRules.SupplementalMinPlayers;
+
+            _logger.Trace(GameTraceLevel.Information, $"[GameState={gameModel.GameState}][Message={message}] Updating HouseRules: GoldTiles {oldGoldTiles} -> {message.HouseRules.GoldTiles}, SupplementalMinPlayers {oldSupplemental} -> {message.HouseRules.SupplementalMinPlayers}");
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            // Update the house rules
+            gameModel.HouseRules = message.HouseRules;
+
+            LogGameModel(gameModel);
+            return Task.FromResult(gameModel);
+        }
+
+        /// <summary>
         /// Handles building upgrade operations (settlement to city).
         /// Validates the upgrade is legal and updates the game state accordingly.
         /// </summary>
@@ -264,10 +286,13 @@ namespace Catan3.Shared.GameLogic
         /// Handles new game creation with specified game type and players.
         /// Initializes a fresh game state with the provided configuration.
         /// </summary>
-        /// <param name="message">The new game request with game type and player list.</param>
+        /// <param name="gameInfo">Game metadata with board layout and default rules.</param>
+        /// <param name="playerIds">List of player IDs for the game.</param>
+        /// <param name="gameName">Name of the game.</param>
+        /// <param name="houseRulesOverride">Optional house rules to override defaults from gameInfo.</param>
         /// <returns>The newly created GameModel in initial state.</returns>
         /// <exception cref="GameException">Thrown when game creation fails.</exception>
-        public Task<GameModel> HandleNewGameAsync(IGameMetadata gameInfo, IList<string> playerIds, string gameName)
+        public Task<GameModel> HandleNewGameAsync(IGameMetadata gameInfo, IList<string> playerIds, string gameName, HouseRules? houseRulesOverride = null)
         {
             Debug.Assert((gameInfo.TileKeys.Count == gameInfo.Numbers.Count) && (gameInfo.TileKeys.Count == gameInfo.Resources.Count));
 
@@ -286,7 +311,7 @@ namespace Catan3.Shared.GameLogic
                 GameType = gameInfo.GameType,
                 Players = playerModels,
                 CurrentPlayerId = playerModels.FirstOrDefault()?.Id ?? "",
-                HouseRules = gameInfo.HouseRules,
+                HouseRules = houseRulesOverride ?? gameInfo.HouseRules,
                 ResourceRules = gameInfo.ResourceRules,
                 HasSupplementalBuildPhase = gameInfo.HasSupplemental,
                 EntitlementPurchaseModel = gameInfo.PurchaseableEntitlements.ToList(),
@@ -1084,8 +1109,8 @@ namespace Catan3.Shared.GameLogic
                     // it is controlled by hitting a roll UI
                     break;
                 case Shared.Models.GameState.WaitingForNext:
-                    // Supplemental build phase requires at least 5 players to be meaningful
-                    if (gameModel.HasSupplementalBuildPhase && gameModel.Players.Count >= 5)
+                    // Supplemental build phase requires minimum player count (configurable via HouseRules)
+                    if (gameModel.HasSupplementalBuildPhase && gameModel.Players.Count >= gameModel.HouseRules.SupplementalMinPlayers)
                     {
 
                         gameModel.GameState = Shared.Models.GameState.PickSupplementalPlayers;
@@ -1667,8 +1692,7 @@ namespace Catan3.Shared.GameLogic
         {
             try
             {
-                // Exit early if no gold tiles need to be set.
-                if (gameModel.HouseRules.GoldTiles == 0) return;
+                _logger.Trace(GameTraceLevel.Information, $"SetTempGoldTiles: HouseRules.GoldTiles = {gameModel.HouseRules.GoldTiles}");
 
                 // Ensure the Tiles collection is not null.
                 if (gameModel.Tiles is null) throw new GameException("Tiles is null");
@@ -1683,6 +1707,9 @@ namespace Catan3.Shared.GameLogic
                         tile.TemporarilyGold = false;
                     }
                 }
+
+                // Exit after clearing if no gold tiles need to be set.
+                if (gameModel.HouseRules.GoldTiles == 0) return;
 
                 HashSet<int> usedIndices = [];
 

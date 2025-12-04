@@ -8,7 +8,7 @@
 
 /* CSS version indicator - helps detect stale cached CSS */
 .game-viewport::after {
-    content: "CSS v2025-12-02-4";
+    content: "CSS v2025-12-04-2";
     position: fixed;
     bottom: 5px;
     right: 5px;
@@ -87,9 +87,51 @@
     box-sizing: border-box;
 }
 
-/* Offset game-controls to clear the hamburger menu (50px hamburger + 10px gap) */
+/* Game name container - above game controls */
+.game-name-container {
+    margin-top: 60px; /* Clear the hamburger menu (50px hamburger + 10px gap) */
+    padding: 5px 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.game-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    user-select: none;
+}
+
+.game-name:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.game-name-input {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+    background: #333;
+    border: 2px solid #4a9eff;
+    border-radius: 4px;
+    padding: 4px 8px;
+    width: 100%;
+    box-sizing: border-box;
+    outline: none;
+    box-shadow: 0 0 8px rgba(74, 158, 255, 0.5);
+}
+
+.game-name-input:focus {
+    border-color: #6bb3ff;
+    background: #2a2a2a;
+    box-shadow: 0 0 12px rgba(74, 158, 255, 0.7);
+}
+
+/* Game controls - no longer needs top margin since game-name-container has it */
 .game-controls {
-    margin-top: 60px;
     padding-top: 5px;
 }
 
@@ -103,6 +145,14 @@
 }
 
 /* Game Controls */
+.current-player-name {
+    font-size: 1.4rem;
+    font-weight: bold;
+    text-align: center;
+    padding: 2px 0;
+    margin-bottom: 2px;
+}
+
 .control-buttons {
     display: flex;
     gap: 4px;

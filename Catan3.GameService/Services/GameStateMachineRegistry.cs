@@ -78,5 +78,26 @@ namespace Catan3.GameService.Services
         {
             return _games.TryRemove(gameId, out _);
         }
+
+        /// <summary>
+        /// Gets all game IDs that contain any of the specified player IDs.
+        /// Used to notify games when player profiles are updated.
+        /// </summary>
+        public static List<string> GetGamesWithPlayers(IEnumerable<string> playerIds)
+        {
+            var playerIdSet = new HashSet<string>(playerIds);
+            var matchingGameIds = new List<string>();
+
+            foreach (var kvp in _games)
+            {
+                var gameModel = kvp.Value.GetCurrentState();
+                if (gameModel.Players.Any(p => playerIdSet.Contains(p.Id)))
+                {
+                    matchingGameIds.Add(kvp.Key);
+                }
+            }
+
+            return matchingGameIds;
+        }
     }
 }

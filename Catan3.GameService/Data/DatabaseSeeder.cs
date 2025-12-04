@@ -1,46 +1,71 @@
 using Catan3.Shared.Utility;
 using Catan3.Shared.Profiles;
+using Catan3.Shared.Models;
+using Catan3.GameService.Services;
 
 namespace Catan3.GameService.Data;
 
 public static class DatabaseSeeder
 {
-    public static async Task SeedAsync(CatanDbContext context, string imagesSourcePath)
+    /// <summary>
+    /// Seeds the database with default players and games.
+    /// </summary>
+    /// <param name="context">Database context</param>
+    /// <param name="defaultDataPath">Path to "Default Data" folder containing Players and Games subfolders</param>
+    /// <param name="gamePersistence">Game persistence service for saving games</param>
+    public static async Task SeedAsync(CatanDbContext context, string defaultDataPath, IGamePersistence? gamePersistence = null)
     {
         // Ensure database is created
         await context.Database.EnsureCreatedAsync();
 
-        // Check if already seeded
-        if (context.Players.Any())
+        var playersPath = Path.Combine(defaultDataPath, "Players");
+        var gamesPath = Path.Combine(defaultDataPath, "Games");
+
+        // Seed players if not already seeded
+        if (!context.Players.Any())
         {
-            Console.WriteLine("Database already seeded.");
-            return;
+            Console.WriteLine($"Seeding players from: {playersPath}");
+            await SeedPlayersAsync(context, playersPath);
+        }
+        else
+        {
+            Console.WriteLine("Players already seeded.");
         }
 
-        Console.WriteLine($"Seeding database from: {imagesSourcePath}");
+        // Seed games if games folder exists and persistence service available
+        if (gamePersistence != null && Directory.Exists(gamesPath))
+        {
+            await SeedGamesAsync(context, gamesPath, gamePersistence);
+        }
 
+        Console.WriteLine("Database seeding complete.");
+    }
+
+    private static async Task SeedPlayersAsync(CatanDbContext context, string imagesSourcePath)
+    {
         // Default players with their colors (primary, secondary for gradient, foreground)
+        // IDs match Desktop App (PascalCase): Joe-001, Dodgy-001, etc.
         var players = new[]
         {
-            new PlayerProfile("joe-001", "Joe", "#0000FF", "#000080", "#FFFFFF", "/api/images/joe-001"),
-            new PlayerProfile("dodgy-001", "Dodgy", "#FF0000", "#800000", "#FFFFFF", "/api/images/dodgy-001"),
-            new PlayerProfile("doug-001", "Doug", "#008000", "#004000", "#FFFFFF", "/api/images/doug-001"),
-            new PlayerProfile("ryan-001", "Ryan", "#d0ac35ff", "#000000ff", "#FFFFFF", "/api/images/ryan-001"),
-            new PlayerProfile("adrian-001", "Adrian", "#800080", "#400040", "#FFFFFF", "/api/images/adrian-001"),
-            new PlayerProfile("chris-001", "Chris", "#000000", "#333333", "#FFFFFF", "/api/images/chris-001"),
-            new PlayerProfile("guest-001", "Guest", "#ff008cff", "#CC8400", "#000000", "/api/images/guest-001")
+            new PlayerProfile("Joe-001", "Joe", "#0000FF", "#000080", "#FFFFFF", "/api/images/Joe-001"),
+            new PlayerProfile("Dodgy-001", "Dodgy", "#FF0000", "#800000", "#FFFFFF", "/api/images/Dodgy-001"),
+            new PlayerProfile("Doug-001", "Doug", "#008000", "#004000", "#FFFFFF", "/api/images/Doug-001"),
+            new PlayerProfile("Ryan-001", "Ryan", "#d0ac35ff", "#000000ff", "#FFFFFF", "/api/images/Ryan-001"),
+            new PlayerProfile("Adrian-001", "Adrian", "#800080", "#400040", "#FFFFFF", "/api/images/Adrian-001"),
+            new PlayerProfile("Chris-001", "Chris", "#000000", "#333333", "#FFFFFF", "/api/images/Chris-001"),
+            new PlayerProfile("Guest-001", "Guest", "#ff008cff", "#CC8400", "#000000", "/api/images/Guest-001")
         };
 
         // Map player IDs to image file names
         var imageFiles = new Dictionary<string, string>
         {
-            ["joe-001"] = "joe.jpg",
-            ["dodgy-001"] = "Dodgy.png",
-            ["doug-001"] = "doug.jpg",
-            ["ryan-001"] = "ryan.jpg",
-            ["adrian-001"] = "adrian.jpg",
-            ["chris-001"] = "chris.jpg",
-            ["guest-001"] = "guest.png"
+            ["Joe-001"] = "joe.jpg",
+            ["Dodgy-001"] = "Dodgy.png",
+            ["Doug-001"] = "doug.jpg",
+            ["Ryan-001"] = "ryan.jpg",
+            ["Adrian-001"] = "adrian.jpg",
+            ["Chris-001"] = "chris.jpg",
+            ["Guest-001"] = "guest.png"
         };
 
         // Seed players
@@ -52,7 +77,7 @@ public static class DatabaseSeeder
                 Data = JsonHelper.Serialize(player)
             };
             context.Players.Add(playerEntity);
-            Console.WriteLine($"  Added player: {player.Name}");
+            Console.WriteLine($"  Added player: {player.Name} ({player.Id})");
         }
 
         // Seed images
@@ -80,7 +105,86 @@ public static class DatabaseSeeder
         }
 
         await context.SaveChangesAsync();
-        Console.WriteLine("Database seeding complete.");
+        Console.WriteLine("Players seeding complete.");
+    }
+
+    private static async Task SeedGamesAsync(CatanDbContext context, string gamesPath, IGamePersistence gamePersistence)
+    {
+        var gameFiles = Directory.GetFiles(gamesPath, "*.catan");
+        if (gameFiles.Length == 0)
+        {
+            Console.WriteLine("No .catan game files found to seed.");
+            return;
+        }
+
+        Console.WriteLine($"Seeding {gameFiles.Length} game(s) from: {gamesPath}");
+
+        foreach (var gameFile in gameFiles)
+        {
+            try
+            {
+                var fileName = Path.GetFileNameWithoutExtension(gameFile);
+
+                // Read the compressed .catan file
+                var compressedData = await File.ReadAllBytesAsync(gameFile);
+
+                // Decompress to get the SerializableLog JSON
+                var json = JsonHelper.Decompress(compressedData);
+                var serializableLog = JsonHelper.Deserialize<Catan3.Shared.Interfaces.SerializableLog>(json);
+
+                if (serializableLog == null || serializableLog.DoneCount == 0)
+                {
+                    Console.WriteLine($"  Warning: {fileName} appears empty or invalid, skipping");
+                    continue;
+                }
+
+                // Get the current game state from the top of the done stack
+                var currentGameJson = serializableLog.DoneStack.LastOrDefault();
+                if (currentGameJson == null)
+                {
+                    Console.WriteLine($"  Warning: {fileName} has no game states, skipping");
+                    continue;
+                }
+
+                var gameModel = JsonHelper.Deserialize<GameModel>(currentGameJson);
+                if (gameModel == null)
+                {
+                    Console.WriteLine($"  Warning: {fileName} could not deserialize game model, skipping");
+                    continue;
+                }
+
+                // Use the GameId from the file (preserves Desktop/WebUI compatibility)
+                var gameId = gameModel.GameId;
+
+                // Check if game already exists
+                var existingGame = context.GameSaveMetadata.FirstOrDefault(m => m.GameId == gameId);
+                if (existingGame != null)
+                {
+                    Console.WriteLine($"  Skipping {fileName} - already seeded as {existingGame.GameId}");
+                    continue;
+                }
+
+                // Create metadata
+                var metadata = new GameMetadata
+                {
+                    GameName = gameModel.GameName ?? fileName,
+                    GameState = gameModel.GameState.ToString(),
+                    StartedBy = "Import",
+                    PlayerCount = gameModel.Players.Count,
+                    GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
+                    PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
+                    TurnCount = serializableLog.DoneCount
+                };
+
+                // Save to database
+                await gamePersistence.SaveAsync(gameId, compressedData, metadata);
+                Console.WriteLine($"  Seeded game: {fileName} ({metadata.PlayerNames}) - {metadata.TurnCount} turns");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  Error seeding {gameFile}: {ex.Message}");
+            }
+        }
     }
 
     private static string GetContentType(string fileName)

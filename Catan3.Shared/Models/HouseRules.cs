@@ -36,6 +36,12 @@ namespace Catan3.Shared.Models
         public bool KnightMovesRobberBeforeRoll { get; set; } = false;
 
         /// <summary>
+        /// Gets or sets the minimum number of players required for supplemental build phase.
+        /// Default is 5 (standard Catan expansion rule).
+        /// </summary>
+        public int SupplementalMinPlayers { get; set; } = 5;
+
+        /// <summary>
         /// Gets the default house rules.
         /// </summary>
         public static HouseRules Default { get; } = new HouseRules();
