@@ -9,12 +9,14 @@
 The WebUI CSS codebase demonstrates a sophisticated approach to game UI styling with strong adherence to modern CSS practices. The code follows the established AI rules well, particularly the use of CSS custom properties for theming. However, there are opportunities for simplification, consolidation, and removal of unnecessary styles.
 
 **Key Strengths:**
+
 - Excellent use of CSS custom properties for consistent theming
 - Modern CSS techniques (Grid, Flexbox, custom properties)
 - Performance-conscious approach with layer separation
 - Scoped component styles prevent global pollution
 
 **Key Areas for Improvement:**
+
 - Redundant CSS version indicators
 - Inconsistent use of `!important`
 - Some overly specific selectors
@@ -26,6 +28,7 @@ The WebUI CSS codebase demonstrates a sophisticated approach to game UI styling 
 ### 1. Global Styles (app.css)
 
 **Strengths:**
+
 - Excellent CSS custom properties structure in `:root`
 - Clear color theming system with semantic variable names
 - Modern font-face declaration for custom Catan font
@@ -34,6 +37,7 @@ The WebUI CSS codebase demonstrates a sophisticated approach to game UI styling 
 **Issues Identified:**
 
 #### Redundant Color Definitions
+
 ```css
 /* Current - multiple similar colors */
 --overlay-dark: rgba(0, 0, 0, 0.6);
@@ -43,6 +47,7 @@ The WebUI CSS codebase demonstrates a sophisticated approach to game UI styling 
 ```
 
 **Recommendation:** Consolidate to fewer, more semantic overlay variables:
+
 ```css
 --overlay-backdrop: rgba(0, 0, 0, 0.6);
 --overlay-modal: rgba(0, 0, 0, 0.8);
@@ -50,7 +55,9 @@ The WebUI CSS codebase demonstrates a sophisticated approach to game UI styling 
 ```
 
 #### Excessive Use of `!important`
+
 Multiple instances of `!important` for text-decoration removal:
+
 ```css
 a.nav-menu-item {
     text-decoration: none !important;
@@ -65,7 +72,9 @@ a.nav-menu-item:visited {
 **Recommendation:** Remove `!important` and use more specific selectors or ensure proper cascade order.
 
 #### Unused Styles
+
 Several styles appear to be unused:
+
 - `.form-floating` styles (no form floating labels detected in codebase)
 - Legacy Blazor error boundary styles that could be simplified
 
@@ -74,15 +83,18 @@ Several styles appear to be unused:
 #### MainLayout.razor.css
 
 **Strengths:**
+
 - Clean flexbox layout structure
 - Proper use of CSS custom properties
 - Good hover states and transitions
 
 **Issues:**
+
 - Hardcoded hamburger menu positioning (`top: 10px; left: 10px`)
 - Magic numbers for menu panel width (`100px`)
 
 **Recommendation:**
+
 ```css
 /* Replace hardcoded values with CSS custom properties */
 :root {
@@ -94,15 +106,18 @@ Several styles appear to be unused:
 #### NavMenu.razor.css
 
 **Strengths:**
+
 - Excellent component-based design
 - Good use of flexbox for navigation layout
 - Consistent hover and active states
 
 **Issues:**
+
 - Excessive `!important` declarations for text-decoration
 - Redundant selector targeting the same property
 
 **Recommendation:** Simplify to:
+
 ```css
 .nav-menu-item {
     text-decoration: none;
@@ -114,6 +129,7 @@ Several styles appear to be unused:
 #### Game.razor.css
 
 **Strengths:**
+
 - Sophisticated responsive design with landscape/portrait modes
 - Advanced CSS Grid usage for complex layouts
 - Performance-conscious approach with proper overflow handling
@@ -121,6 +137,7 @@ Several styles appear to be unused:
 **Issues:**
 
 ##### CSS Version Indicators
+
 ```css
 .game-viewport::after {
     content: "CSS v2025-12-05-2";
@@ -131,9 +148,11 @@ Several styles appear to be unused:
 **Recommendation:** Remove CSS version indicators from production code. Use build tools or browser dev tools for cache invalidation instead.
 
 ##### Complex Media Query Logic
+
 The responsive logic is complex but could be simplified:
 
 **Current:**
+
 ```css
 @media (max-aspect-ratio: 4/3) {
     .game-layout { /* portrait styles */ }
@@ -144,6 +163,7 @@ The responsive logic is complex but could be simplified:
 ```
 
 **Recommendation:** Use CSS custom properties to make breakpoints more maintainable:
+
 ```css
 :root {
     --portrait-breakpoint: 4/3;
@@ -152,7 +172,9 @@ The responsive logic is complex but could be simplified:
 ```
 
 ##### Hardcoded Magic Numbers
+
 Multiple hardcoded values throughout:
+
 - `margin-top: 60px` (hamburger clearance)
 - `aspect-ratio: 1` (should use CSS custom property)
 - Various pixel dimensions that could be variables
@@ -160,11 +182,13 @@ Multiple hardcoded values throughout:
 #### NewGame.razor.css & LoadGame.razor.css
 
 **Strengths:**
+
 - Clean, consistent styling approach
 - Good use of CSS Grid for player selection
 - Proper hover and selection states
 
 **Issues:**
+
 - Duplicate button styling across files
 - Inconsistent border-radius values (6px, 8px, 10px)
 - Missing hover states on some interactive elements
@@ -174,16 +198,19 @@ Multiple hardcoded values throughout:
 #### BoardContainer.razor.css
 
 **Strengths:**
+
 - Excellent performance-conscious layer separation
 - Advanced CSS Grid techniques for overlay positioning
 - Proper use of `will-change` and `transform: translateZ(0)` for GPU acceleration
 - Clear documentation of the three-layer architecture
 
 **Issues:**
+
 - Complex deep selector usage with `::deep`
 - Could benefit from CSS custom properties for z-index layers
 
 **Recommendation:**
+
 ```css
 :root {
     --layer-static: 1;
@@ -199,27 +226,32 @@ Multiple hardcoded values throughout:
 **PlayerCard.razor.css:**
 
 **Strengths:**
+
 - Sophisticated 3D flip animation using CSS transforms
 - Fixed dimensions for consistent layout
 - Good component encapsulation
 
 **Issues:**
+
 - Hardcoded dimensions (`553px width`, `190px height`)
 - Missing CSS custom properties for transition timing
 
 **PlayerTile.razor.css:**
 
 **Strengths:**
+
 - Precise grid layout for game statistics
 - Good use of flexbox for internal spacing
 - Custom font integration
 
 **Issues:**
+
 - Hardcoded background image path
 - Magic numbers for grid dimensions
 - Complex calculation comments suggest the layout could be simplified
 
 **Recommendation:**
+
 ```css
 :root {
     --player-tile-width: 553px;
@@ -234,11 +266,13 @@ Multiple hardcoded values throughout:
 **ResourceCard.razor.css:**
 
 **Strengths:**
+
 - Clean flip animation implementation
 - Good visual feedback for interactions
 - Proper use of CSS transforms for 3D effects
 
 **Issues:**
+
 - Duplicate flip animation logic across components
 - Could benefit from shared animation mixins
 
@@ -247,11 +281,13 @@ Multiple hardcoded values throughout:
 #### PurchaseButton.razor.css
 
 **Strengths:**
+
 - Complex 3D flip animation well-implemented
 - Good state management (can-purchase vs disabled)
 - Sophisticated visual feedback
 
 **Issues:**
+
 - Similar flip animation code to other components
 - Hardcoded dimensions and timing values
 
@@ -346,17 +382,21 @@ Multiple hardcoded values throughout:
 ### 3. Remove Redundant Styles
 
 #### CSS Version Indicators
+
 Remove all CSS version indicators (`content: "CSS v2025-12-05-2"`) from production code.
 
 #### Duplicate Text Decoration Rules
+
 Consolidate the numerous `text-decoration: none !important` rules into a single, well-targeted selector without `!important`.
 
 #### Unused Form Styles
+
 Remove unused Bootstrap form floating styles unless there are forms using them.
 
 ### 4. Simplify Complex Selectors
 
 **Current:**
+
 ```css
 .game-table tbody tr.selected:hover {
     background: #006cbd;
@@ -364,6 +404,7 @@ Remove unused Bootstrap form floating styles unless there are forms using them.
 ```
 
 **Recommended:**
+
 ```css
 .game-table .row-selected:hover {
     background: var(--accent-hover);
@@ -396,6 +437,7 @@ Remove unused Bootstrap form floating styles unless there are forms using them.
 ### 6. Performance Optimizations
 
 #### Reduce Paint Operations
+
 Consider using `contain` property for isolated components:
 
 ```css
@@ -407,6 +449,7 @@ Consider using `contain` property for isolated components:
 ```
 
 #### Optimize Animations
+
 Use `transform` and `opacity` only for animations to stay on the compositor:
 
 ```css
@@ -456,6 +499,7 @@ The WebUI CSS codebase is well-structured and follows modern best practices. The
 The suggested improvements would reduce the CSS bundle size by an estimated 15-20% while improving maintainability and consistency. The existing architecture is sound and should be preserved while making these incremental improvements.
 
 **Estimated Impact:**
+
 - **Bundle size reduction:** 15-20%
 - **Maintainability:** Significant improvement
 - **Performance:** Minor improvement

@@ -5,7 +5,6 @@ reviewing changes, and updating summary/documentation files.
 
 > **Important:** Before executing this command, read `.ai/ai-rules.md` for project
 > conventions, commit message formats, and documentation standards.
-
 > **Note:** This command focuses on *what gets committed* and how it is
 > documented. Pre-checkin validation (tests, lint, build) is handled by a
 > separate command.

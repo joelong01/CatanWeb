@@ -34,6 +34,7 @@ The current WebUI scaling system is fragile due to mixed pixel/percentage approa
 The Desktop app achieves robust scaling through:
 
 1. **Uniform Scaling Containers**
+
    ```xml
    <Viewbox Stretch="Uniform" Grid.Column="0">
      <!-- All content scales together as single unit -->
@@ -41,6 +42,7 @@ The Desktop app achieves robust scaling through:
    ```
 
 2. **Fixed Grid Proportions**
+
    ```xml
    <ColumnDefinition Width="25*" />  <!-- Left panel -->
    <ColumnDefinition Width="60*" />  <!-- Board -->
@@ -61,6 +63,7 @@ Create a fixed-dimension coordinate system that scales uniformly to fit any view
 ### Target Resolutions
 
 **Single Base Resolution Per Orientation:**
+
 - **Landscape**: 1920x1080 (design coordinate system)
 - **Portrait**: 1080x1920 (rotated coordinate system)
 - **All devices**: Scale these bases to fit viewport, capped at 1.0x
@@ -123,7 +126,8 @@ Create a fixed-dimension coordinate system that scales uniformly to fit any view
 ### Layout Diagrams
 
 **Landscape Mode (1920x1080 base):**
-```
+
+```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ [☰]                    Game Viewport (100vw × 100vh)                       │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
@@ -149,7 +153,8 @@ Create a fixed-dimension coordinate system that scales uniformly to fit any view
 ```
 
 **Portrait Mode (1080x1920 base) - Tabbed Interface:**
-```
+
+```text
 ┌─────────────────────────────────────────┐
 │          Game Viewport                  │
 │ ┌─────────────────────────────────────┐ │
@@ -396,17 +401,20 @@ document.addEventListener('DOMContentLoaded', () => {
 ### Phase 1: Foundation Infrastructure
 
 **Objectives:**
+
 - Establish the fixed-dimension container system
 - Implement viewport scaling logic
 - Test basic scaling on 1080p and 4K displays
 
 **Implementation Steps:**
+
 1. Create new `ViewportScaler` JavaScript class
 2. Add CSS container and grid system
 3. Test viewport scaling without content
 4. Validate scaling on 4K displays
 
 **Success Criteria:**
+
 - Container scales smoothly on resize
 - Scale cap at 1.0x prevents UI oversizing
 - No layout jank during transitions
@@ -414,17 +422,20 @@ document.addEventListener('DOMContentLoaded', () => {
 ### Phase 2: Layout Migration
 
 **Objectives:**
+
 - Convert Game.razor to use fixed positioning
 - Remove existing responsive CSS and JavaScript
 - Implement landscape/portrait tabbed interface
 
 **Implementation Steps:**
+
 1. Replace `Game.razor.css` grid system with fixed positioning
 2. Remove `panelsScaler.js` and all media queries
 3. Implement tabbed interface for portrait mode
 4. Test layout mode switching
 
 **Success Criteria:**
+
 - Game page renders correctly in both orientations
 - Portrait mode shows tabbed interface (Board, Controls, Players)
 - No JavaScript scaling conflicts
@@ -432,16 +443,19 @@ document.addEventListener('DOMContentLoaded', () => {
 ### Phase 3: Component Conversion
 
 **Objectives:**
+
 - Update all components to use fixed dimensions
 - Remove percentage-based sizing
 - Eliminate CSS media queries
 
 **Component Priority:**
+
 1. **High Priority**: PlayerTile, PurchaseButton, Board components
 2. **Medium Priority**: Resource cards, navigation elements
 3. **Low Priority**: Settings pages, modals
 
 **Implementation per Component:**
+
 1. Replace percentage widths/heights with fixed pixel values
 2. Remove component-specific media queries
 3. Update scoped CSS to use absolute positioning
@@ -450,11 +464,13 @@ document.addEventListener('DOMContentLoaded', () => {
 ### Phase 4: Mobile & Polish
 
 **Objectives:**
+
 - Test on actual mobile devices
 - Add touch-friendly interactions
 - Optimize performance
 
 **Implementation Steps:**
+
 1. Test on actual mobile devices
 2. Fine-tune portrait mode proportions
 3. Add touch gesture support
@@ -465,11 +481,13 @@ document.addEventListener('DOMContentLoaded', () => {
 ### Coordinate System
 
 **Landscape Mode (1920x1080 base):**
+
 - Left panel: 0-480px (25% of 1920)
 - Center panel: 490-1400px (60% with gaps)
 - Right panel: 1410-1920px (26% remaining)
 
 **Portrait Mode (1080x1920 base) - Tabbed Interface:**
+
 - Tab bar: 0-60px (fixed height)
 - Active tab content: 60-1920px (1860px available height)
 - Each tab fills full width: 0-1080px
@@ -477,6 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
 ### Tab State Management
 
 **Blazor Implementation:**
+
 ```csharp
 private string _portraitTab = "board"; // Default tab
 
@@ -501,6 +520,7 @@ private string GetPanelClass(string panelName)
 ```
 
 **JavaScript Tab Switching:**
+
 ```javascript
 // Initialize tab state from session storage - Blazor owns tab switching after this
 document.addEventListener('DOMContentLoaded', () => {
@@ -544,17 +564,20 @@ function setActiveTab(tabName) {
 ### JavaScript Migration - What Changes
 
 **Replaces `panelsScaler.js`:**
+
 - Remove: Complex panel-by-panel transform scaling
 - Remove: Media query-based scaling logic
 - Keep: None - entire file replaced by ViewportScaler
 
 **Relationship to `boardSizer.js`:**
+
 - Keep: `getBounds()` function for coordinate conversion
 - Keep: Click-to-board-coordinate mapping
 - Remove: Any scaling-related functions
 - Purpose: ViewportScaler handles scaling, boardSizer handles coordinate conversion
 
 **Updated `boardSizer.js` integration:**
+
 ```javascript
 // boardSizer.js - coordinate conversion only
 class BoardSizer {
@@ -580,6 +603,7 @@ class BoardSizer {
 ### Fixed Overlay Management
 
 **Hamburger Menu and Side Navigation:**
+
 ```css
 /* Fixed overlays that don't scale */
 .hamburger-btn,
@@ -616,6 +640,7 @@ class BoardSizer {
 ```
 
 **Side Navigation Handling:**
+
 ```javascript
 // Side navigation management (outside scaled container)
 class SideNavigation {
@@ -675,6 +700,7 @@ class SideNavigation {
 ### Performance Benchmarks
 
 **Target Metrics:**
+
 - Resize response time: < 100ms
 - Layout shift during scaling: 0
 - Memory usage: No increase from current implementation
@@ -684,22 +710,26 @@ class SideNavigation {
 
 The migration follows concrete implementation steps without time estimates, as per project guidelines:
 
-**Phase 1: Foundation**
+### Phase 1: Foundation
+
 - Implement ViewportScaler class
 - Create CSS container system
 - Basic scaling validation
 
-**Phase 2: Core Layout**
+### Phase 2: Core Layout
+
 - Convert Game.razor structure
 - Remove existing scaling systems
 - Layout mode switching
 
-**Phase 3: Component Migration**
+### Phase 3: Component Migration
+
 - High-priority components (PlayerTile, Board, PurchaseButton)
 - Remove percentage-based sizing
 - Fixed coordinate positioning
 
-**Phase 4: Mobile & Polish**
+### Phase 4: Testing & Finalization
+
 - Mobile device testing and optimization
 - Performance tuning
 - Documentation and cleanup
@@ -707,21 +737,25 @@ The migration follows concrete implementation steps without time estimates, as p
 ## Benefits of New Architecture
 
 ### Robustness
+
 - **Predictable**: Fixed coordinate system like XAML
 - **Maintainable**: Single scaling algorithm
 - **Debuggable**: Clear separation of concerns
 
 ### Performance  
+
 - **GPU Accelerated**: Hardware-accelerated transforms
 - **Efficient**: Minimal reflows and repaints
 - **Responsive**: Smooth scaling transitions
 
 ### Cross-Platform
+
 - **4K Ready**: Optimal scaling with black space padding (scale capped at 1.0)
 - **Mobile Optimized**: Dedicated mobile resolutions and tabbed interface
 - **Future-Proof**: Easy to add new target resolutions
 
 ### Development Experience
+
 - **XAML Familiarity**: Same patterns as Desktop app
 - **Simple Logic**: No complex media query management
 - **Consistent**: Uniform behavior across all devices
