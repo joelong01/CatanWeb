@@ -375,6 +375,7 @@ temp_old_gameservice_statemachine.cs
 *.db-shm
 *.db-wal
 .test_images/*.*
+.test-images/
 
 # WebUI development files
 .webui-pids.json

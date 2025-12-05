@@ -20,13 +20,15 @@ This document defines the rules, conventions, and best practices for AI assistan
 ### Rationale
 
 The `.ai/` directory serves as the **single source of truth** for:
+
 - Project rules and standards
 - Code quality guidelines
 - Architecture patterns
 - Development workflows
 - Testing requirements
 
-These standards apply to **all AI assistants** regardless of vendor or tool. Agent-specific bindings (like command formats or workflow files) reference back to `.ai/` content but live in their respective directories.
+These standards apply to **all AI assistants** regardless of vendor or tool. Agent-specific bindings (like command formats or
+workflow files) reference back to `.ai/` content but live in their respective directories.
 
 ### Structure
 
@@ -52,6 +54,7 @@ These standards apply to **all AI assistants** regardless of vendor or tool. Age
 ### Enforcement
 
 When creating or updating content in `.ai/`:
+
 1. Review for agent-specific terminology
 2. Replace with generic terms
 3. Move agent-specific content to appropriate directory
@@ -105,6 +108,7 @@ When creating or updating content in `.ai/`:
   4. Continue with remaining implementation after rename is complete
 
 **Example:**
+
 ```text
 "I need to rename the PlayerData class to PlayerProfile. Please use Visual Studio's
 Rename Symbol feature:
@@ -270,7 +274,11 @@ Catan/
 ├── .claude/                # Claude-specific commands and configurations
 │   ├── commands/          # Reusable command scripts
 │   └── sessions/          # Session summaries
-├── design_docs/           # Architecture and design documentation
+├── .design/               # Current "as built" design documentation
+│   ├── projects/          # Per-project architecture summaries
+│   ├── systems/           # Cross-cutting system designs
+│   └── ui/               # UI component design specifications
+├── design_docs/           # Legacy design documentation and historical decisions
 ├── WebUI/
 │   ├── Components/        # Reusable Blazor components
 │   │   ├── Board/        # Board-related components
@@ -296,6 +304,25 @@ Check `.gitignore` for excluded files:
 - `.webui-pids.json` - WebUI process tracking
 - `code-reviews/` - AI-generated code reviews
 - `*.db`, `*.db-shm`, `*.db-wal` - SQLite database files
+- `.test-images/` - Test images for AI analysis (see Image Analysis section)
+
+### Image Analysis
+
+The `.test-images/` directory (excluded from git) contains images for AI assistant analysis:
+
+- **Location**: `.test-images/` in project root
+- **Purpose**: Store screenshots, UI mockups, and reference images for AI analysis
+- **Usage pattern**: When user says "checkout foo.jpg", the file is located at `.test-images/foo.jpg`
+- **File types**: Screenshots (.png, .jpg), design mockups, UI reference images
+- **Git status**: Directory is in `.gitignore` - images are not committed to repository
+
+**Common use cases:**
+
+- UI comparison screenshots (Desktop vs WebUI)
+- Design mockups for new features
+- Bug reproduction images
+- Visual regression testing references
+- Architecture diagrams and flowcharts
 
 ## Build and Development Workflow
 
@@ -456,7 +483,11 @@ git --no-pager log --oneline -10
 1. Run `start-session.md` command to load context
 2. Check `git status` and recent commits
 3. Review `.ai/project-summary.md` for latest state
-4. Identify current task and next priorities
+4. **Discovery phase**: Consult `.design/` directory for current architecture
+   - Start with `.design/summary.md` for project overview
+   - Check `.design/TOC.md` for complete documentation index
+   - Reference relevant project/system/ui documents as needed
+5. Identify current task and next priorities
 
 ### During a Session
 
@@ -523,7 +554,13 @@ git --no-pager log --oneline -10
 
 ## Resources
 
+- **Current Architecture**: `.design/` directory for "as built" system documentation
+  - `.design/TOC.md` - Complete documentation index
+  - `.design/summary.md` - High-level project overview
+  - `.design/projects/` - Per-project implementation details
+  - `.design/systems/` - Cross-cutting system designs
+  - `.design/ui/` - Component-level UI specifications
 - **Desktop Reference**: `DesktopApp/` for XAML patterns and styling
-- **Design Docs**: `design_docs/` for architectural decisions
+- **Legacy Design Docs**: `design_docs/` for historical architectural decisions
 - **Session History**: `.ai/sessions/` for past work context
 - **Project Context**: `.ai/project-summary.md` for current state and priorities
