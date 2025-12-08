@@ -5,14 +5,15 @@
 
 @inject GameServiceConfig Config
 
-<div class="player-card @GetFlipClass()" data-testid="player-card-@Player.Id">
+<div class="player-card @GetFlipClass() @(IsPortrait ? "portrait" : "")" data-testid="player-card-@Player.Id">
     <div class="card-inner">
         <!-- Front: Normal player tile with stats -->
         <div class="card-front">
             <PlayerTile Player="@Player"
                         GameModel="@GameModel"
                         PlayerColors="@PlayerColors"
-                        PlayerProfile="@PlayerProfile" />
+                        PlayerProfile="@PlayerProfile"
+                        IsPortrait="@IsPortrait" />
         </div>
 
         <!-- Back: Either GoFirst or Supplemental, depending on FlipMode -->
@@ -132,6 +133,12 @@
     /// </summary>
     [Parameter]
     public EventCallback<(string PlayerId, bool Participating)> OnSupplementalChanged { get; set; }
+
+    /// <summary>
+    /// Whether the layout is in portrait mode (affects sizing).
+    /// </summary>
+    [Parameter]
+    public bool IsPortrait { get; set; }
 
     /// <summary>
     /// Gets the CSS class for the flip state.

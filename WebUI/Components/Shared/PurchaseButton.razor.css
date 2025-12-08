@@ -1,6 +1,9 @@
 .purchase-button {
-    width: 70px;
-    height: 90px;
+    /* Flex to fill available width, maintain aspect ratio */
+    flex: 1 1 auto;
+    min-width: 50px;
+    max-width: 80px;
+    aspect-ratio: 7 / 9;
     perspective: 1000px;
     cursor: pointer;
 }

@@ -23,7 +23,15 @@
 <PageTitle>Catan Game</PageTitle>
 
 <div class="game-viewport">
-<div class="game-layout">
+<div class="game-container" data-layout-mode="@(_isPortrait ? "portrait" : "landscape")">
+    <!-- Portrait mode tab bar (hidden in landscape) -->
+    <div class="portrait-tabs">
+        <button class="portrait-tab @(_portraitTab == "board" ? "active" : "")" @onclick='() => SetPortraitTab("board")'>Board</button>
+        <button class="portrait-tab @(_portraitTab == "controls" ? "active" : "")" @onclick='() => SetPortraitTab("controls")'>Controls</button>
+        <button class="portrait-tab @(_portraitTab == "players" ? "active" : "")" @onclick='() => SetPortraitTab("players")'>Players</button>
+    </div>
+
+    <div class="game-grid">
     @if (IsConnecting)
     {
         <div class="loading-overlay">
@@ -41,8 +49,8 @@
     }
     else if (GameModel != null)
     {
-        <!-- LEFT PANEL -->
-        <div class="left-panel">
+        <!-- LEFT PANEL (Controls in portrait mode) -->
+        <div class="panel-viewbox left-viewbox left-panel @GetPanelClass("controls")">
             <div class="left-panel-content">
             <!-- Editable Game Name -->
             <div class="game-name-container">
@@ -63,7 +71,6 @@
 
             <!-- Game Controls (Undo/Next/Redo) -->
             <div class="game-controls" style="@GetCurrentPlayerGradient()">
-                <div class="current-player-name" style="color: @GetCurrentPlayerForeground()">@GetCurrentPlayerFirstName()</div>
                 <div class="control-buttons">
                     <button class="game-btn" @onclick="OnUndoClick" disabled="@(!GameModel.ActionFlags.UndoEnabled)">
                         <span class="btn-icon">&#x21A9;</span>
@@ -161,7 +168,11 @@
         </div>
 
         <!-- CENTER PANEL - Game Board -->
-        <div class="center-panel">
+        <div class="panel-viewbox center-viewbox center-panel @GetPanelClass("board")">
+            <!-- Resource Tracking - shown here in portrait mode only -->
+            <div class="portrait-resource-tracking">
+                <ResourceTracking GameModel="@GameModel" />
+            </div>
             <div class="panel-section game-board">
                 <div class="board-container"
                      @oncontextmenu="OnBoardRightClick"
@@ -204,15 +215,18 @@
             </div>
         }
 
-        <!-- RIGHT PANEL -->
-        <div class="right-panel">
-            <!-- Resource Tracking -->
-            <ResourceTracking GameModel="@GameModel" />
+        <!-- RIGHT PANEL (Players in portrait mode) -->
+        <div class="panel-viewbox right-viewbox right-panel @GetPanelClass("players")">
+            <!-- Resource Tracking - shown here in landscape mode only -->
+            <div class="landscape-resource-tracking">
+                <ResourceTracking GameModel="@GameModel" />
+            </div>
 
-            <!-- Players Panel -->
+            <!-- Players Panel (Player Cards Stack) -->
             <PlayersPanel GameModel="@GameModel"
                           PlayerColorMap="@PlayerColorMap"
                           PlayerProfiles="@PlayerProfiles"
+                          IsPortrait="@_isPortrait"
                           OnGoFirst="@OnGoFirstClick"
                           OnSupplementalChanged="@OnSupplementalChanged" />
         </div>
@@ -224,6 +238,7 @@
             <p>Connection State: @Connection.State</p>
         </div>
     }
+    </div>
 </div>
 </div>
 
@@ -275,6 +290,34 @@
     private string _originalName = string.Empty;
     private ElementReference _nameInputRef;
 
+    // Portrait mode tab state
+    private string _portraitTab = "board"; // Default tab: "board", "controls", "players"
+    private bool _isPortrait = false; // Layout mode from viewport scaler
+    private DotNetObjectReference<Game>? _dotNetRef; // For JS callbacks
+    private bool _disposed = false; // Guard against callbacks after dispose
+
+    /// <summary>
+    /// Sets the active portrait mode tab and persists to session storage.
+    /// </summary>
+    private async Task SetPortraitTab(string tab)
+    {
+        _portraitTab = tab;
+        await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "portraitTab", tab);
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Gets the CSS class for a panel based on portrait mode tab state.
+    /// In landscape mode, returns empty (all panels visible).
+    /// In portrait mode, returns "portrait-active" for the selected tab's panel.
+    /// </summary>
+    private string GetPanelClass(string panelName)
+    {
+        // This is handled by CSS based on data-layout-mode attribute
+        // The portrait-active class is added when the panel matches the current tab
+        return _portraitTab == panelName ? "portrait-active" : "";
+    }
+
     protected override async Task OnInitializedAsync()
     {
         // Subscribe to theme changes to re-render the board
@@ -284,6 +327,72 @@
         await JSRuntime.InvokeVoidAsync("localStorage.setItem", "current_gameId", GameId);
 
         await ConnectToGameAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize viewport scaler for uniform scaling with callback for orientation changes
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("viewportScaler.initialize", null, null, _dotNetRef);
+
+            // Get initial layout mode
+            await UpdateLayoutModeAsync();
+
+            // Load saved portrait tab from session storage
+            var savedTab = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "portraitTab");
+            if (!string.IsNullOrEmpty(savedTab) && savedTab != _portraitTab)
+            {
+                _portraitTab = savedTab;
+                StateHasChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Updates the _isPortrait flag from JavaScript viewport scaler.
+    /// </summary>
+    private async Task UpdateLayoutModeAsync()
+    {
+        try
+        {
+            var layoutInfo = await JSRuntime.InvokeAsync<LayoutInfo?>("viewportScaler.getLayoutInfo");
+            if (layoutInfo != null && layoutInfo.IsPortrait != _isPortrait)
+            {
+                _isPortrait = layoutInfo.IsPortrait;
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            // Ignore errors if viewportScaler not ready
+        }
+    }
+
+    /// <summary>
+    /// Called from JavaScript when orientation changes (landscape/portrait).
+    /// </summary>
+    [JSInvokable]
+    public void OnOrientationChanged(bool isPortrait)
+    {
+        if (_disposed) return; // Guard against calls after dispose
+        if (_isPortrait != isPortrait)
+        {
+            _isPortrait = isPortrait;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    /// <summary>
+    /// Layout info returned from JavaScript viewportScaler.getLayoutInfo()
+    /// </summary>
+    private class LayoutInfo
+    {
+        public double Scale { get; set; }
+        public bool IsPortrait { get; set; }
+        public int BaseWidth { get; set; }
+        public int BaseHeight { get; set; }
     }
 
     private void OnThemeChanged(string themeName)
@@ -1072,10 +1181,12 @@
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true; // Set first to guard against callbacks
         AssetService.ThemeChanged -= OnThemeChanged;
         Connection.GameStateUpdated -= OnGameStateUpdated;
         _rollDimCts?.Cancel();
         _rollDimCts?.Dispose();
+        _dotNetRef?.Dispose();
         // Don't dispose the Connection service - it's a singleton that persists across pages
         await Task.CompletedTask;
     }

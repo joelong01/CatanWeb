@@ -1,66 +1,126 @@
-/* Viewport wrapper - handles scaling the entire layout */
-.game-viewport {
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    background: #000;
-}
+/* =============================================================================
+   Game.razor.css - Fixed-dimension scaling system (XAML Viewbox pattern)
 
-/* CSS version indicator - helps detect stale cached CSS */
-.game-viewport::after {
-    content: "CSS v2025-12-04-2";
-    position: fixed;
+   Design: Fixed internal coordinates (1920x1080 landscape, 1080x1920 portrait)
+   scaled uniformly to fit any viewport, capped at 1.0x to prevent oversizing.
+
+   Layout proportions match XAML Grid.ColumnDefinitions:
+   - Left panel: 25fr (controls, purchase buttons, roll grid)
+   - Center panel: 60fr (game board)
+   - Right panel: 26fr (resource tracking, player tiles)
+   ============================================================================= */
+
+/* =============================================================================
+   Viewport and Container - The scaling foundation
+   ============================================================================= */
+
+/* CSS version indicator - positioned inside game container, scales with content */
+.game-container[data-layout-mode="landscape"]::after {
+    content: "CSS 2025-12-08 version: 1 landscape";
+    position: absolute;
     bottom: 5px;
     right: 5px;
     font-size: 10px;
     color: #666;
-    z-index: 9999;
     pointer-events: none;
 }
 
-/* Layout designed for 4K (3840x2160) using fr units, then scaled to fit viewport */
-.game-layout {
-    display: grid;
-    /* fr-based columns that work well at 4K: ~14% left, ~58% center, ~28% right */
-    grid-template-columns: 14fr 58fr 28fr;
-    gap: 20px;
-    height: 100%;
-    width: 100%;
+.game-container[data-layout-mode="portrait"]::after {
+    content: "CSS 2025-12-08 version: 1 portrait";
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    font-size: 10px;
+    color: #666;
+    pointer-events: none;
+}
+
+.game-viewport {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
     background: #000;
+    overflow: hidden;
+}
+
+.game-container {
+    /* Fixed internal coordinate system - set by JavaScript based on orientation */
+    width: var(--base-width, 1920px);
+    height: var(--base-height, 1080px);
+
+    /* Scale to fit viewport - equivalent to XAML Viewbox Stretch="Uniform" */
+    transform-origin: top left;
+    transform: scale(var(--viewport-scale, 1));
+
+    /* Container styling */
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* =============================================================================
+   Game Grid - Three-column layout (landscape mode)
+   ============================================================================= */
+
+.game-grid {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    gap: 10px;
     box-sizing: border-box;
     overflow: hidden;
 }
 
-.left-panel {
+/* Landscape Mode - Default
+   Fixed pixel widths based on component sizes:
+   - Left panel: ~320px for purchase buttons (4 × 70px + gaps) and roll grid
+   - Right panel: 510px for PlayerTile/ResourceTracking components (500px + padding)
+   - Center panel: remaining space for board
+*/
+.game-container[data-layout-mode="landscape"] .game-grid {
+    grid-template-columns: 320px 1fr 510px;
+    grid-template-rows: 1fr;
+    height: 100%;
+}
+
+/* =============================================================================
+   Panel Viewboxes - Each panel scales its content uniformly
+   ============================================================================= */
+
+.panel-viewbox {
+    overflow: hidden;
     display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* Left Panel - Game controls, purchase buttons, roll grid */
+.left-panel {
     flex-direction: column;
     gap: 5px;
     width: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
+    height: 100%;
+    overflow: hidden; /* No scrollbars - content must fit */
     background: #000;
-    padding: 0px;
+    padding: 0;
 }
 
 .left-panel-content {
     display: flex;
     flex-direction: column;
     gap: 5px;
-    margin-left: 50px;
+    margin-left: 50px; /* Clear hamburger menu area */
+    width: calc(100% - 60px); /* Leave 10px margin on right */
+    padding-right: 10px;
 }
 
-.right-panel {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end; /* Right-align content */
-    gap: 0px;
-    width: 100%;
-    overflow: hidden;
-    background: #000;
-    padding: 0px;
-    /* No more dynamic scaling - whole layout scales together */
-}
-
+/* Center Panel - Game board */
 .center-panel {
     display: grid;
     place-items: center;
@@ -70,10 +130,141 @@
     min-width: 0;
     min-height: 0;
     background: #000;
-    margin-left: 75px;
 }
 
-/* Section containers - no borders, natural flow */
+/* Portrait mode - center panel stacks ResourceTracking above board */
+.game-container[data-layout-mode="portrait"] .center-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+/* Right Panel - Resource tracking, player tiles */
+.right-panel {
+    flex-direction: column;
+    align-items: flex-end; /* Right-align content */
+    justify-content: flex-start; /* Align content to top */
+    gap: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* No scrollbars - content must fit */
+    background: #000;
+    padding: 0;
+    padding-right: 5px; /* Small margin from edge */
+}
+
+/* =============================================================================
+   Portrait Mode - Tabbed Interface
+   ============================================================================= */
+
+/* Portrait tabs - hidden in landscape */
+.portrait-tabs {
+    display: none;
+}
+
+.game-container[data-layout-mode="portrait"] .portrait-tabs {
+    display: flex;
+    background: #1a1a2e;
+    border-bottom: 2px solid #333;
+    height: 60px;
+    flex-shrink: 0;
+    width: 100%;
+}
+
+.portrait-tab {
+    flex: 1;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+    color: #888;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.portrait-tab:hover {
+    color: #aaa;
+    background: rgba(74, 158, 255, 0.05);
+}
+
+.portrait-tab.active {
+    color: #fff;
+    border-bottom-color: #4a9eff;
+    background: rgba(74, 158, 255, 0.1);
+}
+
+/* Portrait Mode - Game grid becomes stacking container */
+.game-container[data-layout-mode="portrait"] .game-grid {
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 60px); /* 1920 - 60 = 1860px in reference coords */
+}
+
+/* Portrait Mode - All panels hidden by default */
+.game-container[data-layout-mode="portrait"] .left-panel,
+.game-container[data-layout-mode="portrait"] .center-panel,
+.game-container[data-layout-mode="portrait"] .right-panel {
+    display: none;
+    width: 100%;
+    height: 100%;
+}
+
+/* Portrait Mode - Active panel fills the tab content area */
+.game-container[data-layout-mode="portrait"] .portrait-active {
+    display: flex !important;
+    flex: 1;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+/* Portrait mode adjustments for left panel */
+.game-container[data-layout-mode="portrait"] .left-panel-content {
+    margin-left: 20px;
+    width: calc(100% - 40px);
+    align-items: center;
+}
+
+/* Portrait mode adjustments for right panel - center player tiles */
+.game-container[data-layout-mode="portrait"] .right-panel {
+    align-items: center;
+    justify-content: flex-start;
+    padding: 10px;
+    overflow: hidden;
+}
+
+/* =============================================================================
+   Resource Tracking - Conditional visibility by orientation
+   ============================================================================= */
+
+/* Portrait mode: show on Board tab, hide on Players tab */
+.portrait-resource-tracking {
+    display: none;
+}
+
+.game-container[data-layout-mode="portrait"] .portrait-resource-tracking {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+/* Landscape mode: show on Players panel (right column) */
+.landscape-resource-tracking {
+    display: block;
+}
+
+.game-container[data-layout-mode="portrait"] .landscape-resource-tracking {
+    display: none;
+}
+
+/* =============================================================================
+   Section Containers - Game controls, roll entry, measurements
+   ============================================================================= */
+
 .game-controls,
 .roll-entry,
 .board-measurements {
@@ -89,7 +280,7 @@
 
 /* Game name container - above game controls */
 .game-name-container {
-    margin-top: 60px; /* Clear the hamburger menu (50px hamburger + 10px gap) */
+    margin-top: 10px; /* Small margin, hamburger overlays this area */
     padding: 5px 10px;
     width: 100%;
     box-sizing: border-box;
@@ -144,7 +335,10 @@
     width: 100%;
 }
 
-/* Game Controls */
+/* =============================================================================
+   Game Control Buttons (Undo/Next/Redo)
+   ============================================================================= */
+
 .current-player-name {
     font-size: 1.4rem;
     font-weight: bold;
@@ -184,11 +378,11 @@
 
 .btn-icon {
     font-family: 'Segoe MDL2 Assets';
-    font-size: 36px; /* Fixed for 4K */
+    font-size: 36px;
 }
 
 .btn-label {
-    font-size: 12px; /* Fixed for 4K */
+    font-size: 12px;
     margin-top: 2px;
 }
 
@@ -208,20 +402,26 @@
     text-align: center;
 }
 
-/* Purchase Controls */
+/* =============================================================================
+   Purchase Controls
+   ============================================================================= */
+
 .purchase-grid {
     display: flex;
-    gap: 2px;
+    gap: 4px;
     justify-content: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     width: 100%;
 }
 
-/* Roll Entry */
+/* =============================================================================
+   Roll Entry Grid
+   ============================================================================= */
+
 .roll-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 2px;
+    grid-template-columns: repeat(3, 1fr); /* Portrait override: 4 columns in app.css */
+    gap: 1px;
     width: 100%;
 }
 
@@ -229,8 +429,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
-    padding: 5px;
+    gap: 1px;
+    padding: 2px 4px;
     background: var(--overlay-darker);
     border-radius: 4px;
     cursor: pointer;
@@ -241,10 +441,10 @@
 }
 
 .roll-count {
-    font-size: 1em;
+    font-size: 0.85em;
     font-weight: bold;
     color: var(--text-secondary);
-    min-height: 1em;
+    line-height: 1;
 }
 
 .roll-catan-number svg {
@@ -252,31 +452,43 @@
 }
 
 .roll-percentage {
-    font-size: 1em;
+    font-size: 0.85em;
     font-weight: bold;
     color: var(--text-secondary);
-    min-height: 1em;
+    line-height: 1;
 }
 
-/* Board Measurements */
+/* =============================================================================
+   Board Measurements
+   ============================================================================= */
+
 .board-measurements {
     min-height: 100px;
 }
 
-/* Game Board */
+/* =============================================================================
+   Game Board
+   ============================================================================= */
+
 .game-board {
+    width: 100%;
     height: 100%;
     overflow: hidden;
+    background: #000 !important;
 }
 
 .board-container {
     width: 100%;
     height: 100%;
-    display: grid;
-    place-items: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-/* Tracked Resources */
+/* =============================================================================
+   Resource Cards and Player List
+   ============================================================================= */
+
 .tracked-resources {
     min-height: 100px;
 }
@@ -293,7 +505,6 @@
     font-size: 20px;
 }
 
-/* Player List */
 .player-list {
     flex: 1;
     min-height: 200px;
@@ -355,10 +566,9 @@
     background: var(--overlay-lighter);
 }
 
-/* Panel-specific backgrounds */
-.game-board {
-    background: #000 !important;
-}
+/* =============================================================================
+   Debug Panel
+   ============================================================================= */
 
 .debug-panel {
     background: var(--game-bg-secondary) !important;
@@ -388,7 +598,10 @@
     font-weight: bold;
 }
 
-/* Loading/Error overlays */
+/* =============================================================================
+   Loading/Error Overlays
+   ============================================================================= */
+
 .loading-overlay, .error-overlay {
     grid-column: 1 / -1;
     display: flex;
@@ -402,7 +615,10 @@
     color: #ff6b6b;
 }
 
-/* Robber target selection menu */
+/* =============================================================================
+   Robber Target Selection Menu
+   ============================================================================= */
+
 .robber-menu-backdrop {
     position: fixed;
     top: 0;

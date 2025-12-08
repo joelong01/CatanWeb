@@ -10,11 +10,13 @@
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: 1fr;
-    /* Width is constraint, height computed from aspect-ratio */
-    width: 100%;
-    /* height: auto (implicit) - aspect-ratio computes it from width */
-    aspect-ratio: var(--board-aspect-ratio, 1);
-    max-height: 100%;
+    /* Fixed size in reference coordinates (1920x1080 system)
+       Center panel is ~1090px wide, 1080px tall
+       Board aspect ratio ~1.15:1 (wider than tall)
+       Height-constrained: 1000px tall, ~1150px wide fits in 1090px? No.
+       Width-constrained: 1050px wide, ~913px tall */
+    width: 1050px;
+    height: 950px;
     isolation: isolate;
 }
 

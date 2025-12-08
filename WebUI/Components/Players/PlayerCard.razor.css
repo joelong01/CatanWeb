@@ -1,13 +1,14 @@
 /*
  * PlayerCard: Flipping container for PlayerTile (front) and action views (back)
- * Fixed dimensions match PlayerTile: 553px width, ~190px height
- * Height = info row (50px) + gap (5px) + resources row (125px) + padding (10px) = 190px
+ * Fixed dimensions match PlayerTile: 500px width, ~150px height
+ * Height = info row (40px) + gap (3px) + resources row (100px) + padding (8px) = ~150px
  */
 .player-card {
     perspective: 1000px;
-    width: 553px;
-    height: 190px;
+    width: 500px;
+    height: 150px;
     margin: 1px;
+    margin-left: auto; /* Right-align */
 }
 
 .card-inner {
@@ -42,15 +43,15 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    padding: 10px;
+    padding: 8px;
     border-radius: 3px;
     box-sizing: border-box;
-    gap: 20px;
+    gap: 12px;
 }
 
 .go-first-btn {
-    padding: 12px 32px;
-    font-size: 16px;
+    padding: 8px 20px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text-primary);
     background: var(--game-bg-secondary);
@@ -71,11 +72,11 @@
 }
 
 .player-avatar {
-    width: 100px;
-    height: 100px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     overflow: hidden;
-    border: 3px solid var(--text-secondary);
+    border: 2px solid var(--text-secondary);
     flex-shrink: 0;
 }
 
@@ -99,7 +100,7 @@
 
 .player-name {
     color: white;
-    font-size: 24px;
+    font-size: 18px;
     font-weight: 600;
     flex: 1;
 }
@@ -159,3 +160,13 @@
     opacity: 0.4;
     filter: grayscale(70%);
 }
+
+/* =============================================================================
+   Portrait Mode - Center cards instead of right-align
+   ============================================================================= */
+
+.player-card.portrait {
+    margin-left: auto;
+    margin-right: auto;
+}
+

@@ -33,6 +33,9 @@ window.boardSizer = {
 
     /**
      * Updates the board container size based on available width.
+     * NOTE: With viewport scaling (viewportScaler.js), we no longer set explicit pixel
+     * dimensions. The board uses CSS width/height: 100% and the viewport transform
+     * scales everything uniformly. This method now just reports current dimensions.
      */
     updateSize: function() {
         const container = document.querySelector(this._containerSelector);
@@ -41,32 +44,36 @@ window.boardSizer = {
             return { width: 0, height: 0 };
         }
 
-        // Get the constraint container's available dimensions
-        const constraintContainer = document.querySelector(this._constraintSelector);
-        if (!constraintContainer) {
-            console.error('[boardSizer] Constraint container not found:', this._constraintSelector);
-            return { width: 0, height: 0 };
+        // Try to get dimensions from any visible panel (in portrait mode, inactive panels are hidden)
+        const panelSelectors = ['.center-panel', '.left-panel', '.right-panel'];
+        let width = 0;
+        let height = 0;
+
+        for (const selector of panelSelectors) {
+            const panel = document.querySelector(selector);
+            if (panel) {
+                const rect = panel.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                    width = rect.width;
+                    height = rect.height;
+                    break;
+                }
+            }
         }
 
-        const constraintRect = constraintContainer.getBoundingClientRect();
-        const availableWidth = constraintRect.width;
-        const availableHeight = constraintRect.height;
-
-        // Calculate dimensions: width is the constraint
-        let width = availableWidth;
-        let height = width / this._aspectRatio;
-
-        // If height exceeds available, constrain by height instead
-        if (height > availableHeight) {
-            height = availableHeight;
-            width = height * this._aspectRatio;
+        // Fallback to constraint container if no panel found
+        if (width === 0 || height === 0) {
+            const constraintContainer = document.querySelector(this._constraintSelector);
+            if (constraintContainer) {
+                const constraintRect = constraintContainer.getBoundingClientRect();
+                width = constraintRect.width;
+                height = constraintRect.height;
+            }
         }
 
-        // Apply dimensions
-        container.style.width = width + 'px';
-        container.style.height = height + 'px';
-
-        console.log('[boardSizer] Applied:', { width: Math.round(width), height: Math.round(height) });
+        // Don't set explicit pixel dimensions - let CSS handle sizing
+        // The viewport transform (viewportScaler.js) scales everything uniformly
+        console.log('[boardSizer] Container size:', { width: Math.round(width), height: Math.round(height) });
 
         return { width, height };
     },

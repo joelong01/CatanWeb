@@ -1,13 +1,13 @@
 .player-tile {
     background: url('/themes/base/backgrounds/maple.jpg') center/cover;
     border-radius: 3px;
-    margin: 1px;
-    padding: 5px;
+    margin: var(--player-tile-margin, 2px 1px); /* 2px vertical gap between tiles */
+    padding: var(--player-tile-padding, 4px);
     visibility: visible;
     overflow: visible;
-    /* Fixed internal width: 50 avatar + 2 gap + 12*40 stats + 11*1 gaps + 10 padding = 553px */
-    width: 553px;
+    width: var(--player-tile-width, 500px);
     box-sizing: border-box;
+    margin-left: var(--player-tile-margin-left, auto); /* Push to right in landscape */
     /* No zoom - whole layout scales together via viewport transform */
 }
 
@@ -21,8 +21,8 @@
 }
 
 .player-avatar {
-    width: 50px;
-    height: 50px;
+    width: var(--avatar-size, 40px);
+    height: var(--avatar-size, 40px);
     border-radius: 50%;
     overflow: hidden;
     flex-shrink: 0;
@@ -46,19 +46,19 @@
 
 .player-stats-grid {
     display: grid;
-    grid-template-columns: repeat(12, 40px);
-    gap: 1px;
+    grid-template-columns: repeat(12, var(--stat-size, 35px));
+    gap: var(--stat-gap, 1px);
 }
 
 .stat-tile {
-    width: 40px;
-    height: 50px;
-    border-radius: 8px;
+    width: var(--stat-size, 35px);
+    height: var(--stat-size, 35px);
+    border-radius: 6px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    padding: 4px 0 6px 0;
+    justify-content: center;
+    padding: 2px 0;
     box-sizing: border-box;
     overflow: hidden;
 }
@@ -69,18 +69,18 @@
 
 .stat-glyph {
     font-family: 'Catan', sans-serif;
-    font-size: 1.5em;
+    font-size: var(--stat-glyph-size, 1.1em);
     line-height: 1;
     text-align: center;
     /* Color inherited from parent stat-tile via inline style */
 }
 
 .stat-count {
-    font-size: 1em;
+    font-size: var(--stat-count-size, 0.8em);
     font-weight: bold;
     line-height: 1;
     text-align: center;
-    margin-top: 2px;
+    margin-top: 1px;
 }
 
 /* Score tile: laurel wreath with number centered inside */
@@ -91,14 +91,14 @@
 
 .laurel-bg {
     position: absolute;
-    font-size: 2.5em;
+    font-size: var(--laurel-size, 1.8em);
     /* Center the laurel glyph behind the score number */
 }
 
 .score-number {
     position: relative;
     z-index: 1;
-    font-size: 1em;
+    font-size: var(--score-size, 0.8em);
     font-weight: bold;
     text-align: center;
 }
@@ -114,7 +114,18 @@
 
 .resource-card-wrapper {
     /* 7 cards with fixed pixel size, card aspect ratio 5:7 */
-    /* height increased by 20px (105->125), width = 125 * 5/7 = 89 */
-    width: 89px;
-    height: 125px;
+    /* Reduced to fit 6 players: 100px height, width = 100 * 5/7 = 71 */
+    width: 71px;
+    height: 100px;
 }
+
+/* =============================================================================
+   Portrait Mode - Larger sizing for 1080px width
+   ============================================================================= */
+
+/* Portrait Mode - Same sizes as landscape, just centered */
+.player-tile.portrait {
+    --player-tile-margin: 2px auto;
+    --player-tile-margin-left: 0;
+}
+

@@ -1,12 +1,13 @@
 .resource-tracking-panel {
     background: var(--game-bg-panel);
     border-radius: 5px;
-    padding: 5px;
-    margin-bottom: 5px;
+    padding: 4px;
+    margin-bottom: 4px;
     overflow: visible;
     /* Fixed width matching player tile */
-    width: 553px;
+    width: 500px;
     box-sizing: border-box;
+    margin-left: auto; /* Push to right */
     /* No zoom - whole layout scales together via viewport transform */
 }
 
@@ -19,7 +20,7 @@
 
 .resource-card-wrapper {
     /* 7 cards with fixed pixel size, card aspect ratio 5:7 */
-    /* height increased by 20px (105->125), width = 125 * 5/7 = 89 */
-    width: 89px;
-    height: 125px;
+    /* Reduced to fit: 100px height, width = 100 * 5/7 = 71 */
+    width: 71px;
+    height: 100px;
 }

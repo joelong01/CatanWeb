@@ -2,7 +2,7 @@
 @using Catan3.Shared.Profiles
 @using static Catan3.WebUI.Components.Players.PlayerCard
 
-<div class="players-panel @(IsSupplementalPhase ? "supplemental-phase" : "")" data-testid="players-panel">
+<div class="players-panel @(IsSupplementalPhase ? "supplemental-phase" : "") @(IsPortrait ? "portrait" : "")" data-testid="players-panel">
     <!-- DEBUG: State=@GameModel.GameState, IsSupp=@IsSupplementalPhase, Visible=@GetVisiblePlayers().Count() -->
     @foreach (var player in GetVisiblePlayers())
     {
@@ -16,6 +16,7 @@
                     PlayerProfile="@playerProfile"
                     FlipMode="@flipMode"
                     IsCurrentPlayer="@isCurrentPlayer"
+                    IsPortrait="@IsPortrait"
                     OnGoFirst="@OnGoFirst"
                     OnSupplementalChanged="@OnSupplementalChanged" />
     }
@@ -51,6 +52,12 @@
     /// </summary>
     [Parameter]
     public EventCallback<(string PlayerId, bool Participating)> OnSupplementalChanged { get; set; }
+
+    /// <summary>
+    /// Whether the layout is in portrait mode (affects sizing and alignment).
+    /// </summary>
+    [Parameter]
+    public bool IsPortrait { get; set; }
 
     /// <summary>
     /// Whether we're in the Supplemental build phase (not PickSupplementalPlayers).
