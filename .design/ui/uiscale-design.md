@@ -154,6 +154,15 @@ Create a fixed-dimension coordinate system that scales uniformly to fit any view
 
 **Portrait Mode (1080x1920 base) - Tabbed Interface:**
 
+Design decisions for portrait mode:
+
+1. **Resource Tracking on Board Tab**: The Resource Tracking component (showing resource
+   distribution across the board) belongs on the Board tab, not the Players tab. This is
+   semantically correct (it measures board resource generation) and more pixel efficient.
+
+2. **Players Tab - Centered Layout**: Player tiles should be horizontally centered in the
+   available 1080px width, not right-aligned as in landscape mode.
+
 ```text
 ┌─────────────────────────────────────────┐
 │          Game Viewport                  │
@@ -169,6 +178,9 @@ Create a fixed-dimension coordinate system that scales uniformly to fit any view
 │ │ │                                 │ │ │
 │ │ │  Board Tab:                     │ │ │
 │ │ │  ┌─────────────────────────┐    │ │ │
+│ │ │  │    Resource Tracking    │    │ │ │
+│ │ │  └─────────────────────────┘    │ │ │
+│ │ │  ┌─────────────────────────┐    │ │ │
 │ │ │  │        Hex Board        │    │ │ │
 │ │ │  │      (Full Width)       │    │ │ │
 │ │ │  └─────────────────────────┘    │ │ │
@@ -180,8 +192,7 @@ Create a fixed-dimension coordinate system that scales uniformly to fit any view
 │ │ │  • Purchase Buttons             │ │ │
 │ │ │                                 │ │ │
 │ │ │  Players Tab:                   │ │ │
-│ │ │  • Resource Tracking            │ │ │
-│ │ │  • Player Cards Stack           │ │ │
+│ │ │  • Player Cards (centered)      │ │ │
 │ │ │                                 │ │ │
 │ │ └─────────────────────────────────┘ │ │
 │ │           1080×1860                 │ │
@@ -759,6 +770,98 @@ The migration follows concrete implementation steps without time estimates, as p
 - **XAML Familiarity**: Same patterns as Desktop app
 - **Simple Logic**: No complex media query management
 - **Consistent**: Uniform behavior across all devices
+
+## CSS Architecture for Layout Modes
+
+### The Problem with Global CSS Overrides
+
+Blazor uses **scoped CSS** (`.razor.css` files) which adds unique attributes to elements for style isolation.
+This creates a specificity problem:
+
+1. **Scoped CSS** in child components (e.g., `PlayerTile.razor.css`) has higher specificity due to the
+   generated attribute selectors
+2. **Global CSS** in `app.css` trying to override scoped CSS requires `!important` hacks
+3. **Ancestor selectors don't work**: Scoped CSS cannot select based on parent elements outside the component
+   (e.g., `.game-container[data-layout-mode="portrait"] .player-tile` won't work from within
+   `PlayerTile.razor.css`)
+
+### Solution: Pass Layout Mode as Component Parameter
+
+The clean, maintainable solution is to **pass the layout mode down through the component hierarchy**:
+
+1. **Add `IsPortrait` parameter** to components that need portrait-specific styling:
+
+   ```csharp
+   [Parameter] public bool IsPortrait { get; set; }
+   ```
+
+2. **Apply CSS class on component root** based on the parameter:
+
+   ```razor
+   <div class="player-tile @(IsPortrait ? "portrait" : "")">
+   ```
+
+3. **Use the class in scoped CSS** for portrait-specific styles:
+
+   ```css
+   .player-tile {
+       width: 500px;  /* Landscape default */
+   }
+
+   .player-tile.portrait {
+       width: 1050px;  /* Portrait override */
+   }
+   ```
+
+4. **Remove all `!important` hacks** from `app.css`
+
+### Component Hierarchy for Layout Mode
+
+The layout mode flows from `Game.razor` down through the component tree:
+
+```text
+Game.razor (owns data-layout-mode, calculates IsPortrait)
+├── PlayersPanel (IsPortrait parameter)
+│   └── PlayerCard (IsPortrait parameter)
+│       └── PlayerTile (IsPortrait parameter)
+├── ResourceTracking (IsPortrait parameter)
+├── BoardMeasurement (IsPortrait parameter)
+├── PurchaseButton (IsPortrait parameter)
+└── Other components as needed
+```
+
+### Benefits
+
+- **No specificity wars**: Each component owns its own portrait styles
+- **No `!important` hacks**: Natural CSS cascade works correctly
+- **Maintainable**: Portrait styles live next to landscape styles in the same file
+- **Type-safe**: Blazor enforces parameter passing at compile time
+- **Testable**: Components can be tested in isolation with different `IsPortrait` values
+
+### Implementation Priority
+
+Components requiring portrait-specific sizing (in order of complexity):
+
+1. **PlayerTile** - Different width, stat tile sizes, card sizes
+2. **PlayersPanel** - Centering vs right-alignment
+3. **ResourceTracking** - Different card sizes
+4. **BoardMeasurement** - Different card and star counter sizes
+5. **PurchaseButton** - Different button sizes
+6. **StarCounter** - Different circle and text sizes
+
+## Known Issues / TODOs
+
+1. **Board scaling below 1080p**: The board/center panel doesn't scale below 1.0x when the viewport is
+   smaller than 1920x1080. The viewportScaler calculates the correct scale factor, but something prevents
+   the board from shrinking. Needs investigation - may be related to the fixed 1050x950 board dimensions
+   or SVG constraints.
+
+2. **Portrait mode optimization**: Player tiles in portrait mode should scale up to fill available width
+   while maintaining aspect ratio and be centered.
+
+3. **CSS Architecture Migration**: Remove `!important` overrides from `app.css` and implement the
+   `IsPortrait` parameter pattern in all affected components (see "CSS Architecture for Layout Modes"
+   section above).
 
 ## Conclusion
 

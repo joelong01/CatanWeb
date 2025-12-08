@@ -4,15 +4,23 @@
 
 When the viewport aspect ratio is less than 4:3 (portrait orientation), the game switches to a tabbed interface to maximize use of screen real estate.
 
+## Scaling Architecture
+
+Portrait mode still relies on the shared `viewportScaler.js` so the game container scales uniformly. The only exception is the Players tab, which applies an additional `transform: scale(2.0)` inside the `PlayersPanel` to keep six stacked tiles legible on narrow devices. All other regions continue to use the viewport scaler exclusively.
+
+**Key principle:** All components use fixed pixel dimensions designed for the reference resolution (1080x1920 for portrait). The viewport scaler handles fitting this to any screen size.
+
+See `.design/ui/uiscale-design.md` for the complete scaling architecture.
+
 ## Layout Structure
 
-```
+```text
 ┌─────────────────────────────────────┐
-│  Board  │  Controls  │   Players   │  ← Tab bar (only visible in portrait)
+│  Board  │  Controls  │   Players   │  ← Tab bar (60px, only visible in portrait)
 ├─────────────────────────────────────┤
 │                                     │
 │                                     │
-│         Tab Content Area            │  ← Full viewport minus tab bar
+│         Tab Content Area            │  ← 1080x1860 reference coordinates
 │    (Board, Controls, or Players)    │
 │                                     │
 │                                     │
@@ -22,92 +30,158 @@ When the viewport aspect ratio is less than 4:3 (portrait orientation), the game
 ## Tab Descriptions
 
 ### Board Tab (Default)
-- Shows only the game board
-- Board scales to fill viewport width
-- Height determined by board's aspect ratio
-- Centered vertically if space permits
+
+- Shows the game board centered in available space
+- Resource Tracking component displayed above the board
+- Board scales to fit while maintaining aspect ratio
 
 ### Controls Tab
+
 - Contains all game controls from the left panel:
   - Game name (editable)
   - Current player indicator
   - Undo / Next / Redo buttons
   - Purchase buttons (Road, Settlement, City, Soldier)
-  - Roll entry grid (2-12)
+  - Roll entry grid (4 columns in portrait for better use of width)
   - Board measurements (during allocation phase)
-- **Scaling**: Content scales uniformly to fill viewport width
-- Transform origin: top-left
-- Preserves aspect ratio of control panel
+- Content uses same fixed pixel sizes as landscape
+- Centered horizontally in the 1080px width
 
 ### Players Tab
-- Contains player information from the right panel:
-  - Resource tracking (totals across all players)
-  - Player cards showing:
-    - Player avatar/name
-    - Stats row (VP, settlements, cities, etc.)
-    - Resource cards for each player
-- **Scaling**: Content scales uniformly to fill viewport width
-- Transform origin: top-left
-- Preserves aspect ratio of players panel
 
-## Scaling Behavior
+- Player tiles stacked vertically
+- Each tile is 500px wide (same as landscape)
+- Tiles centered horizontally (not right-aligned like landscape)
+- No separate Resource Tracking here (it's on Board tab)
 
-### Key Principle
-**The entire panel scales as a single unit.** All components inside (buttons, grids, cards, text) scale together uniformly. This is achieved by:
+## CSS Architecture for Portrait Mode
 
-1. Wrapping all panel content in a single container
-2. Measuring the container's natural width AND height
-3. Calculating scale factors for both dimensions
-4. Using the smaller scale to ensure content fits in both dimensions
-5. Applying `transform: scale(factor)` to the entire container
+### The IsPortrait Parameter Pattern
 
-### Controls Tab Scaling
-- `.left-panel-content` is the scaling container
-- Contains: game name, controls, purchase buttons, roll grid, measurements
-- All child components scale together proportionally
+Components that need different styling in portrait mode receive an `IsPortrait` parameter:
 
-### Players Tab Scaling
-- `.right-panel-content` is the scaling container
-- Contains: ResourceTracking component, PlayersPanel component
-- All player cards and resource displays scale together
-- Scales to fit both width AND height (important for 6-player games)
+```csharp
+[Parameter] public bool IsPortrait { get; set; }
+```
 
-### Implementation
-- `panelsScaler.js` handles the scaling logic
-- Calculates available space:
-  - `availableWidth = viewportWidth - padding`
-  - `availableHeight = viewportHeight - tabBarHeight - padding`
-- Measures natural dimensions of content wrapper (with transform reset)
-- Calculates scale factors:
-  - `scaleX = availableWidth / naturalWidth`
-  - `scaleY = availableHeight / naturalHeight`
-  - `scale = Math.min(scaleX, scaleY)` (use smaller to fit both)
-- Applies `transform: scale(factor)` to wrapper with `transform-origin: top left`
-- Triggered on:
-  - Initial load (`panelsScaler.initialize()`)
-  - Window resize (debounced)
-  - Tab switch (`panelsScaler.updateScale()`)
-- Only active when `aspect-ratio < 4/3`
+This parameter flows down from `Game.razor` through the component hierarchy:
+
+```text
+Game.razor (calculates _isPortrait from viewportScaler)
+├── PlayersPanel (IsPortrait)
+│   └── PlayerCard (IsPortrait)
+│       └── PlayerTile (IsPortrait)
+├── ResourceTracking
+├── BoardMeasurement
+└── PurchaseButton
+```
+
+### Portrait CSS Classes
+
+Components apply a `.portrait` class when `IsPortrait` is true:
+
+```razor
+<div class="player-tile @(IsPortrait ? "portrait" : "")">
+```
+
+Then in scoped CSS:
+
+```css
+.player-tile {
+    width: 500px;
+    margin-left: auto;  /* Right-align in landscape */
+}
+
+.player-tile.portrait {
+    margin-left: auto;
+    margin-right: auto;  /* Center in portrait */
+}
+```
+
+### What Changes in Portrait Mode
+
+| Component | Landscape | Portrait |
+|-----------|-----------|----------|
+| PlayerTile | Right-aligned (`margin-left: auto`) | Centered (`margin: auto`) |
+| PlayerCard | Right-aligned | Centered |
+| PlayersPanel | `align-items: flex-end` | `align-items: center`, local `transform: scale(2.0)` |
+| Roll Grid | 3 columns | 4 columns (uses width better) |
+| Resource Tracking | In right panel | On Board tab |
+
+### What Stays the Same
+
+- All pixel dimensions (tile widths, stat sizes, fonts)
+- Component internal layouts
+- Colors, gradients, styling
 
 ## State Persistence
+
 - Selected tab stored in `sessionStorage` as `portraitTab`
 - Valid values: `"board"`, `"controls"`, `"players"`
 - Persists across page refreshes within same session
+- Blazor's `SetPortraitTab()` method handles tab switching
 
-## CSS Media Query
-```css
-@media (max-aspect-ratio: 4/3) {
-    /* Portrait-specific styles */
+## Implementation Files
+
+- **Scaling**: `wwwroot/js/viewportScaler.js` - Uniform container scaling
+- **Layout CSS**: `Pages/Game.razor.css` - Panel visibility, tab bar
+- **Tab State**: `Pages/Game.razor` - `_portraitTab` field, `SetPortraitTab()` method
+- **Component CSS**: Each component's `.razor.css` file has `.portrait` rules
+
+## Portrait Detection
+
+Portrait mode activates when viewport aspect ratio < 4:3 (1.333):
+
+- 16:9 (1.78) = landscape
+- 4:3 (1.33) = landscape (boundary case)
+- 9:16 (0.56) = portrait
+- 3:4 (0.75) = portrait
+
+The `viewportScaler.js` sets `data-layout-mode="portrait"` on the game container, which CSS uses for panel visibility.
+
+### Dynamic Orientation Changes
+
+When the user resizes the browser window and crosses the portrait/landscape threshold, the layout updates automatically:
+
+1. `viewportScaler.updateScale()` runs on window resize
+2. JavaScript detects orientation changed, calls Blazor via `DotNetObjectReference`
+3. Blazor's `OnOrientationChanged(bool isPortrait)` method updates `_isPortrait`
+4. `StateHasChanged()` triggers re-render with new `IsPortrait` values
+5. Components apply/remove `.portrait` CSS classes accordingly
+
+**Implementation:**
+
+```javascript
+// viewportScaler.js - notifies Blazor when orientation changes
+if (this._lastIsPortrait !== isPortrait) {
+    this._lastIsPortrait = isPortrait;
+    if (this._dotNetRef) {
+        this._dotNetRef.invokeMethodAsync('OnOrientationChanged', isPortrait);
+    }
+}
+```
+
+```csharp
+// Game.razor - receives orientation change callback
+[JSInvokable]
+public void OnOrientationChanged(bool isPortrait)
+{
+    if (_isPortrait != isPortrait)
+    {
+        _isPortrait = isPortrait;
+        InvokeAsync(StateHasChanged);
+    }
 }
 ```
 
 ## Landscape Mode (Default)
+
 - Tab bar is hidden (`display: none`)
-- Standard 3-column grid layout: `14fr 58fr 28fr`
+- Standard 3-column grid layout
 - Left panel (controls), Center panel (board), Right panel (players)
-- All visible simultaneously
+- All panels visible simultaneously
 
 ## Future Considerations
+
 - Swipe gestures between tabs on touch devices
 - Indicator badges on tabs (e.g., "your turn" on Controls)
-- Landscape tablet mode with 2-column layout option
