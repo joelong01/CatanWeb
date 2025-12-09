@@ -1,6 +1,6 @@
 # .design Directory Table of Contents
 
-**Last Updated:** December 5, 2025  
+**Last Updated:** December 8, 2025  
 **Purpose:** Authoritative "as built" design documentation for the Catan project
 
 ## Quick Reference
@@ -11,6 +11,9 @@
 | [summary.md](summary.md) | High-level project architecture summary | Dec 3, 2025 |
 | [css.md](css.md) | CSS architecture and theming standards | Dec 3, 2025 |
 | [portrait-mode.md](portrait-mode.md) | Mobile portrait mode design | Dec 3, 2025 |
+| [azure.md](azure.md) | Azure deployment architecture and configuration | Dec 8, 2025 |
+| [azure-cosmos-dal.md](azure-cosmos-dal.md) | CosmosDB data access layer design (comprehensive) | Dec 8, 2025 |
+| [azure-sql-serverless-alternative.md](azure-sql-serverless-alternative.md) | Azure SQL Serverless alternative analysis (recommended) | Dec 8, 2025 |
 
 ## Projects
 
