@@ -6,7 +6,7 @@ When the viewport aspect ratio is less than 4:3 (portrait orientation), the game
 
 ## Scaling Architecture
 
-Portrait mode still relies on the shared `viewportScaler.js` so the game container scales uniformly. The only exception is the Players tab, which applies an additional `transform: scale(2.0)` inside the `PlayersPanel` to keep six stacked tiles legible on narrow devices. All other regions continue to use the viewport scaler exclusively.
+Portrait mode uses the same `viewportScaler.js` as landscape mode. There is **no separate panel scaling** - the entire game container scales uniformly as a single unit.
 
 **Key principle:** All components use fixed pixel dimensions designed for the reference resolution (1080x1920 for portrait). The viewport scaler handles fitting this to any screen size.
 
@@ -104,7 +104,7 @@ Then in scoped CSS:
 |-----------|-----------|----------|
 | PlayerTile | Right-aligned (`margin-left: auto`) | Centered (`margin: auto`) |
 | PlayerCard | Right-aligned | Centered |
-| PlayersPanel | `align-items: flex-end` | `align-items: center`, local `transform: scale(2.0)` |
+| PlayersPanel | `align-items: flex-end` | `align-items: center` |
 | Roll Grid | 3 columns | 4 columns (uses width better) |
 | Resource Tracking | In right panel | On Board tab |
 

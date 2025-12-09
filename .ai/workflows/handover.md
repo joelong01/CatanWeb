@@ -18,7 +18,7 @@ Execute the following steps in order:
 
 ### Step 1: Create Session Summary
 
-**File:** `.ai/commands/session-summary.md`
+**File:** `.ai/commands/sessions.md`
 
 **Action:** Read the file and follow all instructions to create a comprehensive
 session summary.
@@ -76,7 +76,7 @@ of individual commands. Instead:
 ### Execution Flow
 
 ```
-1. Load .ai/commands/session-summary.md
+1. Load .ai/commands/sessions.md
    → Execute all steps in that file
    → Confirm session summary created
 

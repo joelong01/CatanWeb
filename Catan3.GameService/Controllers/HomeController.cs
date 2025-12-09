@@ -15,8 +15,18 @@ namespace Catan3.GameService.Controllers
 
         public IActionResult Index()
         {
-            // Redirect root requests to the companion's "Join Game" page
-            return Redirect("/companion");
+            // Return service info for root requests
+            return Ok(new
+            {
+                service = "Catan3 Game Service",
+                status = "running",
+                signalRHub = "/gameHub",
+                api = new
+                {
+                    newGame = "POST /api/game/new",
+                    health = "GET /health"
+                }
+            });
         }
 
         public IActionResult Privacy()

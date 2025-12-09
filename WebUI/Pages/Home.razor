@@ -1,5 +1,6 @@
 @page "/"
 @inject WebUI.Services.GameConnectionService GameConnection
+@inject WebUI.Services.GameServiceConfig GameServiceConfig
 
 <PageTitle>Catan - Home</PageTitle>
 
@@ -33,7 +34,7 @@
     </div>
 
     <div class="info-section">
-        <p>WebUI connected to GameService at <code>http://localhost:8080</code></p>
+        <p>WebUI connected to GameService at <code>@GameServiceConfig.BaseUrl</code></p>
         <p style="font-size: 0.8rem; color: #666;">State: @GameConnection.State | GameId: @(GameConnection.GameId ?? "none")</p>
     </div>
 </div>

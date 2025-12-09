@@ -37,10 +37,10 @@ builder.Services.AddControllersWithViews()
 // Note: Previously had complex model validation configuration, but now we handle
 // complex GameModel objects as JSON strings to avoid ASP.NET validation limits
 
-// Add CORS for local development
+// Add CORS for WebUI access (local and network)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowLocalhost", policy =>
+    options.AddPolicy("AllowWebUI", policy =>
     {
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
@@ -82,27 +82,48 @@ builder.Services.AddSingleton<IClientNotification>(provider => provider.GetRequi
 // Register async command processor for fire-and-forget command execution
 builder.Services.AddSingleton<AsyncCommandProcessor>();
 
-// Register SQLite database context
-var dataDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Data");
-var dbPath = Path.Combine(dataDir, "catan.db");
-builder.Services.AddDbContext<CatanDbContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}"));
+// Database provider detection (zero-config: SQLite locally, SQL Server on Azure)
+var dbDetector = new DatabaseProviderDetector(builder.Configuration);
+builder.Services.AddSingleton(dbDetector);
+
+// Register DbContext with appropriate provider
+builder.Services.AddDbContext<CatanDbContext>((serviceProvider, options) =>
+{
+    var detector = serviceProvider.GetRequiredService<DatabaseProviderDetector>();
+
+    if (detector.UseSqlServer)
+    {
+        options.UseSqlServer(detector.ConnectionString, sqlOptions =>
+        {
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 3,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorNumbersToAdd: null);
+        });
+    }
+    else
+    {
+        options.UseSqlite(detector.ConnectionString);
+    }
+});
+
+// Data directory for SQLite
+var dataDir = dbDetector.DataDirectory;
 
 var app = builder.Build();
 
 // Ensure Data directory exists
 Directory.CreateDirectory(dataDir);
 
-// Find default data path (relative to project root)
-var projectRoot = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..");
-var defaultDataPath = Path.Combine(projectRoot, "Catan3.GameService", "Default Data");
+// Find default data path using detector
+var defaultDataPath = dbDetector.GetDefaultDataPath();
 
 // Always auto-seed on startup if database is empty (idempotent operation)
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
     var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
-    await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence);
+    await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence, dbDetector.UseSqlServer);
 }
 
 // Handle --seed-database command (exit after seeding for explicit seed-only mode)
@@ -144,96 +165,25 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
-app.UseCors("AllowLocalhost");
+app.UseCors("AllowWebUI");
 
 app.UseRouting();
 
 app.UseAuthorization();
 
-// Companion interface serving
-app.MapGet("/companion", async (HttpContext context, string? gameId = null) =>
-{
-    var filePath = Path.Combine(app.Environment.WebRootPath, "companion.html");
-    if (File.Exists(filePath))
-    {
-        var content = await File.ReadAllTextAsync(filePath, Encoding.UTF8);
-
-        // Fix CSS and JS paths to be absolute
-        content = content.Replace("href=\"companion.css\"", "href=\"/companion.css\"");
-        content = content.Replace("src=\"companion.js\"", "src=\"/companion.js\"");
-
-        // Inject gameId if provided
-        if (!string.IsNullOrEmpty(gameId))
-        {
-            var gameIdScript = $@"
-    <script>
-        window.INITIAL_GAME_ID = '{gameId}';
-    </script>
-</head>";
-            content = content.Replace("</head>", gameIdScript);
-        }
-
-        context.Response.ContentType = "text/html; charset=utf-8";
-        await context.Response.WriteAsync(content, Encoding.UTF8);
-    }
-    else
-    {
-        context.Response.StatusCode = 404;
-        await context.Response.WriteAsync("Companion interface not found");
-    }
-});
-
-// Demo interface serving for different game states
-app.MapGet("/demo", async (HttpContext context) =>
-{
-    var filePath = Path.Combine(app.Environment.WebRootPath, "demo.html");
-    if (File.Exists(filePath))
-    {
-        var content = await File.ReadAllTextAsync(filePath, Encoding.UTF8);
-        context.Response.ContentType = "text/html; charset=utf-8";
-        await context.Response.WriteAsync(content, Encoding.UTF8);
-    }
-    else
-    {
-        context.Response.StatusCode = 404;
-        await context.Response.WriteAsync("Demo interface not found");
-    }
-});
-
-app.MapGet("/companion/demo/{state}", async (HttpContext context) =>
-{
-    var state = context.Request.RouteValues["state"]?.ToString() ?? "";
-    var filePath = Path.Combine(app.Environment.WebRootPath, "companion.html");
-    if (File.Exists(filePath))
-    {
-        var content = await File.ReadAllTextAsync(filePath, Encoding.UTF8);
-
-        // Fix CSS and JS paths to be absolute
-        content = content.Replace("href=\"companion.css\"", "href=\"/companion.css\"");
-        content = content.Replace("src=\"companion.js\"", "src=\"/companion.js\"");
-
-        // Add demo mode script injection
-        var demoScript = $@"
-    <script>
-        window.DEMO_MODE = true;
-        window.DEMO_STATE = '{state}';
-    </script>
-</head>";
-        content = content.Replace("</head>", demoScript);
-        context.Response.ContentType = "text/html; charset=utf-8";
-        await context.Response.WriteAsync(content, Encoding.UTF8);
-    }
-    else
-    {
-        context.Response.StatusCode = 404;
-        await context.Response.WriteAsync("Companion interface not found");
-    }
-});
-
 app.MapStaticAssets();
 
 // Health check endpoint for service readiness
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+app.MapGet("/health", (DatabaseProviderDetector detector) => Results.Ok(new
+{
+    status = "healthy",
+    timestamp = DateTime.UtcNow,
+    database = new
+    {
+        provider = detector.ProviderName,
+        isAzure = detector.IsAzure
+    }
+}));
 
 // Map SignalR GameHub
 app.MapHub<GameHub>("/gameHub");
@@ -283,36 +233,17 @@ if (builder.Environment.EnvironmentName != "Testing")
 
     // Get local IP for display
     var localIP = GetLocalIPAddress();
-    var port = 8080;
+    var webUIPort = 5296;
 
     Console.WriteLine("=========================================");
-    Console.WriteLine("?? Catan3 Game Service Starting - Pure SignalR Architecture");
+    Console.WriteLine("🎲 Catan3 Game Service");
     Console.WriteLine("=========================================");
     Console.WriteLine();
-    Console.WriteLine("?? MOBILE COMPANION URLS:");
-    Console.WriteLine($"  ? Local:   http://localhost:{port}/companion");
-    Console.WriteLine($"  ? Network: http://{localIP}:{port}/companion");
-    Console.WriteLine($"  ? Game Discovery: http://localhost:{port}/api/companion/games");
-    Console.WriteLine($"  ? Direct Game: http://localhost:{port}/companion?gameId={{gameId}}");
+    Console.WriteLine("🌐 OPEN IN BROWSER:");
+    Console.WriteLine($"  → Local:   http://localhost:{webUIPort}");
+    Console.WriteLine($"  → Network: http://{localIP}:{webUIPort}");
     Console.WriteLine();
-    Console.WriteLine("?? UI DEMO/PREVIEW URLS:");
-    Console.WriteLine($"  ? Demo Hub:       http://localhost:{port}/demo");
-    Console.WriteLine($"  ? Demo WaitingForRoll: http://localhost:{port}/companion/demo/WaitingForRoll");
-    Console.WriteLine($"  ? Demo WaitingForNext: http://localhost:{port}/companion/demo/WaitingForNext");
-    Console.WriteLine($"  ? Demo PickingBoard:   http://localhost:{port}/companion/demo/PickingBoard");
-    Console.WriteLine();
-    Console.WriteLine("? PURE SIGNALR ARCHITECTURE:");
-    Console.WriteLine($"  ? SignalR Hub: ws://localhost:{port}/gameHub");
-    Console.WriteLine($"  ? Real-time MVVM messages - same as Desktop app");
-    Console.WriteLine($"  ? Instant bi-directional communication");
-    Console.WriteLine($"  ? Browser-based game discovery (no UDP)");
-    Console.WriteLine();
-    Console.WriteLine("?? GAME MANAGEMENT:");
-    Console.WriteLine($"  ? New Game API: POST http://localhost:{port}/api/game/new");
-    Console.WriteLine($"  ? Game List API: GET http://localhost:{port}/api/companion/games");
-    Console.WriteLine($"  ? All Game Actions: SignalR Messages via /gameHub");
-    Console.WriteLine();
-    Console.WriteLine("? Service ready! Use Ctrl+C to stop.");
+    Console.WriteLine("✅ Service ready! Use Ctrl+C to stop.");
     Console.WriteLine("=========================================");
 }
 

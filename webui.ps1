@@ -18,11 +18,24 @@
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("build", "run", "debug", "clean", "stop", "restart", "update", "database", "help")]
+    [ValidateSet("build", "run", "debug", "clean", "stop", "restart", "update", "database", "azure", "help")]
     [string]$Verb = "run",
 
     [Parameter(Position = 1)]
-    [string]$SubCommand
+    [string]$SubCommand,
+
+    [Parameter()]
+    [switch]$Yes,
+
+    [Parameter()]
+    [switch]$Json,
+
+    [Parameter()]
+    [switch]$HashTable,
+
+    [Parameter()]
+    [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+    [string]$TraceLevel = "INFO"
 )
 
 $ErrorActionPreference = "Stop"
@@ -930,6 +943,111 @@ switch ($Verb) {
         }
     }
 
+    "azure" {
+        $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
+
+        switch ($SubCommand) {
+            "install" {
+                Write-Host "Installing all Azure resources..." -ForegroundColor Cyan
+                Write-Host ""
+                & $azureScript game-service install -TraceLevel $TraceLevel
+                if ($LASTEXITCODE -ne 0) { exit 1 }
+                & $azureScript database install -TraceLevel $TraceLevel
+                if ($LASTEXITCODE -ne 0) { exit 1 }
+                & $azureScript ui install -TraceLevel $TraceLevel
+                if ($LASTEXITCODE -ne 0) { exit 1 }
+                Write-Host ""
+                Write-Host "All Azure resources installed!" -ForegroundColor Green
+                Write-Host ""
+                Write-Host "NEXT STEP: Grant database access to GameService managed identity" -ForegroundColor Yellow
+                Write-Host "See output above for SQL commands, or use Azure Portal Query Editor" -ForegroundColor Yellow
+            }
+            "deploy" {
+                Write-Host "Deploying to Azure..." -ForegroundColor Cyan
+                Write-Host ""
+                & $azureScript database deploy -TraceLevel $TraceLevel
+                if ($LASTEXITCODE -ne 0) { exit 1 }
+                & $azureScript game-service deploy -TraceLevel $TraceLevel
+                if ($LASTEXITCODE -ne 0) { exit 1 }
+                & $azureScript ui deploy -TraceLevel $TraceLevel
+                if ($LASTEXITCODE -ne 0) { exit 1 }
+                Write-Host ""
+                Write-Host "All deployments complete!" -ForegroundColor Green
+            }
+            "doctor" {
+                Write-Host "Checking Azure health..." -ForegroundColor Cyan
+                Write-Host ""
+
+                $extraArgs = @()
+                if ($Json) { $extraArgs += "-Json" }
+                if ($HashTable) { $extraArgs += "-HashTable" }
+
+                & $azureScript game-service doctor @extraArgs -TraceLevel $TraceLevel
+                & $azureScript database doctor @extraArgs -TraceLevel $TraceLevel
+                & $azureScript ui doctor @extraArgs -TraceLevel $TraceLevel
+            }
+            "clean" {
+                Write-Host "Cleaning all Azure resources..." -ForegroundColor Yellow
+                Write-Host ""
+
+                if ($Yes) {
+                    & $azureScript ui clean -Yes -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                    & $azureScript database clean -Yes -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                    & $azureScript game-service clean -Yes -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                }
+                else {
+                    & $azureScript ui clean -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                    & $azureScript database clean -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                    & $azureScript game-service clean -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                }
+                Write-Host ""
+                Write-Host "All Azure resources cleaned!" -ForegroundColor Green
+            }
+            default {
+                Write-Host ""
+                Write-Host "Azure Commands" -ForegroundColor Cyan
+                Write-Host "==============" -ForegroundColor Cyan
+                Write-Host ""
+                Write-Host "Usage: ./webui.ps1 azure <subcommand>" -ForegroundColor Yellow
+                Write-Host ""
+                Write-Host "Subcommands:" -ForegroundColor Yellow
+                Write-Host "  install  - Create all Azure resources (idempotent)"
+                Write-Host "  deploy   - Deploy all code and data to Azure"
+                Write-Host "  doctor   - Check health of all Azure resources"
+                Write-Host "  clean    - Delete all Azure resources"
+                Write-Host ""
+                Write-Host "Options:" -ForegroundColor Yellow
+                Write-Host "  -Force       Skip confirmation prompts"
+                Write-Host "  -Json        Output doctor as JSON"
+                Write-Host "  -HashTable   Output doctor as PowerShell hashtable"
+                Write-Host "  -TraceLevel  Output detail: ERROR, WARN, INFO (default), DEBUG"
+                Write-Host ""
+                Write-Host "Examples:" -ForegroundColor Yellow
+                Write-Host "  ./webui.ps1 azure install                   - First-time Azure setup"
+                Write-Host "  ./webui.ps1 azure install -TraceLevel DEBUG - Verbose install"
+                Write-Host "  ./webui.ps1 azure deploy                    - Deploy after code changes"
+                Write-Host "  ./webui.ps1 azure doctor                    - Check all resources"
+                Write-Host "  ./webui.ps1 azure clean -Force              - Tear down everything"
+                Write-Host ""
+                Write-Host "For individual resources, use catan-azure.ps1 directly:" -ForegroundColor Gray
+                Write-Host "  ./catan-azure.ps1 game-service deploy"
+                Write-Host "  ./catan-azure.ps1 database doctor -Json"
+                Write-Host ""
+
+                if ($SubCommand) {
+                    Write-Host "Unknown subcommand: $SubCommand" -ForegroundColor Red
+                    exit 1
+                }
+            }
+        }
+    }
+
     "help" {
         Write-Host ""
         Write-Host "WebUI Development Script" -ForegroundColor Cyan
@@ -944,6 +1062,7 @@ switch ($Verb) {
         Write-Host "  ./webui.ps1 clean            - Stop services, clean build (preserves database)"
         Write-Host "  ./webui.ps1 clean database   - Stop services, clean build AND database"
         Write-Host "  ./webui.ps1 database <cmd>   - Database management (doctor/check/clean/install)"
+        Write-Host "  ./webui.ps1 azure <cmd>      - Azure deployment (install/deploy/doctor/clean)"
         Write-Host "  ./webui.ps1 debug            - Instructions for VS Code debugging"
         Write-Host "  ./webui.ps1 help             - Show this help"
         Write-Host ""
@@ -952,6 +1071,12 @@ switch ($Verb) {
         Write-Host "  ./webui.ps1 database check   - Validate database schema"
         Write-Host "  ./webui.ps1 database clean   - Delete database"
         Write-Host "  ./webui.ps1 database install - Fresh install with default data"
+        Write-Host ""
+        Write-Host "Azure Commands:" -ForegroundColor Yellow
+        Write-Host "  ./webui.ps1 azure install    - Create all Azure resources"
+        Write-Host "  ./webui.ps1 azure deploy     - Deploy everything to Azure"
+        Write-Host "  ./webui.ps1 azure doctor     - Check Azure health"
+        Write-Host "  ./webui.ps1 azure clean      - Delete all Azure resources"
         Write-Host ""
         Write-Host "Typical workflow:" -ForegroundColor Yellow
         Write-Host "  1. ./webui.ps1 run           - Start services (hot reload enabled)"

@@ -394,3 +394,4 @@ code-reviews/
 # macOS metadata
 .DS_Store
 
+.publish/

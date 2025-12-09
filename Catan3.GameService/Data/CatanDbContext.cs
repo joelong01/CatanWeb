@@ -15,34 +15,53 @@ public class CatanDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Player entity - stores JSON document for player profile
         modelBuilder.Entity<PlayerEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(255);
             entity.Property(e => e.Data).IsRequired();
+            // Data is NVARCHAR(MAX) in SQL Server, TEXT in SQLite
         });
 
+        // Image entity - binary storage for player avatars
         modelBuilder.Entity<ImageEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.ContentType).IsRequired();
+            entity.Property(e => e.Id).HasMaxLength(255);
+            entity.Property(e => e.ContentType).HasMaxLength(100).IsRequired();
             entity.Property(e => e.Data).IsRequired();
+            // Data is VARBINARY(MAX) in SQL Server, BLOB in SQLite
         });
 
+        // Game save data - compressed game log blob
         modelBuilder.Entity<GameSaveDataEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
             entity.Property(e => e.CompressedData).IsRequired();
+            // CompressedData is VARBINARY(MAX) in SQL Server, BLOB in SQLite
         });
 
+        // Game save metadata - lightweight for queries
         modelBuilder.Entity<GameSaveMetadataEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.GameId).HasMaxLength(255);
+            entity.Property(e => e.GameName).HasMaxLength(255);
+            entity.Property(e => e.GameState).HasMaxLength(50);
+            entity.Property(e => e.StartedBy).HasMaxLength(255);
+            entity.Property(e => e.GameType).HasMaxLength(50);
+            entity.Property(e => e.PlayerNames).HasMaxLength(500);
+
+            // Indexes for common queries
             entity.HasIndex(e => e.GameId).IsUnique();
             entity.HasIndex(e => e.StartedBy);
             entity.HasIndex(e => e.GameState);
             entity.HasIndex(e => e.SavedAt);
+
+            // Foreign key to game data
             entity.HasOne(e => e.GameData)
                   .WithMany()
                   .HasForeignKey(e => e.GameDataId)

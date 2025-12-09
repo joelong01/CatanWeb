@@ -2,6 +2,7 @@ using Catan3.Shared.Utility;
 using Catan3.Shared.Profiles;
 using Catan3.Shared.Models;
 using Catan3.GameService.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace Catan3.GameService.Data;
 
@@ -13,10 +14,37 @@ public static class DatabaseSeeder
     /// <param name="context">Database context</param>
     /// <param name="defaultDataPath">Path to "Default Data" folder containing Players and Games subfolders</param>
     /// <param name="gamePersistence">Game persistence service for saving games</param>
-    public static async Task SeedAsync(CatanDbContext context, string defaultDataPath, IGamePersistence? gamePersistence = null)
+    /// <param name="useSqlServer">True if using SQL Server (uses migrations), false for SQLite (uses EnsureCreated)</param>
+    public static async Task SeedAsync(
+        CatanDbContext context,
+        string defaultDataPath,
+        IGamePersistence? gamePersistence = null,
+        bool useSqlServer = false)
     {
-        // Ensure database is created
-        await context.Database.EnsureCreatedAsync();
+        // Initialize database schema
+        if (useSqlServer)
+        {
+            // SQL Server: Check if we have pending migrations
+            var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+            if (pendingMigrations.Any())
+            {
+                Console.WriteLine($"Applying {pendingMigrations.Count()} pending migration(s) (SQL Server)...");
+                await context.Database.MigrateAsync();
+            }
+            else
+            {
+                // No migrations yet - use EnsureCreated for initial schema
+                // This will be replaced by migrations once they're added
+                Console.WriteLine("Ensuring database schema exists (SQL Server)...");
+                await context.Database.EnsureCreatedAsync();
+            }
+        }
+        else
+        {
+            // SQLite: Create database if it doesn't exist
+            // EnsureCreatedAsync is fine for development with SQLite
+            await context.Database.EnsureCreatedAsync();
+        }
 
         var playersPath = Path.Combine(defaultDataPath, "Players");
         var gamesPath = Path.Combine(defaultDataPath, "Games");

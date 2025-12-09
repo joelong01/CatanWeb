@@ -13,7 +13,7 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddSingleton(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
 // Register GameService configuration and connection service
-builder.Services.AddSingleton<GameServiceConfig>();
+builder.Services.AddSingleton(sp => new GameServiceConfig(builder.HostEnvironment));
 builder.Services.AddSingleton<GameConnectionService>();
 
 // Register GameStateService as singleton for thick client state management
