@@ -3,13 +3,22 @@
     display: flex;
     flex-direction: column;
     background: var(--game-bg-primary);
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height - excludes browser chrome */
+    overflow: hidden;
 }
 
 main {
     flex: 1;
     background: var(--game-bg-primary);
     position: relative;
+    min-height: 0; /* Allow flex child to shrink */
+}
+
+.content {
+    height: 100%;
+    padding: 0;
+    background: var(--game-bg-primary);
 }
 
 .hamburger-btn {
@@ -55,7 +64,3 @@ main {
     border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.content {
-    padding: 0;
-    background: var(--game-bg-primary);
-}

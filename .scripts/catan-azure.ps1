@@ -52,7 +52,10 @@ param(
     [string]$TraceLevel = "INFO",
 
     [Parameter()]
-    [switch]$Help
+    [switch]$Help,
+
+    [Parameter()]
+    [switch]$Force
 )
 
 $ErrorActionPreference = "Stop"
@@ -538,7 +541,7 @@ function Install-Database {
         Write-Log -Level "INFO" -Message "Database exists: $databaseName"
     }
 
-    Write-Log -Level "SUCCESS" -Message "SQL Server ready: $($Config.sqlServer.fqdn)"
+    Write-Log -Level "INFO" -Message "SQL Server ready: $($Config.sqlServer.fqdn)"
     return $true
 }
 
@@ -547,39 +550,133 @@ function Install-Database {
     Configures GameService to use Azure SQL Server.
 .DESCRIPTION
     Creates connection string and configures it in the GameService App Service.
-    Also grants the GameService managed identity access to the database.
+    Grants the GameService managed identity access to the database using Invoke-SqlCmd
+    with an Azure AD access token from the current CLI login.
 .PARAMETER Config
     Azure configuration hashtable
 .OUTPUTS
     Boolean - $true on success
 #>
 function Deploy-Database {
-    param([hashtable]$Config)
+    param(
+        [hashtable]$Config,
+        [bool]$Force = $false
+    )
 
     $rgName = $Config.resourceGroup
+    $sqlServerName = $Config.sqlServer.serverName
     $databaseName = $Config.sqlServer.databaseName
     $fqdn = $Config.sqlServer.fqdn
     $appName = $Config.gameService.appName
 
-    # Build connection string with managed identity auth
-    $connectionString = "Server=tcp:$fqdn,1433;Database=$databaseName;Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+    # Run doctor to see what needs to be done
+    $doctor = Get-DatabaseDoctor -Config $Config
 
-    Write-Log -Level "INFO" -Message "Configuring SQL connection string in App Service..."
-    Invoke-AzCommand "webapp config connection-string set --name $appName --resource-group $rgName --connection-string-type SQLAzure --settings AzureSql=`"$connectionString`"" -SuppressOutput
+    # If already fully connected and not forced, nothing to do
+    if ($doctor.checks.gameServiceConnected -and -not $Force) {
+        Write-Log -Level "INFO" -Message "Database already configured and connected - skipping"
+        return $true
+    }
 
-    Write-Log -Level "INFO" -Message "Connection string configured"
+    # Step 1: Configure connection string (if not already configured or forced)
+    if (-not $doctor.checks.connectionString -or $Force) {
+        $connectionString = "Server=tcp:$fqdn,1433;Database=$databaseName;Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
 
-    # Get GameService managed identity principal ID
-    $principalId = Invoke-AzCommand "webapp identity show --name $appName --resource-group $rgName --query principalId -o tsv" -FailOnError $false
+        Write-Log -Level "INFO" -Message "Configuring SQL connection string in App Service..."
+        Invoke-AzCommand "webapp config connection-string set --name $appName --resource-group $rgName --connection-string-type SQLAzure --settings AzureSql=`"$connectionString`"" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Connection string configured"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Connection string already configured - skipping"
+    }
 
-    if ($principalId) {
-        Write-Log -Level "WARN" -Message "To grant database access, run this SQL command as server admin:"
-        Write-Log -Level "WARN" -Message "  CREATE USER [$appName] FROM EXTERNAL PROVIDER;"
-        Write-Log -Level "WARN" -Message "  ALTER ROLE db_datareader ADD MEMBER [$appName];"
-        Write-Log -Level "WARN" -Message "  ALTER ROLE db_datawriter ADD MEMBER [$appName];"
-        Write-Log -Level "WARN" -Message "  ALTER ROLE db_ddladmin ADD MEMBER [$appName];"
-        Write-Log -Level "INFO" -Message ""
-        Write-Log -Level "INFO" -Message "Or connect via Azure Portal > SQL Database > Query Editor"
+    # Step 2: Grant managed identity permissions (if not already connected, meaning permissions might be missing)
+    # We can only verify permissions by successful connection, so if not connected we try to grant
+    if (-not $doctor.checks.gameServiceConnected -or $Force) {
+        # Get GameService managed identity principal ID
+        $principalId = Invoke-AzCommand "webapp identity show --name $appName --resource-group $rgName --query principalId -o tsv" -FailOnError $false
+
+        if (-not $principalId) {
+            Write-Log -Level "WARN" -Message "GameService managed identity not found. Run 'game-service install' first."
+            return $true
+        }
+
+        # Grant managed identity access to the database using Invoke-SqlCmd
+        Write-Log -Level "INFO" -Message "Granting database access to managed identity: $appName"
+
+        # Install SqlServer module if not available
+        if (-not (Get-Module -ListAvailable -Name SqlServer)) {
+            Write-Log -Level "INFO" -Message "Installing SqlServer PowerShell module..."
+            Install-Module -Name SqlServer -Scope CurrentUser -Force -AllowClobber
+        }
+
+        # Add firewall rule for current IP to execute SQL commands
+        Write-Log -Level "INFO" -Message "Adding temporary firewall rule for deployment..."
+        $myIp = (Invoke-WebRequest -Uri "https://api.ipify.org" -UseBasicParsing -TimeoutSec 10).Content.Trim()
+        $fwRuleName = "DeployScript-$([guid]::NewGuid().ToString().Substring(0,8))"
+        Invoke-AzCommand "sql server firewall-rule create --server $sqlServerName --resource-group $rgName --name $fwRuleName --start-ip-address $myIp --end-ip-address $myIp" -SuppressOutput
+
+        try {
+            # Get access token for Azure SQL using Azure CLI
+            Write-Log -Level "DEBUG" -Message "Acquiring Azure AD access token for SQL..."
+            $tokenJson = Invoke-AzCommand "account get-access-token --resource https://database.windows.net/ --query accessToken -o tsv"
+            $accessToken = $tokenJson.Trim()
+
+            # SQL to create user and grant permissions (idempotent)
+            $sql = @"
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = '$appName')
+BEGIN
+    CREATE USER [$appName] FROM EXTERNAL PROVIDER;
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members rm
+               JOIN sys.database_principals r ON rm.role_principal_id = r.principal_id
+               JOIN sys.database_principals m ON rm.member_principal_id = m.principal_id
+               WHERE r.name = 'db_datareader' AND m.name = '$appName')
+BEGIN
+    ALTER ROLE db_datareader ADD MEMBER [$appName];
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members rm
+               JOIN sys.database_principals r ON rm.role_principal_id = r.principal_id
+               JOIN sys.database_principals m ON rm.member_principal_id = m.principal_id
+               WHERE r.name = 'db_datawriter' AND m.name = '$appName')
+BEGIN
+    ALTER ROLE db_datawriter ADD MEMBER [$appName];
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members rm
+               JOIN sys.database_principals r ON rm.role_principal_id = r.principal_id
+               JOIN sys.database_principals m ON rm.member_principal_id = m.principal_id
+               WHERE r.name = 'db_ddladmin' AND m.name = '$appName')
+BEGIN
+    ALTER ROLE db_ddladmin ADD MEMBER [$appName];
+END
+"@
+
+            Write-Log -Level "DEBUG" -Message "Executing SQL to grant permissions..."
+            Import-Module SqlServer -ErrorAction Stop
+            Invoke-Sqlcmd -ServerInstance $fqdn -Database $databaseName -AccessToken $accessToken -Query $sql -ErrorAction Stop
+
+            Write-Log -Level "INFO" -Message "Database permissions granted to: $appName"
+        }
+        catch {
+            Write-Log -Level "ERROR" -Message "Failed to grant database permissions: $($_.Exception.Message)"
+            Write-Log -Level "WARN" -Message ""
+            Write-Log -Level "WARN" -Message "Manual alternative - run this SQL as server admin:"
+            Write-Log -Level "WARN" -Message "  CREATE USER [$appName] FROM EXTERNAL PROVIDER;"
+            Write-Log -Level "WARN" -Message "  ALTER ROLE db_datareader ADD MEMBER [$appName];"
+            Write-Log -Level "WARN" -Message "  ALTER ROLE db_datawriter ADD MEMBER [$appName];"
+            Write-Log -Level "WARN" -Message "  ALTER ROLE db_ddladmin ADD MEMBER [$appName];"
+        }
+        finally {
+            # Clean up temporary firewall rule
+            Write-Log -Level "DEBUG" -Message "Removing temporary firewall rule..."
+            Invoke-AzCommand "sql server firewall-rule delete --server $sqlServerName --resource-group $rgName --name $fwRuleName" -FailOnError $false -SuppressOutput
+        }
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Database permissions already configured - skipping"
     }
 
     return $true
@@ -597,41 +694,78 @@ function Deploy-Database {
     Hashtable with status, healthy flag, and diagnostic details
 #>
 function Get-DatabaseDoctor {
-    param([hashtable]$Config)
+    param(
+        [hashtable]$Config,
+        [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+        [string]$TraceLevel = "ERROR"
+    )
 
     $rgName = $Config.resourceGroup
     $sqlServerName = $Config.sqlServer.serverName
     $databaseName = $Config.sqlServer.databaseName
     $gameServiceUrl = $Config.gameService.url
+    $gameServiceAppName = $Config.gameService.appName
+    $fqdn = $Config.sqlServer.fqdn
+
+    Write-Log -Level "DEBUG" -Message "Get-DatabaseDoctor started" -TraceLevel $TraceLevel
 
     $result = @{
         resource     = "database"
+        name         = "$sqlServerName/$databaseName"
         serverName   = $sqlServerName
         databaseName = $databaseName
-        fqdn         = $Config.sqlServer.fqdn
+        fqdn         = $fqdn
         status       = "unknown"
         healthy      = $false
         dbStatus     = "unknown"
         timestamp    = (Get-Date -Format "o")
+        # Detailed checks for each install/deploy step
+        checks       = @{
+            resourceGroup       = $false
+            sqlServer           = $false
+            firewallRule        = $false
+            database            = $false
+            connectionString    = $false
+            managedIdentityUser = $false
+            gameServiceConnected = $false
+        }
+        # What actions are needed
+        needsInstall = $false
+        needsDeploy  = $false
     }
 
     try {
+        # Check resource group exists
+        Write-Log -Level "DEBUG" -Message "Checking resource group: $rgName" -TraceLevel $TraceLevel
+        $rg = Invoke-AzCommand "group show --name $rgName" -FailOnError $false -JsonOutput
+        $result.checks.resourceGroup = ($null -ne $rg)
+
         # Check SQL Server exists
+        Write-Log -Level "DEBUG" -Message "Checking SQL server: $sqlServerName" -TraceLevel $TraceLevel
         $server = Invoke-AzCommand "sql server show --name $sqlServerName --resource-group $rgName" -FailOnError $false -JsonOutput
         if (-not $server) {
             $result.status = "server-not-found"
+            $result.needsInstall = $true
+            Write-Log -Level "DEBUG" -Message "SQL server not found, needsInstall=true" -TraceLevel $TraceLevel
             return $result
         }
+        $result.checks.sqlServer = $true
 
-        $result.status = "server-exists"
+        # Check firewall rule exists
+        Write-Log -Level "DEBUG" -Message "Checking firewall rule" -TraceLevel $TraceLevel
+        $fwRule = Invoke-AzCommand "sql server firewall-rule show --server $sqlServerName --resource-group $rgName --name AllowAzureServices" -FailOnError $false -JsonOutput
+        $result.checks.firewallRule = ($null -ne $fwRule)
 
-        # Check database status
+        # Check database exists and status
+        Write-Log -Level "DEBUG" -Message "Checking database: $databaseName" -TraceLevel $TraceLevel
         $db = Invoke-AzCommand "sql db show --server $sqlServerName --resource-group $rgName --name $databaseName" -FailOnError $false -JsonOutput
         if (-not $db) {
             $result.status = "database-not-found"
+            $result.needsInstall = $true
+            Write-Log -Level "DEBUG" -Message "Database not found, needsInstall=true" -TraceLevel $TraceLevel
             return $result
         }
-
+        $result.checks.database = $true
         $result.dbStatus = $db.status
 
         # Check if database is online (may be paused)
@@ -646,21 +780,49 @@ function Get-DatabaseDoctor {
             $result.status = $db.status.ToLower()
         }
 
-        # Check GameService health endpoint for database connectivity
+        # Check GameService database connection first - this is the definitive test
+        Write-Log -Level "DEBUG" -Message "Checking GameService database connection" -TraceLevel $TraceLevel
         try {
             $health = Invoke-RestMethod -Uri "$gameServiceUrl/health" -TimeoutSec 30
             if ($health.database.provider -eq "SqlServer") {
-                $result.healthy = $true
                 $result.status = "connected"
+                $result.checks.gameServiceConnected = $true
+                $result.checks.managedIdentityUser = $true  # If connected, user must exist
+                $result.checks.connectionString = $true     # If connected, connection string must be configured
+                $result.healthy = $true
             }
         }
         catch {
-            $result.note = "GameService not responding - may need deploy or database may be resuming from pause"
+            $result.checks.gameServiceConnected = $false
+            Write-Log -Level "DEBUG" -Message "GameService health check failed: $_" -TraceLevel $TraceLevel
+
+            # Only check connection string from Azure if GameService not responding
+            $connStrings = Invoke-AzCommand "webapp config connection-string list --name $gameServiceAppName --resource-group $rgName" -FailOnError $false -JsonOutput
+            $result.checks.connectionString = ($connStrings -and $connStrings.AzureSql)
+
+            if (-not $result.note) {
+                $result.note = "GameService not responding - may need deploy or database may be resuming from pause"
+            }
+            $result.needsDeploy = $true
         }
+
+        # Healthy if GameService can connect to database
+        if ($result.checks.gameServiceConnected) {
+            $result.healthy = $true
+            $result.needsDeploy = $false
+        }
+        elseif ($result.checks.sqlServer -and $result.checks.database) {
+            # Infrastructure exists but connection not working
+            $result.healthy = ($db.status -eq "Online" -or $db.status -eq "Paused")
+            $result.needsDeploy = $true
+        }
+
+        Write-Log -Level "DEBUG" -Message "Database doctor complete: healthy=$($result.healthy), needsDeploy=$($result.needsDeploy)" -TraceLevel $TraceLevel
     }
     catch {
         $result.status = "error"
         $result.error = $_.Exception.Message
+        Write-Log -Level "DEBUG" -Message "Database doctor error: $($_.Exception.Message)" -TraceLevel $TraceLevel
     }
 
     return $result
@@ -783,7 +945,7 @@ function Install-GameService {
     }
     Write-Log -Level "DEBUG" -Message "Principal ID: $principalId"
 
-    Write-Log -Level "SUCCESS" -Message "GameService App ready: $appName"
+    Write-Log -Level "INFO" -Message "GameService App ready: $appName"
     return $true
 }
 
@@ -834,23 +996,101 @@ function Install-UI {
 
 <#
 .SYNOPSIS
+    Gets the current git commit hash for change detection.
+.DESCRIPTION
+    Returns the short git commit hash of HEAD for tracking deployments.
+.OUTPUTS
+    String - The short commit hash (7 chars)
+#>
+function Get-GitCommitHash {
+    try {
+        $hash = git -C $ProjectRoot rev-parse --short HEAD 2>$null
+        return $hash.Trim()
+    }
+    catch {
+        return "unknown"
+    }
+}
+
+<#
+.SYNOPSIS
+    Checks if deployment is needed by comparing git commit hashes.
+.DESCRIPTION
+    Compares the current git commit hash with the deployed version stored
+    in Azure app settings. Returns true if deployment is needed.
+.PARAMETER AppName
+    The Azure web app name
+.PARAMETER ResourceGroup
+    The Azure resource group name
+.PARAMETER Force
+    If true, always returns true (skip check)
+.OUTPUTS
+    Boolean - $true if deployment is needed, $false if up-to-date
+#>
+function Test-DeploymentNeeded {
+    param(
+        [string]$AppName,
+        [string]$ResourceGroup,
+        [bool]$Force
+    )
+
+    if ($Force) {
+        Write-Log -Level "INFO" -Message "Force deploy requested"
+        return $true
+    }
+
+    $currentHash = Get-GitCommitHash
+    Write-Log -Level "DEBUG" -Message "Current git commit: $currentHash"
+
+    # Get deployed version from app settings
+    $deployedHash = Invoke-AzCommand "webapp config appsettings list --name $AppName --resource-group $ResourceGroup --query `"[?name=='DEPLOY_COMMIT'].value | [0]`" -o tsv" -FailOnError $false
+
+    if (-not $deployedHash) {
+        Write-Log -Level "INFO" -Message "No previous deployment found"
+        return $true
+    }
+
+    Write-Log -Level "DEBUG" -Message "Deployed git commit: $deployedHash"
+
+    if ($currentHash -eq $deployedHash) {
+        Write-Log -Level "INFO" -Message "Already deployed (commit $currentHash). Use -Force to redeploy."
+        return $false
+    }
+
+    Write-Log -Level "INFO" -Message "Changes detected: $deployedHash -> $currentHash"
+    return $true
+}
+
+<#
+.SYNOPSIS
     Builds and deploys the GameService to Azure.
 .DESCRIPTION
     Publishes the Catan3.GameService project, creates a zip package,
     and deploys it to the Azure Web App using zip deployment.
+    Skips deployment if no changes detected (use -Force to override).
 .PARAMETER Config
     Azure configuration hashtable
+.PARAMETER Force
+    Force deployment even if no changes detected
 .OUTPUTS
     Boolean - $true on success
 #>
 function Deploy-GameService {
-    param([hashtable]$Config)
+    param(
+        [hashtable]$Config,
+        [bool]$Force = $false
+    )
 
     $rgName = $Config.resourceGroup
     $appName = $Config.gameService.appName
     $projectPath = Join-Path $ProjectRoot "Catan3.GameService"
     $publishPath = Join-Path $ProjectRoot ".publish/gameservice"
     $zipPath = Join-Path $ProjectRoot ".publish/gameservice.zip"
+
+    # Check if deployment is needed
+    if (-not (Test-DeploymentNeeded -AppName $appName -ResourceGroup $rgName -Force $Force)) {
+        return $true
+    }
 
     Write-Log -Level "INFO" -Message "Building GameService..."
     dotnet publish $projectPath -c Release -o $publishPath --nologo -v q
@@ -859,8 +1099,17 @@ function Deploy-GameService {
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
     Compress-Archive -Path "$publishPath/*" -DestinationPath $zipPath
 
-    Write-Log -Level "INFO" -Message "Deploying to Azure..."
-    Invoke-AzCommand "webapp deploy --name $appName --resource-group $rgName --src-path `"$zipPath`" --type zip" -SuppressOutput
+    $zipSize = (Get-Item $zipPath).Length / 1MB
+    Write-Log -Level "INFO" -Message "Deploying to Azure ($([math]::Round($zipSize, 1)) MB)..."
+
+    # Use --async true to avoid infinite polling bug in az cli 2.61+
+    # See: https://github.com/Azure/azure-cli/issues/29003
+    Invoke-AzCommand "webapp deploy --name $appName --resource-group $rgName --src-path `"$zipPath`" --type zip --async true" -SuppressOutput
+
+    # Store the deployed commit hash and build timestamp
+    $commitHash = Get-GitCommitHash
+    $buildTime = (Get-Date -Format "o")  # ISO 8601 format
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings DEPLOY_COMMIT=$commitHash DEPLOY_BUILD_TIME=`"$buildTime`"" -SuppressOutput
 
     Write-Log -Level "INFO" -Message "GameService deployed: $($Config.gameService.url)"
     return $true
@@ -872,13 +1121,19 @@ function Deploy-GameService {
 .DESCRIPTION
     Publishes the Blazor WebAssembly project, creates a zip package,
     and deploys it to the Azure Web App using zip deployment.
+    Skips deployment if no changes detected (use -Force to override).
 .PARAMETER Config
     Azure configuration hashtable
+.PARAMETER Force
+    Force deployment even if no changes detected
 .OUTPUTS
     Boolean - $true on success
 #>
 function Deploy-UI {
-    param([hashtable]$Config)
+    param(
+        [hashtable]$Config,
+        [bool]$Force = $false
+    )
 
     $rgName = $Config.resourceGroup
     $appName = $Config.ui.appName
@@ -887,6 +1142,11 @@ function Deploy-UI {
     $publishPath = Join-Path $ProjectRoot ".publish/webui"
     $zipPath = Join-Path $ProjectRoot ".publish/webui.zip"
 
+    # Check if deployment is needed
+    if (-not (Test-DeploymentNeeded -AppName $appName -ResourceGroup $rgName -Force $Force)) {
+        return $true
+    }
+
     Write-Log -Level "INFO" -Message "Building WebUI.Server..."
     dotnet publish $projectPath -c Release -o $publishPath --nologo -v q
 
@@ -894,8 +1154,16 @@ function Deploy-UI {
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
     Compress-Archive -Path "$publishPath/*" -DestinationPath $zipPath
 
-    Write-Log -Level "INFO" -Message "Deploying to Azure..."
-    Invoke-AzCommand "webapp deploy --name $appName --resource-group $rgName --src-path `"$zipPath`" --type zip" -SuppressOutput
+    $zipSize = (Get-Item $zipPath).Length / 1MB
+    Write-Log -Level "INFO" -Message "Deploying to Azure ($([math]::Round($zipSize, 1)) MB)..."
+
+    # Use --async true to avoid infinite polling bug in az cli 2.61+
+    Invoke-AzCommand "webapp deploy --name $appName --resource-group $rgName --src-path `"$zipPath`" --type zip --async true" -SuppressOutput
+
+    # Store the deployed commit hash and build timestamp
+    $commitHash = Get-GitCommitHash
+    $buildTime = (Get-Date -Format "o")  # ISO 8601 format
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings DEPLOY_COMMIT=$commitHash DEPLOY_BUILD_TIME=`"$buildTime`"" -SuppressOutput
 
     Write-Log -Level "INFO" -Message "UI deployed: $($Config.ui.url)"
     return $true
@@ -913,10 +1181,18 @@ function Deploy-UI {
     Hashtable with status, healthy flag, and diagnostic details
 #>
 function Get-GameServiceDoctor {
-    param([hashtable]$Config)
+    param(
+        [hashtable]$Config,
+        [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+        [string]$TraceLevel = "ERROR"
+    )
 
     $appName = $Config.gameService.appName
+    $planName = $Config.gameService.appServicePlan
     $url = $Config.gameService.url
+    $rgName = $Config.resourceGroup
+
+    Write-Log -Level "DEBUG" -Message "Get-GameServiceDoctor started" -TraceLevel $TraceLevel
 
     $result = @{
         resource    = "game-service"
@@ -926,31 +1202,119 @@ function Get-GameServiceDoctor {
         healthy     = $false
         healthCheck = "unknown"
         timestamp   = (Get-Date -Format "o")
+        # Detailed checks for each install/deploy step
+        checks      = @{
+            resourceGroup    = $false
+            appServicePlan   = $false
+            webApp           = $false
+            managedIdentity  = $false
+            codeDeployed     = $false
+            healthEndpoint   = $false
+        }
+        # Git commit and build time tracking
+        currentCommit     = $null
+        deployedCommit    = $null
+        deployedBuildTime = $null
+        # What actions are needed
+        needsInstall   = $false
+        needsDeploy    = $false
     }
 
     try {
-        $rgName = $Config.resourceGroup
+        # Check resource group exists
+        Write-Log -Level "DEBUG" -Message "Checking resource group: $rgName" -TraceLevel $TraceLevel
+        $rg = Invoke-AzCommand "group show --name $rgName" -FailOnError $false -JsonOutput
+        $result.checks.resourceGroup = ($null -ne $rg)
+
+        # Check App Service Plan exists
+        Write-Log -Level "DEBUG" -Message "Checking app service plan: $planName" -TraceLevel $TraceLevel
+        $plan = Invoke-AzCommand "appservice plan show --name $planName --resource-group $rgName" -FailOnError $false -JsonOutput
+        $result.checks.appServicePlan = ($null -ne $plan)
+
+        # Check web app exists
+        Write-Log -Level "DEBUG" -Message "Checking web app: $appName" -TraceLevel $TraceLevel
         $app = Invoke-AzCommand "webapp show --name $appName --resource-group $rgName" -FailOnError $false -JsonOutput
         if (-not $app) {
             $result.status = "not-found"
+            $result.needsInstall = $true
+            Write-Log -Level "DEBUG" -Message "Web app not found, needsInstall=true" -TraceLevel $TraceLevel
             return $result
         }
-
+        $result.checks.webApp = $true
         $result.status = $app.state.ToLower()
 
-        # Check health endpoint
+        # Check managed identity
+        Write-Log -Level "DEBUG" -Message "Checking managed identity" -TraceLevel $TraceLevel
+        $identity = Invoke-AzCommand "webapp identity show --name $appName --resource-group $rgName --query principalId -o tsv" -FailOnError $false
+        $result.checks.managedIdentity = (-not [string]::IsNullOrWhiteSpace($identity))
+
+        # Get current git commit
+        $result.currentCommit = Get-GitCommitHash
+        Write-Log -Level "DEBUG" -Message "Current git commit: $($result.currentCommit)" -TraceLevel $TraceLevel
+
+        # Check health endpoint first - this is the definitive test of whether code is deployed
+        # The health endpoint returns the deployed commit and build time directly
+        Write-Log -Level "DEBUG" -Message "Checking health endpoint: $url/health" -TraceLevel $TraceLevel
         try {
             $health = Invoke-RestMethod -Uri "$url/health" -TimeoutSec 10
             $result.healthCheck = $health.status
-            $result.healthy = ($health.status -eq "healthy")
+            $result.checks.healthEndpoint = ($health.status -eq "healthy")
+            # Get deployed version info from health endpoint
+            if ($health.version) {
+                if ($health.version.commit) {
+                    $result.deployedCommit = $health.version.commit
+                    Write-Log -Level "DEBUG" -Message "Deployed commit from health: $($result.deployedCommit)" -TraceLevel $TraceLevel
+                }
+                if ($health.version.buildTime) {
+                    $result.deployedBuildTime = $health.version.buildTime
+                    Write-Log -Level "DEBUG" -Message "Deployed build time: $($result.deployedBuildTime)" -TraceLevel $TraceLevel
+                }
+            }
         }
         catch {
             $result.healthCheck = "unreachable"
+            $result.checks.healthEndpoint = $false
+            Write-Log -Level "DEBUG" -Message "Health endpoint unreachable: $_" -TraceLevel $TraceLevel
         }
+
+        # Code is deployed if health endpoint responds (regardless of commit tracking)
+        $result.checks.codeDeployed = $result.checks.healthEndpoint
+
+        # Check if deploy is needed:
+        # - Health endpoint doesn't work = needs deploy
+        # - Health endpoint works but no version info = old code, needs deploy
+        # - No build time tracking = needs deploy (to enable tracking)
+        # - Commit mismatch = needs deploy (code changed, even if uncommitted)
+        if (-not $result.checks.healthEndpoint) {
+            $result.needsDeploy = $true
+            $result.deployReason = "Health endpoint not responding"
+        }
+        elseif ([string]::IsNullOrWhiteSpace($result.deployedCommit) -or $result.deployedCommit -eq "local") {
+            # Health endpoint works but no version info in response = old code deployed
+            $result.needsDeploy = $true
+            $result.deployReason = "Deployed code missing version info"
+        }
+        elseif ([string]::IsNullOrWhiteSpace($result.deployedBuildTime) -or $result.deployedBuildTime -eq "unknown") {
+            # Working but no build time tracking - needs deploy to enable tracking
+            $result.needsDeploy = $true
+            $result.deployReason = "Deployed code missing build time tracking"
+        }
+        elseif ($result.currentCommit -ne $result.deployedCommit) {
+            # Commit changed - definitely needs deploy
+            $result.needsDeploy = $true
+            $result.deployReason = "Git commit mismatch"
+        }
+        # Note: If commits match but code is uncommitted, -Force flag can be used to redeploy
+
+        # Healthy if endpoint responds
+        $result.healthy = $result.checks.healthEndpoint
+
+        Write-Log -Level "DEBUG" -Message "GameService doctor complete: healthy=$($result.healthy), needsDeploy=$($result.needsDeploy)" -TraceLevel $TraceLevel
     }
     catch {
         $result.status = "error"
         $result.error = $_.Exception.Message
+        Write-Log -Level "DEBUG" -Message "GameService doctor error: $($_.Exception.Message)" -TraceLevel $TraceLevel
     }
 
     return $result
@@ -968,10 +1332,19 @@ function Get-GameServiceDoctor {
     Hashtable with status, healthy flag, and diagnostic details
 #>
 function Get-UIDoctor {
-    param([hashtable]$Config)
+    param(
+        [hashtable]$Config,
+        [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+        [string]$TraceLevel = "ERROR"
+    )
 
     $appName = $Config.ui.appName
+    $planName = $Config.gameService.appServicePlan  # UI shares the same plan
     $url = $Config.ui.url
+    $rgName = $Config.resourceGroup
+    $gameServiceUrl = $Config.gameService.url
+
+    Write-Log -Level "DEBUG" -Message "Get-UIDoctor started" -TraceLevel $TraceLevel
 
     $result = @{
         resource  = "ui"
@@ -980,30 +1353,107 @@ function Get-UIDoctor {
         status    = "unknown"
         healthy   = $false
         timestamp = (Get-Date -Format "o")
+        # Detailed checks for each install/deploy step
+        checks    = @{
+            resourceGroup     = $false
+            appServicePlan    = $false
+            webApp            = $false
+            managedIdentity   = $false
+            gameServiceUrl    = $false
+            codeDeployed      = $false
+            siteResponding    = $false
+        }
+        # Git commit tracking
+        currentCommit  = $null
+        deployedCommit = $null
+        # What actions are needed
+        needsInstall   = $false
+        needsDeploy    = $false
     }
 
     try {
-        $rgName = $Config.resourceGroup
+        # Check resource group exists
+        Write-Log -Level "DEBUG" -Message "Checking resource group: $rgName" -TraceLevel $TraceLevel
+        $rg = Invoke-AzCommand "group show --name $rgName" -FailOnError $false -JsonOutput
+        $result.checks.resourceGroup = ($null -ne $rg)
+
+        # Check App Service Plan exists
+        Write-Log -Level "DEBUG" -Message "Checking app service plan: $planName" -TraceLevel $TraceLevel
+        $plan = Invoke-AzCommand "appservice plan show --name $planName --resource-group $rgName" -FailOnError $false -JsonOutput
+        $result.checks.appServicePlan = ($null -ne $plan)
+
+        # Check web app exists
+        Write-Log -Level "DEBUG" -Message "Checking web app: $appName" -TraceLevel $TraceLevel
         $app = Invoke-AzCommand "webapp show --name $appName --resource-group $rgName" -FailOnError $false -JsonOutput
         if (-not $app) {
             $result.status = "not-found"
+            $result.needsInstall = $true
+            Write-Log -Level "DEBUG" -Message "Web app not found, needsInstall=true" -TraceLevel $TraceLevel
             return $result
         }
-
+        $result.checks.webApp = $true
         $result.status = $app.state.ToLower()
 
+        # Check managed identity
+        Write-Log -Level "DEBUG" -Message "Checking managed identity" -TraceLevel $TraceLevel
+        $identity = Invoke-AzCommand "webapp identity show --name $appName --resource-group $rgName --query principalId -o tsv" -FailOnError $false
+        $result.checks.managedIdentity = (-not [string]::IsNullOrWhiteSpace($identity))
+
+        # Check GameService URL configured in app settings
+        Write-Log -Level "DEBUG" -Message "Checking GameService URL config" -TraceLevel $TraceLevel
+        $configuredUrl = Invoke-AzCommand "webapp config appsettings list --name $appName --resource-group $rgName --query `"[?name=='GAMESERVICE_URL'].value | [0]`" -o tsv" -FailOnError $false
+        $result.checks.gameServiceUrl = ($configuredUrl -eq $gameServiceUrl)
+
+        # Get current git commit
+        $result.currentCommit = Get-GitCommitHash
+        Write-Log -Level "DEBUG" -Message "Current git commit: $($result.currentCommit)" -TraceLevel $TraceLevel
+
+        # Get deployed commit from app settings
+        $result.deployedCommit = Invoke-AzCommand "webapp config appsettings list --name $appName --resource-group $rgName --query `"[?name=='DEPLOY_COMMIT'].value | [0]`" -o tsv" -FailOnError $false
+        Write-Log -Level "DEBUG" -Message "Deployed commit: $($result.deployedCommit)" -TraceLevel $TraceLevel
+
+        # Check if code has been deployed
+        $result.checks.codeDeployed = (-not [string]::IsNullOrWhiteSpace($result.deployedCommit))
+
+        # Check if deploy is needed (commit mismatch)
+        if (-not $result.checks.codeDeployed) {
+            $result.needsDeploy = $true
+        }
+        elseif ($result.currentCommit -ne $result.deployedCommit) {
+            $result.needsDeploy = $true
+        }
+
         # Check if UI responds
+        Write-Log -Level "DEBUG" -Message "Checking site response: $url" -TraceLevel $TraceLevel
         try {
             $response = Invoke-WebRequest -Uri $url -TimeoutSec 10 -UseBasicParsing
-            $result.healthy = ($response.StatusCode -eq 200)
+            $result.checks.siteResponding = ($response.StatusCode -eq 200)
+            # If site responds, code must be deployed and GameService URL must be configured
+            if ($result.checks.siteResponding) {
+                $result.checks.codeDeployed = $true
+                $result.checks.gameServiceUrl = $true  # If UI works, URL must be configured
+            }
         }
         catch {
-            $result.healthy = $false
+            $result.checks.siteResponding = $false
+            Write-Log -Level "DEBUG" -Message "Site not responding: $_" -TraceLevel $TraceLevel
+            # If app exists but not responding, needs deploy
+            if (-not $result.needsDeploy) {
+                $result.needsDeploy = $true
+            }
         }
+
+        # Determine overall health - site responding is the definitive test
+        if ($result.checks.siteResponding) {
+            $result.healthy = $true
+        }
+
+        Write-Log -Level "DEBUG" -Message "UI doctor complete: healthy=$($result.healthy), needsDeploy=$($result.needsDeploy)" -TraceLevel $TraceLevel
     }
     catch {
         $result.status = "error"
         $result.error = $_.Exception.Message
+        Write-Log -Level "DEBUG" -Message "UI doctor error: $($_.Exception.Message)" -TraceLevel $TraceLevel
     }
 
     return $result
@@ -1077,84 +1527,141 @@ function Clean-UI {
 
 <#
 .SYNOPSIS
-    Formats and outputs doctor check results.
+    Displays doctor result in a formatted table.
 .DESCRIPTION
-    Outputs health check results in human-readable, JSON, or hashtable format.
-    Includes service URLs when config is provided.
+    Takes a doctor result hashtable and displays it as a formatted table
+    showing each check, its status, and recommended action.
 .PARAMETER Result
-    Hashtable containing health check results
+    The doctor result hashtable
 .PARAMETER Config
-    Optional Azure configuration to display service URLs
-.PARAMETER Json
-    Output as JSON format
-.PARAMETER HashTable
-    Output as PowerShell hashtable
+    Azure configuration hashtable (optional, for URL display)
 #>
-function Output-DoctorResult {
+function Show-DoctorResult {
     param(
         [hashtable]$Result,
-        [hashtable]$Config,
-        [switch]$Json,
-        [switch]$HashTable
+        [hashtable]$Config
     )
 
-    if ($Json) {
-        $Result | ConvertTo-Json -Depth 10
-        return
-    }
+    # Column widths
+    $col1 = 25  # Check name
+    $col2 = 12  # Status
 
-    if ($HashTable) {
-        $Result
-        return
-    }
+    # Header
+    Write-Host ""
+    Write-Host "$($Result.resource) ($($Result.name))" -ForegroundColor Cyan
+    Write-Host ("-" * 60)
+    Write-Host ("Check".PadRight($col1) + "Status".PadRight($col2) + "Details") -ForegroundColor Yellow
 
-    # Human-readable output
-    Write-Log -Level "HEADER" -Message "$($Result.resource) Health Check"
-    Write-Log -Level "HEADER" -Message ("=" * 40)
-    Write-Log -Level "INFO" -Message "Resource: $($Result.name)"
-    Write-Log -Level "INFO" -Message "Status: $($Result.status)"
+    # Helper to show a check row
+    function Show-CheckRow {
+        param([string]$Name, [bool]$Status, [string]$Details = "")
+        $statusText = if ($Status) { "OK" } else { "MISSING" }
+        $statusColor = if ($Status) { "Green" } else { "Red" }
 
-    if ($Result.url) {
-        Write-Log -Level "INFO" -Message "URL: $($Result.url)"
-    }
-
-    if ($Result.healthCheck) {
-        Write-Log -Level "INFO" -Message "Health: $($Result.healthCheck)"
-    }
-
-    if ($Result.blobSize) {
-        $sizeKb = [math]::Round($Result.blobSize / 1024, 1)
-        Write-Log -Level "INFO" -Message "Database Size: ${sizeKb} KB"
-    }
-
-    if ($Result.playerCount) {
-        Write-Log -Level "INFO" -Message "Players: $($Result.playerCount)"
-    }
-
-    if ($Result.gameCount) {
-        Write-Log -Level "INFO" -Message "Games: $($Result.gameCount)"
-    }
-
-    if ($Result.note) {
-        Write-Log -Level "WARN" -Message $Result.note
-    }
-
-    if ($Result.healthy) {
-        Write-Log -Level "INFO" -Message "HEALTHY"
-    }
-    else {
-        Write-Log -Level "ERROR" -Message "UNHEALTHY"
-        if ($Result.error) {
-            Write-Log -Level "ERROR" -Message $Result.error
+        Write-Host -NoNewline ("  " + $Name).PadRight($col1)
+        Write-Host -NoNewline $statusText.PadRight($col2) -ForegroundColor $statusColor
+        if ($Details) {
+            Write-Host $Details -ForegroundColor Gray
+        } else {
+            Write-Host ""
         }
     }
 
-    # Output service URLs if config provided
-    if ($Config) {
-        Write-Log -Level "INFO" -Message ""
-        Write-Log -Level "INFO" -Message "Service URLs:"
-        Write-Log -Level "INFO" -Message "  WebUI:       $($Config.ui.url)"
-        Write-Log -Level "INFO" -Message "  GameService: $($Config.gameService.url)"
+    # Show checks based on resource type
+    if ($Result.checks) {
+        foreach ($key in $Result.checks.Keys | Sort-Object) {
+            $displayName = switch ($key) {
+                "resourceGroup" { "Resource Group" }
+                "appServicePlan" { "App Service Plan" }
+                "webApp" { "Web App" }
+                "managedIdentity" { "Managed Identity" }
+                "codeDeployed" { "Code Deployed" }
+                "healthEndpoint" { "Health Endpoint" }
+                "sqlServer" { "SQL Server" }
+                "firewallRule" { "Firewall Rule" }
+                "database" { "Database" }
+                "connectionString" { "Connection String" }
+                "managedIdentityUser" { "DB User (MI)" }
+                "gameServiceConnected" { "GameService Connected" }
+                "gameServiceUrl" { "GameService URL" }
+                "siteResponding" { "Site Responding" }
+                default { $key }
+            }
+
+            $action = ""
+            if (-not $Result.checks[$key]) {
+                $action = if ($key -in @("codeDeployed", "healthEndpoint", "connectionString", "managedIdentityUser", "gameServiceConnected", "siteResponding")) {
+                    "run: deploy"
+                } else {
+                    "run: install"
+                }
+            }
+            Show-CheckRow -Name $displayName -Status $Result.checks[$key] -Details $action
+        }
+    }
+
+    # Show git commit info if available
+    if ($Result.currentCommit -or $Result.deployedCommit) {
+        Write-Host ""
+        Write-Host -NoNewline ("  Git Commit").PadRight($col1)
+        if ($Result.currentCommit -eq $Result.deployedCommit -and $Result.deployedCommit) {
+            Write-Host -NoNewline "MATCH".PadRight($col2) -ForegroundColor Green
+            Write-Host "$($Result.currentCommit)" -ForegroundColor Gray
+        } elseif ($Result.deployedCommit -and $Result.deployedCommit -ne "local") {
+            Write-Host -NoNewline "MISMATCH".PadRight($col2) -ForegroundColor Yellow
+            Write-Host "deployed: $($Result.deployedCommit) -> current: $($Result.currentCommit)" -ForegroundColor Gray
+        } else {
+            Write-Host -NoNewline "NONE".PadRight($col2) -ForegroundColor Yellow
+            Write-Host "not yet deployed" -ForegroundColor Gray
+        }
+    }
+
+    # Show build time if available
+    if ($Result.deployedBuildTime -and $Result.deployedBuildTime -ne "unknown") {
+        Write-Host -NoNewline ("  Build Time").PadRight($col1)
+        Write-Host -NoNewline "DEPLOYED".PadRight($col2) -ForegroundColor Green
+        Write-Host "$($Result.deployedBuildTime)" -ForegroundColor Gray
+    }
+
+    # Show database status if available
+    if ($Result.dbStatus) {
+        Write-Host -NoNewline ("  Database Status").PadRight($col1)
+        $dbColor = switch ($Result.dbStatus) {
+            "Online" { "Green" }
+            "Paused" { "Yellow" }
+            default { "Red" }
+        }
+        Write-Host $Result.dbStatus -ForegroundColor $dbColor
+    }
+
+    # Summary line
+    Write-Host ""
+    Write-Host -NoNewline "Status: "
+    if ($Result.needsInstall) {
+        Write-Host "NEEDS INSTALL" -ForegroundColor Red
+        Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
+        Write-Host "./catan-azure.ps1 $($Result.resource) install" -ForegroundColor Cyan
+    } elseif ($Result.needsDeploy) {
+        Write-Host "NEEDS DEPLOY" -ForegroundColor Yellow
+        if ($Result.deployReason) {
+            Write-Host "  Reason: $($Result.deployReason)" -ForegroundColor Gray
+        }
+        Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
+        Write-Host "./catan-azure.ps1 $($Result.resource) deploy" -ForegroundColor Cyan
+    } elseif ($Result.healthy) {
+        Write-Host "HEALTHY" -ForegroundColor Green
+    } else {
+        Write-Host "UNKNOWN" -ForegroundColor Red
+    }
+
+    # Show note if any
+    if ($Result.note) {
+        Write-Host "  Note: $($Result.note)" -ForegroundColor Yellow
+    }
+
+    # Show error if any
+    if ($Result.error) {
+        Write-Host "  Error: $($Result.error)" -ForegroundColor Red
     }
 }
 
@@ -1191,8 +1698,10 @@ Verbs:
 
 Options:
     -Yes            Skip confirmation prompts
+    -Force          Force deploy even if no changes detected
     -Json           Output doctor results as JSON
     -HashTable      Output doctor results as PowerShell hashtable
+    -TraceLevel     Output verbosity (ERROR, WARN, INFO, DEBUG)
 
 Examples:
     ./catan-azure.ps1 game-service install     Create GameService resources
@@ -1250,8 +1759,11 @@ elseif (-not $config.baseName) {
 }
 
 # Execute operation
-Write-Log -Level "HEADER" -Message "Catan Azure: $Noun $Verb"
-Write-Log -Level "HEADER" -Message ("=" * 40)
+# Skip header for doctor with -Json or -HashTable output (clean API mode)
+if ($Verb -ne "doctor" -or (-not $Json -and -not $HashTable)) {
+    Write-Log -Level "HEADER" -Message "Catan Azure: $Noun $Verb"
+    Write-Log -Level "HEADER" -Message ("=" * 40)
+}
 
 $success = $false
 
@@ -1259,10 +1771,16 @@ switch ($Noun) {
     "game-service" {
         switch ($Verb) {
             "install" { $success = Install-GameService -Config $config }
-            "deploy" { $success = Deploy-GameService -Config $config }
+            "deploy" { $success = Deploy-GameService -Config $config -Force $Force }
             "doctor" {
-                $result = Get-GameServiceDoctor -Config $config
-                Output-DoctorResult -Result $result -Config $config -Json:$Json -HashTable:$HashTable
+                $result = Get-GameServiceDoctor -Config $config -TraceLevel $TraceLevel
+                if ($Json) {
+                    Write-Output ($result | ConvertTo-Json -Depth 10)
+                } elseif ($HashTable) {
+                    Write-Output $result
+                } else {
+                    Show-DoctorResult -Result $result -Config $config
+                }
                 $success = $result.healthy
             }
             "clean" {
@@ -1278,10 +1796,16 @@ switch ($Noun) {
     "database" {
         switch ($Verb) {
             "install" { $success = Install-Database -Config $config }
-            "deploy" { $success = Deploy-Database -Config $config }
+            "deploy" { $success = Deploy-Database -Config $config -Force $Force }
             "doctor" {
-                $result = Get-DatabaseDoctor -Config $config
-                Output-DoctorResult -Result $result -Config $config -Json:$Json -HashTable:$HashTable
+                $result = Get-DatabaseDoctor -Config $config -TraceLevel $TraceLevel
+                if ($Json) {
+                    Write-Output ($result | ConvertTo-Json -Depth 10)
+                } elseif ($HashTable) {
+                    Write-Output $result
+                } else {
+                    Show-DoctorResult -Result $result -Config $config
+                }
                 $success = $result.healthy
             }
             "clean" {
@@ -1297,10 +1821,16 @@ switch ($Noun) {
     "ui" {
         switch ($Verb) {
             "install" { $success = Install-UI -Config $config }
-            "deploy" { $success = Deploy-UI -Config $config }
+            "deploy" { $success = Deploy-UI -Config $config -Force $Force }
             "doctor" {
-                $result = Get-UIDoctor -Config $config
-                Output-DoctorResult -Result $result -Config $config -Json:$Json -HashTable:$HashTable
+                $result = Get-UIDoctor -Config $config -TraceLevel $TraceLevel
+                if ($Json) {
+                    Write-Output ($result | ConvertTo-Json -Depth 10)
+                } elseif ($HashTable) {
+                    Write-Output $result
+                } else {
+                    Show-DoctorResult -Result $result -Config $config
+                }
                 $success = $result.healthy
             }
             "clean" {

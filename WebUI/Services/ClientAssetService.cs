@@ -19,7 +19,7 @@ namespace Catan3.WebUI.Services
         private Dictionary<AssetName, string> _baseAssets = new();
         private Dictionary<string, Dictionary<AssetName, string>> _themeOverrides = new();
         private Dictionary<string, ThemeMetadata> _themeMetadata = new();
-        private string _currentTheme = "classic";
+        private string _currentTheme = "web";
         private bool _isInitialized = false;
 
         public string CurrentTheme => _currentTheme;
@@ -75,6 +75,7 @@ namespace Catan3.WebUI.Services
                 await LoadThemeAsync("base");
 
                 // Load available themes
+                await LoadThemeAsync("web");
                 await LoadThemeAsync("classic");
                 await LoadThemeAsync("svg-theme");
                 await LoadThemeAsync("black-and-white");

@@ -178,6 +178,12 @@ app.MapGet("/health", (DatabaseProviderDetector detector) => Results.Ok(new
 {
     status = "healthy",
     timestamp = DateTime.UtcNow,
+    version = new
+    {
+        commit = Environment.GetEnvironmentVariable("DEPLOY_COMMIT") ?? "local",
+        buildTime = Environment.GetEnvironmentVariable("DEPLOY_BUILD_TIME") ?? "unknown",
+        environment = app.Environment.EnvironmentName
+    },
     database = new
     {
         provider = detector.ProviderName,

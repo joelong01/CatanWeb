@@ -28,6 +28,9 @@ param(
     [switch]$Yes,
 
     [Parameter()]
+    [switch]$Force,
+
+    [Parameter()]
     [switch]$Json,
 
     [Parameter()]
@@ -956,21 +959,70 @@ switch ($Verb) {
                 if ($LASTEXITCODE -ne 0) { exit 1 }
                 & $azureScript ui install -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
+                # Configure database connection and grant managed identity access
+                & $azureScript database deploy -TraceLevel $TraceLevel
+                if ($LASTEXITCODE -ne 0) { exit 1 }
                 Write-Host ""
-                Write-Host "All Azure resources installed!" -ForegroundColor Green
-                Write-Host ""
-                Write-Host "NEXT STEP: Grant database access to GameService managed identity" -ForegroundColor Yellow
-                Write-Host "See output above for SQL commands, or use Azure Portal Query Editor" -ForegroundColor Yellow
+                Write-Host "All Azure resources installed and configured!" -ForegroundColor Green
             }
             "deploy" {
                 Write-Host "Deploying to Azure..." -ForegroundColor Cyan
                 Write-Host ""
-                & $azureScript database deploy -TraceLevel $TraceLevel
-                if ($LASTEXITCODE -ne 0) { exit 1 }
-                & $azureScript game-service deploy -TraceLevel $TraceLevel
-                if ($LASTEXITCODE -ne 0) { exit 1 }
-                & $azureScript ui deploy -TraceLevel $TraceLevel
-                if ($LASTEXITCODE -ne 0) { exit 1 }
+
+                # Run all doctors to determine what needs to be done
+                Write-Host "Checking deployment status..." -ForegroundColor Gray
+
+                # Database doctor - get hashtable result
+                $dbDoctor = & $azureScript database doctor -HashTable -TraceLevel ERROR
+                $dbConnected = $dbDoctor.checks.gameServiceConnected
+                $dbNeedsDeploy = $dbDoctor.needsDeploy
+
+                if ($dbConnected -and -not $Force) {
+                    Write-Host "  Database: Connected - skipping" -ForegroundColor Green
+                }
+                elseif ($dbNeedsDeploy -or $Force) {
+                    Write-Host "  Database: Needs configuration" -ForegroundColor Yellow
+                    & $azureScript database deploy -Force:$Force -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                }
+                else {
+                    Write-Host "  Database: OK - skipping" -ForegroundColor Green
+                }
+
+                # GameService doctor - get hashtable result
+                $gsDoctor = & $azureScript game-service doctor -HashTable -TraceLevel ERROR
+                $gsNeedsDeploy = $gsDoctor.needsDeploy
+                $gsHealthy = $gsDoctor.healthy
+
+                if ($gsHealthy -and -not $gsNeedsDeploy -and -not $Force) {
+                    Write-Host "  GameService: Up to date - skipping" -ForegroundColor Green
+                }
+                elseif ($gsNeedsDeploy -or $Force) {
+                    Write-Host "  GameService: Needs deploy" -ForegroundColor Yellow
+                    & $azureScript game-service deploy -Force:$Force -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                }
+                else {
+                    Write-Host "  GameService: OK - skipping" -ForegroundColor Green
+                }
+
+                # UI doctor - get hashtable result
+                $uiDoctor = & $azureScript ui doctor -HashTable -TraceLevel ERROR
+                $uiNeedsDeploy = $uiDoctor.needsDeploy
+                $uiHealthy = $uiDoctor.healthy
+
+                if ($uiHealthy -and -not $uiNeedsDeploy -and -not $Force) {
+                    Write-Host "  UI: Up to date - skipping" -ForegroundColor Green
+                }
+                elseif ($uiNeedsDeploy -or $Force) {
+                    Write-Host "  UI: Needs deploy" -ForegroundColor Yellow
+                    & $azureScript ui deploy -Force:$Force -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                }
+                else {
+                    Write-Host "  UI: OK - skipping" -ForegroundColor Green
+                }
+
                 Write-Host ""
                 Write-Host "All deployments complete!" -ForegroundColor Green
             }
@@ -978,13 +1030,19 @@ switch ($Verb) {
                 Write-Host "Checking Azure health..." -ForegroundColor Cyan
                 Write-Host ""
 
-                $extraArgs = @()
-                if ($Json) { $extraArgs += "-Json" }
-                if ($HashTable) { $extraArgs += "-HashTable" }
+                # Pass through -Json and -HashTable to the individual doctor calls
+                # The catan-azure.ps1 script now handles all formatting
+                & $azureScript game-service doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                & $azureScript database doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                & $azureScript ui doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
 
-                & $azureScript game-service doctor @extraArgs -TraceLevel $TraceLevel
-                & $azureScript database doctor @extraArgs -TraceLevel $TraceLevel
-                & $azureScript ui doctor @extraArgs -TraceLevel $TraceLevel
+                # Show summary if not in JSON/HashTable mode
+                if (-not $Json -and -not $HashTable) {
+                    Write-Host ""
+                    Write-Host "Service URLs:" -ForegroundColor Gray
+                    Write-Host "  WebUI:       https://catan.azurewebsites.net" -ForegroundColor Gray
+                    Write-Host "  GameService: https://catan-api.azurewebsites.net" -ForegroundColor Gray
+                }
             }
             "clean" {
                 Write-Host "Cleaning all Azure resources..." -ForegroundColor Yellow

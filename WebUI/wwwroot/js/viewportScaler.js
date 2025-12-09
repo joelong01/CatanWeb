@@ -56,10 +56,14 @@ window.viewportScaler = {
 
         this._initialized = true;
 
+        // Set environment indicator (local vs web)
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        this.container.dataset.env = isLocal ? 'local' : 'web';
+
         // Initial scaling
         this.updateScale();
 
-        console.log('[viewportScaler] Initialized');
+        console.log('[viewportScaler] Initialized, env:', this.container.dataset.env);
         return true;
     },
 
