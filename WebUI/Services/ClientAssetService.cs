@@ -75,9 +75,7 @@ namespace Catan3.WebUI.Services
                 await LoadThemeAsync("base");
 
                 // Load available themes
-                await LoadThemeAsync("web");
                 await LoadThemeAsync("classic");
-                await LoadThemeAsync("svg-theme");
                 await LoadThemeAsync("black-and-white");
 
                 // Theme preference is loaded later via LoadThemeFromStorage()
@@ -130,7 +128,7 @@ namespace Catan3.WebUI.Services
                     _themeOverrides[themeName] = assets;
                 }
             }
-            catch (HttpRequestException ex)
+            catch (Exception ex)
             {
                 Console.WriteLine($"Failed to load theme {themeName}: {ex.Message}");
             }

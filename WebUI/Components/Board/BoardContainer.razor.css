@@ -1,29 +1,46 @@
-/* BoardContainer - Three-layer stacking for performance
-   1. Static layer (tiles, harbors) - cached by browser, rarely repaints
-   2. Interactive SVG layer (roads, owned buildings, robber) - repaints on game state changes
-   3. HTML overlay (hoverable building spots) - isolated repaint per element on hover
-
-   Uses CSS Grid with overlapping grid-area to stack all layers in the same cell.
+/* BoardContainer - Stacked layers using absolute positioning
+   All layers (SVG and HTML) positioned absolutely to fill the same space exactly.
 */
 
 .board-svg-container {
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr;
-    /* Fixed size in reference coordinates (1920x1080 system)
-       Center panel is ~1090px wide, 1080px tall
-       Board aspect ratio ~1.15:1 (wider than tall) */
-    width: 1050px;
-    height: 950px;
+    /* Position context for absolutely positioned children */
+    position: relative;
     isolation: isolate;
+    /* Debug: show board container bounds */
+    border: calc(var(--debug-borders) * 3px) solid yellow;
+    box-sizing: border-box;
 }
 
-.board-static-layer,
+/* Landscape: fill height, width constrained by aspect-ratio and max-width */
+:global(.game-container[data-layout-mode="landscape"]) .board-svg-container {
+    height: 100%;
+    width: auto;
+    aspect-ratio: var(--board-aspect-ratio);
+    max-width: 100%;
+}
+
+/* Portrait: fill width, height constrained by aspect-ratio and max-height */
+:global(.game-container[data-layout-mode="portrait"]) .board-svg-container {
+    width: 100%;
+    height: auto;
+    aspect-ratio: var(--board-aspect-ratio);
+    max-height: 100%;
+}
+
+/* First SVG stays in flow to establish container size */
+.board-static-layer {
+    /* In flow - defines the container's intrinsic size */
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Other layers absolutely positioned on top */
 .board-static-canvas,
 .board-interactive-layer {
-    /* All layers occupy the same grid cell, stacking naturally */
-    grid-column: 1;
-    grid-row: 1;
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
 }
@@ -56,41 +73,18 @@
     isolation: isolate;
 }
 
-/* Re-enable pointer events on SVG elements that need interaction */
-.board-interactive-layer :deep(.roads-layer),
-.board-interactive-layer :deep(.buildings-layer),
+/* Enable pointer events on interactive SVG elements */
+.board-interactive-layer :deep(.roads-overlay),
+.board-interactive-layer :deep(.buildings-overlay),
 .board-interactive-layer :deep(.robber-layer) {
     pointer-events: auto;
 }
 
-/* Layer 3: HTML overlay for roads */
-::deep .road-overlay {
-    grid-column: 1;
-    grid-row: 1;
-    z-index: 3;
-    /* Match SVG sizing */
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-    max-height: 100%;
-    /* Position context for absolute children */
-    position: relative;
-    pointer-events: none;
-}
-
-/* Layer 4: HTML overlay for building spots */
-::deep .building-overlay {
-    grid-column: 1;
-    grid-row: 1;
-    z-index: 4;
-    /* Match SVG sizing */
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-    max-height: 100%;
-    /* Position context for absolute children */
-    position: relative;
-    pointer-events: none;
+/* Buildable spots and roads are clickable */
+.board-interactive-layer :deep(.road-buildable),
+.board-interactive-layer :deep(.building-spot-buildable) {
+    pointer-events: auto;
+    cursor: pointer;
 }
 
 /* Note: Road hover styles are in app.css (global) since scoped CSS doesn't work with dynamic SVG content */

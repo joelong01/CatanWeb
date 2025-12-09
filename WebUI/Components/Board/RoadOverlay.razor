@@ -5,34 +5,63 @@
 @using Catan3.WebUI.Services.Rendering
 
 @*
-    RoadOverlay - Renders ALL roads as HTML elements with CSS clip-path.
+    RoadOverlay - Renders ALL roads as SVG elements using transform for positioning.
 
     Renders:
     - Owned roads with owner colors (fully visible)
     - Buildable roads with current player colors (50% opacity, clickable)
 
-    Performance approach:
-    - Roads are positioned using CSS percentage coordinates matching SVG viewBox
-    - Each road uses CSS clip-path: polygon() for the 6-point road shape
-    - Click handling for buildable roads
+    Uses SVG coordinate system (same as tiles/robber) for perfect alignment.
 *@
 
-<div class="road-overlay" style="@Style">
+<g class="roads-overlay">
     @foreach (var road in GetVisibleRoads())
     {
         var colors = GetRoadColors(road);
-        <div class="road @GetRoadClass(road)"
-             style="@GetRoadStyle(road, colors)"
-             @onclick="() => HandleRoadClick(road)">
+        var transform = GetRoadTransform(road);
+        var (length, _) = GetRoadDimensions(road);
+        var playerId = road.OwnerId ?? CurrentPlayer?.Id ?? "default";
+
+        <g class="road @GetRoadClass(road)"
+           transform="@transform"
+           @onclick="() => HandleRoadClick(road)"
+           style="cursor: @(road.RoadState == RoadState.Buildable ? "pointer" : "default")">
+            @* Road rectangle centered at origin, rotated by transform *@
+            <rect x="@((-length / 2).ToString("F1"))"
+                  y="@((-RoadThickness / 2).ToString("F1"))"
+                  width="@length.ToString("F1")"
+                  height="@RoadThickness.ToString("F1")"
+                  rx="3" ry="3"
+                  fill="url(#gradient-@playerId)"
+                  stroke="@(colors?.Secondary ?? "#666")"
+                  stroke-width="2"
+                  opacity="@(road.OwnerId != null ? "1" : "0.5")" />
+
             @if (road.BuildIndex > 0)
             {
-                <span class="road-index" style="@GetIndexCounterRotation(road)">@road.BuildIndex</span>
+                @* Build index label - counter-rotated to stay horizontal *@
+                var angle = GetRoadAngle(road);
+                <g transform="rotate(@((-angle).ToString("F1")))">
+                    <rect x="-18" y="-14" width="36" height="28" rx="6" fill="black" />
+                    <text x="0" y="0"
+                          text-anchor="middle"
+                          dominant-baseline="central"
+                          font-family="Segoe UI, sans-serif"
+                          font-size="24"
+                          font-weight="bold"
+                          fill="white">@road.BuildIndex</text>
+                </g>
             }
-        </div>
+        </g>
     }
-</div>
+</g>
 
 @code {
+    /// <summary>
+    /// Road thickness in SVG units.
+    /// </summary>
+    private const double RoadThickness = 12;
+
     [Parameter]
     public IReadOnlyList<RoadModel> Roads { get; set; } = [];
 
@@ -41,12 +70,6 @@
 
     [Parameter]
     public IReadOnlyList<PlayerViewModel> Players { get; set; } = [];
-
-    [Parameter]
-    public (double minX, double minY, double width, double height) ViewBoxBounds { get; set; }
-
-    [Parameter]
-    public string? Style { get; set; }
 
     [Parameter]
     public EventCallback<RoadKey> OnRoadClick { get; set; }
@@ -84,57 +107,40 @@
     }
 
     /// <summary>
-    /// Cached angle for the current road being styled.
+    /// Gets the SVG transform for positioning and rotating a road.
     /// </summary>
-    private double _currentRoadAngle;
-
-    /// <summary>
-    /// Gets the inline style for a road (position, color, clip-path).
-    /// </summary>
-    private string GetRoadStyle(RoadModel road, PlayerColors? colors)
+    private string GetRoadTransform(RoadModel road)
     {
-        if (ViewBoxBounds.width <= 0 || ViewBoxBounds.height <= 0)
-            return "display: none;";
-
-        // Get road edge vertices
         var (v1, v2) = GetEdgeVertices(road.RoadKey);
-
-        // Calculate road center and dimensions
         var centerX = (v1.x + v2.x) / 2;
         var centerY = (v1.y + v2.y) / 2;
+        var angle = GetRoadAngle(road);
 
-        // Road length and angle
-        var dx = v2.x - v1.x;
-        var dy = v2.y - v1.y;
-        var length = Math.Sqrt(dx * dx + dy * dy);
-        _currentRoadAngle = Math.Atan2(dy, dx) * 180 / Math.PI;
-
-        // Convert to percentages
-        var percentX = (centerX - ViewBoxBounds.minX) / ViewBoxBounds.width * 100;
-        var percentY = (centerY - ViewBoxBounds.minY) / ViewBoxBounds.height * 100;
-        var widthPercent = length / ViewBoxBounds.width * 100;
-        var heightPercent = 12 / ViewBoxBounds.height * 100; // Road thickness
-
-        var bgColor = colors?.CssGradient ?? "linear-gradient(135deg, #999, #666)";
-        var borderColor = colors?.Secondary ?? "#666";
-
-        return $"left: {percentX:F2}%; top: {percentY:F2}%; " +
-               $"width: {widthPercent:F2}%; height: {heightPercent:F2}%; " +
-               $"transform: translate(-50%, -50%) rotate({_currentRoadAngle:F1}deg); " +
-               $"background: {bgColor}; border-color: {borderColor};";
+        return $"translate({centerX:F1}, {centerY:F1}) rotate({angle:F1})";
     }
 
     /// <summary>
-    /// Gets counter-rotation style for the build index to keep text horizontal.
+    /// Gets the road angle in degrees.
     /// </summary>
-    private string GetIndexCounterRotation(RoadModel road)
+    private double GetRoadAngle(RoadModel road)
     {
-        // Recalculate angle for this road
         var (v1, v2) = GetEdgeVertices(road.RoadKey);
         var dx = v2.x - v1.x;
         var dy = v2.y - v1.y;
+        return Math.Atan2(dy, dx) * 180 / Math.PI;
+    }
+
+    /// <summary>
+    /// Gets the road length and angle.
+    /// </summary>
+    private (double length, double angle) GetRoadDimensions(RoadModel road)
+    {
+        var (v1, v2) = GetEdgeVertices(road.RoadKey);
+        var dx = v2.x - v1.x;
+        var dy = v2.y - v1.y;
+        var length = Math.Sqrt(dx * dx + dy * dy);
         var angle = Math.Atan2(dy, dx) * 180 / Math.PI;
-        return $"transform: rotate({-angle:F1}deg);";
+        return (length, angle);
     }
 
     /// <summary>

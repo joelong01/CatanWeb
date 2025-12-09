@@ -50,7 +50,7 @@
         @* Canvas for rasterized static layer - hidden initially, shown by JS after rasterization *@
         <canvas class="board-static-canvas" style="display: none;"></canvas>
 
-        @* Interactive SVG layer - roads, owned buildings, robber *@
+        @* Interactive SVG layer - roads, buildings, robber - all in SVG coordinate system *@
         <svg xmlns="http://www.w3.org/2000/svg"
              xmlns:xlink="http://www.w3.org/1999/xlink"
              viewBox="@ViewBox"
@@ -58,7 +58,7 @@
              shape-rendering="geometricPrecision"
              class="board-interactive-layer">
 
-            @* Need defs for player gradients in this SVG too *@
+            @* Player gradients for fills *@
             <defs>
                 @if (CurrentPlayerViewModel != null)
                 {
@@ -74,32 +74,27 @@
                 }
             </defs>
 
-            @* Roads and buildings now rendered as HTML overlays *@
+            @* Roads - rendered first (bottom layer) *@
+            <RoadOverlay Roads="@GameModel.Roads"
+                         CurrentPlayer="@CurrentPlayerViewModel"
+                         Players="@Players"
+                         OnRoadClick="@OnRoadClick" />
 
+            @* Robber - middle layer *@
             <RobberLayer RobberCoordinates="@GameModel.Robber.Coordinates"
                          MovedByPlayerId="@GameModel.Robber.MovedBy"
                          ResourcesStolen="@GameModel.Robber.ResourcesStolen"
                          Players="@Players" />
+
+            @* Buildings - rendered last (top layer, above roads) *@
+            <BuildingOverlay Buildings="@GameModel.Buildings"
+                             GameModel="@GameModel"
+                             ShownStars="@ShownStars"
+                             FilteredResources="@FilteredResources"
+                             CurrentPlayer="@CurrentPlayerViewModel"
+                             Players="@Players"
+                             OnBuildingClick="@OnBuildingClick" />
         </svg>
-
-        @* HTML overlay for roads (owned + buildable) *@
-        <RoadOverlay Roads="@GameModel.Roads"
-                     CurrentPlayer="@CurrentPlayerViewModel"
-                     Players="@Players"
-                     ViewBoxBounds="@ViewBoxBounds"
-                     OnRoadClick="@OnRoadClick"
-                     Style="@AspectRatioStyle" />
-
-        @* HTML overlay for all buildings (owned + buildable) *@
-        <BuildingOverlay Buildings="@GameModel.Buildings"
-                         GameModel="@GameModel"
-                         ShownStars="@ShownStars"
-                         FilteredResources="@FilteredResources"
-                         CurrentPlayer="@CurrentPlayerViewModel"
-                         Players="@Players"
-                         ViewBoxBounds="@ViewBoxBounds"
-                         OnBuildingClick="@OnBuildingClick"
-                         Style="@AspectRatioStyle" />
     </div>
 }
 else
@@ -213,7 +208,8 @@ else
             if (bounds.width <= 0 || bounds.height <= 0)
                 return "";
             var aspectRatio = bounds.width / bounds.height;
-            return $"--board-aspect-ratio: {aspectRatio:F4}; aspect-ratio: {aspectRatio:F4};";
+            // Pass actual viewBox dimensions as CSS variables for constraint-based sizing
+            return $"--board-aspect-ratio: {aspectRatio:F4}; --board-width: {bounds.width:F0}px; --board-height: {bounds.height:F0}px;";
         }
     }
 

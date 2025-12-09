@@ -5,55 +5,84 @@
 @using Catan3.WebUI.Services.Rendering
 
 @*
-    BuildingOverlay - Renders ALL buildings as HTML elements.
+    BuildingOverlay - Renders ALL buildings as SVG elements using transform for positioning.
 
     Renders:
     - Owned buildings (settlements/cities) with owner colors and Catan font glyph
     - Buildable spots with current player colors and star count
     - During PickingBoard: shows stars for evaluating board quality
 
-    Performance approach:
-    - Buildings are positioned using CSS percentage coordinates matching SVG viewBox
-    - Each building is an independent HTML element = isolated repaint
-    - Click handling for buildable spots
+    Uses SVG coordinate system (same as tiles/robber) for perfect alignment.
 *@
 
-<div class="building-overlay" style="@Style">
+<g class="buildings-overlay">
     @* Render owned buildings *@
     @foreach (var building in GetOwnedBuildings())
     {
         var ownerColors = GetOwnerColors(building.OwnerId);
-        <div class="building-owned"
-             style="@GetBuildingStyle(building, ownerColors)">
-            <span class="building-glyph" style="color: @ownerColors?.Foreground">@GetBuildingGlyph(building)</span>
-        </div>
+        var (x, y) = BoardGeometry.GetVertexPosition(building.BuildingKey);
+        var playerId = building.OwnerId ?? "default";
+        var glyph = GetBuildingGlyph(building);
+
+        <g class="building-owned" transform="translate(@x.ToString("F1"), @y.ToString("F1"))">
+            @* Background circle with player gradient *@
+            <circle r="@BuildingRadius"
+                    fill="url(#gradient-@playerId)"
+                    stroke="@(ownerColors?.Secondary ?? "#333")"
+                    stroke-width="2" />
+            @* Building glyph sized to fit circle with margin *@
+            <text x="0" y="0"
+                  text-anchor="middle"
+                  dominant-baseline="central"
+                  font-family="Catan"
+                  font-size="@GlyphFontSize"
+                  fill="@(ownerColors?.Foreground ?? "#fff")">@glyph</text>
+        </g>
     }
 
     @* Render buildable/star spots *@
     @foreach (var spot in GetBuildableSpots())
     {
-        <div class="building-spot @GetSpotClass(spot)"
-             style="@GetSpotStyle(spot)"
-             title="@spot.Stars stars"
-             @onclick="() => OnSpotClick(spot)">
-            @if (!string.IsNullOrEmpty(spot.BuildIndex))
-            {
-                @* Show build index (not stars) when index is assigned *@
-                <span class="build-index">@spot.BuildIndex</span>
-            }
-            else
-            {
-                @* Show stars when no build index *@
-                <span class="building-spot-text">@spot.Stars</span>
-            }
-        </div>
+        var colors = CurrentPlayer?.Colors;
+        var playerId = CurrentPlayer?.Id ?? "default";
+
+        <g class="building-spot @GetSpotClass(spot)"
+           transform="translate(@spot.X.ToString("F1"), @spot.Y.ToString("F1"))"
+           @onclick="() => OnSpotClick(spot)"
+           style="cursor: @(spot.IsBuildable ? "pointer" : "default")">
+            @* Background circle with player gradient *@
+            <circle r="@SpotRadius"
+                    fill="url(#gradient-@playerId)"
+                    stroke="@(colors?.Foreground ?? "#fff")"
+                    stroke-width="2"
+                    opacity="@(spot.IsHidden ? "0.2" : "0.7")" />
+
+            @* Text: build index or star count *@
+            <text x="0" y="0"
+                  text-anchor="middle"
+                  dominant-baseline="central"
+                  font-family="Segoe UI, sans-serif"
+                  font-size="@SpotFontSize"
+                  font-weight="bold"
+                  fill="@(colors?.Foreground ?? "#fff")"
+                  opacity="@(spot.IsHidden ? "0.3" : "1")">@(spot.BuildIndex ?? spot.Stars.ToString())</text>
+        </g>
     }
-</div>
+</g>
 
 @code {
     // Catan font glyph codes
     private const string SettlementGlyph = "\uE926";
     private const string CityGlyph = "\uE900";
+
+    // Building circle radius (SVG units) - same for settlement and city
+    private const double BuildingRadius = 24;
+    // Font size as percentage of diameter (leaves visible border)
+    private const double GlyphFontSize = BuildingRadius * 1.4;
+
+    // Buildable spot sizes
+    private const double SpotRadius = 18;
+    private const double SpotFontSize = 20;
 
     [Parameter]
     public IReadOnlyList<BuildingModel> Buildings { get; set; } = [];
@@ -72,12 +101,6 @@
 
     [Parameter]
     public IReadOnlyList<PlayerViewModel> Players { get; set; } = [];
-
-    [Parameter]
-    public (double minX, double minY, double width, double height) ViewBoxBounds { get; set; }
-
-    [Parameter]
-    public string? Style { get; set; }
 
     [Parameter]
     public EventCallback<BuildingKey> OnBuildingClick { get; set; }
@@ -106,23 +129,6 @@
     {
         return Buildings.Where(b => b.OwnerId != null &&
             (b.BuildingState == BuildingState.Settlement || b.BuildingState == BuildingState.City));
-    }
-
-    /// <summary>
-    /// Gets the inline style for positioning an owned building.
-    /// </summary>
-    private string GetBuildingStyle(BuildingModel building, PlayerColors? colors)
-    {
-        if (ViewBoxBounds.width <= 0 || ViewBoxBounds.height <= 0)
-            return "display: none;";
-
-        var (x, y) = BoardGeometry.GetVertexPosition(building.BuildingKey);
-        var percentX = (x - ViewBoxBounds.minX) / ViewBoxBounds.width * 100;
-        var percentY = (y - ViewBoxBounds.minY) / ViewBoxBounds.height * 100;
-
-        var bgColor = colors?.CssGradient ?? "linear-gradient(135deg, #666, #444)";
-
-        return $"left: {percentX:F2}%; top: {percentY:F2}%; background: {bgColor};";
     }
 
     /// <summary>
@@ -270,24 +276,6 @@
             classes.Add("building-spot-indexed");
 
         return string.Join(" ", classes);
-    }
-
-    /// <summary>
-    /// Gets the inline style for a buildable spot.
-    /// </summary>
-    private string GetSpotStyle(BuildingSpot spot)
-    {
-        if (ViewBoxBounds.width <= 0 || ViewBoxBounds.height <= 0)
-            return "display: none;";
-
-        var percentX = (spot.X - ViewBoxBounds.minX) / ViewBoxBounds.width * 100;
-        var percentY = (spot.Y - ViewBoxBounds.minY) / ViewBoxBounds.height * 100;
-
-        var colors = CurrentPlayer?.Colors;
-        var bgColor = colors?.CssGradient ?? "linear-gradient(135deg, #666, #444)";
-        var fgColor = colors?.Foreground ?? "#fff";
-
-        return $"left: {percentX:F2}%; top: {percentY:F2}%; background: {bgColor}; color: {fgColor}; border-color: {fgColor};";
     }
 
     /// <summary>

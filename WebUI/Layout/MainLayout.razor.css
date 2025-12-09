@@ -57,6 +57,7 @@ main {
     background: #000;
     width: 100px;
     min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height - excludes browser chrome */
     padding-top: 60px;
     padding-left: 5px;
     padding-right: 5px;
