@@ -471,6 +471,67 @@ function Remove-ResourceGroup {
 
 #endregion
 
+#region Application Insights Functions
+
+<#
+.SYNOPSIS
+    Creates Application Insights resource.
+.DESCRIPTION
+    Creates an Application Insights resource for monitoring and telemetry.
+    Returns the connection string for use by web apps.
+.PARAMETER Config
+    Azure configuration hashtable
+.OUTPUTS
+    String - Application Insights connection string
+#>
+function Install-AppInsights {
+    param([hashtable]$Config)
+
+    $rgName = $Config.resourceGroup
+    $location = $Config.location
+    $appInsightsName = $Config.appInsights.name
+
+    # Ensure resource group exists
+    Install-ResourceGroup -Config $Config | Out-Null
+
+    Write-Log -Level "INFO" -Message "Checking Application Insights: $appInsightsName"
+
+    $existing = Invoke-AzCommand "monitor app-insights component show --app $appInsightsName --resource-group $rgName" -FailOnError $false -JsonOutput
+    if (-not $existing) {
+        Write-Log -Level "INFO" -Message "Creating Application Insights: $appInsightsName"
+        Invoke-AzCommand "monitor app-insights component create --app $appInsightsName --resource-group $rgName --location $location --kind web --application-type web" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Application Insights created: $appInsightsName"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Application Insights exists: $appInsightsName"
+    }
+
+    # Get the connection string
+    $connectionString = Invoke-AzCommand "monitor app-insights component show --app $appInsightsName --resource-group $rgName --query connectionString -o tsv"
+
+    return $connectionString
+}
+
+<#
+.SYNOPSIS
+    Gets Application Insights connection string.
+.PARAMETER Config
+    Azure configuration hashtable
+.OUTPUTS
+    String - Connection string or $null if not found
+#>
+function Get-AppInsightsConnectionString {
+    param([hashtable]$Config)
+
+    $rgName = $Config.resourceGroup
+    $appInsightsName = $Config.appInsights.name
+
+    $connectionString = Invoke-AzCommand "monitor app-insights component show --app $appInsightsName --resource-group $rgName --query connectionString -o tsv" -FailOnError $false
+    return $connectionString
+}
+
+#endregion
+
 #region Database Functions (Azure SQL Serverless)
 
 <#
@@ -532,10 +593,12 @@ function Install-Database {
     if (-not $dbExists) {
         Write-Log -Level "INFO" -Message "Creating Serverless database: $databaseName"
 
-        # Create serverless database with auto-pause
-        Invoke-AzCommand "sql db create --server $sqlServerName --resource-group $rgName --name $databaseName --compute-model Serverless --edition GeneralPurpose --family Gen5 --min-capacity 0.5 --capacity 2 --auto-pause-delay 60 --backup-storage-redundancy Local" -SuppressOutput
+        # Create serverless database with 12-hour auto-pause delay (720 minutes)
+        # Short delays (60 min) cause 30-60 sec cold starts too often during normal use
+        # 12 hours means it only pauses overnight, avoiding bad UX during the day
+        Invoke-AzCommand "sql db create --server $sqlServerName --resource-group $rgName --name $databaseName --compute-model Serverless --edition GeneralPurpose --family Gen5 --min-capacity 0.5 --capacity 2 --auto-pause-delay 720 --backup-storage-redundancy Local" -SuppressOutput
 
-        Write-Log -Level "INFO" -Message "Database created: $databaseName (Serverless, auto-pause after 60 min)"
+        Write-Log -Level "INFO" -Message "Database created: $databaseName (Serverless, auto-pause after 12 hours)"
     }
     else {
         Write-Log -Level "INFO" -Message "Database exists: $databaseName"
@@ -886,8 +949,11 @@ function Install-AppServicePlan {
 
     $existing = Invoke-AzCommand "appservice plan show --name $planName --resource-group $rgName" -FailOnError $false -JsonOutput
     if (-not $existing) {
-        Write-Log -Level "INFO" -Message "Creating App Service Plan: $planName (B1)"
-        Invoke-AzCommand "appservice plan create --name $planName --resource-group $rgName --location $location --sku B1 --is-linux" -SuppressOutput
+        # IMPORTANT: --number-of-workers 1 is required because GameStateMachineRegistry uses
+        # an in-memory dictionary. Multiple instances would have separate dictionaries and
+        # players on different instances couldn't see the same game state.
+        Write-Log -Level "INFO" -Message "Creating App Service Plan: $planName (B1, single instance)"
+        Invoke-AzCommand "appservice plan create --name $planName --resource-group $rgName --location $location --sku B1 --is-linux --number-of-workers 1" -SuppressOutput
         Write-Log -Level "INFO" -Message "App Service Plan created: $planName"
     }
     else {
@@ -929,6 +995,18 @@ function Install-GameService {
     }
     else {
         Write-Log -Level "INFO" -Message "GameService App exists: $appName"
+    }
+
+    # Enable Always On to prevent cold starts (10-20 sec delay after idle)
+    # This keeps the app warm by pinging it periodically
+    Write-Log -Level "INFO" -Message "Enabling Always On for $appName..."
+    Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --always-on true" -SuppressOutput
+
+    # Install and connect Application Insights
+    $appInsightsConnectionString = Install-AppInsights -Config $Config
+    if ($appInsightsConnectionString) {
+        Write-Log -Level "INFO" -Message "Connecting Application Insights to $appName..."
+        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings APPLICATIONINSIGHTS_CONNECTION_STRING=`"$appInsightsConnectionString`"" -SuppressOutput
     }
 
     # Enable managed identity
@@ -981,6 +1059,17 @@ function Install-UI {
     }
     else {
         Write-Log -Level "INFO" -Message "UI App exists: $appName"
+    }
+
+    # Enable Always On to prevent cold starts (10-20 sec delay after idle)
+    Write-Log -Level "INFO" -Message "Enabling Always On for $appName..."
+    Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --always-on true" -SuppressOutput
+
+    # Install and connect Application Insights
+    $appInsightsConnectionString = Install-AppInsights -Config $Config
+    if ($appInsightsConnectionString) {
+        Write-Log -Level "INFO" -Message "Connecting Application Insights to $appName..."
+        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings APPLICATIONINSIGHTS_CONNECTION_STRING=`"$appInsightsConnectionString`"" -SuppressOutput
     }
 
     # Enable managed identity (for future extensibility)
@@ -1149,6 +1238,13 @@ function Deploy-UI {
 
     Write-Log -Level "INFO" -Message "Building WebUI.Server..."
     dotnet publish $projectPath -c Release -o $publishPath --nologo -v q
+
+    # Remove BlazorDebugProxy (saves ~11 MB, not needed in production)
+    $debugProxyPath = Join-Path $publishPath "BlazorDebugProxy"
+    if (Test-Path $debugProxyPath) {
+        Remove-Item $debugProxyPath -Recurse -Force
+        Write-Log -Level "DEBUG" -Message "Removed BlazorDebugProxy folder"
+    }
 
     Write-Log -Level "INFO" -Message "Creating deployment package..."
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }

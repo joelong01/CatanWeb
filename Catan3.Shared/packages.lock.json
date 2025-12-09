@@ -42,12 +42,6 @@
         "resolved": "9.0.7",
         "contentHash": "u/lN2FEEXs3ghj2ta8tWA4r2MS9Yni07K7jDmnz8h1UPDf0lIIIEMkWx383Zz4fJjJio7gDl+00RYuQ/7R8ZQw=="
       },
-      "xunit.runner.visualstudio": {
-        "type": "Direct",
-        "requested": "[3.1.3, )",
-        "resolved": "3.1.3",
-        "contentHash": "go7e81n/UI3LeNqoJIJ3thkS4JfJtiQnDbAxLh09JkJqoHthnfbLS5p68s4/Bm12B9umkoYSB5SaDr68hZNleg=="
-      },
       "Microsoft.AspNetCore.Connections.Abstractions": {
         "type": "Transitive",
         "resolved": "9.0.7",

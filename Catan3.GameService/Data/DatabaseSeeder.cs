@@ -88,7 +88,7 @@ public static class DatabaseSeeder
         var imageFiles = new Dictionary<string, string>
         {
             ["Joe-001"] = "joe.jpg",
-            ["Dodgy-001"] = "Dodgy.png",
+            ["Dodgy-001"] = "Dodgy.jpg",
             ["Doug-001"] = "doug.jpg",
             ["Ryan-001"] = "ryan.jpg",
             ["Adrian-001"] = "adrian.jpg",

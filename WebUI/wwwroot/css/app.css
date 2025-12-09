@@ -158,38 +158,92 @@ a.nav-menu-item:visited {
         content: "An error has occurred."
     }
 
-.loading-progress {
-    position: relative;
-    display: block;
-    width: 8rem;
-    height: 8rem;
-    margin: 20vh auto 1rem auto;
+/* ==========================================================================
+   Loading Screen - Shown while Blazor WASM initializes
+   ========================================================================== */
+.loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+    color: #fff;
 }
 
-    .loading-progress circle {
-        fill: none;
-        stroke: #e0e0e0;
-        stroke-width: 0.6rem;
-        transform-origin: 50% 50%;
-        transform: rotate(-90deg);
-    }
+.loading-logo {
+    margin-bottom: 1rem;
+}
 
-        .loading-progress circle:last-child {
-            stroke: #1b6ec2;
-            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-            transition: stroke-dasharray 0.05s ease-in-out;
-        }
+.loading-hexagon {
+    width: 120px;
+    height: 104px;
+    animation: hexagon-pulse 2s ease-in-out infinite;
+}
+
+@keyframes hexagon-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+.loading-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #d4a853;
+    margin: 0 0 2rem 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    letter-spacing: 0.2em;
+}
+
+.loading-spinner-container {
+    position: relative;
+    width: 5rem;
+    height: 5rem;
+}
+
+.loading-progress {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.loading-progress circle {
+    fill: none;
+    stroke: #3a3a5a;
+    stroke-width: 0.4rem;
+    transform-origin: 50% 50%;
+    transform: rotate(-90deg);
+}
+
+.loading-progress circle:last-child {
+    stroke: #d4a853;
+    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+    transition: stroke-dasharray 0.05s ease-in-out;
+}
 
 .loading-progress-text {
-    position: absolute;
     text-align: center;
     font-weight: bold;
-    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
+    font-size: 1.1rem;
+    color: #d4a853;
+    margin-top: 0.5rem;
 }
 
-    .loading-progress-text:after {
-        content: var(--blazor-load-percentage-text, "Loading");
-    }
+.loading-progress-text:after {
+    content: var(--blazor-load-percentage-text, "Loading");
+}
+
+.loading-hint {
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: #888;
+    animation: hint-fade 1.5s ease-in-out infinite;
+}
+
+@keyframes hint-fade {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
 
 code {
     color: #c02d76;

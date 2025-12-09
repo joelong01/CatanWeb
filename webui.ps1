@@ -972,27 +972,18 @@ switch ($Verb) {
                 # Run all doctors to determine what needs to be done
                 Write-Host "Checking deployment status..." -ForegroundColor Gray
 
-                # Database doctor - get hashtable result
-                $dbDoctor = & $azureScript database doctor -HashTable -TraceLevel ERROR
-                $dbConnected = $dbDoctor.checks.gameServiceConnected
-                $dbNeedsDeploy = $dbDoctor.needsDeploy
-
-                if ($dbConnected -and -not $Force) {
-                    Write-Host "  Database: Connected - skipping" -ForegroundColor Green
-                }
-                elseif ($dbNeedsDeploy -or $Force) {
-                    Write-Host "  Database: Needs configuration" -ForegroundColor Yellow
-                    & $azureScript database deploy -Force:$Force -TraceLevel $TraceLevel
-                    if ($LASTEXITCODE -ne 0) { exit 1 }
-                }
-                else {
-                    Write-Host "  Database: OK - skipping" -ForegroundColor Green
-                }
-
-                # GameService doctor - get hashtable result
-                $gsDoctor = & $azureScript game-service doctor -HashTable -TraceLevel ERROR
+                # GameService doctor - check first since database depends on it for connection test
+                $gsDoctor = & $azureScript game-service doctor -HashTable -TraceLevel $TraceLevel
+                $gsNeedsInstall = $gsDoctor.needsInstall
                 $gsNeedsDeploy = $gsDoctor.needsDeploy
                 $gsHealthy = $gsDoctor.healthy
+
+                if ($gsNeedsInstall) {
+                    Write-Host "  GameService: Not installed - installing..." -ForegroundColor Yellow
+                    & $azureScript game-service install -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                    $gsNeedsDeploy = $true  # Need to deploy after install
+                }
 
                 if ($gsHealthy -and -not $gsNeedsDeploy -and -not $Force) {
                     Write-Host "  GameService: Up to date - skipping" -ForegroundColor Green
@@ -1006,10 +997,43 @@ switch ($Verb) {
                     Write-Host "  GameService: OK - skipping" -ForegroundColor Green
                 }
 
+                # Database doctor - get hashtable result
+                $dbDoctor = & $azureScript database doctor -HashTable -TraceLevel $TraceLevel
+                $dbNeedsInstall = $dbDoctor.needsInstall
+                $dbConnected = $dbDoctor.checks.gameServiceConnected
+                $dbNeedsDeploy = $dbDoctor.needsDeploy
+
+                if ($dbNeedsInstall) {
+                    Write-Host "  Database: Not installed - installing..." -ForegroundColor Yellow
+                    & $azureScript database install -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                    $dbNeedsDeploy = $true  # Need to deploy after install
+                }
+
+                if ($dbConnected -and -not $Force) {
+                    Write-Host "  Database: Connected - skipping" -ForegroundColor Green
+                }
+                elseif ($dbNeedsDeploy -or $Force) {
+                    Write-Host "  Database: Needs configuration" -ForegroundColor Yellow
+                    & $azureScript database deploy -Force:$Force -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                }
+                else {
+                    Write-Host "  Database: OK - skipping" -ForegroundColor Green
+                }
+
                 # UI doctor - get hashtable result
-                $uiDoctor = & $azureScript ui doctor -HashTable -TraceLevel ERROR
+                $uiDoctor = & $azureScript ui doctor -HashTable -TraceLevel $TraceLevel
+                $uiNeedsInstall = $uiDoctor.needsInstall
                 $uiNeedsDeploy = $uiDoctor.needsDeploy
                 $uiHealthy = $uiDoctor.healthy
+
+                if ($uiNeedsInstall) {
+                    Write-Host "  UI: Not installed - installing..." -ForegroundColor Yellow
+                    & $azureScript ui install -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                    $uiNeedsDeploy = $true  # Need to deploy after install
+                }
 
                 if ($uiHealthy -and -not $uiNeedsDeploy -and -not $Force) {
                     Write-Host "  UI: Up to date - skipping" -ForegroundColor Green

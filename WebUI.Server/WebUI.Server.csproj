@@ -6,6 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <BlazorEnableDebugging>false</BlazorEnableDebugging>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.0" />
   </ItemGroup>
@@ -13,5 +17,9 @@
   <ItemGroup>
     <ProjectReference Include="..\WebUI\Catan3.WebUI.csproj" />
   </ItemGroup>
+
+  <Target Name="RemoveDebugProxy" AfterTargets="Publish">
+    <RemoveDir Directories="$(PublishDir)BlazorDebugProxy" />
+  </Target>
 
 </Project>
