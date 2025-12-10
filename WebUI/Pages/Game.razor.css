@@ -17,7 +17,7 @@
 /* CSS version indicator - positioned inside game container, scales with content */
 /* Shows environment (local/web) and orientation */
 .game-container[data-layout-mode="landscape"][data-env="local"]::after {
-    content: "CSS 2025-12-09 v18 LOCAL landscape";
+    content: "CSS 2025-12-09 v35 LOCAL landscape";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -27,7 +27,7 @@
 }
 
 .game-container[data-layout-mode="landscape"][data-env="web"]::after {
-    content: "CSS 2025-12-09 v14 WEB landscape";
+    content: "CSS 2025-12-09 v35 WEB landscape";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -37,7 +37,7 @@
 }
 
 .game-container[data-layout-mode="portrait"][data-env="local"]::after {
-    content: "CSS 2025-12-09 v14 LOCAL portrait";
+    content: "CSS 2025-12-09 v35 LOCAL portrait";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -47,7 +47,7 @@
 }
 
 .game-container[data-layout-mode="portrait"][data-env="web"]::after {
-    content: "CSS 2025-12-09 v14 WEB portrait";
+    content: "CSS 2025-12-09 v35 WEB portrait";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -61,13 +61,13 @@
     height: 100vh;
     height: 100dvh; /* Dynamic viewport height - excludes browser chrome */
     display: flex;
-    align-items: flex-start;
+    align-items: stretch; /* Container fills available height */
     justify-content: flex-start;
     background: #000;
     overflow: hidden;
-    /* Safe area padding for notched devices */
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     box-sizing: border-box;
+    /* Debug: show viewport bounds */
+    border: calc(var(--debug-borders) * 4px) solid lime;
 }
 
 .game-container {
@@ -77,7 +77,7 @@
 
     /* Scale to fit viewport - equivalent to XAML Viewbox Stretch="Uniform" */
     transform-origin: top left;
-    transform: scale(var(--viewport-scale, 1));
+    transform: scale(var(--viewport-scale, 0.5)); /* Default to 0.5 if JS doesn't set it */
 
     /* Container styling */
     background: #000;
@@ -154,7 +154,7 @@
     /* Single row/col grid - hidden portrait element doesn't affect layout */
     grid-template-rows: 1fr;
     grid-template-columns: 1fr;
-    /* Stretch vertically to fill, center horizontally */
+    /* Desktop landscape: stretch to fill height, center horizontally */
     place-items: stretch center;
     overflow: hidden;
     width: 100%;
@@ -171,7 +171,7 @@
 .game-container[data-layout-mode="portrait"] .center-panel {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;  /* Children fill width */
     justify-content: flex-start;
 }
 
@@ -271,6 +271,32 @@
     overflow: hidden;
 }
 
+/* Portrait mode - board fills width, height from aspect ratio */
+/* Use ::deep to pierce into child component (BoardContainer) */
+.game-container[data-layout-mode="portrait"] .game-board {
+    width: 100%;
+    height: auto;
+}
+
+.game-container[data-layout-mode="portrait"] ::deep .board-container {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.game-container[data-layout-mode="portrait"] ::deep .board-svg-container {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.game-container[data-layout-mode="portrait"] ::deep .board-static-layer,
+.game-container[data-layout-mode="portrait"] ::deep .board-interactive-layer {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
 /* =============================================================================
    Resource Tracking - Conditional visibility by orientation
    ============================================================================= */
@@ -293,6 +319,29 @@
 }
 
 .game-container[data-layout-mode="portrait"] .landscape-resource-tracking {
+    display: none;
+}
+
+/* =============================================================================
+   Board Measurements - Conditional visibility by orientation
+   ============================================================================= */
+
+/* Portrait mode: show on Board tab (below board), hide on Controls tab */
+.portrait-board-measurements {
+    display: none;
+}
+
+.game-container[data-layout-mode="portrait"] .portrait-board-measurements {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* Landscape mode: show on Controls panel (left column) */
+/* .board-measurements is already visible by default */
+
+.game-container[data-layout-mode="portrait"] .board-measurements {
     display: none;
 }
 
@@ -524,7 +573,7 @@
     display: grid;
     grid-template-rows: 1fr;
     grid-template-columns: 1fr;
-    /* Stretch vertically (for height: 100%), center horizontally (board centers via margin) */
+    /* Desktop landscape: stretch to fill height, center horizontally */
     place-items: stretch center;
     /* Debug */
     border: calc(var(--debug-borders) * 2px) solid magenta;
@@ -718,4 +767,94 @@
     height: 1px;
     background: #444;
     margin: 5px 0;
+}
+
+/* =============================================================================
+   Mobile Support - Enable scrolling and touch gestures
+   ============================================================================= */
+
+@media (pointer: coarse) {
+    /* Mobile viewport: scrollable with pinch-zoom enabled */
+    .game-viewport {
+        overflow: scroll !important;
+        -webkit-overflow-scrolling: touch;
+        /* Align content to top-left for scrolling */
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+        /* Enable pinch-zoom and pan */
+        touch-action: manipulation;
+    }
+
+    /* Mobile container: use original fixed dimensions, no scaling
+       User scrolls/pans to see full content and pinch-zooms as needed */
+    .game-container {
+        /* Use the original fixed dimensions - scrollable via viewport */
+        width: 1920px !important;
+        height: 1080px !important;
+        min-width: 1920px !important;
+        min-height: 1080px !important;
+        /* Disable transform scaling on mobile - rely on scroll/pinch-zoom */
+        transform: none !important;
+        /* Allow content to be visible for scrolling */
+        overflow: visible !important;
+    }
+
+    .game-container[data-layout-mode="portrait"] {
+        width: 1080px !important;
+        height: 1920px !important;
+        min-width: 1080px !important;
+        min-height: 1920px !important;
+    }
+
+    /* Mobile landscape: keep original pixel proportions */
+    .game-container[data-layout-mode="landscape"] .game-grid {
+        grid-template-columns: 320px 1fr 510px;
+        overflow: visible !important;
+    }
+
+    /* All panels align to top */
+    .game-container[data-layout-mode="landscape"] .left-panel,
+    .game-container[data-layout-mode="landscape"] .right-panel {
+        overflow: visible !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+    }
+
+    /* Center panel: keep grid sizing, allow overflow */
+    .game-container[data-layout-mode="landscape"] .center-panel {
+        overflow: visible !important;
+        place-items: start center !important;
+    }
+
+    /* Left panel content: reduce top margin on mobile */
+    .game-container[data-layout-mode="landscape"] .left-panel-content {
+        margin-left: 10px !important;
+        margin-top: 0 !important;
+    }
+
+    /* Board hierarchy: fill width, height from aspect ratio */
+    .game-board {
+        width: 100% !important;
+        height: auto !important;
+    }
+
+    .board-container {
+        width: 100% !important;
+        height: auto !important;
+        display: block !important;
+    }
+
+    .board-svg-container {
+        width: 100% !important;
+        height: auto !important;
+        display: block !important;
+    }
+
+    /* SVG: fill container width, height from viewBox aspect ratio */
+    .board-static-layer,
+    .board-interactive-layer {
+        width: 100% !important;
+        height: auto !important;
+        display: block !important;
+    }
 }

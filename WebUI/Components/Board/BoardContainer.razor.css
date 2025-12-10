@@ -19,12 +19,21 @@
     max-width: 100%;
 }
 
-/* Portrait: fill width, height constrained by aspect-ratio and max-height */
+/* Portrait: fill width, height from aspect-ratio */
 :global(.game-container[data-layout-mode="portrait"]) .board-svg-container {
     width: 100%;
     height: auto;
     aspect-ratio: var(--board-aspect-ratio);
-    max-height: 100%;
+}
+
+/* Mobile landscape: fill center column width, height from aspect ratio */
+@media (pointer: coarse) {
+    :global(.game-container[data-layout-mode="landscape"]) .board-svg-container {
+        width: 100% !important;
+        height: auto !important;
+        aspect-ratio: var(--board-aspect-ratio) !important;
+        max-height: none !important;
+    }
 }
 
 /* First SVG stays in flow to establish container size */

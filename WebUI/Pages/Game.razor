@@ -187,6 +187,18 @@
                                     OnRoadClick="@OnRoadSpotClick" />
                 </div>
             </div>
+            <!-- Board Measurements - shown here in portrait mode only -->
+            @if (GameModel?.AllocationPhase() == true)
+            {
+                <div class="portrait-board-measurements" style="@GetCurrentPlayerGradient()">
+                    <BoardMeasurement GameModel="@GameModel"
+                                      OnShuffle="OnShuffleClick"
+                                      CanShuffle="@(GameModel?.GameState == GameState.PickingBoard)"
+                                      ShownStars="@ShownStars"
+                                      ShownStarsChanged="HandleShownStarsChanged"
+                                      SelectedResourcesChanged="HandleSelectedResourcesChanged" />
+                </div>
+            }
         </div>
 
         @* Robber target selection menu *@
