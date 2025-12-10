@@ -6,6 +6,14 @@
     min-height: 100vh;
 }
 
+/* Mobile - add bottom padding for iOS safe area */
+@media (pointer: coarse), (max-width: 1024px) {
+    .new-game-container {
+        min-height: auto;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+}
+
 h1 {
     text-align: center;
     color: var(--text-primary);

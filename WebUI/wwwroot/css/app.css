@@ -79,7 +79,18 @@ html, body {
     /* iOS Safari: use safe area for full-screen web apps */
     min-height: 100vh;
     min-height: -webkit-fill-available;
+    /* Desktop/TV: no scrolling */
     overflow: hidden;
+}
+
+/* Mobile devices - enable scrolling and touch gestures */
+@media (pointer: coarse) {
+    html, body {
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+        /* Allow pinch-zoom */
+        touch-action: auto;
+    }
 }
 
 h1:focus {

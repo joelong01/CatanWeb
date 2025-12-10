@@ -3,9 +3,20 @@
     display: flex;
     flex-direction: column;
     background: var(--game-bg-primary);
+    width: 100%;
+    width: 100vw;
     height: 100vh;
     height: 100dvh; /* Dynamic viewport height - excludes browser chrome */
+    /* Desktop/TV: no scrolling */
     overflow: hidden;
+}
+
+/* Mobile devices - enable scrolling */
+@media (pointer: coarse) {
+    .page {
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+    }
 }
 
 main {
