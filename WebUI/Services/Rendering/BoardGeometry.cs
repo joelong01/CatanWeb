@@ -1,4 +1,5 @@
 using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 
 namespace Catan3.WebUI.Services.Rendering;
 
@@ -23,10 +24,10 @@ public static class BoardGeometry
     }
 
     /// <summary>
-    /// Converts pixel position to axial coordinates (inverse of AxialToPixel).
+    /// Converts pixel position to hex coordinates (inverse of AxialToPixel).
     /// Returns the nearest hex tile coordinates using cube rounding.
     /// </summary>
-    public static (int q, int r) PixelToAxial(double px, double py)
+    public static HexCoordinates PixelToHex(double px, double py)
     {
         // Remove center offset
         double x = px - CenterX;
@@ -58,8 +59,8 @@ public static class BoardGeometry
         else
             rz = -rx - ry;
 
-        // Convert back to axial (q = cubeX, r = cubeZ)
-        return (rx, rz);
+        // Return HexCoordinates (q=rx, r=rz, s=ry in cube coordinate convention)
+        return new HexCoordinates(rx, rz, ry);
     }
 
     /// <summary>

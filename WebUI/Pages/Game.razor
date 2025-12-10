@@ -849,33 +849,8 @@
         // Only handle during MustMoveRobber state
         if (GameModel?.GameState != GameState.MustMoveRobber) return;
 
-        // Get the board container element bounds
-        // For now, use the click position directly for the menu
-        _robberMenuX = e.ClientX;
-        _robberMenuY = e.ClientY;
-
-        // Get viewBox bounds from GameModel tiles
-        var viewBoxBounds = CalculateViewBoxBounds();
-        if (viewBoxBounds.width <= 0) return;
-
-        // Get actual container bounds via JS interop
-        var containerBounds = await JSRuntime.InvokeAsync<ContainerBounds?>("boardSizer.getBounds");
-        if (containerBounds == null) return;
-
-        // Convert client coordinates to position within container
-        var containerX = e.ClientX - containerBounds.Left;
-        var containerY = e.ClientY - containerBounds.Top;
-
-        // Convert to viewBox coordinates
-        var svgX = viewBoxBounds.minX + (containerX / containerBounds.Width) * viewBoxBounds.width;
-        var svgY = viewBoxBounds.minY + (containerY / containerBounds.Height) * viewBoxBounds.height;
-
-        // Convert to axial coordinates
-        var (q, r) = BoardGeometry.PixelToAxial(svgX, svgY);
-
-        // Find the tile at these coordinates
-        var tile = GameModel.Tiles.FirstOrDefault(t => t.TileKey.Q == q && t.TileKey.R == r);
-
+        // Use the ONE FUNCTION to get tile at click position
+        var tile = await GetTileAtClientCoords(e.ClientX, e.ClientY);
         if (tile == null) return;
 
         // Can't place on sea
@@ -884,14 +859,16 @@
         // Can't place on current robber location unless it's desert (house rule)
         if (tile.TileKey.Equals(GameModel.Robber.Coordinates) && tile.ResourceTileType != ResourceType.Desert) return;
 
+        // Position menu at click location
+        _robberMenuX = e.ClientX;
+        _robberMenuY = e.ClientY;
+
         // Get target players (players with buildings on this tile, excluding current player)
         _robberMenuTargets = GetRobberTargetsForTile(tile);
         _robberMenuTile = tile;
         _robberMenuVisible = true;
         StateHasChanged();
     }
-
-    private record ContainerBounds(double Width, double Height, double Left, double Top);
 
     /// <summary>
     /// Gets players who can be targeted on the selected tile.
@@ -969,17 +946,26 @@
     /// Handles tile click for robber placement (touch/click alternative to right-click).
     /// Shows the robber target menu centered on screen for the selected tile.
     /// </summary>
-    private async Task OnTileClickForRobber(TileModel tile)
+    private async Task OnTileClickForRobber(MouseEventArgs e)
     {
-        // Only handle during MustMoveRobber state (TileOverlay already filters this)
+        // Only handle during MustMoveRobber state
         if (GameModel?.GameState != GameState.MustMoveRobber) return;
+
+        // Use the ONE FUNCTION to get tile at click position
+        var tile = await GetTileAtClientCoords(e.ClientX, e.ClientY);
+        if (tile == null) return;
+
+        // Can't place on sea
+        if (tile.ResourceTileType == ResourceType.Sea) return;
+
+        // Can't place on current robber location unless it's desert (house rule)
+        if (tile.TileKey.Equals(GameModel.Robber.Coordinates) && tile.ResourceTileType != ResourceType.Desert) return;
 
         // Get target players for this tile
         _robberMenuTargets = GetRobberTargetsForTile(tile);
         _robberMenuTile = tile;
 
         // Position menu in center of viewport for mobile-friendly display
-        // Get viewport dimensions via JS
         try
         {
             var viewportInfo = await JSRuntime.InvokeAsync<ViewportInfo?>("eval",
@@ -1013,6 +999,31 @@
     /// Viewport dimensions for menu centering.
     /// </summary>
     private record ViewportInfo(double Width, double Height);
+
+    /// <summary>
+    /// Converts client (screen) coordinates to the tile at that position.
+    /// Uses JS interop to get SVG coordinates, then PixelToHex for accurate tile detection.
+    /// This is the ONE FUNCTION for all coordinate-to-tile conversion.
+    /// </summary>
+    private async Task<TileModel?> GetTileAtClientCoords(double clientX, double clientY)
+    {
+        if (GameModel == null) return null;
+
+        try
+        {
+            // Use JS to convert client coordinates to SVG viewBox coordinates
+            var svgCoords = await JSRuntime.InvokeAsync<double[]?>("clientToSvgCoords", clientX, clientY);
+            if (svgCoords == null || svgCoords.Length < 2) return null;
+
+            // Convert SVG pixel coords to hex coordinates and find tile
+            var coords = BoardGeometry.PixelToHex(svgCoords[0], svgCoords[1]);
+            return GameModel.Tiles.FirstOrDefault(t => t.TileKey == coords);
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     /// <summary>
     /// Calculates viewBox bounds for coordinate conversion.

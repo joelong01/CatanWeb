@@ -162,9 +162,10 @@ else
 
     /// <summary>
     /// Callback when a tile is clicked (for robber placement).
+    /// Passes MouseEventArgs - parent uses GetTileAtClientCoords to find actual tile.
     /// </summary>
     [Parameter]
-    public EventCallback<TileModel> OnTileClick { get; set; }
+    public EventCallback<MouseEventArgs> OnTileClick { get; set; }
 
     /// <summary>
     /// Computed viewBox string for the SVG.
@@ -253,12 +254,6 @@ else
     private int _previousTileHash;
 
     /// <summary>
-    /// Whether the board sizer has been initialized.
-    /// </summary>
-    private bool _boardSizerInitialized;
-
-
-    /// <summary>
     /// Current player view model (for building/road highlighting).
     /// </summary>
     private PlayerViewModel? CurrentPlayerViewModel
@@ -316,73 +311,16 @@ else
     }
 
     /// <summary>
-    /// Initialize board sizer and optionally rasterize the static SVG layer after render.
+    /// Handle post-render loading state updates.
     /// </summary>
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnAfterRender(bool firstRender)
     {
-        // Initialize board sizer on first render with valid game model
-        if (GameModel != null && !_boardSizerInitialized)
+        // Clear loading state if set (rasterization is disabled)
+        if (IsLoading)
         {
-            var bounds = ViewBoxBounds;
-            if (bounds.width > 0 && bounds.height > 0)
-            {
-                var aspectRatio = bounds.width / bounds.height;
-                try
-                {
-                    await JSRuntime.InvokeVoidAsync(
-                        "boardSizer.initialize",
-                        ".board-svg-container",
-                        aspectRatio,
-                        null);
-                    _boardSizerInitialized = true;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[BoardContainer] Board sizer init error: {ex.Message}");
-                }
-            }
+            IsLoading = false;
+            StateHasChanged();
         }
-
-        // Skip rasterization if disabled - just render SVG directly
-        if (!UseOffscreenRendering)
-        {
-            if (IsLoading)
-            {
-                IsLoading = false;
-                StateHasChanged();
-            }
-            return;
-        }
-
-#if false // Rasterization disabled - enable UseOffscreenRendering to use
-        if (GameModel != null && !IsRasterized)
-        {
-            // Small delay to ensure SVG is fully rendered and laid out
-            await Task.Delay(RasterizationDelayMs);
-
-            try
-            {
-                var success = await JSRuntime.InvokeAsync<bool>(
-                    "svgRasterizer.rasterize",
-                    ".board-static-layer",
-                    ".board-static-canvas");
-
-                if (success)
-                {
-                    IsRasterized = true;
-                    if (IsLoading)
-                    {
-                        IsLoading = false;
-                        StateHasChanged();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[BoardContainer] Rasterization error: {ex.Message}");
-            }
-        }
-#endif
     }
 
     /// <summary>
@@ -485,12 +423,6 @@ else
         if (AssetService != null)
         {
             AssetService.ThemeChanged -= OnThemeChanged;
-        }
-
-        // Clean up board sizer
-        if (_boardSizerInitialized)
-        {
-            ((IJSInProcessRuntime)JSRuntime).InvokeVoid("boardSizer.dispose");
         }
     }
 }

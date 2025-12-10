@@ -1,10 +1,14 @@
 @using Catan3.Shared.Models
 @using Catan3.WebUI.Services.Rendering
+@using Microsoft.AspNetCore.Components.Web
 
 @*
     TileOverlay - Renders clickable hexagon overlays for tile selection.
     Used during MustMoveRobber state to enable touch/click tile selection.
     Only renders when ShowOverlay is true (controlled by parent based on GameState).
+
+    Passes MouseEventArgs to parent - parent uses GetTileAtClientCoords for conversion.
+    This ensures ONE FUNCTION handles all coordinate-to-tile conversion.
 *@
 
 @if (ShowOverlay)
@@ -18,7 +22,7 @@
                 var path = BoardGeometry.GenerateHexPath(cx, cy, BoardSvgConstants.HexSize * 0.95);
                 <path d="@path"
                       class="tile-overlay-hex"
-                      @onclick="() => OnTileSelected(tile)"
+                      @onclick="OnHexClick"
                       @onclick:stopPropagation="true" />
             }
         }
@@ -45,10 +49,11 @@
     public HexCoordinates? RobberCoordinates { get; set; }
 
     /// <summary>
-    /// Callback when a tile is selected.
+    /// Callback when overlay is clicked - passes MouseEventArgs for coordinate conversion.
+    /// Parent should use GetTileAtClientCoords to determine the actual tile.
     /// </summary>
     [Parameter]
-    public EventCallback<TileModel> OnTileClick { get; set; }
+    public EventCallback<MouseEventArgs> OnTileClick { get; set; }
 
     /// <summary>
     /// Determines if a tile can be selected for robber placement.
@@ -70,13 +75,13 @@
     }
 
     /// <summary>
-    /// Handles tile selection.
+    /// Passes click event to parent for coordinate conversion.
     /// </summary>
-    private async Task OnTileSelected(TileModel tile)
+    private async Task OnHexClick(MouseEventArgs e)
     {
         if (OnTileClick.HasDelegate)
         {
-            await OnTileClick.InvokeAsync(tile);
+            await OnTileClick.InvokeAsync(e);
         }
     }
 }

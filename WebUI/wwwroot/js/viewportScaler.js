@@ -214,3 +214,35 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }, 100);
 });
+
+/**
+ * Converts client (screen) coordinates to SVG viewBox coordinates.
+ * Used for accurate hit-testing on hex tiles.
+ * @param {number} clientX - Client X coordinate (from mouse event)
+ * @param {number} clientY - Client Y coordinate (from mouse event)
+ * @returns {number[]} - [svgX, svgY] in viewBox coordinate space
+ */
+window.clientToSvgCoords = function(clientX, clientY) {
+    // Find the interactive SVG layer
+    const svg = document.querySelector('.board-interactive-layer');
+    if (!svg) {
+        console.error('[clientToSvgCoords] SVG element not found');
+        return null;
+    }
+
+    // Create an SVGPoint and set to client coordinates
+    const point = svg.createSVGPoint();
+    point.x = clientX;
+    point.y = clientY;
+
+    // Get the transformation matrix from screen to SVG coordinates
+    const ctm = svg.getScreenCTM();
+    if (!ctm) {
+        console.error('[clientToSvgCoords] Could not get screen CTM');
+        return null;
+    }
+
+    // Transform point from screen to SVG coordinates
+    const svgPoint = point.matrixTransform(ctm.inverse());
+    return [svgPoint.x, svgPoint.y];
+};

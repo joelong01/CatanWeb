@@ -14,10 +14,15 @@
    Viewport and Container - The scaling foundation
    ============================================================================= */
 
+/* =============================================================================
+   CSS VERSION - UPDATE THIS ONE LINE TO CHANGE ALL VERSION STRINGS BELOW
+   Current: v37 (2025-12-10)
+   ============================================================================= */
+
 /* CSS version indicator - positioned inside game container, scales with content */
 /* Shows environment (local/web) and orientation */
 .game-container[data-layout-mode="landscape"][data-env="local"]::after {
-    content: "CSS 2025-12-10 v36 LOCAL landscape";
+    content: "CSS 2025-12-10 v37 LOCAL landscape";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -27,7 +32,7 @@
 }
 
 .game-container[data-layout-mode="landscape"][data-env="web"]::after {
-    content: "CSS 2025-12-10 v36 WEB landscape";
+    content: "CSS 2025-12-10 v37 WEB landscape";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -37,7 +42,7 @@
 }
 
 .game-container[data-layout-mode="portrait"][data-env="local"]::after {
-    content: "CSS 2025-12-10 v36 LOCAL portrait";
+    content: "CSS 2025-12-10 v37 LOCAL portrait";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -47,7 +52,7 @@
 }
 
 .game-container[data-layout-mode="portrait"][data-env="web"]::after {
-    content: "CSS 2025-12-10 v36 WEB portrait";
+    content: "CSS 2025-12-10 v37 WEB portrait";
     position: absolute;
     bottom: 5px;
     right: 5px;
