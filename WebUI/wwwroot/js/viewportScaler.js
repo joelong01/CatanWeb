@@ -4,6 +4,8 @@
  *
  * Design: Fixed internal coordinates (1920x1080 landscape, 1080x1920 portrait)
  * scaled uniformly to fit any viewport, capped at 1.0x to prevent oversizing.
+ *
+ * v3 - Mobile: scale to fill width, allow vertical scroll
  */
 
 window.viewportScaler = {
@@ -57,7 +59,7 @@ window.viewportScaler = {
         this._initialized = true;
 
         // Set environment indicator (local vs web)
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '0.0.0.0';
         this.container.dataset.env = isLocal ? 'local' : 'web';
 
         // Initial scaling
@@ -65,6 +67,13 @@ window.viewportScaler = {
 
         console.log('[viewportScaler] Initialized, env:', this.container.dataset.env);
         return true;
+    },
+
+    /**
+     * Detect if running on a mobile/touch device
+     */
+    isMobileDevice: function () {
+        return (window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 1024);
     },
 
     /**
@@ -78,8 +87,10 @@ window.viewportScaler = {
             if (!this.container || !this.viewport) return;
         }
 
-        const viewportWidth = this.viewport.offsetWidth;
-        const viewportHeight = this.viewport.offsetHeight;
+        // Use window dimensions for more reliable measurement on mobile
+        // offsetWidth/offsetHeight can be affected by safe area padding
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
         const viewportAspect = viewportWidth / viewportHeight;
 
         // Determine orientation
@@ -90,10 +101,15 @@ window.viewportScaler = {
             ? { width: this.PORTRAIT_WIDTH, height: this.PORTRAIT_HEIGHT }
             : { width: this.LANDSCAPE_WIDTH, height: this.LANDSCAPE_HEIGHT };
 
+        const isMobile = this.isMobileDevice();
+
         // Calculate scale factor - uniform scaling to fit viewport
         const scaleX = viewportWidth / ref.width;
         const scaleY = viewportHeight / ref.height;
-        const scale = Math.min(scaleX, scaleY);
+
+        // Desktop: use min to fit entirely within viewport (no scrolling)
+        // Mobile: use scaleX to fill width (user can scroll vertically if needed)
+        const scale = isMobile ? scaleX : Math.min(scaleX, scaleY);
 
         // Apply scale and dimensions via CSS custom properties
         this.container.style.setProperty('--viewport-scale', scale);
@@ -102,6 +118,7 @@ window.viewportScaler = {
 
         // Set layout mode attribute for CSS selectors
         this.container.dataset.layoutMode = isPortrait ? 'portrait' : 'landscape';
+        this.container.dataset.isMobile = isMobile ? 'true' : 'false';
 
         // Also set on viewport for consistent access
         this.viewport.dataset.layoutMode = isPortrait ? 'portrait' : 'landscape';
@@ -114,7 +131,7 @@ window.viewportScaler = {
             }
         }
 
-        this._debugLog(viewportWidth, viewportHeight, ref.width, ref.height, scale, isPortrait);
+        this._debugLog(viewportWidth, viewportHeight, ref.width, ref.height, scale, isPortrait, isMobile);
     },
 
     /**
@@ -174,12 +191,15 @@ window.viewportScaler = {
     /**
      * Debug logging
      */
-    _debugLog: function (viewportW, viewportH, targetW, targetH, scale, isPortrait) {
+    _debugLog: function (viewportW, viewportH, targetW, targetH, scale, isPortrait, isMobile) {
         console.log(
             `[viewportScaler] Viewport: ${viewportW}x${viewportH}, ` +
             `Target: ${targetW}x${targetH}, ` +
             `Scale: ${scale.toFixed(3)}, ` +
-            `Layout: ${isPortrait ? 'portrait' : 'landscape'}`
+            `Layout: ${isPortrait ? 'portrait' : 'landscape'}, ` +
+            `Mobile: ${isMobile}, ` +
+            `window.innerWidth: ${window.innerWidth}, window.innerHeight: ${window.innerHeight}, ` +
+            `devicePixelRatio: ${window.devicePixelRatio}`
         );
     }
 };

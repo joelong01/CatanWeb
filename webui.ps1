@@ -8,9 +8,14 @@
 .PARAMETER Verb
     The action to perform: build, run, or debug
 
+.PARAMETER Network
+    Bind services to all network interfaces (0.0.0.0) instead of localhost only.
+    Use this to access services from iPhone simulator or other devices on the network.
+
 .EXAMPLE
     ./webui.ps1 build           # Build all projects
     ./webui.ps1 run             # Initialize database, run GameService and WebUI, launch browser
+    ./webui.ps1 run -Network    # Run with network access (for iPhone simulator, other devices)
     ./webui.ps1 debug           # Instructions for debugging
     ./webui.ps1 clean           # Clean build artifacts (preserves database)
     ./webui.ps1 clean database  # Clean build artifacts AND database
@@ -38,7 +43,10 @@ param(
 
     [Parameter()]
     [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
-    [string]$TraceLevel = "INFO"
+    [string]$TraceLevel = "INFO",
+
+    [Parameter()]
+    [switch]$Network
 )
 
 $ErrorActionPreference = "Stop"
@@ -118,17 +126,21 @@ function Get-SavedPids {
 }
 
 function Start-GameService {
+    param([switch]$NetworkBinding)
+
     Write-Host "Starting GameService..." -ForegroundColor Cyan
 
     $gameServicePath = Join-Path $PSScriptRoot "Catan3.GameService"
 
     if ($IsWindows) {
-        $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$gameServicePath'; dotnet run" -WindowStyle Normal -PassThru
+        $urlsArg = if ($NetworkBinding) { " --urls `"http://0.0.0.0:$GameServicePort`"" } else { "" }
+        $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$gameServicePath'; dotnet run$urlsArg" -WindowStyle Normal -PassThru
         Save-Pids -GameServicePid $process.Id
     } else {
-        # macOS: Open new Terminal window
+        # macOS: Open new Terminal window - use single quotes for URL to avoid AppleScript escaping issues
+        $urlsArg = if ($NetworkBinding) { " --urls 'http://0.0.0.0:$GameServicePort'" } else { "" }
         $pidFile = Join-Path $PSScriptRoot ".gameservice.pid"
-        $script = "cd '$gameServicePath' && echo `$`$ > '$pidFile' && dotnet run"
+        $script = "cd '$gameServicePath' && echo `$`$ > '$pidFile' && dotnet run$urlsArg"
         & osascript -e "tell application `"Terminal`" to do script `"$script`""
         # Wait for PID file to be created
         Start-Sleep -Milliseconds 500
@@ -144,17 +156,21 @@ function Start-GameService {
 }
 
 function Start-WebUI {
+    param([switch]$NetworkBinding)
+
     Write-Host "Starting WebUI..." -ForegroundColor Cyan
 
     $webUIPath = Join-Path $PSScriptRoot "WebUI"
 
     if ($IsWindows) {
-        $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$webUIPath'; dotnet watch run" -WindowStyle Normal -PassThru
+        $urlsArg = if ($NetworkBinding) { " --urls `"http://0.0.0.0:$WebUIPort`"" } else { "" }
+        $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$webUIPath'; dotnet watch run$urlsArg" -WindowStyle Normal -PassThru
         Save-Pids -WebUIPid $process.Id
     } else {
-        # macOS: Open new Terminal window
+        # macOS: Open new Terminal window - use single quotes for URL to avoid AppleScript escaping issues
+        $urlsArg = if ($NetworkBinding) { " --urls 'http://0.0.0.0:$WebUIPort'" } else { "" }
         $pidFile = Join-Path $PSScriptRoot ".webui.pid"
-        $script = "cd '$webUIPath' && echo `$`$ > '$pidFile' && dotnet watch run"
+        $script = "cd '$webUIPath' && echo `$`$ > '$pidFile' && dotnet watch run$urlsArg"
         & osascript -e "tell application `"Terminal`" to do script `"$script`""
         # Wait for PID file to be created
         Start-Sleep -Milliseconds 500
@@ -719,7 +735,7 @@ switch ($Verb) {
         }
 
         if (-not $gameServiceRunning) {
-            Start-GameService
+            Start-GameService -NetworkBinding:$Network
         }
 
         # Check if WebUI is already running AND responding
@@ -745,13 +761,28 @@ switch ($Verb) {
         }
 
         if (-not $webUIRunning) {
-            Start-WebUI
+            Start-WebUI -NetworkBinding:$Network
         }
 
         Write-Host ""
         Write-Host "Services running:" -ForegroundColor Green
         Write-Host "  GameService: $GameServiceUrl" -ForegroundColor White
         Write-Host "  WebUI:       $WebUIUrl" -ForegroundColor White
+
+        if ($Network) {
+            # Get the local IP address for network access
+            if ($IsMacOS -or $IsLinux) {
+                $localIp = (ifconfig | grep "inet " | grep -v "127.0.0.1" | head -1 | awk '{print $2}') 2>$null
+            } else {
+                $localIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike "127.*" -and $_.PrefixOrigin -ne "WellKnown" } | Select-Object -First 1).IPAddress
+            }
+            if ($localIp) {
+                Write-Host ""
+                Write-Host "Network access (for iPhone simulator, other devices):" -ForegroundColor Cyan
+                Write-Host "  WebUI:       http://${localIp}:$WebUIPort" -ForegroundColor White
+            }
+        }
+
         Write-Host ""
         if ($IsWindows) {
             Write-Host "Press Ctrl+C in service windows to stop them." -ForegroundColor Yellow
