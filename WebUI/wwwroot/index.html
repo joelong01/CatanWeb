@@ -68,8 +68,17 @@
     <!-- Prefetch player images and warm up the API while WASM loads -->
     <script>
         (function() {
-            // Get API URL from environment or default
-            var apiUrl = 'https://catan-api.azurewebsites.net';
+            // Determine API URL based on hostname (mirrors GameServiceConfig.cs logic)
+            var host = window.location.hostname;
+            var apiUrl;
+            if (host.endsWith('.azurewebsites.net')) {
+                // Azure: UI is at {basename}.azurewebsites.net, API at {basename}-api.azurewebsites.net
+                var baseName = host.split('.')[0];
+                apiUrl = 'https://' + baseName + '-api.azurewebsites.net';
+            } else {
+                // Local development: API on same host, port 8080
+                apiUrl = 'http://' + host + ':8080';
+            }
 
             // Update loading hint as we prefetch
             function setHint(text) {
