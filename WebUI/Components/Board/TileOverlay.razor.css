@@ -1,0 +1,22 @@
+/* TileOverlay - Clickable hex overlays for tile selection */
+
+.tile-overlay-hex {
+    fill: transparent;
+    stroke: transparent;
+    cursor: pointer;
+    pointer-events: all;
+    transition: fill 0.15s ease;
+}
+
+.tile-overlay-hex:hover {
+    fill: rgba(255, 255, 0, 0.2);
+    stroke: rgba(255, 255, 0, 0.6);
+    stroke-width: 3;
+}
+
+/* Touch device styling - always show subtle indicator */
+@media (pointer: coarse) {
+    .tile-overlay-hex {
+        fill: rgba(255, 255, 255, 0.05);
+    }
+}

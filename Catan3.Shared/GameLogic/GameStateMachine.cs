@@ -1612,7 +1612,8 @@ namespace Catan3.Shared.GameLogic
             ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.MustMoveRobber]);
             ThrowIfBadPlayer(gameModel.CurrentPlayerId, gameModel.Players);
             ThrowIfNoEntitlement(gameModel, [Entitlement.Soldier, Entitlement.RolledSeven]);
-            // Update the robber's position and the player who moved it
+            // Store previous coordinates for animation, then update position
+            gameModel.Robber.PreviousCoordinates = gameModel.Robber.Coordinates;
             gameModel.Robber.Coordinates = moveRobber.Coordinates;
             gameModel.Robber.MovedBy = gameModel.CurrentPlayerId;
             if (moveRobber.TargetPlayerId is not null)

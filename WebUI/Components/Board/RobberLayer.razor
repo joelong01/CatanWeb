@@ -8,39 +8,51 @@
     RobberLayer - Renders the robber piece on its current tile.
     Uses CatanFont glyphs (SolidShield + Pirate) with player colors.
     Covers 75% of the tile, shows resources stolen count.
-    Only re-renders when the robber moves or player changes.
+
+    Animation: When PreviousCoordinates is set, renders at previous position first,
+    then animates to new position via CSS transition on next frame.
 *@
 
 <g class="robber-layer">
-    @if (RobberCoordinates != HexCoordinates.Default)
-    {
-        var (x, y) = BoardGeometry.AxialToPixel(RobberCoordinates.Q, RobberCoordinates.R);
+    @{
+        // Determine render position - use animation start position if animating
+        var hasValidCoords = RobberCoordinates != HexCoordinates.Default;
+        var renderCoords = _animationPending && _animationStartCoords != HexCoordinates.Default
+            ? _animationStartCoords
+            : RobberCoordinates;
+        var (x, y) = hasValidCoords || _animationPending
+            ? BoardGeometry.AxialToPixel(renderCoords.Q, renderCoords.R)
+            : (0.0, 0.0);
         var colors = GetMovedByColors();
-
-        @* Robber using CatanFont glyphs - background shield + foreground pirate *@
-        <g class="robber" transform="translate(@x.ToString("F1"), @y.ToString("F1"))" opacity="0.75">
-            @* Background: SolidShield glyph (E925) with player gradient *@
-            <text class="robber-shield"
-                  x="0" y="0"
-                  text-anchor="middle"
-                  dominant-baseline="central"
-                  font-family="Catan"
-                  font-size="@RobberFontSize"
-                  fill="url(#gradient-@MovedByPlayerId)">&#xE925;</text>
-
-            @* Foreground: Pirate glyph (E90C) with player foreground color *@
-            <text class="robber-pirate"
-                  x="0" y="0"
-                  text-anchor="middle"
-                  dominant-baseline="central"
-                  font-family="Catan"
-                  font-size="@(RobberFontSize * 0.8)"
-                  fill="@colors.Foreground">&#xE90C;</text>
-
-            @* Resources stolen count *@
-            @((MarkupString)RenderResourcesStolen(colors.Foreground))
-        </g>
+        var visibility = hasValidCoords ? "visible" : "hidden";
     }
+
+    @* Robber using CatanFont glyphs - background shield + foreground pirate *@
+    @* Element is always rendered to enable CSS transition animation on transform *@
+    <g class="robber"
+       style="-webkit-transform: translate(@(x.ToString("F1"))px, @(y.ToString("F1"))px); transform: translate(@(x.ToString("F1"))px, @(y.ToString("F1"))px); visibility: @visibility;"
+       opacity="0.75">
+        @* Background: SolidShield glyph (E925) with player gradient *@
+        <text class="robber-shield"
+              x="0" y="0"
+              text-anchor="middle"
+              dominant-baseline="central"
+              font-family="Catan"
+              font-size="@RobberFontSize"
+              fill="url(#gradient-@MovedByPlayerId)">&#xE925;</text>
+
+        @* Foreground: Pirate glyph (E90C) with player foreground color *@
+        <text class="robber-pirate"
+              x="0" y="0"
+              text-anchor="middle"
+              dominant-baseline="central"
+              font-family="Catan"
+              font-size="@(RobberFontSize * 0.8)"
+              fill="@colors.Foreground">&#xE90C;</text>
+
+        @* Resources stolen count *@
+        @((MarkupString)RenderResourcesStolen(colors.Foreground))
+    </g>
 </g>
 
 @code {
@@ -49,6 +61,13 @@
     /// </summary>
     [Parameter]
     public HexCoordinates RobberCoordinates { get; set; } = HexCoordinates.Default;
+
+    /// <summary>
+    /// The robber's previous coordinates (for animation).
+    /// When set, robber animates from this position to RobberCoordinates.
+    /// </summary>
+    [Parameter]
+    public HexCoordinates? PreviousCoordinates { get; set; }
 
     /// <summary>
     /// ID of the player who last moved the robber.
@@ -68,15 +87,44 @@
     [Parameter]
     public IReadOnlyList<PlayerViewModel> Players { get; set; } = [];
 
-    // Track previous state for ShouldRender optimization
-    private HexCoordinates _previousCoordinates = HexCoordinates.Default;
-    private string? _previousMovedBy;
-    private int _previousResourcesStolen;
+    // Animation state
+    private bool _animationPending;
+    private HexCoordinates _animationStartCoords = HexCoordinates.Default;
 
     /// <summary>
     /// Font size for the robber glyph - 50% of hex height (smaller to show tile number).
     /// </summary>
     private double RobberFontSize => BoardSvgConstants.HexHeight * 0.50;
+
+    /// <summary>
+    /// Check for animation trigger when parameters change.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        // If PreviousCoordinates is set and different from current, trigger animation
+        if (PreviousCoordinates is HexCoordinates prevCoords &&
+            prevCoords != HexCoordinates.Default &&
+            !prevCoords.Equals(RobberCoordinates))
+        {
+            _animationPending = true;
+            _animationStartCoords = prevCoords;
+        }
+    }
+
+    /// <summary>
+    /// After rendering at start position, trigger move to end position.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_animationPending)
+        {
+            _animationPending = false;
+            // Small delay to ensure browser has rendered at start position
+            await Task.Delay(20);
+            // Trigger re-render at final position - CSS will animate
+            StateHasChanged();
+        }
+    }
 
     /// <summary>
     /// Gets the player colors for the player who moved the robber.
@@ -108,21 +156,7 @@
     }
 
     /// <summary>
-    /// Only re-render when the robber state changes.
+    /// Always re-render to support animation (animation logic handles efficiency).
     /// </summary>
-    protected override bool ShouldRender()
-    {
-        var changed = !_previousCoordinates.Equals(RobberCoordinates) ||
-                      _previousMovedBy != MovedByPlayerId ||
-                      _previousResourcesStolen != ResourcesStolen;
-
-        if (changed)
-        {
-            _previousCoordinates = RobberCoordinates;
-            _previousMovedBy = MovedByPlayerId;
-            _previousResourcesStolen = ResourcesStolen;
-            return true;
-        }
-        return false;
-    }
+    protected override bool ShouldRender() => true;
 }

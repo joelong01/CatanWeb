@@ -184,7 +184,8 @@
                                     FilteredResources="@FilteredResources"
                                     RolledNumber="@GetRolledNumber()"
                                     OnBuildingClick="@OnBuildingSpotClick"
-                                    OnRoadClick="@OnRoadSpotClick" />
+                                    OnRoadClick="@OnRoadSpotClick"
+                                    OnTileClick="@OnTileClickForRobber" />
                 </div>
             </div>
             <!-- Board Measurements - shown here in portrait mode only -->
@@ -200,32 +201,6 @@
                 </div>
             }
         </div>
-
-        @* Robber target selection menu *@
-        @if (_robberMenuVisible && _robberMenuTile != null)
-        {
-            <div class="robber-menu-backdrop" @onclick="CloseRobberMenu"></div>
-            <div class="robber-menu" style="left: @(_robberMenuX)px; top: @(_robberMenuY)px;">
-                <div class="robber-menu-header">Move Robber to Tile @GetTileIndex(_robberMenuTile)</div>
-                @foreach (var target in _robberMenuTargets)
-                {
-                    <div class="robber-menu-item" @onclick="() => SelectRobberTarget(target.Id)">
-                        Target @target.Name
-                    </div>
-                }
-                @if (_robberMenuTargets.Count > 0)
-                {
-                    <div class="robber-menu-separator"></div>
-                }
-                <div class="robber-menu-item robber-menu-nobody" @onclick="() => SelectRobberTarget(null)">
-                    Nobody. Hatred Deferred.
-                </div>
-                <div class="robber-menu-separator"></div>
-                <div class="robber-menu-item robber-menu-cancel" @onclick="CloseRobberMenu">
-                    Cancel
-                </div>
-            </div>
-        }
 
         <!-- RIGHT PANEL (Players in portrait mode) -->
         <div class="panel-viewbox right-viewbox right-panel @GetPanelClass("players")">
@@ -252,6 +227,32 @@
     }
     </div>
 </div>
+
+@* Robber target selection menu - outside game-container to avoid transform issues *@
+@if (_robberMenuVisible && _robberMenuTile != null)
+{
+    <div class="robber-menu-backdrop" @onclick="CloseRobberMenu"></div>
+    <div class="robber-menu" style="left: @(_robberMenuX)px; top: @(_robberMenuY)px;">
+        <div class="robber-menu-header">Move Robber to Tile @GetTileIndex(_robberMenuTile)</div>
+        @foreach (var target in _robberMenuTargets)
+        {
+            <div class="robber-menu-item" @onclick="() => SelectRobberTarget(target.Id)">
+                Target @target.Name
+            </div>
+        }
+        @if (_robberMenuTargets.Count > 0)
+        {
+            <div class="robber-menu-separator"></div>
+        }
+        <div class="robber-menu-item robber-menu-nobody" @onclick="() => SelectRobberTarget(null)">
+            Nobody. Hatred Deferred.
+        </div>
+        <div class="robber-menu-separator"></div>
+        <div class="robber-menu-item robber-menu-cancel" @onclick="CloseRobberMenu">
+            Cancel
+        </div>
+    </div>
+}
 </div>
 
 @code {
@@ -963,6 +964,55 @@
         _robberMenuTargets.Clear();
         StateHasChanged();
     }
+
+    /// <summary>
+    /// Handles tile click for robber placement (touch/click alternative to right-click).
+    /// Shows the robber target menu centered on screen for the selected tile.
+    /// </summary>
+    private async Task OnTileClickForRobber(TileModel tile)
+    {
+        // Only handle during MustMoveRobber state (TileOverlay already filters this)
+        if (GameModel?.GameState != GameState.MustMoveRobber) return;
+
+        // Get target players for this tile
+        _robberMenuTargets = GetRobberTargetsForTile(tile);
+        _robberMenuTile = tile;
+
+        // Position menu in center of viewport for mobile-friendly display
+        // Get viewport dimensions via JS
+        try
+        {
+            var viewportInfo = await JSRuntime.InvokeAsync<ViewportInfo?>("eval",
+                "({ width: window.innerWidth, height: window.innerHeight })");
+
+            if (viewportInfo != null)
+            {
+                // Center the menu (menu will be ~200px wide, ~150px tall estimate)
+                _robberMenuX = (viewportInfo.Width - 200) / 2;
+                _robberMenuY = (viewportInfo.Height - 200) / 2;
+            }
+            else
+            {
+                // Fallback to reasonable defaults
+                _robberMenuX = 100;
+                _robberMenuY = 100;
+            }
+        }
+        catch
+        {
+            // Fallback position
+            _robberMenuX = 100;
+            _robberMenuY = 100;
+        }
+
+        _robberMenuVisible = true;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Viewport dimensions for menu centering.
+    /// </summary>
+    private record ViewportInfo(double Width, double Height);
 
     /// <summary>
     /// Calculates viewBox bounds for coordinate conversion.

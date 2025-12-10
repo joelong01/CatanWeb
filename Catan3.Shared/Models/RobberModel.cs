@@ -16,6 +16,18 @@ namespace Catan3.Shared.Models
         public partial HexCoordinates Coordinates { get; set; } = HexCoordinates.Default;
 
         /// <summary>
+        /// Gets or sets the previous coordinates of the robber (for animation).
+        /// Null means no animation needed (initial placement or loaded from save).
+        /// Non-null means animate from this position to Coordinates.
+        /// </summary>
+        /// <remarks>
+        /// This property is optional for backwards compatibility with saved games.
+        /// When deserializing older saves, this will be null and no animation plays.
+        /// </remarks>
+        [ObservableProperty]
+        public partial HexCoordinates? PreviousCoordinates { get; set; }
+
+        /// <summary>
         /// Gets or sets the ID of the player who moved the robber.
         /// </summary>
         [ObservableProperty]

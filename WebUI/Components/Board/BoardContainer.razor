@@ -82,6 +82,7 @@
 
             @* Robber - middle layer *@
             <RobberLayer RobberCoordinates="@GameModel.Robber.Coordinates"
+                         PreviousCoordinates="@GameModel.Robber.PreviousCoordinates"
                          MovedByPlayerId="@GameModel.Robber.MovedBy"
                          ResourcesStolen="@GameModel.Robber.ResourcesStolen"
                          Players="@Players" />
@@ -94,6 +95,12 @@
                              CurrentPlayer="@CurrentPlayerViewModel"
                              Players="@Players"
                              OnBuildingClick="@OnBuildingClick" />
+
+            @* Tile selection overlay - shown during MustMoveRobber state for touch/click *@
+            <TileOverlay Tiles="@GameModel.Tiles"
+                         ShowOverlay="@(GameModel.GameState == GameState.MustMoveRobber)"
+                         RobberCoordinates="@GameModel.Robber.Coordinates"
+                         OnTileClick="@OnTileClick" />
         </svg>
     </div>
 }
@@ -152,6 +159,12 @@ else
     /// </summary>
     [Parameter]
     public EventCallback<RoadKey> OnRoadClick { get; set; }
+
+    /// <summary>
+    /// Callback when a tile is clicked (for robber placement).
+    /// </summary>
+    [Parameter]
+    public EventCallback<TileModel> OnTileClick { get; set; }
 
     /// <summary>
     /// Computed viewBox string for the SVG.

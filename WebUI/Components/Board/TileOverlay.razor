@@ -1,0 +1,82 @@
+@using Catan3.Shared.Models
+@using Catan3.WebUI.Services.Rendering
+
+@*
+    TileOverlay - Renders clickable hexagon overlays for tile selection.
+    Used during MustMoveRobber state to enable touch/click tile selection.
+    Only renders when ShowOverlay is true (controlled by parent based on GameState).
+*@
+
+@if (ShowOverlay)
+{
+    <g class="tile-overlay">
+        @foreach (var tile in Tiles)
+        {
+            @if (IsSelectableTile(tile))
+            {
+                var (cx, cy) = BoardGeometry.AxialToPixel(tile.TileKey.Q, tile.TileKey.R);
+                var path = BoardGeometry.GenerateHexPath(cx, cy, BoardSvgConstants.HexSize * 0.95);
+                <path d="@path"
+                      class="tile-overlay-hex"
+                      @onclick="() => OnTileSelected(tile)"
+                      @onclick:stopPropagation="true" />
+            }
+        }
+    </g>
+}
+
+@code {
+    /// <summary>
+    /// List of tile models.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<TileModel> Tiles { get; set; } = [];
+
+    /// <summary>
+    /// Whether to show the overlay (true during MustMoveRobber state).
+    /// </summary>
+    [Parameter]
+    public bool ShowOverlay { get; set; }
+
+    /// <summary>
+    /// Current robber coordinates (to exclude current location).
+    /// </summary>
+    [Parameter]
+    public HexCoordinates? RobberCoordinates { get; set; }
+
+    /// <summary>
+    /// Callback when a tile is selected.
+    /// </summary>
+    [Parameter]
+    public EventCallback<TileModel> OnTileClick { get; set; }
+
+    /// <summary>
+    /// Determines if a tile can be selected for robber placement.
+    /// Excludes sea tiles and current robber location (unless desert).
+    /// </summary>
+    private bool IsSelectableTile(TileModel tile)
+    {
+        // Can't select sea tiles
+        if (tile.ResourceTileType == ResourceType.Sea)
+            return false;
+
+        // Can't place on current robber location (except desert - house rule)
+        if (RobberCoordinates is HexCoordinates robberCoords &&
+            tile.TileKey.Equals(robberCoords) &&
+            tile.ResourceTileType != ResourceType.Desert)
+            return false;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Handles tile selection.
+    /// </summary>
+    private async Task OnTileSelected(TileModel tile)
+    {
+        if (OnTileClick.HasDelegate)
+        {
+            await OnTileClick.InvokeAsync(tile);
+        }
+    }
+}

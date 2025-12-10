@@ -461,3 +461,17 @@ code {
 .game-container[data-layout-mode="portrait"] .game-name {
     font-size: 2rem !important;
 }
+
+/* ==========================================================================
+   Robber Animation - Slow, satisfying movement when targeting
+   ========================================================================== */
+
+/* Animate robber movement with a dramatic ease-out curve */
+.robber-layer .robber {
+    /* 1.2s duration with ease-out for satisfying "landing" feel */
+    -webkit-transition: -webkit-transform 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+    /* Needed for CSS transform in SVG */
+    -webkit-transform-origin: 0 0;
+    transform-origin: 0 0;
+}
