@@ -13,55 +13,64 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build Commands
 
+Use `./catan.ps1` as the unified entry point for all development tasks.
+
 ```bash
-# Full build with tests
-pwsh ./build.ps1
+# Start development (build, init database, start services, launch browser)
+pwsh ./catan.ps1 run
 
-# Build without tests
-pwsh ./build.ps1 -NoTest
+# Check if everything is set up correctly
+pwsh ./catan.ps1 doctor
 
-# Clean build
-pwsh ./build.ps1 -Clean
+# Install dependencies and database
+pwsh ./catan.ps1 install
 
-# WebUI development (starts GameService + WebUI, launches browser)
-pwsh ./webui.ps1 run
+# Build only (no tests)
+pwsh ./catan.ps1 build
 
-# WebUI clean including database
-pwsh ./webui.ps1 clean database
+# Build and run tests
+pwsh ./catan.ps1 test
 
-# Quick build check
-dotnet build
+# Clean build artifacts (preserves database)
+pwsh ./catan.ps1 clean
 
-# Run specific tests
+# Clean build AND database
+pwsh ./catan.ps1 clean database
+
+# Run specific tests directly
 dotnet test Tests/GameService --filter "TestName"
 ```
 
 **Important:** Always use `pwsh` (PowerShell 7+), never legacy `powershell`.
 
-### WebUI Development Script
+### Catan Development Script
 
-When working on the WebUI, use `./webui.ps1` instead of `./build.ps1`. This script manages
-the full development workflow including database setup, hot reload, and service lifecycle.
+The `./catan.ps1` script is the unified entry point for all development tasks.
 
 **Common commands:**
 
 | Command | Purpose |
 |---------|---------|
-| `./webui.ps1 run` | Build, init database, start GameService + WebUI with hot reload |
-| `./webui.ps1 stop` | Stop running services |
-| `./webui.ps1 restart` | Stop and restart services |
-| `./webui.ps1 update` | Rebuild and restart (when hot reload fails) |
-| `./webui.ps1 clean` | Clean build artifacts (preserves database) |
-| `./webui.ps1 clean database` | Clean build AND database |
-| `./webui.ps1 database doctor` | Diagnose database health |
-| `./webui.ps1 database install` | Fresh database install with default data |
+| `./catan.ps1 run` | Build, init database, start GameService + WebUI with hot reload |
+| `./catan.ps1 run -Network` | Same, but accessible from other devices on network |
+| `./catan.ps1 stop` | Stop running services |
+| `./catan.ps1 restart` | Stop and restart services |
+| `./catan.ps1 update` | Rebuild and restart (when hot reload fails) |
+| `./catan.ps1 build` | Build all projects (no tests) |
+| `./catan.ps1 test` | Build and run all tests |
+| `./catan.ps1 clean` | Clean build artifacts (preserves database) |
+| `./catan.ps1 doctor` | Check dependencies and database health |
+| `./catan.ps1 install` | Install dependencies and database |
+| `./catan.ps1 database doctor` | Diagnose database health |
+| `./catan.ps1 database install` | Fresh database install with default data |
+| `./catan.ps1 azure deploy` | Deploy to Azure |
 
 **Typical workflow:**
 
-1. `./webui.ps1 run` - Start services (hot reload enabled)
+1. `./catan.ps1 run` - Start services (hot reload enabled)
 2. Make code changes - Browser auto-refreshes
-3. If hot reload fails: `./webui.ps1 update`
-4. If database schema changed: `./webui.ps1 database install`
+3. If hot reload fails: `./catan.ps1 update`
+4. If database schema changed: `./catan.ps1 database install`
 
 **Service URLs:**
 

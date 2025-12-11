@@ -1,29 +1,33 @@
 <#
 .SYNOPSIS
-    Build, run, and debug the WebUI project with GameService.
+    Unified entry point for Catan3 development and deployment.
 
 .DESCRIPTION
-    Provides convenient commands for working with the Blazor WebUI project.
+    Manages local development (build, run, test), database, dependencies, and Azure deployment.
 
 .PARAMETER Verb
-    The action to perform: build, run, or debug
+    The action to perform: run, stop, build, test, doctor, install, database, azure, etc.
 
 .PARAMETER Network
     Bind services to all network interfaces (0.0.0.0) instead of localhost only.
     Use this to access services from iPhone simulator or other devices on the network.
 
 .EXAMPLE
-    ./webui.ps1 build           # Build all projects
-    ./webui.ps1 run             # Initialize database, run GameService and WebUI, launch browser
-    ./webui.ps1 run -Network    # Run with network access (for iPhone simulator, other devices)
-    ./webui.ps1 debug           # Instructions for debugging
-    ./webui.ps1 clean           # Clean build artifacts (preserves database)
-    ./webui.ps1 clean database  # Clean build artifacts AND database
+    ./catan.ps1 run              # Build, init database, start services, launch browser
+    ./catan.ps1 run -Network     # Same, but accessible from other devices
+    ./catan.ps1 stop             # Stop running services
+    ./catan.ps1 build            # Build all projects
+    ./catan.ps1 test             # Run all tests
+    ./catan.ps1 doctor           # Check dependencies and database health
+    ./catan.ps1 install          # Install dependencies and database
+    ./catan.ps1 clean            # Clean build artifacts (preserves database)
+    ./catan.ps1 database doctor  # Database diagnostics
+    ./catan.ps1 azure deploy     # Deploy to Azure
 #>
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("build", "run", "debug", "clean", "stop", "restart", "update", "database", "azure", "help")]
+    [ValidateSet("build", "test", "run", "debug", "clean", "stop", "restart", "update", "doctor", "install", "database", "azure", "help")]
     [string]$Verb = "run",
 
     [Parameter(Position = 1)]
@@ -46,7 +50,13 @@ param(
     [string]$TraceLevel = "INFO",
 
     [Parameter()]
-    [switch]$Network
+    [switch]$Network,
+
+    [Parameter()]
+    [switch]$Help,
+
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$RemainingArgs
 )
 
 $ErrorActionPreference = "Stop"
@@ -55,6 +65,13 @@ $ErrorActionPreference = "Stop"
 if (-not (Test-Path variable:IsMacOS)) { $script:IsMacOS = $false }
 if (-not (Test-Path variable:IsLinux)) { $script:IsLinux = $false }
 if (-not (Test-Path variable:IsWindows)) { $script:IsWindows = $true }
+
+# Check for unknown arguments (typos, etc.)
+if ($RemainingArgs) {
+    Write-Host "Unknown argument(s): $($RemainingArgs -join ', ')" -ForegroundColor Red
+    Write-Host ""
+    $Verb = "help"
+}
 
 $GameServicePort = 8080
 $WebUIPort = 5296
@@ -164,8 +181,16 @@ function Start-WebUI {
 
     if ($IsWindows) {
         $urlsArg = if ($NetworkBinding) { " --urls `"http://0.0.0.0:$WebUIPort`"" } else { "" }
-        $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$webUIPath'; dotnet watch run$urlsArg" -WindowStyle Normal -PassThru
+        # When using network binding, suppress dotnet's browser launch (it tries to open 0.0.0.0 which fails)
+        # We'll manually open localhost instead
+        $envPrefix = if ($NetworkBinding) { "`$env:DOTNET_WATCH_SUPPRESS_LAUNCH_BROWSER='true'; " } else { "" }
+        $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "${envPrefix}cd '$webUIPath'; dotnet watch run$urlsArg" -WindowStyle Normal -PassThru
         Save-Pids -WebUIPid $process.Id
+        if ($NetworkBinding) {
+            # Open browser with localhost since 0.0.0.0 won't work in browser
+            Start-Sleep -Seconds 2  # Give the service a moment to start
+            Start-Process "http://localhost:$WebUIPort"
+        }
     } else {
         # macOS: Open new Terminal window - use single quotes for URL to avoid AppleScript escaping issues
         $urlsArg = if ($NetworkBinding) { " --urls 'http://0.0.0.0:$WebUIPort'" } else { "" }
@@ -248,42 +273,19 @@ function Clear-Database {
     }
 }
 
-function Test-Database {
-    Write-Host "Validating database schema..." -ForegroundColor Cyan
-
-    if (-not (Test-Path $DatabasePath)) {
-        Write-Host "Database not found at $DatabasePath" -ForegroundColor Red
-        Write-Host "Run './webui.ps1 database install' to create the database" -ForegroundColor Yellow
-        return $false
-    }
-
+function Test-DatabaseSchema {
     # Run GameService tests that validate the database schema
-    Write-Host "Running database schema validation tests..." -ForegroundColor Yellow
+    # Returns $true if schema is valid, $false otherwise
 
     $testProject = Join-Path $PSScriptRoot "Tests\GameService\Tests.GameService.csproj"
 
     if (-not (Test-Path $testProject)) {
-        Write-Host "Test project not found: $testProject" -ForegroundColor Red
-        return $false
+        return $null  # Can't verify - test project not found
     }
 
     # Run tests with a filter for database-related tests
     $result = & dotnet test $testProject --filter "Category=Database" --verbosity quiet --nologo 2>&1
-
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "Database schema validation passed!" -ForegroundColor Green
-        return $true
-    }
-    else {
-        Write-Host "Database schema validation failed!" -ForegroundColor Red
-        Write-Host "The database may need to be rebuilt:" -ForegroundColor Yellow
-        Write-Host "  1. ./webui.ps1 database clean" -ForegroundColor White
-        Write-Host "  2. ./webui.ps1 database install" -ForegroundColor White
-        Write-Host ""
-        Write-Host "Test output:" -ForegroundColor Yellow
-        Write-Host $result -ForegroundColor Gray
-        return $false
-    }
+    return ($LASTEXITCODE -eq 0)
 }
 
 function Invoke-DatabaseDoctor {
@@ -314,7 +316,7 @@ function Invoke-DatabaseDoctor {
                 Write-Host "  Games:   $($healthResponse.gameCount)" -ForegroundColor Gray
 
                 if ($healthResponse.needsSeeding) {
-                    Write-Host "  [WARN] No players configured - run './webui.ps1 database install'" -ForegroundColor Yellow
+                    Write-Host "  [WARN] No players configured - run './catan.ps1 database install'" -ForegroundColor Yellow
                     $healthy = $false
                 }
 
@@ -339,7 +341,7 @@ function Invoke-DatabaseDoctor {
         catch {
             Write-Host "  [FAIL] Could not reach health endpoint: $_" -ForegroundColor Red
             if (-not $serviceRunning) {
-                Write-Host "  GameService is not running - start with './webui.ps1 run'" -ForegroundColor Yellow
+                Write-Host "  GameService is not running - start with './catan.ps1 run'" -ForegroundColor Yellow
             }
             return @{ Healthy = $false; NeedsGames = $true; PlayerCount = 0; GameCount = 0 }
         }
@@ -353,7 +355,7 @@ function Invoke-DatabaseDoctor {
     }
     else {
         Write-Host "  [FAIL] Database not found: $DatabasePath" -ForegroundColor Red
-        Write-Host "  Fix: Run './webui.ps1 database install'" -ForegroundColor Yellow
+        Write-Host "  Fix: Run './catan.ps1 database install'" -ForegroundColor Yellow
         return @{ Healthy = $false; NeedsGames = $true; PlayerCount = 0; GameCount = 0 }
     }
 
@@ -431,7 +433,7 @@ function Invoke-DatabaseDoctor {
         Write-Host "  [SKIP] sqlite3 not found - cannot verify tables" -ForegroundColor Yellow
         Write-Host ""
         Write-Host "To check database health, either:" -ForegroundColor Yellow
-        Write-Host "  1. Start GameService: ./webui.ps1 run" -ForegroundColor White
+        Write-Host "  1. Start GameService: ./catan.ps1 run" -ForegroundColor White
         Write-Host "  2. Install sqlite3 for offline checks" -ForegroundColor White
         Write-Host ""
         Write-Host "Database health: UNKNOWN (cannot verify)" -ForegroundColor Yellow
@@ -443,6 +445,21 @@ function Invoke-DatabaseDoctor {
         }
     }
 
+    # Schema validation
+    Write-Host ""
+    Write-Host "Checking database schema..." -ForegroundColor Yellow
+    $schemaValid = Test-DatabaseSchema
+    if ($null -eq $schemaValid) {
+        Write-Host "  [SKIP] Test project not found - cannot validate schema" -ForegroundColor Yellow
+    }
+    elseif ($schemaValid) {
+        Write-Host "  [OK] Schema validation passed" -ForegroundColor Green
+    }
+    else {
+        Write-Host "  [FAIL] Schema validation failed" -ForegroundColor Red
+        $healthy = $false
+    }
+
     # Summary
     Write-Host ""
     if ($healthy) {
@@ -452,7 +469,7 @@ function Invoke-DatabaseDoctor {
         Write-Host "Database health: ISSUES FOUND" -ForegroundColor Red
         Write-Host ""
         Write-Host "To fix, run:" -ForegroundColor Yellow
-        Write-Host "  ./webui.ps1 database install" -ForegroundColor White
+        Write-Host "  ./catan.ps1 database install" -ForegroundColor White
     }
     Write-Host ""
 
@@ -461,6 +478,7 @@ function Invoke-DatabaseDoctor {
         NeedsGames = $needsGames
         PlayerCount = $playerCount
         GameCount = $gameCount
+        SchemaValid = $schemaValid
     }
 }
 
@@ -684,10 +702,15 @@ end tell
     Write-Host "Services stopped." -ForegroundColor Green
 }
 
+# Handle -Help switch (redirect to help verb)
+if ($Help) {
+    $Verb = "help"
+}
+
 switch ($Verb) {
     "build" {
         Write-Host "Building solution..." -ForegroundColor Cyan
-        & "$PSScriptRoot\build.ps1" -NoTest
+        & "$PSScriptRoot\.scripts\build.ps1" -NoTest
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Build failed!" -ForegroundColor Red
             exit 1
@@ -695,10 +718,75 @@ switch ($Verb) {
         Write-Host "Build completed successfully!" -ForegroundColor Green
     }
 
+    "test" {
+        Write-Host "Running tests..." -ForegroundColor Cyan
+        & "$PSScriptRoot\.scripts\build.ps1"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Tests failed!" -ForegroundColor Red
+            exit 1
+        }
+        Write-Host "All tests passed!" -ForegroundColor Green
+    }
+
+    "doctor" {
+        Write-Host ""
+        Write-Host "Catan3 Health Check" -ForegroundColor Cyan
+        Write-Host "===================" -ForegroundColor Cyan
+        Write-Host ""
+
+        # Check dependencies
+        Write-Host "Checking dependencies..." -ForegroundColor Yellow
+        & "$PSScriptRoot\.scripts\install-dependencies.ps1" -Doctor
+        Write-Host ""
+
+        # Check database
+        Write-Host "Checking database..." -ForegroundColor Yellow
+        $dbStatus = Invoke-DatabaseDoctor
+        if (-not $dbStatus.Healthy) {
+            Write-Host ""
+            Write-Host "Some issues found. Run './catan.ps1 install' to fix." -ForegroundColor Yellow
+            exit 1
+        }
+    }
+
+    "install" {
+        Write-Host ""
+        Write-Host "Catan3 Installation" -ForegroundColor Cyan
+        Write-Host "===================" -ForegroundColor Cyan
+        Write-Host ""
+
+        # Install dependencies (install-dependencies.ps1 already checks if installed)
+        Write-Host "Checking dependencies..." -ForegroundColor Yellow
+        & "$PSScriptRoot\.scripts\install-dependencies.ps1" -Install -Yes:$Yes
+        Write-Host ""
+
+        # Check database status first
+        Write-Host "Checking database..." -ForegroundColor Yellow
+        $dbStatus = Invoke-DatabaseDoctor
+
+        if ($dbStatus.Healthy -and -not $Force) {
+            Write-Host "Database is already installed and healthy." -ForegroundColor Green
+        } else {
+            if ($Force) {
+                Write-Host "Force flag set, reinstalling database..." -ForegroundColor Yellow
+            } else {
+                Write-Host "Database needs installation..." -ForegroundColor Yellow
+            }
+            Clear-Database
+            $installed = Install-Database
+            if (-not $installed) {
+                Write-Host "Database installation failed!" -ForegroundColor Red
+                exit 1
+            }
+        }
+        Write-Host ""
+        Write-Host "Installation complete!" -ForegroundColor Green
+    }
+
     "run" {
         # Build solution first
         Write-Host "Building solution..." -ForegroundColor Cyan
-        & "$PSScriptRoot\build.ps1" -NoTest
+        & "$PSScriptRoot\.scripts\build.ps1" -NoTest
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Build failed! Cannot start services." -ForegroundColor Red
             exit 1
@@ -787,7 +875,7 @@ switch ($Verb) {
         if ($IsWindows) {
             Write-Host "Press Ctrl+C in service windows to stop them." -ForegroundColor Yellow
         } else {
-            Write-Host "Use './webui.ps1 stop' to stop services. Logs: .gameservice.log, .webui.log" -ForegroundColor Yellow
+            Write-Host "Use './catan.ps1 stop' to stop services. Logs: .gameservice.log, .webui.log" -ForegroundColor Yellow
         }
     }
 
@@ -832,15 +920,25 @@ switch ($Verb) {
             Clear-Database
         }
 
-        # Clean build artifacts
+        # Clean build artifacts (skip DesktopApp on non-Windows - it's Windows-only)
         Write-Host "Cleaning build artifacts..." -ForegroundColor Yellow
-        & dotnet clean Catan.sln --verbosity quiet
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "Build artifacts cleaned." -ForegroundColor Green
+        $projectsToClean = @(
+            "Catan3.Shared/Catan3.Shared.csproj",
+            "Catan3.GameService/Catan3.GameService.csproj",
+            "WebUI/Catan3.WebUI.csproj",
+            "Catan3.CLI/Catan3.CLI.csproj",
+            "Tests/GameService/Catan3.Tests.GameService.csproj"
+        )
+        if ($IsWindows) {
+            $projectsToClean += "DesktopApp/Catan Desktop.csproj"
         }
-        else {
-            Write-Host "Warning: dotnet clean returned non-zero exit code" -ForegroundColor Yellow
+        foreach ($proj in $projectsToClean) {
+            $projPath = Join-Path $PSScriptRoot $proj
+            if (Test-Path $projPath) {
+                & dotnet clean $projPath --verbosity quiet 2>$null
+            }
         }
+        Write-Host "Build artifacts cleaned." -ForegroundColor Green
 
         # Remove bin/obj directories for thorough clean
         Write-Host "Removing bin/obj directories..." -ForegroundColor Yellow
@@ -852,13 +950,15 @@ switch ($Verb) {
         Write-Host ""
         Write-Host "Clean completed!" -ForegroundColor Green
         if (-not $cleanDatabase) {
-            Write-Host "Database preserved. Use './webui.ps1 clean database' to also clean database." -ForegroundColor Gray
+            Write-Host "Database preserved. Use './catan.ps1 clean database' to also clean database." -ForegroundColor Gray
         }
-        Write-Host "Run './webui.ps1 build' to rebuild, or './webui.ps1 run' to rebuild and run." -ForegroundColor White
+        Write-Host "Run './catan.ps1 build' to rebuild, or './catan.ps1 run' to rebuild and run." -ForegroundColor White
+        exit 0
     }
 
     "stop" {
         Stop-Services
+        exit 0
     }
 
     "restart" {
@@ -920,27 +1020,30 @@ switch ($Verb) {
             Write-Host "Services rebuilt and restarted! Refresh browser to load changes." -ForegroundColor Green
         }
         else {
-            Write-Host "Projects rebuilt successfully! Run './webui.ps1 run' to start." -ForegroundColor Green
+            Write-Host "Projects rebuilt successfully! Run './catan.ps1 run' to start." -ForegroundColor Green
         }
     }
 
     "database" {
         switch ($SubCommand) {
-            "check" {
-                $valid = Test-Database
-                if (-not $valid) {
-                    exit 1
-                }
-            }
             "clean" {
                 Clear-Database
             }
             "install" {
-                # Clean first, then install fresh
-                Clear-Database
-                $installed = Install-Database
-                if (-not $installed) {
-                    exit 1
+                # Check database status first
+                $dbStatus = Invoke-DatabaseDoctor
+
+                if ($dbStatus.Healthy -and -not $Force) {
+                    Write-Host "Database is already installed and healthy." -ForegroundColor Green
+                } else {
+                    if ($Force) {
+                        Write-Host "Force flag set, reinstalling database..." -ForegroundColor Yellow
+                    }
+                    Clear-Database
+                    $installed = Install-Database
+                    if (-not $installed) {
+                        exit 1
+                    }
                 }
             }
             "doctor" {
@@ -954,19 +1057,17 @@ switch ($Verb) {
                 Write-Host "Database Commands" -ForegroundColor Cyan
                 Write-Host "=================" -ForegroundColor Cyan
                 Write-Host ""
-                Write-Host "Usage: ./webui.ps1 database <subcommand>" -ForegroundColor Yellow
+                Write-Host "Usage: ./catan.ps1 database <subcommand>" -ForegroundColor Yellow
                 Write-Host ""
                 Write-Host "Subcommands:" -ForegroundColor Yellow
                 Write-Host "  doctor   - Diagnose database health and show contents"
-                Write-Host "  check    - Validate database schema matches app requirements"
                 Write-Host "  clean    - Delete the database (wipes all data)"
                 Write-Host "  install  - Clean and reinstall database with default data"
                 Write-Host ""
                 Write-Host "Examples:" -ForegroundColor Yellow
-                Write-Host "  ./webui.ps1 database doctor    - Check database health and contents"
-                Write-Host "  ./webui.ps1 database check     - Run schema validation tests"
-                Write-Host "  ./webui.ps1 database clean     - Delete database"
-                Write-Host "  ./webui.ps1 database install   - Fresh install with default players"
+                Write-Host "  ./catan.ps1 database doctor    - Check database health and contents"
+                Write-Host "  ./catan.ps1 database clean     - Delete database"
+                Write-Host "  ./catan.ps1 database install   - Fresh install with default players"
                 Write-Host ""
 
                 if ($SubCommand) {
@@ -1127,7 +1228,7 @@ switch ($Verb) {
                 Write-Host "Azure Commands" -ForegroundColor Cyan
                 Write-Host "==============" -ForegroundColor Cyan
                 Write-Host ""
-                Write-Host "Usage: ./webui.ps1 azure <subcommand>" -ForegroundColor Yellow
+                Write-Host "Usage: ./catan.ps1 azure <subcommand>" -ForegroundColor Yellow
                 Write-Host ""
                 Write-Host "Subcommands:" -ForegroundColor Yellow
                 Write-Host "  install  - Create all Azure resources (idempotent)"
@@ -1142,11 +1243,11 @@ switch ($Verb) {
                 Write-Host "  -TraceLevel  Output detail: ERROR, WARN, INFO (default), DEBUG"
                 Write-Host ""
                 Write-Host "Examples:" -ForegroundColor Yellow
-                Write-Host "  ./webui.ps1 azure install                   - First-time Azure setup"
-                Write-Host "  ./webui.ps1 azure install -TraceLevel DEBUG - Verbose install"
-                Write-Host "  ./webui.ps1 azure deploy                    - Deploy after code changes"
-                Write-Host "  ./webui.ps1 azure doctor                    - Check all resources"
-                Write-Host "  ./webui.ps1 azure clean -Force              - Tear down everything"
+                Write-Host "  ./catan.ps1 azure install                   - First-time Azure setup"
+                Write-Host "  ./catan.ps1 azure install -TraceLevel DEBUG - Verbose install"
+                Write-Host "  ./catan.ps1 azure deploy                    - Deploy after code changes"
+                Write-Host "  ./catan.ps1 azure doctor                    - Check all resources"
+                Write-Host "  ./catan.ps1 azure clean -Force              - Tear down everything"
                 Write-Host ""
                 Write-Host "For individual resources, use catan-azure.ps1 directly:" -ForegroundColor Gray
                 Write-Host "  ./catan-azure.ps1 game-service deploy"
@@ -1163,43 +1264,45 @@ switch ($Verb) {
 
     "help" {
         Write-Host ""
-        Write-Host "WebUI Development Script" -ForegroundColor Cyan
-        Write-Host "========================" -ForegroundColor Cyan
+        Write-Host "Catan3 Development Script" -ForegroundColor Cyan
+        Write-Host "=========================" -ForegroundColor Cyan
         Write-Host ""
-        Write-Host "Commands:" -ForegroundColor Yellow
-        Write-Host "  ./webui.ps1 run              - Start GameService + WebUI, launch browser"
-        Write-Host "  ./webui.ps1 stop             - Stop running services"
-        Write-Host "  ./webui.ps1 restart          - Stop and restart services"
-        Write-Host "  ./webui.ps1 update           - Rebuild projects and restart services"
-        Write-Host "  ./webui.ps1 build            - Build all projects (full solution)"
-        Write-Host "  ./webui.ps1 clean            - Stop services, clean build (preserves database)"
-        Write-Host "  ./webui.ps1 clean database   - Stop services, clean build AND database"
-        Write-Host "  ./webui.ps1 database <cmd>   - Database management (doctor/check/clean/install)"
-        Write-Host "  ./webui.ps1 azure <cmd>      - Azure deployment (install/deploy/doctor/clean)"
-        Write-Host "  ./webui.ps1 debug            - Instructions for VS Code debugging"
-        Write-Host "  ./webui.ps1 help             - Show this help"
+        Write-Host "Quick Start:" -ForegroundColor Yellow
+        Write-Host "  ./catan.ps1 doctor           - Check if everything is set up correctly"
+        Write-Host "  ./catan.ps1 install          - Install dependencies and database"
+        Write-Host "  ./catan.ps1 run              - Build, start services, launch browser"
         Write-Host ""
-        Write-Host "Database Commands:" -ForegroundColor Yellow
-        Write-Host "  ./webui.ps1 database doctor  - Diagnose database health and contents"
-        Write-Host "  ./webui.ps1 database check   - Validate database schema"
-        Write-Host "  ./webui.ps1 database clean   - Delete database"
-        Write-Host "  ./webui.ps1 database install - Fresh install with default data"
+        Write-Host "Development:" -ForegroundColor Yellow
+        Write-Host "  ./catan.ps1 run              - Start GameService + WebUI, launch browser"
+        Write-Host "  ./catan.ps1 run -Network     - Same, but accessible from other devices"
+        Write-Host "  ./catan.ps1 stop             - Stop running services"
+        Write-Host "  ./catan.ps1 restart          - Stop and restart services"
+        Write-Host "  ./catan.ps1 update           - Rebuild and restart (when hot reload fails)"
+        Write-Host "  ./catan.ps1 build            - Build all projects (no tests)"
+        Write-Host "  ./catan.ps1 test             - Build and run all tests"
+        Write-Host "  ./catan.ps1 clean            - Stop services, clean build (preserves database)"
+        Write-Host "  ./catan.ps1 debug            - Instructions for VS Code debugging"
+        Write-Host "  ./catan.ps1 help (or -Help)  - Show this help"
         Write-Host ""
-        Write-Host "Azure Commands:" -ForegroundColor Yellow
-        Write-Host "  ./webui.ps1 azure install    - Create all Azure resources"
-        Write-Host "  ./webui.ps1 azure deploy     - Deploy everything to Azure"
-        Write-Host "  ./webui.ps1 azure doctor     - Check Azure health"
-        Write-Host "  ./webui.ps1 azure clean      - Delete all Azure resources"
+        Write-Host "Setup:" -ForegroundColor Yellow
+        Write-Host "  ./catan.ps1 doctor           - Check dependencies and database health"
+        Write-Host "  ./catan.ps1 install          - Install all dependencies and database"
+        Write-Host ""
+        Write-Host "Database:" -ForegroundColor Yellow
+        Write-Host "  ./catan.ps1 database doctor  - Diagnose database health and contents"
+        Write-Host "  ./catan.ps1 database clean   - Delete database"
+        Write-Host "  ./catan.ps1 database install - Fresh install with default data"
+        Write-Host ""
+        Write-Host "Azure:" -ForegroundColor Yellow
+        Write-Host "  ./catan.ps1 azure doctor     - Check Azure deployment health"
+        Write-Host "  ./catan.ps1 azure install    - Create all Azure resources"
+        Write-Host "  ./catan.ps1 azure deploy     - Deploy everything to Azure"
+        Write-Host "  ./catan.ps1 azure clean      - Delete all Azure resources"
         Write-Host ""
         Write-Host "Typical workflow:" -ForegroundColor Yellow
-        Write-Host "  1. ./webui.ps1 run           - Start services (hot reload enabled)"
+        Write-Host "  1. ./catan.ps1 run           - Start services (hot reload enabled)"
         Write-Host "  2. Make code changes         - Browser auto-refreshes on save"
-        Write-Host ""
-        Write-Host "  If hot reload fails (e.g., rude edits):"
-        Write-Host "  3. ./webui.ps1 update        - Rebuild and restart services"
-        Write-Host ""
-        Write-Host "  If database schema changed:"
-        Write-Host "  4. ./webui.ps1 database install - Rebuild database"
+        Write-Host "  3. ./catan.ps1 update        - If hot reload fails, rebuild and restart"
         Write-Host ""
         Write-Host "URLs:" -ForegroundColor Yellow
         Write-Host "  GameService: $GameServiceUrl"
