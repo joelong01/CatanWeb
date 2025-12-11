@@ -263,14 +263,11 @@
 
     /// <summary>
     /// Gets the number of soldier cards played by this player.
+    /// Tracks soldiers from SpentEntitlementsThisGame, matching GameStateMachine logic.
     /// </summary>
-    /// <returns>Soldier card count (currently 0, TODO: implement development card tracking).</returns>
-    private int GetSoldiersPlayed()
-    {
-        // TODO: Implement soldier tracking from development cards
-        // This will require GameModel to expose dev card history
-        return 0;
-    }
+    /// <returns>Count of soldier entitlements spent by this player.</returns>
+    private int GetSoldiersPlayed() =>
+        Player.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier);
 
     /// <summary>
     /// Gets the number of resources lost to the robber by this player.

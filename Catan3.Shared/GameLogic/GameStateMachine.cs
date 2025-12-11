@@ -1361,6 +1361,7 @@ namespace Catan3.Shared.GameLogic
         private void LogGameModel(GameModel gameModel)
         {
             UpdateScore(gameModel);
+            UpdatePlayerStars(gameModel);
             MarkBuildableRoads(gameModel);
             MarkBuildableBuildings(gameModel);
             SetActionFlags(gameModel);
@@ -1607,6 +1608,46 @@ namespace Catan3.Shared.GameLogic
                 player.HighestScore = (player.Score == maxScore);
             }
         }
+
+        /// <summary>
+        /// Updates the Stars count for each player based on their owned buildings.
+        /// Stars represent the probability weight of a player's buildings:
+        /// - Each building earns stars from its adjacent tiles (6/8 = 5 stars, 5/9 = 4 stars, etc.)
+        /// - Cities double the star count from their adjacent tiles
+        /// - This is orthogonal to scoring but provides a useful metric for evaluating board position
+        /// </summary>
+        /// <param name="gameModel">The game model containing players and buildings</param>
+        private void UpdatePlayerStars(GameModel gameModel)
+        {
+            // Calculate Stars for each player based on their owned buildings
+            var playerStars = new Dictionary<string, int>();
+
+            foreach (var building in gameModel.Buildings)
+            {
+                if (building.OwnerId is null) continue;
+
+                // Cities count double, settlements count once, other building states don't count
+                int factor = building.BuildingState switch
+                {
+                    BuildingState.Settlement => 1,
+                    BuildingState.City => 2,
+                    _ => 0
+                };
+
+                if (factor > 0)
+                {
+                    int buildingStars = gameModel.TilesForBuildings(building.BuildingKey).Stars() * factor;
+                    playerStars[building.OwnerId] = playerStars.GetValueOrDefault(building.OwnerId, 0) + buildingStars;
+                }
+            }
+
+            // Apply Stars to each player
+            foreach (var player in gameModel.Players)
+            {
+                player.Stars = playerStars.GetValueOrDefault(player.Id, 0);
+            }
+        }
+
         /// <summary>
         /// Moves the robber to a new location based on input from a player.
         /// </summary>
