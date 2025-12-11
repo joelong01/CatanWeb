@@ -42,6 +42,14 @@ namespace Catan3.Shared.Models
         public int SupplementalMinPlayers { get; set; } = 5;
 
         /// <summary>
+        /// Gets or sets a value indicating whether "Grief Dodgy" mode is enabled.
+        /// When enabled, adds special animations targeting the player with ID "Dodgy-001"
+        /// during robber moves: non-Dodgy buildings fade, celebration when Dodgy is targeted,
+        /// and fake-out animation when Dodgy is not targeted.
+        /// </summary>
+        public bool GriefDodgy { get; set; } = true;
+
+        /// <summary>
         /// Gets the default house rules.
         /// </summary>
         public static HouseRules Default { get; } = new HouseRules();

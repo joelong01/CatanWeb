@@ -68,7 +68,6 @@
 
         if (changed)
         {
-            Console.WriteLine($"[BuildingsLayer] RE-RENDERING: ownedBuildings={buildingsChanged}, player={playerChanged}");
             _previousOwnedBuildingHash = ownedHash;
             _previousCurrentPlayerId = CurrentPlayer?.Id;
             return true;

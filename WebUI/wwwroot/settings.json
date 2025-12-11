@@ -48,6 +48,15 @@
       "defaultValue": "Normal",
       "tooltip": "Controls the speed of UI animations",
       "category": "Game Configuration"
+    },
+    {
+      "settingName": "GriefDodgy",
+      "description": "Grief Dodgy mode",
+      "inputType": "checkbox",
+      "value": true,
+      "defaultValue": true,
+      "tooltip": "Adds special animations targeting Dodgy during robber moves: buildings fade, celebration when targeted, fake-out animation when not targeted",
+      "category": "House Rules"
     }
   ]
 }

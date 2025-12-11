@@ -20,15 +20,26 @@ public static class TileSvgRenderer
     /// <param name="tile">The tile model to render.</param>
     /// <param name="isDimmed">If true, applies dim CSS class for dim animation.</param>
     /// <param name="index">Tile index for verbal reference (always rendered, visibility controlled by CSS).</param>
+    /// <param name="isFlipped">If true, applies flip animation (Grief Dodgy feature).</param>
     /// <returns>SVG markup string for the tile.</returns>
-    public static string RenderSvg(this TileModel tile, bool isDimmed = false, int index = 0)
+    public static string RenderSvg(this TileModel tile, bool isDimmed = false, int index = 0, bool isFlipped = false)
     {
         var sb = new StringBuilder();
         var (x, y) = BoardGeometry.AxialToPixel(tile.TileKey.Q, tile.TileKey.R);
 
         // Tile group with CSS class for animations
-        var cssClass = isDimmed ? "tile tile-dimmed" : "tile";
-        sb.AppendLine($@"  <g class=""{cssClass}"" data-q=""{tile.TileKey.Q}"" data-r=""{tile.TileKey.R}"">");
+        var cssClasses = new List<string> { "tile" };
+        if (isDimmed) cssClasses.Add("tile-dimmed");
+        if (isFlipped) cssClasses.Add("grief-flip");
+        var cssClass = string.Join(" ", cssClasses);
+
+        sb.AppendLine($@"  <g class=""{cssClass}"" data-q=""{tile.TileKey.Q}"" data-r=""{tile.TileKey.R}"" transform-origin=""{x} {y}"">");
+
+        // For flip animation, wrap front content in a group
+        if (isFlipped)
+        {
+            sb.AppendLine($@"    <g class=""tile-front"" transform-origin=""{x} {y}"">");
+        }
 
         // Render hex background (gold if TemporarilyGold is true)
         RenderHexBackground(sb, tile, x, y);
@@ -54,11 +65,37 @@ public static class TileSvgRenderer
             RenderTileIndex(sb, x, y, index);
         }
 
+        if (isFlipped)
+        {
+            sb.AppendLine("    </g>"); // Close tile-front
+
+            // Render tile back (water pattern)
+            RenderTileBack(sb, x, y);
+        }
+
         // Note: Gold indicator card is rendered by GoldTilesLayer, not here,
         // to avoid duplication and ensure proper image rendering
 
         sb.AppendLine("  </g>");
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Renders the back of a tile (water pattern) for flip animation.
+    /// </summary>
+    private static void RenderTileBack(StringBuilder sb, double x, double y)
+    {
+        sb.AppendLine($@"    <g class=""tile-back"" transform-origin=""{x} {y}"" style=""opacity: 0"">");
+
+        // Outer hex border (same as front)
+        var outerPath = BoardGeometry.GenerateHexPath(x, y, HexSize);
+        sb.AppendLine($@"      <path d=""{outerPath}"" fill=""url(#{BoardSvgConstants.HexBorderFillPattern})"" stroke=""url(#{BoardSvgConstants.HexBorderStrokePattern})"" stroke-width=""{BoardSvgConstants.TileGap}""/>");
+
+        // Inner hex - water pattern
+        var innerPath = BoardGeometry.GenerateHexPath(x, y, BoardSvgConstants.InnerHexSize);
+        sb.AppendLine($@"      <path d=""{innerPath}"" fill=""url(#pattern-water)"" stroke=""transparent"" stroke-width=""{BoardSvgConstants.InnerHexStrokeThickness}""/>");
+
+        sb.AppendLine("    </g>");
     }
 
     /// <summary>

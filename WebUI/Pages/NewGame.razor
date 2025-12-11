@@ -210,13 +210,8 @@
 
     private void OnCancel()
     {
-        Console.WriteLine($"OnCancel - ReturnUrl parameter: '{ReturnUrl}'");
-        Console.WriteLine($"OnCancel - ReturnUrl is null: {ReturnUrl == null}");
-        Console.WriteLine($"OnCancel - ReturnUrl is empty: {string.IsNullOrEmpty(ReturnUrl)}");
-        
         // If we have a return URL, go back there, otherwise go to root
         var destination = ReturnUrl ?? "/";
-        Console.WriteLine($"OnCancel - Navigating to: {destination}");
         Navigation.NavigateTo(destination);
     }
 
@@ -232,20 +227,19 @@
             // Send the actual player IDs (e.g., "joe-001"), not display names
             var playerIds = SelectedPlayers.ToList();
 
-            // Build HouseRules from Settings page if enabled
+            // Load HouseRules from Settings (saved as complete JSON object)
             HouseRules? houseRules = null;
             if (UseHouseRules)
             {
-                var goldTilesSetting = SelectedGameType == GameType.Expansion
-                    ? "setting_ExpansionGoldTiles"
-                    : "setting_RegularGoldTiles";
-                var goldTilesStr = await JS.InvokeAsync<string?>("localStorage.getItem", goldTilesSetting);
-                var supplementalStr = await JS.InvokeAsync<string?>("localStorage.getItem", "setting_SupplementalMinPlayers");
-
-                houseRules = new HouseRules
+                var houseRulesJson = await JS.InvokeAsync<string?>("localStorage.getItem", "HouseRules");
+                if (!string.IsNullOrEmpty(houseRulesJson))
                 {
-                    GoldTiles = int.TryParse(goldTilesStr, out var gt) ? gt : (SelectedGameType == GameType.Expansion ? 2 : 1),
-                    SupplementalMinPlayers = int.TryParse(supplementalStr, out var sm) ? sm : 5
+                    houseRules = System.Text.Json.JsonSerializer.Deserialize<HouseRules>(houseRulesJson);
+                }
+                // Fallback to defaults if no saved settings
+                houseRules ??= new HouseRules
+                {
+                    GoldTiles = SelectedGameType == GameType.Expansion ? 2 : 1
                 };
             }
 

@@ -15,12 +15,10 @@
 
 <g class="robber-layer">
     @{
-        // Determine render position - use animation start position if animating
+        // Determine render position based on animation phase
         var hasValidCoords = RobberCoordinates != HexCoordinates.Default;
-        var renderCoords = _animationPending && _animationStartCoords != HexCoordinates.Default
-            ? _animationStartCoords
-            : RobberCoordinates;
-        var (x, y) = hasValidCoords || _animationPending
+        var renderCoords = GetRenderCoordinates();
+        var (x, y) = hasValidCoords || _animationPending || _fakeOutPhase != FakeOutPhase.None
             ? BoardGeometry.AxialToPixel(renderCoords.Q, renderCoords.R)
             : (0.0, 0.0);
         var colors = GetMovedByColors();
@@ -87,9 +85,21 @@
     [Parameter]
     public IReadOnlyList<PlayerViewModel> Players { get; set; } = [];
 
+    /// <summary>
+    /// Fake-out coordinates for "Grief Dodgy" animation.
+    /// When set, robber animates here first, pauses, then to final position.
+    /// </summary>
+    [Parameter]
+    public HexCoordinates? FakeOutCoordinates { get; set; }
+
     // Animation state
     private bool _animationPending;
     private HexCoordinates _animationStartCoords = HexCoordinates.Default;
+
+    // Fake-out animation state (Grief Dodgy)
+    private enum FakeOutPhase { None, AnimatingToFake, HoldingAtFake, AnimatingToFinal }
+    private FakeOutPhase _fakeOutPhase = FakeOutPhase.None;
+    private HexCoordinates _fakeOutTargetCoords = HexCoordinates.Default;
 
     /// <summary>
     /// Font size for the robber glyph - 50% of hex height (smaller to show tile number).
@@ -101,18 +111,63 @@
     /// </summary>
     protected override void OnParametersSet()
     {
-        // If PreviousCoordinates is set and different from current, trigger animation
-        if (PreviousCoordinates is HexCoordinates prevCoords &&
+        // Check for fake-out animation (Grief Dodgy) - can trigger even without previous coords
+        if (FakeOutCoordinates is HexCoordinates fakeCoords &&
+            fakeCoords != HexCoordinates.Default &&
+            !fakeCoords.Equals(RobberCoordinates))
+        {
+            // Fake-out animation: start from previous position (or off-screen if first move)
+            var startCoords = PreviousCoordinates is HexCoordinates prevCoords && prevCoords != HexCoordinates.Default
+                ? prevCoords
+                : fakeCoords; // If no previous, start directly at fake-out position
+
+            _animationStartCoords = startCoords;
+            _fakeOutPhase = FakeOutPhase.AnimatingToFake;
+            _fakeOutTargetCoords = fakeCoords;
+            _animationPending = true;
+        }
+        // Normal animation: If PreviousCoordinates is set and different from current
+        else if (PreviousCoordinates is HexCoordinates prevCoords &&
             prevCoords != HexCoordinates.Default &&
             !prevCoords.Equals(RobberCoordinates))
         {
-            _animationPending = true;
             _animationStartCoords = prevCoords;
+            _fakeOutPhase = FakeOutPhase.None;
+            _animationPending = true;
+        }
+        else
+        {
+            // No animation coordinates - reset animation state
+            _animationPending = false;
+            _fakeOutPhase = FakeOutPhase.None;
+            _fakeOutTargetCoords = HexCoordinates.Default;
         }
     }
 
     /// <summary>
+    /// Gets the current render coordinates based on animation phase.
+    /// </summary>
+    private HexCoordinates GetRenderCoordinates()
+    {
+        // If animation is pending, render at start position for CSS transition
+        if (_animationPending)
+        {
+            return _animationStartCoords;
+        }
+
+        // During fake-out phases, render at appropriate position
+        return _fakeOutPhase switch
+        {
+            FakeOutPhase.AnimatingToFake => _fakeOutTargetCoords,
+            FakeOutPhase.HoldingAtFake => _fakeOutTargetCoords,
+            FakeOutPhase.AnimatingToFinal => RobberCoordinates,
+            _ => RobberCoordinates
+        };
+    }
+
+    /// <summary>
     /// After rendering at start position, trigger move to end position.
+    /// Handles multi-phase fake-out animation for Grief Dodgy.
     /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -121,8 +176,34 @@
             _animationPending = false;
             // Small delay to ensure browser has rendered at start position
             await Task.Delay(20);
-            // Trigger re-render at final position - CSS will animate
+            // Trigger re-render - CSS will animate to next position
             StateHasChanged();
+            return;
+        }
+
+        // Handle fake-out animation phases
+        switch (_fakeOutPhase)
+        {
+            case FakeOutPhase.AnimatingToFake:
+                // Wait for animation to complete (1.2s CSS transition)
+                await Task.Delay(1250);
+                _fakeOutPhase = FakeOutPhase.HoldingAtFake;
+                StateHasChanged();
+                break;
+
+            case FakeOutPhase.HoldingAtFake:
+                // Hold at fake position for 1 second
+                await Task.Delay(1000);
+                _fakeOutPhase = FakeOutPhase.AnimatingToFinal;
+                StateHasChanged();
+                break;
+
+            case FakeOutPhase.AnimatingToFinal:
+                // Wait for final animation to complete
+                await Task.Delay(1250);
+                _fakeOutPhase = FakeOutPhase.None;
+                _fakeOutTargetCoords = HexCoordinates.Default;
+                break;
         }
     }
 

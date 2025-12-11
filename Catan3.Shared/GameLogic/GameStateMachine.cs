@@ -892,6 +892,11 @@ namespace Catan3.Shared.GameLogic
         {
             GameModel gameModel = _gameLog.CopyCurrent();
             ThrowIfWrongState(gameModel.GameState, [Shared.Models.GameState.WaitingForRoll]);
+
+            // Clear animation coordinates from previous robber move
+            gameModel.Robber.FakeOutCoordinates = null;
+            gameModel.Robber.PreviousCoordinates = null;
+
             gameModel.RollModel.TurnRollModel = msg.Roll;
             // update the global counts for rolls
             gameModel.RollModel.GameRollModel.RollCounts[(int)gameModel.RollModel.TurnRollModel.NormalRoll - 2]++;
@@ -1109,6 +1114,9 @@ namespace Catan3.Shared.GameLogic
                     // it is controlled by hitting a roll UI
                     break;
                 case Shared.Models.GameState.WaitingForNext:
+                    // Clear animation coordinates from previous robber move
+                    gameModel.Robber.FakeOutCoordinates = null;
+                    gameModel.Robber.PreviousCoordinates = null;
                     // Supplemental build phase requires minimum player count (configurable via HouseRules)
                     if (gameModel.HasSupplementalBuildPhase && gameModel.Players.Count >= gameModel.HouseRules.SupplementalMinPlayers)
                     {
@@ -1359,6 +1367,7 @@ namespace Catan3.Shared.GameLogic
             gameModel.ActionFlags.RedoEnabled = false;
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
+
             var oldHash = gameModel.GameHash;
             // Update ExpectedGameHash after all game state modifications are complete
             gameModel.UpdateGameHash();
@@ -1639,8 +1648,46 @@ namespace Catan3.Shared.GameLogic
 
             // 1/14/2024:  if the robber is moved, reset the count of resources stolen
             gameModel.Robber.ResourcesStolen = 0;
+
+            Console.WriteLine($"[MoveRobber] GriefDodgy={gameModel.HouseRules.GriefDodgy}, Target={moveRobber.TargetPlayerId}");
+
+            if (gameModel.HouseRules.GriefDodgy)
+            {
+                // GriefDodgy house rule: set fake-out coordinates when not targeting Dodgy
+                gameModel.Robber.FakeOutCoordinates = CalculateGriefDodgyFakeOut(gameModel, moveRobber.TargetPlayerId);
+                Console.WriteLine($"[MoveRobber] FakeOutCoordinates={gameModel.Robber.FakeOutCoordinates}");
+            }
             return gameModel;
         }
+
+        /// <summary>
+        /// Calculates the fake-out coordinates for the "Grief Dodgy" house rule.
+        /// Returns Dodgy's best tile (most stars) when GriefDodgy is enabled and a non-Dodgy player is targeted.
+        /// </summary>
+        private HexCoordinates? CalculateGriefDodgyFakeOut(GameModel gameModel, string? targetPlayerId)
+        {
+            const string DodgyPlayerId = "Dodgy-001";
+
+            // Check if GriefDodgy house rule is enabled
+            if (!gameModel.HouseRules.GriefDodgy) return null;
+
+            // Check if Dodgy is in the game
+            var dodgyPlayer = gameModel.Players.FirstOrDefault(p => p.Id == DodgyPlayerId);
+            if (dodgyPlayer == null) return null;
+
+            // If targeting Dodgy, no fake-out needed (celebration instead)
+            if (targetPlayerId == DodgyPlayerId) return null;
+
+            // Find Dodgy's best tile (most stars with Dodgy's buildings)
+            var dodgyBestTile = gameModel.Tiles
+                .Where(t => t.ResourceTileType != ResourceType.Sea && t.ResourceTileType != ResourceType.Desert)
+                .Where(t => gameModel.Buildings.OwnedBuildings(t.TileKey).Any(b => b.OwnerId == DodgyPlayerId))
+                .OrderByDescending(t => t.Stars)
+                .FirstOrDefault();
+
+            return dodgyBestTile?.TileKey;
+        }
+
         /// <summary>
         /// Validates the current game state against a list of acceptable states.
         /// </summary>

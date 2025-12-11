@@ -164,6 +164,32 @@ The game layout is not consuming full viewport height on widescreen monitors:
 - ViewportScaler uses `Math.min(scaleX, scaleY)` for uniform scaling
 - May need further testing to verify height propagation
 
+### GameServiceProxy Uses SignalR Instead of HTTP POST (Latent Bug)
+
+**Architecture principle**: HTTP for commands IN, SignalR for updates OUT.
+
+**Current state**: `GameServiceProxy` sends all game commands via SignalR `InvokeAsync()`:
+
+- `ExecuteMoveRobber`, `ExecuteRoll`, `ExecutePurchase`, `ExecuteRoadPurchase`, etc.
+
+**Correct pattern**: Commands should POST to `/api/game/action` with:
+
+```json
+{
+  "gameId": "...",
+  "playerId": "...",
+  "messageType": "MoveRobberMessage",
+  "messageData": { "coordinates": {...}, "targetPlayerId": "..." }
+}
+```
+
+**Impact**: The `AsyncCommandProcessor` already supports all message types correctly. Only the client-side `GameServiceProxy` needs to change from SignalR invoke to HTTP POST.
+
+**Files to modify**:
+
+- `Catan3.Shared/Services/GameServiceProxy.cs` - Change all `_connection.InvokeAsync()` calls to HTTP POST
+- `Catan3.GameService/Hubs/GameHub.cs` - Remove redundant `Execute*` methods (or deprecate)
+
 ## Next Session Priorities
 
 1. **Test Layout**: Verify v11 CSS fixes height issue on widescreen/4K

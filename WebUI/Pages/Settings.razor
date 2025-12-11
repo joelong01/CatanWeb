@@ -143,16 +143,20 @@
         {
             if (settings == null) return;
 
-            // Save to localStorage for future games
+            // Save individual settings to localStorage for UI state
             foreach (var setting in settings)
             {
                 var value = setting.Value?.ToString() ?? "";
                 await JS.InvokeVoidAsync("localStorage.setItem", $"setting_{setting.SettingName}", value);
             }
 
+            // Also save complete HouseRules as JSON for new game creation
+            var houseRules = BuildHouseRulesFromSettings();
+            var houseRulesJson = System.Text.Json.JsonSerializer.Serialize(houseRules);
+            await JS.InvokeVoidAsync("localStorage.setItem", "HouseRules", houseRulesJson);
+
             // If there's a current game, update its house rules
             var currentGameId = await JS.InvokeAsync<string?>("localStorage.getItem", "current_gameId");
-            Console.WriteLine($"[Settings] current_gameId from localStorage: '{currentGameId}'");
             if (!string.IsNullOrEmpty(currentGameId))
             {
                 await UpdateCurrentGameHouseRules(currentGameId);
@@ -182,38 +186,15 @@
     {
         if (settings == null) return;
 
-        // Build HouseRules from current settings - use Expansion setting (covers both since limit is just UI)
-        var expansionGoldTiles = GetSettingValue("ExpansionGoldTiles");
-        var regularGoldTiles = GetSettingValue("RegularGoldTiles");
-        var supplementalStr = GetSettingValue("SupplementalMinPlayers");
-
-        // Try expansion first, then regular
-        var goldTilesStr = expansionGoldTiles ?? regularGoldTiles;
-
-        var houseRules = new HouseRules
-        {
-            GoldTiles = int.TryParse(goldTilesStr, out var gt) ? gt : 2,
-            SupplementalMinPlayers = int.TryParse(supplementalStr, out var sm) ? sm : 5
-        };
-
-        Console.WriteLine($"[Settings] Updating game {gameId} with HouseRules: GoldTiles={houseRules.GoldTiles}, SupplementalMinPlayers={houseRules.SupplementalMinPlayers}");
+        var houseRules = BuildHouseRulesFromSettings();
 
         try
         {
-            var response = await Http.PutAsJsonAsync($"{Config.BaseUrl}/api/game/{gameId}/houserules", houseRules);
-            if (response.IsSuccessStatusCode)
-            {
-                Console.WriteLine($"[Settings] Successfully updated house rules for game {gameId}");
-            }
-            else
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"[Settings] Failed to update house rules for game {gameId}: {response.StatusCode} - {errorContent}");
-            }
+            await Http.PutAsJsonAsync($"{Config.BaseUrl}/api/game/{gameId}/houserules", houseRules);
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"[Settings] Error updating house rules: {ex.Message}");
+            // Silently fail - settings are saved locally regardless
         }
     }
 
@@ -271,6 +252,24 @@
     private void SetBoolValue(SettingItem setting, bool value)
     {
         setting.Value = value;
+    }
+
+    /// <summary>
+    /// Builds a complete HouseRules object from current settings.
+    /// This is the single source of truth for converting UI settings to HouseRules.
+    /// </summary>
+    private HouseRules BuildHouseRulesFromSettings()
+    {
+        var expansionGoldTiles = GetSettingValue("ExpansionGoldTiles");
+        var regularGoldTiles = GetSettingValue("RegularGoldTiles");
+        var goldTilesStr = expansionGoldTiles ?? regularGoldTiles;
+
+        return new HouseRules
+        {
+            GoldTiles = int.TryParse(goldTilesStr, out var gt) ? gt : 2,
+            SupplementalMinPlayers = int.TryParse(GetSettingValue("SupplementalMinPlayers"), out var sm) ? sm : 5,
+            GriefDodgy = bool.TryParse(GetSettingValue("GriefDodgy"), out var gd) && gd
+        };
     }
 
     private class SettingsResponse

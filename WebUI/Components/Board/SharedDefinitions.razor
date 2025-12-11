@@ -121,7 +121,6 @@
             _previousPlayerCount = Players.Count;
             _previousCurrentPlayerId = CurrentPlayer?.Id;
             _previousTheme = currentTheme;
-            Console.WriteLine($"[SharedDefinitions] RE-RENDERING: players={playersChanged}, currentPlayer={currentPlayerChanged}, theme={themeChanged}");
             return true;
         }
         return false;

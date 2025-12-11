@@ -26,6 +26,7 @@
     }
     else
     {
+        @* Desktop: Table layout *@
         <table class="game-table" @onkeydown="OnTableKeyDown" tabindex="0">
             <thead>
                 <tr>
@@ -80,6 +81,42 @@
             </tbody>
         </table>
         <div class="help-text">Double-click to open · F2 to rename · Delete key to remove</div>
+
+        @* Mobile: Card layout with big touch targets *@
+        <div class="game-cards">
+            @foreach (var game in savedGames)
+            {
+                var isSelected = selectedGameId == game.GameId;
+                var gameId = game.GameId;
+                <div class="game-card @(isSelected ? "selected" : "")" @onclick="() => SelectGame(gameId)">
+                    <div class="game-card-header">
+                        <div class="game-card-name">@game.GameName</div>
+                        <div class="game-card-actions">
+                            <button class="game-card-btn primary" title="Open game" @onclick="() => OpenGame(gameId)" @onclick:stopPropagation="true">▶️</button>
+                            <button class="game-card-btn danger" title="Delete game" @onclick="() => DeleteGame(gameId)" @onclick:stopPropagation="true">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="game-card-details">
+                        <div class="game-card-detail">
+                            <span class="game-card-detail-label">Players:</span>
+                            <span class="game-card-detail-value">@game.PlayerNames</span>
+                        </div>
+                        <div class="game-card-detail">
+                            <span class="game-card-detail-label">Moves:</span>
+                            <span class="game-card-detail-value">@game.TurnCount</span>
+                        </div>
+                        <div class="game-card-detail">
+                            <span class="game-card-detail-label">State:</span>
+                            <span class="game-card-detail-value">@game.GameState</span>
+                        </div>
+                        <div class="game-card-detail">
+                            <span class="game-card-detail-label">Saved:</span>
+                            <span class="game-card-detail-value">@game.SavedAt.ToLocalTime().ToString("g")</span>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
     }
 </div>
 

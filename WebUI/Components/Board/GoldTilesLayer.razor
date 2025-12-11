@@ -48,7 +48,6 @@
 
         if (!SetEquals(_previousGoldTileKeys, currentGoldKeys))
         {
-            Console.WriteLine($"[GoldTilesLayer] RE-RENDERING: gold tiles changed, count={currentGoldKeys.Count}");
             _previousGoldTileKeys = currentGoldKeys;
             return true;
         }

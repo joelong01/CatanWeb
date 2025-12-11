@@ -264,7 +264,6 @@
     private async Task OnSaveGame()
     {
         // TODO: Implement game save via GameConnection
-        Console.WriteLine("Save Game - Not implemented yet");
         await OnMenuAction.InvokeAsync();
     }
 
@@ -272,7 +271,6 @@
     {
         // This triggers a save on the EditPlayers page
         // For now, just close the menu - the page handles its own save
-        Console.WriteLine("Save Players - Use the Save button on the page");
         await OnMenuAction.InvokeAsync();
     }
 
@@ -284,7 +282,6 @@
 
         if (!gameIdMatch.Success)
         {
-            Console.WriteLine("Save Copy - Not on a game page");
             await OnMenuAction.InvokeAsync();
             return;
         }
@@ -322,22 +319,13 @@
 
                 if (result?.Success == true && !string.IsNullOrEmpty(result.NewGameId))
                 {
-                    Console.WriteLine($"Game copied: {gameId} -> {result.NewGameId} ({result.GameName})");
                     Navigation.NavigateTo($"/game/{result.NewGameId}");
                 }
-                else
-                {
-                    Console.WriteLine($"Save Copy failed: {result?.Message}");
-                }
-            }
-            else
-            {
-                Console.WriteLine($"Save Copy failed: {response.StatusCode}");
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Save Copy error: {ex.Message}");
+            // Silently fail - user can retry
         }
     }
 
@@ -357,13 +345,13 @@
 
     private async Task OnBalance()
     {
-        Console.WriteLine("Balance - Not implemented");
+        // TODO: Implement balance
         await OnMenuAction.InvokeAsync();
     }
 
     private async Task OnShowDebugWindow()
     {
-        Console.WriteLine("Show Debug Window - Not implemented");
+        // TODO: Implement debug window
         await OnMenuAction.InvokeAsync();
     }
 

@@ -41,7 +41,8 @@
             <BaseLayer Tiles="@GameModel.Tiles"
                        Harbors="@GameModel.Harbors"
                        AssetService="@AssetService"
-                       RolledNumber="@RolledNumber" />
+                       RolledNumber="@RolledNumber"
+                       FlippedTiles="@FlippedTiles" />
 
             <GoldTilesLayer Tiles="@GameModel.Tiles"
                             AssetService="@AssetService" />
@@ -85,7 +86,8 @@
                          PreviousCoordinates="@GameModel.Robber.PreviousCoordinates"
                          MovedByPlayerId="@GameModel.Robber.MovedBy"
                          ResourcesStolen="@GameModel.Robber.ResourcesStolen"
-                         Players="@Players" />
+                         Players="@Players"
+                         FakeOutCoordinates="@GameModel.Robber.FakeOutCoordinates" />
 
             @* Buildings - rendered last (top layer, above roads) *@
             <BuildingOverlay Buildings="@GameModel.Buildings"
@@ -166,6 +168,12 @@ else
     /// </summary>
     [Parameter]
     public EventCallback<MouseEventArgs> OnTileClick { get; set; }
+
+    /// <summary>
+    /// Set of tile coordinates that should be flipped (Grief Dodgy feature).
+    /// </summary>
+    [Parameter]
+    public HashSet<HexCoordinates>? FlippedTiles { get; set; }
 
     /// <summary>
     /// Computed viewBox string for the SVG.

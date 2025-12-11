@@ -28,6 +28,15 @@ namespace Catan3.Shared.Models
         public partial HexCoordinates? PreviousCoordinates { get; set; }
 
         /// <summary>
+        /// Gets or sets the fake-out coordinates for "Grief Dodgy" house rule animation.
+        /// When set, the robber animates to this tile first (Dodgy's best tile), pauses,
+        /// then animates to the actual Coordinates. Only set when GriefDodgy is enabled
+        /// and a non-Dodgy player is targeted.
+        /// </summary>
+        [ObservableProperty]
+        public partial HexCoordinates? FakeOutCoordinates { get; set; }
+
+        /// <summary>
         /// Gets or sets the ID of the player who moved the robber.
         /// </summary>
         [ObservableProperty]

@@ -37,7 +37,19 @@ Create one or more high-quality commits that:
 
 ---
 
-### 2. Review Diffs and Perform Self Code Review
+### 2. Format Code
+
+Before reviewing changes, run the .NET code formatter to ensure consistent style:
+
+```bash
+dotnet format
+```
+
+This formats all C# files in the solution according to the project's .editorconfig rules.
+
+---
+
+### 3. Review Diffs and Perform Self Code Review
 
 For each file that will be part of this check-in:
 
@@ -60,7 +72,7 @@ reviewed and justified.
 
 ---
 
-### 3. Organize Changes Into Logical Commits
+### 4. Organize Changes Into Logical Commits
 
 1. Decide on **logical units of work**:
    - Example: "Implement feature X", "Refactor Y", "Fix bug Z", "Docs update"
@@ -76,11 +88,11 @@ reviewed and justified.
 
 ---
 
-### 4. Update Project Summary and Documentation Files
+### 5. Update Project Summary and Documentation Files
 
 Keep the project's "narrative" in sync with the commit.
 
-#### 4.1 Update `.ai/project-summary.md`
+#### 5.1 Update `.ai/project-summary.md`
 
 1. Ensure `.ai/project-summary.md` captures the scope of *this* commit:
    - Brief description of the work being committed
@@ -90,7 +102,7 @@ Keep the project's "narrative" in sync with the commit.
    - TODOs or follow-up items that won't be handled in this commit
 2. Maintain existing style and MD linter rules (line length, headings, etc.).
 
-#### 4.2 Update Other Documentation as Needed
+#### 5.2 Update Other Documentation as Needed
 
 Depending on the nature of the changes:
 
@@ -106,7 +118,7 @@ Documentation should make it clear to a future reader **what changed and why**.
 
 ---
 
-### 5. Craft High-Quality Commit Messages
+### 6. Craft High-Quality Commit Messages
 
 For each logical commit you are about to create:
 
@@ -130,7 +142,7 @@ For each logical commit you are about to create:
 
 ---
 
-### 6. Create Session Summary
+### 7. Create Session Summary
 
 After committing your work, create a session summary file to document the work:
 
@@ -187,7 +199,7 @@ After committing your work, create a session summary file to document the work:
 
 ---
 
-### 7. Final Check and Commit
+### 8. Final Check and Commit
 
 1. Review staged changes one final time: `git diff --staged`
 2. Create the commit: `git commit`

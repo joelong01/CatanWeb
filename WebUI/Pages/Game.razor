@@ -185,7 +185,8 @@
                                     RolledNumber="@GetRolledNumber()"
                                     OnBuildingClick="@OnBuildingSpotClick"
                                     OnRoadClick="@OnRoadSpotClick"
-                                    OnTileClick="@OnTileClickForRobber" />
+                                    OnTileClick="@OnTileClickForRobber"
+                                    FlippedTiles="@GriefDodgyFlippedTiles" />
                 </div>
             </div>
             <!-- Board Measurements - shown here in portrait mode only -->
@@ -253,6 +254,38 @@
         </div>
     </div>
 }
+
+@* Grief Dodgy celebration animation - shows when Dodgy is targeted *@
+@if (_showGriefCelebration)
+{
+    <div class="grief-celebration">
+        @* Multiple burst points spread across the screen *@
+        @{
+            // Create 9 burst points in a 3x3 grid
+            var burstPoints = new[] {
+                (15, 20), (50, 15), (85, 20),
+                (20, 50), (50, 50), (80, 50),
+                (15, 80), (50, 85), (85, 80)
+            };
+            var particleIndex = 0;
+        }
+        @foreach (var (bx, by) in burstPoints)
+        {
+            @for (int i = 0; i < 12; i++)
+            {
+                var angle = i * 30 + particleIndex * 7; // Offset angles for variety
+                var distance = 80 + (i % 3) * 40; // Vary distances
+                var dx = Math.Cos(angle * Math.PI / 180) * distance;
+                var dy = Math.Sin(angle * Math.PI / 180) * distance;
+                var delay = (particleIndex % 8) * 0.08; // Stagger start times
+                <div class="grief-particle"
+                     style="left: @bx%; top: @by%; --dx: @(dx.ToString("F0"))px; --dy: @(dy.ToString("F0"))px; animation-delay: @(delay.ToString("F2"))s;">
+                </div>
+                particleIndex++;
+            }
+        }
+    </div>
+}
 </div>
 
 @code {
@@ -296,6 +329,9 @@
     private double _robberMenuY;
     private List<RobberTarget> _robberMenuTargets = [];
     private record RobberTarget(string Name, string Id);
+
+    // Grief Dodgy celebration animation state
+    private bool _showGriefCelebration;
 
     // Game name editing state
     private bool _isEditingName;
@@ -495,6 +531,76 @@
         }
 
         return "#FFFFFF";
+    }
+
+    /// <summary>
+    /// The player ID for Dodgy if present in the game.
+    /// </summary>
+    private const string DodgyPlayerIdConst = "Dodgy-001";
+
+    /// <summary>
+    /// Gets the Dodgy player ID if Dodgy is in the current game, null otherwise.
+    /// </summary>
+    private string? DodgyPlayerId
+    {
+        get
+        {
+            if (GameModel == null) return null;
+            return GameModel.Players.Any(p => p.Id == DodgyPlayerIdConst) ? DodgyPlayerIdConst : null;
+        }
+    }
+
+    /// <summary>
+    /// Whether "Grief Dodgy" mode is currently active.
+    /// True when: house rule enabled, Dodgy is in game, and game is in MustMoveRobber state.
+    /// </summary>
+    private bool IsGriefDodgyActive
+    {
+        get
+        {
+            if (GameModel == null) return false;
+            return GameModel.HouseRules.GriefDodgy
+                && DodgyPlayerId != null
+                && GameModel.GameState == GameState.MustMoveRobber;
+        }
+    }
+
+    /// <summary>
+    /// Gets the set of tiles that should be flipped during Grief Dodgy mode.
+    /// Flips tiles where Dodgy is NOT the sole owner (no Dodgy buildings, or shared with others).
+    /// </summary>
+    private HashSet<HexCoordinates>? GriefDodgyFlippedTiles
+    {
+        get
+        {
+            if (!IsGriefDodgyActive || GameModel == null) return null;
+
+            var flippedTiles = new HashSet<HexCoordinates>();
+
+            foreach (var tile in GameModel.Tiles)
+            {
+                // Skip sea tiles
+                if (tile.ResourceTileType == ResourceType.Sea) continue;
+
+                // Get all owners of buildings adjacent to this tile
+                var adjacentOwners = GameModel.Buildings.OwnedBuildings(tile.TileKey)
+                    .Select(b => b.OwnerId)
+                    .Where(id => id != null)
+                    .Distinct()
+                    .ToList();
+
+                // Flip if: no Dodgy buildings OR Dodgy shares with others
+                bool hasDodgy = adjacentOwners.Contains(DodgyPlayerIdConst);
+                bool hasOthers = adjacentOwners.Any(id => id != DodgyPlayerIdConst);
+
+                if (!hasDodgy || (hasDodgy && hasOthers))
+                {
+                    flippedTiles.Add(tile.TileKey);
+                }
+            }
+
+            return flippedTiles;
+        }
     }
 
     private string GetCurrentPlayerFirstName()
@@ -921,14 +1027,43 @@
             try
             {
                 CommandError = null;
-                await Connection.MoveRobberAsync(_robberMenuTile.TileKey, targetPlayerId);
+
+                // Check if we should trigger Grief Dodgy celebration
+                var shouldCelebrate = GameModel?.HouseRules.GriefDodgy == true
+                    && targetPlayerId == DodgyPlayerIdConst;
+
+                // Dismiss menu before animations start
+                var tileKey = _robberMenuTile.TileKey;
+                CloseRobberMenu();
+
+                await Connection.MoveRobberAsync(tileKey, targetPlayerId);
+
+                // Trigger celebration animation if targeting Dodgy
+                if (shouldCelebrate)
+                {
+                    await TriggerGriefCelebration();
+                }
             }
             catch (Exception ex)
             {
                 CommandError = $"Move robber failed: {ex.Message}";
             }
         }
-        CloseRobberMenu();
+    }
+
+    /// <summary>
+    /// Triggers the Grief Dodgy celebration animation and auto-hides after animation completes.
+    /// </summary>
+    private async Task TriggerGriefCelebration()
+    {
+        _showGriefCelebration = true;
+        StateHasChanged();
+
+        // Wait for animation to complete (4s animation + 0.5s buffer)
+        await Task.Delay(4500);
+
+        _showGriefCelebration = false;
+        StateHasChanged();
     }
 
     /// <summary>

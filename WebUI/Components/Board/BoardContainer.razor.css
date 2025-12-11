@@ -85,7 +85,8 @@
 /* Enable pointer events on interactive SVG elements */
 .board-interactive-layer :deep(.roads-overlay),
 .board-interactive-layer :deep(.buildings-overlay),
-.board-interactive-layer :deep(.robber-layer) {
+.board-interactive-layer :deep(.robber-layer),
+.board-interactive-layer :deep(.tile-overlay) {
     pointer-events: auto;
 }
 

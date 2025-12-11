@@ -52,6 +52,12 @@
     [Parameter]
     public int? RolledNumber { get; set; }
 
+    /// <summary>
+    /// Set of tile coordinates that should be flipped (Grief Dodgy feature).
+    /// </summary>
+    [Parameter]
+    public HashSet<HexCoordinates>? FlippedTiles { get; set; }
+
     // Track previous state for ShouldRender optimization
     private int _previousTileHash;
     private int _previousHarborHash;
@@ -59,21 +65,26 @@
     // Track previous rolled number for ShouldRender
     private int? _previousRolledNumber;
 
+    // Track previous flipped tiles for ShouldRender
+    private int _previousFlippedHash;
+
     /// <summary>
-    /// Re-render when tile/harbor layout changes, tiles become gold, OR rolled number changes.
+    /// Re-render when tile/harbor layout changes, tiles become gold, rolled number changes, OR flipped tiles change.
     /// </summary>
     protected override bool ShouldRender()
     {
         var tileHash = ComputeTileHash(Tiles);
         var harborHash = ComputeHarborHash(Harbors);
         var rolledNumberChanged = RolledNumber != _previousRolledNumber;
+        var flippedHash = FlippedTiles?.Count ?? 0; // Simple hash: just count for now
+        var flippedChanged = flippedHash != _previousFlippedHash;
 
-        if (tileHash != _previousTileHash || harborHash != _previousHarborHash || rolledNumberChanged)
+        if (tileHash != _previousTileHash || harborHash != _previousHarborHash || rolledNumberChanged || flippedChanged)
         {
-            Console.WriteLine($"[BaseLayer] RE-RENDERING: tileHash changed={tileHash != _previousTileHash}, harborHash changed={harborHash != _previousHarborHash}, rolledNumber changed={rolledNumberChanged}");
             _previousTileHash = tileHash;
             _previousHarborHash = harborHash;
             _previousRolledNumber = RolledNumber;
+            _previousFlippedHash = flippedHash;
             return true;
         }
         return false;
@@ -88,7 +99,9 @@
     {
         // Dim tiles that don't match the rolled number (if a number was rolled)
         var isDimmed = RolledNumber.HasValue && tile.Number != RolledNumber.Value && tile.Number > 0;
-        return tile.RenderSvg(isDimmed: isDimmed, index: index);
+        // Check if tile should be flipped (Grief Dodgy feature)
+        var isFlipped = FlippedTiles?.Contains(tile.TileKey) ?? false;
+        return tile.RenderSvg(isDimmed: isDimmed, index: index, isFlipped: isFlipped);
     }
 
     /// <summary>
