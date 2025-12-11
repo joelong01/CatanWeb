@@ -119,11 +119,18 @@ Directory.CreateDirectory(dataDir);
 var defaultDataPath = dbDetector.GetDefaultDataPath();
 
 // Always auto-seed on startup if database is empty (idempotent operation)
+// Wrapped in try/catch to prevent startup crash if database is unavailable (e.g., Azure SQL serverless auto-pause)
+try
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
     var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
     await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence, dbDetector.UseSqlServer);
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"WARNING: Database seeding failed on startup: {ex.Message}");
+    Console.WriteLine("The service will continue to start, but database operations may fail until connection is restored.");
 }
 
 // Handle --seed-database command (exit after seeding for explicit seed-only mode)
