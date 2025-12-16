@@ -54,8 +54,7 @@
             <circle r="@SpotRadius"
                     fill="url(#gradient-@playerId)"
                     stroke="@(colors?.Foreground ?? "#fff")"
-                    stroke-width="2"
-                    opacity="@(spot.IsHidden ? "0.2" : "0.7")" />
+                    stroke-width="2" />
 
             @* Text: build index or star count *@
             <text x="0" y="0"
@@ -64,8 +63,7 @@
                   font-family="Segoe UI, sans-serif"
                   font-size="@SpotFontSize"
                   font-weight="bold"
-                  fill="@(colors?.Foreground ?? "#fff")"
-                  opacity="@(spot.IsHidden ? "0.3" : "1")">@(spot.BuildIndex ?? spot.Stars.ToString())</text>
+                  fill="@(colors?.Foreground ?? "#fff")">@(spot.BuildIndex ?? spot.Stars.ToString())</text>
         </g>
     }
 </g>

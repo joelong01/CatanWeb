@@ -19,20 +19,22 @@ public static class CatanNumberSvg
     {
         var isHighProb = number == 6 || number == 8;
         var numberColor = isHighProb ? BoardSvgConstants.HighProbColor : BoardSvgConstants.NormalNumberColor;
+        var backgroundColor = isHighProb ? "black" : BoardSvgConstants.NumberTokenFill;
         var pips = GetPips(number);
 
         // Scale font sizes proportionally to radius (base radius = 30)
         var scale = radius / 30.0;
         var numberFontSize = BoardSvgConstants.NumberFontSize * scale;
-        var pipsFontSize = BoardSvgConstants.PipsFontSize * scale;
+        // High prob numbers get smaller stars (5 stars need to fit)
+        var pipsFontSize = (isHighProb ? BoardSvgConstants.PipsFontSize * 0.8 : BoardSvgConstants.PipsFontSize) * scale;
         var numberOffsetY = BoardSvgConstants.NumberOffsetY * scale;
         var pipsOffsetY = BoardSvgConstants.PipsOffsetY * scale;
 
         var sb = new StringBuilder();
         sb.AppendLine($@"<g class=""catan-number"">");
 
-        // Background circle
-        sb.AppendLine($@"  <circle cx=""0"" cy=""0"" r=""{radius}"" fill=""{BoardSvgConstants.NumberTokenFill}"" opacity=""{BoardSvgConstants.NumberTokenOpacity}"" stroke=""{BoardSvgConstants.NumberTokenStroke}"" stroke-width=""{BoardSvgConstants.NumberTokenStrokeWidth}""/>");
+        // Background circle - black for high probability (6, 8), blue for others
+        sb.AppendLine($@"  <circle cx=""0"" cy=""0"" r=""{radius}"" fill=""{backgroundColor}"" opacity=""{BoardSvgConstants.NumberTokenOpacity}"" stroke=""{BoardSvgConstants.NumberTokenStroke}"" stroke-width=""{BoardSvgConstants.NumberTokenStrokeWidth}""/>");
 
         // Roll number
         sb.AppendLine($@"  <text x=""0"" y=""{numberOffsetY}"" text-anchor=""middle"" dominant-baseline=""middle"" font-family=""sans-serif"" font-size=""{numberFontSize}"" font-weight=""bold"" fill=""{numberColor}"">{number}</text>");

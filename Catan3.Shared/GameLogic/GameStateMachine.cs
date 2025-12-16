@@ -584,6 +584,10 @@ namespace Catan3.Shared.GameLogic
                 gameModel.Players.Add(player);
             }
             gameModel.CurrentPlayerId = gameModel.Players[0].Id;
+
+            // Automatically transition to BeginResourceAllocation after selecting who goes first
+            gameModel.GameState = Shared.Models.GameState.BeginResourceAllocation;
+
             LogGameModel(gameModel);
             return Task.FromResult(gameModel);
         }

@@ -101,6 +101,7 @@ namespace Catan3.GameService.Controllers
         /// </summary>
         private async Task SaveGameToDatabase(GameStateMachine gameStateMachine, GameModel gameModel)
         {
+            Console.WriteLine($"[SAVE] SaveGameToDatabase called for game {gameModel.GameId}");
             try
             {
                 // Get the full serializable log (preserves undo/redo stacks)
@@ -121,11 +122,14 @@ namespace Catan3.GameService.Controllers
                 };
 
                 // Save to database
-                await _gamePersistence.SaveAsync(gameModel.GameId, compressed, metadata);
+                Console.WriteLine($"[SAVE] Calling _gamePersistence.SaveAsync for {gameModel.GameId}");
+                var result = await _gamePersistence.SaveAsync(gameModel.GameId, compressed, metadata);
+                Console.WriteLine($"[SAVE] SaveAsync returned {result} for {gameModel.GameId}");
                 _logger.LogEvent("Database Save", $"Game saved to database: {gameModel.GameId}");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[SAVE ERROR] {ex.Message}");
                 _logger.LogEvent("Database Save Error", $"Failed to save game to database: {ex.Message}", LogLevel.Error);
                 // Don't throw - database save failure shouldn't break the game operation
             }
@@ -284,6 +288,8 @@ namespace Catan3.GameService.Controllers
 
                 // Store in registry
                 GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);
+
+                // Note: Save happens automatically via GameStateMachine.LogGameModel() -> Log.SaveAsync()
 
                 // Return minimal response - client must join via SignalR to get GameModel
                 return Ok(new { success = true, gameId = gameModel.GameId });

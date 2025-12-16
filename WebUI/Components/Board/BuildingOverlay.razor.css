@@ -51,25 +51,26 @@
     user-select: none;
 }
 
-/* Stars state - showing board quality */
+/* Stars state - showing board quality (at/above slider threshold) */
 .building-spot-stars {
-    opacity: 0.8;
+    opacity: 0.9;
     cursor: default;
 }
 
-/* Buildable state - clickable */
+/* Buildable state - visible at 0.9, full opacity on hover */
 .building-spot-buildable {
-    opacity: 1;
+    opacity: 0.9;
     cursor: pointer;
+    pointer-events: auto;
 }
 
 .building-spot-buildable:hover {
+    opacity: 1;
     filter: brightness(1.2);
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
     z-index: 10;
 }
 
-/* Hidden state - invisible until hovered */
+/* Hidden state - below slider threshold, invisible until hovered */
 .building-spot-hidden {
     opacity: 0;
     pointer-events: auto;
@@ -78,7 +79,6 @@
 .building-spot-hidden:hover {
     opacity: 1;
     filter: brightness(1.2);
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
     z-index: 10;
 }
 

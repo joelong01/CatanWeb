@@ -23,7 +23,7 @@
 <PageTitle>Catan Game</PageTitle>
 
 <div class="game-viewport">
-<div class="game-container" data-layout-mode="@(_isPortrait ? "portrait" : "landscape")" data-game-active="@(IsGameActive ? "true" : "false")">
+<div class="game-container" data-layout-mode="@(_isPortrait ? "portrait" : "landscape")" data-game-active="@(IsGameActive ? "true" : "false")" data-allocation-phase="@(GameModel?.AllocationPhase() == true ? "true" : "false")">
     <!-- Portrait mode tab bar (hidden in landscape) -->
     <div class="portrait-tabs">
         <button class="portrait-tab @(_portraitTab == "board" ? "active" : "")" @onclick='() => SetPortraitTab("board")'>Board</button>
@@ -216,14 +216,14 @@
             </div>
 
             <!-- Portrait Game-Active: Bottom controls -->
-            @if (GameModel?.GameState == GameState.PickingBoard)
+            @if (GameModel?.AllocationPhase() == true)
             {
-                <!-- Board Measurements (during board picking) -->
+                <!-- Board Measurements (during allocation phase: PickingBoard through setup) -->
                 <div class="portrait-bottom-controls">
                     <div class="portrait-board-measurements" style="@GetCurrentPlayerGradient()">
                         <BoardMeasurement GameModel="@GameModel"
                                           OnShuffle="OnShuffleClick"
-                                          CanShuffle="true"
+                                          CanShuffle="@(GameModel?.GameState == GameState.PickingBoard)"
                                           ShownStars="@ShownStars"
                                           ShownStarsChanged="HandleShownStarsChanged"
                                           SelectedResourcesChanged="HandleSelectedResourcesChanged" />
@@ -883,6 +883,9 @@
 
     private void OnGameStateUpdated(GameModel gameModel)
     {
+        // Capture previous state before updating for tab switching logic
+        var previousState = GameModel?.GameState;
+
         GameModel = gameModel;
         GameStateService.UpdateGameModel(gameModel);
 
@@ -892,6 +895,24 @@
         {
             await EnsurePlayerProfilesLoadedAsync();
             GameStateService.UpdatePlayerData(PlayerProfiles);
+
+            // Auto-switch tabs in portrait mode based on game state transitions
+            if (_isPortrait)
+            {
+                // Switch to Players tab when entering states that require player interaction
+                if ((gameModel.GameState == GameState.FinishedRollOrder && previousState != GameState.FinishedRollOrder) ||
+                    (gameModel.GameState == GameState.PickSupplementalPlayers && previousState != GameState.PickSupplementalPlayers))
+                {
+                    await SetPortraitTab("players");
+                }
+                // Switch to Board tab when leaving FinishedRollOrder (after GoFirst selection)
+                // Note: PickSupplementalPlayers doesn't auto-switch away - user clicks Done button
+                else if (gameModel.GameState != GameState.FinishedRollOrder && previousState == GameState.FinishedRollOrder)
+                {
+                    await SetPortraitTab("board");
+                }
+            }
+
             StateHasChanged();
         });
     }
@@ -1033,6 +1054,8 @@
             {
                 CommandError = null;
                 await Connection.GoFirstAsync(targetPlayerId);
+                // Tab switching to board is handled automatically by OnGameStateUpdated
+                // when state transitions from FinishedRollOrder to BeginResourceAllocation
             }
             catch (Exception ex)
             {
@@ -1301,37 +1324,6 @@
         {
             return null;
         }
-    }
-
-    /// <summary>
-    /// Calculates viewBox bounds for coordinate conversion.
-    /// </summary>
-    private (double minX, double minY, double width, double height) CalculateViewBoxBounds()
-    {
-        if (GameModel == null) return (0, 0, 0, 0);
-
-        double minX = double.MaxValue, maxX = double.MinValue;
-        double minY = double.MaxValue, maxY = double.MinValue;
-
-        foreach (var tile in GameModel.Tiles)
-        {
-            var (cx, cy) = BoardGeometry.AxialToPixel(tile.TileKey.Q, tile.TileKey.R);
-            var vertices = BoardGeometry.GetHexVertices(cx, cy);
-            foreach (var v in vertices)
-            {
-                minX = Math.Min(minX, v.x);
-                maxX = Math.Max(maxX, v.x);
-                minY = Math.Min(minY, v.y);
-                maxY = Math.Max(maxY, v.y);
-            }
-        }
-
-        minX -= BoardSvgConstants.Padding;
-        minY -= BoardSvgConstants.Padding;
-        maxX += BoardSvgConstants.Padding;
-        maxY += BoardSvgConstants.Padding;
-
-        return (minX, minY, maxX - minX, maxY - minY);
     }
 
     private async Task OnPurchaseClick(Entitlement entitlement)

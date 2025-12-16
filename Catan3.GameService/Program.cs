@@ -79,7 +79,10 @@ builder.Services.Configure<GameApiOptions>(options =>
 
 // Register persistence services
 builder.Services.AddScoped<IGamePersistence, GamePersistenceService>();
-builder.Services.AddSingleton<IPersistenceService, NullPersistenceService>();
+// DatabaseBackedPersistenceService wraps IGamePersistence for Log<T> compatibility
+// This enables GameStateMachine.LogGameModel() -> Log.SaveAsync() -> database save
+builder.Services.AddSingleton<IPersistenceService, DatabaseBackedPersistenceService>();
+Console.WriteLine("[STARTUP] Using DatabaseBackedPersistenceService for game persistence");
 
 // Register SignalR-based client notification service for real-time updates
 builder.Services.AddSingleton<SignalRNotificationService>();

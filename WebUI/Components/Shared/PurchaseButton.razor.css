@@ -1,8 +1,8 @@
 .purchase-button {
-    /* Flex to fill available width, maintain aspect ratio */
+    /* Grid cell fills available space, maintain aspect ratio */
     flex: 1 1 auto;
-    min-width: 50px;
-    max-width: 80px;
+    min-width: 70px;
+    max-width: 120px;
     aspect-ratio: 7 / 9;
     perspective: 1000px;
     cursor: pointer;
@@ -43,31 +43,34 @@
 
 .purchase-button-back .back-icon-wrapper {
     position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 28px;
-    height: 28px;
-    border-radius: 4px;
+    top: 6px;
+    right: 6px;
+    width: 42px;
+    height: 42px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .purchase-button-back .back-icon {
-    width: 20px;
-    height: 20px;
+    width: 32px;
+    height: 32px;
     object-fit: contain;
 }
 
 .purchase-button-back .count-text {
     position: absolute;
     bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
     color: var(--text-primary, #ffffff);
     font-weight: bold;
-    font-size: 12px;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-    background-color: rgba(0, 0, 0, 0.4);
-    padding: 2px 6px;
+    font-size: 16px;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    background-color: rgba(0, 0, 0, 0.85);
+    padding: 3px 8px;
     border-radius: 4px;
 }
 
@@ -88,8 +91,8 @@
 }
 
 .purchase-button-front .icon {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     object-fit: contain;
 }
 

@@ -584,10 +584,13 @@ namespace Catan3.Shared.Utility
             _logger?.TraceMessage("NOT IN TEST MODE");
             try
             {
-                var uncompressedLog = GetSerializableLog(); // this always comes back the same
+                var uncompressedLog = GetSerializableLog();
                 var json = JsonHelper.Serialize(uncompressedLog);
                 var compressedBytes = JsonHelper.Compress(json);
-                await PersistService.SaveAsync(FilePath, compressedBytes);
+
+                // Pass gameId as location for database persistence (not FilePath)
+                var gameModel = CurrentState();
+                await PersistService.SaveAsync(gameModel.GameId, compressedBytes);
             }
             catch (Exception ex)
             {

@@ -82,6 +82,7 @@ namespace Catan3.GameService.Services
         /// </summary>
         private async Task SaveGameToDatabaseAsync(GameStateMachine gameStateMachine, GameModel gameModel)
         {
+            Console.WriteLine($"[SAVE-ASYNC] SaveGameToDatabaseAsync called for game {gameModel.GameId}");
             try
             {
                 // Create a new scope for database operations (since we're a singleton)

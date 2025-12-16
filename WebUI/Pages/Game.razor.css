@@ -16,13 +16,13 @@
 
 /* =============================================================================
    CSS VERSION - UPDATE THIS ONE LINE TO CHANGE ALL VERSION STRINGS BELOW
-   Current: v41 (2025-12-15)
+   Current: v42 (2025-12-15)
    ============================================================================= */
 
 /* CSS version indicator - positioned inside game container, scales with content */
 /* Shows environment (local/web) and orientation */
 .game-container[data-layout-mode="landscape"][data-env="local"]::after {
-    content: "CSS 2025-12-15 v41 LOCAL landscape";
+    content: "CSS 2025-12-16 v2 LOCAL landscape";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -32,7 +32,7 @@
 }
 
 .game-container[data-layout-mode="landscape"][data-env="web"]::after {
-    content: "CSS 2025-12-15 v41 WEB landscape";
+    content: "CSS 2025-12-16 v2 WEB landscape";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -42,7 +42,7 @@
 }
 
 .game-container[data-layout-mode="portrait"][data-env="local"]::after {
-    content: "CSS 2025-12-15 v41 LOCAL portrait";
+    content: "CSS 2025-12-16 v2 LOCAL portrait";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -52,7 +52,7 @@
 }
 
 .game-container[data-layout-mode="portrait"][data-env="web"]::after {
-    content: "CSS 2025-12-15 v41 WEB portrait";
+    content: "CSS 2025-12-16 v2 WEB portrait";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -312,28 +312,125 @@
     display: none;
 }
 
-/* Portrait + Game Active: Hide tabs */
-.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-tabs {
-    display: none;
-}
-
-/* Portrait + Game Active: Game grid takes full height (no tabs) */
+/* Portrait mode: Tabs always visible - game grid accounts for tab height */
 .game-container[data-layout-mode="portrait"][data-game-active="true"] .game-grid {
-    height: 100%;
+    height: calc(100% - var(--portrait-tab-height, 60px));
 }
 
-/* Portrait + Game Active: Center panel is always visible and fills space */
-.game-container[data-layout-mode="portrait"][data-game-active="true"] .center-panel {
+/* Portrait + Game Active: All panels hidden by default, tabs control visibility */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .left-panel,
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .center-panel,
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .right-panel {
+    display: none !important;
+}
+
+/* Portrait + Game Active: Show the active tab's panel */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .left-panel.portrait-active,
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .right-panel.portrait-active {
+    display: flex !important;
+    flex: 1;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+/* Portrait + Game Active: Center panel when active */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .center-panel.portrait-active {
     display: flex !important;
     flex: 1;
     flex-direction: column;
     align-items: stretch;
 }
 
-/* Portrait + Game Active: Hide left/right panels */
-.game-container[data-layout-mode="portrait"][data-game-active="true"] .left-panel,
-.game-container[data-layout-mode="portrait"][data-game-active="true"] .right-panel {
+/* Portrait + Allocation Phase: All panels hidden by default, tabs control visibility */
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .left-panel,
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .center-panel,
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .right-panel {
     display: none !important;
+}
+
+/* Portrait + Allocation Phase: Show the active tab's panel */
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .left-panel.portrait-active,
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .right-panel.portrait-active {
+    display: flex !important;
+    flex: 1;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+/* Portrait + Allocation Phase: Center panel when active */
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .center-panel.portrait-active {
+    display: flex !important;
+    flex: 1;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+/* Portrait + Allocation Phase: Show bottom controls for BoardMeasurement */
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .portrait-bottom-controls {
+    display: flex;
+    flex-direction: row;
+    padding: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+/* Portrait + Allocation Phase: Board area constrained to allow bottom controls */
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .portrait-board-area {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Portrait + Allocation Phase: Show overlay buttons */
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .portrait-overlay-btn {
+    display: flex;
+    position: absolute;
+    z-index: 10;
+    width: 120px;
+    height: 120px;
+    border: none;
+    border-radius: 12px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0.9;
+}
+
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .portrait-overlay-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .portrait-overlay-btn .btn-icon {
+    font-size: 48px;
+    color: white;
+}
+
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .portrait-next-btn {
+    top: 10px;
+    left: 10px;
+}
+
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .portrait-undo-btn {
+    top: 10px;
+    right: 10px;
+}
+
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .portrait-state-message {
+    display: block;
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0.9;
+    white-space: nowrap;
 }
 
 /* Portrait + Game Active: Board area is relative for overlay positioning */
@@ -403,7 +500,8 @@
 }
 
 /* Add top padding to board container to make room for state message */
-.game-container[data-layout-mode="portrait"][data-game-active="true"] .game-board {
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .game-board,
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .game-board {
     padding-top: 40px;
 }
 
@@ -438,11 +536,36 @@
     align-items: center;
 }
 
-/* Purchase grid in portrait-game-active: 2x2 layout */
+/* Purchase grid in portrait-game-active: 2x2 layout with larger buttons */
 .game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-purchase .purchase-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 4px;
+    gap: 8px;
+    padding: 4px;
+}
+
+/* Larger purchase buttons in portrait mode */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-purchase ::deep .purchase-button {
+    max-width: 120px;
+    min-width: 80px;
+}
+
+/* Larger icons in portrait mode */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-purchase ::deep .purchase-button-front .icon {
+    width: 48px;
+    height: 48px;
+}
+
+/* Adjust label and count spacing in portrait */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-purchase ::deep .purchase-button-front .label {
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-purchase ::deep .purchase-button-front .unspent-count {
+    font-size: 18px;
+    top: 6px;
+    left: 8px;
 }
 
 /* Board measurements in portrait-bottom-controls: full width */
@@ -490,7 +613,11 @@
     display: flex;
     justify-content: center;
     width: 100%;
-    margin-top: 10px;
+    transform: scale(0.75);
+    transform-origin: top center;
+    /* BoardMeasurement panel is ~300px tall. Scale 0.6 means it renders at 180px but occupies 300px.
+       Negative margin removes the 120px (40%) of unused space */
+    margin-bottom: -120px;
 }
 
 /* Landscape mode: show on Controls panel (left column) */
@@ -645,11 +772,12 @@
    Purchase Controls
    ============================================================================= */
 
+/* Purchase grid: 2x2 layout for larger, more readable buttons */
 .purchase-grid {
-    display: flex;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
     justify-content: center;
-    flex-wrap: nowrap;
     width: 100%;
 }
 

@@ -156,14 +156,63 @@ public class GamePersistenceService : IGamePersistence
 }
 
 /// <summary>
-/// Stub IPersistenceService for Log compatibility. Does nothing - actual persistence via IGamePersistence.
+/// IPersistenceService implementation that delegates to IGamePersistence for database saves.
+/// The 'location' parameter is the gameId (passed from Log.SaveAsync).
 /// </summary>
-public class NullPersistenceService : IPersistenceService
+public class DatabaseBackedPersistenceService : IPersistenceService
 {
+    private readonly IServiceScopeFactory _scopeFactory;
+
+    public DatabaseBackedPersistenceService(IServiceScopeFactory scopeFactory)
+    {
+        _scopeFactory = scopeFactory;
+    }
+
     public string? Location => null;
     public string SaveDirectory { get; set; } = string.Empty;
 
     public Task<byte[]?> OpenAsync(string location) => Task.FromResult<byte[]?>(null);
-    public Task<bool> SaveAsync(string location, byte[] data) => Task.FromResult(true);
+
+    public async Task<bool> SaveAsync(string gameId, byte[] data)
+    {
+        if (string.IsNullOrEmpty(gameId))
+        {
+            Console.WriteLine("[PERSIST] SaveAsync called with empty gameId, skipping");
+            return false;
+        }
+
+        Console.WriteLine($"[PERSIST] SaveAsync for gameId: {gameId}, data size: {data.Length}");
+
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
+
+            // Get metadata from the in-memory GameStateMachine
+            var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
+            var gameModel = gameStateMachine.GetCurrentState();
+
+            var metadata = new GameMetadata
+            {
+                GameName = gameModel.GameName,
+                GameState = gameModel.GameState.ToString(),
+                StartedBy = "WebUI",
+                PlayerCount = gameModel.Players.Count,
+                GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
+                PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
+                TurnCount = gameStateMachine.GetSerializableLog().DoneCount
+            };
+
+            var result = await gamePersistence.SaveAsync(gameId, data, metadata);
+            Console.WriteLine($"[PERSIST] SaveAsync result for {gameId}: {result}");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PERSIST ERROR] SaveAsync failed for {gameId}: {ex.Message}");
+            return false;
+        }
+    }
+
     public Task<bool> WriteTextAsync(string location, string content) => Task.FromResult(true);
 }
