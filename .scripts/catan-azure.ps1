@@ -31,7 +31,7 @@
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("ui", "database", "game-service", "help")]
+    [ValidateSet("ui", "database", "game-service", "help", "doctor", "install", "deploy", "clean")]
     [string]$Noun,
 
     [Parameter(Position = 1)]
@@ -46,6 +46,9 @@ param(
 
     [Parameter()]
     [switch]$HashTable,
+
+    [Parameter()]
+    [switch]$Perf,
 
     [Parameter()]
     [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
@@ -579,12 +582,27 @@ function Install-Database {
         Write-Log -Level "INFO" -Message "SQL Server exists: $sqlServerName"
     }
 
+    # Enable public network access (required for Azure App Service to connect without VNet/Private Endpoint)
+    Write-Log -Level "INFO" -Message "Checking public network access..."
+    $serverInfo = Invoke-AzCommand "sql server show --name $sqlServerName --resource-group $rgName --query publicNetworkAccess -o tsv" -FailOnError $false
+    if ($serverInfo -ne "Enabled") {
+        Write-Log -Level "INFO" -Message "Enabling public network access for SQL Server..."
+        Invoke-AzCommand "sql server update --name $sqlServerName --resource-group $rgName --enable-public-network true" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Public network access enabled"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Public network access already enabled"
+    }
+
     # Configure firewall to allow Azure services
     Write-Log -Level "INFO" -Message "Configuring firewall rules..."
     $fwExists = Invoke-AzCommand "sql server firewall-rule show --server $sqlServerName --resource-group $rgName --name AllowAzureServices" -FailOnError $false -JsonOutput
     if (-not $fwExists) {
         Invoke-AzCommand "sql server firewall-rule create --server $sqlServerName --resource-group $rgName --name AllowAzureServices --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0" -SuppressOutput
         Write-Log -Level "INFO" -Message "Firewall rule created: AllowAzureServices"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Firewall rule AllowAzureServices already exists"
     }
 
     # Check if database exists
@@ -643,11 +661,16 @@ function Deploy-Database {
 
     # Step 1: Configure connection string (if not already configured or forced)
     if (-not $doctor.checks.connectionString -or $Force) {
-        $connectionString = "Server=tcp:$fqdn,1433;Database=$databaseName;Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+        # Connection string with connection pooling settings:
+        # - Pooling=True (default, explicit for clarity)
+        # - Min Pool Size=1 (keep at least 1 connection warm)
+        # - Max Pool Size=30 (reasonable for single-instance App Service)
+        # - Connection Timeout=30 (wait up to 30s for connection from pool)
+        $connectionString = "Server=tcp:$fqdn,1433;Database=$databaseName;Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Pooling=True;Min Pool Size=1;Max Pool Size=30;"
 
         Write-Log -Level "INFO" -Message "Configuring SQL connection string in App Service..."
         Invoke-AzCommand "webapp config connection-string set --name $appName --resource-group $rgName --connection-string-type SQLAzure --settings AzureSql=`"$connectionString`"" -SuppressOutput
-        Write-Log -Level "INFO" -Message "Connection string configured"
+        Write-Log -Level "INFO" -Message "Connection string configured (with connection pooling)"
     }
     else {
         Write-Log -Level "INFO" -Message "Connection string already configured - skipping"
@@ -784,12 +807,14 @@ function Get-DatabaseDoctor {
         timestamp    = (Get-Date -Format "o")
         # Detailed checks for each install/deploy step
         checks       = @{
-            resourceGroup       = $false
-            sqlServer           = $false
-            firewallRule        = $false
-            database            = $false
-            connectionString    = $false
-            managedIdentityUser = $false
+            resourceGroup        = $false
+            sqlServer            = $false
+            publicNetworkAccess  = $false
+            firewallRule         = $false
+            database             = $false
+            connectionString     = $false
+            connectionPooling    = $false
+            managedIdentityUser  = $false
             gameServiceConnected = $false
         }
         # What actions are needed
@@ -813,6 +838,14 @@ function Get-DatabaseDoctor {
             return $result
         }
         $result.checks.sqlServer = $true
+
+        # Check public network access (required for App Service to connect without VNet)
+        Write-Log -Level "DEBUG" -Message "Checking public network access" -TraceLevel $TraceLevel
+        $publicAccess = Invoke-AzCommand "sql server show --name $sqlServerName --resource-group $rgName --query publicNetworkAccess -o tsv" -FailOnError $false
+        $result.checks.publicNetworkAccess = ($publicAccess -eq "Enabled")
+        if (-not $result.checks.publicNetworkAccess) {
+            $result.needsInstall = $true
+        }
 
         # Check firewall rule exists
         Write-Log -Level "DEBUG" -Message "Checking firewall rule" -TraceLevel $TraceLevel
@@ -852,6 +885,7 @@ function Get-DatabaseDoctor {
                 $result.checks.gameServiceConnected = $true
                 $result.checks.managedIdentityUser = $true  # If connected, user must exist
                 $result.checks.connectionString = $true     # If connected, connection string must be configured
+                $result.checks.connectionPooling = $true    # Assume pooling is configured if connected
                 $result.healthy = $true
             }
         }
@@ -862,6 +896,15 @@ function Get-DatabaseDoctor {
             # Only check connection string from Azure if GameService not responding
             $connStrings = Invoke-AzCommand "webapp config connection-string list --name $gameServiceAppName --resource-group $rgName" -FailOnError $false -JsonOutput
             $result.checks.connectionString = ($connStrings -and $connStrings.AzureSql)
+
+            # Check if connection pooling is configured in connection string
+            if ($connStrings -and $connStrings.AzureSql) {
+                $connStr = $connStrings.AzureSql.value
+                $result.checks.connectionPooling = ($connStr -match "Pooling=True" -or $connStr -match "Min Pool Size")
+                if (-not $result.checks.connectionPooling) {
+                    $result.needsDeploy = $true
+                }
+            }
 
             if (-not $result.note) {
                 $result.note = "GameService not responding - may need deploy or database may be resuming from pause"
@@ -957,7 +1000,16 @@ function Install-AppServicePlan {
         Write-Log -Level "INFO" -Message "App Service Plan created: $planName"
     }
     else {
-        Write-Log -Level "INFO" -Message "App Service Plan exists: $planName"
+        # Check if SKU needs upgrade (F1/D1 don't support Always On)
+        $currentSku = $existing.sku.name
+        if ($currentSku -in @("F1", "D1")) {
+            Write-Log -Level "INFO" -Message "Upgrading App Service Plan from $currentSku to B1 (required for Always On)"
+            Invoke-AzCommand "appservice plan update --name $planName --resource-group $rgName --sku B1" -SuppressOutput
+            Write-Log -Level "INFO" -Message "App Service Plan upgraded to B1"
+        }
+        else {
+            Write-Log -Level "INFO" -Message "App Service Plan exists: $planName (SKU: $currentSku)"
+        }
     }
 
     return $true
@@ -1302,8 +1354,10 @@ function Get-GameServiceDoctor {
         checks      = @{
             resourceGroup    = $false
             appServicePlan   = $false
+            planSkuOk        = $false
             webApp           = $false
             managedIdentity  = $false
+            alwaysOn         = $false
             codeDeployed     = $false
             healthEndpoint   = $false
         }
@@ -1314,6 +1368,8 @@ function Get-GameServiceDoctor {
         # What actions are needed
         needsInstall   = $false
         needsDeploy    = $false
+        # Current SKU for display
+        currentSku     = $null
     }
 
     try {
@@ -1322,10 +1378,20 @@ function Get-GameServiceDoctor {
         $rg = Invoke-AzCommand "group show --name $rgName" -FailOnError $false -JsonOutput
         $result.checks.resourceGroup = ($null -ne $rg)
 
-        # Check App Service Plan exists
+        # Check App Service Plan exists and has correct SKU
         Write-Log -Level "DEBUG" -Message "Checking app service plan: $planName" -TraceLevel $TraceLevel
         $plan = Invoke-AzCommand "appservice plan show --name $planName --resource-group $rgName" -FailOnError $false -JsonOutput
         $result.checks.appServicePlan = ($null -ne $plan)
+        if ($plan) {
+            $result.currentSku = $plan.sku.name
+            # F1 (Free) and D1 (Shared) don't support Always On - need B1 or higher
+            $result.checks.planSkuOk = ($plan.sku.name -notin @("F1", "D1"))
+            if (-not $result.checks.planSkuOk) {
+                $result.needsInstall = $true
+                if (-not $result.performanceWarnings) { $result.performanceWarnings = @() }
+                $result.performanceWarnings += "App Service Plan SKU is $($plan.sku.name) - upgrade to B1 or higher for Always On support"
+            }
+        }
 
         # Check web app exists
         Write-Log -Level "DEBUG" -Message "Checking web app: $appName" -TraceLevel $TraceLevel
@@ -1343,6 +1409,14 @@ function Get-GameServiceDoctor {
         Write-Log -Level "DEBUG" -Message "Checking managed identity" -TraceLevel $TraceLevel
         $identity = Invoke-AzCommand "webapp identity show --name $appName --resource-group $rgName --query principalId -o tsv" -FailOnError $false
         $result.checks.managedIdentity = (-not [string]::IsNullOrWhiteSpace($identity))
+
+        # Check Always On setting (critical for performance - prevents cold starts)
+        Write-Log -Level "DEBUG" -Message "Checking Always On setting" -TraceLevel $TraceLevel
+        $alwaysOn = Invoke-AzCommand "webapp config show --name $appName --resource-group $rgName --query alwaysOn -o tsv" -FailOnError $false
+        $result.checks.alwaysOn = ($alwaysOn -eq "true")
+        if (-not $result.checks.alwaysOn) {
+            $result.performanceWarnings = @("Always On is disabled - app will have cold start delays")
+        }
 
         # Get current git commit
         $result.currentCommit = Get-GitCommitHash
@@ -1671,12 +1745,16 @@ function Show-DoctorResult {
                 "appServicePlan" { "App Service Plan" }
                 "webApp" { "Web App" }
                 "managedIdentity" { "Managed Identity" }
+                "alwaysOn" { "Always On" }
+                "planSkuOk" { "Plan SKU" }
                 "codeDeployed" { "Code Deployed" }
                 "healthEndpoint" { "Health Endpoint" }
                 "sqlServer" { "SQL Server" }
+                "publicNetworkAccess" { "Public Network Access" }
                 "firewallRule" { "Firewall Rule" }
                 "database" { "Database" }
                 "connectionString" { "Connection String" }
+                "connectionPooling" { "Connection Pooling" }
                 "managedIdentityUser" { "DB User (MI)" }
                 "gameServiceConnected" { "GameService Connected" }
                 "gameServiceUrl" { "GameService URL" }
@@ -1686,8 +1764,10 @@ function Show-DoctorResult {
 
             $action = ""
             if (-not $Result.checks[$key]) {
-                $action = if ($key -in @("codeDeployed", "healthEndpoint", "connectionString", "managedIdentityUser", "gameServiceConnected", "siteResponding")) {
+                $action = if ($key -in @("codeDeployed", "healthEndpoint", "connectionString", "connectionPooling", "managedIdentityUser", "gameServiceConnected", "siteResponding")) {
                     "run: deploy"
+                } elseif ($key -eq "planSkuOk") {
+                    "current: $($Result.currentSku), need: B1+"
                 } else {
                     "run: install"
                 }
@@ -1750,6 +1830,15 @@ function Show-DoctorResult {
         Write-Host "UNKNOWN" -ForegroundColor Red
     }
 
+    # Show performance warnings if any
+    if ($Result.performanceWarnings) {
+        Write-Host ""
+        Write-Host "Performance Warnings:" -ForegroundColor Yellow
+        foreach ($warning in $Result.performanceWarnings) {
+            Write-Host "  ⚠️  $warning" -ForegroundColor Yellow
+        }
+    }
+
     # Show note if any
     if ($Result.note) {
         Write-Host "  Note: $($Result.note)" -ForegroundColor Yellow
@@ -1759,6 +1848,116 @@ function Show-DoctorResult {
     if ($Result.error) {
         Write-Host "  Error: $($Result.error)" -ForegroundColor Red
     }
+}
+
+<#
+.SYNOPSIS
+    Runs a performance test against the GameService API.
+.DESCRIPTION
+    Makes multiple HTTP requests to test cold start and warm response times.
+.PARAMETER Config
+    Azure configuration hashtable
+.OUTPUTS
+    Performance test results with timing information
+#>
+function Test-GameServicePerformance {
+    param(
+        [hashtable]$Config
+    )
+
+    $url = $Config.gameService.url
+    $testCount = 5
+    $times = @()
+
+    Write-Host ""
+    Write-Host "Performance Test: $url" -ForegroundColor Cyan
+    Write-Host "=" * 50
+    Write-Host ""
+    Write-Host "Running $testCount sequential requests to /api/players..."
+    Write-Host ""
+
+    for ($i = 1; $i -le $testCount; $i++) {
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        try {
+            $response = Invoke-RestMethod -Uri "$url/api/players" -TimeoutSec 60 -ErrorAction Stop
+            $stopwatch.Stop()
+            $elapsed = $stopwatch.Elapsed.TotalSeconds
+            $times += $elapsed
+
+            $color = if ($elapsed -lt 1) { "Green" } elseif ($elapsed -lt 3) { "Yellow" } else { "Red" }
+            $status = if ($elapsed -lt 1) { "FAST" } elseif ($elapsed -lt 3) { "SLOW" } else { "VERY SLOW" }
+
+            Write-Host ("  Request {0}: {1,6:N2}s  " -f $i, $elapsed) -NoNewline
+            Write-Host $status -ForegroundColor $color
+        }
+        catch {
+            $stopwatch.Stop()
+            Write-Host ("  Request {0}: FAILED - {1}" -f $i, $_.Exception.Message) -ForegroundColor Red
+        }
+
+        # Small delay between requests
+        Start-Sleep -Milliseconds 200
+    }
+
+    Write-Host ""
+    Write-Host "Summary:" -ForegroundColor Cyan
+    Write-Host "-" * 30
+
+    if ($times.Count -gt 0) {
+        $min = ($times | Measure-Object -Minimum).Minimum
+        $max = ($times | Measure-Object -Maximum).Maximum
+        $avg = ($times | Measure-Object -Average).Average
+        $first = $times[0]
+        $warmAvg = if ($times.Count -gt 1) { ($times[1..($times.Count-1)] | Measure-Object -Average).Average } else { $first }
+
+        Write-Host ("  First request (cold):  {0,6:N2}s" -f $first)
+        Write-Host ("  Warm average:          {0,6:N2}s" -f $warmAvg)
+        Write-Host ("  Min / Max:             {0,6:N2}s / {1:N2}s" -f $min, $max)
+        Write-Host ""
+
+        # Performance assessment
+        if ($first -gt 10) {
+            Write-Host "⚠️  Cold start is very slow (>10s). Check:" -ForegroundColor Yellow
+            Write-Host "   - App Service Plan SKU (needs B1+ for Always On)" -ForegroundColor Gray
+            Write-Host "   - Always On setting (prevents cold starts)" -ForegroundColor Gray
+            Write-Host "   - Azure SQL auto-pause (may need to wake up)" -ForegroundColor Gray
+        }
+        elseif ($first -gt 5) {
+            Write-Host "⚠️  Cold start is slow (>5s). Consider:" -ForegroundColor Yellow
+            Write-Host "   - Enabling Always On if not already enabled" -ForegroundColor Gray
+        }
+        else {
+            Write-Host "✅ Cold start is acceptable (<5s)" -ForegroundColor Green
+        }
+
+        if ($warmAvg -gt 2) {
+            Write-Host "⚠️  Warm requests are slow (>2s avg). Check:" -ForegroundColor Yellow
+            Write-Host "   - Connection pooling in connection string" -ForegroundColor Gray
+            Write-Host "   - Azure SQL tier and capacity" -ForegroundColor Gray
+        }
+        elseif ($warmAvg -gt 1) {
+            Write-Host "⚠️  Warm requests are a bit slow (>1s avg)" -ForegroundColor Yellow
+        }
+        else {
+            Write-Host "✅ Warm requests are good (<1s avg)" -ForegroundColor Green
+        }
+
+        # Check for high variance (indicates connection issues)
+        if ($times.Count -gt 2) {
+            $variance = $max - $min
+            if ($variance -gt 5) {
+                Write-Host "⚠️  High variance detected ({0:N2}s). May indicate:" -f $variance -ForegroundColor Yellow
+                Write-Host "   - Connection pool exhaustion" -ForegroundColor Gray
+                Write-Host "   - Network instability" -ForegroundColor Gray
+                Write-Host "   - Token refresh issues (Managed Identity)" -ForegroundColor Gray
+            }
+        }
+    }
+    else {
+        Write-Host "  No successful requests - check service health" -ForegroundColor Red
+    }
+
+    Write-Host ""
 }
 
 #endregion
@@ -1779,7 +1978,8 @@ Catan Azure Management Script
 Manages Azure resources for the Catan3 application.
 
 Usage:
-    ./catan-azure.ps1 <noun> <verb> [options]
+    ./catan-azure.ps1 <verb>              Run verb on ALL resources
+    ./catan-azure.ps1 <noun> <verb>       Run verb on specific resource
 
 Nouns:
     ui              WebUI Blazor application
@@ -1797,19 +1997,18 @@ Options:
     -Force          Force deploy even if no changes detected
     -Json           Output doctor results as JSON
     -HashTable      Output doctor results as PowerShell hashtable
+    -Perf           Run performance test (game-service doctor only)
     -TraceLevel     Output verbosity (ERROR, WARN, INFO, DEBUG)
 
 Examples:
-    ./catan-azure.ps1 game-service install     Create GameService resources
+    ./catan-azure.ps1 doctor                   Check health of ALL resources
+    ./catan-azure.ps1 doctor -Perf             Check all health + run perf test
+    ./catan-azure.ps1 install                  Create ALL Azure resources
+    ./catan-azure.ps1 deploy                   Deploy ALL code/data
+    ./catan-azure.ps1 game-service install     Create GameService resources only
     ./catan-azure.ps1 database deploy          Configure SQL connection string
     ./catan-azure.ps1 ui doctor -Json          Check UI health (JSON output)
-    ./catan-azure.ps1 game-service clean       Delete GameService
-
-Coordinated operations (via webui.ps1):
-    ./webui.ps1 azure install                  Install all resources
-    ./webui.ps1 azure deploy                   Deploy everything
-    ./webui.ps1 azure doctor                   Check all health
-    ./webui.ps1 azure clean                    Delete everything
+    ./catan-azure.ps1 game-service clean       Delete GameService only
 "@
     Write-Host $help
 }
@@ -1825,7 +2024,8 @@ if ($Help -or $Noun -eq "help" -or (-not $Noun -and -not $Verb)) {
 }
 
 # Validate parameters
-if (-not $Verb) {
+# Allow verb-only calls (e.g., "./catan-azure.ps1 doctor" runs on all resources)
+if (-not $Verb -and $Noun -notin @("doctor", "install", "deploy", "clean")) {
     Write-Log -Level "ERROR" -Message "Verb required. Use: install, deploy, doctor, clean"
     exit 1
 }
@@ -1863,6 +2063,99 @@ if ($Verb -ne "doctor" -or (-not $Json -and -not $HashTable)) {
 
 $success = $false
 
+# Handle verb-only calls (e.g., "./catan-azure.ps1 doctor" runs doctor on all resources)
+if ($Noun -in @("doctor", "install", "deploy", "clean") -and -not $Verb) {
+    # Noun is actually a verb - run against all resources
+    $actualVerb = $Noun
+
+    switch ($actualVerb) {
+        "doctor" {
+            # Run doctor on all resources
+            $allHealthy = $true
+
+            # GameService
+            Write-Log -Level "HEADER" -Message "Catan Azure: game-service doctor"
+            Write-Log -Level "HEADER" -Message ("=" * 40)
+            $gsResult = Get-GameServiceDoctor -Config $config -TraceLevel $TraceLevel
+            if ($Json) {
+                # For JSON, collect all results
+            } else {
+                Show-DoctorResult -Result $gsResult -Config $config
+                if ($Perf -and $gsResult.checks.healthEndpoint) {
+                    Test-GameServicePerformance -Config $config
+                }
+            }
+            if (-not $gsResult.healthy) { $allHealthy = $false }
+
+            # Database
+            Write-Log -Level "HEADER" -Message "Catan Azure: database doctor"
+            Write-Log -Level "HEADER" -Message ("=" * 40)
+            $dbResult = Get-DatabaseDoctor -Config $config -TraceLevel $TraceLevel
+            if (-not $Json) {
+                Show-DoctorResult -Result $dbResult -Config $config
+            }
+            if (-not $dbResult.healthy) { $allHealthy = $false }
+
+            # UI
+            Write-Log -Level "HEADER" -Message "Catan Azure: ui doctor"
+            Write-Log -Level "HEADER" -Message ("=" * 40)
+            $uiResult = Get-UIDoctor -Config $config -TraceLevel $TraceLevel
+            if (-not $Json) {
+                Show-DoctorResult -Result $uiResult -Config $config
+            }
+            if (-not $uiResult.healthy) { $allHealthy = $false }
+
+            # Output JSON if requested
+            if ($Json) {
+                $allResults = @{
+                    gameService = $gsResult
+                    database = $dbResult
+                    ui = $uiResult
+                }
+                Write-Output ($allResults | ConvertTo-Json -Depth 10)
+            }
+
+            # Show service URLs
+            Write-Host ""
+            Write-Host "Service URLs:" -ForegroundColor Cyan
+            Write-Host "  WebUI:       $($config.ui.url)"
+            Write-Host "  GameService: $($config.gameService.url)"
+
+            $success = $allHealthy
+        }
+        "install" {
+            # Install all resources in order
+            Write-Log -Level "HEADER" -Message "Catan Azure: install all"
+            Write-Log -Level "HEADER" -Message ("=" * 40)
+            $success = (Install-GameService -Config $config) -and
+                       (Install-Database -Config $config) -and
+                       (Install-UI -Config $config)
+        }
+        "deploy" {
+            # Deploy all resources
+            Write-Log -Level "HEADER" -Message "Catan Azure: deploy all"
+            Write-Log -Level "HEADER" -Message ("=" * 40)
+            $success = (Deploy-GameService -Config $config -Force $Force) -and
+                       (Deploy-Database -Config $config -Force $Force) -and
+                       (Deploy-UI -Config $config -Force $Force)
+        }
+        "clean" {
+            $confirm = Get-UserConfirmation -Question "Delete ALL Azure resources?" -TraceLevel $TraceLevel -Yes:$Yes
+            if ($confirm -ne 'Yes') {
+                Write-Log -Level "INFO" -Message "Cancelled"
+                exit 0
+            }
+            Write-Log -Level "HEADER" -Message "Catan Azure: clean all"
+            Write-Log -Level "HEADER" -Message ("=" * 40)
+            $success = (Clean-UI -Config $config) -and
+                       (Clean-GameService -Config $config) -and
+                       (Clean-Database -Config $config)
+        }
+    }
+
+    if ($success) { exit 0 } else { exit 1 }
+}
+
 switch ($Noun) {
     "game-service" {
         switch ($Verb) {
@@ -1876,6 +2169,10 @@ switch ($Noun) {
                     Write-Output $result
                 } else {
                     Show-DoctorResult -Result $result -Config $config
+                    # Run performance test if -Perf flag is set
+                    if ($Perf -and $result.checks.healthEndpoint) {
+                        Test-GameServicePerformance -Config $config
+                    }
                 }
                 $success = $result.healthy
             }

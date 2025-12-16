@@ -21,52 +21,70 @@ public static class DatabaseSeeder
         IGamePersistence? gamePersistence = null,
         bool useSqlServer = false)
     {
+        Console.WriteLine($"[SEEDER] SeedAsync called - useSqlServer: {useSqlServer}, defaultDataPath: {defaultDataPath}");
+
         // Initialize database schema
         if (useSqlServer)
         {
             // SQL Server: Check if we have pending migrations
+            Console.WriteLine("[SEEDER] SQL Server mode - checking pending migrations...");
             var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+            Console.WriteLine($"[SEEDER] Pending migrations: {pendingMigrations.Count()}");
             if (pendingMigrations.Any())
             {
-                Console.WriteLine($"Applying {pendingMigrations.Count()} pending migration(s) (SQL Server)...");
+                Console.WriteLine($"[SEEDER] Applying {pendingMigrations.Count()} pending migration(s) (SQL Server)...");
                 await context.Database.MigrateAsync();
+                Console.WriteLine("[SEEDER] Migrations applied successfully");
             }
             else
             {
                 // No migrations yet - use EnsureCreated for initial schema
                 // This will be replaced by migrations once they're added
-                Console.WriteLine("Ensuring database schema exists (SQL Server)...");
+                Console.WriteLine("[SEEDER] Ensuring database schema exists (SQL Server)...");
                 await context.Database.EnsureCreatedAsync();
+                Console.WriteLine("[SEEDER] EnsureCreatedAsync completed");
             }
         }
         else
         {
             // SQLite: Create database if it doesn't exist
             // EnsureCreatedAsync is fine for development with SQLite
+            Console.WriteLine("[SEEDER] SQLite mode - calling EnsureCreatedAsync...");
             await context.Database.EnsureCreatedAsync();
+            Console.WriteLine("[SEEDER] SQLite EnsureCreatedAsync completed");
         }
 
         var playersPath = Path.Combine(defaultDataPath, "Players");
         var gamesPath = Path.Combine(defaultDataPath, "Games");
+        Console.WriteLine($"[SEEDER] Players path: {playersPath}");
+        Console.WriteLine($"[SEEDER] Games path: {gamesPath}");
 
         // Seed players if not already seeded
-        if (!context.Players.Any())
+        Console.WriteLine("[SEEDER] Checking if players need to be seeded...");
+        var hasPlayers = await context.Players.AnyAsync();
+        Console.WriteLine($"[SEEDER] Players.Any() = {hasPlayers}");
+
+        if (!hasPlayers)
         {
-            Console.WriteLine($"Seeding players from: {playersPath}");
+            Console.WriteLine($"[SEEDER] Seeding players from: {playersPath}");
             await SeedPlayersAsync(context, playersPath);
+            Console.WriteLine("[SEEDER] SeedPlayersAsync completed");
         }
         else
         {
-            Console.WriteLine("Players already seeded.");
+            Console.WriteLine("[SEEDER] Players already seeded, skipping");
         }
 
         // Seed games if games folder exists and persistence service available
+        Console.WriteLine($"[SEEDER] Checking games - gamePersistence null: {gamePersistence == null}, gamesPath exists: {Directory.Exists(gamesPath)}");
         if (gamePersistence != null && Directory.Exists(gamesPath))
         {
+            Console.WriteLine("[SEEDER] Seeding games...");
             await SeedGamesAsync(context, gamesPath, gamePersistence);
+            Console.WriteLine("[SEEDER] SeedGamesAsync completed");
         }
 
-        Console.WriteLine("Database seeding complete.");
+        Console.WriteLine("[SEEDER] Database seeding complete");
     }
 
     private static async Task SeedPlayersAsync(CatanDbContext context, string imagesSourcePath)

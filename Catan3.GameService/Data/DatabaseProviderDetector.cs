@@ -17,10 +17,19 @@ public class DatabaseProviderDetector
     {
         _configuration = configuration;
 
+        Console.WriteLine("[DB-DETECT] DatabaseProviderDetector constructor starting");
+        Console.WriteLine($"[DB-DETECT] WEBSITE_SITE_NAME: {configuration["WEBSITE_SITE_NAME"] ?? "(not set)"}");
+        Console.WriteLine($"[DB-DETECT] DATABASE_PROVIDER: {configuration["DATABASE_PROVIDER"] ?? "(not set)"}");
+
         // Determine provider and cache the decision
         _useSqlServer = DetermineUseSqlServer();
+        Console.WriteLine($"[DB-DETECT] UseSqlServer: {_useSqlServer}");
+
         _connectionString = DetermineConnectionString();
+        Console.WriteLine($"[DB-DETECT] ConnectionString determined (length: {_connectionString?.Length ?? 0})");
+
         _dataDirectory = DetermineDataDirectory();
+        Console.WriteLine($"[DB-DETECT] DataDirectory: {_dataDirectory}");
     }
 
     /// <summary>

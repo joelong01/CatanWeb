@@ -11,6 +11,12 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Startup logging - capture early to diagnose Azure crashes
+Console.WriteLine($"[STARTUP] GameService starting at {DateTime.UtcNow:O}");
+Console.WriteLine($"[STARTUP] Environment: {builder.Environment.EnvironmentName}");
+Console.WriteLine($"[STARTUP] ContentRootPath: {builder.Environment.ContentRootPath}");
+Console.WriteLine($"[STARTUP] Args: {string.Join(", ", args)}");
+
 // Set console encoding to UTF-8 to support emoji characters
 Console.OutputEncoding = Encoding.UTF8;
 
@@ -83,62 +89,109 @@ builder.Services.AddSingleton<IClientNotification>(provider => provider.GetRequi
 builder.Services.AddSingleton<AsyncCommandProcessor>();
 
 // Database provider detection (zero-config: SQLite locally, SQL Server on Azure)
+Console.WriteLine("[STARTUP] Creating DatabaseProviderDetector...");
 var dbDetector = new DatabaseProviderDetector(builder.Configuration);
+Console.WriteLine($"[STARTUP] Database provider: {dbDetector.ProviderName}, IsAzure: {dbDetector.IsAzure}");
+Console.WriteLine($"[STARTUP] Connection string (masked): {MaskConnectionString(dbDetector.ConnectionString)}");
 builder.Services.AddSingleton(dbDetector);
 
-// Register DbContext with appropriate provider
-builder.Services.AddDbContext<CatanDbContext>((serviceProvider, options) =>
+static string MaskConnectionString(string? cs)
 {
-    var detector = serviceProvider.GetRequiredService<DatabaseProviderDetector>();
+    if (string.IsNullOrEmpty(cs)) return "(empty)";
+    // Mask password in connection string
+    return System.Text.RegularExpressions.Regex.Replace(cs, @"(Password|Pwd)=[^;]*", "$1=***", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+}
 
-    if (detector.UseSqlServer)
+// Register DbContext with appropriate provider
+// Use AddDbContextPool for SQL Server to enable DbContext pooling (reuses DbContext instances)
+// This works alongside ADO.NET connection pooling for optimal performance
+if (dbDetector.UseSqlServer)
+{
+    Console.WriteLine("[STARTUP] Registering DbContext with pooling (SQL Server)...");
+    builder.Services.AddDbContextPool<CatanDbContext>(options =>
     {
-        options.UseSqlServer(detector.ConnectionString, sqlOptions =>
+        options.UseSqlServer(dbDetector.ConnectionString, sqlOptions =>
         {
             sqlOptions.EnableRetryOnFailure(
                 maxRetryCount: 3,
                 maxRetryDelay: TimeSpan.FromSeconds(10),
                 errorNumbersToAdd: null);
         });
-    }
-    else
+    }, poolSize: 32); // Match connection pool size
+}
+else
+{
+    Console.WriteLine("[STARTUP] Registering DbContext (SQLite)...");
+    // SQLite doesn't benefit from DbContext pooling (file-based, no connection overhead)
+    builder.Services.AddDbContext<CatanDbContext>(options =>
     {
-        options.UseSqlite(detector.ConnectionString);
-    }
-});
+        options.UseSqlite(dbDetector.ConnectionString);
+    });
+}
+Console.WriteLine("[STARTUP] DbContext registered");
 
 // Data directory for SQLite
 var dataDir = dbDetector.DataDirectory;
+Console.WriteLine($"[STARTUP] Data directory: {dataDir}");
 
+Console.WriteLine("[STARTUP] Building application...");
 var app = builder.Build();
+Console.WriteLine("[STARTUP] Application built successfully");
 
 // Ensure Data directory exists
-Directory.CreateDirectory(dataDir);
-
-// Find default data path using detector
-var defaultDataPath = dbDetector.GetDefaultDataPath();
-
-// Always auto-seed on startup if database is empty (idempotent operation)
-// Wrapped in try/catch to prevent startup crash if database is unavailable (e.g., Azure SQL serverless auto-pause)
+Console.WriteLine($"[STARTUP] Creating data directory: {dataDir}");
 try
 {
-    using var scope = app.Services.CreateScope();
-    var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
-    var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
-    await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence, dbDetector.UseSqlServer);
+    Directory.CreateDirectory(dataDir);
+    Console.WriteLine("[STARTUP] Data directory created/verified");
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"WARNING: Database seeding failed on startup: {ex.Message}");
-    Console.WriteLine("The service will continue to start, but database operations may fail until connection is restored.");
+    Console.WriteLine($"[STARTUP] WARNING: Failed to create data directory: {ex.Message}");
+}
+
+// Find default data path using detector
+var defaultDataPath = dbDetector.GetDefaultDataPath();
+Console.WriteLine($"[STARTUP] Default data path: {defaultDataPath}");
+
+// Always auto-seed on startup if database is empty (idempotent operation)
+// Wrapped in try/catch to prevent startup crash if database is unavailable (e.g., Azure SQL serverless auto-pause)
+Console.WriteLine("[STARTUP] Starting database seeding...");
+try
+{
+    using var scope = app.Services.CreateScope();
+    Console.WriteLine("[STARTUP] Created service scope");
+
+    var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
+    Console.WriteLine("[STARTUP] Got CatanDbContext");
+
+    var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
+    Console.WriteLine("[STARTUP] Got IGamePersistence, calling DatabaseSeeder.SeedAsync...");
+
+    await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence, dbDetector.UseSqlServer);
+    Console.WriteLine("[STARTUP] Database seeding completed successfully");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[STARTUP] WARNING: Database seeding failed: {ex.Message}");
+    Console.WriteLine($"[STARTUP] Exception type: {ex.GetType().FullName}");
+    Console.WriteLine($"[STARTUP] Stack trace: {ex.StackTrace}");
+    if (ex.InnerException != null)
+    {
+        Console.WriteLine($"[STARTUP] Inner exception: {ex.InnerException.Message}");
+        Console.WriteLine($"[STARTUP] Inner stack trace: {ex.InnerException.StackTrace}");
+    }
+    Console.WriteLine("[STARTUP] The service will continue to start, but database operations may fail until connection is restored.");
 }
 
 // Handle --seed-database command (exit after seeding for explicit seed-only mode)
 if (args.Contains("--seed-database"))
 {
+    Console.WriteLine("[STARTUP] --seed-database flag detected, exiting after seeding");
     return;
 }
 
+Console.WriteLine("[STARTUP] Configuring HTTP request pipeline...");
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -203,11 +256,13 @@ app.MapHub<GameHub>("/gameHub");
 
 // Map API controllers
 app.MapControllers();
+Console.WriteLine("[STARTUP] Controllers mapped");
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
+Console.WriteLine("[STARTUP] Default route mapped");
 
 // Suppress startup banner during tests
 if (builder.Environment.EnvironmentName != "Testing")
@@ -260,7 +315,9 @@ if (builder.Environment.EnvironmentName != "Testing")
     Console.WriteLine("=========================================");
 }
 
+Console.WriteLine("[STARTUP] Calling app.Run()...");
 app.Run();
+Console.WriteLine("[STARTUP] app.Run() exited");
 
 // Make the implicit Program class public so it can be referenced in tests
 public partial class Program { }
