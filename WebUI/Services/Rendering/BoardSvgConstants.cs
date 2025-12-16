@@ -197,4 +197,36 @@ public static class BoardSvgConstants
     /// Non-matching tiles dim for this duration, then return to normal.
     /// </summary>
     public const int TileDimDurationSeconds = 5;
+
+    // Pattern ID helpers - centralized to avoid duplication across renderers
+
+    /// <summary>
+    /// Gets the SVG pattern ID for a tile's resource type.
+    /// </summary>
+    public static string GetPatternId(ResourceType resourceType) => resourceType switch
+    {
+        ResourceType.Brick => "tile-brick",
+        ResourceType.Wheat => "tile-wheat",
+        ResourceType.Wood => "tile-wood",
+        ResourceType.Ore => "tile-ore",
+        ResourceType.Sheep => "tile-sheep",
+        ResourceType.Desert => "tile-desert",
+        ResourceType.GoldMine => "tile-goldmine",
+        ResourceType.Sea => "tile-sea",
+        _ => "tile-default"
+    };
+
+    /// <summary>
+    /// Gets the SVG pattern ID for a harbor's type.
+    /// </summary>
+    public static string GetHarborPatternId(HarborType harborType) => harborType switch
+    {
+        HarborType.Brick => "harbor-brick",
+        HarborType.Ore => "harbor-ore",
+        HarborType.Sheep => "harbor-sheep",
+        HarborType.Wheat => "harbor-wheat",
+        HarborType.Wood => "harbor-wood",
+        HarborType.ThreeForOne => "harbor-3for1",
+        _ => "harbor-3for1"
+    };
 }

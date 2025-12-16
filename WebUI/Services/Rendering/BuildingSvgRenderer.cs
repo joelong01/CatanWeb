@@ -194,26 +194,6 @@ public static class BuildingSvgRenderer
     /// Gets pixel position for a building vertex.
     /// </summary>
     private static (double x, double y) GetVertexPosition(BuildingKey buildingKey)
-    {
-        // Convert tile axial coordinates to pixel position
-        var (tileX, tileY) = BoardGeometry.AxialToPixel(buildingKey.HexCoordinates.Q, buildingKey.HexCoordinates.R);
-
-        // Get hex vertices
-        var vertices = BoardGeometry.GetHexVertices(tileX, tileY);
-
-        // Map HexPosition to vertex index (0-5)
-        var vertexIndex = buildingKey.Position switch
-        {
-            HexPosition.Right => 0,
-            HexPosition.BottomRight => 1,
-            HexPosition.BottomLeft => 2,
-            HexPosition.Left => 3,
-            HexPosition.TopLeft => 4,
-            HexPosition.TopRight => 5,
-            _ => 0
-        };
-
-        return vertices[vertexIndex];
-    }
+        => BoardGeometry.GetVertexPosition(buildingKey);
 
 }

@@ -68,17 +68,6 @@ public static class HarborSvgRenderer
     /// Gets SVG pattern ID for a harbor type.
     /// </summary>
     private static string GetHarborPatternId(HarborType harborType)
-    {
-        return harborType switch
-        {
-            HarborType.Brick => "harbor-brick",
-            HarborType.Ore => "harbor-ore",
-            HarborType.Sheep => "harbor-sheep",
-            HarborType.Wheat => "harbor-wheat",
-            HarborType.Wood => "harbor-wood",
-            HarborType.ThreeForOne => "harbor-3for1",
-            _ => "harbor-3for1"
-        };
-    }
+        => BoardSvgConstants.GetHarborPatternId(harborType);
 
 }

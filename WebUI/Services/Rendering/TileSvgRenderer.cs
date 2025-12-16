@@ -182,20 +182,7 @@ public static class TileSvgRenderer
     /// Gets SVG pattern ID for a resource type.
     /// </summary>
     private static string GetPatternId(ResourceType resourceType)
-    {
-        return resourceType switch
-        {
-            ResourceType.Brick => "tile-brick",
-            ResourceType.Wheat => "tile-wheat",
-            ResourceType.Wood => "tile-wood",
-            ResourceType.Ore => "tile-ore",
-            ResourceType.Sheep => "tile-sheep",
-            ResourceType.Desert => "tile-desert",
-            ResourceType.GoldMine => "tile-goldmine",
-            ResourceType.Sea => "tile-sea",
-            _ => "tile-default"
-        };
-    }
+        => BoardSvgConstants.GetPatternId(resourceType);
 
     /// <summary>
     /// Gets fallback color for a resource type when pattern is not available.
