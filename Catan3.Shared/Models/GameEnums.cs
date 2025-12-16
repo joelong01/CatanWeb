@@ -55,7 +55,7 @@ namespace Catan3.Shared.Models
         DoneResourceAllocation,
         [Description("Select Roll...")]
         WaitingForRoll,
-        [Description("Turn Over.  Next Player.")]
+        [Description("Build or click Next.")]
         WaitingForNext,
         [Description("Supplemental")]
         Supplemental,

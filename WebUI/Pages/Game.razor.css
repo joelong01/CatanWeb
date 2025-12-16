@@ -16,13 +16,13 @@
 
 /* =============================================================================
    CSS VERSION - UPDATE THIS ONE LINE TO CHANGE ALL VERSION STRINGS BELOW
-   Current: v37 (2025-12-10)
+   Current: v38 (2025-12-15)
    ============================================================================= */
 
 /* CSS version indicator - positioned inside game container, scales with content */
 /* Shows environment (local/web) and orientation */
 .game-container[data-layout-mode="landscape"][data-env="local"]::after {
-    content: "CSS 2025-12-10 v37 LOCAL landscape";
+    content: "CSS 2025-12-15 v38 LOCAL landscape";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -32,7 +32,7 @@
 }
 
 .game-container[data-layout-mode="landscape"][data-env="web"]::after {
-    content: "CSS 2025-12-10 v37 WEB landscape";
+    content: "CSS 2025-12-15 v38 WEB landscape";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -42,7 +42,7 @@
 }
 
 .game-container[data-layout-mode="portrait"][data-env="local"]::after {
-    content: "CSS 2025-12-10 v37 LOCAL portrait";
+    content: "CSS 2025-12-15 v38 LOCAL portrait";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -52,7 +52,7 @@
 }
 
 .game-container[data-layout-mode="portrait"][data-env="web"]::after {
-    content: "CSS 2025-12-10 v37 WEB portrait";
+    content: "CSS 2025-12-15 v38 WEB portrait";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -300,6 +300,157 @@
     width: 100%;
     height: auto;
     display: block;
+}
+
+/* =============================================================================
+   Portrait Game-Active Layout - Replaces tabs when game is in progress
+   Shows: Next/Undo overlays on board, Rolls and Purchase below board
+   ============================================================================= */
+
+/* Hide new portrait-game-active elements by default */
+.portrait-overlay-btn,
+.portrait-bottom-controls {
+    display: none;
+}
+
+/* Portrait + Game Active: Hide tabs */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-tabs {
+    display: none;
+}
+
+/* Portrait + Game Active: Game grid takes full height (no tabs) */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .game-grid {
+    height: 100%;
+}
+
+/* Portrait + Game Active: Center panel is always visible and fills space */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .center-panel {
+    display: flex !important;
+    flex: 1;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+/* Portrait + Game Active: Hide left/right panels */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .left-panel,
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .right-panel {
+    display: none !important;
+}
+
+/* Portrait + Game Active: Board area is relative for overlay positioning */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-board-area {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* Portrait + Game Active: Show overlay buttons */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-overlay-btn {
+    display: flex;
+    position: absolute;
+    z-index: 10;
+    width: 120px;
+    height: 120px;
+    border: none;
+    border-radius: 12px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0.9;
+}
+
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-overlay-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-overlay-btn .btn-icon {
+    font-size: 48px;
+    color: white;
+}
+
+/* Next button: top-left */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-next-btn {
+    top: 10px;
+    left: 10px;
+}
+
+/* Undo button: top-right */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-undo-btn {
+    top: 10px;
+    right: 10px;
+}
+
+/* State message: centered at top of board area */
+.portrait-state-message {
+    display: none;
+}
+
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-state-message {
+    display: block;
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0.9;
+    white-space: nowrap;
+}
+
+/* Add top padding to board container to make room for state message */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .game-board {
+    padding-top: 40px;
+}
+
+/* Portrait + Game Active: Show bottom controls */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-bottom-controls {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    padding: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+/* Rolls grid: left side, takes available space */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-rolls {
+    flex: 1;
+    padding: 8px;
+    border-radius: 8px;
+    min-width: 0;
+}
+
+/* Portrait rolls: use 4-column grid */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-rolls .roll-grid {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+/* Purchase pane: right side */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-purchase {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* Purchase grid in portrait-game-active: 2x2 layout */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-purchase .purchase-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+}
+
+/* Board measurements in portrait-bottom-controls: full width */
+.game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-bottom-controls .portrait-board-measurements {
+    flex: 1;
+    padding: 8px;
+    border-radius: 8px;
 }
 
 /* =============================================================================

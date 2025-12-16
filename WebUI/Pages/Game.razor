@@ -23,7 +23,7 @@
 <PageTitle>Catan Game</PageTitle>
 
 <div class="game-viewport">
-<div class="game-container" data-layout-mode="@(_isPortrait ? "portrait" : "landscape")">
+<div class="game-container" data-layout-mode="@(_isPortrait ? "portrait" : "landscape")" data-game-active="@(IsGameActive ? "true" : "false")">
     <!-- Portrait mode tab bar (hidden in landscape) -->
     <div class="portrait-tabs">
         <button class="portrait-tab @(_portraitTab == "board" ? "active" : "")" @onclick='() => SetPortraitTab("board")'>Board</button>
@@ -173,32 +173,125 @@
             <div class="portrait-resource-tracking">
                 <ResourceTracking GameModel="@GameModel" />
             </div>
-            <div class="panel-section game-board">
-                <div class="board-container"
-                     @oncontextmenu="OnBoardRightClick"
-                     @oncontextmenu:preventDefault="true">
-                    <BoardContainer GameModel="@GameModel"
-                                    Players="@GameStateService.Players"
-                                    AssetService="@AssetService"
-                                    ShownStars="@ShownStars"
-                                    FilteredResources="@FilteredResources"
-                                    RolledNumber="@GetRolledNumber()"
-                                    OnBuildingClick="@OnBuildingSpotClick"
-                                    OnRoadClick="@OnRoadSpotClick"
-                                    OnTileClick="@OnTileClickForRobber"
-                                    FlippedTiles="@GriefDodgyFlippedTiles" />
+
+            <!-- Portrait Game-Active: Board area with overlay buttons -->
+            <div class="portrait-board-area">
+                <!-- Next button overlay (top-left) -->
+                <button class="portrait-overlay-btn portrait-next-btn"
+                        @onclick="OnNextClick"
+                        disabled="@(!GameModel?.ActionFlags.NextEnabled ?? true)"
+                        style="@GetCurrentPlayerGradient()">
+                    <span class="btn-icon">&#x25B6;</span>
+                </button>
+
+                <!-- State message overlay (below Next button) -->
+                <div class="portrait-state-message" style="@GetCurrentPlayerGradient(); color: @GetCurrentPlayerForeground()">
+                    @GetStateMessage()
+                </div>
+
+                <!-- Undo button overlay (top-right) -->
+                <button class="portrait-overlay-btn portrait-undo-btn"
+                        @onclick="OnUndoClick"
+                        disabled="@(!GameModel?.ActionFlags.UndoEnabled ?? true)"
+                        style="@GetCurrentPlayerGradient()">
+                    <span class="btn-icon">&#x21A9;</span>
+                </button>
+
+                <div class="panel-section game-board">
+                    <div class="board-container"
+                         @oncontextmenu="OnBoardRightClick"
+                         @oncontextmenu:preventDefault="true">
+                        <BoardContainer GameModel="@GameModel"
+                                        Players="@GameStateService.Players"
+                                        AssetService="@AssetService"
+                                        ShownStars="@ShownStars"
+                                        FilteredResources="@FilteredResources"
+                                        RolledNumber="@GetRolledNumber()"
+                                        OnBuildingClick="@OnBuildingSpotClick"
+                                        OnRoadClick="@OnRoadSpotClick"
+                                        OnTileClick="@OnTileClickForRobber"
+                                        FlippedTiles="@GriefDodgyFlippedTiles" />
+                    </div>
                 </div>
             </div>
-            <!-- Board Measurements - shown here in portrait mode only -->
-            @if (GameModel?.AllocationPhase() == true)
+
+            <!-- Portrait Game-Active: Bottom controls -->
+            @if (GameModel?.GameState == GameState.PickingBoard)
             {
-                <div class="portrait-board-measurements" style="@GetCurrentPlayerGradient()">
-                    <BoardMeasurement GameModel="@GameModel"
-                                      OnShuffle="OnShuffleClick"
-                                      CanShuffle="@(GameModel?.GameState == GameState.PickingBoard)"
-                                      ShownStars="@ShownStars"
-                                      ShownStarsChanged="HandleShownStarsChanged"
-                                      SelectedResourcesChanged="HandleSelectedResourcesChanged" />
+                <!-- Board Measurements (during board picking) -->
+                <div class="portrait-bottom-controls">
+                    <div class="portrait-board-measurements" style="@GetCurrentPlayerGradient()">
+                        <BoardMeasurement GameModel="@GameModel"
+                                          OnShuffle="OnShuffleClick"
+                                          CanShuffle="true"
+                                          ShownStars="@ShownStars"
+                                          ShownStarsChanged="HandleShownStarsChanged"
+                                          SelectedResourcesChanged="HandleSelectedResourcesChanged" />
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- Rolls and Purchase (after board picking) -->
+                <div class="portrait-bottom-controls">
+                    <!-- Roll Grid (left side) -->
+                    <div class="portrait-rolls" style="@GetCurrentPlayerGradient()">
+                        <div class="roll-grid">
+                            @for (int i = 2; i <= 12; i++)
+                            {
+                                var roll = i;
+                                <div class="roll-cell" @onclick="() => OnRollClick(roll)">
+                                    <div class="roll-count">@GetRollCount(roll)</div>
+                                    <div class="roll-catan-number">
+                                        @((MarkupString)RenderCatanNumberSvg(roll))
+                                    </div>
+                                    <div class="roll-percentage">@GetRollPercentage(roll)</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Purchase Pane (right side) -->
+                    <div class="portrait-purchase">
+                        <div class="purchase-grid">
+                            <PurchaseButton Entitlement="Entitlement.Road"
+                                            SpentCount="@GetSpentCount(Entitlement.Road)"
+                                            MaxCount="@(GameModel?.ResourceRules?.MaxRoads ?? 15)"
+                                            UnspentCount="@GetUnspentCount(Entitlement.Road)"
+                                            Colors="@GetCurrentPlayerColors()"
+                                            IsFaceUp="@GetIsFaceUp(Entitlement.Road)"
+                                            CanPurchase="@CanPurchase(Entitlement.Road)"
+                                            OnPurchase="@OnPurchaseClick"
+                                            OnRightClick="@(() => ToggleFaceUp(Entitlement.Road))" />
+                            <PurchaseButton Entitlement="Entitlement.Settlement"
+                                            SpentCount="@GetSpentCount(Entitlement.Settlement)"
+                                            MaxCount="@(GameModel?.ResourceRules?.MaxSettlements ?? 5)"
+                                            UnspentCount="@GetUnspentCount(Entitlement.Settlement)"
+                                            Colors="@GetCurrentPlayerColors()"
+                                            IsFaceUp="@GetIsFaceUp(Entitlement.Settlement)"
+                                            CanPurchase="@CanPurchase(Entitlement.Settlement)"
+                                            OnPurchase="@OnPurchaseClick"
+                                            OnRightClick="@(() => ToggleFaceUp(Entitlement.Settlement))" />
+                            <PurchaseButton Entitlement="Entitlement.City"
+                                            SpentCount="@GetSpentCount(Entitlement.City)"
+                                            MaxCount="@(GameModel?.ResourceRules?.MaxCities ?? 4)"
+                                            UnspentCount="@GetUnspentCount(Entitlement.City)"
+                                            Colors="@GetCurrentPlayerColors()"
+                                            IsFaceUp="@GetIsFaceUp(Entitlement.City)"
+                                            CanPurchase="@CanPurchase(Entitlement.City)"
+                                            OnPurchase="@OnPurchaseClick"
+                                            OnRightClick="@(() => ToggleFaceUp(Entitlement.City))" />
+                            <PurchaseButton Entitlement="Entitlement.Soldier"
+                                            SpentCount="@GetSpentCount(Entitlement.Soldier)"
+                                            MaxCount="0"
+                                            UnspentCount="@GetUnspentCount(Entitlement.Soldier)"
+                                            Colors="@GetCurrentPlayerColors()"
+                                            IsFaceUp="@GetIsFaceUp(Entitlement.Soldier)"
+                                            CanPurchase="@CanPurchase(Entitlement.Soldier)"
+                                            OnPurchase="@OnPurchaseClick"
+                                            OnRightClick="@(() => ToggleFaceUp(Entitlement.Soldier))" />
+                        </div>
+                    </div>
                 </div>
             }
         </div>
@@ -347,6 +440,11 @@
     private bool _isPortrait = false; // Layout mode from viewport scaler
     private DotNetObjectReference<Game>? _dotNetRef; // For JS callbacks
     private bool _disposed = false; // Guard against callbacks after dispose
+
+    /// <summary>
+    /// True when we should show the portrait game-active layout (PickingBoard onwards).
+    /// </summary>
+    private bool IsGameActive => GameModel?.GameState >= GameState.PickingBoard;
 
     /// <summary>
     /// Sets the active portrait mode tab and persists to session storage.
@@ -1265,13 +1363,17 @@
         return GameModel.PurchaseModel(entitlement).Enabled;
     }
 
+    /// <summary>
+    /// Gets the state message to display, matching Desktop app behavior.
+    /// Shows unspent entitlement count during allocation/next phases, otherwise shows Description attribute.
+    /// </summary>
     private string GetStateMessage()
     {
         if (GameModel == null) return "Unknown";
 
         var state = GameModel.GameState;
 
-        // During allocation or WaitingForNext, show unspent entitlements count
+        // During allocation or WaitingForNext, show unspent entitlements count (matches Desktop)
         if (state == GameState.WaitingForNext ||
             state == GameState.AllocateResourceForward ||
             state == GameState.AllocateResourceReverse)
@@ -1282,22 +1384,11 @@
                 return $"[{count} Unspent Entitlement]";
             if (count > 1)
                 return $"[{count} Unspent Entitlements]";
-            // count == 0, fall through to default description
+            // count == 0, fall through to description
         }
 
-        // Use Description attribute from GameState enum
-        return state switch
-        {
-            GameState.WaitingForNewGame => "New Game",
-            GameState.PickingBoard => "Accept Board",
-            GameState.FinishedRollOrder => "Order Done",
-            GameState.AllocateResourceForward => "Next",
-            GameState.AllocateResourceReverse => "Next",
-            GameState.WaitingForRoll => "Roll Dice",
-            GameState.WaitingForNext => "Next",
-            GameState.Supplemental => "Supplemental",
-            _ => state.ToString()
-        };
+        // Use Description attribute from GameState enum (matches Desktop)
+        return state.Description();
     }
 
     private string GetRollCount(int roll)

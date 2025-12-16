@@ -92,6 +92,13 @@
     [Parameter]
     public HexCoordinates? FakeOutCoordinates { get; set; }
 
+    /// <summary>
+    /// Whether the GriefDodgy feature is enabled (house rule on AND Dodgy-001 is playing).
+    /// When false, all animation logic is skipped.
+    /// </summary>
+    [Parameter]
+    public bool GriefDodgyEnabled { get; set; }
+
     // Animation state
     private bool _animationPending;
     private HexCoordinates _animationStartCoords = HexCoordinates.Default;
@@ -108,9 +115,19 @@
 
     /// <summary>
     /// Check for animation trigger when parameters change.
+    /// All animation logic is skipped when GriefDodgy is disabled.
     /// </summary>
     protected override void OnParametersSet()
     {
+        // Skip all animation logic if GriefDodgy is disabled
+        if (!GriefDodgyEnabled)
+        {
+            _animationPending = false;
+            _fakeOutPhase = FakeOutPhase.None;
+            _fakeOutTargetCoords = HexCoordinates.Default;
+            return;
+        }
+
         // Check for fake-out animation (Grief Dodgy) - can trigger even without previous coords
         if (FakeOutCoordinates is HexCoordinates fakeCoords &&
             fakeCoords != HexCoordinates.Default &&
