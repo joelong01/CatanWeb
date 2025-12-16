@@ -1704,6 +1704,7 @@ namespace Catan3.Shared.GameLogic
         /// <summary>
         /// Calculates the fake-out coordinates for the "Grief Dodgy" house rule.
         /// Returns Dodgy's best tile (most stars) when GriefDodgy is enabled and a non-Dodgy player is targeted.
+        /// Skips the current robber position since it wouldn't make sense to fake-out to where the robber already is.
         /// </summary>
         private HexCoordinates? CalculateGriefDodgyFakeOut(GameModel gameModel, string? targetPlayerId)
         {
@@ -1720,8 +1721,11 @@ namespace Catan3.Shared.GameLogic
             if (targetPlayerId == DodgyPlayerId) return null;
 
             // Find Dodgy's best tile (most stars with Dodgy's buildings)
+            // Skip the current robber position - fake-out to where robber already is makes no sense
+            var currentRobberPosition = gameModel.Robber.Coordinates;
             var dodgyBestTile = gameModel.Tiles
                 .Where(t => t.ResourceTileType != ResourceType.Sea && t.ResourceTileType != ResourceType.Desert)
+                .Where(t => t.TileKey != currentRobberPosition) // Skip current robber position
                 .Where(t => gameModel.Buildings.OwnedBuildings(t.TileKey).Any(b => b.OwnerId == DodgyPlayerId))
                 .OrderByDescending(t => t.Stars)
                 .FirstOrDefault();

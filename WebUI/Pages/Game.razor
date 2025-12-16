@@ -330,8 +330,11 @@
     private List<RobberTarget> _robberMenuTargets = [];
     private record RobberTarget(string Name, string Id);
 
-    // Grief Dodgy celebration animation state
+    // Grief Dodgy animation state
     private bool _showGriefCelebration;
+    private HashSet<HexCoordinates>? _cachedFlippedTiles; // Cached tiles for animation duration
+    private CancellationTokenSource? _flipAnimationCts; // Timer to clear cached tiles after animation
+    private const int FlipAnimationDurationMs = 6000; // CSS animation duration
 
     // Game name editing state
     private bool _isEditingName;
@@ -568,11 +571,16 @@
     /// <summary>
     /// Gets the set of tiles that should be flipped during Grief Dodgy mode.
     /// Flips tiles where Dodgy is NOT the sole owner (no Dodgy buildings, or shared with others).
+    /// Uses cached value during animation to prevent double-flip when state changes mid-animation.
     /// </summary>
     private HashSet<HexCoordinates>? GriefDodgyFlippedTiles
     {
         get
         {
+            // If we have cached tiles from an ongoing animation, return those
+            if (_cachedFlippedTiles != null) return _cachedFlippedTiles;
+
+            // Only calculate new flip tiles when entering MustMoveRobber state
             if (!IsGriefDodgyActive || GameModel == null) return null;
 
             var flippedTiles = new HashSet<HexCoordinates>();
@@ -599,8 +607,45 @@
                 }
             }
 
+            // Cache the tiles and start the animation timer
+            if (flippedTiles.Count > 0)
+            {
+                _cachedFlippedTiles = flippedTiles;
+                StartFlipAnimationTimer();
+            }
+
             return flippedTiles;
         }
+    }
+
+    /// <summary>
+    /// Starts a timer to clear cached flipped tiles after the CSS animation completes.
+    /// This prevents the flip animation from being interrupted when game state changes.
+    /// </summary>
+    private void StartFlipAnimationTimer()
+    {
+        // Cancel any existing timer
+        _flipAnimationCts?.Cancel();
+        _flipAnimationCts?.Dispose();
+        _flipAnimationCts = new CancellationTokenSource();
+
+        var token = _flipAnimationCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(FlipAnimationDurationMs, token);
+                if (!token.IsCancellationRequested && !_disposed)
+                {
+                    _cachedFlippedTiles = null;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // Timer was cancelled, ignore
+            }
+        }, token);
     }
 
     private string GetCurrentPlayerFirstName()
@@ -1394,6 +1439,8 @@
         Connection.GameStateUpdated -= OnGameStateUpdated;
         _rollDimCts?.Cancel();
         _rollDimCts?.Dispose();
+        _flipAnimationCts?.Cancel();
+        _flipAnimationCts?.Dispose();
         _dotNetRef?.Dispose();
         // Don't dispose the Connection service - it's a singleton that persists across pages
         await Task.CompletedTask;
