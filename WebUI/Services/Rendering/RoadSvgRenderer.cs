@@ -31,13 +31,14 @@ public static class RoadSvgRenderer
         double opacity = 0.0)
     {
         var sb = new StringBuilder();
+        var (tileX, tileY) = BoardGeometry.AxialToPixel(road.RoadKey.TileKey.Q, road.RoadKey.TileKey.R);
         var (v1, v2) = GetEdgeVertices(road.RoadKey);
 
         // Road group with CSS class and hover support
         sb.AppendLine($@"  <g class=""road road-hover"" data-player=""{road.OwnerId}"">");
 
         // Render road polygon with player colors
-        RenderRoadPolygon(sb, v1, v2, playerViewModel, opacity);
+        RenderRoadPolygon(sb, v1, v2, tileX, tileY, playerViewModel, opacity);
 
         // Render build index if provided
         if (buildIndex > 0)
@@ -53,14 +54,14 @@ public static class RoadSvgRenderer
     /// Renders the road polygon with player colors.
     /// Uses 6-point polygon: tips at outer vertices, body at inner hex boundaries.
     /// </summary>
-    private static void RenderRoadPolygon(StringBuilder sb, (double x, double y) v1, (double x, double y) v2, PlayerViewModel? playerViewModel, double opacity)
+    private static void RenderRoadPolygon(StringBuilder sb, (double x, double y) v1, (double x, double y) v2, double tileX, double tileY, PlayerViewModel? playerViewModel, double opacity)
     {
-        var roadPolygon = GenerateRoadPolygon(v1, v2);
+        var roadPolygon = GenerateRoadPolygon(v1, v2, tileX, tileY);
 
         // Use player colors if available, otherwise fallback to gray
         var fillColor = playerViewModel?.Colors.Primary ?? "#999999";
         var strokeColor = playerViewModel?.Colors.Secondary ?? "#666666";
-        var strokeWidth = 2;
+        var strokeWidth = BoardSvgConstants.RoadStrokeThickness;
 
         // Use CSS class for opacity so hover can override it
         var opacityClass = opacity < 0.5 ? "road-hidden" : "";
@@ -115,50 +116,77 @@ public static class RoadSvgRenderer
 
     /// <summary>
     /// Generates 6-point polygon for road using inner/outer hex geometry.
-    /// Tips at outer vertices, body at inner hex boundaries.
+    /// Creates a hexagonal road shape with triangular tips at the vertices.
+    /// The road fills the gap between two adjacent tiles' inner hexagons.
     /// </summary>
-    private static string GenerateRoadPolygon((double x, double y) v1, (double x, double y) v2)
+    private static string GenerateRoadPolygon((double x, double y) v1, (double x, double y) v2, double tileX, double tileY)
     {
-        // Edge midpoint and perpendicular direction
+        // Get inner hex vertices for this tile (side A)
+        var innerVerticesA = BoardGeometry.GetHexVertices(tileX, tileY, InnerHexSize);
+
+        // Find which vertex indices correspond to v1 and v2
+        var outerVertices = BoardGeometry.GetHexVertices(tileX, tileY, HexSize);
+        int idx1 = -1, idx2 = -1;
+        for (int i = 0; i < 6; i++)
+        {
+            if (Math.Abs(outerVertices[i].x - v1.x) < 0.1 && Math.Abs(outerVertices[i].y - v1.y) < 0.1)
+                idx1 = i;
+            if (Math.Abs(outerVertices[i].x - v2.x) < 0.1 && Math.Abs(outerVertices[i].y - v2.y) < 0.1)
+                idx2 = i;
+        }
+
+        // Get inner vertices on side A (this tile)
+        var innerA1 = innerVerticesA[idx1 >= 0 ? idx1 : 0];
+        var innerA2 = innerVerticesA[idx2 >= 0 ? idx2 : 1];
+
+        // Calculate adjacent tile center (side B)
+        // The adjacent tile is on the opposite side of the edge
         var midX = (v1.x + v2.x) / 2;
         var midY = (v1.y + v2.y) / 2;
         var dx = v2.x - v1.x;
         var dy = v2.y - v1.y;
         var length = Math.Sqrt(dx * dx + dy * dy);
-        var perpX = -dy / length;  // Perpendicular (90° CCW)
+        var perpX = -dy / length;  // Perpendicular unit vector
         var perpY = dx / length;
 
-        // Calculate tile centers on both sides of the edge
+        // Distance from edge midpoint to tile center (apothem)
         double apothem = HexSize * Math.Sqrt(3) / 2;
-        var centerAx = midX + perpX * apothem;
-        var centerAy = midY + perpY * apothem;
-        var centerBx = midX - perpX * apothem;
-        var centerBy = midY - perpY * apothem;
 
-        // Inner/outer ratio for scaling vertices toward center
-        double ratio = InnerHexSize / HexSize;
-        double oneMinusRatio = 1 - ratio;
+        // Adjacent tile center is on the opposite side of the edge from this tile
+        // Determine which direction by checking if tile center is on positive or negative side
+        var toTileCenterX = tileX - midX;
+        var toTileCenterY = tileY - midY;
+        var dotProduct = toTileCenterX * perpX + toTileCenterY * perpY;
 
-        // Calculate inner vertices by scaling outer vertices toward their respective tile centers
-        var i1Ax = v1.x * ratio + centerAx * oneMinusRatio;
-        var i1Ay = v1.y * ratio + centerAy * oneMinusRatio;
-        var i2Ax = v2.x * ratio + centerAx * oneMinusRatio;
-        var i2Ay = v2.y * ratio + centerAy * oneMinusRatio;
+        // Adjacent tile center is in the opposite direction
+        var adjTileX = midX - Math.Sign(dotProduct) * perpX * apothem;
+        var adjTileY = midY - Math.Sign(dotProduct) * perpY * apothem;
 
-        var i1Bx = v1.x * ratio + centerBx * oneMinusRatio;
-        var i1By = v1.y * ratio + centerBy * oneMinusRatio;
-        var i2Bx = v2.x * ratio + centerBx * oneMinusRatio;
-        var i2By = v2.y * ratio + centerBy * oneMinusRatio;
+        // Get inner hex vertices for adjacent tile (side B)
+        var innerVerticesB = BoardGeometry.GetHexVertices(adjTileX, adjTileY, InnerHexSize);
 
-        // 6 points: outer tips and inner body edges
+        // Find matching inner vertices on side B
+        // They should be at the same outer vertex positions
+        (double x, double y) innerB1 = innerVerticesB[0], innerB2 = innerVerticesB[0];
+        double minDist1 = double.MaxValue, minDist2 = double.MaxValue;
+        foreach (var iv in innerVerticesB)
+        {
+            var d1 = Math.Sqrt(Math.Pow(iv.x - v1.x, 2) + Math.Pow(iv.y - v1.y, 2));
+            var d2 = Math.Sqrt(Math.Pow(iv.x - v2.x, 2) + Math.Pow(iv.y - v2.y, 2));
+            if (d1 < minDist1) { minDist1 = d1; innerB1 = iv; }
+            if (d2 < minDist2) { minDist2 = d2; innerB2 = iv; }
+        }
+
+        // 6 points forming a bow-tie/hexagonal shape:
+        // Outer tip 1 -> Inner A1 -> Inner A2 -> Outer tip 2 -> Inner B2 -> Inner B1
         var points = new List<string>
         {
-            $"{v1.x:F1},{v1.y:F1}",      // O1 (outer vertex 1 - tip)
-            $"{i1Ax:F1},{i1Ay:F1}",      // I1_A (tile A's inner vertex at v1)
-            $"{i2Ax:F1},{i2Ay:F1}",      // I2_A (tile A's inner vertex at v2)
-            $"{v2.x:F1},{v2.y:F1}",      // O2 (outer vertex 2 - tip)
-            $"{i2Bx:F1},{i2By:F1}",      // I2_B (tile B's inner vertex at v2)
-            $"{i1Bx:F1},{i1By:F1}"       // I1_B (tile B's inner vertex at v1)
+            $"{v1.x:F1},{v1.y:F1}",            // Outer tip at vertex 1
+            $"{innerA1.x:F1},{innerA1.y:F1}",  // Inner vertex 1 (tile A)
+            $"{innerA2.x:F1},{innerA2.y:F1}",  // Inner vertex 2 (tile A)
+            $"{v2.x:F1},{v2.y:F1}",            // Outer tip at vertex 2
+            $"{innerB2.x:F1},{innerB2.y:F1}",  // Inner vertex 2 (tile B)
+            $"{innerB1.x:F1},{innerB1.y:F1}"   // Inner vertex 1 (tile B)
         };
 
         return string.Join(" ", points);

@@ -19,18 +19,21 @@ public static class BoardSvgConstants
     public const double CenterY = 700;
     public const double Padding = 5;  // Minimal padding - harbors already extend to edges
 
-    // Inner/Outer hex geometry - SAME AS DESKTOP APP
+    // Inner/Outer hex geometry - MATCHES DESKTOP APP (BoardLayoutProps.cs)
     // From BoardVisualLayout.cs: InnerHexSize = OuterHexSize - TileGap - InnerHexStrokeThickness * 0.5
     /// <summary>
-    /// Tile gap creates the thin wood border between hexes (1px).
+    /// Tile gap creates the thin wood border between hexes.
     /// Used as StrokeThickness for outer hex polygon (matches Desktop TileCtrl.xaml line 54).
     /// The gap becomes visible when roads render in the space between tiles.
     /// </summary>
-    public const double TileGap = 1;
+    public const double TileGap = 2;  // Desktop default: 2
     // Inner hex stroke creates the gap where maple border shows and roads render
     // Gap should be wide enough for road visibility (road-width space)
-    public const double InnerHexStrokeThickness = 10;  // Creates ~5 unit border on each side
-    public const double InnerHexSize = HexSize - TileGap - InnerHexStrokeThickness * 0.5;  // = 94
+    public const double InnerHexStrokeThickness = 14;  // Desktop default: 16, reduced for narrower roads
+    public const double InnerHexSize = HexSize - TileGap - InnerHexStrokeThickness * 0.5;  // = 91 (slightly narrower roads)
+
+    // Road rendering
+    public const double RoadStrokeThickness = 2.0;  // Desktop default: 2.0
 
     // Settlement/City - SAME AS DESKTOP APP
     public const double BuildingSize = 40;
