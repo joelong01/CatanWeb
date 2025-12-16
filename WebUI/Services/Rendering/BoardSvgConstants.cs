@@ -1,3 +1,5 @@
+using Catan3.Shared.Models;
+
 namespace Catan3.WebUI.Services.Rendering;
 
 /// <summary>
@@ -34,6 +36,119 @@ public static class BoardSvgConstants
 
     // Road rendering
     public const double RoadStrokeThickness = 2.0;  // Desktop default: 2.0
+
+    /// <summary>
+    /// Canonical road polygon points centered at origin, aligned for HexSide.BottomRight (angle 0°).
+    /// All roads use this same shape, just translated and rotated via SVG transform.
+    ///
+    /// Geometry: 6-point polygon with triangular tips at vertices.
+    /// - Tips are at the outer hex vertices (distance HexSize from tile center)
+    /// - Inner points are at InnerHexSize, creating the road "body" width
+    ///
+    /// For BottomRight edge (vertices 0 and 1, angles 0° and 60°):
+    /// - Edge midpoint to vertex distance = HexSize (100)
+    /// - Inner inset = HexSize - InnerHexSize (9)
+    /// - Perpendicular inward distance = apothem difference
+    /// </summary>
+    public static readonly string CanonicalRoadPolygon = CalculateCanonicalRoadPolygon();
+
+    /// <summary>
+    /// Edge rotation angles for each HexSide, used with SVG rotate transform.
+    /// This is the angle of the edge itself (direction from v1 to v2), not the midpoint direction.
+    /// Canonical polygon is horizontal (tips at left/right), so we rotate to match edge orientation.
+    /// </summary>
+    public static readonly Dictionary<HexSide, double> RoadEdgeAngles = new()
+    {
+        // For flat-top hex, edges run perpendicular to midpoint direction (midpoint angle + 90°)
+        // But we need to match v1→v2 direction for consistent polygon orientation
+        { HexSide.Top, 0 },            // Edge runs horizontally (v4 to v5, left to right)
+        { HexSide.TopRight, 60 },      // Edge runs at 60° (v5 to v0)
+        { HexSide.BottomRight, 120 },  // Edge runs at 120° (v0 to v1)
+        { HexSide.Bottom, 180 },       // Edge runs horizontally reversed (v1 to v2, but same as 0°)
+        { HexSide.BottomLeft, 240 },   // Edge runs at 240° (v2 to v3)
+        { HexSide.TopLeft, 300 },      // Edge runs at 300° (v3 to v4)
+    };
+
+    /// <summary>
+    /// Edge midpoint offsets from tile center for each HexSide.
+    /// Distance from center to edge midpoint = apothem = HexSize * sqrt(3) / 2
+    /// </summary>
+    public static readonly Dictionary<HexSide, (double dx, double dy)> RoadEdgeMidpointOffsets = CalculateEdgeMidpointOffsets();
+
+    private static string CalculateCanonicalRoadPolygon()
+    {
+        // Canonical polygon for a HORIZONTAL edge (HexSide.Top), centered at edge midpoint.
+        // The edge runs left-to-right, tips point left and right.
+        //
+        // For a flat-top regular hexagon with circumradius R:
+        // - Edge length = R
+        // - Apothem (center to edge midpoint) = R * sqrt(3) / 2
+        // - Distance from edge midpoint to vertex (along edge) = R / 2
+        //
+        // The road polygon has 6 points:
+        // - 2 tips at the outer hex vertices (where roads meet)
+        // - 4 inner points at the inner hex vertices (road body width)
+
+        double R = HexSize;  // 100 - outer hex circumradius
+        double r = InnerHexSize;  // 91 - inner hex circumradius
+        double apothemOuter = R * Math.Sqrt(3) / 2;  // ~86.6
+        double apothemInner = r * Math.Sqrt(3) / 2;  // ~78.8
+
+        // For a horizontal edge centered at origin:
+        // - Tips are at (±R/2, 0) - the outer hex vertices relative to edge midpoint
+        // - Inner points are at the inner hex vertices relative to edge midpoint
+        //
+        // Inner hex vertices for a horizontal edge:
+        // The inner hex has the same shape but scaled by r/R.
+        // Inner vertex X = (r/R) * (R/2) = r/2
+        // Inner vertex perpendicular distance from edge = apothemOuter - apothemInner
+
+        double tipX = R / 2;  // 50 - tip distance from midpoint along edge
+        double innerX = r / 2;  // 45.5 - inner vertex distance from midpoint along edge
+        double perpDist = apothemOuter - apothemInner;  // ~7.8 - perpendicular offset for inner vertices
+
+        // 6 points forming the bow-tie shape:
+        // tip1 (left) -> innerA1 (left-top) -> innerA2 (right-top) -> tip2 (right) -> innerB2 (right-bottom) -> innerB1 (left-bottom)
+        var points = new[]
+        {
+            (-tipX, 0.0),           // tip1: left vertex (outer hex)
+            (-innerX, -perpDist),   // innerA1: left inner vertex, tile A side (above edge for horizontal)
+            (innerX, -perpDist),    // innerA2: right inner vertex, tile A side
+            (tipX, 0.0),            // tip2: right vertex (outer hex)
+            (innerX, perpDist),     // innerB2: right inner vertex, tile B side (below edge for horizontal)
+            (-innerX, perpDist)     // innerB1: left inner vertex, tile B side
+        };
+
+        return string.Join(" ", points.Select(p => $"{p.Item1:F1},{p.Item2:F1}"));
+    }
+
+    private static Dictionary<HexSide, (double dx, double dy)> CalculateEdgeMidpointOffsets()
+    {
+        double apothem = HexSize * Math.Sqrt(3) / 2;  // Distance from center to edge midpoint
+        var result = new Dictionary<HexSide, (double, double)>();
+
+        // Midpoint direction angles (perpendicular to edge direction, pointing outward from center)
+        // These are edge rotation angle + 90° (or equivalently, the direction TO the midpoint FROM center)
+        var midpointAngles = new Dictionary<HexSide, double>
+        {
+            { HexSide.Top, 270 },          // Midpoint is directly above center
+            { HexSide.TopRight, 330 },     // Midpoint at 330° (upper-right)
+            { HexSide.BottomRight, 30 },   // Midpoint at 30° (lower-right)
+            { HexSide.Bottom, 90 },        // Midpoint is directly below center
+            { HexSide.BottomLeft, 150 },   // Midpoint at 150° (lower-left)
+            { HexSide.TopLeft, 210 },      // Midpoint at 210° (upper-left)
+        };
+
+        foreach (var kvp in midpointAngles)
+        {
+            double angleRad = kvp.Value * Math.PI / 180;
+            double dx = apothem * Math.Cos(angleRad);
+            double dy = apothem * Math.Sin(angleRad);
+            result[kvp.Key] = (dx, dy);
+        }
+
+        return result;
+    }
 
     // Settlement/City - SAME AS DESKTOP APP
     public const double BuildingSize = 40;

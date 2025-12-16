@@ -19,14 +19,15 @@
     {
         var colors = GetRoadColors(road);
         var playerId = road.OwnerId ?? CurrentPlayer?.Id ?? "default";
-        var polygonPoints = GetRoadPolygonPoints(road);
-        var (centerX, centerY) = GetRoadCenter(road);
+        var (midX, midY) = GetRoadMidpoint(road.RoadKey);
+        var angle = BoardSvgConstants.RoadEdgeAngles[road.RoadKey.HexSide];
 
         <g class="road @GetRoadClass(road)"
            @onclick="() => HandleRoadClick(road)"
            style="cursor: @(road.RoadState == RoadState.Buildable ? "pointer" : "default")">
-            @* Road polygon with triangular tips for seamless connections *@
-            <polygon points="@polygonPoints"
+            @* Road polygon using canonical shape with transform for position/rotation *@
+            <polygon points="@BoardSvgConstants.CanonicalRoadPolygon"
+                     transform="translate(@midX.ToString("F1"), @midY.ToString("F1")) rotate(@angle.ToString("F0"))"
                      fill="url(#gradient-@playerId)"
                      stroke="@(colors?.Secondary ?? "#666")"
                      stroke-width="@BoardSvgConstants.RoadStrokeThickness"
@@ -35,7 +36,7 @@
             @if (road.BuildIndex > 0)
             {
                 @* Build index label centered on road *@
-                <g transform="translate(@centerX.ToString("F1"), @centerY.ToString("F1"))">
+                <g transform="translate(@midX.ToString("F1"), @midY.ToString("F1"))">
                     <rect x="-18" y="-14" width="36" height="28" rx="6" fill="black" />
                     <text x="0" y="0"
                           text-anchor="middle"
@@ -51,9 +52,6 @@
 </g>
 
 @code {
-    private const double HexSize = BoardSvgConstants.HexSize;
-    private const double InnerHexSize = BoardSvgConstants.InnerHexSize;
-
     [Parameter]
     public IReadOnlyList<RoadModel> Roads { get; set; } = [];
 
@@ -99,96 +97,14 @@
     }
 
     /// <summary>
-    /// Gets the center point of a road for positioning labels.
+    /// Gets the midpoint of an edge for positioning the road polygon.
+    /// Uses precomputed offsets from BoardSvgConstants.
     /// </summary>
-    private (double x, double y) GetRoadCenter(RoadModel road)
-    {
-        var (v1, v2) = GetEdgeVertices(road.RoadKey);
-        return ((v1.x + v2.x) / 2, (v1.y + v2.y) / 2);
-    }
-
-    /// <summary>
-    /// Generates the SVG polygon points string for a road.
-    /// Creates a 6-point hexagonal shape with triangular tips at vertices.
-    /// </summary>
-    private string GetRoadPolygonPoints(RoadModel road)
-    {
-        var roadKey = road.RoadKey;
-        var (tileX, tileY) = BoardGeometry.AxialToPixel(roadKey.TileKey.Q, roadKey.TileKey.R);
-        var (v1, v2) = GetEdgeVertices(roadKey);
-
-        // Get inner hex vertices for this tile (side A)
-        var innerVerticesA = BoardGeometry.GetHexVertices(tileX, tileY, InnerHexSize);
-        var outerVertices = BoardGeometry.GetHexVertices(tileX, tileY, HexSize);
-
-        // Find vertex indices
-        int idx1 = -1, idx2 = -1;
-        for (int i = 0; i < 6; i++)
-        {
-            if (Math.Abs(outerVertices[i].x - v1.x) < 0.1 && Math.Abs(outerVertices[i].y - v1.y) < 0.1)
-                idx1 = i;
-            if (Math.Abs(outerVertices[i].x - v2.x) < 0.1 && Math.Abs(outerVertices[i].y - v2.y) < 0.1)
-                idx2 = i;
-        }
-
-        var innerA1 = innerVerticesA[idx1 >= 0 ? idx1 : 0];
-        var innerA2 = innerVerticesA[idx2 >= 0 ? idx2 : 1];
-
-        // Calculate adjacent tile center (side B)
-        var midX = (v1.x + v2.x) / 2;
-        var midY = (v1.y + v2.y) / 2;
-        var dx = v2.x - v1.x;
-        var dy = v2.y - v1.y;
-        var length = Math.Sqrt(dx * dx + dy * dy);
-        var perpX = -dy / length;
-        var perpY = dx / length;
-
-        double apothem = HexSize * Math.Sqrt(3) / 2;
-        var toTileCenterX = tileX - midX;
-        var toTileCenterY = tileY - midY;
-        var dotProduct = toTileCenterX * perpX + toTileCenterY * perpY;
-
-        var adjTileX = midX - Math.Sign(dotProduct) * perpX * apothem;
-        var adjTileY = midY - Math.Sign(dotProduct) * perpY * apothem;
-
-        // Get inner hex vertices for adjacent tile (side B)
-        var innerVerticesB = BoardGeometry.GetHexVertices(adjTileX, adjTileY, InnerHexSize);
-
-        // Find closest inner vertices on side B
-        (double x, double y) innerB1 = innerVerticesB[0], innerB2 = innerVerticesB[0];
-        double minDist1 = double.MaxValue, minDist2 = double.MaxValue;
-        foreach (var iv in innerVerticesB)
-        {
-            var d1 = Math.Sqrt(Math.Pow(iv.x - v1.x, 2) + Math.Pow(iv.y - v1.y, 2));
-            var d2 = Math.Sqrt(Math.Pow(iv.x - v2.x, 2) + Math.Pow(iv.y - v2.y, 2));
-            if (d1 < minDist1) { minDist1 = d1; innerB1 = iv; }
-            if (d2 < minDist2) { minDist2 = d2; innerB2 = iv; }
-        }
-
-        // 6 points forming a bow-tie/hexagonal shape
-        return $"{v1.x:F1},{v1.y:F1} {innerA1.x:F1},{innerA1.y:F1} {innerA2.x:F1},{innerA2.y:F1} {v2.x:F1},{v2.y:F1} {innerB2.x:F1},{innerB2.y:F1} {innerB1.x:F1},{innerB1.y:F1}";
-    }
-
-    /// <summary>
-    /// Gets the two vertex positions for a road edge.
-    /// </summary>
-    private ((double x, double y) v1, (double x, double y) v2) GetEdgeVertices(RoadKey roadKey)
+    private (double x, double y) GetRoadMidpoint(RoadKey roadKey)
     {
         var (tileX, tileY) = BoardGeometry.AxialToPixel(roadKey.TileKey.Q, roadKey.TileKey.R);
-        var vertices = BoardGeometry.GetHexVertices(tileX, tileY);
-
-        var (v1Idx, v2Idx) = roadKey.HexSide switch
-        {
-            HexSide.Top => (4, 5),
-            HexSide.TopRight => (5, 0),
-            HexSide.BottomRight => (0, 1),
-            HexSide.Bottom => (1, 2),
-            HexSide.BottomLeft => (2, 3),
-            HexSide.TopLeft => (3, 4),
-            _ => (0, 1)
-        };
-
-        return (vertices[v1Idx], vertices[v2Idx]);
+        var (dx, dy) = BoardSvgConstants.RoadEdgeMidpointOffsets[roadKey.HexSide];
+        return (tileX + dx, tileY + dy);
     }
 
     /// <summary>
