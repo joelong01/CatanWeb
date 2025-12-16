@@ -25,9 +25,9 @@
     ./catan.ps1 azure deploy     # Deploy to Azure
 #>
 
+[CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("build", "test", "run", "debug", "clean", "stop", "restart", "update", "doctor", "install", "database", "azure", "help")]
     [string]$Verb = "run",
 
     [Parameter(Position = 1)]
@@ -736,7 +736,7 @@ switch ($Verb) {
 
         # Check dependencies
         Write-Host "Checking dependencies..." -ForegroundColor Yellow
-        & "$PSScriptRoot\.scripts\install-dependencies.ps1" -Doctor
+        & "$PSScriptRoot\.scripts\dependencies.ps1" -Doctor
         Write-Host ""
 
         # Check database
@@ -755,9 +755,9 @@ switch ($Verb) {
         Write-Host "===================" -ForegroundColor Cyan
         Write-Host ""
 
-        # Install dependencies (install-dependencies.ps1 already checks if installed)
+        # Install dependencies (dependencies.ps1 already checks if installed)
         Write-Host "Checking dependencies..." -ForegroundColor Yellow
-        & "$PSScriptRoot\.scripts\install-dependencies.ps1" -Install -Yes:$Yes
+        & "$PSScriptRoot\.scripts\dependencies.ps1" -Install -Yes:$Yes
         Write-Host ""
 
         # Check database status first
@@ -1078,6 +1078,57 @@ switch ($Verb) {
         }
     }
 
+    "dependencies" {
+        $depsScript = Join-Path $PSScriptRoot ".scripts/dependencies.ps1"
+
+        switch ($SubCommand) {
+            "doctor" {
+                if ($Json) {
+                    & $depsScript -Doctor -Json -TraceLevel $TraceLevel
+                } elseif ($HashTable) {
+                    & $depsScript -Doctor -HashTable -TraceLevel $TraceLevel
+                } else {
+                    & $depsScript -Doctor -TraceLevel $TraceLevel
+                }
+            }
+            "install" {
+                & $depsScript -Install -Yes:$Yes -Force:$Force -TraceLevel $TraceLevel
+            }
+            "clean" {
+                & $depsScript -Clean -Yes:$Yes -Force:$Force -TraceLevel $TraceLevel
+            }
+            default {
+                Write-Host ""
+                Write-Host "Dependencies Commands" -ForegroundColor Cyan
+                Write-Host "=====================" -ForegroundColor Cyan
+                Write-Host ""
+                Write-Host "Usage: ./catan.ps1 dependencies <subcommand>" -ForegroundColor Yellow
+                Write-Host ""
+                Write-Host "Subcommands:" -ForegroundColor Yellow
+                Write-Host "  doctor   - Check status of all dependencies"
+                Write-Host "  install  - Install all dependencies"
+                Write-Host "  clean    - Remove/reset dependencies"
+                Write-Host ""
+                Write-Host "Options:" -ForegroundColor Yellow
+                Write-Host "  -Json        Output doctor as JSON"
+                Write-Host "  -HashTable   Output doctor as PowerShell hashtable"
+                Write-Host "  -Yes         Skip confirmation prompts"
+                Write-Host "  -Force       Force reinstall even if already installed"
+                Write-Host "  -TraceLevel  Output detail: ERROR, WARN, INFO (default), DEBUG"
+                Write-Host ""
+                Write-Host "Examples:" -ForegroundColor Yellow
+                Write-Host "  ./catan.ps1 dependencies doctor    - Check all dependencies"
+                Write-Host "  ./catan.ps1 dependencies install   - Install missing dependencies"
+                Write-Host ""
+
+                if ($SubCommand) {
+                    Write-Host "Unknown subcommand: $SubCommand" -ForegroundColor Red
+                    exit 1
+                }
+            }
+        }
+    }
+
     "azure" {
         $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
 
@@ -1293,6 +1344,11 @@ switch ($Verb) {
         Write-Host "  ./catan.ps1 database clean   - Delete database"
         Write-Host "  ./catan.ps1 database install - Fresh install with default data"
         Write-Host ""
+        Write-Host "Dependencies:" -ForegroundColor Yellow
+        Write-Host "  ./catan.ps1 dependencies doctor  - Check all dependency status"
+        Write-Host "  ./catan.ps1 dependencies install - Install missing dependencies"
+        Write-Host "  ./catan.ps1 dependencies clean   - Remove/reset dependencies"
+        Write-Host ""
         Write-Host "Azure:" -ForegroundColor Yellow
         Write-Host "  ./catan.ps1 azure doctor     - Check Azure deployment health"
         Write-Host "  ./catan.ps1 azure install    - Create all Azure resources"
@@ -1308,5 +1364,13 @@ switch ($Verb) {
         Write-Host "  GameService: $GameServiceUrl"
         Write-Host "  WebUI:       $WebUIUrl"
         Write-Host ""
+    }
+
+    default {
+        Write-Host ""
+        Write-Host "Invalid command: $Verb" -ForegroundColor Red
+        Write-Host ""
+        & $PSCommandPath help
+        exit 1
     }
 }
