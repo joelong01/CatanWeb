@@ -659,6 +659,19 @@ function Deploy-Database {
         return $true
     }
 
+    # Step 0: Ensure network access is configured (may have been disabled by policy or manual change)
+    if (-not $doctor.checks.publicNetworkAccess) {
+        Write-Log -Level "INFO" -Message "Enabling public network access for SQL Server..."
+        Invoke-AzCommand "sql server update --name $sqlServerName --resource-group $rgName --enable-public-network true" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Public network access enabled"
+    }
+
+    if (-not $doctor.checks.firewallRule) {
+        Write-Log -Level "INFO" -Message "Creating firewall rule: AllowAzureServices..."
+        Invoke-AzCommand "sql server firewall-rule create --server $sqlServerName --resource-group $rgName --name AllowAzureServices --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Firewall rule created"
+    }
+
     # Step 1: Configure connection string (if not already configured or forced)
     if (-not $doctor.checks.connectionString -or $Force) {
         # Connection string with connection pooling settings:
@@ -851,6 +864,9 @@ function Get-DatabaseDoctor {
         Write-Log -Level "DEBUG" -Message "Checking firewall rule" -TraceLevel $TraceLevel
         $fwRule = Invoke-AzCommand "sql server firewall-rule show --server $sqlServerName --resource-group $rgName --name AllowAzureServices" -FailOnError $false -JsonOutput
         $result.checks.firewallRule = ($null -ne $fwRule)
+        if (-not $result.checks.firewallRule) {
+            $result.needsInstall = $true
+        }
 
         # Check database exists and status
         Write-Log -Level "DEBUG" -Message "Checking database: $databaseName" -TraceLevel $TraceLevel
@@ -876,17 +892,49 @@ function Get-DatabaseDoctor {
             $result.status = $db.status.ToLower()
         }
 
-        # Check GameService database connection first - this is the definitive test
+        # Check GameService database connection using health endpoint with forced database check
         Write-Log -Level "DEBUG" -Message "Checking GameService database connection" -TraceLevel $TraceLevel
         try {
-            $health = Invoke-RestMethod -Uri "$gameServiceUrl/health" -TimeoutSec 30
+            # Use checkDatabase=true to force fresh database diagnostics
+            $health = Invoke-RestMethod -Uri "$gameServiceUrl/health?checkDatabase=true" -TimeoutSec 60
             if ($health.database.provider -eq "SqlServer") {
-                $result.status = "connected"
-                $result.checks.gameServiceConnected = $true
-                $result.checks.managedIdentityUser = $true  # If connected, user must exist
-                $result.checks.connectionString = $true     # If connected, connection string must be configured
-                $result.checks.connectionPooling = $true    # Assume pooling is configured if connected
-                $result.healthy = $true
+                # Check if database diagnostics show connection success
+                if ($health.databaseDiagnostics -and $health.databaseDiagnostics.connected -eq $true) {
+                    $result.status = "connected"
+                    $result.checks.gameServiceConnected = $true
+                    $result.checks.managedIdentityUser = $true  # If connected, user must exist
+                    $result.checks.connectionString = $true     # If connected, connection string must be configured
+                    $result.checks.connectionPooling = $true    # Assume pooling is configured if connected
+                    $result.healthy = $true
+                }
+                elseif ($health.databaseDiagnostics) {
+                    # Database diagnostics available but not connected
+                    $result.checks.gameServiceConnected = $false
+                    $result.databaseDiagnostics = $health.databaseDiagnostics
+
+                    # Extract diagnostic info
+                    $diag = $health.databaseDiagnostics
+                    if ($diag.issue) {
+                        $result.diagnosticIssue = $diag.issue
+                    }
+                    if ($diag.recommendation) {
+                        $result.note = $diag.recommendation
+                    }
+                    if ($diag.status) {
+                        $result.azureDatabaseStatus = $diag.status
+                    }
+                    if ($diag.publicNetworkAccess) {
+                        $result.checks.publicNetworkAccess = ($diag.publicNetworkAccess -eq "Enabled")
+                    }
+
+                    # Mark as needing deploy if there's a fixable issue
+                    $result.needsDeploy = $true
+                }
+                else {
+                    # No diagnostics available but service is up
+                    $result.checks.gameServiceConnected = $false
+                    $result.needsDeploy = $true
+                }
             }
         }
         catch {
@@ -1242,6 +1290,10 @@ function Deploy-GameService {
 
     $zipSize = (Get-Item $zipPath).Length / 1MB
     Write-Log -Level "INFO" -Message "Deploying to Azure ($([math]::Round($zipSize, 1)) MB)..."
+
+    # Enable logging to diagnose startup failures
+    Write-Log -Level "DEBUG" -Message "Enabling App Service logging..."
+    Invoke-AzCommand "webapp log config --name $appName --resource-group $rgName --docker-container-logging filesystem --detailed-error-messages true --web-server-logging filesystem" -SuppressOutput
 
     # Use --async true to avoid infinite polling bug in az cli 2.61+
     # See: https://github.com/Azure/azure-cli/issues/29003
@@ -1808,6 +1860,29 @@ function Show-DoctorResult {
             default { "Red" }
         }
         Write-Host $Result.dbStatus -ForegroundColor $dbColor
+    }
+
+    # Show diagnostic issue from health endpoint if available
+    if ($Result.diagnosticIssue) {
+        Write-Host -NoNewline ("  Diagnostic Issue").PadRight($col1)
+        $issueColor = switch ($Result.diagnosticIssue) {
+            "None" { "Green" }
+            "DatabasePaused" { "Yellow" }
+            "ConnectionTimeout" { "Yellow" }
+            default { "Red" }
+        }
+        Write-Host $Result.diagnosticIssue -ForegroundColor $issueColor
+    }
+
+    # Show Azure database status from diagnostics if different from local check
+    if ($Result.azureDatabaseStatus -and $Result.azureDatabaseStatus -ne $Result.dbStatus) {
+        Write-Host -NoNewline ("  Azure DB Status").PadRight($col1)
+        $azureDbColor = switch ($Result.azureDatabaseStatus) {
+            "Online" { "Green" }
+            "Paused" { "Yellow" }
+            default { "Red" }
+        }
+        Write-Host $Result.azureDatabaseStatus -ForegroundColor $azureDbColor
     }
 
     # Summary line

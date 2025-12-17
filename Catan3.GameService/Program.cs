@@ -84,6 +84,12 @@ builder.Services.AddScoped<IGamePersistence, GamePersistenceService>();
 builder.Services.AddSingleton<IPersistenceService, DatabaseBackedPersistenceService>();
 Console.WriteLine("[STARTUP] Using DatabaseBackedPersistenceService for game persistence");
 
+// Register HttpClient for Azure Resource Graph queries
+builder.Services.AddHttpClient();
+
+// Register Azure SQL diagnostic service for connection troubleshooting
+builder.Services.AddSingleton<AzureSqlDiagnosticService>();
+
 // Register SignalR-based client notification service for real-time updates
 builder.Services.AddSingleton<SignalRNotificationService>();
 builder.Services.AddSingleton<IClientNotification>(provider => provider.GetRequiredService<SignalRNotificationService>());
@@ -237,22 +243,105 @@ app.UseAuthorization();
 app.MapStaticAssets();
 
 // Health check endpoint for service readiness
-app.MapGet("/health", (DatabaseProviderDetector detector) => Results.Ok(new
+// Caches Azure SQL diagnostic results for 10 minutes to avoid expensive Resource Graph queries
+app.MapGet("/health", async (
+    DatabaseProviderDetector detector,
+    AzureSqlDiagnosticService sqlDiagnostics,
+    CatanDbContext dbContext,
+    bool? checkDatabase) =>
 {
-    status = "healthy",
-    timestamp = DateTime.UtcNow,
-    version = new
+    // Basic health info (always returned)
+    var response = new Dictionary<string, object>
     {
-        commit = Environment.GetEnvironmentVariable("DEPLOY_COMMIT") ?? "local",
-        buildTime = Environment.GetEnvironmentVariable("DEPLOY_BUILD_TIME") ?? "unknown",
-        environment = app.Environment.EnvironmentName
-    },
-    database = new
+        ["status"] = "healthy",
+        ["timestamp"] = DateTime.UtcNow,
+        ["version"] = new
+        {
+            commit = Environment.GetEnvironmentVariable("DEPLOY_COMMIT") ?? "local",
+            buildTime = Environment.GetEnvironmentVariable("DEPLOY_BUILD_TIME") ?? "unknown",
+            environment = app.Environment.EnvironmentName
+        },
+        ["database"] = new
+        {
+            provider = detector.ProviderName,
+            isAzure = detector.IsAzure
+        }
+    };
+
+    // Check if we should run database diagnostics
+    var forceCheck = checkDatabase == true;
+    var shouldCheck = forceCheck || HealthCheckCache.ShouldRefresh();
+
+    if (detector.IsAzure && shouldCheck)
     {
-        provider = detector.ProviderName,
-        isAzure = detector.IsAzure
+        try
+        {
+            // Try a simple database query first
+            var canConnect = false;
+            Exception? dbException = null;
+
+            try
+            {
+                await dbContext.Database.CanConnectAsync();
+                canConnect = true;
+            }
+            catch (Exception ex)
+            {
+                dbException = ex;
+            }
+
+            if (canConnect)
+            {
+                // Database is accessible
+                var diagnosticResult = new
+                {
+                    connected = true,
+                    checkedAt = DateTime.UtcNow,
+                    status = "Online",
+                    issue = (string?)null,
+                    recommendation = (string?)null
+                };
+                HealthCheckCache.Update(diagnosticResult);
+                response["databaseDiagnostics"] = diagnosticResult;
+            }
+            else
+            {
+                // Database connection failed - run full diagnostics
+                var diagnosis = await sqlDiagnostics.DiagnoseAsync(dbException);
+                var diagnosticResult = new
+                {
+                    connected = false,
+                    checkedAt = DateTime.UtcNow,
+                    status = diagnosis.AzureStatus?.DatabaseStatus ?? "Unknown",
+                    publicNetworkAccess = diagnosis.AzureStatus?.PublicNetworkAccess,
+                    issue = diagnosis.Issue.ToString(),
+                    recommendation = diagnosis.Recommendation,
+                    error = diagnosis.ConnectionError
+                };
+                HealthCheckCache.Update(diagnosticResult);
+                response["databaseDiagnostics"] = diagnosticResult;
+                response["status"] = "degraded";
+            }
+        }
+        catch (Exception ex)
+        {
+            response["databaseDiagnostics"] = new
+            {
+                connected = false,
+                checkedAt = DateTime.UtcNow,
+                error = $"Diagnostic check failed: {ex.Message}"
+            };
+        }
     }
-}));
+    else if (detector.IsAzure && HealthCheckCache.HasCachedResult())
+    {
+        // Return cached result
+        response["databaseDiagnostics"] = HealthCheckCache.GetCachedResult()!;
+        response["databaseDiagnosticsCached"] = true;
+    }
+
+    return Results.Ok(response);
+});
 
 // Map SignalR GameHub
 app.MapHub<GameHub>("/gameHub");
@@ -324,3 +413,48 @@ Console.WriteLine("[STARTUP] app.Run() exited");
 
 // Make the implicit Program class public so it can be referenced in tests
 public partial class Program { }
+
+/// <summary>
+/// Simple cache for health check results to avoid expensive Azure Resource Graph queries.
+/// Results are cached for 10 minutes.
+/// </summary>
+internal static class HealthCheckCache
+{
+    private static object? _cachedResult;
+    private static DateTime _lastCheck = DateTime.MinValue;
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
+    private static readonly object _lock = new();
+
+    public static bool ShouldRefresh()
+    {
+        lock (_lock)
+        {
+            return DateTime.UtcNow - _lastCheck > CacheDuration;
+        }
+    }
+
+    public static bool HasCachedResult()
+    {
+        lock (_lock)
+        {
+            return _cachedResult != null;
+        }
+    }
+
+    public static object? GetCachedResult()
+    {
+        lock (_lock)
+        {
+            return _cachedResult;
+        }
+    }
+
+    public static void Update(object result)
+    {
+        lock (_lock)
+        {
+            _cachedResult = result;
+            _lastCheck = DateTime.UtcNow;
+        }
+    }
+}
