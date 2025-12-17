@@ -1,6 +1,7 @@
 @page "/"
 @inject WebUI.Services.GameConnectionService GameConnection
 @inject WebUI.Services.GameServiceConfig GameServiceConfig
+@inject HttpClient Http
 
 <PageTitle>Catan - Home</PageTitle>
 
@@ -31,7 +32,82 @@
             <span class="icon">👥</span>
             <span class="text">Edit Players</span>
         </a>
+
+        <button class="menu-button troubleshoot-button" @onclick="RunTroubleshoot" disabled="@isTroubleshooting">
+            <span class="icon">🔧</span>
+            <span class="text">@(isTroubleshooting ? "Running..." : "Troubleshoot")</span>
+        </button>
     </div>
+
+    @if (troubleshootResult != null)
+    {
+        <div class="troubleshoot-results @(troubleshootResult.ConnectionSuccessful ? "success" : "warning")">
+            <h3>@troubleshootResult.Message</h3>
+
+            @if (troubleshootResult.Checks.Any())
+            {
+                <div class="result-section">
+                    <strong>Checks:</strong>
+                    <ul>
+                        @foreach (var check in troubleshootResult.Checks)
+                        {
+                            <li>@check</li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            @if (troubleshootResult.Fixed.Any())
+            {
+                <div class="result-section fixed">
+                    <strong>Fixed:</strong>
+                    <ul>
+                        @foreach (var fix in troubleshootResult.Fixed)
+                        {
+                            <li>✅ @fix</li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            @if (troubleshootResult.Issues.Any())
+            {
+                <div class="result-section issues">
+                    <strong>Issues:</strong>
+                    <ul>
+                        @foreach (var issue in troubleshootResult.Issues)
+                        {
+                            <li>⚠️ @issue</li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            @if (troubleshootResult.CannotFix.Any())
+            {
+                <div class="result-section cannot-fix">
+                    <strong>Cannot Auto-Fix:</strong>
+                    <ul>
+                        @foreach (var item in troubleshootResult.CannotFix)
+                        {
+                            <li>ℹ️ @item</li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            <button class="dismiss-button" @onclick="DismissTroubleshoot">Dismiss</button>
+        </div>
+    }
+
+    @if (troubleshootError != null)
+    {
+        <div class="troubleshoot-results error">
+            <h3>Troubleshoot Failed</h3>
+            <p>@troubleshootError</p>
+            <button class="dismiss-button" @onclick="DismissTroubleshoot">Dismiss</button>
+        </div>
+    }
 
     <div class="info-section">
         <p>WebUI connected to GameService at <code>@GameServiceConfig.BaseUrl</code></p>
@@ -117,4 +193,139 @@
         padding: 2px 6px;
         border-radius: 3px;
     }
+
+    .troubleshoot-button {
+        border-color: #666;
+        background-color: #f0f0f0;
+        color: #333;
+    }
+
+    .troubleshoot-button:hover:not(:disabled) {
+        background-color: #666;
+        color: white;
+    }
+
+    .troubleshoot-results {
+        margin-top: 20px;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: left;
+        max-width: 100%;
+    }
+
+    .troubleshoot-results.success {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+    }
+
+    .troubleshoot-results.warning {
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
+    }
+
+    .troubleshoot-results.error {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+    }
+
+    .troubleshoot-results h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 1.1rem;
+    }
+
+    .result-section {
+        margin-bottom: 15px;
+    }
+
+    .result-section ul {
+        margin: 5px 0;
+        padding-left: 20px;
+    }
+
+    .result-section li {
+        margin: 3px 0;
+        font-size: 0.9rem;
+    }
+
+    .result-section.fixed {
+        color: #155724;
+    }
+
+    .result-section.issues {
+        color: #856404;
+    }
+
+    .result-section.cannot-fix {
+        color: #0c5460;
+    }
+
+    .dismiss-button {
+        margin-top: 10px;
+        padding: 8px 16px;
+        border: 1px solid #666;
+        border-radius: 4px;
+        background-color: white;
+        cursor: pointer;
+    }
+
+    .dismiss-button:hover {
+        background-color: #f0f0f0;
+    }
 </style>
+
+@code {
+    private bool isTroubleshooting = false;
+    private TroubleshootResult? troubleshootResult;
+    private string? troubleshootError;
+
+    private async Task RunTroubleshoot()
+    {
+        isTroubleshooting = true;
+        troubleshootResult = null;
+        troubleshootError = null;
+        StateHasChanged();
+
+        try
+        {
+            var response = await Http.PostAsync($"{GameServiceConfig.BaseUrl}/api/troubleshoot", null);
+            if (response.IsSuccessStatusCode)
+            {
+                troubleshootResult = await response.Content.ReadFromJsonAsync<TroubleshootResult>();
+            }
+            else
+            {
+                troubleshootError = $"HTTP {(int)response.StatusCode}: {response.ReasonPhrase}";
+            }
+        }
+        catch (Exception ex)
+        {
+            troubleshootError = ex.Message;
+        }
+        finally
+        {
+            isTroubleshooting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void DismissTroubleshoot()
+    {
+        troubleshootResult = null;
+        troubleshootError = null;
+    }
+
+    private class TroubleshootResult
+    {
+        public DateTime Timestamp { get; set; }
+        public bool IsAzure { get; set; }
+        public string? ServerFqdn { get; set; }
+        public string? DatabaseName { get; set; }
+        public string? Message { get; set; }
+        public bool ConnectionSuccessful { get; set; }
+        public List<string> Checks { get; set; } = new();
+        public List<string> Issues { get; set; } = new();
+        public List<string> Fixed { get; set; } = new();
+        public List<string> CannotFix { get; set; } = new();
+    }
+}

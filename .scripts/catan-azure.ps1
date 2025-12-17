@@ -35,7 +35,7 @@ param(
     [string]$Noun,
 
     [Parameter(Position = 1)]
-    [ValidateSet("install", "deploy", "doctor", "clean")]
+    [ValidateSet("install", "deploy", "doctor", "clean", "fix")]
     [string]$Verb,
 
     [Parameter()]
@@ -783,6 +783,95 @@ END
 
 <#
 .SYNOPSIS
+    Fixes common Azure SQL connectivity issues.
+.DESCRIPTION
+    Checks and fixes:
+    - Public Network Access (enables if disabled)
+    - AllowAzureServices firewall rule (creates if missing)
+    This is useful when Azure Policy or automation has reverted settings.
+.PARAMETER Config
+    Azure configuration hashtable
+.OUTPUTS
+    Boolean indicating success
+#>
+function Fix-Database {
+    param(
+        [hashtable]$Config
+    )
+
+    $rgName = $Config.resourceGroup
+    $sqlServerName = $Config.sqlServer.serverName
+    $fqdn = $Config.sqlServer.fqdn
+
+    Write-Log -Level "INFO" -Message "Checking Azure SQL settings..."
+
+    # Check if SQL Server exists
+    $serverExists = Invoke-AzCommand "sql server show --name $sqlServerName --resource-group $rgName" -FailOnError $false -SuppressOutput
+    if (-not $serverExists) {
+        Write-Log -Level "ERROR" -Message "SQL Server '$sqlServerName' not found in resource group '$rgName'"
+        return $false
+    }
+
+    $fixedCount = 0
+
+    # Check and fix Public Network Access
+    $publicAccess = Invoke-AzCommand "sql server show --name $sqlServerName --resource-group $rgName --query publicNetworkAccess -o tsv" -FailOnError $false
+    if ($publicAccess -ne "Enabled") {
+        Write-Log -Level "WARN" -Message "Public Network Access is disabled - fixing..."
+        Invoke-AzCommand "sql server update --name $sqlServerName --resource-group $rgName --enable-public-network true" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Public Network Access enabled"
+        $fixedCount++
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Public Network Access: OK"
+    }
+
+    # Check and fix AllowAzureServices firewall rule
+    $fwRule = Invoke-AzCommand "sql server firewall-rule show --server $sqlServerName --resource-group $rgName --name AllowAzureServices" -FailOnError $false -JsonOutput
+    if (-not $fwRule) {
+        Write-Log -Level "WARN" -Message "AllowAzureServices firewall rule is missing - creating..."
+        Invoke-AzCommand "sql server firewall-rule create --server $sqlServerName --resource-group $rgName --name AllowAzureServices --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0" -SuppressOutput
+        Write-Log -Level "INFO" -Message "AllowAzureServices firewall rule created"
+        $fixedCount++
+    }
+    else {
+        Write-Log -Level "INFO" -Message "AllowAzureServices firewall rule: OK"
+    }
+
+    # Summary
+    if ($fixedCount -gt 0) {
+        Write-Log -Level "INFO" -Message "Fixed $fixedCount issue(s)"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "No issues found - all settings are correct"
+    }
+
+    # Test connectivity via health endpoint
+    $gameServiceUrl = $Config.gameService.url
+    Write-Log -Level "INFO" -Message "Testing database connectivity via GameService..."
+    try {
+        $health = Invoke-RestMethod -Uri "$gameServiceUrl/health?checkDatabase=true" -TimeoutSec 30
+        if ($health.databaseDiagnostics -and $health.databaseDiagnostics.connected) {
+            Write-Log -Level "INFO" -Message "Database connection: SUCCESS"
+        }
+        else {
+            $status = $health.databaseDiagnostics.status ?? "Unknown"
+            $issue = $health.databaseDiagnostics.issue ?? ""
+            Write-Log -Level "WARN" -Message "Database connection: FAILED (Status: $status, Issue: $issue)"
+            if ($health.databaseDiagnostics.recommendation) {
+                Write-Log -Level "INFO" -Message "Recommendation: $($health.databaseDiagnostics.recommendation)"
+            }
+        }
+    }
+    catch {
+        Write-Log -Level "WARN" -Message "Could not test connectivity: $($_.Exception.Message)"
+    }
+
+    return $true
+}
+
+<#
+.SYNOPSIS
     Checks health of the Azure SQL Server and database.
 .DESCRIPTION
     Verifies SQL Server exists, database is online, and checks GameService
@@ -833,6 +922,7 @@ function Get-DatabaseDoctor {
         # What actions are needed
         needsInstall = $false
         needsDeploy  = $false
+        needsFix     = $false  # For network settings that can be fixed without full install
     }
 
     try {
@@ -857,7 +947,7 @@ function Get-DatabaseDoctor {
         $publicAccess = Invoke-AzCommand "sql server show --name $sqlServerName --resource-group $rgName --query publicNetworkAccess -o tsv" -FailOnError $false
         $result.checks.publicNetworkAccess = ($publicAccess -eq "Enabled")
         if (-not $result.checks.publicNetworkAccess) {
-            $result.needsInstall = $true
+            $result.needsFix = $true  # Can be fixed without full install
         }
 
         # Check firewall rule exists
@@ -865,7 +955,7 @@ function Get-DatabaseDoctor {
         $fwRule = Invoke-AzCommand "sql server firewall-rule show --server $sqlServerName --resource-group $rgName --name AllowAzureServices" -FailOnError $false -JsonOutput
         $result.checks.firewallRule = ($null -ne $fwRule)
         if (-not $result.checks.firewallRule) {
-            $result.needsInstall = $true
+            $result.needsFix = $true  # Can be fixed without full install
         }
 
         # Check database exists and status
@@ -1820,6 +1910,8 @@ function Show-DoctorResult {
                     "run: deploy"
                 } elseif ($key -eq "planSkuOk") {
                     "current: $($Result.currentSku), need: B1+"
+                } elseif ($key -in @("publicNetworkAccess", "firewallRule")) {
+                    "run: fix"
                 } else {
                     "run: install"
                 }
@@ -1892,6 +1984,10 @@ function Show-DoctorResult {
         Write-Host "NEEDS INSTALL" -ForegroundColor Red
         Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
         Write-Host "./catan-azure.ps1 $($Result.resource) install" -ForegroundColor Cyan
+    } elseif ($Result.needsFix) {
+        Write-Host "NEEDS FIX" -ForegroundColor Yellow
+        Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
+        Write-Host "./catan-azure.ps1 $($Result.resource) fix" -ForegroundColor Cyan
     } elseif ($Result.needsDeploy) {
         Write-Host "NEEDS DEPLOY" -ForegroundColor Yellow
         if ($Result.deployReason) {
@@ -2065,6 +2161,7 @@ Verbs:
     install         Create Azure resources (idempotent)
     deploy          Deploy code/data to Azure
     doctor          Check health and status
+    fix             Fix common connectivity issues (database only)
     clean           Delete Azure resources
 
 Options:
@@ -2082,6 +2179,7 @@ Examples:
     ./catan-azure.ps1 deploy                   Deploy ALL code/data
     ./catan-azure.ps1 game-service install     Create GameService resources only
     ./catan-azure.ps1 database deploy          Configure SQL connection string
+    ./catan-azure.ps1 database fix             Fix SQL network access and firewall
     ./catan-azure.ps1 ui doctor -Json          Check UI health (JSON output)
     ./catan-azure.ps1 game-service clean       Delete GameService only
 "@
@@ -2265,6 +2363,7 @@ switch ($Noun) {
         switch ($Verb) {
             "install" { $success = Install-Database -Config $config }
             "deploy" { $success = Deploy-Database -Config $config -Force $Force }
+            "fix" { $success = Fix-Database -Config $config }
             "doctor" {
                 $result = Get-DatabaseDoctor -Config $config -TraceLevel $TraceLevel
                 if ($Json) {

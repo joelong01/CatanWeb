@@ -4,6 +4,7 @@ using Azure.Core;
 using Azure.Identity;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Sql;
+using Azure.ResourceManager.Sql.Models;
 using Microsoft.Data.SqlClient;
 
 namespace Catan3.GameService.Services;
@@ -155,6 +156,183 @@ public class AzureSqlDiagnosticService
             _logger.LogDebug("Failed to find resource via Resource Graph: {Error}", ex.Message);
             return (null, null);
         }
+    }
+
+    /// <summary>
+    /// Attempts to fix common Azure SQL connectivity issues.
+    /// Returns a result indicating what was checked, fixed, and what remains broken.
+    /// </summary>
+    public async Task<TroubleshootResult> TroubleshootAsync()
+    {
+        var result = new TroubleshootResult
+        {
+            Timestamp = DateTime.UtcNow,
+            IsAzure = IsRunningOnAzure()
+        };
+
+        if (!result.IsAzure)
+        {
+            result.Message = "Not running on Azure - no troubleshooting needed";
+            return result;
+        }
+
+        var connectionString = GetConnectionString();
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            result.Issues.Add("No connection string configured");
+            result.Message = "Cannot troubleshoot without a connection string";
+            return result;
+        }
+
+        try
+        {
+            var builder = new SqlConnectionStringBuilder(connectionString);
+            var serverFqdn = builder.DataSource?.Replace("tcp:", "").Split(',')[0];
+            var databaseName = builder.InitialCatalog;
+            result.ServerFqdn = serverFqdn;
+            result.DatabaseName = databaseName;
+
+            if (string.IsNullOrEmpty(serverFqdn) || string.IsNullOrEmpty(databaseName))
+            {
+                result.Issues.Add("Invalid connection string - missing server or database");
+                return result;
+            }
+
+            var (serverId, databaseId) = await FindResourceIdsByFqdnAsync(serverFqdn, databaseName);
+            if (string.IsNullOrEmpty(serverId))
+            {
+                result.Issues.Add("Could not find SQL Server via Resource Graph - check permissions");
+                return result;
+            }
+
+            var credential = new DefaultAzureCredential();
+            var armClient = new ArmClient(credential);
+
+            // Check and fix server settings
+            var serverResource = armClient.GetSqlServerResource(new ResourceIdentifier(serverId));
+            var server = await serverResource.GetAsync();
+
+            // Check Public Network Access
+            var publicNetworkAccess = server.Value.Data.PublicNetworkAccess?.ToString();
+            result.Checks.Add($"Public Network Access: {publicNetworkAccess}");
+
+            if (publicNetworkAccess?.Equals("Disabled", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                result.Issues.Add("Public Network Access is disabled");
+                try
+                {
+                    _logger.LogInformation("Enabling public network access on SQL Server...");
+                    var patch = new SqlServerPatch { PublicNetworkAccess = ServerNetworkAccessFlag.Enabled };
+                    await serverResource.UpdateAsync(Azure.WaitUntil.Completed, patch);
+                    result.Fixed.Add("Enabled Public Network Access");
+                    _logger.LogInformation("Public network access enabled successfully");
+                }
+                catch (Exception ex)
+                {
+                    result.CannotFix.Add($"Failed to enable Public Network Access: {ex.Message}");
+                    _logger.LogWarning(ex, "Failed to enable public network access");
+                }
+            }
+
+            // Check firewall rule
+            var firewallRules = serverResource.GetSqlFirewallRules();
+            var hasAllowAzureServices = false;
+            await foreach (var rule in firewallRules.GetAllAsync())
+            {
+                if (rule.Data.StartIPAddress == "0.0.0.0" && rule.Data.EndIPAddress == "0.0.0.0")
+                {
+                    hasAllowAzureServices = true;
+                    result.Checks.Add($"Firewall rule '{rule.Data.Name}': AllowAzureServices (0.0.0.0-0.0.0.0)");
+                    break;
+                }
+            }
+
+            if (!hasAllowAzureServices)
+            {
+                result.Issues.Add("AllowAzureServices firewall rule is missing");
+                try
+                {
+                    _logger.LogInformation("Creating AllowAzureServices firewall rule...");
+                    var ruleData = new SqlFirewallRuleData { StartIPAddress = "0.0.0.0", EndIPAddress = "0.0.0.0" };
+                    await firewallRules.CreateOrUpdateAsync(Azure.WaitUntil.Completed, "AllowAzureServices", ruleData);
+                    result.Fixed.Add("Created AllowAzureServices firewall rule");
+                    _logger.LogInformation("Firewall rule created successfully");
+                }
+                catch (Exception ex)
+                {
+                    result.CannotFix.Add($"Failed to create firewall rule: {ex.Message}");
+                    _logger.LogWarning(ex, "Failed to create firewall rule");
+                }
+            }
+            else
+            {
+                result.Checks.Add("AllowAzureServices firewall rule: OK");
+            }
+
+            // Check database status
+            if (!string.IsNullOrEmpty(databaseId))
+            {
+                var dbResource = armClient.GetSqlDatabaseResource(new ResourceIdentifier(databaseId));
+                var db = await dbResource.GetAsync();
+                var dbStatus = db.Value.Data.Status?.ToString();
+                result.Checks.Add($"Database status: {dbStatus}");
+
+                if (dbStatus?.Equals("Paused", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    result.Issues.Add("Database is paused (auto-pause)");
+                    result.CannotFix.Add("Database will auto-resume on first connection (30-60 second delay)");
+                }
+            }
+
+            // Test connection after fixes
+            result.Checks.Add("Testing database connection...");
+            try
+            {
+                using var connection = new SqlConnection(connectionString);
+                await connection.OpenAsync();
+                result.Checks.Add("Database connection: SUCCESS");
+                result.ConnectionSuccessful = true;
+            }
+            catch (Exception ex)
+            {
+                result.Checks.Add($"Database connection: FAILED - {ex.Message}");
+                result.ConnectionSuccessful = false;
+                if (!result.Issues.Any())
+                {
+                    result.Issues.Add($"Connection failed: {ex.Message}");
+                }
+            }
+
+            // Summary
+            if (result.Fixed.Any() && result.ConnectionSuccessful)
+            {
+                result.Message = $"Fixed {result.Fixed.Count} issue(s) - connection now working";
+            }
+            else if (result.Fixed.Any())
+            {
+                result.Message = $"Fixed {result.Fixed.Count} issue(s) but connection still failing";
+            }
+            else if (result.ConnectionSuccessful)
+            {
+                result.Message = "No issues found - connection working";
+            }
+            else if (result.CannotFix.Any())
+            {
+                result.Message = $"Found issues that cannot be auto-fixed: {string.Join(", ", result.CannotFix)}";
+            }
+            else
+            {
+                result.Message = "Troubleshooting complete but connection still failing";
+            }
+        }
+        catch (Exception ex)
+        {
+            result.Issues.Add($"Troubleshooting failed: {ex.Message}");
+            result.Message = $"Error during troubleshooting: {ex.Message}";
+            _logger.LogError(ex, "Troubleshooting failed");
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -385,4 +563,21 @@ public enum SqlDiagnosticIssue
     DatabasePaused,
     ConnectionTimeout,
     NetworkConnectivity
+}
+
+/// <summary>
+/// Result of troubleshooting attempt.
+/// </summary>
+public class TroubleshootResult
+{
+    public DateTime Timestamp { get; set; }
+    public bool IsAzure { get; set; }
+    public string? ServerFqdn { get; set; }
+    public string? DatabaseName { get; set; }
+    public string? Message { get; set; }
+    public bool ConnectionSuccessful { get; set; }
+    public List<string> Checks { get; set; } = new();
+    public List<string> Issues { get; set; } = new();
+    public List<string> Fixed { get; set; } = new();
+    public List<string> CannotFix { get; set; } = new();
 }

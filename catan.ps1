@@ -53,6 +53,9 @@ param(
     [switch]$Network,
 
     [Parameter()]
+    [switch]$Local,
+
+    [Parameter()]
     [switch]$Help,
 
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -424,7 +427,8 @@ function Invoke-DatabaseDoctor {
             if ($gameCount -gt 0) {
                 Write-Host ""
                 Write-Host "Recent saved games:" -ForegroundColor Yellow
-                $recentGames = & $sqlite3 $DatabasePath -header -column "SELECT GameId, GameState, PlayerNames, TurnCount, datetime(SavedAt) as SavedAt FROM GameSaveMetadata ORDER BY SavedAt DESC LIMIT 5;" 2>&1
+                # Set column widths: GameId(36), GameState(25), PlayerNames(35), TurnCount(9), SavedAt(19)
+                $recentGames = & $sqlite3 $DatabasePath -header -column -cmd ".width 36 25 35 9 19" "SELECT GameId, GameState, PlayerNames, TurnCount, datetime(SavedAt) as SavedAt FROM GameSaveMetadata ORDER BY SavedAt DESC LIMIT 5;" 2>&1
                 Write-Host $recentGames -ForegroundColor Gray
             }
         }
@@ -1047,9 +1051,23 @@ switch ($Verb) {
                 }
             }
             "doctor" {
-                $status = Invoke-DatabaseDoctor
-                if (-not $status.Healthy) {
-                    exit 1
+                if ($Local) {
+                    # Check local SQLite database
+                    $status = Invoke-DatabaseDoctor
+                    if (-not $status.Healthy) {
+                        exit 1
+                    }
+                }
+                else {
+                    # Default: Check Azure SQL via catan-azure.ps1
+                    $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
+                    if (Test-Path $azureScript) {
+                        & $azureScript database doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                    }
+                    else {
+                        Write-Host "Azure script not found. Use -Local for local database check." -ForegroundColor Red
+                        exit 1
+                    }
                 }
             }
             default {
@@ -1065,9 +1083,10 @@ switch ($Verb) {
                 Write-Host "  install  - Clean and reinstall database with default data"
                 Write-Host ""
                 Write-Host "Examples:" -ForegroundColor Yellow
-                Write-Host "  ./catan.ps1 database doctor    - Check database health and contents"
-                Write-Host "  ./catan.ps1 database clean     - Delete database"
-                Write-Host "  ./catan.ps1 database install   - Fresh install with default players"
+                Write-Host "  ./catan.ps1 database doctor         - Check Azure SQL health (default)"
+                Write-Host "  ./catan.ps1 database doctor -Local  - Check local SQLite database"
+                Write-Host "  ./catan.ps1 database clean          - Delete local database"
+                Write-Host "  ./catan.ps1 database install        - Fresh install with default players"
                 Write-Host ""
 
                 if ($SubCommand) {

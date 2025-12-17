@@ -243,7 +243,7 @@ app.UseAuthorization();
 app.MapStaticAssets();
 
 // Health check endpoint for service readiness
-// Caches Azure SQL diagnostic results for 10 minutes to avoid expensive Resource Graph queries
+// Always checks database connectivity, but caches expensive Resource Graph diagnostics for 10 minutes
 app.MapGet("/health", async (
     DatabaseProviderDetector detector,
     AzureSqlDiagnosticService sqlDiagnostics,
@@ -268,76 +268,115 @@ app.MapGet("/health", async (
         }
     };
 
-    // Check if we should run database diagnostics
-    var forceCheck = checkDatabase == true;
-    var shouldCheck = forceCheck || HealthCheckCache.ShouldRefresh();
-
-    if (detector.IsAzure && shouldCheck)
+    if (detector.IsAzure)
     {
+        // Always try to connect to database (cheap operation)
+        var canConnect = false;
+        Exception? dbException = null;
+
         try
         {
-            // Try a simple database query first
-            var canConnect = false;
-            Exception? dbException = null;
-
-            try
-            {
-                await dbContext.Database.CanConnectAsync();
-                canConnect = true;
-            }
-            catch (Exception ex)
-            {
-                dbException = ex;
-            }
-
-            if (canConnect)
-            {
-                // Database is accessible
-                var diagnosticResult = new
-                {
-                    connected = true,
-                    checkedAt = DateTime.UtcNow,
-                    status = "Online",
-                    issue = (string?)null,
-                    recommendation = (string?)null
-                };
-                HealthCheckCache.Update(diagnosticResult);
-                response["databaseDiagnostics"] = diagnosticResult;
-            }
-            else
-            {
-                // Database connection failed - run full diagnostics
-                var diagnosis = await sqlDiagnostics.DiagnoseAsync(dbException);
-                var diagnosticResult = new
-                {
-                    connected = false,
-                    checkedAt = DateTime.UtcNow,
-                    status = diagnosis.AzureStatus?.DatabaseStatus ?? "Unknown",
-                    publicNetworkAccess = diagnosis.AzureStatus?.PublicNetworkAccess,
-                    issue = diagnosis.Issue.ToString(),
-                    recommendation = diagnosis.Recommendation,
-                    error = diagnosis.ConnectionError
-                };
-                HealthCheckCache.Update(diagnosticResult);
-                response["databaseDiagnostics"] = diagnosticResult;
-                response["status"] = "degraded";
-            }
+            await dbContext.Database.CanConnectAsync();
+            canConnect = true;
         }
         catch (Exception ex)
         {
-            response["databaseDiagnostics"] = new
-            {
-                connected = false,
-                checkedAt = DateTime.UtcNow,
-                error = $"Diagnostic check failed: {ex.Message}"
-            };
+            dbException = ex;
         }
-    }
-    else if (detector.IsAzure && HealthCheckCache.HasCachedResult())
-    {
-        // Return cached result
-        response["databaseDiagnostics"] = HealthCheckCache.GetCachedResult()!;
-        response["databaseDiagnosticsCached"] = true;
+
+        // Determine if we need full Resource Graph diagnostics
+        var forceCheck = checkDatabase == true;
+        var cachedResult = HealthCheckCache.GetCachedResult();
+        var cachedWasConnected = cachedResult != null &&
+            (cachedResult as dynamic)?.connected == true;
+
+        // Run full diagnostics if:
+        // 1. Forced via ?checkDatabase=true
+        // 2. Cache expired
+        // 3. Connection status changed (was connected, now failing - or vice versa)
+        var statusChanged = cachedResult != null && canConnect != cachedWasConnected;
+        var shouldRunFullDiagnostics = forceCheck || HealthCheckCache.ShouldRefresh() || statusChanged;
+
+        if (canConnect)
+        {
+            // Database is accessible
+            var diagnosticResult = new
+            {
+                connected = true,
+                checkedAt = DateTime.UtcNow,
+                status = "Online",
+                issue = (string?)null,
+                recommendation = (string?)null
+            };
+
+            if (shouldRunFullDiagnostics || cachedResult == null)
+            {
+                HealthCheckCache.Update(diagnosticResult);
+            }
+            response["databaseDiagnostics"] = diagnosticResult;
+        }
+        else
+        {
+            // Database connection failed
+            response["status"] = "degraded";
+
+            if (shouldRunFullDiagnostics)
+            {
+                try
+                {
+                    // Run expensive Resource Graph diagnostics
+                    var diagnosis = await sqlDiagnostics.DiagnoseAsync(dbException);
+                    var diagnosticResult = new
+                    {
+                        connected = false,
+                        checkedAt = DateTime.UtcNow,
+                        status = diagnosis.AzureStatus?.DatabaseStatus ?? "Unknown",
+                        publicNetworkAccess = diagnosis.AzureStatus?.PublicNetworkAccess,
+                        issue = diagnosis.Issue.ToString(),
+                        recommendation = diagnosis.Recommendation,
+                        error = diagnosis.ConnectionError
+                    };
+                    HealthCheckCache.Update(diagnosticResult);
+                    response["databaseDiagnostics"] = diagnosticResult;
+                }
+                catch (Exception ex)
+                {
+                    response["databaseDiagnostics"] = new
+                    {
+                        connected = false,
+                        checkedAt = DateTime.UtcNow,
+                        error = $"Diagnostic check failed: {ex.Message}"
+                    };
+                }
+            }
+            else if (cachedResult != null)
+            {
+                // Use cached diagnostics but update connection status
+                response["databaseDiagnostics"] = new
+                {
+                    connected = false,
+                    checkedAt = DateTime.UtcNow,
+                    cachedDiagnosticsFrom = (cachedResult as dynamic)?.checkedAt,
+                    status = (cachedResult as dynamic)?.status ?? "Unknown",
+                    publicNetworkAccess = (cachedResult as dynamic)?.publicNetworkAccess,
+                    issue = (cachedResult as dynamic)?.issue,
+                    recommendation = (cachedResult as dynamic)?.recommendation,
+                    error = dbException?.Message
+                };
+                response["databaseDiagnosticsCached"] = true;
+            }
+            else
+            {
+                // No cache, can't run diagnostics - just report the error
+                response["databaseDiagnostics"] = new
+                {
+                    connected = false,
+                    checkedAt = DateTime.UtcNow,
+                    error = dbException?.Message,
+                    recommendation = "Run with ?checkDatabase=true for full diagnostics"
+                };
+            }
+        }
     }
 
     return Results.Ok(response);

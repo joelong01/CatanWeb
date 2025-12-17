@@ -64,6 +64,7 @@ namespace Catan3.GameService.Controllers
         private readonly CatanDbContext _dbContext;
         private readonly IHubContext<GameHub> _hubContext;
         private readonly IGamePersistence _gamePersistence;
+        private readonly AzureSqlDiagnosticService _sqlDiagnostics;
 
         public GameApiController(
             IOptions<GameApiOptions> options,
@@ -72,7 +73,8 @@ namespace Catan3.GameService.Controllers
             ILogger<GameApiController> logger,
             CatanDbContext dbContext,
             IHubContext<GameHub> hubContext,
-            IGamePersistence gamePersistence)
+            IGamePersistence gamePersistence,
+            AzureSqlDiagnosticService sqlDiagnostics)
         {
             _options = options.Value;
             _persistenceService = persistenceService;
@@ -81,6 +83,7 @@ namespace Catan3.GameService.Controllers
             _dbContext = dbContext;
             _hubContext = hubContext;
             _gamePersistence = gamePersistence;
+            _sqlDiagnostics = sqlDiagnostics;
         }
 
         /// <summary>
@@ -1248,6 +1251,38 @@ namespace Catan3.GameService.Controllers
                     error = ex.Message,
                     needsSeeding = true,
                     needsGames = true
+                });
+            }
+        }
+
+        /// <summary>
+        /// Troubleshoots Azure SQL connectivity issues and attempts to fix them.
+        /// Can fix: Public Network Access disabled, missing AllowAzureServices firewall rule.
+        /// Cannot fix: App Service Plan SKU (requires terminal), database paused (auto-resumes).
+        /// </summary>
+        [HttpPost("troubleshoot")]
+        public async Task<IActionResult> Troubleshoot()
+        {
+            _logger.LogEvent("API Request", "POST /api/troubleshoot - Running Azure SQL troubleshooting");
+
+            try
+            {
+                var result = await _sqlDiagnostics.TroubleshootAsync();
+
+                _logger.LogEvent("Troubleshoot Result",
+                    $"Message: {result.Message}, Fixed: {result.Fixed.Count}, Issues: {result.Issues.Count}, Connection: {result.ConnectionSuccessful}");
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Troubleshoot Error", $"Error during troubleshooting: {ex.Message}", LogLevel.Error);
+                return Ok(new
+                {
+                    timestamp = DateTime.UtcNow,
+                    message = $"Troubleshooting failed: {ex.Message}",
+                    connectionSuccessful = false,
+                    issues = new[] { ex.Message }
                 });
             }
         }
