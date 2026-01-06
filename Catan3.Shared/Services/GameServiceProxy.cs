@@ -51,6 +51,22 @@ namespace Catan3.Shared.Services
         public event Action<List<PlayerProfile>>? PlayersUpdated;
 
         /// <summary>
+        /// Event fired when SignalR connection is lost and reconnecting.
+        /// </summary>
+        public event Action<string?>? Reconnecting;
+
+        /// <summary>
+        /// Event fired when SignalR reconnects after a disconnect.
+        /// The game will be automatically re-joined, but UI may want to show a notification.
+        /// </summary>
+        public event Action<string?>? Reconnected;
+
+        /// <summary>
+        /// Event fired when SignalR connection is closed.
+        /// </summary>
+        public event Action<string?>? ConnectionClosed;
+
+        /// <summary>
         /// Creates a GameServiceProxy for the Catan3 GameHub with REST API support
         /// </summary>
         /// <param name="hubUrl">The SignalR hub URL (e.g., "https://localhost:7000/gameHub")</param>
@@ -970,19 +986,38 @@ namespace Catan3.Shared.Services
             // Connection events
             _connection.Reconnecting += (exception) =>
             {
-                // Handle reconnection logic if needed
+                LogEvent("RECONNECTING", $"SignalR reconnecting... Exception: {exception?.Message ?? "none"}");
+                _ = Task.Run(() => Reconnecting?.Invoke(exception?.Message));
                 return Task.CompletedTask;
             };
 
-            _connection.Reconnected += (connectionId) =>
+            _connection.Reconnected += async (connectionId) =>
             {
-                // Handle reconnection completion if needed
-                return Task.CompletedTask;
+                LogEvent("RECONNECTED", $"SignalR reconnected with connectionId: {connectionId}");
+
+                // Re-join the game to get fresh state and re-register in SignalR group
+                if (!string.IsNullOrEmpty(_gameId))
+                {
+                    LogEvent("RECONNECTED", $"Re-joining game {_gameId} after reconnect");
+                    try
+                    {
+                        await JoinGameAsync(_gameId);
+                        LogEvent("RECONNECTED", $"Successfully re-joined game {_gameId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        LogEvent("RECONNECT_ERROR", $"Failed to re-join game {_gameId}: {ex.Message}");
+                    }
+                }
+
+                // Notify subscribers that reconnection completed
+                _ = Task.Run(() => Reconnected?.Invoke(connectionId));
             };
 
             _connection.Closed += (exception) =>
             {
-                // Handle connection closure if needed
+                LogEvent("CLOSED", $"SignalR connection closed. Exception: {exception?.Message ?? "none"}");
+                _ = Task.Run(() => ConnectionClosed?.Invoke(exception?.Message));
                 return Task.CompletedTask;
             };
         }

@@ -134,22 +134,25 @@
                 </div>
             </div>
 
-            <!-- Roll Entry -->
-            <div class="roll-entry" style="@GetCurrentPlayerGradient()">
-                <div class="roll-grid">
-                    @for (int i = 2; i <= 12; i++)
-                    {
-                        var roll = i;
-                        <div class="roll-cell" @onclick="() => OnRollClick(roll)">
-                            <div class="roll-count">@GetRollCount(roll)</div>
-                            <div class="roll-catan-number">
-                                @((MarkupString)RenderCatanNumberSvg(roll))
+            <!-- Roll Entry (hidden during allocation phase - no dice rolling then) -->
+            @if (GameModel?.AllocationPhase() != true)
+            {
+                <div class="roll-entry" style="@GetCurrentPlayerGradient()">
+                    <div class="roll-grid">
+                        @for (int i = 2; i <= 12; i++)
+                        {
+                            var roll = i;
+                            <div class="roll-cell" @onclick="() => OnRollClick(roll)">
+                                <div class="roll-count">@GetRollCount(roll)</div>
+                                <div class="roll-catan-number">
+                                    @((MarkupString)RenderCatanNumberSvg(roll))
+                                </div>
+                                <div class="roll-percentage">@GetRollPercentage(roll)</div>
                             </div>
-                            <div class="roll-percentage">@GetRollPercentage(roll)</div>
-                        </div>
-                    }
+                        }
+                    </div>
                 </div>
-            </div>
+            }
 
             <!-- Board Measurements (visible during entire allocation phase) -->
             @if (GameModel?.AllocationPhase() == true)
