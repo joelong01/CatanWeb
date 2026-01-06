@@ -56,6 +56,10 @@
             <div class="nav-icon">&#x1F4BE;</div>
             <div class="nav-label">Save</div>
         </button>
+        <button class="nav-menu-item" @onclick="OnRefresh">
+            <div class="nav-icon">&#x1F504;</div>
+            <div class="nav-label">Refresh</div>
+        </button>
         <button class="nav-menu-item" @onclick="OnSaveCopy">
             <div class="nav-icon">&#x1F4E5;</div>
             <div class="nav-label">Save Copy</div>
@@ -265,6 +269,27 @@
     {
         // TODO: Implement game save via GameConnection
         await OnMenuAction.InvokeAsync();
+    }
+
+    private async Task OnRefresh()
+    {
+        // Re-join the game to force a fresh state update from the server
+        // Useful for testing reconnection or manually syncing after phone sleep
+        await OnMenuAction.InvokeAsync(); // Close menu first
+
+        if (!string.IsNullOrEmpty(GameConnection.GameId))
+        {
+            try
+            {
+                Console.WriteLine($"[NavMenu] Manual refresh requested for game {GameConnection.GameId}");
+                await GameConnection.ConnectAndJoinAsync(GameConnection.GameId, "WebUI-Client");
+                Console.WriteLine($"[NavMenu] Manual refresh completed");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[NavMenu] Manual refresh failed: {ex.Message}");
+            }
+        }
     }
 
     private async Task OnSavePlayers()

@@ -89,3 +89,37 @@
 .theme-option .nav-icon {
     color: var(--accent-success);
 }
+
+/* ==========================================================================
+   Mobile responsive - Larger menu items and text
+   ========================================================================== */
+@media (max-width: 768px), (pointer: coarse) {
+    .nav-menu {
+        gap: 15px;
+    }
+
+    .nav-menu-item {
+        padding: 24px 16px;
+        min-height: 130px;
+        border-radius: 12px;
+    }
+
+    .nav-icon {
+        font-size: 3rem;
+        margin-bottom: 12px;
+    }
+
+    .nav-label {
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .theme-option {
+        min-height: 100px;
+        padding-left: 30px;
+    }
+
+    .theme-option .nav-label {
+        font-size: 1.3rem;
+    }
+}

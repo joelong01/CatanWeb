@@ -538,6 +538,36 @@
     }
 
     /// <summary>
+    /// Called from JavaScript when page becomes visible (phone wake from sleep, tab switch, etc.)
+    /// Re-syncs game state to handle cases where SignalR updates were missed while suspended.
+    /// </summary>
+    [JSInvokable]
+    public async Task OnPageBecameVisible()
+    {
+        if (_disposed) return;
+
+        Console.WriteLine($"[Game] Page became visible - checking connection state for game {GameId}");
+
+        try
+        {
+            // Re-join the game to force a fresh state update from the server
+            // This handles cases where:
+            // 1. Phone was sleeping and missed SignalR updates
+            // 2. Connection was lost and auto-reconnected but we need fresh state
+            // 3. Tab was backgrounded and browser throttled WebSocket
+            if (!string.IsNullOrEmpty(GameId))
+            {
+                await Connection.ConnectAndJoinAsync(GameId, "WebUI-Client");
+                Console.WriteLine($"[Game] Re-joined game {GameId} after visibility change");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Game] Failed to re-sync after visibility change: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Layout info returned from JavaScript viewportScaler.getLayoutInfo()
     /// </summary>
     private class LayoutInfo

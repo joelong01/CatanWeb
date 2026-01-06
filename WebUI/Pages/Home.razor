@@ -272,6 +272,83 @@
     .dismiss-button:hover {
         background-color: #f0f0f0;
     }
+
+    /* ==========================================================================
+       Mobile responsive - Much larger fonts and touch targets
+       ========================================================================== */
+    @@media (max-width: 768px), (pointer: coarse) {
+        .home-container {
+            padding: 50px 30px;
+            max-width: 100%;
+        }
+
+        h1 {
+            font-size: 9rem;
+            margin-bottom: 25px;
+        }
+
+        .subtitle {
+            font-size: 3.5rem;
+            margin-bottom: 80px;
+        }
+
+        .menu-options {
+            gap: 30px;
+            margin-bottom: 80px;
+        }
+
+        .menu-button {
+            padding: 36px 48px;
+            font-size: 3rem;
+            border-radius: 20px;
+            border-width: 4px;
+        }
+
+        .menu-button .icon {
+            font-size: 4rem;
+        }
+
+        .info-section {
+            font-size: 2rem;
+        }
+
+        .info-section p[style] {
+            font-size: 1.6rem !important;
+        }
+
+        .troubleshoot-results h3 {
+            font-size: 2.5rem;
+        }
+
+        .result-section li {
+            font-size: 2rem;
+        }
+
+        .dismiss-button {
+            padding: 20px 40px;
+            font-size: 2rem;
+        }
+    }
+
+    /* Slightly smaller for very small phones */
+    @@media (max-width: 400px) {
+        h1 {
+            font-size: 6rem;
+        }
+
+        .subtitle {
+            font-size: 2.5rem;
+        }
+
+        .menu-button {
+            padding: 30px 36px;
+            font-size: 2.4rem;
+        }
+
+        .menu-button .icon {
+            font-size: 3rem;
+        }
+    }
 </style>
 
 @code {

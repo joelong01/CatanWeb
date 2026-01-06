@@ -76,3 +76,28 @@ main {
     border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* ==========================================================================
+   Mobile responsive - Larger hamburger and menu panel
+   ========================================================================== */
+@media (max-width: 768px), (pointer: coarse) {
+    .hamburger-btn {
+        font-size: 4.5rem;
+        padding: 1.5rem;
+        top: 20px;
+        left: 20px;
+        /* Large touch target */
+        min-width: 90px;
+        min-height: 90px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .menu-panel {
+        width: 260px;
+        padding-top: 130px;
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}
+

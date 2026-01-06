@@ -16,13 +16,13 @@
 
 /* =============================================================================
    CSS VERSION - UPDATE THIS ONE LINE TO CHANGE ALL VERSION STRINGS BELOW
-   Current: v42 (2025-12-15)
+   Current: v29 (2026-01-06)
    ============================================================================= */
 
 /* CSS version indicator - positioned inside game container, scales with content */
 /* Shows environment (local/web) and orientation */
 .game-container[data-layout-mode="landscape"][data-env="local"]::after {
-    content: "CSS 2025-12-16 v2 LOCAL landscape";
+    content: "CSS 2026-01-06 v29 LOCAL landscape";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -32,7 +32,7 @@
 }
 
 .game-container[data-layout-mode="landscape"][data-env="web"]::after {
-    content: "CSS 2025-12-16 v2 WEB landscape";
+    content: "CSS 2026-01-06 v29 WEB landscape";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -42,7 +42,7 @@
 }
 
 .game-container[data-layout-mode="portrait"][data-env="local"]::after {
-    content: "CSS 2025-12-16 v2 LOCAL portrait";
+    content: "CSS 2026-01-06 v29 LOCAL portrait";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -52,12 +52,21 @@
 }
 
 .game-container[data-layout-mode="portrait"][data-env="web"]::after {
-    content: "CSS 2025-12-16 v2 WEB portrait";
+    content: "CSS 2026-01-06 v29 WEB portrait";
     position: absolute;
     bottom: 5px;
     right: 5px;
     font-size: 10px;
     pointer-events: none;
+}
+
+/* Mobile: larger version string */
+@media (pointer: coarse) {
+    .game-container::after {
+        font-size: 2em !important;
+        bottom: 20px !important;
+        right: 20px !important;
+    }
 }
 
 .game-viewport {
@@ -158,7 +167,7 @@
     /* Single row/col grid - hidden portrait element doesn't affect layout */
     grid-template-rows: 1fr;
     grid-template-columns: 1fr;
-    /* Desktop landscape: stretch to fill height, center horizontally */
+    /* stretch vertical, center horizontal - child gets full height */
     place-items: stretch center;
     overflow: hidden;
     width: 100%;
@@ -856,7 +865,7 @@
     display: grid;
     grid-template-rows: 1fr;
     grid-template-columns: 1fr;
-    /* Desktop landscape: stretch to fill height, center horizontally */
+    /* stretch vertical, center horizontal - child gets full height */
     place-items: stretch center;
     /* Debug */
     border: calc(var(--debug-borders) * 2px) solid magenta;
@@ -1092,6 +1101,7 @@
     /* Mobile landscape: keep original pixel proportions */
     .game-container[data-layout-mode="landscape"] .game-grid {
         grid-template-columns: 320px 1fr 510px;
+        grid-template-rows: 1fr;  /* CRITICAL: needed for percentage heights to work */
         overflow: visible !important;
     }
 
@@ -1103,11 +1113,15 @@
         justify-content: flex-start !important;
     }
 
-    /* Center panel: keep grid sizing, allow overflow */
+    /* DISABLED: Let desktop styles apply for landscape
     .game-container[data-layout-mode="landscape"] .center-panel {
-        overflow: visible !important;
-        place-items: start center !important;
+        overflow: hidden !important;
+        display: grid !important;
+        place-items: stretch !important;
+        width: 100% !important;
+        height: 100% !important;
     }
+    */
 
     /* Left panel content: reduce top margin on mobile */
     .game-container[data-layout-mode="landscape"] .left-panel-content {
@@ -1115,27 +1129,42 @@
         margin-top: 0 !important;
     }
 
-    /* Board hierarchy: fill width, height from aspect ratio */
-    .game-board {
+    /* DISABLED: Let desktop styles apply
+    .game-container[data-layout-mode="landscape"] .game-board {
+        width: 100% !important;
+        height: 100% !important;
+        display: grid !important;
+        place-items: stretch !important;
+    }
+
+    .game-container[data-layout-mode="landscape"] .board-container {
+        width: 100% !important;
+        height: 100% !important;
+        display: grid !important;
+        place-items: stretch center !important;
+    }
+    */
+
+    /* Portrait mode board: fill width instead */
+    .game-container[data-layout-mode="portrait"] .game-board {
         width: 100% !important;
         height: auto !important;
     }
 
-    .board-container {
+    .game-container[data-layout-mode="portrait"] .board-container {
         width: 100% !important;
         height: auto !important;
         display: block !important;
     }
 
-    .board-svg-container {
+    .game-container[data-layout-mode="portrait"] .board-svg-container {
         width: 100% !important;
         height: auto !important;
         display: block !important;
     }
 
-    /* SVG: fill container width, height from viewBox aspect ratio */
-    .board-static-layer,
-    .board-interactive-layer {
+    .game-container[data-layout-mode="portrait"] .board-static-layer,
+    .game-container[data-layout-mode="portrait"] .board-interactive-layer {
         width: 100% !important;
         height: auto !important;
         display: block !important;

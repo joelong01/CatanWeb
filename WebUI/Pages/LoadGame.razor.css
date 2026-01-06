@@ -137,13 +137,18 @@
 
 @media (max-width: 768px), (pointer: coarse) {
     .load-game-page {
-        padding: 20px 15px;
-        max-width: 100%;
+        padding: 20px 8px;
+        max-width: 100vw;
+        width: 100vw;
+        margin-left: -8px;
+        box-sizing: border-box;
+        overflow-x: hidden;
     }
 
     .load-game-page h1 {
-        font-size: 1.5rem;
-        margin-bottom: 15px;
+        font-size: 3rem;
+        margin-bottom: 20px;
+        padding-left: 8px;
     }
 
     /* Hide table on mobile, show cards instead */
@@ -157,7 +162,7 @@
 }
 
 /* =============================================================================
-   Mobile card layout (generated via Blazor, styled here)
+   Mobile card layout - Play button left, Delete button right, large touch targets
    ============================================================================= */
 
 .game-cards {
@@ -168,98 +173,106 @@
     .game-cards {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 16px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .game-card {
         background: white;
-        border-radius: 8px;
-        padding: 16px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        padding: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        border: 3px solid transparent;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .game-card.selected {
-        border: 2px solid #0078d4;
+        border-color: #0078d4;
         background: #f0f7ff;
     }
 
-    .game-card-header {
+    /* Main row: [Play] [Content] [Delete] */
+    .game-card-row {
         display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 8px;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
     }
 
-    .game-card-name {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #333;
-        flex: 1;
-        margin-right: 10px;
-    }
-
-    .game-card-actions {
-        display: flex;
-        gap: 8px;
-    }
-
+    /* Large touch-friendly buttons */
     .game-card-btn {
-        min-width: 48px;
-        min-height: 48px;
-        font-size: 24px;
+        min-width: 80px;
+        min-height: 80px;
+        width: 80px;
+        height: 80px;
+        font-size: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #f0f0f0;
         border: none;
-        border-radius: 8px;
+        border-radius: 14px;
         cursor: pointer;
-        transition: background 0.15s;
+        transition: transform 0.1s, background 0.15s;
+        flex-shrink: 0;
     }
 
-    .game-card-btn:hover,
     .game-card-btn:active {
-        background: #e0e0e0;
+        transform: scale(0.95);
     }
 
-    .game-card-btn.primary {
+    /* Play button - prominent blue */
+    .game-card-btn.play-btn {
         background: #0078d4;
         color: white;
     }
 
-    .game-card-btn.primary:hover,
-    .game-card-btn.primary:active {
-        background: #006cbd;
+    .game-card-btn.play-btn:hover,
+    .game-card-btn.play-btn:active {
+        background: #005a9e;
     }
 
-    .game-card-btn.danger {
+    /* Delete button - subtle danger */
+    .game-card-btn.delete-btn {
+        background: #f5f5f5;
+        color: #999;
+    }
+
+    .game-card-btn.delete-btn:hover,
+    .game-card-btn.delete-btn:active {
         background: #ffebee;
         color: #c62828;
     }
 
-    .game-card-btn.danger:hover,
-    .game-card-btn.danger:active {
-        background: #ffcdd2;
+    /* Content area - fills middle space */
+    .game-card-content {
+        flex: 1;
+        min-width: 0; /* Allow text truncation */
+        overflow: hidden;
     }
 
-    .game-card-details {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 4px 16px;
-        font-size: 0.9rem;
-        color: #666;
+    .game-card-name {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #222;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    .game-card-detail {
-        display: flex;
-        gap: 4px;
+    .game-card-meta {
+        font-size: 1.4rem;
+        color: #555;
+        line-height: 1.4;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    .game-card-detail-label {
+    .game-card-separator {
+        margin: 0 6px;
         color: #999;
-    }
-
-    .game-card-detail-value {
-        color: #333;
     }
 }
