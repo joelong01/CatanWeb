@@ -10,7 +10,7 @@
     /* ==========================================================================
        Debug Mode - Set to 1 to show debug borders, 0 to hide
        ========================================================================== */
-    --debug-borders: 0;
+    --debug-borders: 0;  /* Set to 1 to debug layout */
 
     /* ==========================================================================
        Scaling System - Fixed-dimension coordinates (XAML Viewbox pattern)

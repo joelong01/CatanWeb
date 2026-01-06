@@ -13,6 +13,7 @@ window.viewportScaler = {
     viewport: null,
     _resizeHandler: null,
     _orientationHandler: null,
+    _visibilityHandler: null,
     _initialized: false,
     _dotNetRef: null,
     _lastIsPortrait: null,
@@ -52,9 +53,11 @@ window.viewportScaler = {
         // Set up event listeners - immediate update, no debounce for responsiveness
         this._resizeHandler = () => this.updateScale();
         this._orientationHandler = () => this.updateScale();
+        this._visibilityHandler = () => this._onVisibilityChange();
 
         window.addEventListener('resize', this._resizeHandler);
         window.addEventListener('orientationchange', this._orientationHandler);
+        document.addEventListener('visibilitychange', this._visibilityHandler);
 
         this._initialized = true;
 
@@ -132,6 +135,80 @@ window.viewportScaler = {
         }
 
         this._debugLog(viewportWidth, viewportHeight, ref.width, ref.height, scale, isPortrait, isMobile);
+
+        // Safari fix: manually size the board container since Safari can't handle
+        // height: 100% + aspect-ratio CSS calculation
+        if (this.isSafari() && !isPortrait) {
+            this._fixSafariBoardSize();
+        }
+    },
+
+    /**
+     * Detect if running in Safari (any version - desktop or mobile)
+     */
+    isSafari: function () {
+        const ua = navigator.userAgent;
+        // Safari but not Chrome (Chrome includes "Safari" in UA)
+        return ua.includes('Safari') && !ua.includes('Chrome') && !ua.includes('Chromium');
+    },
+
+    /**
+     * Safari workaround: Calculate and set explicit board dimensions.
+     * Safari can't properly calculate width from height + aspect-ratio.
+     * @param {number} retryCount - Current retry attempt (default 0)
+     */
+    _fixSafariBoardSize: function (retryCount = 0) {
+        // Guard against running after dispose() was called
+        if (!this._initialized) return;
+
+        const maxRetries = 50; // 5 seconds max at 100ms intervals
+        const centerPanel = document.querySelector('.center-panel');
+        const portraitBoardArea = document.querySelector('.portrait-board-area');
+        const gameBoard = document.querySelector('.game-board');
+        const boardContainer = document.querySelector('.board-container');
+        const boardSvgContainer = document.querySelector('.board-svg-container');
+
+        if (!centerPanel || !boardContainer || !boardSvgContainer) {
+            if (retryCount >= maxRetries) return;
+            // Containers not rendered yet - retry after Blazor finishes rendering
+            setTimeout(() => this._fixSafariBoardSize(retryCount + 1), 100);
+            return;
+        }
+
+        // Get the available space from center panel using clientWidth/Height (content area, excludes borders)
+        const containerWidth = centerPanel.clientWidth;
+        const containerHeight = centerPanel.clientHeight;
+        if (containerWidth <= 0 || containerHeight <= 0) return;
+
+        // Get the board's aspect ratio from the CSS variable
+        const style = getComputedStyle(boardSvgContainer);
+        const aspectRatioStr = style.getPropertyValue('--board-aspect-ratio');
+        const aspectRatio = parseFloat(aspectRatioStr) || (1080 / 936); // Default Catan board ratio
+
+        // Calculate board size to fit container while maintaining aspect ratio
+        let boardWidth, boardHeight;
+
+        // Try fitting by height first (landscape typically constrained by height)
+        boardHeight = containerHeight;
+        boardWidth = boardHeight * aspectRatio;
+
+        // If width exceeds container, fit by width instead
+        if (boardWidth > containerWidth) {
+            boardWidth = containerWidth;
+            boardHeight = boardWidth / aspectRatio;
+        }
+
+        // Apply explicit dimensions to ALL containers in the chain
+        // Use max-width/max-height to prevent overflow, and ensure centering
+
+        // Intermediate containers fill the center panel
+        const containerStyle = `width: ${containerWidth}px; height: ${containerHeight}px; display: flex; align-items: center; justify-content: center;`;
+        if (portraitBoardArea) portraitBoardArea.style.cssText = containerStyle;
+        if (gameBoard) gameBoard.style.cssText = containerStyle;
+        if (boardContainer) boardContainer.style.cssText = containerStyle;
+
+        // Board container gets exact calculated dimensions, centered by parent flexbox
+        boardSvgContainer.style.cssText = `width: ${boardWidth}px; height: ${boardHeight}px; max-width: ${containerWidth}px; max-height: ${containerHeight}px;`;
     },
 
     /**
@@ -168,9 +245,30 @@ window.viewportScaler = {
         if (this._orientationHandler) {
             window.removeEventListener('orientationchange', this._orientationHandler);
         }
+        if (this._visibilityHandler) {
+            document.removeEventListener('visibilitychange', this._visibilityHandler);
+        }
         this._initialized = false;
         this.container = null;
         this.viewport = null;
+    },
+
+    /**
+     * Handle page visibility changes (phone wake from sleep, tab switch, etc.)
+     * Notifies Blazor to re-sync game state
+     */
+    _onVisibilityChange: function () {
+        if (document.visibilityState === 'visible') {
+            console.log('[viewportScaler] Page became visible - notifying Blazor for state sync');
+            if (this._dotNetRef) {
+                this._dotNetRef.invokeMethodAsync('OnPageBecameVisible')
+                    .catch(err => console.warn('[viewportScaler] Failed to notify Blazor:', err));
+            }
+            // Also refresh the scale in case viewport changed while hidden
+            this.updateScale();
+        } else {
+            console.log('[viewportScaler] Page became hidden');
+        }
     },
 
     /**

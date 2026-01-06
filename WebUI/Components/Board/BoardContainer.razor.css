@@ -11,7 +11,8 @@
     box-sizing: border-box;
 }
 
-/* Landscape: fill height, width constrained by aspect-ratio and max-width */
+/* Landscape: fill height, width from aspect-ratio (works in Chrome/Edge).
+   Safari uses JavaScript sizing in viewportScaler.js instead. */
 :global(.game-container[data-layout-mode="landscape"]) .board-svg-container {
     height: 100%;
     width: auto;
@@ -26,15 +27,16 @@
     aspect-ratio: var(--board-aspect-ratio);
 }
 
-/* Mobile landscape: fill center column width, height from aspect ratio */
+/* Mobile landscape: DISABLED - using desktop styles instead
 @media (pointer: coarse) {
     :global(.game-container[data-layout-mode="landscape"]) .board-svg-container {
-        width: 100% !important;
-        height: auto !important;
-        aspect-ratio: var(--board-aspect-ratio) !important;
-        max-height: none !important;
+        width: 100%;
+        height: auto;
+        aspect-ratio: var(--board-aspect-ratio);
+        max-height: 100%;
     }
 }
+*/
 
 /* First SVG stays in flow to establish container size */
 .board-static-layer {
