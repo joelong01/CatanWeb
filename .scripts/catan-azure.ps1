@@ -1527,9 +1527,11 @@ function Get-GameServiceDoctor {
         if ($plan) {
             $result.currentSku = $plan.sku.name
             # F1 (Free) and D1 (Shared) don't support Always On - need B1 or higher
+            # Note: This is a performance limitation, not a missing infrastructure issue
+            # The app works on F1, it just has cold start delays
             $result.checks.planSkuOk = ($plan.sku.name -notin @("F1", "D1"))
             if (-not $result.checks.planSkuOk) {
-                $result.needsInstall = $true
+                # Don't set needsInstall - F1 works, just with performance limitations
                 if (-not $result.performanceWarnings) { $result.performanceWarnings = @() }
                 $result.performanceWarnings += "App Service Plan SKU is $($plan.sku.name) - upgrade to B1 or higher for Always On support"
             }
@@ -1910,6 +1912,8 @@ function Show-DoctorResult {
                     "run: deploy"
                 } elseif ($key -eq "planSkuOk") {
                     "current: $($Result.currentSku), need: B1+"
+                } elseif ($key -eq "alwaysOn") {
+                    "(requires B1+ SKU)"
                 } elseif ($key -in @("publicNetworkAccess", "firewallRule")) {
                     "run: fix"
                 } else {
