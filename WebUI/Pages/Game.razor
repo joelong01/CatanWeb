@@ -18,6 +18,7 @@
 @inject GameStateService GameStateService
 @inject IAssetService AssetService
 @inject IJSRuntime JSRuntime
+@inject ClientHouseRulesService ClientHouseRules
 @implements IAsyncDisposable
 
 <PageTitle>Catan Game</PageTitle>
@@ -213,7 +214,8 @@
                                         OnBuildingClick="@OnBuildingSpotClick"
                                         OnRoadClick="@OnRoadSpotClick"
                                         OnTileClick="@OnTileClickForRobber"
-                                        FlippedTiles="@GriefDodgyFlippedTiles" />
+                                        FlippedTiles="@GriefDodgyFlippedTiles"
+                                        ClientHouseRules="@ClientHouseRules.HouseRules" />
                     </div>
                 </div>
             </div>
@@ -312,7 +314,8 @@
                           PlayerProfiles="@PlayerProfiles"
                           IsPortrait="@_isPortrait"
                           OnGoFirst="@OnGoFirstClick"
-                          OnSupplementalChanged="@OnSupplementalChanged" />
+                          OnSupplementalChanged="@OnSupplementalChanged"
+                          OnPickingSupplementalDone="@OnPickingSupplementalDone" />
         </div>
     }
     else
@@ -431,6 +434,7 @@
     private HashSet<HexCoordinates>? _cachedFlippedTiles; // Cached tiles for animation duration
     private CancellationTokenSource? _flipAnimationCts; // Timer to clear cached tiles after animation
     private const int FlipAnimationDurationMs = 6000; // CSS animation duration
+    private bool _flipAnimationCompleted; // Tracks if flip animation already ran for this MustMoveRobber entry
 
     // Game name editing state
     private bool _isEditingName;
@@ -480,6 +484,12 @@
         await JSRuntime.InvokeVoidAsync("localStorage.setItem", "current_gameId", GameId);
 
         await ConnectToGameAsync();
+
+        // Store game type after connecting (GameModel is now available)
+        if (GameModel != null)
+        {
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "current_gameType", GameModel.GameType.ToString());
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -500,6 +510,9 @@
                 _portraitTab = savedTab;
                 StateHasChanged();
             }
+
+            // Initialize client-side house rules (loads from localStorage)
+            await ClientHouseRules.InitializeAsync();
         }
     }
 
@@ -686,14 +699,15 @@
 
     /// <summary>
     /// Whether "Grief Dodgy" mode is currently active.
-    /// True when: house rule enabled, Dodgy is in game, and game is in MustMoveRobber state.
+    /// True when: client-side setting enabled, Dodgy is in game, and game is in MustMoveRobber state.
+    /// Uses ClientHouseRules service (localStorage) not GameModel - each client controls independently.
     /// </summary>
     private bool IsGriefDodgyActive
     {
         get
         {
             if (GameModel == null) return false;
-            return GameModel.HouseRules.GriefDodgy
+            return ClientHouseRules.HouseRules.GriefDodgy
                 && DodgyPlayerId != null
                 && GameModel.GameState == GameState.MustMoveRobber;
         }
@@ -710,6 +724,9 @@
         {
             // If we have cached tiles from an ongoing animation, return those
             if (_cachedFlippedTiles != null) return _cachedFlippedTiles;
+
+            // If animation already completed for this MustMoveRobber entry, don't restart
+            if (_flipAnimationCompleted) return null;
 
             // Only calculate new flip tiles when entering MustMoveRobber state
             if (!IsGriefDodgyActive || GameModel == null) return null;
@@ -742,6 +759,7 @@
             if (flippedTiles.Count > 0)
             {
                 _cachedFlippedTiles = flippedTiles;
+                _flipAnimationCompleted = true; // Mark animation as triggered for this state entry
                 StartFlipAnimationTimer();
             }
 
@@ -916,11 +934,24 @@
 
     private void OnGameStateUpdated(GameModel gameModel)
     {
+        // Log gold tiles for debugging
+        var goldTiles = gameModel.Tiles.Where(t => t.TemporarilyGold).ToList();
+        var goldCoords = string.Join(", ", goldTiles.Select(t => $"({t.TileKey.Q},{t.TileKey.R})"));
+        Console.WriteLine($"[GameStateUpdated] State={gameModel.GameState}, HouseRules.GoldTiles={gameModel.HouseRules.GoldTiles}, Actual gold tiles ({goldTiles.Count}): [{goldCoords}]");
+
         // Capture previous state before updating for tab switching logic
         var previousState = GameModel?.GameState;
 
         GameModel = gameModel;
         GameStateService.UpdateGameModel(gameModel);
+
+        // Reset flip animation flag when leaving MustMoveRobber state
+        // This allows the animation to play again on next MustMoveRobber entry
+        if (previousState == GameState.MustMoveRobber && gameModel.GameState != GameState.MustMoveRobber)
+        {
+            _flipAnimationCompleted = false;
+            _cachedFlippedTiles = null;
+        }
 
         // Note: Tile dimming is triggered directly from OnRollClick, not from GameModel state
 
@@ -1113,6 +1144,28 @@
         }
     }
 
+    /// <summary>
+    /// Handles Done button click during PickSupplementalPlayers.
+    /// Calls Next to advance game state and switches back to Board tab.
+    /// </summary>
+    private async Task OnPickingSupplementalDone()
+    {
+        if (Connection.State == ConnectionState.InGame)
+        {
+            try
+            {
+                CommandError = null;
+                await Connection.NextAsync();
+                // Switch back to Board tab after advancing (portrait mode)
+                await SetPortraitTab("board");
+            }
+            catch (Exception ex)
+            {
+                CommandError = $"Failed to advance: {ex.Message}";
+            }
+        }
+    }
+
     private async Task OnBuildingSpotClick(BuildingKey buildingKey)
     {
         if (Connection.State == ConnectionState.InGame)
@@ -1227,8 +1280,8 @@
             {
                 CommandError = null;
 
-                // Check if we should trigger Grief Dodgy celebration
-                var shouldCelebrate = GameModel?.HouseRules.GriefDodgy == true
+                // Check if we should trigger Grief Dodgy celebration (uses client-side setting)
+                var shouldCelebrate = ClientHouseRules.HouseRules.GriefDodgy
                     && targetPlayerId == DodgyPlayerIdConst;
 
                 // Dismiss menu before animations start

@@ -6,6 +6,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject GameServiceConfig Config
+@inject ClientHouseRulesService ClientHouseRules
 
 <PageTitle>Settings</PageTitle>
 
@@ -79,6 +80,10 @@
         <div class="button-row">
             <button class="btn btn-secondary" @onclick="ResetToDefaults">Reset to Defaults</button>
             <button class="btn btn-primary" @onclick="SaveSettings">Save</button>
+            @if (!string.IsNullOrEmpty(_currentGameId))
+            {
+                <button class="btn btn-game" @onclick="ReturnToGame">Return to Game</button>
+            }
         </div>
 
         @if (saveMessage != null)
@@ -94,9 +99,18 @@
     private string? errorMessage;
     private string? saveMessage;
     private bool saveSuccess;
+    private string? _currentGameId;
+    private GameType? _currentGameType;
 
     protected override async Task OnInitializedAsync()
     {
+        // Check if there's an active game to return to
+        _currentGameId = await JS.InvokeAsync<string?>("localStorage.getItem", "current_gameId");
+        var gameTypeStr = await JS.InvokeAsync<string?>("localStorage.getItem", "current_gameType");
+        if (!string.IsNullOrEmpty(gameTypeStr) && Enum.TryParse<GameType>(gameTypeStr, out var gt))
+        {
+            _currentGameType = gt;
+        }
         await LoadSettings();
     }
 
@@ -150,10 +164,9 @@
                 await JS.InvokeVoidAsync("localStorage.setItem", $"setting_{setting.SettingName}", value);
             }
 
-            // Also save complete HouseRules as JSON for new game creation
+            // Build HouseRules and update both localStorage and in-memory service
             var houseRules = BuildHouseRulesFromSettings();
-            var houseRulesJson = System.Text.Json.JsonSerializer.Serialize(houseRules);
-            await JS.InvokeVoidAsync("localStorage.setItem", "HouseRules", houseRulesJson);
+            await ClientHouseRules.UpdateAsync(houseRules);
 
             // If there's a current game, update its house rules
             var currentGameId = await JS.InvokeAsync<string?>("localStorage.getItem", "current_gameId");
@@ -186,7 +199,8 @@
     {
         if (settings == null) return;
 
-        var houseRules = BuildHouseRulesFromSettings();
+        // Use the current game's type to pick the right gold tiles setting
+        var houseRules = BuildHouseRulesFromSettings(_currentGameType);
 
         try
         {
@@ -214,6 +228,10 @@
             await JS.InvokeVoidAsync("localStorage.removeItem", $"setting_{setting.SettingName}");
         }
 
+        // Update in-memory HouseRules service with defaults
+        var houseRules = BuildHouseRulesFromSettings();
+        await ClientHouseRules.UpdateAsync(houseRules);
+
         // If there's a current game, update its house rules with defaults
         var currentGameId = await JS.InvokeAsync<string?>("localStorage.getItem", "current_gameId");
         if (!string.IsNullOrEmpty(currentGameId))
@@ -229,6 +247,14 @@
             saveMessage = null;
             InvokeAsync(StateHasChanged);
         });
+    }
+
+    private void ReturnToGame()
+    {
+        if (!string.IsNullOrEmpty(_currentGameId))
+        {
+            Navigation.NavigateTo($"/game/{_currentGameId}");
+        }
     }
 
     private string GetStringValue(SettingItem setting)
@@ -258,11 +284,17 @@
     /// Builds a complete HouseRules object from current settings.
     /// This is the single source of truth for converting UI settings to HouseRules.
     /// </summary>
-    private HouseRules BuildHouseRulesFromSettings()
+    /// <param name="gameType">Optional game type to determine which gold tiles setting to use.
+    /// If null, defaults to Expansion gold tiles (for new game creation where type isn't known yet).</param>
+    private HouseRules BuildHouseRulesFromSettings(GameType? gameType = null)
     {
-        var expansionGoldTiles = GetSettingValue("ExpansionGoldTiles");
-        var regularGoldTiles = GetSettingValue("RegularGoldTiles");
-        var goldTilesStr = expansionGoldTiles ?? regularGoldTiles;
+        // Pick gold tiles based on game type
+        var goldTilesStr = gameType switch
+        {
+            GameType.Regular => GetSettingValue("RegularGoldTiles"),
+            GameType.Expansion => GetSettingValue("ExpansionGoldTiles"),
+            _ => GetSettingValue("ExpansionGoldTiles") ?? GetSettingValue("RegularGoldTiles")
+        };
 
         return new HouseRules
         {

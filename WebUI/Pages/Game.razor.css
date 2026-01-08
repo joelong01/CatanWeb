@@ -16,13 +16,13 @@
 
 /* =============================================================================
    CSS VERSION - UPDATE THIS ONE LINE TO CHANGE ALL VERSION STRINGS BELOW
-   Current: v29 (2026-01-06)
+   Current: v1 (2025-01-08)
    ============================================================================= */
 
 /* CSS version indicator - positioned inside game container, scales with content */
 /* Shows environment (local/web) and orientation */
 .game-container[data-layout-mode="landscape"][data-env="local"]::after {
-    content: "CSS 2026-01-06 v29 LOCAL landscape";
+    content: "CSS 2025-01-08 v1 LOCAL landscape";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -32,7 +32,7 @@
 }
 
 .game-container[data-layout-mode="landscape"][data-env="web"]::after {
-    content: "CSS 2026-01-06 v29 WEB landscape";
+    content: "CSS 2025-01-08 v1 WEB landscape";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -42,7 +42,7 @@
 }
 
 .game-container[data-layout-mode="portrait"][data-env="local"]::after {
-    content: "CSS 2026-01-06 v29 LOCAL portrait";
+    content: "CSS 2025-01-08 v1 LOCAL portrait";
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -52,7 +52,7 @@
 }
 
 .game-container[data-layout-mode="portrait"][data-env="web"]::after {
-    content: "CSS 2026-01-06 v29 WEB portrait";
+    content: "CSS 2025-01-08 v1 WEB portrait";
     position: absolute;
     bottom: 5px;
     right: 5px;

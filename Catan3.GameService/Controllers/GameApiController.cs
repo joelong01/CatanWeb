@@ -1459,6 +1459,55 @@ namespace Catan3.GameService.Controllers
         }
 
         /// <summary>
+        /// Deletes a game from both memory and database.
+        /// </summary>
+        [HttpDelete("game/{gameId}")]
+        public async Task<IActionResult> DeleteGame(string gameId)
+        {
+            _logger.LogEvent("API Request", $"DELETE /api/game/{gameId} - Deleting game");
+
+            try
+            {
+                // Remove from in-memory registry if loaded
+                try
+                {
+                    GameStateMachineRegistry.DeleteGameStateMachine(gameId);
+                    _logger.LogEvent("Delete Game", $"Removed game {gameId} from memory");
+                }
+                catch (GameException)
+                {
+                    // Game not in registry - that's OK
+                    _logger.LogEvent("Delete Game", $"Game {gameId} not in memory");
+                }
+
+                // Delete from database
+                var gameMetadata = await _dbContext.GameSaveMetadata
+                    .Include(m => m.GameData)
+                    .FirstOrDefaultAsync(m => m.GameId == gameId);
+
+                if (gameMetadata == null)
+                {
+                    return NotFound(new { success = false, error = $"Game {gameId} not found in database" });
+                }
+
+                var gameName = gameMetadata.GameName;
+
+                // Remove metadata (cascade will remove GameData due to FK relationship)
+                _dbContext.GameSaveMetadata.Remove(gameMetadata);
+                await _dbContext.SaveChangesAsync();
+
+                _logger.LogEvent("Game Deleted", $"Deleted game {gameId} ({gameName})");
+
+                return Ok(new { success = true, gameId, gameName, message = "Game deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Delete Game Error", $"Error deleting game {gameId}: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new { success = false, error = $"Error deleting game: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
         /// Creates a deep copy of a game with a new GameId.
         /// Useful for creating common starting positions for tests.
         /// </summary>

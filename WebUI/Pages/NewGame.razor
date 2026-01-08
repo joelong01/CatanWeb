@@ -237,9 +237,18 @@
                     houseRules = System.Text.Json.JsonSerializer.Deserialize<HouseRules>(houseRulesJson);
                 }
                 // Fallback to defaults if no saved settings
+                // Explicitly set all values - GriefDodgy defaults to true in HouseRules class
+                // but should be OFF when no saved settings exist
                 houseRules ??= new HouseRules
                 {
-                    GoldTiles = SelectedGameType == GameType.Expansion ? 2 : 1
+                    GoldTiles = SelectedGameType == GameType.Expansion ? 2 : 1,
+                    GriefDodgy = false,  // OFF by default - must be explicitly enabled in Settings
+                    WallsProtectCities = true,
+                    KnightMovesBaronBeforeRoll = true,
+                    HideBaronBeforeInvasion = false,
+                    KnightMovesRobberBeforeRoll = false,
+                    HideRobberBeforeInvasion = false,
+                    SupplementalMinPlayers = 5
                 };
             }
 

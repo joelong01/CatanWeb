@@ -153,6 +153,15 @@
     background: #666;
 }
 
+.btn-game {
+    background: #28a745;
+    color: white;
+}
+
+.btn-game:hover {
+    background: #218838;
+}
+
 /* Save message */
 .save-message {
     margin-top: 15px;

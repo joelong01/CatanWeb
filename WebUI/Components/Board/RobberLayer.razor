@@ -103,6 +103,10 @@
     private bool _animationPending;
     private HexCoordinates _animationStartCoords = HexCoordinates.Default;
 
+    // Track last animated movement to prevent re-animation on re-render
+    private HexCoordinates? _lastAnimatedFromCoords;
+    private HexCoordinates? _lastAnimatedToCoords;
+
     // Fake-out animation state (Grief Dodgy)
     private enum FakeOutPhase { None, AnimatingToFake, HoldingAtFake, AnimatingToFinal }
     private FakeOutPhase _fakeOutPhase = FakeOutPhase.None;
@@ -138,26 +142,50 @@
                 ? prevCoords
                 : fakeCoords; // If no previous, start directly at fake-out position
 
+            // Guard: Skip if we already animated this exact movement
+            if (_lastAnimatedFromCoords?.Equals(startCoords) == true &&
+                _lastAnimatedToCoords?.Equals(RobberCoordinates) == true)
+            {
+                return;
+            }
+
             _animationStartCoords = startCoords;
             _fakeOutPhase = FakeOutPhase.AnimatingToFake;
             _fakeOutTargetCoords = fakeCoords;
             _animationPending = true;
+            // Record this animation
+            _lastAnimatedFromCoords = startCoords;
+            _lastAnimatedToCoords = RobberCoordinates;
         }
         // Normal animation: If PreviousCoordinates is set and different from current
         else if (PreviousCoordinates is HexCoordinates prevCoords &&
             prevCoords != HexCoordinates.Default &&
             !prevCoords.Equals(RobberCoordinates))
         {
+            // Guard: Skip if we already animated this exact movement
+            if (_lastAnimatedFromCoords?.Equals(prevCoords) == true &&
+                _lastAnimatedToCoords?.Equals(RobberCoordinates) == true)
+            {
+                return;
+            }
+
             _animationStartCoords = prevCoords;
             _fakeOutPhase = FakeOutPhase.None;
             _animationPending = true;
+            // Record this animation
+            _lastAnimatedFromCoords = prevCoords;
+            _lastAnimatedToCoords = RobberCoordinates;
         }
         else
         {
-            // No animation coordinates - reset animation state
+            // No animation coordinates - reset animation state and clear tracking
             _animationPending = false;
             _fakeOutPhase = FakeOutPhase.None;
             _fakeOutTargetCoords = HexCoordinates.Default;
+            // Clear last animated coords when no animation is needed
+            // This allows a new animation to trigger when robber moves again
+            _lastAnimatedFromCoords = null;
+            _lastAnimatedToCoords = null;
         }
     }
 

@@ -181,10 +181,17 @@ else
     public HashSet<HexCoordinates>? FlippedTiles { get; set; }
 
     /// <summary>
-    /// Whether GriefDodgy is truly enabled: house rule on AND Dodgy-001 is playing.
+    /// Client-side house rules (from localStorage, not GameModel).
+    /// Passed from parent so each client can control settings independently.
+    /// </summary>
+    [Parameter]
+    public HouseRules? ClientHouseRules { get; set; }
+
+    /// <summary>
+    /// Whether GriefDodgy is truly active: setting enabled AND Dodgy-001 is playing.
     /// </summary>
     private bool IsGriefDodgyEnabled =>
-        GameModel?.HouseRules.GriefDodgy == true &&
+        ClientHouseRules?.GriefDodgy == true &&
         GameModel?.Players.Any(p => p.Id == "Dodgy-001") == true;
 
     /// <summary>

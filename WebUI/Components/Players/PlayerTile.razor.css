@@ -83,24 +83,32 @@
     margin-top: 1px;
 }
 
-/* Score tile: laurel wreath with number centered inside */
+/* Score tile: laurel wreath at perimeter with score number centered inside */
 .score-tile {
     position: relative;
     justify-content: center; /* Override space-between to center the number */
+    padding: 0; /* Remove padding to maximize laurel size */
 }
 
 .laurel-bg {
     position: absolute;
-    font-size: var(--laurel-size, 1.8em);
-    /* Center the laurel glyph behind the score number */
+    inset: 0; /* Fill the entire tile */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Laurel fills the tile, bounded by the rounded rect */
+    font-size: 32px; /* Large laurel to fill the 35px tile */
+    line-height: 1;
 }
 
 .score-number {
     position: relative;
     z-index: 1;
-    font-size: var(--score-size, 0.8em);
+    /* Score number as large as possible inside the laurel */
+    font-size: 18px;
     font-weight: bold;
     text-align: center;
+    line-height: 1;
 }
 
 .resources-this-turn-row {

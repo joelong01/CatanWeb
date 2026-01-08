@@ -2,8 +2,14 @@
 @using Catan3.Shared.Profiles
 @using static Catan3.WebUI.Components.Players.PlayerCard
 
-<div class="players-panel @(IsSupplementalPhase ? "supplemental-phase" : "") @(IsPortrait ? "portrait" : "")" data-testid="players-panel">
-    <!-- DEBUG: State=@GameModel.GameState, IsSupp=@IsSupplementalPhase, Visible=@GetVisiblePlayers().Count() -->
+<div class="players-panel @(IsSupplementalPhase ? "supplemental-phase" : "") @(IsPickingSupplemental ? "picking-supplemental" : "") @(IsPortrait ? "portrait" : "")" data-testid="players-panel">
+    @* Done button for PickSupplementalPlayers - same size as a player card *@
+    @if (IsPickingSupplemental)
+    {
+        <button class="supplemental-done-button" @onclick="OnDoneClicked">
+            Done
+        </button>
+    }
     @foreach (var player in GetVisiblePlayers())
     {
         var playerColors = GetPlayerColors(player.Id);
@@ -54,6 +60,13 @@
     public EventCallback<(string PlayerId, bool Participating)> OnSupplementalChanged { get; set; }
 
     /// <summary>
+    /// Callback when the Done button is clicked during PickSupplementalPlayers.
+    /// Calls Next on the service and switches back to Board tab.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnPickingSupplementalDone { get; set; }
+
+    /// <summary>
     /// Whether the layout is in portrait mode (affects sizing and alignment).
     /// </summary>
     [Parameter]
@@ -65,10 +78,22 @@
     private bool IsSupplementalPhase => GameModel.GameState == GameState.Supplemental;
 
     /// <summary>
-    /// Gets the players to display. During Supplemental phase, only show participating players.
+    /// Whether we're picking supplemental players.
+    /// </summary>
+    private bool IsPickingSupplemental => GameModel.GameState == GameState.PickSupplementalPlayers;
+
+    /// <summary>
+    /// Gets the players to display.
+    /// - During PickSupplementalPlayers: exclude current player (they can't participate)
+    /// - During Supplemental build phase: only show participating players
     /// </summary>
     private IEnumerable<PlayerModel> GetVisiblePlayers()
     {
+        // During PickSupplementalPlayers, exclude the current player (they can't participate anyway)
+        if (IsPickingSupplemental)
+        {
+            return GameModel.Players.Where(p => p.Id != GameModel.CurrentPlayerId);
+        }
         // During the Supplemental build phase, only show participating players
         if (IsSupplementalPhase)
         {
@@ -76,6 +101,14 @@
         }
         // All other states show all players
         return GameModel.Players;
+    }
+
+    /// <summary>
+    /// Handles the Done button click during PickSupplementalPlayers.
+    /// </summary>
+    private async Task OnDoneClicked()
+    {
+        await OnPickingSupplementalDone.InvokeAsync();
     }
 
     /// <summary>

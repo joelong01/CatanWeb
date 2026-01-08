@@ -23,6 +23,9 @@ builder.Services.AddSingleton<GameStateService>();
 builder.Services.AddSingleton<ClientAssetService>();
 builder.Services.AddSingleton<IAssetService>(sp => sp.GetRequiredService<ClientAssetService>());
 
+// Register client-side house rules service (loads from localStorage)
+builder.Services.AddSingleton<ClientHouseRulesService>();
+
 var host = builder.Build();
 
 // Initialize asset service (load theme.json files)

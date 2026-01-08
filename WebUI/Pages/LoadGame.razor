@@ -194,6 +194,14 @@
         var game = savedGames.FirstOrDefault(g => g.GameId == gameId);
         if (game == null) return;
 
+        // Check if this is the currently active game
+        var currentGameId = await JS.InvokeAsync<string?>("localStorage.getItem", "current_gameId");
+        if (currentGameId == gameId)
+        {
+            await JS.InvokeVoidAsync("alert", "Cannot delete the currently active game. Please start or load a different game first.");
+            return;
+        }
+
         var confirmed = await JS.InvokeAsync<bool>("confirm", $"Delete game '{game.GameName}'?");
         if (!confirmed) return;
 

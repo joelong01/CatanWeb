@@ -23,3 +23,33 @@
     transform-origin: top center;
 }
 
+/* Done button for PickSupplementalPlayers - same size as player card */
+.supplemental-done-button {
+    width: 500px;
+    height: 150px;
+    margin: 1px;
+    margin-left: auto; /* Right-align like player cards */
+    font-size: 48px;
+    font-weight: bold;
+    color: white;
+    background: linear-gradient(135deg, #4CAF50, #2E7D32);
+    border: 3px solid #1B5E20;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.supplemental-done-button:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.supplemental-done-button:active {
+    transform: scale(0.98);
+}
+
+/* Portrait mode: center the button */
+.players-panel.portrait .supplemental-done-button {
+    margin-left: 0;
+}
+
