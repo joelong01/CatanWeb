@@ -256,6 +256,31 @@ a.nav-menu-item:visited {
     50% { opacity: 1; }
 }
 
+.loading-log {
+    margin-top: 1.5rem;
+    width: 90%;
+    max-width: 500px;
+    max-height: 150px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.75rem;
+    text-align: left;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    padding: 0.5rem;
+}
+
+.loading-log .log-entry {
+    color: #8a8;
+    margin: 2px 0;
+    word-break: break-word;
+}
+
+.loading-log .log-error {
+    color: #f66;
+    font-weight: bold;
+}
+
 code {
     color: #c02d76;
 }

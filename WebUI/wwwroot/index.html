@@ -52,6 +52,7 @@
             </div>
             <div class="loading-progress-text"></div>
             <div class="loading-hint">Preparing your game...</div>
+            <div class="loading-log" id="loading-log"></div>
         </div>
     </div>
 
@@ -60,43 +61,66 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
-    <script src="_framework/blazor.webassembly.js"></script>
+    <script src="_framework/blazor.webassembly.js" autostart="false"></script>
     <script src="js/svgRasterizer.js"></script>
     <script src="js/viewportScaler.js"></script>
 
-    <!-- Prefetch player images and warm up the API while WASM loads -->
+    <!-- Loading diagnostics and Blazor boot -->
     <script>
         (function() {
-            // Determine API URL based on hostname (mirrors GameServiceConfig.cs logic)
-            var host = window.location.hostname;
-            var apiUrl;
-            if (host.endsWith('.azurewebsites.net')) {
-                // Azure: UI is at {basename}.azurewebsites.net, API at {basename}-api.azurewebsites.net
-                var baseName = host.split('.')[0];
-                apiUrl = 'https://' + baseName + '-api.azurewebsites.net';
-            } else {
-                // Local development: API on same host, port 8080
-                apiUrl = 'http://' + host + ':8080';
+            var startTime = Date.now();
+            var logElement = document.getElementById('loading-log');
+
+            // Log a timestamped message to the loading screen
+            function logMessage(text, isError) {
+                var elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                var entry = document.createElement('div');
+                entry.className = 'log-entry' + (isError ? ' log-error' : '');
+                entry.textContent = '[' + elapsed + 's] ' + text;
+                if (logElement) {
+                    logElement.appendChild(entry);
+                    logElement.scrollTop = logElement.scrollHeight;
+                }
+                console.log('[Loading ' + elapsed + 's] ' + text);
             }
 
-            // Update loading hint as we prefetch
+            // Update loading hint
             function setHint(text) {
                 var hint = document.querySelector('.loading-hint');
                 if (hint) hint.textContent = text;
             }
 
-            // Prefetch an image by creating an Image object
+            // Determine API URL based on hostname (mirrors GameServiceConfig.cs logic)
+            var host = window.location.hostname;
+            var apiUrl;
+            if (host.endsWith('.azurewebsites.net')) {
+                var baseName = host.split('.')[0];
+                apiUrl = 'https://' + baseName + '-api.azurewebsites.net';
+            } else {
+                apiUrl = 'http://' + host + ':8080';
+            }
+
+            // Log initial state
+            logMessage('Page loaded, UA: ' + navigator.userAgent.substring(0, 50) + '...');
+            logMessage('API URL: ' + apiUrl);
+
+            // Prefetch an image
             function prefetchImage(url) {
                 var img = new Image();
                 img.src = url;
             }
 
-            // Fetch players and prefetch their images
+            // Fetch players and prefetch images
             setHint('Warming up server...');
+            logMessage('Fetching players from API...');
             fetch(apiUrl + '/api/players')
-                .then(function(response) { return response.json(); })
+                .then(function(response) {
+                    logMessage('API response: ' + response.status);
+                    return response.json();
+                })
                 .then(function(data) {
                     if (data.success && data.players) {
+                        logMessage('Got ' + data.players.length + ' players, prefetching images...');
                         setHint('Loading player images...');
                         data.players.forEach(function(player) {
                             if (player.imageUri) {
@@ -106,10 +130,43 @@
                         setHint('Almost ready...');
                     }
                 })
-                .catch(function() {
-                    // Ignore errors - this is just prefetching
-                    setHint('Preparing your game...');
+                .catch(function(err) {
+                    logMessage('API fetch failed: ' + (err.message || err), true);
+                    setHint('Starting without prefetch...');
                 });
+
+            // Check for loading test mode (add ?loading-test to URL to keep loading screen visible)
+            var isLoadingTest = window.location.search.indexOf('loading-test') !== -1;
+            if (isLoadingTest) {
+                logMessage('*** LOADING TEST MODE - Blazor will not start ***', true);
+                logMessage('Remove ?loading-test from URL to load normally');
+                setHint('Loading test mode - Blazor disabled');
+                return; // Don't start Blazor
+            }
+
+            // Start Blazor with progress reporting
+            setHint('Loading Blazor runtime...');
+            logMessage('Starting Blazor WASM...');
+
+            Blazor.start({
+                loadBootResource: function(type, name, defaultUri, integrity) {
+                    // Log resource loading for diagnostics
+                    if (type === 'dotnetjs') {
+                        logMessage('Loading .NET runtime...');
+                    } else if (type === 'dotnetwasm') {
+                        logMessage('Loading .NET WASM (' + (defaultUri.length > 50 ? '...' : defaultUri) + ')...');
+                    } else if (type === 'assembly' && name.startsWith('Catan')) {
+                        logMessage('Loading ' + name + '...');
+                    }
+                    // Return null to use default loading behavior
+                    return null;
+                }
+            }).then(function() {
+                logMessage('Blazor started successfully!');
+            }).catch(function(err) {
+                logMessage('Blazor failed to start: ' + (err.message || err), true);
+                setHint('Failed to load - check log below');
+            });
         })();
     </script>
 </body>
