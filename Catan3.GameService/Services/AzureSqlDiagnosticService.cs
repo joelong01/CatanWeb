@@ -5,7 +5,9 @@ using Azure.Identity;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Sql;
 using Azure.ResourceManager.Sql.Models;
+using Catan3.GameService.Data;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
 namespace Catan3.GameService.Services;
 
@@ -25,6 +27,8 @@ public class AzureSqlDiagnosticService
     private readonly ILogger<AzureSqlDiagnosticService> _logger;
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly DatabaseProviderDetector _dbDetector;
 
     // Cache the resource ID once we find it
     private string? _cachedDatabaseResourceId;
@@ -33,11 +37,15 @@ public class AzureSqlDiagnosticService
     public AzureSqlDiagnosticService(
         ILogger<AzureSqlDiagnosticService> logger,
         IConfiguration configuration,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IServiceProvider serviceProvider,
+        DatabaseProviderDetector dbDetector)
     {
         _logger = logger;
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
+        _serviceProvider = serviceProvider;
+        _dbDetector = dbDetector;
     }
 
     /// <summary>
@@ -159,7 +167,8 @@ public class AzureSqlDiagnosticService
     }
 
     /// <summary>
-    /// Attempts to fix common Azure SQL connectivity issues.
+    /// Attempts to diagnose and fix database connectivity issues.
+    /// Works for both local SQLite and Azure SQL Server.
     /// Returns a result indicating what was checked, fixed, and what remains broken.
     /// </summary>
     public async Task<TroubleshootResult> TroubleshootAsync()
@@ -170,10 +179,10 @@ public class AzureSqlDiagnosticService
             IsAzure = IsRunningOnAzure()
         };
 
+        // Handle localhost/SQLite separately
         if (!result.IsAzure)
         {
-            result.Message = "Not running on Azure - no troubleshooting needed";
-            return result;
+            return await TroubleshootLocalAsync(result);
         }
 
         var connectionString = GetConnectionString();
@@ -199,9 +208,28 @@ public class AzureSqlDiagnosticService
             }
 
             var (serverId, databaseId) = await FindResourceIdsByFqdnAsync(serverFqdn, databaseName);
+
+            // If Resource Graph query fails, fall back to basic connectivity test
             if (string.IsNullOrEmpty(serverId))
             {
-                result.Issues.Add("Could not find SQL Server via Resource Graph - check permissions");
+                _logger.LogWarning("Could not find SQL Server via Resource Graph - falling back to basic diagnostics");
+                result.Issues.Add("Resource Graph access unavailable - cannot check/fix Azure settings");
+                result.Issues.Add("Grant 'Reader' role to Managed Identity at subscription level for full diagnostics");
+
+                // Still test basic connectivity
+                var canConnect = await CanConnectAsync();
+                result.Checks.Add($"Database connectivity: {(canConnect ? "OK" : "FAILED")}");
+                result.ConnectionSuccessful = canConnect;
+
+                if (canConnect)
+                {
+                    result.Message = "Database is accessible. For full diagnostics, grant Reader role to Managed Identity.";
+                }
+                else
+                {
+                    result.Message = "Database connection failed. Use Azure Portal to check SQL Server settings.";
+                    result.Issues.Add("Cannot connect to database - check firewall rules and public network access in Azure Portal");
+                }
                 return result;
             }
 
@@ -333,6 +361,104 @@ public class AzureSqlDiagnosticService
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Troubleshoots localhost/SQLite database issues.
+    /// Checks: database file exists, can connect, default data is seeded.
+    /// </summary>
+    private async Task<TroubleshootResult> TroubleshootLocalAsync(TroubleshootResult result)
+    {
+        result.ServerFqdn = "localhost";
+        result.DatabaseName = "SQLite";
+
+        try
+        {
+            // Check 1: Database file exists
+            var connectionString = _dbDetector.ConnectionString;
+            var match = System.Text.RegularExpressions.Regex.Match(connectionString, @"Data Source=(.+)");
+            var dbPath = match.Success ? match.Groups[1].Value : null;
+
+            if (!string.IsNullOrEmpty(dbPath))
+            {
+                var fullPath = Path.GetFullPath(dbPath);
+                var exists = File.Exists(fullPath);
+                result.Checks.Add($"Database file ({fullPath}): {(exists ? "EXISTS" : "MISSING")}");
+
+                if (!exists)
+                {
+                    result.Issues.Add("Database file does not exist");
+                    result.CannotFix.Add("Run './catan.ps1 database install' to create and seed the database");
+                    result.Message = "Database file is missing - run './catan.ps1 database install'";
+                    return result;
+                }
+            }
+
+            // Check 2: Can connect to database
+            result.Checks.Add("Testing database connection...");
+            var canConnect = await CanConnectAsync();
+            result.Checks.Add($"Database connectivity: {(canConnect ? "OK" : "FAILED")}");
+            result.ConnectionSuccessful = canConnect;
+
+            if (!canConnect)
+            {
+                result.Issues.Add("Cannot connect to database");
+                result.CannotFix.Add("Database file may be corrupted - try './catan.ps1 clean database' then './catan.ps1 database install'");
+                result.Message = "Database connection failed - try reinstalling";
+                return result;
+            }
+
+            // Check 3: Default data is seeded
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
+
+            var hasPlayers = await dbContext.Players.AnyAsync();
+            result.Checks.Add($"Default players seeded: {(hasPlayers ? "YES" : "NO")}");
+
+            if (!hasPlayers)
+            {
+                result.Issues.Add("Default players are not seeded");
+                result.CannotFix.Add("Run './catan.ps1 database install' to seed default data");
+                result.Message = "Database exists but lacks default data - run './catan.ps1 database install'";
+                return result;
+            }
+
+            var playerCount = await dbContext.Players.CountAsync();
+            result.Checks.Add($"Player count: {playerCount}");
+
+            var hasGames = await dbContext.GameSaveMetadata.AnyAsync();
+            var gameCount = hasGames ? await dbContext.GameSaveMetadata.CountAsync() : 0;
+            result.Checks.Add($"Saved games: {gameCount}");
+
+            // All checks passed
+            result.Message = "Local database is healthy and properly configured";
+        }
+        catch (Exception ex)
+        {
+            result.Issues.Add($"Error checking local database: {ex.Message}");
+            result.Message = $"Error during local troubleshooting: {ex.Message}";
+            _logger.LogError(ex, "Local database troubleshooting failed");
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Tests basic database connectivity.
+    /// </summary>
+    private async Task<bool> CanConnectAsync()
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
+            return await dbContext.Database.CanConnectAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Database connectivity check failed");
+            return false;
+        }
     }
 
     /// <summary>
