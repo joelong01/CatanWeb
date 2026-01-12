@@ -26,17 +26,27 @@
             <table class="stats-table">
                 <thead>
                     <tr style="background: #333333;">
-                        <th style="text-align: left; padding: 12px 8px; color: #ffffff; font-size: 11px; position: sticky; left: 0; background: #333333; z-index: 1;">Player</th>
-                        <th style="text-align: center; padding: 12px 6px; color: #ffffff; font-size: 11px;">Games</th>
-                        <th style="text-align: center; padding: 12px 6px; color: #ffd700; font-size: 11px;">Wins</th>
-                        <th style="text-align: center; padding: 12px 6px; color: #ffffff; font-size: 11px;">L.Road</th>
-                        <th style="text-align: center; padding: 12px 6px; color: #ffffff; font-size: 11px;">L.Army</th>
-                        <th style="text-align: center; padding: 12px 6px; color: #ffffff; font-size: 11px;">Longest Road</th>
-                        <th style="text-align: center; padding: 12px 6px; color: #ffffff; font-size: 11px;">Most Soldiers</th>
-                        <th style="text-align: center; padding: 12px 6px; color: #ffffff; font-size: 11px;">Most Stars</th>
-                        <th style="text-align: center; padding: 12px 6px; color: #ffffff; font-size: 11px;">Ave Stars</th>
-                        <th style="text-align: center; padding: 12px 6px; color: #ffffff; font-size: 11px;">Targeted</th>
-                        <th style="text-align: center; padding: 12px 6px; color: #ffffff; font-size: 11px;">Robber</th>
+                        <th class="header-cell sticky-col">Player</th>
+                        <th class="header-cell">Games</th>
+                        <th class="header-cell wins-header">Wins</th>
+                        <th class="header-cell" title="Longest Road Wins">
+                            <span class="catan-icon">@CatanGlyph.LongestRoad</span>
+                        </th>
+                        <th class="header-cell" title="Largest Army Wins">
+                            <span class="catan-icon">@CatanGlyph.Soldier</span>
+                        </th>
+                        <th class="header-cell" title="Soldiers">
+                            <span class="catan-icon">@CatanGlyph.Soldier</span>
+                        </th>
+                        <th class="header-cell" title="Stars">
+                            <span class="catan-icon">@CatanGlyph.Star</span>
+                        </th>
+                        <th class="header-cell" title="Times Targeted">
+                            <span class="catan-icon">@CatanGlyph.Target</span>
+                        </th>
+                        <th class="header-cell" title="Robber Losses">
+                            <span class="catan-icon">@CatanGlyph.Pirate</span>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -45,32 +55,71 @@
                         var stats = player.LifetimeStats ?? new LifetimeStats();
                         var totals = stats.Totals;
                         var fgColor = player.ForegroundColor;
+                        var hasStats = stats.GamesPlayed > 0;
                         <tr style="background: @player.Colors.CssGradient;">
-                            <td style="padding: 8px; color: @fgColor; position: sticky; left: 0; background: inherit;">
-                                <div style="display: flex; flex-direction: row; align-items: center; gap: 8px;">
-                                    <div style="width: 32px; height: 32px; min-width: 32px; border-radius: 50%; overflow: hidden; border: 2px solid @fgColor; flex-shrink: 0;">
+                            <td class="data-cell sticky-col" style="color: @fgColor; background: inherit;">
+                                <div class="player-name-cell">
+                                    <div class="player-avatar" style="border-color: @fgColor;">
                                         @if (!string.IsNullOrEmpty(player.ImageUri))
                                         {
-                                            <img src="@GetFullImageUri(player.ImageUri)" alt="@player.Name" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+                                            <img src="@GetFullImageUri(player.ImageUri)" alt="@player.Name" />
                                         }
                                         else
                                         {
-                                            <span style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 11px; font-weight: bold; background: rgba(0,0,0,0.2); color: @fgColor;">@GetInitials(player.Name)</span>
+                                            <span class="avatar-initials" style="color: @fgColor;">@GetInitials(player.Name)</span>
                                         }
                                     </div>
-                                    <span style="font-weight: bold; font-size: 13px; white-space: nowrap;">@if (stats.Wins > 0){<span style="margin-right: 4px;">&#x1F3C6;</span>}@player.Name</span>
+                                    <span class="player-name">@if (stats.Wins > 0){<span class="trophy">&#x1F3C6;</span>}@player.Name</span>
                                 </div>
                             </td>
-                            <td style="text-align: center; padding: 8px 6px; color: @fgColor; font-size: 14px;">@stats.GamesPlayed</td>
-                            <td style="text-align: center; padding: 8px 6px; color: #ffd700; font-size: 14px; font-weight: bold;">@stats.Wins</td>
-                            <td style="text-align: center; padding: 8px 6px; color: @fgColor; font-size: 14px;">@stats.LongestRoadWins</td>
-                            <td style="text-align: center; padding: 8px 6px; color: @fgColor; font-size: 14px;">@stats.LargestArmyWins</td>
-                            <td style="text-align: center; padding: 8px 6px; color: @fgColor; font-size: 14px;">@stats.LongestRoadRecord</td>
-                            <td style="text-align: center; padding: 8px 6px; color: @fgColor; font-size: 14px;">@stats.MostSoldiersRecord</td>
-                            <td style="text-align: center; padding: 8px 6px; color: @fgColor; font-size: 14px;">@stats.MostStarsRecord</td>
-                            <td style="text-align: center; padding: 8px 6px; color: @fgColor; font-size: 14px;">@stats.AverageStars.ToString("F1")</td>
-                            <td style="text-align: center; padding: 8px 6px; color: @fgColor; font-size: 14px;">@totals.TimesTargeted</td>
-                            <td style="text-align: center; padding: 8px 6px; color: @fgColor; font-size: 14px;">@totals.ResourcesLostToRobber</td>
+                            <td class="data-cell simple-stat" style="color: @fgColor;">@stats.GamesPlayed</td>
+                            <td class="data-cell simple-stat wins-cell">@stats.Wins</td>
+                            <td class="data-cell simple-stat" style="color: @fgColor;">@stats.LongestRoadWins</td>
+                            <td class="data-cell simple-stat" style="color: @fgColor;">@stats.LargestArmyWins</td>
+                            <td class="data-cell" style="color: @fgColor;">
+                                <div class="stat-card">
+                                    <div class="stat-icon"><span class="catan-icon">@CatanGlyph.Soldier</span></div>
+                                    <div class="stat-grid">
+                                        <div class="stat-total">Total: @totals.SoldiersPlayed</div>
+                                        <div class="stat-max">Max: @stats.MostSoldiersRecord</div>
+                                        <div class="stat-min">Min: @GetMinDisplay(stats.MinSoldiersRecord, hasStats)</div>
+                                        <div class="stat-ave">Ave: @stats.AverageSoldiers.ToString("F1")</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="data-cell" style="color: @fgColor;">
+                                <div class="stat-card">
+                                    <div class="stat-icon"><span class="catan-icon">@CatanGlyph.Star</span></div>
+                                    <div class="stat-grid">
+                                        <div class="stat-total">Total: @totals.StarsEarned</div>
+                                        <div class="stat-max">Max: @stats.MostStarsRecord</div>
+                                        <div class="stat-min">Min: @GetMinDisplay(stats.MinStarsRecord, hasStats)</div>
+                                        <div class="stat-ave">Ave: @stats.AverageStars.ToString("F1")</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="data-cell" style="color: @fgColor;">
+                                <div class="stat-card">
+                                    <div class="stat-icon"><span class="catan-icon">@CatanGlyph.Target</span></div>
+                                    <div class="stat-grid">
+                                        <div class="stat-total">Total: @totals.TimesTargeted</div>
+                                        <div class="stat-max">Max: @stats.MostTargetedRecord</div>
+                                        <div class="stat-min">Min: @GetMinDisplay(stats.MinTargetedRecord, hasStats)</div>
+                                        <div class="stat-ave">Ave: @stats.AverageTargeted.ToString("F1")</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="data-cell" style="color: @fgColor;">
+                                <div class="stat-card">
+                                    <div class="stat-icon"><span class="catan-icon">@CatanGlyph.Pirate</span></div>
+                                    <div class="stat-grid">
+                                        <div class="stat-total">Total: @totals.ResourcesLostToRobber</div>
+                                        <div class="stat-max">Max: @stats.MostRobberRecord</div>
+                                        <div class="stat-min">Min: @GetMinDisplay(stats.MinRobberRecord, hasStats)</div>
+                                        <div class="stat-ave">Ave: @stats.AverageRobber.ToString("F1")</div>
+                                    </div>
+                                </div>
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -79,10 +128,242 @@
     }
 </div>
 
+<style>
+    .stats-container {
+        padding: 10px 20px 20px 20px;
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    .stats-table-wrapper {
+        overflow-x: auto;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .stats-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    .header-cell {
+        text-align: center;
+        padding: 12px 8px;
+        color: #ffffff;
+        font-size: 12px;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .header-cell.sticky-col {
+        text-align: left;
+        position: sticky;
+        left: 0;
+        background: #333333;
+        z-index: 1;
+    }
+
+    .wins-header {
+        color: #ffd700 !important;
+    }
+
+    .catan-icon {
+        font-family: 'Catan', sans-serif;
+        font-size: 20px;
+    }
+
+    .data-cell {
+        padding: 8px;
+        vertical-align: middle;
+    }
+
+    .data-cell.sticky-col {
+        position: sticky;
+        left: 0;
+    }
+
+    .simple-stat {
+        text-align: center;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .wins-cell {
+        color: #ffd700 !important;
+    }
+
+    /* Player name cell */
+    .player-name-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .player-avatar {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 2px solid;
+        flex-shrink: 0;
+    }
+
+    .player-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .avatar-initials {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        font-size: 11px;
+        font-weight: bold;
+        background: rgba(0,0,0,0.2);
+    }
+
+    .player-name {
+        font-weight: bold;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .trophy {
+        margin-right: 4px;
+    }
+
+    /* Stat card layout */
+    .stat-card {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px;
+    }
+
+    .stat-icon {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 6px;
+        padding: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .stat-icon .catan-icon {
+        font-size: 18px;
+    }
+
+    .stat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto;
+        gap: 2px 12px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    .stat-total {
+        grid-column: 1 / -1;
+        text-align: center;
+        font-weight: bold;
+    }
+
+    .stat-max {
+        text-align: left;
+    }
+
+    .stat-min {
+        text-align: right;
+    }
+
+    .stat-ave {
+        grid-column: 1 / -1;
+        text-align: center;
+    }
+
+    .loading, .error {
+        text-align: center;
+        padding: 40px;
+        color: #ffffff;
+        font-size: 1.2rem;
+    }
+
+    .error {
+        color: #ff6b6b;
+    }
+
+    /* ==========================================================================
+       Mobile responsive
+       ========================================================================== */
+    @@media (max-width: 768px), (pointer: coarse) {
+        .stats-container {
+            padding: 10px;
+        }
+
+        .stats-table {
+            font-size: 1.8rem;
+        }
+
+        .header-cell {
+            padding: 16px 12px;
+            font-size: 1.6rem;
+        }
+
+        .header-cell .catan-icon {
+            font-size: 2.5rem;
+        }
+
+        .simple-stat {
+            font-size: 2.2rem;
+        }
+
+        .player-avatar {
+            width: 48px;
+            height: 48px;
+            min-width: 48px;
+        }
+
+        .player-name {
+            font-size: 1.8rem;
+        }
+
+        .stat-icon .catan-icon {
+            font-size: 2.5rem;
+        }
+
+        .stat-icon {
+            padding: 10px;
+        }
+
+        .stat-grid {
+            font-size: 1.4rem;
+            gap: 4px 16px;
+        }
+    }
+</style>
+
 @code {
     private List<PlayerProfile> Players { get; set; } = new();
     private bool IsLoading { get; set; } = true;
     private string? ErrorMessage { get; set; }
+
+    /// <summary>
+    /// Catan font glyph codes for stat icons.
+    /// </summary>
+    private static class CatanGlyph
+    {
+        public const string Soldier = "\uE90E";
+        public const string Pirate = "\uE90C";
+        public const string Target = "\uE916";
+        public const string LongestRoad = "\uE915";
+        public const string Star = "\uE911";
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -142,6 +423,16 @@
         if (parts.Length == 1)
             return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
         return string.Concat(parts[0][0], parts[^1][0]).ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// Returns min value for display, or "-" if no games played yet.
+    /// </summary>
+    private string GetMinDisplay(int minValue, bool hasStats)
+    {
+        if (!hasStats || minValue == int.MaxValue)
+            return "-";
+        return minValue.ToString();
     }
 
     private class GetPlayersApiResponse

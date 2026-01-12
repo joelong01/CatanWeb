@@ -8,6 +8,17 @@ namespace Catan3.Shared.Profiles;
 public record LifetimeStats
 {
     /// <summary>
+    /// Current schema version. Increment when adding/removing/renaming fields.
+    /// Used to detect database schema mismatches during deserialization.
+    /// </summary>
+    public const int CurrentSchemaVersion = 2;
+
+    /// <summary>
+    /// Schema version of this record. Defaults to 0 for legacy data without version.
+    /// </summary>
+    public int SchemaVersion { get; init; } = CurrentSchemaVersion;
+
+    /// <summary>
     /// Total number of games played.
     /// </summary>
     public int GamesPlayed { get; init; }
@@ -48,6 +59,40 @@ public record LifetimeStats
     public int HighestScoreRecord { get; init; }
 
     /// <summary>
+    /// Most times targeted in a single game (Max record).
+    /// </summary>
+    public int MostTargetedRecord { get; init; }
+
+    /// <summary>
+    /// Most resources lost to robber in a single game (Max record).
+    /// </summary>
+    public int MostRobberRecord { get; init; }
+
+    /// <summary>
+    /// Fewest soldiers played in a single game (Min record).
+    /// Initialized to int.MaxValue, updated on first game.
+    /// </summary>
+    public int MinSoldiersRecord { get; init; } = int.MaxValue;
+
+    /// <summary>
+    /// Fewest stars earned in a single game (Min record).
+    /// Initialized to int.MaxValue, updated on first game.
+    /// </summary>
+    public int MinStarsRecord { get; init; } = int.MaxValue;
+
+    /// <summary>
+    /// Fewest times targeted in a single game (Min record).
+    /// Initialized to int.MaxValue, updated on first game.
+    /// </summary>
+    public int MinTargetedRecord { get; init; } = int.MaxValue;
+
+    /// <summary>
+    /// Fewest resources lost to robber in a single game (Min record).
+    /// Initialized to int.MaxValue, updated on first game.
+    /// </summary>
+    public int MinRobberRecord { get; init; } = int.MaxValue;
+
+    /// <summary>
     /// Aggregated game statistics (sum of all games).
     /// Uses composition to avoid property duplication.
     /// </summary>
@@ -72,6 +117,11 @@ public record LifetimeStats
     /// Average times targeted per game (calculated property).
     /// </summary>
     public double AverageTargeted => GamesPlayed > 0 ? ((double)Totals.TimesTargeted / GamesPlayed) : 0.0;
+
+    /// <summary>
+    /// Average resources lost to robber per game (calculated property).
+    /// </summary>
+    public double AverageRobber => GamesPlayed > 0 ? ((double)Totals.ResourcesLostToRobber / GamesPlayed) : 0.0;
 
     /// <summary>
     /// Empty lifetime stats for initialization.
@@ -104,10 +154,18 @@ public record LifetimeStats
             Wins = won ? Wins + 1 : Wins,
             LongestRoadWins = hasLongestRoad ? LongestRoadWins + 1 : LongestRoadWins,
             LargestArmyWins = hasLargestArmy ? LargestArmyWins + 1 : LargestArmyWins,
+            // Max records
             LongestRoadRecord = Math.Max(LongestRoadRecord, roadLength),
             MostSoldiersRecord = Math.Max(MostSoldiersRecord, soldiersPlayed),
             MostStarsRecord = Math.Max(MostStarsRecord, stars),
             HighestScoreRecord = Math.Max(HighestScoreRecord, score),
+            MostTargetedRecord = Math.Max(MostTargetedRecord, gameStats.TimesTargeted),
+            MostRobberRecord = Math.Max(MostRobberRecord, gameStats.ResourcesLostToRobber),
+            // Min records
+            MinSoldiersRecord = Math.Min(MinSoldiersRecord, soldiersPlayed),
+            MinStarsRecord = Math.Min(MinStarsRecord, stars),
+            MinTargetedRecord = Math.Min(MinTargetedRecord, gameStats.TimesTargeted),
+            MinRobberRecord = Math.Min(MinRobberRecord, gameStats.ResourcesLostToRobber),
             Totals = Totals + gameStats
         };
 }

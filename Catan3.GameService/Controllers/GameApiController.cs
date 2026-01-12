@@ -484,21 +484,21 @@ namespace Catan3.GameService.Controllers
                     });
                 }
 
-                // Validate winner is current player (Catan rule)
-                if (currentState.CurrentPlayerId != request.WinnerId)
+                // Validate winner is a player in this game
+                var winner = currentState.Players.FirstOrDefault(p => p.Id == request.WinnerId);
+                if (winner == null)
                 {
-                    return StatusCode(403, new CommandResponse
+                    return BadRequest(new CommandResponse
                     {
                         Success = false,
-                        Error = "Only the current player can declare victory",
-                        ErrorCode = "NOT_CURRENT_PLAYER",
+                        Error = $"Player {request.WinnerId} is not in this game",
+                        ErrorCode = "INVALID_PLAYER",
                         GameId = gameId
                     });
                 }
 
                 // Get winner name for response
-                var winner = currentState.Players.FirstOrDefault(p => p.Id == request.WinnerId);
-                var winnerName = winner?.Name ?? request.WinnerId;
+                var winnerName = winner.Name;
 
                 // Update lifetime stats for ALL players
                 await UpdatePlayerLifetimeStats(currentState, request.WinnerId);
@@ -566,6 +566,11 @@ namespace Catan3.GameService.Controllers
                 // Get player-specific stats for records
                 var soldiersPlayed = player.SpentEntitlementsThisGame?.Count(e => e == Shared.Models.Entitlement.Soldier) ?? 0;
 
+                // Log captured stats for debugging
+                _logger.LogEvent("Stats Capture", $"Player {player.Name}: Stars={player.Stars}, GoodRolls={player.GoodRolls}, BadRolls={player.BadRolls}, " +
+                    $"TimesTargeted={player.TimesTargeted}, Robber={player.ResourcesThisGame?.Robber ?? 0}, Soldiers={soldiersPlayed}, " +
+                    $"Resources={player.ResourcesThisGame?.Count ?? 0}, LongestRoad={player.LongestRoad}, Score={score}");
+
                 // Update lifetime stats with all available data
                 var currentStats = profile.LifetimeStats ?? LifetimeStats.Empty;
                 var isWinner = player.Id == winnerId;
@@ -591,7 +596,9 @@ namespace Catan3.GameService.Controllers
 
                 // Save back to database
                 playerEntity.Data = JsonHelper.Serialize(updatedProfile);
-                _logger.LogEvent("Stats Update", $"Updated stats for {player.Name}: Games={updatedStats.GamesPlayed}, Wins={updatedStats.Wins}");
+                _logger.LogEvent("Stats Update", $"Updated stats for {player.Name}: Games={updatedStats.GamesPlayed}, Wins={updatedStats.Wins}, " +
+                    $"MostStars={updatedStats.MostStarsRecord}, AveStars={updatedStats.AverageStars:F1}, " +
+                    $"Targeted={updatedStats.Totals.TimesTargeted}, Robber={updatedStats.Totals.ResourcesLostToRobber}");
             }
 
             await _dbContext.SaveChangesAsync();
@@ -966,20 +973,54 @@ namespace Catan3.GameService.Controllers
         /// <summary>
         /// Gets all available players for game creation.
         /// Returns player profiles with relative image URIs.
+        /// Validates schema versions and returns error if database has outdated schema.
         /// </summary>
         [HttpGet("players")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> GetPlayers()
         {
             _logger.LogEvent("API Request", $"GET /api/players - Getting available players");
 
             try
             {
-                // Get players from database
+                // Get players from database (no caching - always fresh)
                 var playerEntities = await _dbContext.Players.ToListAsync();
-                var players = playerEntities
-                    .Select(e => JsonHelper.Deserialize<PlayerProfile>(e.Data))
-                    .Where(p => p != null)
-                    .ToList();
+                var players = new List<PlayerProfile>();
+                var schemaErrors = new List<string>();
+
+                foreach (var entity in playerEntities)
+                {
+                    var profile = JsonHelper.Deserialize<PlayerProfile>(entity.Data);
+                    if (profile == null) continue;
+
+                    // Validate schema version if player has lifetime stats
+                    if (profile.LifetimeStats != null)
+                    {
+                        if (profile.LifetimeStats.SchemaVersion != LifetimeStats.CurrentSchemaVersion)
+                        {
+                            schemaErrors.Add($"Player '{profile.Name}' has outdated LifetimeStats schema (v{profile.LifetimeStats.SchemaVersion}, expected v{LifetimeStats.CurrentSchemaVersion})");
+                        }
+                        if (profile.LifetimeStats.Totals.SchemaVersion != GameStats.CurrentSchemaVersion)
+                        {
+                            schemaErrors.Add($"Player '{profile.Name}' has outdated GameStats schema (v{profile.LifetimeStats.Totals.SchemaVersion}, expected v{GameStats.CurrentSchemaVersion})");
+                        }
+                    }
+
+                    players.Add(profile);
+                }
+
+                // If schema errors found, return error response
+                if (schemaErrors.Count > 0)
+                {
+                    _logger.LogEvent("Schema Mismatch", $"Database schema mismatch detected: {string.Join("; ", schemaErrors)}", LogLevel.Error);
+                    return StatusCode(500, new
+                    {
+                        success = false,
+                        error = "Database schema mismatch detected. Please reset the database with 'pwsh ./catan.ps1 database install'",
+                        schemaErrors = schemaErrors,
+                        timestamp = DateTime.UtcNow.ToString("O")
+                    });
+                }
 
                 _logger.LogEvent("Players Retrieved", $"Returning {players.Count} players from database");
 

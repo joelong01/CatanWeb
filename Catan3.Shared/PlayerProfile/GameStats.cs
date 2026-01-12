@@ -18,6 +18,17 @@ public record GameStats(
 )
 {
     /// <summary>
+    /// Current schema version. Increment when adding/removing/renaming fields.
+    /// Used to detect database schema mismatches during deserialization.
+    /// </summary>
+    public const int CurrentSchemaVersion = 1;
+
+    /// <summary>
+    /// Schema version of this record. Defaults to 0 for legacy data without version.
+    /// </summary>
+    public int SchemaVersion { get; init; } = CurrentSchemaVersion;
+
+    /// <summary>
     /// Empty stats for initialization.
     /// </summary>
     public static GameStats Empty { get; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
