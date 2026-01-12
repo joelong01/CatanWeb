@@ -170,6 +170,26 @@
             <div class="nav-label">Return to Game</div>
         </button>
     }
+    else if (CurrentPage == PageContext.Stats)
+    {
+        <!-- Stats page -->
+        <button class="nav-menu-item" @onclick="OnHome">
+            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-label">Home</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnOpenGame">
+            <div class="nav-icon">&#x1F4C2;</div>
+            <div class="nav-label">Open...</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnEditPlayers">
+            <div class="nav-icon">&#x1F465;</div>
+            <div class="nav-label">Edit Players</div>
+        </button>
+        <button class="nav-menu-item" @onclick="OnReturnToGame">
+            <div class="nav-icon">&#x25B6;</div>
+            <div class="nav-label">Return to Game</div>
+        </button>
+    }
 
     <!-- Always visible: Stats, Debug, Settings -->
     <button class="nav-menu-item" @onclick="OnStats">
@@ -193,7 +213,7 @@
     private bool _showThemeSubmenu = false;
 
     // Page context enum for menu switching
-    private enum PageContext { Home, Game, NewGame, LoadGame, EditPlayers, Settings, Other }
+    private enum PageContext { Home, Game, NewGame, LoadGame, EditPlayers, Settings, Stats, Other }
 
     // Determine current page from URL
     private PageContext CurrentPage
@@ -206,6 +226,7 @@
             if (uri.Contains("/loadgame") || uri.Contains("/opengame")) return PageContext.LoadGame;
             if (uri.Contains("/editplayers")) return PageContext.EditPlayers;
             if (uri.Contains("/settings")) return PageContext.Settings;
+            if (uri.Contains("/stats")) return PageContext.Stats;
             if (uri.EndsWith("/") || uri.EndsWith(":5000") || uri.EndsWith(":5001")) return PageContext.Home;
             return PageContext.Other;
         }

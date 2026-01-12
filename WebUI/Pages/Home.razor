@@ -33,6 +33,11 @@
             <span class="text">Edit Players</span>
         </a>
 
+        <a href="/stats" class="menu-button">
+            <span class="icon">📊</span>
+            <span class="text">Stats</span>
+        </a>
+
         <button class="menu-button troubleshoot-button" @onclick="RunTroubleshoot" disabled="@isTroubleshooting">
             <span class="icon">🔧</span>
             <span class="text">@(isTroubleshooting ? "Running..." : "Troubleshoot")</span>

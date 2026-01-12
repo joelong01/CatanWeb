@@ -16,47 +16,28 @@
 
 /* =============================================================================
    CSS VERSION - UPDATE THIS ONE LINE TO CHANGE ALL VERSION STRINGS BELOW
-   Current: v1 (2025-01-08)
+   Current: v3 (2026-01-12)
+   Note: Global version in MainLayout.razor.css; this adds game-specific info
    ============================================================================= */
 
-/* CSS version indicator - positioned inside game container, scales with content */
-/* Shows environment (local/web) and orientation */
-.game-container[data-layout-mode="landscape"][data-env="local"]::after {
-    content: "CSS 2025-01-08 v1 LOCAL landscape";
+/* Game page version with orientation info - supplements global version */
+.game-container[data-layout-mode="landscape"]::after {
+    content: "Game CSS v3 landscape";
     position: absolute;
     bottom: 5px;
-    right: 5px;
+    left: 5px;
     font-size: 10px;
     color: #666;
     pointer-events: none;
 }
 
-.game-container[data-layout-mode="landscape"][data-env="web"]::after {
-    content: "CSS 2025-01-08 v1 WEB landscape";
+.game-container[data-layout-mode="portrait"]::after {
+    content: "Game CSS v3 portrait";
     position: absolute;
     bottom: 5px;
-    right: 5px;
+    left: 5px;
     font-size: 10px;
     color: #666;
-    pointer-events: none;
-}
-
-.game-container[data-layout-mode="portrait"][data-env="local"]::after {
-    content: "CSS 2025-01-08 v1 LOCAL portrait";
-    position: absolute;
-    bottom: 5px;
-    right: 5px;
-    font-size: 10px;
-    color: #666;
-    pointer-events: none;
-}
-
-.game-container[data-layout-mode="portrait"][data-env="web"]::after {
-    content: "CSS 2025-01-08 v1 WEB portrait";
-    position: absolute;
-    bottom: 5px;
-    right: 5px;
-    font-size: 10px;
     pointer-events: none;
 }
 

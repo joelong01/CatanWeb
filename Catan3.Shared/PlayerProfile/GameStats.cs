@@ -1,37 +1,40 @@
 namespace Catan3.Shared.Profiles;
 
 /// <summary>
-/// Per-game statistics tracked during a single game (transient, not persisted).
-/// Calculated during gameplay and displayed in game UI.
-/// Used as component of LifetimeStats for aggregation.
+/// Per-game statistics captured at game end.
+/// Used as component of LifetimeStats for aggregation via operator+.
 /// </summary>
 public record GameStats(
     int ResourcesCollected,
-    int TradesMade,
+    int ResourcesLostToRobber,
     int RoadsBuilt,
     int SettlementsBuilt,
     int CitiesBuilt,
-    int RobberLosses,
+    int SoldiersPlayed,
+    int TimesTargeted,
     int GoodRolls,
-    int BadRolls
+    int BadRolls,
+    int StarsEarned
 )
 {
     /// <summary>
     /// Empty stats for initialization.
     /// </summary>
-    public static GameStats Empty { get; } = new(0, 0, 0, 0, 0, 0, 0, 0);
+    public static GameStats Empty { get; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
     /// <summary>
     /// Adds two GameStats together (for aggregation).
     /// </summary>
     public static GameStats operator +(GameStats a, GameStats b) => new(
         a.ResourcesCollected + b.ResourcesCollected,
-        a.TradesMade + b.TradesMade,
+        a.ResourcesLostToRobber + b.ResourcesLostToRobber,
         a.RoadsBuilt + b.RoadsBuilt,
         a.SettlementsBuilt + b.SettlementsBuilt,
         a.CitiesBuilt + b.CitiesBuilt,
-        a.RobberLosses + b.RobberLosses,
+        a.SoldiersPlayed + b.SoldiersPlayed,
+        a.TimesTargeted + b.TimesTargeted,
         a.GoodRolls + b.GoodRolls,
-        a.BadRolls + b.BadRolls
+        a.BadRolls + b.BadRolls,
+        a.StarsEarned + b.StarsEarned
     );
 }

@@ -431,6 +431,263 @@ namespace Catan3.GameService.Controllers
             }
         }
 
+        /// <summary>
+        /// Declares the current player as the winner, updates lifetime stats, and archives the game.
+        /// </summary>
+        [HttpPost("game/{gameId}/winner")]
+        public async Task<IActionResult> DeclareWinner(string gameId, [FromBody] DeclareWinnerRequest request)
+        {
+            _logger.LogEvent("API Request", $"POST /api/game/{gameId}/winner - Declaring winner");
+
+            try
+            {
+                // Validate request
+                if (string.IsNullOrEmpty(request.WinnerId))
+                {
+                    return BadRequest(new CommandResponse
+                    {
+                        Success = false,
+                        Error = "Missing winnerId",
+                        ErrorCode = "INVALID_PARAMETERS",
+                        GameId = gameId
+                    });
+                }
+
+                // Get game state machine
+                GameStateMachine gameStateMachine;
+                try
+                {
+                    gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
+                }
+                catch (GameException)
+                {
+                    return NotFound(new CommandResponse
+                    {
+                        Success = false,
+                        Error = $"Game {gameId} not found",
+                        ErrorCode = "GAME_NOT_FOUND",
+                        GameId = gameId
+                    });
+                }
+
+                var currentState = gameStateMachine.GetCurrentState();
+
+                // Validate game is not already over
+                if (currentState.GameState == Shared.Models.GameState.GameOver)
+                {
+                    return BadRequest(new CommandResponse
+                    {
+                        Success = false,
+                        Error = "Game is already over",
+                        ErrorCode = "GAME_ALREADY_OVER",
+                        GameId = gameId
+                    });
+                }
+
+                // Validate winner is current player (Catan rule)
+                if (currentState.CurrentPlayerId != request.WinnerId)
+                {
+                    return StatusCode(403, new CommandResponse
+                    {
+                        Success = false,
+                        Error = "Only the current player can declare victory",
+                        ErrorCode = "NOT_CURRENT_PLAYER",
+                        GameId = gameId
+                    });
+                }
+
+                // Get winner name for response
+                var winner = currentState.Players.FirstOrDefault(p => p.Id == request.WinnerId);
+                var winnerName = winner?.Name ?? request.WinnerId;
+
+                // Update lifetime stats for ALL players
+                await UpdatePlayerLifetimeStats(currentState, request.WinnerId);
+
+                // Archive the completed game
+                await ArchiveCompletedGame(gameId, gameStateMachine, currentState, request.WinnerId, winnerName);
+
+                // Execute declare winner action
+                var updatedGameModel = await gameStateMachine.HandleDeclareWinnerAsync(new DeclareWinnerMessage(request.WinnerId));
+
+                // Save to database and broadcast to clients
+                await ProcessGameActionResult(gameStateMachine, updatedGameModel, "DeclareWinner");
+
+                _logger.LogEvent("Winner Declared", $"Game {gameId}: {winnerName} declared winner");
+
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Winner recorded: {winnerName}",
+                    gameId = gameId,
+                    winnerId = request.WinnerId,
+                    winnerName = winnerName
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Declare Winner Error", $"Error declaring winner: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new CommandResponse
+                {
+                    Success = false,
+                    Error = $"Error declaring winner: {ex.Message}",
+                    ErrorCode = "INTERNAL_ERROR",
+                    GameId = gameId
+                });
+            }
+        }
+
+        /// <summary>
+        /// Updates lifetime statistics for all players in the completed game.
+        /// </summary>
+        private async Task UpdatePlayerLifetimeStats(GameModel gameModel, string winnerId)
+        {
+            foreach (var player in gameModel.Players)
+            {
+                var playerEntity = await _dbContext.Players.FindAsync(player.Id);
+                if (playerEntity == null)
+                {
+                    _logger.LogEvent("Stats Update", $"Player {player.Id} not found in database, skipping stats update", LogLevel.Warning);
+                    continue;
+                }
+
+                var profile = JsonHelper.Deserialize<PlayerProfile>(playerEntity.Data);
+                if (profile == null)
+                {
+                    _logger.LogEvent("Stats Update", $"Could not deserialize profile for {player.Id}, skipping", LogLevel.Warning);
+                    continue;
+                }
+
+                // Calculate game stats from player's current game data
+                var gameStats = CalculateGameStats(player, gameModel);
+
+                // Calculate score from visible board state
+                var score = CalculatePlayerScore(player, gameModel);
+
+                // Get player-specific stats for records
+                var soldiersPlayed = player.SpentEntitlementsThisGame?.Count(e => e == Shared.Models.Entitlement.Soldier) ?? 0;
+
+                // Update lifetime stats with all available data
+                var currentStats = profile.LifetimeStats ?? LifetimeStats.Empty;
+                var isWinner = player.Id == winnerId;
+                var updatedStats = currentStats.AddGame(
+                    gameStats,
+                    won: isWinner,
+                    hasLongestRoad: player.HasLongestRoad,
+                    hasLargestArmy: player.LargestArmy,
+                    roadLength: player.LongestRoad,
+                    soldiersPlayed: soldiersPlayed,
+                    stars: player.Stars,
+                    score: score
+                );
+
+                // Create updated profile with new stats
+                var updatedProfile = new PlayerProfile(
+                    profile.Id,
+                    profile.Name,
+                    profile.Colors,
+                    profile.ImageUri,
+                    updatedStats
+                );
+
+                // Save back to database
+                playerEntity.Data = JsonHelper.Serialize(updatedProfile);
+                _logger.LogEvent("Stats Update", $"Updated stats for {player.Name}: Games={updatedStats.GamesPlayed}, Wins={updatedStats.Wins}");
+            }
+
+            await _dbContext.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Calculates game statistics from player model and game state.
+        /// Captures all available stats from PlayerModel and GameModel.
+        /// </summary>
+        private GameStats CalculateGameStats(PlayerModel player, GameModel gameModel)
+        {
+            // Count built pieces from GameModel
+            var roadsBuilt = gameModel.Roads.Count(r => r.OwnerId == player.Id);
+            var settlementsBuilt = gameModel.Buildings.Count(b =>
+                b.OwnerId == player.Id && b.BuildingState == Shared.Models.BuildingState.Settlement);
+            var citiesBuilt = gameModel.Buildings.Count(b =>
+                b.OwnerId == player.Id && b.BuildingState == Shared.Models.BuildingState.City);
+
+            // Get resource stats from PlayerModel
+            var resourcesCollected = player.ResourcesThisGame?.Count ?? 0;
+            var resourcesLostToRobber = player.ResourcesThisGame?.Robber ?? 0;
+
+            // Count soldiers played from entitlements
+            var soldiersPlayed = player.SpentEntitlementsThisGame?.Count(e => e == Shared.Models.Entitlement.Soldier) ?? 0;
+
+            return new GameStats(
+                ResourcesCollected: resourcesCollected,
+                ResourcesLostToRobber: resourcesLostToRobber,
+                RoadsBuilt: roadsBuilt,
+                SettlementsBuilt: settlementsBuilt,
+                CitiesBuilt: citiesBuilt,
+                SoldiersPlayed: soldiersPlayed,
+                TimesTargeted: player.TimesTargeted,
+                GoodRolls: player.GoodRolls,
+                BadRolls: player.BadRolls,
+                StarsEarned: player.Stars
+            );
+        }
+
+        /// <summary>
+        /// Calculates victory points for a player from visible board state.
+        /// </summary>
+        private int CalculatePlayerScore(PlayerModel player, GameModel gameModel)
+        {
+            var points = 0;
+
+            // Buildings: 1 per settlement, 2 per city
+            points += gameModel.Buildings.Count(b =>
+                b.OwnerId == player.Id && b.BuildingState == Shared.Models.BuildingState.Settlement);
+            points += gameModel.Buildings.Count(b =>
+                b.OwnerId == player.Id && b.BuildingState == Shared.Models.BuildingState.City) * 2;
+
+            // Note: Longest road and largest army bonuses are not tracked here
+            // since dev cards are not tracked in the game model
+
+            return points;
+        }
+
+        /// <summary>
+        /// Archives the completed game to the CompletedGames table.
+        /// </summary>
+        private async Task ArchiveCompletedGame(string gameId, GameStateMachine gameStateMachine, GameModel gameModel, string winnerId, string winnerName)
+        {
+            try
+            {
+                var serializableLog = gameStateMachine.GetSerializableLog();
+                var json = JsonHelper.Serialize(serializableLog);
+                var compressed = JsonHelper.Compress(json);
+
+                var completedGame = new CompletedGameEntity
+                {
+                    GameId = gameId,
+                    GameName = gameModel.GameName,
+                    WinnerId = winnerId,
+                    WinnerName = winnerName,
+                    CompletedAt = DateTime.UtcNow,
+                    StartedAt = gameModel.CreatedTime,
+                    PlayerCount = gameModel.Players.Count,
+                    PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
+                    TurnCount = serializableLog.DoneCount,
+                    CompressedData = compressed,
+                    Size = compressed.Length
+                };
+
+                _dbContext.CompletedGames.Add(completedGame);
+                await _dbContext.SaveChangesAsync();
+
+                _logger.LogEvent("Game Archived", $"Archived completed game {gameId} ({completedGame.Size} bytes)");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Archive Error", $"Failed to archive game {gameId}: {ex.Message}", LogLevel.Warning);
+                // Don't throw - archival failure shouldn't block winner declaration
+            }
+        }
+
         [HttpPost("game/load")]
         public Task<IActionResult> LoadGame([FromBody] LoadGameMessage loadGameMessage)
         {
