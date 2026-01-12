@@ -1170,3 +1170,182 @@
         display: block !important;
     }
 }
+
+/* =============================================================================
+   Winner Dialog and Celebration Styles
+   ============================================================================= */
+
+/* Modal backdrop - covers entire viewport */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+/* Winner confirmation dialog */
+.winner-confirm-dialog {
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+    border: 2px solid #ffd700;
+    border-radius: 16px;
+    padding: 24px 32px;
+    min-width: 300px;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.winner-dialog-header {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffd700;
+    margin-bottom: 16px;
+}
+
+.winner-dialog-message {
+    font-size: 18px;
+    color: #fff;
+    margin-bottom: 24px;
+    line-height: 1.4;
+}
+
+.winner-dialog-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+.winner-btn {
+    padding: 12px 32px;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.winner-btn:hover {
+    transform: scale(1.05);
+}
+
+.winner-btn-yes {
+    background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.winner-btn-yes:hover {
+    box-shadow: 0 6px 16px rgba(76, 175, 80, 0.6);
+}
+
+.winner-btn-no {
+    background: linear-gradient(135deg, #666 0%, #444 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.winner-btn-no:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* Winner celebration overlay */
+.winner-celebration {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.3) 0%, rgba(0, 0, 0, 0.8) 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: celebrationFadeIn 0.5s ease-out;
+}
+
+@keyframes celebrationFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.winner-trophy {
+    font-size: 120px;
+    animation: trophyBounce 1s ease-in-out infinite;
+    text-shadow: 0 0 40px rgba(255, 215, 0, 0.8);
+}
+
+@keyframes trophyBounce {
+    0%, 100% {
+        transform: scale(1) rotate(-5deg);
+    }
+    50% {
+        transform: scale(1.1) rotate(5deg);
+    }
+}
+
+.winner-name {
+    font-size: 48px;
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 2px 2px 4px rgba(0, 0, 0, 0.5);
+    margin-top: 20px;
+    animation: nameGlow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes nameGlow {
+    from {
+        text-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    to {
+        text-shadow: 0 0 40px rgba(255, 215, 0, 1), 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+}
+
+.winner-text {
+    font-size: 64px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.5), 2px 2px 4px rgba(0, 0, 0, 0.5);
+    margin-top: 10px;
+    animation: winsScale 0.5s ease-out;
+}
+
+@keyframes winsScale {
+    from {
+        transform: scale(0);
+    }
+    to {
+        transform: scale(1);
+    }
+}
+
+/* Confetti pieces */
+.confetti-piece {
+    position: fixed;
+    top: -20px;
+    border-radius: 2px;
+    animation: confettiFall linear forwards;
+}
+
+@keyframes confettiFall {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+    }
+}

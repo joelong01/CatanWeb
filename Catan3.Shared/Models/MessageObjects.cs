@@ -143,6 +143,29 @@ namespace Catan3.Shared.Models
         public override string ToString() => $"GoFirstMessage: {PlayerId}";
     }
 
+    /// <summary>
+    /// Message to declare a player as the winner and transition to GameOver state.
+    /// </summary>
+    public class DeclareWinnerMessage(string winnerId)
+    {
+        /// <summary>
+        /// The player ID of the winner (must be current player per Catan rules).
+        /// </summary>
+        public string WinnerId { get; } = winnerId;
+        public override string ToString() => $"DeclareWinnerMessage: {WinnerId}";
+    }
+
+    /// <summary>
+    /// Request body for the POST /api/game/{gameId}/winner endpoint.
+    /// </summary>
+    public class DeclareWinnerRequest
+    {
+        /// <summary>
+        /// The player ID to declare as winner.
+        /// </summary>
+        public string WinnerId { get; set; } = string.Empty;
+    }
+
     public class BalanceBoardMessage
     {
         public override string ToString() => "BalanceBoardMessage";

@@ -48,6 +48,12 @@
                         {
                             <div class="selection-indicator">✓</div>
                         }
+                        @if ((player.LifetimeStats?.Wins ?? 0) > 0)
+                        {
+                            <div class="wins-badge" title="@player.LifetimeStats?.Wins wins">
+                                @player.LifetimeStats?.Wins
+                            </div>
+                        }
                     </div>
                 }
             </div>

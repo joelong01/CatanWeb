@@ -90,6 +90,26 @@
     color: var(--accent-success);
 }
 
+/* Winner button - gold highlight to stand out */
+.winner-button {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.1) 100%);
+    border: 1px solid rgba(255, 215, 0, 0.4);
+}
+
+.winner-button:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 215, 0, 0.2) 100%);
+    border-color: rgba(255, 215, 0, 0.6);
+}
+
+.winner-button .nav-icon {
+    color: #ffd700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.winner-button .nav-label {
+    color: #ffd700;
+}
+
 /* ==========================================================================
    Mobile responsive - Larger menu items and text
    ========================================================================== */

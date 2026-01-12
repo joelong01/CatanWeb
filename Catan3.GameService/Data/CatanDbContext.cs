@@ -8,6 +8,7 @@ public class CatanDbContext : DbContext
     public DbSet<ImageEntity> Images { get; set; } = null!;
     public DbSet<GameSaveDataEntity> GameSaveData { get; set; } = null!;
     public DbSet<GameSaveMetadataEntity> GameSaveMetadata { get; set; } = null!;
+    public DbSet<CompletedGameEntity> CompletedGames { get; set; } = null!;
 
     public CatanDbContext(DbContextOptions<CatanDbContext> options) : base(options)
     {
@@ -66,6 +67,24 @@ public class CatanDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.GameDataId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Completed games - archive of finished games with winner info
+        modelBuilder.Entity<CompletedGameEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.GameId).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.GameName).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.WinnerId).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.WinnerName).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.PlayerNames).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.CompressedData).IsRequired();
+
+            // Indexes for common queries
+            entity.HasIndex(e => e.GameId);
+            entity.HasIndex(e => e.WinnerId);
+            entity.HasIndex(e => e.CompletedAt);
         });
     }
 }
@@ -197,4 +216,71 @@ public class GameSaveMetadataEntity
     /// Navigation property to the game data
     /// </summary>
     public GameSaveDataEntity GameData { get; set; } = null!;
+}
+
+/// <summary>
+/// Archive of completed games with winner information.
+/// Stores full game history for future replay/review.
+/// </summary>
+public class CompletedGameEntity
+{
+    /// <summary>
+    /// Auto-increment primary key
+    /// </summary>
+    public int Id { get; set; }
+
+    /// <summary>
+    /// Original game identifier
+    /// </summary>
+    public string GameId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Display name for the game
+    /// </summary>
+    public string GameName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Player ID of the winner
+    /// </summary>
+    public string WinnerId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Display name of the winner
+    /// </summary>
+    public string WinnerName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// When the winner was declared
+    /// </summary>
+    public DateTime CompletedAt { get; set; }
+
+    /// <summary>
+    /// When the game was originally started
+    /// </summary>
+    public DateTime StartedAt { get; set; }
+
+    /// <summary>
+    /// Number of players in the game
+    /// </summary>
+    public int PlayerCount { get; set; }
+
+    /// <summary>
+    /// Comma-separated list of player names
+    /// </summary>
+    public string PlayerNames { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Number of turns/actions in the game
+    /// </summary>
+    public int TurnCount { get; set; }
+
+    /// <summary>
+    /// Compressed SerializableLog JSON (.catan format)
+    /// </summary>
+    public byte[] CompressedData { get; set; } = [];
+
+    /// <summary>
+    /// Size of compressed data in bytes
+    /// </summary>
+    public int Size { get; set; }
 }

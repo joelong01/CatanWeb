@@ -23,6 +23,12 @@ public class GameStateService
     public event EventHandler? OnStateChanged;
 
     /// <summary>
+    /// Event raised when the Winner button is clicked in NavMenu.
+    /// Game.razor subscribes to show the winner confirmation dialog.
+    /// </summary>
+    public event EventHandler? WinnerDialogRequested;
+
+    /// <summary>
     /// Gets the current game model containing all game state (tiles, buildings, roads, players, etc.).
     /// Returns null if no game is currently loaded.
     /// </summary>
@@ -136,5 +142,14 @@ public class GameStateService
     private void NotifyStateChanged()
     {
         OnStateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Requests the winner confirmation dialog to be shown.
+    /// Called from NavMenu when Winner button is clicked.
+    /// </summary>
+    public void RequestWinnerDialog()
+    {
+        WinnerDialogRequested?.Invoke(this, EventArgs.Empty);
     }
 }

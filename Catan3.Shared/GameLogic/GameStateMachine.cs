@@ -593,6 +593,43 @@ namespace Catan3.Shared.GameLogic
         }
 
         /// <summary>
+        /// Handles declaring a winner and transitioning to GameOver state.
+        /// The winner must be the current player (Catan rule - can only win on your turn).
+        /// Game remains playable for undo/redo but ActionFlags reflect game completion.
+        /// </summary>
+        /// <param name="message">The winner declaration with player ID.</param>
+        /// <returns>The updated GameModel in GameOver state.</returns>
+        public Task<GameModel> HandleDeclareWinnerAsync(DeclareWinnerMessage message)
+        {
+            GameModel gameModel = _gameLog.CopyCurrent();
+            _logger.Trace(GameTraceLevel.Trace, $"[GameState={gameModel.GameState}][Message={message}]");
+
+            // Already game over - don't allow multiple declarations
+            if (gameModel.GameState == Shared.Models.GameState.GameOver)
+            {
+                return Task.FromResult(gameModel);
+            }
+
+            // Validate winner is current player
+            if (gameModel.CurrentPlayerId != message.WinnerId)
+            {
+                _logger.Trace(GameTraceLevel.Error, $"Winner {message.WinnerId} is not current player {gameModel.CurrentPlayerId}");
+                return Task.FromResult(gameModel);
+            }
+
+            _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            // Transition to GameOver
+            gameModel.GameState = Shared.Models.GameState.GameOver;
+
+            // Undo/redo remain available per user requirement
+            // ActionFlags will be updated by the normal action flag computation
+
+            LogGameModel(gameModel);
+            return Task.FromResult(gameModel);
+        }
+
+        /// <summary>
         /// Handles game persistence operations (save/load).
         /// Saves the current game state to the specified location or performs load operations.
         /// </summary>

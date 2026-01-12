@@ -385,6 +385,45 @@
         }
     </div>
 }
+
+@* Winner confirmation dialog *@
+@if (_showWinnerConfirm)
+{
+    <div class="modal-backdrop" @onclick="CancelWinnerConfirm">
+        <div class="winner-confirm-dialog" @onclick:stopPropagation="true">
+            <div class="winner-dialog-header">Declare Winner</div>
+            <div class="winner-dialog-message">
+                Declare <strong>@_winnerName</strong> as the winner and end the game?
+            </div>
+            <div class="winner-dialog-buttons">
+                <button class="winner-btn winner-btn-yes" @onclick="ConfirmWinner">Yes</button>
+                <button class="winner-btn winner-btn-no" @onclick="CancelWinnerConfirm">No</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Winner celebration animation *@
+@if (_showWinnerCelebration)
+{
+    <div class="winner-celebration">
+        <div class="winner-trophy">&#x1F3C6;</div>
+        <div class="winner-name">@_winnerName</div>
+        <div class="winner-text">WINS!</div>
+        @* Confetti particles *@
+        @for (int i = 0; i < 50; i++)
+        {
+            var left = Random.Shared.Next(0, 100);
+            var delay = Random.Shared.NextDouble() * 2;
+            var duration = 2 + Random.Shared.NextDouble() * 2;
+            var size = 8 + Random.Shared.Next(0, 8);
+            var hue = Random.Shared.Next(0, 360);
+            <div class="confetti-piece"
+                 style="left: @left%; animation-delay: @(delay.ToString("F2"))s; animation-duration: @(duration.ToString("F2"))s; width: @(size)px; height: @(size)px; background: hsl(@hue, 80%, 60%);">
+            </div>
+        }
+    </div>
+}
 </div>
 
 @code {
@@ -448,6 +487,11 @@
     private DotNetObjectReference<Game>? _dotNetRef; // For JS callbacks
     private bool _disposed = false; // Guard against callbacks after dispose
 
+    // Winner dialog and celebration state
+    private bool _showWinnerConfirm = false;
+    private bool _showWinnerCelebration = false;
+    private string _winnerName = string.Empty;
+
     /// <summary>
     /// True when we should show the portrait game-active layout (PickingBoard onwards).
     /// </summary>
@@ -479,6 +523,9 @@
     {
         // Subscribe to theme changes to re-render the board
         AssetService.ThemeChanged += OnThemeChanged;
+
+        // Subscribe to winner dialog requests from NavMenu
+        GameStateService.WinnerDialogRequested += OnWinnerDialogRequested;
 
         // Store current game ID so Settings page can update this game's house rules
         await JSRuntime.InvokeVoidAsync("localStorage.setItem", "current_gameId", GameId);
@@ -1601,10 +1648,93 @@
 
     #endregion
 
+    #region Winner Dialog
+
+    /// <summary>
+    /// Handles the WinnerDialogRequested event from GameStateService.
+    /// Shows the confirmation dialog if we're on a game page with an active game.
+    /// </summary>
+    private void OnWinnerDialogRequested(object? sender, EventArgs e)
+    {
+        if (_disposed || GameModel == null) return;
+
+        // Only show dialog if game is not already over
+        if (GameModel.GameState == GameState.GameOver) return;
+
+        // Get the current player's name for the dialog
+        var currentPlayer = GameModel.CurrentPlayer();
+        _winnerName = currentPlayer?.Name ?? "Current Player";
+
+        _showWinnerConfirm = true;
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Cancels the winner confirmation dialog.
+    /// </summary>
+    private void CancelWinnerConfirm()
+    {
+        _showWinnerConfirm = false;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Confirms the winner declaration and calls the API.
+    /// </summary>
+    private async Task ConfirmWinner()
+    {
+        if (GameModel == null) return;
+
+        var winnerId = GameModel.CurrentPlayerId;
+        _showWinnerConfirm = false;
+
+        try
+        {
+            var url = $"{Config.BaseUrl}/api/game/{GameId}/winner";
+            var request = new DeclareWinnerRequest { WinnerId = winnerId };
+            var response = await Http.PostAsJsonAsync(url, request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Show celebration animation
+                await TriggerWinnerCelebration();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                CommandError = $"Failed to declare winner: {error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            CommandError = $"Failed to declare winner: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Triggers the winner celebration animation and auto-hides after animation completes.
+    /// </summary>
+    private async Task TriggerWinnerCelebration()
+    {
+        _showWinnerCelebration = true;
+        StateHasChanged();
+
+        // Wait for animation to complete (5 seconds)
+        await Task.Delay(5000);
+
+        _showWinnerCelebration = false;
+        StateHasChanged();
+    }
+
+    #endregion
+
     public async ValueTask DisposeAsync()
     {
         _disposed = true; // Set first to guard against callbacks
         AssetService.ThemeChanged -= OnThemeChanged;
+        GameStateService.WinnerDialogRequested -= OnWinnerDialogRequested;
         Connection.GameStateUpdated -= OnGameStateUpdated;
         _rollDimCts?.Cancel();
         _rollDimCts?.Dispose();

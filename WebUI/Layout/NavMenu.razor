@@ -5,6 +5,7 @@
 @inject IAssetService AssetService
 @inject WebUI.Services.GameServiceConfig Config
 @inject WebUI.Services.GameConnectionService GameConnection
+@inject WebUI.Services.GameStateService GameStateService
 
 <nav class="nav-menu">
     <!-- Always visible: Hide -->
@@ -71,6 +72,10 @@
         <button class="nav-menu-item" @onclick="OnBalance">
             <div class="nav-icon">&#x2696;</div>
             <div class="nav-label">Balance</div>
+        </button>
+        <button class="nav-menu-item winner-button" @onclick="OnWinner">
+            <div class="nav-icon">&#x1F3C6;</div>
+            <div class="nav-label">Winner!</div>
         </button>
         <button class="nav-menu-item" @onclick="ToggleThemeSubmenu">
             <div class="nav-icon">&#x1F3A8;</div>
@@ -166,7 +171,11 @@
         </button>
     }
 
-    <!-- Always visible: Debug, Settings -->
+    <!-- Always visible: Stats, Debug, Settings -->
+    <button class="nav-menu-item" @onclick="OnStats">
+        <div class="nav-icon">&#x1F4CA;</div>
+        <div class="nav-label">Stats</div>
+    </button>
     <button class="nav-menu-item" @onclick="OnShowDebugWindow">
         <div class="nav-icon">&#x1F41B;</div>
         <div class="nav-label">Debug Window</div>
@@ -374,10 +383,22 @@
         await OnMenuAction.InvokeAsync();
     }
 
+    private async Task OnWinner()
+    {
+        await OnMenuAction.InvokeAsync(); // Close menu first
+        GameStateService.RequestWinnerDialog(); // Trigger winner dialog in Game.razor
+    }
+
     private async Task OnShowDebugWindow()
     {
         // TODO: Implement debug window
         await OnMenuAction.InvokeAsync();
+    }
+
+    private async Task OnStats()
+    {
+        await OnMenuAction.InvokeAsync(); // Close menu first
+        Navigation.NavigateTo("/stats");
     }
 
     private async Task OnSettings()

@@ -64,6 +64,7 @@ namespace Catan3.Shared.Models
     [JsonDerivedType(typeof(RollRecord), RollRecord.Discriminator)]
     [JsonDerivedType(typeof(SetPlayerOrderRecord), SetPlayerOrderRecord.Discriminator)]
     [JsonDerivedType(typeof(GoFirstRecord), GoFirstRecord.Discriminator)]
+    [JsonDerivedType(typeof(DeclareWinnerRecord), DeclareWinnerRecord.Discriminator)]
     [JsonDerivedType(typeof(ParticipatingInSupplementalRecord), ParticipatingInSupplementalRecord.Discriminator)]
     [JsonDerivedType(typeof(BalanceBoardRecord), BalanceBoardRecord.Discriminator)]
     [JsonDerivedType(typeof(SwapTileResourcesRecord), SwapTileResourcesRecord.Discriminator)]
@@ -531,6 +532,37 @@ namespace Catan3.Shared.Models
     }
 
     /// <summary>
+    /// Snapshot of a <c>DeclareWinnerMessage</c> suitable for recording and replay.
+    /// </summary>
+    public sealed class DeclareWinnerRecord : IRecordedMessage
+    {
+        public const string Discriminator = "declareWinner";
+
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
+        public string WinnerId { get; init; } = string.Empty;
+
+        [JsonIgnore]
+        public string RecordType => Discriminator;
+
+        [JsonConstructor]
+        public DeclareWinnerRecord(string expectedGameHash, GameState expectedGameState, string winnerId)
+        {
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
+            WinnerId = winnerId;
+        }
+
+        public DeclareWinnerRecord(GameModel gameModel, DeclareWinnerMessage message)
+        {
+            ExpectedGameHash = gameModel.GameHash;
+            ExpectedGameState = gameModel.GameState;
+            WinnerId = message.WinnerId;
+        }
+    }
+
+    /// <summary>
     /// Snapshot of a <c>ParticipatingInSupplementalMessage</c> suitable for recording and replay.
     /// </summary>
     public sealed class ParticipatingInSupplementalRecord : IRecordedMessage
@@ -708,6 +740,12 @@ namespace Catan3.Shared.Models
         /// </summary>
         public static IRecordedMessage ToRecord(this GoFirstMessage msg, GameModel gameModel)
             => new GoFirstRecord(gameModel, msg);
+
+        /// <summary>
+        /// Capture a <see cref="DeclareWinnerMessage"/> as a <see cref="DeclareWinnerRecord"/>.
+        /// </summary>
+        public static IRecordedMessage ToRecord(this DeclareWinnerMessage msg, GameModel gameModel)
+            => new DeclareWinnerRecord(gameModel, msg);
 
         /// <summary>
         /// Capture a <see cref="ParticipatingInSupplementalMessage"/> as a <see cref="ParticipatingInSupplementalRecord"/>.
