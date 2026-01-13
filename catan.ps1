@@ -732,6 +732,93 @@ switch ($Verb) {
         Write-Host "All tests passed!" -ForegroundColor Green
     }
 
+    "replay" {
+        Write-Host ""
+        Write-Host "Running Recording Replay Tests" -ForegroundColor Cyan
+        Write-Host "==============================" -ForegroundColor Cyan
+        Write-Host ""
+
+        # Check if GameService is running
+        if (-not (Test-PortInUse $GameServicePort)) {
+            Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
+            Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+            exit 1
+        }
+
+        # Get all recordings
+        Write-Host "Fetching recordings from $GameServiceUrl..." -ForegroundColor Yellow
+        try {
+            $recordings = Invoke-RestMethod -Uri "$GameServiceUrl/api/recordings" -Method Get
+        } catch {
+            Write-Host "Failed to fetch recordings: $_" -ForegroundColor Red
+            exit 1
+        }
+
+        if ($recordings.Count -eq 0) {
+            Write-Host "No recordings found. Create some recordings first!" -ForegroundColor Yellow
+            exit 0
+        }
+
+        Write-Host "Found $($recordings.Count) recording(s)" -ForegroundColor Green
+        Write-Host ""
+
+        $passed = 0
+        $failed = 0
+        $failedTests = @()
+
+        foreach ($recording in $recordings) {
+            Write-Host "  Running: $($recording.name) ($($recording.actionCount) actions)... " -NoNewline
+
+            try {
+                $result = Invoke-RestMethod -Uri "$GameServiceUrl/api/recording/$($recording.id)/replay" -Method Post
+
+                if ($result.success) {
+                    Write-Host "PASS" -ForegroundColor Green
+                    $passed++
+                } else {
+                    Write-Host "FAIL" -ForegroundColor Red
+                    $failed++
+                    $errorMsg = if ($result.failedAtAction) {
+                        "Failed at action $($result.failedAtAction): $($result.errorMessage)"
+                    } else {
+                        $result.errorMessage
+                    }
+                    $failedTests += @{
+                        Name = $recording.name
+                        Error = $errorMsg
+                        Expected = $result.expectedHash
+                        Actual = $result.actualHash
+                    }
+                }
+            } catch {
+                Write-Host "ERROR" -ForegroundColor Red
+                $failed++
+                $failedTests += @{
+                    Name = $recording.name
+                    Error = $_.Exception.Message
+                }
+            }
+        }
+
+        Write-Host ""
+        Write-Host "Results: $passed passed, $failed failed" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" })
+
+        if ($failedTests.Count -gt 0) {
+            Write-Host ""
+            Write-Host "Failed Tests:" -ForegroundColor Red
+            foreach ($test in $failedTests) {
+                Write-Host "  - $($test.Name): $($test.Error)" -ForegroundColor Red
+                if ($test.Expected -and $test.Actual) {
+                    Write-Host "    Expected: $($test.Expected), Actual: $($test.Actual)" -ForegroundColor DarkGray
+                }
+            }
+            exit 1
+        }
+
+        Write-Host ""
+        Write-Host "All recording replay tests passed!" -ForegroundColor Green
+    }
+
     "doctor" {
         Write-Host ""
         Write-Host "Catan3 Health Check" -ForegroundColor Cyan
@@ -1350,6 +1437,7 @@ switch ($Verb) {
         Write-Host "  ./catan.ps1 update           - Rebuild and restart (when hot reload fails)"
         Write-Host "  ./catan.ps1 build            - Build all projects (no tests)"
         Write-Host "  ./catan.ps1 test             - Build and run all tests"
+        Write-Host "  ./catan.ps1 replay           - Run recording replay tests (requires running server)"
         Write-Host "  ./catan.ps1 clean            - Stop services, clean build (preserves database)"
         Write-Host "  ./catan.ps1 debug            - Instructions for VS Code debugging"
         Write-Host "  ./catan.ps1 help (or -Help)  - Show this help"

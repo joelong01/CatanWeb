@@ -97,6 +97,9 @@ builder.Services.AddSingleton<IClientNotification>(provider => provider.GetRequi
 // Register async command processor for fire-and-forget command execution
 builder.Services.AddSingleton<AsyncCommandProcessor>();
 
+// Register recording service for test recording/replay
+builder.Services.AddSingleton<RecordingService>();
+
 // Database provider detection (zero-config: SQLite locally, SQL Server on Azure)
 Console.WriteLine("[STARTUP] Creating DatabaseProviderDetector...");
 var dbDetector = new DatabaseProviderDetector(builder.Configuration);

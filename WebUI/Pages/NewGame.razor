@@ -7,6 +7,7 @@
 @inject NavigationManager Navigation
 @inject GameServiceConfig Config
 @inject IJSRuntime JS
+@inject GameConnectionService GameConnection
 
 <PageTitle>New Game - Catan</PageTitle>
 
@@ -69,6 +70,10 @@
                 <label class="checkbox-label">
                     <input type="checkbox" @bind="UseHouseRules" />
                     <span>House Rules</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" @bind="RecordGame" />
+                    <span>Record Game</span>
                 </label>
             </div>
         </div>
@@ -142,6 +147,9 @@
 
     // House Rules option
     private bool UseHouseRules { get; set; } = true;
+
+    // Record Game option
+    private bool RecordGame { get; set; } = false;
 
     private bool CanStart => SelectedPlayers.Count >= 3 && SelectedPlayers.Count <= 6 && !IsCreatingGame && !IsLoadingGame;
 
@@ -275,6 +283,22 @@
                 var result = await response.Content.ReadFromJsonAsync<NewGameResponse>();
                 if (result?.Success == true && !string.IsNullOrEmpty(result.GameId))
                 {
+                    // If recording requested, connect and start recording before navigating
+                    if (RecordGame)
+                    {
+                        try
+                        {
+                            await GameConnection.ConnectAndJoinAsync(result.GameId, "WebUI-Client");
+                            // Use the game name for the recording name
+                            await GameConnection.StartRecordingAsync(request.GameName);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[NewGame] Failed to start recording: {ex.Message}");
+                            // Continue anyway - recording failure shouldn't block game start
+                        }
+                    }
+
                     // Navigate to the game page
                     Navigation.NavigateTo($"/game/{result.GameId}");
                 }

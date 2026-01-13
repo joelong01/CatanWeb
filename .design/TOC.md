@@ -1,6 +1,6 @@
 # .design Directory Table of Contents
 
-**Last Updated:** December 8, 2025  
+**Last Updated:** January 12, 2026  
 **Purpose:** Authoritative "as built" design documentation for the Catan project
 
 ## Quick Reference
@@ -14,6 +14,7 @@
 | [azure.md](azure.md) | Azure deployment architecture and configuration | Dec 8, 2025 |
 | [azure-cosmos-dal.md](azure-cosmos-dal.md) | CosmosDB data access layer design (comprehensive) | Dec 8, 2025 |
 | [azure-sql-serverless-alternative.md](azure-sql-serverless-alternative.md) | Azure SQL Serverless alternative analysis (recommended) | Dec 8, 2025 |
+| [test-plan.md](test-plan.md) | WebUI test suite with recording/replay infrastructure | Jan 12, 2026 |
 
 ## Projects
 
@@ -36,6 +37,7 @@ Cross-cutting system designs that span multiple projects:
 - [**mvvm-messaging.md**](systems/mvvm-messaging.md) - MVVM pattern and inter-component messaging
 - [**save-load.md**](systems/save-load.md) - Game persistence and serialization
 - [**settings.md**](systems/settings.md) - Configuration management across platforms
+- [**signalr-to-rest-migration.md**](systems/signalr-to-rest-migration.md) - Migration plan for SignalR → REST commands
 
 ## User Interface
 

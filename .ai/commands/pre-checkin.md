@@ -134,6 +134,16 @@ cannot.
    dotnet test --verbosity normal
    ```
 
+5. **Recording replay tests** (requires GameService running):
+
+   ```powershell
+   pwsh ./catan.ps1 replay
+   ```
+
+   - Replays all recorded game sessions
+   - Verifies GameHash consistency after each action
+   - Tests both GameHub and REST API recording paths
+
 **If tests fail:**
 
 - **Related to your changes**: Fix the issues - your code broke something

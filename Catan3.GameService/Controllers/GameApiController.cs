@@ -65,6 +65,7 @@ namespace Catan3.GameService.Controllers
         private readonly IHubContext<GameHub> _hubContext;
         private readonly IGamePersistence _gamePersistence;
         private readonly AzureSqlDiagnosticService _sqlDiagnostics;
+        private readonly RecordingService _recordingService;
 
         public GameApiController(
             IOptions<GameApiOptions> options,
@@ -74,7 +75,8 @@ namespace Catan3.GameService.Controllers
             CatanDbContext dbContext,
             IHubContext<GameHub> hubContext,
             IGamePersistence gamePersistence,
-            AzureSqlDiagnosticService sqlDiagnostics)
+            AzureSqlDiagnosticService sqlDiagnostics,
+            RecordingService recordingService)
         {
             _options = options.Value;
             _persistenceService = persistenceService;
@@ -84,6 +86,19 @@ namespace Catan3.GameService.Controllers
             _hubContext = hubContext;
             _gamePersistence = gamePersistence;
             _sqlDiagnostics = sqlDiagnostics;
+            _recordingService = recordingService;
+        }
+
+        /// <summary>
+        /// Records an action if recording is active for the game.
+        /// Saves to database immediately for crash recovery.
+        /// </summary>
+        private async Task TryRecordActionAsync(string gameId, IRecordedMessage message)
+        {
+            if (_recordingService.IsRecording(gameId))
+            {
+                await _recordingService.RecordActionAsync(gameId, message);
+            }
         }
 
         /// <summary>
@@ -395,7 +410,11 @@ namespace Catan3.GameService.Controllers
                 }
 
                 // Execute shuffle
-                var updatedGameModel = await gameStateMachine.HandleShuffleAsync(new ShuffleMessage());
+                var shuffleMessage = new ShuffleMessage();
+                var updatedGameModel = await gameStateMachine.HandleShuffleAsync(shuffleMessage);
+
+                // Record action if recording is active
+                await TryRecordActionAsync(gameId, new ShuffleRecord(updatedGameModel, shuffleMessage));
 
                 // Save to database and broadcast to clients
                 await ProcessGameActionResult(gameStateMachine, updatedGameModel, "Shuffle");
@@ -507,7 +526,11 @@ namespace Catan3.GameService.Controllers
                 await ArchiveCompletedGame(gameId, gameStateMachine, currentState, request.WinnerId, winnerName);
 
                 // Execute declare winner action
-                var updatedGameModel = await gameStateMachine.HandleDeclareWinnerAsync(new DeclareWinnerMessage(request.WinnerId));
+                var declareWinnerMessage = new DeclareWinnerMessage(request.WinnerId);
+                var updatedGameModel = await gameStateMachine.HandleDeclareWinnerAsync(declareWinnerMessage);
+
+                // Record action if recording is active
+                await TryRecordActionAsync(gameId, new DeclareWinnerRecord(updatedGameModel, declareWinnerMessage));
 
                 // Save to database and broadcast to clients
                 await ProcessGameActionResult(gameStateMachine, updatedGameModel, "DeclareWinner");

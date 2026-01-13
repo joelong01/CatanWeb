@@ -14,11 +14,13 @@ namespace Catan3.GameService.Hubs
     {
         private readonly ILogger<GameHub> _logger;
         private readonly IClientNotification _clientNotification;
+        private readonly RecordingService _recordingService;
 
-        public GameHub(ILogger<GameHub> logger, IClientNotification clientNotification)
+        public GameHub(ILogger<GameHub> logger, IClientNotification clientNotification, RecordingService recordingService)
         {
             _logger = logger;
             _clientNotification = clientNotification;
+            _recordingService = recordingService;
         }
 
         #region Connection Management
@@ -134,7 +136,11 @@ namespace Catan3.GameService.Hubs
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
 
-            var updatedGameModel = await gameStateMachine.HandleShuffleAsync(new ShuffleMessage());
+            var shuffleMessage = new ShuffleMessage();
+            var updatedGameModel = await gameStateMachine.HandleShuffleAsync(shuffleMessage);
+
+            // Record action if recording is active
+            await TryRecordActionAsync(gameId, new ShuffleRecord(updatedGameModel, shuffleMessage));
 
             // Notify all clients in game group of the updated GameModel
             await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -159,7 +165,11 @@ namespace Catan3.GameService.Hubs
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
 
-            var updatedGameModel = await gameStateMachine.HandleUndoAsync(new UndoMessage());
+            var undoMessage = new UndoMessage();
+            var updatedGameModel = await gameStateMachine.HandleUndoAsync(undoMessage);
+
+            // Record action if recording is active
+            await TryRecordActionAsync(gameId, new UndoRecord(updatedGameModel, undoMessage));
 
             // Notify all clients in game group of the updated GameModel
             await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -184,7 +194,11 @@ namespace Catan3.GameService.Hubs
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
 
-            var updatedGameModel = await gameStateMachine.HandleRedoAsync(new RedoMessage());
+            var redoMessage = new RedoMessage();
+            var updatedGameModel = await gameStateMachine.HandleRedoAsync(redoMessage);
+
+            // Record action if recording is active
+            await TryRecordActionAsync(gameId, new RedoRecord(updatedGameModel, redoMessage));
 
             // Notify all clients in game group of the updated GameModel
             await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -209,7 +223,11 @@ namespace Catan3.GameService.Hubs
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
 
-            var updatedGameModel = await gameStateMachine.HandleNextAsync(new NextMessage());
+            var nextMessage = new NextMessage();
+            var updatedGameModel = await gameStateMachine.HandleNextAsync(nextMessage);
+
+            // Record action if recording is active
+            await TryRecordActionAsync(gameId, new NextRecord(updatedGameModel, nextMessage));
 
             // Notify all clients in game group of the updated GameModel
             await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -233,6 +251,9 @@ namespace Catan3.GameService.Hubs
 
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandlePurchaseAsync(message);
+
+                // Record action if recording is active
+                await TryRecordActionAsync(gameId, new PurchaseRecord(updatedGameModel, message));
 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -267,7 +288,11 @@ namespace Catan3.GameService.Hubs
                 throw new GameException($"Player {playerId} cannot act - current player is {currentGameState.CurrentPlayerId}");
             }
 
-            var updatedGameModel = await gameStateMachine.HandleBalanceBoardAsync(new BalanceBoardMessage());
+            var balanceBoardMessage = new BalanceBoardMessage();
+            var updatedGameModel = await gameStateMachine.HandleBalanceBoardAsync(balanceBoardMessage);
+
+            // Record action if recording is active
+            await TryRecordActionAsync(gameId, new BalanceBoardRecord(updatedGameModel, balanceBoardMessage));
 
             // Notify all clients in game group of the updated GameModel
             await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -291,6 +316,9 @@ namespace Catan3.GameService.Hubs
 
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleRoadPurchaseAsync(message);
+
+                // Record action if recording is active
+                await TryRecordActionAsync(gameId, new RoadPurchaseRecord(updatedGameModel, message));
 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -325,6 +353,9 @@ namespace Catan3.GameService.Hubs
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleBuildingUpgradeAsync(message);
 
+                // Record action if recording is active
+                await TryRecordActionAsync(gameId, new BuildingUpgradeRecord(updatedGameModel, message));
+
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 LogEvent("Send Client Update", $"GameStateUpdated sent for BuildingUpgrade: {message.BuildingKey} - PlayerId={playerId}, GameID={gameId}");
@@ -357,6 +388,9 @@ namespace Catan3.GameService.Hubs
 
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleMoveRobberAsync(message);
+
+                // Record action if recording is active
+                await TryRecordActionAsync(gameId, new MoveRobberRecord(updatedGameModel, message));
 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -391,6 +425,9 @@ namespace Catan3.GameService.Hubs
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleRollAsync(message);
 
+                // Record action if recording is active
+                await TryRecordActionAsync(gameId, new RollRecord(updatedGameModel, message));
+
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 LogEvent("Send Client Update", $"GameStateUpdated sent for Roll: {message.Roll.NormalRoll} - PlayerId={playerId}, GameID={gameId}");
@@ -423,6 +460,9 @@ namespace Catan3.GameService.Hubs
 
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleSetPlayerOrderAsync(message);
+
+                // Record action if recording is active
+                await TryRecordActionAsync(gameId, new SetPlayerOrderRecord(updatedGameModel, message));
 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -459,6 +499,9 @@ namespace Catan3.GameService.Hubs
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleParticipatingInSupplementalAsync(message);
 
+                // Record action if recording is active
+                await TryRecordActionAsync(gameId, new ParticipatingInSupplementalRecord(updatedGameModel, message));
+
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 LogEvent("Send Client Update", $"GameStateUpdated sent for ParticipatingInSupplemental - PlayerId={playerId}, GameID={gameId}");
@@ -491,6 +534,9 @@ namespace Catan3.GameService.Hubs
 
                 // Process synchronously for real-time response
                 var updatedGameModel = await GameStateMachineRegistry.GetGameStateMachine(gameId).HandleBalanceBoardAsync(message);
+
+                // Record action if recording is active
+                await TryRecordActionAsync(gameId, new BalanceBoardRecord(updatedGameModel, message));
 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -529,6 +575,9 @@ namespace Catan3.GameService.Hubs
 
                 // Process synchronously for real-time response
                 var updatedGameModel = await gameStateMachine.HandleGoFirstAsync(message);
+
+                // Record action if recording is active
+                await TryRecordActionAsync(gameId, new GoFirstRecord(updatedGameModel, message));
 
                 // Notify all clients in game group instantly
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
@@ -572,6 +621,9 @@ namespace Catan3.GameService.Hubs
                 // Process swap
                 var updatedGameModel = await gameStateMachine.HandleSwapResourcesAsync(message);
 
+                // Record action if recording is active
+                await TryRecordActionAsync(gameId, new SwapTileResourcesRecord(updatedGameModel, message));
+
                 // Broadcast updated state
                 await Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
                 LogEvent("Send Client Update", $"GameStateUpdated sent for SwapTileResources - PlayerId={playerId}, GameID={gameId}");
@@ -591,6 +643,18 @@ namespace Catan3.GameService.Hubs
         #endregion
 
         #region Helper Methods
+
+        /// <summary>
+        /// Records an action if recording is active for the game.
+        /// Saves to database immediately for crash recovery.
+        /// </summary>
+        private async Task TryRecordActionAsync(string gameId, IRecordedMessage message)
+        {
+            if (_recordingService.IsRecording(gameId))
+            {
+                await _recordingService.RecordActionAsync(gameId, message);
+            }
+        }
 
         /// <summary>
         /// Centralized logging method using pure ASP.NET Core logging

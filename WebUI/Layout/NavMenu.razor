@@ -6,6 +6,7 @@
 @inject WebUI.Services.GameServiceConfig Config
 @inject WebUI.Services.GameConnectionService GameConnection
 @inject WebUI.Services.GameStateService GameStateService
+@implements IDisposable
 
 <nav class="nav-menu">
     <!-- Always visible: Hide -->
@@ -49,6 +50,20 @@
             <div class="nav-icon">&#x2795;</div>
             <div class="nav-label">New Game</div>
         </button>
+        @if (_isRecording)
+        {
+            <button class="nav-menu-item recording-active" @onclick="OnStopRecording">
+                <div class="nav-icon">&#x23F9;</div>
+                <div class="nav-label">Stop Recording (@_actionCount)</div>
+            </button>
+        }
+        else
+        {
+            <button class="nav-menu-item" @onclick="OnStartRecording">
+                <div class="nav-icon">&#x23FA;</div>
+                <div class="nav-label">Record</div>
+            </button>
+        }
         <button class="nav-menu-item" @onclick="OnOpenGame">
             <div class="nav-icon">&#x1F4C2;</div>
             <div class="nav-label">Open...</div>
@@ -191,10 +206,14 @@
         </button>
     }
 
-    <!-- Always visible: Stats, Debug, Settings -->
+    <!-- Always visible: Stats, Tests, Debug, Settings -->
     <button class="nav-menu-item" @onclick="OnStats">
         <div class="nav-icon">&#x1F4CA;</div>
         <div class="nav-label">Stats</div>
+    </button>
+    <button class="nav-menu-item" @onclick="OnTests">
+        <div class="nav-icon">&#x1F9EA;</div>
+        <div class="nav-label">Tests</div>
     </button>
     <button class="nav-menu-item" @onclick="OnShowDebugWindow">
         <div class="nav-icon">&#x1F41B;</div>
@@ -211,9 +230,11 @@
     public EventCallback OnMenuAction { get; set; }
 
     private bool _showThemeSubmenu = false;
+    private bool _isRecording = false;
+    private int _actionCount = 0;
 
     // Page context enum for menu switching
-    private enum PageContext { Home, Game, NewGame, LoadGame, EditPlayers, Settings, Stats, Other }
+    private enum PageContext { Home, Game, NewGame, LoadGame, EditPlayers, Settings, Stats, Tests, Other }
 
     // Determine current page from URL
     private PageContext CurrentPage
@@ -227,6 +248,7 @@
             if (uri.Contains("/editplayers")) return PageContext.EditPlayers;
             if (uri.Contains("/settings")) return PageContext.Settings;
             if (uri.Contains("/stats")) return PageContext.Stats;
+            if (uri.Contains("/tests")) return PageContext.Tests;
             if (uri.EndsWith("/") || uri.EndsWith(":5000") || uri.EndsWith(":5001")) return PageContext.Home;
             return PageContext.Other;
         }
@@ -422,9 +444,94 @@
         Navigation.NavigateTo("/stats");
     }
 
+    private async Task OnTests()
+    {
+        await OnMenuAction.InvokeAsync(); // Close menu first
+        Navigation.NavigateTo("/tests");
+    }
+
     private async Task OnSettings()
     {
         await OnMenuAction.InvokeAsync(); // Close menu first
         Navigation.NavigateTo("/settings");
+    }
+
+    private async Task OnStartRecording()
+    {
+        try
+        {
+            // Use the current game name for the recording
+            var gameName = GameConnection.GameModel?.GameName;
+            var success = await GameConnection.StartRecordingAsync(gameName);
+            if (success)
+            {
+                _isRecording = true;
+                _actionCount = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NavMenu] Start recording failed: {ex.Message}");
+        }
+        await OnMenuAction.InvokeAsync(); // Close menu
+    }
+
+    private async Task OnStopRecording()
+    {
+        try
+        {
+            var success = await GameConnection.StopRecordingAsync();
+            if (success)
+            {
+                _isRecording = false;
+                _actionCount = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NavMenu] Stop recording failed: {ex.Message}");
+        }
+        await OnMenuAction.InvokeAsync(); // Close menu
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to game state updates to track action count
+        GameConnection.GameStateUpdated += OnGameStateUpdated;
+
+        // Check if already recording
+        await RefreshRecordingStatus();
+    }
+
+    private async Task RefreshRecordingStatus()
+    {
+        try
+        {
+            var status = await GameConnection.GetRecordingStatusAsync();
+            if (status != null)
+            {
+                _isRecording = status.IsRecording;
+                _actionCount = status.ActionCount;
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            // Ignore - recording status not critical
+        }
+    }
+
+    private void OnGameStateUpdated(Catan3.Shared.Models.GameModel gameModel)
+    {
+        if (_isRecording)
+        {
+            _actionCount++;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        GameConnection.GameStateUpdated -= OnGameStateUpdated;
     }
 }

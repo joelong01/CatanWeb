@@ -1,0 +1,636 @@
+@page "/tests"
+@using Catan3.Shared.Services
+@using System.Net.Http.Json
+@using Catan3.WebUI.Services
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject GameServiceConfig Config
+@inject IJSRuntime JS
+
+<PageTitle>Test Recordings - Catan</PageTitle>
+
+<div class="tests-container">
+    <h1>Test Recordings</h1>
+    <p class="subtitle">Recorded gameplay for testing GameService consistency</p>
+
+    @if (IsLoading)
+    {
+        <div class="loading">Loading recordings...</div>
+    }
+    else if (ErrorMessage != null)
+    {
+        <div class="error">@ErrorMessage</div>
+    }
+    else if (Recordings.Count == 0)
+    {
+        <div class="empty-state">
+            <p>No recordings found.</p>
+            <p>Start a game and use the "Start Recording" button to capture gameplay.</p>
+        </div>
+    }
+    else
+    {
+        <!-- Recordings Table -->
+        <div class="section-header">
+            <h2>Recordings</h2>
+            <div class="controls-inline">
+                <button class="btn btn-success btn-sm" @onclick="RunAllRecordings" disabled="@IsRunning">
+                    Run All
+                </button>
+                <button class="btn btn-secondary btn-sm" @onclick="LoadRecordings" disabled="@IsRunning">
+                    Refresh
+                </button>
+            </div>
+        </div>
+        <div class="recordings-table-wrapper">
+            <table class="recordings-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Date</th>
+                        <th>Game Type</th>
+                        <th>Players</th>
+                        <th>Actions</th>
+                        <th class="actions-column">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var recording in Recordings)
+                    {
+                        <tr class="@(recording.Id == _selectedRecordingId ? "selected" : "")">
+                            <td class="name-cell">@recording.Name</td>
+                            <td>@recording.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@recording.GameType</td>
+                            <td>@recording.PlayerCount</td>
+                            <td>@recording.ActionCount</td>
+                            <td class="actions-column">
+                                @if (_runningRecordingId == recording.Id)
+                                {
+                                    <span class="running-indicator">Running...</span>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-primary btn-sm" @onclick="() => SelectRecording(recording)" disabled="@IsRunning">
+                                        Select
+                                    </button>
+                                    <button class="btn btn-success btn-sm" @onclick="() => RunRecording(recording.Id)" disabled="@IsRunning">
+                                        Run All
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm" @onclick="() => ShowRename(recording)" disabled="@IsRunning">
+                                        Rename
+                                    </button>
+                                    <button class="btn btn-danger btn-sm" @onclick="() => ConfirmDelete(recording)" disabled="@IsRunning">
+                                        Delete
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (_testResults.Count > 0)
+        {
+            <div class="test-results">
+                <h3>Full Run Results</h3>
+                @foreach (var result in _testResults)
+                {
+                    <div class="result @(result.Success ? "success" : "failure")">
+                        <span class="result-icon">@(result.Success ? "✓" : "✗")</span>
+                        <span class="result-name">@result.Name</span>
+                        <span class="result-message">@result.Message</span>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Actions Table (shown when a recording is selected) -->
+        @if (_selectedRecordingId != null)
+        {
+            <div class="section-header">
+                <h2>Actions: @_selectedRecordingName</h2>
+                <div class="controls-inline">
+                    @if (_replaySessionId == null)
+                    {
+                        <button class="btn btn-primary btn-sm" @onclick="StartReplaySession" disabled="@_isLoadingActions">
+                            Start Replay
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-primary btn-sm" @onclick="StepReplay" disabled="@(_currentActionIndex >= _actions.Count)">
+                            Run Step
+                        </button>
+                        <button class="btn btn-secondary btn-sm" @onclick="EndReplaySession">
+                            Reset
+                        </button>
+                    }
+                    <button class="btn btn-secondary btn-sm" @onclick="ClearSelection">
+                        Close
+                    </button>
+                </div>
+            </div>
+
+            @if (_isLoadingActions)
+            {
+                <div class="loading">Loading actions...</div>
+            }
+            else
+            {
+                <div class="actions-table-wrapper">
+                    <table class="actions-table">
+                        <thead>
+                            <tr>
+                                <th class="col-index">#</th>
+                                <th class="col-action">Action</th>
+                                <th class="col-state">Game State</th>
+                                <th class="col-details">Details</th>
+                                <th class="col-hash">Expected Hash</th>
+                                <th class="col-hash">Actual Hash</th>
+                                <th class="col-status">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var action in _actions)
+                            {
+                                var result = _actionResults.GetValueOrDefault(action.Index);
+                                var isCurrent = action.Index == _currentActionIndex;
+                                var rowClass = GetRowClass(action.Index, result, isCurrent);
+                                <tr class="@rowClass" id="action-row-@action.Index">
+                                    <td class="col-index">@action.Index</td>
+                                    <td class="col-action">@action.ActionType</td>
+                                    <td class="col-state">@action.GameState</td>
+                                    <td class="col-details">@action.Details</td>
+                                    <td class="col-hash hash-text">@TruncateHash(action.ExpectedHash)</td>
+                                    <td class="col-hash hash-text">@(result != null ? TruncateHash(result.ActualHash) : "")</td>
+                                    <td class="col-status">
+                                        @if (result != null)
+                                        {
+                                            <span class="status-icon @(result.HashMatch ? "pass" : "fail")">
+                                                @(result.HashMatch ? "✓" : "✗")
+                                            </span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+    }
+
+    @if (_showDeleteConfirm && _recordingToDelete != null)
+    {
+        <div class="modal-overlay">
+            <div class="modal-dialog">
+                <h3>Delete Recording?</h3>
+                <p>Are you sure you want to delete "@_recordingToDelete.Name"?</p>
+                <p>This action cannot be undone.</p>
+                <div class="modal-buttons">
+                    <button class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteRecording">Delete</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (_showRename && _recordingToRename != null)
+    {
+        <div class="modal-overlay">
+            <div class="modal-dialog">
+                <h3>Rename Recording</h3>
+                <p>Enter a new name for "@_recordingToRename.Name":</p>
+                <input @ref="_renameInputRef"
+                       type="text"
+                       class="rename-input"
+                       @bind="_newRecordingName"
+                       @bind:event="oninput"
+                       @onkeydown="OnRenameKeyDown"
+                       @onkeydown:stopPropagation="true" />
+                <div class="modal-buttons">
+                    <button class="btn btn-secondary" @onclick="CancelRename">Cancel</button>
+                    <button class="btn btn-primary" @onclick="RenameRecording" disabled="@string.IsNullOrWhiteSpace(_newRecordingName)">Rename</button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<RecordingSummary> Recordings { get; set; } = new();
+    private bool IsLoading { get; set; } = true;
+    private bool IsRunning { get; set; } = false;
+    private string? ErrorMessage { get; set; }
+    private string? _runningRecordingId;
+    private bool _showDeleteConfirm = false;
+    private RecordingSummary? _recordingToDelete;
+    private bool _showRename = false;
+    private RecordingSummary? _recordingToRename;
+    private string _newRecordingName = string.Empty;
+    private ElementReference _renameInputRef;
+    private List<TestResult> _testResults = new();
+
+    // Step-by-step replay state
+    private string? _selectedRecordingId;
+    private string? _selectedRecordingName;
+    private List<ActionSummary> _actions = new();
+    private bool _isLoadingActions = false;
+    private string? _replaySessionId;
+    private int _currentActionIndex = 0;
+    private Dictionary<int, StepResult> _actionResults = new();
+
+    private record TestResult(string Name, bool Success, string Message);
+
+    private record RecordingSummary(
+        string Id,
+        string Name,
+        DateTime CreatedAt,
+        string GameType,
+        int PlayerCount,
+        int ActionCount
+    );
+
+    private record ActionSummary(
+        int Index,
+        string ActionType,
+        string GameState,
+        string ExpectedHash,
+        string Details
+    );
+
+    private record StepResult(
+        bool Success,
+        int ActionIndex,
+        string ExpectedHash,
+        string ActualHash,
+        bool HashMatch,
+        string? ErrorMessage
+    );
+
+    private record ReplayResult(
+        bool Success,
+        string RecordingName,
+        int ActionsReplayed,
+        int TotalActions,
+        int? FailedAtAction,
+        string? ExpectedHash,
+        string? ActualHash,
+        string? ErrorMessage
+    );
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRecordings();
+    }
+
+    private async Task LoadRecordings()
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var response = await Http.GetFromJsonAsync<List<RecordingSummary>>($"{Config.BaseUrl}/api/recordings");
+            Recordings = response ?? new();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to load recordings: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SelectRecording(RecordingSummary recording)
+    {
+        // Clear previous session if exists
+        if (_replaySessionId != null)
+        {
+            await EndReplaySession();
+        }
+
+        _selectedRecordingId = recording.Id;
+        _selectedRecordingName = recording.Name;
+        _actions.Clear();
+        _actionResults.Clear();
+        _currentActionIndex = 0;
+        _isLoadingActions = true;
+        StateHasChanged();
+
+        try
+        {
+            var response = await Http.GetFromJsonAsync<List<ActionSummary>>($"{Config.BaseUrl}/api/recording/{recording.Id}/actions");
+            _actions = response ?? new();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to load actions: {ex.Message}";
+        }
+        finally
+        {
+            _isLoadingActions = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ClearSelection()
+    {
+        if (_replaySessionId != null)
+        {
+            _ = EndReplaySession();
+        }
+        _selectedRecordingId = null;
+        _selectedRecordingName = null;
+        _actions.Clear();
+        _actionResults.Clear();
+        _currentActionIndex = 0;
+    }
+
+    private async Task StartReplaySession()
+    {
+        if (_selectedRecordingId == null) return;
+
+        try
+        {
+            var response = await Http.PostAsync($"{Config.BaseUrl}/api/recording/{_selectedRecordingId}/replay/start", null);
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<StartSessionResult>(json,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                _replaySessionId = result?.SessionId;
+                _currentActionIndex = 0;
+                _actionResults.Clear();
+            }
+            else
+            {
+                ErrorMessage = "Failed to start replay session";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error starting replay: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private record StartSessionResult(string SessionId, string RecordingName, int TotalActions, int CurrentIndex);
+
+    private async Task StepReplay()
+    {
+        if (_replaySessionId == null || _currentActionIndex >= _actions.Count) return;
+
+        try
+        {
+            var response = await Http.PostAsync($"{Config.BaseUrl}/api/replay/{_replaySessionId}/step", null);
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<StepResult>(json,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (result != null)
+                {
+                    _actionResults[result.ActionIndex] = result;
+                    _currentActionIndex = result.ActionIndex + 1;
+
+                    // Scroll to the current row
+                    await JS.InvokeVoidAsync("eval", $"document.getElementById('action-row-{_currentActionIndex}')?.scrollIntoView({{behavior: 'smooth', block: 'center'}})");
+                }
+            }
+            else
+            {
+                ErrorMessage = "Failed to execute step";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error executing step: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private async Task EndReplaySession()
+    {
+        if (_replaySessionId == null) return;
+
+        try
+        {
+            await Http.DeleteAsync($"{Config.BaseUrl}/api/replay/{_replaySessionId}");
+        }
+        catch
+        {
+            // Ignore errors when ending session
+        }
+        finally
+        {
+            _replaySessionId = null;
+            _currentActionIndex = 0;
+            _actionResults.Clear();
+            StateHasChanged();
+        }
+    }
+
+    private string GetRowClass(int index, StepResult? result, bool isCurrent)
+    {
+        var classes = new List<string>();
+
+        if (isCurrent && _replaySessionId != null)
+        {
+            classes.Add("current-action");
+        }
+
+        if (result != null)
+        {
+            classes.Add(result.HashMatch ? "action-pass" : "action-fail");
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private static string TruncateHash(string? hash)
+    {
+        if (string.IsNullOrEmpty(hash)) return "";
+        return hash.Length > 8 ? hash[..8] + "..." : hash;
+    }
+
+    private async Task RunRecording(string recordingId)
+    {
+        IsRunning = true;
+        _runningRecordingId = recordingId;
+        StateHasChanged();
+
+        try
+        {
+            var recording = Recordings.FirstOrDefault(r => r.Id == recordingId);
+            var name = recording?.Name ?? recordingId;
+
+            var response = await Http.PostAsync($"{Config.BaseUrl}/api/recording/{recordingId}/replay", null);
+            var json = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = System.Text.Json.JsonSerializer.Deserialize<ReplayResult>(json,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (result?.Success == true)
+                {
+                    _testResults.Add(new TestResult(name, true, $"Replay successful ({result.ActionsReplayed} actions)"));
+                }
+                else
+                {
+                    var message = result?.ErrorMessage ?? "Unknown error";
+                    if (result?.FailedAtAction != null)
+                    {
+                        message = $"Failed at action {result.FailedAtAction}/{result.TotalActions}: {message}";
+                        if (!string.IsNullOrEmpty(result.ExpectedHash) && !string.IsNullOrEmpty(result.ActualHash))
+                        {
+                            message += $" (expected: {result.ExpectedHash}, got: {result.ActualHash})";
+                        }
+                    }
+                    _testResults.Add(new TestResult(name, false, message));
+                }
+            }
+            else
+            {
+                _testResults.Add(new TestResult(name, false, $"HTTP {(int)response.StatusCode}: {json}"));
+            }
+        }
+        catch (Exception ex)
+        {
+            var recording = Recordings.FirstOrDefault(r => r.Id == recordingId);
+            var name = recording?.Name ?? recordingId;
+            _testResults.Add(new TestResult(name, false, $"Error: {ex.Message}"));
+        }
+        finally
+        {
+            _runningRecordingId = null;
+            IsRunning = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RunAllRecordings()
+    {
+        _testResults.Clear();
+
+        foreach (var recording in Recordings)
+        {
+            await RunRecording(recording.Id);
+        }
+    }
+
+    private void ConfirmDelete(RecordingSummary recording)
+    {
+        _recordingToDelete = recording;
+        _showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        _recordingToDelete = null;
+        _showDeleteConfirm = false;
+    }
+
+    private async Task DeleteRecording()
+    {
+        if (_recordingToDelete == null) return;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"{Config.BaseUrl}/api/recording/{_recordingToDelete.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                Recordings.RemoveAll(r => r.Id == _recordingToDelete.Id);
+                if (_selectedRecordingId == _recordingToDelete.Id)
+                {
+                    ClearSelection();
+                }
+            }
+            else
+            {
+                ErrorMessage = "Failed to delete recording";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error deleting recording: {ex.Message}";
+        }
+        finally
+        {
+            _recordingToDelete = null;
+            _showDeleteConfirm = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ShowRename(RecordingSummary recording)
+    {
+        _recordingToRename = recording;
+        _newRecordingName = recording.Name;
+        _showRename = true;
+        StateHasChanged();
+
+        await Task.Delay(50);
+        await _renameInputRef.FocusAsync();
+        await JS.InvokeVoidAsync("eval", "document.querySelector('.rename-input')?.select()");
+    }
+
+    private void CancelRename()
+    {
+        _recordingToRename = null;
+        _newRecordingName = string.Empty;
+        _showRename = false;
+    }
+
+    private async Task OnRenameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newRecordingName))
+        {
+            await RenameRecording();
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelRename();
+        }
+    }
+
+    private async Task RenameRecording()
+    {
+        if (_recordingToRename == null || string.IsNullOrWhiteSpace(_newRecordingName)) return;
+
+        try
+        {
+            var request = new { name = _newRecordingName };
+            var json = System.Text.Json.JsonSerializer.Serialize(request);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await Http.PutAsync($"{Config.BaseUrl}/api/recording/{_recordingToRename.Id}/rename", content);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadRecordings();
+            }
+            else
+            {
+                ErrorMessage = "Failed to rename recording";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error renaming recording: {ex.Message}";
+        }
+        finally
+        {
+            _recordingToRename = null;
+            _newRecordingName = string.Empty;
+            _showRename = false;
+            StateHasChanged();
+        }
+    }
+}

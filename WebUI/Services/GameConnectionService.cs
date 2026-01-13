@@ -307,6 +307,75 @@ public class GameConnectionService : IAsyncDisposable
 
     #endregion
 
+    #region Recording Methods
+
+    /// <summary>
+    /// Starts recording gameplay actions with the specified name.
+    /// The recording is saved to database immediately and after each action.
+    /// </summary>
+    /// <param name="name">Optional recording name. If not provided, uses the game name.</param>
+    public async Task<bool> StartRecordingAsync(string? name = null)
+    {
+        EnsureInGame();
+        return await _proxy!.StartRecordingAsync(name);
+    }
+
+    /// <summary>
+    /// Stops recording. Recording is already saved to database.
+    /// </summary>
+    public async Task<bool> StopRecordingAsync()
+    {
+        EnsureInGame();
+        return await _proxy!.StopRecordingAsync();
+    }
+
+    /// <summary>
+    /// Gets the recording status for the current game.
+    /// </summary>
+    public async Task<GameServiceProxy.RecordingStatusResponse?> GetRecordingStatusAsync()
+    {
+        if (_proxy == null)
+        {
+            return null;
+        }
+        return await _proxy.GetRecordingStatusAsync();
+    }
+
+    /// <summary>
+    /// Gets all saved recordings.
+    /// </summary>
+    public async Task<List<GameServiceProxy.RecordingSummary>> GetRecordingsAsync()
+    {
+        if (_proxy == null)
+        {
+            throw new InvalidOperationException("Not connected. Call ConnectAsync first.");
+        }
+        return await _proxy.GetRecordingsAsync();
+    }
+
+    /// <summary>
+    /// Deletes a recording by ID.
+    /// </summary>
+    public async Task<bool> DeleteRecordingAsync(string recordingId)
+    {
+        if (_proxy == null)
+        {
+            throw new InvalidOperationException("Not connected. Call ConnectAsync first.");
+        }
+        return await _proxy.DeleteRecordingAsync(recordingId);
+    }
+
+    /// <summary>
+    /// Cancels an active recording without saving.
+    /// </summary>
+    public async Task<bool> CancelRecordingAsync()
+    {
+        EnsureInGame();
+        return await _proxy!.CancelRecordingAsync();
+    }
+
+    #endregion
+
     #region Private Methods
 
     private void EnsureInGame()

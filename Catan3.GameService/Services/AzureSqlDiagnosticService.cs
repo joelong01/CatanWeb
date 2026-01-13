@@ -430,6 +430,17 @@ public class AzureSqlDiagnosticService
             var gameCount = hasGames ? await dbContext.GameSaveMetadata.CountAsync() : 0;
             result.Checks.Add($"Saved games: {gameCount}");
 
+            // Check Recordings table exists (optional - for test recordings)
+            try
+            {
+                var recordingCount = await dbContext.Recordings.CountAsync();
+                result.Checks.Add($"Recordings table: OK ({recordingCount} recordings)");
+            }
+            catch
+            {
+                result.Checks.Add("Recordings table: MISSING (run database install to create)");
+            }
+
             // All checks passed
             result.Message = "Local database is healthy and properly configured";
         }

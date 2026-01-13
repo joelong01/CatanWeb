@@ -1024,6 +1024,143 @@ namespace Catan3.Shared.Services
 
         #endregion
 
+        #region Recording API
+
+        /// <summary>
+        /// Response model for recording status.
+        /// </summary>
+        public class RecordingStatusResponse
+        {
+            public bool IsRecording { get; set; }
+            public int ActionCount { get; set; }
+        }
+
+        /// <summary>
+        /// Response model for recording summary.
+        /// </summary>
+        public class RecordingSummary
+        {
+            public string Id { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
+            public DateTime CreatedAt { get; set; }
+            public string GameType { get; set; } = string.Empty;
+            public int PlayerCount { get; set; }
+            public int ActionCount { get; set; }
+        }
+
+        /// <summary>
+        /// Starts recording for the current game with the specified name.
+        /// The name is saved immediately to the database.
+        /// </summary>
+        /// <param name="name">Optional recording name. If not provided, uses the game name.</param>
+        public async Task<bool> StartRecordingAsync(string? name = null)
+        {
+            if (string.IsNullOrEmpty(_gameId))
+                throw new InvalidOperationException("GameId must be set before starting recording");
+
+            if (string.IsNullOrEmpty(ServiceUri))
+                throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
+
+            HttpResponseMessage response;
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                var request = new { name };
+                var json = JsonHelper.Serialize(request);
+                var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                response = await _httpClient.PostAsync($"{ServiceUri}/api/recording/start/{_gameId}", content);
+            }
+            else
+            {
+                response = await _httpClient.PostAsync($"{ServiceUri}/api/recording/start/{_gameId}", null);
+            }
+            return response.IsSuccessStatusCode;
+        }
+
+        /// <summary>
+        /// Stops recording for the current game. Recording is already saved to database.
+        /// </summary>
+        public async Task<bool> StopRecordingAsync()
+        {
+            if (string.IsNullOrEmpty(_gameId))
+                throw new InvalidOperationException("GameId must be set before stopping recording");
+
+            if (string.IsNullOrEmpty(ServiceUri))
+                throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
+
+            var response = await _httpClient.PostAsync($"{ServiceUri}/api/recording/stop/{_gameId}", null);
+            return response.IsSuccessStatusCode;
+        }
+
+        /// <summary>
+        /// Gets the recording status for the current game.
+        /// </summary>
+        public async Task<RecordingStatusResponse?> GetRecordingStatusAsync()
+        {
+            if (string.IsNullOrEmpty(_gameId))
+                return null;
+
+            if (string.IsNullOrEmpty(ServiceUri))
+                throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
+
+            var response = await _httpClient.GetAsync($"{ServiceUri}/api/recording/status/{_gameId}");
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+            return await response.Content.ReadFromJsonAsync<RecordingStatusResponse>(jsonOptions);
+        }
+
+        /// <summary>
+        /// Gets all saved recordings.
+        /// </summary>
+        public async Task<List<RecordingSummary>> GetRecordingsAsync()
+        {
+            if (string.IsNullOrEmpty(ServiceUri))
+                throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
+
+            var response = await _httpClient.GetAsync($"{ServiceUri}/api/recordings");
+            if (!response.IsSuccessStatusCode)
+                return [];
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+            return await response.Content.ReadFromJsonAsync<List<RecordingSummary>>(jsonOptions) ?? [];
+        }
+
+        /// <summary>
+        /// Deletes a recording by ID.
+        /// </summary>
+        public async Task<bool> DeleteRecordingAsync(string recordingId)
+        {
+            if (string.IsNullOrEmpty(ServiceUri))
+                throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
+
+            var response = await _httpClient.DeleteAsync($"{ServiceUri}/api/recording/{recordingId}");
+            return response.IsSuccessStatusCode;
+        }
+
+        /// <summary>
+        /// Cancels an active recording without saving.
+        /// </summary>
+        public async Task<bool> CancelRecordingAsync()
+        {
+            if (string.IsNullOrEmpty(_gameId))
+                throw new InvalidOperationException("GameId must be set before cancelling recording");
+
+            if (string.IsNullOrEmpty(ServiceUri))
+                throw new InvalidOperationException("ServiceUri must be set before calling REST API methods");
+
+            var response = await _httpClient.PostAsync($"{ServiceUri}/api/recording/cancel/{_gameId}", null);
+            return response.IsSuccessStatusCode;
+        }
+
+        #endregion
+
         #region Helper Methods
 
         /// <summary>

@@ -9,6 +9,7 @@ public class CatanDbContext : DbContext
     public DbSet<GameSaveDataEntity> GameSaveData { get; set; } = null!;
     public DbSet<GameSaveMetadataEntity> GameSaveMetadata { get; set; } = null!;
     public DbSet<CompletedGameEntity> CompletedGames { get; set; } = null!;
+    public DbSet<RecordingEntity> Recordings { get; set; } = null!;
 
     public CatanDbContext(DbContextOptions<CatanDbContext> options) : base(options)
     {
@@ -85,6 +86,22 @@ public class CatanDbContext : DbContext
             entity.HasIndex(e => e.GameId);
             entity.HasIndex(e => e.WinnerId);
             entity.HasIndex(e => e.CompletedAt);
+        });
+
+        // Recordings - test recordings for replay verification
+        modelBuilder.Entity<RecordingEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(255);
+            entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.GameType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.PlayerIds).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Data).IsRequired();
+            // Data is NVARCHAR(MAX) in SQL Server, TEXT in SQLite (JSON blob)
+
+            // Indexes for common queries
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.CreatedAt);
         });
     }
 }
@@ -283,4 +300,51 @@ public class CompletedGameEntity
     /// Size of compressed data in bytes
     /// </summary>
     public int Size { get; set; }
+}
+
+/// <summary>
+/// Stores test recordings for replay verification.
+/// Records game actions with expected GameHash results for automated testing.
+/// </summary>
+public class RecordingEntity
+{
+    /// <summary>
+    /// Recording ID (GUID)
+    /// </summary>
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>
+    /// User-provided name for the recording
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// When the recording was created
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// Game type: "Regular" or "Expansion"
+    /// </summary>
+    public string GameType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Number of players in the recorded game
+    /// </summary>
+    public int PlayerCount { get; set; }
+
+    /// <summary>
+    /// Comma-separated list of player IDs
+    /// </summary>
+    public string PlayerIds { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Number of recorded actions
+    /// </summary>
+    public int ActionCount { get; set; }
+
+    /// <summary>
+    /// JSON document containing initialGameModel and recorded actions
+    /// </summary>
+    public string Data { get; set; } = string.Empty;
 }

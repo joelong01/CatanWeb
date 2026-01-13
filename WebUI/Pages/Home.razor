@@ -38,7 +38,14 @@
             <span class="text">Stats</span>
         </a>
 
-        <button class="menu-button troubleshoot-button" @onclick="RunTroubleshoot" disabled="@isTroubleshooting">
+        <div class="menu-separator"></div>
+
+        <a href="/tests" class="menu-button utility-button">
+            <span class="icon">🧪</span>
+            <span class="text">Tests</span>
+        </a>
+
+        <button class="menu-button utility-button" @onclick="RunTroubleshoot" disabled="@isTroubleshooting">
             <span class="icon">🔧</span>
             <span class="text">@(isTroubleshooting ? "Running..." : "Troubleshoot")</span>
         </button>
@@ -188,6 +195,23 @@
         font-size: 1.5rem;
     }
 
+    .menu-separator {
+        height: 1px;
+        background: linear-gradient(to right, transparent, #ccc, transparent);
+        margin: 10px 0;
+    }
+
+    .menu-button.utility-button {
+        border-color: #666;
+        background-color: #f0f0f0;
+        color: #333;
+    }
+
+    .menu-button.utility-button:hover:not(:disabled) {
+        background-color: #666;
+        color: white;
+    }
+
     .info-section {
         color: #888;
         font-size: 0.9rem;
@@ -197,17 +221,6 @@
         background-color: #f4f4f4;
         padding: 2px 6px;
         border-radius: 3px;
-    }
-
-    .troubleshoot-button {
-        border-color: #666;
-        background-color: #f0f0f0;
-        color: #333;
-    }
-
-    .troubleshoot-button:hover:not(:disabled) {
-        background-color: #666;
-        color: white;
     }
 
     .troubleshoot-results {
@@ -311,6 +324,10 @@
 
         .menu-button .icon {
             font-size: 4rem;
+        }
+
+        .menu-separator {
+            margin: 20px 0;
         }
 
         .info-section {

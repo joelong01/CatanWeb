@@ -1330,3 +1330,37 @@
         opacity: 0;
     }
 }
+
+/* =============================================================================
+   Recording Controls
+   ============================================================================= */
+
+.recording-btn {
+    background: #333;
+    border: 2px solid #555;
+    transition: all 0.3s ease;
+}
+
+.recording-btn:hover {
+    background: #444;
+    border-color: #666;
+}
+
+.recording-btn.recording-active {
+    background: #8b0000;
+    border-color: #ff4444;
+    animation: recordingPulse 1.5s ease-in-out infinite;
+}
+
+.recording-btn.recording-active:hover {
+    background: #a00000;
+}
+
+@keyframes recordingPulse {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(255, 68, 68, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 15px rgba(255, 68, 68, 0.8);
+    }
+}
