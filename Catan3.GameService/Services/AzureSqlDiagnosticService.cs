@@ -320,6 +320,9 @@ public class AzureSqlDiagnosticService
                 await connection.OpenAsync();
                 result.Checks.Add("Database connection: SUCCESS");
                 result.ConnectionSuccessful = true;
+
+                // Verify schema - check that all required tables exist
+                await VerifyDatabaseSchemaAsync(connection, result);
             }
             catch (Exception ex)
             {
@@ -469,6 +472,62 @@ public class AzureSqlDiagnosticService
         {
             _logger.LogWarning(ex, "Database connectivity check failed");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Verifies that all required database tables exist.
+    /// Checks: Players, Images, GameSaveMetadata, GameSaveData, CompletedGames, Recordings
+    /// </summary>
+    private async Task VerifyDatabaseSchemaAsync(SqlConnection connection, TroubleshootResult result)
+    {
+        var requiredTables = new[]
+        {
+            ("Players", true),           // Core table - required
+            ("Images", true),             // Core table - required
+            ("GameSaveMetadata", true),   // Core table - required
+            ("GameSaveData", true),       // Core table - required
+            ("CompletedGames", true),     // Stats table - required
+            ("Recordings", true)          // Test recordings - required
+        };
+
+        var missingTables = new List<string>();
+
+        foreach (var (tableName, isRequired) in requiredTables)
+        {
+            try
+            {
+                using var cmd = new SqlCommand(
+                    $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @tableName",
+                    connection);
+                cmd.Parameters.AddWithValue("@tableName", tableName);
+                var exists = (int)(await cmd.ExecuteScalarAsync() ?? 0) > 0;
+
+                if (exists)
+                {
+                    result.Checks.Add($"Table '{tableName}': OK");
+                }
+                else
+                {
+                    result.Checks.Add($"Table '{tableName}': MISSING");
+                    if (isRequired)
+                    {
+                        missingTables.Add(tableName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Checks.Add($"Table '{tableName}': ERROR - {ex.Message}");
+                _logger.LogWarning(ex, "Failed to check table {TableName}", tableName);
+            }
+        }
+
+        if (missingTables.Any())
+        {
+            result.Issues.Add($"Missing required tables: {string.Join(", ", missingTables)}");
+            result.CannotFix.Add("Run './catan.ps1 azure database install' to create missing tables");
+            result.SchemaMissing = true;
         }
     }
 
@@ -713,6 +772,7 @@ public class TroubleshootResult
     public string? DatabaseName { get; set; }
     public string? Message { get; set; }
     public bool ConnectionSuccessful { get; set; }
+    public bool SchemaMissing { get; set; }
     public List<string> Checks { get; set; } = new();
     public List<string> Issues { get; set; } = new();
     public List<string> Fixed { get; set; } = new();

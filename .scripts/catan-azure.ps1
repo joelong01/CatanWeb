@@ -838,6 +838,37 @@ function Fix-Database {
         Write-Log -Level "INFO" -Message "AllowAzureServices firewall rule: OK"
     }
 
+    # Check and fix schema (missing tables)
+    Write-Log -Level "INFO" -Message "Checking database schema..."
+    $schemaCheck = Test-DatabaseSchema -Config $Config -TraceLevel "INFO"
+
+    if ($schemaCheck.checked) {
+        if ($schemaCheck.schemaValid) {
+            Write-Log -Level "INFO" -Message "Database schema: OK (all $($schemaCheck.existingTables.Count) tables exist)"
+        }
+        else {
+            Write-Log -Level "WARN" -Message "Missing tables: $($schemaCheck.missingTables -join ', ')"
+            Write-Log -Level "INFO" -Message "Creating missing tables..."
+
+            $repairResult = Repair-DatabaseSchema -Config $Config -MissingTables $schemaCheck.missingTables -TraceLevel "INFO"
+
+            if ($repairResult.success) {
+                Write-Log -Level "INFO" -Message "Created tables: $($repairResult.tablesCreated -join ', ')"
+                $fixedCount += $repairResult.tablesCreated.Count
+            }
+            else {
+                Write-Log -Level "ERROR" -Message "Failed to create some tables"
+                foreach ($err in $repairResult.errors) {
+                    Write-Log -Level "ERROR" -Message "  $err"
+                }
+                return $false
+            }
+        }
+    }
+    else {
+        Write-Log -Level "WARN" -Message "Could not check schema: $($schemaCheck.error)"
+    }
+
     # Summary
     if ($fixedCount -gt 0) {
         Write-Log -Level "INFO" -Message "Fixed $fixedCount issue(s)"
@@ -846,28 +877,297 @@ function Fix-Database {
         Write-Log -Level "INFO" -Message "No issues found - all settings are correct"
     }
 
-    # Test connectivity via health endpoint
-    $gameServiceUrl = $Config.gameService.url
-    Write-Log -Level "INFO" -Message "Testing database connectivity via GameService..."
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Directly checks Azure SQL database schema for required tables.
+.DESCRIPTION
+    Connects to Azure SQL using Azure AD authentication and queries
+    INFORMATION_SCHEMA.TABLES to verify all required tables exist.
+    This does NOT rely on the GameService health endpoint.
+.PARAMETER Config
+    Azure configuration hashtable
+.PARAMETER TraceLevel
+    Logging level
+.OUTPUTS
+    Hashtable with schemaValid, missingTables, existingTables, error
+#>
+function Test-DatabaseSchema {
+    param(
+        [hashtable]$Config,
+        [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+        [string]$TraceLevel = "ERROR"
+    )
+
+    $fqdn = $Config.sqlServer.fqdn
+    $databaseName = $Config.sqlServer.databaseName
+    $sqlServerName = $Config.sqlServer.serverName
+    $rgName = $Config.resourceGroup
+
+    $result = @{
+        schemaValid = $false
+        missingTables = @()
+        existingTables = @()
+        error = $null
+        checked = $false
+    }
+
+    # Required tables for the application
+    $requiredTables = @("Players", "Images", "GameSaveMetadata", "GameSaveData", "CompletedGames", "Recordings")
+
     try {
-        $health = Invoke-RestMethod -Uri "$gameServiceUrl/health?checkDatabase=true" -TimeoutSec 30
-        if ($health.databaseDiagnostics -and $health.databaseDiagnostics.connected) {
-            Write-Log -Level "INFO" -Message "Database connection: SUCCESS"
+        Write-Log -Level "DEBUG" -Message "Checking database schema directly via Azure SQL..." -TraceLevel $TraceLevel
+
+        # Install SqlServer module if not available
+        if (-not (Get-Module -ListAvailable -Name SqlServer)) {
+            Write-Log -Level "DEBUG" -Message "SqlServer module not found, skipping direct schema check" -TraceLevel $TraceLevel
+            $result.error = "SqlServer PowerShell module not installed"
+            return $result
         }
-        else {
-            $status = $health.databaseDiagnostics.status ?? "Unknown"
-            $issue = $health.databaseDiagnostics.issue ?? ""
-            Write-Log -Level "WARN" -Message "Database connection: FAILED (Status: $status, Issue: $issue)"
-            if ($health.databaseDiagnostics.recommendation) {
-                Write-Log -Level "INFO" -Message "Recommendation: $($health.databaseDiagnostics.recommendation)"
+
+        # Add temporary firewall rule for current IP
+        $myIp = (Invoke-WebRequest -Uri "https://api.ipify.org" -UseBasicParsing -TimeoutSec 10).Content.Trim()
+        $fwRuleName = "SchemaCheck-$([guid]::NewGuid().ToString().Substring(0,8))"
+        Write-Log -Level "DEBUG" -Message "Adding temporary firewall rule for $myIp..." -TraceLevel $TraceLevel
+        Invoke-AzCommand "sql server firewall-rule create --server $sqlServerName --resource-group $rgName --name $fwRuleName --start-ip-address $myIp --end-ip-address $myIp" -SuppressOutput
+
+        try {
+            # Get access token for Azure SQL
+            Write-Log -Level "DEBUG" -Message "Acquiring Azure AD access token..." -TraceLevel $TraceLevel
+            $accessToken = (Invoke-AzCommand "account get-access-token --resource https://database.windows.net/ --query accessToken -o tsv").Trim()
+
+            # Query for existing tables
+            $sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
+
+            Write-Log -Level "DEBUG" -Message "Querying database tables..." -TraceLevel $TraceLevel
+            Import-Module SqlServer -ErrorAction Stop
+            $tables = Invoke-Sqlcmd -ServerInstance $fqdn -Database $databaseName -AccessToken $accessToken -Query $sql -ErrorAction Stop
+
+            $existingTableNames = @($tables | ForEach-Object { $_.TABLE_NAME })
+            $result.existingTables = $existingTableNames
+            $result.checked = $true
+
+            # Check which required tables are missing
+            foreach ($table in $requiredTables) {
+                if ($existingTableNames -contains $table) {
+                    Write-Log -Level "DEBUG" -Message "Table '$table': EXISTS" -TraceLevel $TraceLevel
+                }
+                else {
+                    Write-Log -Level "DEBUG" -Message "Table '$table': MISSING" -TraceLevel $TraceLevel
+                    $result.missingTables += $table
+                }
             }
+
+            $result.schemaValid = ($result.missingTables.Count -eq 0)
+
+            if ($result.schemaValid) {
+                Write-Log -Level "DEBUG" -Message "Schema check: All $($requiredTables.Count) required tables exist" -TraceLevel $TraceLevel
+            }
+            else {
+                Write-Log -Level "DEBUG" -Message "Schema check: Missing $($result.missingTables.Count) table(s): $($result.missingTables -join ', ')" -TraceLevel $TraceLevel
+            }
+        }
+        finally {
+            # Clean up temporary firewall rule
+            Write-Log -Level "DEBUG" -Message "Removing temporary firewall rule..." -TraceLevel $TraceLevel
+            Invoke-AzCommand "sql server firewall-rule delete --server $sqlServerName --resource-group $rgName --name $fwRuleName" -FailOnError $false -SuppressOutput
         }
     }
     catch {
-        Write-Log -Level "WARN" -Message "Could not test connectivity: $($_.Exception.Message)"
+        $result.error = $_.Exception.Message
+        Write-Log -Level "DEBUG" -Message "Schema check failed: $($_.Exception.Message)" -TraceLevel $TraceLevel
     }
 
-    return $true
+    return $result
+}
+
+<#
+.SYNOPSIS
+    Creates missing database tables directly in Azure SQL.
+.DESCRIPTION
+    Connects to Azure SQL using Azure AD authentication and creates
+    any missing required tables. This does NOT rely on the GameService.
+.PARAMETER Config
+    Azure configuration hashtable
+.PARAMETER MissingTables
+    Array of table names to create (from Test-DatabaseSchema result)
+.PARAMETER TraceLevel
+    Logging level
+.OUTPUTS
+    Hashtable with success, tablesCreated, errors
+#>
+function Repair-DatabaseSchema {
+    param(
+        [hashtable]$Config,
+        [string[]]$MissingTables,
+        [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+        [string]$TraceLevel = "INFO"
+    )
+
+    $fqdn = $Config.sqlServer.fqdn
+    $databaseName = $Config.sqlServer.databaseName
+    $sqlServerName = $Config.sqlServer.serverName
+    $rgName = $Config.resourceGroup
+
+    $result = @{
+        success = $false
+        tablesCreated = @()
+        errors = @()
+    }
+
+    if (-not $MissingTables -or $MissingTables.Count -eq 0) {
+        $result.success = $true
+        return $result
+    }
+
+    # SQL CREATE TABLE statements for each table
+    $tableDefinitions = @{
+        "Players" = @"
+CREATE TABLE [Players] (
+    [Id] NVARCHAR(255) NOT NULL,
+    [Data] NVARCHAR(MAX) NOT NULL,
+    CONSTRAINT [PK_Players] PRIMARY KEY ([Id])
+)
+"@
+        "Images" = @"
+CREATE TABLE [Images] (
+    [Id] NVARCHAR(255) NOT NULL,
+    [ContentType] NVARCHAR(100) NOT NULL,
+    [Data] VARBINARY(MAX) NOT NULL,
+    CONSTRAINT [PK_Images] PRIMARY KEY ([Id])
+)
+"@
+        "GameSaveData" = @"
+CREATE TABLE [GameSaveData] (
+    [Id] INT NOT NULL IDENTITY(1,1),
+    [CompressedData] VARBINARY(MAX) NOT NULL,
+    [Size] INT NOT NULL,
+    CONSTRAINT [PK_GameSaveData] PRIMARY KEY ([Id])
+)
+"@
+        "GameSaveMetadata" = @"
+CREATE TABLE [GameSaveMetadata] (
+    [Id] INT NOT NULL IDENTITY(1,1),
+    [GameId] NVARCHAR(255) NULL,
+    [StartedBy] NVARCHAR(255) NULL,
+    [SavedAt] DATETIME2 NOT NULL,
+    [CreatedAt] DATETIME2 NOT NULL,
+    [GameState] NVARCHAR(50) NULL,
+    [GameType] NVARCHAR(50) NULL,
+    [PlayerCount] INT NOT NULL,
+    [PlayerNames] NVARCHAR(500) NULL,
+    [TurnCount] INT NOT NULL,
+    [GameName] NVARCHAR(255) NULL,
+    [GameDataId] INT NOT NULL,
+    CONSTRAINT [PK_GameSaveMetadata] PRIMARY KEY ([Id]),
+    CONSTRAINT [FK_GameSaveMetadata_GameSaveData_GameDataId] FOREIGN KEY ([GameDataId]) REFERENCES [GameSaveData] ([Id]) ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX [IX_GameSaveMetadata_GameId] ON [GameSaveMetadata] ([GameId]);
+CREATE INDEX [IX_GameSaveMetadata_StartedBy] ON [GameSaveMetadata] ([StartedBy]);
+CREATE INDEX [IX_GameSaveMetadata_GameState] ON [GameSaveMetadata] ([GameState]);
+CREATE INDEX [IX_GameSaveMetadata_SavedAt] ON [GameSaveMetadata] ([SavedAt])
+"@
+        "CompletedGames" = @"
+CREATE TABLE [CompletedGames] (
+    [Id] INT NOT NULL IDENTITY(1,1),
+    [GameId] NVARCHAR(255) NOT NULL,
+    [GameName] NVARCHAR(255) NOT NULL,
+    [WinnerId] NVARCHAR(255) NOT NULL,
+    [WinnerName] NVARCHAR(255) NOT NULL,
+    [CompletedAt] DATETIME2 NOT NULL,
+    [StartedAt] DATETIME2 NOT NULL,
+    [PlayerCount] INT NOT NULL,
+    [PlayerNames] NVARCHAR(500) NOT NULL,
+    [TurnCount] INT NOT NULL,
+    [CompressedData] VARBINARY(MAX) NOT NULL,
+    [Size] INT NOT NULL,
+    CONSTRAINT [PK_CompletedGames] PRIMARY KEY ([Id])
+);
+CREATE INDEX [IX_CompletedGames_GameId] ON [CompletedGames] ([GameId]);
+CREATE INDEX [IX_CompletedGames_WinnerId] ON [CompletedGames] ([WinnerId]);
+CREATE INDEX [IX_CompletedGames_CompletedAt] ON [CompletedGames] ([CompletedAt])
+"@
+        "Recordings" = @"
+CREATE TABLE [Recordings] (
+    [Id] NVARCHAR(255) NOT NULL,
+    [Name] NVARCHAR(255) NOT NULL,
+    [CreatedAt] DATETIME2 NOT NULL,
+    [GameType] NVARCHAR(50) NOT NULL,
+    [PlayerCount] INT NOT NULL,
+    [PlayerIds] NVARCHAR(500) NOT NULL,
+    [ActionCount] INT NOT NULL,
+    [Data] NVARCHAR(MAX) NOT NULL,
+    CONSTRAINT [PK_Recordings] PRIMARY KEY ([Id])
+);
+CREATE INDEX [IX_Recordings_Name] ON [Recordings] ([Name]);
+CREATE INDEX [IX_Recordings_CreatedAt] ON [Recordings] ([CreatedAt])
+"@
+    }
+
+    try {
+        Write-Log -Level "INFO" -Message "Creating $($MissingTables.Count) missing table(s) in Azure SQL..." -TraceLevel $TraceLevel
+
+        # Install SqlServer module if not available
+        if (-not (Get-Module -ListAvailable -Name SqlServer)) {
+            Write-Log -Level "INFO" -Message "Installing SqlServer PowerShell module..." -TraceLevel $TraceLevel
+            Install-Module -Name SqlServer -Scope CurrentUser -Force -AllowClobber
+        }
+
+        # Add temporary firewall rule for current IP
+        $myIp = (Invoke-WebRequest -Uri "https://api.ipify.org" -UseBasicParsing -TimeoutSec 10).Content.Trim()
+        $fwRuleName = "SchemaMigrate-$([guid]::NewGuid().ToString().Substring(0,8))"
+        Write-Log -Level "DEBUG" -Message "Adding temporary firewall rule for $myIp..." -TraceLevel $TraceLevel
+        Invoke-AzCommand "sql server firewall-rule create --server $sqlServerName --resource-group $rgName --name $fwRuleName --start-ip-address $myIp --end-ip-address $myIp" -SuppressOutput
+
+        try {
+            # Get access token for Azure SQL
+            Write-Log -Level "DEBUG" -Message "Acquiring Azure AD access token..." -TraceLevel $TraceLevel
+            $accessToken = (Invoke-AzCommand "account get-access-token --resource https://database.windows.net/ --query accessToken -o tsv").Trim()
+
+            Import-Module SqlServer -ErrorAction Stop
+
+            # Create each missing table
+            foreach ($tableName in $MissingTables) {
+                if (-not $tableDefinitions.ContainsKey($tableName)) {
+                    $result.errors += "Unknown table: $tableName"
+                    Write-Log -Level "WARN" -Message "Unknown table '$tableName' - skipping" -TraceLevel $TraceLevel
+                    continue
+                }
+
+                $sql = $tableDefinitions[$tableName]
+                Write-Log -Level "INFO" -Message "Creating table '$tableName'..." -TraceLevel $TraceLevel
+
+                try {
+                    # Split on semicolons to handle CREATE TABLE + CREATE INDEX
+                    $statements = $sql -split ';' | Where-Object { $_.Trim() -ne '' }
+                    foreach ($statement in $statements) {
+                        Invoke-Sqlcmd -ServerInstance $fqdn -Database $databaseName -AccessToken $accessToken -Query $statement.Trim() -ErrorAction Stop
+                    }
+                    $result.tablesCreated += $tableName
+                    Write-Log -Level "INFO" -Message "Created table '$tableName'" -TraceLevel $TraceLevel
+                }
+                catch {
+                    $result.errors += "Failed to create '$tableName': $($_.Exception.Message)"
+                    Write-Log -Level "ERROR" -Message "Failed to create table '$tableName': $($_.Exception.Message)" -TraceLevel $TraceLevel
+                }
+            }
+
+            $result.success = ($result.errors.Count -eq 0)
+        }
+        finally {
+            # Clean up temporary firewall rule
+            Write-Log -Level "DEBUG" -Message "Removing temporary firewall rule..." -TraceLevel $TraceLevel
+            Invoke-AzCommand "sql server firewall-rule delete --server $sqlServerName --resource-group $rgName --name $fwRuleName" -FailOnError $false -SuppressOutput
+        }
+    }
+    catch {
+        $result.errors += $_.Exception.Message
+        Write-Log -Level "ERROR" -Message "Schema repair failed: $($_.Exception.Message)" -TraceLevel $TraceLevel
+    }
+
+    return $result
 }
 
 <#
@@ -918,6 +1218,7 @@ function Get-DatabaseDoctor {
             connectionPooling    = $false
             managedIdentityUser  = $false
             gameServiceConnected = $false
+            schemaValid          = $false
         }
         # What actions are needed
         needsInstall = $false
@@ -982,83 +1283,88 @@ function Get-DatabaseDoctor {
             $result.status = $db.status.ToLower()
         }
 
-        # Check GameService database connection using health endpoint with forced database check
+        # Check connection string from Azure (not from GameService)
+        Write-Log -Level "DEBUG" -Message "Checking connection string configuration" -TraceLevel $TraceLevel
+        $connStrings = Invoke-AzCommand "webapp config connection-string list --name $gameServiceAppName --resource-group $rgName" -FailOnError $false -JsonOutput
+        $result.checks.connectionString = ($connStrings -and $connStrings.AzureSql)
+
+        # Check if connection pooling is configured in connection string
+        if ($connStrings -and $connStrings.AzureSql) {
+            $connStr = $connStrings.AzureSql.value
+            $result.checks.connectionPooling = ($connStr -match "Pooling=True" -or $connStr -match "Min Pool Size")
+        }
+
+        # Check if managed identity user exists by testing GameService health endpoint
+        # This is a quick check - if GameService responds with database connected, the MI user works
         Write-Log -Level "DEBUG" -Message "Checking GameService database connection" -TraceLevel $TraceLevel
         try {
-            # Use checkDatabase=true to force fresh database diagnostics
             $health = Invoke-RestMethod -Uri "$gameServiceUrl/health?checkDatabase=true" -TimeoutSec 60
-            if ($health.database.provider -eq "SqlServer") {
-                # Check if database diagnostics show connection success
-                if ($health.databaseDiagnostics -and $health.databaseDiagnostics.connected -eq $true) {
-                    $result.status = "connected"
-                    $result.checks.gameServiceConnected = $true
-                    $result.checks.managedIdentityUser = $true  # If connected, user must exist
-                    $result.checks.connectionString = $true     # If connected, connection string must be configured
-                    $result.checks.connectionPooling = $true    # Assume pooling is configured if connected
-                    $result.healthy = $true
-                }
-                elseif ($health.databaseDiagnostics) {
-                    # Database diagnostics available but not connected
-                    $result.checks.gameServiceConnected = $false
-                    $result.databaseDiagnostics = $health.databaseDiagnostics
-
-                    # Extract diagnostic info
-                    $diag = $health.databaseDiagnostics
-                    if ($diag.issue) {
-                        $result.diagnosticIssue = $diag.issue
-                    }
-                    if ($diag.recommendation) {
-                        $result.note = $diag.recommendation
-                    }
-                    if ($diag.status) {
-                        $result.azureDatabaseStatus = $diag.status
-                    }
-                    if ($diag.publicNetworkAccess) {
-                        $result.checks.publicNetworkAccess = ($diag.publicNetworkAccess -eq "Enabled")
-                    }
-
-                    # Mark as needing deploy if there's a fixable issue
-                    $result.needsDeploy = $true
-                }
-                else {
-                    # No diagnostics available but service is up
-                    $result.checks.gameServiceConnected = $false
-                    $result.needsDeploy = $true
-                }
+            if ($health.databaseDiagnostics -and $health.databaseDiagnostics.connected -eq $true) {
+                $result.checks.gameServiceConnected = $true
+                $result.checks.managedIdentityUser = $true
+            }
+            else {
+                $result.checks.gameServiceConnected = $false
             }
         }
         catch {
             $result.checks.gameServiceConnected = $false
             Write-Log -Level "DEBUG" -Message "GameService health check failed: $_" -TraceLevel $TraceLevel
-
-            # Only check connection string from Azure if GameService not responding
-            $connStrings = Invoke-AzCommand "webapp config connection-string list --name $gameServiceAppName --resource-group $rgName" -FailOnError $false -JsonOutput
-            $result.checks.connectionString = ($connStrings -and $connStrings.AzureSql)
-
-            # Check if connection pooling is configured in connection string
-            if ($connStrings -and $connStrings.AzureSql) {
-                $connStr = $connStrings.AzureSql.value
-                $result.checks.connectionPooling = ($connStr -match "Pooling=True" -or $connStr -match "Min Pool Size")
-                if (-not $result.checks.connectionPooling) {
-                    $result.needsDeploy = $true
-                }
-            }
-
-            if (-not $result.note) {
-                $result.note = "GameService not responding - may need deploy or database may be resuming from pause"
-            }
-            $result.needsDeploy = $true
         }
 
-        # Healthy if GameService can connect to database
-        if ($result.checks.gameServiceConnected) {
+        # Check schema DIRECTLY from Azure SQL (not via GameService)
+        # This is the authoritative check - doesn't depend on deployed GameService code
+        Write-Log -Level "DEBUG" -Message "Checking database schema directly" -TraceLevel $TraceLevel
+        $schemaCheck = Test-DatabaseSchema -Config $Config -TraceLevel $TraceLevel
+
+        if ($schemaCheck.checked) {
+            $result.checks.schemaValid = $schemaCheck.schemaValid
+            if (-not $schemaCheck.schemaValid) {
+                $result.status = "schema-missing"
+                $result.healthy = $false
+                $result.needsDeploy = $true
+                $result.missingTables = $schemaCheck.missingTables
+                $result.note = "Missing tables: $($schemaCheck.missingTables -join ', '). Run './catan.ps1 azure deploy' to fix."
+            }
+        }
+        elseif ($schemaCheck.error) {
+            # Schema check failed - might be because database is paused
+            Write-Log -Level "DEBUG" -Message "Schema check failed: $($schemaCheck.error)" -TraceLevel $TraceLevel
+            if ($db.status -eq "Paused") {
+                $result.note = "Database is paused - schema check skipped. Will resume on first connection."
+                # Assume schema is OK if database is paused (can't check)
+                $result.checks.schemaValid = $true
+            }
+            else {
+                $result.checks.schemaValid = $false
+                $result.schemaCheckError = $schemaCheck.error
+            }
+        }
+
+        # Determine overall health
+        if ($result.checks.schemaValid -and $result.checks.gameServiceConnected) {
             $result.healthy = $true
+            $result.status = "connected"
             $result.needsDeploy = $false
         }
         elseif ($result.checks.sqlServer -and $result.checks.database) {
-            # Infrastructure exists but connection not working
-            $result.healthy = ($db.status -eq "Online" -or $db.status -eq "Paused")
-            $result.needsDeploy = $true
+            # Infrastructure exists
+            if (-not $result.checks.schemaValid -and $schemaCheck.checked) {
+                # Schema is invalid - needs migration
+                $result.healthy = $false
+                $result.needsDeploy = $true
+            }
+            elseif (-not $result.checks.gameServiceConnected) {
+                # GameService can't connect - needs deploy
+                $result.healthy = ($db.status -eq "Online" -or $db.status -eq "Paused")
+                $result.needsDeploy = $true
+                if (-not $result.note) {
+                    $result.note = "GameService cannot connect to database"
+                }
+            }
+            else {
+                $result.healthy = $true
+            }
         }
 
         Write-Log -Level "DEBUG" -Message "Database doctor complete: healthy=$($result.healthy), needsDeploy=$($result.needsDeploy)" -TraceLevel $TraceLevel

@@ -302,21 +302,57 @@ app.MapGet("/health", async (
 
         if (canConnect)
         {
-            // Database is accessible
-            var diagnosticResult = new
-            {
-                connected = true,
-                checkedAt = DateTime.UtcNow,
-                status = "Online",
-                issue = (string?)null,
-                recommendation = (string?)null
-            };
-
+            // Database is accessible - run full troubleshoot to verify schema
             if (shouldRunFullDiagnostics || cachedResult == null)
             {
-                HealthCheckCache.Update(diagnosticResult);
+                try
+                {
+                    var troubleshootResult = await sqlDiagnostics.TroubleshootAsync();
+                    var diagnosticResult = new
+                    {
+                        connected = troubleshootResult.ConnectionSuccessful,
+                        checkedAt = DateTime.UtcNow,
+                        status = troubleshootResult.SchemaMissing ? "schema-missing" : "Online",
+                        schemaMissing = troubleshootResult.SchemaMissing,
+                        checks = troubleshootResult.Checks,
+                        issues = troubleshootResult.Issues,
+                        cannotFix = troubleshootResult.CannotFix,
+                        issue = troubleshootResult.SchemaMissing ? "Missing required database tables" : (string?)null,
+                        recommendation = troubleshootResult.SchemaMissing
+                            ? "Run './catan.ps1 azure database install' to create missing tables"
+                            : (string?)null
+                    };
+                    HealthCheckCache.Update(diagnosticResult);
+                    response["databaseDiagnostics"] = diagnosticResult;
+                }
+                catch (Exception ex)
+                {
+                    // Fallback if troubleshoot fails
+                    var diagnosticResult = new
+                    {
+                        connected = true,
+                        checkedAt = DateTime.UtcNow,
+                        status = "Online",
+                        issue = (string?)null,
+                        recommendation = (string?)null,
+                        troubleshootError = ex.Message
+                    };
+                    HealthCheckCache.Update(diagnosticResult);
+                    response["databaseDiagnostics"] = diagnosticResult;
+                }
             }
-            response["databaseDiagnostics"] = diagnosticResult;
+            else
+            {
+                // Use cached result
+                response["databaseDiagnostics"] = cachedResult ?? new
+                {
+                    connected = true,
+                    checkedAt = DateTime.UtcNow,
+                    status = "Online",
+                    issue = (string?)null,
+                    recommendation = (string?)null
+                };
+            }
         }
         else
         {

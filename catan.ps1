@@ -1291,6 +1291,7 @@ switch ($Verb) {
                 $dbNeedsInstall = $dbDoctor.needsInstall
                 $dbConnected = $dbDoctor.checks.gameServiceConnected
                 $dbNeedsDeploy = $dbDoctor.needsDeploy
+                $dbSchemaValid = $dbDoctor.checks.schemaValid
 
                 if ($dbNeedsInstall) {
                     Write-Host "  Database: Not installed - installing..." -ForegroundColor Yellow
@@ -1309,6 +1310,24 @@ switch ($Verb) {
                 }
                 else {
                     Write-Host "  Database: OK - skipping" -ForegroundColor Green
+                }
+
+                # Check for schema issues (missing tables) after database configuration
+                if (-not $dbSchemaValid -and $dbDoctor.missingTables) {
+                    Write-Host "  Database: Schema missing tables - creating directly..." -ForegroundColor Yellow
+                    Write-Host "  Database: Missing: $($dbDoctor.missingTables -join ', ')" -ForegroundColor Yellow
+
+                    # Use Repair-DatabaseSchema to create tables directly (no GameService dependency)
+                    $repairResult = & $azureScript database fix -TraceLevel $TraceLevel
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Host "  Database: Failed to create missing tables" -ForegroundColor Red
+                        exit 1
+                    }
+                    Write-Host "  Database: Schema repaired successfully" -ForegroundColor Green
+                }
+                elseif (-not $dbSchemaValid) {
+                    # Schema check didn't complete (possibly database paused)
+                    Write-Host "  Database: Schema check incomplete - may need to run deploy again after database wakes" -ForegroundColor Yellow
                 }
 
                 # UI doctor - get hashtable result
