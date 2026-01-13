@@ -1155,6 +1155,41 @@ CREATE INDEX [IX_Recordings_CreatedAt] ON [Recordings] ([CreatedAt])
             }
 
             $result.success = ($result.errors.Count -eq 0)
+
+            # Seed default recordings if Recordings table was just created
+            if ($result.tablesCreated -contains "Recordings") {
+                Write-Log -Level "INFO" -Message "Seeding default recordings..." -TraceLevel $TraceLevel
+                $scriptDir = Split-Path -Parent $PSScriptRoot
+                $recordingsPath = Join-Path $scriptDir "Catan3.GameService" "Default Data" "Recordings"
+
+                if (Test-Path $recordingsPath) {
+                    $recordingFiles = Get-ChildItem -Path $recordingsPath -Filter "*.json"
+                    foreach ($file in $recordingFiles) {
+                        try {
+                            $recording = Get-Content $file.FullName -Raw | ConvertFrom-Json
+
+                            # Escape single quotes in the data
+                            $escapedData = $recording.data -replace "'", "''"
+                            $escapedName = $recording.name -replace "'", "''"
+                            $escapedPlayerIds = $recording.playerIds -replace "'", "''"
+                            $escapedGameType = $recording.gameType -replace "'", "''"
+
+                            $insertSql = @"
+INSERT INTO [Recordings] ([Id], [Name], [CreatedAt], [GameType], [PlayerCount], [PlayerIds], [ActionCount], [Data])
+VALUES ('$($recording.id)', '$escapedName', '$($recording.createdAt.ToString("yyyy-MM-ddTHH:mm:ss.fff"))', '$escapedGameType', $($recording.playerCount), '$escapedPlayerIds', $($recording.actionCount), '$escapedData')
+"@
+                            Invoke-Sqlcmd -ServerInstance $fqdn -Database $databaseName -AccessToken $accessToken -Query $insertSql -ErrorAction Stop
+                            Write-Log -Level "INFO" -Message "Seeded recording: $($recording.name)" -TraceLevel $TraceLevel
+                        }
+                        catch {
+                            Write-Log -Level "WARN" -Message "Failed to seed recording $($file.Name): $($_.Exception.Message)" -TraceLevel $TraceLevel
+                        }
+                    }
+                }
+                else {
+                    Write-Log -Level "DEBUG" -Message "No recordings folder found at $recordingsPath" -TraceLevel $TraceLevel
+                }
+            }
         }
         finally {
             # Clean up temporary firewall rule

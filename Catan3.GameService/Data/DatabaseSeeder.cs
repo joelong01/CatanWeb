@@ -84,6 +84,16 @@ public static class DatabaseSeeder
             Console.WriteLine("[SEEDER] SeedGamesAsync completed");
         }
 
+        // Seed recordings if recordings folder exists
+        var recordingsPath = Path.Combine(defaultDataPath, "Recordings");
+        Console.WriteLine($"[SEEDER] Checking recordings - recordingsPath exists: {Directory.Exists(recordingsPath)}");
+        if (Directory.Exists(recordingsPath))
+        {
+            Console.WriteLine("[SEEDER] Seeding recordings...");
+            await SeedRecordingsAsync(context, recordingsPath);
+            Console.WriteLine("[SEEDER] SeedRecordingsAsync completed");
+        }
+
         Console.WriteLine("[SEEDER] Database seeding complete");
     }
 
@@ -244,5 +254,81 @@ public static class DatabaseSeeder
             ".webp" => "image/webp",
             _ => "application/octet-stream"
         };
+    }
+
+    private static async Task SeedRecordingsAsync(CatanDbContext context, string recordingsPath)
+    {
+        var recordingFiles = Directory.GetFiles(recordingsPath, "*.json");
+        if (recordingFiles.Length == 0)
+        {
+            Console.WriteLine("No .json recording files found to seed.");
+            return;
+        }
+
+        Console.WriteLine($"Seeding {recordingFiles.Length} recording(s) from: {recordingsPath}");
+
+        foreach (var recordingFile in recordingFiles)
+        {
+            try
+            {
+                var fileName = Path.GetFileNameWithoutExtension(recordingFile);
+
+                // Read the JSON file
+                var json = await File.ReadAllTextAsync(recordingFile);
+                var recording = JsonHelper.Deserialize<RecordingDto>(json);
+
+                if (recording == null)
+                {
+                    Console.WriteLine($"  Warning: {fileName} could not be deserialized, skipping");
+                    continue;
+                }
+
+                // Check if recording already exists
+                var existingRecording = await context.Recordings.FindAsync(recording.Id);
+                if (existingRecording != null)
+                {
+                    Console.WriteLine($"  Skipping {fileName} - already seeded as {recording.Name}");
+                    continue;
+                }
+
+                // Create recording entity
+                var entity = new RecordingEntity
+                {
+                    Id = recording.Id,
+                    Name = recording.Name,
+                    CreatedAt = recording.CreatedAt,
+                    GameType = recording.GameType,
+                    PlayerCount = recording.PlayerCount,
+                    PlayerIds = recording.PlayerIds,
+                    ActionCount = recording.ActionCount,
+                    Data = recording.Data
+                };
+
+                context.Recordings.Add(entity);
+                Console.WriteLine($"  Seeded recording: {recording.Name} ({recording.ActionCount} actions)");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  Error seeding {recordingFile}: {ex.Message}");
+            }
+        }
+
+        await context.SaveChangesAsync();
+        Console.WriteLine("Recordings seeding complete.");
+    }
+
+    /// <summary>
+    /// DTO for deserializing recording JSON files
+    /// </summary>
+    private class RecordingDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public string GameType { get; set; } = string.Empty;
+        public int PlayerCount { get; set; }
+        public string PlayerIds { get; set; } = string.Empty;
+        public int ActionCount { get; set; }
+        public string Data { get; set; } = string.Empty;
     }
 }
