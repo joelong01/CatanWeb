@@ -2040,5 +2040,291 @@ namespace Catan3.GameService.Controllers
                 return StatusCode(500, new { success = false, error = $"Error importing game: {ex.Message}" });
             }
         }
+
+        /// <summary>
+        /// Applies database schema migrations/updates.
+        /// Creates any missing tables required by the application.
+        /// Safe to call multiple times - idempotent operation.
+        /// </summary>
+        [HttpPost("database/migrate")]
+        public async Task<IActionResult> MigrateDatabase()
+        {
+            _logger.LogEvent("API Request", "POST /api/database/migrate - Applying database migrations");
+
+            var result = new
+            {
+                timestamp = DateTime.UtcNow,
+                success = false,
+                message = "",
+                tablesCreated = new List<string>(),
+                tablesExisting = new List<string>(),
+                errors = new List<string>()
+            };
+
+            var tablesCreated = new List<string>();
+            var tablesExisting = new List<string>();
+            var errors = new List<string>();
+
+            try
+            {
+                // First, try EF Core migrations if they exist
+                var pendingMigrations = await _dbContext.Database.GetPendingMigrationsAsync();
+                if (pendingMigrations.Any())
+                {
+                    _logger.LogEvent("Database Migrate", $"Applying {pendingMigrations.Count()} pending migration(s)...");
+                    await _dbContext.Database.MigrateAsync();
+                    _logger.LogEvent("Database Migrate", "Migrations applied successfully");
+
+                    return Ok(new
+                    {
+                        timestamp = DateTime.UtcNow,
+                        success = true,
+                        message = $"Applied {pendingMigrations.Count()} migration(s)",
+                        migrationsApplied = pendingMigrations.ToList()
+                    });
+                }
+
+                // No migrations - check and create missing tables manually
+                var isSqlServer = _dbContext.Database.ProviderName?.Contains("SqlServer") == true;
+                _logger.LogEvent("Database Migrate", $"Provider: {_dbContext.Database.ProviderName}, IsSqlServer: {isSqlServer}");
+
+                // Define required tables and their creation SQL
+                var requiredTables = new Dictionary<string, (string SqlServer, string Sqlite)>
+                {
+                    ["Players"] = (
+                        @"CREATE TABLE [Players] (
+                            [Id] NVARCHAR(255) NOT NULL,
+                            [Data] NVARCHAR(MAX) NOT NULL,
+                            CONSTRAINT [PK_Players] PRIMARY KEY ([Id])
+                        )",
+                        @"CREATE TABLE ""Players"" (
+                            ""Id"" TEXT NOT NULL CONSTRAINT ""PK_Players"" PRIMARY KEY,
+                            ""Data"" TEXT NOT NULL
+                        )"
+                    ),
+                    ["Images"] = (
+                        @"CREATE TABLE [Images] (
+                            [Id] NVARCHAR(255) NOT NULL,
+                            [ContentType] NVARCHAR(100) NOT NULL,
+                            [Data] VARBINARY(MAX) NOT NULL,
+                            CONSTRAINT [PK_Images] PRIMARY KEY ([Id])
+                        )",
+                        @"CREATE TABLE ""Images"" (
+                            ""Id"" TEXT NOT NULL CONSTRAINT ""PK_Images"" PRIMARY KEY,
+                            ""ContentType"" TEXT NOT NULL,
+                            ""Data"" BLOB NOT NULL
+                        )"
+                    ),
+                    ["GameSaveData"] = (
+                        @"CREATE TABLE [GameSaveData] (
+                            [Id] INT NOT NULL IDENTITY(1,1),
+                            [CompressedData] VARBINARY(MAX) NOT NULL,
+                            [Size] INT NOT NULL,
+                            CONSTRAINT [PK_GameSaveData] PRIMARY KEY ([Id])
+                        )",
+                        @"CREATE TABLE ""GameSaveData"" (
+                            ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_GameSaveData"" PRIMARY KEY AUTOINCREMENT,
+                            ""CompressedData"" BLOB NOT NULL,
+                            ""Size"" INTEGER NOT NULL
+                        )"
+                    ),
+                    ["GameSaveMetadata"] = (
+                        @"CREATE TABLE [GameSaveMetadata] (
+                            [Id] INT NOT NULL IDENTITY(1,1),
+                            [GameId] NVARCHAR(255) NULL,
+                            [StartedBy] NVARCHAR(255) NULL,
+                            [SavedAt] DATETIME2 NOT NULL,
+                            [CreatedAt] DATETIME2 NOT NULL,
+                            [GameState] NVARCHAR(50) NULL,
+                            [GameType] NVARCHAR(50) NULL,
+                            [PlayerCount] INT NOT NULL,
+                            [PlayerNames] NVARCHAR(500) NULL,
+                            [TurnCount] INT NOT NULL,
+                            [GameName] NVARCHAR(255) NULL,
+                            [GameDataId] INT NOT NULL,
+                            CONSTRAINT [PK_GameSaveMetadata] PRIMARY KEY ([Id]),
+                            CONSTRAINT [FK_GameSaveMetadata_GameSaveData_GameDataId] FOREIGN KEY ([GameDataId]) REFERENCES [GameSaveData] ([Id]) ON DELETE CASCADE
+                        );
+                        CREATE UNIQUE INDEX [IX_GameSaveMetadata_GameId] ON [GameSaveMetadata] ([GameId]);
+                        CREATE INDEX [IX_GameSaveMetadata_StartedBy] ON [GameSaveMetadata] ([StartedBy]);
+                        CREATE INDEX [IX_GameSaveMetadata_GameState] ON [GameSaveMetadata] ([GameState]);
+                        CREATE INDEX [IX_GameSaveMetadata_SavedAt] ON [GameSaveMetadata] ([SavedAt])",
+                        @"CREATE TABLE ""GameSaveMetadata"" (
+                            ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_GameSaveMetadata"" PRIMARY KEY AUTOINCREMENT,
+                            ""GameId"" TEXT NULL,
+                            ""StartedBy"" TEXT NULL,
+                            ""SavedAt"" TEXT NOT NULL,
+                            ""CreatedAt"" TEXT NOT NULL,
+                            ""GameState"" TEXT NULL,
+                            ""GameType"" TEXT NULL,
+                            ""PlayerCount"" INTEGER NOT NULL,
+                            ""PlayerNames"" TEXT NULL,
+                            ""TurnCount"" INTEGER NOT NULL,
+                            ""GameName"" TEXT NULL,
+                            ""GameDataId"" INTEGER NOT NULL,
+                            CONSTRAINT ""FK_GameSaveMetadata_GameSaveData_GameDataId"" FOREIGN KEY (""GameDataId"") REFERENCES ""GameSaveData"" (""Id"") ON DELETE CASCADE
+                        );
+                        CREATE UNIQUE INDEX ""IX_GameSaveMetadata_GameId"" ON ""GameSaveMetadata"" (""GameId"");
+                        CREATE INDEX ""IX_GameSaveMetadata_StartedBy"" ON ""GameSaveMetadata"" (""StartedBy"");
+                        CREATE INDEX ""IX_GameSaveMetadata_GameState"" ON ""GameSaveMetadata"" (""GameState"");
+                        CREATE INDEX ""IX_GameSaveMetadata_SavedAt"" ON ""GameSaveMetadata"" (""SavedAt"")"
+                    ),
+                    ["CompletedGames"] = (
+                        @"CREATE TABLE [CompletedGames] (
+                            [Id] INT NOT NULL IDENTITY(1,1),
+                            [GameId] NVARCHAR(255) NOT NULL,
+                            [GameName] NVARCHAR(255) NOT NULL,
+                            [WinnerId] NVARCHAR(255) NOT NULL,
+                            [WinnerName] NVARCHAR(255) NOT NULL,
+                            [CompletedAt] DATETIME2 NOT NULL,
+                            [StartedAt] DATETIME2 NOT NULL,
+                            [PlayerCount] INT NOT NULL,
+                            [PlayerNames] NVARCHAR(500) NOT NULL,
+                            [TurnCount] INT NOT NULL,
+                            [CompressedData] VARBINARY(MAX) NOT NULL,
+                            [Size] INT NOT NULL,
+                            CONSTRAINT [PK_CompletedGames] PRIMARY KEY ([Id])
+                        );
+                        CREATE INDEX [IX_CompletedGames_GameId] ON [CompletedGames] ([GameId]);
+                        CREATE INDEX [IX_CompletedGames_WinnerId] ON [CompletedGames] ([WinnerId]);
+                        CREATE INDEX [IX_CompletedGames_CompletedAt] ON [CompletedGames] ([CompletedAt])",
+                        @"CREATE TABLE ""CompletedGames"" (
+                            ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_CompletedGames"" PRIMARY KEY AUTOINCREMENT,
+                            ""GameId"" TEXT NOT NULL,
+                            ""GameName"" TEXT NOT NULL,
+                            ""WinnerId"" TEXT NOT NULL,
+                            ""WinnerName"" TEXT NOT NULL,
+                            ""CompletedAt"" TEXT NOT NULL,
+                            ""StartedAt"" TEXT NOT NULL,
+                            ""PlayerCount"" INTEGER NOT NULL,
+                            ""PlayerNames"" TEXT NOT NULL,
+                            ""TurnCount"" INTEGER NOT NULL,
+                            ""CompressedData"" BLOB NOT NULL,
+                            ""Size"" INTEGER NOT NULL
+                        );
+                        CREATE INDEX ""IX_CompletedGames_GameId"" ON ""CompletedGames"" (""GameId"");
+                        CREATE INDEX ""IX_CompletedGames_WinnerId"" ON ""CompletedGames"" (""WinnerId"");
+                        CREATE INDEX ""IX_CompletedGames_CompletedAt"" ON ""CompletedGames"" (""CompletedAt"")"
+                    ),
+                    ["Recordings"] = (
+                        @"CREATE TABLE [Recordings] (
+                            [Id] NVARCHAR(255) NOT NULL,
+                            [Name] NVARCHAR(255) NOT NULL,
+                            [CreatedAt] DATETIME2 NOT NULL,
+                            [GameType] NVARCHAR(50) NOT NULL,
+                            [PlayerCount] INT NOT NULL,
+                            [PlayerIds] NVARCHAR(500) NOT NULL,
+                            [ActionCount] INT NOT NULL,
+                            [Data] NVARCHAR(MAX) NOT NULL,
+                            CONSTRAINT [PK_Recordings] PRIMARY KEY ([Id])
+                        );
+                        CREATE INDEX [IX_Recordings_Name] ON [Recordings] ([Name]);
+                        CREATE INDEX [IX_Recordings_CreatedAt] ON [Recordings] ([CreatedAt])",
+                        @"CREATE TABLE ""Recordings"" (
+                            ""Id"" TEXT NOT NULL CONSTRAINT ""PK_Recordings"" PRIMARY KEY,
+                            ""Name"" TEXT NOT NULL,
+                            ""CreatedAt"" TEXT NOT NULL,
+                            ""GameType"" TEXT NOT NULL,
+                            ""PlayerCount"" INTEGER NOT NULL,
+                            ""PlayerIds"" TEXT NOT NULL,
+                            ""ActionCount"" INTEGER NOT NULL,
+                            ""Data"" TEXT NOT NULL
+                        );
+                        CREATE INDEX ""IX_Recordings_Name"" ON ""Recordings"" (""Name"");
+                        CREATE INDEX ""IX_Recordings_CreatedAt"" ON ""Recordings"" (""CreatedAt"")"
+                    )
+                };
+
+                // Check which tables exist and create missing ones
+                foreach (var (tableName, (sqlServerSql, sqliteSql)) in requiredTables)
+                {
+                    try
+                    {
+                        bool tableExists;
+                        if (isSqlServer)
+                        {
+                            var checkSql = $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'";
+                            var count = await _dbContext.Database.ExecuteSqlRawAsync(checkSql);
+                            // ExecuteSqlRawAsync returns rows affected, not the count, so we need a different approach
+                            var connection = _dbContext.Database.GetDbConnection();
+                            await connection.OpenAsync();
+                            using var command = connection.CreateCommand();
+                            command.CommandText = checkSql;
+                            var existsResult = await command.ExecuteScalarAsync();
+                            tableExists = Convert.ToInt32(existsResult) > 0;
+                        }
+                        else
+                        {
+                            var checkSql = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{tableName}'";
+                            var connection = _dbContext.Database.GetDbConnection();
+                            await connection.OpenAsync();
+                            using var command = connection.CreateCommand();
+                            command.CommandText = checkSql;
+                            var existsResult = await command.ExecuteScalarAsync();
+                            tableExists = Convert.ToInt32(existsResult) > 0;
+                        }
+
+                        if (tableExists)
+                        {
+                            tablesExisting.Add(tableName);
+                            _logger.LogEvent("Database Migrate", $"Table '{tableName}' already exists");
+                        }
+                        else
+                        {
+                            // Create the table
+                            var createSql = isSqlServer ? sqlServerSql : sqliteSql;
+
+                            // Split on semicolons to handle multiple statements (CREATE TABLE + CREATE INDEX)
+                            var statements = createSql.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                            foreach (var statement in statements)
+                            {
+                                if (!string.IsNullOrWhiteSpace(statement))
+                                {
+                                    await _dbContext.Database.ExecuteSqlRawAsync(statement);
+                                }
+                            }
+
+                            tablesCreated.Add(tableName);
+                            _logger.LogEvent("Database Migrate", $"Created table '{tableName}'");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"Error processing table '{tableName}': {ex.Message}");
+                        _logger.LogEvent("Database Migrate Error", $"Error with table '{tableName}': {ex.Message}", LogLevel.Error);
+                    }
+                }
+
+                var success = errors.Count == 0;
+                var message = tablesCreated.Count > 0
+                    ? $"Created {tablesCreated.Count} table(s): {string.Join(", ", tablesCreated)}"
+                    : "All tables already exist";
+
+                _logger.LogEvent("Database Migrate Complete", $"Success: {success}, Created: {tablesCreated.Count}, Existing: {tablesExisting.Count}, Errors: {errors.Count}");
+
+                return Ok(new
+                {
+                    timestamp = DateTime.UtcNow,
+                    success,
+                    message,
+                    tablesCreated,
+                    tablesExisting,
+                    errors
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Database Migrate Error", $"Error during migration: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new
+                {
+                    timestamp = DateTime.UtcNow,
+                    success = false,
+                    message = $"Migration failed: {ex.Message}",
+                    tablesCreated,
+                    tablesExisting,
+                    errors = new List<string> { ex.Message }
+                });
+            }
+        }
     }
 }
