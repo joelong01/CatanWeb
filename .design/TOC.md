@@ -15,6 +15,7 @@
 | [azure-cosmos-dal.md](azure-cosmos-dal.md) | CosmosDB data access layer design (comprehensive) | Dec 8, 2025 |
 | [azure-sql-serverless-alternative.md](azure-sql-serverless-alternative.md) | Azure SQL Serverless alternative analysis (recommended) | Dec 8, 2025 |
 | [test-plan.md](test-plan.md) | WebUI test suite with recording/replay infrastructure | Jan 12, 2026 |
+| [balance-design.md](balance-design.md) | Balance board feature design | Jan 13, 2026 |
 
 ## Projects
 

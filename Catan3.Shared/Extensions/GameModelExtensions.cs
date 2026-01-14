@@ -802,5 +802,311 @@ namespace Catan3.Shared.Extensions
                 }
             }
         }
+
+        /// <summary>
+        /// Validates that star totals per resource are within acceptable variance.
+        /// A balanced board has similar probability of producing each resource type.
+        /// </summary>
+        /// <param name="game">The game model to validate</param>
+        /// <param name="maxAverageVariance">Maximum allowed difference between highest and lowest average stars per resource (default: 0.5)</param>
+        /// <returns>True if average star variance is within threshold</returns>
+        public static bool ValidateBalance(this GameModel game, double maxAverageVariance = 0.5)
+        {
+            var resources = new[] { ResourceType.Wheat, ResourceType.Ore, ResourceType.Sheep,
+                                    ResourceType.Wood, ResourceType.Brick };
+            var avgByResource = resources
+                .Select(r =>
+                {
+                    var tiles = game.Tiles.TilesWithResource(r);
+                    return tiles.Count > 0 ? (double)tiles.Stars() / tiles.Count : 0;
+                })
+                .ToList();
+
+            var min = avgByResource.Min();
+            var max = avgByResource.Max();
+            return max - min <= maxAverageVariance;
+        }
+
+        /// <summary>
+        /// Validates that no tile has too many same-resource neighbors (no clumps).
+        /// Edge tiles (less than 6 neighbors) allow more same-resource neighbors than interior tiles.
+        /// </summary>
+        /// <param name="game">The game model to validate</param>
+        /// <param name="maxEdgeSameNeighbors">Maximum same-resource neighbors for edge tiles (default: 2)</param>
+        /// <param name="maxInteriorSameNeighbors">Maximum same-resource neighbors for interior tiles (default: 1)</param>
+        /// <returns>True if no tile exceeds the clump threshold</returns>
+        public static bool ValidateNoClumps(this GameModel game, int maxEdgeSameNeighbors = 2, int maxInteriorSameNeighbors = 1)
+        {
+            foreach (var tile in game.Tiles.Where(t => t.ResourceTileType != ResourceType.Desert))
+            {
+                var neighbors = game.Tiles.AdjacentTiles(tile);
+                var sameCount = neighbors.Count(n => n.ResourceTileType == tile.ResourceTileType);
+                var isEdge = neighbors.Count < 6;
+                var maxAllowed = isEdge ? maxEdgeSameNeighbors : maxInteriorSameNeighbors;
+                if (sameCount > maxAllowed)
+                    return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Shuffles the board until it passes all balance criteria:
+        /// - No adjacent 6/8 tiles (existing rule)
+        /// - Average star variance within threshold (resource parity)
+        /// - No resource clumps (distribution)
+        ///
+        /// Uses a two-phase approach:
+        /// 1. Find a board passing basic rules, tracking best variance seen
+        /// 2. Converge to tight variance (0.5) by swapping numbers between resources
+        /// If no perfect board found, uses the best board discovered during search.
+        /// </summary>
+        /// <param name="game">The game model to shuffle</param>
+        /// <returns>Tuple of (success, attempts, failureReason) - success is true if balanced board found</returns>
+        public static (bool Success, int Attempts, string? FailureReason) BalancedShuffle(this GameModel game)
+        {
+            const int maxAttempts = 2000;
+            const double tightVariance = 0.5;
+
+            // Track the best valid board found (lowest variance with no 6/8 adjacent and no clumps)
+            double bestVariance = double.MaxValue;
+            List<(ResourceType resource, int number)>? bestTileState = null;
+            List<HarborType>? bestHarborState = null;
+            int bestAttempt = 0;
+
+            // Phase 1: Shuffle and track the best board found
+            int attempt;
+            for (attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                ShuffleList<TileModel, ResourceType>(game.Tiles, game.Random,
+                     tile => tile.ResourceTileType,
+                     (tile, type) => tile.ResourceTileType = type);
+                ShuffleList<TileModel, int>(game.Tiles, game.Random,
+                    tile => tile.Number,
+                    (tile, number) => tile.Number = number);
+                ShuffleList<HarborModel, HarborType>(game.Harbors, game.Random,
+                   harbor => harbor.HarborKey.HarborType,
+                   (harbor, type) => harbor.HarborKey.HarborType = type);
+                EnsureDesertSeven(game);
+
+                // Only consider boards that pass basic rules (no adjacent 6/8, no clumps)
+                if (game.ValidateGame() && game.ValidateNoClumps())
+                {
+                    var variance = CalculateVariance(game);
+
+                    // Found a perfect board - use it immediately
+                    if (variance <= tightVariance)
+                    {
+                        return (true, attempt, null);
+                    }
+
+                    // Track the best board found so far
+                    if (variance < bestVariance)
+                    {
+                        bestVariance = variance;
+                        bestAttempt = attempt;
+                        bestTileState = game.Tiles.Select(t => (t.ResourceTileType, t.Number)).ToList();
+                        bestHarborState = game.Harbors.Select(h => h.HarborKey.HarborType).ToList();
+                    }
+                }
+            }
+
+            // No perfect board found - restore the best board we found
+            if (bestTileState != null && bestHarborState != null)
+            {
+                // Restore the best board state
+                for (int i = 0; i < game.Tiles.Count && i < bestTileState.Count; i++)
+                {
+                    game.Tiles[i].ResourceTileType = bestTileState[i].resource;
+                    game.Tiles[i].Number = bestTileState[i].number;
+                }
+                for (int i = 0; i < game.Harbors.Count && i < bestHarborState.Count; i++)
+                {
+                    game.Harbors[i].HarborKey.HarborType = bestHarborState[i];
+                }
+
+                // Phase 2: Try to converge the best board to tight variance
+                ConvergeVariance(game, tightVariance);
+
+                // Check if convergence achieved tight variance
+                var finalVariance = CalculateVariance(game);
+                if (finalVariance <= tightVariance && game.ValidateGame() && game.ValidateNoClumps())
+                {
+                    return (true, maxAttempts, null);
+                }
+
+                // Return success with the best board we have (it's valid, just not perfect variance)
+                // The board has no adjacent 6/8 and no clumps - better than random!
+                return (true, maxAttempts, $"best variance {finalVariance:F2}");
+            }
+
+            // Couldn't find any valid board at all
+            return (false, maxAttempts, "no valid board found");
+        }
+
+        /// <summary>
+        /// Calculates the variance (max - min) of average stars per resource.
+        /// </summary>
+        private static double CalculateVariance(GameModel game)
+        {
+            var resources = new[] { ResourceType.Wheat, ResourceType.Ore, ResourceType.Sheep,
+                                    ResourceType.Wood, ResourceType.Brick };
+            var averages = resources
+                .Select(r =>
+                {
+                    var tiles = game.Tiles.TilesWithResource(r);
+                    return tiles.Count > 0 ? (double)tiles.Stars() / tiles.Count : 0;
+                })
+                .ToList();
+            return averages.Max() - averages.Min();
+        }
+
+        /// <summary>
+        /// Converts a tile number to its star value (probability weight).
+        /// </summary>
+        private static int NumberToStars(int number) => number switch
+        {
+            2 or 12 => 1,
+            3 or 11 => 2,
+            4 or 10 => 3,
+            5 or 9 => 4,
+            6 or 8 => 5,
+            7 => 0,
+            _ => 0
+        };
+
+        /// <summary>
+        /// Converges the board to target variance by swapping numbers between
+        /// the highest-average and lowest-average resources.
+        /// After each swap, validates game rules and fixes any clumps created.
+        /// </summary>
+        private static void ConvergeVariance(GameModel game, double targetVariance, int maxSwaps = 50)
+        {
+            var resources = new[] { ResourceType.Wheat, ResourceType.Ore, ResourceType.Sheep,
+                                    ResourceType.Wood, ResourceType.Brick };
+
+            for (int swap = 0; swap < maxSwaps; swap++)
+            {
+                // Check if we're done
+                if (game.ValidateBalance(targetVariance) && game.ValidateNoClumps() && game.ValidateGame())
+                {
+                    return; // Success!
+                }
+
+                // Calculate current averages
+                var avgByResource = resources
+                    .Select(r =>
+                    {
+                        var tiles = game.Tiles.TilesWithResource(r);
+                        var avg = tiles.Count > 0 ? (double)tiles.Stars() / tiles.Count : 0;
+                        return (Resource: r, Avg: avg, Tiles: tiles);
+                    })
+                    .OrderBy(x => x.Avg)
+                    .ToList();
+
+                var currentVariance = avgByResource.Last().Avg - avgByResource.First().Avg;
+
+                // If variance is good but we have clumps, try to fix clumps
+                if (currentVariance <= targetVariance && !game.ValidateNoClumps())
+                {
+                    if (!TryFixClumps(game))
+                    {
+                        return; // Can't fix clumps
+                    }
+                    continue;
+                }
+
+                // Need to reduce variance - find tiles to swap
+                var lowResource = avgByResource.First();
+                var highResource = avgByResource.Last();
+
+                // Try multiple candidates for swapping
+                var lowCandidates = lowResource.Tiles
+                    .Where(t => t.Number != 7)
+                    .OrderBy(t => NumberToStars(t.Number))
+                    .ToList();
+
+                var highCandidates = highResource.Tiles
+                    .Where(t => t.Number != 7)
+                    .OrderByDescending(t => NumberToStars(t.Number))
+                    .ToList();
+
+                bool swapped = false;
+                foreach (var lowTile in lowCandidates)
+                {
+                    foreach (var highTile in highCandidates)
+                    {
+                        // Only swap if it would actually improve things
+                        if (NumberToStars(highTile.Number) <= NumberToStars(lowTile.Number))
+                        {
+                            continue;
+                        }
+
+                        // Try the swap
+                        (lowTile.Number, highTile.Number) = (highTile.Number, lowTile.Number);
+
+                        // Check if swap is valid (no adjacent 6/8)
+                        if (game.ValidateGame())
+                        {
+                            swapped = true;
+                            break;
+                        }
+
+                        // Undo invalid swap
+                        (lowTile.Number, highTile.Number) = (highTile.Number, lowTile.Number);
+                    }
+                    if (swapped) break;
+                }
+
+                if (!swapped)
+                {
+                    return; // No valid swap found
+                }
+            }
+        }
+
+        /// <summary>
+        /// Attempts to fix resource clumps by swapping numbers between tiles
+        /// of different resources that have the same number.
+        /// </summary>
+        private static bool TryFixClumps(GameModel game)
+        {
+            // Find tiles that are causing clumps
+            foreach (var tile in game.Tiles.Where(t => t.ResourceTileType != ResourceType.Desert))
+            {
+                var neighbors = game.Tiles.AdjacentTiles(tile);
+                var sameCount = neighbors.Count(n => n.ResourceTileType == tile.ResourceTileType);
+                var isEdge = neighbors.Count < 6;
+                var maxAllowed = isEdge ? 2 : 1;
+
+                if (sameCount > maxAllowed)
+                {
+                    // This tile is part of a clump - try to swap its number with
+                    // another tile of the same number but different resource
+                    var sameNumberTiles = game.Tiles
+                        .Where(t => t.Number == tile.Number &&
+                                    t.ResourceTileType != tile.ResourceTileType &&
+                                    t.ResourceTileType != ResourceType.Desert)
+                        .ToList();
+
+                    foreach (var swapTarget in sameNumberTiles)
+                    {
+                        // Swap resources (not numbers) to break the clump
+                        (tile.ResourceTileType, swapTarget.ResourceTileType) =
+                            (swapTarget.ResourceTileType, tile.ResourceTileType);
+
+                        // Check if this fixed things without breaking other rules
+                        if (game.ValidateNoClumps() && game.ValidateGame())
+                        {
+                            return true;
+                        }
+
+                        // Undo if it didn't help or broke something
+                        (tile.ResourceTileType, swapTarget.ResourceTileType) =
+                            (swapTarget.ResourceTileType, tile.ResourceTileType);
+                    }
+                }
+            }
+            return false;
+        }
     }
 }

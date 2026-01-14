@@ -16,13 +16,13 @@
 
 /* =============================================================================
    CSS VERSION - UPDATE THIS ONE LINE TO CHANGE ALL VERSION STRINGS BELOW
-   Current: v3 (2026-01-12)
+   Current: CSS 2026-01-13 v1
    Note: Global version in MainLayout.razor.css; this adds game-specific info
    ============================================================================= */
 
 /* Game page version with orientation info - supplements global version */
 .game-container[data-layout-mode="landscape"]::after {
-    content: "Game CSS v3 landscape";
+    content: "Game CSS landscape";
     position: absolute;
     bottom: 5px;
     left: 5px;
@@ -32,7 +32,7 @@
 }
 
 .game-container[data-layout-mode="portrait"]::after {
-    content: "Game CSS v3 portrait";
+    content: "Game CSS portrait";
     position: absolute;
     bottom: 5px;
     left: 5px;

@@ -80,10 +80,6 @@
         <div class="button-row">
             <button class="btn btn-secondary" @onclick="ResetToDefaults">Reset to Defaults</button>
             <button class="btn btn-primary" @onclick="SaveSettings">Save</button>
-            @if (!string.IsNullOrEmpty(_currentGameId))
-            {
-                <button class="btn btn-game" @onclick="ReturnToGame">Return to Game</button>
-            }
         </div>
 
         @if (saveMessage != null)

@@ -8,7 +8,7 @@
 
 /* CSS version indicator - helps detect stale cached CSS */
 .page-viewport::after {
-    content: "EditPlayers CSS v2025-12-04";
+    content: "CSS 2026-01-13 v1";
     position: fixed;
     bottom: 5px;
     right: 5px;

@@ -429,6 +429,14 @@ public class RecordingController : ControllerBase
             PurchaseRecord purchase => await gameStateMachine.HandlePurchaseAsync(new PurchaseMessage(purchase.Entitlement)),
             UndoRecord => await gameStateMachine.HandleUndoAsync(new UndoMessage()),
             RedoRecord => await gameStateMachine.HandleRedoAsync(new RedoMessage()),
+            SwapTileResourcesRecord swap => await gameStateMachine.HandleSwapResourcesAsync(
+                new SwapTileResources(
+                    swap.SourceTileCoordinates,
+                    swap.DestinationTileCoordinates,
+                    swap.SourceCurrentResource,
+                    swap.DestinationCurrentResource)),
+            DeclareWinnerRecord winner => await gameStateMachine.HandleDeclareWinnerAsync(
+                new DeclareWinnerMessage(winner.WinnerId)),
             _ => throw new NotImplementedException($"Action type {action.GetType().Name} not implemented for replay")
         };
     }
@@ -586,6 +594,8 @@ public class RecordingController : ControllerBase
             PurchaseRecord purchase => $"Entitlement: {purchase.Entitlement}",
             SetPlayerOrderRecord order => $"Order: {string.Join(", ", order.PlayerIds)}",
             ParticipatingInSupplementalRecord supp => $"Player: {supp.PlayerId}, Participating: {supp.Participating}",
+            SwapTileResourcesRecord swap => $"Swap: {swap.SourceTileCoordinates} <-> {swap.DestinationTileCoordinates}",
+            DeclareWinnerRecord winner => $"Winner: {winner.WinnerId}",
             _ => ""
         };
     }

@@ -529,22 +529,48 @@ namespace Catan3.Shared.GameLogic
         }
 
         /// <summary>
-        /// Handles board balance operations to adjust tile resource distribution.
-        /// Attempts to balance the board by swapping resource types to improve fairness.
+        /// Handles board balance operations to create a balanced board.
+        /// Shuffles until the board meets stricter criteria: star parity across resources and no resource clumps.
+        /// Only valid during PickingBoard state.
         /// </summary>
         /// <param name="message">The balance board request.</param>
-        /// <returns>The updated GameModel with potentially rebalanced board.</returns>
-        /// <exception cref="GameException">Thrown when board balancing fails.</exception>
+        /// <returns>The updated GameModel with a balanced board.</returns>
+        /// <exception cref="GameException">Thrown when not in PickingBoard state.</exception>
         public Task<GameModel> HandleBalanceBoardAsync(BalanceBoardMessage message)
         {
             GameModel gameModel = _gameLog.CopyCurrent();
             _logger.Trace(GameTraceLevel.Trace, $"[GameState={gameModel.GameState}][ExpectedGameHash={gameModel.GameHash}][Message={message}]");
             _recorder?.RecordAction(message.ToRecord(gameModel));
 
-            if (BalanceBoard(gameModel))
+            ThrowIfWrongState(gameModel.GameState, [GameState.PickingBoard]);
+
+            // Use BalancedShuffle which has stricter criteria than regular Shuffle:
+            // - No adjacent 6/8 (existing rule)
+            // - Average star variance within threshold (resource parity)
+            // - No resource clumps (distribution)
+            var (success, attempts, failureReason) = gameModel.BalancedShuffle();
+            if (success && failureReason == null)
             {
-                LogGameModel(gameModel);
+                _logger.Trace(GameTraceLevel.Information, $"BalancedShuffle: Found balanced board after {attempts} attempts");
             }
+            else if (success)
+            {
+                // Valid board found but not perfect variance - still better than random
+                _logger.Trace(GameTraceLevel.Information, $"BalancedShuffle: Using best board after {attempts} attempts ({failureReason})");
+            }
+            else
+            {
+                _logger.Trace(GameTraceLevel.Warning, $"BalancedShuffle: Failed after {attempts} attempts ({failureReason}) - using regular shuffle");
+                // Fall back to regular shuffle so user still gets a valid board
+                gameModel.Shuffle();
+            }
+
+            // Log resource star averages table
+            LogResourceStarTable(gameModel);
+
+            gameModel.UpdateGameHash();
+
+            LogGameModel(gameModel);
             return Task.FromResult(gameModel);
         }
 
@@ -1397,6 +1423,37 @@ namespace Catan3.Shared.GameLogic
         {
             // Use the Log's initialization method to preserve the original GameModel
             _gameLog.InitializeWithGameModel(gameModel);
+        }
+
+        /// <summary>
+        /// Logs a table showing average stars per resource type for debugging balance.
+        /// </summary>
+        private void LogResourceStarTable(GameModel gameModel)
+        {
+            var resources = new[] {
+                (ResourceType.Wheat, "Wheat"),
+                (ResourceType.Ore, "Ore"),
+                (ResourceType.Sheep, "Sheep"),
+                (ResourceType.Wood, "Wood"),
+                (ResourceType.Brick, "Brick")
+            };
+
+            _logger.Trace(GameTraceLevel.Information, "Resource Star Averages:");
+            _logger.Trace(GameTraceLevel.Information, "  Resource | Tiles | Stars | Avg");
+            _logger.Trace(GameTraceLevel.Information, "  ---------|-------|-------|-----");
+
+            double minAvg = double.MaxValue, maxAvg = double.MinValue;
+            foreach (var (type, name) in resources)
+            {
+                var tiles = gameModel.Tiles.TilesWithResource(type);
+                var stars = tiles.Stars();
+                var avg = tiles.Count > 0 ? (double)stars / tiles.Count : 0;
+                _logger.Trace(GameTraceLevel.Information, $"  {name,-8} | {tiles.Count,5} | {stars,5} | {avg:F2}");
+                if (avg < minAvg) minAvg = avg;
+                if (avg > maxAvg) maxAvg = avg;
+            }
+            _logger.Trace(GameTraceLevel.Information, $"  Variance: {maxAvg - minAvg:F2} (max 0.5 for balanced)");
+            _logger.Trace(GameTraceLevel.Information, $"  Clumps: {(gameModel.ValidateNoClumps() ? "None" : "Found")}");
         }
 
         private void LogGameModel(GameModel gameModel)

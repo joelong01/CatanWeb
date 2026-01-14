@@ -243,6 +243,15 @@ public class GameConnectionService : IAsyncDisposable
     }
 
     /// <summary>
+    /// Executes a BalanceBoard command to create a balanced board.
+    /// </summary>
+    public async Task<CommandResult> BalanceBoardAsync()
+    {
+        EnsureInGame();
+        return await _proxy!.ExecuteBalanceAsync();
+    }
+
+    /// <summary>
     /// Executes a Roll command.
     /// </summary>
     public async Task<CommandResult> RollAsync(int die1, int die2)

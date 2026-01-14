@@ -20,10 +20,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Catan3.WebUI</title>
     <base href="/" />
+    <!-- CSS/JS Cache Busting: Update version query params when CSS/JS changes
+         To update all versions at once, run from repo root:
+         sed -i '' 's/2026-01-13-v1/YYYY-MM-DD-vN/g' WebUI/wwwroot/index.html
+         Also update CSS content strings in *.razor.css files (see MainLayout.razor.css) -->
     <link rel="stylesheet" href="lib/bootstrap/bootstrap.min.css" />
-    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/app.css?v=2026-01-13-v1" />
     <link rel="icon" type="image/png" href="favicon.png" />
-    <link href="Catan3.WebUI.styles.css" rel="stylesheet" />
+    <link href="Catan3.WebUI.styles.css?v=2026-01-13-v1" rel="stylesheet" />
 
     <!-- Prefetch critical theme assets while WASM loads -->
     <link rel="prefetch" href="themes/base/tiles/brick.png" as="image" />
@@ -62,8 +66,8 @@
         <span class="dismiss">🗙</span>
     </div>
     <script src="_framework/blazor.webassembly.js" autostart="false"></script>
-    <script src="js/svgRasterizer.js"></script>
-    <script src="js/viewportScaler.js"></script>
+    <script src="js/svgRasterizer.js?v=2026-01-13-v1"></script>
+    <script src="js/viewportScaler.js?v=2026-01-13-v1"></script>
 
     <!-- Loading diagnostics and Blazor boot -->
     <script>

@@ -28,18 +28,18 @@
     </div>
 
     <!-- Shuffle Button -->
-    <div class="action-buttons-row">
-        <IconButton Icon="&#x27F3;"
-                    Label="Shuffle"
-                    OnClick="OnShuffle"
-                    Disabled="@(!CanShuffle)"
-                    CssClass="icon-button-tight"
-                    AutomationId="btn-shuffle-board" />
+    <div class="shuffle-button-container">
+        <button class="shuffle-button @(CanShuffle ? "" : "disabled")"
+                @onclick="OnShuffle"
+                disabled="@(!CanShuffle)"
+                data-testid="btn-shuffle-board">
+            <span class="shuffle-icon">&#x27F3;</span>
+            <span class="shuffle-label">Shuffle</span>
+        </button>
     </div>
 
     <!-- Star Threshold Slider -->
     <div class="star-slider-container">
-        <label for="star-slider" class="slider-label">Show Buildings (Stars)</label>
         <input type="range"
                id="star-slider"
                class="star-slider"
@@ -50,6 +50,12 @@
                data-testid="star-threshold-slider" />
         <div class="slider-value">@ShownStars</div>
     </div>
+
+    <!-- Balance Indicator (lower right) -->
+    @if (IsBalanced)
+    {
+        <div class="balance-indicator" title="Board is balanced">&#x2696;</div>
+    }
 </div>
 
 @code {
@@ -94,6 +100,11 @@
     /// Set of currently selected resources for filtering buildings (max 3).
     /// </summary>
     private HashSet<ResourceType> SelectedResources { get; set; } = new();
+
+    /// <summary>
+    /// Whether the current board is balanced (passes ValidateBalance and ValidateNoClumps).
+    /// </summary>
+    private bool IsBalanced => GameModel.ValidateBalance() && GameModel.ValidateNoClumps();
 
     /// <summary>
     /// Gets the list of resource types to display in the resource cards row.

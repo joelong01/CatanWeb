@@ -28,16 +28,19 @@
         </button>
         <button class="nav-menu-item" @onclick="OnOpenGame">
             <div class="nav-icon">&#x1F4C2;</div>
-            <div class="nav-label">Open...</div>
+            <div class="nav-label">Open Game</div>
         </button>
         <button class="nav-menu-item" @onclick="OnSavePlayers">
             <div class="nav-icon">&#x1F4BE;</div>
             <div class="nav-label">Save Players</div>
         </button>
-        <button class="nav-menu-item" @onclick="OnReturnToGame">
-            <div class="nav-icon">&#x25B6;</div>
-            <div class="nav-label">Return to Game</div>
-        </button>
+        @if (HasActiveGame)
+        {
+            <button class="nav-menu-item" @onclick="OnReturnToGame">
+                <div class="nav-icon">&#x25B6;</div>
+                <div class="nav-label">Return to Game</div>
+            </button>
+        }
     }
     else if (CurrentPage == PageContext.Game)
     {
@@ -45,10 +48,6 @@
         <button class="nav-menu-item" @onclick="OnHome">
             <div class="nav-icon">&#x1F3E0;</div>
             <div class="nav-label">Home</div>
-        </button>
-        <button class="nav-menu-item" @onclick="OnNewGame">
-            <div class="nav-icon">&#x2795;</div>
-            <div class="nav-label">New Game</div>
         </button>
         @if (_isRecording)
         {
@@ -64,18 +63,6 @@
                 <div class="nav-label">Record</div>
             </button>
         }
-        <button class="nav-menu-item" @onclick="OnOpenGame">
-            <div class="nav-icon">&#x1F4C2;</div>
-            <div class="nav-label">Open...</div>
-        </button>
-        <button class="nav-menu-item" @onclick="OnSaveGame">
-            <div class="nav-icon">&#x1F4BE;</div>
-            <div class="nav-label">Save</div>
-        </button>
-        <button class="nav-menu-item" @onclick="OnRefresh">
-            <div class="nav-icon">&#x1F504;</div>
-            <div class="nav-label">Refresh</div>
-        </button>
         <button class="nav-menu-item" @onclick="OnSaveCopy">
             <div class="nav-icon">&#x1F4E5;</div>
             <div class="nav-label">Save Copy</div>
@@ -84,30 +71,17 @@
             <div class="nav-icon">&#x1F465;</div>
             <div class="nav-label">Edit Players</div>
         </button>
-        <button class="nav-menu-item" @onclick="OnBalance">
-            <div class="nav-icon">&#x2696;</div>
-            <div class="nav-label">Balance</div>
-        </button>
+        @if (GameStateService.GameModel?.GameState == Catan3.Shared.Models.GameState.PickingBoard)
+        {
+            <button class="nav-menu-item" @onclick="OnBalance">
+                <div class="nav-icon">&#x2696;</div>
+                <div class="nav-label">Balance</div>
+            </button>
+        }
         <button class="nav-menu-item winner-button" @onclick="OnWinner">
             <div class="nav-icon">&#x1F3C6;</div>
             <div class="nav-label">Winner!</div>
         </button>
-        <button class="nav-menu-item" @onclick="ToggleThemeSubmenu">
-            <div class="nav-icon">&#x1F3A8;</div>
-            <div class="nav-label">Theme: @AssetService.GetCurrentThemeMetadata().DisplayName</div>
-        </button>
-        @if (_showThemeSubmenu)
-        {
-            @foreach (var themeName in AssetService.AvailableThemes)
-            {
-                var metadata = AssetService.GetThemeMetadata(themeName);
-                var isSelected = themeName == AssetService.CurrentTheme;
-                <button class="nav-menu-item theme-option @(isSelected ? "selected" : "")" @onclick="() => SelectTheme(themeName)">
-                    <div class="nav-icon">@(isSelected ? "✓" : "")</div>
-                    <div class="nav-label">@metadata.DisplayName</div>
-                </button>
-            }
-        }
     }
     else if (CurrentPage == PageContext.Home)
     {
@@ -118,7 +92,7 @@
         </button>
         <button class="nav-menu-item" @onclick="OnOpenGame">
             <div class="nav-icon">&#x1F4C2;</div>
-            <div class="nav-label">Open...</div>
+            <div class="nav-label">Open Game</div>
         </button>
         <button class="nav-menu-item" @onclick="OnEditPlayers">
             <div class="nav-icon">&#x1F465;</div>
@@ -134,16 +108,19 @@
         </button>
         <button class="nav-menu-item" @onclick="OnOpenGame">
             <div class="nav-icon">&#x1F4C2;</div>
-            <div class="nav-label">Open...</div>
+            <div class="nav-label">Open Game</div>
         </button>
         <button class="nav-menu-item" @onclick="OnEditPlayers">
             <div class="nav-icon">&#x1F465;</div>
             <div class="nav-label">Edit Players</div>
         </button>
-        <button class="nav-menu-item" @onclick="OnReturnToGame">
-            <div class="nav-icon">&#x25B6;</div>
-            <div class="nav-label">Return to Game</div>
-        </button>
+        @if (HasActiveGame)
+        {
+            <button class="nav-menu-item" @onclick="OnReturnToGame">
+                <div class="nav-icon">&#x25B6;</div>
+                <div class="nav-label">Return to Game</div>
+            </button>
+        }
     }
     else if (CurrentPage == PageContext.LoadGame)
     {
@@ -160,10 +137,13 @@
             <div class="nav-icon">&#x1F465;</div>
             <div class="nav-label">Edit Players</div>
         </button>
-        <button class="nav-menu-item" @onclick="OnReturnToGame">
-            <div class="nav-icon">&#x25B6;</div>
-            <div class="nav-label">Return to Game</div>
-        </button>
+        @if (HasActiveGame)
+        {
+            <button class="nav-menu-item" @onclick="OnReturnToGame">
+                <div class="nav-icon">&#x25B6;</div>
+                <div class="nav-label">Return to Game</div>
+            </button>
+        }
     }
     else if (CurrentPage == PageContext.Settings)
     {
@@ -178,12 +158,15 @@
         </button>
         <button class="nav-menu-item" @onclick="OnOpenGame">
             <div class="nav-icon">&#x1F4C2;</div>
-            <div class="nav-label">Open...</div>
+            <div class="nav-label">Open Game</div>
         </button>
-        <button class="nav-menu-item" @onclick="OnReturnToGame">
-            <div class="nav-icon">&#x25B6;</div>
-            <div class="nav-label">Return to Game</div>
-        </button>
+        @if (HasActiveGame)
+        {
+            <button class="nav-menu-item" @onclick="OnReturnToGame">
+                <div class="nav-icon">&#x25B6;</div>
+                <div class="nav-label">Return to Game</div>
+            </button>
+        }
     }
     else if (CurrentPage == PageContext.Stats)
     {
@@ -192,33 +175,31 @@
             <div class="nav-icon">&#x1F3E0;</div>
             <div class="nav-label">Home</div>
         </button>
-        <button class="nav-menu-item" @onclick="OnOpenGame">
-            <div class="nav-icon">&#x1F4C2;</div>
-            <div class="nav-label">Open...</div>
+        @if (HasActiveGame)
+        {
+            <button class="nav-menu-item" @onclick="OnReturnToGame">
+                <div class="nav-icon">&#x25B6;</div>
+                <div class="nav-label">Return to Game</div>
+            </button>
+        }
+    }
+    else if (CurrentPage == PageContext.Tests)
+    {
+        <!-- Tests page -->
+        <button class="nav-menu-item" @onclick="OnHome">
+            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-label">Home</div>
         </button>
-        <button class="nav-menu-item" @onclick="OnEditPlayers">
-            <div class="nav-icon">&#x1F465;</div>
-            <div class="nav-label">Edit Players</div>
-        </button>
-        <button class="nav-menu-item" @onclick="OnReturnToGame">
-            <div class="nav-icon">&#x25B6;</div>
-            <div class="nav-label">Return to Game</div>
-        </button>
+        @if (HasActiveGame)
+        {
+            <button class="nav-menu-item" @onclick="OnReturnToGame">
+                <div class="nav-icon">&#x25B6;</div>
+                <div class="nav-label">Return to Game</div>
+            </button>
+        }
     }
 
-    <!-- Always visible: Stats, Tests, Debug, Settings -->
-    <button class="nav-menu-item" @onclick="OnStats">
-        <div class="nav-icon">&#x1F4CA;</div>
-        <div class="nav-label">Stats</div>
-    </button>
-    <button class="nav-menu-item" @onclick="OnTests">
-        <div class="nav-icon">&#x1F9EA;</div>
-        <div class="nav-label">Tests</div>
-    </button>
-    <button class="nav-menu-item" @onclick="OnShowDebugWindow">
-        <div class="nav-icon">&#x1F41B;</div>
-        <div class="nav-label">Debug Window</div>
-    </button>
+    <!-- Always visible: Settings -->
     <button class="nav-menu-item" @onclick="OnSettings">
         <div class="nav-icon">&#x2699;</div>
         <div class="nav-label">Settings</div>
@@ -313,7 +294,8 @@
         }
         else
         {
-            Navigation.NavigateTo("/newgame");
+            // No active game - go home instead
+            Navigation.NavigateTo("/");
         }
     }
 
@@ -422,8 +404,8 @@
 
     private async Task OnBalance()
     {
-        // TODO: Implement balance
-        await OnMenuAction.InvokeAsync();
+        await OnMenuAction.InvokeAsync(); // Close menu first
+        await GameConnection.BalanceBoardAsync();
     }
 
     private async Task OnWinner()

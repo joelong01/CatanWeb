@@ -6,6 +6,7 @@
     flex-direction: column;
     gap: 10px;
     min-width: 300px;
+    position: relative;
 }
 
 .resource-cards-row {
@@ -28,27 +29,51 @@
     justify-content: center;
 }
 
-.action-buttons-row {
+/* Shuffle Button Container */
+.shuffle-button-container {
     display: flex;
-    flex-direction: row;
-    margin: 8px;
     justify-content: center;
+    margin: 8px 0;
+}
+
+.shuffle-button {
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    align-self: center;
-    width: fit-content;
-    height: 20px;
+    gap: 4px;
+    padding: 8px 16px;
+    border: 2px solid var(--text-secondary);
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.shuffle-button:hover:not(.disabled) {
+    border-color: var(--accent-primary);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.shuffle-button.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.shuffle-icon {
+    font-size: 28px;
+    color: var(--text-primary);
+}
+
+.shuffle-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
 }
 
 .star-slider-container {
     display: flex;
     flex-direction: column;
     gap: 4px;
-}
-
-.slider-label {
-    font-size: 14px;
-    color: var(--text-secondary);
-    text-align: center;
 }
 
 .star-slider {
@@ -95,4 +120,14 @@
     font-size: 16px;
     font-weight: bold;
     color: var(--text-primary);
+}
+
+/* Balance Indicator - small gold glyph in lower right */
+.balance-indicator {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    font-size: 18px;
+    color: #ffd700;
+    text-shadow: 0 0 4px rgba(255, 215, 0, 0.5);
 }
