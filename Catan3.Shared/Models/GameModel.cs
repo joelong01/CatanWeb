@@ -68,6 +68,13 @@ namespace Catan3.Shared.Models
         [ObservableProperty]
         public partial string GameName { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Gets or sets whether lifetime statistics should be saved when a winner is declared.
+        /// Default is true. Set to false for test games and recordings to avoid polluting stats.
+        /// </summary>
+        [ObservableProperty]
+        public partial bool SaveLifetimeStats { get; set; } = true;
+
         [ObservableProperty]
         public partial GameState GameState { get; set; } = GameState.WaitingForNewGame;
 

@@ -73,6 +73,12 @@ param(
     [Parameter()]
     [switch]$All,
 
+    [Parameter()]
+    [string]$File,
+
+    [Parameter()]
+    [switch]$Replace,
+
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArgs
 )
@@ -757,6 +763,235 @@ switch ($Verb) {
         exit $LASTEXITCODE
     }
 
+    # ==============================================================================
+    # Stats Management Commands
+    # ==============================================================================
+    "stats" {
+        # SubVerb is the subcommand (list, export, import, reset)
+        $SubVerb = $SubCommand
+
+        # Determine target URL (local or Azure)
+        $targetUrl = $GameServiceUrl
+        $targetName = "Local"
+
+        if ($Azure) {
+            $azureConfigFile = Join-Path $PSScriptRoot ".azure\catan-azure.json"
+            if (-not (Test-Path $azureConfigFile)) {
+                Write-Host "Azure configuration not found. Run './catan.ps1 azure install' first." -ForegroundColor Red
+                exit 1
+            }
+            $azureConfig = Get-Content $azureConfigFile -Raw | ConvertFrom-Json
+            $targetUrl = $azureConfig.gameService.url
+            $targetName = "Azure"
+        }
+
+        # Default location for stats export
+        $defaultStatsDir = Join-Path $PSScriptRoot "."
+
+        switch ($SubVerb) {
+            "" {
+                # Show stats help
+                Write-Host ""
+                Write-Host "Stats Management Commands" -ForegroundColor Cyan
+                Write-Host "=========================" -ForegroundColor Cyan
+                Write-Host ""
+                Write-Host "Usage: ./catan.ps1 stats <subcommand> [options]" -ForegroundColor Yellow
+                Write-Host ""
+                Write-Host "Subcommands:"
+                Write-Host "  list     - Show all player statistics"
+                Write-Host "  export   - Export stats to JSON file"
+                Write-Host "  import   - Import stats from JSON file"
+                Write-Host "  reset    - Delete all statistics"
+                Write-Host ""
+                Write-Host "Options:"
+                Write-Host "  -Local        Target local GameService (default)"
+                Write-Host "  -Azure        Target Azure GameService"
+                Write-Host "  -Json         Output as JSON (for list)"
+                Write-Host "  -Location     File path for export"
+                Write-Host "  -File         File path for import (required)"
+                Write-Host "  -Replace      Replace all stats with imported data"
+                Write-Host "  -Yes          Skip confirmation prompts"
+                Write-Host ""
+                Write-Host "Examples:" -ForegroundColor Yellow
+                Write-Host "  ./catan.ps1 stats list                       - List local player stats"
+                Write-Host "  ./catan.ps1 stats list -Azure                - List Azure player stats"
+                Write-Host "  ./catan.ps1 stats export                     - Export local stats"
+                Write-Host "  ./catan.ps1 stats export -Azure              - Export Azure stats"
+                Write-Host "  ./catan.ps1 stats import -File stats.json    - Import and merge"
+                Write-Host "  ./catan.ps1 stats import -File stats.json -Replace  - Replace all"
+                Write-Host "  ./catan.ps1 stats reset -Yes                 - Reset local stats"
+                Write-Host ""
+            }
+
+            "list" {
+                Write-Host ""
+                Write-Host "Player Statistics ($targetName)" -ForegroundColor Cyan
+                Write-Host "========================" -ForegroundColor Cyan
+                Write-Host ""
+
+                # Check if service is reachable
+                if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
+                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
+                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    exit 1
+                }
+
+                try {
+                    $stats = Invoke-RestMethod -Uri "$targetUrl/api/stats" -Method Get -TimeoutSec 30
+
+                    if ($Json) {
+                        $stats | ConvertTo-Json -Depth 10
+                    } else {
+                        if ($stats.Count -eq 0) {
+                            Write-Host "No player statistics found." -ForegroundColor Yellow
+                        } else {
+                            # Table header
+                            Write-Host ("{0,-15} {1,6} {2,5} {3,6} {4,6} {5,8}" -f "Player", "Games", "Wins", "Win%", "Best", "AvgStars") -ForegroundColor Gray
+                            Write-Host ("{0,-15} {1,6} {2,5} {3,6} {4,6} {5,8}" -f "---------------", "------", "-----", "------", "------", "--------") -ForegroundColor Gray
+
+                            foreach ($player in $stats) {
+                                $winRate = if ($player.gamesPlayed -gt 0) { "{0:N1}%" -f $player.winRate } else { "0.0%" }
+                                $avgStars = "{0:N1}" -f $player.averageStars
+                                Write-Host ("{0,-15} {1,6} {2,5} {3,6} {4,6} {5,8}" -f $player.playerName, $player.gamesPlayed, $player.wins, $winRate, $player.highestScore, $avgStars)
+                            }
+
+                            Write-Host ""
+                            $totalGames = ($stats | Measure-Object -Property gamesPlayed -Sum).Sum / 2  # Divide by player count approx
+                            Write-Host "Total: $($stats.Count) players" -ForegroundColor Green
+                        }
+                    }
+                } catch {
+                    Write-Host "Failed to fetch stats: $_" -ForegroundColor Red
+                    exit 1
+                }
+            }
+
+            "export" {
+                Write-Host ""
+                Write-Host "Exporting Player Statistics ($targetName)" -ForegroundColor Cyan
+                Write-Host "========================================" -ForegroundColor Cyan
+                Write-Host ""
+
+                # Check if service is reachable
+                if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
+                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
+                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    exit 1
+                }
+
+                # Determine output path
+                $timestamp = Get-Date -Format "yyyy-MM-dd-HHmm"
+                $outputPath = if ($Location) { $Location } else { Join-Path $defaultStatsDir "player-stats-$timestamp.json" }
+
+                # If Location is a directory, add filename
+                if (Test-Path $outputPath -PathType Container) {
+                    $outputPath = Join-Path $outputPath "player-stats-$timestamp.json"
+                }
+
+                try {
+                    $export = Invoke-RestMethod -Uri "$targetUrl/api/stats/export" -Method Get -TimeoutSec 30
+                    $export | ConvertTo-Json -Depth 10 | Out-File -FilePath $outputPath -Encoding UTF8
+
+                    Write-Host "Exported $($export.players.Count) player(s) to:" -ForegroundColor Green
+                    Write-Host "  $outputPath" -ForegroundColor Gray
+                } catch {
+                    Write-Host "Failed to export stats: $_" -ForegroundColor Red
+                    exit 1
+                }
+            }
+
+            "import" {
+                Write-Host ""
+                Write-Host "Importing Player Statistics to $targetName" -ForegroundColor Cyan
+                Write-Host "===========================================" -ForegroundColor Cyan
+                Write-Host ""
+
+                # Check if service is reachable
+                if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
+                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
+                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    exit 1
+                }
+
+                if (-not $File) {
+                    Write-Host "ERROR: -File parameter is required for import" -ForegroundColor Red
+                    Write-Host "Usage: ./catan.ps1 stats import -File <path>" -ForegroundColor Yellow
+                    exit 1
+                }
+
+                if (-not (Test-Path $File)) {
+                    Write-Host "ERROR: File not found: $File" -ForegroundColor Red
+                    exit 1
+                }
+
+                try {
+                    $document = Get-Content $File -Raw | ConvertFrom-Json
+                    Write-Host "Found $($document.players.Count) player(s) in file" -ForegroundColor Green
+
+                    $mode = if ($Replace) { "replace" } else { "merge" }
+                    Write-Host "Import mode: $mode" -ForegroundColor Gray
+                    Write-Host ""
+
+                    $importRequest = @{
+                        document = $document
+                        replace = $Replace.IsPresent
+                    }
+
+                    $response = Invoke-RestMethod -Uri "$targetUrl/api/stats/import" `
+                        -Method Post `
+                        -ContentType "application/json" `
+                        -Body ($importRequest | ConvertTo-Json -Depth 10) `
+                        -TimeoutSec 30
+
+                    Write-Host "Import complete:" -ForegroundColor Green
+                    Write-Host "  Imported: $($response.imported)" -ForegroundColor Gray
+                    Write-Host "  Merged:   $($response.merged)" -ForegroundColor Gray
+                    Write-Host "  Skipped:  $($response.skipped)" -ForegroundColor Gray
+                } catch {
+                    Write-Host "Failed to import stats: $_" -ForegroundColor Red
+                    exit 1
+                }
+            }
+
+            "reset" {
+                Write-Host ""
+                Write-Host "Reset Player Statistics ($targetName)" -ForegroundColor Cyan
+                Write-Host "=====================================" -ForegroundColor Cyan
+                Write-Host ""
+
+                # Check if service is reachable
+                if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
+                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
+                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    exit 1
+                }
+
+                if (-not $Yes) {
+                    Write-Host "WARNING: This will delete ALL player statistics on $targetName!" -ForegroundColor Red
+                    $confirm = Read-Host "Type 'yes' to confirm"
+                    if ($confirm -ne "yes") {
+                        Write-Host "Aborted." -ForegroundColor Yellow
+                        exit 0
+                    }
+                }
+
+                try {
+                    $response = Invoke-RestMethod -Uri "$targetUrl/api/stats" -Method Delete -TimeoutSec 30
+                    Write-Host "Reset complete: $($response.playersReset) player(s) reset" -ForegroundColor Green
+                } catch {
+                    Write-Host "Failed to reset stats: $_" -ForegroundColor Red
+                    exit 1
+                }
+            }
+
+            default {
+                Write-Host "Unknown stats subcommand: $SubVerb" -ForegroundColor Red
+                Write-Host "Run './catan.ps1 stats' for help" -ForegroundColor Yellow
+                exit 1
+            }
+        }
+    }
+
     "recording" {
         # Determine target URL (local or Azure)
         $targetUrl = $GameServiceUrl
@@ -907,6 +1142,34 @@ switch ($Verb) {
                     exit 1
                 }
 
+                # For Azure, verify service is healthy and import endpoint exists
+                if ($Azure) {
+                    Write-Host "Checking Azure service health..." -NoNewline
+                    try {
+                        $health = Invoke-RestMethod -Uri "$targetUrl/health" -TimeoutSec 10
+                        Write-Host " OK" -ForegroundColor Green
+                    } catch {
+                        Write-Host " FAILED" -ForegroundColor Red
+                        Write-Host "Azure service is not responding at $targetUrl/health" -ForegroundColor Red
+                        Write-Host "Check deployment status or try again later." -ForegroundColor Yellow
+                        exit 1
+                    }
+
+                    # Verify import endpoint exists by checking recordings list first
+                    Write-Host "Checking import endpoint..." -NoNewline
+                    try {
+                        # A simple GET to /api/recordings verifies the recording endpoints are deployed
+                        $null = Invoke-RestMethod -Uri "$targetUrl/api/recordings" -TimeoutSec 10
+                        Write-Host " OK" -ForegroundColor Green
+                    } catch {
+                        Write-Host " FAILED" -ForegroundColor Red
+                        Write-Host "Recording API not available. Deployment may be in progress." -ForegroundColor Red
+                        Write-Host "Wait for deployment to complete and try again." -ForegroundColor Yellow
+                        exit 1
+                    }
+                    Write-Host ""
+                }
+
                 if (-not (Test-Path $recordingsDir)) {
                     Write-Host "Recordings directory not found: $recordingsDir" -ForegroundColor Red
                     Write-Host "Run './catan.ps1 recording save' first to export recordings" -ForegroundColor Yellow
@@ -1048,6 +1311,21 @@ switch ($Verb) {
                     Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
                     Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
                     exit 1
+                }
+
+                # For Azure, verify service is healthy first
+                if ($Azure) {
+                    Write-Host "Checking Azure service health..." -NoNewline
+                    try {
+                        $health = Invoke-RestMethod -Uri "$targetUrl/health" -TimeoutSec 10
+                        Write-Host " OK" -ForegroundColor Green
+                    } catch {
+                        Write-Host " FAILED" -ForegroundColor Red
+                        Write-Host "Azure service is not responding at $targetUrl/health" -ForegroundColor Red
+                        Write-Host "Check deployment status or try again later." -ForegroundColor Yellow
+                        exit 1
+                    }
+                    Write-Host ""
                 }
 
                 # Get all recordings
@@ -1849,6 +2127,13 @@ switch ($Verb) {
         Write-Host "  ./catan.ps1 recording replay - Run replay tests (requires running server)"
         Write-Host "  ./catan.ps1 recording delete - Delete a recording"
         Write-Host "  ./catan.ps1 recording        - Show detailed recording help"
+        Write-Host ""
+        Write-Host "Stats:" -ForegroundColor Yellow
+        Write-Host "  ./catan.ps1 stats list       - Show stats summary (add -Azure for Azure)"
+        Write-Host "  ./catan.ps1 stats export     - Export stats to JSON file"
+        Write-Host "  ./catan.ps1 stats import     - Import stats from JSON file"
+        Write-Host "  ./catan.ps1 stats reset      - Reset all lifetime statistics"
+        Write-Host "  ./catan.ps1 stats            - Show detailed stats help"
         Write-Host ""
         Write-Host "Database:" -ForegroundColor Yellow
         Write-Host "  ./catan.ps1 database doctor  - Diagnose database health and contents"

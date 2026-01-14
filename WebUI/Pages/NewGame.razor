@@ -75,6 +75,10 @@
                     <input type="checkbox" @bind="RecordGame" />
                     <span>Record Game</span>
                 </label>
+                <label class="checkbox-label" title="Uncheck for test games">
+                    <input type="checkbox" @bind="SaveLifetimeStats" />
+                    <span>Save Stats</span>
+                </label>
             </div>
         </div>
 
@@ -150,6 +154,9 @@
 
     // Record Game option
     private bool RecordGame { get; set; } = false;
+
+    // Save Lifetime Stats option (default: true)
+    private bool SaveLifetimeStats { get; set; } = true;
 
     private bool CanStart => SelectedPlayers.Count >= 3 && SelectedPlayers.Count <= 6 && !IsCreatingGame && !IsLoadingGame;
 
@@ -272,7 +279,8 @@
                 GameType = SelectedGameType,
                 PlayerIds = playerIds,
                 GameName = $"Game {DateTime.Now:HH:mm}",
-                HouseRules = houseRules
+                HouseRules = houseRules,
+                SaveLifetimeStats = SaveLifetimeStats
             };
 
             // Call the GameService API
@@ -339,6 +347,7 @@
         public List<string> PlayerIds { get; set; } = new();
         public string GameName { get; set; } = string.Empty;
         public HouseRules? HouseRules { get; set; }
+        public bool SaveLifetimeStats { get; set; } = true;
     }
 
     private class NewGameResponse

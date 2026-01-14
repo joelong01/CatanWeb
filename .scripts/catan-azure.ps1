@@ -927,6 +927,14 @@ function Test-DatabaseSchema {
             return $result
         }
 
+        # Ensure public network access is enabled before creating firewall rules
+        $publicAccess = Invoke-AzCommand "sql server show --name $sqlServerName --resource-group $rgName --query publicNetworkAccess -o tsv" -FailOnError $false
+        if ($publicAccess -ne "Enabled") {
+            Write-Log -Level "INFO" -Message "Enabling public network access for SQL Server..." -TraceLevel $TraceLevel
+            Invoke-AzCommand "sql server update --name $sqlServerName --resource-group $rgName --enable-public-network true" -SuppressOutput
+            Write-Log -Level "INFO" -Message "Public network access enabled" -TraceLevel $TraceLevel
+        }
+
         # Add temporary firewall rule for current IP
         $myIp = (Invoke-WebRequest -Uri "https://api.ipify.org" -UseBasicParsing -TimeoutSec 10).Content.Trim()
         $fwRuleName = "SchemaCheck-$([guid]::NewGuid().ToString().Substring(0,8))"
@@ -1113,6 +1121,14 @@ CREATE INDEX [IX_Recordings_CreatedAt] ON [Recordings] ([CreatedAt])
         if (-not (Get-Module -ListAvailable -Name SqlServer)) {
             Write-Log -Level "INFO" -Message "Installing SqlServer PowerShell module..." -TraceLevel $TraceLevel
             Install-Module -Name SqlServer -Scope CurrentUser -Force -AllowClobber
+        }
+
+        # Ensure public network access is enabled before creating firewall rules
+        $publicAccess = Invoke-AzCommand "sql server show --name $sqlServerName --resource-group $rgName --query publicNetworkAccess -o tsv" -FailOnError $false
+        if ($publicAccess -ne "Enabled") {
+            Write-Log -Level "INFO" -Message "Enabling public network access for SQL Server..." -TraceLevel $TraceLevel
+            Invoke-AzCommand "sql server update --name $sqlServerName --resource-group $rgName --enable-public-network true" -SuppressOutput
+            Write-Log -Level "INFO" -Message "Public network access enabled" -TraceLevel $TraceLevel
         }
 
         # Add temporary firewall rule for current IP

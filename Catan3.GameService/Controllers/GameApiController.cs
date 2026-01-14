@@ -303,6 +303,8 @@ namespace Catan3.GameService.Controllers
                 // Pass client-provided HouseRules if present, otherwise use defaults from gameInfo
                 var gameModel = await gameStateMachine.HandleNewGameAsync(gameInfo, newGameMessage.PlayerIds, newGameMessage.GameName ?? "Untitled Game", newGameMessage.HouseRules);
 
+                // Set SaveLifetimeStats from request (default is true)
+                gameModel.SaveLifetimeStats = newGameMessage.SaveLifetimeStats;
 
                 // Store in registry
                 GameStateMachineRegistry.AddGameStateMachine(gameModel.GameId, gameStateMachine);
@@ -519,8 +521,15 @@ namespace Catan3.GameService.Controllers
                 // Get winner name for response
                 var winnerName = winner.Name;
 
-                // Update lifetime stats for ALL players
-                await UpdatePlayerLifetimeStats(currentState, request.WinnerId);
+                // Update lifetime stats for ALL players (if enabled for this game)
+                if (currentState.SaveLifetimeStats)
+                {
+                    await UpdatePlayerLifetimeStats(currentState, request.WinnerId);
+                }
+                else
+                {
+                    _logger.LogEvent("Stats Skipped", $"Game {gameId}: SaveLifetimeStats=false, skipping stats update");
+                }
 
                 // Archive the completed game
                 await ArchiveCompletedGame(gameId, gameStateMachine, currentState, request.WinnerId, winnerName);
