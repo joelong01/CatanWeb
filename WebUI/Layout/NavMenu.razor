@@ -15,6 +15,13 @@
         <div class="nav-label">Hide</div>
     </button>
 
+    <!-- Always visible: Screen Toggle (uses direct onclick to avoid Blazor re-render issues) -->
+    <button class="nav-menu-item" onclick="toggleFullScreen(); return false;">
+        <div class="nav-icon">&#x26F6;</div>
+        @* ⛶ Square Four Corners *@
+        <div class="nav-label">Full Screen</div>
+    </button>
+
     @if (CurrentPage == PageContext.EditPlayers)
     {
         <!-- Edit Players -->
