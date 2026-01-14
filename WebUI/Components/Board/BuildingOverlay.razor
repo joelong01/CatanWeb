@@ -188,8 +188,9 @@
             // During allocation/gameplay: allow 0-star spots if buildable (e.g., harbor access)
             if (spotStars <= 0 && isPickingBoard) continue;
 
-            // Apply resource filter
-            if (filteredResources.Count > 0)
+            // Apply resource filter - only during board picking and allocation phases
+            // During regular gameplay, show all buildable spots regardless of filter
+            if (filteredResources.Count > 0 && (isPickingBoard || isPickingResources))
             {
                 var adjacentTiles = GameModel.TilesForBuildings(building.BuildingKey);
                 var tileResources = adjacentTiles

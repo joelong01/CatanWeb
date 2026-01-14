@@ -93,9 +93,13 @@
 }
 
 .checkmark {
-    font-family: 'Segoe Fluent Icons', var(--icon-font-family);
-    color: white;
-    font-size: 16px;
+    display: inline-block;
+    width: 10px;
+    height: 6px;
+    border-left: 2px solid white;
+    border-bottom: 2px solid white;
+    transform: rotate(-45deg);
+    margin-bottom: 2px;
 }
 
 /* Harbor indicator - ship glyph in top-right corner */
