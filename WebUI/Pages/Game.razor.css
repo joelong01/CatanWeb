@@ -307,6 +307,11 @@
     height: calc(100% - var(--portrait-tab-height, 60px));
 }
 
+/* Portrait + Allocation Phase: Same height constraint for tab bar */
+.game-container[data-layout-mode="portrait"][data-allocation-phase="true"] .game-grid {
+    height: calc(100% - var(--portrait-tab-height, 60px));
+}
+
 /* Portrait + Game Active: All panels hidden by default, tabs control visibility */
 .game-container[data-layout-mode="portrait"][data-game-active="true"] .left-panel,
 .game-container[data-layout-mode="portrait"][data-game-active="true"] .center-panel,

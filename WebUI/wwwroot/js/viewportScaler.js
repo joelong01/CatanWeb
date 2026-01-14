@@ -136,9 +136,10 @@ window.viewportScaler = {
 
         this._debugLog(viewportWidth, viewportHeight, ref.width, ref.height, scale, isPortrait, isMobile);
 
-        // Safari fix: manually size the board container since Safari can't handle
-        // height: 100% + aspect-ratio CSS calculation
-        if (this.isSafari() && !isPortrait) {
+        // Apply explicit board sizing for browsers that can't handle
+        // height: 100% + aspect-ratio CSS calculation (Safari, WebOS/TV browsers, older browsers)
+        // This is safe to run on all browsers - explicit sizing is more reliable than CSS aspect-ratio
+        if (!isPortrait && this.needsExplicitBoardSizing()) {
             this._fixSafariBoardSize();
         }
     },
@@ -150,6 +151,21 @@ window.viewportScaler = {
         const ua = navigator.userAgent;
         // Safari but not Chrome (Chrome includes "Safari" in UA)
         return ua.includes('Safari') && !ua.includes('Chrome') && !ua.includes('Chromium');
+    },
+
+    /**
+     * Detect if browser needs explicit board sizing (can't handle CSS aspect-ratio properly).
+     *
+     * Originally this checked for specific problematic browsers (Safari, WebOS/LG TV,
+     * Tizen/Samsung TV, Roku, PlayStation, Xbox), but CSS aspect-ratio with height: 100%
+     * parent containers is unreliable across many browsers.
+     *
+     * For maximum compatibility, we now apply explicit JavaScript sizing to ALL browsers.
+     * This is safe because explicit pixel sizing works everywhere and eliminates
+     * layout inconsistencies across different browser engines.
+     */
+    needsExplicitBoardSizing: function () {
+        return true;
     },
 
     /**
