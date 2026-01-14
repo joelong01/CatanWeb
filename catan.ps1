@@ -58,6 +58,21 @@ param(
     [Parameter()]
     [switch]$Help,
 
+    [Parameter()]
+    [switch]$Terminate,
+
+    [Parameter()]
+    [switch]$Azure,
+
+    [Parameter()]
+    [string]$Name,
+
+    [Parameter()]
+    [string]$Location,
+
+    [Parameter()]
+    [switch]$All,
+
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArgs
 )
@@ -733,90 +748,426 @@ switch ($Verb) {
     }
 
     "replay" {
-        Write-Host ""
-        Write-Host "Running Recording Replay Tests" -ForegroundColor Cyan
-        Write-Host "==============================" -ForegroundColor Cyan
-        Write-Host ""
+        # Redirect to recording replay for backward compatibility
+        Write-Host "Note: 'replay' command moved to 'recording replay'. Redirecting..." -ForegroundColor DarkYellow
+        $Verb = "recording"
+        $SubCommand = "replay"
+        # Re-invoke with the new verb (fall through to recording handler won't work, so we call it directly)
+        & $PSCommandPath recording replay -Name:$Name -Azure:$Azure -Local:$Local
+        exit $LASTEXITCODE
+    }
 
-        # Check if GameService is running
-        if (-not (Test-PortInUse $GameServicePort)) {
-            Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
-            Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
-            exit 1
+    "recording" {
+        # Determine target URL (local or Azure)
+        $targetUrl = $GameServiceUrl
+        $targetName = "Local"
+
+        if ($Azure) {
+            $azureConfigFile = Join-Path $PSScriptRoot ".azure\catan-azure.json"
+            if (-not (Test-Path $azureConfigFile)) {
+                Write-Host "Azure configuration not found. Run './catan.ps1 azure install' first." -ForegroundColor Red
+                exit 1
+            }
+            $azureConfig = Get-Content $azureConfigFile -Raw | ConvertFrom-Json
+            $targetUrl = $azureConfig.gameService.url
+            $targetName = "Azure"
         }
 
-        # Get all recordings
-        Write-Host "Fetching recordings from $GameServiceUrl..." -ForegroundColor Yellow
-        try {
-            $recordings = Invoke-RestMethod -Uri "$GameServiceUrl/api/recordings" -Method Get
-        } catch {
-            Write-Host "Failed to fetch recordings: $_" -ForegroundColor Red
-            exit 1
-        }
+        # Default recordings directory
+        $defaultRecordingsDir = Join-Path $PSScriptRoot "Catan3.GameService\Default Data\Recordings"
+        $recordingsDir = if ($Location) { $Location } else { $defaultRecordingsDir }
 
-        if ($recordings.Count -eq 0) {
-            Write-Host "No recordings found. Create some recordings first!" -ForegroundColor Yellow
-            exit 0
-        }
+        switch ($SubCommand) {
+            "list" {
+                Write-Host ""
+                Write-Host "Recordings ($targetName)" -ForegroundColor Cyan
+                Write-Host "==================" -ForegroundColor Cyan
+                Write-Host ""
 
-        Write-Host "Found $($recordings.Count) recording(s)" -ForegroundColor Green
-        Write-Host ""
+                # Check if service is reachable
+                if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
+                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
+                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    exit 1
+                }
 
-        $passed = 0
-        $failed = 0
-        $failedTests = @()
+                try {
+                    $recordings = Invoke-RestMethod -Uri "$targetUrl/api/recordings" -Method Get -TimeoutSec 30
+                } catch {
+                    Write-Host "Failed to fetch recordings from $targetUrl : $_" -ForegroundColor Red
+                    exit 1
+                }
 
-        foreach ($recording in $recordings) {
-            Write-Host "  Running: $($recording.name) ($($recording.actionCount) actions)... " -NoNewline
+                if ($recordings.Count -eq 0) {
+                    Write-Host "No recordings found." -ForegroundColor Yellow
+                    exit 0
+                }
 
-            try {
-                $result = Invoke-RestMethod -Uri "$GameServiceUrl/api/recording/$($recording.id)/replay" -Method Post
-
-                if ($result.success) {
-                    Write-Host "PASS" -ForegroundColor Green
-                    $passed++
+                if ($Json) {
+                    $recordings | ConvertTo-Json -Depth 10
                 } else {
-                    Write-Host "FAIL" -ForegroundColor Red
-                    $failed++
-                    $errorMsg = if ($result.failedAtAction) {
-                        "Failed at action $($result.failedAtAction): $($result.errorMessage)"
-                    } else {
-                        $result.errorMessage
-                    }
-                    $failedTests += @{
-                        Name = $recording.name
-                        Error = $errorMsg
-                        Expected = $result.expectedHash
-                        Actual = $result.actualHash
+                    # Table format
+                    Write-Host ("{0,-38} {1,-25} {2,-8} {3,-8} {4}" -f "ID", "Name", "Actions", "Players", "Type")
+                    Write-Host ("{0,-38} {1,-25} {2,-8} {3,-8} {4}" -f "--------------------------------------", "-------------------------", "--------", "--------", "---------")
+                    foreach ($r in $recordings) {
+                        $displayName = if ($r.name.Length -gt 24) { $r.name.Substring(0, 21) + "..." } else { $r.name }
+                        Write-Host ("{0,-38} {1,-25} {2,-8} {3,-8} {4}" -f $r.id, $displayName, $r.actionCount, $r.playerCount, $r.gameType)
                     }
                 }
-            } catch {
-                Write-Host "ERROR" -ForegroundColor Red
-                $failed++
-                $failedTests += @{
-                    Name = $recording.name
-                    Error = $_.Exception.Message
+                Write-Host ""
+                Write-Host "Total: $($recordings.Count) recording(s)" -ForegroundColor Green
+            }
+
+            "save" {
+                Write-Host ""
+                Write-Host "Saving Recordings ($targetName)" -ForegroundColor Cyan
+                Write-Host "========================" -ForegroundColor Cyan
+                Write-Host ""
+
+                # Check if service is reachable
+                if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
+                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
+                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    exit 1
+                }
+
+                # Ensure output directory exists
+                if (-not (Test-Path $recordingsDir)) {
+                    New-Item -ItemType Directory -Path $recordingsDir -Force | Out-Null
+                    Write-Host "Created directory: $recordingsDir" -ForegroundColor Yellow
+                }
+
+                # Fetch recordings list
+                try {
+                    $recordings = Invoke-RestMethod -Uri "$targetUrl/api/recordings" -Method Get -TimeoutSec 30
+                } catch {
+                    Write-Host "Failed to fetch recordings: $_" -ForegroundColor Red
+                    exit 1
+                }
+
+                # Filter by name if specified
+                if ($Name) {
+                    $recordings = $recordings | Where-Object { $_.name -like $Name }
+                }
+
+                if ($recordings.Count -eq 0) {
+                    Write-Host "No recordings found matching criteria." -ForegroundColor Yellow
+                    exit 0
+                }
+
+                Write-Host "Found $($recordings.Count) recording(s)" -ForegroundColor Green
+                Write-Host "Saving to: $recordingsDir" -ForegroundColor Gray
+                Write-Host ""
+
+                $saved = 0
+                foreach ($recording in $recordings) {
+                    $safeName = $recording.name -replace '[^\w\-\.]', '-'
+                    $filePath = Join-Path $recordingsDir "$safeName.json"
+
+                    Write-Host "  Saving: $($recording.name)..." -ForegroundColor Gray -NoNewline
+
+                    # Fetch full recording data
+                    try {
+                        $fullRecording = Invoke-RestMethod -Uri "$targetUrl/api/recording/$($recording.id)" -Method Get -TimeoutSec 30
+                    } catch {
+                        Write-Host " failed to fetch: $_" -ForegroundColor Red
+                        continue
+                    }
+
+                    $exportObj = @{
+                        id = $fullRecording.id
+                        name = $fullRecording.name
+                        createdAt = $fullRecording.createdAt
+                        gameType = $fullRecording.gameType
+                        playerCount = $fullRecording.playerCount
+                        playerIds = $fullRecording.playerIds
+                        actionCount = $fullRecording.actionCount
+                        data = $fullRecording.data
+                    }
+
+                    $exportObj | ConvertTo-Json -Depth 10 -Compress | Set-Content -Path $filePath -Encoding UTF8
+                    Write-Host " saved" -ForegroundColor Green
+                    $saved++
+                }
+
+                Write-Host ""
+                Write-Host "Saved $saved recording(s) to: $recordingsDir" -ForegroundColor Green
+            }
+
+            "load" {
+                Write-Host ""
+                Write-Host "Loading Recordings to $targetName" -ForegroundColor Cyan
+                Write-Host "==========================" -ForegroundColor Cyan
+                Write-Host ""
+
+                # Check if service is reachable
+                if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
+                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
+                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    exit 1
+                }
+
+                if (-not (Test-Path $recordingsDir)) {
+                    Write-Host "Recordings directory not found: $recordingsDir" -ForegroundColor Red
+                    Write-Host "Run './catan.ps1 recording save' first to export recordings" -ForegroundColor Yellow
+                    exit 1
+                }
+
+                # Get JSON files
+                $jsonFiles = Get-ChildItem -Path $recordingsDir -Filter "*.json" -ErrorAction SilentlyContinue
+
+                # Filter by name if specified
+                if ($Name) {
+                    $jsonFiles = $jsonFiles | Where-Object { $_.Name -like $Name }
+                }
+
+                if ($jsonFiles.Count -eq 0) {
+                    Write-Host "No recording files found in $recordingsDir" -ForegroundColor Yellow
+                    exit 0
+                }
+
+                Write-Host "Found $($jsonFiles.Count) recording file(s)" -ForegroundColor Green
+                Write-Host "Loading to: $targetUrl" -ForegroundColor Gray
+                Write-Host ""
+
+                $imported = 0
+                $skipped = 0
+                $failed = 0
+
+                foreach ($file in $jsonFiles) {
+                    Write-Host "  Loading: $($file.Name)..." -NoNewline
+
+                    try {
+                        $recording = Get-Content $file.FullName -Raw | ConvertFrom-Json
+
+                        $importRequest = @{
+                            id = $recording.id
+                            name = $recording.name
+                            createdAt = $recording.createdAt
+                            gameType = $recording.gameType
+                            playerCount = $recording.playerCount
+                            playerIds = $recording.playerIds
+                            actionCount = $recording.actionCount
+                            data = $recording.data
+                        }
+
+                        $response = Invoke-RestMethod -Uri "$targetUrl/api/recording/import" `
+                            -Method Post `
+                            -ContentType "application/json" `
+                            -Body ($importRequest | ConvertTo-Json -Depth 10) `
+                            -TimeoutSec 30
+
+                        Write-Host " imported" -ForegroundColor Green
+                        $imported++
+                    }
+                    catch {
+                        if ($_.Exception.Response.StatusCode -eq 409) {
+                            Write-Host " already exists" -ForegroundColor Gray
+                            $skipped++
+                        } else {
+                            Write-Host " failed: $_" -ForegroundColor Red
+                            $failed++
+                        }
+                    }
+                }
+
+                Write-Host ""
+                Write-Host "Results: $imported imported, $skipped skipped, $failed failed" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" })
+            }
+
+            "delete" {
+                if (-not $Name) {
+                    Write-Host "Error: -Name parameter is required for delete" -ForegroundColor Red
+                    Write-Host "Usage: ./catan.ps1 recording delete -Name <name-or-id>" -ForegroundColor Yellow
+                    exit 1
+                }
+
+                Write-Host ""
+                Write-Host "Deleting Recording from $targetName" -ForegroundColor Cyan
+                Write-Host "=============================" -ForegroundColor Cyan
+                Write-Host ""
+
+                # Check if service is reachable
+                if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
+                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
+                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    exit 1
+                }
+
+                # Find recording by name or ID
+                try {
+                    $recordings = Invoke-RestMethod -Uri "$targetUrl/api/recordings" -Method Get -TimeoutSec 30
+                } catch {
+                    Write-Host "Failed to fetch recordings: $_" -ForegroundColor Red
+                    exit 1
+                }
+
+                $toDelete = $recordings | Where-Object { $_.name -eq $Name -or $_.id -eq $Name }
+
+                if ($toDelete.Count -eq 0) {
+                    Write-Host "Recording not found: $Name" -ForegroundColor Red
+                    exit 1
+                }
+
+                if ($toDelete.Count -gt 1) {
+                    Write-Host "Multiple recordings match '$Name'. Please use the full ID:" -ForegroundColor Red
+                    foreach ($r in $toDelete) {
+                        Write-Host "  $($r.id) - $($r.name)" -ForegroundColor Gray
+                    }
+                    exit 1
+                }
+
+                $recording = $toDelete[0]
+
+                if (-not $Yes) {
+                    Write-Host "About to delete: $($recording.name) ($($recording.id))" -ForegroundColor Yellow
+                    $confirm = Read-Host "Are you sure? (y/N)"
+                    if ($confirm -ne 'y' -and $confirm -ne 'Y') {
+                        Write-Host "Cancelled." -ForegroundColor Gray
+                        exit 0
+                    }
+                }
+
+                try {
+                    Invoke-RestMethod -Uri "$targetUrl/api/recording/$($recording.id)" -Method Delete -TimeoutSec 30 | Out-Null
+                    Write-Host "Deleted: $($recording.name)" -ForegroundColor Green
+                } catch {
+                    Write-Host "Failed to delete: $_" -ForegroundColor Red
+                    exit 1
+                }
+            }
+
+            "replay" {
+                Write-Host ""
+                Write-Host "Running Recording Replay Tests ($targetName)" -ForegroundColor Cyan
+                Write-Host "======================================" -ForegroundColor Cyan
+                Write-Host ""
+
+                # Check if service is reachable
+                if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
+                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
+                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    exit 1
+                }
+
+                # Get all recordings
+                try {
+                    $recordings = Invoke-RestMethod -Uri "$targetUrl/api/recordings" -Method Get -TimeoutSec 30
+                } catch {
+                    Write-Host "Failed to fetch recordings: $_" -ForegroundColor Red
+                    exit 1
+                }
+
+                # Filter by name if specified
+                if ($Name) {
+                    $recordings = $recordings | Where-Object { $_.name -like $Name }
+                }
+
+                if ($recordings.Count -eq 0) {
+                    Write-Host "No recordings found. Create some recordings first!" -ForegroundColor Yellow
+                    exit 0
+                }
+
+                Write-Host "Found $($recordings.Count) recording(s)" -ForegroundColor Green
+                Write-Host ""
+
+                $passed = 0
+                $failed = 0
+                $failedTests = @()
+
+                foreach ($recording in $recordings) {
+                    Write-Host "  Running: $($recording.name) ($($recording.actionCount) actions)... " -NoNewline
+
+                    try {
+                        $result = Invoke-RestMethod -Uri "$targetUrl/api/recording/$($recording.id)/replay" -Method Post -TimeoutSec 120
+
+                        if ($result.success) {
+                            Write-Host "PASS" -ForegroundColor Green
+                            $passed++
+                        } else {
+                            Write-Host "FAIL" -ForegroundColor Red
+                            $failed++
+                            $errorMsg = if ($result.failedAtAction) {
+                                "Failed at action $($result.failedAtAction): $($result.errorMessage)"
+                            } else {
+                                $result.errorMessage
+                            }
+                            $failedTests += @{
+                                Name = $recording.name
+                                Error = $errorMsg
+                                Expected = $result.expectedHash
+                                Actual = $result.actualHash
+                            }
+                        }
+                    } catch {
+                        Write-Host "ERROR" -ForegroundColor Red
+                        $failed++
+                        $failedTests += @{
+                            Name = $recording.name
+                            Error = $_.Exception.Message
+                        }
+                    }
+                }
+
+                Write-Host ""
+                Write-Host "Results: $passed passed, $failed failed" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" })
+
+                if ($failedTests.Count -gt 0) {
+                    Write-Host ""
+                    Write-Host "Failed Tests:" -ForegroundColor Red
+                    foreach ($test in $failedTests) {
+                        Write-Host "  - $($test.Name): $($test.Error)" -ForegroundColor Red
+                        if ($test.Expected -and $test.Actual) {
+                            Write-Host "    Expected: $($test.Expected), Actual: $($test.Actual)" -ForegroundColor DarkGray
+                        }
+                    }
+                    exit 1
+                }
+
+                Write-Host ""
+                Write-Host "All recording replay tests passed!" -ForegroundColor Green
+            }
+
+            default {
+                Write-Host ""
+                Write-Host "Recording Management Commands" -ForegroundColor Cyan
+                Write-Host "=============================" -ForegroundColor Cyan
+                Write-Host ""
+                Write-Host "Usage: ./catan.ps1 recording <subcommand> [options]" -ForegroundColor Yellow
+                Write-Host ""
+                Write-Host "Subcommands:" -ForegroundColor Yellow
+                Write-Host "  list     - List all recordings"
+                Write-Host "  save     - Save recordings to JSON files"
+                Write-Host "  load     - Load recordings from JSON files"
+                Write-Host "  delete   - Delete a recording"
+                Write-Host "  replay   - Run replay tests"
+                Write-Host ""
+                Write-Host "Options:" -ForegroundColor Yellow
+                Write-Host "  -Local        Target local GameService (default)"
+                Write-Host "  -Azure        Target Azure GameService"
+                Write-Host "  -Name <name>  Filter by recording name (supports wildcards)"
+                Write-Host "  -Location     Directory for save/load (default: Default Data/Recordings/)"
+                Write-Host "  -Json         Output as JSON (for list)"
+                Write-Host "  -Yes          Skip confirmation prompts"
+                Write-Host ""
+                Write-Host "Examples:" -ForegroundColor Yellow
+                Write-Host "  ./catan.ps1 recording list                    - List local recordings"
+                Write-Host "  ./catan.ps1 recording list -Azure             - List Azure recordings"
+                Write-Host "  ./catan.ps1 recording save                    - Save all local recordings"
+                Write-Host "  ./catan.ps1 recording save -Azure             - Save all Azure recordings"
+                Write-Host "  ./catan.ps1 recording load                    - Load recordings to local"
+                Write-Host "  ./catan.ps1 recording load -Azure             - Load recordings to Azure"
+                Write-Host "  ./catan.ps1 recording replay                  - Run all replay tests locally"
+                Write-Host "  ./catan.ps1 recording replay -Azure           - Run replay tests on Azure"
+                Write-Host "  ./catan.ps1 recording delete -Name 'Test*'    - Delete matching recording"
+                Write-Host ""
+
+                if ($SubCommand) {
+                    Write-Host "Unknown subcommand: $SubCommand" -ForegroundColor Red
+                    exit 1
                 }
             }
         }
-
-        Write-Host ""
-        Write-Host "Results: $passed passed, $failed failed" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" })
-
-        if ($failedTests.Count -gt 0) {
-            Write-Host ""
-            Write-Host "Failed Tests:" -ForegroundColor Red
-            foreach ($test in $failedTests) {
-                Write-Host "  - $($test.Name): $($test.Error)" -ForegroundColor Red
-                if ($test.Expected -and $test.Actual) {
-                    Write-Host "    Expected: $($test.Expected), Actual: $($test.Actual)" -ForegroundColor DarkGray
-                }
-            }
-            exit 1
-        }
-
-        Write-Host ""
-        Write-Host "All recording replay tests passed!" -ForegroundColor Green
     }
 
     "doctor" {
@@ -1073,6 +1424,23 @@ switch ($Verb) {
     }
 
     "update" {
+        # Terminate all Terminal windows on macOS if requested
+        if ($Terminate -and $IsMacOS) {
+            Write-Host "Terminating all Terminal windows..." -ForegroundColor Yellow
+            try {
+                # Use killall to force-terminate Terminal without confirmation dialog
+                & killall Terminal 2>$null
+                Start-Sleep -Milliseconds 500
+                Write-Host "Terminal windows closed." -ForegroundColor Green
+            }
+            catch {
+                Write-Host "Note: Could not close Terminal windows (may not be running)" -ForegroundColor DarkYellow
+            }
+        }
+        elseif ($Terminate -and -not $IsMacOS) {
+            Write-Host "Note: -Terminate switch is only supported on macOS" -ForegroundColor DarkYellow
+        }
+
         Write-Host "Rebuilding WebUI and GameService..." -ForegroundColor Cyan
 
         # Build GameService first
@@ -1093,7 +1461,7 @@ switch ($Verb) {
         }
         Write-Host "WebUI rebuilt." -ForegroundColor Green
 
-        # Restart both services if running
+        # Restart both services if running, or start them if -Terminate was used
         $gameRunning = Test-PortInUse -Port $GameServicePort
         $webRunning = Test-PortInUse -Port $WebUIPort
 
@@ -1109,6 +1477,13 @@ switch ($Verb) {
                 Start-WebUI
             }
             Write-Host "Services rebuilt and restarted! Refresh browser to load changes." -ForegroundColor Green
+        }
+        elseif ($Terminate) {
+            # -Terminate killed the services, so start them fresh
+            Write-Host "Starting services..." -ForegroundColor Yellow
+            Start-GameService
+            Start-WebUI
+            Write-Host "Services rebuilt and started! Refresh browser to load changes." -ForegroundColor Green
         }
         else {
             Write-Host "Projects rebuilt successfully! Run './catan.ps1 run' to start." -ForegroundColor Green
@@ -1174,6 +1549,8 @@ switch ($Verb) {
                 Write-Host "  ./catan.ps1 database doctor -Local  - Check local SQLite database"
                 Write-Host "  ./catan.ps1 database clean          - Delete local database"
                 Write-Host "  ./catan.ps1 database install        - Fresh install with default players"
+                Write-Host ""
+                Write-Host "Note: Recording management moved to './catan.ps1 recording'" -ForegroundColor DarkYellow
                 Write-Host ""
 
                 if ($SubCommand) {
@@ -1454,9 +1831,9 @@ switch ($Verb) {
         Write-Host "  ./catan.ps1 stop             - Stop running services"
         Write-Host "  ./catan.ps1 restart          - Stop and restart services"
         Write-Host "  ./catan.ps1 update           - Rebuild and restart (when hot reload fails)"
+        Write-Host "  ./catan.ps1 update -Terminate - Same, but close all Terminal windows first (macOS)"
         Write-Host "  ./catan.ps1 build            - Build all projects (no tests)"
         Write-Host "  ./catan.ps1 test             - Build and run all tests"
-        Write-Host "  ./catan.ps1 replay           - Run recording replay tests (requires running server)"
         Write-Host "  ./catan.ps1 clean            - Stop services, clean build (preserves database)"
         Write-Host "  ./catan.ps1 debug            - Instructions for VS Code debugging"
         Write-Host "  ./catan.ps1 help (or -Help)  - Show this help"
@@ -1464,6 +1841,14 @@ switch ($Verb) {
         Write-Host "Setup:" -ForegroundColor Yellow
         Write-Host "  ./catan.ps1 doctor           - Check dependencies and database health"
         Write-Host "  ./catan.ps1 install          - Install all dependencies and database"
+        Write-Host ""
+        Write-Host "Recording:" -ForegroundColor Yellow
+        Write-Host "  ./catan.ps1 recording list   - List all recordings (add -Azure for Azure)"
+        Write-Host "  ./catan.ps1 recording save   - Save recordings to JSON files"
+        Write-Host "  ./catan.ps1 recording load   - Load recordings from JSON files"
+        Write-Host "  ./catan.ps1 recording replay - Run replay tests (requires running server)"
+        Write-Host "  ./catan.ps1 recording delete - Delete a recording"
+        Write-Host "  ./catan.ps1 recording        - Show detailed recording help"
         Write-Host ""
         Write-Host "Database:" -ForegroundColor Yellow
         Write-Host "  ./catan.ps1 database doctor  - Diagnose database health and contents"

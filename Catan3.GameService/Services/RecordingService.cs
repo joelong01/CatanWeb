@@ -288,4 +288,48 @@ public class RecordingService
             return null;
         }
     }
+
+    /// <summary>
+    /// Imports a recording from external source (e.g., syncing between local and Azure databases).
+    /// Skips if a recording with the same ID already exists.
+    /// </summary>
+    public async Task<bool> ImportRecordingAsync(
+        string id,
+        string name,
+        DateTime createdAt,
+        string gameType,
+        int playerCount,
+        string playerIds,
+        int actionCount,
+        string data)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
+
+        // Check if recording already exists
+        var existing = await dbContext.Recordings.FindAsync(id);
+        if (existing != null)
+        {
+            _logger.LogInformation("Recording {RecordingId} already exists, skipping import", id);
+            return false;
+        }
+
+        var entity = new RecordingEntity
+        {
+            Id = id,
+            Name = name,
+            CreatedAt = createdAt,
+            GameType = gameType,
+            PlayerCount = playerCount,
+            PlayerIds = playerIds,
+            ActionCount = actionCount,
+            Data = data
+        };
+
+        dbContext.Recordings.Add(entity);
+        await dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Imported recording {RecordingId} '{Name}'", id, name);
+        return true;
+    }
 }

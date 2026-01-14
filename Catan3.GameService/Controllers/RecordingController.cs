@@ -25,6 +25,21 @@ public class RenameRecordingRequest
 }
 
 /// <summary>
+/// Request to import a recording from another database.
+/// </summary>
+public class ImportRecordingRequest
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public string GameType { get; set; } = string.Empty;
+    public int PlayerCount { get; set; }
+    public string PlayerIds { get; set; } = string.Empty;
+    public int ActionCount { get; set; }
+    public string Data { get; set; } = string.Empty;
+}
+
+/// <summary>
 /// Summary of a recording for list display.
 /// </summary>
 public class RecordingSummary
@@ -277,6 +292,36 @@ public class RecordingController : ControllerBase
     }
 
     /// <summary>
+    /// Imports a recording (for syncing between local and Azure databases).
+    /// </summary>
+    [HttpPost("recording/import")]
+    public async Task<ActionResult> ImportRecording([FromBody] ImportRecordingRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Id) || string.IsNullOrWhiteSpace(request.Name))
+        {
+            return BadRequest(new { message = "Id and Name are required" });
+        }
+
+        var imported = await _recordingService.ImportRecordingAsync(
+            request.Id,
+            request.Name,
+            request.CreatedAt,
+            request.GameType,
+            request.PlayerCount,
+            request.PlayerIds,
+            request.ActionCount,
+            request.Data);
+
+        if (!imported)
+        {
+            return Conflict(new { message = $"Recording {request.Id} already exists" });
+        }
+
+        _logger.LogInformation("Imported recording {RecordingId}: {Name}", request.Id, request.Name);
+        return Ok(new { message = "Recording imported", id = request.Id });
+    }
+
+    /// <summary>
     /// Renames a recording.
     /// </summary>
     [HttpPut("recording/{id}/rename")]
@@ -339,7 +384,8 @@ public class RecordingController : ControllerBase
         try
         {
             // Create a GameStateMachine from the initial GameModel
-            var gameLog = new Log<string>(_persistenceService, string.Empty); // Empty path for test
+            var gameLog = new Log<string>(_persistenceService, string.Empty);
+            gameLog.InTestMode = true; // Skip persistence during replay
             var gameStateMachine = CreateGameStateMachine(gameLog);
             gameStateMachine.InitializeLoggingState(recordingData.InitialGameModel);
 
@@ -491,6 +537,7 @@ public class RecordingController : ControllerBase
 
         // Create game state machine with initial game model
         var gameLog = new Log<string>(_persistenceService, string.Empty);
+        gameLog.InTestMode = true; // Skip persistence during replay
         var gameStateMachine = CreateGameStateMachine(gameLog);
         gameStateMachine.InitializeLoggingState(recordingData.InitialGameModel);
 
