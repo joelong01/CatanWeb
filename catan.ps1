@@ -71,9 +71,6 @@ param(
     [string]$Location,
 
     [Parameter()]
-    [switch]$All,
-
-    [Parameter()]
     [string]$File,
 
     [Parameter()]
@@ -311,7 +308,7 @@ function Test-DatabaseSchema {
     }
 
     # Run tests with a filter for database-related tests
-    $result = & dotnet test $testProject --filter "Category=Database" --verbosity quiet --nologo 2>&1
+    & dotnet test $testProject --filter "Category=Database" --verbosity quiet --nologo 2>&1 | Out-Null
     return ($LASTEXITCODE -eq 0)
 }
 
@@ -859,7 +856,6 @@ switch ($Verb) {
                             }
 
                             Write-Host ""
-                            $totalGames = ($stats | Measure-Object -Property gamesPlayed -Sum).Sum / 2  # Divide by player count approx
                             Write-Host "Total: $($stats.Count) players" -ForegroundColor Green
                         }
                     }
@@ -1149,7 +1145,7 @@ switch ($Verb) {
                 if ($Azure) {
                     Write-Host "Checking Azure service health..." -NoNewline
                     try {
-                        $health = Invoke-RestMethod -Uri "$targetUrl/health" -TimeoutSec 10
+                        $null = Invoke-RestMethod -Uri "$targetUrl/health" -TimeoutSec 10
                         Write-Host " OK" -ForegroundColor Green
                     } catch {
                         Write-Host " FAILED" -ForegroundColor Red
@@ -1320,7 +1316,7 @@ switch ($Verb) {
                 if ($Azure) {
                     Write-Host "Checking Azure service health..." -NoNewline
                     try {
-                        $health = Invoke-RestMethod -Uri "$targetUrl/health" -TimeoutSec 10
+                        $null = Invoke-RestMethod -Uri "$targetUrl/health" -TimeoutSec 10
                         Write-Host " OK" -ForegroundColor Green
                     } catch {
                         Write-Host " FAILED" -ForegroundColor Red
@@ -1976,7 +1972,7 @@ switch ($Verb) {
                     Write-Host "  Database: Missing: $($dbDoctor.missingTables -join ', ')" -ForegroundColor Yellow
 
                     # Use Repair-DatabaseSchema to create tables directly (no GameService dependency)
-                    $repairResult = & $azureScript database fix -TraceLevel $TraceLevel
+                    & $azureScript database fix -TraceLevel $TraceLevel
                     if ($LASTEXITCODE -ne 0) {
                         Write-Host "  Database: Failed to create missing tables" -ForegroundColor Red
                         exit 1
