@@ -14,12 +14,11 @@ Read and follow all rules and guidelines in `.ai/ai-rules.md`.
 | **Catan3.GameService** | ASP.NET Core backend with REST API + SignalR |
 | **Catan3.WebUI** | Blazor WebAssembly frontend |
 | **WebUI.Server** | Blazor Server host |
-| **DesktopApp** | WinUI3 reference - **DO NOT MODIFY** (kept for reference only) |
+| **DesktopApp** | WinUI3 desktop client (Windows-only) |
 
 ## Code Review: Things to Flag
 
 ### Critical Issues (Block PR)
-- Changes to `DesktopApp/` - should only modify WebUI projects (`Catan3.WebUI` and `WebUI.Server`)
 - Hardcoded colors instead of CSS variables
 - String-based commands instead of typed messages (`UndoMessage`, `PurchaseMessage`, etc.)
 - State management outside of GameModel
@@ -41,7 +40,6 @@ Read and follow all rules and guidelines in `.ai/ai-rules.md`.
 
 - Using F1 (Free) Azure tier (acceptable for dev)
 - Skipped tests with `[Skip]` attribute (intentionally deprecated)
-- DesktopApp build failures on non-Windows (expected)
 - `= null!` on fields set in constructor via methods (intentional)
 
 ## Key Principles
@@ -51,7 +49,7 @@ Read and follow all rules and guidelines in `.ai/ai-rules.md`.
 3. **CSS variables for theming** - Never hardcode colors
 4. **GameServiceProxy for communication** - All client-server comms through shared proxy
 5. **Minimal changes** - Make surgical modifications, don't refactor surrounding code
-6. **Platform-specific icons** - WebUI uses Catan font (`Catan.ttf`) for cross-platform support; DesktopApp uses Segoe MDL2 Assets (Windows-only, reference only)
+6. **Platform-specific icons** - WebUI uses Catan font (`Catan.ttf`) for cross-platform support; DesktopApp uses Segoe MDL2 Assets (Windows-only)
 
 ## Build & Test Commands
 
