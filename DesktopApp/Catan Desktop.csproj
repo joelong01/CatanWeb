@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net9.0-windows10.0.22621.0</TargetFramework>
@@ -45,7 +45,8 @@
 		
         <!-- Auto-deployment configuration (disabled by default to avoid nested publish copy issues) -->
         <AutoDeploy Condition="'$(AutoDeploy)' == ''">false</AutoDeploy>
-        <PackageCertificateThumbprint>B8336920F26C7FB4AD1DDF3B48B837E8CA73CFE5</PackageCertificateThumbprint>
+        <PackageCertificateThumbprint>C2D61031C170344D7351A349A1C1C7DF5E2A6313</PackageCertificateThumbprint>
+        <PackageCertificatePassword>CatanDev</PackageCertificatePassword>
         <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
 	</PropertyGroup>
 	

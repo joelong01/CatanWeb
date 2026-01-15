@@ -267,10 +267,43 @@ function Ensure-MsixCertificate {
 
     $pfxPath = Join-Path $ProjectDir $PfxFileName
     $certSubject = "CN=CatanDesktopDev"
+    $certPassword = "CatanDev"
 
     # Check if pfx already exists
     if (Test-Path $pfxPath) {
         Write-Output "✅ MSIX certificate found: $PfxFileName"
+
+        # Ensure certificate is trusted even if PFX already exists
+        try {
+            $pwd = ConvertTo-SecureString -String $certPassword -Force -AsPlainText
+            $cert = Get-PfxCertificate -FilePath $pfxPath -Password $pwd -ErrorAction SilentlyContinue
+            if (-not $cert) {
+                # Try loading with X509Certificate2 for more control
+                $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfxPath, $certPassword, "Exportable,PersistKeySet")
+            }
+
+            if ($cert) {
+                # Check if already in TrustedPeople store
+                $trustedPeopleStore = New-Object System.Security.Cryptography.X509Certificates.X509Store("TrustedPeople", "CurrentUser")
+                $trustedPeopleStore.Open("ReadOnly")
+                $existingCert = $trustedPeopleStore.Certificates | Where-Object { $_.Thumbprint -eq $cert.Thumbprint }
+                $trustedPeopleStore.Close()
+
+                if (-not $existingCert) {
+                    # Export to CER and use certutil (works in CI without UI)
+                    $cerPath = [System.IO.Path]::ChangeExtension($pfxPath, ".cer")
+                    Export-Certificate -Cert $cert -FilePath $cerPath -Force | Out-Null
+                    $certutilResult = & certutil -user -addstore TrustedPeople $cerPath 2>&1
+                    Remove-Item -Path $cerPath -Force -ErrorAction SilentlyContinue
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-Output "   Added existing certificate to TrustedPeople store"
+                    }
+                }
+            }
+        } catch {
+            Write-Output "⚠️  Could not verify certificate trust: $($_.Exception.Message)"
+        }
+
         return $true
     }
 
@@ -293,8 +326,8 @@ function Ensure-MsixCertificate {
 
         Write-Output "   Certificate created with thumbprint: $($cert.Thumbprint)"
 
-        # Export to PFX (no password for dev cert)
-        $pwd = ConvertTo-SecureString -String "" -Force -AsPlainText
+        # Export to PFX with placeholder password (empty strings not allowed in some PS versions)
+        $pwd = ConvertTo-SecureString -String $certPassword -Force -AsPlainText
         Export-PfxCertificate -Cert $cert -FilePath $pfxPath -Password $pwd | Out-Null
 
         Write-Output "   Exported to: $pfxPath"
@@ -309,12 +342,26 @@ function Ensure-MsixCertificate {
             Write-Output "   Updated thumbprint in: $($csprojPath.Name)"
         }
 
-        # Also add to Trusted People store for local deployment
-        $trustedPeopleStore = New-Object System.Security.Cryptography.X509Certificates.X509Store("TrustedPeople", "CurrentUser")
-        $trustedPeopleStore.Open("ReadWrite")
-        $trustedPeopleStore.Add($cert)
-        $trustedPeopleStore.Close()
-        Write-Output "   Added to TrustedPeople store for local deployment"
+        # Add to TrustedPeople store for local deployment using certutil (works in CI without UI)
+        # Export to CER format first (public key only)
+        $cerPath = [System.IO.Path]::ChangeExtension($pfxPath, ".cer")
+        Export-Certificate -Cert $cert -FilePath $cerPath -Force | Out-Null
+
+        # Use certutil to add to TrustedPeople store (no UI prompt)
+        $certutilResult = & certutil -user -addstore TrustedPeople $cerPath 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Output "   Added to TrustedPeople store via certutil"
+        } else {
+            # Fallback to .NET method
+            $trustedPeopleStore = New-Object System.Security.Cryptography.X509Certificates.X509Store("TrustedPeople", "CurrentUser")
+            $trustedPeopleStore.Open("ReadWrite")
+            $trustedPeopleStore.Add($cert)
+            $trustedPeopleStore.Close()
+            Write-Output "   Added to TrustedPeople store via .NET"
+        }
+
+        # Clean up temp CER file
+        Remove-Item -Path $cerPath -Force -ErrorAction SilentlyContinue
 
         Write-Output "✅ MSIX certificate created and configured"
         return $true
@@ -572,7 +619,8 @@ try {
 
         # Register the Catan font for UI consistency (Windows only, unless skipped)
         if ($IsWindows -and -not $NoFontRegister) {
-            $fontPath = Join-Path $PSScriptRoot "DesktopApp\Assets\Fonts\Catan.ttf"
+            $projectRoot = Split-Path $PSScriptRoot -Parent
+            $fontPath = Join-Path $projectRoot "DesktopApp\Assets\Fonts\Catan.ttf"
             Register-Font -FontPath $fontPath
         } elseif ($IsWindows) {
             Write-Output "⏭️  Font registration skipped (flag: -NoFontRegister)"
@@ -691,26 +739,45 @@ try {
         Write-Output "📦 Installing MSIX package: $($msixFile.Name)"
         Write-Command "Add-AppxPackage" @("-Path", $msixFile.FullName)
 
+        $installSucceeded = $false
         try {
             # Try direct installation first
             Add-AppxPackage -Path $msixFile.FullName -ErrorAction Stop
             Write-Output "✅ MSIX package installed successfully"
+            $installSucceeded = $true
         } catch {
-            Write-Output "⚠️  Direct installation failed: $($_.Exception.Message)"
-            Write-Output "🔄 Trying developer package script..."
+            $errorMsg = $_.Exception.Message
+            Write-Output "⚠️  Direct installation failed: $errorMsg"
 
-            # Fallback to the developer script
-            $originalLocation = Get-Location
-            try {
-                Set-Location $packageDir
-                # Run with -Force to skip interactive prompts
-                $process = Start-Process -FilePath "powershell.exe" -ArgumentList @("-ExecutionPolicy", "Bypass", "-File", "Add-AppDevPackage.ps1", "-Force") -Wait -PassThru -WindowStyle Hidden
-                if ($process.ExitCode -ne 0) {
-                    throw "Developer package script failed with exit code: $($process.ExitCode)"
+            # Check if this is a certificate trust issue
+            if ($errorMsg -match "0x800B0109|root certificate|not trusted") {
+                Write-Output ""
+                Write-Output "💡 Certificate trust issue detected. For local development:"
+                Write-Output "   1. Double-click the .cer file in the package folder"
+                Write-Output "   2. Click 'Install Certificate' → 'Local Machine' → 'Trusted Root'"
+                Write-Output "   Or run Add-AppDevPackage.ps1 manually which will prompt for trust"
+                Write-Output ""
+                Write-Output "   For CI: The MSIX package was built successfully and can be distributed."
+                Write-Output "   Package location: $($msixFile.FullName)"
+                # Don't fail the build for cert trust issues - the package is built
+            } else {
+                Write-Output "🔄 Trying developer package script..."
+
+                # Fallback to the developer script
+                $originalLocation = Get-Location
+                try {
+                    Set-Location $packageDir
+                    # Run with -Force to skip interactive prompts
+                    $process = Start-Process -FilePath "powershell.exe" -ArgumentList @("-ExecutionPolicy", "Bypass", "-File", "Add-AppDevPackage.ps1", "-Force") -Wait -PassThru -WindowStyle Hidden
+                    if ($process.ExitCode -ne 0) {
+                        Write-Output "⚠️  Developer package script failed with exit code: $($process.ExitCode)"
+                    } else {
+                        Write-Output "✅ MSIX package installed via developer script"
+                        $installSucceeded = $true
+                    }
+                } finally {
+                    Set-Location $originalLocation
                 }
-                Write-Output "✅ MSIX package installed via developer script"
-            } finally {
-                Set-Location $originalLocation
             }
         }
 
