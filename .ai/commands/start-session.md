@@ -16,21 +16,51 @@ Read these files in order to understand the current project state:
 - `.ai/sessions/` - Find the most recent timestamped session context file (SESSION_SUMMARY-{date}-{hhmm}.md format)
 - Check recent commits with `git log --oneline` to understand latest work
 
-### 2. Check Git Status and Project Structure
+### 2. Check Git Status and Select Working Branch
 
 Verify the current branch and working directory state:
 
 ```bash
+git branch --show-current
 git status
-git log --oneline
+git log --oneline -10
 ```
+
+**Branch Safety Check (REQUIRED):**
+
+1. **If on `main` branch:** You MUST switch to or create a feature branch before
+   making any changes. Direct work on main is not allowed.
+
+2. **To switch to an existing branch:**
+
+   ```bash
+   git branch -a                    # List all branches
+   git checkout {branch-name}       # Switch to existing branch
+   ```
+
+3. **To create a new branch:**
+
+   ```bash
+   git checkout -b {category}/{description}
+   ```
+
+   Branch naming convention:
+   - `feat/` - New features (e.g., `feat/font-awesome-icons`)
+   - `fix/` - Bug fixes (e.g., `fix/ios-connection-starvation`)
+   - `docs/` - Documentation updates (e.g., `docs/update-readme`)
+   - `refactor/` - Code refactoring (e.g., `refactor/simplify-state-machine`)
+   - `test/` - Test additions/fixes (e.g., `test/add-replay-tests`)
+
+4. **Ask the user** which branch to work on if unclear. Propose a branch name
+   based on the task they describe.
 
 **Current State Information**:
 
-- Check which branch you're on and its relationship to origin
+- Confirm you are on a feature branch (NOT main)
 - Verify working directory is clean or review any uncommitted changes
 - Review recent commits to understand latest work
-- Get familiar with all files in the repository for context when files are referenced by name
+- Get familiar with all files in the repository for context when files are
+  referenced by name
 
 ## Notes for AI Sessions
 

@@ -24,7 +24,10 @@
          To update all versions at once, run from repo root:
          sed -i '' 's/2026-01-13-v1/YYYY-MM-DD-vN/g' WebUI/wwwroot/index.html
          Also update CSS content strings in *.razor.css files (see MainLayout.razor.css) -->
+    <!-- Preload Font Awesome font for faster icon rendering -->
+    <link rel="preload" href="lib/fontawesome/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="lib/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="lib/fontawesome/fontawesome-solid.css" />
     <link rel="stylesheet" href="css/app.css?v=2026-01-13-v1" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="Catan3.WebUI.styles.css?v=2026-01-13-v1" rel="stylesheet" />
@@ -109,13 +112,36 @@
             logMessage('Page loaded, UA: ' + navigator.userAgent.substring(0, 50) + '...');
             logMessage('API URL: ' + apiUrl);
 
-            // Prefetch an image
-            function prefetchImage(url) {
+            // Queue of images to prefetch (loaded after Blazor starts)
+            var imagesToPrefetch = [];
+            var blazorStarted = false;
+
+            // Prefetch images sequentially to avoid connection starvation on iOS
+            function prefetchImagesSequentially() {
+                if (imagesToPrefetch.length === 0) return;
+
+                var url = imagesToPrefetch.shift();
                 var img = new Image();
+                img.onload = img.onerror = function() {
+                    // Load next image after current completes
+                    if (imagesToPrefetch.length > 0) {
+                        setTimeout(prefetchImagesSequentially, 10);
+                    }
+                };
                 img.src = url;
             }
 
-            // Fetch players and prefetch images
+            // Start prefetching when safe (after Blazor starts or on timeout)
+            function startImagePrefetch() {
+                if (imagesToPrefetch.length > 0) {
+                    logMessage('Prefetching ' + imagesToPrefetch.length + ' player images...');
+                    // Load 2 at a time to balance speed vs connection limits
+                    prefetchImagesSequentially();
+                    prefetchImagesSequentially();
+                }
+            }
+
+            // Fetch players and queue images for later prefetch
             setHint('Warming up server...');
             logMessage('Fetching players from API...');
             fetch(apiUrl + '/api/players')
@@ -125,14 +151,18 @@
                 })
                 .then(function(data) {
                     if (data.success && data.players) {
-                        logMessage('Got ' + data.players.length + ' players, prefetching images...');
-                        setHint('Loading player images...');
+                        logMessage('Got ' + data.players.length + ' players');
+                        setHint('Almost ready...');
+                        // Queue images for prefetch after Blazor loads
                         data.players.forEach(function(player) {
                             if (player.imageUri) {
-                                prefetchImage(apiUrl + player.imageUri);
+                                imagesToPrefetch.push(apiUrl + player.imageUri);
                             }
                         });
-                        setHint('Almost ready...');
+                        // If Blazor already started, begin prefetch now
+                        if (blazorStarted) {
+                            startImagePrefetch();
+                        }
                     }
                 })
                 .catch(function(err) {
@@ -168,6 +198,9 @@
                 }
             }).then(function() {
                 logMessage('Blazor started successfully!');
+                // Now safe to prefetch images without competing for connections
+                blazorStarted = true;
+                startImagePrefetch();
             }).catch(function(err) {
                 logMessage('Blazor failed to start: ' + (err.message || err), true);
                 setHint('Failed to load - check log below');

@@ -379,8 +379,6 @@ temp_old_gameservice_statemachine.cs
 
 # WebUI development files
 .webui-pids.json
-code-reviews/
-.code-reviews/
 .claude/settings.local.json
 
 # macOS/Linux service logs and pid files

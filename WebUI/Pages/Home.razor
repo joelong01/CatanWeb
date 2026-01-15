@@ -13,40 +13,40 @@
         @if (!string.IsNullOrEmpty(GameConnection.GameId))
         {
             <a href="/game/@GameConnection.GameId" class="menu-button return-game">
-                <span class="icon">▶</span>
+                <span class="icon"><i class="fa-solid fa-play"></i></span>
                 <span class="text">Return to Game</span>
             </a>
         }
 
         <a href="/newgame" class="menu-button">
-            <span class="icon">🎮</span>
+            <span class="icon"><i class="fa-solid fa-gamepad"></i></span>
             <span class="text">New Game</span>
         </a>
 
         <a href="/loadgame" class="menu-button">
-            <span class="icon">📂</span>
+            <span class="icon"><i class="fa-solid fa-folder-open"></i></span>
             <span class="text">Open Game</span>
         </a>
 
         <a href="/editplayers" class="menu-button">
-            <span class="icon">👥</span>
+            <span class="icon"><i class="fa-solid fa-users"></i></span>
             <span class="text">Edit Players</span>
         </a>
 
         <a href="/stats" class="menu-button">
-            <span class="icon">📊</span>
+            <span class="icon"><i class="fa-solid fa-chart-bar"></i></span>
             <span class="text">Stats</span>
         </a>
 
         <div class="menu-separator"></div>
 
         <a href="/tests" class="menu-button utility-button">
-            <span class="icon">🧪</span>
+            <span class="icon"><i class="fa-solid fa-flask"></i></span>
             <span class="text">Tests</span>
         </a>
 
         <button class="menu-button utility-button" @onclick="RunTroubleshoot" disabled="@isTroubleshooting">
-            <span class="icon">🔧</span>
+            <span class="icon"><i class="fa-solid fa-wrench"></i></span>
             <span class="text">@(isTroubleshooting ? "Running..." : "Troubleshoot")</span>
         </button>
     </div>
@@ -76,7 +76,7 @@
                     <ul>
                         @foreach (var fix in troubleshootResult.Fixed)
                         {
-                            <li>✅ @fix</li>
+                            <li><i class="fa-solid fa-check" style="color: green;"></i> @fix</li>
                         }
                     </ul>
                 </div>
@@ -89,7 +89,7 @@
                     <ul>
                         @foreach (var issue in troubleshootResult.Issues)
                         {
-                            <li>⚠️ @issue</li>
+                            <li><i class="fa-solid fa-triangle-exclamation" style="color: orange;"></i> @issue</li>
                         }
                     </ul>
                 </div>
@@ -102,7 +102,7 @@
                     <ul>
                         @foreach (var item in troubleshootResult.CannotFix)
                         {
-                            <li>ℹ️ @item</li>
+                            <li><i class="fa-solid fa-circle-info" style="color: #17a2b8;"></i> @item</li>
                         }
                     </ul>
                 </div>
