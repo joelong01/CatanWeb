@@ -36,10 +36,8 @@ jobs:
         run: |
           ./catan.ps1 test
 
-      - name: Run recording replay tests
-        shell: pwsh
-        run: |
-          ./catan.ps1 recording replay
+      # Note: Recording replay tests require a running GameService
+      # They run against Azure after deployment via 'recording replay -Azure'
 
       - name: Deploy to Azure
         shell: pwsh
