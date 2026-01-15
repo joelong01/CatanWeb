@@ -1,0 +1,53 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for OIDC authentication
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build solution
+        run: dotnet build --configuration Release
+
+      - name: Run tests
+        run: dotnet test --configuration Release --no-build
+
+      - name: Run recording replay tests
+        shell: pwsh
+        run: |
+          ./catan.ps1 recording replay
+
+      - name: Deploy to Azure
+        shell: pwsh
+        run: |
+          ./catan.ps1 azure deploy -Force -TraceLevel INFO
+
+      - name: Fix database connectivity (if needed)
+        shell: pwsh
+        run: |
+          ./.scripts/catan-azure.ps1 database fix -TraceLevel INFO
