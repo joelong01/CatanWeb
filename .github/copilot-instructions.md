@@ -1,6 +1,6 @@
 # GitHub Copilot – Catan Project Instructions
 
-**Last Updated:** 2026-01-14
+**Last Updated:** 2026-01-15
 
 ## Primary Instructions
 
@@ -19,7 +19,7 @@ Read and follow all rules and guidelines in `.ai/ai-rules.md`.
 ## Code Review: Things to Flag
 
 ### Critical Issues (Block PR)
-- Changes to `DesktopApp/` - should only modify WebUI
+- Changes to `DesktopApp/` - should only modify WebUI projects (`Catan3.WebUI` and `WebUI.Server`)
 - Hardcoded colors instead of CSS variables
 - String-based commands instead of typed messages (`UndoMessage`, `PurchaseMessage`, etc.)
 - State management outside of GameModel
@@ -51,6 +51,7 @@ Read and follow all rules and guidelines in `.ai/ai-rules.md`.
 3. **CSS variables for theming** - Never hardcode colors
 4. **GameServiceProxy for communication** - All client-server comms through shared proxy
 5. **Minimal changes** - Make surgical modifications, don't refactor surrounding code
+6. **Platform-specific icons** - WebUI uses Catan font (`Catan.ttf`) for cross-platform support; DesktopApp uses Segoe MDL2 Assets (Windows-only, reference only)
 
 ## Build & Test Commands
 
