@@ -267,45 +267,33 @@ function Ensure-MsixCertificate {
 
     $pfxPath = Join-Path $ProjectDir $PfxFileName
     $certSubject = "CN=CatanDesktopDev"
-    $certPassword = "CatanDev"
 
-    # Check if pfx already exists
+    # Check if pfx already exists and is valid
     if (Test-Path $pfxPath) {
-        Write-Output "✅ MSIX certificate found: $PfxFileName"
-
-        # Ensure certificate is trusted even if PFX already exists
-        try {
-            $pwd = ConvertTo-SecureString -String $certPassword -Force -AsPlainText
-            $cert = Get-PfxCertificate -FilePath $pfxPath -Password $pwd -ErrorAction SilentlyContinue
-            if (-not $cert) {
-                # Try loading with X509Certificate2 for more control
-                $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfxPath, $certPassword, "Exportable,PersistKeySet")
-            }
-
-            if ($cert) {
-                # Check if already in TrustedPeople store
-                $trustedPeopleStore = New-Object System.Security.Cryptography.X509Certificates.X509Store("TrustedPeople", "CurrentUser")
-                $trustedPeopleStore.Open("ReadOnly")
-                $existingCert = $trustedPeopleStore.Certificates | Where-Object { $_.Thumbprint -eq $cert.Thumbprint }
-                $trustedPeopleStore.Close()
-
-                if (-not $existingCert) {
-                    # Export to CER and use certutil (works in CI without UI)
-                    $cerPath = [System.IO.Path]::ChangeExtension($pfxPath, ".cer")
-                    Export-Certificate -Cert $cert -FilePath $cerPath -Force | Out-Null
-                    $certutilResult = & certutil -user -addstore TrustedPeople $cerPath 2>&1
-                    Remove-Item -Path $cerPath -Force -ErrorAction SilentlyContinue
-                    if ($LASTEXITCODE -eq 0) {
-                        Write-Output "   Added existing certificate to TrustedPeople store"
+        # Read password from csproj
+        $csprojPath = Get-ChildItem -Path $ProjectDir -Filter "*.csproj" | Select-Object -First 1
+        if ($csprojPath) {
+            $content = Get-Content $csprojPath.FullName -Raw
+            if ($content -match '<PackageCertificatePassword>([^<]+)</PackageCertificatePassword>') {
+                $certPassword = $Matches[1]
+                try {
+                    $pwd = ConvertTo-SecureString -String $certPassword -Force -AsPlainText
+                    $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfxPath, $certPassword, "Exportable,PersistKeySet")
+                    if ($cert) {
+                        Write-Output "✅ MSIX certificate found: $PfxFileName"
+                        return $true
                     }
+                } catch {
+                    Write-Output "⚠️  Existing certificate invalid, recreating..."
                 }
             }
-        } catch {
-            Write-Output "⚠️  Could not verify certificate trust: $($_.Exception.Message)"
         }
-
-        return $true
+        # If we get here, PFX exists but is invalid or password missing - delete and recreate
+        Remove-Item -Path $pfxPath -Force -ErrorAction SilentlyContinue
     }
+
+    # Generate random 6-digit password for this certificate
+    $certPassword = Get-Random -Minimum 100000 -Maximum 999999
 
     Write-Output "🔐 Creating self-signed certificate for MSIX signing..."
 
@@ -332,14 +320,21 @@ function Ensure-MsixCertificate {
 
         Write-Output "   Exported to: $pfxPath"
 
-        # Update the project file with the new thumbprint
+        # Update the project file with the new thumbprint and password
         $csprojPath = Get-ChildItem -Path $ProjectDir -Filter "*.csproj" | Select-Object -First 1
         if ($csprojPath) {
             $content = Get-Content $csprojPath.FullName -Raw
             # Replace the thumbprint
             $content = $content -replace '<PackageCertificateThumbprint>[^<]+</PackageCertificateThumbprint>', "<PackageCertificateThumbprint>$($cert.Thumbprint)</PackageCertificateThumbprint>"
+            # Replace or add the password
+            if ($content -match '<PackageCertificatePassword>[^<]+</PackageCertificatePassword>') {
+                $content = $content -replace '<PackageCertificatePassword>[^<]+</PackageCertificatePassword>', "<PackageCertificatePassword>$certPassword</PackageCertificatePassword>"
+            } else {
+                # Add password after thumbprint
+                $content = $content -replace '(<PackageCertificateThumbprint>[^<]+</PackageCertificateThumbprint>)', "`$1`n        <PackageCertificatePassword>$certPassword</PackageCertificatePassword>"
+            }
             Set-Content -Path $csprojPath.FullName -Value $content -NoNewline
-            Write-Output "   Updated thumbprint in: $($csprojPath.Name)"
+            Write-Output "   Updated thumbprint and password in: $($csprojPath.Name)"
         }
 
         # Add to TrustedPeople store for local deployment using certutil (works in CI without UI)

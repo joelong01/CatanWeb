@@ -45,8 +45,8 @@
 		
         <!-- Auto-deployment configuration (disabled by default to avoid nested publish copy issues) -->
         <AutoDeploy Condition="'$(AutoDeploy)' == ''">false</AutoDeploy>
-        <PackageCertificateThumbprint>C2D61031C170344D7351A349A1C1C7DF5E2A6313</PackageCertificateThumbprint>
-        <PackageCertificatePassword>CatanDev</PackageCertificatePassword>
+        <PackageCertificateThumbprint>39D4BD5152C20EAA5BDF807E0619ABB5F9C2A852</PackageCertificateThumbprint>
+        <PackageCertificatePassword>985339</PackageCertificatePassword>
         <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
 	</PropertyGroup>
 	
