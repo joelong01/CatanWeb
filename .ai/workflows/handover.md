@@ -238,6 +238,16 @@ Generated with [Claude Code](https://claude.ai/code)
 **Skip condition:** If the user explicitly says they don't want a PR yet, skip
 this step and note it in the final report.
 
+### Post-PR: Wait for CI
+
+After creating the PR, remind the user:
+
+1. **Do NOT merge until GitHub Actions CI passes** - The PR will run automated
+   checks (build, tests, linting, security scans)
+2. **Check CI status:** `gh pr checks` or view the PR page on GitHub
+3. **If CI fails:** Fix the issues, push new commits, wait for CI to pass again
+4. **Only merge after all checks are green**
+
 ---
 
 ## Execution Instructions for AI
@@ -253,7 +263,7 @@ of individual commands. Instead:
 
 ### Execution Flow
 
-```
+```text
 0. Branch Safety Check
    → Run: git branch --show-current
    → If on main: Create feature branch (ask user for name)
@@ -338,7 +348,11 @@ Handover Workflow Complete
 
 Overall Status: {Success / Partial / Failed}
 
+⏳ CI Status: PENDING - Do NOT merge until all checks pass
+   Check with: gh pr checks
+
 Next Steps:
+- Wait for GitHub Actions CI to pass
 - {action item 1}
 - {action item 2}
 ```
