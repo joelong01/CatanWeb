@@ -258,6 +258,74 @@ function Stop-Log {
     }
 }
 
+# Certificate helper for MSIX signing (Windows only)
+function Ensure-MsixCertificate {
+    param(
+        [Parameter(Mandatory=$true)][string]$ProjectDir,
+        [Parameter(Mandatory=$true)][string]$PfxFileName
+    )
+
+    $pfxPath = Join-Path $ProjectDir $PfxFileName
+    $certSubject = "CN=CatanDesktopDev"
+
+    # Check if pfx already exists
+    if (Test-Path $pfxPath) {
+        Write-Output "✅ MSIX certificate found: $PfxFileName"
+        return $true
+    }
+
+    Write-Output "🔐 Creating self-signed certificate for MSIX signing..."
+
+    try {
+        # Create a self-signed certificate for code signing
+        $cert = New-SelfSignedCertificate `
+            -Type Custom `
+            -Subject $certSubject `
+            -KeyUsage DigitalSignature `
+            -FriendlyName "Catan Desktop Development Certificate" `
+            -CertStoreLocation "Cert:\CurrentUser\My" `
+            -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}") `
+            -NotAfter (Get-Date).AddYears(5)
+
+        if (-not $cert) {
+            throw "Failed to create certificate"
+        }
+
+        Write-Output "   Certificate created with thumbprint: $($cert.Thumbprint)"
+
+        # Export to PFX (no password for dev cert)
+        $pwd = ConvertTo-SecureString -String "" -Force -AsPlainText
+        Export-PfxCertificate -Cert $cert -FilePath $pfxPath -Password $pwd | Out-Null
+
+        Write-Output "   Exported to: $pfxPath"
+
+        # Update the project file with the new thumbprint
+        $csprojPath = Get-ChildItem -Path $ProjectDir -Filter "*.csproj" | Select-Object -First 1
+        if ($csprojPath) {
+            $content = Get-Content $csprojPath.FullName -Raw
+            # Replace the thumbprint
+            $content = $content -replace '<PackageCertificateThumbprint>[^<]+</PackageCertificateThumbprint>', "<PackageCertificateThumbprint>$($cert.Thumbprint)</PackageCertificateThumbprint>"
+            Set-Content -Path $csprojPath.FullName -Value $content -NoNewline
+            Write-Output "   Updated thumbprint in: $($csprojPath.Name)"
+        }
+
+        # Also add to Trusted People store for local deployment
+        $trustedPeopleStore = New-Object System.Security.Cryptography.X509Certificates.X509Store("TrustedPeople", "CurrentUser")
+        $trustedPeopleStore.Open("ReadWrite")
+        $trustedPeopleStore.Add($cert)
+        $trustedPeopleStore.Close()
+        Write-Output "   Added to TrustedPeople store for local deployment"
+
+        Write-Output "✅ MSIX certificate created and configured"
+        return $true
+
+    } catch {
+        Write-Output "⚠️  Certificate creation failed: $($_.Exception.Message)"
+        Write-Output "   Build will continue but MSIX signing may show warnings"
+        return $false
+    }
+}
+
 # Font registration helper
 function Register-Font {
     param(
@@ -465,6 +533,12 @@ try {
                 }
             }
         }
+    }
+
+    # Ensure MSIX certificate exists (Windows only)
+    if ($IsWindows) {
+        $desktopAppDir = Join-Path (Split-Path $PSScriptRoot -Parent) "DesktopApp"
+        Ensure-MsixCertificate -ProjectDir $desktopAppDir -PfxFileName "Catan Desktop_TemporaryKey.pfx"
     }
 
     # Build step
