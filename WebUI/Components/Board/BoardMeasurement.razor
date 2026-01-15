@@ -33,7 +33,7 @@
                 @onclick="OnShuffle"
                 disabled="@(!CanShuffle)"
                 data-testid="btn-shuffle-board">
-            <span class="shuffle-icon">&#x27F3;</span>
+            <i class="fa-solid fa-arrows-rotate shuffle-icon"></i>
             <span class="shuffle-label">Shuffle</span>
         </button>
     </div>
@@ -54,7 +54,7 @@
     <!-- Balance Indicator (lower right) -->
     @if (IsBalanced)
     {
-        <div class="balance-indicator" title="Board is balanced">&#x2696;</div>
+        <div class="balance-indicator" title="Board is balanced"><i class="fa-solid fa-scale-balanced"></i></div>
     }
 </div>
 

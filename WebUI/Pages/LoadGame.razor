@@ -50,8 +50,8 @@
                         @onclick="() => SelectGame(gameId)"
                         @ondblclick="() => OpenGame(gameId)">
                         <td class="icon-cell">
-                            <span class="row-icon" title="Edit name" @onclick="() => EditGameName(gameId)" @onclick:stopPropagation="true">✏️</span>
-                            <span class="row-icon" title="Open game" @onclick="() => OpenGame(gameId)" @onclick:stopPropagation="true">▶️</span>
+                            <span class="row-icon" title="Edit name" @onclick="() => EditGameName(gameId)" @onclick:stopPropagation="true"><i class="fa-solid fa-pen"></i></span>
+                            <span class="row-icon" title="Open game" @onclick="() => OpenGame(gameId)" @onclick:stopPropagation="true"><i class="fa-solid fa-play"></i></span>
                         </td>
                         <td class="name-cell">
                             @if (isEditing)
@@ -74,7 +74,7 @@
                         <td>@game.GameType</td>
                         <td>@game.SavedAt.ToLocalTime().ToString("g")</td>
                         <td class="icon-cell">
-                            <span class="row-icon delete-icon" title="Delete game" @onclick="() => DeleteGame(gameId)" @onclick:stopPropagation="true">🗑️</span>
+                            <span class="row-icon delete-icon" title="Delete game" @onclick="() => DeleteGame(gameId)" @onclick:stopPropagation="true"><i class="fa-solid fa-trash"></i></span>
                         </td>
                     </tr>
                 }
@@ -90,7 +90,7 @@
                 var gameId = game.GameId;
                 <div class="game-card @(isSelected ? "selected" : "")" @onclick="() => SelectGame(gameId)">
                     <div class="game-card-row">
-                        <button class="game-card-btn play-btn" title="Open game" @onclick="() => OpenGame(gameId)" @onclick:stopPropagation="true">▶️</button>
+                        <button class="game-card-btn play-btn" title="Open game" @onclick="() => OpenGame(gameId)" @onclick:stopPropagation="true"><i class="fa-solid fa-play"></i></button>
                         <div class="game-card-content">
                             <div class="game-card-name">@game.GameName</div>
                             <div class="game-card-meta">
@@ -104,7 +104,7 @@
                                 <span>@game.SavedAt.ToLocalTime().ToString("g")</span>
                             </div>
                         </div>
-                        <button class="game-card-btn delete-btn" title="Delete game" @onclick="() => DeleteGame(gameId)" @onclick:stopPropagation="true">🗑️</button>
+                        <button class="game-card-btn delete-btn" title="Delete game" @onclick="() => DeleteGame(gameId)" @onclick:stopPropagation="true"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </div>
             }

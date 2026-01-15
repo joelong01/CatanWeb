@@ -11,13 +11,13 @@
 <nav class="nav-menu">
     <!-- Always visible: Hide -->
     <button class="nav-menu-item" @onclick="OnHideMenu">
-        <div class="nav-icon">&#x2715;</div>
+        <div class="nav-icon"><i class="fa-solid fa-xmark"></i></div>
         <div class="nav-label">Hide</div>
     </button>
 
     <!-- Always visible: Screen Toggle (uses direct onclick to avoid Blazor re-render issues) -->
     <button class="nav-menu-item" onclick="toggleFullScreen(); return false;">
-        <div class="nav-icon">&#x26F6;</div>
+        <div class="nav-icon"><i class="fa-solid fa-expand"></i></div>
         @* ⛶ Square Four Corners *@
         <div class="nav-label">Full Screen</div>
     </button>
@@ -26,25 +26,25 @@
     {
         <!-- Edit Players -->
         <button class="nav-menu-item" @onclick="OnHome">
-            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-icon"><i class="fa-solid fa-house"></i></div>
             <div class="nav-label">Home</div>
         </button>
         <button class="nav-menu-item" @onclick="OnNewGame">
-            <div class="nav-icon">&#x2795;</div>
+            <div class="nav-icon"><i class="fa-solid fa-plus"></i></div>
             <div class="nav-label">New Game</div>
         </button>
         <button class="nav-menu-item" @onclick="OnOpenGame">
-            <div class="nav-icon">&#x1F4C2;</div>
+            <div class="nav-icon"><i class="fa-solid fa-folder-open"></i></div>
             <div class="nav-label">Open Game</div>
         </button>
         <button class="nav-menu-item" @onclick="OnSavePlayers">
-            <div class="nav-icon">&#x1F4BE;</div>
+            <div class="nav-icon"><i class="fa-solid fa-floppy-disk"></i></div>
             <div class="nav-label">Save Players</div>
         </button>
         @if (HasActiveGame)
         {
             <button class="nav-menu-item" @onclick="OnReturnToGame">
-                <div class="nav-icon">&#x25B6;</div>
+                <div class="nav-icon"><i class="fa-solid fa-play"></i></div>
                 <div class="nav-label">Return to Game</div>
             </button>
         }
@@ -53,40 +53,40 @@
     {
         <!-- Game page -->
         <button class="nav-menu-item" @onclick="OnHome">
-            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-icon"><i class="fa-solid fa-house"></i></div>
             <div class="nav-label">Home</div>
         </button>
         @if (_isRecording)
         {
             <button class="nav-menu-item recording-active" @onclick="OnStopRecording">
-                <div class="nav-icon">&#x23F9;</div>
+                <div class="nav-icon"><i class="fa-solid fa-stop"></i></div>
                 <div class="nav-label">Stop Recording (@_actionCount)</div>
             </button>
         }
         else
         {
             <button class="nav-menu-item" @onclick="OnStartRecording">
-                <div class="nav-icon">&#x23FA;</div>
+                <div class="nav-icon"><i class="fa-solid fa-circle"></i></div>
                 <div class="nav-label">Record</div>
             </button>
         }
         <button class="nav-menu-item" @onclick="OnSaveCopy">
-            <div class="nav-icon">&#x1F4E5;</div>
+            <div class="nav-icon"><i class="fa-solid fa-download"></i></div>
             <div class="nav-label">Save Copy</div>
         </button>
         <button class="nav-menu-item" @onclick="OnEditPlayers">
-            <div class="nav-icon">&#x1F465;</div>
+            <div class="nav-icon"><i class="fa-solid fa-users"></i></div>
             <div class="nav-label">Edit Players</div>
         </button>
         @if (GameStateService.GameModel?.GameState == Catan3.Shared.Models.GameState.PickingBoard)
         {
             <button class="nav-menu-item" @onclick="OnBalance">
-                <div class="nav-icon">&#x2696;</div>
+                <div class="nav-icon"><i class="fa-solid fa-scale-balanced"></i></div>
                 <div class="nav-label">Balance</div>
             </button>
         }
         <button class="nav-menu-item winner-button" @onclick="OnWinner">
-            <div class="nav-icon">&#x1F3C6;</div>
+            <div class="nav-icon"><i class="fa-solid fa-trophy"></i></div>
             <div class="nav-label">Winner!</div>
         </button>
     }
@@ -94,15 +94,15 @@
     {
         <!-- Home page (no Home button needed) -->
         <button class="nav-menu-item" @onclick="OnNewGame">
-            <div class="nav-icon">&#x2795;</div>
+            <div class="nav-icon"><i class="fa-solid fa-plus"></i></div>
             <div class="nav-label">New Game</div>
         </button>
         <button class="nav-menu-item" @onclick="OnOpenGame">
-            <div class="nav-icon">&#x1F4C2;</div>
+            <div class="nav-icon"><i class="fa-solid fa-folder-open"></i></div>
             <div class="nav-label">Open Game</div>
         </button>
         <button class="nav-menu-item" @onclick="OnEditPlayers">
-            <div class="nav-icon">&#x1F465;</div>
+            <div class="nav-icon"><i class="fa-solid fa-users"></i></div>
             <div class="nav-label">Edit Players</div>
         </button>
     }
@@ -110,21 +110,21 @@
     {
         <!-- New Game page -->
         <button class="nav-menu-item" @onclick="OnHome">
-            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-icon"><i class="fa-solid fa-house"></i></div>
             <div class="nav-label">Home</div>
         </button>
         <button class="nav-menu-item" @onclick="OnOpenGame">
-            <div class="nav-icon">&#x1F4C2;</div>
+            <div class="nav-icon"><i class="fa-solid fa-folder-open"></i></div>
             <div class="nav-label">Open Game</div>
         </button>
         <button class="nav-menu-item" @onclick="OnEditPlayers">
-            <div class="nav-icon">&#x1F465;</div>
+            <div class="nav-icon"><i class="fa-solid fa-users"></i></div>
             <div class="nav-label">Edit Players</div>
         </button>
         @if (HasActiveGame)
         {
             <button class="nav-menu-item" @onclick="OnReturnToGame">
-                <div class="nav-icon">&#x25B6;</div>
+                <div class="nav-icon"><i class="fa-solid fa-play"></i></div>
                 <div class="nav-label">Return to Game</div>
             </button>
         }
@@ -133,21 +133,21 @@
     {
         <!-- Load Game page -->
         <button class="nav-menu-item" @onclick="OnHome">
-            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-icon"><i class="fa-solid fa-house"></i></div>
             <div class="nav-label">Home</div>
         </button>
         <button class="nav-menu-item" @onclick="OnNewGame">
-            <div class="nav-icon">&#x2795;</div>
+            <div class="nav-icon"><i class="fa-solid fa-plus"></i></div>
             <div class="nav-label">New Game</div>
         </button>
         <button class="nav-menu-item" @onclick="OnEditPlayers">
-            <div class="nav-icon">&#x1F465;</div>
+            <div class="nav-icon"><i class="fa-solid fa-users"></i></div>
             <div class="nav-label">Edit Players</div>
         </button>
         @if (HasActiveGame)
         {
             <button class="nav-menu-item" @onclick="OnReturnToGame">
-                <div class="nav-icon">&#x25B6;</div>
+                <div class="nav-icon"><i class="fa-solid fa-play"></i></div>
                 <div class="nav-label">Return to Game</div>
             </button>
         }
@@ -156,21 +156,21 @@
     {
         <!-- Settings page -->
         <button class="nav-menu-item" @onclick="OnHome">
-            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-icon"><i class="fa-solid fa-house"></i></div>
             <div class="nav-label">Home</div>
         </button>
         <button class="nav-menu-item" @onclick="OnNewGame">
-            <div class="nav-icon">&#x2795;</div>
+            <div class="nav-icon"><i class="fa-solid fa-plus"></i></div>
             <div class="nav-label">New Game</div>
         </button>
         <button class="nav-menu-item" @onclick="OnOpenGame">
-            <div class="nav-icon">&#x1F4C2;</div>
+            <div class="nav-icon"><i class="fa-solid fa-folder-open"></i></div>
             <div class="nav-label">Open Game</div>
         </button>
         @if (HasActiveGame)
         {
             <button class="nav-menu-item" @onclick="OnReturnToGame">
-                <div class="nav-icon">&#x25B6;</div>
+                <div class="nav-icon"><i class="fa-solid fa-play"></i></div>
                 <div class="nav-label">Return to Game</div>
             </button>
         }
@@ -179,13 +179,13 @@
     {
         <!-- Stats page -->
         <button class="nav-menu-item" @onclick="OnHome">
-            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-icon"><i class="fa-solid fa-house"></i></div>
             <div class="nav-label">Home</div>
         </button>
         @if (HasActiveGame)
         {
             <button class="nav-menu-item" @onclick="OnReturnToGame">
-                <div class="nav-icon">&#x25B6;</div>
+                <div class="nav-icon"><i class="fa-solid fa-play"></i></div>
                 <div class="nav-label">Return to Game</div>
             </button>
         }
@@ -194,13 +194,13 @@
     {
         <!-- Tests page -->
         <button class="nav-menu-item" @onclick="OnHome">
-            <div class="nav-icon">&#x1F3E0;</div>
+            <div class="nav-icon"><i class="fa-solid fa-house"></i></div>
             <div class="nav-label">Home</div>
         </button>
         @if (HasActiveGame)
         {
             <button class="nav-menu-item" @onclick="OnReturnToGame">
-                <div class="nav-icon">&#x25B6;</div>
+                <div class="nav-icon"><i class="fa-solid fa-play"></i></div>
                 <div class="nav-label">Return to Game</div>
             </button>
         }
@@ -208,7 +208,7 @@
 
     <!-- Always visible: Settings -->
     <button class="nav-menu-item" @onclick="OnSettings">
-        <div class="nav-icon">&#x2699;</div>
+        <div class="nav-icon"><i class="fa-solid fa-gear"></i></div>
         <div class="nav-label">Settings</div>
     </button>
 </nav>
