@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Build full solution (including DesktopApp)
+        run: dotnet build Catan.sln -c Release
+
+      - name: Run tests
+        shell: pwsh
+        run: |
+          dotnet test Tests/Shared -c Release --no-build
+          dotnet test Tests/GameService -c Release --no-build
+          # Note: Tests/Desktop requires a GUI and can only run locally
