@@ -33,7 +33,7 @@ jobs:
         run: |
           dotnet test Tests/Shared -c Release --no-build
           dotnet test Tests/GameService -c Release --no-build
-          dotnet test Tests/Desktop -c Release --no-build
+          # Note: Tests/Desktop requires a GUI and can only run locally
 
   deploy:
     name: Deploy to Azure (Linux)
