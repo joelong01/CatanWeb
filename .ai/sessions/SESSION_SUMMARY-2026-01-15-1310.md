@@ -12,8 +12,9 @@
 - **MSIX Certificate Empty Password Fix** (`.scripts/build_worker.ps1`)
   - **Problem:** `ConvertTo-SecureString` fails with empty string parameter on some PowerShell
     versions, causing "Cannot bind argument to parameter 'String' because it is an empty string"
-  - **Solution:** Changed certificate password from empty string to "CatanDev"
-  - **Files:** `.scripts/build_worker.ps1:297`, `DesktopApp/Catan Desktop.csproj:49`
+  - **Solution:** Generate random 6-digit password at certificate creation, store in csproj
+  - **Self-healing:** If existing cert fails to load, delete and recreate automatically
+  - **Files:** `.scripts/build_worker.ps1:271-296`, `DesktopApp/Catan Desktop.csproj:49`
 
 - **Font Registration Path Fix** (`.scripts/build_worker.ps1`)
   - **Problem:** Font path used `$PSScriptRoot` directly, but script is in `.scripts/` subdirectory
@@ -39,10 +40,10 @@ None - all fixes completed.
 
 ### Architecture Decisions
 
-1. **Non-empty certificate password**
+1. **Random certificate password**
    - **Context:** PowerShell's `ConvertTo-SecureString -AsPlainText` rejects empty strings
-   - **Decision:** Use "CatanDev" as placeholder password for dev certificates
-   - **Implications:** Password stored in csproj (acceptable for dev cert, not production)
+   - **Decision:** Generate random 6-digit password per certificate, store in csproj
+   - **Implications:** Each machine gets unique password; if cert fails, auto-recreate
 
 2. **Graceful cert trust failure**
    - **Context:** Adding cert to Trusted Root triggers UI prompt (not CI-compatible)
@@ -67,7 +68,7 @@ None.
 
 ### Key Files & Patterns
 
-- **Certificate password:** "CatanDev" (used in both script and csproj)
+- **Certificate password:** Random 6-digit number, stored in csproj per machine
 - **Certificate store:** TrustedPeople (CurrentUser) - no admin required
 - **Cert trust for install:** Requires Trusted Root (manual step or use Add-AppDevPackage.ps1)
 
