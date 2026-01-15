@@ -79,6 +79,9 @@ param(
     [Parameter()]
     [switch]$Replace,
 
+    [Parameter()]
+    [switch]$NoBuild,
+
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArgs
 )
@@ -1934,7 +1937,7 @@ switch ($Verb) {
                 }
                 elseif ($gsNeedsDeploy -or $Force) {
                     Write-Host "  GameService: Needs deploy" -ForegroundColor Yellow
-                    & $azureScript game-service deploy -Force:$Force -TraceLevel $TraceLevel
+                    & $azureScript game-service deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
                     if ($LASTEXITCODE -ne 0) { exit 1 }
                 }
                 else {
@@ -2003,7 +2006,7 @@ switch ($Verb) {
                 }
                 elseif ($uiNeedsDeploy -or $Force) {
                     Write-Host "  UI: Needs deploy" -ForegroundColor Yellow
-                    & $azureScript ui deploy -Force:$Force -TraceLevel $TraceLevel
+                    & $azureScript ui deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
                     if ($LASTEXITCODE -ne 0) { exit 1 }
                 }
                 else {

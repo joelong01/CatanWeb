@@ -31,18 +31,26 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build and test
+      - name: Build (Release)
         shell: pwsh
         run: |
-          ./catan.ps1 test
+          dotnet build Catan3.Shared -c Release
+          dotnet build Catan3.GameService -c Release
+          dotnet build WebUI -c Release
+          dotnet build WebUI.Server -c Release
+          dotnet build Tests/Shared -c Release
+          dotnet build Tests/GameService -c Release
 
-      # Note: Recording replay tests require a running GameService
-      # They run against Azure after deployment via 'recording replay -Azure'
+      - name: Run tests
+        shell: pwsh
+        run: |
+          dotnet test Tests/Shared -c Release --no-build
+          dotnet test Tests/GameService -c Release --no-build
 
       - name: Deploy to Azure
         shell: pwsh
         run: |
-          ./catan.ps1 azure deploy -Force -TraceLevel INFO
+          ./catan.ps1 azure deploy -Force -NoBuild -TraceLevel INFO
 
       - name: Fix database connectivity (if needed)
         shell: pwsh

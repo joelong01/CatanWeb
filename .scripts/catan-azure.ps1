@@ -58,7 +58,10 @@ param(
     [switch]$Help,
 
     [Parameter()]
-    [switch]$Force
+    [switch]$Force,
+
+    [Parameter()]
+    [switch]$NoBuild
 )
 
 $ErrorActionPreference = "Stop"
@@ -1714,7 +1717,8 @@ function Test-DeploymentNeeded {
 function Deploy-GameService {
     param(
         [hashtable]$Config,
-        [bool]$Force = $false
+        [bool]$Force = $false,
+        [bool]$NoBuild = $false
     )
 
     $rgName = $Config.resourceGroup
@@ -1728,8 +1732,10 @@ function Deploy-GameService {
         return $true
     }
 
-    Write-Log -Level "INFO" -Message "Building GameService..."
-    dotnet publish $projectPath -c Release -o $publishPath --nologo -v q
+    Write-Log -Level "INFO" -Message "Publishing GameService..."
+    $publishArgs = @($projectPath, "-c", "Release", "-o", $publishPath, "--nologo", "-v", "q")
+    if ($NoBuild) { $publishArgs += "--no-build" }
+    dotnet publish @publishArgs
 
     Write-Log -Level "INFO" -Message "Creating deployment package..."
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
@@ -1772,7 +1778,8 @@ function Deploy-GameService {
 function Deploy-UI {
     param(
         [hashtable]$Config,
-        [bool]$Force = $false
+        [bool]$Force = $false,
+        [bool]$NoBuild = $false
     )
 
     $rgName = $Config.resourceGroup
@@ -1787,8 +1794,10 @@ function Deploy-UI {
         return $true
     }
 
-    Write-Log -Level "INFO" -Message "Building WebUI.Server..."
-    dotnet publish $projectPath -c Release -o $publishPath --nologo -v q
+    Write-Log -Level "INFO" -Message "Publishing WebUI.Server..."
+    $publishArgs = @($projectPath, "-c", "Release", "-o", $publishPath, "--nologo", "-v", "q")
+    if ($NoBuild) { $publishArgs += "--no-build" }
+    dotnet publish @publishArgs
 
     # Remove BlazorDebugProxy (saves ~11 MB, not needed in production)
     $debugProxyPath = Join-Path $publishPath "BlazorDebugProxy"
@@ -2669,9 +2678,9 @@ if ($Noun -in @("doctor", "install", "deploy", "clean") -and -not $Verb) {
             # Deploy all resources
             Write-Log -Level "HEADER" -Message "Catan Azure: deploy all"
             Write-Log -Level "HEADER" -Message ("=" * 40)
-            $success = (Deploy-GameService -Config $config -Force $Force) -and
+            $success = (Deploy-GameService -Config $config -Force $Force -NoBuild $NoBuild) -and
                        (Deploy-Database -Config $config -Force $Force) -and
-                       (Deploy-UI -Config $config -Force $Force)
+                       (Deploy-UI -Config $config -Force $Force -NoBuild $NoBuild)
         }
         "clean" {
             $confirm = Get-UserConfirmation -Question "Delete ALL Azure resources?" -TraceLevel $TraceLevel -Yes:$Yes
@@ -2694,7 +2703,7 @@ switch ($Noun) {
     "game-service" {
         switch ($Verb) {
             "install" { $success = Install-GameService -Config $config }
-            "deploy" { $success = Deploy-GameService -Config $config -Force $Force }
+            "deploy" { $success = Deploy-GameService -Config $config -Force $Force -NoBuild $NoBuild }
             "doctor" {
                 $result = Get-GameServiceDoctor -Config $config -TraceLevel $TraceLevel
                 if ($Json) {
@@ -2749,7 +2758,7 @@ switch ($Noun) {
     "ui" {
         switch ($Verb) {
             "install" { $success = Install-UI -Config $config }
-            "deploy" { $success = Deploy-UI -Config $config -Force $Force }
+            "deploy" { $success = Deploy-UI -Config $config -Force $Force -NoBuild $NoBuild }
             "doctor" {
                 $result = Get-UIDoctor -Config $config -TraceLevel $TraceLevel
                 if ($Json) {
