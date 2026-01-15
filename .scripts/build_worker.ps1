@@ -515,20 +515,23 @@ try {
             }
             New-Item -ItemType Directory -Path $TestResultsDir -Force -ErrorAction SilentlyContinue | Out-Null
 
-            # Discover test projects at repo root matching 'Tests.*' (top-level only)
-            $testDirs = Get-ChildItem -Path $PSScriptRoot -Directory -Filter 'Tests.*' -ErrorAction SilentlyContinue
-            
-            # Skip UI tests by default unless -IncludeUiTests is explicitly specified
-            if (-not $IncludeUiTests) {
-                $testDirs = $testDirs | Where-Object { $_.Name -notlike 'Tests.DesktopApp.UI*' }
-                if ($SkipUiTests -or $NoUiTests) {
-                    $flagUsed = if ($NoUiTests) { "-NoUiTests" } else { "-SkipUiTests" }
-                    Write-Output "⏭️  Skipping UI test projects (flag: $flagUsed) - DEPRECATED: UI tests now skipped by default"
-                } else {
-                    Write-Output "⏭️  Skipping UI test projects (default behavior - use -IncludeUiTests to run them)"
-                }
+            # Discover test projects in Tests/ directory at project root
+            $projectRoot = Split-Path $PSScriptRoot -Parent
+            $testsDir = Join-Path $projectRoot "Tests"
+            $testDirs = Get-ChildItem -Path $testsDir -Directory -ErrorAction SilentlyContinue |
+                        Where-Object { $_.Name -ne "Data" }  # Exclude test data directory
+
+            # Always exclude Desktop tests on non-Windows (can't build Windows-only projects)
+            if (-not $IsWindows) {
+                $testDirs = $testDirs | Where-Object { $_.Name -ne "Desktop" }
+                Write-Output "⏭️  Skipping Desktop tests (not available on this platform)"
+            }
+            # On Windows, skip UI tests by default unless -IncludeUiTests is explicitly specified
+            elseif (-not $IncludeUiTests) {
+                $testDirs = $testDirs | Where-Object { $_.Name -ne "Desktop" }
+                Write-Output "⏭️  Skipping Desktop UI tests (default behavior - use -IncludeUiTests to run them)"
             } else {
-                Write-Output "🎭 Including UI test projects (flag: -IncludeUiTests)"
+                Write-Output "🎭 Including Desktop UI tests (flag: -IncludeUiTests)"
             }
 
             $testProjects = @()

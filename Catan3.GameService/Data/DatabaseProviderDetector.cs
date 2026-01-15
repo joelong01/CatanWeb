@@ -10,8 +10,8 @@ public class DatabaseProviderDetector
 {
     private readonly IConfiguration _configuration;
     private readonly bool _useSqlServer;
-    private readonly string _connectionString;
-    private readonly string _dataDirectory;
+    private readonly string _connectionString = null!; // Set in constructor via DetermineConnectionString()
+    private readonly string _dataDirectory = null!;    // Set in constructor via DetermineDataDirectory()
 
     public DatabaseProviderDetector(IConfiguration configuration)
     {
