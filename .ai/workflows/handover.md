@@ -127,6 +127,13 @@ This gives us an opportunity to catch and fix issues before external review.
    - Update commits as needed (amend or new commit)
    - Re-run validation (Step 2) if significant changes made
 
+6. **REQUIRED: Show review to user and get approval**
+   - Display the full code review to the user
+   - Summarize: Critical issues, Important issues, Suggestions
+   - Ask: "Do you want me to fix any of these issues before creating the PR?"
+   - Wait for user response before proceeding to Step 5
+   - If user requests fixes, implement them and update the review
+
 **Review File Format:**
 
 ```markdown
@@ -271,7 +278,9 @@ of individual commands. Instead:
    → Get diff: git diff main...HEAD
    → Review all changes per code-review.md
    → Create .code-reviews/prs/PR-{branch}-{date}.md
-   → Fix any critical issues found
+   → **Show review to user and summarize findings**
+   → **Ask user if they want fixes before PR**
+   → Fix any issues user requests
 
 5. Create Pull Request
    → Push branch: git push -u origin HEAD
