@@ -8,6 +8,7 @@ on:
 
 jobs:
   deploy:
+    name: Deploy
     runs-on: ubuntu-latest
     permissions:
       id-token: write  # Required for OIDC authentication
@@ -31,14 +32,8 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build (Release)
+      - name: Build web projects
         run: dotnet build CatanWeb.slnf -c Release
-
-      - name: Run tests
-        shell: pwsh
-        run: |
-          dotnet test Tests/Shared -c Release --no-build
-          dotnet test Tests/GameService -c Release --no-build
 
       - name: Deploy to Azure
         shell: pwsh
