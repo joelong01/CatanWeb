@@ -43,7 +43,7 @@ jobs:
       - name: Deploy to Azure
         shell: pwsh
         run: |
-          ./catan.ps1 azure deploy -Force -NoBuild -TraceLevel INFO
+          ./catan.ps1 azure deploy -NoBuild -TraceLevel INFO
 
       - name: Fix database connectivity (if needed)
         shell: pwsh

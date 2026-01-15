@@ -1934,9 +1934,32 @@ function Get-GameServiceDoctor {
 
         # Check health endpoint first - this is the definitive test of whether code is deployed
         # The health endpoint returns the deployed commit and build time directly
+        # Note: F1 (Free) tier apps can take 30-60+ seconds to cold start, so we retry
         Write-Log -Level "DEBUG" -Message "Checking health endpoint: $url/health" -TraceLevel $TraceLevel
-        try {
-            $health = Invoke-RestMethod -Uri "$url/health" -TimeoutSec 10
+        $health = $null
+        $maxRetries = 2
+        $timeouts = @(15, 60)  # First try 15s, retry with 60s for cold start
+
+        for ($retry = 0; $retry -lt $maxRetries; $retry++) {
+            try {
+                $timeout = $timeouts[$retry]
+                if ($retry -gt 0) {
+                    Write-Log -Level "INFO" -Message "Health check retry $retry (cold start likely, waiting up to ${timeout}s)..." -TraceLevel $TraceLevel
+                }
+                $health = Invoke-RestMethod -Uri "$url/health" -TimeoutSec $timeout
+                break  # Success, exit retry loop
+            }
+            catch {
+                Write-Log -Level "DEBUG" -Message "Health check attempt $($retry + 1) failed: $_" -TraceLevel $TraceLevel
+                if ($retry -eq $maxRetries - 1) {
+                    # Final attempt failed
+                    $result.healthCheck = "unreachable"
+                    $result.checks.healthEndpoint = $false
+                }
+            }
+        }
+
+        if ($health) {
             $result.healthCheck = $health.status
             $result.checks.healthEndpoint = ($health.status -eq "healthy")
             # Get deployed version info from health endpoint
@@ -1950,11 +1973,6 @@ function Get-GameServiceDoctor {
                     Write-Log -Level "DEBUG" -Message "Deployed build time: $($result.deployedBuildTime)" -TraceLevel $TraceLevel
                 }
             }
-        }
-        catch {
-            $result.healthCheck = "unreachable"
-            $result.checks.healthEndpoint = $false
-            Write-Log -Level "DEBUG" -Message "Health endpoint unreachable: $_" -TraceLevel $TraceLevel
         }
 
         # Code is deployed if health endpoint responds (regardless of commit tracking)
