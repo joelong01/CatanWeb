@@ -1,0 +1,14 @@
+{
+  "solution": {
+    "path": "Catan.sln",
+    "projects": [
+      "Catan3.Shared\\Catan3.Shared.csproj",
+      "Catan3.GameService\\Catan3.GameService.csproj",
+      "Catan3.CLI\\Catan3.CLI.csproj",
+      "WebUI\\Catan3.WebUI.csproj",
+      "WebUI.Server\\WebUI.Server.csproj",
+      "Tests\\Shared\\Tests.Shared.csproj",
+      "Tests\\GameService\\Tests.GameService.csproj"
+    ]
+  }
+}

@@ -32,14 +32,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Build (Release)
-        shell: pwsh
-        run: |
-          dotnet build Catan3.Shared -c Release
-          dotnet build Catan3.GameService -c Release
-          dotnet build WebUI -c Release
-          dotnet build WebUI.Server -c Release
-          dotnet build Tests/Shared -c Release
-          dotnet build Tests/GameService -c Release
+        run: dotnet build CatanWeb.slnf -c Release
 
       - name: Run tests
         shell: pwsh
