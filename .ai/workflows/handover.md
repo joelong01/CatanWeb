@@ -1,6 +1,7 @@
 # Handover Workflow
 
-**Purpose:** Complete session handover by documenting work, validating quality, and creating commits.
+**Purpose:** Complete session handover by documenting work, validating quality,
+creating commits, and opening a pull request.
 
 Before running this workflow, you MUST load and follow the shared rules
 defined in `./.ai/ai-rules.md`. These rules govern behavior, output
@@ -10,11 +11,42 @@ format, tool usage, and all other expectations.
 
 ## Workflow Steps
 
-This workflow orchestrates three commands in sequence. Each command is
-defined in its own file - **load and execute each command file** rather
-than re-implementing the logic here.
+This workflow orchestrates multiple steps in sequence. Some steps delegate to
+command files - **load and execute each command file** rather than
+re-implementing the logic here.
 
 Execute the following steps in order:
+
+### Step 0: Branch Safety Check
+
+**Action:** Verify we are NOT on the `main` branch. Direct pushes to main are
+not allowed.
+
+**Commands to run:**
+
+```bash
+# Get current branch name
+git branch --show-current
+```
+
+**If on `main` branch:**
+
+1. Check if there are uncommitted changes: `git status --porcelain`
+2. If changes exist, create a new branch and switch to it:
+   - Generate branch name from today's date and brief description of work
+   - Format: `{category}/{description}` (e.g., `feat/font-awesome-migration`,
+     `fix/ios-connection-starvation`)
+   - Ask the user for a branch name suggestion, or propose one based on the
+     session's work
+3. Run: `git checkout -b {branch-name}`
+4. Confirm the branch switch succeeded
+
+**If already on a feature branch:** Continue to Step 1.
+
+**Stop condition:** If branch creation fails or user declines to create a
+branch, stop the workflow. Cannot proceed on main.
+
+---
 
 ### Step 1: Create Session Summary
 
@@ -62,6 +94,145 @@ step 1 will be included when staging files.
 
 ---
 
+### Step 4: PR Code Review
+
+**Action:** Create a thorough code review of all changes before creating the PR.
+This gives us an opportunity to catch and fix issues before external review.
+
+**File:** `.ai/commands/code-review.md`
+
+**Output Location:** `.code-reviews/prs/PR-{branch-name}-{date}.md`
+
+**Process:**
+
+1. Read `.ai/commands/code-review.md` for review guidelines
+2. Get the full diff of changes on this branch vs main:
+
+   ```bash
+   git diff main...HEAD
+   git diff main...HEAD --stat
+   ```
+
+3. Review all changes following the code-review.md guidelines:
+   - Architecture and design
+   - Code quality and standards compliance
+   - Security considerations
+   - Performance implications
+   - Documentation completeness
+
+4. Create the review file at `.code-reviews/prs/PR-{branch-name}-{date}.md`
+
+5. If critical issues are found:
+   - Fix them before proceeding to PR creation
+   - Update commits as needed (amend or new commit)
+   - Re-run validation (Step 2) if significant changes made
+
+**Review File Format:**
+
+```markdown
+# PR Code Review: {branch-name}
+
+**Branch:** {branch-name}
+**Base:** main
+**Reviewed:** {YYYY-MM-DD}
+**Reviewer:** {AI Model Name}
+
+## Summary
+
+{2-3 sentences about the PR scope and purpose}
+
+## Changes Overview
+
+{List of commits and their purposes}
+
+## Files Changed
+
+| File | Changes | Risk |
+|------|---------|------|
+| path/to/file | Description | Low/Medium/High |
+
+## Critical Issues
+
+{Issues that MUST be fixed before merge - or "None" if clean}
+
+## Important Issues
+
+{Issues that SHOULD be fixed - or "None"}
+
+## Suggestions
+
+{Nice-to-have improvements}
+
+## Security Review
+
+{Security considerations and findings}
+
+## Testing Verification
+
+{Test coverage and manual testing notes}
+
+## Approval Status
+
+- [ ] No critical issues
+- [ ] Build passes
+- [ ] Tests pass
+- [ ] Ready for PR
+```
+
+**Prerequisites:** Step 3 must have completed with at least one commit.
+
+---
+
+### Step 5: Create Pull Request
+
+**Action:** Push the branch and create a pull request for review.
+
+**Commands to run:**
+
+```bash
+# Push branch to remote (with upstream tracking)
+git push -u origin HEAD
+
+# Create PR using GitHub CLI
+gh pr create --title "{title}" --body "{body}"
+```
+
+**PR Title:** Generate from the commit messages or session summary. Should be
+concise and descriptive (e.g., "Add Font Awesome icons for cross-browser
+compatibility").
+
+**PR Body Format:**
+
+```markdown
+## Summary
+
+{2-4 bullet points describing the changes}
+
+## Changes
+
+- {List of key files/areas changed}
+
+## Testing
+
+- [ ] Build passes
+- [ ] Tests pass
+- [ ] Manual verification (if applicable)
+
+## Session Summary
+
+{Link to or excerpt from the session summary file}
+
+---
+Generated with [Claude Code](https://claude.ai/code)
+```
+
+**Prerequisites:** Step 4 must have completed with a clean code review.
+
+**Skip condition:** If the user explicitly says they don't want a PR yet, skip
+this step and note it in the final report.
+
+---
+
 ## Execution Instructions for AI
 
 **IMPORTANT:** This is a workflow orchestrator. Do NOT re-implement the logic
@@ -76,6 +247,12 @@ of individual commands. Instead:
 ### Execution Flow
 
 ```
+0. Branch Safety Check
+   → Run: git branch --show-current
+   → If on main: Create feature branch (ask user for name)
+   → If branch creation fails: STOP
+   → Otherwise: Continue
+
 1. Load .ai/commands/sessions.md
    → Execute all steps in that file
    → Confirm session summary created
@@ -89,17 +266,33 @@ of individual commands. Instead:
    → Execute all steps in that file
    → Session summary will be committed here
    → Confirm commits created
+
+4. PR Code Review
+   → Get diff: git diff main...HEAD
+   → Review all changes per code-review.md
+   → Create .code-reviews/prs/PR-{branch}-{date}.md
+   → Fix any critical issues found
+
+5. Create Pull Request
+   → Push branch: git push -u origin HEAD
+   → Create PR: gh pr create
+   → Return PR URL to user
 ```
 
 ---
 
 ## Final Workflow Report
 
-After completing all three steps (or stopping early), provide this summary:
+After completing all steps (or stopping early), provide this summary:
 
 ```text
 Handover Workflow Complete
 ===========================
+
+✅ Step 0: Branch Safety
+   Branch: {branch-name}
+   Status: Already on feature branch / Created new branch / BLOCKED (on main)
+   Notes: {brief notes}
 
 ✅ Step 1: Session Summary
    File: .ai/sessions/SESSION_SUMMARY-{date}-{hhmm}.md
@@ -120,6 +313,18 @@ Handover Workflow Complete
    - {hash}: {message}
    - {hash}: {message}
    Status: Complete / Skipped / Failed
+   Notes: {brief notes}
+
+✅ Step 4: PR Code Review
+   File: .code-reviews/prs/PR-{branch}-{date}.md
+   Critical Issues: {N} found / None
+   Status: Clean / Issues fixed / Issues remain
+   Notes: {brief notes}
+
+✅ Step 5: Pull Request
+   PR URL: {url}
+   Title: {pr-title}
+   Status: Created / Skipped / Failed
    Notes: {brief notes}
 
 Overall Status: {Success / Partial / Failed}
