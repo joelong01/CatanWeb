@@ -1,9 +1,14 @@
-/* Font Awesome 6 Free - Solid Icons Only
+/* Font Awesome 6.5.1 Free - Solid Icons Only
    Source: https://fontawesome.com
    License: Font Awesome Free License (https://fontawesome.com/license/free)
 
    This is a minimal subset for the Catan WebUI.
-   Only includes the solid style (~150KB woff2).
+   Only includes the solid style (~156KB woff2).
+
+   To add new icons:
+   1. Find the icon at https://fontawesome.com/icons
+   2. Add the CSS rule below (e.g., .fa-{name}::before { content: "\f{code}"; })
+   3. Use in HTML: <i class="fa-solid fa-{name}"></i>
 */
 
 @font-face {

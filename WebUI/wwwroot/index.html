@@ -24,6 +24,8 @@
          To update all versions at once, run from repo root:
          sed -i '' 's/2026-01-13-v1/YYYY-MM-DD-vN/g' WebUI/wwwroot/index.html
          Also update CSS content strings in *.razor.css files (see MainLayout.razor.css) -->
+    <!-- Preload Font Awesome font for faster icon rendering -->
+    <link rel="preload" href="lib/fontawesome/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="lib/bootstrap/bootstrap.min.css" />
     <link rel="stylesheet" href="lib/fontawesome/fontawesome-solid.css" />
     <link rel="stylesheet" href="css/app.css?v=2026-01-13-v1" />
