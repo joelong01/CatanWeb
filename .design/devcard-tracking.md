@@ -220,23 +220,66 @@ public enum CardFlipMode
 </div>
 ```
 
-**PlayersPanel.razor** - Flip cards when `GameState.GameOver`:
+**PlayersPanel.razor** - Flip cards during VP entry phase (before GameOver, after winner confirmed):
 
 ```csharp
-// When game ends, flip cards for players with dev cards
-if (GameModel.GameState == GameState.GameOver)
+// IsVPEntryPhase parameter from parent controls when to show VP input
+if (IsVPEntryPhase)
 {
-    foreach (var player in GameModel.Players.Where(p =>
-        p.SpentEntitlementsThisGame.Count(e => e == Entitlement.DevCard) > 0))
+    // Only flip cards for players who have dev cards
+    var devCardCount = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.DevCard);
+    if (devCardCount > 0)
     {
-        // Set FlipMode = CardFlipMode.VictoryPoints
+        return CardFlipMode.VictoryPoints;
     }
 }
 ```
 
-**Done Button** - Add "Done" button (like PickSupplementalPlayers) to finalize VP entry.
+**Local VP Storage** - VPs are stored locally in `_localVPEntries` dictionary until Done clicked:
 
-### 6. Score Calculation Update
+```csharp
+private Dictionary<string, int> _localVPEntries = new();
+
+private void HandleLocalVPChange((string PlayerId, int VictoryPoints) args)
+{
+    _localVPEntries[args.PlayerId] = args.VictoryPoints;
+}
+```
+
+**Done Button** - Add "Done" button (like PickSupplementalPlayers) to finalize VP entry and submit all VPs in single DeclareWinner API call.
+
+### 6. VP Entry Flow (Game.razor)
+
+**State Management** - Use `_pendingWinnerId` to track winner before API call:
+
+```csharp
+private string? _pendingWinnerId = null;
+private bool IsVPEntryPhase => _pendingWinnerId != null;
+```
+
+**Flow:**
+1. User clicks "Declare Winner" → shows confirmation dialog
+2. User confirms → `ConfirmWinner()` sets `_pendingWinnerId`, triggers animation
+3. Animation completes → VP entry UI appears (for players with dev cards)
+4. User enters VP counts → stored locally in PlayersPanel
+5. User clicks "Done" → `OnVictoryPointsDone()` sends DeclareWinner API with all VPs
+6. API success → `_pendingWinnerId = null`, game transitions to GameOver
+
+**API Call:**
+```csharp
+private async Task OnVictoryPointsDone(Dictionary<string, int> victoryPoints)
+{
+    var request = new DeclareWinnerRequest
+    {
+        WinnerId = _pendingWinnerId,
+        VictoryPoints = victoryPoints
+    };
+    var response = await Http.PostAsJsonAsync(url, request);
+    if (response.IsSuccessStatusCode) _pendingWinnerId = null;
+}
+```
+
+### 7. Score Calculation Update
 
 **GameStateMachine.cs** - Update `UpdateScore()`:
 
@@ -253,13 +296,13 @@ Score = (CitiesPlayed × 2) + SettlementsPlayed +
         VictoryPointCards;  // NEW
 ```
 
-### 7. Recording Support
+### 8. Recording Support
 
 Dev card purchases use existing `PurchaseMessage` infrastructure:
 
 - **Recording:** `PurchaseMessage(Entitlement.DevCard)` is recorded like Soldier purchases
 - **Replay:** Same message replays correctly
-- **VP Entry:** Need new message type `VictoryPointEntryMessage(playerId, vpCount)`
+- **VP Entry:** VPs are included in `DeclareWinnerMessage` as a dictionary (no separate message)
 
 ## Files to Modify
 
@@ -267,16 +310,21 @@ Dev card purchases use existing `PurchaseMessage` infrastructure:
 |------|---------|
 | `Catan3.Shared/Models/PlayerModel.cs` | Add `VictoryPointCards` property |
 | `Catan3.Shared/Models/RegularBoardInfo.cs` | Add DevCard to purchaseable entitlements |
-| `Catan3.Shared/Models/MessageObjects.cs` | Add `VictoryPointEntryMessage` |
-| `Catan3.Shared/GameLogic/GameStateMachine.cs` | DevCard purchase handling, VP score calc |
-| `WebUI/Pages/Game.razor` | 3x2 purchase grid, VP submission handler |
+| `Catan3.Shared/Models/ExpansionBoardInfo.cs` | Add DevCard to purchaseable entitlements |
+| `Catan3.Shared/Models/MessageObjects.cs` | Update `DeclareWinnerMessage` with VP dictionary |
+| `Catan3.Shared/Models/RecordedMessage.cs` | Update `DeclareWinnerRecord` with VP dictionary |
+| `Catan3.Shared/GameLogic/GameStateMachine.cs` | DevCard purchase handling, VP processing in HandleDeclareWinnerAsync |
+| `Catan3.Shared/Extensions/GameModelExtensions.cs` | Document hash exclusion for SpentEntitlementsThisGame |
+| `Catan3.GameService/Controllers/GameApiController.cs` | Pass VPs to DeclareWinnerMessage |
+| `Catan3.GameService/Controllers/RecordingController.cs` | Pass VPs during replay |
+| `WebUI/Pages/Game.razor` | 3x2 purchase grid, IsVPEntryPhase state, VP submission handler |
 | `WebUI/Pages/Game.razor.css` | Grid layout update |
 | `WebUI/Components/Shared/PurchaseButton.razor` | DevCard icon and label |
-| `WebUI/Components/Players/PlayerTile.razor` | Add DevCards stat |
+| `WebUI/Components/Players/PlayerTile.razor` | Add DevCards stat (13th column) |
 | `WebUI/Components/Players/PlayerTile.razor.css` | 13-column grid |
-| `WebUI/Components/Players/PlayerCard.razor` | VictoryPoints flip mode |
+| `WebUI/Components/Players/PlayerCard.razor` | VictoryPoints flip mode with input UI |
 | `WebUI/Components/Players/PlayerCard.razor.css` | Wider card, VP entry styling |
-| `WebUI/Components/Players/PlayersPanel.razor` | GameOver VP entry logic, Done button |
+| `WebUI/Components/Players/PlayersPanel.razor` | IsVPEntryPhase logic, local VP storage, Done button |
 
 ## Edge Cases
 
