@@ -64,10 +64,10 @@ git status --short | wc -l
 
 ```bash
 # Verify build status
-dotnet build Catan.sln
+pwsh ./catan.ps1 build
 
 # Check test status
-dotnet test
+pwsh ./catan.ps1 test
 
 # Note any failures or warnings
 ```
@@ -272,8 +272,9 @@ Example: `.ai/sessions/SESSION_SUMMARY-2025-11-27-1430.md`
 ## Environment Notes
 
 ### Build Configuration
+
 - All projects building successfully: Yes / No
-- Build command: `dotnet build Catan.sln`
+- Build command: `pwsh ./catan.ps1 build`
 - Build time: ~{N} seconds
 - Warnings: [list any warnings]
 
@@ -305,16 +306,18 @@ Example: `.ai/sessions/SESSION_SUMMARY-2025-11-27-1430.md`
 ## Quick Start for Next Session
 
 ### Immediate Actions
+
 1. **Start Here:**
+
    ```bash
    # Pull latest changes (if working with team)
    git pull origin {branch-name}
 
    # Verify build
-   dotnet build Catan.sln
+   pwsh ./catan.ps1 build
 
    # Check database is current
-   ./webui.ps1 database check
+   pwsh ./catan.ps1 database doctor
    ```
 
 2. **Review These Files First:**
@@ -328,24 +331,29 @@ Example: `.ai/sessions/SESSION_SUMMARY-2025-11-27-1430.md`
    - Next task: [specific next step]
 
 ### Commands & Workflows
+
 - **Run services:**
+
   ```bash
-  ./webui.ps1 run
+  pwsh ./catan.ps1 run
   ```
 
 - **Database rebuild:**
+
   ```bash
-  ./webui.ps1 database install
+  pwsh ./catan.ps1 database install
   ```
 
 - **Run tests:**
+
   ```bash
-  dotnet test
+  pwsh ./catan.ps1 test
   # Or specific project:
   dotnet test Tests/GameService
   ```
 
 ### Context to Load
+
 - If continuing [feature], read:
   - `path/to/file1.cs` - [why]
   - `path/to/file2.cs` - [why]
@@ -355,6 +363,7 @@ Example: `.ai/sessions/SESSION_SUMMARY-2025-11-27-1430.md`
   - [Relevant background]
 
 ### Open Questions
+
 - Should we [decision to make]?
   - Context: [background]
   - Options: [alternatives]

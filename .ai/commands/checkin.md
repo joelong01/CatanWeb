@@ -42,10 +42,10 @@ Create one or more high-quality commits that:
 Before reviewing changes, run the .NET code formatter to ensure consistent style:
 
 ```bash
-dotnet format
+pwsh ./catan.ps1 build
 ```
 
-This formats all C# files in the solution according to the project's .editorconfig rules.
+This builds all projects and formats code according to the project's .editorconfig rules.
 
 ---
 

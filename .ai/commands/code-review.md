@@ -108,7 +108,7 @@ Code reviews ensure:
 - [ ] Tests are clear and understandable
 - [ ] Test names describe what they test
 - [ ] No flaky tests
-- [ ] Tests run successfully (`dotnet test`)
+- [ ] Tests run successfully (`pwsh ./catan.ps1 test`)
 
 ### 5. Security
 
@@ -273,8 +273,8 @@ Code reviews ensure:
 
 1. **Before Requesting Review**
    - Self-review using this checklist
-   - Run full build: `dotnet build Catan.sln`
-   - Run all tests: `dotnet test`
+   - Run full build: `pwsh ./catan.ps1 build`
+   - Run all tests: `pwsh ./catan.ps1 test`
    - Update `.ai/project-summary.md` if architecture changed
    - Create/update design docs if needed
    - Ensure code follows `.ai/ai-rules.md`

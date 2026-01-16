@@ -258,6 +258,14 @@ All markdown files must be **Markdown Lint error-free**. Pay special attention t
 Use "text" for plain output or when no language applies
 ```
 
+### Linting Workflow
+
+After writing or modifying any markdown file:
+
+1. Run `npx markdownlint-cli "path/to/file.md" --fix` to auto-correct formatting.
+2. Run `npx markdownlint-cli "path/to/file.md"` to report remaining issues.
+3. Manually fix all reported issues before committing.
+
 ### Line Length Management
 
 - Hard wrap at 150 characters
@@ -328,17 +336,20 @@ The `.test-images/` directory (excluded from git) contains images for AI assista
 
 ### Build Commands
 
+Use `./catan.ps1` as the unified entry point for all development tasks:
+
 - **PowerShell scripts**: Always use `pwsh` (PowerShell 7+), not `powershell` (legacy)
-- **WebUI build**: `pwsh ./webui.ps1 help` to see available commands
-- **Full build**: `pwsh ./build.ps1` (includes tests)
-- **Quick build**: `dotnet build` (should succeed with no errors)
-- **Clean build**: `pwsh ./build.ps1 -NoTest -Clean`
+- **Build only**: `pwsh ./catan.ps1 build` (no tests)
+- **Build with tests**: `pwsh ./catan.ps1 test`
+- **Clean build**: `pwsh ./catan.ps1 clean` (preserves database)
+- **Start development**: `pwsh ./catan.ps1 run` (build, start services, launch browser)
+- **Check setup**: `pwsh ./catan.ps1 doctor`
 
 ### Development Workflow
 
-1. Check build status: `dotnet build`
+1. Check build status: `pwsh ./catan.ps1 build`
 2. Make minimal, surgical changes
-3. Verify build: `dotnet build`
+3. Verify build: `pwsh ./catan.ps1 build`
 4. Run relevant tests if applicable
 5. Commit with clear message
 
@@ -347,11 +358,11 @@ The `.test-images/` directory (excluded from git) contains images for AI assista
 - **Browser caching**: Hard refresh (Ctrl+Shift+R) after code changes
 - **SVG caching**: Create new game to bypass cache or restart GameService
 - **GameService restart required**: For SVG generation code changes
-- **Blazor hot reload**: Some changes require full rebuild and restart
+- **Blazor hot reload**: Some changes require full rebuild (`pwsh ./catan.ps1 update`)
 
 ### Testing Commands
 
-- **All tests**: `./build.ps1` (includes test run)
+- **All tests**: `pwsh ./catan.ps1 test`
 - **Specific tests**: `dotnet test Tests/GameService --filter "TestName"`
 - **With verbose**: Add `--verbosity normal` to see detailed output
 
@@ -536,15 +547,15 @@ git --no-pager log --oneline -10
 
 ### Build Failures
 
-- **File locked by process**: Stop GameService/WebUI before building
-- **Missing dependencies**: Run `dotnet restore`
-- **Cache issues**: Use `./build.ps1 -Clean`
+- **File locked by process**: Run `pwsh ./catan.ps1 stop` then rebuild
+- **Missing dependencies**: Run `pwsh ./catan.ps1 install`
+- **Cache issues**: Run `pwsh ./catan.ps1 clean`
 
 ### Runtime Issues
 
 - **SVG not updating**: Restart GameService or create new game
 - **Styles not applying**: Check CSS variable definitions in `app.css`
-- **Hot reload not working**: Full rebuild required for some changes
+- **Hot reload not working**: Run `pwsh ./catan.ps1 update`
 
 ### Test Failures
 
