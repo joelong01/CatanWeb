@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-16
 **Design Document:** `typescript-porting-design.md`
-**Target Location:** `ReactUi/`
+**Target Location:** `react-ui/`
 
 ## Overview
 
@@ -15,6 +15,144 @@ rather than building all components horizontally.
 
 ---
 
+## Coding Standards
+
+All code must adhere to these standards. Every new file must pass linting before being committed.
+
+### Documentation Requirements
+
+**TSDoc Comments (Required for all exports):**
+
+```typescript
+/**
+ * Converts axial hex coordinates to pixel coordinates for SVG rendering.
+ *
+ * @param q - The q coordinate in axial hex system
+ * @param r - The r coordinate in axial hex system
+ * @param size - The size of each hex in pixels
+ * @returns The pixel coordinates as {x, y}
+ */
+export function axialToPixel(q: number, r: number, size: number): Point {
+  // ...
+}
+```
+
+**Comment Guidelines:**
+
+- Comments describe WHAT the code does, not HOW we got here
+- Never use comments as change logs (that's what git is for)
+- Avoid obvious comments like `// increment counter` for `counter++`
+- Use comments for:
+  - Complex algorithms or non-obvious logic
+  - Business rules that aren't self-evident
+  - Why a particular approach was chosen (when non-obvious)
+  - TODO items with context
+
+**Bad Comments (avoid):**
+
+```typescript
+// Changed from foo to bar per PR #123
+// Fixed bug where x was wrong
+// Joe added this on 2024-01-15
+```
+
+**Good Comments:**
+
+```typescript
+// Use pointy-top orientation for hex grid (industry standard for Catan)
+// Early exit: robber cannot be placed on desert during setup phase
+```
+
+### Linting Requirements
+
+**Every new file must be lint-clean before commit.** Use the unified lint command:
+
+```bash
+# Run all linters and formatters (formats first, then lints)
+pwsh ./catan.ps1 lint
+```
+
+This command:
+
+1. Lints PowerShell scripts with PSScriptAnalyzer
+2. Formats TypeScript/JavaScript with Prettier
+3. Runs ESLint with auto-fix, then reports remaining issues
+4. Fixes Markdown auto-fixable issues, then reports remaining issues
+5. Checks spelling with cspell (uses `cspell.json` dictionary)
+
+For manual control during development:
+
+```bash
+# TypeScript/JavaScript only
+cd react-ui && npm run format      # Format with Prettier
+cd react-ui && npm run lint:fix    # Fix ESLint auto-fixable issues
+cd react-ui && npm run lint        # Check for remaining issues
+
+# Markdown only (from repo root)
+npx markdownlint-cli "**/*.md" --ignore node_modules --ignore react-ui/node_modules --fix
+```
+
+**ESLint Configuration:** The project uses `eslint-config-next` with these expectations:
+
+- No unused variables (prefix with `_` if intentionally unused)
+- No `any` types (use `unknown` and narrow, or define proper types)
+- Prefer `const` over `let` when variable isn't reassigned
+- Use explicit return types on exported functions
+- No console.log in production code (use proper logging)
+
+**TypeScript Strict Mode:** `tsconfig.json` enforces:
+
+- `strict: true`
+- `noImplicitAny: true`
+- `strictNullChecks: true`
+
+### File Organization
+
+```text
+react-ui/
+├── app/                    # Next.js App Router pages
+├── components/             # React components (PascalCase.tsx)
+├── lib/                    # Utilities, services, non-React code
+│   ├── api/               # REST client code
+│   ├── geometry/          # Board geometry calculations
+│   ├── services/          # GameServiceProxy, etc.
+│   ├── stores/            # Zustand stores
+│   └── utils/             # Pure utility functions
+├── types/                  # TypeScript type definitions
+│   └── generated/
+│       └── models/        # TypeGen-generated types (do not edit)
+└── hooks/                  # Custom React hooks (useCamelCase.ts)
+
+Catan3.Shared/
+├── TypeScript/
+│   ├── CatanTypeGenSpec.cs    # Defines which C# types to export
+│   └── TypeGenRunner/         # Console app that runs TypeGen 7.0.0
+│       ├── TypeGenRunner.csproj
+│       └── Program.cs
+```
+
+**Naming Conventions:**
+
+- Components: `PascalCase.tsx` (e.g., `PlayerTile.tsx`)
+- Hooks: `useCamelCase.ts` (e.g., `useGameConnection.ts`)
+- Utilities: `camelCase.ts` (e.g., `boardGeometry.ts`)
+- Types: `PascalCase` for interfaces/types, `SCREAMING_SNAKE` for constants
+- Generated files: Never edit, regenerate with `pwsh ./catan.ps1 generate-types`
+
+### Pre-Commit Checklist
+
+Before committing any file:
+
+1. [ ] File passes `npm run lint` with no errors
+2. [ ] All exported functions have TSDoc comments
+3. [ ] No `// TODO` without explanation
+4. [ ] No commented-out code blocks
+5. [ ] Markdown files pass `npx markdownlint-cli`
+6. [ ] `npm run build` succeeds
+7. [ ] Any new tests pass with `npm run test:run`
+
+---
+
 ## Phase 0: Foundation (Infrastructure)
 
 **Goal:** Establish the development environment and core infrastructure before any UI work.
@@ -23,11 +161,11 @@ rather than building all components horizontally.
 
 **Tasks:**
 
-1. Create `ReactUi/` directory
+1. Create `react-ui/` directory
 2. Initialize Next.js 15 project with TypeScript:
 
    ```bash
-   npx create-next-app@latest ReactUi --typescript --tailwind --eslint --app --no-src-dir
+   npx create-next-app@latest react-ui --typescript --tailwind --eslint --app --no-src-dir
    ```
 
 3. Configure `tsconfig.json` with path aliases (`@/`)
@@ -35,7 +173,7 @@ rather than building all components horizontally.
 
 **Test Milestone:**
 
-- [ ] `cd ReactUi && npm run dev` starts dev server on port 3000
+- [ ] `cd react-ui && npm run dev` starts dev server on port 3000
 - [ ] Browser shows Next.js default page at `http://localhost:3000`
 
 ### 0.2 Tailwind Configuration
@@ -58,22 +196,52 @@ rather than building all components horizontally.
 - [ ] Catan font renders correctly (no flash of unstyled text)
 - [ ] Game background color (`bg-game-bg-primary`) applies
 
-### 0.3 Type Generation Pipeline (NSwag)
+### 0.3 Type Generation Pipeline (TypeGen) ✅ COMPLETED
 
-**Tasks:**
+**Approach:** Use TypeGen 7.0.0 via a custom runner console app to generate TypeScript interfaces
+directly from C# model classes. This is superior to OpenAPI/NSwag because:
 
-1. Install NSwag as devDependency: `npm install -D nswag`
-2. Create `nswag.json` with `aspNetCoreToOpenApi` configuration (DLL-based)
-3. Add `generate-types` script to `package.json`
-4. Create `types/generated/` directory
-5. Run initial generation, verify output
+- Core game models (GameModel, PlayerModel, etc.) are sent over SignalR as JSON, not REST endpoints
+- TypeGen generates types directly from C# classes with full fidelity
+- No running server required for generation
 
-**Test Milestone:**
+**Full Documentation:** See [typegen-design.md](../Catan3.Shared/TypeScript/TypeGenRunner/typegen-design.md)
+for complete architecture, configuration, and extension guide.
 
-- [ ] `npm run generate-types` succeeds (requires `pwsh ./catan.ps1 build` first)
-- [ ] `types/generated/api.ts` contains `GameModel`, `PlayerModel`, `TileModel` interfaces
-- [ ] Enum types are string literal unions (not numeric)
-- [ ] Property names are camelCase
+**Implementation:**
+
+1. **TypeGenRunner console app** at `Catan3.Shared/TypeScript/TypeGenRunner/`
+   - References TypeGen 7.0.0 NuGet package
+   - Programmatically invokes generator with CatanTypeGenSpec
+   - Outputs to `react-ui/types/generated/models/`
+   - Generates enum description mappings for UI text
+
+2. **CatanTypeGenSpec** at `Catan3.Shared/TypeScript/CatanTypeGenSpec.cs`
+   - Defines all types to export (GameModel, PlayerModel, enums, messages)
+   - Uses `AddInterface<T>()` and `AddEnum<T>()` methods
+
+3. **Generated output** at `react-ui/types/generated/models/`
+   - 57+ TypeScript files with full type definitions
+   - `index.ts` barrel export for easy imports
+   - `enum-descriptions.ts` with UI display text from `[Description]` attributes
+   - camelCase property names (via PascalCaseToCamelCaseConverter)
+   - String literal enums (e.g., `GameState.WaitingForRoll`)
+
+**Usage:**
+
+```bash
+pwsh ./catan.ps1 generate-types
+```
+
+**Test Milestone:** ✅
+
+- [x] `pwsh ./catan.ps1 generate-types` succeeds
+- [x] `types/generated/models/game-model.ts` contains full GameModel interface
+- [x] Enum types are string literal unions (e.g., `GameState = 'WaitingForRoll'`)
+- [x] Property names are camelCase
+- [x] All 57 model files generated with proper imports
+- [x] Serialization tests pass (`react-ui/lib/serialization.test.ts`)
+- [x] `enum-descriptions.ts` generated with UI text from `[Description]` attributes
 
 ### 0.4 Zustand Stores
 
@@ -995,7 +1163,7 @@ immediate recovery when the user returns.
 
 **Tasks:**
 
-1. Create `ReactUi/README.md`
+1. Create `react-ui/README.md`
 2. Document development workflow
 3. Document component architecture
 4. Document state management patterns
@@ -1079,7 +1247,7 @@ After each phase, run these validation checks:
 ### Phase 0 Validation
 
 ```bash
-cd ReactUi
+cd react-ui
 npm run dev &
 sleep 5
 curl http://localhost:3000 | grep -q "Next" && echo "✅ Next.js running"

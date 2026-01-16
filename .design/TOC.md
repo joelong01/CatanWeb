@@ -1,6 +1,6 @@
 # .design Directory Table of Contents
 
-**Last Updated:** January 12, 2026  
+**Last Updated:** January 16, 2026
 **Purpose:** Authoritative "as built" design documentation for the Catan project
 
 ## Quick Reference
@@ -16,6 +16,7 @@
 | [azure-sql-serverless-alternative.md](azure-sql-serverless-alternative.md) | Azure SQL Serverless alternative analysis (recommended) | Dec 8, 2025 |
 | [test-plan.md](test-plan.md) | WebUI test suite with recording/replay infrastructure | Jan 12, 2026 |
 | [balance-design.md](balance-design.md) | Balance board feature design | Jan 13, 2026 |
+| [ts-port-impl-plan.md](ts-port-impl-plan.md) | TypeScript/React port implementation plan | Jan 16, 2026 |
 
 ## Projects
 
@@ -39,6 +40,7 @@ Cross-cutting system designs that span multiple projects:
 - [**save-load.md**](systems/save-load.md) - Game persistence and serialization
 - [**settings.md**](systems/settings.md) - Configuration management across platforms
 - [**signalr-to-rest-migration.md**](systems/signalr-to-rest-migration.md) - Migration plan for SignalR → REST commands
+- [**typegen-design.md**](../Catan3.Shared/TypeScript/TypeGenRunner/typegen-design.md) - TypeGen type generation pipeline
 
 ## User Interface
 

@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-16
 **Status:** Design Document
-**Target Location:** `ReactUi/` (sibling to Catan3.Shared, Catan3.GameService)
+**Target Location:** `react-ui/` (sibling to Catan3.Shared, Catan3.GameService)
 **Reviewed By:** Claude (Opus 4.5), Gemini 3 Pro
 
 ## Executive Summary
@@ -43,7 +43,7 @@ CatanWeb/
 ├── Catan3.Shared/           # Unchanged - C# models and game logic
 ├── Catan3.GameService/      # Unchanged - ASP.NET Core + SignalR backend
 ├── WebUI/                   # Existing Blazor app (kept for reference)
-├── ReactUi/                 # NEW - React/Next.js application
+├── react-ui/                 # NEW - React/Next.js application
 │   ├── app/                 # Next.js App Router pages
 │   │   ├── layout.tsx       # Root layout (MainLayout equivalent)
 │   │   ├── page.tsx         # Home page
@@ -253,7 +253,7 @@ npm install -D nswag
 > **Why local?** Global installs (`npm install -g`) cause version drift across team members and CI
 > agents. Local devDependencies ensure everyone uses the exact same version.
 
-**NSwag Configuration (`ReactUi/nswag.json`):**
+**NSwag Configuration (`react-ui/nswag.json`):**
 
 ```json
 {
@@ -2472,7 +2472,7 @@ test.describe('New Game Flow', () => {
 
 **Deliverables:**
 
-1. Initialize Next.js 15 project with TypeScript in `ReactUi/`
+1. Initialize Next.js 15 project with TypeScript in `react-ui/`
 2. Configure Tailwind CSS with custom theme
 3. Set up NSwag type generation pipeline
 4. Create folder structure per Section 1
@@ -2483,16 +2483,16 @@ test.describe('New Game Flow', () => {
 
 **Files Created:**
 
-- `ReactUi/package.json`
-- `ReactUi/tsconfig.json`
-- `ReactUi/next.config.js`
-- `ReactUi/tailwind.config.ts`
-- `ReactUi/nswag.json`
-- `ReactUi/stores/*.ts`
-- `ReactUi/lib/signalr/*.ts`
-- `ReactUi/lib/api/*.ts`
-- `ReactUi/lib/geometry/boardGeometry.ts`
-- `ReactUi/types/*.ts`
+- `react-ui/package.json`
+- `react-ui/tsconfig.json`
+- `react-ui/next.config.js`
+- `react-ui/tailwind.config.ts`
+- `react-ui/nswag.json`
+- `react-ui/stores/*.ts`
+- `react-ui/lib/signalr/*.ts`
+- `react-ui/lib/api/*.ts`
+- `react-ui/lib/geometry/boardGeometry.ts`
+- `react-ui/types/*.ts`
 
 **Acceptance Criteria:**
 
@@ -2518,13 +2518,13 @@ test.describe('New Game Flow', () => {
 
 **Files Created:**
 
-- `ReactUi/app/layout.tsx`
-- `ReactUi/app/page.tsx`
-- `ReactUi/app/new-game/page.tsx`
-- `ReactUi/components/layout/NavMenu.tsx`
-- `ReactUi/components/layout/PortraitTabs.tsx`
-- `ReactUi/hooks/useViewportScaler.ts`
-- `ReactUi/styles/globals.css`
+- `react-ui/app/layout.tsx`
+- `react-ui/app/page.tsx`
+- `react-ui/app/new-game/page.tsx`
+- `react-ui/components/layout/NavMenu.tsx`
+- `react-ui/components/layout/PortraitTabs.tsx`
+- `react-ui/hooks/useViewportScaler.ts`
+- `react-ui/styles/globals.css`
 
 **Acceptance Criteria:**
 
@@ -2553,14 +2553,14 @@ test.describe('New Game Flow', () => {
 
 **Files Created:**
 
-- `ReactUi/components/board/BoardContainer.tsx`
-- `ReactUi/components/board/SvgDefinitions.tsx`
-- `ReactUi/components/board/BaseLayer.tsx`
-- `ReactUi/components/board/TilesLayer.tsx`
-- `ReactUi/components/board/RoadsLayer.tsx`
-- `ReactUi/components/board/BuildingsLayer.tsx`
-- `ReactUi/components/board/RobberLayer.tsx`
-- `ReactUi/components/board/GoldTilesLayer.tsx`
+- `react-ui/components/board/BoardContainer.tsx`
+- `react-ui/components/board/SvgDefinitions.tsx`
+- `react-ui/components/board/BaseLayer.tsx`
+- `react-ui/components/board/TilesLayer.tsx`
+- `react-ui/components/board/RoadsLayer.tsx`
+- `react-ui/components/board/BuildingsLayer.tsx`
+- `react-ui/components/board/RobberLayer.tsx`
+- `react-ui/components/board/GoldTilesLayer.tsx`
 
 **Acceptance Criteria:**
 
@@ -2589,13 +2589,13 @@ test.describe('New Game Flow', () => {
 
 **Files Created:**
 
-- `ReactUi/components/players/PlayersPanel.tsx`
-- `ReactUi/components/players/PlayerTile.tsx`
-- `ReactUi/components/players/PlayerCard.tsx`
-- `ReactUi/components/players/GameResourcesHeader.tsx`
-- `ReactUi/components/resources/ResourceTracking.tsx`
-- `ReactUi/components/resources/ResourceCard.tsx`
-- `ReactUi/components/resources/StarCounter.tsx`
+- `react-ui/components/players/PlayersPanel.tsx`
+- `react-ui/components/players/PlayerTile.tsx`
+- `react-ui/components/players/PlayerCard.tsx`
+- `react-ui/components/players/GameResourcesHeader.tsx`
+- `react-ui/components/resources/ResourceTracking.tsx`
+- `react-ui/components/resources/ResourceCard.tsx`
+- `react-ui/components/resources/StarCounter.tsx`
 
 **Acceptance Criteria:**
 
@@ -2625,14 +2625,14 @@ test.describe('New Game Flow', () => {
 
 **Files Created:**
 
-- `ReactUi/components/controls/PurchaseButton.tsx`
-- `ReactUi/components/controls/RollGrid.tsx`
-- `ReactUi/components/controls/GameControls.tsx`
-- `ReactUi/components/board/BoardMeasurement.tsx`
-- `ReactUi/components/shared/RobberMenu.tsx`
-- `ReactUi/components/shared/Modal.tsx`
-- `ReactUi/components/celebrations/WinnerCelebration.tsx`
-- `ReactUi/components/celebrations/GriefCelebration.tsx`
+- `react-ui/components/controls/PurchaseButton.tsx`
+- `react-ui/components/controls/RollGrid.tsx`
+- `react-ui/components/controls/GameControls.tsx`
+- `react-ui/components/board/BoardMeasurement.tsx`
+- `react-ui/components/shared/RobberMenu.tsx`
+- `react-ui/components/shared/Modal.tsx`
+- `react-ui/components/celebrations/WinnerCelebration.tsx`
+- `react-ui/components/celebrations/GriefCelebration.tsx`
 
 **Acceptance Criteria:**
 
@@ -2658,10 +2658,10 @@ test.describe('New Game Flow', () => {
 
 **Files Created:**
 
-- `ReactUi/app/load-game/page.tsx`
-- `ReactUi/app/edit-players/page.tsx`
-- `ReactUi/app/settings/page.tsx`
-- `ReactUi/app/stats/page.tsx`
+- `react-ui/app/load-game/page.tsx`
+- `react-ui/app/edit-players/page.tsx`
+- `react-ui/app/settings/page.tsx`
+- `react-ui/app/stats/page.tsx`
 
 **Acceptance Criteria:**
 
@@ -2689,9 +2689,9 @@ test.describe('New Game Flow', () => {
 
 **Files Created:**
 
-- `ReactUi/tests/unit/*.test.ts`
-- `ReactUi/tests/e2e/*.spec.ts`
-- `ReactUi/README.md`
+- `react-ui/tests/unit/*.test.ts`
+- `react-ui/tests/e2e/*.spec.ts`
+- `react-ui/README.md`
 
 **Acceptance Criteria:**
 
