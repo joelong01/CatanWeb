@@ -65,6 +65,10 @@ builder.Services.AddSignalR(options =>
         JsonHelper.ConfigureOptions(options.PayloadSerializerOptions);
     });
 
+// Add OpenAPI/Swagger for API documentation and client generation (NSwag)
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 // Configure to listen on all interfaces on port 8080
 builder.WebHost.ConfigureKestrel(options =>
 {
@@ -217,6 +221,10 @@ else
 {
     // In development, we're using HTTP only on port 8080 for local network access
     // Skip HTTPS redirection to avoid the "Failed to determine https port" warning
+
+    // Enable Swagger UI for API exploration and NSwag type generation
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 // Configure static files with caching for images
@@ -243,7 +251,16 @@ app.UseRouting();
 
 app.UseAuthorization();
 
-app.MapStaticAssets();
+// MapStaticAssets requires a manifest file generated during build.
+// Skip it when running under OpenAPI tools (NSwag, Swashbuckle CLI) since it's not needed for API discovery.
+// These tools run the app to extract metadata but don't have the static assets manifest.
+var isOpenApiGeneration = Environment.GetCommandLineArgs().Any(arg =>
+    arg.Contains("NSwag", StringComparison.OrdinalIgnoreCase) ||
+    arg.Contains("swagger", StringComparison.OrdinalIgnoreCase));
+if (!isOpenApiGeneration)
+{
+    app.MapStaticAssets();
+}
 
 // Health check endpoint for service readiness
 // Always checks database connectivity, but caches expensive Resource Graph diagnostics for 10 minutes
