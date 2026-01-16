@@ -1,0 +1,9 @@
+# Dependencies
+node_modules/
+react-ui/node_modules/
+
+# Build output
+.next/
+
+# Legacy design documents (historical, not actively maintained)
+design_docs/

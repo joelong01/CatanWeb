@@ -43,6 +43,7 @@ The game interface is organized into distinct panels with specific responsibilit
 ### Panel Descriptions
 
 #### Hamburger Menu (Hidden by Default)
+
 - **Source**: `MainPage.xaml` SplitView.Pane
 - **Purpose**: Navigation and game commands
 - **Contents**: New Game, Open, Save, Save As, Edit Players, Balance, Settings, Quit
@@ -51,6 +52,7 @@ The game interface is organized into distinct panels with specific responsibilit
 #### Left Panel - Game Controls & Input
 
 **1. Game State Controls (`GameControls.xaml`)**
+
 - **Undo Button** (E10E icon) - Revert last action
 - **Next Button** (E101 icon) - Advance game state
 - **Redo Button** (E10D icon) - Restore undone action
@@ -59,6 +61,7 @@ The game interface is organized into distinct panels with specific responsibilit
 - **Enable States**: Buttons enable/disable based on `GameModel.ActionFlags`
 
 **2. Purchase Controls (`PurchaseCtrl.xaml`)**
+
 - **Purpose**: Buy roads, settlements, cities, development cards
 - **Layout**: Grid of 100×100 flip cards
 - **Front**: Glyph (CatanFont), count of unspent, description
@@ -67,6 +70,7 @@ The game interface is organized into distinct panels with specific responsibilit
 - **Animation**: Push/release scale animation on interaction
 
 **3. Roll Entry**
+
 - **Source**: Defined inline in `MainPage.xaml`
 - **Purpose**: Select dice roll (2-12)
 - **Layout**: GridView with WrapGrid (3 columns)
@@ -76,6 +80,7 @@ The game interface is organized into distinct panels with specific responsibilit
 - **Visibility**: Hidden during Supplemental phase
 
 **4. Board Measurements (`BoardMeasurementCtrl.xaml`)**
+
 - **Purpose**: Analyze board balance during setup
 - **Visibility**: Only shown during PickingBoard state
 - **Contents**:
@@ -88,6 +93,7 @@ The game interface is organized into distinct panels with specific responsibilit
 #### Center Panel - Game Board
 
 **Board Control (`GameBoardCtrl.xaml`)**
+
 - **Purpose**: Main game board visualization
 - **Contents**: Hex tiles, roads, settlements, cities, harbors, robber
 - **Interaction**: Drag-and-drop tiles (setup), click to place pieces
@@ -96,12 +102,14 @@ The game interface is organized into distinct panels with specific responsibilit
 #### Right Panel - Game State Display
 
 **1. Tracked Resources (`TrackedResourcesCtrl.xaml`)**
+
 - **Purpose**: Show total resources in play
 - **Layout**: GridView of ResourceCardCtrl items
 - **Display**: Each resource type with flip animation and count
 - **Selection**: Multi-select for trading analysis
 
 **2. Player List**
+
 - **Source**: ListView in `MainPage.xaml`
 - **Templates**: Different templates per game state
   - `RollOrderTemplate` - During roll order determination
@@ -229,6 +237,7 @@ Each tile is rendered as layered polygons:
 | Gap between tiles | `TileGap` property | Spacing for roads |
 
 **Resource Image Styling:**
+
 - All resource images have a common yellowish-brown edge color
 - This creates visual cohesion when tiles are adjacent
 - Images use `UniformToFill` stretch to maintain aspect ratio
@@ -281,6 +290,7 @@ Harbors are ellipses filled with harbor type images:
 ```
 
 **Harbor Positioning:**
+
 - Placed at tile vertices (same positions as settlements)
 - Scaled 1.5x for visibility
 - Background polygon shows water extending into harbor area
@@ -316,6 +326,7 @@ BoardSvgGenerator (like BoardLayoutCtrl.xaml)
 ```
 
 **Benefits:**
+
 - **Testable** - Each renderer can be unit tested independently
 - **Reusable** - Components can be used outside board context
 - **Maintainable** - Clear separation of concerns
@@ -323,6 +334,7 @@ BoardSvgGenerator (like BoardLayoutCtrl.xaml)
 - **SVG-native** - Uses embedded SVG files instead of icon fonts (no CatanFont dependency)
 
 **SVG File Strategy:**
+
 - Use SVG files from `DesktopApp/Assets/SVG/` directory (settlement.svg, city.svg, knight.svg, road.svg, star.svg)
 - Avoid CatanFont for game pieces - web has native SVG support
 - Standard icon fonts (Segoe MDL2 Assets) still used for UI controls (shuffle, undo buttons)
@@ -345,6 +357,7 @@ SVG elements are rendered in document order (later = on top):
 **House Rule**: Some game variants allow random tiles to temporarily become gold mines during a turn.
 
 **Visual Behavior:**
+
 1. When `TileModel.TemporarilyGold` is true:
    - Tile's main texture changes to gold mine pattern
    - A small resource card (67×100) appears on the tile showing the **original** resource type
@@ -352,6 +365,7 @@ SVG elements are rendered in document order (later = on top):
    - Card flips over with 3D animation to reveal the resource
 
 2. **Desktop Implementation** (`TileCtrl.xaml`):
+
    ```xml
    <Viewbox Height="50" Stretch="Uniform"
            HorizontalAlignment="Center"
@@ -435,6 +449,7 @@ Roads are rendered as 6-point polygons using an **inner/outer hex geometry** app
 #### Inner/Outer Hex Architecture
 
 The Desktop app uses two concentric hexagons per tile:
+
 - **Outer Hex**: Defines the tile boundaries and vertex positions (size = `OuterHexSize`)
 - **Inner Hex**: Not visible, used for layout calculations (size = `InnerHexSize`)
 
@@ -461,12 +476,14 @@ InnerHexSize = OuterHexSize - TileGap - InnerHexStrokeThickness * 0.5
 ```
 
 **Desktop Default Values:**
+
 - `OuterHexSize = 100` (distance from center to vertex)
 - `TileGap = 2`
 - `InnerHexStrokeThickness = 16`
 - Therefore: `InnerHexSize = 100 - 2 - 8 = 90`
 
 **WebUI Equivalent (HexSize = 50):**
+
 - `OuterHexSize = 50`
 - Using ratio: `InnerHexSize = OuterHexSize * 0.9 = 45`
 
@@ -485,6 +502,7 @@ Each road is a 6-point polygon connecting two adjacent tiles:
 ```
 
 **The 6 points:**
+
 1. **O1** - Outer vertex 1 (tip at vertex)
 2. **I1** - This tile's inner vertex 1
 3. **I2** - This tile's inner vertex 2
@@ -497,11 +515,13 @@ Each road is a 6-point polygon connecting two adjacent tiles:
 For a flat-top hex, vertices are calculated from the center at angles 0°, 60°, 120°, 180°, 240°, 300°.
 
 **This tile's inner points:** Scale outer vertex toward this tile's center
+
 ```
 I = TileCenter + (O - TileCenter) * (InnerHexSize / OuterHexSize)
 ```
 
 **Adjacent tile's inner points:** Scale outer vertex toward adjacent tile's center
+
 ```
 I_adj = AdjTileCenter + (O - AdjTileCenter) * (InnerHexSize / OuterHexSize)
 ```
@@ -579,6 +599,7 @@ When 3 roads meet at a vertex:
 ```
 
 **Road States:**
+
 - **Empty**: Transparent (hidden)
 - **Hover**: White semi-transparent (shows placement option)
 - **Placed**: Player color with stroke
@@ -595,6 +616,7 @@ See `DesktopApp/Roads/RoadViewModel.cs` `PointsForSide()` method for the authori
 **All 4 Desktop Features Ported** (`RoadCtrl.xaml`):
 
 #### 1. Player Colors (Fill and Stroke)
+
 - Desktop:
   - `Fill="{x:Bind GetBackgroundBrush(RoadState, OwnerId, CurrentPlayer)}"`
   - `Stroke="{x:Bind GetForegroundBrush(RoadState, OwnerId, CurrentPlayer)}"`
@@ -602,18 +624,22 @@ See `DesktopApp/Roads/RoadViewModel.cs` `PointsForSide()` method for the authori
 - **WebUI**: Apply `PlayerData.PrimaryBackgroundColor` (or gradient) for fill, `ForegroundColor` for stroke
 
 #### 2. Stroke Thickness
+
 - Desktop: `StrokeThickness="{x:Bind Layout.RoadStrokeThickness}"`
 - Consistent stroke width from layout constants
 - **WebUI**: Apply to polygon `stroke-width` attribute
 
 #### 3. Opacity Based on Road State (Optional)
+
 - Desktop: `Opacity="{x:Bind Opacity(Road, RoadState)}"`
 - Different opacity for different states (buildable, unowned, owned)
 - **WebUI**: CSS class or inline `opacity` attribute
 - **Status**: Optional - may not be needed initially
 
 #### 4. Build Index Display
+
 - Desktop: Viewbox at `RoadCenter` with black rounded background
+
   ```xml
   <Viewbox Canvas.Left="{RoadCenter.X}" Canvas.Top="{RoadCenter.Y}">
     <Grid Background="Black" CornerRadius="5">
@@ -621,11 +647,13 @@ See `DesktopApp/Roads/RoadViewModel.cs` `PointsForSide()` method for the authori
     </Grid>
   </Viewbox>
   ```
+
 - Shows build order number at road midpoint
 - **Purpose**: Player can say "Build road 7" instead of describing position
 - **WebUI**: SVG `<text>` with black rounded `<rect>` background, positioned at road center
 
 **Road Center Calculation:**
+
 ```csharp
 // Midpoint of the 6-point polygon
 var roadCenter = new Point(
@@ -655,6 +683,7 @@ var roadCenter = new Point(
 ```
 
 **Road States:**
+
 - **Unowned/Buildable**: Transparent or semi-transparent
 - **Owned**: Player colors with full opacity
 - **Hover**: Highlighted for placement preview
@@ -664,20 +693,24 @@ var roadCenter = new Point(
 **All 5 Desktop Features Ported** (`BuildingCtrl.xaml`):
 
 #### 1. Circular Shape (CornerRadius="20")
+
 - Desktop: `Grid` with `CornerRadius="20"`, `Width="40"`, `Height="40"`
 - WebUI: SVG `<circle>` with `r="20"` (radius = BuildingSize/2)
 
 #### 2. Player Gradient Backgrounds
+
 - Desktop: `Background="{x:Bind BIND_Background(VisualState, OwnerId, CurrentPlayer)}"`
 - Gradient from `PlayerData.PrimaryBackgroundColor` to `PlayerData.SecondaryBackgroundColor`
 - WebUI: SVG `<linearGradient>` defined per player, referenced in circle fill
 
 #### 3. Player Foreground Colors
+
 - Desktop: `Foreground="{x:Bind BIND_Foreground(VisualState, OwnerId, CurrentPlayer)}"`
 - Uses `PlayerData.ForegroundColor` for text, icons, and border
 - WebUI: Apply to SVG `stroke`, `<text>` fill, or `<image>` filter
 
 #### 4. State Glyph Rendering (Icon or Star Number)
+
 - Desktop: `Text="{x:Bind BIND_StateGlyph(BuildingState, VisualState, Stars)}"`
 - Logic:
   - If `VisualState == Stars`: Display star number (e.g., "13")
@@ -691,6 +724,7 @@ var roadCenter = new Point(
 - **Note**: `robber.svg` is separate - it's the piece on tiles that blocks production, not a building
 
 #### 5. Build Index Display (Optional)
+
 - Desktop: `Text="{x:Bind BuildIndex}"` with visibility binding
 - Small number on right side showing build order
 - Useful for debugging/game analysis
@@ -737,6 +771,7 @@ var roadCenter = new Point(
 ```
 
 **Building States:**
+
 - **Empty/Not Built**: No circle rendered (or transparent circle for hover preview)
 - **Possible Settlement**: Semi-transparent white circle (placement preview)
 - **Placed**: Player gradient + icon or star count based on visual state
@@ -748,6 +783,7 @@ Harbors are positioned on hex edges, showing trading ports with image patterns.
 #### Harbor Data Model
 
 From `HarborModel.cs`:
+
 - **HarborKey**: Contains HexCoordinates, HarborType, and Side (HexSide)
 - **HarborType enum**: `Sheep, Wood, Ore, Wheat, Brick, ThreeForOne, None`
 
@@ -843,6 +879,7 @@ For a flat-top hex, harbors on each side face outward:
 ```
 
 **Edge-to-vertex mapping:**
+
 - Top: TopLeft ↔ TopRight vertices
 - TopRight: TopRight ↔ Right vertices
 - BottomRight: Right ↔ BottomRight vertices
@@ -868,6 +905,7 @@ When dice are rolled, tiles with matching numbers are highlighted:
 ```
 
 **Implementation:**
+
 - Add CSS class or stroke color change
 - Optional glow filter for emphasis
 - Animate highlight appearing/fading
@@ -929,6 +967,7 @@ Uses Catan font glyphs with counts (from PlayerCtrl.xaml):
 ```
 
 **Stats tracked:**
+
 - Score (victory points)
 - Roads played
 - Settlements played
@@ -954,6 +993,7 @@ Before roll:          After roll (6 rolled):
 ```
 
 **Animation sequence:**
+
 1. Card starts face-down
 2. Card flips over (3D rotation)
 3. Shows resource image and count
@@ -1050,6 +1090,7 @@ When images aren't loaded, use these solid colors:
 ### SVG Animations
 
 For more complex animations (card flips, dice rolls):
+
 - CSS transforms for 3D rotations
 - JavaScript-driven animations for sequencing
 - Consider using a library like GSAP for smooth animations
@@ -1081,6 +1122,7 @@ For more complex animations (card flips, dice rolls):
 ## Implementation Phases
 
 ### Phase 1: Basic Board (Current)
+
 - [x] Hex grid with correct orientation
 - [x] Solid color fills for resources
 - [x] Basic number display
@@ -1088,24 +1130,28 @@ For more complex animations (card flips, dice rolls):
 - [x] Responsive sizing
 
 ### Phase 2: Visual Polish
+
 - [ ] Tile texture patterns from images
 - [ ] Number tokens with probability pips
 - [ ] Tile border styling (bmCherry)
 - [ ] Catan font for building icons
 
 ### Phase 3: Harbors & Buildings
+
 - [ ] Harbor image patterns
 - [ ] Harbor positioning and rotation
 - [ ] Settlement/city rendering with player colors
 - [ ] Road rendering with player colors
 
 ### Phase 4: Interactivity
+
 - [ ] Click handlers for placement
 - [ ] Roll highlighting
 - [ ] Robber movement
 - [ ] Building upgrade (settlement → city)
 
 ### Phase 5: Game Controls
+
 - [ ] Player stats panel
 - [ ] Resource tracking
 - [ ] Dice/roll display

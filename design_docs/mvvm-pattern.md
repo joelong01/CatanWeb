@@ -5,6 +5,7 @@
 This document describes the complete pattern for adding a new MVVM message to the Catan3 system. When a user interaction in the UI needs to trigger a game logic operation, a new MVVM message must be created and integrated throughout the entire stack.
 
 The pattern involves:
+
 1. **Message Definition** - Creating the MVVM message class
 2. **Message Recording** - Supporting game replay/testing via recorded messages
 3. **UI Layer** - Sending the message from a ViewModel
@@ -20,7 +21,8 @@ The pattern involves:
 
 Create a new record class that inherits from your base message type or is a standalone record. The message should be immutable and contain only the data needed to execute the operation.
 
-### Pattern:
+### Pattern
+
 ```csharp
 /// <summary>
 /// Sent when the user wants to [describe the action].
@@ -37,7 +39,8 @@ public sealed record SwapTileResources(
 }
 ```
 
-### Guidelines:
+### Guidelines
+
 - **Immutability**: Use `sealed record` or sealed class with init properties
 - **Validation**: Keep validation in GameStateMachine, not the message
 - **Data Capture**: Include all information needed to validate and execute the action
@@ -52,7 +55,7 @@ public sealed record SwapTileResources(
 
 Supporting game replay requires recording all messages during gameplay and replaying them in tests.
 
-### Pattern:
+### Pattern
 
 #### 2a. Create a Sealed Record Class
 
@@ -129,6 +132,7 @@ public interface IRecordedMessage
 ```
 
 The discriminator string (e.g., `"swapTileResources"`) must be:
+
 - Unique across all record types
 - Lowercase with camelCase
 - Match the `Discriminator` constant in your record class
@@ -151,14 +155,15 @@ public static IRecordedMessage ToRecord(this SwapTileResources msg, GameModel ga
 
 **File Location:** `DesktopApp/Tiles/TileViewModel.cs` (or appropriate ViewModel file)
 
-### Guidelines for Choosing the Correct ViewModel:
+### Guidelines for Choosing the Correct ViewModel
+
 - **Tile Interactions**: `DesktopApp/Tiles/TileViewModel.cs`
 - **Building Interactions**: `DesktopApp/Buildings/BuildingViewModel.cs`
 - **Player Order/Setup**: `DesktopApp/Game/[GamePhase]ViewModel.cs`
 - **General Game Actions**: `DesktopApp/Game/GamePageViewModel.cs`
 - **Settings**: `DesktopApp/Settings/SettingsViewModel.cs`
 
-### Pattern:
+### Pattern
 
 ```csharp
 public partial class TileViewModel : ObservableObject
@@ -189,7 +194,8 @@ public partial class TileViewModel : ObservableObject
 }
 ```
 
-### Best Practices:
+### Best Practices
+
 - **Validation**: Only validate UI-level constraints (e.g., "user selected something")
 - **Error Handling**: Don't try/catch here; let GameStateMachine handle business logic errors
 - **Tracing**: Use `this.TraceMessage()` if needed for debugging user interactions
@@ -200,6 +206,7 @@ public partial class TileViewModel : ObservableObject
 ## Step 4: Register Handler in GameMessageService
 
 **File Locations:**
+
 - Local game: `DesktopApp/GameState/GameMessageService.cs`
 - Service game: `DesktopApp/GameState/GameMessageServiceProxy.cs`
 
@@ -302,7 +309,7 @@ private async void HandleSwapTileResourcesServiceAsync(object recipient, SwapTil
 
 **File Location:** `Catan3.Shared/GameLogic/GameStateMachine.cs`
 
-### Pattern:
+### Pattern
 
 ```csharp
 /// <summary>
@@ -351,7 +358,8 @@ public Task<GameModel> HandleSwapResourcesAsync(SwapTileResources message)
 }
 ```
 
-### Guidelines:
+### Guidelines
+
 - **Public Method**: Must be `public Task<GameModel> Handle[Action]Async(MessageType message)`
 - **Logging**: Always trace with GameState and GameHash for debugging
 - **State Validation**: Use `ThrowIfWrongState()` to validate preconditions
@@ -367,7 +375,7 @@ public Task<GameModel> HandleSwapResourcesAsync(SwapTileResources message)
 
 This is only needed if you support remote GameService operations.
 
-### Pattern:
+### Pattern
 
 ```csharp
 /// <summary>
@@ -392,6 +400,7 @@ public async Task<CommandResult> ExecuteSwapTileResourcesAsync(SwapTileResources
 ```
 
 This method:
+
 - Validates `_gameId` is set (player has joined a game)
 - Invokes the SignalR hub method with `gameId`, `playerId`, and `message`
 - Returns a `CommandResult` for tracking
@@ -434,12 +443,14 @@ public async Task ExecuteSwapTileResources(string gameId, string playerId, SwapT
 Use this checklist to ensure you've covered all integration points:
 
 ### Message Definition
+
 - [ ] Created sealed record in `MessageObjects.cs`
 - [ ] Added XML documentation with `<summary>` explaining when it's sent
 - [ ] Included all data needed to execute the action
 - [ ] Added override `ToString()` if helpful for debugging
 
 ### Message Recording
+
 - [ ] Created sealed Record class in `RecordedMessage.cs`
 - [ ] Defined `Discriminator` constant (unique, camelCase)
 - [ ] Added `[JsonConstructor]` with init properties
@@ -448,12 +459,14 @@ Use this checklist to ensure you've covered all integration points:
 - [ ] Added `ToRecord()` extension method in `MessageConverters`
 
 ### UI Layer
+
 - [ ] Created handler in appropriate ViewModel file
 - [ ] Sends message via `Messenger.Send(message)`
 - [ ] Validates UI-level preconditions only
 - [ ] No try/catch around message send
 
 ### GameMessageService (Local)
+
 - [ ] Added registration in `RegisterLocalGameMessages()`
 - [ ] Added unregistration in `UnregisterGameMessages()`
 - [ ] Implemented `HandleSwapTileResourcesAsync()` handler
@@ -463,6 +476,7 @@ Use this checklist to ensure you've covered all integration points:
 - [ ] Handler catches `GameException` and calls `SendErrorMessage()`
 
 ### GameMessageServiceProxy (Service)
+
 - [ ] Added registration in `RegisterServiceGameMessages()`
 - [ ] Implemented `HandleSwapTileResourcesServiceAsync()` handler
 - [ ] Handler checks for null `_gameServiceProxy`
@@ -470,6 +484,7 @@ Use this checklist to ensure you've covered all integration points:
 - [ ] Handler sends via `UpdateGameModel` from `GameStateUpdated` event
 
 ### GameStateMachine
+
 - [ ] Implemented public `Handle[Action]Async(Message)` method
 - [ ] Method signature returns `Task<GameModel>`
 - [ ] Traces entry with GameState and GameHash
@@ -480,12 +495,14 @@ Use this checklist to ensure you've covered all integration points:
 - [ ] Traces key state changes
 
 ### GameServiceProxy (Optional)
+
 - [ ] Created `ExecuteSwapTileResourcesAsync()` method
 - [ ] Validates `_gameId` is set
 - [ ] Invokes correct hub method name
 - [ ] Returns `CommandResult`
 
 ### GameService Hub (Optional)
+
 - [ ] Created `[HubMethodName("ExecuteSwapTileResources")]` method
 - [ ] Receives `gameId`, `playerId`, and `message`
 - [ ] Delegates to game service logic

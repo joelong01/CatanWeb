@@ -13,10 +13,12 @@ Both need to feel instant for good UX.
 ## Game Phases and Rendering Behavior
 
 ### Allocation Phase
+
 - Buildings show star counts on hover (CSS opacity trick currently works)
 - Need instant hover response - no re-render on mouse enter/exit
 
 ### Post-Allocation (Normal Play)
+
 - **Gold tiles**: When player starts turn, some tiles become "gold" temporarily
   - Background changes to GoldMine asset
   - Small ResourceCard overlay shows original resource type
@@ -27,7 +29,9 @@ Both need to feel instant for good UX.
   - Only the placed building/road remains
 
 ### Key Insight
+
 The rendering model should support:
+
 1. **Layer updates** - Replace entire layer content (e.g., all buildings change)
 2. **Additive rendering** - Add buildable indicators without touching other layers
 3. **Subtractive rendering** - Remove buildable indicators, keep placed item

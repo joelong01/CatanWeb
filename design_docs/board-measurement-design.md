@@ -452,6 +452,7 @@ Blazor automatically scopes these styles to prevent conflicts.
 **See comprehensive call flow documentation:** [`board-measurement-call-flow.md`](./board-measurement-call-flow.md)
 
 This separate document contains:
+
 - Complete step-by-step trace of slider movement (0 → 10)
 - Mermaid sequence diagrams for both WebUI and Desktop
 - Side-by-side comparison of architectural approaches
@@ -461,6 +462,7 @@ This separate document contains:
 ### Quick Summary
 
 **WebUI Flow:**
+
 ```
 User moves slider → @oninput event → HandleSliderInput()
 → ShownStarsChanged.InvokeAsync(10) → Game.HandleShownStarsChanged()
@@ -471,6 +473,7 @@ User moves slider → @oninput event → HandleSliderInput()
 ```
 
 **Desktop Flow:**
+
 ```
 User moves slider → TwoWay binding → GameViewModel.ShownStars = 10
 → OnShownStarsChanged(10) → Loop through Buildings collection
@@ -480,6 +483,7 @@ User moves slider → TwoWay binding → GameViewModel.ShownStars = 10
 ```
 
 **Key Architectural Difference:**
+
 - Desktop: Property-based reactivity with granular updates
 - WebUI: Full SVG regeneration with DOM diffing
 
@@ -861,6 +865,7 @@ public void BoardMeasurement_EnforcesMaxThreeSelections()
 ### CSS Visual Design
 
 Selected resource cards should have:
+
 - **Outline**: 3px solid accent color (blue/purple)
 - **Checkmark indicator**: Top-right corner, circular badge
 - **Hover state**: Slightly brighter outline

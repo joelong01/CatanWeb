@@ -39,6 +39,7 @@ SouthEast:  (1, 0, -1)
 ## Hex Orientation
 
 The game uses **flat-top hexagons**:
+
 - Flat edges at top and bottom
 - Pointed vertices on left and right
 - Height = √3 × size
@@ -49,6 +50,7 @@ The game uses **flat-top hexagons**:
 ### Hex to Pixel (Center Point)
 
 For flat-top hexagons:
+
 ```csharp
 x = size * 1.5 * Q + offsetX
 y = size * √3 * (R + Q/2) + offsetY
@@ -80,6 +82,7 @@ distance = (|Q1-Q2| + |R1-R2| + |S1-S2|) / 2
 ```
 
 Or equivalently:
+
 ```csharp
 distance = max(|Q1-Q2|, |R1-R2|, |S1-S2|)
 ```
@@ -89,6 +92,7 @@ distance = max(|Q1-Q2|, |R1-R2|, |S1-S2|)
 Two hexes are adjacent if their distance is exactly 1.
 
 The 6 direction vectors are:
+
 ```csharp
 North:     (0, -1, +1)
 NorthEast: (+1, -1, 0)
@@ -135,6 +139,7 @@ var neighborCoords = hexCoordinates.GetAllNeighbors();
 ### Layout Parameters
 
 The board layout is defined by:
+
 - **OuterHexSize**: Distance from hex center to vertex
 - **TileXOffset**: X offset for the board origin (top-left of bounding box)
 - **TileYOffset**: Y offset for the board origin (top-left of bounding box)
@@ -262,6 +267,7 @@ foreach (var tile in tiles6)
 ### Adjacent 6s and 8s
 
 In Catan, the following adjacencies are **invalid**:
+
 - 6 adjacent to 6
 - 6 adjacent to 8
 - 8 adjacent to 8

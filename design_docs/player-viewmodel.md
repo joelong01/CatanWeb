@@ -11,12 +11,14 @@ This document defines the architecture for player data representation across the
 ## Constraints
 
 **CRITICAL:** Shared models in `Catan3.Shared/Models/` cannot be changed:
+
 - ❌ `PlayerModel` - game state (resources, score, entitlements)
 - ❌ `GameModel` - complete game state
 
 These are shared between Desktop and WebUI and must remain unchanged.
 
 **What CAN change:**
+
 - ✅ `PlayerData` → `PlayerProfile` (move from ViewData to new PlayerProfile namespace)
 - ✅ `PlayerViewModel` (platform-specific - Desktop and WebUI each have their own)
 - ✅ Add nested types to PlayerProfile namespace (PlayerColors, LifetimeStats, GameStats)
@@ -28,9 +30,11 @@ These are shared between Desktop and WebUI and must remain unchanged.
 **Rationale:** "View" is UI-specific terminology and doesn't belong in Shared code. Shared contains data models, game logic, and profiles - not view concerns.
 
 **Before:**
+
 - `Catan3.Shared/ViewData/PlayerData.cs` ❌ ("ViewData" implies UI concern)
 
 **After:**
+
 - `Catan3.Shared/PlayerProfile/PlayerProfile.cs` ✅ (profile storage is a top-level concern)
 
 ### Decision 2: PlayerProfile as Top-Level Namespace
@@ -38,6 +42,7 @@ These are shared between Desktop and WebUI and must remain unchanged.
 **Rationale:** Player profiles are a significant domain concept - persistent player identity, colors, statistics. This warrants a top-level namespace, not nesting under "ViewData" or "Models".
 
 **Structure:**
+
 ```
 Catan3.Shared/
   Models/              (game state - PlayerModel, GameModel)
@@ -47,6 +52,7 @@ Catan3.Shared/
 ```
 
 **Benefits:**
+
 - Clear separation: Models = game state, PlayerProfile = persistent identity
 - Room for growth (stats, achievements, preferences)
 - Easy to locate all profile-related code
@@ -56,6 +62,7 @@ Catan3.Shared/
 **Rationale:** LifetimeStats and GameStats have significant overlap (both track resources, trades, etc.). Using composition makes the aggregation relationship explicit and provides clear APIs for updating lifetime stats from game stats.
 
 **Structure:**
+
 ```csharp
 // Core stats for one game
 public record GameStats(int ResourcesCollected, int TradesMade, ...);
@@ -75,6 +82,7 @@ public record LifetimeStats
 ```
 
 **Benefits:**
+
 - Avoids duplicate property definitions
 - Makes aggregation relationship explicit
 - Clear API: `lifetime.AddGame(gameStats, won, ...)`
@@ -87,6 +95,7 @@ public record LifetimeStats
 **Rationale:** Following Blazor WASM conventions, client-side data structures belong in `Models/` namespace. "ViewModels" is less common in Blazor (more of a WPF/XAML pattern).
 
 **Structure:**
+
 ```
 WebUI/
   Models/              (client-side data structures - NEW)
@@ -97,6 +106,7 @@ WebUI/
 ```
 
 **Benefits:**
+
 - Follows Blazor community conventions
 - Parallel to Desktop's `DesktopApp/Player/PlayerViewModel.cs`
 - Clear separation from injectable services
@@ -118,12 +128,14 @@ WebUI/
 ### Architectural Differences: Desktop vs WebUI
 
 **Desktop (XAML/MVVM):**
+
 - Collection of peer view models (TileViewModel, RoadViewModel, etc.)
 - Each view model has limited scope - only knows about its own state
 - Communication via MVVM messaging for cross-cutting concerns
 - PlayerViewModel holds reference to PlayerData and exposes XAML-bindable properties
 
 **WebUI (Controller/Compositional):**
+
 - Top-level service (GameStateService) has global view of game state
 - Single rendering point (BoardSvgGenerator.GenerateSvg) with full context
 - Can pass any needed information down to renderers
@@ -138,6 +150,7 @@ This architectural difference allows WebUI to use a cleaner information hierarch
 Desktop uses a two-class pattern for player representation:
 
 **PlayerViewModel** (`DesktopApp/Player/PlayerViewModel.cs`):
+
 ```csharp
 public partial class PlayerViewModel : ObservableRecipient
 {
@@ -164,6 +177,7 @@ public partial class PlayerViewModel : ObservableRecipient
 ```
 
 **PlayerColorViewModel** (`DesktopApp/Player/PlayerColorViewModel.cs`):
+
 ```csharp
 public partial class PlayerColorViewModel : ObservableRecipient
 {
@@ -189,6 +203,7 @@ Desktop **does not** load from PlayerData/PlayerProfile directly. Instead:
    - Provides `FromId(playerId)` lookup method
 
 2. **PlayerViewModel creation**:
+
    ```csharp
    var playerData = PlayerDatabase.Instance.FromId(playerId);
    var playerVm = new PlayerViewModel(
@@ -201,6 +216,7 @@ Desktop **does not** load from PlayerData/PlayerProfile directly. Instead:
    ```
 
 3. **Game state binding**:
+
    ```csharp
    // In GameViewModel.MergePlayers()
    playerVm.Player = gameModel.Players[i];  // Bind to game state
@@ -276,6 +292,7 @@ Desktop **does not** load from PlayerData/PlayerProfile directly. Instead:
 ### Type Definitions
 
 **Key Principles:**
+
 1. **PlayerProfile and PlayerViewModel share the same hierarchical structure** (document model), but expose different APIs for different concerns
 2. **PlayerProfile lives in Catan3.Shared/ViewData** (not Models) - it's profile/storage data, not game state
 3. **Each platform has its own PlayerViewModel** - Desktop has XAML-specific features, WebUI has web-specific features
@@ -501,6 +518,7 @@ Renderers (extract colors from PlayerData)
 ```
 
 **Problems:**
+
 - Renderers receive full PlayerData (over-privileged)
 - Dictionary doesn't preserve player order
 - Unclear separation between storage and rendering
@@ -521,6 +539,7 @@ Renderers (use minimal PlayerColors)
 ```
 
 **Benefits:**
+
 - Clear separation of concerns at each layer
 - Minimal privilege for renderers
 - Guaranteed player order preservation
@@ -667,6 +686,7 @@ public static string RenderSvg(
    - Let VS update all references automatically
 
 2. **Alternative: Manual sed replacement** (if needed):
+
    ```bash
    # Windows PowerShell
    Get-ChildItem -Recurse -Include *.cs | ForEach-Object {
@@ -683,6 +703,7 @@ public static string RenderSvg(
 ### Phase 2: Update GameService API
 
 1. **Update API response type**:
+
    ```csharp
    // GameApiController.cs
    [HttpGet("api/players")]
@@ -697,6 +718,7 @@ public static string RenderSvg(
    ```
 
 2. **Update game join/create to return ordered list**:
+
    ```csharp
    [HttpPost("api/game/new")]
    public async Task<ActionResult<GameResponse>> CreateGame(
@@ -791,6 +813,7 @@ public class WebPlayerViewModel
 ```
 
 **UI Usage:**
+
 ```razor
 @* Game.razor *@
 <div class="player-stats">
@@ -800,6 +823,7 @@ public class WebPlayerViewModel
 ```
 
 **Changes Required:**
+
 - ✅ Add `GameStats` class to `Catan3.Shared/Models/`
 - ✅ Add `GameStatsViewModel` to WebUI
 - ✅ Update `WebPlayerViewModel.FromProfile()` to map stats
@@ -857,6 +881,7 @@ public class WebPlayerViewModel
 ```
 
 **Changes Required:**
+
 - ✅ Add `LifetimeStats` class to PlayerProfile
 - ✅ Update database schema (add to PlayerEntity.Data JSON)
 - ✅ Update `WebPlayerViewModel.FromProfile()` to map lifetime stats
@@ -883,6 +908,7 @@ public class WebPlayerViewModel
 ```
 
 **Changes Required:**
+
 - ❌ No model changes needed
 - ❌ No API changes needed
 - ✅ Just use existing `ImageUri` property in UI
@@ -890,26 +916,31 @@ public class WebPlayerViewModel
 ## Benefits of This Architecture
 
 ### Separation of Concerns
+
 - **Storage (PlayerProfile):** Persistent profile data, database schema
 - **Game State (PlayerModel):** In-game transient state
 - **Rendering (WebPlayerViewModel):** UI-optimized view models
 
 ### Minimal Privilege
+
 - Renderers only receive `PlayerColors`, not full profile data
 - Clear contracts about what data flows where
 
 ### Extensibility
+
 - Adding game statistics: Extend PlayerModel + WebPlayerViewModel
 - Adding lifetime statistics: Extend PlayerProfile + WebPlayerViewModel
 - Adding UI display fields: Extend WebPlayerViewModel only
 - Minimal touch points for each scenario
 
 ### Performance
+
 - `List<WebPlayerViewModel>` preserves player order (turn sequence)
 - `Dictionary<string, int>` index enables O(1) player lookups
 - Color extraction happens once during view model creation
 
 ### Type Safety
+
 - Compile-time verification of color usage
 - Clear types prevent string/object confusion
 - Record types for immutability guarantees
@@ -954,25 +985,30 @@ Alternative: Rename globally and update Desktop to use PlayerProfile. This provi
 ### Phase 2: Create PlayerProfile Namespace (CURRENT)
 
 **Step 1:** Create directory structure
+
 ```bash
 mkdir Catan3.Shared/PlayerProfile
 ```
 
 **Step 2:** Move PlayerProfile.cs
+
 ```bash
 git mv Catan3.Shared/ViewData/PlayerProfile.cs Catan3.Shared/PlayerProfile/PlayerProfile.cs
 ```
 
 **Step 3:** Update namespace in PlayerProfile.cs
+
 - Change: `namespace Catan3.Shared.ViewData` → `namespace Catan3.Shared.PlayerProfile`
 - Update all using statements across solution (Visual Studio will prompt)
 
 **Step 4:** Create nested types in `Catan3.Shared/PlayerProfile/`:
+
 - `PlayerColors.cs` - Color scheme record
 - `GameStats.cs` - Per-game statistics record
 - `LifetimeStats.cs` - Lifetime statistics (contains GameStats Totals)
 
 **Step 5:** Update PlayerProfile to use nested PlayerColors
+
 - Change flat color properties → `public PlayerColors Colors { get; init; }`
 - Add backward-compatible constructor
 - Update JSON serialization
@@ -980,17 +1016,20 @@ git mv Catan3.Shared/ViewData/PlayerProfile.cs Catan3.Shared/PlayerProfile/Playe
 ### Phase 3: Create WebUI.Models.PlayerViewModel
 
 **Step 1:** Create directory
+
 ```bash
 mkdir WebUI/Models
 ```
 
 **Step 2:** Create `WebUI/Models/PlayerViewModel.cs`
+
 - Namespace: `Catan3.WebUI.Models`
 - Same hierarchical structure as PlayerProfile
 - Web-specific APIs (CssGradient, GetRenderColors)
 - Static `FromProfile()` factory method
 
 **Step 3:** Update GameStateService
+
 - Change: `Dictionary<string, PlayerProfile>` → `List<PlayerViewModel>`
 - Add: `Dictionary<string, int> _playerIndex` for O(1) lookups
 - Add: `GetPlayerViewModel(id)` method
@@ -999,6 +1038,7 @@ mkdir WebUI/Models
 ### Phase 4: Update Renderers
 
 **Step 1:** Update renderer signatures to accept color tuples:
+
 ```csharp
 // RoadSvgRenderer.cs
 public static string RenderSvg(
@@ -1017,6 +1057,7 @@ public static string RenderSvg(
 ```
 
 **Step 2:** Update BoardSvgGenerator.GenerateSvg()
+
 - Change parameter: `IReadOnlyDictionary<string, PlayerProfile>` → `IReadOnlyList<PlayerViewModel>`
 - Extract colors using `playerVm.GetRenderColors()`
 - Pass color tuples to renderers

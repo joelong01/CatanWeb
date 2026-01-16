@@ -67,6 +67,7 @@ POST /api/game/new
 ```
 
 **Request Body:**
+
 ```json
 {
   "gameType": "Regular",
@@ -76,6 +77,7 @@ POST /api/game/new
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -92,6 +94,7 @@ POST /api/game/{gameId}/end
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice"
@@ -103,6 +106,7 @@ POST /api/game/{gameId}/end
 ## Game Command Endpoints
 
 All command endpoints follow the pattern:
+
 ```
 POST /api/game/{gameId}/{command}
 ```
@@ -116,6 +120,7 @@ POST /api/game/{gameId}/shuffle
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice"
@@ -133,6 +138,7 @@ POST /api/game/{gameId}/next
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice"
@@ -150,6 +156,7 @@ POST /api/game/{gameId}/undo
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice"
@@ -165,6 +172,7 @@ POST /api/game/{gameId}/redo
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice"
@@ -180,6 +188,7 @@ POST /api/game/{gameId}/roll
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice",
@@ -199,6 +208,7 @@ POST /api/game/{gameId}/balance
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice",
@@ -223,6 +233,7 @@ POST /api/game/{gameId}/swap-tiles
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice",
@@ -242,6 +253,7 @@ POST /api/game/{gameId}/set-player-order
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice",
@@ -260,6 +272,7 @@ POST /api/game/{gameId}/go-first
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice",
@@ -280,6 +293,7 @@ POST /api/game/{gameId}/purchase
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice",
@@ -299,6 +313,7 @@ POST /api/game/{gameId}/upgrade-building
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice",
@@ -315,6 +330,7 @@ POST /api/game/{gameId}/purchase-road
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice",
@@ -337,6 +353,7 @@ POST /api/game/{gameId}/move-robber
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice",
@@ -360,6 +377,7 @@ POST /api/game/{gameId}/participate-supplemental
 ```
 
 **Request Body:**
+
 ```json
 {
   "playerId": "Alice",
@@ -382,6 +400,7 @@ GET /api/game-types
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -413,6 +432,7 @@ GET /api/games
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -442,6 +462,7 @@ GET /api/players
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -478,6 +499,7 @@ GET /health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",

@@ -19,6 +19,7 @@ A persistent cookie stores the user's session state as JSON:
 ```
 
 **Cookie Properties:**
+
 - **Name**: `CatanSession`
 - **Persistence**: Survives browser close and crashes
 - **Expiration**: 30 days (or configurable)
@@ -111,6 +112,7 @@ Login Page
 ```
 
 **Returning user (has cookie):**
+
 - Automatically use stored playerId
 - Can change player via Account menu
 
@@ -136,6 +138,7 @@ New player registration:
 ```
 
 **Server-side storage:**
+
 - Player profile saved to `Players` table in database
 - Profile image saved to `Images` table
 - Returns generated playerId
@@ -174,12 +177,14 @@ Upper-right corner of NewGamePage and GamePage:
 ### Game Invitation Model
 
 **Host creates game:**
+
 1. Host on NewGamePage selects players from database
 2. Host clicks "Start Game"
 3. GameService creates game and stores player list
 4. GameService broadcasts invitation to all selected players
 
 **Player receives invitation:**
+
 ```
 ┌─────────────────────────────────┐
 │  Game Invitation                │
@@ -194,6 +199,7 @@ Upper-right corner of NewGamePage and GamePage:
 ```
 
 **Invitation states:**
+
 - **Online player**: Receives real-time SignalR notification
 - **Offline player**: Invitation stored, shown on next login
 
@@ -232,6 +238,7 @@ public async Task<List<GameInvitation>> GetPendingInvitations(string playerId)
 ### Creating a New Game
 
 **NewGamePage flow:**
+
 1. Select game type (Regular/Expansion)
 2. Select players from database
 3. Configure options (optional)
@@ -264,6 +271,7 @@ public async Task<List<GameInvitation>> GetPendingInvitations(string playerId)
 ```
 
 **On end:**
+
 1. Record game statistics to Stats table (future feature)
 2. Clear `currentGameId` from all players' sessions
 3. Notify all players game has ended
@@ -272,12 +280,14 @@ public async Task<List<GameInvitation>> GetPendingInvitations(string playerId)
 ### Rejoining a Game
 
 **Scenarios:**
+
 - Browser refresh (F5)
 - Browser crash
 - Switch devices
 - Network disconnect/reconnect
 
 **Rejoin flow:**
+
 1. Cookie has `currentGameId`
 2. Connect to SignalR
 3. Call `JoinGame(gameId, playerId)`
@@ -308,6 +318,7 @@ Each player on their own device:
   - Board view for piece placement
 
 **Companion considerations:**
+
 - Mobile-responsive design required
 - Simplified UI for smaller screens
 - Touch-friendly controls
@@ -328,6 +339,7 @@ await _hubConnection.InvokeAsync("JoinGame", gameId, playerId, new DeviceInfo
 ```
 
 **Server tracks:**
+
 - Which devices are connected for each player
 - Device capabilities
 - Can send targeted messages (e.g., private info only to player's devices)
@@ -362,12 +374,14 @@ await _hubConnection.InvokeAsync("JoinGame", gameId, playerId, new DeviceInfo
 ### SignalR Hub Methods
 
 **Client → Server:**
+
 - `JoinGame(gameId, playerId, deviceInfo)`
 - `LeaveGame(gameId, playerId)`
 - `AcceptInvitation(gameId, playerId)`
 - `DeclineInvitation(gameId, playerId)`
 
 **Server → Client:**
+
 - `GameInvitation(invitation)` - New game invitation
 - `GameStateUpdated(gameModel)` - Game state changed
 - `GameEnded(gameId, results)` - Game has ended

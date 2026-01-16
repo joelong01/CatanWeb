@@ -2,6 +2,7 @@
 
 **Date:** 2025-11-28
 **Related Docs:**
+
 - Design: [`board-measurement-design.md`](./board-measurement-design.md)
 - Call Flow: [`board-measurement-call-flow.md`](./board-measurement-call-flow.md)
 
@@ -10,14 +11,17 @@
 ## Issues Found
 
 ### Issue #1: Missing gradient-current-player Definition
+
 **Priority:** CRITICAL
 **Status:** 🔴 Blocking functionality
 
 **Location:**
+
 - `WebUI/Services/Rendering/BuildingSvgRenderer.cs:126`
 - `WebUI/Services/Rendering/BoardSvgGenerator.cs:314-324`
 
 **Problem:**
+
 ```csharp
 // BuildingSvgRenderer.cs:126
 var gradientId = "gradient-current-player";  // ← NOT DEFINED!
@@ -30,17 +34,20 @@ sb.AppendLine($@"<circle cx=""{x}"" cy=""{y}"" r=""{radius}""
 ```
 
 **Root Cause:**
+
 - `GeneratePlayerGradients()` only creates gradients for players in the game
 - Uses pattern: `gradient-{playerId}` (e.g., `gradient-joe-001`)
 - Never creates the special `gradient-current-player` gradient
 - Buildings in `Stars` visual state reference this missing gradient
 
 **Impact:**
+
 - Star buildings render with black/transparent fill instead of colored gradient
 - Visual inconsistency with Desktop implementation
 - Poor UX during board picking phase
 
 **Desktop Behavior:**
+
 - Buildings in Stars state use current player's gradient colors
 - Gradient created from `currentPlayer.PlayerColors.BackgroundBrush`
 - Provides visual feedback of "your potential settlement sites"
@@ -88,9 +95,11 @@ var gradientId = currentPlayerColors != null
     ? $"gradient-{/* need player ID - requires refactoring */}"
     : "gradient-current-player";
 ```
+
 ❌ Rejected - Requires passing player ID through method chain, more invasive.
 
 **Implementation Steps:**
+
 1. Update `GeneratePlayerGradients()` signature to accept `currentPlayer`
 2. Generate `gradient-current-player` in defs section BEFORE player-specific gradients
 3. Update call site in `GenerateSvg()` line 60
@@ -98,6 +107,7 @@ var gradientId = currentPlayerColors != null
 5. Verify star buildings show gradient fill
 
 **Testing:**
+
 ```csharp
 [Fact]
 public void GenerateSvg_CreatesCurrentPlayerGradient()
@@ -112,14 +122,17 @@ public void GenerateSvg_CreatesCurrentPlayerGradient()
 ---
 
 ### Issue #2: Default Slider Value Mismatch
+
 **Priority:** HIGH
 **Status:** 🟡 UX inconsistency with Desktop
 
 **Location:**
+
 - `WebUI/Components/Board/BoardMeasurement.razor:74`
 - `WebUI/Pages/Game.razor:458`
 
 **Problem:**
+
 ```csharp
 // BoardMeasurement.razor:74
 [Parameter]
@@ -138,17 +151,20 @@ public partial int ShownStars { get; set; } = 13;  // ← Desktop defaults to 13
 ```
 
 **Root Cause:**
+
 - WebUI components default to 0 (show all buildings)
 - Desktop defaults to 13 (show only high-quality sites)
 - No initialization logic to set value based on game state
 
 **Impact:**
+
 - Different UX between WebUI and Desktop
 - Desktop encourages evaluating best sites first (13+ stars)
 - WebUI shows cluttered board on initial load
 - Users switching platforms may be confused
 
 **Desktop Rationale:**
+
 - Star count formula: 6 or 8 = 5 stars each
 - Maximum 3 tiles × 5 stars = 15 total stars
 - 13+ stars means:
@@ -212,12 +228,14 @@ public void UpdateGameModel(GameModel gameModel)
 ```
 
 **Recommendation:** Use Option C (store in GameStateService)
+
 - Centralizes state management
 - Automatically resets when entering PickingBoard
 - Persists across component re-renders
 - Matches thick client architecture
 
 **Implementation Steps:**
+
 1. Update `GameStateService.UpdateGameModel()` to initialize ShownStars
 2. Set default to 13 when entering PickingBoard state
 3. Optional: Add property to control default (for testing)
@@ -225,6 +243,7 @@ public void UpdateGameModel(GameModel gameModel)
 5. Verify slider resets to 13 each time board is shuffled
 
 **Testing:**
+
 ```csharp
 [Fact]
 public void EnteringPickingBoard_ResetsShownStarsTo13()
@@ -241,13 +260,16 @@ public void EnteringPickingBoard_ResetsShownStarsTo13()
 ---
 
 ### Issue #3: Missing Initialization Trigger
+
 **Priority:** MEDIUM
 **Status:** 🟡 Affects phase transitions
 
 **Location:**
+
 - `WebUI/Pages/Game.razor` (no equivalent to Desktop logic)
 
 **Desktop Implementation:**
+
 ```csharp
 // GameViewModel.cs:247-250
 if (gameModel.Phase() == GamePhase.PickingBoard || gameModel.Phase() == GamePhase.PickingResources)
@@ -259,23 +281,27 @@ if (gameModel.Phase() == GamePhase.PickingBoard || gameModel.Phase() == GamePhas
 ```
 
 **Purpose:**
+
 - Forces re-evaluation of building visual states
 - Triggered when entering PickingBoard or PickingResources phase
 - Ensures buildings update correctly on phase transitions
 - Workaround for XAML binding edge cases
 
 **WebUI Equivalent:**
+
 - Missing this re-initialization logic
 - Phase transitions may not update building visibility correctly
 - Buildings might retain old visual states
 
 **Problem Scenarios:**
+
 1. Enter PickingBoard with ShownStars = 5
 2. Some buildings visible, some hidden
 3. Shuffle board (tiles change, but ShownStars unchanged)
 4. Buildings don't re-evaluate stars (stale visibility)
 
 **Root Cause:**
+
 - Desktop: ShownStars setter triggers `OnShownStarsChanged()` which loops through buildings
 - WebUI: Slider value change triggers re-render, but phase transition doesn't
 - No explicit "re-evaluate all buildings" mechanism
@@ -307,6 +333,7 @@ private void OnGameStateUpdated(GameModel gameModel)
     // ... rest of method
 }
 ```
+
 ❌ Rejected - Hacky, causes double render, poor UX
 
 **Option B: Explicit re-render call (SIMPLE)**
@@ -327,6 +354,7 @@ private void OnGameStateUpdated(GameModel gameModel)
     // ... rest of method
 }
 ```
+
 ✅ Simple, but may cause unnecessary renders
 
 **Option C: Let Blazor handle it (CURRENT - TEST FIRST)**
@@ -336,12 +364,14 @@ private void OnGameStateUpdated(GameModel gameModel)
 ```
 
 **Recommendation:** Option C - Test current behavior first
+
 - Blazor automatically re-renders when `GameModel` property changes
 - `GenerateBoardSvg()` is called on every render
 - Building visual states re-evaluated each time
 - Desktop's workaround may not be needed in WebUI
 
 **Implementation Steps:**
+
 1. Test phase transitions without changes
 2. Verify buildings update correctly when:
    - Entering PickingBoard
@@ -351,6 +381,7 @@ private void OnGameStateUpdated(GameModel gameModel)
 4. Document findings
 
 **Testing:**
+
 ```csharp
 [Fact]
 public async Task PhaseTransition_UpdatesBuildingVisibility()
@@ -371,13 +402,16 @@ public async Task PhaseTransition_UpdatesBuildingVisibility()
 ---
 
 ### Issue #4: StateHasChanged Redundancy
+
 **Priority:** LOW
 **Status:** 🟢 Not a bug, documentation needed
 
 **Location:**
+
 - `WebUI/Pages/Game.razor:531-536`
 
 **Code:**
+
 ```csharp
 private async Task HandleShownStarsChanged(int newValue)
 {
@@ -388,17 +422,20 @@ private async Task HandleShownStarsChanged(int newValue)
 ```
 
 **Analysis:**
+
 - Blazor automatically queues re-render after event handler completes
 - `StateHasChanged()` forces immediate re-render
 - May be redundant in this specific case
 
 **Blazor Rendering Behavior:**
+
 1. Event handler executes
 2. State changes tracked
 3. After handler completes, Blazor queues re-render
 4. Render cycle executes asynchronously
 
 **Explicit StateHasChanged Benefits:**
+
 - Guarantees immediate re-render
 - Makes intent explicit in code
 - Ensures render happens before method returns
@@ -420,12 +457,14 @@ private async Task HandleShownStarsChanged(int newValue)
 ```
 
 **Recommendation:** Document, don't remove
+
 - Explicit is better than implicit
 - Small performance cost (negligible)
 - Improves code clarity
 - Future-proofs against Blazor version changes
 
 **Implementation Steps:**
+
 1. Add inline comment explaining why `StateHasChanged()` is called
 2. Document in design doc that this is intentional
 3. No code changes needed
@@ -433,14 +472,17 @@ private async Task HandleShownStarsChanged(int newValue)
 ---
 
 ### Issue #5: Star Count Calculation Inconsistency
+
 **Priority:** LOW
 **Status:** 🟢 Already correct, but document
 
 **Location:**
+
 - `WebUI/Components/Board/BoardMeasurement.razor:105-114`
 - Desktop: `DesktopApp/Game/GameView/GameViewBindings.cs:33-43`
 
 **Desktop Implementation:**
+
 ```csharp
 public string BIND_StarCount(int stars, List<TileModel> _tiles)
 {
@@ -456,6 +498,7 @@ public string BIND_StarCount(int stars, List<TileModel> _tiles)
 ```
 
 **WebUI Implementation:**
+
 ```csharp
 private int GetStarCount(int threshold)
 {
@@ -470,6 +513,7 @@ private int GetStarCount(int threshold)
 ```
 
 **Analysis:**
+
 - Both count buildings whose adjacent tiles sum to exact threshold
 - WebUI uses LINQ for cleaner syntax
 - Desktop uses explicit loop (same logic)
@@ -479,6 +523,7 @@ private int GetStarCount(int threshold)
 **Proposed Fix:** None needed, add documentation
 
 **Documentation Update:**
+
 ```csharp
 /// <summary>
 /// Calculates the count of building sites with total adjacent tile stars matching the threshold.
@@ -494,12 +539,14 @@ private int GetStarCount(int threshold)
 ```
 
 **Implementation Steps:**
+
 1. Add XML doc comment to `GetStarCount()` method
 2. Update design doc to reference Desktop implementation
 3. Add unit test to verify calculation
 4. No code changes needed
 
 **Testing:**
+
 ```csharp
 [Theory]
 [InlineData(13, 2)]  // 2 buildings with exactly 13 stars
@@ -520,13 +567,16 @@ public void GetStarCount_MatchesDesktopCalculation(int threshold, int expectedCo
 ---
 
 ### Issue #6: No Error Handling for Missing PlayerViewModel
+
 **Priority:** LOW
 **Status:** 🟡 Edge case, but should handle gracefully
 
 **Location:**
+
 - `WebUI/Services/Rendering/BuildingSvgRenderer.cs:93, 116, 139`
 
 **Problem:**
+
 ```csharp
 private static void RenderBuildingGlyph(
     StringBuilder sb, BuildingModel building,
@@ -538,6 +588,7 @@ private static void RenderBuildingGlyph(
 ```
 
 **Scenario:**
+
 - Building has `OwnerId` set
 - Player not found in `playerLookup` dictionary
 - `ownerColors` is null
@@ -546,6 +597,7 @@ private static void RenderBuildingGlyph(
 - Board doesn't render
 
 **Root Cause:**
+
 - Edge case: Player leaves game, but owns buildings
 - Or: PlayerProfile not loaded from server yet
 - `BuildingSvgRenderer` expects non-null colors for owned buildings
@@ -592,12 +644,14 @@ private static void RenderBuildingGlyph(
 ```
 
 **Recommendation:** Option A (fallback to default)
+
 - More robust
 - Graceful degradation
 - User sees gray building instead of nothing
 - Better UX for edge cases
 
 **Implementation Steps:**
+
 1. Remove `ArgumentNullException.ThrowIfNull()` guards
 2. Add null-coalescing to use `PlayerColors.Default` as fallback
 3. Add warning log for troubleshooting
@@ -609,11 +663,13 @@ private static void RenderBuildingGlyph(
 ## Implementation Priority
 
 ### Sprint 1: Critical Fixes (Must Have)
+
 1. **Issue #1:** Fix gradient-current-player definition (CRITICAL)
    - Blocks star building rendering
    - Est: 2 hours
 
 ### Sprint 2: High Priority (Should Have)
+
 2. **Issue #2:** Update default slider value to 13 (HIGH)
    - UX consistency with Desktop
    - Est: 1 hour
@@ -623,6 +679,7 @@ private static void RenderBuildingGlyph(
    - Est: 2 hours testing
 
 ### Sprint 3: Polish (Nice to Have)
+
 4. **Issue #4:** Document StateHasChanged usage (LOW)
    - Est: 30 minutes
 
@@ -638,6 +695,7 @@ private static void RenderBuildingGlyph(
 ## Testing Strategy
 
 ### Unit Tests
+
 ```csharp
 // WebUI.Tests/Rendering/BoardSvgGeneratorTests.cs
 [Fact]
@@ -668,6 +726,7 @@ public void GenerateSvg_CreatesCurrentPlayerGradient()
 ```
 
 ### Integration Tests
+
 ```csharp
 // WebUI.Tests/Components/BoardMeasurementTests.cs
 [Fact]
@@ -690,6 +749,7 @@ public void Slider_UpdatesBuildingVisibility()
 ```
 
 ### E2E Tests
+
 ```
 Scenario: User adjusts building visibility slider
 
@@ -706,6 +766,7 @@ And: Star count displayed in building circle
 ## Success Criteria
 
 ### Functional Requirements
+
 - ✅ Slider defaults to 13 when entering PickingBoard
 - ✅ Moving slider updates building visibility immediately
 - ✅ Star buildings show colored gradient (not black)
@@ -713,6 +774,7 @@ And: Star count displayed in building circle
 - ✅ Phase transitions update building states correctly
 
 ### Visual Requirements
+
 - ✅ Buildings with stars >= threshold are visible
 - ✅ Buildings with stars < threshold are hidden
 - ✅ Star buildings show current player's gradient colors
@@ -720,6 +782,7 @@ And: Star count displayed in building circle
 - ✅ Smooth transitions (< 16ms render time)
 
 ### Performance Requirements
+
 - ✅ SVG generation < 50ms for standard board
 - ✅ Slider response time < 100ms (perceived as instant)
 - ✅ No visual flicker or double rendering
@@ -730,6 +793,7 @@ And: Star count displayed in building circle
 ## Rollback Plan
 
 If issues arise:
+
 1. Revert `BoardSvgGenerator.cs` changes
 2. Set default ShownStars to 0 (current behavior)
 3. Hide slider until fixes validated
@@ -741,6 +805,7 @@ If issues arise:
 ## Related Work
 
 ### Follow-up Tasks (Post-Implementation)
+
 1. Add slider keyboard accessibility (arrow keys)
 2. Add tooltip showing "X buildings visible"
 3. Animate building fade in/out on slider change
@@ -748,6 +813,7 @@ If issues arise:
 5. Persist ShownStars preference in local storage
 
 ### Future Enhancements
+
 1. Resource filtering (show buildings with specific resources)
 2. Port number filtering (show buildings near harbors)
 3. Heat map overlay (color buildings by star count)

@@ -1,6 +1,7 @@
 # Catan Font Design Document
 
 ## Purpose
+
 Define all glyphs needed in the Catan.ttf font for consistent, fast rendering across Desktop and WebUI.
 
 ## Current Glyphs (from DesktopApp/Layout/CatanFont.cs)
@@ -39,6 +40,7 @@ Define all glyphs needed in the Catan.ttf font for consistent, fast rendering ac
 **Note:** Unicode values are placeholders. Actual assignments will be determined when glyphs are added to the font. Update `DesktopApp/Layout/CatanFont.cs` and `WebUI/Components/Players/PlayerTile.razor` (CatanGlyph class) with final values.
 
 ### Resource Tiles
+
 **Decision:** Use existing SVGs from svg-tiles theme. Convert to font glyphs.
 Source: `WebUI/wwwroot/themes/svg-tiles/`
 
@@ -54,6 +56,7 @@ Source: `WebUI/wwwroot/themes/svg-tiles/`
 | TileSea | sea.svg |
 
 ### Catan Numbers (with pips)
+
 Each number includes pip dots as a single glyph, matching physical tokens.
 
 | Glyph Name | Description |
@@ -70,6 +73,7 @@ Each number includes pip dots as a single glyph, matching physical tokens.
 | Number12 | "12" with 1 pip |
 
 ### Harbors
+
 **Decision:** Single glyph per harbor type, rotate via CSS `transform: rotate()` to face correct direction. Water rendered separately.
 
 | Glyph Name | Description |
@@ -82,6 +86,7 @@ Each number includes pip dots as a single glyph, matching physical tokens.
 | Harbor21Ore | 2:1 ore harbor icon |
 
 ### Resource Cards
+
 Convert existing card SVGs to font glyphs.
 
 | Glyph Name | Description |
@@ -95,20 +100,25 @@ Convert existing card SVGs to font glyphs.
 ## Design Decisions
 
 ### Buildings: Keep as Circle + Glyph (No Change)
+
 **Rationale:** The current approach of rendering a circle with the building glyph inside is correct because:
+
 1. Circle color indicates player ownership
 2. Circle can have visual states (highlighted, dimmed, hover)
 3. Building transitions (settlement → city) only change inner content
 4. Flexible for future building types
 
 ### Resource Tiles: Use Existing SVGs
+
 **Decision:** Convert existing SVGs from `svg-tiles` theme to font glyphs.
 **Note:** This approach means themes would need their own font file. Acceptable for now.
 
 ### Numbers: Include Pips
+
 **Decision:** Number + pips as single glyph (matches physical Catan tokens).
 
 ### Harbors: Single Glyph + CSS Rotation
+
 **Decision:** One glyph per harbor type (6 total). Rotate with CSS to face correct hex edge. Water background rendered separately - we'll evaluate if this causes issues.
 
 ## Critical Design Principle: Monochromatic Glyphs

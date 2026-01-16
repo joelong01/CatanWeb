@@ -295,6 +295,7 @@ dotnet ef database update
 ### POST /api/game/import
 
 Imports a `.catan` file into the database. Used for:
+
 - Seeding default games on startup (via `webui.ps1`)
 - Future: User uploads from WebUI
 - Bidirectional Desktop ↔ WebUI game transfer
@@ -315,6 +316,7 @@ Imports a `.catan` file into the database. Used for:
 ```
 
 **Notes:**
+
 - Uses the `GameId` from the file (preserves Desktop/WebUI compatibility)
 - Returns "Game already exists" if game is already in database
 - Parses `.catan` file: Brotli-compressed `SerializableLog` JSON
@@ -337,6 +339,7 @@ Returns database status for script decisions.
 ```
 
 Used by `webui.ps1`:
+
 1. Start GameService
 2. Call `/api/database/health`
 3. If `needsGames == true`, POST each `.catan` file from `Default Data/Games/`
@@ -350,6 +353,7 @@ Downloads a game as a `.catan` file for Desktop App import.
 ### Player ID Format
 
 Player IDs use PascalCase to match the Desktop App:
+
 - `Joe-001`, `Dodgy-001`, `Doug-001`, `Ryan-001`, `Adrian-001`, `Chris-001`, `Guest-001`
 
 ### Default Data Location

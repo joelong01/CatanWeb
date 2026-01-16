@@ -66,6 +66,7 @@ sequenceDiagram
 ## Step-by-Step Call Flow
 
 ### 1. User Interaction
+
 **Location:** `BoardMeasurement.razor:39-46`
 
 ```razor
@@ -85,6 +86,7 @@ sequenceDiagram
 ---
 
 ### 2. Event Handler Execution
+
 **Location:** `BoardMeasurement.razor:120-127`
 
 ```csharp
@@ -107,6 +109,7 @@ private async Task HandleSliderInput(ChangeEventArgs e)
 ---
 
 ### 3. Parent Component Update
+
 **Location:** `Game.razor:531-536`
 
 ```csharp
@@ -374,6 +377,7 @@ private static void RenderStars(StringBuilder sb, BuildingModel building,
 **Final Step:**
 
 Blazor receives complete SVG markup string and updates:
+
 ```html
 <div class="board-container">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="...">
@@ -490,9 +494,9 @@ public partial int ShownStars { get; set; } = 13;  // Default = 13!
 **MVVM Toolkit Magic:**
 
 - `[ObservableProperty]` generates:
-    - Private backing field `_shownStars`
-    - Public property with INotifyPropertyChanged
-    - `partial void OnShownStarsChanged(int value)` hook
+  - Private backing field `_shownStars`
+  - Public property with INotifyPropertyChanged
+  - `partial void OnShownStarsChanged(int value)` hook
 
 ---
 
@@ -608,20 +612,24 @@ var gradientId = "gradient-current-player";  // ← NOT DEFINED!
 ```
 
 **Problem:**
+
 - Code references `url(#gradient-current-player)` in SVG
 - Gradient never created in `<defs>` section
 - Browser falls back to black/transparent
 
 **Root Cause:**
+
 - `GeneratePlayerGradients()` only creates gradients for players in the game
 - Uses pattern `gradient-{playerId}` (e.g., `gradient-joe-001`)
 - Never creates special `gradient-current-player` gradient
 
 **Expected Behavior (Desktop):**
+
 - Buildings in Stars state use current player's gradient colors
 - During PickingBoard, all star buildings show in current player's colors
 
 **Impact:**
+
 - Star buildings render with missing gradient (black fill)
 - Visual inconsistency with Desktop
 
@@ -642,15 +650,18 @@ public partial int ShownStars { get; set; } = 13;
 ```
 
 **Problem:**
+
 - WebUI defaults to 0 → shows ALL buildings (no filtering)
 - Desktop defaults to 13 → shows only high-quality buildings (13+ stars)
 
 **Expected Behavior:**
+
 - During PickingBoard, slider should default to 13
 - Encourages players to evaluate best building sites first
 - Matches 20+ years of Catan Desktop behavior
 
 **Impact:**
+
 - Different UX than Desktop
 - May confuse users switching between platforms
 
@@ -670,6 +681,7 @@ private async Task HandleShownStarsChanged(int newValue)
 ```
 
 **Analysis:**
+
 - Blazor automatically queues re-render after event handlers complete
 - Manual `StateHasChanged()` call may be unnecessary
 - However, explicit call ensures immediate re-render
@@ -706,6 +718,7 @@ if (gameModel.Phase() == GamePhase.PickingBoard || gameModel.Phase() == GamePhas
 - Buildings may not update correctly when game state changes
 
 **Impact:**
+
 - Buildings might not appear/disappear correctly on phase transitions
 
 ---
@@ -750,12 +763,14 @@ if (gameModel.Phase() == GamePhase.PickingBoard || gameModel.Phase() == GamePhas
 ### Architectural Differences
 
 **Desktop (MVVM):**
+
 - Property-based reactivity
 - Fine-grained updates
 - ViewModel orchestration
 - XAML binding system
 
 **WebUI (Component Model):**
+
 - Event-based reactivity
 - Full re-render cycle
 - Extension method composition

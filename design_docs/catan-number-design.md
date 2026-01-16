@@ -1,9 +1,11 @@
 # CatanNumber Design
 
 ## Overview
+
 The CatanNumber control displays the roll number and probability indicators (stars/pips) on resource tiles. This document describes the exact positioning to match the Desktop app's `CatanNumber.xaml` layout.
 
 ## XAML Reference (CatanNumber.xaml)
+
 ```xaml
 <Grid Width="65" Height="65">
     <Ellipse Fill="#FF2F6999" Stroke="White" StrokeThickness=".5" Opacity=".75" />
@@ -22,16 +24,19 @@ The CatanNumber control displays the roll number and probability indicators (sta
 ## Layout Specifications
 
 ### Container
+
 - **Size**: 65×65 pixels
 - **Circle radius**: 32.5 pixels (half of container)
 
 ### Background Circle
+
 - **Fill**: `#2F6999` (blue)
 - **Opacity**: 0.75
 - **Stroke**: White
 - **Stroke width**: 0.5 pixels
 
 ### Roll Number (Top TextBlock)
+
 - **Font family**: Segoe UI (or sans-serif fallback in SVG)
 - **Font size**: 24 pixels
 - **Font weight**: Bold
@@ -42,11 +47,13 @@ The CatanNumber control displays the roll number and probability indicators (sta
   - Normal: White (`#fff`)
 
 #### Positioning in SVG
+
 - The entire 65×65 grid is positioned above the tile center
 - Circle center is at `tileY - 50` (50 pixels above tile center)
 - Number text is at `circleY - 1` (1 pixel above circle center for visual balance)
 
 ### Probability Pips/Stars (Bottom TextBlock)
+
 - **Font family**: Segoe Fluent Icons (rendered as star characters `★` in SVG)
 - **Font size**: 14 pixels (specified as 10 in XAML but visually appears larger)
 - **Vertical alignment**: Center
@@ -62,6 +69,7 @@ The CatanNumber control displays the roll number and probability indicators (sta
   - 7: (none)
 
 #### Positioning in SVG
+
 - Pips are positioned below the number within the circle
 - Position is at `circleY + 20` (20 pixels below circle center)
 - This matches XAML's `Margin="0,10,0,0"` + `VerticalAlignment="Center"`
@@ -69,16 +77,19 @@ The CatanNumber control displays the roll number and probability indicators (sta
 ## SVG Implementation
 
 ### Key Differences from XAML
+
 1. **Coordinate system**: SVG uses absolute positioning, XAML uses alignment properties
 2. **Text baseline**: SVG uses `dominant-baseline="middle"` to center text vertically at the y coordinate
 3. **Font mapping**: Segoe UI → sans-serif, Segoe Fluent Icons → Unicode star character (★)
 
 ### Rendering Order
+
 1. Background circle at tile center
 2. Roll number text (offset from circle center)
 3. Probability pips/stars (offset from circle center)
 
 ### Constants (BoardSvgConstants.cs)
+
 ```csharp
 // Number token - matches original working server-side rendering
 // Note: XAML uses 65x65 grid, but we render with radius 30 (not 32.5) for proper visual balance
@@ -100,7 +111,9 @@ public const double PipsOffsetY = 10;  // Below circle center (user-adjusted)
 **Note**: The radius (30 vs 32.5), pip font size (12 vs 24), and offsets have been manually adjusted from the XAML values to achieve the correct visual appearance in SVG. These values were verified against Desktop app screenshots.
 
 ## Visual Verification
+
 The layout should match the Desktop app exactly:
+
 - Roll number appears near the TOP of the circle (not centered)
 - Probability pips appear centered below the number
 - High probability numbers (6, 8) are red, others are white

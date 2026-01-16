@@ -779,6 +779,7 @@ All display names, descriptions, and preview paths come from `theme.json` - no h
 **Theme Preview Images:**
 
 Each theme should include a `preview.png` (e.g., 64x64 or 128x128) showing a representative sample:
+
 - Classic: A wheat or brick tile
 - StarTrek: A dilithium crystal or starship
 - Minimal: Abstract colored hexagon
@@ -880,6 +881,7 @@ DesktopApp/
 ```
 
 **Load Order (App.xaml):**
+
 1. XamlControlsResources (WinUI3 system styles)
 2. ConverterDictionary.xaml (value converters - must load first)
 3. Generic.xaml (control templates)
@@ -900,6 +902,7 @@ Each image is defined as a static `ImageBrush` resource with a key matching the 
 ```
 
 **Usage in XAML controls:**
+
 ```xml
 <Polygon Fill="{StaticResource ResourceTileType.Brick}"/>
 ```
@@ -936,6 +939,7 @@ Each image is defined as a static `ImageBrush` resource with a key matching the 
 ### Resource Card Images (Assets/ResourceCards/)
 
 19 card types totaling ~97MB including:
+
 - Base resources (brick, wheat, wood, ore, sheep)
 - Expansion resources (cloth, paper, coin, gold mine)
 - Development cards (trade, politics, science, victory point)
@@ -956,6 +960,7 @@ Each image is defined as a static `ImageBrush` resource with a key matching the 
 | Catan | Catan.ttf | Symbol glyphs for game elements (icons, not numbers) |
 
 **Font registration in App.xaml:**
+
 ```xml
 <FontFamily x:Key="CatanFont">ms-appx:///../Assets/Fonts/Catan.ttf#Catan</FontFamily>
 ```
@@ -983,6 +988,7 @@ Each image is defined as a static `ImageBrush` resource with a key matching the 
 **Primary Usage - PlayerCtrl.xaml:**
 
 The main consumer is the player statistics panel which displays counts with icons:
+
 ```xml
 <TextBlock FontFamily="{StaticResource CatanFont}" FontSize="28"
            Text="{x:Bind Glyph, Mode=OneWay}"/>
@@ -1018,6 +1024,7 @@ The pips below each number indicate roll probability - more pips = more likely t
 | 7 | 0 | (Robber) | N/A |
 
 **Visual Design:**
+
 - Background: Blue ellipse (`#FF2F6999`, 75% opacity)
 - Number: Bold, centered above pips
 - Pips: Row of star characters (`\uE00A`) below number
@@ -1026,6 +1033,7 @@ The pips below each number indicate roll probability - more pips = more likely t
 **WebUI SVG Rendering:**
 
 For the SVG board, number tokens will be rendered as:
+
 ```xml
 <g transform="translate(cx, cy)">
   <!-- Blue circle background -->
@@ -1063,6 +1071,7 @@ For the SVG board, number tokens will be rendered as:
 ### Enum to Image Mappings
 
 **ResourceType → Tile Image:**
+
 ```csharp
 ResourceType.Brick    → "../Assets/Tiles/brick.png"
 ResourceType.Wheat    → "../Assets/Tiles/wheat.png"
@@ -1075,6 +1084,7 @@ ResourceType.Sea      → "../Assets/Tiles/back.jpg"
 ```
 
 **HarborType → Harbor Image:**
+
 ```csharp
 HarborType.Brick       → "../Assets/Harbors/2 for 1 brick.png"
 HarborType.Ore         → "../Assets/Harbors/2 for 1 ore.png"
@@ -1085,6 +1095,7 @@ HarborType.ThreeForOne → "../Assets/Harbors/3 for 1.png"
 ```
 
 **ResourceCard → Card Image:**
+
 ```csharp
 // Base resources
 ResourceCard.Brick    → "../Assets/ResourceCards/brick.png"
@@ -1154,11 +1165,13 @@ Register the Catan font in CSS:
 ```
 
 **Usage in SVG:**
+
 ```xml
 <text font-family="Catan" font-size="24">8</text>
 ```
 
 **Usage for player stats, cities, settlements:**
+
 - SVG text elements with `font-family="Catan"`
 - CSS classes for HTML elements: `.catan-font { font-family: 'Catan', sans-serif; }`
 
@@ -1182,6 +1195,7 @@ app.UseStaticFiles(new StaticFileOptions
 ```
 
 **Cache behavior:**
+
 - First visit: Browser downloads all tile images (~10MB)
 - Subsequent visits: Browser uses cached versions (0 network requests)
 - Cache invalidation: Change filename or add version query string
@@ -1191,6 +1205,7 @@ app.UseStaticFiles(new StaticFileOptions
 The BoardSvgGenerator creates SVG with `<defs>` containing pattern definitions for each tile type. Each pattern is defined once and referenced by all matching hexes.
 
 **Pattern Definition:**
+
 ```xml
 <svg>
   <defs>
@@ -1212,6 +1227,7 @@ The BoardSvgGenerator creates SVG with `<defs>` containing pattern definitions f
 ```
 
 **Benefits:**
+
 - Pattern defined once in `<defs>`, used N times
 - Browser caches image files independently
 - Same image data not duplicated in SVG
@@ -1220,10 +1236,12 @@ The BoardSvgGenerator creates SVG with `<defs>` containing pattern definitions f
 ### Image Sizing for SVG Patterns
 
 For flat-top hexes with size 50px (radius):
+
 - Hex width: 100px (2 × size)
 - Hex height: ~87px (√3 × size)
 
 Pattern image dimensions should match or exceed hex dimensions for crisp rendering:
+
 - Minimum: 100×87px
 - Recommended: 200×174px (2x for retina displays)
 - Current hi-res: Much larger (will be downscaled by browser)
@@ -1231,6 +1249,7 @@ Pattern image dimensions should match or exceed hex dimensions for crisp renderi
 ### Resource Type to Pattern ID Mapping
 
 **Tile Patterns:**
+
 ```csharp
 private string GetTilePatternId(ResourceType resourceType)
 {
@@ -1250,6 +1269,7 @@ private string GetTilePatternId(ResourceType resourceType)
 ```
 
 **Harbor Patterns:**
+
 ```csharp
 private string GetHarborPatternId(HarborType harborType)
 {
@@ -1284,6 +1304,7 @@ Harbors are positioned at tile vertices with rotation based on direction:
 ```
 
 **Harbor positioning:**
+
 - Calculate vertex position from adjacent tile coordinates
 - Rotation angle based on harbor direction (0°, 60°, 120°, etc.)
 - Size: 40×60px (scaled from Desktop's 67×100px)
@@ -1371,6 +1392,7 @@ Assets have been migrated to the theme system under `WebUI/wwwroot/themes/base/`
 ### Image Optimization
 
 Consider creating optimized versions for web:
+
 - WebP format (30% smaller than PNG)
 - Multiple resolutions for different device densities
 - Compressed versions for slower connections
@@ -1378,6 +1400,7 @@ Consider creating optimized versions for web:
 ### CDN Deployment
 
 For production, consider serving images from CDN:
+
 - Global edge caching
 - Automatic format negotiation (WebP, AVIF)
 - Bandwidth cost reduction
@@ -1385,6 +1408,7 @@ For production, consider serving images from CDN:
 ### Sprite Sheet Alternative
 
 For maximum efficiency, could combine all tiles into single sprite sheet:
+
 - One HTTP request for all tiles
 - Use SVG `viewBox` to select tile region
 - Trade-off: More complex pattern definitions

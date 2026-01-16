@@ -18,6 +18,7 @@ This document outlines the design for a multi-platform Settlers of Catan game sy
 - **Tests/Data:** Test scenario files (.catan_test) containing recorded game sessions for replay testing
 
 **5. CLI Tool (Catan3.CLI project):** Command-line interface for debugging and testing. Provides commands for:
+
 - Running live game sessions against GameService (`expansion`, `regular`)
 - Testing MVVM object serialization (`test --mvvm-objects`)
 - Extracting GameModel data from .catan files (`extract`)

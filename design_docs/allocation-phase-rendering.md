@@ -33,6 +33,7 @@ WaitingForRoll        - Normal gameplay begins
 | Road | N/A | Sequential number during gameplay |
 
 **Star Calculation** (`TileModel.Stars`):
+
 - Roll 6 or 8 → 5 stars (highest probability)
 - Roll 5 or 9 → 4 stars
 - Roll 4 or 10 → 3 stars
@@ -92,11 +93,13 @@ else if (hasSettlementEntitlement && building.BuildingState == BuildingState.Pos
 ## Road Rendering Logic
 
 `RoadOverlay.GetVisibleRoads()`:
+
 ```csharp
 return Roads.Where(r => r.OwnerId != null || r.RoadState == RoadState.Buildable);
 ```
 
 Roads are visible if:
+
 - Owned by any player, OR
 - Marked as `RoadState.Buildable` by game logic
 
@@ -143,6 +146,7 @@ if (gameModel.Phase() == GamePhase.PickingResources)
 ## Click Handlers
 
 ### Building Click
+
 ```csharp
 // BuildingOverlay.razor
 private async Task OnSpotClick(BuildingSpot spot)
@@ -155,6 +159,7 @@ private async Task OnSpotClick(BuildingSpot spot)
 ```
 
 ### Road Click
+
 ```csharp
 // RoadOverlay.razor
 private async Task HandleRoadClick(RoadModel road)

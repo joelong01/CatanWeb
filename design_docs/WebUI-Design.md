@@ -16,6 +16,7 @@ The WebUI project is a Blazor WebAssembly client for the Catan game, providing a
 ### Alternative Considered
 
 React/TypeScript would require:
+
 - Auto-generating TypeScript types from C# models
 - Rewriting hex coordinate math (~100 lines)
 - Different SignalR client library
@@ -64,6 +65,7 @@ Components (Game.razor, BoardMeasurement.razor, etc.)
 - **Asset serving** - Serves static images, SVG files (settlement.svg, city.svg, etc.)
 
 **What server does NOT do:**
+
 - ❌ Generate SVG
 - ❌ Manage UI state (shownStars, highlighting, etc.)
 - ❌ Handle animations
@@ -185,6 +187,7 @@ All components that display game state subscribe to `GameStateService`:
 ```
 
 **Flow:**
+
 1. Server sends updated GameModel via SignalR
 2. GameStateService.UpdateGameState() called
 3. Components detect state change and re-render
@@ -230,17 +233,20 @@ await _hubConnection.InvokeAsync("PlaceSettlement", buildingCoords);
 ### Why This Works Better Than Thin Client
 
 **Thin client approach we considered:**
+
 - Server generates SVG for every update
 - Client just displays SVG
 - Animations require complex coordination
 
 **Problems with thin client:**
+
 - Network latency for every UI change
 - Complex animation coordination
 - Server does rendering work for all clients
 - No instant feedback
 
 **Thick client advantages:**
+
 - UI changes instant (no network)
 - Animations are just CSS
 - Server scales better (less work per client)
@@ -312,6 +318,7 @@ The codebase distinguishes between game state and view/display concerns:
 | **ViewModels** | `DesktopApp/` or `WebUI/` | `*ViewModel` | Platform-specific UI | Desktop's `PlayerViewModel` (BitmapImage) |
 
 **Why this separation?**
+
 - `PlayerModel` contains game state (scores, resources, entitlements)
 - `PlayerData` contains profile/display data (colors, images) needed by UI
 - GameService API returns `PlayerData` for player selection
@@ -319,6 +326,7 @@ The codebase distinguishes between game state and view/display concerns:
 - Desktop wraps it with platform-specific rendering (BitmapImage, Brush)
 
 **Future CosmosDB migration:**
+
 - `PlayerData` will be stored in CosmosDB as player profiles
 - `PlayerModel` remains in-memory during gameplay
 - Clear separation makes migration straightforward
@@ -351,6 +359,7 @@ All storage operations must use the database instead of the filesystem:
   - Consistent with CosmosDB migration path
 
 **Document Model:**
+
 - `PlayerEntity.Data` contains serialized `PlayerData` JSON
 - This mirrors CosmosDB's document storage pattern
 - Easy migration: replace SQLite provider with CosmosDB provider
@@ -363,19 +372,23 @@ All storage operations must use the database instead of the filesystem:
 | `GET /api/images/{id}` | Serves image binary from database |
 
 **Seeding:**
+
 ```powershell
 cd Catan3.GameService
 dotnet run -- --seed-database
 ```
+
 This loads player data and images from `DesktopApp/Assets/DefaultPlayers/` into the database.
 
 **Database Files:**
+
 - `CatanDbContext.cs` - EF Core DbContext with Players and Images
 - `DatabaseSeeder.cs` - Seeds database with player data and images
 
 ## What Catan3.Shared Provides
 
 ### Models (Direct Reuse - Game State)
+
 - `GameModel` - Complete game state
 - `TileModel` - Hex tile data
 - `PlayerModel` - Player game state (scores, resources)
@@ -384,9 +397,11 @@ This loads player data and images from `DesktopApp/Assets/DefaultPlayers/` into 
 - All enums: `GameState`, `ResourceType`, `Direction`, etc.
 
 ### ViewData (Direct Reuse - UI Concerns)
+
 - `PlayerData` - Player profile (Id, Name, Colors, ImageUri)
 
 ### Utilities (Direct Reuse)
+
 - `HexCoordinates` - Cube coordinate system with:
   - `ToPixelCenter(size, offsetX, offsetY)` - Convert hex to SVG position
   - `FromPixel(x, y, size, offsetX, offsetY)` - Hit testing
@@ -394,10 +409,12 @@ This loads player data and images from `DesktopApp/Assets/DefaultPlayers/` into 
   - Direction properties: `North`, `South`, etc.
 
 ### Extensions (Direct Reuse)
+
 - `TileModelExtensions` - `TileFromCoords()`, `AdjacentTiles()`, etc.
 - `GameModelExtensions` - `ValidateGame()`, etc.
 
 ### Message Types (Direct Reuse)
+
 - All SignalR message types for communication with GameService
 
 ## Implementation Steps
@@ -411,6 +428,7 @@ This loads player data and images from `DesktopApp/Assets/DefaultPlayers/` into 
    - Reference: `DesktopApp/Services/GameServiceProxy.cs`
 
 2. **Add Shared Namespace Imports** (`_Imports.razor`)
+
    ```razor
    @using Catan3.Shared.Models
    @using Catan3.Shared.Utility
@@ -616,10 +634,13 @@ The `webui.ps1` PowerShell script provides a convenient way to build, run, and m
 | `./webui.ps1 clean` | Delete database and clean all build artifacts |
 
 **First-time setup:**
+
 ```powershell
 ./webui.ps1 run
 ```
+
 This will:
+
 1. Check if the database exists at `Catan3.GameService/Data/catan.db`
 2. If not, run `dotnet run -- --seed-database` to create and seed it
 3. Start GameService on port 8080
@@ -627,6 +648,7 @@ This will:
 5. Launch browser to `http://localhost:5296/newgame`
 
 **Clean rebuild:**
+
 ```powershell
 ./webui.ps1 clean
 ./webui.ps1 run
@@ -648,20 +670,25 @@ The project includes pre-configured VS Code launch options. Press `F5` or use th
 ### Running from Command Line
 
 **WebUI only:**
+
 ```bash
 cd WebUI
 dotnet run
 ```
+
 Opens at `http://localhost:5296`
 
 **GameService only:**
+
 ```bash
 cd Catan3.GameService
 dotnet run
 ```
+
 Runs at `http://localhost:5024`
 
 **Both together:**
+
 ```bash
 # Terminal 1
 cd Catan3.GameService && dotnet run
@@ -673,6 +700,7 @@ cd WebUI && dotnet run
 ### Hot Reload
 
 Blazor supports hot reload for rapid development:
+
 ```bash
 cd WebUI
 dotnet watch run
@@ -1020,9 +1048,11 @@ var gameModel = testData.InitialGameModel;
 
 1. **Write tests first** (TDD) or **immediately after** component creation
 2. **Run tests locally** before committing:
+
    ```bash
    dotnet test Tests/WebUI
    ```
+
 3. **CI runs all tests** on PR
 4. **Coverage requirements**: Aim for >80% on new code
 
@@ -1045,6 +1075,7 @@ public async Task User_CompletesFullGame() { }
 ```
 
 Run specific categories:
+
 ```bash
 dotnet test --filter "Category=Unit"
 dotnet test --filter "Category=Integration"

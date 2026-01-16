@@ -29,6 +29,7 @@ case Shared.Models.GameState.WaitingForNext:
 **File**: `Catan3.Shared/GameLogic/GameStateMachine.cs:1128-1158`
 
 Transitions to either:
+
 - `Supplemental` state (if players opted in)
 - `WaitingForRoll` state (if no players opted in)
 
@@ -107,6 +108,7 @@ public DataTemplate? StateToItemTemplate(Shared.Models.GameState gameState)
 **File**: `DesktopApp/MainPage/MainPage.xaml:26-30`
 
 Uses a **UserControl**:
+
 ```xml
 <DataTemplate x:Key="PlayerStatsTemplate" x:DataType="models:PlayerViewModel">
     <c:PlayerCtrl PlayerViewModel="{x:Bind Mode=OneWay}"
@@ -115,6 +117,7 @@ Uses a **UserControl**:
 ```
 
 **Image Binding in PlayerCtrl.xaml:66-72**:
+
 ```xml
 <Grid CornerRadius="25" Width="50" Height="50">
     <Grid.Background>
@@ -129,6 +132,7 @@ Uses a **UserControl**:
 **File**: `DesktopApp/MainPage/MainPage.xaml:53-75`
 
 Uses **inline XAML**:
+
 ```xml
 <DataTemplate x:Key="PickSupplementalPlayersTemplate" x:DataType="models:PlayerViewModel">
     <StackPanel>
@@ -156,6 +160,7 @@ Uses **inline XAML**:
 ## Bug Analysis
 
 ### Symptom
+
 When transitioning FROM `PickSupplementalPlayers` BACK to normal play, player pictures randomly don't render. All other properties (name, colors, stats) render correctly.
 
 ### Root Cause: x:Bind with Null Initial DependencyProperty
@@ -181,6 +186,7 @@ public static readonly DependencyProperty PlayerViewModelProperty =
    - x:Bind optimizes by not re-evaluating unchanged values
 
 **Why "randomly"?**
+
 - Depends on timing of control initialization vs binding evaluation
 - ListView virtualization and recycling affects when controls are created
 - Some controls might get their PlayerViewModel set before x:Bind evaluates
@@ -215,11 +221,13 @@ private static void OnPlayerViewModelChanged(DependencyObject d, DependencyPrope
 ```
 
 **Pros**:
+
 - Directly addresses the root cause
 - Forces all x:Bind expressions to re-evaluate
 - Minimal code change
 
 **Cons**:
+
 - Re-evaluates ALL bindings, not just the image
 
 ### Fix Option 2: Bind to CroppedBitmapImage Instead of CroppedImageUri
@@ -227,20 +235,24 @@ private static void OnPlayerViewModelChanged(DependencyObject d, DependencyPrope
 **File**: `DesktopApp/Player/PlayerCtrl.xaml:71`
 
 Change from:
+
 ```xml
 <ImageBrush ImageSource="{x:Bind PlayerViewModel.CroppedImageUri, Mode=OneWay, ...}" />
 ```
 
 To:
+
 ```xml
 <ImageBrush ImageSource="{x:Bind PlayerViewModel.CroppedBitmapImage, Mode=OneWay, ...}" />
 ```
 
 **Pros**:
+
 - `CroppedBitmapImage` is already created and ready
 - BitmapImage handles its own loading
 
 **Cons**:
+
 - Still has the null initial value issue
 - Inconsistent with other templates
 
@@ -255,9 +267,11 @@ public static readonly DependencyProperty PlayerViewModelProperty =
 ```
 
 **Pros**:
+
 - Prevents null reference during initial binding
 
 **Cons**:
+
 - Default instance might have incorrect data briefly
 - Could cause flickering
 
@@ -266,26 +280,31 @@ public static readonly DependencyProperty PlayerViewModelProperty =
 **File**: `DesktopApp/Player/PlayerCtrl.xaml:71`
 
 Change from:
+
 ```xml
 <ImageBrush ImageSource="{x:Bind PlayerViewModel.CroppedImageUri, Mode=OneWay, ...}" />
 ```
 
 To:
+
 ```xml
 <ImageBrush ImageSource="{Binding PlayerViewModel.CroppedImageUri, Mode=OneWay, ...}" />
 ```
 
 **Pros**:
+
 - `{Binding}` handles null sources more gracefully
 - Re-evaluates when any part of the path changes
 
 **Cons**:
+
 - Loses compile-time binding validation
 - Slightly less performant
 
 ## Recommended Solution
 
 **Fix Option 1** is recommended because it:
+
 1. Addresses the root cause directly
 2. Is a minimal, targeted change
 3. Ensures all bindings work correctly after PlayerViewModel is set
