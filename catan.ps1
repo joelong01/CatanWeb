@@ -741,16 +741,216 @@ switch ($Verb) {
             exit 1
         }
         Write-Host "Build completed successfully!" -ForegroundColor Green
+
+        # Generate TypeScript types (if react-ui exists)
+        $reactUiPath = Join-Path $PSScriptRoot "react-ui"
+        if (Test-Path $reactUiPath) {
+            Write-Host ""
+            Write-Host "Generating TypeScript types..." -ForegroundColor Yellow
+
+            # Generate model types from C# using TypeGenRunner (TypeGen 7.0.0)
+            $typegenRunnerProject = Join-Path $PSScriptRoot "Catan3.Shared\TypeScript\TypeGenRunner\TypeGenRunner.csproj"
+            $typegenResult = & dotnet run --project $typegenRunnerProject --no-build 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "  [OK] Model types updated (TypeGen 7.0.0)" -ForegroundColor Green
+            } else {
+                Write-Host "  [WARN] TypeGen failed (non-blocking)" -ForegroundColor Yellow
+            }
+        }
     }
 
     "test" {
         Write-Host "Running tests..." -ForegroundColor Cyan
+
+        # Run .NET tests
+        Write-Host ""
+        Write-Host "Running .NET tests..." -ForegroundColor Yellow
         & "$PSScriptRoot\.scripts\build.ps1"
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "Tests failed!" -ForegroundColor Red
+            Write-Host ".NET tests failed!" -ForegroundColor Red
             exit 1
         }
+        Write-Host "  [OK] .NET tests passed" -ForegroundColor Green
+
+        # Run TypeScript tests (if react-ui exists)
+        $reactUiPath = Join-Path $PSScriptRoot "react-ui"
+        if (Test-Path $reactUiPath) {
+            Write-Host ""
+            Write-Host "Running TypeScript tests..." -ForegroundColor Yellow
+            Push-Location $reactUiPath
+            try {
+                $tsTestResult = & npm run test:run 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "  [FAIL] TypeScript tests failed:" -ForegroundColor Red
+                    Write-Host $tsTestResult -ForegroundColor Gray
+                    exit 1
+                }
+                Write-Host "  [OK] TypeScript tests passed" -ForegroundColor Green
+            }
+            finally {
+                Pop-Location
+            }
+        }
+
+        Write-Host ""
         Write-Host "All tests passed!" -ForegroundColor Green
+    }
+
+    "lint" {
+        Write-Host "Running linters and formatters..." -ForegroundColor Cyan
+        $hasErrors = $false
+
+        # Lint PowerShell scripts
+        Write-Host ""
+        Write-Host "Linting PowerShell scripts..." -ForegroundColor Yellow
+
+        # Check if PSScriptAnalyzer is available
+        $psaAvailable = $null -ne (Get-Module -ListAvailable -Name PSScriptAnalyzer)
+        if ($psaAvailable) {
+            $settingsPath = Join-Path $PSScriptRoot ".scripts\PSScriptAnalyzerSettings.psd1"
+
+            # Build list of PowerShell files to lint
+            $psFiles = @()
+            $psFiles += Join-Path $PSScriptRoot "catan.ps1"
+            $scriptsDir = Join-Path $PSScriptRoot ".scripts"
+            if (Test-Path $scriptsDir) {
+                Get-ChildItem -Path $scriptsDir -Filter "*.ps1" -Recurse | ForEach-Object {
+                    $psFiles += $_.FullName
+                }
+            }
+
+            $psIssues = @()
+            foreach ($filePath in $psFiles) {
+                if (Test-Path $filePath) {
+                    $results = Invoke-ScriptAnalyzer -Path $filePath -Settings $settingsPath -ErrorAction SilentlyContinue
+                    if ($results) {
+                        $psIssues += $results
+                    }
+                }
+            }
+
+            if ($psIssues.Count -gt 0) {
+                Write-Host "  [FAIL] PSScriptAnalyzer found $($psIssues.Count) issue(s):" -ForegroundColor Red
+                foreach ($issue in $psIssues) {
+                    $relativePath = $issue.ScriptPath.Replace($PSScriptRoot, "").TrimStart("\", "/")
+                    Write-Host "    $relativePath`:$($issue.Line) - $($issue.RuleName): $($issue.Message)" -ForegroundColor Gray
+                }
+                $hasErrors = $true
+            } else {
+                Write-Host "  [OK] PSScriptAnalyzer passed" -ForegroundColor Green
+            }
+        } else {
+            Write-Host "  [SKIP] PSScriptAnalyzer not available (run 'Install-Module PSScriptAnalyzer')" -ForegroundColor Yellow
+        }
+
+        # Format and lint TypeScript/JavaScript (react-ui)
+        $reactUiPath = Join-Path $PSScriptRoot "react-ui"
+        if (Test-Path $reactUiPath) {
+            Write-Host ""
+            Write-Host "Formatting TypeScript/JavaScript (react-ui)..." -ForegroundColor Yellow
+            Push-Location $reactUiPath
+            try {
+                # Run prettier to format
+                & npm run format 2>&1 | Out-Null
+                Write-Host "  [OK] Prettier formatting applied" -ForegroundColor Green
+
+                # Run ESLint with auto-fix first
+                Write-Host "Linting TypeScript/JavaScript (react-ui)..." -ForegroundColor Yellow
+                & npm run lint:fix 2>&1 | Out-Null
+
+                # Then check for remaining issues
+                $lintOutput = & npm run lint 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "  [FAIL] ESLint found issues:" -ForegroundColor Red
+                    Write-Host $lintOutput -ForegroundColor Gray
+                    $hasErrors = $true
+                } else {
+                    Write-Host "  [OK] ESLint passed" -ForegroundColor Green
+                }
+            }
+            finally {
+                Pop-Location
+            }
+        }
+
+        # Lint Markdown files
+        Write-Host ""
+        Write-Host "Linting Markdown files..." -ForegroundColor Yellow
+
+        # Check if markdownlint-cli is available
+        $mdlintAvailable = $null -ne (Get-Command npx -ErrorAction SilentlyContinue)
+        if ($mdlintAvailable) {
+            # Fix auto-fixable issues first (uses .markdownlintignore for exclusions)
+            & npx markdownlint-cli "**/*.md" --fix 2>&1 | Out-Null
+
+            # Check for remaining issues
+            $mdOutput = & npx markdownlint-cli "**/*.md" 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "  [FAIL] Markdown lint found issues:" -ForegroundColor Red
+                Write-Host $mdOutput -ForegroundColor Gray
+                $hasErrors = $true
+            } else {
+                Write-Host "  [OK] Markdown lint passed" -ForegroundColor Green
+            }
+        } else {
+            Write-Host "  [SKIP] markdownlint-cli not available (run 'npm install -g markdownlint-cli')" -ForegroundColor Yellow
+        }
+
+        # Spell check with cspell
+        Write-Host ""
+        Write-Host "Checking spelling..." -ForegroundColor Yellow
+
+        $cspellAvailable = $null -ne (Get-Command npx -ErrorAction SilentlyContinue)
+        if ($cspellAvailable) {
+            # Run cspell on all relevant files (uses cspell.json for config)
+            $cspellOutput = & npx cspell "**/*.md" "**/*.ts" "**/*.tsx" "**/*.ps1" --no-progress --no-summary 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "  [FAIL] Spelling issues found:" -ForegroundColor Red
+                Write-Host $cspellOutput -ForegroundColor Gray
+                $hasErrors = $true
+            } else {
+                Write-Host "  [OK] Spelling check passed" -ForegroundColor Green
+            }
+        } else {
+            Write-Host "  [SKIP] cspell not available (run 'npm install -g cspell')" -ForegroundColor Yellow
+        }
+
+        Write-Host ""
+        if ($hasErrors) {
+            Write-Host "Linting completed with errors!" -ForegroundColor Red
+            exit 1
+        } else {
+            Write-Host "All linters passed!" -ForegroundColor Green
+        }
+    }
+
+    "generate-types" {
+        Write-Host "Generating TypeScript types from C# models..." -ForegroundColor Cyan
+
+        $reactUiPath = Join-Path $PSScriptRoot "react-ui"
+        if (-not (Test-Path $reactUiPath)) {
+            Write-Host "react-ui directory not found!" -ForegroundColor Red
+            exit 1
+        }
+
+        # Generate model types from C# using TypeGenRunner (TypeGen 7.0.0)
+        $typegenRunnerProject = Join-Path $PSScriptRoot "Catan3.Shared\TypeScript\TypeGenRunner\TypeGenRunner.csproj"
+        Write-Host ""
+        Write-Host "Running TypeGenRunner..." -ForegroundColor Yellow
+
+        $typegenOutput = & dotnet run --project $typegenRunnerProject 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  [FAIL] TypeGen failed:" -ForegroundColor Red
+            Write-Host $typegenOutput -ForegroundColor Gray
+            exit 1
+        }
+
+        # Count generated files from output
+        $fileCount = ($typegenOutput | Select-String "Generated \d+ files").Matches.Value -replace "Generated | files", ""
+        Write-Host "  [OK] Generated $fileCount TypeScript files to react-ui/types/generated/models/" -ForegroundColor Green
+
+        Write-Host ""
+        Write-Host "TypeScript types generated successfully!" -ForegroundColor Green
     }
 
     "replay" {
@@ -2111,6 +2311,8 @@ switch ($Verb) {
         Write-Host "  ./catan.ps1 update -Terminate - Same, but close all Terminal windows first (macOS)"
         Write-Host "  ./catan.ps1 build            - Build all projects (no tests)"
         Write-Host "  ./catan.ps1 test             - Build and run all tests"
+        Write-Host "  ./catan.ps1 lint             - Format, lint, and spell check (PS, TS, MD)"
+        Write-Host "  ./catan.ps1 generate-types   - Generate TypeScript types from C# models (TypeGen 7.0.0)"
         Write-Host "  ./catan.ps1 clean            - Stop services, clean build (preserves database)"
         Write-Host "  ./catan.ps1 debug            - Instructions for VS Code debugging"
         Write-Host "  ./catan.ps1 help (or -Help)  - Show this help"
