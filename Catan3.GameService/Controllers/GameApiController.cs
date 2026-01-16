@@ -534,8 +534,8 @@ namespace Catan3.GameService.Controllers
                 // Archive the completed game
                 await ArchiveCompletedGame(gameId, gameStateMachine, currentState, request.WinnerId, winnerName);
 
-                // Execute declare winner action
-                var declareWinnerMessage = new DeclareWinnerMessage(request.WinnerId);
+                // Execute declare winner action (includes VP card counts if any)
+                var declareWinnerMessage = new DeclareWinnerMessage(request.WinnerId, request.VictoryPoints ?? new Dictionary<string, int>());
                 var updatedGameModel = await gameStateMachine.HandleDeclareWinnerAsync(declareWinnerMessage);
 
                 // Record action if recording is active

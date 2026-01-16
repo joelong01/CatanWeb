@@ -64,6 +64,33 @@
                 <div class="player-name @(IsCurrentPlayer ? "grayed" : "")">@Player.Name</div>
             </div>
         }
+        else if (FlipMode == CardFlipMode.VictoryPoints)
+        {
+            <!-- Victory Points back: VP entry + avatar + name -->
+            <div class="card-back card-back-vp" style="@GetBackgroundStyle()">
+                <div class="vp-input-area">
+                    <label class="vp-label">Victory Points:</label>
+                    <input type="number"
+                           class="vp-input"
+                           min="0"
+                           max="5"
+                           value="@VictoryPointsValue"
+                           @onchange="HandleVictoryPointsChanged"
+                           data-testid="vp-input-@Player.Id" />
+                </div>
+                <div class="player-avatar">
+                    @if (!string.IsNullOrEmpty(GetPlayerImageUrl()))
+                    {
+                        <img src="@GetPlayerImageUrl()" alt="@Player.Name" />
+                    }
+                    else
+                    {
+                        <div class="avatar-placeholder">@GetInitial()</div>
+                    }
+                </div>
+                <div class="player-name">@Player.Name</div>
+            </div>
+        }
         else
         {
             <!-- Normal (hidden) back - just a placeholder for non-flipped state -->
@@ -83,7 +110,9 @@
         /// <summary>Flip to show "Go First" button for roll order selection.</summary>
         GoFirst,
         /// <summary>Flip to show supplemental participation checkbox.</summary>
-        Supplemental
+        Supplemental,
+        /// <summary>Flip to show Victory Point entry at game end.</summary>
+        VictoryPoints
     }
 
     /// <summary>
@@ -133,6 +162,18 @@
     /// </summary>
     [Parameter]
     public EventCallback<(string PlayerId, bool Participating)> OnSupplementalChanged { get; set; }
+
+    /// <summary>
+    /// Callback when the Victory Points value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string PlayerId, int VictoryPoints)> OnVictoryPointsChanged { get; set; }
+
+    /// <summary>
+    /// The current VP value to display (from parent's local storage).
+    /// </summary>
+    [Parameter]
+    public int VictoryPointsValue { get; set; }
 
     /// <summary>
     /// Whether the layout is in portrait mode (affects sizing).
@@ -192,5 +233,18 @@
     {
         var isChecked = (bool)(e.Value ?? false);
         await OnSupplementalChanged.InvokeAsync((Player.Id, isChecked));
+    }
+
+    /// <summary>
+    /// Handles the Victory Points input change.
+    /// </summary>
+    private async Task HandleVictoryPointsChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var vpCount))
+        {
+            // Clamp to valid range
+            vpCount = Math.Max(0, Math.Min(5, vpCount));
+            await OnVictoryPointsChanged.InvokeAsync((Player.Id, vpCount));
+        }
     }
 }

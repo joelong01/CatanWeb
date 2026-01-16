@@ -311,6 +311,12 @@ namespace Catan3.Shared.Extensions
                             hash += primes.Pop() * GetDeterministicStringHash(player.Id);
                         }
                     }
+
+                    // Note: SpentEntitlementsThisGame (soldiers, dev cards, etc.) intentionally NOT included
+                    // in hash to maintain backwards compatibility with existing recordings.
+                    // These values are tracked via GameState transitions and player data serialization.
+
+                    // Note: VictoryPointCards intentionally NOT included in hash for same reason.
                 }
             }
 

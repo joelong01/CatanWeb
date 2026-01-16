@@ -146,6 +146,13 @@ namespace Catan3.Shared.Models
         public List<HarborKey> OwnedHarbors { get; set; } = [];
 
         /// <summary>
+        /// Gets or sets the Victory Point card count entered at game end.
+        /// This is manually entered when the winner is declared, as VP dev cards are kept secret.
+        /// </summary>
+        [ObservableProperty]
+        public partial int VictoryPointCards { get; set; } = 0;
+
+        /// <summary>
         /// Initializes a new instance of the PlayerModel class with the specified ID.
         /// </summary>
         /// <param name="id">The ID of the player.</param>

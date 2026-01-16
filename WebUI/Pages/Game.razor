@@ -132,6 +132,15 @@
                                     CanPurchase="@CanPurchase(Entitlement.Soldier)"
                                     OnPurchase="@OnPurchaseClick"
                                     OnRightClick="@(() => ToggleFaceUp(Entitlement.Soldier))" />
+                    <PurchaseButton Entitlement="Entitlement.DevCard"
+                                    SpentCount="@GetSpentCount(Entitlement.DevCard)"
+                                    MaxCount="0"
+                                    UnspentCount="0"
+                                    Colors="@GetCurrentPlayerColors()"
+                                    IsFaceUp="@GetIsFaceUp(Entitlement.DevCard)"
+                                    CanPurchase="@CanPurchase(Entitlement.DevCard)"
+                                    OnPurchase="@OnPurchaseClick"
+                                    OnRightClick="@(() => ToggleFaceUp(Entitlement.DevCard))" />
                 </div>
             </div>
 
@@ -295,6 +304,15 @@
                                             CanPurchase="@CanPurchase(Entitlement.Soldier)"
                                             OnPurchase="@OnPurchaseClick"
                                             OnRightClick="@(() => ToggleFaceUp(Entitlement.Soldier))" />
+                            <PurchaseButton Entitlement="Entitlement.DevCard"
+                                            SpentCount="@GetSpentCount(Entitlement.DevCard)"
+                                            MaxCount="0"
+                                            UnspentCount="0"
+                                            Colors="@GetCurrentPlayerColors()"
+                                            IsFaceUp="@GetIsFaceUp(Entitlement.DevCard)"
+                                            CanPurchase="@CanPurchase(Entitlement.DevCard)"
+                                            OnPurchase="@OnPurchaseClick"
+                                            OnRightClick="@(() => ToggleFaceUp(Entitlement.DevCard))" />
                         </div>
                     </div>
                 </div>
@@ -313,9 +331,11 @@
                           PlayerColorMap="@PlayerColorMap"
                           PlayerProfiles="@PlayerProfiles"
                           IsPortrait="@_isPortrait"
+                          IsVPEntryPhase="@IsVPEntryPhase"
                           OnGoFirst="@OnGoFirstClick"
                           OnSupplementalChanged="@OnSupplementalChanged"
-                          OnPickingSupplementalDone="@OnPickingSupplementalDone" />
+                          OnPickingSupplementalDone="@OnPickingSupplementalDone"
+                          OnVictoryPointsDone="@OnVictoryPointsDone" />
         </div>
     }
     else
@@ -491,6 +511,8 @@
     private bool _showWinnerConfirm = false;
     private bool _showWinnerCelebration = false;
     private string _winnerName = string.Empty;
+    private string? _pendingWinnerId = null; // Set when winner confirmed but VP entry not done yet
+    private bool IsVPEntryPhase => _pendingWinnerId != null;
 
     /// <summary>
     /// True when we should show the portrait game-active layout (PickingBoard onwards).
@@ -1679,25 +1701,44 @@
     }
 
     /// <summary>
-    /// Confirms the winner declaration and calls the API.
+    /// Confirms the winner declaration - starts VP entry phase.
+    /// Shows celebration animation, then VP entry UI. API call happens when Done is clicked.
     /// </summary>
     private async Task ConfirmWinner()
     {
         if (GameModel == null) return;
 
-        var winnerId = GameModel.CurrentPlayerId;
+        _pendingWinnerId = GameModel.CurrentPlayerId;
         _showWinnerConfirm = false;
+
+        // Show celebration animation first
+        await TriggerWinnerCelebration();
+
+        // After animation, VP entry UI will show (based on IsVPEntryPhase)
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Handles VP Done button click - sends DeclareWinner with VP data to server.
+    /// </summary>
+    private async Task OnVictoryPointsDone(Dictionary<string, int> victoryPoints)
+    {
+        if (GameModel == null || _pendingWinnerId == null) return;
 
         try
         {
             var url = $"{Config.BaseUrl}/api/game/{GameId}/winner";
-            var request = new DeclareWinnerRequest { WinnerId = winnerId };
+            var request = new DeclareWinnerRequest
+            {
+                WinnerId = _pendingWinnerId,
+                VictoryPoints = victoryPoints
+            };
             var response = await Http.PostAsJsonAsync(url, request);
 
             if (response.IsSuccessStatusCode)
             {
-                // Show celebration animation
-                await TriggerWinnerCelebration();
+                // Clear pending state - game is now officially over
+                _pendingWinnerId = null;
             }
             else
             {

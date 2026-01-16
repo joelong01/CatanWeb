@@ -3,10 +3,16 @@
 @using static Catan3.WebUI.Components.Players.PlayerCard
 
 <div class="players-panel @(IsSupplementalPhase ? "supplemental-phase" : "") @(IsPickingSupplemental ? "picking-supplemental" : "") @(IsPortrait ? "portrait" : "")" data-testid="players-panel">
-    @* Done button for PickSupplementalPlayers - same size as a player card *@
+    @* Done button for PickSupplementalPlayers or VP entry - same size as a player card *@
     @if (IsPickingSupplemental)
     {
         <button class="supplemental-done-button" @onclick="OnDoneClicked">
+            Done
+        </button>
+    }
+    @if (IsVPEntryPhase && HasPlayersWithDevCards())
+    {
+        <button class="supplemental-done-button" @onclick="OnVPDoneClicked">
             Done
         </button>
     }
@@ -14,7 +20,7 @@
     {
         var playerColors = GetPlayerColors(player.Id);
         var playerProfile = GetPlayerProfile(player.Id);
-        var flipMode = GetFlipMode();
+        var flipMode = GetFlipMode(player);
         var isCurrentPlayer = player.Id == GameModel.CurrentPlayerId;
         <PlayerCard Player="@player"
                     GameModel="@GameModel"
@@ -24,7 +30,9 @@
                     IsCurrentPlayer="@isCurrentPlayer"
                     IsPortrait="@IsPortrait"
                     OnGoFirst="@OnGoFirst"
-                    OnSupplementalChanged="@OnSupplementalChanged" />
+                    OnSupplementalChanged="@OnSupplementalChanged"
+                    OnVictoryPointsChanged="@HandleLocalVPChange"
+                    VictoryPointsValue="@GetLocalVPValue(player.Id)" />
     }
 </div>
 
@@ -67,10 +75,28 @@
     public EventCallback OnPickingSupplementalDone { get; set; }
 
     /// <summary>
+    /// Callback when VP entry is complete. Passes dictionary of PlayerId -> VP count.
+    /// </summary>
+    [Parameter]
+    public EventCallback<Dictionary<string, int>> OnVictoryPointsDone { get; set; }
+
+    /// <summary>
+    /// Local storage for VP entries before submission.
+    /// </summary>
+    private Dictionary<string, int> _localVPEntries = new();
+
+    /// <summary>
     /// Whether the layout is in portrait mode (affects sizing and alignment).
     /// </summary>
     [Parameter]
     public bool IsPortrait { get; set; }
+
+    /// <summary>
+    /// Whether we're in the VP entry phase (after winner confirmed, before API call).
+    /// Passed from parent - triggers VP entry UI for players with dev cards.
+    /// </summary>
+    [Parameter]
+    public bool IsVPEntryPhase { get; set; }
 
     /// <summary>
     /// Whether we're in the Supplemental build phase (not PickSupplementalPlayers).
@@ -112,16 +138,30 @@
     }
 
     /// <summary>
-    /// Determines the flip mode based on game state.
+    /// Determines the flip mode based on game state and player.
     /// </summary>
-    private CardFlipMode GetFlipMode()
+    /// <param name="player">The player to determine flip mode for.</param>
+    private CardFlipMode GetFlipMode(PlayerModel player)
     {
-        return GameModel.GameState switch
+        if (GameModel.GameState == GameState.FinishedRollOrder)
         {
-            GameState.FinishedRollOrder => CardFlipMode.GoFirst,
-            GameState.PickSupplementalPlayers => CardFlipMode.Supplemental,
-            _ => CardFlipMode.None
-        };
+            return CardFlipMode.GoFirst;
+        }
+        if (GameModel.GameState == GameState.PickSupplementalPlayers)
+        {
+            return CardFlipMode.Supplemental;
+        }
+        // VP entry phase is triggered by parent (after winner confirm, before API call)
+        if (IsVPEntryPhase)
+        {
+            // Only flip cards for players who have dev cards
+            var devCardCount = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.DevCard);
+            if (devCardCount > 0)
+            {
+                return CardFlipMode.VictoryPoints;
+            }
+        }
+        return CardFlipMode.None;
     }
 
     /// <summary>
@@ -142,5 +182,57 @@
     private PlayerProfile? GetPlayerProfile(string playerId)
     {
         return PlayerProfiles.TryGetValue(playerId, out var profile) ? profile : null;
+    }
+
+    /// <summary>
+    /// Checks if any players have dev cards (need VP entry).
+    /// </summary>
+    private bool HasPlayersWithDevCards()
+    {
+        return GameModel.Players.Any(p =>
+            p.SpentEntitlementsThisGame.Count(e => e == Entitlement.DevCard) > 0);
+    }
+
+    /// <summary>
+    /// Handles local VP change - stores in dictionary without sending to server.
+    /// </summary>
+    private void HandleLocalVPChange((string PlayerId, int VictoryPoints) args)
+    {
+        _localVPEntries[args.PlayerId] = args.VictoryPoints;
+    }
+
+    /// <summary>
+    /// Gets the local VP value for a player, or their current model value.
+    /// </summary>
+    private int GetLocalVPValue(string playerId)
+    {
+        if (_localVPEntries.TryGetValue(playerId, out var vp))
+        {
+            return vp;
+        }
+        var player = GameModel.Players.FirstOrDefault(p => p.Id == playerId);
+        return player?.VictoryPointCards ?? 0;
+    }
+
+    /// <summary>
+    /// Handles Done button click for VP entry - submits all VP values.
+    /// </summary>
+    private async Task OnVPDoneClicked()
+    {
+        // Build dictionary of all players with dev cards and their VP values
+        var vpSubmission = new Dictionary<string, int>();
+        foreach (var player in GameModel.Players)
+        {
+            var devCardCount = player.SpentEntitlementsThisGame.Count(e => e == Entitlement.DevCard);
+            if (devCardCount > 0)
+            {
+                vpSubmission[player.Id] = GetLocalVPValue(player.Id);
+            }
+        }
+
+        await OnVictoryPointsDone.InvokeAsync(vpSubmission);
+
+        // Clear local entries after submission
+        _localVPEntries.Clear();
     }
 }

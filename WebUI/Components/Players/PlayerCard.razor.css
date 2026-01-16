@@ -1,14 +1,15 @@
 /*
  * PlayerCard: Flipping container for PlayerTile (front) and action views (back)
- * Fixed dimensions match PlayerTile: 500px width, ~150px height
+ * Fixed dimensions match PlayerTile: 520px width, ~150px height
  * Height = info row (40px) + gap (3px) + resources row (100px) + padding (8px) = ~150px
  */
 .player-card {
     perspective: 1000px;
-    width: 500px;
+    width: 520px;
     height: 150px;
     margin: 1px;
     margin-left: auto; /* Right-align */
+    margin-right: 5px; /* Small gap from panel edge */
 }
 
 .card-inner {
@@ -159,6 +160,38 @@
 .player-avatar.grayed {
     opacity: 0.4;
     filter: grayscale(70%);
+}
+
+/* Victory Points entry styles */
+.card-back-vp {
+    flex-direction: row;
+    justify-content: flex-start;
+}
+
+.vp-input-area {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 180px;
+}
+
+.vp-label {
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.vp-input {
+    width: 60px;
+    height: 36px;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    border: 2px solid var(--text-secondary);
+    border-radius: 6px;
+    background: var(--game-bg-secondary, #333);
+    color: var(--text-primary, white);
 }
 
 /* =============================================================================

@@ -542,16 +542,21 @@ namespace Catan3.Shared.Models
         /// <inheritdoc />
         public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
         public string WinnerId { get; init; } = string.Empty;
+        /// <summary>
+        /// Victory Point card counts for players with dev cards.
+        /// </summary>
+        public Dictionary<string, int> VictoryPoints { get; init; } = new();
 
         [JsonIgnore]
         public string RecordType => Discriminator;
 
         [JsonConstructor]
-        public DeclareWinnerRecord(string expectedGameHash, GameState expectedGameState, string winnerId)
+        public DeclareWinnerRecord(string expectedGameHash, GameState expectedGameState, string winnerId, Dictionary<string, int>? victoryPoints = null)
         {
             ExpectedGameHash = expectedGameHash;
             ExpectedGameState = expectedGameState;
             WinnerId = winnerId;
+            VictoryPoints = victoryPoints ?? new Dictionary<string, int>();
         }
 
         public DeclareWinnerRecord(GameModel gameModel, DeclareWinnerMessage message)
@@ -559,6 +564,7 @@ namespace Catan3.Shared.Models
             ExpectedGameHash = gameModel.GameHash;
             ExpectedGameState = gameModel.GameState;
             WinnerId = message.WinnerId;
+            VictoryPoints = message.VictoryPoints ?? new Dictionary<string, int>();
         }
     }
 

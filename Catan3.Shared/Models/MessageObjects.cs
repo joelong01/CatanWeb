@@ -150,14 +150,50 @@ namespace Catan3.Shared.Models
 
     /// <summary>
     /// Message to declare a player as the winner and transition to GameOver state.
+    /// Includes Victory Point card counts for all players who have dev cards.
     /// </summary>
-    public class DeclareWinnerMessage(string winnerId)
+    public class DeclareWinnerMessage
     {
         /// <summary>
         /// The player ID of the winner (must be current player per Catan rules).
         /// </summary>
-        public string WinnerId { get; } = winnerId;
-        public override string ToString() => $"DeclareWinnerMessage: {WinnerId}";
+        public string WinnerId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Dictionary mapping player IDs to their Victory Point card counts.
+        /// Only includes players who have dev cards.
+        /// </summary>
+        public Dictionary<string, int> VictoryPoints { get; set; } = new();
+
+        /// <summary>
+        /// Default constructor for deserialization.
+        /// </summary>
+        public DeclareWinnerMessage() { }
+
+        /// <summary>
+        /// Creates a DeclareWinnerMessage with just the winner ID (no VP cards).
+        /// </summary>
+        public DeclareWinnerMessage(string winnerId)
+        {
+            WinnerId = winnerId;
+        }
+
+        /// <summary>
+        /// Creates a DeclareWinnerMessage with winner ID and VP card counts.
+        /// </summary>
+        public DeclareWinnerMessage(string winnerId, Dictionary<string, int> victoryPoints)
+        {
+            WinnerId = winnerId;
+            VictoryPoints = victoryPoints;
+        }
+
+        public override string ToString()
+        {
+            if (VictoryPoints.Count == 0)
+                return $"DeclareWinnerMessage: {WinnerId}";
+            var vpEntries = string.Join(", ", VictoryPoints.Select(kv => $"{kv.Key}={kv.Value}"));
+            return $"DeclareWinnerMessage: {WinnerId} [VP: {vpEntries}]";
+        }
     }
 
     /// <summary>
@@ -169,6 +205,12 @@ namespace Catan3.Shared.Models
         /// The player ID to declare as winner.
         /// </summary>
         public string WinnerId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Dictionary mapping player IDs to their Victory Point card counts.
+        /// Only includes players who have dev cards.
+        /// </summary>
+        public Dictionary<string, int> VictoryPoints { get; set; } = new();
     }
 
     public class BalanceBoardMessage
