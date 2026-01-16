@@ -1,0 +1,177 @@
+@import 'tailwindcss';
+
+/**
+ * Catan Theme Configuration
+ *
+ * Ported from WebUI/wwwroot/css/app.css to maintain visual consistency.
+ * Uses Tailwind v4 @theme directive for custom design tokens.
+ */
+
+/* ==========================================================================
+   CSS Custom Properties (for direct use and Tailwind extension)
+   ========================================================================== */
+:root {
+  /* Game Background Colors */
+  --game-bg-primary: #222222;
+  --game-bg-secondary: #333333;
+  --game-bg-panel: #2a2a2a;
+
+  /* Text Colors */
+  --text-primary: #eeeeee;
+  --text-secondary: #cccccc;
+  --text-muted: #999999;
+
+  /* Accent Colors */
+  --accent-primary: #007bff;
+  --accent-hover: #0056b3;
+  --accent-success: #4caf50;
+  --accent-error: #f44336;
+  --accent-warning: #ff9800;
+
+  /* Overlay/Transparent Backgrounds */
+  --overlay-dark: rgba(0, 0, 0, 0.6);
+  --overlay-darker: rgba(0, 0, 0, 0.8);
+  --overlay-light: rgba(255, 255, 255, 0.1);
+  --overlay-lighter: rgba(255, 255, 255, 0.2);
+
+  /* Layout Proportions (match XAML Grid.ColumnDefinitions) */
+  --left-panel-width: 25fr;
+  --center-panel-width: 60fr;
+  --right-panel-width: 26fr;
+
+  /* Reference dimensions per orientation */
+  --landscape-width: 1920px;
+  --landscape-height: 1080px;
+  --portrait-width: 1080px;
+  --portrait-height: 1920px;
+
+  /* Portrait Mode Layout */
+  --portrait-tab-height: 60px;
+
+  /* Icon Styles */
+  --icon-font-size: 20px;
+
+  /* Note: --font-catan is injected by Next.js font loader in layout.tsx */
+}
+
+/* ==========================================================================
+   Tailwind v4 Theme Extension
+   ========================================================================== */
+@theme inline {
+  /* Colors */
+  --color-game-bg-primary: var(--game-bg-primary);
+  --color-game-bg-secondary: var(--game-bg-secondary);
+  --color-game-bg-panel: var(--game-bg-panel);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-success: var(--accent-success);
+  --color-accent-error: var(--accent-error);
+  --color-accent-warning: var(--accent-warning);
+
+  --color-overlay-dark: var(--overlay-dark);
+  --color-overlay-darker: var(--overlay-darker);
+  --color-overlay-light: var(--overlay-light);
+  --color-overlay-lighter: var(--overlay-lighter);
+
+  /* Player Colors - Primary/Secondary/Foreground for each player */
+  --color-player-white-primary: #ffffff;
+  --color-player-white-secondary: #d0d0d0;
+  --color-player-white-foreground: #000000;
+
+  --color-player-blue-primary: #0078d4;
+  --color-player-blue-secondary: #005a9e;
+  --color-player-blue-foreground: #ffffff;
+
+  --color-player-orange-primary: #ff8c00;
+  --color-player-orange-secondary: #d67700;
+  --color-player-orange-foreground: #000000;
+
+  --color-player-red-primary: #e81123;
+  --color-player-red-secondary: #c50f1f;
+  --color-player-red-foreground: #ffffff;
+
+  --color-player-green-primary: #107c10;
+  --color-player-green-secondary: #0b5c0b;
+  --color-player-green-foreground: #ffffff;
+
+  --color-player-brown-primary: #8b4513;
+  --color-player-brown-secondary: #6b3410;
+  --color-player-brown-foreground: #ffffff;
+
+  /* Resource Colors */
+  --color-resource-wheat: #f4d03f;
+  --color-resource-wood: #2e7d32;
+  --color-resource-brick: #c0392b;
+  --color-resource-sheep: #81c784;
+  --color-resource-ore: #607d8b;
+  --color-resource-desert: #d4a574;
+
+  /* Fonts */
+  --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* --font-catan is injected by Next.js font loader, no need to redefine */
+
+  /* Spacing */
+  --spacing-panel: 1rem;
+  --spacing-card: 0.75rem;
+}
+
+/* ==========================================================================
+   Base Styles
+   ========================================================================== */
+html,
+body {
+  font-family: var(--font-sans);
+  background: var(--game-bg-primary);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  overflow: hidden;
+}
+
+/*
+ * Mobile devices - enable scrolling and touch gestures.
+ * This allows pinch-to-zoom which is critical for game board interaction.
+ * Matches Blazor WebUI behavior. Individual panels use overflow-y: auto for scrolling.
+ */
+@media (pointer: coarse) {
+  html,
+  body {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: auto;
+  }
+}
+
+/* ==========================================================================
+   Utility Classes for Catan-specific styling
+   ========================================================================== */
+
+/* Catan font for game icons */
+.font-catan {
+  font-family: var(--font-catan);
+}
+
+/* Panel backgrounds with consistent styling */
+.panel-bg {
+  background: var(--game-bg-panel);
+  border-radius: 0.5rem;
+}
+
+/* Player tile gradient background */
+.player-gradient {
+  background: linear-gradient(135deg, var(--player-primary) 0%, var(--player-secondary) 100%);
+}
+
+/* Debug borders (toggle via CSS variable) */
+.debug-borders * {
+  outline: 1px solid red;
+}
