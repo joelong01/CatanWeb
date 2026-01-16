@@ -17,8 +17,15 @@
         "csdevkit",
         "csproj",
         "dotnettools",
+        "FOUT",
         "msbuild",
+        "nologo",
+        "nswag",
         "omnisharp",
+        "onreconnected",
+        "onreconnecting",
+        "partialize",
+        "Plyr",
         "pscustomobject",
         "refs",
         "retarget",
@@ -26,7 +33,6 @@
         "tfms",
         "vscode",
         "vswhere",
-        "winui",
-        "nologo"
+        "winui"
     ]
 }
