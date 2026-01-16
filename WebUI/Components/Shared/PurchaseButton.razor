@@ -20,7 +20,7 @@
         @* Front face - shows building icon with player gradient and border *@
         <div class="purchase-button-front"
              style="background: @Colors.CssGradient; border-color: @Colors.Foreground; color: @Colors.Foreground;">
-            <span class="unspent-count">@UnspentCount</span>
+            <span class="unspent-count">@GetFrontFaceCount()</span>
             <img class="icon" src="@GetBuildingIconPath()" alt="@GetLabel()" style="@GetSvgFilterStyle()" />
             <span class="label">@GetLabel()</span>
         </div>
@@ -97,12 +97,27 @@
 
     private string GetCountDisplay()
     {
-        // Soldier has no max, just show count
-        if (Entitlement == Entitlement.Soldier)
+        // Soldier and DevCard have no max, just show count
+        if (Entitlement == Entitlement.Soldier || Entitlement == Entitlement.DevCard)
         {
             return SpentCount.ToString();
         }
         return $"{SpentCount} of {MaxCount}";
+    }
+
+    /// <summary>
+    /// Gets the count to display on the front face of the card.
+    /// For DevCard, shows SpentCount (purchased cards) since there's no unspent phase.
+    /// For other entitlements, shows UnspentCount (entitlements ready to place).
+    /// </summary>
+    private int GetFrontFaceCount()
+    {
+        // DevCard goes directly to SpentEntitlements when purchased - no unspent phase
+        if (Entitlement == Entitlement.DevCard)
+        {
+            return SpentCount;
+        }
+        return UnspentCount;
     }
 
     private string GetLabel()
@@ -113,6 +128,7 @@
             Entitlement.Settlement => "Settlement",
             Entitlement.City => "City",
             Entitlement.Soldier => "Soldier",
+            Entitlement.DevCard => "Dev Card",
             _ => string.Empty
         };
     }
@@ -125,6 +141,7 @@
             Entitlement.Settlement => AssetService.GetAssetPath(AssetName.BuildingSettlement),
             Entitlement.City => AssetService.GetAssetPath(AssetName.BuildingCity),
             Entitlement.Soldier => AssetService.GetAssetPath(AssetName.BuildingKnight),
+            Entitlement.DevCard => AssetService.GetAssetPath(AssetName.StatDevCards),
             _ => string.Empty
         };
     }

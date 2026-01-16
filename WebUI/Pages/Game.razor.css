@@ -16,7 +16,7 @@
 
 /* =============================================================================
    CSS VERSION - UPDATE THIS ONE LINE TO CHANGE ALL VERSION STRINGS BELOW
-   Current: CSS 2026-01-13 v1
+   Current: CSS 2026-01-15 v3
    Note: Global version in MainLayout.razor.css; this adds game-specific info
    ============================================================================= */
 
@@ -99,12 +99,12 @@
 
 /* Landscape Mode - Default
    Fixed pixel widths based on component sizes:
-   - Left panel: ~320px for purchase buttons (4 × 70px + gaps) and roll grid
-   - Right panel: 510px for PlayerTile/ResourceTracking components (500px + padding)
+   - Left panel: ~320px for purchase buttons (6 × ~70px in 3x2 grid) and roll grid
+   - Right panel: 530px for PlayerTile (520px) + margin (5px) + buffer
    - Center panel: remaining space for board
 */
 .game-container[data-layout-mode="landscape"] .game-grid {
-    grid-template-columns: 320px 1fr 510px;
+    grid-template-columns: 320px 1fr 530px;
     grid-template-rows: 1fr;
     height: 100%;
 }
@@ -180,7 +180,7 @@
     overflow: hidden; /* No scrollbars - content must fit */
     background: #000;
     padding: 0;
-    padding-right: 5px; /* Small margin from edge */
+    /* No padding here - PlayerCard has margin-right: 5px for spacing from edge */
 }
 
 /* =============================================================================
@@ -531,10 +531,10 @@
     align-items: center;
 }
 
-/* Purchase grid in portrait-game-active: 2x2 layout with larger buttons */
+/* Purchase grid in portrait-game-active: 3x2 layout with larger buttons */
 .game-container[data-layout-mode="portrait"][data-game-active="true"] .portrait-purchase .purchase-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     padding: 4px;
 }
@@ -767,10 +767,10 @@
    Purchase Controls
    ============================================================================= */
 
-/* Purchase grid: 2x2 layout for larger, more readable buttons */
+/* Purchase grid: 3x2 layout for Road, Settlement, City, Soldier, DevCard */
 .purchase-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     justify-content: center;
     width: 100%;
@@ -1086,7 +1086,7 @@
 
     /* Mobile landscape: keep original pixel proportions */
     .game-container[data-layout-mode="landscape"] .game-grid {
-        grid-template-columns: 320px 1fr 510px;
+        grid-template-columns: 320px 1fr 530px;
         grid-template-rows: 1fr;  /* CRITICAL: needed for percentage heights to work */
         overflow: visible !important;
     }

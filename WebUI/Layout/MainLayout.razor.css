@@ -1,9 +1,9 @@
 /* =============================================================================
    CSS VERSION - UPDATE THIS WHEN CSS CHANGES TO BUST BROWSER CACHE
-   Current: CSS 2026-01-13 v1
+   Current: CSS 2026-01-15 v3
 
    To update all CSS version strings at once, run from repo root:
-   sed -i '' 's/CSS 2026-01-13 v1/CSS YYYY-MM-DD vN/g' WebUI/**/*.css
+   sed -i '' 's/CSS 2026-01-15 v3/CSS YYYY-MM-DD vN/g' WebUI/**/*.css
 
    Also update query params in index.html (see that file for instructions)
    ============================================================================= */
@@ -23,7 +23,7 @@
 
 /* Global CSS version indicator - appears on all pages */
 .page::after {
-    content: "CSS 2026-01-13 v1";
+    content: "CSS 2026-01-15 v3";
     position: fixed;
     bottom: 5px;
     right: 5px;

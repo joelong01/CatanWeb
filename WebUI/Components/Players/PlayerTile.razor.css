@@ -5,7 +5,7 @@
     padding: var(--player-tile-padding, 4px);
     visibility: visible;
     overflow: visible;
-    width: var(--player-tile-width, 500px);
+    width: var(--player-tile-width, 520px); /* avatar(40) + 13 stats(455) + gaps(12) + padding(8) + buffer(5) */
     box-sizing: border-box;
     margin-left: var(--player-tile-margin-left, auto); /* Push to right in landscape */
     /* No zoom - whole layout scales together via viewport transform */
@@ -46,7 +46,7 @@
 
 .player-stats-grid {
     display: grid;
-    grid-template-columns: repeat(12, var(--stat-size, 35px));
+    grid-template-columns: repeat(13, var(--stat-size, 35px));
     gap: var(--stat-gap, 1px);
 }
 

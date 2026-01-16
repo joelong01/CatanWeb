@@ -124,13 +124,14 @@
         public const string LongestRoad = "\uE915";
         public const string Target = "\uE916";
         public const string Star = "\uE911";
+        public const string DevCard = "?"; // Simple text glyph for dev cards
     }
 
     /// <summary>
     /// Gets all player statistics for display in the stats grid.
     /// Uses Catan font glyphs for icons.
     /// </summary>
-    /// <returns>List of 12 player statistics with glyph codes and counts.</returns>
+    /// <returns>List of 13 player statistics with glyph codes and counts.</returns>
     private List<PlayerStat> GetPlayerStats()
     {
         return new List<PlayerStat>
@@ -140,6 +141,7 @@
             new() { Name = "Cities", Glyph = CatanGlyph.City, Count = GetCitiesPlayed(), IsHighlighted = false },
             new() { Name = "Settlements", Glyph = CatanGlyph.Settlement, Count = GetSettlementsPlayed(), IsHighlighted = false },
             new() { Name = "Soldiers", Glyph = CatanGlyph.Soldier, Count = GetSoldiersPlayed(), IsHighlighted = Player.LargestArmy },
+            new() { Name = "DevCards", Glyph = CatanGlyph.DevCard, Count = GetDevCardsPurchased(), IsHighlighted = false },
             new() { Name = "Robber", Glyph = CatanGlyph.Pirate, Count = GetResourcesLost(), IsHighlighted = false },
             new() { Name = "Targeted", Glyph = CatanGlyph.Target, Count = Player.TimesTargeted, IsHighlighted = false },
             new() { Name = "Total", Glyph = CatanGlyph.Sum, Count = GetTotalResources(), IsHighlighted = false },
@@ -268,6 +270,14 @@
     /// <returns>Count of soldier entitlements spent by this player.</returns>
     private int GetSoldiersPlayed() =>
         Player.SpentEntitlementsThisGame.Count(e => e == Entitlement.Soldier);
+
+    /// <summary>
+    /// Gets the number of development cards purchased by this player.
+    /// Tracks dev cards from SpentEntitlementsThisGame, matching GameStateMachine logic.
+    /// </summary>
+    /// <returns>Count of dev card entitlements purchased by this player.</returns>
+    private int GetDevCardsPurchased() =>
+        Player.SpentEntitlementsThisGame.Count(e => e == Entitlement.DevCard);
 
     /// <summary>
     /// Gets the number of resources lost to the robber by this player.

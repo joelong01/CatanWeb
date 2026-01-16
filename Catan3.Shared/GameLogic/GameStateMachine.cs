@@ -623,7 +623,7 @@ namespace Catan3.Shared.GameLogic
         /// The winner must be the current player (Catan rule - can only win on your turn).
         /// Game remains playable for undo/redo but ActionFlags reflect game completion.
         /// </summary>
-        /// <param name="message">The winner declaration with player ID.</param>
+        /// <param name="message">The winner declaration with player ID and VP card counts.</param>
         /// <returns>The updated GameModel in GameOver state.</returns>
         public Task<GameModel> HandleDeclareWinnerAsync(DeclareWinnerMessage message)
         {
@@ -644,6 +644,23 @@ namespace Catan3.Shared.GameLogic
             }
 
             _recorder?.RecordAction(message.ToRecord(gameModel));
+
+            // Apply Victory Point card counts from the message
+            if (message.VictoryPoints?.Count > 0)
+            {
+                foreach (var (playerId, vpCount) in message.VictoryPoints)
+                {
+                    var player = gameModel.Players.FirstOrDefault(p => p.Id == playerId);
+                    if (player != null)
+                    {
+                        player.VictoryPointCards = vpCount;
+                        _logger.Trace(GameTraceLevel.Trace, $"🎴 Set {playerId} VictoryPointCards to {vpCount}");
+                    }
+                }
+
+                // Recalculate scores for all players now that VPs are set
+                UpdateScore(gameModel);
+            }
 
             // Transition to GameOver
             gameModel.GameState = Shared.Models.GameState.GameOver;
@@ -767,7 +784,18 @@ namespace Catan3.Shared.GameLogic
             {
                 throw new GameException($"cannot buy {entitlement} in state {gameModel.GameState}");
             }
-            gameModel.CurrentPlayer().UnspentEntitlements.Add(entitlement);
+
+            if (entitlement == Entitlement.DevCard)
+            {
+                // Dev cards are immediately "spent" - they go directly to SpentEntitlementsThisGame
+                // (we track that a dev card was purchased, not that it's "unused")
+                gameModel.CurrentPlayer().SpentEntitlementsThisGame.Add(entitlement);
+                _logger.Trace(GameTraceLevel.Trace, $"🎴 Dev card purchased - added to SpentEntitlementsThisGame");
+            }
+            else
+            {
+                gameModel.CurrentPlayer().UnspentEntitlements.Add(entitlement);
+            }
             return gameModel;
         }
 
@@ -834,6 +862,9 @@ namespace Catan3.Shared.GameLogic
                     int unspentRoads = gameModel.CurrentPlayer().UnspentEntitlements.Count(e => e == entitlement);
                     int spentroads = gameModel.CurrentPlayer().SpentEntitlementsThisGame.Count(e => e == entitlement);
                     if (unspentRoads + spentroads >= gameModel.ResourceRules.MaxRoads) return false;
+                    return true;
+                case Entitlement.DevCard:
+                    // Dev cards have no max limit - always valid to purchase
                     return true;
                 default:
                     return false;
@@ -1466,6 +1497,7 @@ namespace Catan3.Shared.GameLogic
             gameModel.ActionFlags.RedoEnabled = false;
             UpdatePurchaseUi(gameModel);
             SetPlaySoldierAccess(gameModel);
+            SetDevCardAccess(gameModel);
 
             var oldHash = gameModel.GameHash;
             // Update ExpectedGameHash after all game state modifications are complete
@@ -1522,6 +1554,27 @@ namespace Catan3.Shared.GameLogic
             }
             moveRobber.Enabled = true;
         }
+
+        /// <summary>
+        /// Sets the Enabled state for DevCard purchase.
+        /// DevCards can always be purchased during WaitingForNext or Supplemental states.
+        /// </summary>
+        private void SetDevCardAccess(GameModel gameModel)
+        {
+            var devCard = gameModel.PurchaseModel(Entitlement.DevCard);
+            if (devCard == null) return;
+
+            if (gameModel.GameState == Shared.Models.GameState.WaitingForNext ||
+                gameModel.GameState == Shared.Models.GameState.Supplemental)
+            {
+                devCard.Enabled = true;
+            }
+            else
+            {
+                devCard.Enabled = false;
+            }
+        }
+
         private void ThrowIfNoEntitlement(GameModel gameModel, Entitlement[] entitlements)
         {
             var currentPlayer = gameModel.CurrentPlayer();
@@ -1697,6 +1750,8 @@ namespace Catan3.Shared.GameLogic
                 {
                     score += 2;
                 }
+                // Add Victory Point cards (manually entered at game end)
+                score += player.VictoryPointCards;
                 // Update the player's score
                 player.Score = score;
                 if (maxScore < player.Score) maxScore = player.Score;
