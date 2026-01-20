@@ -85,10 +85,14 @@ Azure App Service deployment slots are the recommended approach for staging envi
                                   ▼
                     ┌─────────────────────────────────────┐
                     │            main branch              │
-                    │  Auto-deploy to production          │
+                    │  Deploy to staging → Swap to prod   │
                     │  Stable, production-ready code      │
                     └─────────────────────────────────────┘
 ```
+
+**Note:** Both branches deploy to staging slot first. The difference is that `main` automatically
+swaps to production after successful deployment, while `staging` remains in the staging slot for
+manual testing.
 
 ### Workflow Triggers
 
@@ -96,7 +100,7 @@ Azure App Service deployment slots are the recommended approach for staging envi
 |--------|-----------------|--------|
 | Feature branches | On PR to staging or main | None |
 | staging | On push | Deploy to staging slot |
-| main | On push | Deploy to production |
+| main | On push | Deploy to staging slot → Swap to production |
 
 ## Implementation Plan
 
@@ -124,6 +128,17 @@ az webapp deployment slot create \
 - Update any environment-specific settings (e.g., `ASPNETCORE_ENVIRONMENT=Staging`)
 - Configure staging slot to use the same database (or a staging database if desired)
 
+**Slot-sticky settings (critical):**
+
+Mark these settings as "Deployment slot setting" in Azure Portal so they don't swap:
+
+| Setting | Production Value | Staging Value |
+|---------|------------------|---------------|
+| `ASPNETCORE_ENVIRONMENT` | `Production` | `Staging` |
+| `X-Environment` (header default) | `production` | `staging` |
+
+Without slot-sticky settings, a swap would cause `Staging` environment to receive production traffic.
+
 ### Phase 2: Update GitHub Actions Workflows
 
 #### 2.1 Modify CI Workflow
@@ -148,7 +163,10 @@ on:
 
 Create two deployment workflows or parameterize the existing one:
 
-##### Option A: Single workflow with matrix (Recommended)
+##### Option A: Deploy-then-swap workflow (Recommended)
+
+This approach follows Gemini's recommendation to **always deploy to staging first**, then swap to
+production for main branch. This ensures zero-downtime deployments and warm-up before production.
 
 ```yaml
 name: Deploy to Azure
@@ -181,25 +199,37 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Set deployment target
-        id: target
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "slot=production" >> $GITHUB_OUTPUT
-            echo "environment=production" >> $GITHUB_OUTPUT
-          else
-            echo "slot=staging" >> $GITHUB_OUTPUT
-            echo "environment=staging" >> $GITHUB_OUTPUT
-          fi
-
       - name: Build web projects
         run: dotnet build CatanWeb.slnf -c Release
 
-      - name: Deploy to Azure (${{ steps.target.outputs.environment }})
+      # Step 1: ALWAYS deploy to staging slot first
+      - name: Deploy to Staging Slot
         shell: pwsh
         run: |
-          ./catan.ps1 azure deploy -NoBuild -TraceLevel INFO -Slot ${{ steps.target.outputs.slot }}
+          ./catan.ps1 azure deploy -NoBuild -TraceLevel INFO -Slot staging
+
+      # Step 2: If main branch, swap staging to production
+      - name: Swap to Production
+        if: github.ref == 'refs/heads/main'
+        run: |
+          az webapp deployment slot swap \
+            --name catan \
+            --resource-group rg-catan \
+            --slot staging \
+            --target-slot production
+          az webapp deployment slot swap \
+            --name catan-api \
+            --resource-group rg-catan \
+            --slot staging \
+            --target-slot production
 ```
+
+**Benefits of deploy-then-swap:**
+
+- Production slot is never in an invalid state during deployment
+- Staging slot warms up before receiving production traffic
+- Instant rollback by swapping back (previous production is now in staging)
+- Same build artifact tested in staging is promoted to production
 
 ##### Option B: Separate workflows
 
@@ -351,7 +381,8 @@ the CI/CD doesn't configure them. The connection string was set manually during 
 - [ ] **Fix database CI/CD gap** - Replace `database fix` with `database deploy` in workflow
 - [ ] Create deployment slots in Azure (UI and API)
 - [ ] Configure staging slot settings
-- [ ] Update deploy-azure.yml workflow for branch-based deployment
+- [ ] **Configure slot-sticky settings** - Mark `ASPNETCORE_ENVIRONMENT` and `X-Environment` as deployment slot settings
+- [ ] Update deploy-azure.yml workflow for deploy-then-swap pattern
 - [ ] Update ci.yml to trigger on staging branch
 - [ ] Update catan-azure.ps1 to support -Slot parameter
 - [ ] Add `./catan.ps1 azure swap` command - promote staging to production (zero-downtime)
@@ -359,7 +390,7 @@ the CI/CD doesn't configure them. The connection string was set manually during 
 - [ ] Create staging branch from main
 - [ ] Configure branch protection rules
 - [ ] Test staging deployment
-- [ ] Test production deployment from main
+- [ ] Test production deployment from main (should deploy to staging → swap)
 - [ ] Test swap and rollback commands
 - [ ] Update project documentation
 
@@ -409,8 +440,21 @@ to Bicep or Terraform in the future.
 
 ## Questions for Review
 
-1. **Database isolation:** Should staging use the same database or a separate staging database?
-2. **Slot swap vs direct deploy:** Should main deploy directly to production, or should we always
-   go staging → swap to production?
+1. **Database isolation:** ~~Should staging use the same database or a separate staging database?~~
+
+   **RESOLVED:** Same database, isolated via table prefixes. See [state.md](state.md) for the
+   Storage Service design that provides environment isolation (`prod_`, `staging_`, `test_` prefixes)
+   using `X-Environment` header routing. This avoids EF Core migration conflicts while sharing
+   infrastructure.
+
+2. **Slot swap vs direct deploy:** ~~Should main deploy directly to production, or should we always
+   go staging → swap to production?~~
+
+   **RESOLVED:** Always deploy to staging first, then swap. Per Gemini review, direct deploy to
+   production negates zero-downtime benefits. The deploy-then-swap pattern ensures:
+   - Production is never in an invalid state during deployment
+   - Staging warms up before receiving traffic
+   - Previous production remains in staging slot for instant rollback
+
 3. **Branch protection:** What CI checks should be required before merging to staging and main?
 4. **Access control:** Should staging slot require authentication or IP restrictions?

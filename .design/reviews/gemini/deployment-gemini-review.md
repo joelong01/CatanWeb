@@ -1,102 +1,65 @@
-# Design Review: Deployment Strategy
+# Design Review: Deployment Strategy (v2)
 
 **Reviewer:** GitHub Copilot (Gemini 3 Pro Preview)
 **Date:** 2026-01-20
-**Target Document:** [.design/deployment.md](../../deployment.md)
+**Target Document:** [.design/systems/deployment.md](../../systems/deployment.md)
 
 ## Executive Summary
 
-The proposed deployment strategy correctly leverages Azure App Service Deployment Slots to introduce a staging environment with minimal infrastructure cost. The move to a branch-based strategy (`main` vs `staging`) provides a clear promotion path.
+The revised deployment strategy is **significantly improved** and now represents a robust, production-ready design. The adoption of the "Deploy-then-Swap" pattern for the main branch addresses the critical availability risks identified in the previous review.
 
-However, the proposed workflow for the `main` branch (**Direct Deploy to Production**) underutilizes the primary benefit of deployment slots: **Safety and Zero-Downtime Swaps**.
+The strategy for database isolation has shifted from "Separate Databases" to "Table Prefixes". While this reduces infrastructure costs, it introduces application-level complexity that must be managed carefully.
 
-## Strengths
+## Status: **APPROVED** (with verification items)
 
-1. **Resource Efficiency:** Using deployment slots allows for a full staging environment without incurring costs for new App Service Plans (assuming Standard tier or higher).
-2. **Clear Branching Model:** The definition of `staging` as an integration branch and `main` as production is intuitive and standard.
-3. **Infrastructure Awareness:** The document correctly identifies the limitation of CI permissions (Contributor vs Owner) and the gap in database configuration (`database fix` vs `database deploy`).
-4. **Desktop App Isolation:** Correctly identifies that the WinUI3 app is out of scope for this web-based deployment pipeline.
+## Improvements & Resolved Issues
 
-## Critical Findings & Risks
+### 1. Zero-Downtime Deployment (Adopted)
 
-### 1. Direct Deploy vs. Swap Strategy (Major)
+The design now correctly specifies a **Deploy → Swap** workflow for the `main` branch:
+> Step 1: ALWAYS deploy to staging slot first
+> Step 2: If main branch, swap staging to production
 
-The proposed workflow triggers a direct deployment to the production slot when code is pushed to `main`:
+This ensures:
 
-> `main` branch -> Auto-deploy to production
+* Production is never in an invalid state.
+* The exact artifact verified in the staging slot is promoted.
+* Rollback is instantaneous.
 
-**Risk:** This negates the "Zero-Downtime" and "Warm-up" benefits of deployment slots. If the deployment to the production slot fails or the app fails to start, the production site goes down.
+### 2. Slot Configuration (Addressed)
 
-**Recommendation:**
-Adopt a **"Deploy to Staging, Swap to Production"** pattern for the `main` branch as well.
+The inclusion of **"Slot-sticky settings (critical)"** section and explicitly calling out `ASPNETCORE_ENVIRONMENT` and `X-Environment` as sticky settings is excellent. This prevents configuration drift during swaps.
 
-1. Push to `main`.
-2. CI builds and deploys to the **Staging Slot**.
-3. (Optional) Smoke tests run against Staging Slot.
-4. **Slot Swap** operation promotes Staging to Production.
+### 3. CI/CD Gaps (Addressed)
 
-This ensures that the production slot is never in an invalid state during deployment.
+The plan to replace `database fix` with `database deploy` resolves the connection pooling configuration issue.
 
-### 2. Shared Database (Critical)
+## Remaining Risks & Verification Items
 
-The document asks: *"Should staging use the same database or a separate staging database?"*
+### 1. Database Isolation via Table Prefixes (Complexity Risk)
 
-**Risk:** CatanWeb uses EF Core. If a feature branch merges to `staging` and applies a migration (e.g., renaming a column), and `staging` shares the production database, **Production will break immediately** because the running code depends on the old schema.
+The design notes:
+> Same database, isolated via table prefixes... This avoids EF Core migration conflicts while sharing infrastructure.
 
-**Recommendation:**
-**Staging MUST have a separate database.**
-Given the low cost of an additional logical database in Azure SQL (or using SQLite for staging if strict parity isn't required, though SQL Server is preferred for fidelity), the risk of sharing the database is too high for a project with EF Core migrations.
+**Caution:** Implementing table prefixes with EF Core Migrations is non-trivial.
 
-### 3. Build Artifact Consistency
+* **Migrations History:** You must ensure that the `__EFMigrationsHistory` table is *also* prefixed or separated (e.g., using `IGameService.HistoryRepository`), otherwise the Staging environment might mark a migration as "applied" in the shared history, preventing Production from applying it (or vice versa).
+* **Runtime Mapping:** Dynamic table renaming in `OnModelCreating` based on `X-Environment` requires careful testing to ensure no cross-talk.
 
-The separate workflows for `main` and `staging` imply rebuilding the application.
+**Action Item:** Verify that the `state.md` design includes provisions for isolating the `__EFMigrationsHistory` table.
 
-**Observation:** Ideally, the *exact binary* tested in staging should be the one promoted to production. However, in .NET, strictly re-building for `Release` on `main` is acceptable practice if the build process is deterministic.
+### 2. Header Routing for Isolation
 
-## Detailed Recommendations
+The reliance on `X-Environment` header for routing storage logic implies that the "Staging Slot" and "Production Slot" are essentially the same running code, just behaving differently based on config/headers.
 
-### Refined Workflow Proposal
+* **Verify:** Ensure that background services (which don't have HTTP request headers) correctly pick up the environment context (e.g., from `ASPNETCORE_ENVIRONMENT` environment variable) to use the correct table prefix.
 
-Instead of Option A/B, consider this hybrid approach for `deploy-azure.yml`:
+## Implementation Checklist Review
 
-```yaml
-on:
-  push:
-    branches: [ staging, main ]
+The checklist is comprehensive. I recommend adding one item:
 
-jobs:
-  deploy:
-    # ... setup ...
-    steps:
-      # ... build ...
-      
-      # Step 1: ALWAYS Deploy to the Staging Slot first
-      - name: Deploy to Staging Slot
-        run: ./catan.ps1 azure deploy -Slot staging ...
-
-      # Step 2: If this was 'main', Swap to Production
-      - name: Swap to Production
-        if: github.ref == 'refs/heads/main'
-        run: |
-           az webapp deployment slot swap --slot staging --target-slot production ...
-```
-
-### Database Management
-
-1. **Create `catan-staging` DB:** Provision a second database on the existing SQL Server.
-2. **App Settings:**
-    * **Production Slot:** `ConnectionStrings:DefaultConnection = ...Initial Catalog=catan...`
-    * **Staging Slot:** `ConnectionStrings:DefaultConnection = ...Initial Catalog=catan-staging...` (Use "Deployment Slot Setting" checkbox in Azure Portal to prevent this from swapping).
-
-### CI/CD Gaps
-
-* **Database Deploy:** The finding regarding `database fix` vs `database deploy` is accurate. Implementing this change is a high priority to ensure connection pooling is active.
-
-## Nitpicks
-
-* **Slot Configuration:** Ensure `ASPNETCORE_ENVIRONMENT` is marked as a "Deployment slot setting" (sticky) in Azure, so `Staging` doesn't accidentally become `Production` during a swap.
-* **Rollback:** The document mentions "From Staging Issue: Simply revert...". Just to clarify, if a bad build goes to staging, it doesn't affect prod. If a bad swap happens, you swap back.
+* [ ] **Verify Database Isolation:** Automated test to ensure Staging CRUD operations do not touch Production tables (and vice-versa).
 
 ## Conclusion
 
-The design is solid but needs to strictly enforce database separation to avoid catastrophic schema conflicts. Shifting the production deployment mechanism to use "Swap" rather than "Direct Deploy" provides better resilience.
+The design changes have addressed the major architectural concerns. The deployment workflow is now safe and standard. The chosen database isolation strategy is valid but pushes complexity into the application layer; the implementation team should treat this as a high-risk area during development.
