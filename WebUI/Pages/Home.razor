@@ -9,6 +9,29 @@
     <h1>Catan</h1>
     <p class="subtitle">Settlers of Catan - Web Edition</p>
 
+    @if (serverStatus == ServerStatus.Checking || serverStatus == ServerStatus.WarmingUp)
+    {
+        <div class="server-status warming">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <span>@statusMessage</span>
+        </div>
+    }
+    else if (serverStatus == ServerStatus.Error)
+    {
+        <div class="server-status error">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>@statusMessage</span>
+            <button class="retry-button" @onclick="CheckServerHealth">Retry</button>
+        </div>
+    }
+    else if (serverStatus == ServerStatus.Ready)
+    {
+        <div class="server-status ready">
+            <i class="fa-solid fa-check-circle"></i>
+            <span>Server ready</span>
+        </div>
+    }
+
     <div class="menu-options">
         @if (!string.IsNullOrEmpty(GameConnection.GameId))
         {
@@ -223,6 +246,57 @@
         border-radius: 3px;
     }
 
+    .server-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 1rem;
+    }
+
+    .server-status.warming {
+        background-color: var(--status-warning-bg);
+        border: 1px solid var(--status-warning-border);
+        color: var(--status-warning-text);
+    }
+
+    .server-status.error {
+        background-color: var(--status-error-bg);
+        border: 1px solid var(--status-error-border);
+        color: var(--status-error-text);
+    }
+
+    .server-status.ready {
+        background-color: var(--status-success-bg);
+        border: 1px solid var(--status-success-border);
+        color: var(--status-success-text);
+        animation: fadeOut 3s forwards;
+        animation-delay: 2s;
+    }
+
+    @@keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; height: 0; padding: 0; margin: 0; overflow: hidden; }
+    }
+
+    .retry-button {
+        padding: 5px 15px;
+        border: 1px solid var(--status-error-text);
+        border-radius: 4px;
+        background-color: white;
+        color: var(--status-error-text);
+        cursor: pointer;
+        margin-left: 10px;
+    }
+
+    .retry-button:hover {
+        background-color: var(--status-error-text);
+        color: white;
+    }
+
     .troubleshoot-results {
         margin-top: 20px;
         padding: 20px;
@@ -350,6 +424,19 @@
             padding: 20px 40px;
             font-size: 2rem;
         }
+
+        .server-status {
+            padding: 25px 30px;
+            font-size: 2.2rem;
+            border-radius: 16px;
+            margin-bottom: 40px;
+        }
+
+        .retry-button {
+            padding: 15px 30px;
+            font-size: 2rem;
+            border-radius: 8px;
+        }
     }
 
     /* Slightly smaller for very small phones */
@@ -377,6 +464,99 @@
     private bool isTroubleshooting = false;
     private TroubleshootResult? troubleshootResult;
     private string? troubleshootError;
+
+    // Static fields persist across page navigations within the same session
+    private static ServerStatus _cachedServerStatus = ServerStatus.Checking;
+    private static string _cachedStatusMessage = "Checking server status...";
+    private static bool _hasCheckedServer = false;
+
+    private ServerStatus serverStatus = ServerStatus.Checking;
+    private string statusMessage = "Checking server status...";
+
+    private enum ServerStatus { None, Checking, WarmingUp, Ready, Error }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_hasCheckedServer)
+        {
+            // Use cached result - don't re-check every time
+            serverStatus = _cachedServerStatus;
+            statusMessage = _cachedStatusMessage;
+            // If server was ready, don't show any banner on return visits
+            if (serverStatus == ServerStatus.Ready)
+            {
+                serverStatus = ServerStatus.None;
+            }
+            return;
+        }
+
+        await CheckServerHealth();
+    }
+
+    private async Task CheckServerHealth()
+    {
+        serverStatus = ServerStatus.Checking;
+        statusMessage = "Checking server status...";
+        StateHasChanged();
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var startedWarmingMessage = false;
+
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+
+            // Start a background task to update the message if it takes too long
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(2000); // Wait 2 seconds
+                if (serverStatus == ServerStatus.Checking)
+                {
+                    await InvokeAsync(() =>
+                    {
+                        serverStatus = ServerStatus.WarmingUp;
+                        statusMessage = "Warming up server... (this may take 30-60 seconds on first access)";
+                        startedWarmingMessage = true;
+                        StateHasChanged();
+                    });
+                }
+            });
+
+            var response = await Http.GetAsync($"{GameServiceConfig.BaseUrl}/health", cts.Token);
+
+            stopwatch.Stop();
+
+            if (response.IsSuccessStatusCode)
+            {
+                serverStatus = ServerStatus.Ready;
+                statusMessage = startedWarmingMessage
+                    ? $"Server ready (warmed up in {stopwatch.Elapsed.TotalSeconds:F1}s)"
+                    : "Server ready";
+            }
+            else
+            {
+                serverStatus = ServerStatus.Error;
+                statusMessage = $"Server returned error: {response.StatusCode}";
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            serverStatus = ServerStatus.Error;
+            statusMessage = "Server not responding (timeout after 90s)";
+        }
+        catch (Exception ex)
+        {
+            serverStatus = ServerStatus.Error;
+            statusMessage = $"Cannot reach server: {ex.Message}";
+        }
+
+        // Cache the result for subsequent visits
+        _cachedServerStatus = serverStatus;
+        _cachedStatusMessage = statusMessage;
+        _hasCheckedServer = true;
+
+        StateHasChanged();
+    }
 
     private async Task RunTroubleshoot()
     {
