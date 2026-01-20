@@ -119,6 +119,14 @@ static void PostProcessGeneratedFiles(string outputPath)
             content = Regex.Replace(content, $@"\s+extends\s+{type}\s+\{{", " {");
         }
 
+        // Convert classes to interfaces (avoid TypeScript strict mode issues with uninitialized properties)
+        // Match: export class ClassName {
+        // Replace with: export interface ClassName {
+        content = Regex.Replace(content, @"export\s+class\s+(\w+)\s*\{", "export interface $1 {");
+
+        // Remove default values from interface properties (e.g., "seed: number = 287818514;" -> "seed: number;")
+        content = Regex.Replace(content, @"(\w+:\s*\w+)\s*=\s*[^;]+;", "$1;");
+
         // Clean up empty extends clauses (extends  {)
         content = Regex.Replace(content, @"\s+extends\s+\{", " {");
 
