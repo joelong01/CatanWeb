@@ -626,6 +626,33 @@ function Install-Database {
     }
 
     Write-Log -Level "INFO" -Message "SQL Server ready: $($Config.sqlServer.fqdn)"
+
+    # Grant SQL Server Contributor role to GameService managed identity
+    # This allows the Troubleshoot feature to enable public network access and manage firewall rules
+    $appName = $Config.gameService.appName
+    $principalId = Invoke-AzCommand "webapp identity show --name $appName --resource-group $rgName --query principalId -o tsv" -FailOnError $false
+
+    if ($principalId) {
+        $subscriptionId = Invoke-AzCommand "account show --query id -o tsv"
+        if (-not $subscriptionId) {
+            throw "Failed to get subscription ID"
+        }
+        $sqlServerScope = "/subscriptions/$subscriptionId/resourceGroups/$rgName/providers/Microsoft.Sql/servers/$sqlServerName"
+
+        Write-Log -Level "INFO" -Message "Granting SQL Server Contributor role to GameService managed identity..."
+        $existingRole = Invoke-AzCommand "role assignment list --assignee $principalId --role 'SQL Server Contributor' --scope $sqlServerScope --query [0].id -o tsv" -FailOnError $false
+        if (-not $existingRole) {
+            Invoke-AzCommand "role assignment create --assignee $principalId --role 'SQL Server Contributor' --scope $sqlServerScope" -SuppressOutput
+            Write-Log -Level "INFO" -Message "SQL Server Contributor role granted"
+        }
+        else {
+            Write-Log -Level "DEBUG" -Message "SQL Server Contributor role already assigned"
+        }
+    }
+    else {
+        Write-Log -Level "WARN" -Message "GameService managed identity not found - run 'game-service install' first for full Troubleshoot support"
+    }
+
     return $true
 }
 
@@ -1572,6 +1599,24 @@ function Install-GameService {
         throw "Failed to enable managed identity for $appName"
     }
     Write-Log -Level "DEBUG" -Message "Principal ID: $principalId"
+
+    # Grant Reader role on resource group for Azure Resource Graph queries
+    # This allows the Troubleshoot feature to find and inspect SQL Server resources
+    $subscriptionId = Invoke-AzCommand "account show --query id -o tsv"
+    if (-not $subscriptionId) {
+        throw "Failed to get subscription ID"
+    }
+    $rgScope = "/subscriptions/$subscriptionId/resourceGroups/$rgName"
+
+    Write-Log -Level "INFO" -Message "Granting Reader role on resource group to managed identity..."
+    $existingRole = Invoke-AzCommand "role assignment list --assignee $principalId --role Reader --scope $rgScope --query [0].id -o tsv" -FailOnError $false
+    if (-not $existingRole) {
+        Invoke-AzCommand "role assignment create --assignee $principalId --role Reader --scope $rgScope" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Reader role granted on resource group"
+    }
+    else {
+        Write-Log -Level "DEBUG" -Message "Reader role already assigned on resource group"
+    }
 
     Write-Log -Level "INFO" -Message "GameService App ready: $appName"
     return $true

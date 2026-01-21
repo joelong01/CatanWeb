@@ -50,6 +50,19 @@
     --accent-error: #f44336;
 
     /* ==========================================================================
+       Status Banner Colors (for alerts, notifications, server status)
+       ========================================================================== */
+    --status-warning-bg: #fff3cd;
+    --status-warning-border: #ffeeba;
+    --status-warning-text: #856404;
+    --status-error-bg: #f8d7da;
+    --status-error-border: #f5c6cb;
+    --status-error-text: #721c24;
+    --status-success-bg: #d4edda;
+    --status-success-border: #c3e6cb;
+    --status-success-text: #155724;
+
+    /* ==========================================================================
        Overlay/Transparent Backgrounds
        ========================================================================== */
     --overlay-dark: rgba(0, 0, 0, 0.6);
