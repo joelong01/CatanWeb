@@ -9,3 +9,11 @@ export const config = {
 
 /** Type-safe environment variable access */
 export type AppConfig = typeof config;
+
+/**
+ * Gets the GameService URL for display and API calls.
+ * @returns The configured GameService base URL
+ */
+export function getServiceUrl(): string {
+  return config.gameServiceUrl;
+}

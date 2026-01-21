@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -17,6 +18,9 @@
     "test:replay": "vitest run --config vitest.integration.config.ts lib/services/RecordingPlayer.integration.test.ts"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.1.0",
+    "@fortawesome/free-solid-svg-icons": "^7.1.0",
+    "@fortawesome/react-fontawesome": "^3.1.1",
     "@microsoft/signalr": "^10.0.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.26.2",

@@ -175,3 +175,436 @@ body {
 .debug-borders * {
   outline: 1px solid red;
 }
+
+/* ==========================================================================
+   Layout Styles (ported from MainLayout.razor.css)
+   ========================================================================== */
+
+.page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--game-bg-primary);
+  width: 100%;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height - excludes browser chrome */
+  overflow: hidden;
+}
+
+.page main {
+  flex: 1;
+  background: var(--game-bg-primary);
+  position: relative;
+  min-height: 0;
+}
+
+.page .content {
+  height: 100%;
+  padding: 0;
+  background: var(--game-bg-primary);
+}
+
+/* Mobile devices - enable scrolling */
+@media (pointer: coarse) {
+  .page {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ==========================================================================
+   Hamburger Button
+   ========================================================================== */
+
+.hamburger-btn {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  color: var(--text-primary);
+  transition: opacity 0.2s;
+  z-index: 2000;
+  line-height: 1;
+}
+
+.hamburger-btn:hover {
+  opacity: 0.7;
+}
+
+/* Mobile - larger hamburger */
+@media (max-width: 768px), (pointer: coarse) {
+  .hamburger-btn {
+    font-size: 4.5rem;
+    padding: 1.5rem;
+    top: 20px;
+    left: 20px;
+    min-width: 90px;
+    min-height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   Menu Overlay and Panel
+   ========================================================================== */
+
+.menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1500;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.menu-panel {
+  background: #000;
+  width: 100px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: 60px;
+  padding-left: 5px;
+  padding-right: 5px;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.5);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Mobile - larger menu panel */
+@media (max-width: 768px), (pointer: coarse) {
+  .menu-panel {
+    width: 260px;
+    padding-top: 130px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* ==========================================================================
+   Navigation Menu (ported from NavMenu.razor.css)
+   ========================================================================== */
+
+.nav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.nav-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none !important;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  padding: 12px 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  min-height: 70px;
+  border-radius: 4px;
+}
+
+.nav-menu-item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.nav-menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nav-menu-item.active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-icon {
+  font-size: var(--icon-font-size);
+  margin-bottom: 6px;
+  line-height: 1;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+}
+
+.nav-label {
+  font-size: 11px;
+  text-align: center;
+  color: var(--text-primary);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* Mobile - larger menu items */
+@media (max-width: 768px), (pointer: coarse) {
+  .nav-menu {
+    gap: 15px;
+  }
+
+  .nav-menu-item {
+    padding: 24px 16px;
+    min-height: 130px;
+    border-radius: 12px;
+  }
+
+  .nav-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+  }
+
+  .nav-label {
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+}
+
+/* ==========================================================================
+   Home Page Styles (ported from Home.razor)
+   ========================================================================== */
+
+.home-container {
+  text-align: center;
+  padding: 50px 20px 20px 50px; /* top right bottom left - clear burger menu */
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.home-container h1 {
+  font-size: 3rem;
+  color: #8b4513;
+  margin-bottom: 10px;
+}
+
+.home-subtitle {
+  font-size: 1.2rem;
+  color: #666;
+  margin-bottom: 40px;
+}
+
+.menu-options {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 40px;
+}
+
+.menu-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  padding: 20px 30px;
+  font-size: 1.2rem;
+  border: 2px solid #8b4513;
+  border-radius: 8px;
+  background-color: #fff8dc;
+  color: #8b4513;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.menu-button:hover:not(:disabled) {
+  background-color: #8b4513;
+  color: white;
+}
+
+.menu-button.return-game {
+  background-color: #228b22;
+  border-color: #228b22;
+  color: white;
+}
+
+.menu-button.return-game:hover {
+  background-color: #1a6b1a;
+  border-color: #1a6b1a;
+}
+
+.menu-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.menu-button .icon {
+  font-size: 1.5rem;
+}
+
+.menu-separator {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #ccc, transparent);
+  margin: 10px 0;
+}
+
+.menu-button.utility-button {
+  border-color: #666;
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.menu-button.utility-button:hover:not(:disabled) {
+  background-color: #666;
+  color: white;
+}
+
+.info-section {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.info-section code {
+  background-color: #f4f4f4;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #333;
+}
+
+/* Mobile responsive - larger fonts and touch targets */
+@media (max-width: 768px), (pointer: coarse) {
+  .home-container {
+    padding: 50px 30px;
+    max-width: 100%;
+  }
+
+  .home-container h1 {
+    font-size: 9rem;
+    margin-bottom: 25px;
+  }
+
+  .home-subtitle {
+    font-size: 3.5rem;
+    margin-bottom: 80px;
+  }
+
+  .menu-options {
+    gap: 30px;
+    margin-bottom: 80px;
+  }
+
+  .menu-button {
+    padding: 36px 48px;
+    font-size: 3rem;
+    border-radius: 20px;
+    border-width: 4px;
+  }
+
+  .menu-button .icon {
+    font-size: 4rem;
+  }
+
+  .menu-separator {
+    margin: 20px 0;
+  }
+
+  .info-section {
+    font-size: 2rem;
+  }
+}
+
+/* Slightly smaller for very small phones */
+@media (max-width: 400px) {
+  .home-container h1 {
+    font-size: 6rem;
+  }
+
+  .home-subtitle {
+    font-size: 2.5rem;
+  }
+
+  .menu-button {
+    padding: 30px 36px;
+    font-size: 2.4rem;
+  }
+
+  .menu-button .icon {
+    font-size: 3rem;
+  }
+}
+
+/* ==========================================================================
+   Placeholder Page Styles
+   ========================================================================== */
+
+.placeholder-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 50px 20px 20px 60px;
+  text-align: center;
+}
+
+.placeholder-page h1 {
+  font-size: 2.5rem;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+}
+
+.placeholder-page .todo-badge {
+  background: var(--accent-warning);
+  color: #000;
+  padding: 8px 24px;
+  border-radius: 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 30px;
+}
+
+.placeholder-page p {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  max-width: 400px;
+}
+
+.placeholder-page .back-link {
+  margin-top: 30px;
+  color: var(--accent-primary);
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.placeholder-page .back-link:hover {
+  text-decoration: underline;
+}
+
+/* Mobile placeholder styles */
+@media (max-width: 768px), (pointer: coarse) {
+  .placeholder-page {
+    padding: 80px 30px 30px 30px;
+  }
+
+  .placeholder-page h1 {
+    font-size: 5rem;
+  }
+
+  .placeholder-page .todo-badge {
+    padding: 16px 40px;
+    font-size: 2rem;
+    border-radius: 30px;
+  }
+
+  .placeholder-page p {
+    font-size: 2.5rem;
+    max-width: 100%;
+  }
+
+  .placeholder-page .back-link {
+    font-size: 2rem;
+    margin-top: 50px;
+  }
+}

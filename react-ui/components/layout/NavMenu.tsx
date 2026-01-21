@@ -1,0 +1,246 @@
+'use client';
+
+import { usePathname, useRouter } from 'next/navigation';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faXmark,
+  faExpand,
+  faHouse,
+  faPlus,
+  faFolderOpen,
+  faUsers,
+  faChartBar,
+  faGear,
+  faPlay,
+} from '@fortawesome/free-solid-svg-icons';
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+
+/** Props for NavMenu component */
+interface NavMenuProps {
+  /** Callback when a menu action closes the menu */
+  onMenuAction: () => void;
+  /** Current active game ID, if any */
+  activeGameId?: string | null;
+}
+
+/** Page context for determining which menu items to show */
+type PageContext =
+  | 'Home'
+  | 'Game'
+  | 'NewGame'
+  | 'LoadGame'
+  | 'EditPlayers'
+  | 'Settings'
+  | 'Stats'
+  | 'Tests'
+  | 'Other';
+
+/**
+ * Individual navigation menu item button.
+ */
+function NavMenuItem({
+  icon,
+  label,
+  onClick,
+  className = '',
+}: {
+  icon: IconDefinition;
+  label: string;
+  onClick: () => void;
+  className?: string;
+}): React.ReactElement {
+  return (
+    <button className={`nav-menu-item ${className}`} onClick={onClick}>
+      <div className="nav-icon">
+        <FontAwesomeIcon icon={icon} />
+      </div>
+      <div className="nav-label">{label}</div>
+    </button>
+  );
+}
+
+/**
+ * Navigation menu component displayed in the sidebar.
+ * Shows context-aware menu items based on current page.
+ */
+export function NavMenu({ onMenuAction, activeGameId }: NavMenuProps): React.ReactElement {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  /**
+   * Determines the current page context from the URL path.
+   */
+  const getCurrentPage = (): PageContext => {
+    const path = pathname.toLowerCase();
+    if (path.includes('/game/')) return 'Game';
+    if (path.includes('/new-game')) return 'NewGame';
+    if (path.includes('/load-game')) return 'LoadGame';
+    if (path.includes('/edit-players')) return 'EditPlayers';
+    if (path.includes('/settings')) return 'Settings';
+    if (path.includes('/stats')) return 'Stats';
+    if (path.includes('/tests')) return 'Tests';
+    if (path === '/') return 'Home';
+    return 'Other';
+  };
+
+  const currentPage = getCurrentPage();
+  const hasActiveGame = !!activeGameId;
+
+  /** Navigate and close menu */
+  const navigateTo = (path: string): void => {
+    onMenuAction();
+    router.push(path);
+  };
+
+  /** Toggle fullscreen mode */
+  const toggleFullScreen = (): void => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {
+        // Fullscreen not supported or denied
+      });
+    } else {
+      document.exitFullscreen().catch(() => {
+        // Exit fullscreen failed
+      });
+    }
+  };
+
+  return (
+    <nav className="nav-menu">
+      {/* Always visible: Hide */}
+      <NavMenuItem icon={faXmark} label="Hide" onClick={onMenuAction} />
+
+      {/* Always visible: Full Screen */}
+      <NavMenuItem icon={faExpand} label="Full Screen" onClick={toggleFullScreen} />
+
+      {/* Context-specific menu items */}
+      {currentPage === 'Home' && (
+        <>
+          <NavMenuItem icon={faPlus} label="New Game" onClick={() => navigateTo('/new-game')} />
+          <NavMenuItem
+            icon={faFolderOpen}
+            label="Open Game"
+            onClick={() => navigateTo('/load-game')}
+          />
+          <NavMenuItem
+            icon={faUsers}
+            label="Edit Players"
+            onClick={() => navigateTo('/edit-players')}
+          />
+        </>
+      )}
+
+      {currentPage === 'NewGame' && (
+        <>
+          <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
+          <NavMenuItem
+            icon={faFolderOpen}
+            label="Open Game"
+            onClick={() => navigateTo('/load-game')}
+          />
+          <NavMenuItem
+            icon={faUsers}
+            label="Edit Players"
+            onClick={() => navigateTo('/edit-players')}
+          />
+          {hasActiveGame && (
+            <NavMenuItem
+              icon={faPlay}
+              label="Return to Game"
+              onClick={() => navigateTo(`/game/${activeGameId}`)}
+            />
+          )}
+        </>
+      )}
+
+      {currentPage === 'LoadGame' && (
+        <>
+          <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
+          <NavMenuItem icon={faPlus} label="New Game" onClick={() => navigateTo('/new-game')} />
+          <NavMenuItem
+            icon={faUsers}
+            label="Edit Players"
+            onClick={() => navigateTo('/edit-players')}
+          />
+          {hasActiveGame && (
+            <NavMenuItem
+              icon={faPlay}
+              label="Return to Game"
+              onClick={() => navigateTo(`/game/${activeGameId}`)}
+            />
+          )}
+        </>
+      )}
+
+      {currentPage === 'EditPlayers' && (
+        <>
+          <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
+          <NavMenuItem icon={faPlus} label="New Game" onClick={() => navigateTo('/new-game')} />
+          <NavMenuItem
+            icon={faFolderOpen}
+            label="Open Game"
+            onClick={() => navigateTo('/load-game')}
+          />
+          {hasActiveGame && (
+            <NavMenuItem
+              icon={faPlay}
+              label="Return to Game"
+              onClick={() => navigateTo(`/game/${activeGameId}`)}
+            />
+          )}
+        </>
+      )}
+
+      {currentPage === 'Settings' && (
+        <>
+          <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
+          <NavMenuItem icon={faPlus} label="New Game" onClick={() => navigateTo('/new-game')} />
+          <NavMenuItem
+            icon={faFolderOpen}
+            label="Open Game"
+            onClick={() => navigateTo('/load-game')}
+          />
+          {hasActiveGame && (
+            <NavMenuItem
+              icon={faPlay}
+              label="Return to Game"
+              onClick={() => navigateTo(`/game/${activeGameId}`)}
+            />
+          )}
+        </>
+      )}
+
+      {currentPage === 'Stats' && (
+        <>
+          <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
+          {hasActiveGame && (
+            <NavMenuItem
+              icon={faPlay}
+              label="Return to Game"
+              onClick={() => navigateTo(`/game/${activeGameId}`)}
+            />
+          )}
+        </>
+      )}
+
+      {(currentPage === 'Game' || currentPage === 'Tests' || currentPage === 'Other') && (
+        <>
+          <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
+          {hasActiveGame && currentPage !== 'Game' && (
+            <NavMenuItem
+              icon={faPlay}
+              label="Return to Game"
+              onClick={() => navigateTo(`/game/${activeGameId}`)}
+            />
+          )}
+        </>
+      )}
+
+      {/* Always visible: Settings */}
+      <NavMenuItem icon={faGear} label="Settings" onClick={() => navigateTo('/settings')} />
+
+      {/* Always visible: Stats */}
+      <NavMenuItem icon={faChartBar} label="Stats" onClick={() => navigateTo('/stats')} />
+    </nav>
+  );
+}
