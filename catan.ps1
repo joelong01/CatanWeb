@@ -79,6 +79,9 @@ param(
     [Parameter()]
     [switch]$NoBuild,
 
+    [Parameter()]
+    [switch]$NoRazor,
+
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArgs
 )
@@ -1240,12 +1243,15 @@ switch ($Verb) {
                 if ($Json) {
                     $recordings | ConvertTo-Json -Depth 10
                 } else {
-                    # Table format
-                    Write-Host ("{0,-38} {1,-25} {2,-8} {3,-8} {4}" -f "ID", "Name", "Actions", "Players", "Type")
-                    Write-Host ("{0,-38} {1,-25} {2,-8} {3,-8} {4}" -f "--------------------------------------", "-------------------------", "--------", "--------", "---------")
+                    # Table format with RecordingID and GameID columns
+                    # Show first 8 chars of each GUID for readability
+                    Write-Host ("{0,-10} {1,-10} {2,-22} {3,-8} {4,-8} {5}" -f "RecID", "GameID", "Name", "Actions", "Players", "Type")
+                    Write-Host ("{0,-10} {1,-10} {2,-22} {3,-8} {4,-8} {5}" -f "----------", "----------", "----------------------", "--------", "--------", "---------")
                     foreach ($r in $recordings) {
-                        $displayName = if ($r.name.Length -gt 24) { $r.name.Substring(0, 21) + "..." } else { $r.name }
-                        Write-Host ("{0,-38} {1,-25} {2,-8} {3,-8} {4}" -f $r.id, $displayName, $r.actionCount, $r.playerCount, $r.gameType)
+                        $displayName = if ($r.name.Length -gt 21) { $r.name.Substring(0, 18) + "..." } else { $r.name }
+                        $shortRecId = if ($r.id.Length -ge 8) { $r.id.Substring(0, 8) } else { $r.id }
+                        $shortGameId = if ($r.gameId -and $r.gameId.Length -ge 8) { $r.gameId.Substring(0, 8) } else { $r.gameId }
+                        Write-Host ("{0,-10} {1,-10} {2,-22} {3,-8} {4,-8} {5}" -f $shortRecId, $shortGameId, $displayName, $r.actionCount, $r.playerCount, $r.gameType)
                     }
                 }
                 Write-Host ""
@@ -1745,36 +1751,42 @@ switch ($Verb) {
             Start-GameService -NetworkBinding:$Network
         }
 
-        # Check if WebUI is already running AND responding
+        # Check if WebUI is already running AND responding (skip if -NoRazor)
         $webUIRunning = $false
-        if (Test-PortInUse -Port $WebUIPort) {
-            # Port is in use - verify service is actually responding
-            $responding = Wait-ForService -Url $WebUIUrl -TimeoutSeconds 3
-            if ($responding) {
-                Write-Host "WebUI already running on port $WebUIPort" -ForegroundColor Green
-                $webUIRunning = $true
-            }
-            else {
-                Write-Host "Port $WebUIPort in use but service not responding. Killing stale process..." -ForegroundColor Yellow
-                # Kill whatever is on that port
-                if ($IsWindows) {
-                    $procIds = (Get-NetTCPConnection -LocalPort $WebUIPort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
-                    foreach ($procId in $procIds) {
-                        Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
-                    }
+        if (-not $NoRazor) {
+            if (Test-PortInUse -Port $WebUIPort) {
+                # Port is in use - verify service is actually responding
+                $responding = Wait-ForService -Url $WebUIUrl -TimeoutSeconds 3
+                if ($responding) {
+                    Write-Host "WebUI already running on port $WebUIPort" -ForegroundColor Green
+                    $webUIRunning = $true
                 }
-                Start-Sleep -Milliseconds 500
+                else {
+                    Write-Host "Port $WebUIPort in use but service not responding. Killing stale process..." -ForegroundColor Yellow
+                    # Kill whatever is on that port
+                    if ($IsWindows) {
+                        $procIds = (Get-NetTCPConnection -LocalPort $WebUIPort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
+                        foreach ($procId in $procIds) {
+                            Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+                        }
+                    }
+                    Start-Sleep -Milliseconds 500
+                }
             }
-        }
 
-        if (-not $webUIRunning) {
-            Start-WebUI -NetworkBinding:$Network
+            if (-not $webUIRunning) {
+                Start-WebUI -NetworkBinding:$Network
+            }
         }
 
         Write-Host ""
         Write-Host "Services running:" -ForegroundColor Green
         Write-Host "  GameService: $GameServiceUrl" -ForegroundColor White
-        Write-Host "  WebUI:       $WebUIUrl" -ForegroundColor White
+        if (-not $NoRazor) {
+            Write-Host "  WebUI:       $WebUIUrl" -ForegroundColor White
+        } else {
+            Write-Host "  WebUI:       (skipped with -NoRazor)" -ForegroundColor Gray
+        }
 
         if ($Network) {
             # Get the local IP address for network access
@@ -2305,6 +2317,7 @@ switch ($Verb) {
         Write-Host "Development:" -ForegroundColor Yellow
         Write-Host "  ./catan.ps1 run              - Start GameService + WebUI, launch browser"
         Write-Host "  ./catan.ps1 run -Network     - Same, but accessible from other devices"
+        Write-Host "  ./catan.ps1 run -NoRazor     - GameService only (no Blazor WebUI)"
         Write-Host "  ./catan.ps1 stop             - Stop running services"
         Write-Host "  ./catan.ps1 restart          - Stop and restart services"
         Write-Host "  ./catan.ps1 update           - Rebuild and restart (when hot reload fails)"

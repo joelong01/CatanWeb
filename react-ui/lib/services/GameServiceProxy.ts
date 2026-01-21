@@ -103,6 +103,10 @@ export class GameServiceProxy {
     this.notifyConnectionState('connecting');
 
     try {
+      // Configure SignalR logging based on DEBUG environment
+      const isDebug = typeof process !== 'undefined' &&
+        (process.env?.DEBUG === 'true' || process.env?.DEBUG === '1');
+
       this.connection = new HubConnectionBuilder()
         .withUrl(`${this.serviceUrl}/gameHub`)
         .withAutomaticReconnect({
@@ -115,7 +119,7 @@ export class GameServiceProxy {
             return delay;
           },
         })
-        .configureLogging(LogLevel.Information)
+        .configureLogging(isDebug ? LogLevel.Information : LogLevel.Warning)
         .build();
 
       this.setupEventHandlers();
@@ -178,19 +182,49 @@ export class GameServiceProxy {
 
   /**
    * Force reconnection (useful for mobile wake recovery).
+   *
+   * This handles the case where iOS/Android suspends the browser and the
+   * WebSocket is killed by the OS. SignalR's withAutomaticReconnect doesn't
+   * help here because the connection goes to Disconnected, not Reconnecting.
    */
   async forceReconnect(): Promise<void> {
+    // Save gameId BEFORE disconnect (disconnect clears it)
+    const savedGameId = this.gameId;
+
+    this.log(`Force reconnect requested, gameId: ${savedGameId}`);
+
+    // Clean up existing connection
     if (this.connection) {
-      await this.disconnect();
+      try {
+        // Don't use disconnect() as it clears gameId and tries to leave game
+        await this.connection.stop();
+      } catch {
+        // Ignore errors - connection may already be dead
+      }
+      this.connection = null;
     }
 
-    const savedGameId = this.gameId;
+    // Reconnect and rejoin game
     await this.connect(savedGameId ?? undefined);
 
     // Fetch full state after reconnect to catch any missed updates
     if (savedGameId) {
       await this.refreshGameState(savedGameId);
+      this.log(`Reconnected and refreshed state for game ${savedGameId}`);
     }
+  }
+
+  /**
+   * Check if connection needs recovery (for visibility change handler).
+   * Returns true if we should attempt reconnection.
+   */
+  needsReconnection(): boolean {
+    if (!this.connection) return true;
+
+    const state = this.connection.state;
+    // Disconnected or Disconnecting means we need to reconnect
+    // Connected or Connecting/Reconnecting means SignalR is handling it
+    return state === HubConnectionState.Disconnected;
   }
 
   // ==========================================================================
@@ -199,16 +233,20 @@ export class GameServiceProxy {
 
   /**
    * Create a new game via REST API.
+   * @param gameType - Regular or Expansion
+   * @param playerIds - Array of player IDs (e.g., ['Joe-001', 'Adrian-002'])
+   * @param gameName - Display name for the game
    */
   async createGame(
     gameType: GameType,
-    playerNames: string[],
+    playerIds: string[],
     gameName = 'New Game'
   ): Promise<CommandResult> {
     const response = await this.post('/api/game/new', {
       gameType,
-      playerNames,
+      playerIds,
       gameName,
+      saveLifetimeStats: false, // Don't save stats for programmatic games
     });
 
     if (response.ok) {
@@ -264,6 +302,29 @@ export class GameServiceProxy {
     return [];
   }
 
+  /**
+   * Load a game from a GameModel via REST API.
+   * Used for testing with recordings - loads the exact game state including board layout.
+   * @param gameModel - The complete GameModel to load
+   * @param isTest - If true, marks as test game (no persistence)
+   */
+  async loadGameModel(
+    gameModel: GameModel,
+    isTest: boolean = true
+  ): Promise<CommandResult> {
+    const response = await this.post('/api/game/loadmodel', {
+      gameModelJson: JSON.stringify(gameModel),
+      isTest,
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return { success: true, message: 'Game loaded from model', gameId: data.gameId };
+    }
+
+    return { success: false, message: await this.getErrorMessage(response) };
+  }
+
   // ==========================================================================
   // REST API - Game Commands
   // ==========================================================================
@@ -272,43 +333,55 @@ export class GameServiceProxy {
    * Execute Undo command.
    */
   async undo(): Promise<CommandResult> {
-    return this.executeCommand('undo');
+    return this.executeCommand('UndoMessage');
   }
 
   /**
    * Execute Redo command.
    */
   async redo(): Promise<CommandResult> {
-    return this.executeCommand('redo');
+    return this.executeCommand('RedoMessage');
   }
 
   /**
    * Execute Next command.
    */
   async next(): Promise<CommandResult> {
-    return this.executeCommand('next');
+    return this.executeCommand('NextMessage');
   }
 
   /**
    * Execute Shuffle command.
+   * Available during PickingBoard state to randomize the board layout.
    */
   async shuffle(): Promise<CommandResult> {
-    return this.executeCommand('shuffle');
+    return this.executeCommand('ShuffleMessage');
   }
 
   /**
    * Execute Balance Board command.
    */
   async balanceBoard(): Promise<CommandResult> {
-    return this.executeCommand('balance');
+    return this.executeCommand('BalanceBoardMessage');
   }
 
   /**
    * Execute Roll command.
+   * @param die1 - First die value (1-6)
+   * @param die2 - Second die value (1-6)
    */
   async roll(die1: number, die2: number): Promise<CommandResult> {
-    return this.executeCommand('roll', {
-      turnRollModel: { die1, die2, specialDice: 'None', rollIndex: 0 },
+    // Calculate the ValidCatanRoll enum value (sum of dice)
+    const total = die1 + die2;
+    const normalRollMap: Record<number, string> = {
+      2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five', 6: 'Six',
+      7: 'Seven', 8: 'Eight', 9: 'Nine', 10: 'Ten', 11: 'Eleven', 12: 'Twelve',
+    };
+    return this.executeCommand('RollMessage', {
+      roll: {
+        normalRoll: normalRollMap[total] ?? 'Seven',
+        specialDice: 'None',
+      },
     });
   }
 
@@ -316,21 +389,21 @@ export class GameServiceProxy {
    * Execute Purchase command.
    */
   async purchase(entitlement: Entitlement): Promise<CommandResult> {
-    return this.executeCommand('purchase', { entitlement });
+    return this.executeCommand('PurchaseMessage', { entitlement });
   }
 
   /**
    * Execute Road Purchase command.
    */
   async purchaseRoad(roadKey: RoadKey): Promise<CommandResult> {
-    return this.executeCommand('roadPurchase', { roadKey });
+    return this.executeCommand('RoadPurchaseMessage', { roadKey });
   }
 
   /**
    * Execute Building Upgrade command.
    */
   async upgradeBuilding(buildingKey: BuildingKey): Promise<CommandResult> {
-    return this.executeCommand('buildingUpgrade', { buildingKey });
+    return this.executeCommand('BuildingUpgradeMessage', { buildingKey });
   }
 
   /**
@@ -340,7 +413,7 @@ export class GameServiceProxy {
     coordinates: HexCoordinates,
     targetPlayerId?: string
   ): Promise<CommandResult> {
-    return this.executeCommand('moveRobber', {
+    return this.executeCommand('MoveRobberMessage', {
       coordinates,
       targetPlayerId: targetPlayerId ?? null,
     });
@@ -349,8 +422,8 @@ export class GameServiceProxy {
   /**
    * Execute Go First command (during roll order phase).
    */
-  async goFirst(firstPlayerId: string): Promise<CommandResult> {
-    return this.executeCommand('goFirst', { firstPlayerId });
+  async goFirst(playerId: string): Promise<CommandResult> {
+    return this.executeCommand('GoFirstMessage', { playerId });
   }
 
   /**
@@ -360,9 +433,48 @@ export class GameServiceProxy {
     playerId: string,
     participating: boolean
   ): Promise<CommandResult> {
-    return this.executeCommand('participatingInSupplemental', {
+    return this.executeCommand('ParticipatingInSupplementalMessage', {
       playerId,
       participating,
+    });
+  }
+
+  /**
+   * Execute Set Player Order command.
+   */
+  async setPlayerOrder(playerIds: string[]): Promise<CommandResult> {
+    return this.executeCommand('SetPlayerOrderMessage', { playerIds });
+  }
+
+  /**
+   * Execute Swap Tile Resources command.
+   * Used during board setup to swap resources between two tiles.
+   */
+  async swapTileResources(
+    sourceTileCoordinates: HexCoordinates,
+    destinationTileCoordinates: HexCoordinates,
+    sourceCurrentResource: string,
+    destinationCurrentResource: string
+  ): Promise<CommandResult> {
+    return this.executeCommand('SwapTileResourcesMessage', {
+      sourceTileCoordinates,
+      destinationTileCoordinates,
+      sourceCurrentResource,
+      destinationCurrentResource,
+    });
+  }
+
+  /**
+   * Execute Declare Winner command.
+   * Transitions game to GameOver state.
+   */
+  async declareWinner(
+    winnerId: string,
+    victoryPoints?: Record<string, number>
+  ): Promise<CommandResult> {
+    return this.executeCommand('DeclareWinnerMessage', {
+      winnerId,
+      victoryPoints: victoryPoints ?? {},
     });
   }
 
@@ -467,6 +579,20 @@ export class GameServiceProxy {
       this.events.onPlayersUpdated?.(players);
     });
 
+    // Player presence updates (intentionally ignored - handled by PlayersUpdated)
+    this.connection.on('PlayerPresenceChanged', () => {
+      // No-op: presence changes are reflected in GameStateUpdated
+    });
+
+    // Command completion events (used by async command processor)
+    this.connection.on('CommandCompleted', () => {
+      // No-op: we track command results via REST response
+    });
+
+    this.connection.on('CommandFailed', () => {
+      // No-op: we track command results via REST response
+    });
+
     // Connection events
     this.connection.onreconnecting((error) => {
       this.log('Reconnecting...', error);
@@ -495,8 +621,8 @@ export class GameServiceProxy {
   }
 
   private async executeCommand(
-    command: string,
-    payload?: Record<string, unknown>
+    messageType: string,
+    messageData?: Record<string, unknown>
   ): Promise<CommandResult> {
     if (!this.gameId) {
       return { success: false, message: 'Not connected to a game' };
@@ -505,14 +631,14 @@ export class GameServiceProxy {
     const body = {
       gameId: this.gameId,
       playerId: this.playerId,
-      command,
-      ...payload,
+      messageType,
+      messageData: messageData ?? {},
     };
 
     const response = await this.post('/api/game/action', body);
 
     if (response.ok) {
-      return { success: true, message: `${command} executed` };
+      return { success: true, message: `${messageType} executed` };
     }
 
     return { success: false, message: await this.getErrorMessage(response) };
@@ -556,13 +682,18 @@ export class GameServiceProxy {
   }
 
   private log(message: string, error?: unknown): void {
+    const isDebug = typeof process !== 'undefined' &&
+      (process.env?.DEBUG === 'true' || process.env?.DEBUG === '1');
+
     const prefix = `[GameServiceProxy] [${this.playerId}]`;
     if (error) {
+      // Always log errors
       console.error(`${prefix} ${message}`, error);
       this.events.onError?.(
         error instanceof Error ? error.message : String(error)
       );
-    } else {
+    } else if (isDebug) {
+      // Only log info in debug mode
       console.log(`${prefix} ${message}`);
     }
   }

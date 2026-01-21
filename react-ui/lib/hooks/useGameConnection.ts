@@ -103,18 +103,25 @@ export function useGameConnection(
   }, [proxy, playerId, setGameModel, setCurrentPlayerId, connectionStore]);
 
   // Page visibility handler for mobile sleep/wake recovery
+  // When iOS/Android suspends the browser, the WebSocket is killed by the OS.
+  // SignalR's withAutomaticReconnect doesn't help because the connection
+  // goes to Disconnected state (not Reconnecting). We detect this on wake.
   useEffect(() => {
     const handleVisibilityChange = async () => {
       const isVisible = document.visibilityState === 'visible';
       connectionStore.setPageVisible(isVisible);
 
-      if (isVisible && proxy.connectionState === 'disconnected') {
-        // Page became visible and we're disconnected - force reconnect
-        console.log('[useGameConnection] Page visible, forcing reconnect');
+      if (isVisible && proxy.needsReconnection()) {
+        // Page became visible and connection is dead - force reconnect
+        console.log('[useGameConnection] Page visible, connection dead, reconnecting...');
         try {
           await proxy.forceReconnect();
+          console.log('[useGameConnection] Reconnected successfully');
         } catch (error) {
           console.error('[useGameConnection] Reconnect failed:', error);
+          connectionStore.setDisconnected(
+            error instanceof Error ? error.message : 'Reconnection failed'
+          );
         }
       }
     };

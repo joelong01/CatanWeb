@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Catan3.GameService.Services;
 using Catan3.Shared.Models;
@@ -50,6 +51,7 @@ public class RecordingSummary
     public string GameType { get; set; } = string.Empty;
     public int PlayerCount { get; set; }
     public int ActionCount { get; set; }
+    public string GameId { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -157,17 +159,48 @@ public class RecordingController : ControllerBase
     public async Task<ActionResult<List<RecordingSummary>>> GetRecordings()
     {
         var recordings = await _recordingService.GetRecordingsAsync();
-        var summaries = recordings.Select(r => new RecordingSummary
+        var summaries = recordings.Select(r =>
         {
-            Id = r.Id,
-            Name = r.Name,
-            CreatedAt = r.CreatedAt,
-            GameType = r.GameType,
-            PlayerCount = r.PlayerCount,
-            ActionCount = r.ActionCount
+            // Extract GameId from the recording data JSON
+            var gameId = ExtractGameIdFromData(r.Data);
+            return new RecordingSummary
+            {
+                Id = r.Id,
+                Name = r.Name,
+                CreatedAt = r.CreatedAt,
+                GameType = r.GameType,
+                PlayerCount = r.PlayerCount,
+                ActionCount = r.ActionCount,
+                GameId = gameId
+            };
         }).ToList();
 
         return Ok(summaries);
+    }
+
+    /// <summary>
+    /// Extracts the GameId from recording data JSON without full deserialization.
+    /// </summary>
+    private static string ExtractGameIdFromData(string data)
+    {
+        if (string.IsNullOrEmpty(data))
+            return string.Empty;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(data);
+            if (doc.RootElement.TryGetProperty("initialGameModel", out var initialGameModel) &&
+                initialGameModel.TryGetProperty("gameId", out var gameIdElement))
+            {
+                return gameIdElement.GetString() ?? string.Empty;
+            }
+        }
+        catch
+        {
+            // Ignore parse errors
+        }
+
+        return string.Empty;
     }
 
     /// <summary>

@@ -11,8 +11,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest",
-    "test:run": "vitest run",
-    "generate-types": "nswag run nswag.json"
+    "test:run": "vitest run --exclude '**/*.integration.test.ts'",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:smoke": "SMOKE=1 vitest run --config vitest.integration.config.ts lib/services/RecordingPlayer.integration.test.ts",
+    "test:replay": "vitest run --config vitest.integration.config.ts lib/services/RecordingPlayer.integration.test.ts"
   },
   "dependencies": {
     "@microsoft/signalr": "^10.0.0",
