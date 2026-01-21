@@ -430,10 +430,18 @@ Tests/
 
 ### Commit Guidelines
 
+- **ALWAYS ask permission**: AI assistants must ask the user for permission before creating any commit
 - **Commit frequently**: Small, logical commits
 - **Clear messages**: Describe what and why, not how
 - **Group related changes**: Stage files that belong together
 - **Test before commit**: Ensure build passes
+- **Lint before commit**: ALL files must be linter-clean before committing:
+  - **C#**: No compiler warnings or errors (`pwsh ./catan.ps1 build`)
+  - **TypeScript/JavaScript**: Run `npm run lint` in react-ui and fix all issues
+  - **Markdown**: Run `npx markdownlint-cli "path/to/file.md" --fix` then verify clean
+  - **Spelling**: Run `npx cspell "path/to/files"` and fix all errors (either correct spelling or add to project dictionary in cspell.json)
+  - **CSS**: No linting errors in stylesheets
+  - **JSON**: Valid JSON syntax
 
 ### Git Best Practices
 

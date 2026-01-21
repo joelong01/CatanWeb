@@ -4,19 +4,14 @@
  * Matches C# WebUI/Services/Rendering/BoardGeometry.cs
  */
 
-import type { HexSide, HexPosition } from '@/types/generated/models';
+import type { HexCoordinates, HexSide, HexPosition } from '@/types/generated/models';
 import { HEX_SIZE, CENTER_X, CENTER_Y } from './boardConstants';
 
 /**
- * Simple hex coordinates type with just Q, R, S values.
- * Used for geometry calculations. Compatible with the full HexCoordinates type
- * but doesn't require computed properties (directions, north, etc).
+ * Type alias for HexCoordinates - used throughout the geometry module.
+ * The generated HexCoordinates now only includes serialized properties (q, r, s).
  */
-export interface HexCoords {
-  q: number;
-  r: number;
-  s: number;
-}
+export type HexCoords = HexCoordinates;
 
 /**
  * Converts axial coordinates to pixel position.

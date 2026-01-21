@@ -46,8 +46,10 @@ export {
 } from './boardConstants';
 
 // Geometry functions and types
+// HexCoords is a type alias for the generated HexCoordinates (which now only has q, r, s)
 export {
   type HexCoords,
+  type HexCoords as HexCoordinates, // Re-export for convenience
   axialToPixel,
   pixelToHex,
   getHexVertices,

@@ -1,11 +1,13 @@
 using System.ComponentModel;
 using System.Reflection;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using TypeGen.Core.Generator;
 using TypeGen.Core.Converters;
 using Catan3.Shared.TypeScript;
 using Catan3.Shared.Models;
+using Catan3.Shared.Utility;
 
 // Determine output path relative to this runner's location
 // Runner is in: Catan3.Shared/TypeScript/TypeGenRunner/
@@ -44,6 +46,11 @@ Console.WriteLine($"  Generated {fileList.Count} TypeScript model files");
 Console.WriteLine();
 Console.WriteLine("Step 2: Post-processing (removing MVVM artifacts)...");
 PostProcessGeneratedFiles(outputPath);
+
+// Step 2b: Remove properties marked with [JsonIgnore] in C#
+Console.WriteLine();
+Console.WriteLine("Step 2b: Removing [JsonIgnore] properties from generated types...");
+RemoveJsonIgnoredProperties(outputPath);
 
 // Step 3: Generate enum descriptions
 Console.WriteLine();
@@ -257,6 +264,139 @@ static string GetEnumDescription(Type enumType, object value)
 
     var attr = field.GetCustomAttribute<DescriptionAttribute>();
     return attr?.Description ?? name;
+}
+
+// ============================================================================
+// JsonIgnore Property Removal
+// ============================================================================
+
+/// <summary>
+/// Removes properties from generated TypeScript interfaces that are marked with [JsonIgnore] in C#.
+/// This ensures the TypeScript types match what actually gets serialized to JSON.
+/// </summary>
+static void RemoveJsonIgnoredProperties(string outputPath)
+{
+    // Map of C# type -> list of property names that have [JsonIgnore]
+    // We build this by reflecting over the actual C# types
+    var jsonIgnoredProperties = GetJsonIgnoredPropertiesMap();
+
+    foreach (var (typeName, ignoredProps) in jsonIgnoredProperties)
+    {
+        if (ignoredProps.Count == 0) continue;
+
+        var fileName = ToKebabCase(typeName) + ".ts";
+        var filePath = Path.Combine(outputPath, fileName);
+
+        if (!File.Exists(filePath))
+        {
+            Console.WriteLine($"  Warning: {fileName} not found, skipping");
+            continue;
+        }
+
+        var content = File.ReadAllText(filePath);
+        var originalContent = content;
+
+        // Remove each ignored property line
+        foreach (var propName in ignoredProps)
+        {
+            // TypeGen converts PascalCase to camelCase for property names
+            var camelPropName = char.ToLowerInvariant(propName[0]) + propName[1..];
+
+            // Match property declaration lines. Handle:
+            // - Simple types: "    propertyName: SomeType;"
+            // - Complex types: "    propertyName: { [key in Direction]?: HexCoordinates; };"
+            // - Lines with trailing comments: "    propertyName: SomeType; // comment"
+            // - Lines with trailing whitespace
+            // Use greedy .* after semicolon to capture any trailing content before newline
+            var pattern = $@"^\s*{camelPropName}:.*?;.*\r?\n";
+            content = Regex.Replace(content, pattern, "", RegexOptions.Multiline);
+        }
+
+        // Remove any imports that are no longer needed
+        content = RemoveUnusedImports(content);
+
+        if (content != originalContent)
+        {
+            File.WriteAllText(filePath, content);
+            Console.WriteLine($"  Fixed {fileName}: removed {ignoredProps.Count} [JsonIgnore] properties");
+        }
+    }
+}
+
+/// <summary>
+/// Builds a map of C# type names to property names that should be excluded from TypeScript.
+/// This includes properties marked with [JsonIgnore] and static properties (which are never serialized).
+/// </summary>
+static Dictionary<string, List<string>> GetJsonIgnoredPropertiesMap()
+{
+    var result = new Dictionary<string, List<string>>();
+
+    // Types that are exported via TypeGen and may have [JsonIgnore] or static properties
+    var typesToCheck = new Type[]
+    {
+        typeof(HexCoordinates),
+        // Add other types here as needed
+    };
+
+    foreach (var type in typesToCheck)
+    {
+        var ignoredProps = new List<string>();
+
+        foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
+        {
+            // Exclude properties marked with [JsonIgnore]
+            if (prop.GetCustomAttribute<JsonIgnoreAttribute>() != null)
+            {
+                ignoredProps.Add(prop.Name);
+                continue;
+            }
+
+            // Exclude static properties (they're never part of instance serialization)
+            var getter = prop.GetGetMethod();
+            if (getter != null && getter.IsStatic)
+            {
+                ignoredProps.Add(prop.Name);
+            }
+        }
+
+        if (ignoredProps.Count > 0)
+        {
+            result[type.Name] = ignoredProps;
+        }
+    }
+
+    return result;
+}
+
+/// <summary>
+/// Removes import statements for types that are no longer referenced in the file content.
+/// </summary>
+static string RemoveUnusedImports(string content)
+{
+    // Find all import lines (handle both Unix \n and Windows \r\n line endings)
+    var importPattern = @"^import \{ (\w+) \} from '\.\/[\w-]+';";
+    var matches = Regex.Matches(content, importPattern, RegexOptions.Multiline);
+
+    foreach (Match match in matches)
+    {
+        var importedType = match.Groups[1].Value;
+        var importLine = match.Value;
+
+        // Check if the type is used elsewhere in the file (not in the import line itself)
+        var contentWithoutImport = content.Replace(importLine, "");
+
+        // Look for the type being used (as a type annotation, not just in a string)
+        var typeUsagePattern = $@"\b{importedType}\b";
+        if (!Regex.IsMatch(contentWithoutImport, typeUsagePattern))
+        {
+            // Type is not used, remove the import line using regex
+            // This handles: trailing whitespace, optional \r\n or \n, and last line without newline
+            var linePattern = Regex.Escape(importLine) + @"\s*\r?\n?";
+            content = Regex.Replace(content, linePattern, "");
+        }
+    }
+
+    return content;
 }
 
 // ============================================================================
