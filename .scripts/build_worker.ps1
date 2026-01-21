@@ -9,6 +9,7 @@ param(
     [switch]$Release,
     [switch]$NoRegister,
     [switch]$NoFontRegister,
+    [switch]$NoDesktop,
     [switch]$Unregister,
     [switch]$Help,
     [ValidateSet("x64", "x86", "ARM64")]
@@ -131,7 +132,7 @@ trap {
 # Function to show help
 function Show-Help {
     Write-Output @"
-Catan Desktop App Build Script
+Catan Build Script
 
 USAGE:
     .\build.ps1 [OPTIONS]
@@ -140,6 +141,7 @@ OPTIONS:
     -Clean          Clean the project before building
     -NoBuild        Skip the build step, only publish
     -NoTest         Skip running tests
+    -NoDesktop      Skip building the Desktop app (faster builds for web development)
     -SkipUiTests    Skip UI/E2E test projects (e.g., Tests.DesktopApp.UI) - DEPRECATED, use -NoUiTests
     -NoUiTests      Skip UI/E2E test projects (alias for -SkipUiTests) - DEPRECATED, UI tests now skipped by default
     -IncludeUiTests Include UI/E2E test projects (requires recorded test files)
@@ -152,7 +154,8 @@ OPTIONS:
     -Help           Show this help message
 
 EXAMPLES:
-    .\build.ps1                           # Build, test, publish, and register (default)
+    .\build.ps1                           # Build everything (default)
+    .\build.ps1 -NoDesktop                # Build without Desktop app (fast for web dev)
     .\build.ps1 -Clean -Release           # Clean release build (registers by default)
     .\build.ps1 -NoTest -NoRegister       # Build and publish without tests and skip registration
     .\build.ps1 -IncludeUiTests           # Build, run ALL tests including UI tests, publish, register
@@ -577,8 +580,8 @@ try {
         }
     }
 
-    # Ensure MSIX certificate exists (Windows only)
-    if ($IsWindows) {
+    # Ensure MSIX certificate exists (Windows only, and only if building Desktop app)
+    if ($IsWindows -and -not $NoDesktop) {
         $desktopAppDir = Join-Path (Split-Path $PSScriptRoot -Parent) "DesktopApp"
         Initialize-MsixCertificate -ProjectDir $desktopAppDir -PfxFileName "Catan Desktop_TemporaryKey.pfx"
     }
@@ -586,7 +589,9 @@ try {
     # Build step
     if (!$NoBuild) {
         Write-Output "🔨 Building project..."
-        if ($IsWindows) {
+
+        if ($IsWindows -and -not $NoDesktop) {
+            # Full solution build including Desktop app
             $buildArgs = @(
                 $ProjectPath,
                 "-c", $Configuration,
@@ -599,7 +604,10 @@ try {
             dotnet build @buildArgs
             if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code: $LASTEXITCODE" }
         } else {
-            # Build individual cross-platform projects
+            # Build individual cross-platform projects (skip Desktop app)
+            if ($NoDesktop -and $IsWindows) {
+                Write-Output "⏭️  Skipping Desktop app build (flag: -NoDesktop)"
+            }
             foreach ($proj in $CrossPlatformProjects) {
                 $projPath = Join-Path $PSScriptRoot $proj
                 if (Test-Path $projPath) {
@@ -613,10 +621,12 @@ try {
         Write-Output "✅ Build completed successfully"
 
         # Register the Catan font for UI consistency (Windows only, unless skipped)
-        if ($IsWindows -and -not $NoFontRegister) {
+        if ($IsWindows -and -not $NoFontRegister -and -not $NoDesktop) {
             $projectRoot = Split-Path $PSScriptRoot -Parent
             $fontPath = Join-Path $projectRoot "DesktopApp\Assets\Fonts\Catan.ttf"
             Register-Font -FontPath $fontPath
+        } elseif ($IsWindows -and $NoDesktop) {
+            Write-Output "⏭️  Font registration skipped (Desktop app not built)"
         } elseif ($IsWindows) {
             Write-Output "⏭️  Font registration skipped (flag: -NoFontRegister)"
         }
@@ -697,8 +707,8 @@ try {
         }
     }
 
-    # MSIX Package Installation step (Windows only)
-    if ($IsWindows) {
+    # MSIX Package Installation step (Windows only, skip if -NoDesktop)
+    if ($IsWindows -and -not $NoDesktop) {
         Write-Output "📦 Installing MSIX application..."
 
         # Find the generated MSIX package
@@ -843,6 +853,10 @@ try {
         } else {
             Write-Output "💡 Registration skipped (remove -NoRegister to install the app in Start menu)"
         }
+    } elseif ($IsWindows -and $NoDesktop) {
+        # Windows with -NoDesktop: skip MSIX, just report success
+        Write-Output "`n🎉 Build process completed successfully!"
+        Write-Output "ℹ️  Projects built: Shared, GameService, WebUI, CLI (Desktop skipped)"
     } else {
         # Non-Windows: just report success
         Write-Output "`n🎉 Build process completed successfully!"

@@ -4,6 +4,7 @@
 
 .DESCRIPTION
     Manages local development (build, run, test), database, dependencies, and Azure deployment.
+    By default, builds and runs the React UI (Next.js) with GameService.
 
 .PARAMETER Verb
     The action to perform: run, stop, build, test, doctor, install, database, azure, etc.
@@ -12,11 +13,20 @@
     Bind services to all network interfaces (0.0.0.0) instead of localhost only.
     Use this to access services from iPhone simulator or other devices on the network.
 
+.PARAMETER Razor
+    Build and run the Blazor WebUI instead of React UI.
+
+.PARAMETER Desktop
+    Also build and deploy the Windows Desktop app (MSIX).
+
 .EXAMPLE
-    ./catan.ps1 run              # Build, init database, start services, launch browser
+    ./catan.ps1 run              # Build GameService + React UI, start services, launch browser
     ./catan.ps1 run -Network     # Same, but accessible from other devices
+    ./catan.ps1 run -Razor       # Build GameService + Blazor WebUI instead of React
+    ./catan.ps1 run -Desktop     # Also build/deploy Windows Desktop app
     ./catan.ps1 stop             # Stop running services
-    ./catan.ps1 build            # Build all projects
+    ./catan.ps1 build            # Build GameService + React UI
+    ./catan.ps1 build -Desktop   # Build everything including Desktop app
     ./catan.ps1 test             # Run all tests
     ./catan.ps1 doctor           # Check dependencies and database health
     ./catan.ps1 install          # Install dependencies and database
@@ -80,7 +90,10 @@ param(
     [switch]$NoBuild,
 
     [Parameter()]
-    [switch]$NoRazor,
+    [switch]$Razor,
+
+    [Parameter()]
+    [switch]$Desktop,
 
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArgs
@@ -102,20 +115,47 @@ if ($RemainingArgs) {
 
 $GameServicePort = 8080
 $WebUIPort = 5296
+$ReactUIPort = 3000
 $GameServiceUrl = "http://localhost:$GameServicePort"
 $WebUIUrl = "http://localhost:$WebUIPort"
+$ReactUIUrl = "http://localhost:$ReactUIPort"
 $DatabasePath = Join-Path $PSScriptRoot "Catan3.GameService\Data\catan.db"
 $PidFile = Join-Path $PSScriptRoot ".webui-pids.json"
 
 function Test-PortInUse {
     param([int]$Port)
     if ($IsWindows) {
-        $connection = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
-        return $null -ne $connection
+        # Use netstat instead of Get-NetTCPConnection (which can hang)
+        $result = netstat -ano 2>$null | Select-String ":$Port\s.*LISTENING"
+        return $null -ne $result
     } else {
         # macOS/Linux: use lsof to check if port is in use
         $result = lsof -i ":$Port" 2>$null
         return $null -ne $result -and $result.Count -gt 0
+    }
+}
+
+function Stop-ProcessOnPort {
+    param([int]$Port)
+    if ($IsWindows) {
+        # Use netstat to find PID
+        $netstatOutput = netstat -ano 2>$null | Select-String ":$Port\s.*LISTENING"
+        foreach ($match in $netstatOutput) {
+            if ($match -match '\s+(\d+)\s*$') {
+                $processId = [int]$Matches[1]
+                if ($processId -and $processId -ne 0) {
+                    Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+    } else {
+        # macOS/Linux: use lsof
+        $pids = lsof -ti ":$Port" 2>$null
+        foreach ($pid in $pids) {
+            if ($pid) {
+                & kill -9 $pid 2>$null
+            }
+        }
     }
 }
 
@@ -235,6 +275,50 @@ function Start-WebUI {
     Write-Host "Waiting for WebUI..." -ForegroundColor Yellow
     Wait-ForService -Url $WebUIUrl -TimeoutSeconds 30 | Out-Null
     Write-Host "WebUI running at $WebUIUrl" -ForegroundColor Green
+}
+
+function Start-ReactUI {
+    Write-Host "Starting React UI..." -ForegroundColor Cyan
+
+    $reactUIPath = Join-Path $PSScriptRoot "react-ui"
+
+    # Check if react-ui directory exists
+    if (-not (Test-Path $reactUIPath)) {
+        Write-Host "React UI directory not found at $reactUIPath" -ForegroundColor Red
+        return
+    }
+
+    # Check if node_modules exists
+    $nodeModulesPath = Join-Path $reactUIPath "node_modules"
+    if (-not (Test-Path $nodeModulesPath)) {
+        Write-Host "node_modules not found. Running npm install..." -ForegroundColor Yellow
+        Push-Location $reactUIPath
+        try {
+            & npm install
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "npm install failed!" -ForegroundColor Red
+                return
+            }
+        } finally {
+            Pop-Location
+        }
+    }
+
+    if ($IsWindows) {
+        $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$reactUIPath'; npm run dev" -WindowStyle Normal -PassThru
+        # Note: Not saving PID to pidFile since React runs on different port
+    } else {
+        # macOS: Open new Terminal window
+        $script = "cd '$reactUIPath' && npm run dev"
+        & osascript -e "tell application `"Terminal`" to do script `"$script`""
+    }
+
+    Write-Host "Waiting for React UI..." -ForegroundColor Yellow
+    Wait-ForService -Url $ReactUIUrl -TimeoutSeconds 30 | Out-Null
+    Write-Host "React UI running at $ReactUIUrl" -ForegroundColor Green
+
+    # Open browser to React UI
+    Start-Process $ReactUIUrl
 }
 
 function Install-Database {
@@ -596,53 +680,31 @@ function Stop-Services {
     $killedCount = 0
 
     if ($IsWindows) {
-        # Kill ALL PowerShell processes running GameService or WebUI (and their children)
-        $allProcesses = Get-CimInstance Win32_Process -Filter "Name='pwsh.exe' OR Name='powershell.exe' OR Name='dotnet.exe'" -ErrorAction SilentlyContinue
+        # Use netstat instead of Get-NetTCPConnection (which can hang)
+        # netstat -ano returns: Proto  LocalAddress  ForeignAddress  State  PID
+        $netstatOutput = netstat -ano 2>$null | Select-String "LISTENING"
 
-        foreach ($proc in $allProcesses) {
-            $cmdLine = $proc.CommandLine
-            if ($cmdLine) {
-                # Check if this process is running GameService or WebUI
-                if ($cmdLine -match "Catan3\.GameService" -or
-                    $cmdLine -match "WebUI.*dotnet.*watch.*run" -or
-                    $cmdLine -match "dotnet.*run.*GameService" -or
-                    $cmdLine -match "dotnet.*watch.*run.*WebUI") {
-
-                    try {
-                        # Kill all child processes first
-                        Stop-ChildProcesses -ParentPid $proc.ProcessId
-
-                        # Then kill the parent
-                        Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
-                        Write-Host "  Killed process $($proc.ProcessId): $(($cmdLine -split ' ')[0..5] -join ' ')..." -ForegroundColor Gray
-                        $killedCount++
-                    }
-                    catch {
-                        Write-Host "  Failed to kill process $($proc.ProcessId)" -ForegroundColor Yellow
+        foreach ($port in @($GameServicePort, $WebUIPort, $ReactUIPort)) {
+            $portMatches = $netstatOutput | Where-Object { $_ -match ":$port\s" }
+            foreach ($match in $portMatches) {
+                # Extract PID from the last column
+                if ($match -match '\s+(\d+)\s*$') {
+                    $processId = [int]$Matches[1]
+                    if ($processId -and $processId -ne 0) {
+                        try {
+                            Stop-Process -Id $processId -Force -ErrorAction Stop
+                            Write-Host "  Killed process $processId (port $port)" -ForegroundColor Gray
+                            $killedCount++
+                        } catch {
+                            # Process may have already exited
+                        }
                     }
                 }
             }
         }
 
-        if ($killedCount -gt 0) {
-            Write-Host "  Killed $killedCount remnant process(es)" -ForegroundColor Gray
-        }
-
-        # Fallback: kill any remaining processes on ports
-        $gameServicePids = (Get-NetTCPConnection -LocalPort $GameServicePort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
-        if ($gameServicePids) {
-            foreach ($processId in $gameServicePids) {
-                Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
-                Write-Host "  Killed process $processId (GameService port)" -ForegroundColor Gray
-            }
-        }
-
-        $webUIPids = (Get-NetTCPConnection -LocalPort $WebUIPort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
-        if ($webUIPids) {
-            foreach ($processId in $webUIPids) {
-                Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
-                Write-Host "  Killed process $processId (WebUI port)" -ForegroundColor Gray
-            }
+        if ($killedCount -eq 0) {
+            Write-Host "  No services running" -ForegroundColor Gray
         }
     } else {
         # macOS: Kill processes and close Terminal windows
@@ -664,6 +726,16 @@ function Stop-Services {
                 Stop-ChildProcesses -ParentPid $procId
                 & kill -9 $procId 2>$null
                 Write-Host "  Killed process $procId (WebUI port)" -ForegroundColor Gray
+                $killedCount++
+            }
+        }
+
+        $reactUIPids = lsof -ti ":$ReactUIPort" 2>$null
+        foreach ($procId in $reactUIPids) {
+            if ($procId) {
+                Stop-ChildProcesses -ParentPid $procId
+                & kill -9 $procId 2>$null
+                Write-Host "  Killed process $procId (React UI port)" -ForegroundColor Gray
                 $killedCount++
             }
         }
@@ -721,8 +793,9 @@ end tell
     # Verify ports are free
     $gameStillRunning = Test-PortInUse -Port $GameServicePort
     $webUIStillRunning = Test-PortInUse -Port $WebUIPort
+    $reactUIStillRunning = Test-PortInUse -Port $ReactUIPort
 
-    if ($gameStillRunning -or $webUIStillRunning) {
+    if ($gameStillRunning -or $webUIStillRunning -or $reactUIStillRunning) {
         Write-Host "  Waiting for ports to be released..." -ForegroundColor Yellow
         Start-Sleep -Seconds 2
     }
@@ -738,7 +811,13 @@ if ($Help) {
 switch ($Verb) {
     "build" {
         Write-Host "Building solution..." -ForegroundColor Cyan
-        & "$PSScriptRoot\.scripts\build.ps1" -NoTest
+        if ($Desktop) {
+            # Full build including Desktop app
+            & "$PSScriptRoot\.scripts\build.ps1" -NoTest
+        } else {
+            # Skip Desktop app (default - faster for web development)
+            & "$PSScriptRoot\.scripts\build.ps1" -NoTest -NoDesktop
+        }
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Build failed!" -ForegroundColor Red
             exit 1
@@ -1607,9 +1686,20 @@ switch ($Verb) {
     }
 
     "run" {
-        # Build solution first
-        Write-Host "Building solution..." -ForegroundColor Cyan
-        & "$PSScriptRoot\.scripts\build.ps1" -NoTest
+        # Build based on flags:
+        # - Default: Build Shared + GameService + React UI (skip Desktop)
+        # - With -Razor: Build Shared + GameService + Blazor WebUI (skip Desktop)
+        # - With -Desktop: Also build Desktop app
+        Write-Host "Building..." -ForegroundColor Cyan
+
+        if ($Desktop) {
+            # Full build including Desktop app
+            & "$PSScriptRoot\.scripts\build.ps1" -NoTest
+        } else {
+            # Skip Desktop app build (faster)
+            & "$PSScriptRoot\.scripts\build.ps1" -NoTest -NoDesktop
+        }
+
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Build failed! Cannot start services." -ForegroundColor Red
             exit 1
@@ -1634,13 +1724,7 @@ switch ($Verb) {
             }
             else {
                 Write-Host "Port $GameServicePort in use but service not responding. Killing stale process..." -ForegroundColor Yellow
-                # Kill whatever is on that port
-                if ($IsWindows) {
-                    $procIds = (Get-NetTCPConnection -LocalPort $GameServicePort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
-                    foreach ($procId in $procIds) {
-                        Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
-                    }
-                }
+                Stop-ProcessOnPort -Port $GameServicePort
                 Start-Sleep -Milliseconds 500
             }
         }
@@ -1649,25 +1733,21 @@ switch ($Verb) {
             Start-GameService -NetworkBinding:$Network
         }
 
-        # Check if WebUI is already running AND responding (skip if -NoRazor)
-        $webUIRunning = $false
-        if (-not $NoRazor) {
+        # Start UI based on flags:
+        # - Default: React UI (Next.js on port 3000)
+        # - With -Razor: Blazor WebUI (port 5296)
+        if ($Razor) {
+            # Start Blazor WebUI
+            $webUIRunning = $false
             if (Test-PortInUse -Port $WebUIPort) {
-                # Port is in use - verify service is actually responding
                 $responding = Wait-ForService -Url $WebUIUrl -TimeoutSeconds 3
                 if ($responding) {
-                    Write-Host "WebUI already running on port $WebUIPort" -ForegroundColor Green
+                    Write-Host "Blazor WebUI already running on port $WebUIPort" -ForegroundColor Green
                     $webUIRunning = $true
                 }
                 else {
                     Write-Host "Port $WebUIPort in use but service not responding. Killing stale process..." -ForegroundColor Yellow
-                    # Kill whatever is on that port
-                    if ($IsWindows) {
-                        $procIds = (Get-NetTCPConnection -LocalPort $WebUIPort -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
-                        foreach ($procId in $procIds) {
-                            Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
-                        }
-                    }
+                    Stop-ProcessOnPort -Port $WebUIPort
                     Start-Sleep -Milliseconds 500
                 }
             }
@@ -1675,15 +1755,34 @@ switch ($Verb) {
             if (-not $webUIRunning) {
                 Start-WebUI -NetworkBinding:$Network
             }
+        } else {
+            # Start React UI (default)
+            $reactUIRunning = $false
+            if (Test-PortInUse -Port $ReactUIPort) {
+                $responding = Wait-ForService -Url $ReactUIUrl -TimeoutSeconds 3
+                if ($responding) {
+                    Write-Host "React UI already running on port $ReactUIPort" -ForegroundColor Green
+                    $reactUIRunning = $true
+                }
+                else {
+                    Write-Host "Port $ReactUIPort in use but service not responding. Killing stale process..." -ForegroundColor Yellow
+                    Stop-ProcessOnPort -Port $ReactUIPort
+                    Start-Sleep -Milliseconds 500
+                }
+            }
+
+            if (-not $reactUIRunning) {
+                Start-ReactUI
+            }
         }
 
         Write-Host ""
         Write-Host "Services running:" -ForegroundColor Green
         Write-Host "  GameService: $GameServiceUrl" -ForegroundColor White
-        if (-not $NoRazor) {
-            Write-Host "  WebUI:       $WebUIUrl" -ForegroundColor White
+        if ($Razor) {
+            Write-Host "  Blazor UI:   $WebUIUrl" -ForegroundColor White
         } else {
-            Write-Host "  WebUI:       (skipped with -NoRazor)" -ForegroundColor Gray
+            Write-Host "  React UI:    $ReactUIUrl" -ForegroundColor White
         }
 
         if ($Network) {
@@ -1828,9 +1927,8 @@ switch ($Verb) {
             Write-Host "Note: -Terminate switch is only supported on macOS" -ForegroundColor DarkYellow
         }
 
-        Write-Host "Rebuilding WebUI and GameService..." -ForegroundColor Cyan
-
-        # Build GameService first
+        # Build GameService (always needed)
+        Write-Host "Rebuilding GameService..." -ForegroundColor Cyan
         $gameServicePath = Join-Path $PSScriptRoot "Catan3.GameService"
         & dotnet build $gameServicePath --verbosity quiet
         if ($LASTEXITCODE -ne 0) {
@@ -1839,20 +1937,24 @@ switch ($Verb) {
         }
         Write-Host "GameService rebuilt." -ForegroundColor Green
 
-        # Build WebUI
-        $webUIPath = Join-Path $PSScriptRoot "WebUI"
-        & dotnet build $webUIPath --verbosity quiet
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "WebUI build failed!" -ForegroundColor Red
-            exit 1
+        # Build Blazor WebUI only if -Razor flag is set
+        if ($Razor) {
+            Write-Host "Rebuilding Blazor WebUI..." -ForegroundColor Cyan
+            $webUIPath = Join-Path $PSScriptRoot "WebUI"
+            & dotnet build $webUIPath --verbosity quiet
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "WebUI build failed!" -ForegroundColor Red
+                exit 1
+            }
+            Write-Host "WebUI rebuilt." -ForegroundColor Green
         }
-        Write-Host "WebUI rebuilt." -ForegroundColor Green
 
-        # Restart both services if running, or start them if -Terminate was used
+        # Check what services are running
         $gameRunning = Test-PortInUse -Port $GameServicePort
         $webRunning = Test-PortInUse -Port $WebUIPort
+        $reactRunning = Test-PortInUse -Port $ReactUIPort
 
-        if ($gameRunning -or $webRunning) {
+        if ($gameRunning -or $webRunning -or $reactRunning) {
             Write-Host "Restarting services..." -ForegroundColor Yellow
             Stop-Services
             Start-Sleep -Milliseconds 500
@@ -1860,8 +1962,10 @@ switch ($Verb) {
             if ($gameRunning) {
                 Start-GameService
             }
-            if ($webRunning) {
+            if ($Razor -and $webRunning) {
                 Start-WebUI
+            } elseif ($reactRunning) {
+                Start-ReactUI
             }
             Write-Host "Services rebuilt and restarted! Refresh browser to load changes." -ForegroundColor Green
         }
@@ -1869,7 +1973,11 @@ switch ($Verb) {
             # -Terminate killed the services, so start them fresh
             Write-Host "Starting services..." -ForegroundColor Yellow
             Start-GameService
-            Start-WebUI
+            if ($Razor) {
+                Start-WebUI
+            } else {
+                Start-ReactUI
+            }
             Write-Host "Services rebuilt and started! Refresh browser to load changes." -ForegroundColor Green
         }
         else {
@@ -2213,14 +2321,16 @@ switch ($Verb) {
         Write-Host "  ./catan.ps1 run              - Build, start services, launch browser"
         Write-Host ""
         Write-Host "Development:" -ForegroundColor Yellow
-        Write-Host "  ./catan.ps1 run              - Start GameService + WebUI, launch browser"
+        Write-Host "  ./catan.ps1 run              - Start GameService + React UI (default)"
         Write-Host "  ./catan.ps1 run -Network     - Same, but accessible from other devices"
-        Write-Host "  ./catan.ps1 run -NoRazor     - GameService only (no Blazor WebUI)"
+        Write-Host "  ./catan.ps1 run -Razor       - Use Blazor WebUI instead of React"
+        Write-Host "  ./catan.ps1 run -Desktop     - Also build/deploy Desktop app (Windows)"
         Write-Host "  ./catan.ps1 stop             - Stop running services"
         Write-Host "  ./catan.ps1 restart          - Stop and restart services"
         Write-Host "  ./catan.ps1 update           - Rebuild and restart (when hot reload fails)"
         Write-Host "  ./catan.ps1 update -Terminate - Same, but close all Terminal windows first (macOS)"
-        Write-Host "  ./catan.ps1 build            - Build all projects (no tests)"
+        Write-Host "  ./catan.ps1 build            - Build GameService + React UI (no tests)"
+        Write-Host "  ./catan.ps1 build -Desktop   - Build all including Desktop app"
         Write-Host "  ./catan.ps1 test             - Build and run all tests"
         Write-Host "  ./catan.ps1 lint             - Format, lint, and spell check (PS, TS, MD)"
         Write-Host "  ./catan.ps1 generate-types   - Generate TypeScript types from C# models (TypeGen 7.0.0)"
