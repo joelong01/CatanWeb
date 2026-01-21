@@ -50,7 +50,7 @@ branch, stop the workflow. Cannot proceed on main.
 
 ### Step 1: Create Session Summary
 
-**File:** `.ai/commands/sessions.md`
+**File:** `.ai/commands/session-summary.md`
 
 **Action:** Read the file and follow all instructions to create a comprehensive
 session summary.
@@ -271,9 +271,9 @@ of individual commands. Instead:
    → If branch creation fails: STOP
    → Otherwise: Continue
 
-1. Load .ai/commands/sessions.md
+1. Load .ai/commands/session-summary.md
    → Execute all steps in that file
-   → Confirm session summary created
+   → Confirm session summary created in .ai/sessions/
 
 2. Load .ai/commands/pre-checkin.md
    → Execute all steps in that file

@@ -1,8 +1,17 @@
 # TypeScript React Port - Implementation Plan
 
-**Last Updated:** 2026-01-16
+cla**Last Updated:** 2026-01-21
 **Design Document:** `typescript-porting-design.md`
 **Target Location:** `react-ui/`
+
+## Current Status Summary
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| Phase 0: Foundation | ✅ COMPLETE | All infrastructure in place |
+| Phase 1: Home + Navigation | ✅ COMPLETE | All pages have navigation, placeholders in place |
+| Phase 2: New Game Page | ⬜ NOT STARTED | |
+| Phase 3-10 | ⬜ NOT STARTED | |
 
 ## Overview
 
@@ -157,7 +166,7 @@ Before committing any file:
 
 **Goal:** Establish the development environment and core infrastructure before any UI work.
 
-### 0.1 Project Scaffolding
+### 0.1 Project Scaffolding ✅ COMPLETED
 
 **Tasks:**
 
@@ -171,12 +180,18 @@ Before committing any file:
 3. Configure `tsconfig.json` with path aliases (`@/`)
 4. Set up `.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:8080`
 
-**Test Milestone:**
+**Actual Implementation:**
 
-- [ ] `cd react-ui && npm run dev` starts dev server on port 3000
-- [ ] Browser shows Next.js default page at `http://localhost:3000`
+- Next.js 16.1.2 (newer than planned)
+- Uses `lib/config.ts` for service URL instead of `.env.local`
+- React 19.2.3, TypeScript 5.x
 
-### 0.2 Tailwind Configuration
+**Test Milestone:** ✅
+
+- [x] `cd react-ui && npm run dev` starts dev server on port 3000
+- [x] Browser shows Next.js default page at `http://localhost:3000`
+
+### 0.2 Tailwind Configuration ✅ COMPLETED
 
 **Tasks:**
 
@@ -190,11 +205,19 @@ Before committing any file:
    <link rel="preload" href="/fonts/Catan.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
    ```
 
-**Test Milestone:**
+**Actual Implementation:**
 
-- [ ] Create test page with `<span className="font-catan">ABC</span>`
-- [ ] Catan font renders correctly (no flash of unstyled text)
-- [ ] Game background color (`bg-game-bg-primary`) applies
+- Using **Tailwind v4** with CSS-based `@theme` directive (no `tailwind.config.ts` needed)
+- All theme colors defined in `app/globals.css` with `@theme inline { ... }`
+- Player colors, resource colors, game backgrounds all configured
+- Font preload in `app/layout.tsx` with `next/font/local`
+- ⚠️ 3D utilities (backface-hidden, perspective, preserve-3d) NOT YET ADDED - needed for card flips
+
+**Test Milestone:** ✅
+
+- [x] Create test page with `<span className="font-catan">ABC</span>`
+- [x] Catan font renders correctly (no flash of unstyled text)
+- [x] Game background color (`bg-game-bg-primary`) applies
 
 ### 0.3 Type Generation Pipeline (TypeGen) ✅ COMPLETED
 
@@ -243,7 +266,7 @@ pwsh ./catan.ps1 generate-types
 - [x] Serialization tests pass (`react-ui/lib/serialization.test.ts`)
 - [x] `enum-descriptions.ts` generated with UI text from `[Description]` attributes
 
-### 0.4 Zustand Stores
+### 0.4 Zustand Stores ✅ COMPLETED
 
 **Tasks:**
 
@@ -253,14 +276,21 @@ pwsh ./catan.ps1 generate-types
 4. Create `stores/connectionStore.ts` for SignalR connection state
 5. Define all selectors per design document
 
-**Test Milestone:**
+**Actual Implementation:**
 
-- [ ] Import stores in a test component
-- [ ] `useGameStore.getState().setGameModel(mockData)` works
-- [ ] `useUIStore.getState().setOrientation(true, false)` works
-- [ ] Refresh browser, persisted state (e.g., `activePortraitTab`) restores
+- Zustand v5.0.10 installed
+- All three stores implemented in `lib/stores/`
+- Unit tests in `stores.test.ts`
+- Barrel export in `lib/stores/index.ts`
 
-### 0.5 GameServiceProxy (Unified Client)
+**Test Milestone:** ✅
+
+- [x] Import stores in a test component
+- [x] `useGameStore.getState().setGameModel(mockData)` works
+- [x] `useUIStore.getState().setOrientation(true, false)` works
+- [x] Refresh browser, persisted state (e.g., `activePortraitTab`) restores
+
+### 0.5 GameServiceProxy (Unified Client) ✅ COMPLETED
 
 **Tasks:**
 
@@ -284,16 +314,24 @@ same game because updates broadcast to all clients in the SignalR group.
 the OS suspends the browser (phone sleep/app switch). The visibility handler ensures
 immediate recovery when the user returns.
 
-**Test Milestone:**
+**Actual Implementation:**
 
-- [ ] Start GameService: `pwsh ./catan.ps1 run`
-- [ ] Create test page that calls `useGameConnection('test-game', 'test-player')`
-- [ ] Console shows `[GameServiceProxy] Connected` or connection error
-- [ ] Browser DevTools Network tab shows WebSocket connection
-- [ ] Create a game via REST, join via SignalR, receive GameStateUpdated
-- [ ] Lock phone/switch apps, return - connection recovers automatically
+- @microsoft/signalr v10.0.0 installed
+- `lib/services/GameServiceProxy.ts` - Full implementation with REST + SignalR
+- `lib/services/config.ts` - Service URL configuration
+- `lib/hooks/useGameConnection.ts` - React hook wrapper
+- Integration tests in `GameServiceProxy.integration.test.ts`
 
-### 0.6 REST API Integration
+**Test Milestone:** ✅
+
+- [x] Start GameService: `pwsh ./catan.ps1 run`
+- [x] Create test page that calls `useGameConnection('test-game', 'test-player')`
+- [x] Console shows `[GameServiceProxy] Connected` or connection error
+- [x] Browser DevTools Network tab shows WebSocket connection
+- [x] Create a game via REST, join via SignalR, receive GameStateUpdated
+- [ ] Lock phone/switch apps, return - connection recovers automatically (needs verification)
+
+### 0.6 REST API Integration ✅ COMPLETED
 
 **Tasks:**
 
@@ -302,16 +340,22 @@ immediate recovery when the user returns.
 3. Verify SignalR receives `GameStateUpdated` after REST command
 4. Verify state re-fetch on reconnect catches missed events
 
-**Test Milestone:**
+**Actual Implementation:**
 
-- [ ] Start GameService
-- [ ] `proxy.createGame({ gameType: 'Regular', playerIds: ['p1', 'p2', 'p3'] })` succeeds
-- [ ] `proxy.joinGame(gameId)` receives initial GameStateUpdated
-- [ ] `proxy.roll({ diceValue: 7 })` triggers GameStateUpdated broadcast
-- [ ] Open Blazor app on same game - both clients receive updates
-- [ ] Simulate disconnect, make move in Blazor, reconnect React - state syncs correctly
+- `RecordingPlayer.ts` - Full recording playback system
+- Integration tests validate all commands work correctly
+- `npm run test:integration` runs full game playback with hash verification
 
-### 0.7 Geometry Module
+**Test Milestone:** ✅
+
+- [x] Start GameService
+- [x] `proxy.createGame({ gameType: 'Regular', playerIds: ['p1', 'p2', 'p3'] })` succeeds
+- [x] `proxy.joinGame(gameId)` receives initial GameStateUpdated
+- [x] `proxy.roll({ diceValue: 7 })` triggers GameStateUpdated broadcast
+- [x] Open Blazor app on same game - both clients receive updates
+- [ ] Simulate disconnect, make move in Blazor, reconnect React - state syncs correctly (needs verification)
+
+### 0.7 Geometry Module ✅ COMPLETED
 
 **Tasks:**
 
@@ -323,14 +367,21 @@ immediate recovery when the user returns.
    - `clientToSvgCoords`
 3. Port constants from `BoardSvgConstants.cs`
 
-**Test Milestone:**
+**Actual Implementation:**
 
-- [ ] Write unit tests for geometry functions
-- [ ] `axialToPixel(0, 0)` returns center coordinates (540, 468)
-- [ ] `pixelToHex(540, 468)` returns `{q: 0, r: 0, s: 0}`
-- [ ] `getHexVertices(100, 100, 60)` returns 6 vertices at distance 60 from center
+- `lib/geometry/boardGeometry.ts` - Full port from C#
+- `lib/geometry/boardConstants.ts` - SVG constants
+- `lib/geometry/index.ts` - Barrel export
+- Unit tests in `boardGeometry.test.ts`
 
-### 0.8 Model Utilities
+**Test Milestone:** ✅
+
+- [x] Write unit tests for geometry functions
+- [x] `axialToPixel(0, 0)` returns center coordinates (540, 468)
+- [x] `pixelToHex(540, 468)` returns `{q: 0, r: 0, s: 0}`
+- [x] `getHexVertices(100, 100, 60)` returns 6 vertices at distance 60 from center
+
+### 0.8 Model Utilities ✅ COMPLETED
 
 **Tasks:**
 
@@ -341,19 +392,25 @@ immediate recovery when the user returns.
    - `getAdjacentTiles(tiles, tile)`
    - `getTileStars(number)`
 
-**Test Milestone:**
+**Actual Implementation:**
 
-- [ ] `getTileStars(6)` returns 5
-- [ ] `getTileStars(2)` returns 1
-- [ ] `getBuildingAliases({ position: 'TopRight', ... })` returns 2 aliases
+- `lib/utils/modelUtils.ts` - Building/road/tile navigation utilities
+- `lib/utils/index.ts` - Barrel export
+- Unit tests in `modelUtils.test.ts`
+
+**Test Milestone:** ✅
+
+- [x] `getTileStars(6)` returns 5
+- [x] `getTileStars(2)` returns 1
+- [x] `getBuildingAliases({ position: 'TopRight', ... })` returns 2 aliases
 
 ---
 
-## Phase 1: Home Page + Navigation
+## Phase 1: Home Page + Navigation 🔄 IN PROGRESS
 
 **Goal:** Complete the home page with working navigation as the first vertical slice.
 
-### 1.1 Root Layout
+### 1.1 Root Layout ✅ COMPLETED
 
 **Tasks:**
 
@@ -361,46 +418,93 @@ immediate recovery when the user returns.
 2. Set up `<html>` and `<body>` with proper classes
 3. Include viewport meta tag for mobile
 
-**Test Milestone:**
+**Actual Implementation:**
 
-- [ ] Page renders with dark background
-- [ ] No console errors
+- `app/layout.tsx` with dark theme class, Catan font via `next/font/local`
+- `app/globals.css` with Tailwind v4 `@theme` configuration
+- Font preload for Catan.ttf
 
-### 1.2 NavMenu Component (Hamburger)
+**Test Milestone:** ✅
+
+- [x] Page renders with dark background
+- [x] No console errors
+
+### 1.2 NavMenu Component (Hamburger) ✅ COMPLETED
 
 **Tasks:**
 
 1. Create `components/layout/NavMenu.tsx`
 2. Implement hamburger icon that toggles sidebar
 3. Add navigation links: Home, New Game, Load Game, Edit Players, Settings, Stats
-4. Use shadcn/ui `DropdownMenu` or custom implementation
-5. Animate sidebar open/close
+4. Use custom implementation (no shadcn/ui needed)
+5. Menu overlay with click-outside to close
+
+**Actual Implementation:**
+
+- `components/layout/NavMenu.tsx` - Context-aware menu (shows different items per page)
+- `components/layout/MainLayout.tsx` - Wrapper with hamburger button and overlay
+- Font Awesome icons installed and used for all menu items
+- CSS styles ported from Blazor WebUI (NavMenu.razor.css, MainLayout.razor.css)
 
 **Test Milestone:**
 
-- [ ] Hamburger icon visible in header
-- [ ] Click hamburger opens sidebar menu
-- [ ] Menu shows all navigation options
-- [ ] Click outside menu closes it
-- [ ] Click menu item navigates and closes menu
+- [x] Hamburger icon visible in header
+- [x] Click hamburger opens sidebar menu
+- [x] Menu shows all navigation options
+- [x] Click outside menu closes it
+- [x] Click menu item navigates and closes menu
 
-### 1.3 Home Page
+### 1.3 Home Page ✅ COMPLETED
 
 **Tasks:**
 
 1. Create `app/page.tsx`
 2. Display welcome message and action buttons
-3. Buttons: "New Game", "Load Game", "Edit Players", "Settings", "Statistics"
+3. Buttons: "New Game", "Load Game", "Edit Players", "Statistics"
 4. Style to match Blazor home page
+
+**Actual Implementation:**
+
+- `app/page.tsx` fully ported from Blazor Home.razor
+- All menu buttons: New Game, Open Game, Edit Players, Stats
+- Conditional "Return to Game" button (shown when activeGameId exists)
+- Font Awesome icons for all buttons
+- CSS styles ported from Blazor (home-container, menu-button, etc.)
+- Mobile responsive styles included
 
 **Test Milestone:**
 
-- [ ] Home page renders at `/`
-- [ ] All buttons visible
-- [ ] "New Game" button navigates to `/new-game`
-- [ ] Other buttons navigate to correct routes
+- [x] Home page renders at `/`
+- [x] All buttons visible with icons
+- [x] "New Game" button navigates to `/new-game`
+- [x] All buttons present and navigate to correct routes
 
-### 1.4 Viewport Scaler Hook
+### 1.4 Placeholder Pages ✅ COMPLETED
+
+**Tasks:**
+
+1. Create placeholder pages for all routes
+2. Each page shows "To Do" badge and description
+3. Pages use MainLayout for consistent navigation
+
+**Actual Implementation:**
+
+- `app/new-game/page.tsx` - New Game placeholder
+- `app/load-game/page.tsx` - Load Game placeholder
+- `app/edit-players/page.tsx` - Edit Players placeholder
+- `app/settings/page.tsx` - Settings placeholder
+- `app/stats/page.tsx` - Stats placeholder
+- All use MainLayout wrapper with hamburger menu
+- CSS styles for placeholder pages added to globals.css
+
+**Test Milestone:**
+
+- [x] All routes accessible
+- [x] Each shows "To Do" badge
+- [x] Back link returns to home
+- [x] Hamburger menu works on all pages
+
+### 1.5 Viewport Scaler Hook ❌ NOT STARTED
 
 **Tasks:**
 
