@@ -529,7 +529,7 @@ export function getHighProbabilityTiles(tiles: TileModel[]): TileModel[] {
  * Matches C# PlayerModelExtensions.PlayerFromId().
  */
 export function findPlayer(players: PlayerModel[], id: string): PlayerModel | undefined {
-  return players.find((p) => p.playerId === id);
+  return players.find((p) => p.id === id);
 }
 
 // =============================================================================

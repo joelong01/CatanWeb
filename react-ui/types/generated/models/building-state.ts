@@ -3,11 +3,13 @@
  * Any changes made to this file can be lost when this file is regenerated.
  */
 
-export enum BuildingState {
-    PossibleSettlement = 'PossibleSettlement',
-    NotBuildable = 'NotBuildable',
-    Settlement = 'Settlement',
-    City = 'City',
-    Metropolis = 'Metropolis',
-    Knight = 'Knight',
-}
+export type BuildingState = 'PossibleSettlement' | 'NotBuildable' | 'Settlement' | 'City' | 'Metropolis' | 'Knight';
+
+export const BuildingState = {
+    PossibleSettlement: 'PossibleSettlement',
+    NotBuildable: 'NotBuildable',
+    Settlement: 'Settlement',
+    City: 'City',
+    Metropolis: 'Metropolis',
+    Knight: 'Knight',
+} as const;

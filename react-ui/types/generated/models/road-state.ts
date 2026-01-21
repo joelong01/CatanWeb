@@ -3,9 +3,11 @@
  * Any changes made to this file can be lost when this file is regenerated.
  */
 
-export enum RoadState {
-    Unowned = 'Unowned',
-    Road = 'Road',
-    Ship = 'Ship',
-    Buildable = 'Buildable',
-}
+export type RoadState = 'Unowned' | 'Road' | 'Ship' | 'Buildable';
+
+export const RoadState = {
+    Unowned: 'Unowned',
+    Road: 'Road',
+    Ship: 'Ship',
+    Buildable: 'Buildable',
+} as const;

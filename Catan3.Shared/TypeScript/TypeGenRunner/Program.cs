@@ -47,6 +47,11 @@ Console.WriteLine();
 Console.WriteLine("Step 2: Post-processing (removing MVVM artifacts)...");
 PostProcessGeneratedFiles(outputPath);
 
+// Step 2a: Convert enums to string literal unions for better TypeScript ergonomics
+Console.WriteLine();
+Console.WriteLine("Step 2a: Converting enums to string literal unions...");
+ConvertEnumsToStringLiteralUnions(outputPath);
+
 // Step 2b: Remove properties marked with [JsonIgnore] in C#
 Console.WriteLine();
 Console.WriteLine("Step 2b: Removing [JsonIgnore] properties from generated types...");
@@ -439,4 +444,91 @@ static string EscapeString(string value)
         .Replace("'", "\\'")
         .Replace("\n", "\\n")
         .Replace("\r", "\\r");
+}
+
+// ============================================================================
+// Enum to String Literal Union Conversion
+// ============================================================================
+
+/// <summary>
+/// Converts TypeScript enums to string literal union types.
+/// This provides better ergonomics - you can write 'North' instead of Direction.North.
+///
+/// Before:
+///   export enum Direction {
+///       North = 'North',
+///       South = 'South',
+///   }
+///
+/// After:
+///   export type Direction = 'North' | 'South';
+///   export const Direction = {
+///       North: 'North',
+///       South: 'South',
+///   } as const;
+/// </summary>
+static void ConvertEnumsToStringLiteralUnions(string outputPath)
+{
+    var tsFiles = Directory.GetFiles(outputPath, "*.ts");
+    var convertedCount = 0;
+
+    foreach (var filePath in tsFiles)
+    {
+        var fileName = Path.GetFileName(filePath);
+        if (fileName == "index.ts" || fileName == "enum-descriptions.ts")
+            continue;
+
+        var content = File.ReadAllText(filePath);
+        var originalContent = content;
+
+        // Match enum declarations:
+        // export enum EnumName {
+        //     Value1 = 'Value1',
+        //     Value2 = 'Value2',
+        // }
+        var enumPattern = @"export enum (\w+) \{([^}]+)\}";
+        var match = Regex.Match(content, enumPattern);
+
+        if (match.Success)
+        {
+            var enumName = match.Groups[1].Value;
+            var enumBody = match.Groups[2].Value;
+
+            // Extract enum values (e.g., "North = 'North'")
+            var valuePattern = @"(\w+)\s*=\s*'([^']+)'";
+            var valueMatches = Regex.Matches(enumBody, valuePattern);
+
+            if (valueMatches.Count > 0)
+            {
+                var values = new List<(string Name, string Value)>();
+                foreach (Match vm in valueMatches)
+                {
+                    values.Add((vm.Groups[1].Value, vm.Groups[2].Value));
+                }
+
+                // Build the string literal union type
+                var unionType = string.Join(" | ", values.Select(v => $"'{v.Value}'"));
+
+                // Build the const object for runtime access
+                var constEntries = string.Join(",\n    ", values.Select(v => $"{v.Name}: '{v.Value}'"));
+
+                var replacement = $@"export type {enumName} = {unionType};
+
+export const {enumName} = {{
+    {constEntries},
+}} as const;";
+
+                content = Regex.Replace(content, enumPattern, replacement);
+            }
+        }
+
+        if (content != originalContent)
+        {
+            File.WriteAllText(filePath, content);
+            Console.WriteLine($"  Converted {fileName}");
+            convertedCount++;
+        }
+    }
+
+    Console.WriteLine($"  Converted {convertedCount} enum files to string literal unions");
 }

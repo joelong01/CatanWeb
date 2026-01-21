@@ -3,9 +3,11 @@
  * Any changes made to this file can be lost when this file is regenerated.
  */
 
-export enum GameType {
-    Regular = 'Regular',
-    Expansion = 'Expansion',
-    Unset = 'Unset',
-    SavedGame = 'SavedGame',
-}
+export type GameType = 'Regular' | 'Expansion' | 'Unset' | 'SavedGame';
+
+export const GameType = {
+    Regular: 'Regular',
+    Expansion: 'Expansion',
+    Unset: 'Unset',
+    SavedGame: 'SavedGame',
+} as const;
