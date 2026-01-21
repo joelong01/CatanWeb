@@ -44,6 +44,7 @@
 ### Code Reviews
 
 Created comprehensive code reviews for all changes:
+
 - `.code-reviews/GameServiceProxy-cr-claude.md`
 - `.code-reviews/viewportScaler-cr-claude.md`
 - `.code-reviews/Game.razor-cr-claude.md`
@@ -127,16 +128,19 @@ Also evaluated external reviews from Cline and Gemini/Copilot.
 ### Immediate Actions
 
 1. **Verify Build:**
+
    ```bash
    pwsh ./catan.ps1 build
    ```
 
 2. **Run Tests:**
+
    ```bash
    pwsh ./catan.ps1 test
    ```
 
 3. **Start Services (if testing):**
+
    ```bash
    pwsh ./catan.ps1 run
    ```

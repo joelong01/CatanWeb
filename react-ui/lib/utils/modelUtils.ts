@@ -10,7 +10,6 @@ import type {
   BuildingKey,
   BuildingModel,
   Direction,
-  HexCoordinates,
   HexPosition,
   HexSide,
   RoadKey,

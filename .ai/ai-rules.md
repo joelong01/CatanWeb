@@ -435,13 +435,12 @@ Tests/
 - **Clear messages**: Describe what and why, not how
 - **Group related changes**: Stage files that belong together
 - **Test before commit**: Ensure build passes
-- **Lint before commit**: ALL files must be linter-clean before committing:
-  - **C#**: No compiler warnings or errors (`pwsh ./catan.ps1 build`)
-  - **TypeScript/JavaScript**: Run `npm run lint` in react-ui and fix all issues
-  - **Markdown**: Run `npx markdownlint-cli "path/to/file.md" --fix` then verify clean
-  - **Spelling**: Run `npx cspell "path/to/files"` and fix all errors (either correct spelling or add to project dictionary in cspell.json)
-  - **CSS**: No linting errors in stylesheets
-  - **JSON**: Valid JSON syntax
+- **Lint before commit**: Run `./catan.ps1 lint` to check all changed files:
+  - This single command checks: C#, TypeScript/ESLint, Markdown, JSON, PowerShell, and spelling
+  - Auto-fixes are applied where possible (use `-NoFix` to disable)
+  - Fix any remaining issues before committing
+  - Use `./catan.ps1 lint all` to check entire codebase (slower)
+  - Use `./catan.ps1 lint ts` to check only TypeScript, etc. (cs, ts, md, json, ps1, spell)
 
 ### Git Best Practices
 

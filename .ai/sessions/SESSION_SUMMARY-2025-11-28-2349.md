@@ -8,6 +8,7 @@
 ## Work Completed
 
 ### Major Features
+
 - **Resource Filtering for Board Measurement**: Implemented complete multi-select resource filtering
   - Key files: `WebUI/Components/Resources/ResourceCard.razor`, `WebUI/Components/Board/BoardMeasurement.razor`, `WebUI/Services/Rendering/BoardSvgGenerator.cs`
   - Matches Desktop functionality: `DesktopApp/Resources/ResourceViewModel.cs:107-132`, `DesktopApp/Game/GameView/GameViewModel.cs:634-665`
@@ -17,6 +18,7 @@
   - Visual feedback: Checkmark indicator and outline on selected cards
 
 ### Bug Fixes
+
 - **Resource Cards Visual Issues**:
   - Fixed black border around resource cards (padding was 10, set to 0)
   - Fixed background image not filling rounded rectangle (added border-radius to .resource-image)
@@ -33,6 +35,7 @@
   - Location: `WebUI/Services/Rendering/BuildingSvgRenderer.cs:60`
 
 ### Refactoring
+
 - **PlayerColors Gradient Caching**: Added cached gradient properties to PlayerColors record
   - Before: Gradient strings rebuilt on every SVG render
   - After: Computed once at construction, stored in immutable properties
@@ -41,6 +44,7 @@
   - Performance: Eliminates string concatenation in render loop
 
 ### Documentation
+
 - **Design Documentation**: Added comprehensive resource filtering design to `design_docs/board-measurement-design.md`
   - Blazor implementation approach (component-based architecture)
   - Event callback pattern for parent-child communication
@@ -51,6 +55,7 @@
 ## Decisions Made
 
 ### Architecture Decisions
+
 1. **Component-Based Selection State**
    - **Context:** Need to implement multi-select resource filtering matching Desktop behavior
    - **Options Considered:**
@@ -79,6 +84,7 @@
    - **Implementation:** `filteredResources.All(resource => tileResources.Contains(resource))`
 
 ### Design Patterns
+
 - **EventCallback Pattern**: Used throughout for parent-child communication
   - ResourceCard → BoardMeasurement → Game.razor → BoardSvgGenerator
   - Benefits: Type-safe, standard Blazor pattern, supports async
@@ -90,6 +96,7 @@
   - Max-3 enforcement via `.First()` removal
 
 ### Trade-offs
+
 - **Full SVG Regeneration vs. Granular Updates**
   - Chose: Full SVG regeneration on each filter change
   - Benefits: Simpler code, matches existing architecture, browser DOM diffing handles efficiency
@@ -123,6 +130,7 @@
 ## Important Context
 
 ### Critical Information
+
 - **Resource Filter Only Affects Unowned Buildings**: Filter check includes `building.OwnerId == null`
   - Owned buildings always shown regardless of filter
   - Matches Desktop behavior
@@ -134,6 +142,7 @@
   - Location: `BoardSvgGenerator.cs:172`
 
 ### Gotchas & Non-Obvious Aspects
+
 - **SVG Transform Order Matters**: `translate(x,y) scale(1.1) translate(-x,-y)` is NOT commutative
   - First translate moves to origin
   - Scale enlarges from origin
@@ -151,6 +160,7 @@
   - Prevents compiler warnings
 
 ### Key Files & Patterns
+
 - **Resource Filtering Chain**:
   - `ResourceCard.razor:62-65` - Click handler invokes OnToggleSelection
   - `BoardMeasurement.razor:149-169` - Tracks selections, enforces max-3
@@ -163,6 +173,7 @@
   - Example: `BuildingSvgRenderer.cs:44-50`
 
 ### Reference Documentation
+
 - Design doc: `design_docs/board-measurement-design.md` (Resource Filtering Feature section)
 - Desktop reference: `DesktopApp/Game/GameView/GameViewModel.cs:625-665` (ExecuteQuery)
 - Desktop reference: `DesktopApp/Resources/ResourceViewModel.cs:107-132` (Resources_SelectionChanged)
@@ -171,24 +182,30 @@
 ## Environment Notes
 
 ### Build Configuration
+
 - All projects building successfully: Yes
 - Build command: `dotnet build Catan.sln`
 - Build time: ~14 seconds
 - Warnings: 1 unrelated warning in NewGame.razor (CS8604 - null reference)
 
 ### Test Status
+
 - Tests: Skipped per user request (testing already done)
 
 ### Configuration Changes
+
 None this session.
 
 ### Database Schema
+
 No database changes this session.
 
 ## Quick Start for Next Session
 
 ### Immediate Actions
+
 1. **Start Here:**
+
    ```bash
    # Verify build
    dotnet build Catan.sln
@@ -208,11 +225,13 @@ No database changes this session.
    - `design_docs/board-measurement-design.md` - Resource filtering design
 
 ### Current Focus Area
+
 - Working on: Board Measurement panel refinements
 - Key classes: `ResourceCard`, `BoardMeasurement`, `BoardSvgGenerator`
 - Next task: Test resource filtering in live application
 
 ### Context to Load
+
 - Resource filtering implements Desktop parity
 - Uses EventCallback pattern for state management
 - Applies AND logic (all resources required, not any)
@@ -221,25 +240,31 @@ No database changes this session.
 ## Files Modified This Session
 
 ### Components
+
 - `WebUI/Components/Resources/ResourceCard.razor` - Added selection state and click handling
 - `WebUI/Components/Resources/ResourceCard.razor.css` - Added selected state CSS, checkmark indicator
 - `WebUI/Components/Board/BoardMeasurement.razor` - Added resource selection tracking
 - `WebUI/Components/Resources/StarCounter.razor.css` - Changed background to goldMine.png
 
 ### Services
+
 - `WebUI/Services/Rendering/BoardSvgGenerator.cs` - Added filteredResources parameter, filtering logic
 - `WebUI/Services/Rendering/BuildingSvgRenderer.cs` - Fixed building scale transform
 
 ### Pages
+
 - `WebUI/Pages/Game.razor` - Added FilteredResources state, handler, passed to GenerateSvg
 
 ### Shared Models
+
 - `Catan3.Shared/PlayerProfile/PlayerColors.cs` - Added cached gradient properties
 
 ### Documentation
+
 - `design_docs/board-measurement-design.md` - Added Resource Filtering Feature section (300+ lines)
 
 ## Summary Statistics
+
 - Work completed: 8 items (1 major feature, 4 bug fixes, 1 refactoring, 2 documentation)
 - Decisions made: 3 major architectural decisions
 - Blockers: 0

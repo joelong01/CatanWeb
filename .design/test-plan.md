@@ -122,6 +122,7 @@ Uses existing `IRecordedMessage` types from `RecordedMessage.cs`:
 ### Tests Page (`/tests`)
 
 **Recordings Table (top):**
+
 - Scrollable table of all recordings: Name, Date, Game Type, Players, Actions
 - **Select button** - Load recording actions into second table
 - **Run All button** - Replay entire recording and verify GameHash consistency
@@ -131,6 +132,7 @@ Uses existing `IRecordedMessage` types from `RecordedMessage.cs`:
 - **Results display** - Pass/fail for each full test run
 
 **Actions Table (bottom, shown when recording selected):**
+
 - Scrollable table showing all actions in selected recording
 - Columns: #, Action, Game State, Details, Expected Hash, Actual Hash, Status
 - **Start Replay button** - Initialize step-by-step replay session

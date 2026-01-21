@@ -39,7 +39,7 @@ A unified `recording` verb for managing test recordings across local and Azure e
 
 **Output (default):**
 
-```
+```text
 Recordings (Local)
 ==================
 ID                                    Name                  Actions  Players  Type

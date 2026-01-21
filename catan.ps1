@@ -800,131 +800,29 @@ switch ($Verb) {
     }
 
     "lint" {
-        Write-Host "Running linters and formatters..." -ForegroundColor Cyan
-        $hasErrors = $false
+        # Smart linting - by default only lint changed files
+        # Use 'lint all' to lint entire codebase
+        # SubCommand can be: all (lint everything), or a type filter: cs, ts, md, json, ps1, spell
+        $lintScript = Join-Path $PSScriptRoot ".scripts\lint.ps1"
 
-        # Lint PowerShell scripts
-        Write-Host ""
-        Write-Host "Linting PowerShell scripts..." -ForegroundColor Yellow
-
-        # Check if PSScriptAnalyzer is available
-        $psaAvailable = $null -ne (Get-Module -ListAvailable -Name PSScriptAnalyzer)
-        if ($psaAvailable) {
-            $settingsPath = Join-Path $PSScriptRoot ".scripts\PSScriptAnalyzerSettings.psd1"
-
-            # Build list of PowerShell files to lint
-            $psFiles = @()
-            $psFiles += Join-Path $PSScriptRoot "catan.ps1"
-            $scriptsDir = Join-Path $PSScriptRoot ".scripts"
-            if (Test-Path $scriptsDir) {
-                Get-ChildItem -Path $scriptsDir -Filter "*.ps1" -Recurse | ForEach-Object {
-                    $psFiles += $_.FullName
-                }
-            }
-
-            $psIssues = @()
-            foreach ($filePath in $psFiles) {
-                if (Test-Path $filePath) {
-                    $results = Invoke-ScriptAnalyzer -Path $filePath -Settings $settingsPath -ErrorAction SilentlyContinue
-                    if ($results) {
-                        $psIssues += $results
-                    }
-                }
-            }
-
-            if ($psIssues.Count -gt 0) {
-                Write-Host "  [FAIL] PSScriptAnalyzer found $($psIssues.Count) issue(s):" -ForegroundColor Red
-                foreach ($issue in $psIssues) {
-                    $relativePath = $issue.ScriptPath.Replace($PSScriptRoot, "").TrimStart("\", "/")
-                    Write-Host "    $relativePath`:$($issue.Line) - $($issue.RuleName): $($issue.Message)" -ForegroundColor Gray
-                }
-                $hasErrors = $true
-            } else {
-                Write-Host "  [OK] PSScriptAnalyzer passed" -ForegroundColor Green
-            }
-        } else {
-            Write-Host "  [SKIP] PSScriptAnalyzer not available (run 'Install-Module PSScriptAnalyzer')" -ForegroundColor Yellow
+        if ($SubCommand -eq "all") {
+            # Lint all files in codebase
+            & $lintScript -All
         }
-
-        # Format and lint TypeScript/JavaScript (react-ui)
-        $reactUiPath = Join-Path $PSScriptRoot "react-ui"
-        if (Test-Path $reactUiPath) {
-            Write-Host ""
-            Write-Host "Formatting TypeScript/JavaScript (react-ui)..." -ForegroundColor Yellow
-            Push-Location $reactUiPath
-            try {
-                # Run prettier to format
-                & npm run format 2>&1 | Out-Null
-                Write-Host "  [OK] Prettier formatting applied" -ForegroundColor Green
-
-                # Run ESLint with auto-fix first
-                Write-Host "Linting TypeScript/JavaScript (react-ui)..." -ForegroundColor Yellow
-                & npm run lint:fix 2>&1 | Out-Null
-
-                # Then check for remaining issues
-                $lintOutput = & npm run lint 2>&1
-                if ($LASTEXITCODE -ne 0) {
-                    Write-Host "  [FAIL] ESLint found issues:" -ForegroundColor Red
-                    Write-Host $lintOutput -ForegroundColor Gray
-                    $hasErrors = $true
-                } else {
-                    Write-Host "  [OK] ESLint passed" -ForegroundColor Green
-                }
-            }
-            finally {
-                Pop-Location
-            }
+        elseif ($SubCommand -in @("cs", "ts", "md", "json", "ps1", "spell")) {
+            # Lint only specific file type (changed files only)
+            & $lintScript -Type $SubCommand
         }
-
-        # Lint Markdown files
-        Write-Host ""
-        Write-Host "Linting Markdown files..." -ForegroundColor Yellow
-
-        # Check if markdownlint-cli is available
-        $mdlintAvailable = $null -ne (Get-Command npx -ErrorAction SilentlyContinue)
-        if ($mdlintAvailable) {
-            # Fix auto-fixable issues first (uses .markdownlintignore for exclusions)
-            & npx markdownlint-cli "**/*.md" --fix 2>&1 | Out-Null
-
-            # Check for remaining issues
-            $mdOutput = & npx markdownlint-cli "**/*.md" 2>&1
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "  [FAIL] Markdown lint found issues:" -ForegroundColor Red
-                Write-Host $mdOutput -ForegroundColor Gray
-                $hasErrors = $true
-            } else {
-                Write-Host "  [OK] Markdown lint passed" -ForegroundColor Green
-            }
-        } else {
-            Write-Host "  [SKIP] markdownlint-cli not available (run 'npm install -g markdownlint-cli')" -ForegroundColor Yellow
-        }
-
-        # Spell check with cspell
-        Write-Host ""
-        Write-Host "Checking spelling..." -ForegroundColor Yellow
-
-        $cspellAvailable = $null -ne (Get-Command npx -ErrorAction SilentlyContinue)
-        if ($cspellAvailable) {
-            # Run cspell on all relevant files (uses cspell.json for config)
-            $cspellOutput = & npx cspell "**/*.md" "**/*.ts" "**/*.tsx" "**/*.ps1" --no-progress --no-summary 2>&1
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "  [FAIL] Spelling issues found:" -ForegroundColor Red
-                Write-Host $cspellOutput -ForegroundColor Gray
-                $hasErrors = $true
-            } else {
-                Write-Host "  [OK] Spelling check passed" -ForegroundColor Green
-            }
-        } else {
-            Write-Host "  [SKIP] cspell not available (run 'npm install -g cspell')" -ForegroundColor Yellow
-        }
-
-        Write-Host ""
-        if ($hasErrors) {
-            Write-Host "Linting completed with errors!" -ForegroundColor Red
+        elseif ($SubCommand -and $SubCommand -ne "") {
+            Write-Host "Unknown lint type: $SubCommand" -ForegroundColor Red
+            Write-Host "Valid types: all, cs, ts, md, json, ps1, spell" -ForegroundColor Yellow
             exit 1
-        } else {
-            Write-Host "All linters passed!" -ForegroundColor Green
         }
+        else {
+            # Default: lint changed files
+            & $lintScript
+        }
+        exit $LASTEXITCODE
     }
 
     "generate-types" {

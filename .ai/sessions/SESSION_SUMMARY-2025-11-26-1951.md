@@ -96,6 +96,7 @@
 ## Quick Start for Next Session
 
 1. Review recent commits:
+
    ```bash
    git log --oneline -2
    git show HEAD
@@ -107,9 +108,11 @@
    - Update resolution section with fixes
 
 3. Test WebUI rendering:
+
    ```powershell
    ./webui.ps1 run
    ```
+
    - Verify BoardGeometry changes work correctly
    - Check building stars rendering
    - Verify road opacity changes

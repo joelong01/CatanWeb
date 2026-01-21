@@ -7,6 +7,7 @@ This document provides a comprehensive analysis of the Catan game state machine,
 The game is driven by `GameStateMachine.cs` which manages all state transitions. The state is stored in `GameModel.GameState` and broadcast to all clients via SignalR `GameStateUpdated` events.
 
 **Communication Pattern:**
+
 - **REST API**: Game lifecycle (create, load) and commands (undo, redo, next, shuffle, etc.)
 - **SignalR**: Real-time state broadcasts and group management
 
@@ -124,11 +125,13 @@ stateDiagram-v2
 ### 1. Setup Phase
 
 #### WaitingForPlayers → PickingBoard
+
 - **Trigger**: All players connected OR host clicks "Next"
 - **Actions Valid**: None (waiting)
 - **REST Command**: `POST /api/game/action` with `command: "next"`
 
 #### PickingBoard
+
 - **Purpose**: Review and optionally modify the randomly generated board
 - **Actions Valid**:
   - `shuffle` - Randomize entire board
@@ -138,6 +141,7 @@ stateDiagram-v2
 - **Transition**: `next` command moves to `DeterminingPlayerOrder`
 
 #### DeterminingPlayerOrder
+
 - **Purpose**: Each player rolls to determine turn order
 - **Actions Valid**: `roll` - Each player rolls dice
 - **Transition**:
@@ -145,6 +149,7 @@ stateDiagram-v2
   - If tie for highest → `PickingFirstPlayer`
 
 #### PickingFirstPlayer
+
 - **Purpose**: Resolve tied rolls by manual selection
 - **Actions Valid**: `goFirst` with `firstPlayerId`
 - **Transition**: → `AllocateResourceForward`
@@ -152,6 +157,7 @@ stateDiagram-v2
 ### 2. Initial Placement Phase
 
 #### AllocateResourceForward
+
 - **Purpose**: First round of settlement placement (player 1 → player N)
 - **Actions Valid**:
   - Place settlement at valid intersection
@@ -159,6 +165,7 @@ stateDiagram-v2
 - **Transition**: After last player places → `AllocateResourceReverse`
 
 #### AllocateResourceReverse
+
 - **Purpose**: Second round of settlement placement (player N → player 1)
 - **Actions Valid**: Same as forward phase
 - **Resource Grant**: Second settlement grants initial resources from adjacent hexes
@@ -167,6 +174,7 @@ stateDiagram-v2
 ### 3. Main Game Loop
 
 #### WaitingForRoll
+
 - **Purpose**: Current player must roll dice
 - **Actions Valid**:
   - `roll` with `die1`, `die2` values
@@ -177,6 +185,7 @@ stateDiagram-v2
   - Roll 7 with no one >7 cards → `MustMoveRobber`
 
 #### WaitingForNext
+
 - **Purpose**: Main action phase - build, trade, play cards
 - **Actions Valid**:
   - `purchase` with `entitlement` (Road, Settlement, City, DevCard)
@@ -192,11 +201,13 @@ stateDiagram-v2
 ### 4. Robber Sequence
 
 #### LostToCardsLostToRobber
+
 - **Trigger**: Roll 7 when any player has >7 cards
 - **Actions Valid**: Discard cards (affected players only)
 - **Transition**: All players discarded → `MustMoveRobber`
 
 #### MustMoveRobber
+
 - **Trigger**: Roll 7 OR Knight card played
 - **Actions Valid**: `moveRobber` with `coordinates`
 - **Transition**:
@@ -204,6 +215,7 @@ stateDiagram-v2
   - No victims → `WaitingForNext`
 
 #### SelectRobberVictim
+
 - **Trigger**: Robber moved to hex with opponent buildings
 - **Actions Valid**: `moveRobber` with `targetPlayerId`
 - **Transition**: → `WaitingForNext` (card stolen)
@@ -211,26 +223,31 @@ stateDiagram-v2
 ### 5. Development Cards
 
 #### BuyingDevelopmentCard
+
 - **Trigger**: `purchase` with `DevCard` entitlement
 - **Automatic**: Card added to player's hand
 - **Transition**: → `WaitingForNext`
 
 #### PlayingKnight
+
 - **Trigger**: Play Knight card
 - **Transition**: → `MustMoveRobber`
 - **Side Effect**: Progress toward Largest Army
 
 #### PlayingMonopoly
+
 - **Trigger**: Play Monopoly card
 - **Actions Valid**: Select resource type
 - **Transition**: → `WaitingForNext` (all selected resource collected)
 
 #### PlayingYearOfPlenty
+
 - **Trigger**: Play Year of Plenty card
 - **Actions Valid**: Select 2 resources from bank
 - **Transition**: → `WaitingForNext`
 
 #### PlayingRoadBuilding
+
 - **Trigger**: Play Road Building card
 - **Actions Valid**: Place up to 2 roads
 - **Transition**: → `WaitingForNext`
@@ -238,6 +255,7 @@ stateDiagram-v2
 ### 6. End State
 
 #### WonGame
+
 - **Trigger**: Player reaches required victory points (default 10)
 - **Actions Valid**: None (game over)
 - **Display**: Winner announcement, final scores
@@ -300,12 +318,14 @@ interface GameActionRequest {
 Based on this state machine, integration tests should cover:
 
 ### Setup Flow
+
 1. Create game → verify `WaitingForPlayers` or `PickingBoard`
 2. Execute `next` → verify state progression
 3. Execute `shuffle` in `PickingBoard` → verify board changes
 4. Execute `undo`/`redo` → verify history works
 
 ### Main Game Flow
+
 1. Complete setup through `AllocateResourceReverse`
 2. Verify `WaitingForRoll` reached
 3. Execute `roll` → verify resource distribution
@@ -313,12 +333,14 @@ Based on this state machine, integration tests should cover:
 5. Execute `next` → verify turn rotation
 
 ### Robber Flow
+
 1. Roll 7 → verify robber sequence triggered
 2. Discard flow (if applicable)
 3. Move robber → verify location update
 4. Select victim → verify card stolen
 
 ### Victory Condition
+
 1. Build to victory points threshold
 2. Verify `WonGame` state reached
 3. Verify game actions disabled
@@ -386,7 +408,7 @@ interface RecordedAction {
 
 ### Recording REST API
 
-```
+```text
 GET    /api/recordings                      List all recordings
 GET    /api/recording/{id}                  Get recording with full data
 POST   /api/recording/{id}/replay           Replay entire recording (verify hashes)
@@ -492,6 +514,7 @@ The `expectedGameHash` in each action is the hash of the `GameModel` AFTER the a
 4. If mismatch, the game state diverged from recording
 
 This catches:
+
 - State machine bugs
 - Network/serialization issues
 - Race conditions in async operations

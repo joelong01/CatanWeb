@@ -25,7 +25,7 @@ This highlights a broader need: **we have no versioning strategy** for breaking 
 
 Route-based versioning for REST endpoints:
 
-```
+```text
 /api/v1/game/new
 /api/v1/game/{id}
 /api/v1/recording/{id}
@@ -49,7 +49,7 @@ This avoids the complexity of `Microsoft.AspNetCore.Mvc.Versioning` while still 
 clear version separation. Only add the versioning package if header-based negotiation
 becomes necessary.
 
-**SignalR Hub: No Versioning Needed**
+#### SignalR Hub: No Versioning Needed
 
 SignalR contracts should be treated as "always current" because:
 
@@ -87,14 +87,14 @@ public class RecordingData
 
 Two approaches depending on whether migration is feasible:
 
-**Option A: Migrate on Load (Preferred when possible)**
+#### Option A: Migrate on Load (Preferred when possible)
 
 - On load: Check `SchemaVersion`, apply migrations to current version
 - On save: Always use current version
 - Migrations are code-based transformations (not SQL)
 - Old versions eventually disappear as data is re-saved
 
-**Option B: Multi-Version Support (Last Resort)**
+#### Option B: Multi-Version Support (Last Resort)
 
 > **Warning**: This approach accumulates technical debt. Maintaining separate `LoadGameV1`,
 > `LoadGameV2` methods and potentially duplicate model classes clutters the codebase.

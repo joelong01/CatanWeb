@@ -81,6 +81,7 @@ pwsh ./catan.ps1 test
 ### 4. Recall Key Decisions
 
 Think back through the session:
+
 - What design choices were made?
 - What alternatives were considered and rejected?
 - What trade-offs were accepted?
@@ -104,6 +105,7 @@ Think back through the session:
 Create: `.ai/sessions/SESSION_SUMMARY-{date}-{hhmm}.md`
 
 Where:
+
 - `{date}` is `YYYY-MM-DD` format (e.g., `2025-11-27`)
 - `{hhmm}` is 24-hour time format (e.g., `1430` for 2:30 PM, `0900` for 9:00 AM)
 
@@ -320,12 +322,12 @@ Example: `.ai/sessions/SESSION_SUMMARY-2025-11-27-1430.md`
    pwsh ./catan.ps1 database doctor
    ```
 
-2. **Review These Files First:**
+1. **Review These Files First:**
    - `.ai/project-summary.md` - Current project state
    - `design_docs/[file].md` - Recent design decisions
    - `code-reviews/[file]-cr.md` - Outstanding review items
 
-3. **Current Focus Area:**
+1. **Current Focus Area:**
    - Working on: [component/feature]
    - Key classes: `ClassName1`, `ClassName2`
    - Next task: [specific next step]
@@ -368,6 +370,7 @@ Example: `.ai/sessions/SESSION_SUMMARY-2025-11-27-1430.md`
   - Context: [background]
   - Options: [alternatives]
   - Input needed: [from whom]
+
 ```
 
 ---
@@ -426,12 +429,12 @@ Write as if explaining to someone who:
    git commit -m "docs: Add session summary for {date} {hhmm}"
    ```
 
-3. **Update project-summary.md if needed:**
+1. **Update project-summary.md if needed:**
    - Major architectural changes should be reflected
    - New features should be documented
    - Current status should be updated
 
-4. **Create todo list for next session if helpful:**
+1. **Create todo list for next session if helpful:**
    - Extract action items from "Next Session Priority"
    - Add to issue tracker or project board if used
 

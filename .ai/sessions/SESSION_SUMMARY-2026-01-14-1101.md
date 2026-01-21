@@ -89,6 +89,7 @@
 3. **Continue with any pending game features**
 
 ### Follow-Up Tasks
+
 - [ ] Verify checkbox fix renders correctly
 - [ ] Verify buildable settlements fix works in gameplay
 - [ ] Run full test suite
@@ -130,16 +131,19 @@
 ### Immediate Actions
 
 1. **Verify build:**
+
    ```bash
    dotnet build Catan.sln
    ```
 
 2. **Run tests:**
+
    ```bash
    ./catan.ps1 test
    ```
 
 3. **Test recording commands:**
+
    ```bash
    ./catan.ps1 recording list
    ./catan.ps1 recording replay

@@ -7,7 +7,7 @@
  * - Page visibility (mobile sleep/wake recovery)
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import { GameServiceProxy, getGameServiceProxy } from '../services/GameServiceProxy';
 import { useGameStore } from '../stores/gameStore';
 import { useConnectionStore } from '../stores/connectionStore';
@@ -54,14 +54,9 @@ export function useGameConnection(
   const setCurrentPlayerId = useGameStore((state) => state.setCurrentPlayerId);
   const connectionStore = useConnectionStore();
 
-  // Proxy ref to maintain instance across renders
-  const proxyRef = useRef<GameServiceProxy | null>(null);
-
-  // Get or create proxy
-  if (!proxyRef.current) {
-    proxyRef.current = getGameServiceProxy(playerId);
-  }
-  const proxy = proxyRef.current;
+  // Get or create proxy - useMemo ensures stable reference across renders
+  // The proxy is a singleton per playerId, so this is safe
+  const proxy = useMemo(() => getGameServiceProxy(playerId), [playerId]);
 
   // Set up event handlers
   useEffect(() => {

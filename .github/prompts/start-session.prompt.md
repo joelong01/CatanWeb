@@ -5,7 +5,7 @@ agent: agent
 argument-hint: "Optional: additional context for this work session"
 ---
 
-#files:"./.ai/commands/start-session.md"
+# files:"./.ai/commands/start-session.md"
 
 You will load and follow the canonical session-start instructions
 contained in the file above.

@@ -3,12 +3,14 @@
 ## Work Completed
 
 ### Harbor Rendering
+
 - Implemented harbor rendering in BoardSvgGenerator.cs
 - Fixed water triangle shape (base at hex edge vertices, apex at harbor center)
 - Fixed viewBox bounds to include harbor positions
 - Copied harbor images to GameService/wwwroot/images/harbors/
 
 ### Player Color Gradients
+
 - Updated PlayerData model with PrimaryBackgroundColor, SecondaryBackgroundColor,
   ForegroundColor (replacing single BackgroundColor)
 - Updated DatabaseSeeder with proper gradient colors for all default players
@@ -16,6 +18,7 @@
 - Updated Game.razor to use current player's gradient on left panel controls
 
 ### Database Design
+
 - Created comprehensive database-design.md documenting all tables, use cases,
   and data management APIs
 - Documents Players, Images, GameSaves tables with indices
@@ -23,12 +26,14 @@
 - Clarifies game stats (in GameModel) vs lifetime stats (future, in PlayerData)
 
 ### Bug Fixes
+
 - Fixed critical player ID mismatch: NewGame was sending player Names instead
   of IDs (e.g., "Adrian" instead of "adrian-001")
 - Added auto-seeding of database on GameService startup (idempotent)
 - Added debug info panel showing PlayerProfiles loading status
 
 ### Developer Experience
+
 - Added help command to webui.ps1 showing all available commands
 - Improved Stop-Services function to wait for ports to be released
 - Added player click test functionality to verify gradient colors
@@ -36,6 +41,7 @@
 ## Work in Progress
 
 ### Gradient Colors Not Displaying
+
 - The left panel controls should show current player's gradient colors
 - PlayerProfiles dictionary is loading correctly (verified via debug panel)
 - Player IDs now match between GameModel and PlayerProfiles
@@ -55,11 +61,13 @@
 ## Blockers & Issues
 
 ### Hot Reload Not Working
+
 - Blazor WASM hot reload is broken - requires stop/clean/run cycle
 - Very disruptive to development workflow
 - Should investigate proper hot reload configuration
 
 ### webui.ps1 stop reliability
+
 - Sometimes processes aren't fully killed
 - Added delays and verification, but may need more robust solution
 
@@ -73,16 +81,19 @@
 ## Important Context
 
 ### Player ID Format
+
 - Database stores IDs like "joe-001", "adrian-001"
 - Display names extracted from ID: "joe-001" -> "Joe"
 - Game must use full IDs, not just names
 
 ### Color Fields
+
 - PrimaryBackgroundColor: Main gradient color
 - SecondaryBackgroundColor: Darker gradient color
 - ForegroundColor: Text color
 
 ### Data Flow
+
 1. NewGame loads PlayerData from API
 2. Selected player IDs sent to create game
 3. Game page receives GameModel with player IDs

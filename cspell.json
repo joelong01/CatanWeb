@@ -198,7 +198,35 @@
     "XML",
     "xunit",
     "Xunit",
-    "YAML"
+    "YAML",
+    // Project-specific abbreviations
+    "recco",
+    // AI assistant names
+    "gemini",
+    "copilot",
+    "chatgpt",
+    // Microsoft build tools
+    "mspdbcmf",
+    // TypeScript/JavaScript
+    "zustand",
+    "vitest",
+    "tanstack",
+    // File naming conventions
+    "precheckin",
+    "nofix",
+    // SQL/Database terms
+    "NVARCHAR",
+    "SSMS",
+    "serverless",
+    "ddladmin",
+    "localdb",
+    "mssqllocaldb",
+    "Kusto",
+    "Lakehouse",
+    // TypeScript/React ecosystem
+    "typegen",
+    "TypeGen",
+    "unsub"
   ],
   "ignoreWords": [
     // Design doc specific terms (fictional resources, variable names, etc.)
@@ -355,6 +383,8 @@
     "**/.vs/**",
     "**/.vscode/**",
     "**/packages/**",
+    // AI session summaries (historical, auto-generated)
+    ".ai/sessions/**",
     // Specific generated files
     "**/*.min.js",
     "**/*.min.css",

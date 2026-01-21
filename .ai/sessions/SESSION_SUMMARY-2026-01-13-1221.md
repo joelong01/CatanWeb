@@ -119,6 +119,7 @@
    - Lower priority than recording-based tests
 
 ### Follow-Up Tasks
+
 - [ ] Create at least 3 recordings covering different game scenarios
 - [ ] Fix ReplayExpansionTest - update to use GameService replay API instead of client-side replay
 - [ ] Consider E2E Playwright tests for UI navigation

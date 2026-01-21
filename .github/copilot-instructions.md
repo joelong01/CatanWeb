@@ -19,6 +19,7 @@ Read and follow all rules and guidelines in `.ai/ai-rules.md`.
 ## Code Review: Things to Flag
 
 ### Critical Issues (Block PR)
+
 - Hardcoded colors instead of CSS variables
 - String-based commands instead of typed messages (`UndoMessage`, `PurchaseMessage`, etc.)
 - State management outside of GameModel
@@ -26,12 +27,14 @@ Read and follow all rules and guidelines in `.ai/ai-rules.md`.
 - Security issues (SQL injection, XSS, hardcoded secrets)
 
 ### Important Issues (Request Changes)
+
 - Hardcoded URLs or configuration values
 - Missing error handling in async code
 - Breaking changes to public APIs without migration path
 - Large methods that should be refactored
 
 ### Minor Issues (Comment Only)
+
 - Minor style inconsistencies
 - Missing XML documentation on internal methods
 - PowerShell script analyzer warnings

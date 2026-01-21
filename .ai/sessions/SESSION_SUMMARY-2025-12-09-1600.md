@@ -69,6 +69,7 @@ New themed loading screen while Blazor WASM initializes:
 - Prefetches player images via JavaScript API call during WASM load
 
 Key files:
+
 - `WebUI/wwwroot/index.html` - Loading screen HTML and prefetch script
 - `WebUI/wwwroot/css/app.css` - Loading screen styles
 
@@ -162,6 +163,7 @@ pwsh ./build.ps1 -NoTest
 ### Uncommitted Changes
 
 46 files changed:
+
 - 6 modified source files
 - 2 new files (Dodgy.jpg, bootstrap.min.css)
 - 25 deleted Bootstrap files

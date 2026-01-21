@@ -85,11 +85,13 @@ WebUI (Game.razor)     ──PUT /api/game/{id}/houserules──▶  GameApiCont
 Settings are stored in browser localStorage as `setting_{settingName}` keys. The Settings page (`/settings`) provides UI to change these values.
 
 **Game-affecting settings** (read when creating new game):
+
 - ExpansionGoldTiles (0-4)
 - RegularGoldTiles (0-2)
 - SupplementalMinPlayers (3-6)
 
 **Client-only settings** (not sent to server):
+
 - AutoSaveEnabled
 - ShowDebugInfo
 - AnimationSpeed

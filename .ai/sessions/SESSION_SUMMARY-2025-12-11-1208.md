@@ -71,6 +71,7 @@
 ## Work in Progress
 
 ### Pending Features
+
 - **GriefDodgy animation timing and double-flip**: Animation issues remain
 - **Best Dodgy tile algorithm**: Should skip current robber position
 
@@ -98,6 +99,7 @@
 ## Blockers & Issues
 
 ### Known Issues
+
 - **GriefDodgy animation**: Double-flip issue pending investigation
   - Severity: Minor (cosmetic)
   - Location: Animation system in WebUI
@@ -113,6 +115,7 @@
    - Files: `Catan3.Shared/GameLogic/GameStateMachine.cs`
 
 ### Follow-Up Tasks
+
 - [ ] Investigate GriefDodgy double-flip animation
 - [ ] Update best Dodgy tile selection algorithm
 - [ ] Consider adding more test coverage to test-scripts.ps1
@@ -120,11 +123,13 @@
 ## Important Context
 
 ### Critical Information
+
 - **Entry point changed:** Use `./catan.ps1` instead of `./webui.ps1`
 - **Scripts moved:** Helper scripts now in `.scripts/` not `Scripts/`
 - **Build scripts moved:** `build.ps1` now at `.scripts/build.ps1`
 
 ### Key Files & Patterns
+
 - **catan.ps1** - Main entry point for all development
 - **.scripts/*.ps1** - Dependency management and helper scripts
 - **.scripts/test-scripts.ps1** - Test suite for script validation
@@ -132,11 +137,13 @@
 ## Environment Notes
 
 ### Build Configuration
+
 - All projects building successfully: Yes
 - Build command: `pwsh ./catan.ps1 build`
 - Test command: `pwsh ./catan.ps1 test`
 
 ### Test Status (test-scripts.ps1)
+
 - Total tests: 23
 - Passing: 21
 - Skipped: 2 (Azure tests)
@@ -145,7 +152,9 @@
 ## Quick Start for Next Session
 
 ### Immediate Actions
+
 1. **Start Here:**
+
    ```bash
    # Verify build
    pwsh ./catan.ps1 build
@@ -160,17 +169,21 @@
    - Next task: Investigate double-flip issue
 
 ### Commands & Workflows
+
 - **Run services:**
+
   ```bash
   ./catan.ps1 run
   ```
 
 - **Check system health:**
+
   ```bash
   ./catan.ps1 doctor
   ```
 
 - **Run tests:**
+
   ```bash
   ./catan.ps1 test
   ```

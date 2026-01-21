@@ -59,6 +59,7 @@ session summary.
 The summary file will be committed with code changes in step 3.
 
 **Skip condition:** If a session summary for today already exists, ask the user:
+
 - Skip (keep existing)
 - Regenerate (overwrite existing)
 - Review (show existing, then decide)

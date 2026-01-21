@@ -10,6 +10,7 @@
 ### Major Features
 
 #### 1. Azure SQL Troubleshoot API and WebUI Button
+
 - Added `POST /api/troubleshoot` endpoint to GameService
   - Key files: `Catan3.GameService/Controllers/GameApiController.cs`, `Catan3.GameService/Services/AzureSqlDiagnosticService.cs`
   - Enables fixing Azure SQL settings (Public Network Access, AllowAzureServices firewall rule) from any device
@@ -26,6 +27,7 @@
   - Tests connection after fixes
 
 #### 2. Health Endpoint Cache Invalidation Fix
+
 - Fixed stale cache issue in `/health` endpoint
   - Key file: `Catan3.GameService/Program.cs` (lines 245-383)
   - Now always tests database connectivity (cheap operation)
@@ -56,11 +58,13 @@
   - Added `-cmd ".width 36 25 35 9 19"` to sqlite3 command for proper column widths
 
 ### Documentation
+
 - Created `.design/TODO-mobile-ui.md` documenting future work for mobile hamburger menu sizing
 
 ## Work in Progress
 
 ### Mobile UI - Hamburger Menu Size (Deferred)
+
 - The hamburger menu button is too small on iPad
 - CSS changes were attempted but rolled back per user request
 - TODO file created at `.design/TODO-mobile-ui.md` with approach details
@@ -90,6 +94,7 @@
 ## Blockers & Issues
 
 ### Known Issues
+
 - **Mobile hamburger menu too small on iPad**
   - Severity: Minor (usability issue)
   - Deferred to future session
@@ -107,6 +112,7 @@
    - Test from actual iPad device
 
 ### Follow-Up Tasks
+
 - [ ] Investigate why `@media (pointer: coarse)` didn't trigger on iPad
 - [ ] Consider adding CSS version string to non-game pages for cache debugging
 - [ ] Test troubleshoot button on actual mobile devices after deploy
@@ -114,9 +120,11 @@
 ## Important Context
 
 ### Critical Information
+
 - **Azure SQL settings being reverted by policy**: The troubleshoot/fix features were built because Azure Policy or automation is reverting Public Network Access and firewall rules overnight
 
 ### Key Files & Patterns
+
 - **Azure SQL diagnostics:** `Catan3.GameService/Services/AzureSqlDiagnosticService.cs`
   - `DiagnoseAsync()` - identifies issues using Resource Graph API
   - `TroubleshootAsync()` - fixes common issues using ARM SDK
@@ -129,10 +137,12 @@
 ## Environment Notes
 
 ### Build Configuration
+
 - All projects building successfully: Yes
 - Build command: `dotnet build Catan3.GameService` and `dotnet build WebUI`
 
 ### Configuration Changes
+
 - Added `-Local` switch to `catan.ps1`
 - Added `fix` verb to `catan-azure.ps1` database commands
 - Added `needsFix` field to Azure doctor result objects
@@ -140,7 +150,9 @@
 ## Quick Start for Next Session
 
 ### Immediate Actions
+
 1. **Deploy to Azure:**
+
    ```bash
    ./catan-azure.ps1 deploy
    ```
@@ -155,18 +167,22 @@
    - Investigate viewport meta tag in `index.html` (sets width=1920 on mobile)
 
 ### Commands & Workflows
+
 - **Fix Azure SQL settings locally:**
+
   ```bash
   ./catan-azure.ps1 database fix
   ```
 
 - **Check Azure database health:**
+
   ```bash
   ./catan.ps1 database doctor
   # Or: ./catan-azure.ps1 database doctor
   ```
 
 - **Check local database health:**
+
   ```bash
   ./catan.ps1 database doctor -Local
   ```

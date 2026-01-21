@@ -15,7 +15,6 @@ import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import {
   RecordingPlayer,
   type RecordingListItem,
-  type PlaybackResult,
 } from './RecordingPlayer';
 
 const SERVICE_URL = 'http://localhost:8080';

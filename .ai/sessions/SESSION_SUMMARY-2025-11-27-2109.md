@@ -10,6 +10,7 @@
 ### Code Review Processing
 
 **Comprehensive Code Review Analysis**
+
 - Processed all 33 code review files from `code-reviews/` directory
 - Systematically evaluated each finding against technical correctness, project alignment, and effort vs value
 - Created comprehensive change-log documenting all decisions and rationale
@@ -101,6 +102,7 @@
 ### Incomplete Features
 
 **ShownStars Slider Integration - BROKEN**
+
 - **What's done:**
   - BoardMeasurement component integrated in Game.razor
   - Slider callback wired to `HandleShownStarsChanged()`
@@ -152,6 +154,7 @@
 ### Design Patterns
 
 **WebUI Thick Client Reinforcement**
+
 - Confirmed WebUI is self-contained thick client
 - All assets must be bundled in `wwwroot/`
 - No runtime dependencies on GameService for static files
@@ -161,6 +164,7 @@
 ### Trade-offs
 
 **Styling Cleanup Deferred**
+
 - **Chose:** Fix critical bugs now, defer CSS refactoring
 - **Benefits:**
   - Functional gameplay now working
@@ -261,6 +265,7 @@
 ### Critical Information
 
 **Code Review Processing Complete**
+
 - All 33 reviews assessed and documented
 - 6 critical/important fixes implemented
 - ~20 styling/polish items deferred with clear rationale
@@ -268,12 +273,14 @@
 - All review files moved to `code-reviews/done/`
 
 **WebUI Thick Client Architecture**
+
 - Self-contained: All assets in `wwwroot/`
 - No GameService dependencies for static files
 - SignalR only for game state updates
 - Pattern enforced: Resource cards, harbors, tiles all local
 
 **Build Status**
+
 - ✅ WebUI builds successfully
 - ✅ No compile errors
 - ⚠️ 1 pre-existing warning (NewGame.razor:32)
@@ -308,10 +315,12 @@
 ### Key Files & Patterns
 
 **Code Review Processing:**
+
 - `code-reviews/change-log.md` - Comprehensive decision log
 - `code-reviews/done/` - All 35 processed review files
 
 **WebUI Critical Fixes:**
+
 - `WebUI/Components/Resources/ResourceCard.razor:31-37` - Local asset loading
 - `WebUI/Components/Board/BoardMeasurement.razor:116-125` - Star counting fix
 - `WebUI/Pages/Game.razor:609-671` - Command handlers (Undo/Redo/Roll)
@@ -319,11 +328,13 @@
 - `WebUI/Pages/Game.razor:95-100` - BoardMeasurement integration
 
 **Pattern: Segoe MDL2 Icons**
+
 - Use HTML entity format: `&#xE10E;`
 - Add `font-family: 'Segoe MDL2 Assets'` to CSS class
 - Reference: `.ai/ai-rules.md:209-213`
 
 **Pattern: Error Handling in SignalR Calls**
+
 ```csharp
 try
 {
@@ -387,6 +398,7 @@ catch (Exception ex)
 ### Immediate Actions
 
 1. **Debug ShownStars Issue:**
+
    ```bash
    # Start services
    ./webui.ps1 run
@@ -397,6 +409,7 @@ catch (Exception ex)
    ```
 
 2. **Continue Handover Workflow:**
+
    ```bash
    # You are here: Step 1 complete (session summary)
    # Next: Step 2 - Pre-checkin validation
@@ -411,16 +424,19 @@ catch (Exception ex)
 ### Commands & Workflows
 
 - **Build verification:**
+
   ```bash
   dotnet build Catan.sln
   ```
 
 - **Run services:**
+
   ```bash
   ./webui.ps1 run
   ```
 
 - **Debug ShownStars:**
+
   ```csharp
   // Add to Game.razor:HandleShownStarsChanged
   Console.WriteLine($"ShownStars changed to: {newValue}");
@@ -432,12 +448,14 @@ catch (Exception ex)
 ### Context to Load
 
 **If debugging ShownStars:**
+
 - Understand: BoardMeasurement slider controls building visibility
 - Expected: Buildings with star count >= threshold should be visible
 - Check: Is `shownStars` parameter actually used in GenerateSvg?
 - Compare: Desktop GameViewModel building visibility logic
 
 **If continuing handover:**
+
 - Load: `.ai/commands/pre-checkin.md`
 - Know: Build already verified (passing)
 - Know: 3 files modified, 1 directory added (resources/)
@@ -445,12 +463,14 @@ catch (Exception ex)
 ### Open Questions
 
 **ShownStars Rendering Issue:**
+
 - Does `GameModel.GenerateSvg()` extension method use the `shownStars` parameter?
 - Is there additional state needed beyond passing the parameter?
 - Should `StateHasChanged()` be sufficient to trigger re-render?
 - Is the SVG cached somewhere preventing re-generation?
 
 **Code Review Deferred Work:**
+
 - Should we schedule CSS variable migration sprint?
 - Should we do comprehensive MDL2 icon audit now or later?
 - Is XML documentation gap acceptable for MVP?

@@ -258,6 +258,7 @@ private bool IsVPEntryPhase => _pendingWinnerId != null;
 ```
 
 **Flow:**
+
 1. User clicks "Declare Winner" → shows confirmation dialog
 2. User confirms → `ConfirmWinner()` sets `_pendingWinnerId`, triggers animation
 3. Animation completes → VP entry UI appears (for players with dev cards)
@@ -266,6 +267,7 @@ private bool IsVPEntryPhase => _pendingWinnerId != null;
 6. API success → `_pendingWinnerId = null`, game transitions to GameOver
 
 **API Call:**
+
 ```csharp
 private async Task OnVictoryPointsDone(Dictionary<string, int> victoryPoints)
 {

@@ -75,6 +75,7 @@
 ## Important Context
 
 ### Schema Version
+
 - LifetimeStats: v2
 - GameStats: v1
 - Database was reset during session to clear old schema data
@@ -89,6 +90,7 @@
 | `WebUI/Pages/Stats.razor` | Complete UI redesign with card layout |
 
 ### Commands Used
+
 - `pwsh ./catan.ps1 clean database` - Reset database
 - `pwsh ./catan.ps1 database install` - Install fresh schema
 - `pwsh ./catan.ps1 update` - Rebuild and restart services
@@ -96,8 +98,8 @@
 ## Quick Start for Next Session
 
 1. Services should be running at:
-   - GameService: http://localhost:8080
-   - WebUI: http://localhost:5296
+   - GameService: <http://localhost:8080>
+   - WebUI: <http://localhost:5296>
 
 2. To test stats:
    - Create new game

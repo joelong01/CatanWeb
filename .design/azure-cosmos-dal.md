@@ -1263,24 +1263,28 @@ DATABASE_MODE=azure
 ## Migration Strategy
 
 ### Phase 1: Interface Implementation
+
 1. **Create abstraction interfaces** - `IDataRepository`, `IDataConfiguration`
 2. **Implement SQLite version** - Wrap existing `CatanDbContext` usage
 3. **Update DI registration** - Use factory pattern to select implementation
 4. **Test thoroughly** - Ensure no behavioral changes for existing SQLite path
 
 ### Phase 2: CosmosDB Implementation  
+
 1. **Create CosmosDB documents** - Map existing entities to Cosmos documents
 2. **Implement CosmosDB repository** - Following same interface
 3. **Add configuration detection** - Auto-detect Azure vs local environment
 4. **Test CosmosDB in isolation** - Unit tests with Cosmos emulator
 
 ### Phase 3: Integration and Deployment
+
 1. **Update Azure deployment scripts** - Provision CosmosDB resources
 2. **Configure Azure App Service** - Environment variables for Cosmos connection
 3. **Test full deployment pipeline** - Local → Azure migration testing
 4. **Performance testing** - Ensure query performance meets requirements
 
 ### Phase 4: Advanced Features (Future)
+
 1. **Connection pooling optimization** - Cosmos client singleton management
 2. **Caching layer** - Redis for frequently accessed data
 3. **Multi-region support** - Cosmos global distribution
@@ -1289,12 +1293,14 @@ DATABASE_MODE=azure
 ## Performance Considerations
 
 ### SQLite Optimizations
+
 - **Connection pooling** - EF Core handles this automatically
 - **Batch operations** - Use transactions for multi-entity operations
 - **Index optimization** - Ensure proper indexes on query fields
 - **File locking** - Handle concurrent access appropriately
 
 ### CosmosDB Optimizations
+
 - **Partition key design** - Use gameId for games, logical groupings for others
 - **Query optimization** - Use parameterized queries, avoid cross-partition
 - **Throughput management** - Start with serverless, scale as needed
@@ -1303,6 +1309,7 @@ DATABASE_MODE=azure
 - **Point reads** - Prefer item reads over queries when possible
 
 ### Cross-Cutting Optimizations
+
 - **Caching** - Add memory cache for frequently accessed players/metadata
 - **Async patterns** - All database operations are async
 - **Connection resilience** - Retry policies for transient failures
@@ -1313,6 +1320,7 @@ DATABASE_MODE=azure
 ## Testing Strategy
 
 ### Unit Testing
+
 ```csharp
 [TestFixture]
 public class DataRepositoryTests
@@ -1354,6 +1362,7 @@ public class DataRepositoryTests
 ```
 
 ### Integration Testing
+
 - **Full stack tests** - Test complete game save/load cycle
 - **Environment switching** - Test configuration detection logic
 - **Azure deployment tests** - Verify behavior in actual Azure environment
@@ -1454,6 +1463,7 @@ Database health: GOOD (SQLite)
 ```
 
 ### Logging and Metrics
+
 - **Structured logging** - Use consistent log fields across implementations
 - **Performance metrics** - Query duration, RU consumption (Cosmos), record counts
 - **Error tracking** - Connection failures, timeout handling
@@ -1462,11 +1472,13 @@ Database health: GOOD (SQLite)
 ## Security Considerations
 
 ### SQLite Security
+
 - **File permissions** - Ensure database file is properly protected
 - **Connection string security** - Store in secure configuration
 - **SQL injection prevention** - Use parameterized queries (EF handles this)
 
 ### CosmosDB Security
+
 - **Managed Identity** - Prefer over connection strings in Azure
 - **Key rotation** - Support for rotating Cosmos account keys
 - **Network security** - VNet integration for production environments
@@ -1476,6 +1488,7 @@ Database health: GOOD (SQLite)
 ## Cost Optimization
 
 ### CosmosDB Cost Management
+
 - **Serverless mode** - Best for development and low-traffic scenarios
 - **Provision throughput** - For predictable high-traffic workloads
 - **Request unit optimization** - Efficient queries and indexing
@@ -1483,6 +1496,7 @@ Database health: GOOD (SQLite)
 - **Archival strategy** - Move old data to cheaper storage tiers
 
 ### Resource Management
+
 - **Connection pooling** - Minimize connection overhead
 - **Batch operations** - Reduce transaction costs
 - **Monitoring** - Track costs and set up alerts
@@ -1493,6 +1507,7 @@ Database health: GOOD (SQLite)
 This design provides a comprehensive data access layer that seamlessly supports both SQLite for local development and CosmosDB for Azure deployment. The interface abstraction ensures that business logic remains unchanged while providing flexibility to optimize for each storage backend.
 
 Key benefits:
+
 - **Seamless switching** between local and cloud storage
 - **Full offline capability** for inner loop development
 - **Performance optimization** for each storage type

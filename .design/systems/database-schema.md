@@ -83,18 +83,20 @@ Adding a new document type (e.g., `Tournament`) requires:
 
 Complex queries go to Fabric/Kusto, not SQLite:
 
-```
+```text
 Game Events → Event Hub → Fabric Lakehouse → Kusto
                                     ↓
                             Power BI / Dashboards
 ```
 
 **SQLite handles:**
+
 - Active game state during play
 - Recording storage for replay tests
 - Player authentication/preferences
 
 **Fabric/Kusto handles:**
+
 - Historical game statistics
 - Player leaderboards
 - Win rate analysis

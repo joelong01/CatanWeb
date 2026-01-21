@@ -302,6 +302,7 @@ None - all planned work for this session completed.
 ### Key Files & Patterns
 
 **Player Data Architecture:**
+
 - `Catan3.Shared/Profiles/PlayerProfile.cs` - Persistent storage model
 - `Catan3.Shared/Profiles/PlayerColors.cs` - Color scheme record
 - `Catan3.Shared/Profiles/GameStats.cs` - Per-game stats with operator+
@@ -309,6 +310,7 @@ None - all planned work for this session completed.
 - `WebUI/Models/PlayerViewModel.cs` - WebUI view model
 
 **Rendering Pipeline:**
+
 - `WebUI/Services/GameStateService.cs` - Manages PlayerViewModels list
 - `WebUI/Services/Rendering/BoardSvgGenerator.cs` - Main SVG compositor
 - `WebUI/Services/Rendering/BuildingSvgRenderer.cs` - Building renderer
@@ -316,10 +318,12 @@ None - all planned work for this session completed.
 - `WebUI/Pages/Game.razor` - Calls GenerateSvg with GameStateService.Players
 
 **Database Management:**
+
 - `webui.ps1` lines 126-225 - Database commands (check/clean/install)
 - `Catan3.GameService/Data/DatabaseSeeder.cs` - Seed data creation
 
 **Pattern: GameStateService Player Lookup**
+
 ```csharp
 // OLD: Dictionary lookup
 var player = gameStateService.PlayerData.TryGetValue(playerId, out var p) ? p : null;
@@ -388,12 +392,14 @@ None - all changes use existing .NET 9.0 APIs
 ### Immediate Actions
 
 1. **Continue Handover Workflow:**
+
    ```bash
    # Currently at Step 2: Pre-Checkin Validation
    # Follow .ai/workflows/handover.md instructions
    ```
 
 2. **If Starting Fresh:**
+
    ```bash
    # Verify database is current
    ./webui.ps1 database check
@@ -417,6 +423,7 @@ None - all changes use existing .NET 9.0 APIs
 ### Commands & Workflows
 
 - **Database management:**
+
   ```bash
   ./webui.ps1 database check   # Validate schema
   ./webui.ps1 database clean   # Wipe database
@@ -424,6 +431,7 @@ None - all changes use existing .NET 9.0 APIs
   ```
 
 - **Run services:**
+
   ```bash
   ./webui.ps1 run     # Start GameService + WebUI
   ./webui.ps1 stop    # Stop services
@@ -431,6 +439,7 @@ None - all changes use existing .NET 9.0 APIs
   ```
 
 - **Build and test:**
+
   ```bash
   dotnet build Catan.sln                    # Full build
   dotnet test Tests/GameService             # GameService tests only
@@ -439,6 +448,7 @@ None - all changes use existing .NET 9.0 APIs
   ```
 
 - **Workflow commands:**
+
   ```bash
   # Individual commands (can run standalone):
   # - Follow .ai/commands/session-summary.md
@@ -452,16 +462,19 @@ None - all changes use existing .NET 9.0 APIs
 ### Context to Load
 
 **If continuing handover workflow:**
+
 - Load `.ai/commands/pre-checkin.md` - Next step
 - Note: Skip Desktop UI tests (user requested)
 - Focus: Build validation, GameService/Shared tests, code quality
 
 **If addressing code reviews:**
+
 - Scan `code-reviews/*.md` files
 - Prioritize Critical/Important findings
 - Reference Desktop implementation for patterns
 
 **If debugging player loading:**
+
 - Check `GameStateService.cs:73` - UpdatePlayerData method
 - Check `PlayerViewModel.cs:93` - FromProfile factory
 - Check `BoardSvgGenerator.cs:27` - GenerateSvg signature
@@ -474,6 +487,7 @@ None - all design decisions documented above.
 ### Session Artifacts
 
 **Files Created:**
+
 - `.ai/sessions/SESSION_SUMMARY-2025-11-27-1317.md` (this file)
 - `.ai/commands/session-summary.md` - Session summary command
 - `.ai/commands/code-review.md` - Code review guidelines (moved/updated)
@@ -484,6 +498,7 @@ None - all design decisions documented above.
 - `WebUI/Models/PlayerViewModel.cs` - WebUI player view model
 
 **Files Modified:**
+
 - `Catan3.Shared/PlayerProfile/PlayerProfile.cs` - Nested structure, backward compat
 - `WebUI/Services/GameStateService.cs` - List<PlayerViewModel> instead of Dictionary
 - `WebUI/Services/Rendering/BoardSvgGenerator.cs` - Use PlayerViewModel
@@ -495,9 +510,11 @@ None - all design decisions documented above.
 - Multiple code review files updated
 
 **Files Deleted/Moved:**
+
 - `.ai/code-review.md` → `.ai/commands/code-review.md` (moved)
 - `.ai/commands/handover.md` → `.ai/workflows/handover.md` (moved)
 
 **Commits Ready:**
+
 - All changes uncommitted, ready for checkin step
 - Session summary will be committed with code changes

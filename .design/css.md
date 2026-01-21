@@ -381,7 +381,7 @@ Multiple hardcoded values throughout:
 
 ### 3. Remove Redundant Styles
 
-#### CSS Version Indicators
+#### Remove CSS Version Indicators
 
 Remove all CSS version indicators (`content: "CSS v2025-12-05-2"`) from production code.
 

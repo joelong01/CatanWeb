@@ -210,7 +210,7 @@ Game.razor (detects MustMoveRobber state, calculates flipped tiles)
 
 ## Implementation Status
 
-**Completed 2025-12-10**
+### Completed 2025-12-10
 
 1. `HouseRules.GriefDodgy` property added
 2. `RobberModel.FakeOutCoordinates` for animation state

@@ -11,18 +11,21 @@ This document analyzes using Azure SQL Serverless as an alternative to the Cosmo
 ## Azure SQL Serverless Benefits
 
 ### 🎯 **Eliminate DAL Complexity**
+
 - **Same SQL Engine** - SQLite and SQL Server both use SQL, easier migration
 - **Entity Framework Works** - No need to rewrite data access code
 - **Familiar Tooling** - SQL Server Management Studio, existing knowledge
 - **Direct Schema Migration** - Can migrate SQLite schema with minimal changes
 
 ### 💰 **Cost Efficiency**
+
 - **Pay Per Use** - Only charged for actual compute time (per second billing)
 - **Auto-Pause** - Database pauses after inactivity (1-hour minimum)
 - **Serverless Scaling** - Automatically scales from 0.5 to 40 vCores
 - **Storage Costs** - Only pay for data storage when paused (~$5-15/month for typical usage)
 
 ### 🔧 **Zero Configuration Benefits**
+
 - **Connection String Switch** - Only need to change connection string for Azure
 - **Same EF Code** - `CatanDbContext` works unchanged
 - **Schema Compatibility** - Most SQLite schemas work on SQL Server
@@ -191,12 +194,14 @@ public async Task<List<GameSaveMetadataEntity>> GetGamesByStateAsync(
 ## Potential Drawbacks
 
 ### Azure SQL Serverless Limitations
+
 - **Minimum Cost** - Even when paused, storage costs ~$5-15/month
 - **Cold Start** - 1-2 second delay when resuming from pause
 - **Connection Limits** - Fewer concurrent connections than CosmosDB
 - **Regional Availability** - Not available in all Azure regions
 
 ### SQLite vs SQL Server Differences
+
 - **Data Types** - Some minor mapping differences (TEXT vs NVARCHAR)
 - **Functions** - Some SQLite-specific functions not available
 - **Constraints** - SQL Server has stricter constraint checking
@@ -216,8 +221,9 @@ public async Task<List<GameSaveMetadataEntity>> GetGamesByStateAsync(
 ## Updated Implementation Plan
 
 ### Immediate Steps
+
 1. **Update CatanDbContext** to support SQL Server provider
-2. **Add connection detection logic** 
+2. **Add connection detection logic**
 3. **Test locally** with SQL Server LocalDB
 4. **Create Azure SQL Serverless** database
 5. **Deploy and test** end-to-end
@@ -242,12 +248,12 @@ This approach delivers the same functionality with 90% less code complexity!
 
 ---
 
-# Implementation Plan
+## Implementation Plan
 
 **Status:** APPROVED
 **Target:** Replace SQLite-on-Azure with Azure SQL Serverless
 
-## Overview
+### Plan Overview
 
 This plan migrates the Catan3 application from SQLite (which doesn't work correctly with
 multiple Azure App Service instances) to Azure SQL Serverless while maintaining SQLite for

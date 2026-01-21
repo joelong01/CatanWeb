@@ -13,7 +13,7 @@
  * 5. Execute game actions and verify state updates
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { GameServiceProxy } from './GameServiceProxy';
 import { GameState } from '@/types/generated/models/game-state';
 import { GameType } from '@/types/generated/models/game-type';
