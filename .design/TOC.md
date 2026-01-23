@@ -1,6 +1,6 @@
 # .design Directory Table of Contents
 
-**Last Updated:** January 16, 2026
+**Last Updated:** January 22, 2026
 **Purpose:** Authoritative "as built" design documentation for the Catan project
 
 ## Quick Reference
@@ -8,7 +8,7 @@
 | Document | Purpose | Last Updated |
 |----------|---------|-------------|
 | [README.md](README.md) | Directory overview and maintenance guidelines | Dec 3, 2025 |
-| [summary.md](summary.md) | High-level project architecture summary | Dec 3, 2025 |
+| [summary.md](summary.md) | High-level project architecture & status summary | Jan 22, 2026 |
 | [css.md](css.md) | CSS architecture and theming standards | Dec 3, 2025 |
 | [portrait-mode.md](portrait-mode.md) | Mobile portrait mode design | Dec 3, 2025 |
 | [azure.md](azure.md) | Azure deployment architecture and configuration | Dec 8, 2025 |
@@ -16,7 +16,14 @@
 | [azure-sql-serverless-alternative.md](azure-sql-serverless-alternative.md) | Azure SQL Serverless alternative analysis (recommended) | Dec 8, 2025 |
 | [test-plan.md](test-plan.md) | WebUI test suite with recording/replay infrastructure | Jan 12, 2026 |
 | [balance-design.md](balance-design.md) | Balance board feature design | Jan 13, 2026 |
-| [ts-port-impl-plan.md](ts-port-impl-plan.md) | TypeScript/React port implementation plan | Jan 16, 2026 |
+
+## React Porting (Active)
+
+| Document | Purpose | Last Updated |
+|----------|---------|-------------|
+| [ui/react/typescript-porting-design.md](ui/react/typescript-porting-design.md) | Comprehensive React migration specification | Jan 16, 2026 |
+| [ui/react/ts-port-impl-plan.md](ui/react/ts-port-impl-plan.md) | detailed implementation phases and tasks | Jan 21, 2026 |
+| [ui/react/responsive-design.md](ui/react/responsive-design.md) | Mobile/Touch adaptation strategy | Jan 22, 2026 |
 
 ## Projects
 
@@ -35,12 +42,12 @@ Cross-cutting system designs that span multiple projects:
 - [**board-rendering.md**](systems/board-rendering.md) - SVG board generation and rendering pipeline
 - [**coordinates.md**](systems/coordinates.md) - Coordinate system and geometric calculations
 - [**database.md**](systems/database.md) - Entity Framework Core data layer design
+- [**database-schema.md**](systems/database-schema.md) - Database schema philosophy and structure
 - [**game-service-api.md**](systems/game-service-api.md) - REST API design and SignalR hubs
 - [**mvvm-messaging.md**](systems/mvvm-messaging.md) - MVVM pattern and inter-component messaging
 - [**save-load.md**](systems/save-load.md) - Game persistence and serialization
 - [**settings.md**](systems/settings.md) - Configuration management across platforms
-- [**signalr-to-rest-migration.md**](systems/signalr-to-rest-migration.md) - Migration plan for SignalR → REST commands
-- [**typegen-design.md**](../Catan3.Shared/TypeScript/TypeGenRunner/typegen-design.md) - TypeGen type generation pipeline
+- [**model-jsonignore-to-dto.md**](systems/model-jsonignore-to-dto.md) - Serialization strategy
 
 ## User Interface
 
@@ -48,9 +55,11 @@ Component-level design documentation for UI elements:
 
 - [**assets.md**](ui/assets.md) - Icon fonts, images, and visual asset management
 - [**board-measurement.md**](ui/board-measurement.md) - Board sizing and coordinate mapping
+- [**game-play-design.md**](ui/game-play-design.md) - Game state machine and transitions
 - [**number-token.md**](ui/number-token.md) - Number token rendering and placement
 - [**player-viewmodel.md**](ui/player-viewmodel.md) - Player data presentation patterns
 - [**uiscale-design.md**](ui/uiscale-design.md) - Responsive scaling architecture (WebUI)
+- [**winning.md**](ui/winning.md) - Victory conditions and celebrations
 
 ## Document Categories
 
@@ -77,6 +86,7 @@ Documents focused on cross-platform UI adaptation:
 - `portrait-mode.md`
 - `ui/board-measurement.md`
 - `ui/uiscale-design.md`
+- `ui/react/responsive-design.md`
 
 ## Usage Guidelines
 

@@ -1,69 +1,64 @@
-# Design Documentation Summary
+# Catan Project Design Summary
 
-## Status
+**Last Updated:** January 22, 2026
+**Status:** Active Development
 
-- Project, system, and UI documentation now reflects the "as built" code paths across Desktop, GameService, WebUI, Shared, and CLI projects.
-- Gameplay design coverage is pending; `.design/gameplay/` is empty and still needs per-state lifecycle documentation.
+## Project Overview
 
-## Table of Contents
+The Catan project is a multi-client implementation of the Settlers of Catan board game. It features a centralized authoritative game server (`Catan3.GameService`) and multiple clients:
+- **Blazor WebAssembly (`WebUI`)**: The current primary web interface.
+- **WinUI 3 Desktop (`DesktopApp`)**: A native Windows implementation.
+- **React + Next.js (`react-ui`)**: A new modern web client currently in development (porting from Blazor).
 
-### Projects
+The architecture relies on a shared core logic library (`Catan3.Shared`) ensuring rule consistency across all platforms.
 
-- `.design/projects/cli.md`
-- `.design/projects/desktop-app.md`
-- `.design/projects/game-service.md`
-- `.design/projects/shared.md`
-- `.design/projects/webui.md`
+## Design Status Matrix
 
-### Systems
+| ID | Design System | Status | Implementation Notes |
+|----|--------------|--------|----------------------|
+| **CORE** | **Game Engine** | ✅ Complete | `Catan3.Shared` handles authoritative state machine. |
+| **API** | **Game Service** | ✅ Complete | ASP.NET Core with SignalR/REST hybrid. See `systems/game-service-api.md`. |
+| **DATA** | **Persistence** | ✅ Complete | SQLite local storage with generic `IGamePersistence`. Azure ready. |
+| **UI** | **Board Rendering** | ✅ Complete | SVG-based rendering in WebUI/React, XAML-based in Desktop. |
+| **UI** | **Responsive/Mobile** | ✅ Complete | Media queries `(pointer: coarse)` and scaling logic implemented. |
+| **FEAT** | **Balanced Board** | ✅ Complete | Algorithm to prevent clumping/imballance. See `balance-design.md`. |
+| **FEAT** | **Grief/Dodgy** | ⚠️ Partial | "Dodgy" player logic and CSS animations exist. `GriefCelebration` pending full React port. |
+| **INFRA** | **Azure Deployment** | 🚧 Planned | Designs exist (`azure*.md`), but local dev uses SQLite. |
+| **PORT** | **React Migration** | 🔄 In Progress | `react-ui` scaffolding exists. Detailed plan in `ui/react/typescript-porting-design.md`. |
 
-- `.design/systems/board-rendering.md`
-- `.design/systems/coordinates.md`
-- `.design/systems/database.md`
-- `.design/systems/game-service-api.md`
-- `.design/systems/mvvm-messaging.md`
-- `.design/systems/save-load.md`
+## Key Architecture Concepts
 
-### UI
+### 1. State Management
+The `GameStateMachine` in `Catan3.Shared` is the single source of truth. State updates are pushed via SignalR to clients, which update their MVVM/React stores.
+- **Design:** `systems/mvvm-messaging.md`, `ui/react/typescript-porting-design.md`
+- **Impl:** `GameHub`, `GameModel`, `GameStateMachine`
 
-- `.design/ui/assets.md`
-- `.design/ui/board-measurement.md`
-- `.design/ui/number-token.md`
-- `.design/ui/player-viewmodel.md`
+### 2. Board Rendering
+Clients render the board vectorially (SVG/XAML) based on the `GameModel`. No raster rendering on server.
+- **Design:** `systems/board-rendering.md`
+- **Impl:** `BoardSvgGenerator.cs` (Blazor), `BoardContainer.tsx` (React)
 
-### Gameplay
+### 3. Data Access
+Abstracted via `IGamePersistence` to support seamless switching between SQLite (Local) and CosmosDB/SQL (Azure).
+- **Design:** `systems/save-load.md`
+- **Impl:** `GamePersistenceService.cs`, `CatanDbContext`
 
-- _Pending: populate `.design/gameplay/`._
+## Current Initiatives
 
-## TODO Tracker
+### TypeScript/React Port
+A major effort is underway to port the Blazor `WebUI` to a modern **React 19 + Next.js 15** stack.
+- **Goal:** Parity with Blazor client + improved maintainability.
+- **Progress:** Project structure defined, basic components scaffolded.
+- **Ref:** `ui/react/typescript-porting-design.md` , `ui/react/ts-port-impl-plan.md`
 
-| Document | TODO / Gap |
-| --- | --- |
-| `.design/projects/game-service.md` | Auth missing; persistence service null; SignalR notification unused; companion/demo HTML replacement fragile. |
-| `.design/projects/shared.md` | Consolidate hex geometry helpers; document GameRecorder portability; dedupe rule logic with GameFactory. |
-| `.design/projects/webui.md` | Responsive/mobile layout; don't override playerId (spectators); persist theme choice; expose command errors. |
-| `.design/projects/desktop-app.md` | Surface service-mode errors in UI; move measurement overlay to MVVM component; streamline async init. |
-| `.design/projects/cli.md` | Add telemetry for GameRunner; expand test command coverage for resource and flow regressions. |
-| `.design/systems/board-rendering.md` | DRY shared geometry constants; consider prebuilt SVG demos; explore diffed SignalR updates. |
-| `.design/systems/coordinates.md` | Share pixel conversion constants; derive road adjacency from direction table. |
-| `.design/systems/database.md` | Add migrations once auth lands; add indexes for GameType/PlayerCount; normalize StartedBy via identity. |
-| `.design/systems/game-service-api.md` | Implement auth pipeline; review `/api/game/action` usage; add export endpoint for `.catan` downloads. |
-| `.design/systems/save-load.md` | Replace StartedBy placeholder; dedupe imports; plan desktop/service save convergence. |
-| `.design/systems/mvvm-messaging.md` | Reduce local/service handler drift; surface remote errors to desktop; document WebUI command path. |
-| `.design/ui/board-measurement.md` | Persist slider and resource filters; extract shared selection helper; log shuffle usage. |
-| `.design/ui/assets.md` | Discover themes dynamically; ensure startup persistence; document asset contribution path. |
-| `.design/ui/number-token.md` | Centralize token constants in shared view data; add accessibility-focused glyph option. |
-| `.design/ui/player-viewmodel.md` | Add avatar fallback asset; persist current-user highlight once auth exists. |
-| `.design/gameplay/` | Author per-state lifecycle documentation for the gameplay directory. |
+### Mobile & Touch Optimization
+Continuous layout adjustments for mobile devices (iPad/Phone) using CSS media queries.
+- **Ref:** `ui/react/responsive-design.md`
 
-## Suspected Bugs
+## Design Document Hierarchy
 
-- `WebUI/Services/GameConnectionService.cs`: `OnGameStateUpdated` overwrites caller playerId and removes spectators.
-- `DesktopApp/GameMessageService.cs`: Service-mode failures only reach the debug window, leaving players without user-facing error dialogs.
-- `Catan3.GameService/Controllers/GameApiController.cs`: `SaveGameToDatabase` sets `StartedBy = "WebUI"` for every save, breaking provenance.
-- `Catan3.GameService/Services/AsyncCommandProcessor.cs`: Imports skip deduping profiles or images, so duplicates accumulate.
-
-## Next Steps
-
-- Fill the gameplay section with per-state behavior docs and ensure they stay aligned with the shared state machine implementation.
-- Prioritize fixes for the suspected bugs before expanding documentation further, so new docs capture the corrected behaviors.
+The `.design` directory is organized as follows:
+- **`projects/`**: Specifics for CLI, Desktop, GameService, Shared, WebUI.
+- **`systems/`**: Cross-cutting concerns (DB, API, Rendering, Messaging).
+- **`ui/`**: Visual design, UX patterns, and specific component designs.
+- **`reviews/`**: AI architecture reviews and feedback.
