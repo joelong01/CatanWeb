@@ -202,17 +202,38 @@ Before committing any file:
 - [x] `cd react-ui && npm run dev` starts dev server on port 3000
 - [x] Browser shows Next.js default page at `http://localhost:3000`
 
-### 0.1.1 Configuration as Code ⬜ NOT STARTED
+### 0.1.1 Configuration as Code (ConfigService) ⬜ NOT STARTED
 
-**Philosophy:** No environment variables. Configuration is code - version controlled, explicit,
-and changes require deployment. This prevents config drift and hidden dependencies.
+**Philosophy:** Config as code with dynamic environment discovery. Use **ONE** environment variable
+(`CATAN_HOSTING_ENVIRONMENT`) to select between version-controlled config objects. All values are
+explicit, changes require code commit and deployment.
 
 **Tasks:**
 
-1. Create `config/index.ts` with all application configuration:
+1. Create `config/index.ts` with ConfigService pattern:
 
    ```typescript
-   export const config = {
+   interface Config {
+     gameServiceUrl: string;
+     apiTimeout: number;
+     signalr: {
+       reconnectDelay: number;
+       maxReconnectAttempts: number;
+     };
+     board: {
+       minZoom: number;
+       maxZoom: number;
+       defaultZoom: number;
+       oceanBufferHexes: number;
+     };
+     animations: {
+       tileFlipDuration: number;
+       tileRevealStagger: number;
+       robberMoveDuration: number;
+     };
+   }
+
+   const DEV_CONFIG: Config = {
      gameServiceUrl: 'http://localhost:8080',
      apiTimeout: 30000,
      signalr: {
@@ -230,18 +251,83 @@ and changes require deployment. This prevents config drift and hidden dependenci
        tileRevealStagger: 50,
        robberMoveDuration: 1200,
      },
-   } as const;
+   };
+
+   const STAGING_CONFIG: Config = {
+     ...DEV_CONFIG,
+     gameServiceUrl: 'https://staging-catan.example.com',
+   };
+
+   const PRODUCTION_CONFIG: Config = {
+     ...DEV_CONFIG,
+     gameServiceUrl: 'https://catan.example.com',
+     apiTimeout: 60000,  // Longer timeout for prod
+   };
+
+   type Environment = 'DEV' | 'STAGING' | 'PRODUCTION';
+
+   class ConfigService {
+     private static getEnvironment(): Environment {
+       const env = process.env.CATAN_HOSTING_ENVIRONMENT as Environment;
+       return env || 'DEV';
+     }
+
+     private static getConfig(): Config {
+       const env = this.getEnvironment();
+       switch (env) {
+         case 'STAGING': return STAGING_CONFIG;
+         case 'PRODUCTION': return PRODUCTION_CONFIG;
+         default: return DEV_CONFIG;
+       }
+     }
+
+     static gameServiceUrl(): string {
+       return this.getConfig().gameServiceUrl;
+     }
+
+     static apiTimeout(): number {
+       return this.getConfig().apiTimeout;
+     }
+
+     static signalrConfig() {
+       return this.getConfig().signalr;
+     }
+
+     static boardConfig() {
+       return this.getConfig().board;
+     }
+
+     static animationConfig() {
+       return this.getConfig().animations;
+     }
+   }
+
+   export { ConfigService };
    ```
 
 2. Delete `lib/config.ts` and `lib/services/config.ts` (consolidate into config/index.ts)
-3. Update all imports to use `@/config`
-4. For production: change values directly in config/index.ts and redeploy
+3. Update all imports to use `import { ConfigService } from '@/config'`
+4. Update all usage to call methods: `ConfigService.gameServiceUrl()`
+
+**Deployment:**
+
+```bash
+# Dev (default)
+npm run build
+
+# Staging
+CATAN_HOSTING_ENVIRONMENT=STAGING npm run build
+
+# Production
+CATAN_HOSTING_ENVIRONMENT=PRODUCTION npm run build
+```
 
 **Test Milestone:**
 
-- [ ] All services use `config.gameServiceUrl`
-- [ ] No environment variables required to run app
+- [ ] All services use `ConfigService.gameServiceUrl()`
+- [ ] Only ONE env var needed (`CATAN_HOSTING_ENVIRONMENT`)
 - [ ] Config changes require code commit (version controlled)
+- [ ] Dev build works without setting any env vars
 
 ### 0.2 Tailwind Configuration ✅ COMPLETED
 

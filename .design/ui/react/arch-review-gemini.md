@@ -110,7 +110,7 @@ seeding the Zustand store with mock data. This restores testability/isolation.
 ### 3. SignalR Integration
 
 * **Flow:** The flow (Event -> Proxy -> Hook -> Store) is clean.
-* **Optimistic Updates:** The plan relies on server autority. This is safer for consistency but feels laggy on high-latency networks.
+* **Optimistic Updates:** The plan relies on server authority. This is safer for consistency but feels laggy on high-latency networks.
   A future phase might consider local optimistic application of moves (e.g., placing a road immediately).
 
 ### 4. Config as Code
