@@ -844,6 +844,9 @@ switch ($Verb) {
     "test" {
         Write-Host "Running tests..." -ForegroundColor Cyan
 
+        # Stop services first to avoid file locking issues during build
+        Stop-Services
+
         # Run .NET tests
         Write-Host ""
         Write-Host "Running .NET tests..." -ForegroundColor Yellow
