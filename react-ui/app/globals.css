@@ -1,5 +1,9 @@
 @import 'tailwindcss';
 
+/* Orientation variants for responsive design */
+@custom-variant portrait (orientation: portrait);
+@custom-variant landscape (orientation: landscape);
+
 /**
  * Catan Theme Configuration
  *
@@ -606,5 +610,26 @@ body {
   .placeholder-page .back-link {
     font-size: 2rem;
     margin-top: 50px;
+  }
+}
+
+/* ==========================================================================
+   3D Transform Utilities (for card flips and animations)
+   ========================================================================== */
+@layer utilities {
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .rotate-y-180 {
+    transform: rotateY(180deg);
   }
 }
