@@ -329,7 +329,7 @@ CATAN_HOSTING_ENVIRONMENT=PRODUCTION npm run build
 - [ ] Config changes require code commit (version controlled)
 - [ ] Dev build works without setting any env vars
 
-### 0.2 Tailwind Configuration ✅ COMPLETED
+### 0.2 Tailwind Configuration ⚠️ PARTIAL
 
 **Tasks:**
 
@@ -337,11 +337,8 @@ CATAN_HOSTING_ENVIRONMENT=PRODUCTION npm run build
 2. Create `styles/globals.css` with CSS custom properties from Blazor app
 3. Copy `Catan.ttf` to `public/fonts/`
 4. Define Tailwind utilities for `backface-hidden`, `perspective-1000`, `preserve-3d`
-5. Add font preload in `app/layout.tsx` to prevent FOUT:
-
-   ```tsx
-   <link rel="preload" href="/fonts/Catan.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
-   ```
+5. Add font preload in `app/layout.tsx` to prevent FOUT
+6. **Add portrait/landscape orientation variants** for responsive design
 
 **Actual Implementation:**
 
@@ -349,13 +346,60 @@ CATAN_HOSTING_ENVIRONMENT=PRODUCTION npm run build
 - All theme colors defined in `app/globals.css` with `@theme inline { ... }`
 - Player colors, resource colors, game backgrounds all configured
 - Font preload in `app/layout.tsx` with `next/font/local`
-- ⚠️ 3D utilities (backface-hidden, perspective, preserve-3d) NOT YET ADDED - needed for card flips
 
-**Test Milestone:** ✅
+**TODO:**
+
+1. ⚠️ **3D utilities** (backface-hidden, perspective, preserve-3d) - needed for card flips
+2. ⚠️ **Orientation variants** - needed for responsive layouts
+
+Add to `app/globals.css`:
+
+```css
+/* After @import 'tailwindcss'; */
+
+/* Orientation variants for responsive design */
+@custom-variant portrait (orientation: portrait);
+@custom-variant landscape (orientation: landscape);
+
+/* 3D transform utilities for card flips and animations */
+@layer utilities {
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+}
+```
+
+**Usage Examples:**
+
+```tsx
+// Responsive layout
+<div className="portrait:flex-col landscape:flex-row">...</div>
+
+// Card flip animation
+<div className="preserve-3d">
+  <div className="backface-hidden rotate-y-180">...</div>
+</div>
+```
+
+**Test Milestone:**
 
 - [x] Create test page with `<span className="font-catan">ABC</span>`
 - [x] Catan font renders correctly (no flash of unstyled text)
 - [x] Game background color (`bg-game-bg-primary`) applies
+- [ ] Portrait/landscape variants work (test by rotating device/resizing window)
+- [ ] 3D utilities work for card flip animations
 
 ### 0.3 Type Generation Pipeline (TypeGen) ✅ COMPLETED
 
@@ -411,15 +455,40 @@ Components subscribe directly to stores using selectors for fine-grained reactiv
 
 **Store Design:**
 
-1. **GameStore** - Multi-game state keyed by gameId
+1. **GameStore** - Multi-game state keyed by gameId with reference counting
 
    ```typescript
    interface GameStoreState {
-     games: Record<string, GameModel>;  // Multiple games can coexist
+     games: Record<string, GameModel>;      // Multiple games can coexist
+     refCounts: Record<string, number>;     // Track component subscriptions
+
      loadGame: (gameId: string, model: GameModel) => void;
      updateGame: (gameId: string, model: GameModel) => void;
      clearGame: (gameId: string) => void;
    }
+
+   // Implementation with reference counting (prevents race conditions)
+   const useGameStore = create<GameStoreState>((set) => ({
+     games: {},
+     refCounts: {},
+
+     loadGame: (gameId, model) => set(state => ({
+       games: { ...state.games, [gameId]: model },
+       refCounts: { ...state.refCounts, [gameId]: (state.refCounts[gameId] || 0) + 1 }
+     })),
+
+     clearGame: (gameId) => set(state => {
+       const newCount = (state.refCounts[gameId] || 1) - 1;
+       if (newCount <= 0) {
+         // Safe to delete - no more subscribers
+         const { [gameId]: _, ...remainingGames } = state.games;
+         const { [gameId]: __, ...remainingCounts } = state.refCounts;
+         return { games: remainingGames, refCounts: remainingCounts };
+       }
+       // Still in use by other components
+       return { refCounts: { ...state.refCounts, [gameId]: newCount } };
+     })
+   }));
 
    // Usage: Only re-renders when specific game's tiles change
    const tiles = useGameStore(state => state.games[gameId]?.tiles ?? []);
@@ -435,8 +504,21 @@ Components subscribe directly to stores using selectors for fine-grained reactiv
      zoom: (id: string, level: number, focalPoint?: Point) => void;
    }
 
-   // Usage: Game page uses gameId as viewportId, thumbnails use "thumbnail"
+   // Usage: Game page uses gameId, thumbnails use thumb-${gameId}
    const viewport = useViewportStore(state => state.viewports[viewportId] ?? defaultViewport);
+   ```
+
+   **Viewport ID Naming Convention:**
+   - Main game view: Use `gameId` directly (e.g., `"game-abc123"`)
+   - Thumbnails/previews: Use `thumb-${gameId}` pattern (e.g., `"thumb-game-abc123"`)
+   - **Critical:** Never reuse viewport IDs across multiple components
+   - Each visual instance must have isolated pan/zoom state
+
+   ```tsx
+   // Example: Load Game page with preview boards
+   <Board gameId="saved-game-123" viewportId="thumb-saved-game-123" readonly />
+   <Board gameId="saved-game-456" viewportId="thumb-saved-game-456" readonly />
+   // Each thumbnail has independent pan/zoom state
    ```
 
 3. **PlayerProfilesStore** - Player identity (colors, avatars, names)
@@ -782,6 +864,111 @@ immediate recovery when the user returns.
 - [x] `getTileStars(6)` returns 5
 - [x] `getTileStars(2)` returns 1
 - [x] `getBuildingAliases({ position: 'TopRight', ... })` returns 2 aliases
+
+### 0.9 LayoutStore (LocalStorage Persistence) ⬜ NOT STARTED
+
+**Goal:** Persist viewport state, window dimensions, and UI preferences per-game to LocalStorage.
+Users can pan/zoom, refresh (F5), and return to the same view.
+
+**Problem:**
+
+- User pans to view corner of board, zooms to 2.5x
+- Hits F5 (refresh) or browser crashes
+- Viewport resets to default → frustrating loss of state
+
+**Solution:** LocalStorage-backed LayoutStore stores viewport + window state per `gameId`.
+
+**Store Interface:**
+
+```typescript
+interface LayoutStoreState {
+  layouts: Record<string, GameLayout>;  // Keyed by gameId
+  loadLayout: (gameId: string) => GameLayout | null;
+  updateViewport: (gameId: string, viewport: ViewportState) => void;
+  updateWindow: (gameId: string, window: WindowState) => void;
+  updateActiveTab: (gameId: string, tab: TabName) => void;
+  resetLayout: (gameId: string) => void;  // Reset to defaults
+}
+
+interface GameLayout {
+  gameId: string;
+  clientId: string;       // Browser/device identifier (generated once)
+  lastUpdated: string;    // ISO timestamp
+
+  viewport: {
+    centerQ: number;      // Hex coordinate of viewport center
+    centerR: number;
+    zoom: number;         // 0.25 - 3.0
+  };
+
+  window: {
+    left: number;         // WINDOWPLACEMENT structure
+    top: number;
+    width: number;
+    height: number;
+    maximized: boolean;
+    minimized: boolean;
+  };
+
+  activeTab?: 'board' | 'controls' | 'players' | 'me';
+}
+```
+
+**Auto-Save Logic:**
+
+```typescript
+// Debounce: Save 2 seconds after last change
+const debouncedSave = debounce((gameId: string, layout: GameLayout) => {
+  localStorage.setItem(`catan_layout_${gameId}`, JSON.stringify(layout));
+}, 2000);
+
+// Also save on unmount (browser close)
+useEffect(() => {
+  return () => {
+    const layout = useLayoutStore.getState().layouts[gameId];
+    if (layout) {
+      localStorage.setItem(`catan_layout_${gameId}`, JSON.stringify(layout));
+    }
+  };
+}, [gameId]);
+```
+
+**ClientId Generation:**
+
+```typescript
+function getOrCreateClientId(): string {
+  let clientId = localStorage.getItem('catan_client_id');
+  if (!clientId) {
+    clientId = crypto.randomUUID();
+    localStorage.setItem('catan_client_id', clientId);
+  }
+  return clientId;
+}
+```
+
+**Integration with ViewportStore:**
+
+When loading a game:
+
+1. Check if layout exists in LocalStorage for this `gameId`
+2. If yes: restore viewport state to ViewportStore
+3. If no: use Settings defaults (Phase 9.3)
+
+**Tasks:**
+
+1. Create `lib/stores/layoutStore.ts`
+2. Implement LocalStorage read/write with debouncing
+3. Generate/store clientId on first use
+4. Integrate with ViewportStore (load on mount, save on change)
+5. Add window size tracking (track resize events)
+
+**Test Milestone:**
+
+- [ ] Load game, pan/zoom, refresh (F5) → viewport restored
+- [ ] Browser crash simulation → layout persists
+- [ ] Multiple games have independent layout state
+- [ ] Debouncing works (no excessive localStorage writes)
+- [ ] ClientId persists across sessions
 
 ---
 
@@ -1248,8 +1435,8 @@ function getVisibleHexes(viewport: ViewportState): HexCoord[] {
 as keys. This enables fine-grained reactivity AND reusability:
 
 - Game page: `<Board gameId="abc123" viewportId="abc123" />`
-- Load game preview: `<Board gameId="preview-saved-123" viewportId="thumbnail" readonly />`
-- Stats page: `<Board gameId="archive-win-456" viewportId="static" readonly />`
+- Load game preview: `<Board gameId="preview-saved-123" viewportId="thumb-preview-saved-123" readonly />`
+- Stats page: `<Board gameId="archive-win-456" viewportId="thumb-archive-win-456" readonly />`
 
 **Architecture Pattern:**
 
