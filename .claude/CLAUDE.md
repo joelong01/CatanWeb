@@ -134,13 +134,14 @@ Use typed messages, not generic string commands:
 
 ## Development Rules
 
-1. **GameModel is single source of truth** - All client state comes from GameModel
-2. **Desktop app is reference** - Analyze for behavior, but don't modify without explicit direction
-3. **Tests must pass** - Build and verify all tests before completing any task
-4. **Minimal changes** - Make surgical modifications, don't refactor surrounding code
-5. **Use GameServiceProxy** - All client-server communication through the shared proxy
-6. **CSS custom properties** - All theming via CSS variables, never hardcode colors
-7. **Catan font** - WebUI uses official `Catan.ttf` for game icons (see `Layout/CatanFont.cs`)
+1. **Design before implementation** - Before building an implementation plan, build the design plan first
+2. **GameModel is single source of truth** - All client state comes from GameModel
+3. **Desktop app is reference** - Analyze for behavior, but don't modify without explicit direction
+4. **Tests must pass** - Build and verify all tests before completing any task
+5. **Minimal changes** - Make surgical modifications, don't refactor surrounding code
+6. **Use GameServiceProxy** - All client-server communication through the shared proxy
+7. **CSS custom properties** - All theming via CSS variables, never hardcode colors
+8. **Catan font** - WebUI uses official `Catan.ttf` for game icons (see `Layout/CatanFont.cs`)
 
 ## Technology Stack
 
