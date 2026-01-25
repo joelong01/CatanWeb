@@ -57,7 +57,7 @@ export function MenuHex({
   title,
   subtitle,
   accentColor = 'text-amber-400',
-  background = 'linear-gradient(160deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)',
+  background = 'var(--hex-content-gradient)',
   href,
   onClick,
 }: MenuHexProps): React.ReactElement {
@@ -89,7 +89,7 @@ export function MenuHex({
       <div
         className="absolute inset-0 hex-clip-flat transition-colors duration-200"
         style={{
-          background: isHovered ? '#3b82f6' : 'rgba(255,255,255,0.3)',
+          background: isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)',
         }}
       />
 

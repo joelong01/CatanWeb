@@ -105,13 +105,14 @@ Added WCAG-compliant keyboard interaction for non-link MenuHex usage:
 
 ## Blockers & Issues
 
-### Known Issues (Not addressed this session)
+### Resolved This Session
 
-- **Hardcoded gradient colors in default props** (from code review)
-  - Severity: Important
-  - Location: `CenterHex.tsx:52`, `MenuHex.tsx:60`
-  - Should use CSS variables per project rules
-  - Plan: Future session - requires CSS variable system setup
+- **Hardcoded gradient colors in default props** - FIXED
+  - Added CSS variables to `globals.css`:
+    - `--hex-content-gradient`: Background gradient for hex content
+    - `--hex-border-idle`: Border color in idle state
+    - `--hex-border-hover`: Border color on hover
+  - Updated CenterHex and MenuHex to use CSS variables
 
 ## Next Session Priority
 
@@ -125,7 +126,7 @@ Added WCAG-compliant keyboard interaction for non-link MenuHex usage:
 
 ### Follow-Up Tasks
 
-- [ ] Convert hardcoded gradient colors to CSS variables
+- [x] Convert hardcoded gradient colors to CSS variables - DONE
 - [ ] Add unit test for `getSpiralCoordinates`
 - [ ] Export `DIRECTION_ORDER` constant for spiral traversal consistency
 

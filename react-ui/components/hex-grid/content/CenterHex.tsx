@@ -50,7 +50,7 @@ export function CenterHex({
   title,
   subtitle,
   accentColor = 'text-amber-400',
-  background = 'linear-gradient(160deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)',
+  background = 'var(--hex-content-gradient)',
 }: CenterHexProps): React.ReactElement {
   return (
     <div className="w-full h-full">
