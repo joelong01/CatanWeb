@@ -32,6 +32,31 @@ export interface HexTileProps {
  *
  * The tile itself only handles positioning and clipping.
  * Content styling (borders, backgrounds, animations) is provided via children.
+ *
+ * @example
+ * ```tsx
+ * // Basic hex tile with two-polygon border pattern
+ * <HexTile width={200} height={173} position={{ x: 100, y: 100 }}>
+ *   {/* Outer hex (border color) *\/}
+ *   <div className="absolute inset-0 bg-blue-500">
+ *     {/* Inner hex (content) *\/}
+ *     <div className="absolute inset-0 scale-[0.91] hex-clip-flat bg-white">
+ *       Content here
+ *     </div>
+ *   </div>
+ * </HexTile>
+ *
+ * // Clickable hex with hover state
+ * <HexTile
+ *   width={200}
+ *   height={173}
+ *   position={{ x: 100, y: 100 }}
+ *   onClick={() => console.log('clicked')}
+ *   className="hover:brightness-110 transition-all"
+ * >
+ *   <div className="bg-green-500 w-full h-full" />
+ * </HexTile>
+ * ```
  */
 export function HexTile({
   width,

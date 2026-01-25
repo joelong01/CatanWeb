@@ -33,6 +33,14 @@ export interface HexDimensions {
  *
  * @param size - Circumradius (distance from center to vertex)
  * @param gap - Gap between hex edges (default: 2px)
+ *
+ * @example
+ * ```typescript
+ * const dims = calculateHexDimensions(100);
+ * // dims.width = 200
+ * // dims.height ≈ 173.2 (100 × sqrt(3))
+ * // dims.aspectRatio ≈ 0.866
+ * ```
  */
 export function calculateHexDimensions(size: number, gap: number = 2): HexDimensions {
   const width = 2 * size;
@@ -78,6 +86,21 @@ export interface PixelPosition {
  * @param coord - Hex coordinate (q, r)
  * @param size - Hex circumradius
  * @param origin - Origin offset (default: 0, 0)
+ *
+ * @example
+ * ```typescript
+ * // Center hex at origin
+ * const center = hexToPixel({ q: 0, r: 0 }, 100);
+ * // center = { x: 0, y: 0 }
+ *
+ * // Hex to the east (q=1, r=0)
+ * const east = hexToPixel({ q: 1, r: 0 }, 100);
+ * // east = { x: 150, y: 86.6 }
+ *
+ * // With origin offset
+ * const offset = hexToPixel({ q: 0, r: 0 }, 100, { x: 500, y: 400 });
+ * // offset = { x: 500, y: 400 }
+ * ```
  */
 export function hexToPixel(
   coord: HexCoordinate,
@@ -92,6 +115,22 @@ export function hexToPixel(
 
 /**
  * Predefined hex grid layouts (center + surrounding hexes).
+ *
+ * @example
+ * ```typescript
+ * // Iterate over a 7-hex cluster
+ * HEX_LAYOUTS.CLUSTER_7.forEach((coord, index) => {
+ *   const pos = hexToPixel(coord, 100);
+ *   console.log(`Hex ${index}: (${coord.q}, ${coord.r}) -> (${pos.x}, ${pos.y})`);
+ * });
+ *
+ * // Create items for HexGrid from a layout
+ * const items = HEX_LAYOUTS.CLUSTER_7.map((coord, i) => ({
+ *   id: `hex-${i}`,
+ *   coord,
+ *   content: <div>Hex {i}</div>,
+ * }));
+ * ```
  */
 export const HEX_LAYOUTS = {
   /**

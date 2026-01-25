@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { calculateHexDimensions, hexToPixel, HexCoordinate, PixelPosition } from './hex-geometry';
 import { HexTile } from './HexTile';
 
@@ -74,40 +74,47 @@ export function HexGrid({
   className = '',
   scale = 1.0,
 }: HexGridProps): React.ReactElement {
-  const dims = calculateHexDimensions(hexSize);
+  // Memoize hex dimensions to avoid recalculating on every render
+  const dims = useMemo(() => calculateHexDimensions(hexSize), [hexSize]);
 
-  // Calculate pixel positions for all items
-  const positions = items.map(item => hexToPixel(item.coord, hexSize));
+  // Memoize layout calculations (positions, bounding box, container size, origin)
+  // Only recalculates when items coordinates or hexSize changes
+  const layout = useMemo(() => {
+    // Calculate pixel positions for all items
+    const positions = items.map(item => hexToPixel(item.coord, hexSize));
 
-  // Calculate bounding box
-  const minX = Math.min(...positions.map(p => p.x));
-  const maxX = Math.max(...positions.map(p => p.x));
-  const minY = Math.min(...positions.map(p => p.y));
-  const maxY = Math.max(...positions.map(p => p.y));
+    // Calculate bounding box
+    const minX = Math.min(...positions.map(p => p.x));
+    const maxX = Math.max(...positions.map(p => p.x));
+    const minY = Math.min(...positions.map(p => p.y));
+    const maxY = Math.max(...positions.map(p => p.y));
 
-  // Container dimensions (add hex width/height to account for tile size)
-  const containerWidth = maxX - minX + dims.width;
-  const containerHeight = maxY - minY + dims.height;
+    // Container dimensions (add hex width/height to account for tile size)
+    const containerWidth = maxX - minX + dims.width;
+    const containerHeight = maxY - minY + dims.height;
 
-  // Origin offset so leftmost/topmost tile edges align with container edges
-  const origin: PixelPosition = {
-    x: dims.width / 2 - minX,
-    y: dims.height / 2 - minY,
-  };
+    // Origin offset so leftmost/topmost tile edges align with container edges
+    const origin: PixelPosition = {
+      x: dims.width / 2 - minX,
+      y: dims.height / 2 - minY,
+    };
+
+    return { containerWidth, containerHeight, origin };
+  }, [items, hexSize, dims]);
 
   return (
     <div
       className={`relative ${className}`}
       style={{
-        width: `${containerWidth}px`,
-        height: `${containerHeight}px`,
+        width: `${layout.containerWidth}px`,
+        height: `${layout.containerHeight}px`,
         transform: `scale(${scale})`,
         transformOrigin: 'center center',
         margin: '0 auto',
       }}
     >
       {items.map(item => {
-        const pos = hexToPixel(item.coord, hexSize, origin);
+        const pos = hexToPixel(item.coord, hexSize, layout.origin);
 
         return (
           <HexTile
