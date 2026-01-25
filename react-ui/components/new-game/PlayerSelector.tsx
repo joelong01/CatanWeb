@@ -9,7 +9,7 @@ import {
   faTrophy,
   faCheck,
 } from '@fortawesome/free-solid-svg-icons';
-import { HexGrid, HexGridItem, HEX_LAYOUTS } from '@/components/hex-grid';
+import { HexGrid, HexGridItem, HEX_LAYOUTS, cubicCoord, CenterHex } from '@/components/hex-grid';
 import { serviceConfig } from '@/lib/services/config';
 import type { PlayerProfile } from '@/types/player-profile';
 import type { GameType } from '@/types/generated/models';
@@ -243,22 +243,13 @@ export function PlayerSelector({
       id: 'center',
       coord: HEX_LAYOUTS.CLUSTER_7[0], // Center (0, 0)
       content: (
-        <div className="w-full h-full">
-          {/* Outer hex - border */}
-          <div className="absolute inset-0 hex-clip-flat bg-blue-500/50" />
-          {/* Inner hex - content */}
-          <div
-            className="absolute inset-0 flex items-center justify-center hex-clip-flat bg-gradient-to-br from-blue-900/40 to-blue-950/40"
-            style={{ transform: 'scale(0.91)' }}
-          >
-            <div className="text-center px-2">
-              <FontAwesomeIcon icon={faUser} className="text-blue-400 text-2xl mb-1" />
-              <h3 className="text-xs font-bold text-blue-400 tracking-wide leading-tight">
-                Choose<br />Players
-              </h3>
-            </div>
-          </div>
-        </div>
+        <CenterHex
+          icon={faUser}
+          title="Choose"
+          subtitle="Players"
+          accentColor="text-blue-400"
+          background="linear-gradient(160deg, rgba(30, 58, 138, 0.4) 0%, rgba(23, 37, 84, 0.4) 100%)"
+        />
       ),
       disabled: true,
     },
@@ -276,10 +267,11 @@ export function PlayerSelector({
       onClick: () => handleTogglePlayer(player.id),
     })),
 
-    // Guest hex - shown to the left when "Include Guest" is checked
+    // Guest hex - shown below the cluster when "Include Guest" is checked
+    // Position (0, 2) is directly below the south hex, maintaining horizontal centering
     ...(includeGuest && guestPlayer ? [{
       id: guestPlayer.id,
-      coord: { q: -2, r: 1 }, // Left column, vertically centered
+      coord: cubicCoord(0, 2), // Below south hex
       content: (
         <PlayerCardContent
           player={guestPlayer}
@@ -292,8 +284,8 @@ export function PlayerSelector({
 
   return (
     <div className="flex flex-col">
-      {/* Hex Grid Layout */}
-      <HexGrid hexSize={hexSize} items={items} scale={1.0} />
+      {/* Hex Grid Layout - grows vertically when Guest is added */}
+      <HexGrid hexSize={hexSize} items={items} />
 
       {/* Guest toggle + validation */}
       <div className="flex items-center justify-between mt-2 px-1">

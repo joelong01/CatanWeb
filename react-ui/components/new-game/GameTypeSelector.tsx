@@ -11,7 +11,7 @@ import {
   faMapLocationDot,
   faDice,
 } from '@fortawesome/free-solid-svg-icons';
-import { HexGrid, HexGridItem, HEX_LAYOUTS } from '@/components/hex-grid';
+import { HexGrid, HexGridItem, HEX_LAYOUTS, CenterHex, WaterHex } from '@/components/hex-grid';
 
 /**
  * Props for the GameTypeSelector component.
@@ -202,20 +202,13 @@ export function GameTypeSelector({
       id: 'center',
       coord: HEX_LAYOUTS.CLUSTER_7[0], // Center (0, 0)
       content: (
-        <div className="w-full h-full">
-          {/* Outer hex - border */}
-          <div className="absolute inset-0 hex-clip-flat bg-amber-500/50" />
-          {/* Inner hex - content */}
-          <div
-            className="absolute inset-0 flex items-center justify-center hex-clip-flat bg-gradient-to-br from-amber-900/40 to-amber-950/40"
-            style={{ transform: 'scale(0.91)' }}
-          >
-            <div className="text-center">
-              <FontAwesomeIcon icon={faDice} className="text-amber-500 text-4xl mb-3" />
-              <h3 className="text-base font-bold text-amber-400 tracking-wide">Choose Game</h3>
-            </div>
-          </div>
-        </div>
+        <CenterHex
+          icon={faDice}
+          title="Choose"
+          subtitle="Game"
+          accentColor="text-amber-400"
+          background="linear-gradient(160deg, rgba(120, 53, 15, 0.4) 0%, rgba(69, 26, 3, 0.4) 100%)"
+        />
       ),
       disabled: true,
     },
@@ -252,22 +245,7 @@ export function GameTypeSelector({
     {
       id: 'water-se',
       coord: HEX_LAYOUTS.CLUSTER_7[3], // SouthEast (1, 0)
-      content: (
-        <div className="w-full h-full opacity-60">
-          {/* Outer hex - border */}
-          <div className="absolute inset-0 hex-clip-flat bg-blue-500/40" />
-          {/* Inner hex - water */}
-          <div
-            className="absolute inset-0 hex-clip-flat"
-            style={{
-              transform: 'scale(0.91)',
-              backgroundImage: 'url(/water.png)',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
-          />
-        </div>
-      ),
+      content: <WaterHex imageUrl="/water.png" showBorder opacity={0.6} />,
       disabled: true,
     },
 
@@ -275,22 +253,7 @@ export function GameTypeSelector({
     {
       id: 'water-s',
       coord: HEX_LAYOUTS.CLUSTER_7[4], // South (0, 1)
-      content: (
-        <div className="w-full h-full opacity-60">
-          {/* Outer hex - border */}
-          <div className="absolute inset-0 hex-clip-flat bg-blue-500/40" />
-          {/* Inner hex - water */}
-          <div
-            className="absolute inset-0 hex-clip-flat"
-            style={{
-              transform: 'scale(0.91)',
-              backgroundImage: 'url(/water.png)',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
-          />
-        </div>
-      ),
+      content: <WaterHex imageUrl="/water.png" showBorder opacity={0.6} />,
       disabled: true,
     },
 
