@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { GameType } from '@/types/generated/models';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -8,8 +9,9 @@ import {
   faShip,
   faGlobe,
   faMapLocationDot,
-  faIdCard,
+  faDice,
 } from '@fortawesome/free-solid-svg-icons';
+import { HexGrid, HexGridItem, HEX_LAYOUTS } from '@/components/hex-grid';
 
 /**
  * Props for the GameTypeSelector component.
@@ -100,161 +102,228 @@ const GAME_TYPES: GameTypeConfig[] = [
 ];
 
 /**
- * Get total dev card count.
+ * Game type hex content component.
  */
-function getTotalDevCards(devCards: DevCardBreakdown): number {
-  return devCards.knights + devCards.victoryPoints + devCards.monopoly + devCards.yearOfPlenty + devCards.roadBuilding;
+interface GameTypeContentProps {
+  config: GameTypeConfig;
+  isSelected: boolean;
+}
+
+function GameTypeContent({ config, isSelected }: GameTypeContentProps): React.ReactElement {
+  const isDisabled = !config.enabled;
+  const [isHovered, setIsHovered] = React.useState(false);
+
+  return (
+    <div
+      className="w-full h-full group"
+      onMouseEnter={() => !isDisabled && setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Outer hex - border (full size) */}
+      <div
+        className={`absolute inset-0 hex-clip-flat transition-colors duration-200 ${
+          isSelected ? 'bg-green-500' : isHovered && !isDisabled ? 'bg-blue-500' : 'bg-white/30'
+        }`}
+      />
+
+      {/* Inner hex - content (91% scale to create border gap) */}
+      <div
+        className={`
+          absolute inset-0 flex flex-col items-center justify-center
+          hex-clip-flat
+          transition-all duration-300 overflow-hidden
+          ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
+        `}
+        style={{
+          background: 'linear-gradient(135deg, #2a2a2a, #1a1a1a)',
+          transform: 'scale(0.91)',
+        }}
+      >
+        {/* Construction banner for disabled types */}
+        {isDisabled && (
+          <div className="absolute inset-0 overflow-hidden pointer-events-none z-10">
+            <span
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-[35deg]
+                font-bold text-xs uppercase tracking-widest py-2 px-12 whitespace-nowrap
+                shadow-lg text-black bg-amber-500"
+            >
+              Coming Soon
+            </span>
+          </div>
+        )}
+
+        <div className="flex flex-col items-center justify-center gap-2.5 px-3">
+          {/* Icon */}
+          <div
+            className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center text-2xl"
+            style={{ color: config.accentColor }}
+          >
+            <FontAwesomeIcon icon={config.icon} />
+          </div>
+
+          {/* Title */}
+          <h3 className="text-base font-bold text-white text-center leading-tight">{config.title}</h3>
+
+          {/* Players badge */}
+          <span className="text-xs px-2.5 py-1 rounded-lg bg-white/10 text-gray-400">
+            {config.players}
+          </span>
+
+          {/* Tiles count */}
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <FontAwesomeIcon icon={faMapLocationDot} className="text-xs" />
+            <span>{config.tiles} tiles</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /**
- * Visual card-based selector for choosing game type.
- * Displays game type options as large, interactive cards with descriptions.
+ * Visual hex-grid selector for choosing game type.
+ *
+ * Uses HexGrid component with proper Red Blob Games formulas.
+ * Center hex with "Choose Game" surrounded by 6 hexes:
+ * - 4 game type hexes (Regular, Expansion, Cities & Knights, Seafarers)
+ * - 2 water placeholder hexes (face down tiles)
  */
 export function GameTypeSelector({
   value,
   onChange,
 }: GameTypeSelectorProps): React.ReactElement {
+  // Hex size: 100 to fit all content (icon, title, players, tiles) without clipping
+  const hexSize = 100;
+
+  // Build hex grid items
+  const items: HexGridItem[] = [
+    // Center hex - "Choose Game" label
+    {
+      id: 'center',
+      coord: HEX_LAYOUTS.CLUSTER_7[0], // Center (0, 0)
+      content: (
+        <div className="w-full h-full">
+          {/* Outer hex - border */}
+          <div className="absolute inset-0 hex-clip-flat bg-amber-500/50" />
+          {/* Inner hex - content */}
+          <div
+            className="absolute inset-0 flex items-center justify-center hex-clip-flat bg-gradient-to-br from-amber-900/40 to-amber-950/40"
+            style={{ transform: 'scale(0.91)' }}
+          >
+            <div className="text-center">
+              <FontAwesomeIcon icon={faDice} className="text-amber-500 text-4xl mb-3" />
+              <h3 className="text-base font-bold text-amber-400 tracking-wide">Choose Game</h3>
+            </div>
+          </div>
+        </div>
+      ),
+      disabled: true,
+    },
+
+    // North: Expansion
+    {
+      id: 'expansion',
+      coord: HEX_LAYOUTS.CLUSTER_7[1], // North (0, -1)
+      content: (
+        <GameTypeContent
+          config={GAME_TYPES[1]}
+          isSelected={value === GAME_TYPES[1].type && GAME_TYPES[1].enabled}
+        />
+      ),
+      onClick: () => GAME_TYPES[1].enabled && onChange(GAME_TYPES[1].type),
+      disabled: !GAME_TYPES[1].enabled,
+    },
+
+    // NorthEast: Seafarers
+    {
+      id: 'seafarers',
+      coord: HEX_LAYOUTS.CLUSTER_7[2], // NorthEast (1, -1)
+      content: (
+        <GameTypeContent
+          config={GAME_TYPES[3]}
+          isSelected={value === GAME_TYPES[3].type && GAME_TYPES[3].enabled}
+        />
+      ),
+      onClick: () => GAME_TYPES[3].enabled && onChange(GAME_TYPES[3].type),
+      disabled: !GAME_TYPES[3].enabled,
+    },
+
+    // SouthEast: Water placeholder
+    {
+      id: 'water-se',
+      coord: HEX_LAYOUTS.CLUSTER_7[3], // SouthEast (1, 0)
+      content: (
+        <div className="w-full h-full opacity-60">
+          {/* Outer hex - border */}
+          <div className="absolute inset-0 hex-clip-flat bg-blue-500/40" />
+          {/* Inner hex - water */}
+          <div
+            className="absolute inset-0 hex-clip-flat"
+            style={{
+              transform: 'scale(0.91)',
+              backgroundImage: 'url(/water.png)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          />
+        </div>
+      ),
+      disabled: true,
+    },
+
+    // South: Water placeholder
+    {
+      id: 'water-s',
+      coord: HEX_LAYOUTS.CLUSTER_7[4], // South (0, 1)
+      content: (
+        <div className="w-full h-full opacity-60">
+          {/* Outer hex - border */}
+          <div className="absolute inset-0 hex-clip-flat bg-blue-500/40" />
+          {/* Inner hex - water */}
+          <div
+            className="absolute inset-0 hex-clip-flat"
+            style={{
+              transform: 'scale(0.91)',
+              backgroundImage: 'url(/water.png)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          />
+        </div>
+      ),
+      disabled: true,
+    },
+
+    // SouthWest: Cities & Knights
+    {
+      id: 'cities-knights',
+      coord: HEX_LAYOUTS.CLUSTER_7[5], // SouthWest (-1, 1)
+      content: (
+        <GameTypeContent
+          config={GAME_TYPES[2]}
+          isSelected={value === GAME_TYPES[2].type && GAME_TYPES[2].enabled}
+        />
+      ),
+      onClick: () => GAME_TYPES[2].enabled && onChange(GAME_TYPES[2].type),
+      disabled: !GAME_TYPES[2].enabled,
+    },
+
+    // NorthWest: Regular/Classic
+    {
+      id: 'regular',
+      coord: HEX_LAYOUTS.CLUSTER_7[6], // NorthWest (-1, 0)
+      content: (
+        <GameTypeContent
+          config={GAME_TYPES[0]}
+          isSelected={value === GAME_TYPES[0].type && GAME_TYPES[0].enabled}
+        />
+      ),
+      onClick: () => GAME_TYPES[0].enabled && onChange(GAME_TYPES[0].type),
+      disabled: !GAME_TYPES[0].enabled,
+    },
+  ];
+
   return (
-    <div className="mb-6">
-      <h2 className="text-xl font-semibold text-white mb-4">Choose Game Type</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {GAME_TYPES.map((config) => {
-          const isSelected = value === config.type && config.enabled;
-          const isDisabled = !config.enabled;
-
-          return (
-            <button
-              key={config.title}
-              type="button"
-              className={`
-                relative bg-game-bg-panel rounded-2xl p-6 text-left
-                transition-all duration-300 overflow-hidden
-                border-2
-                ${isDisabled
-                  ? 'opacity-60 cursor-not-allowed'
-                  : 'cursor-pointer hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/30'
-                }
-                ${isSelected
-                  ? 'shadow-lg shadow-black/30'
-                  : 'border-white/10 hover:border-white/20'
-                }
-              `}
-              style={{
-                borderColor: isSelected ? config.accentColor : undefined,
-                boxShadow: isSelected ? `0 0 0 1px ${config.accentColor}` : undefined,
-              }}
-              onClick={() => config.enabled && onChange(config.type)}
-              disabled={isDisabled}
-            >
-              {/* Accent bar at top */}
-              <div
-                className={`
-                  absolute top-0 left-0 right-0 h-1
-                  transition-opacity duration-300
-                  ${isSelected ? 'opacity-100' : isDisabled ? 'opacity-0' : 'opacity-0 group-hover:opacity-50'}
-                `}
-                style={{ backgroundColor: config.accentColor }}
-              />
-
-              {/* Construction banner for disabled types */}
-              {isDisabled && (
-                <div className="absolute inset-0 overflow-hidden pointer-events-none z-10">
-                  <span
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-[35deg]
-                      font-bold text-sm uppercase tracking-widest py-2 px-20 whitespace-nowrap
-                      shadow-lg text-black bg-amber-500"
-                  >
-                    Under Construction
-                  </span>
-                </div>
-              )}
-
-              {/* Card header with icon and player badge */}
-              <div className="flex justify-between items-start mb-4">
-                <div
-                  className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-2xl"
-                  style={{ color: config.accentColor }}
-                >
-                  <FontAwesomeIcon icon={config.icon} />
-                </div>
-                <span className="text-xs px-2.5 py-1 rounded-xl bg-white/10 text-gray-400">
-                  {config.players}
-                </span>
-              </div>
-
-              {/* Title and description */}
-              <h3 className="text-xl font-semibold text-white mb-2">{config.title}</h3>
-              <p className="text-sm text-gray-500 mb-4 leading-relaxed">{config.description}</p>
-
-              {/* Stats row */}
-              <div className="flex gap-4 mb-4">
-                <div className="flex items-center gap-1.5 text-sm text-gray-400">
-                  <FontAwesomeIcon icon={faMapLocationDot} className="text-gray-500 text-xs" />
-                  <span>{config.tiles} hex tiles</span>
-                </div>
-              </div>
-
-              {/* Features list */}
-              <ul className="flex flex-col gap-2 mb-4">
-                {config.features.map((feature, i) => (
-                  <li key={i} className="flex items-center gap-2.5 text-sm text-gray-400">
-                    <span style={{ color: config.accentColor }}>•</span>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-
-              {/* Dev cards breakdown */}
-              {config.devCards.knights > 0 && (
-                <div className="mt-3 pt-3 border-t border-white/10">
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-2.5">
-                    <FontAwesomeIcon icon={faIdCard} className="text-sm" />
-                    <span>Development Cards ({getTotalDevCards(config.devCards)})</span>
-                  </div>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    <span
-                      className="flex items-center justify-center gap-1 py-1.5 px-1
-                        bg-white/5 rounded-md text-sm text-gray-400"
-                      title="Knight cards"
-                    >
-                      ⚔️ {config.devCards.knights}
-                    </span>
-                    <span
-                      className="flex items-center justify-center gap-1 py-1.5 px-1
-                        bg-white/5 rounded-md text-sm text-gray-400"
-                      title="Victory Point cards"
-                    >
-                      🏆 {config.devCards.victoryPoints}
-                    </span>
-                    <span
-                      className="flex items-center justify-center gap-1 py-1.5 px-1
-                        bg-white/5 rounded-md text-sm text-gray-400"
-                      title="Monopoly cards"
-                    >
-                      💰 {config.devCards.monopoly}
-                    </span>
-                    <span
-                      className="flex items-center justify-center gap-1 py-1.5 px-1
-                        bg-white/5 rounded-md text-sm text-gray-400"
-                      title="Year of Plenty cards"
-                    >
-                      🌾 {config.devCards.yearOfPlenty}
-                    </span>
-                    <span
-                      className="flex items-center justify-center gap-1 py-1.5 px-1
-                        bg-white/5 rounded-md text-sm text-gray-400"
-                      title="Road Building cards"
-                    >
-                      🛤️ {config.devCards.roadBuilding}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <HexGrid hexSize={hexSize} items={items} scale={1.0} />
   );
 }

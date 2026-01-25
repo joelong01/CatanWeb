@@ -1,8 +1,8 @@
 @import 'tailwindcss';
 
 /* Orientation variants for responsive design */
-@custom-variant portrait (orientation: portrait);
-@custom-variant landscape (orientation: landscape);
+@custom-variant portrait (@media (orientation: portrait));
+@custom-variant landscape (@media (orientation: landscape));
 
 /**
  * Catan Theme Configuration
@@ -631,5 +631,20 @@ body {
 
   .rotate-y-180 {
     transform: rotateY(180deg);
+  }
+}
+
+/* ==========================================================================
+   Hexagon Shapes (Catan theme)
+   ========================================================================== */
+@layer utilities {
+  /* Pointy-top hexagon (standard Catan orientation) */
+  .hex-clip {
+    clip-path: polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%);
+  }
+
+  /* Flat-top hexagon - correct geometry for aspect ratio sqrt(3)/2 ≈ 0.866 */
+  .hex-clip-flat {
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
   }
 }

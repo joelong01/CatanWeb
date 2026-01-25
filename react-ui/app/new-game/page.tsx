@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { MainLayout } from '@/components/layout';
 import {
   GameTypeSelector,
@@ -20,10 +21,22 @@ import {
   faSpinner,
   faExclamationTriangle,
   faDice,
+  faGripVertical,
+  faUser,
 } from '@fortawesome/free-solid-svg-icons';
 import type { PlayerProfile } from '@/types/player-profile';
 import type { GameType, HouseRules } from '@/types/generated/models';
 import Link from 'next/link';
+import { serviceConfig } from '@/lib/services/config';
+
+/**
+ * Get the full image URL for a player.
+ */
+function getPlayerImageUrl(imageUri: string | undefined): string | null {
+  if (!imageUri) return null;
+  if (imageUri.startsWith('http')) return imageUri;
+  return `${serviceConfig.serviceUrl}${imageUri}`;
+}
 
 /**
  * New Game page - configure and start a new Catan game.
@@ -37,6 +50,10 @@ import Link from 'next/link';
  */
 export default function NewGame(): React.ReactElement {
   const router = useRouter();
+
+  // Drag and drop state for turn order
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Form state
   const [gameType, setGameType] = useState<GameType>('Regular');
@@ -64,15 +81,6 @@ export default function NewGame(): React.ReactElement {
 
       if (result.success && result.data) {
         setPlayers(result.data);
-        // Pre-select first 3 non-guest players if available
-        const nonGuestPlayers = result.data.filter(
-          (p) => p.name.toLowerCase() !== 'guest'
-        );
-        if (nonGuestPlayers.length >= 3) {
-          setSelectedPlayerIds(nonGuestPlayers.slice(0, 3).map((p) => p.id));
-        } else if (result.data.length >= 3) {
-          setSelectedPlayerIds(result.data.slice(0, 3).map((p) => p.id));
-        }
       } else {
         setPlayersError(result.error ?? 'Failed to load players');
       }
@@ -96,9 +104,35 @@ export default function NewGame(): React.ReactElement {
     [selectedPlayerIds]
   );
 
+  // Get selected players in order for display
+  const selectedPlayers = useMemo(() => {
+    return selectedPlayerIds
+      .map((id) => players.find((p) => p.id === id))
+      .filter((p): p is PlayerProfile => p !== undefined);
+  }, [selectedPlayerIds, players]);
+
+  // Drag and drop handlers for turn order
+  const handleDragStart = useCallback((index: number) => {
+    setDragIndex(index);
+  }, []);
+
+  const handleDragOver = useCallback((index: number) => {
+    setDragOverIndex(index);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    if (dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) {
+      const newIds = [...selectedPlayerIds];
+      const [removed] = newIds.splice(dragIndex, 1);
+      newIds.splice(dragOverIndex, 0, removed);
+      setSelectedPlayerIds(newIds);
+    }
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }, [dragIndex, dragOverIndex, selectedPlayerIds]);
+
   // Validation
   const minPlayers = gameType === 'Expansion' ? 3 : 3;
-  const maxPlayers = gameType === 'Expansion' ? 6 : 4;
   const isValid = selectedPlayerIds.length >= minPlayers;
 
   // Handle game creation
@@ -167,85 +201,142 @@ export default function NewGame(): React.ReactElement {
           </div>
         </header>
 
-        {/* Two-column layout for landscape, single column for portrait */}
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Left column: Game Type Selection */}
-          <div className="lg:w-1/2 xl:w-[55%]">
-            <GameTypeSelector value={gameType} onChange={handleGameTypeChange} />
-          </div>
+        {/* Main content - tight, organized layout */}
+        <div className="flex flex-col gap-6">
+          {/* Game Type + Player Selection + Sitting Order
+              Portrait: stacked vertically
+              Landscape: 3-column grid (Game Type | Player Selection | Sitting Order)
+          */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 lg:landscape:grid-cols-[1fr,1fr,300px] gap-6">
+            {/* Game Type Card */}
+            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <GameTypeSelector value={gameType} onChange={handleGameTypeChange} />
+            </div>
 
-          {/* Right column: Players, Options, Start */}
-          <div className="lg:w-1/2 xl:w-[45%] space-y-6">
-            <PlayerSelector
-              availablePlayers={players}
-              selectedPlayerIds={selectedPlayerIds}
-              onChange={setSelectedPlayerIds}
-              gameType={gameType}
-              loading={playersLoading}
-              error={playersError ?? undefined}
-              includeGuest={includeGuest}
-              onIncludeGuestChange={setIncludeGuest}
-            />
+            {/* Player Selection Card */}
+            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <PlayerSelector
+                availablePlayers={players}
+                selectedPlayerIds={selectedPlayerIds}
+                onChange={setSelectedPlayerIds}
+                gameType={gameType}
+                loading={playersLoading}
+                error={playersError ?? undefined}
+                includeGuest={includeGuest}
+                onIncludeGuestChange={setIncludeGuest}
+              />
+            </div>
 
-            <GameNameInput
-              value={gameName}
-              onChange={setGameName}
-              gameType={gameType}
-            />
+            {/* Sitting Order - horizontal in portrait, vertical in landscape */}
+            {selectedPlayers.length > 0 && (
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10 col-span-full lg:[grid-column:1/3] lg:landscape:[grid-column:3/4]">
+                <h3 className="text-sm font-semibold text-white mb-3">Sitting Order</h3>
+                <div className="flex flex-wrap lg:landscape:flex-col gap-2">
+                  {selectedPlayers.map((player, index) => {
+                    const imageUrl = getPlayerImageUrl(player.imageUri);
+                    const isDragging = dragIndex === index;
+                    const isDragOver = dragOverIndex === index && dragIndex !== index;
 
-            <GameOptions options={gameOptions} onChange={setGameOptions} />
-
-            {/* Error banner */}
-            {submitError && (
-              <div
-                className="
-                  flex items-center gap-3 px-5 py-4
-                  bg-red-500/10 border border-red-500 rounded-xl
-                  text-red-500
-                "
-              >
-                <FontAwesomeIcon icon={faExclamationTriangle} />
-                <span>{submitError}</span>
+                    return (
+                      <div
+                        key={player.id}
+                        className={`
+                          flex items-center gap-2 px-3 py-2 rounded-lg cursor-grab active:cursor-grabbing
+                          transition-all duration-200 select-none
+                          ${isDragging ? 'opacity-50 scale-95' : ''}
+                          ${isDragOver ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-900' : ''}
+                        `}
+                        draggable
+                        onDragStart={() => handleDragStart(index)}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          handleDragOver(index);
+                        }}
+                        onDragEnd={handleDragEnd}
+                        style={{
+                          background: `linear-gradient(135deg, ${player.colors.primary}, ${player.colors.secondary})`,
+                          color: player.colors.foreground,
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faGripVertical} className="opacity-60 text-xs" />
+                        <div className="w-7 h-7 hex-clip-flat overflow-hidden bg-black/20 flex items-center justify-center">
+                          {imageUrl ? (
+                            <Image src={imageUrl} alt={player.name} width={28} height={28} unoptimized />
+                          ) : (
+                            <FontAwesomeIcon icon={faUser} className="text-xs" />
+                          )}
+                        </div>
+                        <span className="font-medium text-sm">{player.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
+          </div>
 
-            {/* Form actions */}
-            <div className="flex flex-col items-center gap-4 pt-5 border-t border-white/10">
-              <button
-                type="button"
-                className={`
-                  flex items-center justify-center gap-3
-                  w-full lg:w-auto
-                  px-12 py-[18px] rounded-xl
-                  text-white text-xl font-semibold
-                  transition-all duration-300
-                  ${isValid && !isSubmitting
-                    ? 'bg-gradient-to-br from-green-500 to-green-700 cursor-pointer hover:-translate-y-0.5 hover:shadow-xl hover:shadow-green-500/40'
-                    : 'bg-gray-600 cursor-not-allowed'
-                  }
-                `}
-                onClick={handleStartGame}
-                disabled={!isValid || isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <FontAwesomeIcon icon={faSpinner} spin />
-                    <span>Creating Game...</span>
-                  </>
-                ) : (
-                  <>
-                    <FontAwesomeIcon icon={faPlay} />
-                    <span>Start Game</span>
-                  </>
-                )}
-              </button>
+          {/* Bottom section: Game Name, Options, Start */}
+          <div className="space-y-4">
 
-              <p className="text-sm text-gray-500">
-                {gameType === 'Expansion' ? 'Expansion' : 'Classic'} with {selectedPlayerIds.length} Player{selectedPlayerIds.length !== 1 ? 's' : ''}
-              </p>
+              <GameNameInput
+                value={gameName}
+                onChange={setGameName}
+                gameType={gameType}
+              />
+
+              <GameOptions options={gameOptions} onChange={setGameOptions} />
+
+              {/* Error banner */}
+              {submitError && (
+                <div
+                  className="
+                    flex items-center gap-3 px-5 py-4
+                    bg-red-500/10 border border-red-500 rounded-xl
+                    text-red-500
+                  "
+                >
+                  <FontAwesomeIcon icon={faExclamationTriangle} />
+                  <span>{submitError}</span>
+                </div>
+              )}
+
+              {/* Form actions */}
+              <div className="flex flex-col items-center gap-4 pt-5 border-t border-white/10">
+                <button
+                  type="button"
+                  className={`
+                    flex items-center justify-center gap-3
+                    w-full landscape:w-auto
+                    px-12 py-[18px] rounded-xl
+                    text-white text-xl font-semibold
+                    transition-all duration-300
+                    ${isValid && !isSubmitting
+                      ? 'bg-gradient-to-br from-green-500 to-green-700 cursor-pointer hover:-translate-y-0.5 hover:shadow-xl hover:shadow-green-500/40'
+                      : 'bg-gray-600 cursor-not-allowed'
+                    }
+                  `}
+                  onClick={handleStartGame}
+                  disabled={!isValid || isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <FontAwesomeIcon icon={faSpinner} spin />
+                      <span>Creating Game...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faPlay} />
+                      <span>Start Game</span>
+                    </>
+                  )}
+                </button>
+
+                <p className="text-sm text-gray-500">
+                  {gameType === 'Expansion' ? 'Expansion' : 'Classic'} with {selectedPlayerIds.length} Player{selectedPlayerIds.length !== 1 ? 's' : ''}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
       </div>
     </MainLayout>
   );

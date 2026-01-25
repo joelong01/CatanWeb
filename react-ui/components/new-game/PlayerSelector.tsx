@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import Image from 'next/image';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faGripVertical,
   faUser,
   faUserPlus,
   faTrophy,
   faCheck,
 } from '@fortawesome/free-solid-svg-icons';
+import { HexGrid, HexGridItem, HEX_LAYOUTS } from '@/components/hex-grid';
 import { serviceConfig } from '@/lib/services/config';
 import type { PlayerProfile } from '@/types/player-profile';
 import type { GameType } from '@/types/generated/models';
@@ -60,138 +60,98 @@ function getWinCount(player: PlayerProfile): number {
 }
 
 /**
- * Selected player chip - compact draggable representation in turn order.
+ * Player card content for hex grid.
+ *
+ * IMPORTANT: Always shows player gradient colors (matching Blazor rendering).
+ * Selection state changes border style, NOT background color.
  */
-interface SelectedPlayerChipProps {
-  index: number;
+interface PlayerCardContentProps {
   player: PlayerProfile;
-  onDragStart: (index: number) => void;
-  onDragOver: (index: number) => void;
-  onDragEnd: () => void;
-  isDragging: boolean;
-  isDragOver: boolean;
+  isSelected: boolean;
 }
 
-function SelectedPlayerChip({
-  index,
+function PlayerCardContent({
   player,
-  onDragStart,
-  onDragOver,
-  onDragEnd,
-  isDragging,
-  isDragOver,
-}: SelectedPlayerChipProps): React.ReactElement {
+  isSelected,
+}: PlayerCardContentProps): React.ReactElement {
   const imageUrl = getPlayerImageUrl(player.imageUri);
+  const wins = getWinCount(player);
+  const [isHovered, setIsHovered] = React.useState(false);
 
   return (
     <div
-      className={`
-        flex items-center gap-2 px-3 py-2 rounded-lg cursor-grab active:cursor-grabbing
-        transition-all duration-200 select-none
-        ${isDragging ? 'opacity-50 scale-95' : ''}
-        ${isDragOver ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-900' : ''}
-      `}
-      draggable
-      onDragStart={() => onDragStart(index)}
-      onDragOver={(e) => {
-        e.preventDefault();
-        onDragOver(index);
-      }}
-      onDragEnd={onDragEnd}
-      style={{
-        background: `linear-gradient(135deg, ${player.colors.primary}, ${player.colors.secondary})`,
-        color: player.colors.foreground,
-      }}
+      className="w-full h-full"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      <FontAwesomeIcon icon={faGripVertical} className="opacity-60 text-xs" />
-      <span className="font-bold text-sm">P{index + 1}</span>
-      <div className="w-6 h-6 rounded-full overflow-hidden bg-black/20 flex items-center justify-center">
-        {imageUrl ? (
-          <Image src={imageUrl} alt={player.name} width={24} height={24} unoptimized />
-        ) : (
-          <FontAwesomeIcon icon={faUser} className="text-xs" />
-        )}
+      {/* Outer hex - border (hover always shows blue, selection uses checkmark not border) */}
+      <div
+        className="absolute inset-0 hex-clip-flat transition-colors duration-200"
+        style={{
+          background: isHovered ? '#3b82f6' : 'rgba(255,255,255,0.3)',
+        }}
+      />
+
+      {/* Inner hex - content */}
+      <div
+        className="absolute inset-0 flex flex-col items-center justify-center hex-clip-flat"
+        style={{
+          background: `linear-gradient(160deg, ${player.colors.primary} 0%, ${player.colors.secondary} 70%, rgba(0,0,0,0.3) 100%)`,
+          transform: 'scale(0.91)',
+        }}
+      >
+        <div className="flex flex-col items-center justify-center gap-2 px-3">
+          {/* Avatar - circular with white border (matching Blazor) */}
+          <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center bg-black/20 border-2 border-white">
+            {imageUrl ? (
+              <Image src={imageUrl} alt={player.name} width={56} height={56} unoptimized />
+            ) : (
+              <FontAwesomeIcon icon={faUser} className="text-2xl" style={{ color: player.colors.foreground }} />
+            )}
+          </div>
+
+          {/* Name - always in foreground color */}
+          <span
+            className="text-xs font-bold truncate max-w-full text-center"
+            style={{ color: player.colors.foreground }}
+          >
+            {player.name}
+          </span>
+
+          {/* Trophy badge - wins count */}
+          {wins > 0 && (
+            <span
+              className="absolute bottom-2 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-amber-400 font-semibold"
+            >
+              <FontAwesomeIcon icon={faTrophy} className="text-[8px]" />
+              {wins}
+            </span>
+          )}
+        </div>
       </div>
-      <span className="font-medium text-sm">{player.name}</span>
+
+      {/* Selection checkmark - upper-right area, inside hex polygon boundary */}
+      {isSelected && (
+        <div
+          className="absolute z-10 w-6 h-6 rounded-full flex items-center justify-center bg-black/50 border border-white/50 -translate-x-1/2 -translate-y-1/2"
+          style={{ top: '16%', left: '68%' }}
+        >
+          <FontAwesomeIcon
+            icon={faCheck}
+            className="text-xs text-white"
+          />
+        </div>
+      )}
     </div>
   );
 }
 
 /**
- * Available player card - clickable card to add/remove from game.
- */
-interface PlayerCardProps {
-  player: PlayerProfile;
-  isSelected: boolean;
-  onToggle: () => void;
-  disabled: boolean;
-}
-
-function PlayerCard({
-  player,
-  isSelected,
-  onToggle,
-  disabled,
-}: PlayerCardProps): React.ReactElement {
-  const imageUrl = getPlayerImageUrl(player.imageUri);
-  const wins = getWinCount(player);
-
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={disabled && !isSelected}
-      className={`
-        relative flex flex-col items-center gap-2 p-3 rounded-xl
-        transition-all duration-200 border-2
-        ${isSelected
-          ? 'border-green-500 bg-green-500/10'
-          : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20'
-        }
-        ${disabled && !isSelected ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
-      `}
-    >
-      {/* Avatar with selection badge */}
-      <div className="relative">
-        <div
-          className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center"
-          style={{
-            background: `linear-gradient(135deg, ${player.colors.primary}, ${player.colors.secondary})`,
-            color: player.colors.foreground,
-          }}
-        >
-          {imageUrl ? (
-            <Image src={imageUrl} alt={player.name} width={48} height={48} unoptimized />
-          ) : (
-            <FontAwesomeIcon icon={faUser} className="text-xl" />
-          )}
-        </div>
-        {isSelected && (
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-            <FontAwesomeIcon icon={faCheck} className="text-white text-xs" />
-          </div>
-        )}
-      </div>
-
-      {/* Name */}
-      <span className="text-sm font-medium text-white truncate max-w-full">
-        {player.name}
-      </span>
-
-      {/* Wins badge - positioned in lower right corner */}
-      {wins > 0 && (
-        <span className="absolute bottom-1.5 right-1.5 flex items-center gap-1 text-xs text-yellow-400 bg-black/50 px-1.5 py-0.5 rounded">
-          <FontAwesomeIcon icon={faTrophy} className="text-[10px]" />
-          {wins}
-        </span>
-      )}
-    </button>
-  );
-}
-
-/**
- * Modern player selection interface with drag-and-drop reordering.
- * Shows all players in a grid, selected players shown as draggable chips.
+ * Modern player selection interface with hex grid layout.
+ *
+ * Uses HexGrid component with proper Red Blob Games formulas.
+ * Center hex with "Choose Players" surrounded by up to 6 player hexes.
+ * Selected players shown as draggable chips above the grid.
  */
 export function PlayerSelector({
   availablePlayers,
@@ -203,73 +163,31 @@ export function PlayerSelector({
   includeGuest = false,
   onIncludeGuestChange,
 }: PlayerSelectorProps): React.ReactElement {
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-
   const { min, max } = getPlayerLimits(gameType);
 
-  // Sort players: Guest last, others alphabetically by name
+  // Non-guest players sorted alphabetically
   const sortedPlayers = useMemo(() => {
-    const sorted = [...availablePlayers].sort((a, b) => {
-      if (a.name.toLowerCase() === 'guest') return 1;
-      if (b.name.toLowerCase() === 'guest') return -1;
-      return a.name.localeCompare(b.name);
-    });
+    return [...availablePlayers]
+      .filter((p) => p.name.toLowerCase() !== 'guest')
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [availablePlayers]);
 
-    if (!includeGuest) {
-      return sorted.filter((p) => p.name.toLowerCase() !== 'guest');
-    }
-    return sorted;
-  }, [availablePlayers, includeGuest]);
-
-  // Check if Guest exists in the available players
-  const hasGuest = useMemo(
-    () => availablePlayers.some((p) => p.name.toLowerCase() === 'guest'),
+  // Find the Guest player (if it exists in the database)
+  const guestPlayer = useMemo(
+    () => availablePlayers.find((p) => p.name.toLowerCase() === 'guest'),
     [availablePlayers]
   );
 
-  // Get selected players in order
-  const selectedPlayers = useMemo(() => {
-    return selectedPlayerIds
-      .map((id) => sortedPlayers.find((p) => p.id === id))
-      .filter((p): p is PlayerProfile => p !== undefined);
-  }, [selectedPlayerIds, sortedPlayers]);
-
-  const handleTogglePlayer = useCallback(
-    (playerId: string) => {
-      if (selectedPlayerIds.includes(playerId)) {
-        // Remove player (only if above minimum)
-        if (selectedPlayerIds.length > min) {
-          onChange(selectedPlayerIds.filter((id) => id !== playerId));
-        }
-      } else {
-        // Add player (only if below maximum)
-        if (selectedPlayerIds.length < max) {
-          onChange([...selectedPlayerIds, playerId]);
-        }
-      }
-    },
-    [selectedPlayerIds, onChange, min, max]
-  );
-
-  const handleDragStart = useCallback((index: number) => {
-    setDragIndex(index);
-  }, []);
-
-  const handleDragOver = useCallback((index: number) => {
-    setDragOverIndex(index);
-  }, []);
-
-  const handleDragEnd = useCallback(() => {
-    if (dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) {
-      const newIds = [...selectedPlayerIds];
-      const [removed] = newIds.splice(dragIndex, 1);
-      newIds.splice(dragOverIndex, 0, removed);
-      onChange(newIds);
+  const handleTogglePlayer = (playerId: string): void => {
+    if (selectedPlayerIds.includes(playerId)) {
+      onChange(selectedPlayerIds.filter((id) => id !== playerId));
+    } else if (selectedPlayerIds.length < max) {
+      onChange([...selectedPlayerIds, playerId]);
+    } else {
+      // Circular: remove oldest selected, add new one
+      onChange([...selectedPlayerIds.slice(1), playerId]);
     }
-    setDragIndex(null);
-    setDragOverIndex(null);
-  }, [dragIndex, dragOverIndex, selectedPlayerIds, onChange]);
+  };
 
   // Loading state
   if (loading) {
@@ -310,79 +228,99 @@ export function PlayerSelector({
     );
   }
 
-  const canAddMore = selectedPlayerIds.length < max;
   const needsMore = selectedPlayerIds.length < min;
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold text-white">Select Players</h2>
-          <p className="text-sm text-gray-400 mt-1">
-            {min}-{max} players · Click to select, drag to reorder
-          </p>
+  // Hex size: 100 to match GameTypeSelector
+  const hexSize = 100;
+
+  // Visible players (up to 6 surrounding the center hex)
+  const visiblePlayers = sortedPlayers.slice(0, 6);
+
+  // Build hex grid items
+  const items: HexGridItem[] = [
+    // Center hex - "Choose Players" label
+    {
+      id: 'center',
+      coord: HEX_LAYOUTS.CLUSTER_7[0], // Center (0, 0)
+      content: (
+        <div className="w-full h-full">
+          {/* Outer hex - border */}
+          <div className="absolute inset-0 hex-clip-flat bg-blue-500/50" />
+          {/* Inner hex - content */}
+          <div
+            className="absolute inset-0 flex items-center justify-center hex-clip-flat bg-gradient-to-br from-blue-900/40 to-blue-950/40"
+            style={{ transform: 'scale(0.91)' }}
+          >
+            <div className="text-center px-2">
+              <FontAwesomeIcon icon={faUser} className="text-blue-400 text-2xl mb-1" />
+              <h3 className="text-xs font-bold text-blue-400 tracking-wide leading-tight">
+                Choose<br />Players
+              </h3>
+            </div>
+          </div>
         </div>
-        {hasGuest && onIncludeGuestChange && (
-          <label className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
+      ),
+      disabled: true,
+    },
+
+    // Surrounding player hexes (up to 6 positions)
+    ...visiblePlayers.map((player, idx) => ({
+      id: player.id,
+      coord: HEX_LAYOUTS.CLUSTER_7[idx + 1], // Positions 1-6 (surrounding)
+      content: (
+        <PlayerCardContent
+          player={player}
+          isSelected={selectedPlayerIds.includes(player.id)}
+        />
+      ),
+      onClick: () => handleTogglePlayer(player.id),
+    })),
+
+    // Guest hex - shown to the left when "Include Guest" is checked
+    ...(includeGuest && guestPlayer ? [{
+      id: guestPlayer.id,
+      coord: { q: -2, r: 1 }, // Left column, vertically centered
+      content: (
+        <PlayerCardContent
+          player={guestPlayer}
+          isSelected={selectedPlayerIds.includes(guestPlayer.id)}
+        />
+      ),
+      onClick: () => handleTogglePlayer(guestPlayer.id),
+    }] : []),
+  ];
+
+  return (
+    <div className="flex flex-col">
+      {/* Hex Grid Layout */}
+      <HexGrid hexSize={hexSize} items={items} scale={1.0} />
+
+      {/* Guest toggle + validation */}
+      <div className="flex items-center justify-between mt-2 px-1">
+        {guestPlayer && onIncludeGuestChange ? (
+          <label className="flex items-center gap-2 px-2 py-1 rounded bg-white/10 cursor-pointer hover:bg-white/15 transition-colors">
             <input
               type="checkbox"
               checked={includeGuest}
-              onChange={(e) => onIncludeGuestChange(e.target.checked)}
-              className="w-4 h-4 rounded accent-blue-500"
+              onChange={(e) => {
+                const checked = e.target.checked;
+                onIncludeGuestChange(checked);
+                // Deselect guest when unchecking
+                if (!checked && guestPlayer && selectedPlayerIds.includes(guestPlayer.id)) {
+                  onChange(selectedPlayerIds.filter((id) => id !== guestPlayer.id));
+                }
+              }}
+              className="w-3 h-3 rounded accent-blue-500"
             />
-            <span className="text-sm text-gray-300">Include Guest</span>
+            <span className="text-xs text-gray-300">Include Guest</span>
           </label>
+        ) : <div />}
+        {needsMore && (
+          <p className="text-amber-400 text-xs">
+            Select at least {min} players
+          </p>
         )}
       </div>
-
-      {/* Turn Order - Selected Players (horizontal chips) */}
-      {selectedPlayers.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">
-            Turn Order
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {selectedPlayers.map((player, index) => (
-              <SelectedPlayerChip
-                key={player.id}
-                index={index}
-                player={player}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDragEnd={handleDragEnd}
-                isDragging={dragIndex === index}
-                isDragOver={dragOverIndex === index && dragIndex !== index}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* All Players Grid */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">
-          Available Players ({selectedPlayerIds.length}/{max} selected)
-        </h3>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-          {sortedPlayers.map((player) => (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              isSelected={selectedPlayerIds.includes(player.id)}
-              onToggle={() => handleTogglePlayer(player.id)}
-              disabled={!canAddMore}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Validation message */}
-      {needsMore && (
-        <p className="text-center text-amber-400 text-sm">
-          Select at least {min} players to start
-        </p>
-      )}
     </div>
   );
 }
