@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateHexDimensions,
   hexToPixel,
+  cubicCoord,
   HEX_LAYOUTS,
   HexCoordinate,
 } from './hex-geometry';
@@ -65,28 +66,28 @@ describe('hexToPixel', () => {
   const size = 100;
 
   it('should place center hex (0,0) at origin', () => {
-    const pos = hexToPixel({ q: 0, r: 0 }, size);
+    const pos = hexToPixel(cubicCoord(0, 0), size);
     expect(pos.x).toBe(0);
     expect(pos.y).toBe(0);
   });
 
   it('should match C# ToPixelCenter formula for x: size × 1.5 × q', () => {
     // C#: double x = size * 1.5 * Q + offsetX;
-    const coord = { q: 2, r: 0 };
+    const coord = cubicCoord(2, 0);
     const pos = hexToPixel(coord, size);
     expect(pos.x).toBe(size * 1.5 * coord.q);
   });
 
   it('should match C# ToPixelCenter formula for y: size × sqrt(3) × (r + q/2)', () => {
     // C#: double y = size * Math.Sqrt(3) * (R + Q / 2.0) + offsetY;
-    const coord = { q: 1, r: 2 };
+    const coord = cubicCoord(1, 2);
     const pos = hexToPixel(coord, size);
     const expectedY = size * Math.sqrt(3) * (coord.r + coord.q / 2);
     expect(pos.y).toBeCloseTo(expectedY, 10);
   });
 
   it('should apply origin offset correctly', () => {
-    const coord = { q: 1, r: 1 };
+    const coord = cubicCoord(1, 1);
     const origin = { x: 500, y: 400 };
     const pos = hexToPixel(coord, size, origin);
 
@@ -98,7 +99,7 @@ describe('hexToPixel', () => {
   });
 
   it('should handle negative coordinates', () => {
-    const coord = { q: -2, r: -1 };
+    const coord = cubicCoord(-2, -1);
     const pos = hexToPixel(coord, size);
 
     const expectedX = size * 1.5 * coord.q;
@@ -111,48 +112,48 @@ describe('hexToPixel', () => {
   describe('known coordinate positions', () => {
     // Test the 6 directions from center (CLUSTER_7 neighbors)
     it('should place North hex (0, -1) above center', () => {
-      const center = hexToPixel({ q: 0, r: 0 }, size);
-      const north = hexToPixel({ q: 0, r: -1 }, size);
+      const center = hexToPixel(cubicCoord(0, 0), size);
+      const north = hexToPixel(cubicCoord(0, -1), size);
 
       expect(north.x).toBe(center.x);
       expect(north.y).toBeLessThan(center.y);
     });
 
     it('should place NorthEast hex (1, -1) up-right from center', () => {
-      const center = hexToPixel({ q: 0, r: 0 }, size);
-      const ne = hexToPixel({ q: 1, r: -1 }, size);
+      const center = hexToPixel(cubicCoord(0, 0), size);
+      const ne = hexToPixel(cubicCoord(1, -1), size);
 
       expect(ne.x).toBeGreaterThan(center.x);
       expect(ne.y).toBeLessThan(center.y);
     });
 
     it('should place SouthEast hex (1, 0) right of center', () => {
-      const center = hexToPixel({ q: 0, r: 0 }, size);
-      const se = hexToPixel({ q: 1, r: 0 }, size);
+      const center = hexToPixel(cubicCoord(0, 0), size);
+      const se = hexToPixel(cubicCoord(1, 0), size);
 
       expect(se.x).toBeGreaterThan(center.x);
       expect(se.y).toBeGreaterThan(center.y);
     });
 
     it('should place South hex (0, 1) below center', () => {
-      const center = hexToPixel({ q: 0, r: 0 }, size);
-      const south = hexToPixel({ q: 0, r: 1 }, size);
+      const center = hexToPixel(cubicCoord(0, 0), size);
+      const south = hexToPixel(cubicCoord(0, 1), size);
 
       expect(south.x).toBe(center.x);
       expect(south.y).toBeGreaterThan(center.y);
     });
 
     it('should place SouthWest hex (-1, 1) down-left from center', () => {
-      const center = hexToPixel({ q: 0, r: 0 }, size);
-      const sw = hexToPixel({ q: -1, r: 1 }, size);
+      const center = hexToPixel(cubicCoord(0, 0), size);
+      const sw = hexToPixel(cubicCoord(-1, 1), size);
 
       expect(sw.x).toBeLessThan(center.x);
       expect(sw.y).toBeGreaterThan(center.y);
     });
 
     it('should place NorthWest hex (-1, 0) left of center', () => {
-      const center = hexToPixel({ q: 0, r: 0 }, size);
-      const nw = hexToPixel({ q: -1, r: 0 }, size);
+      const center = hexToPixel(cubicCoord(0, 0), size);
+      const nw = hexToPixel(cubicCoord(-1, 0), size);
 
       expect(nw.x).toBeLessThan(center.x);
       expect(nw.y).toBeLessThan(center.y);
@@ -162,14 +163,14 @@ describe('hexToPixel', () => {
   describe('hex spacing', () => {
     it('should space adjacent hexes consistently', () => {
       // Distance from center to each neighbor should be equal
-      const center = hexToPixel({ q: 0, r: 0 }, size);
+      const center = hexToPixel(cubicCoord(0, 0), size);
       const neighbors = [
-        hexToPixel({ q: 0, r: -1 }, size), // North
-        hexToPixel({ q: 1, r: -1 }, size), // NorthEast
-        hexToPixel({ q: 1, r: 0 }, size), // SouthEast
-        hexToPixel({ q: 0, r: 1 }, size), // South
-        hexToPixel({ q: -1, r: 1 }, size), // SouthWest
-        hexToPixel({ q: -1, r: 0 }, size), // NorthWest
+        hexToPixel(cubicCoord(0, -1), size), // North
+        hexToPixel(cubicCoord(1, -1), size), // NorthEast
+        hexToPixel(cubicCoord(1, 0), size), // SouthEast
+        hexToPixel(cubicCoord(0, 1), size), // South
+        hexToPixel(cubicCoord(-1, 1), size), // SouthWest
+        hexToPixel(cubicCoord(-1, 0), size), // NorthWest
       ];
 
       const distances = neighbors.map((n) =>
@@ -194,8 +195,8 @@ describe('HEX_LAYOUTS', () => {
       expect(HEX_LAYOUTS.CLUSTER_7).toHaveLength(7);
     });
 
-    it('should have center hex at (0, 0)', () => {
-      expect(HEX_LAYOUTS.CLUSTER_7[0]).toEqual({ q: 0, r: 0 });
+    it('should have center hex at (0, 0, 0)', () => {
+      expect(HEX_LAYOUTS.CLUSTER_7[0]).toEqual(cubicCoord(0, 0));
     });
 
     it('should include all 6 neighbor directions', () => {
@@ -217,6 +218,12 @@ describe('HEX_LAYOUTS', () => {
       const coordSet = new Set(coords.map((c) => `${c.q},${c.r}`));
       expect(coordSet.size).toBe(coords.length);
     });
+
+    it('should satisfy q + r + s === 0 constraint for all coordinates', () => {
+      HEX_LAYOUTS.CLUSTER_7.forEach((c) => {
+        expect(c.q + c.r + c.s).toBe(0);
+      });
+    });
   });
 
   describe('CLUSTER_19', () => {
@@ -226,27 +233,12 @@ describe('HEX_LAYOUTS', () => {
 
     it('should match C# RegularBoardInfo.TileKeys coordinates', () => {
       // From Catan3.Shared/Models/RegularBoardInfo.cs TileKeys
-      // Cube coords (Q, R, S) converted to axial (q=Q, r=R)
       const csharpTileKeys: HexCoordinate[] = [
-        { q: -2, r: 0 },
-        { q: -2, r: 1 },
-        { q: -2, r: 2 },
-        { q: -1, r: -1 },
-        { q: -1, r: 0 },
-        { q: -1, r: 1 },
-        { q: -1, r: 2 },
-        { q: 0, r: -2 },
-        { q: 0, r: -1 },
-        { q: 0, r: 0 },
-        { q: 0, r: 1 },
-        { q: 0, r: 2 },
-        { q: 1, r: -2 },
-        { q: 1, r: -1 },
-        { q: 1, r: 0 },
-        { q: 1, r: 1 },
-        { q: 2, r: -2 },
-        { q: 2, r: -1 },
-        { q: 2, r: 0 },
+        cubicCoord(-2, 0), cubicCoord(-2, 1), cubicCoord(-2, 2),
+        cubicCoord(-1, -1), cubicCoord(-1, 0), cubicCoord(-1, 1), cubicCoord(-1, 2),
+        cubicCoord(0, -2), cubicCoord(0, -1), cubicCoord(0, 0), cubicCoord(0, 1), cubicCoord(0, 2),
+        cubicCoord(1, -2), cubicCoord(1, -1), cubicCoord(1, 0), cubicCoord(1, 1),
+        cubicCoord(2, -2), cubicCoord(2, -1), cubicCoord(2, 0),
       ];
 
       const tsCoordSet = new Set(HEX_LAYOUTS.CLUSTER_19.map((c) => `${c.q},${c.r}`));
@@ -279,6 +271,12 @@ describe('HEX_LAYOUTS', () => {
       const coordSet = new Set(coords.map((c) => `${c.q},${c.r}`));
       expect(coordSet.size).toBe(coords.length);
     });
+
+    it('should satisfy q + r + s === 0 constraint for all coordinates', () => {
+      HEX_LAYOUTS.CLUSTER_19.forEach((c) => {
+        expect(c.q + c.r + c.s).toBe(0);
+      });
+    });
   });
 
   describe('CLUSTER_30', () => {
@@ -288,45 +286,21 @@ describe('HEX_LAYOUTS', () => {
 
     it('should match C# ExpansionBoardInfo.TileKeys coordinates', () => {
       // From Catan3.Shared/Models/ExpansionBoardInfo.cs TileKeys
-      // Cube coords (Q, R, S) converted to axial (q=Q, r=R)
       const csharpTileKeys: HexCoordinate[] = [
         // Column 1 (q=-3)
-        { q: -3, r: 1 },
-        { q: -3, r: 2 },
-        { q: -3, r: 3 },
+        cubicCoord(-3, 1), cubicCoord(-3, 2), cubicCoord(-3, 3),
         // Column 2 (q=-2)
-        { q: -2, r: 0 },
-        { q: -2, r: 1 },
-        { q: -2, r: 2 },
-        { q: -2, r: 3 },
+        cubicCoord(-2, 0), cubicCoord(-2, 1), cubicCoord(-2, 2), cubicCoord(-2, 3),
         // Column 3 (q=-1)
-        { q: -1, r: -1 },
-        { q: -1, r: 0 },
-        { q: -1, r: 1 },
-        { q: -1, r: 2 },
-        { q: -1, r: 3 },
+        cubicCoord(-1, -1), cubicCoord(-1, 0), cubicCoord(-1, 1), cubicCoord(-1, 2), cubicCoord(-1, 3),
         // Column 4 (q=0)
-        { q: 0, r: -2 },
-        { q: 0, r: -1 },
-        { q: 0, r: 0 },
-        { q: 0, r: 1 },
-        { q: 0, r: 2 },
-        { q: 0, r: 3 },
+        cubicCoord(0, -2), cubicCoord(0, -1), cubicCoord(0, 0), cubicCoord(0, 1), cubicCoord(0, 2), cubicCoord(0, 3),
         // Column 5 (q=1)
-        { q: 1, r: -2 },
-        { q: 1, r: -1 },
-        { q: 1, r: 0 },
-        { q: 1, r: 1 },
-        { q: 1, r: 2 },
+        cubicCoord(1, -2), cubicCoord(1, -1), cubicCoord(1, 0), cubicCoord(1, 1), cubicCoord(1, 2),
         // Column 6 (q=2)
-        { q: 2, r: -2 },
-        { q: 2, r: -1 },
-        { q: 2, r: 0 },
-        { q: 2, r: 1 },
+        cubicCoord(2, -2), cubicCoord(2, -1), cubicCoord(2, 0), cubicCoord(2, 1),
         // Column 7 (q=3)
-        { q: 3, r: -2 },
-        { q: 3, r: -1 },
-        { q: 3, r: 0 },
+        cubicCoord(3, -2), cubicCoord(3, -1), cubicCoord(3, 0),
       ];
 
       const tsCoordSet = new Set(HEX_LAYOUTS.CLUSTER_30.map((c) => `${c.q},${c.r}`));
@@ -360,17 +334,23 @@ describe('HEX_LAYOUTS', () => {
       const coordSet = new Set(coords.map((c) => `${c.q},${c.r}`));
       expect(coordSet.size).toBe(coords.length);
     });
+
+    it('should satisfy q + r + s === 0 constraint for all coordinates', () => {
+      HEX_LAYOUTS.CLUSTER_30.forEach((c) => {
+        expect(c.q + c.r + c.s).toBe(0);
+      });
+    });
   });
 });
 
 describe('pixel position snapshot tests', () => {
   // Snapshot tests at specific hex sizes for regression detection
   const testCases: Array<{ name: string; coord: HexCoordinate; size: number }> = [
-    { name: 'center at size 100', coord: { q: 0, r: 0 }, size: 100 },
-    { name: 'north at size 100', coord: { q: 0, r: -1 }, size: 100 },
-    { name: 'southeast at size 100', coord: { q: 1, r: 0 }, size: 100 },
-    { name: 'center at size 50', coord: { q: 0, r: 0 }, size: 50 },
-    { name: 'expansion corner at size 100', coord: { q: 3, r: -2 }, size: 100 },
+    { name: 'center at size 100', coord: cubicCoord(0, 0), size: 100 },
+    { name: 'north at size 100', coord: cubicCoord(0, -1), size: 100 },
+    { name: 'southeast at size 100', coord: cubicCoord(1, 0), size: 100 },
+    { name: 'center at size 50', coord: cubicCoord(0, 0), size: 50 },
+    { name: 'expansion corner at size 100', coord: cubicCoord(3, -2), size: 100 },
   ];
 
   testCases.forEach(({ name, coord, size }) => {
