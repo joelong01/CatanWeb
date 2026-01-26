@@ -65,9 +65,9 @@ export function CenterHex({
           transform: `scale(${HEX_CONTENT_SCALE})`,
         }}
       >
-        <div className="text-center px-3">
-          <FontAwesomeIcon icon={icon} className={`${accentColor} text-2xl mb-1`} />
-          <h3 className={`text-sm font-bold ${accentColor} tracking-wide leading-tight`}>
+        <div className="text-center px-4">
+          <FontAwesomeIcon icon={icon} className={`${accentColor} text-5xl mb-2`} />
+          <h3 className={`text-xl font-bold ${accentColor} tracking-wide leading-tight`}>
             {title}
             {subtitle && (
               <>

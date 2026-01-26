@@ -101,13 +101,13 @@ export function MenuHex({
           transform: `scale(${isHovered ? HEX_HOVER_SCALE : HEX_CONTENT_SCALE})`,
         }}
       >
-        <div className="text-center px-3">
+        <div className="text-center px-4">
           <FontAwesomeIcon
             icon={icon}
-            className={`${accentColor} text-2xl mb-1 transition-transform duration-200`}
+            className={`${accentColor} text-5xl mb-2 transition-transform duration-200`}
             style={{ transform: isHovered ? `scale(${HEX_ICON_HOVER_SCALE})` : undefined }}
           />
-          <h3 className={`text-sm font-bold ${accentColor} tracking-wide leading-tight`}>
+          <h3 className={`text-xl font-bold ${accentColor} tracking-wide leading-tight`}>
             {title}
             {subtitle && (
               <>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import {
   faGamepad,
   faFolderOpen,
@@ -7,6 +8,9 @@ import {
   faChartBar,
   faPlay,
   faDice,
+  faFlask,
+  faWrench,
+  faSpinner,
 } from '@fortawesome/free-solid-svg-icons';
 import { MainLayout } from '@/components/layout';
 import { getServiceUrl } from '@/lib/config';
@@ -16,8 +20,20 @@ import {
   HEX_LAYOUTS,
   CenterHex,
   MenuHex,
-  WaterHex,
 } from '@/components/hex-grid';
+
+interface TroubleshootResult {
+  timestamp: string;
+  isAzure: boolean;
+  serverFqdn: string | null;
+  databaseName: string | null;
+  message: string | null;
+  connectionSuccessful: boolean;
+  checks: string[];
+  issues: string[];
+  fixed: string[];
+  cannotFix: string[];
+}
 
 /**
  * Home page - main entry point for the Catan application.
@@ -28,6 +44,39 @@ import {
 export default function Home(): React.ReactElement {
   // TODO: Get active game ID from connection service/store
   const activeGameId: string | null = null;
+
+  // Troubleshoot state
+  const [isTroubleshooting, setIsTroubleshooting] = useState(false);
+  const [troubleshootResult, setTroubleshootResult] = useState<TroubleshootResult | null>(null);
+  const [troubleshootError, setTroubleshootError] = useState<string | null>(null);
+
+  const runTroubleshoot = useCallback(async () => {
+    setIsTroubleshooting(true);
+    setTroubleshootResult(null);
+    setTroubleshootError(null);
+
+    try {
+      const response = await fetch(`${getServiceUrl()}/api/troubleshoot`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setTroubleshootResult(result);
+      } else {
+        setTroubleshootError(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (err) {
+      setTroubleshootError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setIsTroubleshooting(false);
+    }
+  }, []);
+
+  const dismissTroubleshoot = useCallback(() => {
+    setTroubleshootResult(null);
+    setTroubleshootError(null);
+  }, []);
 
   // Build hex grid items
   const items: HexGridItem[] = [
@@ -73,18 +122,19 @@ export default function Home(): React.ReactElement {
       ),
     },
 
-    // SouthEast: Edit Players
+    // SouthEast: Troubleshoot
     {
-      id: 'edit-players',
+      id: 'troubleshoot',
       coord: HEX_LAYOUTS.CLUSTER_7[3], // (1, 0)
       content: (
         <MenuHex
-          icon={faUsers}
-          title="Edit Players"
-          href="/edit-players"
-          accentColor="text-green-400"
+          icon={isTroubleshooting ? faSpinner : faWrench}
+          title={isTroubleshooting ? 'Running...' : 'Troubleshoot'}
+          onClick={isTroubleshooting ? undefined : runTroubleshoot}
+          accentColor="text-gray-400"
         />
       ),
+      disabled: isTroubleshooting,
     },
 
     // South: Stats
@@ -101,15 +151,21 @@ export default function Home(): React.ReactElement {
       ),
     },
 
-    // SouthWest: Water placeholder
+    // SouthWest: Hex Test (development tool)
     {
-      id: 'water-sw',
+      id: 'hex-test',
       coord: HEX_LAYOUTS.CLUSTER_7[5], // (-1, 1)
-      content: <WaterHex imageUrl="/water.png" showBorder opacity={0.6} />,
-      disabled: true,
+      content: (
+        <MenuHex
+          icon={faFlask}
+          title="Hex Test"
+          href="/hex-test"
+          accentColor="text-cyan-400"
+        />
+      ),
     },
 
-    // NorthWest: Return to Game (if active) or Water
+    // NorthWest: Return to Game (if active) or Edit Players
     {
       id: 'nw-slot',
       coord: HEX_LAYOUTS.CLUSTER_7[6], // (-1, 0)
@@ -122,9 +178,13 @@ export default function Home(): React.ReactElement {
           accentColor="text-green-400"
         />
       ) : (
-        <WaterHex imageUrl="/water.png" showBorder opacity={0.6} />
+        <MenuHex
+          icon={faUsers}
+          title="Edit Players"
+          href="/edit-players"
+          accentColor="text-green-400"
+        />
       ),
-      disabled: !activeGameId,
     },
   ];
 
@@ -136,7 +196,85 @@ export default function Home(): React.ReactElement {
           <HexGrid hexSize={140} items={items} gap={4} />
         </div>
 
-        {/* Troubleshooting Section */}
+        {/* Troubleshoot Results */}
+        {troubleshootResult && (
+          <div
+            className={`mt-6 p-5 rounded-lg text-left max-w-md ${
+              troubleshootResult.connectionSuccessful
+                ? 'bg-green-900/50 border border-green-700'
+                : 'bg-yellow-900/50 border border-yellow-700'
+            }`}
+          >
+            <h3 className="font-bold text-lg mb-3 text-white">{troubleshootResult.message}</h3>
+
+            {troubleshootResult.checks.length > 0 && (
+              <div className="mb-3">
+                <strong className="text-gray-300">Checks:</strong>
+                <ul className="list-disc list-inside text-sm text-gray-400 mt-1">
+                  {troubleshootResult.checks.map((check, i) => (
+                    <li key={i}>{check}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {troubleshootResult.fixed.length > 0 && (
+              <div className="mb-3">
+                <strong className="text-green-400">Fixed:</strong>
+                <ul className="list-disc list-inside text-sm text-green-300 mt-1">
+                  {troubleshootResult.fixed.map((fix, i) => (
+                    <li key={i}>✓ {fix}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {troubleshootResult.issues.length > 0 && (
+              <div className="mb-3">
+                <strong className="text-yellow-400">Issues:</strong>
+                <ul className="list-disc list-inside text-sm text-yellow-300 mt-1">
+                  {troubleshootResult.issues.map((issue, i) => (
+                    <li key={i}>⚠ {issue}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {troubleshootResult.cannotFix.length > 0 && (
+              <div className="mb-3">
+                <strong className="text-blue-400">Cannot Auto-Fix:</strong>
+                <ul className="list-disc list-inside text-sm text-blue-300 mt-1">
+                  {troubleshootResult.cannotFix.map((item, i) => (
+                    <li key={i}>ℹ {item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <button
+              onClick={dismissTroubleshoot}
+              className="mt-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-white transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Troubleshoot Error */}
+        {troubleshootError && (
+          <div className="mt-6 p-5 rounded-lg text-left max-w-md bg-red-900/50 border border-red-700">
+            <h3 className="font-bold text-lg mb-2 text-white">Troubleshoot Failed</h3>
+            <p className="text-sm text-red-300">{troubleshootError}</p>
+            <button
+              onClick={dismissTroubleshoot}
+              className="mt-3 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-white transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Service Info */}
         <div className="mt-8 px-4 py-3 bg-gray-800/50 rounded-lg text-center">
           <p className="text-sm text-gray-400">
             GameService: <code className="text-blue-400">{getServiceUrl()}</code>
