@@ -1,0 +1,21 @@
+{
+  "name": "black-and-white",
+  "displayName": "Black & White",
+  "description": "Minimalist black and white SVG theme - great for printing",
+  "preview": "/themes/black-and-white/tiles/wheat.svg",
+  "assets": {
+    "TileBrick": "/themes/black-and-white/tiles/brick.svg",
+    "TileWheat": "/themes/black-and-white/tiles/wheat.svg",
+    "TileWood": "/themes/black-and-white/tiles/wood.svg",
+    "TileOre": "/themes/black-and-white/tiles/ore.svg",
+    "TileSheep": "/themes/black-and-white/tiles/sheep.svg",
+    "TileDesert": "/themes/black-and-white/tiles/desert.svg",
+
+    "HarborBrick": "/themes/black-and-white/harbors/brick.svg",
+    "HarborOre": "/themes/black-and-white/harbors/ore.svg",
+    "HarborSheep": "/themes/black-and-white/harbors/sheep.svg",
+    "HarborWheat": "/themes/black-and-white/harbors/wheat.svg",
+    "HarborWood": "/themes/black-and-white/harbors/wood.svg",
+    "HarborThreeForOne": "/themes/black-and-white/harbors/3-1.svg"
+  }
+}

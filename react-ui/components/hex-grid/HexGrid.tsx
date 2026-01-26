@@ -44,6 +44,8 @@ export interface HexGridProps {
   fitToParent?: boolean;
   /** Padding when using fitToParent (default: 8) */
   fitPadding?: number;
+  /** Maximum scale when using fitToParent (default: Infinity, no limit) */
+  maxScale?: number;
 }
 
 /**
@@ -97,6 +99,7 @@ export function HexGrid({
   borderColor,
   fitToParent = false,
   fitPadding = 8,
+  maxScale = Infinity,
 }: HexGridProps): React.ReactElement {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [parentSize, setParentSize] = useState<{ width: number; height: number } | null>(null);
@@ -172,9 +175,9 @@ export function HexGrid({
     const scaleX = availableWidth / layout.containerWidth;
     const scaleY = availableHeight / layout.containerHeight;
 
-    // Use the smaller scale to fit both dimensions, but don't scale up beyond 1.0
-    return Math.min(scaleX, scaleY, 1.0);
-  }, [fitToParent, parentSize, layout, fitPadding]);
+    // Use the smaller scale to fit both dimensions, capped by maxScale
+    return Math.min(scaleX, scaleY, maxScale);
+  }, [fitToParent, parentSize, layout, fitPadding, maxScale]);
 
   // Final scale combines user scale with fit scale
   const finalScale = scale * fitScale;

@@ -7,10 +7,11 @@
  * - Page visibility (mobile sleep/wake recovery)
  */
 
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { GameServiceProxy, getGameServiceProxy } from '../services/GameServiceProxy';
 import { useGameStore } from '../stores/gameStore';
 import { useConnectionStore } from '../stores/connectionStore';
+import { reconcileGameModel } from '../utils/reconciliation';
 import type { GameModel } from '@/types/generated/models/game-model';
 
 interface UseGameConnectionOptions {
@@ -49,20 +50,38 @@ export function useGameConnection(
 ): UseGameConnectionResult {
   const { playerId, gameId, autoConnect = true } = options;
 
-  // Get stores
+  // Get game store actions (stable references from Zustand)
   const setGameModel = useGameStore((state) => state.setGameModel);
   const setCurrentPlayerId = useGameStore((state) => state.setCurrentPlayerId);
-  const connectionStore = useConnectionStore();
+
+  // Get connection store actions (stable references from Zustand)
+  // These don't change on state updates, so they're safe for dependencies
+  const setConnected = useConnectionStore((state) => state.setConnected);
+  const setStatus = useConnectionStore((state) => state.setStatus);
+  const setReconnecting = useConnectionStore((state) => state.setReconnecting);
+  const incrementReconnectAttempts = useConnectionStore((state) => state.incrementReconnectAttempts);
+  const setDisconnected = useConnectionStore((state) => state.setDisconnected);
+  const setPageVisible = useConnectionStore((state) => state.setPageVisible);
+
+  // Get connection store state (for return value)
+  const connectionStatus = useConnectionStore((state) => state.status);
+
+  // Track previous GameModel for reconciliation
+  const prevGameModelRef = useRef<GameModel | null>(null);
 
   // Get or create proxy - useMemo ensures stable reference across renders
   // The proxy is a singleton per playerId, so this is safe
   const proxy = useMemo(() => getGameServiceProxy(playerId), [playerId]);
 
-  // Set up event handlers
+  // Set up event handlers - only depends on proxy and action functions
   useEffect(() => {
-    // Handle game state updates
+    // Handle game state updates with reconciliation
+    // Reconciliation preserves references to unchanged items, enabling
+    // React.memo to skip re-renders for tiles/roads/buildings that didn't change
     const unsubGameState = proxy.onGameStateUpdated((gameModel: GameModel) => {
-      setGameModel(gameModel);
+      const reconciled = reconcileGameModel(prevGameModelRef.current, gameModel);
+      prevGameModelRef.current = reconciled;
+      setGameModel(reconciled);
     });
 
     // Handle connection state changes
@@ -70,20 +89,20 @@ export function useGameConnection(
       switch (state) {
         case 'connected':
           if (proxy.currentGameId) {
-            connectionStore.setConnected(proxy.currentGameId);
+            setConnected(proxy.currentGameId);
           } else {
-            connectionStore.setStatus('connected');
+            setStatus('connected');
           }
           break;
         case 'connecting':
-          connectionStore.setStatus('connecting');
+          setStatus('connecting');
           break;
         case 'reconnecting':
-          connectionStore.setReconnecting();
-          connectionStore.incrementReconnectAttempts();
+          setReconnecting();
+          incrementReconnectAttempts();
           break;
         case 'disconnected':
-          connectionStore.setDisconnected();
+          setDisconnected();
           break;
       }
     });
@@ -95,7 +114,7 @@ export function useGameConnection(
       unsubGameState();
       unsubConnection();
     };
-  }, [proxy, playerId, setGameModel, setCurrentPlayerId, connectionStore]);
+  }, [proxy, playerId, setGameModel, setCurrentPlayerId, setConnected, setStatus, setReconnecting, incrementReconnectAttempts, setDisconnected]);
 
   // Page visibility handler for mobile sleep/wake recovery
   // When iOS/Android suspends the browser, the WebSocket is killed by the OS.
@@ -104,7 +123,7 @@ export function useGameConnection(
   useEffect(() => {
     const handleVisibilityChange = async () => {
       const isVisible = document.visibilityState === 'visible';
-      connectionStore.setPageVisible(isVisible);
+      setPageVisible(isVisible);
 
       if (isVisible && proxy.needsReconnection()) {
         // Page became visible and connection is dead - force reconnect
@@ -114,7 +133,7 @@ export function useGameConnection(
           console.log('[useGameConnection] Reconnected successfully');
         } catch (error) {
           console.error('[useGameConnection] Reconnect failed:', error);
-          connectionStore.setDisconnected(
+          setDisconnected(
             error instanceof Error ? error.message : 'Reconnection failed'
           );
         }
@@ -125,7 +144,7 @@ export function useGameConnection(
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [proxy, connectionStore]);
+  }, [proxy, setPageVisible, setDisconnected]);
 
   // Auto-connect on mount
   useEffect(() => {
@@ -157,9 +176,9 @@ export function useGameConnection(
   const joinGame = useCallback(
     async (gameIdToJoin: string) => {
       await proxy.joinGame(gameIdToJoin);
-      connectionStore.setConnected(gameIdToJoin);
+      setConnected(gameIdToJoin);
     },
-    [proxy, connectionStore]
+    [proxy, setConnected]
   );
 
   const leaveGame = useCallback(async () => {
@@ -170,10 +189,10 @@ export function useGameConnection(
 
   return {
     proxy,
-    isConnected: connectionStore.status === 'connected',
+    isConnected: connectionStatus === 'connected',
     isConnecting:
-      connectionStore.status === 'connecting' ||
-      connectionStore.status === 'reconnecting',
+      connectionStatus === 'connecting' ||
+      connectionStatus === 'reconnecting',
     currentGameId: proxy.currentGameId,
     connect,
     disconnect,

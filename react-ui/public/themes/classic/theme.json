@@ -1,0 +1,8 @@
+{
+  "name": "classic",
+  "displayName": "Classic",
+  "description": "The original Catan look and feel",
+  "preview": "/themes/base/tiles/wheat.png",
+  "assets": {
+  }
+}

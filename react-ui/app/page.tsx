@@ -11,6 +11,7 @@ import {
   faFlask,
   faWrench,
   faSpinner,
+  faSlidersH,
 } from '@fortawesome/free-solid-svg-icons';
 import { MainLayout } from '@/components/layout';
 import { getServiceUrl } from '@/lib/config';
@@ -183,6 +184,21 @@ export default function Home(): React.ReactElement {
           title="Edit Players"
           href="/edit-players"
           accentColor="text-green-400"
+        />
+      ),
+    },
+
+    // Far East: Controls Test (development tool)
+    {
+      id: 'controls-test',
+      coord: { q: 2, r: -1, s: -1 }, // East of NorthEast
+      content: (
+        <MenuHex
+          icon={faSlidersH}
+          title="Controls"
+          subtitle="Test"
+          href="/controls-test"
+          accentColor="text-orange-400"
         />
       ),
     },

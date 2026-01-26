@@ -77,6 +77,7 @@ export class GameServiceProxy {
   private gameId: string | null = null;
   private events: GameServiceProxyEvents = {};
   private isDisposed = false;
+  private connectPromise: Promise<void> | null = null;
 
   constructor(playerId: string, serviceUrl?: string) {
     this.playerId = playerId;
@@ -97,10 +98,38 @@ export class GameServiceProxy {
 
     if (this.connection?.state === HubConnectionState.Connected) {
       this.log('Already connected');
+      // If already connected but need to join a different game
+      if (gameId && this.gameId !== gameId) {
+        await this.joinGame(gameId);
+      }
+      return;
+    }
+
+    // Guard against concurrent connection attempts (e.g., React strict mode)
+    if (this.connectPromise) {
+      this.log('Connection already in progress, waiting...');
+      await this.connectPromise;
+      // After waiting, join game if needed
+      if (gameId && this.gameId !== gameId) {
+        await this.joinGame(gameId);
+      }
       return;
     }
 
     this.notifyConnectionState('connecting');
+
+    this.connectPromise = this.doConnect(gameId);
+    try {
+      await this.connectPromise;
+    } finally {
+      this.connectPromise = null;
+    }
+  }
+
+  /**
+   * Internal connection logic.
+   */
+  private async doConnect(gameId?: string): Promise<void> {
 
     try {
       // Configure SignalR logging based on DEBUG environment
