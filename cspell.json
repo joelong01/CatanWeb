@@ -94,6 +94,7 @@
     "mdlint",
     "mermaid",
     "minify",
+    "Minimizable",
     "mmdc",
     "Moq",
     "msbuild",
