@@ -21,9 +21,9 @@ import type {
 import {
   addHexCoords,
   hexEquals,
-  DIRECTION_OFFSETS,
   type HexCoords,
 } from '../geometry/boardGeometry';
+import { DIRECTION_VECTORS, Direction as DirectionEnum, ALL_DIRECTIONS } from '@/components/hex-grid/hex-geometry';
 
 // =============================================================================
 // Key Comparison Utilities
@@ -52,7 +52,7 @@ export function roadKeyEquals(a: RoadKey, b: RoadKey): boolean {
  * Matches C# HexCoordinates.GetAdjacentTile(Direction).
  */
 export function getAdjacentTile(coords: HexCoords, direction: Direction): HexCoords {
-  const offset = DIRECTION_OFFSETS[direction];
+  const offset = DIRECTION_VECTORS[direction as DirectionEnum];
   if (!offset) {
     throw new Error(`Invalid direction: ${direction}`);
   }
@@ -446,7 +446,7 @@ export function findTile(tiles: TileModel[], coords: HexCoords): TileModel | und
 export function getAdjacentTiles(tiles: TileModel[], tile: TileModel): TileModel[] {
   const result: TileModel[] = [];
 
-  for (const direction of Object.keys(DIRECTION_OFFSETS) as Direction[]) {
+  for (const direction of ALL_DIRECTIONS) {
     const neighborCoords = getAdjacentTile(tile.tileKey, direction);
     const neighbor = findTile(tiles, neighborCoords);
     if (neighbor) {

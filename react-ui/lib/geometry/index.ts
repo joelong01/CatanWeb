@@ -57,7 +57,6 @@ export {
   getEdgeVerticesForSide,
   getVertexIndexForPosition,
   getVertexPosition,
-  DIRECTION_OFFSETS,
   addHexCoords,
   subtractHexCoords,
   hexDistance,
@@ -69,3 +68,10 @@ export {
   hexFromString,
   hexEquals,
 } from './boardGeometry';
+
+// Direction exports from hex-geometry (canonical source)
+export {
+  Direction,
+  DIRECTION_VECTORS,
+  ALL_DIRECTIONS,
+} from '@/components/hex-grid/hex-geometry';

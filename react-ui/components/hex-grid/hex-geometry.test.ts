@@ -10,9 +10,17 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateHexDimensions,
   hexToPixel,
+  pixelToHex,
   cubicCoord,
   HEX_LAYOUTS,
   HexCoordinate,
+  Direction,
+  DIRECTION_VECTORS,
+  ALL_DIRECTIONS,
+  getRingCoordinates,
+  getLineCoordinates,
+  distance,
+  HexGridCollection,
 } from './hex-geometry';
 
 describe('calculateHexDimensions', () => {
@@ -363,6 +371,412 @@ describe('pixel position snapshot tests', () => {
 
       expect(pos.x).toBeCloseTo(expectedX, 10);
       expect(pos.y).toBeCloseTo(expectedY, 10);
+    });
+  });
+});
+
+// =============================================================================
+// pixelToHex tests
+// =============================================================================
+
+describe('pixelToHex', () => {
+  const size = 100;
+
+  it('should convert origin pixel to (0,0,0)', () => {
+    const coord = pixelToHex({ x: 0, y: 0 }, size);
+    expect(coord.q).toBe(0);
+    expect(coord.r).toBe(0);
+    expect(coord.s).toBe(0);
+  });
+
+  it('should be inverse of hexToPixel (round trip)', () => {
+    const testCoords = [
+      cubicCoord(0, 0),
+      cubicCoord(1, 0),
+      cubicCoord(0, -1),
+      cubicCoord(-2, 1),
+      cubicCoord(3, -2),
+    ];
+
+    testCoords.forEach((original) => {
+      const pixel = hexToPixel(original, size);
+      const roundTrip = pixelToHex(pixel, size);
+
+      expect(roundTrip.q).toBe(original.q);
+      expect(roundTrip.r).toBe(original.r);
+      expect(roundTrip.s).toBe(original.s);
+    });
+  });
+
+  it('should handle pixels between hex centers (rounding)', () => {
+    // Slightly off-center should still round to center hex
+    const nearCenter = pixelToHex({ x: 10, y: 10 }, size);
+    expect(nearCenter.q).toBe(0);
+    expect(nearCenter.r).toBe(0);
+  });
+
+  it('should respect origin offset', () => {
+    const origin = { x: 500, y: 400 };
+    const coord = pixelToHex({ x: 500, y: 400 }, size, origin);
+    expect(coord.q).toBe(0);
+    expect(coord.r).toBe(0);
+    expect(coord.s).toBe(0);
+  });
+
+  it('should maintain Q+R+S=0 constraint', () => {
+    const testPixels = [
+      { x: 0, y: 0 },
+      { x: 150, y: 86 },
+      { x: -200, y: 173 },
+      { x: 300, y: -100 },
+    ];
+
+    testPixels.forEach((pixel) => {
+      const coord = pixelToHex(pixel, size);
+      expect(coord.q + coord.r + coord.s).toBe(0);
+    });
+  });
+
+  it('should work with different hex sizes', () => {
+    const sizes = [50, 100, 200];
+
+    sizes.forEach((s) => {
+      const coord = cubicCoord(2, -1);
+      const pixel = hexToPixel(coord, s);
+      const back = pixelToHex(pixel, s);
+
+      expect(back.q).toBe(coord.q);
+      expect(back.r).toBe(coord.r);
+    });
+  });
+});
+
+// =============================================================================
+// Direction enum tests
+// =============================================================================
+
+describe('Direction enum', () => {
+  it('should have exactly 6 values', () => {
+    expect(ALL_DIRECTIONS).toHaveLength(6);
+  });
+
+  it('should have values matching C# Direction enum', () => {
+    expect(Direction.North).toBe('North');
+    expect(Direction.NorthEast).toBe('NorthEast');
+    expect(Direction.SouthEast).toBe('SouthEast');
+    expect(Direction.South).toBe('South');
+    expect(Direction.SouthWest).toBe('SouthWest');
+    expect(Direction.NorthWest).toBe('NorthWest');
+  });
+
+  it('should have DIRECTION_VECTORS for all directions', () => {
+    ALL_DIRECTIONS.forEach((dir) => {
+      const vector = DIRECTION_VECTORS[dir];
+      expect(vector).toBeDefined();
+      expect(vector.q + vector.r + vector.s).toBe(0);
+    });
+  });
+
+  it('should have correct vectors matching C# HexCoordinates.Directions', () => {
+    expect(DIRECTION_VECTORS[Direction.North]).toEqual({ q: 0, r: -1, s: 1 });
+    expect(DIRECTION_VECTORS[Direction.NorthEast]).toEqual({ q: 1, r: -1, s: 0 });
+    expect(DIRECTION_VECTORS[Direction.SouthEast]).toEqual({ q: 1, r: 0, s: -1 });
+    expect(DIRECTION_VECTORS[Direction.South]).toEqual({ q: 0, r: 1, s: -1 });
+    expect(DIRECTION_VECTORS[Direction.SouthWest]).toEqual({ q: -1, r: 1, s: 0 });
+    expect(DIRECTION_VECTORS[Direction.NorthWest]).toEqual({ q: -1, r: 0, s: 1 });
+  });
+});
+
+// =============================================================================
+// getRingCoordinates tests
+// =============================================================================
+
+describe('getRingCoordinates', () => {
+  const center = cubicCoord(0, 0);
+
+  it('should return [center] for radius 0', () => {
+    const ring = getRingCoordinates(center, 0);
+    expect(ring).toHaveLength(1);
+    expect(ring[0]).toEqual(center);
+  });
+
+  it('should return 6 hexes for radius 1', () => {
+    const ring = getRingCoordinates(center, 1);
+    expect(ring).toHaveLength(6);
+  });
+
+  it('should return 12 hexes for radius 2', () => {
+    const ring = getRingCoordinates(center, 2);
+    expect(ring).toHaveLength(12);
+  });
+
+  it('should return 6*radius hexes for radius > 0', () => {
+    for (let radius = 1; radius <= 5; radius++) {
+      const ring = getRingCoordinates(center, radius);
+      expect(ring).toHaveLength(6 * radius);
+    }
+  });
+
+  it('should have all hexes at exactly the specified distance', () => {
+    const ring = getRingCoordinates(center, 3);
+    ring.forEach((coord) => {
+      expect(distance(center, coord)).toBe(3);
+    });
+  });
+
+  it('should have unique coordinates', () => {
+    const ring = getRingCoordinates(center, 2);
+    const coordSet = new Set(ring.map((c) => `${c.q},${c.r}`));
+    expect(coordSet.size).toBe(ring.length);
+  });
+
+  it('should work with non-origin center', () => {
+    const offsetCenter = cubicCoord(5, -3);
+    const ring = getRingCoordinates(offsetCenter, 1);
+
+    expect(ring).toHaveLength(6);
+    ring.forEach((coord) => {
+      expect(distance(offsetCenter, coord)).toBe(1);
+      expect(coord.q + coord.r + coord.s).toBe(0);
+    });
+  });
+
+  it('should return empty array for negative radius', () => {
+    const ring = getRingCoordinates(center, -1);
+    expect(ring).toHaveLength(0);
+  });
+
+  it('should satisfy q + r + s === 0 for all coordinates', () => {
+    const ring = getRingCoordinates(center, 3);
+    ring.forEach((c) => {
+      expect(c.q + c.r + c.s).toBe(0);
+    });
+  });
+});
+
+// =============================================================================
+// getLineCoordinates tests
+// =============================================================================
+
+describe('getLineCoordinates', () => {
+  it('should return [start] when start === end', () => {
+    const coord = cubicCoord(1, 2);
+    const line = getLineCoordinates(coord, coord);
+    expect(line).toHaveLength(1);
+    expect(line[0]).toEqual(coord);
+  });
+
+  it('should return 2 hexes for adjacent hexes', () => {
+    const start = cubicCoord(0, 0);
+    const end = cubicCoord(1, 0);
+    const line = getLineCoordinates(start, end);
+    expect(line).toHaveLength(2);
+  });
+
+  it('should return distance+1 hexes', () => {
+    const start = cubicCoord(0, 0);
+    const end = cubicCoord(3, -1);
+    const line = getLineCoordinates(start, end);
+    const d = distance(start, end);
+    expect(line).toHaveLength(d + 1);
+  });
+
+  it('should include both endpoints', () => {
+    const start = cubicCoord(0, 0);
+    const end = cubicCoord(2, -1);
+    const line = getLineCoordinates(start, end);
+
+    expect(line[0]).toEqual(start);
+    expect(line[line.length - 1]).toEqual(end);
+  });
+
+  it('should produce continuous path (each step is adjacent)', () => {
+    const start = cubicCoord(0, 0);
+    const end = cubicCoord(3, -2);
+    const line = getLineCoordinates(start, end);
+
+    for (let i = 0; i < line.length - 1; i++) {
+      const d = distance(line[i], line[i + 1]);
+      expect(d).toBe(1);
+    }
+  });
+
+  it('should satisfy q + r + s === 0 for all coordinates', () => {
+    const line = getLineCoordinates(cubicCoord(-2, 1), cubicCoord(2, -1));
+    line.forEach((c) => {
+      expect(c.q + c.r + c.s).toBe(0);
+    });
+  });
+
+  it('should work for horizontal lines', () => {
+    const start = cubicCoord(-2, 0);
+    const end = cubicCoord(2, 0);
+    const line = getLineCoordinates(start, end);
+    expect(line).toHaveLength(5);
+  });
+});
+
+// =============================================================================
+// HexGridCollection tests
+// =============================================================================
+
+describe('HexGridCollection', () => {
+  describe('basic operations', () => {
+    it('should set and get values', () => {
+      const collection = new HexGridCollection<string>();
+      const coord = cubicCoord(1, 2);
+
+      collection.set(coord, 'test');
+      expect(collection.get(coord)).toBe('test');
+    });
+
+    it('should return undefined for missing keys', () => {
+      const collection = new HexGridCollection<string>();
+      expect(collection.get(cubicCoord(0, 0))).toBeUndefined();
+    });
+
+    it('should report has() correctly', () => {
+      const collection = new HexGridCollection<string>();
+      const coord = cubicCoord(1, -1);
+
+      expect(collection.has(coord)).toBe(false);
+      collection.set(coord, 'value');
+      expect(collection.has(coord)).toBe(true);
+    });
+
+    it('should delete values', () => {
+      const collection = new HexGridCollection<string>();
+      const coord = cubicCoord(0, 0);
+
+      collection.set(coord, 'value');
+      expect(collection.delete(coord)).toBe(true);
+      expect(collection.has(coord)).toBe(false);
+      expect(collection.delete(coord)).toBe(false);
+    });
+
+    it('should clear all values', () => {
+      const collection = new HexGridCollection<string>();
+      collection.set(cubicCoord(0, 0), 'a');
+      collection.set(cubicCoord(1, 0), 'b');
+
+      collection.clear();
+      expect(collection.size).toBe(0);
+    });
+
+    it('should track size correctly', () => {
+      const collection = new HexGridCollection<string>();
+      expect(collection.size).toBe(0);
+
+      collection.set(cubicCoord(0, 0), 'a');
+      expect(collection.size).toBe(1);
+
+      collection.set(cubicCoord(1, 0), 'b');
+      expect(collection.size).toBe(2);
+
+      collection.delete(cubicCoord(0, 0));
+      expect(collection.size).toBe(1);
+    });
+  });
+
+  describe('iteration', () => {
+    it('should iterate with forEach', () => {
+      const collection = new HexGridCollection<number>();
+      collection.set(cubicCoord(0, 0), 1);
+      collection.set(cubicCoord(1, 0), 2);
+
+      const values: number[] = [];
+      collection.forEach((v) => values.push(v));
+
+      expect(values).toHaveLength(2);
+      expect(values).toContain(1);
+      expect(values).toContain(2);
+    });
+
+    it('should iterate entries', () => {
+      const collection = new HexGridCollection<string>();
+      collection.set(cubicCoord(0, 0), 'a');
+      collection.set(cubicCoord(1, -1), 'b');
+
+      const entries = Array.from(collection.entries());
+      expect(entries).toHaveLength(2);
+    });
+
+    it('should iterate keys', () => {
+      const collection = new HexGridCollection<string>();
+      collection.set(cubicCoord(0, 0), 'a');
+      collection.set(cubicCoord(2, -1), 'b');
+
+      const keys = Array.from(collection.keys());
+      expect(keys).toHaveLength(2);
+    });
+
+    it('should iterate values', () => {
+      const collection = new HexGridCollection<string>();
+      collection.set(cubicCoord(0, 0), 'a');
+      collection.set(cubicCoord(1, 0), 'b');
+
+      const values = Array.from(collection.values());
+      expect(values).toEqual(['a', 'b']);
+    });
+  });
+
+  describe('factory methods', () => {
+    it('should create from array', () => {
+      const items = [
+        { coord: cubicCoord(0, 0), value: 'center' },
+        { coord: cubicCoord(1, 0), value: 'east' },
+      ];
+
+      const collection = HexGridCollection.fromArray(items);
+
+      expect(collection.size).toBe(2);
+      expect(collection.get(cubicCoord(0, 0))).toBe('center');
+      expect(collection.get(cubicCoord(1, 0))).toBe('east');
+    });
+
+    it('should create from layout with mapper', () => {
+      const collection = HexGridCollection.fromLayout(
+        HEX_LAYOUTS.CLUSTER_7,
+        (coord, i) => ({ id: i, coord })
+      );
+
+      expect(collection.size).toBe(7);
+      const centerItem = collection.get(cubicCoord(0, 0));
+      expect(centerItem).toBeDefined();
+      expect(centerItem?.id).toBe(0);
+    });
+
+    it('should convert to array', () => {
+      const collection = new HexGridCollection<string>();
+      collection.set(cubicCoord(0, 0), 'a');
+      collection.set(cubicCoord(1, 0), 'b');
+
+      const arr = collection.toArray();
+      expect(arr).toHaveLength(2);
+      expect(arr[0]).toHaveProperty('coord');
+      expect(arr[0]).toHaveProperty('value');
+    });
+  });
+
+  describe('coordinate key handling', () => {
+    it('should treat equivalent coords as same key', () => {
+      const collection = new HexGridCollection<string>();
+
+      // Set with one coord object
+      collection.set({ q: 1, r: 2, s: -3 }, 'value');
+
+      // Get with different object but same values
+      expect(collection.get({ q: 1, r: 2, s: -3 })).toBe('value');
+    });
+
+    it('should handle -0 vs 0 correctly', () => {
+      const collection = new HexGridCollection<string>();
+
+      // JavaScript quirk: -0 === 0 but Object.is(-0, 0) === false
+      collection.set({ q: 0, r: -0, s: 0 }, 'value');
+
+      // Should still find it with regular 0
+      expect(collection.get(cubicCoord(0, 0))).toBe('value');
     });
   });
 });

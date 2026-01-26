@@ -6,6 +6,7 @@
 
 import type { HexCoordinates, HexSide, HexPosition } from '@/types/generated/models';
 import { HEX_SIZE, CENTER_X, CENTER_Y } from './boardConstants';
+import { DIRECTION_VECTORS, Direction, ALL_DIRECTIONS } from '@/components/hex-grid/hex-geometry';
 
 /**
  * Type alias for HexCoordinates - used throughout the geometry module.
@@ -157,18 +158,6 @@ export function getVertexPosition(
   return vertices[vertexIndex];
 }
 
-/**
- * Direction offsets in cube coordinates.
- * Used for navigating between adjacent hexes.
- */
-export const DIRECTION_OFFSETS: Record<string, HexCoords> = {
-  North: { q: 0, r: -1, s: 1 },
-  NorthEast: { q: 1, r: -1, s: 0 },
-  SouthEast: { q: 1, r: 0, s: -1 },
-  South: { q: 0, r: 1, s: -1 },
-  SouthWest: { q: -1, r: 1, s: 0 },
-  NorthWest: { q: -1, r: 0, s: 1 },
-};
 
 /**
  * Adds two hex coordinates.
@@ -197,7 +186,7 @@ export function hexDistance(a: HexCoords, b: HexCoords): number {
  * Gets all 6 neighboring hex coordinates.
  */
 export function getHexNeighbors(coords: HexCoords): HexCoords[] {
-  return Object.values(DIRECTION_OFFSETS).map((offset) => addHexCoords(coords, offset));
+  return ALL_DIRECTIONS.map((dir) => addHexCoords(coords, DIRECTION_VECTORS[dir]));
 }
 
 /**

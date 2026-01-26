@@ -15,25 +15,30 @@ export type { HexTileProps } from './HexTile';
 export {
   calculateHexDimensions,
   hexToPixel,
+  pixelToHex,
   cubicCoord,
   HEX_LAYOUTS,
-  DIRECTIONS,
+  Direction,
+  DIRECTION_VECTORS,
+  ALL_DIRECTIONS,
   distance,
   getNeighbor,
   getAllNeighbors,
   isAdjacent,
   getSpiralCoordinates,
+  getRingCoordinates,
+  getLineCoordinates,
   getVertexPosition,
   getEdgeMidpoint,
   VERTEX_ANGLES,
   EDGE_ANGLES,
+  HexGridCollection,
 } from './hex-geometry';
 
 export type {
   HexDimensions,
   HexCoordinate,
   PixelPosition,
-  Direction,
   HexPosition,
   HexSide,
 } from './hex-geometry';
