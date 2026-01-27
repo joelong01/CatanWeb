@@ -126,113 +126,252 @@ The following hex-based UI controls have been implemented in `react-ui/app/contr
 
 ---
 
-## State Selection Strategy
+## Zustand Store Architecture
 
-### Principle: Props Are Pre-Computed Slices
+This section details the state management implementation. The infrastructure already exists in the codebase - this documents how to use it correctly.
 
-Components receive only the data they need, pre-computed at the page level. This prevents re-renders when unrelated parts of GameModel change.
+### Existing Infrastructure
+
+| File | Purpose | Middleware |
+|------|---------|------------|
+| `lib/stores/gameStore.ts` | Game state from server | `subscribeWithSelector` |
+| `lib/stores/layoutStore.ts` | Panel positions, filters | `persist` |
+| `lib/stores/connectionStore.ts` | SignalR connection state | none |
+| `lib/stores/uiStore.ts` | UI preferences (portrait/landscape) | `persist` |
+| `lib/utils/reconciliation.ts` | Structural sharing for GameModel | n/a |
+
+### Store Separation Principle
+
+**gameStore** - Server-authoritative state (read-only locally):
+
+- `gameModel` - Full GameModel from SignalR
+- `playerProfiles` - Player display info
+- `currentPlayerId` - Local user's player ID
+- `lastRoll` - For tile dimming effect
+
+**layoutStore** - Client-only UI state (read-write locally):
+
+- `panels` - Position, size, minimized state
+- `viewport` - Pan/zoom state
+- `starFilter` / `resourceFilter` - Board filters
+
+**Rule: Never put server state in layoutStore. Never put UI state in gameStore.**
+
+### Using Selectors (REQUIRED Pattern)
+
+All gameStore access MUST use selectors - never access `state.gameModel` directly in components:
 
 ```typescript
-// BAD: Passing entire GameModel forces re-render on any change
-<MeasurementCluster gameModel={gameModel} />
+// File: lib/stores/gameStore.ts (already exists)
+import { useGameStore, selectActionFlags, selectTiles, selectIsMyTurn } from '@/lib/stores';
 
-// GOOD: Pre-compute and pass only what's needed
-const resourceStars = useMemo(() => computeResourceStars(tiles), [tiles]);
-<MeasurementCluster resourceStars={resourceStars} variance={0.5} colors={playerColors} />
+// In component - CORRECT: Uses pre-defined selector
+function ActionCluster() {
+  const actionFlags = useGameStore(selectActionFlags);
+  const isMyTurn = useGameStore(selectIsMyTurn);
+  // Component only re-renders when actionFlags or isMyTurn changes
+}
+
+// WRONG: Accessing gameModel directly causes re-render on ANY change
+function ActionCluster() {
+  const gameModel = useGameStore(state => state.gameModel); // BAD!
+  const actionFlags = gameModel?.actionFlags;
+}
 ```
 
-### Selector Pattern (Zustand + subscribeWithSelector)
+### Shallow Equality for Multi-Value Selectors
+
+When selecting multiple values, use `shallow` from Zustand to prevent re-renders:
 
 ```typescript
-// Define fine-grained selectors in gameStore.ts
-const selectActionFlags = (state: GameStore) => state.gameModel?.actionFlags;
-const selectTiles = (state: GameStore) => state.gameModel?.tiles ?? [];
-const selectGameState = (state: GameStore) => state.gameModel?.gameState;
+import { shallow } from 'zustand/shallow';
 
-// Usage in page component - only re-renders when that specific slice changes
-const actionFlags = useGameStore(selectActionFlags);
-const tiles = useGameStore(selectTiles);
+// CORRECT: Uses shallow comparison - only re-renders if values actually change
+function GameControls() {
+  const { actionFlags, gameState, isMyTurn } = useGameStore(
+    state => ({
+      actionFlags: state.gameModel?.actionFlags,
+      gameState: state.gameModel?.gameState,
+      isMyTurn: state.gameModel?.currentPlayerId === state.currentPlayerId,
+    }),
+    shallow  // CRITICAL: Without this, new object reference triggers re-render every time
+  );
+}
+
+// WRONG: Without shallow, this creates a new object every render
+const data = useGameStore(state => ({
+  actionFlags: state.gameModel?.actionFlags,
+  gameState: state.gameModel?.gameState,
+}));  // Missing shallow = re-renders on every store update!
 ```
 
-### Data Flow Diagram
+### Data Flow: SignalR → Store → Components
 
 ```text
-SignalR Event: GameStateUpdated
+SignalR Event: GameStateUpdated(newModel)
        │
        ▼
-┌─────────────────────────────────────────────┐
-│ reconcileGameModel(prevModel, newModel)     │
-│   - Preserves unchanged array references    │
-│   - Returns prev if nothing changed         │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ useGameConnection hook (lib/hooks/useGameConnection.ts)     │
+│   const reconciled = reconcileGameModel(prev, newModel);    │
+│   gameStore.setGameModel(reconciled);                       │
+└─────────────────────────────────────────────────────────────┘
        │
        ▼
-┌─────────────────────────────────────────────┐
-│ gameStore.setGameModel(reconciled)          │
-│   - Zustand triggers selector subscriptions │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ reconcileGameModel (lib/utils/reconciliation.ts)            │
+│   - Compares arrays by key (tileKey, roadKey, etc.)         │
+│   - Preserves unchanged item references                     │
+│   - Returns prev if NOTHING changed (early exit)            │
+└─────────────────────────────────────────────────────────────┘
        │
-       ├── selectActionFlags ─────► ActionCluster (only if flags changed)
-       ├── selectTiles ───────────► MeasurementCluster (only if tiles changed)
-       ├── selectRollsEnabled ────► DiceCluster (only if rollsEnabled changed)
-       └── selectPlayers ─────────► PlayersPanel (only if players changed)
+       ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Zustand subscribeWithSelector triggers selective updates    │
+│   - Only notifies selectors whose output changed            │
+│   - Components with unchanged selector values skip render   │
+└─────────────────────────────────────────────────────────────┘
+       │
+       ├── selectActionFlags ─► ActionCluster (if flags changed)
+       ├── selectTiles ───────► TilesLayer (if tiles changed)
+       ├── selectRoads ───────► RoadsLayer (if roads changed)
+       ├── selectBuildings ───► BuildingsLayer (if buildings changed)
+       └── selectPlayers ─────► PlayersPanel (if players changed)
 ```
 
-### Component-Specific Selectors
+### Adding New Selectors
 
-**ActionCluster:**
+When adding game page features, add selectors to `gameStore.ts`:
 
 ```typescript
-const selectActionFlags = (state) => state.gameModel?.actionFlags;
-const selectGameState = (state) => state.gameModel?.gameState;
-const selectMyEntitlements = (state) => {
+// In lib/stores/gameStore.ts
+
+/** Select the current player's unspent entitlements */
+export const selectMyEntitlements = (state: GameStore): Entitlement[] => {
   const me = state.gameModel?.players.find(p => p.id === state.currentPlayerId);
   return me?.unspentEntitlements ?? [];
 };
-const selectPurchaseStats = (state) => state.gameModel?.entitlementPurchaseModel ?? [];
+
+/** Select purchase statistics for badge counts */
+export const selectPurchaseStats = (state: GameStore) =>
+  state.gameModel?.entitlementPurchaseModel ?? [];
+
+/** Select whether rolls are enabled for current player */
+export const selectCanRoll = (state: GameStore): boolean => {
+  const isMyTurn = state.gameModel?.currentPlayerId === state.currentPlayerId;
+  const rollsEnabled = state.gameModel?.actionFlags?.rollsEnabled ?? false;
+  return isMyTurn && rollsEnabled;
+};
 ```
 
-**DiceCluster:**
+Then export from `lib/stores/index.ts`:
 
 ```typescript
-const selectRollsEnabled = (state) => state.gameModel?.actionFlags?.rollsEnabled ?? false;
-const selectIsMyTurn = (state) => state.gameModel?.currentPlayerId === state.currentPlayerId;
-// Die values are LOCAL state, not from GameModel
+export {
+  // ... existing exports
+  selectMyEntitlements,
+  selectPurchaseStats,
+  selectCanRoll,
+} from './gameStore';
 ```
 
-**MeasurementCluster:**
+### Component-to-Store Mapping
+
+| Component | Selectors Used | Local State |
+|-----------|---------------|-------------|
+| **ActionCluster** | `selectActionFlags`, `selectGameState`, `selectMyEntitlements`, `selectPurchaseStats` | none |
+| **DiceCluster** | `selectCanRoll` | `die1Value`, `die2Value`, `isRolling` |
+| **RollRing** | none (receives props) | `hoveredRoll` |
+| **MeasurementCluster** | `selectTiles`, `selectBuildings` | none |
+| **TilesLayer** | `selectTiles` | none |
+| **RoadsLayer** | `selectRoads` | none |
+| **BuildingsLayer** | `selectBuildings` | none |
+| **PlayersPanel** | `selectPlayers`, `selectCurrentTurnPlayerId` | none |
+| **FloatingPanel** | `selectPanel(panelId)` from layoutStore | `isDragging` |
+
+### Principle: Props Are Pre-Computed Slices
+
+Page components pre-compute derived data and pass as props:
 
 ```typescript
-const selectTiles = (state) => state.gameModel?.tiles ?? [];
-const selectBuildings = (state) => state.gameModel?.buildings ?? [];
-// Star/resource filters are in layoutStore (UI state), not gameStore
+// In game/[id]/page.tsx
+function GamePage() {
+  const tiles = useGameStore(selectTiles);
+  const buildings = useGameStore(selectBuildings);
+
+  // Pre-compute at page level, pass as props
+  const resourceStars = useMemo(() => computeResourceStars(tiles), [tiles]);
+  const buildingSpotCounts = useMemo(() => computeSpotCounts(buildings), [buildings]);
+
+  return (
+    <MeasurementCluster
+      resourceStars={resourceStars}
+      buildingSpotCounts={buildingSpotCounts}
+      variance={0.5}
+      colors={playerColors}
+    />
+  );
+}
+
+// MeasurementCluster receives ONLY what it needs - no store access inside
+const MeasurementCluster = memo(function MeasurementCluster({
+  resourceStars,
+  buildingSpotCounts,
+  variance,
+  colors,
+}: MeasurementClusterProps) {
+  // Pure render from props - no useGameStore here
+});
 ```
 
 ---
 
 ## Memoization Requirements
 
-### Component-Level (React.memo)
+### Component-Level (React.memo) - REQUIRED
 
-All cluster components MUST be wrapped with `memo()` to prevent re-renders when parent updates:
+**EVERY component receiving props from a parent MUST use `memo()`:**
+
+| Component | Must Use memo() | Why |
+|-----------|-----------------|-----|
+| `GameTile` | YES | Parent iterates tiles array |
+| `Road` | YES | Parent iterates roads array |
+| `Building` | YES | Parent iterates buildings array |
+| `ActionCluster` | YES | Page passes pre-computed props |
+| `MeasurementCluster` | YES | Page passes pre-computed props |
+| `RollRing` | YES | Page passes roll stats |
+| `DiceCluster` | YES | Page passes colors |
+| `RollHexContent` | YES | Parent iterates roll numbers |
+| `ActionHexContent` | YES | Parent iterates actions |
+| `NumberToken` | YES | Used in multiple contexts |
+
+**Pattern:**
 
 ```typescript
-// REQUIRED pattern for all hex controls
-export const ActionCluster = memo(function ActionCluster(props: ActionClusterProps) {
-  // ...
+// CORRECT: Named function with memo wrapper
+export const GameTile = memo(function GameTile({ tile, position }: TileProps) {
+  return (/* ... */);
 });
 
-export const RollHexContent = memo(function RollHexContent(props: RollHexContentProps) {
-  // ...
+// ALSO CORRECT: Arrow function (but named is preferred for debugging)
+export const GameTile = memo(({ tile, position }: TileProps) => {
+  return (/* ... */);
 });
+
+// WRONG: No memo - re-renders every time parent updates
+export function GameTile({ tile, position }: TileProps) {
+  return (/* ... */);
+}
 ```
 
-### Value-Level (useMemo)
+### Value-Level (useMemo) - When to Use
 
-Pre-compute derived values at the page level:
+**USE useMemo for:**
+
+1. **Derived calculations from arrays:**
 
 ```typescript
-// In game page component
+// Computing resource star totals from tiles array
 const resourceStars = useMemo(() => {
   return RESOURCE_TYPES.reduce((acc, type) => {
     acc[type] = tiles
@@ -241,7 +380,13 @@ const resourceStars = useMemo(() => {
     return acc;
   }, {} as Record<ResourceType, number>);
 }, [tiles]);
+```
 
+1. **Object/array creation passed as props:**
+
+```typescript
+// Without useMemo, this creates new object every render
+// which breaks memo() on child components
 const purchaseAvailability = useMemo(() => ({
   road: entitlements.includes(Entitlement.Road),
   settlement: entitlements.includes(Entitlement.Settlement),
@@ -250,24 +395,80 @@ const purchaseAvailability = useMemo(() => ({
 }), [entitlements]);
 ```
 
-### Callback-Level (useCallback)
-
-- Commands from `useGameCommands()` are already stable references - no wrapping needed
-- Custom handlers that close over changing state need `useCallback`:
+1. **Expensive lookups:**
 
 ```typescript
-// NOT needed - proxy methods are stable
-const { next, undo, redo } = useGameCommands();
+const boardLookups = useMemo(
+  () => buildHexGridLookups(tiles, roads, buildings, harbors),
+  [tiles, roads, buildings, harbors]
+);
+```
 
-// NEEDED - closes over selectedResources state
+**DON'T USE useMemo for:**
+
+- Simple property access: `state.gameModel?.actionFlags`
+- Primitive values: `isMyTurn ? 'blue' : 'gray'`
+- Values already stable from selectors
+
+### Callback-Level (useCallback) - When to Use
+
+**USE useCallback for handlers passed as props:**
+
+```typescript
+// NEEDED: Handler passed to child component
 const handleResourceClick = useCallback((resource: string) => {
   setSelectedResources(prev =>
     prev.includes(resource)
       ? prev.filter(r => r !== resource)
-      : [...prev, resource].slice(-3)  // Max 3
+      : [...prev, resource].slice(-3)
   );
-}, []);  // Empty deps - uses functional update
+}, []);  // Empty deps - functional update doesn't need deps
+
+// NEEDED: Handler that will be in a dependency array
+const handleTileClick = useCallback((coord: HexCoordinate) => {
+  if (gameState === 'MustMoveRobber') {
+    showRobberMenu(coord);
+  }
+}, [gameState]);
 ```
+
+**DON'T USE useCallback for:**
+
+```typescript
+// NOT NEEDED: Store actions are already stable
+const { setStarFilter, setResourceFilter } = useLayoutStore();
+
+// NOT NEEDED: Handlers not passed to memoized children
+const handleLocalClick = () => setIsOpen(!isOpen);
+```
+
+### Reconciliation Integration
+
+The `reconcileGameModel()` function (in `lib/utils/reconciliation.ts`) preserves array item references. This works WITH React.memo:
+
+```text
+SignalR Update: Player builds a road
+       │
+       ▼
+reconcileGameModel():
+  - tiles: SAME reference (no tiles changed)
+  - roads: NEW array, but 71 of 72 road items have SAME reference
+  - buildings: SAME reference
+       │
+       ▼
+React reconciliation:
+  - TilesLayer: skips render (tiles === prev.tiles)
+  - RoadsLayer: renders, but...
+    - Road[0-70]: skip render (memo sees same props)
+    - Road[71]: renders (new road item)
+  - BuildingsLayer: skips render
+```
+
+**This only works if:**
+
+1. `reconcileGameModel()` is called before `setGameModel()`
+2. Array item components use `memo()`
+3. Components use stable keys (roadKeyString, buildingKeyString, etc.)
 
 ---
 
