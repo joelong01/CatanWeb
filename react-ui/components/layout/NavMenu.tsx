@@ -13,6 +13,9 @@ import {
   faGear,
   faPlay,
   faRotate,
+  faScaleBalanced,
+  faTrophy,
+  faDownload,
 } from '@fortawesome/free-solid-svg-icons';
 import { useLayoutStore } from '@/lib/stores/layoutStore';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
@@ -23,6 +26,17 @@ interface NavMenuProps {
   onMenuAction: () => void;
   /** Current active game ID, if any */
   activeGameId?: string | null;
+  /** Game-specific callbacks (only used on Game page) */
+  gameActions?: {
+    /** Whether the game is in PickingBoard state (shows Balance button) */
+    isPickingBoard?: boolean;
+    /** Balance board callback */
+    onBalance?: () => void;
+    /** Declare winner callback */
+    onWinner?: () => void;
+    /** Save copy callback */
+    onSaveCopy?: () => void;
+  };
 }
 
 /** Page context for determining which menu items to show */
@@ -65,7 +79,7 @@ function NavMenuItem({
  * Navigation menu component displayed in the sidebar.
  * Shows context-aware menu items based on current page.
  */
-export function NavMenu({ onMenuAction, activeGameId }: NavMenuProps): React.ReactElement {
+export function NavMenu({ onMenuAction, activeGameId, gameActions }: NavMenuProps): React.ReactElement {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -232,11 +246,54 @@ export function NavMenu({ onMenuAction, activeGameId }: NavMenuProps): React.Rea
         </>
       )}
 
-      {(currentPage === 'Game' || currentPage === 'Tests' || currentPage === 'Other') && (
+      {currentPage === 'Game' && (
+        <>
+          <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
+          {gameActions?.onSaveCopy && (
+            <NavMenuItem
+              icon={faDownload}
+              label="Save Copy"
+              onClick={() => {
+                gameActions.onSaveCopy?.();
+                onMenuAction();
+              }}
+            />
+          )}
+          <NavMenuItem
+            icon={faUsers}
+            label="Edit Players"
+            onClick={() => navigateTo('/edit-players')}
+          />
+          {gameActions?.isPickingBoard && gameActions?.onBalance && (
+            <NavMenuItem
+              icon={faScaleBalanced}
+              label="Balance"
+              onClick={() => {
+                gameActions.onBalance?.();
+                onMenuAction();
+              }}
+            />
+          )}
+          {gameActions?.onWinner && (
+            <NavMenuItem
+              icon={faTrophy}
+              label="Winner!"
+              onClick={() => {
+                gameActions.onWinner?.();
+                onMenuAction();
+              }}
+              className="winner-button"
+            />
+          )}
+          <NavMenuItem icon={faRotate} label="Reset Layout" onClick={handleResetLayout} />
+        </>
+      )}
+
+      {(currentPage === 'Tests' || currentPage === 'Other') && (
         <>
           <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
           <NavMenuItem icon={faRotate} label="Reset Layout" onClick={handleResetLayout} />
-          {hasActiveGame && currentPage !== 'Game' && (
+          {hasActiveGame && (
             <NavMenuItem
               icon={faPlay}
               label="Return to Game"

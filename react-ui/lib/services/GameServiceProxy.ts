@@ -130,6 +130,8 @@ export class GameServiceProxy {
    * Internal connection logic.
    */
   private async doConnect(gameId?: string): Promise<void> {
+    const hubUrl = `${this.serviceUrl}/gameHub`;
+    console.log(`[GameServiceProxy] Connecting to SignalR hub at: ${hubUrl}`);
 
     try {
       // Configure SignalR logging based on DEBUG environment
@@ -137,7 +139,13 @@ export class GameServiceProxy {
         (process.env?.DEBUG === 'true' || process.env?.DEBUG === '1');
 
       this.connection = new HubConnectionBuilder()
-        .withUrl(`${this.serviceUrl}/gameHub`)
+        .withUrl(hubUrl, {
+          // Disable credentials - required when server uses AllowAnyOrigin()
+          // SignalR's default is withCredentials: true for long polling, which
+          // causes CORS failure because Access-Control-Allow-Credentials: true
+          // cannot be combined with Access-Control-Allow-Origin: *
+          withCredentials: false,
+        })
         .withAutomaticReconnect({
           nextRetryDelayInMilliseconds: (retryContext) => {
             // Exponential backoff: 0, 2s, 4s, 8s, 16s, max 30s
@@ -159,8 +167,16 @@ export class GameServiceProxy {
 
       if (gameId) {
         await this.joinGame(gameId);
+        // Fetch game state after join (server sends via SignalR, but fetch as backup)
+        console.log(`[GameServiceProxy] Fetching game state for ${gameId}...`);
+        await this.refreshGameState(gameId);
+        console.log(`[GameServiceProxy] Game state fetch complete`);
       }
     } catch (error) {
+      console.error(`[GameServiceProxy] Connection to ${hubUrl} failed:`, error);
+      if (error instanceof Error) {
+        console.error(`[GameServiceProxy] Error name: ${error.name}, message: ${error.message}`);
+      }
       this.log('Connection failed', error);
       this.notifyConnectionState('disconnected');
       throw error;
@@ -290,10 +306,15 @@ export class GameServiceProxy {
    * Get current game state via REST API.
    */
   async getGameState(gameId: string): Promise<GameModel | null> {
+    console.log(`[GameServiceProxy] getGameState: GET /api/gamestate/${gameId}`);
     const response = await this.get(`/api/gamestate/${gameId}`);
+    console.log(`[GameServiceProxy] getGameState: response.ok=${response.ok}, status=${response.status}`);
     if (response.ok) {
-      return (await response.json()) as GameModel;
+      const data = await response.json();
+      console.log(`[GameServiceProxy] getGameState: got data, tiles:`, data?.tiles?.length);
+      return data as GameModel;
     }
+    console.log(`[GameServiceProxy] getGameState: failed, returning null`);
     return null;
   }
 
@@ -301,8 +322,12 @@ export class GameServiceProxy {
    * Refresh game state after reconnect.
    */
   async refreshGameState(gameId: string): Promise<void> {
+    console.log(`[GameServiceProxy] refreshGameState: fetching for ${gameId}`);
     const gameModel = await this.getGameState(gameId);
+    console.log(`[GameServiceProxy] refreshGameState: got gameModel?`, !!gameModel, 'tiles:', gameModel?.tiles?.length);
+    console.log(`[GameServiceProxy] refreshGameState: handler set?`, !!this.events.onGameStateUpdated);
     if (gameModel && this.events.onGameStateUpdated) {
+      console.log(`[GameServiceProxy] refreshGameState: calling handler`);
       this.events.onGameStateUpdated(gameModel);
     }
   }

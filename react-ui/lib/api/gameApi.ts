@@ -57,6 +57,16 @@ export interface SavedGamesResponse {
 }
 
 /**
+ * Response from copying a game.
+ */
+export interface CopyGameResponse {
+  success: boolean;
+  newGameId: string;
+  gameName: string;
+  message?: string;
+}
+
+/**
  * Makes a fetch request with standard error handling.
  */
 async function apiFetch<T>(
@@ -191,6 +201,22 @@ export const gameApi = {
   async deletePlayer(id: string): Promise<ApiResponse<void>> {
     return apiFetch<void>(`/api/players/${id}`, {
       method: 'DELETE',
+    });
+  },
+
+  /**
+   * Creates a copy of an existing game.
+   *
+   * @param gameId - The ID of the game to copy
+   * @param newName - Optional name for the copy
+   */
+  async copyGame(gameId: string, newName?: string): Promise<ApiResponse<CopyGameResponse>> {
+    const url = newName
+      ? `/api/game/${gameId}/copy?newName=${encodeURIComponent(newName)}`
+      : `/api/game/${gameId}/copy`;
+
+    return apiFetch<CopyGameResponse>(url, {
+      method: 'POST',
     });
   },
 };

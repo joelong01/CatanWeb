@@ -1,118 +1,273 @@
 'use client';
 
 /**
- * DiceCluster - Two 7-hex clusters for dice selection.
+ * DiceCluster - Two 7-hex clusters for dice selection using HexGrid.
  *
- * Each cluster shows values 1-6 around the edge with a confirm button in center.
- * Players select a value on each die, then click center to confirm roll.
- * Scales responsively to fit container.
+ * Each cluster shows values 1-6 around the edge (as dice face glyphs) with
+ * a confirm button in center. Players select a value on each die, then
+ * click either center hex to confirm the roll.
  */
 
 import { useState, useCallback, memo } from 'react';
+import { HexGrid, type HexGridItem, type HexCoordinate } from '@/components/hex-grid';
+import type { PlayerColorsWithGradient } from '@/lib/utils/playerColors';
 
-interface DiceClusterProps {
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface DiceClusterProps {
   /** Whether dice rolling is enabled */
   enabled: boolean;
   /** Whether currently waiting for server response */
   isRolling: boolean;
   /** Callback when roll is confirmed */
   onRoll: (die1: number, die2: number) => void;
-  /** Current player's color for highlighting */
-  playerColor?: string;
+  /** Player colors for styling */
+  colors?: PlayerColorsWithGradient;
 }
 
-/** Die value positions around the hex cluster (clockwise from top) */
-const DIE_POSITIONS: { value: number; angle: number }[] = [
-  { value: 1, angle: -90 },   // Top
-  { value: 2, angle: -30 },   // Top-right
-  { value: 3, angle: 30 },    // Bottom-right
-  { value: 4, angle: 90 },    // Bottom
-  { value: 5, angle: 150 },   // Bottom-left
-  { value: 6, angle: 210 },   // Top-left (or -150)
-];
+// ============================================================================
+// Constants
+// ============================================================================
 
-interface SingleDieProps {
-  label: string;
-  selectedValue: number | null;
-  onSelect: (value: number) => void;
-  playerColor: string;
-  disabled: boolean;
+/** Unicode dice face glyphs */
+const DICE_GLYPHS = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+
+/** Standard 7-hex cluster: center + 6 neighbors */
+const CLUSTER_7: Record<string, HexCoordinate> = {
+  center: { q: 0, r: 0, s: 0 },
+  north: { q: 0, r: -1, s: 1 },
+  northEast: { q: 1, r: -1, s: 0 },
+  southEast: { q: 1, r: 0, s: -1 },
+  south: { q: 0, r: 1, s: -1 },
+  southWest: { q: -1, r: 1, s: 0 },
+  northWest: { q: -1, r: 0, s: 1 },
+};
+
+// ============================================================================
+// DiceHexContent - Individual die value hex
+// ============================================================================
+
+interface DiceHexContentProps {
+  value: number;
+  isSelected: boolean;
+  colors?: PlayerColorsWithGradient;
 }
 
-/** Single die cluster using CSS positioning */
-const SingleDie = memo(function SingleDie({
-  label,
-  selectedValue,
-  onSelect,
-  playerColor,
-  disabled,
-}: SingleDieProps) {
-  // Hex cluster dimensions - center hex + 6 surrounding
-  const centerSize = 36; // Center hex size
-  const outerSize = 28;  // Outer hex size
-  const radius = 38;     // Distance from center to outer hexes
+const DiceHexContent = memo(function DiceHexContent({
+  value,
+  isSelected,
+  colors,
+}: DiceHexContentProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+
+  const gradient = colors?.cssGradient || 'var(--hex-content-gradient)';
+  const foreground = colors?.foreground || '#ffffff';
+  const primary = colors?.primary || '#e53935';
+
+  // Unselected: player gradient background, foreground text
+  // Selected: foreground as background, primary as text (inverted)
+  const bgStyle = isSelected
+    ? { background: foreground }
+    : { background: gradient };
+
+  const textColor = isSelected ? primary : foreground;
+
+  // Get dice glyph for value 1-6
+  const glyph = DICE_GLYPHS[value] || '';
+
+  // Scale based on interaction state
+  const innerScale = isPressed ? 0.85 : isHovered ? 0.88 : 0.91;
+  const borderColor = isSelected || isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
 
   return (
     <div
-      className="relative"
-      style={{ width: 110, height: 100 }}
+      className="absolute inset-0"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      onTouchStart={() => setIsPressed(true)}
+      onTouchEnd={() => setIsPressed(false)}
     >
-      {/* Center hex (label) */}
+      {/* Outer border */}
       <div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-xs font-bold text-gray-400"
+        className="absolute inset-0 hex-clip-flat transition-colors duration-150"
+        style={{ background: borderColor }}
+      />
+      {/* Inner content */}
+      <div
+        className="absolute inset-0 hex-clip-flat flex items-center justify-center transition-all duration-150"
         style={{
-          width: centerSize,
-          height: centerSize * 0.866,
-          clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
-          backgroundColor: '#374151',
+          transform: `scale(${innerScale})`,
+          ...bgStyle,
         }}
       >
-        {label}
+        <span
+          style={{
+            color: textColor,
+            fontSize: '3em',
+            textShadow: isSelected ? 'none' : '2px 2px 6px rgba(0,0,0,0.6)',
+            fontWeight: 'normal',
+            transition: 'transform 150ms',
+            transform: isPressed ? 'scale(0.9)' : 'scale(1)',
+          }}
+        >
+          {glyph}
+        </span>
       </div>
-
-      {/* Outer hexes (values 1-6) */}
-      {DIE_POSITIONS.map(({ value, angle }) => {
-        const isSelected = value === selectedValue;
-        const radians = (angle * Math.PI) / 180;
-        const x = Math.cos(radians) * radius;
-        const y = Math.sin(radians) * radius;
-
-        return (
-          <button
-            key={value}
-            onClick={() => !disabled && onSelect(value)}
-            disabled={disabled}
-            className={`
-              absolute flex items-center justify-center
-              transition-all duration-150
-              ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:brightness-125'}
-            `}
-            style={{
-              width: outerSize,
-              height: outerSize * 0.866,
-              left: `calc(50% + ${x}px)`,
-              top: `calc(50% + ${y}px)`,
-              transform: 'translate(-50%, -50%)',
-              clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
-              backgroundColor: isSelected ? playerColor : '#4b5563',
-            }}
-          >
-            <span className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-gray-200'}`}>
-              {value}
-            </span>
-          </button>
-        );
-      })}
     </div>
   );
 });
 
-/** Main DiceCluster component with two dice */
-export function DiceCluster({
+// ============================================================================
+// DiceCenterHex - "Send Roll" button in center
+// ============================================================================
+
+interface DiceCenterHexProps {
+  isEnabled: boolean;
+  colors?: PlayerColorsWithGradient;
+}
+
+const DiceCenterHex = memo(function DiceCenterHex({ isEnabled, colors }: DiceCenterHexProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+
+  const gradient = colors?.cssGradient || 'var(--hex-content-gradient)';
+  const foreground = colors?.foreground || '#ffffff';
+  // Use primary color for checkmark (contrasts with foreground background)
+  const checkColor = colors?.primary || '#1a1a1a';
+
+  // Scale based on interaction state (only when enabled)
+  const innerScale = isEnabled && isPressed ? 0.85 : isEnabled && isHovered ? 0.88 : 0.91;
+  const borderColor = isEnabled && isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
+
+  return (
+    <div
+      className="absolute inset-0"
+      onMouseEnter={() => isEnabled && setIsHovered(true)}
+      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseDown={() => isEnabled && setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      onTouchStart={() => isEnabled && setIsPressed(true)}
+      onTouchEnd={() => setIsPressed(false)}
+    >
+      {/* Outer border */}
+      <div
+        className="absolute inset-0 hex-clip-flat transition-colors duration-150"
+        style={{ background: borderColor }}
+      />
+      {/* Inner content */}
+      <div
+        className={`absolute inset-0 hex-clip-flat flex items-center justify-center transition-all duration-150 ${!isEnabled ? 'opacity-40' : ''}`}
+        style={{
+          transform: `scale(${innerScale})`,
+          background: isEnabled ? foreground : gradient,
+        }}
+      >
+        {isEnabled && (
+          <span
+            style={{
+              color: checkColor,
+              fontSize: '2.5em',
+              transition: 'transform 150ms',
+              transform: isPressed ? 'scale(0.85)' : 'scale(1)',
+            }}
+          >
+            ✓
+          </span>
+        )}
+      </div>
+    </div>
+  );
+});
+
+// ============================================================================
+// SingleDieCluster - One 7-hex cluster for a single die
+// ============================================================================
+
+interface SingleDieClusterProps {
+  selectedValue: number | null;
+  onSelect: (value: number | null) => void;
+  canSendRoll?: boolean;
+  onSendRoll?: () => void;
+  colors?: PlayerColorsWithGradient;
+}
+
+const SingleDieCluster = memo(function SingleDieCluster({
+  selectedValue,
+  onSelect,
+  canSendRoll = false,
+  onSendRoll,
+  colors,
+}: SingleDieClusterProps) {
+  // Map die values to cluster positions
+  const diePositions: { value: number; coord: HexCoordinate }[] = [
+    { value: 1, coord: CLUSTER_7.north },
+    { value: 2, coord: CLUSTER_7.northEast },
+    { value: 3, coord: CLUSTER_7.southEast },
+    { value: 4, coord: CLUSTER_7.south },
+    { value: 5, coord: CLUSTER_7.southWest },
+    { value: 6, coord: CLUSTER_7.northWest },
+  ];
+
+  // Toggle behavior: clicking selected value unselects it
+  const handleSelect = (value: number) => {
+    onSelect(selectedValue === value ? null : value);
+  };
+
+  const items: HexGridItem[] = [
+    // Center hex - "send roll" button
+    {
+      id: 'center',
+      coord: CLUSTER_7.center,
+      content: (
+        <DiceCenterHex
+          isEnabled={canSendRoll}
+          colors={colors}
+        />
+      ),
+      onClick: canSendRoll ? onSendRoll : undefined,
+      disabled: !canSendRoll,
+    },
+    // Value hexes around the outside
+    ...diePositions.map(({ value, coord }) => ({
+      id: `die-${value}`,
+      coord,
+      content: (
+        <DiceHexContent
+          value={value}
+          isSelected={selectedValue === value}
+          colors={colors}
+        />
+      ),
+      onClick: () => handleSelect(value),
+    })),
+  ];
+
+  return (
+    <HexGrid
+      hexSize={40}
+      items={items}
+      gap={2}
+      borderColor="transparent"
+      fitToParent={true}
+      fitPadding={0}
+    />
+  );
+});
+
+// ============================================================================
+// DiceCluster - Main component with two dice side by side
+// ============================================================================
+
+export const DiceCluster = memo(function DiceCluster({
   enabled,
   isRolling,
   onRoll,
-  playerColor = '#f59e0b',
+  colors,
 }: DiceClusterProps): React.ReactElement {
   const [die1Value, setDie1Value] = useState<number | null>(null);
   const [die2Value, setDie2Value] = useState<number | null>(null);
@@ -126,57 +281,30 @@ export function DiceCluster({
     }
   }, [die1Value, die2Value, enabled, isRolling, onRoll]);
 
-  const canConfirm = die1Value !== null && die2Value !== null && enabled && !isRolling;
-  const total = die1Value && die2Value ? die1Value + die2Value : null;
+  const canSendRoll = die1Value !== null && die2Value !== null && enabled && !isRolling;
 
   return (
-    <div className="p-2 flex flex-col items-center">
-      {/* Dice row */}
-      <div className="flex items-center justify-center gap-2">
-        <SingleDie
-          label="D1"
+    <div className="w-full h-full flex items-center justify-center overflow-hidden">
+      <div className="flex-1 h-full min-w-0">
+        <SingleDieCluster
           selectedValue={die1Value}
-          onSelect={setDie1Value}
-          playerColor={playerColor}
-          disabled={!enabled || isRolling}
-        />
-        <SingleDie
-          label="D2"
-          selectedValue={die2Value}
-          onSelect={setDie2Value}
-          playerColor={playerColor}
-          disabled={!enabled || isRolling}
+          onSelect={enabled && !isRolling ? setDie1Value : () => {}}
+          canSendRoll={canSendRoll}
+          onSendRoll={handleConfirm}
+          colors={colors}
         />
       </div>
-
-      {/* Roll button and status */}
-      <div className="mt-2 flex flex-col items-center gap-1">
-        <button
-          onClick={handleConfirm}
-          disabled={!canConfirm}
-          className={`
-            px-4 py-1.5 rounded-lg font-bold text-white text-sm
-            transition-all duration-200
-            ${canConfirm
-              ? 'bg-amber-600 hover:bg-amber-500 shadow-lg'
-              : 'bg-gray-600 cursor-not-allowed opacity-50'
-            }
-            ${isRolling ? 'animate-pulse' : ''}
-          `}
-        >
-          {isRolling ? 'Rolling...' : total ? `Roll ${total}` : 'Select Dice'}
-        </button>
-
-        <div className="text-[10px] text-gray-500 text-center">
-          {!enabled && 'Waiting for turn'}
-          {enabled && !die1Value && !die2Value && 'Click numbers'}
-          {enabled && die1Value && !die2Value && 'Select D2'}
-          {enabled && !die1Value && die2Value && 'Select D1'}
-          {enabled && die1Value && die2Value && 'Click to roll'}
-        </div>
+      <div className="flex-1 h-full min-w-0">
+        <SingleDieCluster
+          selectedValue={die2Value}
+          onSelect={enabled && !isRolling ? setDie2Value : () => {}}
+          canSendRoll={canSendRoll}
+          onSendRoll={handleConfirm}
+          colors={colors}
+        />
       </div>
     </div>
   );
-}
+});
 
 export default DiceCluster;

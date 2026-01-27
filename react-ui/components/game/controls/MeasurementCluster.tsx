@@ -1,193 +1,549 @@
 'use client';
 
 /**
- * MeasurementCluster - Board measurement controls.
+ * MeasurementCluster - Board measurement controls with nested hex design.
  *
- * Shows:
- * - 5 resource types with star counts from tiles
- * - Star filter buttons (8-13) to filter building spots
- * - Reset button to clear filters
- *
- * Always visible - helps evaluate settlement spots during allocation
- * and provides resource overview during gameplay.
+ * Features:
+ * - Outer ring: 5 resource types with star counts + variance hex
+ * - Inner cluster: Star filter values (8-13) + reset button
+ * - Multi-select resources (up to 3), single-select stars
+ * - Resource images with count overlays
+ * - Variance indicator with balance scale icon
  */
 
-import { memo, useCallback } from 'react';
-import { useLayoutStore } from '@/lib/stores/layoutStore';
+import { memo, useState, useCallback } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faArrowsRotate, faCheck, faScaleBalanced } from '@fortawesome/free-solid-svg-icons';
+import { HexGrid, type HexGridItem, type HexCoordinate } from '@/components/hex-grid';
+import type { PlayerColorsWithGradient } from '@/lib/utils/playerColors';
 import type { GameModel } from '@/types/generated/models/game-model';
 
-interface MeasurementClusterProps {
+// ============================================================================
+// Types
+// ============================================================================
+
+/** Counts of building spots for each star value */
+export interface StarCounts {
+  [stars: number]: number;
+}
+
+export interface MeasurementClusterProps {
   /** Game model for tile data */
   gameModel: GameModel | null;
+  /** Player colors for styling */
+  colors?: PlayerColorsWithGradient;
+  /** Counts of building spots for each star value (8-13) */
+  starCounts?: StarCounts;
+  /** Callback when resource selection changes */
+  onResourceSelectionChange?: (resources: string[]) => void;
+  /** Callback when star filter changes */
+  onStarFilterChange?: (stars: number | null) => void;
+  /** Callback when reset is clicked */
+  onReset?: () => void;
 }
 
-/** Resource config with colors */
-const RESOURCES = [
-  { key: 'Wheat', label: 'Wheat', icon: '🌾', bg: 'bg-yellow-600' },
-  { key: 'Wood', label: 'Wood', icon: '🪵', bg: 'bg-green-700' },
-  { key: 'Sheep', label: 'Sheep', icon: '🐑', bg: 'bg-lime-600' },
-  { key: 'Brick', label: 'Brick', icon: '🧱', bg: 'bg-red-700' },
-  { key: 'Ore', label: 'Ore', icon: '⛰️', bg: 'bg-gray-500' },
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Standard 7-hex cluster: center + 6 neighbors */
+const CLUSTER_7: Record<string, HexCoordinate> = {
+  center: { q: 0, r: 0, s: 0 },
+  north: { q: 0, r: -1, s: 1 },
+  northEast: { q: 1, r: -1, s: 0 },
+  southEast: { q: 1, r: 0, s: -1 },
+  south: { q: 0, r: 1, s: -1 },
+  southWest: { q: -1, r: 1, s: 0 },
+  northWest: { q: -1, r: 0, s: 1 },
+};
+
+/** Resource configuration for outer ring */
+const RESOURCE_CONFIG = [
+  { key: 'Sheep', label: 'Sheep', position: 'north', image: '/themes/base/resources/sheep.png' },
+  { key: 'Wood', label: 'Wood', position: 'northEast', image: '/themes/base/resources/wood.png' },
+  { key: 'Wheat', label: 'Wheat', position: 'southEast', image: '/themes/base/resources/wheat.png' },
+  { key: 'Brick', label: 'Brick', position: 'southWest', image: '/themes/base/resources/brick.png' },
+  { key: 'Ore', label: 'Ore', position: 'northWest', image: '/themes/base/resources/ore.png' },
 ] as const;
 
-/** Star filter values */
-const STAR_VALUES = [13, 12, 11, 10, 9, 8];
+/** Star filter values for inner cluster */
+const STAR_VALUES_CONFIG = [
+  { value: 13, position: 'north' },
+  { value: 12, position: 'northEast' },
+  { value: 11, position: 'southEast' },
+  { value: 10, position: 'south' },
+  { value: 9, position: 'southWest' },
+  { value: 8, position: 'northWest' },
+] as const;
 
-/** Calculate star count for a resource type from tiles */
-function calculateResourceStars(gameModel: GameModel | null, resourceType: string): number {
-  if (!gameModel?.tiles) return 0;
+/** Max resources that can be selected at once */
+const MAX_RESOURCE_SELECTION = 3;
 
-  return gameModel.tiles
-    .filter((tile) => tile.resourceTileType === resourceType)
-    .reduce((sum, tile) => sum + (tile.stars || 0), 0);
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/** Stars (probability dots) for each dice number */
+function getStarsForNumber(num: number): number {
+  if (num === 7) return 0;
+  return 6 - Math.abs(7 - num);
 }
 
-/** Count building spots with at least minStars */
-function countBuildingSpotsAtStars(gameModel: GameModel | null, minStars: number): number {
-  if (!gameModel?.buildings) return 0;
+/** Calculate star count and tile count for a resource type from tiles */
+function calculateResourceStats(gameModel: GameModel | null, resourceType: string): { stars: number; tiles: number } {
+  if (!gameModel?.tiles) return { stars: 0, tiles: 0 };
 
-  return gameModel.buildings.filter((b) => {
-    // Buildings may have stars property
-    const building = b as unknown as { stars?: number };
-    return building.stars !== undefined && building.stars >= minStars;
-  }).length;
+  const resourceTiles = gameModel.tiles.filter((tile) => tile.resourceTileType === resourceType);
+  const stars = resourceTiles.reduce((sum, tile) => {
+    return sum + (tile.number ? getStarsForNumber(tile.number) : 0);
+  }, 0);
+
+  return { stars, tiles: resourceTiles.length };
 }
 
-/** Resource card component */
-const ResourceCard = memo(function ResourceCard({
-  resourceKey,
-  label,
-  icon,
-  bg,
-  starCount,
-  isSelected,
-  onClick,
-}: {
-  resourceKey: string;
-  label: string;
-  icon: string;
-  bg: string;
-  starCount: number;
+/**
+ * Calculate variance (how unbalanced the resources are).
+ * Matches C# CalculateVariance: max(avg) - min(avg) where avg = stars/tiles for each resource.
+ */
+function calculateVariance(stats: Record<string, { stars: number; tiles: number }>): number {
+  const averages = Object.values(stats)
+    .filter(s => s.tiles > 0)
+    .map(s => s.stars / s.tiles);
+
+  if (averages.length === 0) return 0;
+
+  const max = Math.max(...averages);
+  const min = Math.min(...averages);
+  return max - min;
+}
+
+// ============================================================================
+// ResourceHexContent - Resource image with count overlay
+// ============================================================================
+
+interface ResourceHexContentProps {
+  image: string;
+  count: number;
   isSelected: boolean;
-  onClick: () => void;
-}) {
+}
+
+const ResourceHexContent = memo(function ResourceHexContent({
+  image,
+  count,
+  isSelected,
+}: ResourceHexContentProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+
+  // Scale based on interaction state
+  const innerScale = isPressed ? 0.86 : isHovered ? 0.89 : 0.92;
+  const borderColor = isSelected ? '#3b82f6' : isHovered ? '#60a5fa' : 'rgba(255,255,255,0.3)';
+
   return (
-    <button
-      onClick={onClick}
-      className={`
-        flex flex-col items-center p-1.5 rounded-lg
-        transition-all duration-200
-        ${bg}
-        ${isSelected ? 'ring-2 ring-amber-400 scale-105' : 'hover:brightness-110'}
-      `}
-      title={`${label}: ${starCount} stars`}
+    <div
+      className="absolute inset-0"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      onTouchStart={() => setIsPressed(true)}
+      onTouchEnd={() => setIsPressed(false)}
     >
-      <span className="text-base">{icon}</span>
-      <span className="text-white font-bold text-xs">{starCount}</span>
-    </button>
+      {/* Outer border - blue when selected */}
+      <div
+        className="absolute inset-0 hex-clip-flat transition-colors duration-150"
+        style={{ background: borderColor }}
+      />
+      {/* Inner content - resource image background */}
+      <div
+        className="absolute inset-0 hex-clip-flat flex items-end justify-center transition-all duration-150"
+        style={{
+          transform: `scale(${innerScale})`,
+          backgroundImage: `url(${image})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        {/* Count overlay - white text on black background, flush to bottom */}
+        <div
+          className="px-2 py-0.5 rounded-t transition-transform duration-150"
+          style={{
+            background: 'rgba(0, 0, 0, 0.75)',
+            transform: isPressed ? 'scale(0.9)' : 'scale(1)',
+          }}
+        >
+          <span className="font-bold text-xl text-white leading-none">
+            {count}
+          </span>
+        </div>
+      </div>
+      {/* Selection checkmark - upper-right area */}
+      {isSelected && (
+        <div
+          className="absolute z-10 w-6 h-6 rounded-full flex items-center justify-center bg-black/50 border border-white/50 -translate-x-1/2 -translate-y-1/2"
+          style={{ top: '16%', left: '68%' }}
+        >
+          <FontAwesomeIcon
+            icon={faCheck}
+            className="text-xs text-white"
+          />
+        </div>
+      )}
+    </div>
   );
 });
 
-/** Star filter button */
-const StarButton = memo(function StarButton({
+// ============================================================================
+// VarianceHexContent - Scale icon with variance value
+// ============================================================================
+
+/** Threshold for considering the board "balanced" - matches C# ValidateBalance default */
+const BALANCE_VARIANCE_THRESHOLD = 0.5;
+
+interface VarianceHexContentProps {
+  variance: number;
+  colors?: PlayerColorsWithGradient;
+}
+
+const VarianceHexContent = memo(function VarianceHexContent({
+  variance,
+  colors,
+}: VarianceHexContentProps) {
+  const gradient = colors?.cssGradient || 'var(--hex-content-gradient)';
+  const foreground = colors?.foreground || '#ffffff';
+
+  // Only show balance scale icon when board is balanced (variance below threshold)
+  // Matches Blazor: IsBalanced => GameModel.ValidateBalance() && GameModel.ValidateNoClumps()
+  // We can only check variance here; NoClumps validation would require tile adjacency analysis
+  const isBalanced = variance <= BALANCE_VARIANCE_THRESHOLD;
+
+  return (
+    <>
+      {/* Outer border */}
+      <div
+        className="absolute inset-0 hex-clip-flat transition-colors duration-200"
+        style={{ background: 'var(--hex-border-idle)' }}
+      />
+      {/* Inner content - player gradient background */}
+      <div
+        className="absolute inset-0 hex-clip-flat flex flex-col items-center justify-center"
+        style={{
+          transform: 'scale(0.92)',
+          background: gradient,
+        }}
+      >
+        {/* Scale icon - only shown when board is balanced */}
+        {isBalanced && (
+          <FontAwesomeIcon
+            icon={faScaleBalanced}
+            className="text-xl"
+            style={{ color: foreground }}
+          />
+        )}
+        {/* Variance value - always shown */}
+        <span
+          className={`font-bold ${isBalanced ? 'text-lg' : 'text-2xl'}`}
+          style={{ color: foreground }}
+        >
+          {variance.toFixed(1)}
+        </span>
+      </div>
+    </>
+  );
+});
+
+// ============================================================================
+// StarHexContent - Star filter button (purple/violet theme)
+// ============================================================================
+
+interface StarHexContentProps {
+  value: number;
+  /** Count of building spots with this star value */
+  count?: number;
+  isSelected: boolean;
+  colors?: PlayerColorsWithGradient;
+}
+
+const StarHexContent = memo(function StarHexContent({
   value,
   count,
   isSelected,
-  onClick,
-}: {
-  value: number;
-  count: number;
-  isSelected: boolean;
-  onClick: () => void;
-}) {
+  colors,
+}: StarHexContentProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+
+  // Purple/lavender color scheme
+  const purpleBg = '#a5b4fc'; // indigo-300
+  const purpleBgSelected = '#6366f1'; // indigo-500
+
+  // Scale based on interaction state
+  const innerScale = isPressed ? 0.80 : isHovered ? 0.84 : 0.88;
+  const borderColor = isSelected ? (colors?.primary || purpleBgSelected) : isHovered ? '#a5b4fc' : '#818cf8';
+  const textColor = isSelected ? (colors?.foreground || '#ffffff') : '#1e1b4b';
+
   return (
-    <button
-      onClick={onClick}
-      className={`
-        w-8 h-8 rounded-full flex flex-col items-center justify-center
-        transition-all duration-200 text-xs
-        ${isSelected ? 'bg-amber-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}
-      `}
-      title={`Show ${value}+ star spots (${count})`}
+    <div
+      className="absolute inset-0"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      onTouchStart={() => setIsPressed(true)}
+      onTouchEnd={() => setIsPressed(false)}
     >
-      <span className="font-bold leading-none">{value}</span>
-      {count > 0 && <span className="text-[8px] leading-none">{count}</span>}
-    </button>
+      {/* Outer border */}
+      <div
+        className="absolute inset-0 hex-clip-flat transition-colors duration-150"
+        style={{ background: borderColor }}
+      />
+      {/* Inner content - purple/lavender, split into star value and count */}
+      <div
+        className="absolute inset-0 hex-clip-flat flex flex-col items-center justify-center transition-all duration-150"
+        style={{
+          transform: `scale(${innerScale})`,
+          background: isSelected ? (colors?.cssGradient || purpleBgSelected) : purpleBg,
+        }}
+      >
+        {/* Star value (top) */}
+        <span
+          className="font-bold text-[8px] leading-none transition-transform duration-150"
+          style={{
+            color: textColor,
+            transform: isPressed ? 'scale(0.85)' : 'scale(1)',
+          }}
+        >
+          {value}
+        </span>
+        {/* Divider line */}
+        {count !== undefined && (
+          <div
+            className="w-3/5 h-px my-0.5"
+            style={{ background: textColor, opacity: 0.5 }}
+          />
+        )}
+        {/* Count (bottom) */}
+        {count !== undefined && (
+          <span
+            className="font-semibold text-[7px] leading-none transition-transform duration-150"
+            style={{
+              color: textColor,
+              transform: isPressed ? 'scale(0.85)' : 'scale(1)',
+              opacity: 0.9,
+            }}
+          >
+            {count}
+          </span>
+        )}
+      </div>
+    </div>
   );
 });
 
-/** Main MeasurementCluster component */
-export const MeasurementCluster = memo(function MeasurementCluster({
-  gameModel,
-}: MeasurementClusterProps): React.ReactElement {
-  const starFilter = useLayoutStore((state) => state.starFilter);
-  const resourceFilter = useLayoutStore((state) => state.resourceFilter);
-  const setStarFilter = useLayoutStore((state) => state.setStarFilter);
-  const setResourceFilter = useLayoutStore((state) => state.setResourceFilter);
+// ============================================================================
+// ResetHexContent - Reset/shuffle button
+// ============================================================================
 
-  const handleResourceClick = useCallback((resourceKey: string) => {
-    setResourceFilter(resourceFilter === resourceKey ? null : resourceKey);
-  }, [resourceFilter, setResourceFilter]);
+interface ResetHexContentProps {
+  colors?: PlayerColorsWithGradient;
+}
 
-  const handleStarClick = useCallback((value: number) => {
-    setStarFilter(starFilter === value ? null : value);
-  }, [starFilter, setStarFilter]);
+const ResetHexContent = memo(function ResetHexContent({ colors }: ResetHexContentProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
 
-  const handleReset = useCallback(() => {
-    setStarFilter(null);
-    setResourceFilter(null);
-  }, [setStarFilter, setResourceFilter]);
+  // Same purple theme as star buttons
+  const purpleBg = '#a5b4fc'; // indigo-300
 
-  // Show placeholder if no game data
-  const hasData = gameModel !== null;
+  // Scale based on interaction state
+  const innerScale = isPressed ? 0.80 : isHovered ? 0.84 : 0.88;
+  const borderColor = isHovered ? '#a5b4fc' : '#818cf8';
 
   return (
-    <div className="p-2">
-      {/* Resource row */}
-      <div className="grid grid-cols-5 gap-1.5">
-        {RESOURCES.map(({ key, label, icon, bg }) => (
-          <ResourceCard
-            key={key}
-            resourceKey={key}
-            label={label}
-            icon={icon}
-            bg={bg}
-            starCount={hasData ? calculateResourceStars(gameModel, key) : 0}
-            isSelected={resourceFilter === key}
-            onClick={() => handleResourceClick(key)}
-          />
-        ))}
+    <div
+      className="absolute inset-0"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      onTouchStart={() => setIsPressed(true)}
+      onTouchEnd={() => setIsPressed(false)}
+    >
+      {/* Outer border */}
+      <div
+        className="absolute inset-0 hex-clip-flat transition-colors duration-150"
+        style={{ background: borderColor }}
+      />
+      {/* Inner content - purple with shuffle/refresh icon */}
+      <div
+        className="absolute inset-0 hex-clip-flat flex items-center justify-center transition-all duration-150"
+        style={{
+          transform: `scale(${innerScale})`,
+          background: colors?.cssGradient || purpleBg,
+        }}
+      >
+        <FontAwesomeIcon
+          icon={faArrowsRotate}
+          className="text-[9px] transition-transform duration-150"
+          style={{
+            color: colors?.foreground || '#1e1b4b',
+            transform: isPressed ? 'scale(0.85)' : 'scale(1)',
+          }}
+        />
       </div>
+    </div>
+  );
+});
 
-      {/* Star filter row */}
-      <div className="mt-2 flex items-center justify-center gap-1">
-        {STAR_VALUES.map((value) => (
-          <StarButton
-            key={value}
-            value={value}
-            count={hasData ? countBuildingSpotsAtStars(gameModel, value) : 0}
-            isSelected={starFilter === value}
-            onClick={() => handleStarClick(value)}
+// ============================================================================
+// MeasurementCluster - Main component with nested hex design
+// ============================================================================
+
+export const MeasurementCluster = memo(function MeasurementCluster({
+  gameModel,
+  colors,
+  starCounts,
+  onResourceSelectionChange,
+  onStarFilterChange,
+  onReset,
+}: MeasurementClusterProps): React.ReactElement {
+  // Multi-select for resources (up to 3), single-select for stars
+  const [selectedResources, setSelectedResources] = useState<string[]>([]);
+  const [selectedStars, setSelectedStars] = useState<number | null>(null);
+
+  // Calculate resource star counts and stats for variance
+  const resourceStats = RESOURCE_CONFIG.reduce((acc, { key }) => {
+    acc[key] = calculateResourceStats(gameModel, key);
+    return acc;
+  }, {} as Record<string, { stars: number; tiles: number }>);
+
+  // Extract just the star totals for display
+  const resourceCounts = Object.entries(resourceStats).reduce((acc, [key, stats]) => {
+    acc[key] = stats.stars;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Calculate variance (max-min of averages, matching C# CalculateVariance)
+  const variance = calculateVariance(resourceStats);
+
+  // Toggle resource selection (multi-select up to MAX_RESOURCE_SELECTION)
+  const handleResourceClick = useCallback((key: string) => {
+    setSelectedResources(prev => {
+      let newSelection: string[];
+      if (prev.includes(key)) {
+        // Deselect if already selected
+        newSelection = prev.filter(r => r !== key);
+      } else if (prev.length < MAX_RESOURCE_SELECTION) {
+        // Add to selection if under limit
+        newSelection = [...prev, key];
+      } else {
+        // At max: remove oldest, add new (circular selection)
+        newSelection = [...prev.slice(1), key];
+      }
+      onResourceSelectionChange?.(newSelection);
+      return newSelection;
+    });
+  }, [onResourceSelectionChange]);
+
+  // Single-select for star filter
+  const handleStarClick = useCallback((value: number) => {
+    setSelectedStars(prev => {
+      const newValue = prev === value ? null : value;
+      onStarFilterChange?.(newValue);
+      return newValue;
+    });
+  }, [onStarFilterChange]);
+
+  const handleReset = useCallback(() => {
+    setSelectedResources([]);
+    setSelectedStars(null);
+    onResourceSelectionChange?.([]);
+    onStarFilterChange?.(null);
+    onReset?.();
+  }, [onResourceSelectionChange, onStarFilterChange, onReset]);
+
+  // Build outer ring items (5 resources + variance)
+  const outerItems: HexGridItem[] = [
+    // Resources in outer ring positions
+    ...RESOURCE_CONFIG.map(({ key, position, image }) => ({
+      id: `resource-${key}`,
+      coord: CLUSTER_7[position],
+      content: (
+        <ResourceHexContent
+          image={image}
+          count={resourceCounts[key] || 0}
+          isSelected={selectedResources.includes(key)}
+        />
+      ),
+      onClick: () => handleResourceClick(key),
+    })),
+    // Variance in south position
+    {
+      id: 'variance',
+      coord: CLUSTER_7.south,
+      content: <VarianceHexContent variance={variance} colors={colors} />,
+    },
+  ];
+
+  // Build inner cluster items (7 hexes for star filter)
+  const innerItems: HexGridItem[] = [
+    // Center: Reset button
+    {
+      id: 'reset',
+      coord: CLUSTER_7.center,
+      content: <ResetHexContent colors={colors} />,
+      onClick: handleReset,
+    },
+    // Star values around the outside
+    ...STAR_VALUES_CONFIG.map(({ value, position }) => ({
+      id: `star-${value}`,
+      coord: CLUSTER_7[position],
+      content: (
+        <StarHexContent
+          value={value}
+          count={starCounts?.[value]}
+          isSelected={selectedStars === value}
+          colors={colors}
+        />
+      ),
+      onClick: () => handleStarClick(value),
+    })),
+  ];
+
+  return (
+    <div className="w-full h-full flex flex-col">
+      {/* Nested hex clusters container */}
+      <div className="flex-1 min-h-0 relative">
+        {/* Outer ring - larger hexes */}
+        <div className="absolute inset-0">
+          <HexGrid
+            items={outerItems}
+            hexSize={50}
+            borderColor="transparent"
+            fitToParent={true}
+            fitPadding={5}
           />
-        ))}
-
-        {/* Reset button */}
-        <button
-          onClick={handleReset}
-          className="w-8 h-8 rounded-full bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white flex items-center justify-center transition-colors ml-1"
-          title="Reset filters"
+        </div>
+        {/* Inner cluster - smaller hexes centered within the outer ring's empty center */}
+        <div
+          className="absolute"
+          style={{
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '32%',
+            height: '32%',
+          }}
         >
-          ↺
-        </button>
-      </div>
-
-      {/* Filter status */}
-      <div className="mt-1.5 text-center text-[10px] text-gray-500">
-        {!hasData && 'Waiting for game data...'}
-        {hasData && starFilter && <span>{starFilter}+ stars</span>}
-        {hasData && resourceFilter && starFilter && <span> • </span>}
-        {hasData && resourceFilter && <span>{resourceFilter}</span>}
-        {hasData && !starFilter && !resourceFilter && <span>Click to filter</span>}
+          <HexGrid
+            items={innerItems}
+            hexSize={12}
+            gap={1}
+            borderColor="transparent"
+            fitToParent={true}
+            fitPadding={0}
+          />
+        </div>
       </div>
     </div>
   );

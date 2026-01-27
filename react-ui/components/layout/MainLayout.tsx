@@ -5,19 +5,33 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars } from '@fortawesome/free-solid-svg-icons';
 import { NavMenu } from './NavMenu';
 
+/** Game-specific actions for NavMenu */
+interface GameActions {
+  /** Whether the game is in PickingBoard state (shows Balance button) */
+  isPickingBoard?: boolean;
+  /** Balance board callback */
+  onBalance?: () => void;
+  /** Declare winner callback */
+  onWinner?: () => void;
+  /** Save copy callback */
+  onSaveCopy?: () => void;
+}
+
 /** Props for MainLayout component */
 interface MainLayoutProps {
   /** Child content to render in the main area */
   children: React.ReactNode;
   /** Current active game ID, if any */
   activeGameId?: string | null;
+  /** Game-specific actions (only used on Game page) */
+  gameActions?: GameActions;
 }
 
 /**
  * Main layout component providing the hamburger menu and page structure.
  * Matches the Blazor WebUI MainLayout.razor behavior.
  */
-export function MainLayout({ children, activeGameId }: MainLayoutProps): React.ReactElement {
+export function MainLayout({ children, activeGameId, gameActions }: MainLayoutProps): React.ReactElement {
   const [showMenu, setShowMenu] = useState(false);
 
   const toggleSidebar = useCallback((): void => {
@@ -35,7 +49,7 @@ export function MainLayout({ children, activeGameId }: MainLayoutProps): React.R
       {showMenu && (
         <div className="menu-overlay" onClick={toggleSidebar}>
           <div className="menu-panel" onClick={(e) => e.stopPropagation()}>
-            <NavMenu onMenuAction={toggleSidebar} activeGameId={activeGameId} />
+            <NavMenu onMenuAction={toggleSidebar} activeGameId={activeGameId} gameActions={gameActions} />
           </div>
         </div>
       )}

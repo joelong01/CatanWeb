@@ -10,14 +10,33 @@ import {
   Direction,
   type HexCoordinate,
   type PixelPosition,
-  type HexPosition,
+  type HexPosition as GeometryHexPosition,
+  type HexSide as GeometryHexSide,
 } from '@/components/hex-grid/hex-geometry';
-import { NUMBER_PIPS } from '@/lib/test-data/expansion-game';
+import { NUMBER_PIPS, getHarborImage } from '@/lib/constants/board-assets';
 import { WaterHex } from '@/components/hex-grid/content/WaterHex';
 import { GameTile } from '@/components/game/tiles/GameTile';
 import { Building, Road, type BuildingVisualState, type RoadState } from '@/components/game/tiles';
-import type { TileModel, HarborModel, HexSide, TestGameData } from '@/lib/test-data/expansion-game';
-import { HARBOR_IMAGES } from '@/lib/test-data/expansion-game';
+import { useLayoutStore } from '@/lib/stores/layoutStore';
+
+// Import generated types
+import type { TileModel } from '@/types/generated/models/tile-model';
+import type { HarborModel } from '@/types/generated/models/harbor-model';
+import type { BuildingModel } from '@/types/generated/models/building-model';
+import type { RoadModel } from '@/types/generated/models/road-model';
+import type { HexSide } from '@/types/generated/models/hex-side';
+import type { HexPosition } from '@/types/generated/models/hex-position';
+
+/**
+ * Minimal game data required for board rendering.
+ * Compatible with both TestGameData and full GameModel.
+ */
+export interface BoardGameData {
+  tiles: TileModel[];
+  harbors: HarborModel[];
+  buildings?: BuildingModel[];
+  roads?: RoadModel[];
+}
 
 /** Zoom configuration */
 const ZOOM_CONFIG = {
@@ -41,18 +60,18 @@ export interface BoardPlayer {
   colors: PlayerColors;
 }
 
-/** All 6 vertex positions on a hex */
-const ALL_POSITIONS: HexPosition[] = ['Right', 'BottomRight', 'BottomLeft', 'Left', 'TopLeft', 'TopRight'];
+/** All 6 vertex positions on a hex (excluding 'None') */
+const ALL_POSITIONS: GeometryHexPosition[] = ['Right', 'BottomRight', 'BottomLeft', 'Left', 'TopLeft', 'TopRight'];
 
-/** All 6 edge sides on a hex */
-const ALL_SIDES: HexSide[] = ['Top', 'TopRight', 'BottomRight', 'Bottom', 'BottomLeft', 'TopLeft'];
+/** All 6 edge sides on a hex (excluding 'None') */
+const ALL_SIDES: GeometryHexSide[] = ['Top', 'TopRight', 'BottomRight', 'Bottom', 'BottomLeft', 'TopLeft'];
 
 /**
  * Props for GameBoard component
  */
 export interface GameBoardProps {
-  /** Game model containing tiles, harbors, etc. */
-  gameModel: TestGameData;
+  /** Game data containing tiles, harbors, buildings, roads */
+  gameModel: BoardGameData | null;
   /** Initial hex size (circumradius) - default 50. Controlled via mouse wheel after mount. */
   hexSize?: number;
   /** Gap between hexes - default 2 */
@@ -84,6 +103,7 @@ const SIDE_TO_DIRECTION: Record<HexSide, Direction> = {
   Bottom: Direction.South,
   BottomLeft: Direction.SouthWest,
   TopLeft: Direction.NorthWest,
+  None: Direction.North, // Fallback
 };
 
 /**
@@ -99,19 +119,22 @@ const SIDE_TO_VERTICES: Record<HexSide, [[number, number], [number, number]]> = 
   Bottom: [[75, 0], [25, 0]],          // Harbor's top edge (faces north toward tile)
   BottomLeft: [[100, 43.3], [75, 0]],  // Harbor's top-right edge
   TopLeft: [[75, 86.6], [100, 43.3]],  // Harbor's bottom-right edge
+  None: [[50, 50], [50, 50]],          // Fallback
 };
 
 /**
  * Harbor hex content - displays harbor icon in a triangular dock connecting to tile
- * No water background - just the triangle and circle
+ * Background uses CSS gradient via hex-clip-flat (indicates current turn), SVG only for triangle and circle
  */
 interface HarborHexContentProps {
   harbor: HarborModel;
+  /** Player colors for background gradient (indicates whose turn it is) */
+  playerColors?: PlayerColors;
 }
 
-function HarborHexContent({ harbor }: HarborHexContentProps) {
+function HarborHexContent({ harbor, playerColors }: HarborHexContentProps) {
   const { harborType, side } = harbor.harborKey;
-  const imageUrl = HARBOR_IMAGES[harborType];
+  const imageUrl = getHarborImage(harborType);
   const vertices = SIDE_TO_VERTICES[side];
 
   // Circle parameters (in viewBox units)
@@ -120,9 +143,19 @@ function HarborHexContent({ harbor }: HarborHexContentProps) {
   const cy = 43.3;
   const circleRadius = 26;
 
-  // For 'None' harbors, render nothing (transparent)
+  // CSS gradient from player colors
+  const cssGradient = playerColors
+    ? `linear-gradient(135deg, ${playerColors.primary}, ${playerColors.secondary})`
+    : undefined;
+
+  // For 'None' harbors, just show the gradient background (DOM-based)
   if (!imageUrl || harborType === 'None') {
-    return null;
+    return cssGradient ? (
+      <div
+        className="absolute inset-0 hex-clip-flat"
+        style={{ background: cssGradient, opacity: 0.7 }}
+      />
+    ) : null;
   }
 
   // Triangle points: center + two edge vertices
@@ -130,13 +163,20 @@ function HarborHexContent({ harbor }: HarborHexContentProps) {
 
   return (
     <div className="absolute inset-0">
-      {/* SVG for triangular dock and harbor circle */}
+      {/* Background hex fill with player gradient - DOM-based, indicates turn */}
+      {cssGradient && (
+        <div
+          className="absolute inset-0 hex-clip-flat"
+          style={{ background: cssGradient, opacity: 0.7 }}
+        />
+      )}
+
+      {/* SVG for triangular dock and harbor circle (only these need SVG) */}
       <svg
         className="absolute inset-0 w-full h-full"
         viewBox="0 0 100 86.6"
         preserveAspectRatio="none"
       >
-        {/* Triangular dock - water texture fill */}
         <defs>
           <pattern
             id={`water-pattern-${side}`}
@@ -210,17 +250,27 @@ export function GameBoard({
   players = [],
   selectedPlayerId,
 }: GameBoardProps): React.ReactElement {
-  const { tiles, harbors } = gameModel;
+  // Handle null gameModel
+  const tiles = gameModel?.tiles ?? [];
+  const harbors = gameModel?.harbors ?? [];
+  const buildings = gameModel?.buildings ?? [];
+  const roads = gameModel?.roads ?? [];
 
-  // Extract buildings and roads from model (or empty arrays if not provided)
-  const buildings = gameModel.buildings ?? [];
-  const roads = gameModel.roads ?? [];
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
-  const [hexSize, setHexSize] = useState(initialHexSize);
 
-  // Pan state
-  const [panOffset, setPanOffset] = useState<PixelPosition>({ x: 0, y: 0 });
+  // Viewport state from layoutStore (persisted, reset via resetLayout)
+  const viewport = useLayoutStore((state) => state.viewport);
+  const setViewport = useLayoutStore((state) => state.setViewport);
+
+  // Star filter from layoutStore (filters building spots by minimum star value)
+  const starFilter = useLayoutStore((state) => state.starFilter);
+
+  // Use viewport zoom or initial prop (viewport.zoom is a multiplier, convert to hexSize)
+  const hexSize = viewport.zoom > 0 ? Math.round(initialHexSize * viewport.zoom) : initialHexSize;
+  const panOffset = viewport.pan;
+
+  // Local pan interaction state
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<PixelPosition>({ x: 0, y: 0 });
 
@@ -249,12 +299,15 @@ export function GameBoard({
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -ZOOM_CONFIG.zoomStep : ZOOM_CONFIG.zoomStep;
-    setHexSize((prev) => Math.max(ZOOM_CONFIG.minHexSize, Math.min(ZOOM_CONFIG.maxHexSize, prev + delta)));
-  }, []);
+    const newHexSize = Math.max(ZOOM_CONFIG.minHexSize, Math.min(ZOOM_CONFIG.maxHexSize, hexSize + delta));
+    // Convert hexSize to zoom multiplier
+    const newZoom = newHexSize / initialHexSize;
+    setViewport({ zoom: newZoom });
+  }, [hexSize, initialHexSize, setViewport]);
 
-  // Handle SHIFT+drag panning
+  // Handle CTRL+drag panning (matches FloatingPanel behavior)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.shiftKey) {
+    if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       setIsPanning(true);
       setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
@@ -263,12 +316,14 @@ export function GameBoard({
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (isPanning) {
-      setPanOffset({
-        x: e.clientX - panStart.x,
-        y: e.clientY - panStart.y,
+      setViewport({
+        pan: {
+          x: e.clientX - panStart.x,
+          y: e.clientY - panStart.y,
+        },
       });
     }
-  }, [isPanning, panStart]);
+  }, [isPanning, panStart, setViewport]);
 
   const handleMouseUp = useCallback(() => {
     setIsPanning(false);
@@ -310,6 +365,13 @@ export function GameBoard({
     });
   }, [tiles, hexSize, highlightedTiles, onTileClick]);
 
+  // Get the current player's colors for harbor backgrounds
+  const currentPlayerColors = useMemo((): PlayerColors | undefined => {
+    if (!selectedPlayerId || !players || players.length === 0) return undefined;
+    const player = players.find(p => p.id === selectedPlayerId);
+    return player?.colors;
+  }, [players, selectedPlayerId]);
+
   // Build HexGrid items from harbors (at water hex positions)
   const harborItems: HexGridItem[] = useMemo(() => {
     return harbors.map((harbor) => {
@@ -324,10 +386,10 @@ export function GameBoard({
       return {
         id: `harbor-${key}`,
         coord: waterCoord,
-        content: <HarborHexContent harbor={harbor} />,
+        content: <HarborHexContent harbor={harbor} playerColors={currentPlayerColors} />,
       };
     });
-  }, [harbors]);
+  }, [harbors, currentPlayerColors]);
 
   // Build set of harbor coordinates for quick lookup
   const harborCoordSet = useMemo(() => {
@@ -350,16 +412,29 @@ export function GameBoard({
     return { minQ, maxQ, minR, maxR };
   }, [tiles]);
 
-  // Generate water hexes as a fixed ring around the board (not viewport-dependent)
-  // This is much faster and doesn't need to regenerate on pan
+  // Generate water hexes as a rectangular grid CENTERED around the board
+  // For flat-top hexes: x = 1.5*q (columns), y = sqrt(3)*(r + q/2)
+  // To get rectangular grid centered on board: adjust r based on distance from center q
   const waterItems: HexGridItem[] = useMemo(() => {
     const items: HexGridItem[] = [];
     const { minQ, maxQ, minR, maxR } = boardBounds;
 
-    // Generate water in a rectangle around the board with generous padding
-    const padding = 4; // Extra rings of water around the board
-    for (let q = minQ - padding; q <= maxQ + padding; q++) {
-      for (let r = minR - padding; r <= maxR + padding; r++) {
+    const padding = 8; // Extra rings of water around the board (acts as viewport)
+    const qStart = minQ - padding;
+    const qEnd = maxQ + padding;
+    // Use board center as reference for symmetric r adjustment
+    const centerQ = (minQ + maxQ) / 2;
+
+    for (let q = qStart; q <= qEnd; q++) {
+      // Adjust r range based on distance from CENTER to maintain visual symmetry
+      // As q moves away from center, shift r to keep visual rectangle centered
+      const qOffsetFromCenter = q - centerQ;
+      const rAdjust = Math.round(qOffsetFromCenter / 2);
+
+      const rStart = minR - padding - rAdjust;
+      const rEnd = maxR + padding - rAdjust;
+
+      for (let r = rStart; r <= rEnd; r++) {
         const coord = cubicCoord(q, r);
         const key = coordKeyString(coord);
 
@@ -386,7 +461,7 @@ export function GameBoard({
   // Generate all unique building positions (vertices shared between tiles)
   // Each vertex is identified by the tile coord + position
   const buildingPositions = useMemo(() => {
-    const positions: { key: string; coord: HexCoordinate; position: HexPosition }[] = [];
+    const positions: { key: string; coord: HexCoordinate; position: GeometryHexPosition }[] = [];
     const seen = new Set<string>();
 
     tiles.forEach((tile) => {
@@ -410,7 +485,7 @@ export function GameBoard({
   // Generate all unique road positions (edges shared between tiles)
   // Each edge is identified by the tile coord + side
   const roadPositions = useMemo(() => {
-    const positions: { key: string; coord: HexCoordinate; side: HexSide }[] = [];
+    const positions: { key: string; coord: HexCoordinate; side: GeometryHexSide }[] = [];
     const seen = new Set<string>();
 
     tiles.forEach((tile) => {
@@ -433,20 +508,20 @@ export function GameBoard({
 
   // Build lookup maps for buildings and roads from model data
   const buildingMap = useMemo(() => {
-    const map = new Map<string, typeof buildings[0]>();
+    const map = new Map<string, BuildingModel>();
     buildings.forEach((b) => {
       const coord = b.buildingKey.hexCoordinates;
-      const key = `${coord.q},${coord.r},${coord.s}-${b.buildingKey.position}`;
+      const key = `${coord.q},${coord.r},${-coord.q - coord.r}-${b.buildingKey.position}`;
       map.set(key, b);
     });
     return map;
   }, [buildings]);
 
   const roadMap = useMemo(() => {
-    const map = new Map<string, typeof roads[0]>();
+    const map = new Map<string, RoadModel>();
     roads.forEach((r) => {
       const coord = r.roadKey.tileKey;
-      const key = `${coord.q},${coord.r},${coord.s}-${r.roadKey.hexSide}`;
+      const key = `${coord.q},${coord.r},${-coord.q - coord.r}-${r.roadKey.hexSide}`;
       map.set(key, r);
     });
     return map;
@@ -477,14 +552,14 @@ export function GameBoard({
 
   // Calculate star value for a building position based on adjacent tiles' pips
   // Stars = sum of pips from all tiles touching this vertex (up to 3 tiles)
-  const calculateStars = useCallback((coord: HexCoordinate, position: HexPosition): number => {
+  const calculateStars = useCallback((coord: HexCoordinate, position: GeometryHexPosition): number => {
     // A vertex touches up to 3 tiles depending on its position
     // For each HexPosition, we need to check the current tile and its neighbors
     const adjacentCoords: HexCoordinate[] = [coord];
 
     // Map vertex position to which neighbors also touch this vertex
     // Based on hex geometry: each vertex is shared by 3 hexes
-    const neighborDirections: Record<HexPosition, Direction[]> = {
+    const neighborDirections: Record<GeometryHexPosition, Direction[]> = {
       Right: [Direction.NorthEast, Direction.SouthEast],
       BottomRight: [Direction.SouthEast, Direction.South],
       BottomLeft: [Direction.South, Direction.SouthWest],
@@ -529,7 +604,7 @@ export function GameBoard({
           const roadModel = roadMap.get(key);
 
           // Get road state from model, default to Buildable for testing (shows on hover)
-          const roadState: RoadState = roadModel?.roadState ?? 'Buildable';
+          const roadState: RoadState = (roadModel?.roadState as RoadState) ?? 'Buildable';
           const ownerId = roadModel?.ownerId;
           const owner = ownerId ? players.find((p) => p.id === ownerId) : null;
 
@@ -563,16 +638,39 @@ export function GameBoard({
           const ownerId = buildingModel?.ownerId;
           const owner = ownerId ? players.find((p) => p.id === ownerId) : null;
 
-          // Determine visual state based on building state and ownership
-          let visualState: BuildingVisualState = 'Hidden';
-          if (owner) {
-            visualState = 'Normal';
-          } else if (buildingState === 'NotBuildable') {
-            return null; // Don't render NotBuildable positions
-          }
-
           // Calculate stars for this position
           const stars = calculateStars(coord, position);
+
+          // Determine visual state based on building state, ownership, and star filter
+          // Following Blazor precedent from BuildingOverlay.razor
+          let visualState: BuildingVisualState = 'Hidden';
+
+          if (owner) {
+            // Owned buildings always show as Normal
+            visualState = 'Normal';
+          } else if (buildingState === 'NotBuildable') {
+            // NotBuildable positions: only show during star evaluation (when filter active)
+            if (starFilter === null) {
+              return null; // Don't render NotBuildable when not filtering
+            }
+            // When filter is active, show NotBuildable spots for star evaluation if they pass threshold
+            if (stars < starFilter) {
+              return null; // Below threshold
+            }
+            visualState = 'Stars'; // Show star count for evaluation
+          } else {
+            // PossibleSettlement spots
+            if (starFilter !== null) {
+              // Star filter active: show spots that pass threshold with star counts
+              if (stars < starFilter) {
+                return null; // Below threshold - don't show
+              }
+              visualState = 'Stars'; // Above threshold - show star count
+            } else {
+              // No filter: Hidden (shows on hover)
+              visualState = 'Hidden';
+            }
+          }
 
           return (
             <div
@@ -596,7 +694,13 @@ export function GameBoard({
         })}
       </>
     );
-  }, [buildingPositions, roadPositions, buildingMap, roadMap, players, selectedPlayerId, calculateStars]);
+  }, [buildingPositions, roadPositions, buildingMap, roadMap, players, selectedPlayerId, calculateStars, starFilter]);
+
+  // Debug logging
+  console.log('[GameBoard] render, tiles:', tiles.length, 'containerSize:', containerSize);
+
+  // Loading state - show message but keep container mounted for ref measurement
+  const isLoading = !gameModel || tiles.length === 0;
 
   return (
     <div
@@ -609,7 +713,13 @@ export function GameBoard({
       onMouseLeave={handleMouseLeave}
       style={{ cursor: isPanning ? 'grabbing' : 'default' }}
     >
-      {containerSize && (
+      {isLoading ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+          <span className="text-gray-400">
+            {!gameModel ? 'Loading game board...' : 'Waiting for tiles...'}
+          </span>
+        </div>
+      ) : containerSize ? (
         <div
           className="absolute inset-0 flex items-center justify-center"
           style={{
@@ -625,11 +735,11 @@ export function GameBoard({
             overlay={players.length > 0 ? (layoutInfo) => renderOverlay(layoutInfo) : undefined}
           />
         </div>
-      )}
+      ) : null}
 
       {/* Controls indicator */}
       <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded pointer-events-none">
-        Hex: {hexSize}px | Scroll=zoom | SHIFT+drag=pan
+        Hex: {hexSize}px | Scroll=zoom | CTRL+drag=pan
       </div>
     </div>
   );

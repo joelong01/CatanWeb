@@ -75,13 +75,20 @@ export function useGameConnection(
 
   // Set up event handlers - only depends on proxy and action functions
   useEffect(() => {
+    console.log('[useGameConnection] Setting up event handlers');
     // Handle game state updates with reconciliation
     // Reconciliation preserves references to unchanged items, enabling
     // React.memo to skip re-renders for tiles/roads/buildings that didn't change
     const unsubGameState = proxy.onGameStateUpdated((gameModel: GameModel) => {
+      console.log('[useGameConnection] onGameStateUpdated handler called, tiles:', gameModel?.tiles?.length);
+      console.log('[useGameConnection] prevGameModelRef.current tiles:', prevGameModelRef.current?.tiles?.length ?? 'null');
       const reconciled = reconcileGameModel(prevGameModelRef.current, gameModel);
+      console.log('[useGameConnection] Reconciled same as prev?', reconciled === prevGameModelRef.current);
+      console.log('[useGameConnection] Reconciled same as incoming?', reconciled === gameModel);
+      console.log('[useGameConnection] Calling setGameModel, tiles:', reconciled?.tiles?.length);
       prevGameModelRef.current = reconciled;
       setGameModel(reconciled);
+      console.log('[useGameConnection] setGameModel called');
     });
 
     // Handle connection state changes

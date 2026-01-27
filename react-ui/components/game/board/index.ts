@@ -3,4 +3,4 @@
  */
 
 export { GameBoard } from './GameBoard';
-export type { GameBoardProps } from './GameBoard';
+export type { GameBoardProps, BoardGameData, PlayerColors, BoardPlayer } from './GameBoard';

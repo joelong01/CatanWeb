@@ -94,17 +94,47 @@ export function FloatingPanel({
   });
   const [isClient, setIsClient] = useState(false);
 
-  // Mark as client-side and calculate real position
+  // Mark as client-side and calculate real position with constraints
   useEffect(() => {
     setIsClient(true);
-    const x = panel.position.x < 0
-      ? window.innerWidth + panel.position.x
-      : panel.position.x;
-    const y = panel.position.y < 0
-      ? window.innerHeight + panel.position.y
-      : panel.position.y;
+
+    // Convert negative values to actual positions
+    // Only treat as right/bottom-anchored if the result places panel in right/bottom half
+    // Small negatives (left/top overhang) should be kept as-is
+    let x = panel.position.x;
+    let y = panel.position.y;
+
+    if (panel.position.x < 0) {
+      const rightAnchoredX = window.innerWidth + panel.position.x;
+      // If right-anchored position is in right half of screen, use it
+      // Otherwise, keep as left overhang
+      if (rightAnchoredX > window.innerWidth / 2) {
+        x = rightAnchoredX;
+      }
+      // else: x stays as panel.position.x (negative = left overhang)
+    }
+
+    if (panel.position.y < 0) {
+      const bottomAnchoredY = window.innerHeight + panel.position.y;
+      // If bottom-anchored position is in bottom half of screen, use it
+      // Otherwise, keep as top overhang
+      if (bottomAnchoredY > window.innerHeight / 2) {
+        y = bottomAnchoredY;
+      }
+      // else: y stays as panel.position.y (negative = top overhang)
+    }
+
+    // Constrain to keep panel visible on screen (handles window size changes)
+    // Keep at least 50px of the panel visible
+    const minX = -(panel.size.width - 50);
+    const maxX = window.innerWidth - 50;
+    const minY = 0;
+    const maxY = window.innerHeight - 50;
+    x = Math.max(minX, Math.min(maxX, x));
+    y = Math.max(minY, Math.min(maxY, y));
+
     setActualPosition({ x, y });
-  }, [panel.position]);
+  }, [panel.position, panel.size]);
 
   // Track CTRL key state
   useEffect(() => {
@@ -123,21 +153,42 @@ export function FloatingPanel({
     };
   }, []);
 
-  // Update position on window resize
+  // Update position on window resize (with constraints)
   useEffect(() => {
     const handleResize = () => {
-      const x = panel.position.x < 0
-        ? window.innerWidth + panel.position.x
-        : panel.position.x;
-      const y = panel.position.y < 0
-        ? window.innerHeight + panel.position.y
-        : panel.position.y;
+      // Convert negative values to actual positions
+      // Only treat as right/bottom-anchored if the result places panel in right/bottom half
+      let x = panel.position.x;
+      let y = panel.position.y;
+
+      if (panel.position.x < 0) {
+        const rightAnchoredX = window.innerWidth + panel.position.x;
+        if (rightAnchoredX > window.innerWidth / 2) {
+          x = rightAnchoredX;
+        }
+      }
+
+      if (panel.position.y < 0) {
+        const bottomAnchoredY = window.innerHeight + panel.position.y;
+        if (bottomAnchoredY > window.innerHeight / 2) {
+          y = bottomAnchoredY;
+        }
+      }
+
+      // Constrain to keep panel visible
+      const minX = -(panel.size.width - 50);
+      const maxX = window.innerWidth - 50;
+      const minY = 0;
+      const maxY = window.innerHeight - 50;
+      x = Math.max(minX, Math.min(maxX, x));
+      y = Math.max(minY, Math.min(maxY, y));
+
       setActualPosition({ x, y });
     };
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [panel.position]);
+  }, [panel.position, panel.size]);
 
   // Start drag (desktop: CTRL+click, mobile: after long press)
   const startDrag = useCallback((clientX: number, clientY: number) => {
@@ -189,14 +240,20 @@ export function FloatingPanel({
       setJustDragged(true);
       setTimeout(() => setJustDragged(false), 100);
 
-      // Save to store (convert back to anchored if near edge)
+      // Save to store (convert to edge-anchored if near edge)
+      // Only anchor if the panel's edge is truly near the window edge
       const threshold = 100;
-      const saveX = actualPosition.x > window.innerWidth - threshold - panel.size.width
-        ? actualPosition.x - window.innerWidth
-        : actualPosition.x;
-      const saveY = actualPosition.y > window.innerHeight - threshold - panel.size.height
-        ? actualPosition.y - window.innerHeight
-        : actualPosition.y;
+
+      // Check if panel RIGHT edge is near window RIGHT edge
+      const panelRight = actualPosition.x + panel.size.width;
+      const nearRight = panelRight > window.innerWidth - threshold;
+      const saveX = nearRight ? actualPosition.x - window.innerWidth : actualPosition.x;
+
+      // Check if panel BOTTOM edge is near window BOTTOM edge
+      const panelBottom = actualPosition.y + panel.size.height;
+      const nearBottom = panelBottom > window.innerHeight - threshold;
+      const saveY = nearBottom ? actualPosition.y - window.innerHeight : actualPosition.y;
+
       setPanelPosition(panelId, { x: saveX, y: saveY });
     }
 
@@ -258,14 +315,20 @@ export function FloatingPanel({
       setJustDragged(true);
       setTimeout(() => setJustDragged(false), 100);
 
-      // Save to store (convert back to anchored if near edge)
+      // Save to store (convert to edge-anchored if near edge)
+      // Only anchor if the panel's edge is truly near the window edge
       const threshold = 100;
-      const saveX = actualPosition.x > window.innerWidth - threshold - panel.size.width
-        ? actualPosition.x - window.innerWidth
-        : actualPosition.x;
-      const saveY = actualPosition.y > window.innerHeight - threshold - panel.size.height
-        ? actualPosition.y - window.innerHeight
-        : actualPosition.y;
+
+      // Check if panel RIGHT edge is near window RIGHT edge
+      const panelRight = actualPosition.x + panel.size.width;
+      const nearRight = panelRight > window.innerWidth - threshold;
+      const saveX = nearRight ? actualPosition.x - window.innerWidth : actualPosition.x;
+
+      // Check if panel BOTTOM edge is near window BOTTOM edge
+      const panelBottom = actualPosition.y + panel.size.height;
+      const nearBottom = panelBottom > window.innerHeight - threshold;
+      const saveY = nearBottom ? actualPosition.y - window.innerHeight : actualPosition.y;
+
       setPanelPosition(panelId, { x: saveX, y: saveY });
     };
 

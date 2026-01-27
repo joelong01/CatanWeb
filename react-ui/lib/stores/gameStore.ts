@@ -9,17 +9,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { GameModel } from '@/types/generated/models/game-model';
 import type { PlayerModel } from '@/types/generated/models/player-model';
-
-/**
- * Player profile information for display purposes.
- * Separate from PlayerModel which contains game state.
- */
-export interface PlayerProfile {
-  id: string;
-  name: string;
-  color: string;
-  imageUri?: string;
-}
+import type { PlayerProfile } from '@/types/player-profile';
 
 interface GameState {
   /** Current game model from server, null if no game loaded */

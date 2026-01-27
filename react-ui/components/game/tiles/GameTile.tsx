@@ -1,8 +1,8 @@
 'use client';
 
 import React, { memo } from 'react';
-import type { TileModel } from '@/lib/test-data/expansion-game';
-import { RESOURCE_TILE_IMAGES } from '@/lib/test-data/expansion-game';
+import type { TileModel } from '@/types/generated/models/tile-model';
+import { getResourceTileImage } from '@/lib/constants/board-assets';
 import { NumberToken } from './NumberToken';
 
 /**
@@ -38,7 +38,7 @@ export const GameTile = memo(function GameTile({
   onClick,
 }: GameTileProps) {
   const { number, resourceTileType } = tile;
-  const imageUrl = RESOURCE_TILE_IMAGES[resourceTileType];
+  const imageUrl = getResourceTileImage(resourceTileType);
   const isDesert = resourceTileType === 'Desert';
 
   // Inner hex scale: InnerHexSize / HexSize = 91/100 = 0.91 (from Blazor)

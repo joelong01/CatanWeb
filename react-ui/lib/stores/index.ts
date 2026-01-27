@@ -20,8 +20,10 @@ export {
   selectGameType,
   selectPlayerProfile,
   selectMyPlayer,
-  type PlayerProfile,
 } from './gameStore';
+
+// Re-export PlayerProfile from types
+export type { PlayerProfile } from '@/types/player-profile';
 
 export {
   useUIStore,
