@@ -74,6 +74,29 @@ When creating or updating content in `.ai/`:
 
 ## General Principles
 
+### React Port: Check Existing Implementations First
+
+**CRITICAL RULE:** Before inventing something new when doing the React port, follow this hierarchy:
+
+1. **Check the Blazor/Razor app first** - How did we implement this feature in `WebUI/`?
+2. **Check the Desktop app second** - How did we implement it in `DesktopApp/`?
+3. **Check the design documents** - Is it documented in `.design/ui/react/` or `.design/`?
+4. **Ask the developer** - If not found in the above, ask how to proceed
+
+This is the **most important rule for the port** because:
+
+- It prevents inventing new patterns that conflict with existing mechanisms
+- It ensures consistency across platforms (Blazor, Desktop, React)
+- Data structures, API patterns, and state management already exist - use them
+- Player colors, profiles, and other data come from existing database collections
+
+**Example:** If you need player colors in React:
+
+1. Check `WebUI/Pages/Game.razor` - How does Blazor get `PlayerColorMap`?
+2. Check `WebUI/Components/Players/PlayersPanel.razor` - How are colors passed and used?
+3. Trace the data flow back to its source (database, API, SignalR)
+4. Implement the same pattern in React
+
 ### Minimize Changes
 
 - Make **surgical, minimal modifications** - change as few lines as possible to achieve goals

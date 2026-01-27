@@ -17,7 +17,7 @@ import { MainLayout } from '@/components/layout';
 import { HexGrid, HexGridItem } from '@/components/hex-grid';
 import { HexCoordinate } from '@/components/hex-grid/hex-geometry';
 import { FloatingPanel } from '@/components/game/panels/FloatingPanel';
-import { GameBoard } from '@/components/game/board/GameBoard';
+import { GameBoard, type BoardGameData } from '@/components/game/board/GameBoard';
 import { NumberToken } from '@/components/game/tiles/NumberToken';
 import { EXPANSION_GAME_DATA, generateRoadsForTile } from '@/lib/test-data/expansion-game';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -1976,9 +1976,12 @@ export default function ControlsTestPage(): React.ReactElement {
   const selectedPlayer = MOCK_PLAYERS.find(p => p.id === selectedPlayerId) || MOCK_PLAYERS[0];
 
   // Create game data with roads for the center tile owned by the selected player
-  const gameModelWithRoads = useMemo(() => ({
-    ...EXPANSION_GAME_DATA,
-    roads: generateRoadsForTile(0, 0, selectedPlayerId),
+  // Cast test data to BoardGameData for compatibility with GameBoard component
+  const gameModelWithRoads = useMemo((): BoardGameData => ({
+    tiles: EXPANSION_GAME_DATA.tiles as unknown as BoardGameData['tiles'],
+    harbors: EXPANSION_GAME_DATA.harbors as unknown as BoardGameData['harbors'],
+    buildings: EXPANSION_GAME_DATA.buildings as unknown as BoardGameData['buildings'],
+    roads: generateRoadsForTile(0, 0, selectedPlayerId) as unknown as BoardGameData['roads'],
   }), [selectedPlayerId]);
 
   const handleSendRoll = () => {
