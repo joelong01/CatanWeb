@@ -108,21 +108,51 @@ The board "floats" visually because land tiles have colorful resources while sur
 
 ## Implemented Components (as of 2025-01)
 
-The following hex-based UI controls have been implemented in `react-ui/app/controls-test/page.tsx`:
+### Reference vs Production Implementations
 
-| Component | Layout | Props | Data Source |
-|-----------|--------|-------|-------------|
-| **RollRing** | 11-hex (3-4-3 columns), 7 isolated at bottom-left | `rollStats`, `onRollClick`, `colors` | Roll history from `GameModel.players` |
-| **DiceCluster** | Two 7-hex clusters side-by-side | `die1`, `die2`, `onSelect*`, `onSendRoll`, `colors` | Local state + `ActionFlags.rollsEnabled` |
-| **ActionCluster** | 7-hex CLUSTER_7 with center Next | `actionFlags`, `gameState`, `entitlements`, `purchaseStats`, `commands`, `colors` | `GameModel.actionFlags`, `GameModel.gameState`, `PlayerModel.unspentEntitlements` |
-| **MeasurementCluster** | 5 outer + 7 inner nested hexes | `resourceStars`, `buildingSpotCounts`, `variance`, `colors` | Pre-computed from `GameModel.tiles`, `GameModel.buildings` |
+**Important:** The `app/controls-test/page.tsx` file contains **reference implementations** with full features (3D flip animations, badges, nested hex layouts). The files in `components/game/controls/` are **simplified production versions** that may not have all visual polish yet.
 
-**Supporting Components:**
+| Component | Reference (Full Features) | Production (Simplified) |
+|-----------|--------------------------|------------------------|
+| **RollRing** | `app/controls-test/page.tsx` lines 358-571 | — (only in test page) |
+| **DiceCluster** | `app/controls-test/page.tsx` lines 573-829 (uses HexGrid) | `components/game/controls/DiceCluster.tsx` (custom CSS) |
+| **ActionCluster** | `app/controls-test/page.tsx` lines 831-1246 (3D flip + badges) | `components/game/controls/ActionCluster.tsx` (opacity only) |
+| **MeasurementCluster** | `app/controls-test/page.tsx` lines 1248-1621 (nested HexGrid) | `components/game/controls/MeasurementCluster.tsx` (rectangular grid) |
 
-- **NumberToken** - SVG circle with number and probability stars (same as board tiles)
-- **GameTile** - Board hex with resource texture, wood border, number token
-- **Road** - Bowtie polygon for road/ship rendering
-- **Building** - Settlement/city circles at hex vertices
+**Reference implementation features (in controls-test/page.tsx):**
+
+- **ActionCluster**: 3D flip animation on disabled buttons, purchase count badges at upper-left vertex, card back image with stats
+- **DiceCluster**: Uses HexGrid component, proper hex layout with CLUSTER_7 positions
+- **MeasurementCluster**: Nested hex clusters (5 outer resources + 7 inner star filters), multi-select resources (max 3), single-select stars
+
+### Supporting Components (Production Ready)
+
+| Component | File Path | Purpose |
+|-----------|-----------|---------|
+| **NumberToken** | `components/game/tiles/NumberToken.tsx` | SVG circle with number and probability stars |
+| **GameTile** | `components/game/tiles/GameTile.tsx` | Board hex with resource texture, wood border, number token |
+| **Road** | `components/game/tiles/Road.tsx` | Bowtie polygon for road/ship rendering (geometry verified ✅) |
+| **Building** | `components/game/tiles/Building.tsx` | Settlement/city circles at hex vertices |
+| **HarborHex** | `components/game/tiles/HarborHex.tsx` | Harbor hex with side indicator |
+| **FloatingPanel** | `components/game/panels/FloatingPanel.tsx` | Draggable/resizable panel container |
+| **BoardViewport** | `components/game/viewport/BoardViewport.tsx` | Pan/zoom viewport container (future unified grid) |
+| **GameBoard** | `components/game/board/GameBoard.tsx` | Board rendering with internal pan/zoom |
+
+All paths are relative to `react-ui/`.
+
+### Viewport Architecture Note
+
+The current implementation uses **GameBoard with internal pan/zoom** rather than a unified BoardViewport. The design doc describes a future vision where BoardViewport becomes the single infinite grid container for water + board tiles. This is intentionally deferred to later iterations - the current GameBoard approach with water fill is the approved architecture for now.
+
+### Migration TODO
+
+The reference implementations in controls-test/page.tsx should eventually be migrated to proper component files:
+
+- [ ] Migrate ActionCluster 3D flip + badges to component file
+- [ ] Migrate DiceCluster to use HexGrid instead of custom CSS
+- [ ] Migrate MeasurementCluster to use nested HexGrid layout
+- [ ] Extract RollRing to its own component file
+- [ ] Add GameResourcesHeader - shows total game resources (Wheat, Wood, Sheep, Brick, Ore, GoldMine, Robber) with counts from `GameModel.gameResources`. Port from `WebUI/Components/Players/GameResourcesHeader.razor`. Uses flippable ResourceCard components.
 
 ---
 
@@ -538,6 +568,92 @@ interface DiceClusterProps {
   playerColors: PlayerColors;
 }
 ```
+
+---
+
+## Implemented Files Reference
+
+This section maps implemented components to their file paths for reference during implementation.
+
+### Core Infrastructure
+
+| Purpose | File Path | Status |
+|---------|-----------|--------|
+| **Zustand Stores** | | |
+| Game state store | `react-ui/lib/stores/gameStore.ts` | ✅ Implemented |
+| Layout/panel store | `react-ui/lib/stores/layoutStore.ts` | ✅ Implemented |
+| Connection state | `react-ui/lib/stores/connectionStore.ts` | ✅ Implemented |
+| UI preferences | `react-ui/lib/stores/uiStore.ts` | ✅ Implemented |
+| Store barrel export | `react-ui/lib/stores/index.ts` | ✅ Implemented |
+| **Utilities** | | |
+| GameModel reconciliation | `react-ui/lib/utils/reconciliation.ts` | ✅ Implemented |
+| Board geometry helpers | `react-ui/lib/geometry/boardGeometry.ts` | ✅ Implemented |
+| Board constants (HEX_SIZE) | `react-ui/lib/geometry/boardConstants.ts` | ✅ Implemented |
+| Model utilities | `react-ui/lib/utils/modelUtils.ts` | ✅ Implemented |
+| **Hooks** | | |
+| SignalR connection | `react-ui/lib/hooks/useGameConnection.ts` | ✅ Implemented |
+
+### Hex Grid Components
+
+| Component | File Path | Status |
+|-----------|-----------|--------|
+| HexGrid (core) | `react-ui/components/hex-grid/HexGrid.tsx` | ✅ Implemented |
+| HexTile | `react-ui/components/hex-grid/HexTile.tsx` | ✅ Implemented |
+| Hex geometry/layouts | `react-ui/components/hex-grid/hex-geometry.ts` | ✅ Implemented |
+| WaterHex | `react-ui/components/hex-grid/WaterHex.tsx` | ✅ Implemented |
+| MenuHex | `react-ui/components/hex-grid/MenuHex.tsx` | ✅ Implemented |
+| CenterHex | `react-ui/components/hex-grid/CenterHex.tsx` | ✅ Implemented |
+| Barrel export | `react-ui/components/hex-grid/index.ts` | ✅ Implemented |
+
+### Game Board Components
+
+| Component | File Path | Status |
+|-----------|-----------|--------|
+| BoardViewport | `react-ui/components/game/viewport/BoardViewport.tsx` | ✅ Implemented |
+| GameBoard | `react-ui/components/game/board/GameBoard.tsx` | ✅ Implemented |
+| GameTile | `react-ui/components/game/tiles/GameTile.tsx` | ✅ Implemented |
+| NumberToken | `react-ui/components/game/tiles/NumberToken.tsx` | ✅ Implemented |
+| Road | `react-ui/components/game/tiles/Road.tsx` | ✅ Implemented |
+| Building | `react-ui/components/game/tiles/Building.tsx` | ✅ Implemented |
+| HarborHex | `react-ui/components/game/tiles/HarborHex.tsx` | ✅ Implemented |
+| Barrel export | `react-ui/components/game/index.ts` | ✅ Implemented |
+
+### Control Clusters
+
+| Component | File Path | Status |
+|-----------|-----------|--------|
+| ActionCluster | `react-ui/components/game/controls/ActionCluster.tsx` | ✅ Implemented |
+| DiceCluster | `react-ui/components/game/controls/DiceCluster.tsx` | ✅ Implemented |
+| MeasurementCluster | `react-ui/components/game/controls/MeasurementCluster.tsx` | ✅ Implemented |
+| RollRing | `react-ui/app/controls-test/page.tsx` | ✅ In test page |
+
+### Panels
+
+| Component | File Path | Status |
+|-----------|-----------|--------|
+| FloatingPanel | `react-ui/components/game/panels/FloatingPanel.tsx` | ✅ Implemented |
+| PlayersPanel | `react-ui/components/game/panels/PlayersPanel.tsx` | ✅ Implemented |
+| ResourcesPanel | `react-ui/components/game/panels/ResourcesPanel.tsx` | ✅ Implemented |
+
+### Test Pages
+
+| Page | File Path | Purpose |
+|------|-----------|---------|
+| Controls Test | `react-ui/app/controls-test/page.tsx` | Tests hex control clusters |
+| Hex Test | `react-ui/app/hex-test/page.tsx` | Tests infinite viewport pan/zoom |
+
+### Not Yet Implemented
+
+| Component | Planned Path | Notes |
+|-----------|--------------|-------|
+| Game page | `react-ui/app/game/[id]/page.tsx` | Main game page |
+| TileOverlay | `react-ui/components/game/board/TileOverlay.tsx` | Robber click targets |
+| RobberTargetMenu | `react-ui/components/game/board/RobberTargetMenu.tsx` | Steal target selection |
+| RoadsLayer | `react-ui/components/game/board/RoadsLayer.tsx` | Roads layer component |
+| BuildingsLayer | `react-ui/components/game/board/BuildingsLayer.tsx` | Buildings layer component |
+| RobberLayer | `react-ui/components/game/board/RobberLayer.tsx` | Robber piece |
+| useRollDimming | `react-ui/lib/hooks/useRollDimming.ts` | 5-second roll dimming |
+| BoardLookups | `react-ui/components/game/board/BoardLookups.ts` | O(1) coordinate lookup |
 
 ---
 
@@ -2289,14 +2405,29 @@ For the measurement cluster, use two HexGrid instances:
 
 ## Key Files Reference
 
+### React UI Implementation Files
+
 | File | Purpose |
 |------|---------|
-| `react-ui/app/hex-test/page.tsx` | Infinite viewport pan/zoom (lines 117-228) |
-| `react-ui/components/hex-grid/hex-geometry.ts` | HEX_LAYOUTS.CLUSTER_7, coordinate math |
-| `react-ui/components/hex-grid/HexGrid.tsx` | Core grid component to reuse |
-| `react-ui/lib/stores/uiStore.ts` | Zustand persist pattern |
+| `react-ui/lib/utils/reconciliation.ts` | SignalR structural sharing (reconcileGameModel, reconcileArray) |
+| `react-ui/lib/stores/gameStore.ts` | Game state + selectors (subscribeWithSelector middleware) |
+| `react-ui/lib/stores/layoutStore.ts` | Panel layout persistence (persist middleware) |
+| `react-ui/lib/geometry/boardGeometry.ts` | axialToPixel, pixelToHex, getHexVertices |
 | `react-ui/lib/geometry/boardConstants.ts` | HEX_SIZE=100, CENTER coordinates |
-| `Catan3.WebUI/Pages/Game.razor` | Blazor reference for game controls |
+| `react-ui/components/hex-grid/hex-geometry.ts` | HEX_LAYOUTS.CLUSTER_7, coordinate math |
+| `react-ui/components/hex-grid/HexGrid.tsx` | Core grid component |
+| `react-ui/components/game/tiles/NumberToken.tsx` | Number token with stars (SVG circle) |
+| `react-ui/components/game/controls/ActionCluster.tsx` | 7-hex action controls |
+| `react-ui/app/controls-test/page.tsx` | Working example of all hex controls |
+| `react-ui/app/hex-test/page.tsx` | Infinite viewport pan/zoom example |
+
+### Blazor Reference Files
+
+| File | Purpose |
+|------|---------|
+| `Catan3.WebUI/Pages/Game.razor` | Blazor game page (reference implementation) |
+| `Catan3.WebUI/Components/BoardSvgConstants.cs` | SVG constants for roads, buildings |
+| `Catan3.WebUI/Components/CatanNumberSvg.cs` | Number token rendering (stars, colors) |
 
 ---
 

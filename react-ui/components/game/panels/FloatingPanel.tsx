@@ -40,6 +40,7 @@ const DEFAULT_PANEL_LAYOUT = {
   size: { width: 300, height: 200 },
   minimized: false,
   visible: true,
+  zIndex: 20,
 };
 
 /** Safely get panel with complete defaults */
@@ -50,6 +51,7 @@ function getPanelWithDefaults(stored: typeof DEFAULT_PANEL_LAYOUT | undefined) {
     size: stored.size ?? DEFAULT_PANEL_LAYOUT.size,
     minimized: stored.minimized ?? DEFAULT_PANEL_LAYOUT.minimized,
     visible: stored.visible ?? DEFAULT_PANEL_LAYOUT.visible,
+    zIndex: stored.zIndex ?? DEFAULT_PANEL_LAYOUT.zIndex,
   };
 }
 
@@ -69,6 +71,7 @@ export function FloatingPanel({
   const setPanelPosition = useLayoutStore((state) => state.setPanelPosition);
   const setPanelSize = useLayoutStore((state) => state.setPanelSize);
   const toggleMinimize = useLayoutStore((state) => state.toggleMinimize);
+  const bringToFront = useLayoutStore((state) => state.bringToFront);
 
   // Local state
   const [isDragging, setIsDragging] = useState(false);
@@ -321,6 +324,11 @@ export function FloatingPanel({
     };
   }, [isResizing, minWidth, minHeight, panelId, setPanelSize]);
 
+  // Bring to front when panel is interacted with (must be before conditional returns)
+  const handlePanelFocus = useCallback(() => {
+    bringToFront(panelId);
+  }, [bringToFront, panelId]);
+
   // Don't render if not visible
   if (!panel.visible) return null;
 
@@ -337,14 +345,20 @@ export function FloatingPanel({
         style={{
           left: actualPosition.x,
           top: actualPosition.y,
-          zIndex: isDragging ? 100 : 50,
+          zIndex: isDragging ? 100 : panel.zIndex,
         }}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.15 }}
         onClick={() => !justDragged && toggleMinimize(panelId)}
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
+        onMouseDown={(e) => {
+          handlePanelFocus();
+          handleMouseDown(e);
+        }}
+        onTouchStart={(e) => {
+          handlePanelFocus();
+          handleTouchStart(e);
+        }}
         onTouchEnd={handleTouchEnd}
         onTouchMove={handleTouchMove}
         title={`${title} (click to expand, CTRL+click to drag)`}
@@ -372,13 +386,19 @@ export function FloatingPanel({
         top: actualPosition.y,
         width: panel.size.width,
         height: panel.size.height,
-        zIndex: isDragging ? 100 : 50,
+        zIndex: isDragging ? 100 : panel.zIndex,
+      }}
+      onMouseDown={(e) => {
+        handlePanelFocus();
+        handleMouseDown(e);
       }}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.15 }}
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleTouchStart}
+      onTouchStart={(e) => {
+        handlePanelFocus();
+        handleTouchStart(e);
+      }}
       onTouchEnd={handleTouchEnd}
       onTouchMove={handleTouchMove}
       title={ctrlHeld ? 'Click and drag to move' : 'CTRL+click to drag, long press on mobile'}
