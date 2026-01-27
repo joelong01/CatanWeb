@@ -6,7 +6,7 @@
 
 // Core layout components
 export { HexGrid } from './HexGrid';
-export type { HexGridProps, HexGridItem } from './HexGrid';
+export type { HexGridProps, HexGridItem, HexGridLayoutInfo } from './HexGrid';
 
 export { HexTile } from './HexTile';
 export type { HexTileProps } from './HexTile';

@@ -3,6 +3,7 @@
  *
  * Uses persist middleware to save layout to localStorage.
  * Supports different layouts per board type (regular vs expansion).
+ * Provides portrait and landscape default layouts matching Blazor.
  */
 
 import { create } from 'zustand';
@@ -31,38 +32,108 @@ export type PanelId =
   | 'actions'
   | 'measurements'
   | 'players'
-  | 'resources';
+  | 'resources'
+  | 'board';
 
-/** Default panel layouts */
-const DEFAULT_PANELS: Record<PanelId, PanelLayout> = {
+/**
+ * Landscape default panel layouts (matching Blazor 3-column layout)
+ *
+ * Blazor layout: left (320px) | center (1fr) | right (530px) at 1920x1080
+ * - Left column: Dice clusters, Actions, Measurements
+ * - Center: Game board
+ * - Right column: Resources, Players
+ *
+ * Using percentages of typical viewport for floating panels:
+ * - Left column starts at x=60 (clear of hamburger menu)
+ * - Right column uses negative x (offset from right edge)
+ * - Center board positioned after left column
+ */
+const LANDSCAPE_PANELS: Record<PanelId, PanelLayout> = {
   dice: {
-    position: { x: 20, y: 80 },
+    position: { x: 60, y: 80 },
     size: { width: 260, height: 200 },
     minimized: false,
     visible: true,
   },
   actions: {
-    position: { x: 20, y: 300 },
+    position: { x: 60, y: 300 },
     size: { width: 200, height: 200 },
     minimized: false,
     visible: true,
   },
   measurements: {
-    position: { x: 20, y: 520 },
+    position: { x: 60, y: 520 },
     size: { width: 280, height: 130 },
     minimized: false,
     visible: true,
   },
-  players: {
-    position: { x: -340, y: 80 },
-    size: { width: 320, height: 400 },
+  board: {
+    position: { x: 340, y: 80 },
+    size: { width: 600, height: 550 },
     minimized: false,
     visible: true,
   },
   resources: {
-    position: { x: -340, y: 500 },
-    size: { width: 320, height: 130 },
+    position: { x: -360, y: 80 },
+    size: { width: 340, height: 130 },
     minimized: false,
+    visible: true,
+  },
+  players: {
+    position: { x: -360, y: 230 },
+    size: { width: 340, height: 450 },
+    minimized: false,
+    visible: true,
+  },
+};
+
+/**
+ * Portrait default panel layouts (matching Blazor tabbed layout concept)
+ *
+ * In portrait mode, Blazor uses tabs to switch between views.
+ * For floating panels, we stack them vertically with board prominent.
+ *
+ * Layout concept:
+ * - Board takes center/top area (main focus)
+ * - Players panel below board
+ * - Controls (dice, actions) at bottom
+ * - Some panels minimized by default to reduce clutter
+ */
+const PORTRAIT_PANELS: Record<PanelId, PanelLayout> = {
+  board: {
+    position: { x: 20, y: 60 },
+    size: { width: 400, height: 400 },
+    minimized: false,
+    visible: true,
+  },
+  players: {
+    position: { x: 20, y: 480 },
+    size: { width: 400, height: 300 },
+    minimized: false,
+    visible: true,
+  },
+  dice: {
+    position: { x: 20, y: 800 },
+    size: { width: 200, height: 150 },
+    minimized: false,
+    visible: true,
+  },
+  actions: {
+    position: { x: 240, y: 800 },
+    size: { width: 180, height: 150 },
+    minimized: false,
+    visible: true,
+  },
+  measurements: {
+    position: { x: 20, y: 970 },
+    size: { width: 400, height: 100 },
+    minimized: true,
+    visible: true,
+  },
+  resources: {
+    position: { x: 20, y: 20 },
+    size: { width: 300, height: 40 },
+    minimized: true,
     visible: true,
   },
 };
@@ -121,19 +192,33 @@ interface LayoutActions {
   /** Set resource filter */
   setResourceFilter: (resource: string | null) => void;
 
-  /** Reset layout to defaults */
+  /** Reset layout to landscape defaults */
+  resetToLandscape: () => void;
+
+  /** Reset layout to portrait defaults */
+  resetToPortrait: () => void;
+
+  /** Reset layout based on current viewport orientation */
   resetLayout: () => void;
 }
 
 type LayoutStore = LayoutState & LayoutActions;
 
+/**
+ * Detects if viewport is portrait orientation
+ */
+function isPortraitViewport(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.innerHeight > window.innerWidth;
+}
+
 const initialState: LayoutState = {
   boardType: 'regular',
-  panels: { ...DEFAULT_PANELS },
+  panels: { ...LANDSCAPE_PANELS },
   viewport: { ...DEFAULT_VIEWPORT },
   starFilter: null,
   resourceFilter: null,
-  version: 1,
+  version: 2, // Bumped version for new layout defaults
 };
 
 /**
@@ -142,7 +227,7 @@ const initialState: LayoutState = {
  */
 export const useLayoutStore = create<LayoutStore>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       ...initialState,
 
       setBoardType: (boardType) => {
@@ -214,9 +299,28 @@ export const useLayoutStore = create<LayoutStore>()(
 
       setResourceFilter: (resourceFilter) => set({ resourceFilter }),
 
-      resetLayout: () => {
+      resetToLandscape: () => {
         set({
-          panels: { ...DEFAULT_PANELS },
+          panels: { ...LANDSCAPE_PANELS },
+          viewport: { ...DEFAULT_VIEWPORT },
+          starFilter: null,
+          resourceFilter: null,
+        });
+      },
+
+      resetToPortrait: () => {
+        set({
+          panels: { ...PORTRAIT_PANELS },
+          viewport: { ...DEFAULT_VIEWPORT },
+          starFilter: null,
+          resourceFilter: null,
+        });
+      },
+
+      resetLayout: () => {
+        const panels = isPortraitViewport() ? PORTRAIT_PANELS : LANDSCAPE_PANELS;
+        set({
+          panels: { ...panels },
           viewport: { ...DEFAULT_VIEWPORT },
           starFilter: null,
           resourceFilter: null,

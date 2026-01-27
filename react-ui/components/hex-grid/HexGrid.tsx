@@ -25,6 +25,18 @@ export interface HexGridItem {
 }
 
 /**
+ * Layout info passed to overlay render prop
+ */
+export interface HexGridLayoutInfo {
+  /** Origin offset for hexToPixel calculations */
+  origin: PixelPosition;
+  /** Hex circumradius */
+  hexSize: number;
+  /** Hex dimensions (width, height) */
+  dims: { width: number; height: number };
+}
+
+/**
  * Props for the HexGrid component.
  */
 export interface HexGridProps {
@@ -46,6 +58,8 @@ export interface HexGridProps {
   fitPadding?: number;
   /** Maximum scale when using fitToParent (default: Infinity, no limit) */
   maxScale?: number;
+  /** Render prop for overlay content (rendered in same coordinate space as hexes) */
+  overlay?: (layoutInfo: HexGridLayoutInfo) => ReactNode;
 }
 
 /**
@@ -100,6 +114,7 @@ export function HexGrid({
   fitToParent = false,
   fitPadding = 8,
   maxScale = Infinity,
+  overlay,
 }: HexGridProps): React.ReactElement {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [parentSize, setParentSize] = useState<{ width: number; height: number } | null>(null);
@@ -187,21 +202,31 @@ export function HexGrid({
   const scaledHeight = layout.containerHeight * finalScale;
 
   // When fitToParent, use a wrapper that fills the parent
+  // We need to wrap the scaled content in a container sized to the SCALED dimensions
+  // so that flex centering works correctly (transform doesn't affect layout size)
   if (fitToParent) {
     return (
       <div
         ref={wrapperRef}
         className={`w-full h-full flex items-center justify-center ${className}`}
       >
+        {/* This container is sized to the SCALED dimensions for proper flex centering */}
         <div
-          className="relative"
           style={{
-            width: `${layout.containerWidth}px`,
-            height: `${layout.containerHeight}px`,
-            transform: `scale(${finalScale})`,
-            transformOrigin: 'center center',
+            width: `${scaledWidth}px`,
+            height: `${scaledHeight}px`,
           }}
         >
+          {/* This container holds the actual content at original size, scaled down */}
+          <div
+            className="relative"
+            style={{
+              width: `${layout.containerWidth}px`,
+              height: `${layout.containerHeight}px`,
+              transform: `scale(${finalScale})`,
+              transformOrigin: 'top left',
+            }}
+          >
           {/* Pass 1: Border layer (if borderColor provided) */}
           {borderColor && items.map(item => {
             const pos = hexToPixel(item.coord, hexSize, layout.origin);
@@ -240,6 +265,10 @@ export function HexGrid({
               </HexTile>
             );
           })}
+
+          {/* Overlay layer (buildings, roads, etc.) */}
+          {overlay?.({ origin: layout.origin, hexSize, dims })}
+          </div>
         </div>
       </div>
     );
@@ -306,6 +335,9 @@ export function HexGrid({
             </HexTile>
           );
         })}
+
+        {/* Overlay layer (buildings, roads, etc.) */}
+        {overlay?.({ origin: layout.origin, hexSize, dims })}
       </div>
     </div>
   );

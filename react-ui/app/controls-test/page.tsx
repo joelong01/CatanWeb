@@ -12,11 +12,14 @@
  * - PlayerTile: 13 stats with Catan font glyphs
  */
 
-import { useState, useRef, useEffect, ReactNode } from 'react';
+import { useState, useRef, useEffect, useMemo, ReactNode } from 'react';
 import { MainLayout } from '@/components/layout';
 import { HexGrid, HexGridItem } from '@/components/hex-grid';
 import { HexCoordinate } from '@/components/hex-grid/hex-geometry';
 import { FloatingPanel } from '@/components/game/panels/FloatingPanel';
+import { GameBoard } from '@/components/game/board/GameBoard';
+import { NumberToken } from '@/components/game/tiles/NumberToken';
+import { EXPANSION_GAME_DATA, generateRoadsForTile } from '@/lib/test-data/expansion-game';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRotateLeft, faRotateRight, faArrowsRotate, faCheck, faScaleBalanced, faReceipt } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
@@ -352,6 +355,222 @@ const CLUSTER_7: Record<string, HexCoordinate> = {
 };
 
 // ============================================================================
+// Roll Ring Component (2-12 roll buttons with count and percentage)
+// ============================================================================
+
+/** Roll stats for tracking */
+interface RollStats {
+  count: number;
+  percentage: number;
+}
+
+/** Props for RollHexContent */
+interface RollHexContentProps {
+  rollNumber: number;
+  count: number;
+  percentage: number;
+  colors?: PlayerColors & { cssGradient: string };
+}
+
+/** Get probability stars for a roll number (7 = no stars) */
+function getRollStars(number: number): string {
+  switch (number) {
+    case 2:
+    case 12:
+      return '★';
+    case 3:
+    case 11:
+      return '★★';
+    case 4:
+    case 10:
+      return '★★★';
+    case 5:
+    case 9:
+      return '★★★★';
+    case 6:
+    case 8:
+      return '★★★★★';
+    case 7:
+    default:
+      return ''; // 7 has no stars
+  }
+}
+
+/** Hex content for a roll button showing number token, count, and percentage */
+function RollHexContent({
+  rollNumber,
+  count,
+  percentage,
+  colors,
+}: RollHexContentProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+
+  const gradient = colors?.cssGradient || 'var(--hex-content-gradient)';
+  const foreground = colors?.foreground || '#ffffff';
+  const borderColor = isHovered
+    ? 'var(--hex-border-hover)'
+    : 'var(--hex-border-idle)';
+
+  // Button scale: normal 0.96, hover 0.94, pressed 0.90
+  const scale = isPressed ? 0.90 : isHovered ? 0.94 : 0.96;
+
+  return (
+    <div
+      className="absolute inset-0 cursor-pointer"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+    >
+      {/* Outer border */}
+      <div
+        className="absolute inset-0 hex-clip-flat transition-colors duration-150"
+        style={{ background: borderColor }}
+      />
+      {/* Inner content */}
+      <div
+        className="absolute inset-0 hex-clip-flat flex flex-col items-center justify-center transition-all duration-150"
+        style={{
+          transform: `scale(${scale})`,
+          background: gradient,
+        }}
+      >
+        {/* Count at top */}
+        <span
+          className="text-[10px] font-bold"
+          style={{ color: foreground }}
+        >
+          {count}
+        </span>
+
+        {/* Number token - using the same component as the board tiles */}
+        <div className="w-10 h-10">
+          <NumberToken number={rollNumber} className="w-full h-full" />
+        </div>
+
+        {/* Percentage at bottom */}
+        <span
+          className="text-[9px]"
+          style={{ color: foreground, opacity: 0.8 }}
+        >
+          {percentage}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Props for RollRing */
+interface RollRingProps {
+  /** Roll statistics for each number 2-12 */
+  rollStats: Record<number, RollStats>;
+  /** Callback when a roll button is clicked */
+  onRollClick?: (roll: number) => void;
+  /** Player colors */
+  colors?: PlayerColors & { cssGradient: string };
+}
+
+/**
+ * RollRing - 11 hex buttons for roll numbers 2-12
+ * Arranged in 3 rows: 4-4-3 pattern matching Blazor layout
+ */
+function RollRing({
+  rollStats,
+  onRollClick,
+  colors,
+}: RollRingProps) {
+  // Hex coordinates for 3-4-3 COLUMN layout with 7 isolated
+  // Reading top-to-bottom within each column, left-to-right across columns
+  // 7 is special (robber roll) so it's isolated at bottom-left edge
+  //
+  // Col0  Col1  Col2
+  //        5    10
+  //  2     6    11
+  //  3     8    12
+  //  4     9
+  //  7 (bottom-left edge)
+  //
+  const rollCoords: { roll: number; coord: HexCoordinate }[] = [
+    // Column 0 (q=0): 2, 3, 4 - shifted down 1 to align with middle column
+    { roll: 2, coord: { q: 0, r: 1, s: -1 } },
+    { roll: 3, coord: { q: 0, r: 2, s: -2 } },
+    { roll: 4, coord: { q: 0, r: 3, s: -3 } },
+    // Column 1 (q=1): 5, 6, 8, 9 (7 skipped)
+    { roll: 5, coord: { q: 1, r: 0, s: -1 } },
+    { roll: 6, coord: { q: 1, r: 1, s: -2 } },
+    { roll: 8, coord: { q: 1, r: 2, s: -3 } },
+    { roll: 9, coord: { q: 1, r: 3, s: -4 } },
+    // Column 2 (q=2): 10, 11, 12
+    { roll: 10, coord: { q: 2, r: 0, s: -2 } },
+    { roll: 11, coord: { q: 2, r: 1, s: -3 } },
+    { roll: 12, coord: { q: 2, r: 2, s: -4 } },
+    // 7 isolated at bottom-left edge
+    { roll: 7, coord: { q: -1, r: 4, s: -3 } },
+  ];
+
+  const items: HexGridItem[] = rollCoords.map(({ roll, coord }) => {
+    const stats = rollStats[roll] || { count: 0, percentage: 0 };
+    return {
+      id: `roll-${roll}`,
+      coord,
+      content: (
+        <RollHexContent
+          rollNumber={roll}
+          count={stats.count}
+          percentage={stats.percentage}
+          colors={colors}
+        />
+      ),
+      onClick: () => onRollClick?.(roll),
+    };
+  });
+
+  return (
+    <div className="w-full h-full">
+      <HexGrid
+        hexSize={38}
+        items={items}
+        gap={1}
+        borderColor="transparent"
+        fitToParent={true}
+        fitPadding={8}
+      />
+    </div>
+  );
+}
+
+/** Demo wrapper for RollRing with mock data */
+interface RollRingDemoProps {
+  colors?: PlayerColors & { cssGradient: string };
+}
+
+function RollRingDemo({ colors }: RollRingDemoProps) {
+  // Mock roll stats (one roll of 7 for demo)
+  const mockRollStats: Record<number, RollStats> = {
+    2: { count: 0, percentage: 0 },
+    3: { count: 0, percentage: 0 },
+    4: { count: 0, percentage: 0 },
+    5: { count: 0, percentage: 0 },
+    6: { count: 0, percentage: 0 },
+    7: { count: 1, percentage: 100 },
+    8: { count: 0, percentage: 0 },
+    9: { count: 0, percentage: 0 },
+    10: { count: 0, percentage: 0 },
+    11: { count: 0, percentage: 0 },
+    12: { count: 0, percentage: 0 },
+  };
+
+  return (
+    <RollRing
+      rollStats={mockRollStats}
+      onRollClick={(roll) => console.log(`Roll ${roll} clicked`)}
+      colors={colors}
+    />
+  );
+}
+
+// ============================================================================
 // Dice Cluster Component
 // ============================================================================
 
@@ -623,6 +842,8 @@ interface ActionHexContentProps {
   isPrimary?: boolean;
   /** Stats to show on back when flipped (e.g., "2/15") */
   backStats?: string;
+  /** Count to show in top-left corner (e.g., purchased count) */
+  count?: number;
   /** Player colors for styling */
   colors?: PlayerColors & { cssGradient: string };
   /** Use Catan font for glyph (default true for Catan glyphs) */
@@ -636,6 +857,7 @@ function ActionHexContent({
   isEnabled = true,
   isPrimary = false,
   backStats,
+  count,
   colors,
   useCatanFont = true,
 }: ActionHexContentProps) {
@@ -728,6 +950,23 @@ function ActionHexContent({
               background: frontBg,
             }}
           >
+            {/* Count badge - positioned along line from upper-left vertex to center
+                Flat-top hex: upper-left vertex at (25%, 13.4%), center at (50%, 50%)
+                At t=0.2 along line: x = 25 + 0.2*25 = 30%, y = 13.4 + 0.2*36.6 = 20.7% */}
+            {count !== undefined && (
+              <span
+                className="absolute text-sm font-bold"
+                style={{
+                  top: '21%',
+                  left: '30%',
+                  transform: 'translate(-50%, -50%)',
+                  color: foreground,
+                  textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                }}
+              >
+                {count}
+              </span>
+            )}
             {renderIcon('large', isPressed)}
             {label && (
               <span
@@ -846,6 +1085,7 @@ function ActionCluster({
           label="Dev"
           isEnabled={enabledButtons.devCard !== false}
           backStats={purchaseStats?.devCards?.bought.toString()}
+          count={purchaseStats?.devCards?.bought}
           colors={colors}
         />
       ),
@@ -862,6 +1102,7 @@ function ActionCluster({
           label="Road"
           isEnabled={enabledButtons.road !== false}
           backStats={formatStats(purchaseStats?.roads)}
+          count={purchaseStats?.roads?.bought}
           colors={colors}
         />
       ),
@@ -878,6 +1119,7 @@ function ActionCluster({
           label="Settle"
           isEnabled={enabledButtons.settlement !== false}
           backStats={formatStats(purchaseStats?.settlements)}
+          count={purchaseStats?.settlements?.bought}
           colors={colors}
         />
       ),
@@ -894,6 +1136,7 @@ function ActionCluster({
           label="City"
           isEnabled={enabledButtons.city !== false}
           backStats={formatStats(purchaseStats?.cities)}
+          count={purchaseStats?.cities?.bought}
           colors={colors}
         />
       ),
@@ -1099,43 +1342,44 @@ function ResourceHexContent({
   );
 }
 
-/** Variance/balance hex content (south position) - matches mockup */
+/** Variance/balance hex content (south position) - shows scale icon + variance value */
 interface VarianceHexContentProps {
   variance: number;
+  colors?: PlayerColors & { cssGradient: string };
 }
 
-function VarianceHexContent({ variance }: VarianceHexContentProps) {
-  // Show scale icon when variance is low (balanced board)
-  const isBalanced = variance < 0.5;
+function VarianceHexContent({ variance, colors }: VarianceHexContentProps) {
+  const gradient = colors?.cssGradient || 'var(--hex-content-gradient)';
+  const foreground = colors?.foreground || '#ffffff';
 
   return (
     <>
       {/* Outer border */}
       <div
         className="absolute inset-0 hex-clip-flat transition-colors duration-200"
-        style={{ background: 'rgba(255,255,255,0.3)' }}
+        style={{ background: 'var(--hex-border-idle)' }}
       />
-      {/* Inner content - light background */}
+      {/* Inner content - player gradient background */}
       <div
         className="absolute inset-0 hex-clip-flat flex flex-col items-center justify-center"
         style={{
           transform: 'scale(0.92)',
-          background: '#e5e7eb', // gray-200
+          background: gradient,
         }}
       >
-        {isBalanced ? (
-          // Balanced: show scale icon
-          <FontAwesomeIcon
-            icon={faScaleBalanced}
-            className="text-2xl text-green-600"
-          />
-        ) : (
-          // Unbalanced: show variance value
-          <>
-            <span className="text-xs text-gray-600 font-medium">Variance</span>
-            <span className="text-lg font-bold text-gray-700">{variance.toFixed(1)}</span>
-          </>
-        )}
+        {/* Scale icon */}
+        <FontAwesomeIcon
+          icon={faScaleBalanced}
+          className="text-xl"
+          style={{ color: foreground }}
+        />
+        {/* Variance value */}
+        <span
+          className="text-lg font-bold"
+          style={{ color: foreground }}
+        >
+          {variance.toFixed(1)}
+        </span>
       </div>
     </>
   );
@@ -1305,11 +1549,11 @@ function MeasurementCluster({ tiles, colors }: MeasurementClusterProps) {
       ),
       onClick: () => handleResourceClick(key),
     })),
-    // Variance in south position
+    // Variance in south position - using dummy value 0.5
     {
       id: 'variance',
       coord: CLUSTER_7.south,
-      content: <VarianceHexContent variance={variance} />,
+      content: <VarianceHexContent variance={0.5} colors={colors} />,
     },
   ];
 
@@ -1731,6 +1975,12 @@ export default function ControlsTestPage(): React.ReactElement {
 
   const selectedPlayer = MOCK_PLAYERS.find(p => p.id === selectedPlayerId) || MOCK_PLAYERS[0];
 
+  // Create game data with roads for the center tile owned by the selected player
+  const gameModelWithRoads = useMemo(() => ({
+    ...EXPANSION_GAME_DATA,
+    roads: generateRoadsForTile(0, 0, selectedPlayerId),
+  }), [selectedPlayerId]);
+
   const handleSendRoll = () => {
     if (die1 !== null && die2 !== null) {
       console.log(`Sending roll: ${die1} + ${die2} = ${die1 + die2}`);
@@ -1744,23 +1994,16 @@ export default function ControlsTestPage(): React.ReactElement {
     <MainLayout>
       {/* Full viewport for floating panels */}
       <div className="relative w-full h-full min-h-screen">
-        {/* Dice Panel - FloatingPanel with CTRL+drag and resize */}
+        {/* Rolls Panel - Roll statistics with hex buttons */}
         <FloatingPanel
           panelId="dice"
-          title="Dice"
+          title="Rolls"
           className="bg-white/5 border-white/10"
-          minWidth={200}
-          minHeight={150}
+          minWidth={280}
+          minHeight={200}
         >
-          <div className="w-full h-full p-3">
-            <DicePanelContent
-              die1={die1}
-              die2={die2}
-              onSelectDie1={setDie1}
-              onSelectDie2={setDie2}
-              onSendRoll={handleSendRoll}
-              colors={selectedPlayer.colors}
-            />
+          <div className="w-full h-full p-2">
+            <RollRingDemo colors={selectedPlayer.colors} />
           </div>
         </FloatingPanel>
 
@@ -1802,6 +2045,27 @@ export default function ControlsTestPage(): React.ReactElement {
             players={MOCK_PLAYERS}
             selectedPlayerId={selectedPlayerId}
             onSelectPlayer={setSelectedPlayerId}
+          />
+        </FloatingPanel>
+
+        {/* Game Board Panel - renders expansion board from test data */}
+        <FloatingPanel
+          panelId="board"
+          title="Game Board (click buildings to assign)"
+          className="bg-white/5 border-white/10"
+          minWidth={400}
+          minHeight={350}
+        >
+          <GameBoard
+            gameModel={gameModelWithRoads}
+            hexSize={50}
+            gap={1}
+            players={MOCK_PLAYERS.map((p) => ({
+              id: p.id,
+              name: p.name,
+              colors: p.colors,
+            }))}
+            selectedPlayerId={selectedPlayerId}
           />
         </FloatingPanel>
 

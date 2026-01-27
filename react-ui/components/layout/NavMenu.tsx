@@ -12,7 +12,9 @@ import {
   faChartBar,
   faGear,
   faPlay,
+  faRotate,
 } from '@fortawesome/free-solid-svg-icons';
+import { useLayoutStore } from '@/lib/stores/layoutStore';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
 /** Props for NavMenu component */
@@ -85,11 +87,18 @@ export function NavMenu({ onMenuAction, activeGameId }: NavMenuProps): React.Rea
 
   const currentPage = getCurrentPage();
   const hasActiveGame = !!activeGameId;
+  const resetLayout = useLayoutStore((state) => state.resetLayout);
 
   /** Navigate and close menu */
   const navigateTo = (path: string): void => {
     onMenuAction();
     router.push(path);
+  };
+
+  /** Reset panel layout to defaults */
+  const handleResetLayout = (): void => {
+    resetLayout();
+    onMenuAction();
   };
 
   /** Toggle fullscreen mode */
@@ -226,6 +235,7 @@ export function NavMenu({ onMenuAction, activeGameId }: NavMenuProps): React.Rea
       {(currentPage === 'Game' || currentPage === 'Tests' || currentPage === 'Other') && (
         <>
           <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
+          <NavMenuItem icon={faRotate} label="Reset Layout" onClick={handleResetLayout} />
           {hasActiveGame && currentPage !== 'Game' && (
             <NavMenuItem
               icon={faPlay}

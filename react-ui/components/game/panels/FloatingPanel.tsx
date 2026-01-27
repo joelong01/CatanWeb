@@ -34,6 +34,25 @@ interface FloatingPanelProps {
   minHeight?: number;
 }
 
+/** Default panel layout for new/unknown panels */
+const DEFAULT_PANEL_LAYOUT = {
+  position: { x: 100, y: 100 },
+  size: { width: 300, height: 200 },
+  minimized: false,
+  visible: true,
+};
+
+/** Safely get panel with complete defaults */
+function getPanelWithDefaults(stored: typeof DEFAULT_PANEL_LAYOUT | undefined) {
+  if (!stored) return DEFAULT_PANEL_LAYOUT;
+  return {
+    position: stored.position ?? DEFAULT_PANEL_LAYOUT.position,
+    size: stored.size ?? DEFAULT_PANEL_LAYOUT.size,
+    minimized: stored.minimized ?? DEFAULT_PANEL_LAYOUT.minimized,
+    visible: stored.visible ?? DEFAULT_PANEL_LAYOUT.visible,
+  };
+}
+
 export function FloatingPanel({
   panelId,
   title,
@@ -44,8 +63,9 @@ export function FloatingPanel({
   minWidth = 120,
   minHeight = 80,
 }: FloatingPanelProps): React.ReactElement | null {
-  // Get panel state from store
-  const panel = useLayoutStore((state) => state.panels[panelId]);
+  // Get panel state from store (with fallback for missing/incomplete panels)
+  const storedPanel = useLayoutStore((state) => state.panels[panelId]);
+  const panel = getPanelWithDefaults(storedPanel);
   const setPanelPosition = useLayoutStore((state) => state.setPanelPosition);
   const setPanelSize = useLayoutStore((state) => state.setPanelSize);
   const toggleMinimize = useLayoutStore((state) => state.toggleMinimize);
@@ -195,10 +215,13 @@ export function FloatingPanel({
       const newX = dragStartRef.current.posX + deltaX;
       const newY = dragStartRef.current.posY + deltaY;
 
+      // Allow panels to go partially off-screen (keep at least 50px visible)
+      const minX = -(panel.size.width - 50);
       const maxX = window.innerWidth - 50;
+      const minY = 0;
       const maxY = window.innerHeight - 50;
-      const constrainedX = Math.max(0, Math.min(maxX, newX));
-      const constrainedY = Math.max(0, Math.min(maxY, newY));
+      const constrainedX = Math.max(minX, Math.min(maxX, newX));
+      const constrainedY = Math.max(minY, Math.min(maxY, newY));
 
       setActualPosition({ x: constrainedX, y: constrainedY });
     }
@@ -214,10 +237,13 @@ export function FloatingPanel({
       const newX = dragStartRef.current.posX + deltaX;
       const newY = dragStartRef.current.posY + deltaY;
 
+      // Allow panels to go partially off-screen (keep at least 50px visible)
+      const minX = -(panel.size.width - 50);
       const maxX = window.innerWidth - 50;
+      const minY = 0;
       const maxY = window.innerHeight - 50;
-      const constrainedX = Math.max(0, Math.min(maxX, newX));
-      const constrainedY = Math.max(0, Math.min(maxY, newY));
+      const constrainedX = Math.max(minX, Math.min(maxX, newX));
+      const constrainedY = Math.max(minY, Math.min(maxY, newY));
 
       setActualPosition({ x: constrainedX, y: constrainedY });
     };
