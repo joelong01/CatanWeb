@@ -106,9 +106,298 @@ The board "floats" visually because land tiles have colorful resources while sur
 
 ---
 
+## Implemented Components (as of 2025-01)
+
+The following hex-based UI controls have been implemented in `react-ui/app/controls-test/page.tsx`:
+
+| Component | Layout | Props | Data Source |
+|-----------|--------|-------|-------------|
+| **RollRing** | 11-hex (3-4-3 columns), 7 isolated at bottom-left | `rollStats`, `onRollClick`, `colors` | Roll history from `GameModel.players` |
+| **DiceCluster** | Two 7-hex clusters side-by-side | `die1`, `die2`, `onSelect*`, `onSendRoll`, `colors` | Local state + `ActionFlags.rollsEnabled` |
+| **ActionCluster** | 7-hex CLUSTER_7 with center Next | `actionFlags`, `gameState`, `entitlements`, `purchaseStats`, `commands`, `colors` | `GameModel.actionFlags`, `GameModel.gameState`, `PlayerModel.unspentEntitlements` |
+| **MeasurementCluster** | 5 outer + 7 inner nested hexes | `resourceStars`, `buildingSpotCounts`, `variance`, `colors` | Pre-computed from `GameModel.tiles`, `GameModel.buildings` |
+
+**Supporting Components:**
+
+- **NumberToken** - SVG circle with number and probability stars (same as board tiles)
+- **GameTile** - Board hex with resource texture, wood border, number token
+- **Road** - Bowtie polygon for road/ship rendering
+- **Building** - Settlement/city circles at hex vertices
+
+---
+
+## State Selection Strategy
+
+### Principle: Props Are Pre-Computed Slices
+
+Components receive only the data they need, pre-computed at the page level. This prevents re-renders when unrelated parts of GameModel change.
+
+```typescript
+// BAD: Passing entire GameModel forces re-render on any change
+<MeasurementCluster gameModel={gameModel} />
+
+// GOOD: Pre-compute and pass only what's needed
+const resourceStars = useMemo(() => computeResourceStars(tiles), [tiles]);
+<MeasurementCluster resourceStars={resourceStars} variance={0.5} colors={playerColors} />
+```
+
+### Selector Pattern (Zustand + subscribeWithSelector)
+
+```typescript
+// Define fine-grained selectors in gameStore.ts
+const selectActionFlags = (state: GameStore) => state.gameModel?.actionFlags;
+const selectTiles = (state: GameStore) => state.gameModel?.tiles ?? [];
+const selectGameState = (state: GameStore) => state.gameModel?.gameState;
+
+// Usage in page component - only re-renders when that specific slice changes
+const actionFlags = useGameStore(selectActionFlags);
+const tiles = useGameStore(selectTiles);
+```
+
+### Data Flow Diagram
+
+```text
+SignalR Event: GameStateUpdated
+       │
+       ▼
+┌─────────────────────────────────────────────┐
+│ reconcileGameModel(prevModel, newModel)     │
+│   - Preserves unchanged array references    │
+│   - Returns prev if nothing changed         │
+└─────────────────────────────────────────────┘
+       │
+       ▼
+┌─────────────────────────────────────────────┐
+│ gameStore.setGameModel(reconciled)          │
+│   - Zustand triggers selector subscriptions │
+└─────────────────────────────────────────────┘
+       │
+       ├── selectActionFlags ─────► ActionCluster (only if flags changed)
+       ├── selectTiles ───────────► MeasurementCluster (only if tiles changed)
+       ├── selectRollsEnabled ────► DiceCluster (only if rollsEnabled changed)
+       └── selectPlayers ─────────► PlayersPanel (only if players changed)
+```
+
+### Component-Specific Selectors
+
+**ActionCluster:**
+
+```typescript
+const selectActionFlags = (state) => state.gameModel?.actionFlags;
+const selectGameState = (state) => state.gameModel?.gameState;
+const selectMyEntitlements = (state) => {
+  const me = state.gameModel?.players.find(p => p.id === state.currentPlayerId);
+  return me?.unspentEntitlements ?? [];
+};
+const selectPurchaseStats = (state) => state.gameModel?.entitlementPurchaseModel ?? [];
+```
+
+**DiceCluster:**
+
+```typescript
+const selectRollsEnabled = (state) => state.gameModel?.actionFlags?.rollsEnabled ?? false;
+const selectIsMyTurn = (state) => state.gameModel?.currentPlayerId === state.currentPlayerId;
+// Die values are LOCAL state, not from GameModel
+```
+
+**MeasurementCluster:**
+
+```typescript
+const selectTiles = (state) => state.gameModel?.tiles ?? [];
+const selectBuildings = (state) => state.gameModel?.buildings ?? [];
+// Star/resource filters are in layoutStore (UI state), not gameStore
+```
+
+---
+
+## Memoization Requirements
+
+### Component-Level (React.memo)
+
+All cluster components MUST be wrapped with `memo()` to prevent re-renders when parent updates:
+
+```typescript
+// REQUIRED pattern for all hex controls
+export const ActionCluster = memo(function ActionCluster(props: ActionClusterProps) {
+  // ...
+});
+
+export const RollHexContent = memo(function RollHexContent(props: RollHexContentProps) {
+  // ...
+});
+```
+
+### Value-Level (useMemo)
+
+Pre-compute derived values at the page level:
+
+```typescript
+// In game page component
+const resourceStars = useMemo(() => {
+  return RESOURCE_TYPES.reduce((acc, type) => {
+    acc[type] = tiles
+      .filter(t => t.resourceTileType === type)
+      .reduce((sum, t) => sum + (t.stars || 0), 0);
+    return acc;
+  }, {} as Record<ResourceType, number>);
+}, [tiles]);
+
+const purchaseAvailability = useMemo(() => ({
+  road: entitlements.includes(Entitlement.Road),
+  settlement: entitlements.includes(Entitlement.Settlement),
+  city: entitlements.includes(Entitlement.City),
+  devCard: entitlements.includes(Entitlement.DevCard),
+}), [entitlements]);
+```
+
+### Callback-Level (useCallback)
+
+- Commands from `useGameCommands()` are already stable references - no wrapping needed
+- Custom handlers that close over changing state need `useCallback`:
+
+```typescript
+// NOT needed - proxy methods are stable
+const { next, undo, redo } = useGameCommands();
+
+// NEEDED - closes over selectedResources state
+const handleResourceClick = useCallback((resource: string) => {
+  setSelectedResources(prev =>
+    prev.includes(resource)
+      ? prev.filter(r => r !== resource)
+      : [...prev, resource].slice(-3)  // Max 3
+  );
+}, []);  // Empty deps - uses functional update
+```
+
+---
+
+## Props Interface Reference
+
+### Shared PlayerColors Interface
+
+```typescript
+/** Matches C# PlayerColors record - used across all controls */
+interface PlayerColors {
+  primary: string;      // #RRGGBB hex
+  secondary: string;    // #RRGGBB hex
+  foreground: string;   // #RRGGBB hex (text color)
+  cssGradient: string;  // Computed: linear-gradient(135deg, primary, secondary, endColor)
+}
+```
+
+### ActionCluster Props
+
+```typescript
+interface ActionClusterProps {
+  actionFlags: ActionFlags | null;
+  gameState: GameState | null;
+  entitlements: Entitlement[];
+  purchaseStats: EntitlementPurchaseModel[];
+  commands: {
+    onNext: () => void;
+    onUndo: () => void;
+    onRedo: () => void;
+    onPurchaseRoad: () => void;
+    onPurchaseSettlement: () => void;
+    onPurchaseCity: () => void;
+    onPurchaseDevCard: () => void;
+  };
+  playerColors: PlayerColors;
+}
+```
+
+### MeasurementCluster Props
+
+```typescript
+interface MeasurementClusterProps {
+  resourceStars: Record<ResourceType, number>;
+  buildingSpotCounts: Record<number, number>;
+  variance: number;
+  playerColors: PlayerColors;
+}
+```
+
+### RollRing Props
+
+```typescript
+interface RollRingProps {
+  rollStats: Record<number, { count: number; percentage: number }>;
+  onRollClick?: (roll: number) => void;
+  colors: PlayerColors;
+}
+```
+
+### DiceCluster Props
+
+```typescript
+interface DiceClusterProps {
+  enabled: boolean;           // ActionFlags.rollsEnabled && isMyTurn
+  isRolling: boolean;         // Local loading state
+  onRoll: (die1: number, die2: number) => void;
+  playerColors: PlayerColors;
+}
+```
+
+---
+
 ## Hex-Based UI Controls
 
-### Dice Panel - Two 7-Hex Clusters
+### Dice Panel - RollRing & DiceCluster
+
+The Dice Panel contains two components: a **RollRing** showing roll statistics and a **DiceCluster** for dice selection.
+
+#### RollRing - Roll Statistics (11-hex grid + isolated 7)
+
+Layout: 3-4-3 column arrangement with 7 isolated at bottom-left.
+
+```text
+       [2]
+   [5]    [10]
+       [6]
+   [3]    [11]
+       [8]
+   [4]    [12]
+       [9]
+
+[7] ← isolated bottom-left
+```
+
+**Column layout coordinates (from controls-test/page.tsx):**
+
+```typescript
+const rollCoords: { roll: number; coord: HexCoordinate }[] = [
+  // Column 0 (q=0): 2, 3, 4 - shifted down 1 to align with middle column
+  { roll: 2, coord: { q: 0, r: 1, s: -1 } },
+  { roll: 3, coord: { q: 0, r: 2, s: -2 } },
+  { roll: 4, coord: { q: 0, r: 3, s: -3 } },
+  // Column 1 (q=1): 5, 6, 8, 9 (7 skipped - goes to isolated position)
+  { roll: 5, coord: { q: 1, r: 0, s: -1 } },
+  { roll: 6, coord: { q: 1, r: 1, s: -2 } },
+  { roll: 8, coord: { q: 1, r: 2, s: -3 } },
+  { roll: 9, coord: { q: 1, r: 3, s: -4 } },
+  // Column 2 (q=2): 10, 11, 12
+  { roll: 10, coord: { q: 2, r: 0, s: -2 } },
+  { roll: 11, coord: { q: 2, r: 1, s: -3 } },
+  { roll: 12, coord: { q: 2, r: 2, s: -4 } },
+  // 7 isolated at bottom-left edge (robber roll)
+  { roll: 7, coord: { q: -1, r: 4, s: -3 } },
+];
+```
+
+**Visual rendering:**
+
+- Each hex displays the **NumberToken** component (identical to board tiles)
+- Blue background for normal rolls (2-5, 9-12)
+- Black background with red text for high-probability (6, 8)
+- Probability stars (★) below the number
+
+**Button behavior (not selectable):**
+
+- Hover: scale 0.96 → 0.94
+- Press: scale 0.96 → 0.90
+- Tiles are buttons that trigger `onRollClick(rollNumber)` for filtering
+
+#### DiceCluster - Dice Selection (Two 7-hex clusters)
 
 ```text
       [1]              [1]
@@ -120,8 +409,8 @@ The board "floats" visually because land tiles have colorful resources while sur
 
 **Interaction:**
 
-1. Click value (1-6) on Die 1 → highlights
-2. Click value (1-6) on Die 2 → highlights
+1. Click value (1-6) on Die 1 → highlights with player color
+2. Click value (1-6) on Die 2 → highlights with player color
 3. Click center hex (D1 or D2) to confirm roll
 4. Both dice must be selected before confirming
 
@@ -131,30 +420,6 @@ The board "floats" visually because land tiles have colorful resources while sur
 - Selected: Player color gradient
 - Rolling: Spinning/tumbling animation (during server request)
 - Confirmed: Pulse animation showing result, then reset
-
-**Rolling State (Server Delay):**
-
-```typescript
-// Track rolling state locally
-const [isRolling, setIsRolling] = useState(false);
-
-const handleConfirmRoll = async () => {
-  setIsRolling(true);
-
-  // Show rolling animation while waiting for server
-  await gameService.roll(die1Value, die2Value);
-
-  // Server response triggers GameModel update, which shows result
-  setIsRolling(false);
-};
-
-// Render dice with rolling animation
-<DieCluster
-  value={die1Value}
-  isRolling={isRolling}  // Triggers CSS tumble animation
-  onSelect={setDie1Value}
-/>
-```
 
 ---
 
@@ -170,19 +435,69 @@ const handleConfirmRoll = async () => {
    "Roll the Dice"  ← State message below cluster
 ```
 
-**Layout:**
+**Layout (CLUSTER_7 positions):**
 
-| Position | Content | Action |
-|----------|---------|--------|
-| Center | Next button | Advance game state (primary action) |
-| North | Dev Card icon | Purchase development card |
-| NE | Road icon | Build road |
-| SE | Settlement icon | Build settlement |
-| South | City icon | Build city |
-| SW | Redo button | Redo last action |
-| NW | Undo button | Undo last action |
+| Position | Content | Icon | Action |
+|----------|---------|------|--------|
+| Center | Next button | FontAwesome `faForward` | Advance game state |
+| North | Dev Card | FontAwesome `faCreditCard` | Purchase development card |
+| NE | Road | Catan font glyph `\uE92D` | Build road |
+| SE | Settlement | Catan font glyph `\uE926` | Build settlement |
+| South | City | Catan font glyph `\uE900` | Build city |
+| SW | Redo | FontAwesome `faRotateRight` | Redo last action |
+| NW | Undo | FontAwesome `faRotateLeft` | Undo last action |
 
 **State Message:** Displayed as text below the hex cluster (not inside a hex). Shows current game state like "Roll the Dice", "Place Settlement", etc.
+
+#### Purchase Button Features (Road, Settlement, City, DevCard)
+
+**3D Flip Animation (disabled state):**
+
+When a purchase action is disabled (no entitlement or insufficient resources), the hex tile flips to show the back face:
+
+```css
+/* CSS 3D flip implementation */
+.action-hex {
+  transform-style: preserve-3d;
+  transition: transform 0.6s;
+}
+.action-hex.disabled {
+  transform: rotateY(180deg);
+}
+.action-hex-front, .action-hex-back {
+  backface-visibility: hidden;
+}
+.action-hex-back {
+  transform: rotateY(180deg);
+  /* Shows card artwork + resource cost */
+}
+```
+
+**Purchase Count Badges:**
+
+Purchase buttons display a badge showing how many of that item the player has built:
+
+- Badge position: Upper-left vertex of hex (21% from left, 30% from top)
+- Shows count from `purchaseStats` array (e.g., "3" for 3 roads built)
+- Only shown when count > 0
+- Styled with player color background
+
+```typescript
+// Badge positioning (from controls-test/page.tsx)
+<div className="absolute" style={{ left: '21%', top: '30%' }}>
+  <span className="bg-player-primary text-white text-xs font-bold rounded-full px-1.5">
+    {purchaseCount}
+  </span>
+</div>
+```
+
+**Back Face Content:**
+
+When flipped (disabled), the back shows:
+
+- Card/item artwork image
+- Resource cost icons
+- Grayed out styling to indicate unavailable
 
 **Keyboard Shortcut:**
 
@@ -194,55 +509,100 @@ const handleConfirmRoll = async () => {
 
 ### Board Measurements - Nested Hex Cluster
 
-Based on user mockup - a 7-hex outer ring with a 7-hex inner cluster:
+Two nested hex clusters: 5 outer resources + 1 variance (ring) with 7 inner star filters (cluster).
 
 ```text
-            [Sheep]
-              10
+          [Sheep]
+             10
 
-   [Ore]              [Wood]
-    11        ┌───┐     12
-           [13]  [12]
-        [8]  [Reset] [11]
-           [9]   [10]
-   [Brick]            [Wheat]
-    11    Variance:0.5   4
-            <scale>
+   [Ore]           [Wood]
+    11    ┌─────┐    12
+       [13]  [12]
+    [8]  [Reset] [11]
+       [9]   [10]
+   [Brick]          [Wheat]
+    11              4
+
+        [Variance]
+         ⚖️ 0.5
 ```
 
-**Outer Ring (6 large hexes):**
+**Outer Ring (5 resources + 1 variance = 6 hexes):**
 
-| Position | Content |
-|----------|---------|
-| North | Sheep + count |
-| NE | Wood + count |
-| SE | Wheat + count |
-| South | Variance value + balance scale indicator |
-| SW | Brick + count |
-| NW | Ore + count |
+| Position | Content | Selection |
+|----------|---------|-----------|
+| North | Sheep icon + star count | Multi-select (max 3) |
+| NE | Wood icon + star count | Multi-select (max 3) |
+| SE | Wheat icon + star count | Multi-select (max 3) |
+| South | Variance (scales icon + value) | Display only |
+| SW | Brick icon + star count | Multi-select (max 3) |
+| NW | Ore icon + star count | Multi-select (max 3) |
 
-**Inner Cluster (7 smaller hexes nested in center):**
+**Inner Cluster (7 hexes for star filtering):**
 
 | Position | Content | Action |
 |----------|---------|--------|
-| Center | "Reset" | Clear star filter |
-| North | 13 | Show settlements ≥13 stars |
-| NE | 12 | Show settlements ≥12 stars |
-| SE | 11 | Show settlements ≥11 stars |
-| South | 10 | Show settlements ≥10 stars |
-| SW | 9 | Show settlements ≥9 stars |
-| NW | 8 | Show settlements ≥8 stars |
+| Center | "Reset" | Clear star filter (single-select) |
+| North | 13 | Filter ≥13 stars |
+| NE | 12 | Filter ≥12 stars |
+| SE | 11 | Filter ≥11 stars |
+| South | 10 | Filter ≥10 stars |
+| SW | 9 | Filter ≥9 stars |
+| NW | 8 | Filter ≥8 stars |
 
-**Resource Hex Behavior:**
+#### Resource Hex Behavior (Multi-Select)
 
-- Shows resource image + count of that resource on board
-- Click to filter/highlight tiles of that resource type
+- Shows resource image + total star count for that resource on board
+- **Multi-select**: Click to add to filter (max 3 resources)
+- If 3 resources selected, clicking a 4th replaces the oldest (circular rotation)
+- Selected resources show player color highlight
+- Click selected resource again to deselect
 
-**Star Number Behavior:**
+```typescript
+// Multi-select logic (from controls-test/page.tsx)
+const handleResourceClick = (resource: string) => {
+  setSelectedResources(prev => {
+    if (prev.includes(resource)) {
+      return prev.filter(r => r !== resource);  // Deselect
+    }
+    if (prev.length >= 3) {
+      return [...prev.slice(1), resource];  // Circular rotation
+    }
+    return [...prev, resource];  // Add
+  });
+};
+```
 
-- Click number to show settlement locations with ≥ that many stars
-- Selected number highlights
-- Reset clears filter
+#### Star Filter Behavior (Single-Select)
+
+- Click star number to filter settlement spots with ≥ that many stars
+- **Single-select**: Only one star filter active at a time
+- Selected star shows player color highlight
+- Click "Reset" center hex to clear filter
+
+#### Variance Hex
+
+The south position shows board variance/balance:
+
+- **Icon**: FontAwesome `faScaleBalanced` (scales)
+- **Value**: Variance number (e.g., "0.5")
+- **Background**: Player color gradient (not white)
+- Display only, not clickable
+
+```typescript
+// Variance hex content (from controls-test/page.tsx)
+function VarianceHexContent({ variance, colors }: VarianceHexContentProps) {
+  return (
+    <div
+      className="w-full h-full flex flex-col items-center justify-center"
+      style={{ background: colors.cssGradient }}
+    >
+      <FontAwesomeIcon icon={faScaleBalanced} className="text-lg mb-1" />
+      <span className="text-sm font-semibold">{variance.toFixed(1)}</span>
+    </div>
+  );
+}
+```
 
 ---
 
