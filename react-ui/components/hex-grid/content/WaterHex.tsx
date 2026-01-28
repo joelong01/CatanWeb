@@ -38,7 +38,7 @@ export function WaterHex({
   // Image-based water
   if (imageUrl) {
     return (
-      <div className="w-full h-full" style={{ opacity }}>
+      <div className="w-full h-full" style={{ opacity }} data-drag-through>
         {showBorder && (
           <div className="absolute inset-0 hex-clip-flat bg-blue-500/40" />
         )}
@@ -65,6 +65,7 @@ export function WaterHex({
           rgba(20, 50, 100, ${opacity}) 50%,
           rgba(15, 40, 80, ${opacity}) 100%)`,
       }}
+      data-drag-through
     />
   );
 }

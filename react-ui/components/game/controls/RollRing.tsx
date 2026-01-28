@@ -4,14 +4,14 @@
  * RollRing - 11 hex buttons for roll statistics (2-12).
  *
  * Features:
- * - 3-4-3 column layout with 7 isolated at bottom-left
+ * - 4-3-4 column layout (square-ish shape) using LAYOUTS.COLUMNS_4_3_4
  * - Shows count and percentage for each roll
  * - Uses NumberToken component for consistent styling with board tiles
  * - Player-colored gradients
  */
 
-import { memo, useState } from 'react';
-import { HexGrid, type HexGridItem, type HexCoordinate } from '@/components/hex-grid';
+import { memo, useState, useMemo } from 'react';
+import { HexGrid, type HexGridItem, LAYOUTS } from '@/components/hex-grid';
 import { NumberToken } from '@/components/game/tiles/NumberToken';
 import type { PlayerColorsWithGradient } from '@/lib/utils/playerColors';
 
@@ -117,43 +117,26 @@ const RollHexContent = memo(function RollHexContent({
 
 /**
  * RollRing - 11 hex buttons for roll numbers 2-12
- * Arranged in 3 columns: 3-4-3 pattern with 7 isolated at bottom-left
+ * Arranged in 4-3-4 column pattern (compact square shape)
  */
 export const RollRing = memo(function RollRing({
   rollStats,
   onRollClick,
   colors,
 }: RollRingProps): React.ReactElement {
-  // Hex coordinates for 3-4-3 COLUMN layout with 7 isolated
-  // Reading top-to-bottom within each column, left-to-right across columns
-  // 7 is special (robber roll) so it's isolated at bottom-left edge
-  //
-  // Col0  Col1  Col2
-  //        5    10
-  //  2     6    11
-  //  3     8    12
-  //  4     9
-  //  7 (bottom-left edge)
-  //
-  const rollCoords: { roll: number; coord: HexCoordinate }[] = [
-    // Column 0 (q=0): 2, 3, 4 - shifted down 1 to align with middle column
-    { roll: 2, coord: { q: 0, r: 1, s: -1 } },
-    { roll: 3, coord: { q: 0, r: 2, s: -2 } },
-    { roll: 4, coord: { q: 0, r: 3, s: -3 } },
-    // Column 1 (q=1): 5, 6, 8, 9 (7 skipped)
-    { roll: 5, coord: { q: 1, r: 0, s: -1 } },
-    { roll: 6, coord: { q: 1, r: 1, s: -2 } },
-    { roll: 8, coord: { q: 1, r: 2, s: -3 } },
-    { roll: 9, coord: { q: 1, r: 3, s: -4 } },
-    // Column 2 (q=2): 10, 11, 12
-    { roll: 10, coord: { q: 2, r: 0, s: -2 } },
-    { roll: 11, coord: { q: 2, r: 1, s: -3 } },
-    { roll: 12, coord: { q: 2, r: 2, s: -4 } },
-    // 7 isolated at bottom-left edge
-    { roll: 7, coord: { q: -1, r: 4, s: -3 } },
-  ];
+  // Roll numbers 2-12 mapped to 4-3-4 column layout
+  // Visual layout (probabilities match across rows):
+  //  2 (1pip)    6 (5pips)   12 (1pip)
+  //  3 (2pips)               11 (2pips)
+  //  4 (3pips)   7 (6pips)   10 (3pips)
+  //  5 (4pips)   8 (5pips)    9 (4pips)
+  const rollNumbers = [2, 3, 4, 5, 6, 7, 8, 12, 11, 10, 9];
 
-  const items: HexGridItem[] = rollCoords.map(({ roll, coord }) => {
+  // Get coordinates from the layout utility (memoized since it's static)
+  const coords = useMemo(() => LAYOUTS.COLUMNS_4_3_4(), []);
+
+  const items: HexGridItem[] = rollNumbers.map((roll, index) => {
+    const coord = coords[index];
     const stats = rollStats[roll] || { count: 0, percentage: 0 };
     return {
       id: `roll-${roll}`,

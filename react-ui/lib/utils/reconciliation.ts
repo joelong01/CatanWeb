@@ -148,13 +148,18 @@ export function reconcileArray<T>(
   let hasChanges = false;
   const result: T[] = [];
 
-  for (const nextItem of next) {
+  for (let i = 0; i < next.length; i++) {
+    const nextItem = next[i];
     const key = getKey(nextItem);
     const prevItem = prevMap.get(key);
 
     if (prevItem && deepEqual(prevItem, nextItem)) {
       // Item unchanged - reuse old reference
       result.push(prevItem);
+      // Check if order changed (item at different index)
+      if (i < prev.length && getKey(prev[i]) !== key) {
+        hasChanges = true;
+      }
     } else {
       // Item is new or changed
       hasChanges = true;
@@ -167,7 +172,7 @@ export function reconcileArray<T>(
     hasChanges = true;
   }
 
-  // If no changes and same length, return original array reference
+  // If no changes (including order) and same length, return original array reference
   if (!hasChanges) {
     return prev;
   }

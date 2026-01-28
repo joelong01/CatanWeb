@@ -17,6 +17,7 @@ import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import type { PlayerModel } from '@/types/generated/models/player-model';
 import type { GameModel } from '@/types/generated/models/game-model';
 import { useGameStore } from '@/lib/stores/gameStore';
+import { createPlayerColorsWithGradient, type PlayerColorsWithGradient } from '@/lib/utils/playerColors';
 import { DEFAULT_PLAYER_COLORS, type PlayerProfile } from '@/types/player-profile';
 
 // ============================================================================
@@ -59,38 +60,10 @@ const CatanGlyph = {
 // Player Colors Helper
 // ============================================================================
 
-interface PlayerColorsWithGradient {
-  primary: string;
-  secondary: string;
-  foreground: string;
-  cssGradient: string;
-}
-
-/** Compute relative luminance of a hex color (0-1 scale) */
-function getLuminance(hex: string): number {
-  const rgb = hex.replace('#', '');
-  const r = parseInt(rgb.substring(0, 2), 16) / 255;
-  const g = parseInt(rgb.substring(2, 4), 16) / 255;
-  const b = parseInt(rgb.substring(4, 6), 16) / 255;
-  return 0.299 * r + 0.587 * g + 0.114 * b;
-}
-
-/** Build CSS gradient from player colors */
-function buildCssGradient(primary: string, secondary: string): string {
-  const avgLuminance = (getLuminance(primary) + getLuminance(secondary)) / 2;
-  const endColor = avgLuminance > 0.4 ? '#000000' : '#ffffff';
-  return `linear-gradient(135deg, ${primary}, ${secondary}, ${endColor})`;
-}
-
 /** Create PlayerColors with gradient from profile */
 function createColorsFromProfile(profile: PlayerProfile | undefined): PlayerColorsWithGradient {
   const colors = profile?.colors ?? DEFAULT_PLAYER_COLORS;
-  return {
-    primary: colors.primary,
-    secondary: colors.secondary,
-    foreground: colors.foreground,
-    cssGradient: buildCssGradient(colors.primary, colors.secondary),
-  };
+  return createPlayerColorsWithGradient(colors);
 }
 
 // ============================================================================
@@ -199,6 +172,7 @@ interface StatTileProps {
   isHighlighted?: boolean;
   isScore?: boolean;
   colors: PlayerColorsWithGradient;
+  bold?: boolean;
 }
 
 const StatTile = memo(function StatTile({
@@ -208,6 +182,7 @@ const StatTile = memo(function StatTile({
   isHighlighted = false,
   isScore = false,
   colors,
+  bold = false,
 }: StatTileProps) {
   const bgStyle = isHighlighted
     ? { background: colors.cssGradient }
@@ -226,7 +201,7 @@ const StatTile = memo(function StatTile({
       );
     }
     return (
-      <span className={`font-catan ${className}`}>{glyph}</span>
+      <span className={`font-catan ${className} ${bold ? 'font-bold' : ''}`}>{glyph}</span>
     );
   };
 
@@ -303,7 +278,7 @@ const PlayerTile = memo(function PlayerTile({
   // 13 stats in display order (matching Blazor PlayerTile.razor)
   const stats: Omit<StatTileProps, 'colors'>[] = [
     { glyph: CatanGlyph.Laurel, count: player.score, isHighlighted: player.highestScore, isScore: true },
-    { glyph: CatanGlyph.Road, count: roadCount },
+    { glyph: CatanGlyph.Road, count: roadCount, bold: true },
     { glyph: CatanGlyph.City, count: cities },
     { glyph: CatanGlyph.Settlement, count: settlements },
     { glyph: CatanGlyph.Soldier, count: soldierCount, isHighlighted: player.largestArmy },
@@ -311,7 +286,7 @@ const PlayerTile = memo(function PlayerTile({
     { glyph: CatanGlyph.Pirate, count: robberLoss },
     { glyph: CatanGlyph.Target, count: player.timesTargeted },
     { glyph: CatanGlyph.Sum, count: totalResources },
-    { glyph: CatanGlyph.LongestRoad, count: player.longestRoad, isHighlighted: player.hasLongestRoad },
+    { glyph: CatanGlyph.LongestRoad, count: player.longestRoad, isHighlighted: player.hasLongestRoad, bold: true },
     { glyph: CatanGlyph.GoodRoll, count: player.goodRolls },
     { glyph: CatanGlyph.BadRoll, count: player.badRolls },
     { glyph: CatanGlyph.Star, count: player.stars },
@@ -363,6 +338,7 @@ const PlayerTile = memo(function PlayerTile({
               isHighlighted={stat.isHighlighted}
               isScore={stat.isScore}
               colors={colors}
+              bold={stat.bold}
             />
           ))}
         </div>

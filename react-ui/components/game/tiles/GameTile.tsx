@@ -15,8 +15,12 @@ export interface GameTileProps {
   hexSize: number;
   /** Whether this tile is highlighted (e.g., during roll) */
   isHighlighted?: boolean;
+  /** Whether this tile is dimmed (non-matching roll number) */
+  isDimmed?: boolean;
   /** Click handler for tile interactions */
   onClick?: () => void;
+  /** Right-click handler for tile interactions (e.g., robber placement) */
+  onRightClick?: (e: React.MouseEvent) => void;
 }
 
 /**
@@ -35,7 +39,9 @@ export const GameTile = memo(function GameTile({
   tile,
   hexSize: _hexSize, // Keep prop for API compatibility but use percentages internally
   isHighlighted = false,
+  isDimmed = false,
   onClick,
+  onRightClick,
 }: GameTileProps) {
   const { number, resourceTileType } = tile;
   const imageUrl = getResourceTileImage(resourceTileType);
@@ -49,10 +55,23 @@ export const GameTile = memo(function GameTile({
   // So token center is at approximately 27% from top
   const numberTokenTop = '27%';
 
+  // Handle right-click with context menu prevention
+  const handleContextMenu = onRightClick
+    ? (e: React.MouseEvent) => {
+        e.preventDefault();
+        onRightClick(e);
+      }
+    : undefined;
+
   return (
     <div
-      className="absolute inset-0 cursor-pointer transition-transform duration-150 hover:scale-[1.02]"
+      className="absolute inset-0 cursor-pointer hover:scale-[1.02]"
+      style={{
+        opacity: isDimmed ? 0.5 : 1,
+        transition: 'opacity 0.3s ease, transform 0.15s ease',
+      }}
       onClick={onClick}
+      onContextMenu={handleContextMenu}
     >
       {/* Outer hex border - maple wood texture */}
       <div

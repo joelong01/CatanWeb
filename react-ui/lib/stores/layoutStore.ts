@@ -35,7 +35,8 @@ export type PanelId =
   | 'measurements'
   | 'players'
   | 'resources'
-  | 'board';
+  | 'board'
+  | 'goFirst';
 
 /**
  * Landscape default panel layouts (matching Blazor 3-column layout)
@@ -93,6 +94,13 @@ const LANDSCAPE_PANELS: Record<PanelId, PanelLayout> = {
     visible: true,
     zIndex: 24,
   },
+  goFirst: {
+    position: { x: 800, y: 350 }, // Centered on typical 1920x1080 screen
+    size: { width: 320, height: 300 },
+    minimized: false,
+    visible: true,
+    zIndex: 50, // Higher z-index - overlays should be on top
+  },
 };
 
 /**
@@ -149,6 +157,13 @@ const PORTRAIT_PANELS: Record<PanelId, PanelLayout> = {
     minimized: true,
     visible: true,
     zIndex: 23,
+  },
+  goFirst: {
+    position: { x: 40, y: 300 }, // Centered on typical portrait screen
+    size: { width: 320, height: 300 },
+    minimized: false,
+    visible: true,
+    zIndex: 50, // Higher z-index - overlays should be on top
   },
 };
 
@@ -232,7 +247,7 @@ const initialState: LayoutState = {
   viewport: { ...DEFAULT_VIEWPORT },
   starFilter: null,
   resourceFilter: null,
-  version: 3, // Bumped version for z-index support
+  version: 5, // Bumped version for goFirst panel centering
 };
 
 /**
@@ -366,7 +381,7 @@ export const useLayoutStore = create<LayoutStore>()(
     }),
     {
       name: 'catan-layout',
-      version: 3, // Increment when layout structure changes
+      version: 5, // Increment when layout structure changes
       partialize: (state) => ({
         boardType: state.boardType,
         panels: state.panels,
@@ -374,9 +389,9 @@ export const useLayoutStore = create<LayoutStore>()(
         version: state.version,
       }),
       migrate: (persistedState, version) => {
-        // If version < 3, reset to defaults (adds zIndex support)
-        if (version < 3) {
-          console.log('[layoutStore] Migrating from version', version, 'to 3 - resetting panels for zIndex support');
+        // If version < 5, reset to defaults (centers goFirst panel)
+        if (version < 5) {
+          console.log('[layoutStore] Migrating from version', version, 'to 5 - resetting panels for goFirst centering');
           return {
             ...initialState,
           };

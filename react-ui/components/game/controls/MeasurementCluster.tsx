@@ -38,8 +38,10 @@ export interface MeasurementClusterProps {
   onResourceSelectionChange?: (resources: string[]) => void;
   /** Callback when star filter changes */
   onStarFilterChange?: (stars: number | null) => void;
-  /** Callback when reset is clicked */
+  /** Callback when reset/shuffle is clicked */
   onReset?: () => void;
+  /** Whether shuffle is enabled (only during PickingBoard state) */
+  shuffleEnabled?: boolean;
 }
 
 // ============================================================================
@@ -346,47 +348,51 @@ const StarHexContent = memo(function StarHexContent({
 
 interface ResetHexContentProps {
   colors?: PlayerColorsWithGradient;
+  disabled?: boolean;
 }
 
-const ResetHexContent = memo(function ResetHexContent({ colors }: ResetHexContentProps) {
+const ResetHexContent = memo(function ResetHexContent({ colors, disabled }: ResetHexContentProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
 
   // Same purple theme as star buttons
   const purpleBg = '#a5b4fc'; // indigo-300
+  const disabledBg = '#6b7280'; // gray-500
 
-  // Scale based on interaction state
-  const innerScale = isPressed ? 0.80 : isHovered ? 0.84 : 0.88;
-  const borderColor = isHovered ? '#a5b4fc' : '#818cf8';
+  // Scale based on interaction state (no interaction when disabled)
+  const innerScale = disabled ? 0.88 : isPressed ? 0.80 : isHovered ? 0.84 : 0.88;
+  const borderColor = disabled ? '#4b5563' : isHovered ? '#a5b4fc' : '#818cf8';
 
   return (
     <div
       className="absolute inset-0"
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => !disabled && setIsHovered(true)}
       onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
-      onMouseDown={() => setIsPressed(true)}
+      onMouseDown={() => !disabled && setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
-      onTouchStart={() => setIsPressed(true)}
+      onTouchStart={() => !disabled && setIsPressed(true)}
       onTouchEnd={() => setIsPressed(false)}
+      style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
     >
       {/* Outer border */}
       <div
         className="absolute inset-0 hex-clip-flat transition-colors duration-150"
         style={{ background: borderColor }}
       />
-      {/* Inner content - purple with shuffle/refresh icon */}
+      {/* Inner content - purple with shuffle/refresh icon (gray when disabled) */}
       <div
         className="absolute inset-0 hex-clip-flat flex items-center justify-center transition-all duration-150"
         style={{
           transform: `scale(${innerScale})`,
-          background: colors?.cssGradient || purpleBg,
+          background: disabled ? disabledBg : (colors?.cssGradient || purpleBg),
+          opacity: disabled ? 0.6 : 1,
         }}
       >
         <FontAwesomeIcon
           icon={faArrowsRotate}
           className="text-[9px] transition-transform duration-150"
           style={{
-            color: colors?.foreground || '#1e1b4b',
+            color: disabled ? '#9ca3af' : (colors?.foreground || '#1e1b4b'),
             transform: isPressed ? 'scale(0.85)' : 'scale(1)',
           }}
         />
@@ -406,6 +412,7 @@ export const MeasurementCluster = memo(function MeasurementCluster({
   onResourceSelectionChange,
   onStarFilterChange,
   onReset,
+  shuffleEnabled = true,
 }: MeasurementClusterProps): React.ReactElement {
   // Multi-select for resources (up to 3), single-select for stars
   const [selectedResources, setSelectedResources] = useState<string[]>([]);
@@ -487,12 +494,12 @@ export const MeasurementCluster = memo(function MeasurementCluster({
 
   // Build inner cluster items (7 hexes for star filter)
   const innerItems: HexGridItem[] = [
-    // Center: Reset button
+    // Center: Shuffle button (disabled after board is approved)
     {
       id: 'reset',
       coord: CLUSTER_7.center,
-      content: <ResetHexContent colors={colors} />,
-      onClick: handleReset,
+      content: <ResetHexContent colors={colors} disabled={!shuffleEnabled} />,
+      onClick: shuffleEnabled ? handleReset : undefined,
     },
     // Star values around the outside
     ...STAR_VALUES_CONFIG.map(({ value, position }) => ({

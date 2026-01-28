@@ -7,6 +7,7 @@ import {
   getNeighbor,
   getVertexPosition,
   getEdgeMidpoint,
+  hexToPixel,
   Direction,
   type HexCoordinate,
   type PixelPosition,
@@ -26,6 +27,10 @@ import type { BuildingModel } from '@/types/generated/models/building-model';
 import type { RoadModel } from '@/types/generated/models/road-model';
 import type { HexSide } from '@/types/generated/models/hex-side';
 import type { HexPosition } from '@/types/generated/models/hex-position';
+import type { BuildingKey } from '@/types/generated/models/building-key';
+import type { RoadKey } from '@/types/generated/models/road-key';
+import type { Entitlement } from '@/types/generated/models/entitlement';
+import type { RobberModel } from '@/types/generated/models/robber-model';
 
 /**
  * Minimal game data required for board rendering.
@@ -36,6 +41,10 @@ export interface BoardGameData {
   harbors: HarborModel[];
   buildings?: BuildingModel[];
   roads?: RoadModel[];
+  /** Current player's unspent entitlements (for determining buildable spots) */
+  currentPlayerEntitlements?: Entitlement[];
+  /** Robber position and state */
+  robber?: RobberModel;
 }
 
 /** Zoom configuration */
@@ -78,12 +87,22 @@ export interface GameBoardProps {
   gap?: number;
   /** Callback when a tile is clicked */
   onTileClick?: (tile: TileModel) => void;
+  /** Callback when a tile is right-clicked (e.g., robber placement) */
+  onTileRightClick?: (tile: TileModel, event: React.MouseEvent) => void;
   /** Set of highlighted tile keys (for dice roll highlighting) */
   highlightedTiles?: Set<string>;
   /** Players for building colors (click to assign) */
   players?: BoardPlayer[];
   /** Currently selected player ID (used when clicking buildings) */
   selectedPlayerId?: string;
+  /** Callback when a buildable building spot is clicked */
+  onBuildingClick?: (buildingKey: BuildingKey) => void;
+  /** Callback when a buildable road is clicked */
+  onRoadClick?: (roadKey: RoadKey) => void;
+  /** Last rolled number (2-12). Tiles not matching this number are dimmed. */
+  rolledNumber?: number | null;
+  /** Show numbered build indexes on possible settlements (false during allocation phase) */
+  showSettlementIndexes?: boolean;
 }
 
 /**
@@ -123,96 +142,167 @@ const SIDE_TO_VERTICES: Record<HexSide, [[number, number], [number, number]]> = 
 };
 
 /**
- * Harbor hex content - displays harbor icon in a triangular dock connecting to tile
- * Background uses CSS gradient via hex-clip-flat (indicates current turn), SVG only for triangle and circle
+ * Map HexSide to the OPPOSITE edge vertices (for water triangle on far side).
+ * These face away from the connected tile, toward open water.
+ */
+const SIDE_TO_OPPOSITE_VERTICES: Record<HexSide, [[number, number], [number, number]]> = {
+  Top: [[75, 0], [25, 0]],             // Top edge (opposite of bottom)
+  TopRight: [[100, 43.3], [75, 0]],    // Top-right edge (opposite of bottom-left)
+  BottomRight: [[75, 86.6], [100, 43.3]], // Bottom-right edge (opposite of top-left)
+  Bottom: [[25, 86.6], [75, 86.6]],    // Bottom edge (opposite of top)
+  BottomLeft: [[0, 43.3], [25, 86.6]], // Bottom-left edge (opposite of top-right)
+  TopLeft: [[25, 0], [0, 43.3]],       // Top-left edge (opposite of bottom-right)
+  None: [[50, 50], [50, 50]],          // Fallback
+};
+
+/**
+ * Dock/pier colors - neutral wood tones that don't imply ownership
+ */
+const DOCK_COLORS = {
+  fill: '#8B7355',      // Weathered wood brown
+  stroke: '#5D4E37',    // Darker wood border
+  highlight: '#A08060', // Lighter wood accent
+};
+
+/**
+ * Water colors for harbor water triangle (opposite side of dock)
+ */
+const WATER_COLORS = {
+  fill: '#1e4078',      // Deep ocean blue
+  stroke: '#162e5a',    // Darker water border
+  highlight: '#2a5090', // Lighter water accent
+};
+
+/**
+ * Harbor hex content - displays harbor icon on a triangular wooden dock.
+ *
+ * When a player owns the harbor (building at adjacent vertex), the hex
+ * background is filled with the player's gradient color. Otherwise,
+ * transparent background lets water show through.
  */
 interface HarborHexContentProps {
   harbor: HarborModel;
-  /** Player colors for background gradient (indicates whose turn it is) */
-  playerColors?: PlayerColors;
+  /** Owner colors when harbor is owned by a player */
+  ownerColors?: PlayerColors | null;
 }
 
-function HarborHexContent({ harbor, playerColors }: HarborHexContentProps) {
+function HarborHexContent({ harbor, ownerColors }: HarborHexContentProps) {
   const { harborType, side } = harbor.harborKey;
   const imageUrl = getHarborImage(harborType);
-  const vertices = SIDE_TO_VERTICES[side];
+  const dockVertices = SIDE_TO_VERTICES[side];
+  const waterVertices = SIDE_TO_OPPOSITE_VERTICES[side];
 
   // Circle parameters (in viewBox units)
-  // Size matches NumberToken visually (radius 30 in 64x64 viewBox ≈ 26 in 100x86.6 viewBox)
   const cx = 50;
   const cy = 43.3;
   const circleRadius = 26;
 
-  // CSS gradient from player colors
-  const cssGradient = playerColors
-    ? `linear-gradient(135deg, ${playerColors.primary}, ${playerColors.secondary})`
-    : undefined;
-
-  // For 'None' harbors, just show the gradient background (DOM-based)
+  // For 'None' harbors, render nothing (water shows through)
   if (!imageUrl || harborType === 'None') {
-    return cssGradient ? (
-      <div
-        className="absolute inset-0 hex-clip-flat"
-        style={{ background: cssGradient, opacity: 0.7 }}
-      />
-    ) : null;
+    return null;
   }
 
-  // Triangle points: center + two edge vertices
-  const trianglePoints = `${cx},${cy} ${vertices[0][0]},${vertices[0][1]} ${vertices[1][0]},${vertices[1][1]}`;
+  // Full hex polygon points (flat-top hex, viewBox 100x86.6)
+  // Vertices clockwise from top-left: top-left, top-right, right, bottom-right, bottom-left, left
+  const hexPoints = '25,0 75,0 100,43.3 75,86.6 25,86.6 0,43.3';
+
+  // Dock triangle points: center + two edge vertices facing the tile
+  const dockTrianglePoints = `${cx},${cy} ${dockVertices[0][0]},${dockVertices[0][1]} ${dockVertices[1][0]},${dockVertices[1][1]}`;
+
+  // Water triangle points: center + two edge vertices facing open water
+  const waterTrianglePoints = `${cx},${cy} ${waterVertices[0][0]},${waterVertices[0][1]} ${waterVertices[1][0]},${waterVertices[1][1]}`;
+
+  // Generate unique gradient ID for this harbor's owner
+  const ownerGradientId = ownerColors ? `harbor-owner-${side}` : null;
 
   return (
-    <div className="absolute inset-0">
-      {/* Background hex fill with player gradient - DOM-based, indicates turn */}
-      {cssGradient && (
-        <div
-          className="absolute inset-0 hex-clip-flat"
-          style={{ background: cssGradient, opacity: 0.7 }}
-        />
-      )}
-
-      {/* SVG for triangular dock and harbor circle (only these need SVG) */}
+    <div className="absolute inset-0" data-drag-through>
+      {/* SVG for triangular dock, water triangle, and harbor circle */}
       <svg
         className="absolute inset-0 w-full h-full"
         viewBox="0 0 100 86.6"
         preserveAspectRatio="none"
       >
         <defs>
-          <pattern
-            id={`water-pattern-${side}`}
-            patternUnits="userSpaceOnUse"
-            width="100"
-            height="86.6"
-          >
-            <image
-              href="/themes/base/tiles/back.jpg"
-              width="100"
-              height="86.6"
-              preserveAspectRatio="xMidYMid slice"
-            />
-          </pattern>
+          {/* Animation for harbor ownership background */}
+          <style>
+            {`
+              @keyframes harbor-owned {
+                from {
+                  transform: scale(0.3);
+                  opacity: 0;
+                }
+                to {
+                  transform: scale(1);
+                  opacity: 0.7;
+                }
+              }
+              .harbor-owned-bg {
+                animation: harbor-owned 0.6s ease-out forwards;
+                transform-origin: 50px 43.3px;
+                transform-box: fill-box;
+              }
+            `}
+          </style>
+          {/* Wood grain gradient for dock */}
+          <linearGradient id={`dock-wood-${side}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={DOCK_COLORS.highlight} />
+            <stop offset="50%" stopColor={DOCK_COLORS.fill} />
+            <stop offset="100%" stopColor={DOCK_COLORS.stroke} />
+          </linearGradient>
+          {/* Water gradient for opposite side */}
+          <linearGradient id={`dock-water-${side}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={WATER_COLORS.highlight} />
+            <stop offset="50%" stopColor={WATER_COLORS.fill} />
+            <stop offset="100%" stopColor={WATER_COLORS.stroke} />
+          </linearGradient>
+          {/* Owner gradient when harbor is owned */}
+          {ownerColors && ownerGradientId && (
+            <linearGradient id={ownerGradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={ownerColors.primary} />
+              <stop offset="100%" stopColor={ownerColors.secondary} />
+            </linearGradient>
+          )}
           <clipPath id={`harbor-clip-${side}`}>
             <circle cx={cx} cy={cy} r={circleRadius - 1} />
           </clipPath>
         </defs>
 
-        {/* Triangle dock with water fill and border */}
+        {/* Owner background when harbor is owned - full hex fill with player gradient */}
+        {ownerColors && ownerGradientId && (
+          <polygon
+            className="harbor-owned-bg"
+            points={hexPoints}
+            fill={`url(#${ownerGradientId})`}
+          />
+        )}
+
+        {/* Water triangle on opposite side (render first, behind dock) */}
         <polygon
-          points={trianglePoints}
-          fill={`url(#water-pattern-${side})`}
-          stroke="#1e3a5f"
+          points={waterTrianglePoints}
+          fill={`url(#dock-water-${side})`}
+          stroke={WATER_COLORS.stroke}
           strokeWidth="2"
           strokeLinejoin="round"
         />
 
-        {/* Harbor circle background */}
+        {/* Dock triangle with wood fill (toward tile connection) */}
+        <polygon
+          points={dockTrianglePoints}
+          fill={`url(#dock-wood-${side})`}
+          stroke={DOCK_COLORS.stroke}
+          strokeWidth="2.5"
+          strokeLinejoin="round"
+        />
+
+        {/* Harbor circle background - parchment/sail color */}
         <circle
           cx={cx}
           cy={cy}
           r={circleRadius}
-          fill="#f5f5dc"
-          stroke="#1e3a5f"
-          strokeWidth="2"
+          fill="#f5f0e1"
+          stroke={DOCK_COLORS.stroke}
+          strokeWidth="2.5"
         />
 
         {/* Harbor image inside circle */}
@@ -246,15 +336,79 @@ export function GameBoard({
   hexSize: initialHexSize = ZOOM_CONFIG.defaultSize,
   gap = 1,
   onTileClick,
+  onTileRightClick,
   highlightedTiles,
   players = [],
   selectedPlayerId,
+  onBuildingClick,
+  onRoadClick,
+  rolledNumber,
+  showSettlementIndexes = false,
 }: GameBoardProps): React.ReactElement {
   // Handle null gameModel
   const tiles = gameModel?.tiles ?? [];
   const harbors = gameModel?.harbors ?? [];
   const buildings = gameModel?.buildings ?? [];
   const roads = gameModel?.roads ?? [];
+  const currentPlayerEntitlements = gameModel?.currentPlayerEntitlements ?? [];
+  const robber = gameModel?.robber;
+
+  // Robber animation state - tracks the position to render (for CSS transition)
+  const [animatedRobberCoords, setAnimatedRobberCoords] = useState<{ q: number; r: number } | null>(null);
+  const [isRobberAnimating, setIsRobberAnimating] = useState(false);
+  // Track last animated "from" and "to" to prevent re-animating same movement on re-render
+  const lastAnimatedFromRef = useRef<{ q: number; r: number } | null>(null);
+  const lastAnimatedToRef = useRef<{ q: number; r: number } | null>(null);
+
+  // Robber animation effect - when previousCoordinates differs from coordinates, animate
+  useEffect(() => {
+    if (!robber) return;
+
+    const currCoords = robber.coordinates;
+    const prevCoords = robber.previousCoordinates;
+
+    // Check if we have a valid movement to animate
+    const hasValidCurrent = currCoords && (currCoords.q !== 0 || currCoords.r !== 0);
+    const hasValidPrevious = prevCoords && (prevCoords.q !== 0 || prevCoords.r !== 0);
+    const coordsDiffer = hasValidCurrent && hasValidPrevious &&
+      (currCoords.q !== prevCoords.q || currCoords.r !== prevCoords.r);
+
+    if (coordsDiffer) {
+      // Guard: Skip if we already animated this exact movement
+      const alreadyAnimated =
+        lastAnimatedFromRef.current?.q === prevCoords.q &&
+        lastAnimatedFromRef.current?.r === prevCoords.r &&
+        lastAnimatedToRef.current?.q === currCoords.q &&
+        lastAnimatedToRef.current?.r === currCoords.r;
+
+      if (!alreadyAnimated) {
+        // Record this animation
+        lastAnimatedFromRef.current = { q: prevCoords.q, r: prevCoords.r };
+        lastAnimatedToRef.current = { q: currCoords.q, r: currCoords.r };
+
+        // Start animation: render at previous position first
+        setAnimatedRobberCoords({ q: prevCoords.q, r: prevCoords.r });
+        setIsRobberAnimating(true);
+
+        // After a frame, move to current position (CSS transition will animate)
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            setAnimatedRobberCoords({ q: currCoords.q, r: currCoords.r });
+            // Mark animation as complete after transition duration (1.2s like Blazor)
+            setTimeout(() => setIsRobberAnimating(false), 1200);
+          }, 20);
+        });
+      }
+    } else if (hasValidCurrent && !isRobberAnimating) {
+      // No animation needed - just set current position
+      setAnimatedRobberCoords({ q: currCoords.q, r: currCoords.r });
+      // Clear animation tracking when robber is placed without movement
+      if (!hasValidPrevious) {
+        lastAnimatedFromRef.current = null;
+        lastAnimatedToRef.current = null;
+      }
+    }
+  }, [robber, isRobberAnimating]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
@@ -349,6 +503,9 @@ export function GameBoard({
       const coord = cubicCoord(tile.tileKey.q, tile.tileKey.r);
       const key = coordKeyString(coord);
       const isHighlighted = highlightedTiles?.has(key) || tile.highlighted;
+      // Tile is dimmed when a roll is active AND this tile's number doesn't match
+      // Sea/Desert tiles (number 0) are also dimmed when a number is rolled
+      const isDimmed = rolledNumber !== null && rolledNumber !== undefined && tile.number !== rolledNumber;
 
       return {
         id: `tile-${key}`,
@@ -358,12 +515,14 @@ export function GameBoard({
             tile={tile}
             hexSize={hexSize}
             isHighlighted={isHighlighted}
+            isDimmed={isDimmed}
             onClick={onTileClick ? () => onTileClick(tile) : undefined}
+            onRightClick={onTileRightClick ? (e) => onTileRightClick(tile, e) : undefined}
           />
         ),
       };
     });
-  }, [tiles, hexSize, highlightedTiles, onTileClick]);
+  }, [tiles, hexSize, highlightedTiles, rolledNumber, onTileClick, onTileRightClick]);
 
   // Get the current player's colors for harbor backgrounds
   const currentPlayerColors = useMemo((): PlayerColors | undefined => {
@@ -383,13 +542,18 @@ export function GameBoard({
       const waterCoord = getNeighbor(tileCoord, direction);
       const key = coordKeyString(waterCoord);
 
+      // Get owner colors if harbor is owned
+      const ownerColors = harbor.owner?.id
+        ? players.find(p => p.id === harbor.owner.id)?.colors
+        : null;
+
       return {
         id: `harbor-${key}`,
         coord: waterCoord,
-        content: <HarborHexContent harbor={harbor} playerColors={currentPlayerColors} />,
+        content: <HarborHexContent harbor={harbor} ownerColors={ownerColors} />,
       };
     });
-  }, [harbors, currentPlayerColors]);
+  }, [harbors, players]);
 
   // Build set of harbor coordinates for quick lookup
   const harborCoordSet = useMemo(() => {
@@ -584,11 +748,14 @@ export function GameBoard({
   }, [tilePipsMap]);
 
   // Render buildings and roads overlay (DOM divs)
+  // Implements Blazor BuildingOverlay.razor and RoadOverlay.razor logic
   const renderOverlay = useCallback((layoutInfo: HexGridLayoutInfo) => {
     const { origin, hexSize: hSize } = layoutInfo;
 
-    // Building size: 40% of hexSize (matches Blazor: BuildingSize=40 at HexSize=100)
-    const buildingSize = hSize * 0.4;
+    // Building sizes: owned=larger, buildable=smaller
+    // Base ratios from Blazor (24 vs 18 SVG units at HexSize=100), scaled up ~25% per user feedback
+    const ownedBuildingSize = hSize * 0.60;     // 24/50 * 1.25 = 0.60
+    const buildableBuildingSize = hSize * 0.45; // 18/50 * 1.25 = 0.45
 
     // Road container size (SVG viewBox is hexSize * 1.2, centered at origin)
     const roadContainerSize = hSize * 1.2;
@@ -596,21 +763,82 @@ export function GameBoard({
     // Get current player colors
     const currentPlayer = selectedPlayerId ? players.find(p => p.id === selectedPlayerId) : players[0];
 
+    // Check entitlements for current player
+    const hasSettlementEntitlement = currentPlayerEntitlements.includes('Settlement' as Entitlement);
+    const hasCityEntitlement = currentPlayerEntitlements.includes('City' as Entitlement);
+    const hasRoadEntitlement = currentPlayerEntitlements.includes('Road' as Entitlement);
+
+    // Build city upgrade index map (A, B, C...) for current player's settlements
+    // Matches Blazor BuildingOverlay.razor: city upgrades get letters, settlements get numbers
+    const cityUpgradeIndexMap = new Map<string, string>();
+    if (hasCityEntitlement && currentPlayer) {
+      let cityIndex = 0; // 0 = 'A', 1 = 'B', etc.
+      buildingPositions.forEach(({ key }) => {
+        const buildingModel = buildingMap.get(key);
+        if (buildingModel &&
+            buildingModel.buildingState === 'Settlement' &&
+            buildingModel.ownerId === currentPlayer.id) {
+          cityUpgradeIndexMap.set(key, String.fromCharCode(65 + cityIndex)); // 65 = 'A'
+          cityIndex++;
+        }
+      });
+    }
+
+    // Build settlement placement index map (1, 2, 3...) for buildable spots
+    // Only shown during regular gameplay (NOT during allocation phase)
+    // Matches Blazor BuildingOverlay.razor line 230: buildIndex = settlementIndex.ToString()
+    const settlementIndexMap = new Map<string, string>();
+    if (showSettlementIndexes && hasSettlementEntitlement) {
+      let settlementIndex = 1; // 1-based numbering
+      buildingPositions.forEach(({ key }) => {
+        const buildingModel = buildingMap.get(key);
+        if (buildingModel?.buildingState === 'PossibleSettlement' && buildingModel?.ownerId === null) {
+          settlementIndexMap.set(key, settlementIndex.toString());
+          settlementIndex++;
+        }
+      });
+    }
+
     return (
       <>
         {/* Roads layer (render first, below buildings) */}
+        {/* Per RoadOverlay.razor: Only render if ownerId != null OR roadState === 'Buildable' */}
         {roadPositions.map(({ key, coord, side }) => {
-          const pixelPos = getEdgeMidpoint(coord, side, hSize, origin);
           const roadModel = roadMap.get(key);
 
-          // Get road state from model, default to Buildable for testing (shows on hover)
-          const roadState: RoadState = (roadModel?.roadState as RoadState) ?? 'Buildable';
-          const ownerId = roadModel?.ownerId;
+          // CRITICAL: Only render roads that are owned OR server-marked as Buildable
+          // Do NOT default to Buildable - the server controls buildability
+          if (!roadModel) {
+            return null; // No model = no road to render
+          }
+
+          const roadState = roadModel.roadState as RoadState;
+          const ownerId = roadModel.ownerId;
+
+          // Visibility filter: owned OR buildable (matches Blazor GetVisibleRoads)
+          if (ownerId === null && roadState !== 'Buildable') {
+            return null; // Unowned and not buildable = don't render
+          }
+
+          const pixelPos = getEdgeMidpoint(coord, side, hSize, origin);
           const owner = ownerId ? players.find((p) => p.id === ownerId) : null;
+
+          // Build the road key for click handler
+          const roadKey: RoadKey = {
+            tileKey: { q: coord.q, r: coord.r, s: coord.s },
+            hexSide: side as HexSide,
+          };
+
+          // Include player ID in key to force re-render on ownership/turn changes
+          // Buildable roads: use current player ID (changes on turn change)
+          // Owned roads: use owner ID (ensures correct colors after purchase)
+          const roadKeyString = roadState === 'Buildable'
+            ? `road-${key}-buildable-${currentPlayer?.id ?? 'none'}`
+            : `road-${key}-owned-${ownerId ?? 'none'}`;
 
           return (
             <div
-              key={`road-${key}`}
+              key={roadKeyString}
               className="absolute"
               style={{
                 left: pixelPos.x - roadContainerSize / 2,
@@ -623,78 +851,209 @@ export function GameBoard({
                 ownerColors={owner?.colors}
                 currentPlayerColors={currentPlayer?.colors}
                 hexSize={hSize}
+                buildIndex={roadModel.buildIndex}
+                onClick={roadState === 'Buildable' && onRoadClick ? () => onRoadClick(roadKey) : undefined}
               />
             </div>
           );
         })}
 
-        {/* Buildings layer (render on top of roads) */}
+        {/* Buildings layer - TWO loops per Blazor BuildingOverlay.razor */}
+
+        {/* Loop 1: Owned buildings (Settlement or City with ownerId) */}
         {buildingPositions.map(({ key, coord, position }) => {
-          const pixelPos = getVertexPosition(coord, position, hSize, origin);
           const buildingModel = buildingMap.get(key);
+          if (!buildingModel) return null;
 
-          // Get building state from model, default to PossibleSettlement for testing
-          const buildingState = buildingModel?.buildingState ?? 'PossibleSettlement';
-          const ownerId = buildingModel?.ownerId;
-          const owner = ownerId ? players.find((p) => p.id === ownerId) : null;
+          const buildingState = buildingModel.buildingState;
+          const ownerId = buildingModel.ownerId;
 
-          // Calculate stars for this position
-          const stars = calculateStars(coord, position);
+          // Only render owned Settlement or City in this loop
+          if (ownerId === null) return null;
+          if (buildingState !== 'Settlement' && buildingState !== 'City') return null;
 
-          // Determine visual state based on building state, ownership, and star filter
-          // Following Blazor precedent from BuildingOverlay.razor
-          let visualState: BuildingVisualState = 'Hidden';
+          const pixelPos = getVertexPosition(coord, position, hSize, origin);
+          const owner = players.find((p) => p.id === ownerId);
 
-          if (owner) {
-            // Owned buildings always show as Normal
-            visualState = 'Normal';
-          } else if (buildingState === 'NotBuildable') {
-            // NotBuildable positions: only show during star evaluation (when filter active)
-            if (starFilter === null) {
-              return null; // Don't render NotBuildable when not filtering
-            }
-            // When filter is active, show NotBuildable spots for star evaluation if they pass threshold
-            if (stars < starFilter) {
-              return null; // Below threshold
-            }
-            visualState = 'Stars'; // Show star count for evaluation
-          } else {
-            // PossibleSettlement spots
-            if (starFilter !== null) {
-              // Star filter active: show spots that pass threshold with star counts
-              if (stars < starFilter) {
-                return null; // Below threshold - don't show
-              }
-              visualState = 'Stars'; // Above threshold - show star count
-            } else {
-              // No filter: Hidden (shows on hover)
-              visualState = 'Hidden';
-            }
-          }
+          // Build the building key for click handler (city upgrades)
+          // Cast needed because generated BuildingKey has spurious 'default' property
+          const buildingKey = {
+            hexCoordinates: { q: coord.q, r: coord.r, s: coord.s },
+            position: position as HexPosition,
+          } as BuildingKey;
+
+          // City upgrade: clickable if current player owns this settlement AND has city entitlement
+          const isCityUpgradeable = buildingState === 'Settlement' &&
+            ownerId === currentPlayer?.id &&
+            hasCityEntitlement;
+
+          // Get city upgrade letter (A, B, C...) if this is an upgradeable settlement
+          const cityUpgradeIndex = cityUpgradeIndexMap.get(key);
 
           return (
             <div
-              key={`building-${key}`}
+              key={`owned-building-${key}`}
               className="absolute"
               style={{
-                left: pixelPos.x - buildingSize / 2,
-                top: pixelPos.y - buildingSize / 2,
+                left: pixelPos.x - ownedBuildingSize / 2,
+                top: pixelPos.y - ownedBuildingSize / 2,
               }}
             >
               <Building
                 buildingState={buildingState}
-                visualState={visualState}
-                stars={stars}
+                visualState={isCityUpgradeable ? 'Highlighted' : 'Normal'}
                 ownerColors={owner?.colors}
                 currentPlayerColors={currentPlayer?.colors}
-                size={buildingSize}
+                size={ownedBuildingSize}
+                buildIndex={cityUpgradeIndex}
+                onClick={isCityUpgradeable && onBuildingClick ? () => onBuildingClick(buildingKey) : undefined}
               />
             </div>
           );
         })}
+
+        {/* Loop 2: Buildable spots - only show when player has Settlement entitlement */}
+        {buildingPositions.map(({ key, coord, position }) => {
+          const buildingModel = buildingMap.get(key);
+          const buildingState = buildingModel?.buildingState ?? 'PossibleSettlement';
+          const ownerId = buildingModel?.ownerId;
+
+          // Skip owned buildings (handled in Loop 1)
+          if (ownerId !== null) return null;
+
+          // Only show buildable spots when player has Settlement entitlement
+          if (!hasSettlementEntitlement) return null;
+
+          // Only render PossibleSettlement spots (not NotBuildable)
+          if (buildingState !== 'PossibleSettlement') return null;
+
+          // Calculate stars for this position
+          const stars = calculateStars(coord, position);
+
+          // Get settlement build index (1, 2, 3...) if showing indexes
+          const settlementBuildIndex = settlementIndexMap.get(key);
+
+          // Determine if spot should be hidden (invisible but hoverable)
+          // When build indexes are shown, all spots visible (no hiding per Blazor line 232)
+          // Otherwise: No filter = all hidden (hover to reveal), filter active = hide spots below threshold
+          const isHidden = settlementBuildIndex ? false : (starFilter === null || stars < starFilter);
+
+          const pixelPos = getVertexPosition(coord, position, hSize, origin);
+
+          // Build the building key for click handler
+          // Cast needed because generated BuildingKey has spurious 'default' property
+          const buildingKey = {
+            hexCoordinates: { q: coord.q, r: coord.r, s: coord.s },
+            position: position as HexPosition,
+          } as BuildingKey;
+
+          // Visual state: Highlighted when showing build indexes, Stars when visible, Hidden otherwise
+          const visualState: BuildingVisualState = settlementBuildIndex
+            ? 'Highlighted'
+            : isHidden ? 'Hidden' : 'Stars';
+
+          return (
+            <div
+              key={`buildable-${key}`}
+              className="absolute"
+              style={{
+                left: pixelPos.x - buildableBuildingSize / 2,
+                top: pixelPos.y - buildableBuildingSize / 2,
+              }}
+            >
+              <Building
+                buildingState="PossibleSettlement"
+                visualState={visualState}
+                stars={stars}
+                currentPlayerColors={currentPlayer?.colors}
+                size={buildableBuildingSize}
+                buildIndex={settlementBuildIndex}
+                onClick={onBuildingClick ? () => onBuildingClick(buildingKey) : undefined}
+              />
+            </div>
+          );
+        })}
+
+        {/* Robber layer - renders on top of everything using CatanFont glyphs with player colors */}
+        {/* Uses inline SVG to properly render gradient fills like Blazor does */}
+        {/* Animation: uses animatedRobberCoords with CSS transition (matches Blazor RobberLayer.razor) */}
+        {robber && animatedRobberCoords && (
+          (() => {
+            const robberCoord = cubicCoord(animatedRobberCoords.q, animatedRobberCoords.r);
+            const robberPos = hexToPixel(robberCoord, hSize, origin);
+            // Hex height = sqrt(3) * hexSize for flat-top hexes
+            const hHeight = Math.sqrt(3) * hSize;
+            const robberFontSize = hHeight * 0.5; // 50% of hex height (matches Blazor)
+
+            // Get colors for player who moved the robber
+            const movedByPlayer = players.find(p => p.id === robber.movedBy);
+            const movedByColors = movedByPlayer?.colors;
+            const primaryColor = movedByColors?.primary || '#666';
+            const secondaryColor = movedByColors?.secondary || '#888';
+            const foregroundColor = movedByColors?.foreground || '#fff';
+
+            // SVG viewBox size - large enough for the glyphs
+            const svgSize = robberFontSize * 1.5;
+
+            return (
+              <div
+                key="robber"
+                className="absolute pointer-events-none"
+                style={{
+                  left: robberPos.x,
+                  top: robberPos.y,
+                  transform: 'translate(-50%, -50%)',
+                  filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.5))',
+                  // CSS transition for smooth animation (1.2s matches Blazor)
+                  transition: 'left 1.2s ease-in-out, top 1.2s ease-in-out',
+                }}
+              >
+                {/* Inline SVG for proper gradient rendering (matches Blazor RobberLayer.razor) */}
+                <svg
+                  width={svgSize}
+                  height={svgSize}
+                  viewBox={`0 0 ${svgSize} ${svgSize}`}
+                  style={{ opacity: 0.75 }}
+                >
+                  {/* Gradient definition for shield */}
+                  <defs>
+                    <linearGradient id="robber-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor={primaryColor} />
+                      <stop offset="100%" stopColor={secondaryColor} />
+                    </linearGradient>
+                  </defs>
+                  {/* Background: SolidShield glyph (E925) with player gradient */}
+                  <text
+                    x={svgSize / 2}
+                    y={svgSize / 2}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontFamily="Catan"
+                    fontSize={robberFontSize}
+                    fill="url(#robber-gradient)"
+                  >
+                    {'\uE925'}
+                  </text>
+                  {/* Foreground: Pirate glyph (E90C) with player foreground color */}
+                  <text
+                    x={svgSize / 2}
+                    y={svgSize / 2}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontFamily="Catan"
+                    fontSize={robberFontSize * 0.8}
+                    fill={foregroundColor}
+                  >
+                    {'\uE90C'}
+                  </text>
+                </svg>
+              </div>
+            );
+          })()
+        )}
       </>
     );
-  }, [buildingPositions, roadPositions, buildingMap, roadMap, players, selectedPlayerId, calculateStars, starFilter]);
+  }, [buildingPositions, roadPositions, buildingMap, roadMap, players, selectedPlayerId, calculateStars, starFilter, currentPlayerEntitlements, onBuildingClick, onRoadClick, robber, animatedRobberCoords, showSettlementIndexes]);
 
   // Debug logging
   console.log('[GameBoard] render, tiles:', tiles.length, 'containerSize:', containerSize);
@@ -737,10 +1096,6 @@ export function GameBoard({
         </div>
       ) : null}
 
-      {/* Controls indicator */}
-      <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded pointer-events-none">
-        Hex: {hexSize}px | Scroll=zoom | CTRL+drag=pan
-      </div>
     </div>
   );
 }

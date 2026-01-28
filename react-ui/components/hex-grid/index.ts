@@ -55,3 +55,20 @@ export {
 // Content components
 export { WaterHex, CenterHex, MenuHex } from './content';
 export type { WaterHexProps, CenterHexProps, MenuHexProps } from './content';
+
+// Layout utilities
+export {
+  squareLayout,
+  columnPattern,
+  radialLayout,
+  singleRing,
+  diamondLayout,
+  LAYOUTS,
+  parseSquareLayout,
+  getBounds,
+} from './layouts';
+export type {
+  SquareLayoutOptions,
+  RadialLayoutOptions,
+  DiamondLayoutOptions,
+} from './layouts';

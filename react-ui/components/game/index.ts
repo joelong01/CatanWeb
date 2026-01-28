@@ -26,3 +26,7 @@ export { ResourcesPanel } from './panels/ResourcesPanel';
 export { DiceCluster } from './controls/DiceCluster';
 export { ActionCluster } from './controls/ActionCluster';
 export { MeasurementCluster } from './controls/MeasurementCluster';
+
+// Overlays
+export { GoFirstOverlay } from './overlays/GoFirstOverlay';
+export type { GoFirstOverlayProps } from './overlays/GoFirstOverlay';

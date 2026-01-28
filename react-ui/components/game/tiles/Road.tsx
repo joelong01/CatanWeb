@@ -27,6 +27,8 @@ export interface RoadProps {
   currentPlayerColors?: PlayerColors | null;
   /** Hex size (circumradius) - road dimensions scale proportionally */
   hexSize: number;
+  /** Build index for numbered display (0 = no number, >0 = show number) */
+  buildIndex?: number;
   /** Click handler */
   onClick?: () => void;
   /** Additional className */
@@ -108,6 +110,7 @@ export const Road = React.memo(function Road({
   ownerColors,
   currentPlayerColors,
   hexSize,
+  buildIndex = 0,
   onClick,
   className = '',
 }: RoadProps) {
@@ -131,17 +134,20 @@ export const Road = React.memo(function Road({
 
   // SVG viewBox needs to be large enough to contain the rotated polygon
   // The polygon extends tipX in each direction, so we need at least 2*tipX
-  // Adding some margin for the stroke
+  // Adding some margin for the stroke and build index label
   const viewBoxSize = hexSize * 1.2;
   const halfViewBox = viewBoxSize / 2;
 
-  // Opacity: owned roads are fully visible, buildable only visible on hover
-  const opacity = roadState === 'Buildable'
-    ? (isHovered ? 0.7 : 0)  // Hidden until hovered
-    : 1;
+  // Opacity: owned roads are fully visible, buildable at 50% (matches Blazor)
+  const opacity = roadState === 'Buildable' ? 0.5 : 1;
 
-  // Gradient ID unique to this road (use stable ID based on side to avoid re-renders)
-  const gradientId = `road-gradient-${side}`;
+  // Gradient ID must include colors to ensure correct rendering when player changes
+  // Using color values in ID prevents gradient caching issues across different players
+  const colorKey = `${colors.primary}-${colors.secondary}`.replace(/[^a-zA-Z0-9]/g, '');
+  const gradientId = `road-gradient-${side}-${colorKey}`;
+
+  // Scale factor for build index label (relative to Blazor's 36x28 at hexSize=100)
+  const labelScale = hexSize / 100;
 
   return (
     <div
@@ -160,10 +166,10 @@ export const Road = React.memo(function Road({
         style={{ pointerEvents: 'none' }} // SVG element doesn't receive events
       >
         <defs>
+          {/* 2-stop gradient matching Blazor SvgGradientStops */}
           <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={colors.primary} />
-            <stop offset="50%" stopColor={colors.secondary} />
-            <stop offset="100%" stopColor={colors.primary} />
+            <stop offset="100%" stopColor={colors.secondary} />
           </linearGradient>
         </defs>
         <polygon
@@ -171,17 +177,42 @@ export const Road = React.memo(function Road({
           transform={`rotate(${rotation})`}
           fill={`url(#${gradientId})`}
           stroke={colors.foreground}
-          strokeWidth={2}
+          strokeWidth={Math.max(2, hexSize * 0.05)}
           opacity={opacity}
           style={{
             transition: 'opacity 150ms',
-            cursor: 'pointer',
+            cursor: roadState === 'Buildable' ? 'pointer' : 'default',
             pointerEvents: 'auto', // Only polygon receives mouse events
           }}
           onClick={onClick}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         />
+        {/* Build index label - black rounded rect with white number */}
+        {buildIndex > 0 && (
+          <g style={{ pointerEvents: 'auto', cursor: 'pointer' }} onClick={onClick}>
+            <rect
+              x={-18 * labelScale}
+              y={-14 * labelScale}
+              width={36 * labelScale}
+              height={28 * labelScale}
+              rx={6 * labelScale}
+              fill="black"
+            />
+            <text
+              x={0}
+              y={0}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontFamily="Segoe UI, sans-serif"
+              fontSize={24 * labelScale}
+              fontWeight="bold"
+              fill="white"
+            >
+              {buildIndex}
+            </text>
+          </g>
+        )}
       </svg>
     </div>
   );

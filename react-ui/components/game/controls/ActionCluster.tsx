@@ -1,21 +1,31 @@
 'use client';
 
 /**
- * ActionCluster - Game action controls in a 7-hex cluster with 3D flip animation.
+ * ActionCluster - Game action controls in a 3x3 square grid with 3D flip animation.
+ *
+ * Layout (3 columns × 3 rows using LAYOUTS.SQUARE_3x3):
+ *
+ *    DevCard   Settlement    Undo
+ *    City       [State]      Next
+ *    Road       Soldier      Redo
  *
  * Features:
- * - Center: Next button (primary action)
- * - Around: Undo, Redo, Road, Settlement, City, DevCard
+ * - Center hex: Game state message display
+ * - 8 action/purchase buttons around it
  * - 3D flip animation when disabled (shows card back with stats)
  * - Purchase count badges at upper-left vertex
  * - Player-colored gradients
+ *
+ * Button logic (matches Blazor):
+ * - Face-up (enabled) when: gameModel.entitlementPurchaseModel[entitlement].enabled === true
+ * - Soldier shows available count (unspent Soldier entitlements from dev cards in hand)
  */
 
-import { memo, useState, type ReactNode } from 'react';
+import { memo, useState, useMemo, type ReactNode } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRotateLeft, faRotateRight, faReceipt } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
-import { HexGrid, type HexGridItem, type HexCoordinate } from '@/components/hex-grid';
+import { HexGrid, type HexGridItem, LAYOUTS } from '@/components/hex-grid';
 import { CatanGlyph } from '@/lib/constants/catanGlyphs';
 import type { PlayerColorsWithGradient } from '@/lib/utils/playerColors';
 
@@ -28,12 +38,14 @@ export interface PurchaseStats {
   settlements?: { bought: number; available: number };
   cities?: { bought: number; available: number };
   devCards?: { bought: number; available: number };
+  soldier?: { played: number; available: number };
 }
 
 export interface EnabledButtons {
   next?: boolean;
   undo?: boolean;
   redo?: boolean;
+  soldier?: boolean;
   road?: boolean;
   settlement?: boolean;
   city?: boolean;
@@ -57,16 +69,19 @@ export interface ActionClusterProps {
 // Constants
 // ============================================================================
 
-/** Standard 7-hex cluster: center + 6 neighbors */
-const CLUSTER_7: Record<string, HexCoordinate> = {
-  center: { q: 0, r: 0, s: 0 },
-  north: { q: 0, r: -1, s: 1 },
-  northEast: { q: 1, r: -1, s: 0 },
-  southEast: { q: 1, r: 0, s: -1 },
-  south: { q: 0, r: 1, s: -1 },
-  southWest: { q: -1, r: 1, s: 0 },
-  northWest: { q: -1, r: 0, s: 1 },
-};
+/**
+ * Button order for 3x3 square grid layout (maps to LAYOUTS.SQUARE_3x3 indices)
+ *
+ * Visual layout:
+ *    Col 0      Col 1      Col 2
+ *   DevCard   Settlement   Undo      (row 0)
+ *   City       [State]     Next      (row 1)
+ *   Road       Soldier     Redo      (row 2)
+ *
+ * SQUARE_3x3 produces coords column-by-column:
+ * [0]=(0,0) [1]=(0,1) [2]=(0,2) [3]=(1,0) [4]=(1,1) [5]=(1,2) [6]=(2,-1) [7]=(2,0) [8]=(2,1)
+ */
+const BUTTON_ORDER = ['devcard', 'city', 'road', 'settlement', 'state', 'soldier', 'undo', 'next', 'redo'] as const;
 
 // ============================================================================
 // ActionHexContent - Individual hex button with 3D flip
@@ -88,6 +103,10 @@ interface ActionHexContentProps {
   colors?: PlayerColorsWithGradient;
   /** Use Catan font for glyph (default true for Catan glyphs) */
   useCatanFont?: boolean;
+  /** Tooltip text shown on hover */
+  tooltip?: string;
+  /** Make the glyph bold */
+  bold?: boolean;
 }
 
 const ActionHexContent = memo(function ActionHexContent({
@@ -100,6 +119,8 @@ const ActionHexContent = memo(function ActionHexContent({
   count,
   colors,
   useCatanFont = true,
+  tooltip,
+  bold = false,
 }: ActionHexContentProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
@@ -138,7 +159,7 @@ const ActionHexContent = memo(function ActionHexContent({
 
     return (
       <span
-        className={`${useCatanFont ? 'font-catan' : ''} ${sizeClass}`}
+        className={`${useCatanFont ? 'font-catan' : ''} ${sizeClass} ${bold ? 'font-bold' : ''}`}
         style={{
           color,
           textShadow: size === 'large' ? '1px 1px 2px rgba(0,0,0,0.5)' : undefined,
@@ -156,6 +177,7 @@ const ActionHexContent = memo(function ActionHexContent({
     <div
       className="absolute inset-0"
       style={{ perspective: '500px' }}
+      title={tooltip}
       onMouseEnter={() => isEnabled && setIsHovered(true)}
       onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
       onMouseDown={() => isEnabled && setIsPressed(true)}
@@ -276,32 +298,18 @@ export const ActionCluster = memo(function ActionCluster({
   const formatStats = (stats?: { bought: number; available: number }) =>
     stats ? `${stats.bought}/${stats.available}` : undefined;
 
-  const items: HexGridItem[] = [
-    // Center: Next (primary action)
-    {
-      id: 'next',
-      coord: CLUSTER_7.center,
-      content: (
-        <ActionHexContent
-          glyph="➤"
-          label="Next"
-          isPrimary={true}
-          isEnabled={enabledButtons.next !== false}
-          colors={colors}
-          useCatanFont={false}
-        />
-      ),
-      onClick: () => handleAction('next'),
-      disabled: enabledButtons.next === false,
-    },
-    // North: DevCard (receipt icon)
-    {
+  // Get 3x3 square layout coordinates
+  const coords = useMemo(() => LAYOUTS.SQUARE_3x3(), []);
+
+  // Button configurations mapped to BUTTON_ORDER
+  const buttonConfigs: Record<string, Omit<HexGridItem, 'coord'>> = {
+    devcard: {
       id: 'devcard',
-      coord: CLUSTER_7.north,
       content: (
         <ActionHexContent
           faIcon={faReceipt}
           label="Dev"
+          tooltip="Buy Development Card"
           isEnabled={enabledButtons.devCard !== false}
           backStats={purchaseStats?.devCards?.bought.toString()}
           count={purchaseStats?.devCards?.bought}
@@ -311,48 +319,13 @@ export const ActionCluster = memo(function ActionCluster({
       onClick: () => handleAction('devcard'),
       disabled: enabledButtons.devCard === false,
     },
-    // NE: Road
-    {
-      id: 'road',
-      coord: CLUSTER_7.northEast,
-      content: (
-        <ActionHexContent
-          glyph={CatanGlyph.Road}
-          label="Road"
-          isEnabled={enabledButtons.road !== false}
-          backStats={formatStats(purchaseStats?.roads)}
-          count={purchaseStats?.roads?.bought}
-          colors={colors}
-        />
-      ),
-      onClick: () => handleAction('road'),
-      disabled: enabledButtons.road === false,
-    },
-    // SE: Settlement
-    {
-      id: 'settlement',
-      coord: CLUSTER_7.southEast,
-      content: (
-        <ActionHexContent
-          glyph={CatanGlyph.Settlement}
-          label="Settle"
-          isEnabled={enabledButtons.settlement !== false}
-          backStats={formatStats(purchaseStats?.settlements)}
-          count={purchaseStats?.settlements?.bought}
-          colors={colors}
-        />
-      ),
-      onClick: () => handleAction('settlement'),
-      disabled: enabledButtons.settlement === false,
-    },
-    // South: City
-    {
+    city: {
       id: 'city',
-      coord: CLUSTER_7.south,
       content: (
         <ActionHexContent
           glyph={CatanGlyph.City}
           label="City"
+          tooltip="Buy City"
           isEnabled={enabledButtons.city !== false}
           backStats={formatStats(purchaseStats?.cities)}
           count={purchaseStats?.cities?.bought}
@@ -362,30 +335,81 @@ export const ActionCluster = memo(function ActionCluster({
       onClick: () => handleAction('city'),
       disabled: enabledButtons.city === false,
     },
-    // SW: Redo (FontAwesome icon)
-    {
-      id: 'redo',
-      coord: CLUSTER_7.southWest,
+    road: {
+      id: 'road',
       content: (
         <ActionHexContent
-          faIcon={faRotateRight}
-          label="Redo"
-          isEnabled={enabledButtons.redo === true}
+          glyph={CatanGlyph.Road}
+          label="Road"
+          tooltip="Buy Road"
+          isEnabled={enabledButtons.road !== false}
+          backStats={formatStats(purchaseStats?.roads)}
+          count={purchaseStats?.roads?.bought}
           colors={colors}
-          useCatanFont={false}
+          bold={true}
         />
       ),
-      onClick: () => handleAction('redo'),
-      disabled: enabledButtons.redo !== true,
+      onClick: () => handleAction('road'),
+      disabled: enabledButtons.road === false,
     },
-    // NW: Undo (FontAwesome icon)
-    {
+    settlement: {
+      id: 'settlement',
+      content: (
+        <ActionHexContent
+          glyph={CatanGlyph.Settlement}
+          label="Settle"
+          tooltip="Buy Settlement"
+          isEnabled={enabledButtons.settlement !== false}
+          backStats={formatStats(purchaseStats?.settlements)}
+          count={purchaseStats?.settlements?.bought}
+          colors={colors}
+        />
+      ),
+      onClick: () => handleAction('settlement'),
+      disabled: enabledButtons.settlement === false,
+    },
+    state: {
+      id: 'state',
+      content: (
+        <div
+          className="absolute inset-0 hex-clip-flat flex items-center justify-center"
+          style={{
+            background: colors?.cssGradient || 'var(--hex-content-gradient)',
+            transform: 'scale(0.96)',
+          }}
+        >
+          <span
+            className="text-[9px] font-semibold text-center px-1 leading-tight"
+            style={{ color: colors?.foreground || '#ffffff' }}
+          >
+            {gameState}
+          </span>
+        </div>
+      ),
+    },
+    soldier: {
+      id: 'soldier',
+      content: (
+        <ActionHexContent
+          glyph={CatanGlyph.Soldier}
+          label="Soldier"
+          tooltip="Play Soldier Card"
+          isEnabled={enabledButtons.soldier === true}
+          backStats={purchaseStats?.soldier?.played.toString()}
+          count={purchaseStats?.soldier?.available}
+          colors={colors}
+        />
+      ),
+      onClick: () => handleAction('soldier'),
+      disabled: enabledButtons.soldier !== true,
+    },
+    undo: {
       id: 'undo',
-      coord: CLUSTER_7.northWest,
       content: (
         <ActionHexContent
           faIcon={faRotateLeft}
           label="Undo"
+          tooltip="Undo Last Action"
           isEnabled={enabledButtons.undo === true}
           colors={colors}
           useCatanFont={false}
@@ -394,27 +418,55 @@ export const ActionCluster = memo(function ActionCluster({
       onClick: () => handleAction('undo'),
       disabled: enabledButtons.undo !== true,
     },
-  ];
+    next: {
+      id: 'next',
+      content: (
+        <ActionHexContent
+          glyph="➤"
+          label="Next"
+          tooltip="End Turn"
+          isPrimary={true}
+          isEnabled={enabledButtons.next !== false}
+          colors={colors}
+          useCatanFont={false}
+        />
+      ),
+      onClick: () => handleAction('next'),
+      disabled: enabledButtons.next === false,
+    },
+    redo: {
+      id: 'redo',
+      content: (
+        <ActionHexContent
+          faIcon={faRotateRight}
+          label="Redo"
+          tooltip="Redo Action"
+          isEnabled={enabledButtons.redo === true}
+          colors={colors}
+          useCatanFont={false}
+        />
+      ),
+      onClick: () => handleAction('redo'),
+      disabled: enabledButtons.redo !== true,
+    },
+  };
+
+  // Map button order to coordinates
+  const items: HexGridItem[] = BUTTON_ORDER.map((buttonId, index) => ({
+    ...buttonConfigs[buttonId],
+    coord: coords[index],
+  }));
 
   return (
-    <div className="w-full h-full flex flex-col">
-      <div className="flex-1 min-h-0">
-        <HexGrid
-          hexSize={45}
-          items={items}
-          gap={2}
-          borderColor="transparent"
-          fitToParent={true}
-          fitPadding={0}
-        />
-      </div>
-      {/* State message below cluster */}
-      <div
-        className="text-sm font-semibold text-center py-1 flex-shrink-0"
-        style={{ color: colors?.foreground || '#fbbf24' }}
-      >
-        {gameState}
-      </div>
+    <div className="w-full h-full">
+      <HexGrid
+        hexSize={45}
+        items={items}
+        gap={2}
+        borderColor="transparent"
+        fitToParent={true}
+        fitPadding={0}
+      />
     </div>
   );
 });

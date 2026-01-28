@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import type { PlayerColors } from '../board/GameBoard';
+import { buildCssGradient } from '@/lib/utils/playerColors';
 
 /**
  * Building state (matches C# BuildingState enum)
@@ -45,6 +46,8 @@ export interface BuildingProps {
   currentPlayerColors?: PlayerColors | null;
   /** Size of the building in pixels (diameter) */
   size: number;
+  /** Build index label (e.g., "A", "B" for city upgrades) */
+  buildIndex?: string;
   /** Click handler */
   onClick?: () => void;
   /** Additional className */
@@ -77,6 +80,7 @@ export const Building = React.memo(function Building({
   ownerColors,
   currentPlayerColors,
   size,
+  buildIndex,
   onClick,
   className = '',
 }: BuildingProps) {
@@ -92,18 +96,33 @@ export const Building = React.memo(function Building({
     : (ownerColors ?? NEUTRAL_COLORS);
 
   // Determine what to render inside the circle
+  // If buildIndex is set, show that instead of glyph (matches Blazor: BuildIndex ?? Stars)
   let content: React.ReactNode = null;
   const fontSize = size * 0.5;
 
-  if (effectiveState === 'Stars') {
+  if (buildIndex) {
+    // Build index mode: show letter (A, B, C...) for city upgrades
+    content = (
+      <span
+        className="select-none"
+        style={{
+          fontSize: fontSize * 1.4,
+          color: colors.foreground,
+          fontFamily: 'Segoe UI, sans-serif',
+          fontWeight: 'normal',
+        }}
+      >
+        {buildIndex}
+      </span>
+    );
+  } else if (effectiveState === 'Stars') {
     // Stars mode: show numeric star count
     content = (
       <span
-        className="font-bold select-none"
+        className="font-semibold select-none"
         style={{
           fontSize: fontSize * 0.9,
           color: colors.foreground,
-          textShadow: '0 0 2px black, 0 0 2px black',
         }}
       >
         {stars}
@@ -116,7 +135,7 @@ export const Building = React.memo(function Building({
     // Settlement: show settlement glyph
     content = (
       <span
-        className="catan-font select-none"
+        className="font-catan select-none"
         style={{
           fontSize,
           color: colors.foreground,
@@ -129,7 +148,7 @@ export const Building = React.memo(function Building({
     // City: show city glyph
     content = (
       <span
-        className="catan-font select-none"
+        className="font-catan select-none"
         style={{
           fontSize,
           color: colors.foreground,
@@ -142,7 +161,7 @@ export const Building = React.memo(function Building({
     // Metropolis: show city glyph with different size
     content = (
       <span
-        className="catan-font select-none"
+        className="font-catan select-none"
         style={{
           fontSize: fontSize * 1.2,
           color: colors.foreground,
@@ -155,7 +174,7 @@ export const Building = React.memo(function Building({
     // Knight: show knight glyph
     content = (
       <span
-        className="catan-font select-none"
+        className="font-catan select-none"
         style={{
           fontSize,
           color: colors.foreground,
@@ -184,8 +203,8 @@ export const Building = React.memo(function Building({
     );
   }
 
-  // Gradient background using player colors
-  const gradient = `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%)`;
+  // Gradient background using unified player colors (matches Blazor CssGradient)
+  const gradient = buildCssGradient(colors);
 
   return (
     <div

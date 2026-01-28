@@ -2640,3 +2640,387 @@ Add a reset button to each panel's title bar (or a global "Reset All" in setting
   ↺
 </button>
 ```
+
+---
+
+## Server-Driven UI Architecture
+
+> **Implementation Plan:** See [react-refactoring-plan.md](react-refactoring-plan.md) for the execution plan, code quality standards, and step-by-step implementation details.
+
+### Core Principle
+
+**The React UI renders GameModel state. It does NOT compute business logic.**
+
+The GameStateMachine on the server is the single source of truth for:
+
+- What buildings/roads are buildable
+- Build indexes for placement order
+- Whether actions are enabled
+- Player entitlements and their effects
+
+### Why This Matters
+
+**Wrong approach (client computes business rules):**
+
+```typescript
+// BAD: Client checks entitlement to decide visibility
+const showSettlementIndexes = currentPlayer?.unspentEntitlements?.includes('Settlement');
+```
+
+**Correct approach (client renders server state):**
+
+```typescript
+// GOOD: Server already set BuildingState.PossibleSettlement only when entitlement exists
+// Client just renders what server says
+const isBuildable = building.buildingState === 'PossibleSettlement';
+```
+
+### GameStateMachine Authority
+
+The server's `GameStateMachine` controls buildable state:
+
+| Server Action | Effect on GameModel |
+|--------------|---------------------|
+| `MarkBuildableBuildings()` | Sets `BuildingState.PossibleSettlement` ONLY when player has Settlement entitlement |
+| `MarkBuildableRoads()` | Sets `RoadState.Buildable` and `buildIndex` ONLY when player has Road entitlement |
+| Entitlement consumed | Server clears buildable flags in next GameModel update |
+
+**Client responsibility:** Render the `buildingState` and `roadState` values. Don't second-guess them.
+
+### Decision Table: Server vs Client Logic
+
+Each item below needs an explicit decision. The guiding principle:
+
+- **Server**: Game rules, entitlements, state transitions, anything with semantic meaning
+- **Client**: Pure visualization/UX convenience with no game semantic
+
+| Item | Current | Description | Decision | Rationale |
+|------|---------|-------------|----------|-----------|
+| **Road `roadState`** | Server | Buildable/Road/Ship/Unowned | **Server** ✅ | Game rule: only Buildable when player has Road entitlement |
+| **Road `buildIndex`** | Server | Numbers 1-9 for buildable roads | **Server** ✅ | Already implemented. Consistent ordering for keyboard shortcuts |
+| **Building `buildingState`** | Server | PossibleSettlement/Settlement/City/etc | **Server** ✅ | Game rule: only PossibleSettlement when player has Settlement entitlement |
+| **Settlement build index (1,2,3...)** | Client | Numbers for possible settlement spots | **Client** ✅ | Simple iteration for UX. No game semantic - just helps user visualize |
+| **City upgrade index (A,B,C...)** | Client | Letters for upgradeable settlements | **Client** ✅ | Simple iteration for UX. No game semantic - just helps user visualize |
+| **Building `stars`** | Client | Sum of adjacent tile pip counts | **Client** ✅ | Derived from tile data already on client. Used for display filtering only |
+| **`showSettlementIndexes` flag** | Derived | Whether to show indexes vs stars | **Derived** ✅ | Derived from `buildingState` + `gameState`. See note below. |
+| **Star filter threshold** | Client | User-selected minimum stars (8-13) | **Client** ✅ | Pure UI preference |
+| **Roll dimming (5 sec)** | Client | Dim non-matching tiles after roll | **Client** ✅ | Transient visual effect |
+
+### Deriving `showSettlementIndexes` from Server State
+
+Instead of checking entitlements, derive from `buildingState`:
+
+```typescript
+// WRONG: Checking entitlements (redundant - server already did this)
+const showSettlementIndexes = !isAllocationPhase &&
+  currentPlayer?.unspentEntitlements?.includes('Settlement');
+
+// CORRECT: Trust buildingState from server
+const hasPossibleSettlements = buildings?.some(b =>
+  b.buildingState === 'PossibleSettlement' && b.ownerId === null
+);
+const showSettlementIndexes = !isAllocationPhase && hasPossibleSettlements;
+```
+
+**Why this works:**
+
+- Server sets `BuildingState.PossibleSettlement` ONLY when player has Settlement entitlement
+- If ANY building has this state, player can build (server already validated)
+- We only need `gameState` to determine visual mode (indexes during gameplay, stars during allocation)
+- No redundant entitlement check on client
+
+### Decision Rationale
+
+**Why keep settlement/city indexes client-side:**
+
+- It's simple iteration (1st buildable spot = 1, 2nd = 2, etc.)
+- No game semantic - the order doesn't affect gameplay
+- Adding to GameModel would increase payload size for no functional benefit
+- Client already has the data needed to compute this
+
+**Why keep `stars` client-side:**
+
+- It's a simple sum of adjacent tile values
+- Client already has all tile data
+- Only used for display filtering (starFilter), not game logic
+- No server-side decision depends on this value
+
+**What IS server-authoritative (and must stay that way):**
+
+- `buildingState` - Server sets PossibleSettlement ONLY when entitlement exists
+- `roadState` - Server sets Buildable ONLY when entitlement exists
+- When entitlement is consumed, server clears the buildable flags
+- Client trusts these values and renders accordingly
+
+### Building Rendering Data Requirements
+
+**Data needed to render a Building component:**
+
+| Data | Source | Type | Purpose |
+|------|--------|------|---------|
+| `buildingState` | Server (BuildingModel) | `BuildingState` | PossibleSettlement, Settlement, City, Metropolis, Knight, NotBuildable |
+| `visualState` | Derived (client) | `BuildingVisualState` | Highlighted, Hidden, Stars, Normal - see derivation below |
+| `ownerId` | Server (BuildingModel) | `string \| null` | Component looks up colors via selector |
+| `currentPlayerId` | Server (GameModel) | `string` | Component looks up colors via selector for buildable spots |
+| `stars` | Derived (sum of adjacent tile pips) | `number` | Shown when visualState is 'Stars' |
+| `buildIndex` | Derived (iteration order) | `string \| undefined` | "1", "2"... or "A", "B"... when Highlighted |
+| `size` | Client config | `number` | Pixel diameter |
+| `onClick` | Client callback | `() => void` | Handler for buildable spots |
+
+**Why pass `playerId` instead of colors:**
+
+- **Single source of truth**: Colors come from PlayerProfile in Zustand store
+- **Automatic updates**: When player changes their color scheme, all components update
+- **Fewer props**: One ID instead of a full `PlayerColors` object
+- **Component autonomy**: Each component decides how to use the player's profile
+
+**Deriving `BuildingVisualState`:**
+
+```typescript
+type BuildingVisualState = 'Highlighted' | 'Hidden' | 'Stars' | 'Normal';
+
+function deriveVisualState(
+  buildingState: BuildingState,
+  ownerId: string | null,
+  hasBuildIndex: boolean,
+  stars: number,
+  starFilter: number | null
+): BuildingVisualState {
+  // Owned buildings always show Normal (with glyph)
+  if (ownerId !== null) return 'Normal';
+
+  // Not buildable = don't render (handled elsewhere)
+  if (buildingState !== 'PossibleSettlement') return 'Normal';
+
+  // Buildable with index = Highlighted (show index number/letter)
+  if (hasBuildIndex) return 'Highlighted';
+
+  // Buildable without index = Stars or Hidden based on filter
+  const meetsFilter = starFilter === null || stars >= starFilter;
+  return meetsFilter ? 'Stars' : 'Hidden';
+}
+```
+
+### Road Rendering Data Requirements
+
+**Data needed to render a Road component:**
+
+| Data | Source | Type | Purpose |
+|------|--------|------|---------|
+| `roadState` | Server (RoadModel) | `RoadState` | Unowned, Road, Ship, Buildable |
+| `ownerId` | Server (RoadModel) | `string \| null` | Component looks up colors via selector |
+| `currentPlayerId` | Server (GameModel) | `string` | Component looks up colors via selector for buildable roads |
+| `buildIndex` | Server (RoadModel.buildIndex) | `number` | 1, 2, 3... when Buildable (server-provided) |
+| `side` | Server (roadKey.hexSide) | `HexSide` | Top, TopRight, BottomRight, Bottom, BottomLeft, TopLeft |
+| `hexSize` | Client config | `number` | For scaling polygon |
+| `onClick` | Client callback | `() => void` | Handler for buildable roads |
+
+**Road rendering decision:**
+
+```typescript
+function shouldRenderRoad(roadState: RoadState): boolean {
+  // Only render if owned OR server marked as Buildable
+  return roadState === 'Road' || roadState === 'Ship' || roadState === 'Buildable';
+}
+
+function getRoadOpacity(roadState: RoadState): number {
+  // Buildable roads at 50% opacity, owned at 100%
+  return roadState === 'Buildable' ? 0.5 : 1.0;
+}
+```
+
+### Player Color Selectors
+
+Components receive `playerId` and look up colors via Zustand selectors. This pattern provides:
+
+1. **Single source of truth**: PlayerProfile in store contains all color data
+2. **Automatic reactivity**: When colors change, subscribed components re-render
+3. **Consistent API**: All components use the same selector pattern
+
+**Selector definitions (in store or utils):**
+
+```typescript
+// In playerColorSelectors.ts or within the store
+import { useGameStore } from '@/lib/stores/gameStore';
+import type { PlayerColors } from '@/components/game/board/GameBoard';
+
+/**
+ * Custom equality function to prevent unnecessary re-renders.
+ * Returns true if colors are equal, false otherwise.
+ */
+function colorsEqual(a: PlayerColors, b: PlayerColors): boolean {
+  return a.primary === b.primary &&
+         a.secondary === b.secondary &&
+         a.foreground === b.foreground;
+}
+
+/**
+ * Get PlayerColors for a given player ID.
+ * Returns neutral colors if player not found.
+ * Uses custom equality to prevent re-renders when colors unchanged.
+ */
+export function usePlayerColors(playerId: string | null): PlayerColors {
+  return useGameStore(
+    (state) => {
+      if (!playerId) return NEUTRAL_COLORS;
+      const profile = state.playerProfiles.get(playerId);
+      if (!profile) return NEUTRAL_COLORS;
+      return {
+        primary: profile.primaryColor,
+        secondary: profile.secondaryColor,
+        foreground: profile.foregroundColor,
+      };
+    },
+    colorsEqual  // Custom equality prevents unnecessary re-renders
+  );
+}
+
+/**
+ * Get CSS gradient string for a player.
+ */
+export function usePlayerGradient(playerId: string | null): string {
+  const colors = usePlayerColors(playerId);
+  return buildCssGradient(colors);
+}
+
+/**
+ * Get foreground color for a player (text, borders).
+ */
+export function usePlayerForeground(playerId: string | null): string {
+  return useGameStore((state) => {
+    if (!playerId) return NEUTRAL_COLORS.foreground;
+    const profile = state.playerProfiles.get(playerId);
+    return profile?.foregroundColor ?? NEUTRAL_COLORS.foreground;
+  });
+}
+
+const NEUTRAL_COLORS: PlayerColors = {
+  primary: 'rgba(255, 255, 255, 0.3)',
+  secondary: 'rgba(200, 200, 200, 0.3)',
+  foreground: 'rgba(0, 0, 0, 0.5)',
+};
+```
+
+**Usage in components:**
+
+```typescript
+// In Building.tsx
+function Building({ ownerId, currentPlayerId, visualState, ... }: BuildingProps) {
+  // Look up colors via selectors - component subscribes to changes
+  const ownerColors = usePlayerColors(ownerId);
+  const currentColors = usePlayerColors(currentPlayerId);
+
+  // Use appropriate colors based on visual state
+  const colors = visualState === 'Highlighted' || visualState === 'Stars'
+    ? currentColors
+    : ownerColors;
+
+  const gradient = buildCssGradient(colors);
+  // ... render with gradient
+}
+
+// In Road.tsx
+function Road({ ownerId, currentPlayerId, roadState, ... }: RoadProps) {
+  const ownerColors = usePlayerColors(ownerId);
+  const currentColors = usePlayerColors(currentPlayerId);
+
+  const colors = roadState === 'Buildable' ? currentColors : ownerColors;
+  // ... render with colors
+}
+```
+
+**Benefits over passing colors as props:**
+
+| Aspect | Pass Colors | Pass PlayerId |
+|--------|-------------|---------------|
+| Props count | 2 objects | 2 strings |
+| Color changes | Parent must re-render | Only component re-renders |
+| Source of truth | Computed at parent | Store (single source) |
+| Testing | Pass mock colors | Pass mock ID, mock store |
+| Type safety | Full object required | Just string ID |
+
+### Current Server Model Fields
+
+**RoadModel (complete):**
+
+```typescript
+interface RoadModel {
+  roadKey: RoadKey;           // Contains hexCoordinates + hexSide
+  roadState: RoadState;       // SERVER AUTHORITATIVE
+  ownerId: string | null;
+  buildIndex: number;         // Server-provided when Buildable
+}
+```
+
+**BuildingModel (current):**
+
+```typescript
+interface BuildingModel {
+  buildingKey: BuildingKey;   // Contains hexCoordinates + position
+  buildingState: BuildingState; // SERVER AUTHORITATIVE
+  ownerId: string | null;
+  // stars: derived client-side (sum of adjacent tile pips)
+  // buildIndex: derived client-side (iteration order)
+}
+```
+
+### Legitimate Client-Only State
+
+Some UI state is correctly client-side (not from GameModel):
+
+| Client State | Reason |
+|-------------|--------|
+| `starFilter` (8-13 threshold) | User preference for filtering display |
+| `resourceFilter` | User preference for filtering display |
+| `rollDimming` (5-second timer) | Transient visual effect |
+| `isHovered` / `isPressed` | UI interaction state |
+| Panel positions/sizes | Local layout preference |
+
+### Rendering Pattern
+
+**Correct pattern for buildable items:**
+
+```typescript
+// RoadsLayer - render based on server state
+{roads.map(road => {
+  // Server says it's buildable → render it
+  if (road.roadState === 'Buildable') {
+    return <Road key={key} road={road} buildIndex={road.buildIndex} onClick={handleBuildRoad} />;
+  }
+  // Server says it's owned → render with owner colors
+  if (road.roadState === 'Road' || road.roadState === 'Ship') {
+    return <Road key={key} road={road} ownerColors={getPlayerColors(road.ownerId)} />;
+  }
+  // Server says unowned → don't render
+  return null;
+})}
+
+// BuildingsLayer - render based on server state
+{buildings.map(building => {
+  // Server says it's buildable → show with buildIndex
+  if (building.buildingState === 'PossibleSettlement') {
+    return <Building key={key} building={building} buildIndex={building.buildIndex} onClick={handleBuild} />;
+  }
+  // Server says it's owned → show with owner colors and glyph
+  if (building.buildingState === 'Settlement' || building.buildingState === 'City') {
+    return <Building key={key} building={building} ownerColors={getPlayerColors(building.ownerId)} />;
+  }
+  // Otherwise don't render (or render as star indicator if stars > threshold)
+  return building.stars >= starFilter ? <StarIndicator stars={building.stars} /> : null;
+})}
+```
+
+### Migration Path
+
+1. **Phase 1 (Immediate):** Document architecture in design doc (this section)
+2. **Phase 2 (Server):** Add `buildIndex` and `stars` to BuildingModel in C# and TypeScript types
+3. **Phase 3 (Server):** Populate these fields in GameStateMachine when marking buildable
+4. **Phase 4 (Client):** Remove client-side index/star computation, use server values
+5. **Phase 5 (Cleanup):** Remove entitlement checks that duplicate server logic
+
+### Code References
+
+- **MarkBuildableBuildings:** [GameStateMachine.cs](Catan3.Shared/GameLogic/GameStateMachine.cs) lines 2129-2214
+- **MarkBuildableRoads:** [GameStateMachine.cs](Catan3.Shared/GameLogic/GameStateMachine.cs) lines 2059-2124
+- **RoadModel with buildIndex:** [RoadModel.cs](Catan3.Shared/Models/RoadModel.cs)
+- **BuildingModel (needs fields):** [BuildingModel.cs](Catan3.Shared/Models/BuildingModel.cs)

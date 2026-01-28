@@ -32,6 +32,12 @@ interface FloatingPanelProps {
   minWidth?: number;
   /** Minimum height when resizing */
   minHeight?: number;
+  /**
+   * Enable drag by clicking on empty space (no CTRL needed).
+   * Elements with data-clickable attribute or onClick won't trigger drag.
+   * Default: true (recommended for panels with sparse content like hex grids)
+   */
+  enableBackgroundDrag?: boolean;
 }
 
 /** Default panel layout for new/unknown panels */
@@ -55,6 +61,33 @@ function getPanelWithDefaults(stored: typeof DEFAULT_PANEL_LAYOUT | undefined) {
   };
 }
 
+/**
+ * Check if an element or any ancestor is interactive (clickable).
+ * Used to determine if a click should start drag or be handled by child.
+ *
+ * Elements with data-drag-through are explicitly non-interactive (e.g., water tiles).
+ */
+function isInteractiveElement(element: HTMLElement | null, stopAt: HTMLElement | null): boolean {
+  let current = element;
+  while (current && current !== stopAt) {
+    // Check for explicit drag-through marker (e.g., water tiles, decorative elements)
+    // If found, this element and its ancestors up to this point are not interactive
+    if (current.hasAttribute('data-drag-through')) return false;
+    // Check for explicit clickable markers
+    if (current.hasAttribute('data-clickable')) return true;
+    // Check for standard interactive elements
+    if (current.tagName === 'BUTTON' || current.tagName === 'A') return true;
+    // Check for role="button"
+    if (current.getAttribute('role') === 'button') return true;
+    // Check for cursor-pointer class (common pattern for clickable elements)
+    if (current.classList.contains('cursor-pointer')) return true;
+    // Check for onClick handler via data attribute (set by HexTile)
+    if (current.hasAttribute('data-has-click')) return true;
+    current = current.parentElement;
+  }
+  return false;
+}
+
 export function FloatingPanel({
   panelId,
   title,
@@ -64,6 +97,7 @@ export function FloatingPanel({
   resizable = true, // All panels resizable by default; future: toggle this
   minWidth = 120,
   minHeight = 80,
+  enableBackgroundDrag = true,
 }: FloatingPanelProps): React.ReactElement | null {
   // Get panel state from store (with fallback for missing/incomplete panels)
   const storedPanel = useLayoutStore((state) => state.panels[panelId]);
@@ -79,6 +113,7 @@ export function FloatingPanel({
   const [ctrlHeld, setCtrlHeld] = useState(false);
   const [longPressActive, setLongPressActive] = useState(false);
   const [justDragged, setJustDragged] = useState(false);
+  const [isOverEmptySpace, setIsOverEmptySpace] = useState(false);
 
   // Refs
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
@@ -205,13 +240,37 @@ export function FloatingPanel({
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
 
-    // CTRL+click to drag
+    // CTRL+click to drag (always works)
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       e.stopPropagation();
       startDrag(e.clientX, e.clientY);
+      return;
     }
-  }, [startDrag]);
+
+    // Background drag: click on non-interactive areas starts drag
+    if (enableBackgroundDrag) {
+      const target = e.target as HTMLElement;
+      // Don't start drag if clicking on an interactive element
+      if (!isInteractiveElement(target, panelRef.current)) {
+        e.preventDefault();
+        e.stopPropagation();
+        startDrag(e.clientX, e.clientY);
+      }
+    }
+  }, [startDrag, enableBackgroundDrag]);
+
+  // Track mouse position for cursor change when enableBackgroundDrag is active
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!enableBackgroundDrag || isDragging) return;
+    const target = e.target as HTMLElement;
+    const overEmpty = !isInteractiveElement(target, panelRef.current);
+    setIsOverEmptySpace(overEmpty);
+  }, [enableBackgroundDrag, isDragging]);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsOverEmptySpace(false);
+  }, []);
 
   // Touch handlers for long press
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -434,14 +493,17 @@ export function FloatingPanel({
     );
   }
 
+  // Determine cursor style
+  const showMoveCursor = isDragging || ctrlHeld || (enableBackgroundDrag && isOverEmptySpace);
+
   return (
     <motion.div
       ref={panelRef}
       className={`absolute bg-gray-900/95 backdrop-blur-sm rounded-lg shadow-xl border overflow-hidden select-none ${className} ${
         isDragging || longPressActive
           ? 'border-amber-500/50 ring-2 ring-amber-500/30'
-          : ctrlHeld
-          ? 'border-gray-600 cursor-move'
+          : ctrlHeld || (enableBackgroundDrag && isOverEmptySpace)
+          ? 'border-gray-600'
           : 'border-gray-700/50'
       }`}
       style={{
@@ -450,11 +512,14 @@ export function FloatingPanel({
         width: panel.size.width,
         height: panel.size.height,
         zIndex: isDragging ? 100 : panel.zIndex,
+        cursor: showMoveCursor ? 'move' : undefined,
       }}
       onMouseDown={(e) => {
         handlePanelFocus();
         handleMouseDown(e);
       }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.15 }}
@@ -464,7 +529,7 @@ export function FloatingPanel({
       }}
       onTouchEnd={handleTouchEnd}
       onTouchMove={handleTouchMove}
-      title={ctrlHeld ? 'Click and drag to move' : 'CTRL+click to drag, long press on mobile'}
+      title={ctrlHeld ? 'Click and drag to move' : enableBackgroundDrag ? 'Drag empty space to move, long press on mobile' : 'CTRL+click to drag, long press on mobile'}
     >
       {/* Content */}
       <div className="absolute inset-0 overflow-auto">

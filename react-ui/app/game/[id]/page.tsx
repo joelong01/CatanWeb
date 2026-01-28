@@ -9,7 +9,7 @@
  * - GameModel from SignalR drives all rendering
  */
 
-import { useMemo, useCallback, useEffect } from 'react';
+import { useMemo, useCallback, useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { MainLayout } from '@/components/layout';
 import { useGameConnection } from '@/lib/hooks/useGameConnection';
@@ -17,6 +17,8 @@ import { useGameStore } from '@/lib/stores/gameStore';
 import { useLayoutStore } from '@/lib/stores/layoutStore';
 import { GameBoard, type BoardPlayer } from '@/components/game/board';
 import { FloatingPanel } from '@/components/game/panels/FloatingPanel';
+import { GoFirstOverlay } from '@/components/game/overlays/GoFirstOverlay';
+import { RobberTargetMenu } from '@/components/game/overlays/RobberTargetMenu';
 import { PlayersPanel } from '@/components/game/panels/PlayersPanel';
 import { GameResourcesHeader } from '@/components/game/panels/GameResourcesHeader';
 import { RollRing, type RollStats } from '@/components/game/controls/RollRing';
@@ -29,6 +31,12 @@ import { createPlayerColors, type PlayerColorsWithGradient } from '@/lib/utils/p
 import { gameApi } from '@/lib/api/gameApi';
 import { DEFAULT_PLAYER_COLORS } from '@/types/player-profile';
 import type { GameState } from '@/types/generated/models/game-state';
+import type { BuildingKey } from '@/types/generated/models/building-key';
+import type { RoadKey } from '@/types/generated/models/road-key';
+import type { BoardGameData } from '@/components/game/board';
+import type { TileModel } from '@/types/generated/models/tile-model';
+import type { HexCoordinates } from '@/types/generated/models/hex-coordinates';
+import type { PlayerModel } from '@/types/generated/models/player-model';
 
 /** Convert GameState enum to display string */
 function getStateMessage(gameState: GameState | null | undefined): string {
@@ -86,7 +94,7 @@ export default function GamePage(): React.ReactElement {
   const setPlayerProfiles = useGameStore((state) => state.setPlayerProfiles);
 
   // Debug: log when gameModel changes
-  console.log('[GamePage] render, gameModel tiles:', gameModel?.tiles?.length);
+  console.log('[GamePage] render, gameState:', gameModel?.gameState, 'tiles:', gameModel?.tiles?.length, 'players:', gameModel?.players?.length);
 
   // Load player profiles on mount (like Blazor LoadPlayerProfilesAsync)
   useEffect(() => {
@@ -146,42 +154,49 @@ export default function GamePage(): React.ReactElement {
     // Ensure die2 is valid (1-6)
     if (die2 >= 1 && die2 <= 6) {
       proxy.roll(die1, die2);
+
+      // Trigger tile dimming animation (matches Blazor DimTiles)
+      // Clear any existing timer
+      if (rollDimTimerRef.current) {
+        clearTimeout(rollDimTimerRef.current);
+      }
+      // Set the rolled number to dim non-matching tiles
+      setLastRolledNumber(rollSum);
+      // Clear after 5 seconds (matches Blazor TileDimDurationSeconds)
+      rollDimTimerRef.current = setTimeout(() => {
+        setLastRolledNumber(null);
+      }, 5000);
     }
   }, [proxy]);
 
-  // Check purchase capabilities
-  const canPurchaseRoad = useMemo(() => {
-    if (!gameModel || !currentPlayer) return false;
-    return currentPlayer.unspentEntitlements.includes('Road');
-  }, [gameModel, currentPlayer]);
+  // Helper to get enabled state from entitlementPurchaseModel (matches Blazor GetIsFaceUp)
+  const getPurchaseEnabled = useCallback((entitlement: string): boolean => {
+    if (!gameModel?.entitlementPurchaseModel) return false;
+    const model = gameModel.entitlementPurchaseModel.find(m => m.entitlement === entitlement);
+    return model?.enabled ?? false;
+  }, [gameModel?.entitlementPurchaseModel]);
 
-  const canPurchaseSettlement = useMemo(() => {
-    if (!gameModel || !currentPlayer) return false;
-    return currentPlayer.unspentEntitlements.includes('Settlement');
-  }, [gameModel, currentPlayer]);
-
-  const canPurchaseCity = useMemo(() => {
-    if (!gameModel || !currentPlayer) return false;
-    return currentPlayer.unspentEntitlements.includes('City');
-  }, [gameModel, currentPlayer]);
-
-  const canPurchaseDevCard = useMemo(() => {
-    if (!gameModel || !currentPlayer) return false;
-    return currentPlayer.unspentEntitlements.includes('DevCard');
-  }, [gameModel, currentPlayer]);
+  // Check purchase capabilities - uses entitlementPurchaseModel.enabled (matches Blazor)
+  const canPurchaseRoad = useMemo(() => getPurchaseEnabled('Road'), [getPurchaseEnabled]);
+  const canPurchaseSettlement = useMemo(() => getPurchaseEnabled('Settlement'), [getPurchaseEnabled]);
+  const canPurchaseCity = useMemo(() => getPurchaseEnabled('City'), [getPurchaseEnabled]);
+  const canPurchaseDevCard = useMemo(() => getPurchaseEnabled('DevCard'), [getPurchaseEnabled]);
+  const canPlaySoldier = useMemo(() => getPurchaseEnabled('Soldier'), [getPurchaseEnabled]);
 
   // Action cluster enabled buttons
   const actionEnabledButtons = useMemo((): EnabledButtons => ({
     next: gameModel?.actionFlags?.nextEnabled ?? false,
     undo: gameModel?.actionFlags?.undoEnabled ?? false,
     redo: gameModel?.actionFlags?.redoEnabled ?? false,
+    soldier: canPlaySoldier,
     road: canPurchaseRoad,
     settlement: canPurchaseSettlement,
     city: canPurchaseCity,
     devCard: canPurchaseDevCard,
-  }), [gameModel?.actionFlags, canPurchaseRoad, canPurchaseSettlement, canPurchaseCity, canPurchaseDevCard]);
+  }), [gameModel?.actionFlags, canPlaySoldier, canPurchaseRoad, canPurchaseSettlement, canPurchaseCity, canPurchaseDevCard]);
 
-  // Action cluster purchase stats - computed from current player (like Blazor's GetSpentCount)
+  // Action cluster purchase stats - computed from current player
+  // Shows UNSPENT entitlements (pending placement) as the count badge
   const actionPurchaseStats = useMemo((): PurchaseStats => {
     if (!currentPlayer) {
       return {
@@ -189,23 +204,29 @@ export default function GamePage(): React.ReactElement {
         settlements: { bought: 0, available: 5 },
         cities: { bought: 0, available: 4 },
         devCards: { bought: 0, available: 25 },
+        soldier: { played: 0, available: 0 },
       };
     }
 
-    // Count spent entitlements by type
-    const spentEntitlements = currentPlayer.spentEntitlementsThisGame ?? [];
-    const countSpent = (type: string) => spentEntitlements.filter(e => e === type).length;
+    // Count UNSPENT entitlements (pending placement) - this is what shows in the badge
+    const unspentEntitlements = currentPlayer.unspentEntitlements ?? [];
+    const countUnspent = (type: string) => unspentEntitlements.filter(e => e === type).length;
 
     // Max values from resource rules (with defaults matching Blazor)
     const maxRoads = gameModel?.resourceRules?.maxRoads ?? 15;
     const maxSettlements = gameModel?.resourceRules?.maxSettlements ?? 5;
     const maxCities = gameModel?.resourceRules?.maxCities ?? 4;
 
+    // Count spent Soldier entitlements (soldiers played this game)
+    const spentEntitlements = currentPlayer.spentEntitlementsThisGame ?? [];
+    const countSpent = (type: string) => spentEntitlements.filter(e => e === type).length;
+
     return {
-      roads: { bought: countSpent('Road'), available: maxRoads },
-      settlements: { bought: countSpent('Settlement'), available: maxSettlements },
-      cities: { bought: countSpent('City'), available: maxCities },
-      devCards: { bought: countSpent('DevCard'), available: 25 },
+      roads: { bought: countUnspent('Road'), available: maxRoads },
+      settlements: { bought: countUnspent('Settlement'), available: maxSettlements },
+      cities: { bought: countUnspent('City'), available: maxCities },
+      devCards: { bought: countUnspent('DevCard'), available: 25 },
+      soldier: { played: countSpent('Soldier'), available: countUnspent('Soldier') },
     };
   }, [currentPlayer, gameModel?.resourceRules]);
 
@@ -288,6 +309,7 @@ export default function GamePage(): React.ReactElement {
       case 'settlement': proxy.purchase('Settlement'); break;
       case 'city': proxy.purchase('City'); break;
       case 'devcard': proxy.purchase('DevCard'); break;
+      case 'soldier': proxy.purchase('Soldier'); break;
     }
   }, [proxy]);
 
@@ -295,6 +317,211 @@ export default function GamePage(): React.ReactElement {
   const handleShuffle = useCallback(() => {
     proxy.shuffle();
   }, [proxy]);
+
+  // Building click handler - calls upgradeBuilding for placement
+  const handleBuildingClick = useCallback((buildingKey: BuildingKey) => {
+    console.log('[GamePage] Building clicked:', buildingKey);
+    proxy.upgradeBuilding(buildingKey);
+  }, [proxy]);
+
+  // Road click handler - calls purchaseRoad for placement
+  const handleRoadClick = useCallback((roadKey: RoadKey) => {
+    console.log('[GamePage] Road clicked:', roadKey);
+    proxy.purchaseRoad(roadKey);
+  }, [proxy]);
+
+  // GoFirst handler - selects which player goes first
+  const handleGoFirst = useCallback((playerId: string) => {
+    proxy.goFirst(playerId);
+  }, [proxy]);
+
+  // Robber state for target selection (when multiple players on tile)
+  const [pendingRobberCoords, setPendingRobberCoords] = useState<HexCoordinates | null>(null);
+  const [pendingRobberTile, setPendingRobberTile] = useState<TileModel | null>(null);
+  const [robberTargetPlayers, setRobberTargetPlayers] = useState<{ id: string; name: string }[]>([]);
+  const [robberMenuPosition, setRobberMenuPosition] = useState({ x: 0, y: 0 });
+
+  // Roll dimming: track last roll and timer (5 seconds, matching Blazor TileDimDurationSeconds)
+  const [lastRolledNumber, setLastRolledNumber] = useState<number | null>(null);
+  const rollDimTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Helper: Get players with buildings adjacent to a tile coordinate
+  // Returns simple { id, name } objects matching Blazor's RobberTarget record
+  const getPlayersWithBuildingsOnTile = useCallback((tileCoords: HexCoordinates): { id: string; name: string }[] => {
+    if (!gameModel?.buildings || !gameModel.players) return [];
+
+    const targetPlayerIds = new Set<string>();
+
+    // Check all buildings to find ones adjacent to this tile
+    gameModel.buildings.forEach(building => {
+      // Skip unowned buildings
+      if (!building.ownerId) return;
+      // Skip current player (can't steal from yourself)
+      if (building.ownerId === currentPlayer?.id) return;
+
+      const buildingCoord = building.buildingKey.hexCoordinates;
+      const position = building.buildingKey.position;
+
+      // Check if this building is on or adjacent to the target tile
+      // A building at a vertex touches up to 3 tiles
+      const buildingHexCoord = cubicCoord(buildingCoord.q, buildingCoord.r);
+
+      // Map vertex position to which neighbors also touch this vertex
+      const neighborDirections: Record<HexPosition, Direction[]> = {
+        Right: [Direction.NorthEast, Direction.SouthEast],
+        BottomRight: [Direction.SouthEast, Direction.South],
+        BottomLeft: [Direction.South, Direction.SouthWest],
+        Left: [Direction.SouthWest, Direction.NorthWest],
+        TopLeft: [Direction.NorthWest, Direction.North],
+        TopRight: [Direction.North, Direction.NorthEast],
+        None: [],
+      };
+
+      // Get all tiles this building touches
+      const touchedTiles: HexCoordinate[] = [buildingHexCoord];
+      const directions = neighborDirections[position as HexPosition] ?? [];
+      directions.forEach((dir) => {
+        touchedTiles.push(getNeighbor(buildingHexCoord, dir));
+      });
+
+      // Check if target tile is in the touched tiles
+      const targetCoord = cubicCoord(tileCoords.q, tileCoords.r);
+      const touchesTarget = touchedTiles.some(
+        t => t.q === targetCoord.q && t.r === targetCoord.r
+      );
+
+      if (touchesTarget && (building.buildingState === 'Settlement' || building.buildingState === 'City')) {
+        targetPlayerIds.add(building.ownerId);
+      }
+    });
+
+    // Convert IDs to { id, name } objects matching Blazor's RobberTarget
+    // Double-filter to ensure current player is excluded (defensive check)
+    const currentId = currentPlayer?.id;
+    return gameModel.players
+      .filter(p => targetPlayerIds.has(p.id) && p.id !== currentId)
+      .map(p => ({ id: p.id, name: p.name }));
+  }, [gameModel?.buildings, gameModel?.players, currentPlayer?.id]);
+
+  // Tile right-click handler for robber movement (matches Blazor: right-click shows menu)
+  const handleTileRightClick = useCallback((tile: TileModel, event: React.MouseEvent) => {
+    // Only handle during MustMoveRobber state
+    if (gameModel?.gameState !== 'MustMoveRobber') return;
+
+    // Can't place robber on water/sea tiles
+    if (tile.resourceTileType === 'Sea' || tile.resourceTileType === 'Back') return;
+
+    // Can't place robber on current position (unless Desert for GriefDodgy)
+    const robberCoords = gameModel.robber?.coordinates;
+    if (robberCoords &&
+        tile.tileKey.q === robberCoords.q &&
+        tile.tileKey.r === robberCoords.r &&
+        tile.resourceTileType !== 'Desert') {
+      console.log('[GamePage] Cannot place robber on current position');
+      return;
+    }
+
+    const coords: HexCoordinates = { q: tile.tileKey.q, r: tile.tileKey.r, s: -tile.tileKey.q - tile.tileKey.r };
+    const targetPlayers = getPlayersWithBuildingsOnTile(coords);
+
+    console.log('[GamePage] Tile right-clicked for robber:', coords, 'targets:', targetPlayers.length);
+
+    // Always show menu (matches Blazor behavior - menu has "Nobody" option)
+    setPendingRobberCoords(coords);
+    setPendingRobberTile(tile);
+    setRobberTargetPlayers(targetPlayers);
+    setRobberMenuPosition({ x: event.clientX, y: event.clientY });
+  }, [gameModel?.gameState, gameModel?.robber?.coordinates, getPlayersWithBuildingsOnTile]);
+
+  // Handler for selecting a robber target from the menu
+  // playerId is undefined when "Nobody. Hatred Deferred." is selected
+  const handleRobberTargetSelect = useCallback((playerId: string | undefined) => {
+    if (pendingRobberCoords) {
+      proxy.moveRobber(pendingRobberCoords, playerId);
+      setPendingRobberCoords(null);
+      setPendingRobberTile(null);
+      setRobberTargetPlayers([]);
+    }
+  }, [pendingRobberCoords, proxy]);
+
+  // Cancel robber target selection
+  const handleRobberTargetCancel = useCallback(() => {
+    setPendingRobberCoords(null);
+    setPendingRobberTile(null);
+    setRobberTargetPlayers([]);
+  }, []);
+
+  // Keyboard shortcuts for road building (1-9) and city upgrades (A-Z)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input field
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      const key = e.key.toUpperCase();
+
+      // Handle number keys (1-9) for road building or settlement placement
+      const num = parseInt(e.key);
+      if (!isNaN(num) && num >= 1 && num <= 9) {
+        // First try roads (they have buildIndex from server)
+        const road = gameModel?.roads?.find(r =>
+          r.roadState === 'Buildable' && r.buildIndex === num
+        );
+        if (road) {
+          console.log('[GamePage] Keyboard shortcut: building road', num);
+          proxy.purchaseRoad(road.roadKey);
+          return;
+        }
+
+        // Then try settlements (only during regular gameplay, not allocation)
+        const hasSettlementEntitlement = currentPlayer?.unspentEntitlements?.includes('Settlement');
+        const inAllocation = gameModel?.gameState === 'AllocateResourceForward' ||
+                            gameModel?.gameState === 'AllocateResourceReverse';
+
+        if (hasSettlementEntitlement && !inAllocation && gameModel?.buildings) {
+          // Build list of possible settlements (same order as GameBoard)
+          const possibleSettlements = gameModel.buildings.filter(b =>
+            b.buildingState === 'PossibleSettlement' && b.ownerId === null
+          );
+
+          // 1-based index (num=1 -> index 0)
+          const settlementIndex = num - 1;
+
+          if (settlementIndex >= 0 && settlementIndex < possibleSettlements.length) {
+            const settlement = possibleSettlements[settlementIndex];
+            console.log('[GamePage] Keyboard shortcut: placing settlement', num);
+            proxy.upgradeBuilding(settlement.buildingKey);
+          }
+        }
+        return;
+      }
+
+      // Handle letter keys (A-Z) for city upgrades
+      if (key >= 'A' && key <= 'Z') {
+        // Check if current player has City entitlement
+        const hasCityEntitlement = currentPlayer?.unspentEntitlements?.includes('City');
+        if (!hasCityEntitlement || !gameModel?.buildings || !currentPlayer) return;
+
+        // Build list of upgradeable settlements (same logic as GameBoard)
+        const upgradeableSettlements = gameModel.buildings.filter(b =>
+          b.buildingState === 'Settlement' && b.ownerId === currentPlayer.id
+        );
+
+        // Map letter to index (A=0, B=1, etc.)
+        const letterIndex = key.charCodeAt(0) - 65; // 'A' = 65
+
+        if (letterIndex >= 0 && letterIndex < upgradeableSettlements.length) {
+          const settlement = upgradeableSettlements[letterIndex];
+          console.log('[GamePage] Keyboard shortcut: upgrading settlement', key);
+          proxy.upgradeBuilding(settlement.buildingKey);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameModel?.roads, gameModel?.buildings, gameModel?.gameState, currentPlayer, proxy]);
 
   // Star filter changed handler (stores in layoutStore for board filtering)
   const setStarFilter = useLayoutStore((state) => state.setStarFilter);
@@ -339,6 +566,30 @@ export default function GamePage(): React.ReactElement {
   // Check if game is in PickingBoard state (for Balance button)
   const isPickingBoard = gameModel?.gameState === 'PickingBoard';
 
+  // Check if we're in allocation phase (PickingResources in Blazor)
+  // During allocation, settlement build indexes are NOT shown
+  const isAllocationPhase = gameModel?.gameState === 'AllocateResourceForward' ||
+                            gameModel?.gameState === 'AllocateResourceReverse';
+
+  // Show settlement indexes only during regular gameplay when player has Settlement entitlement
+  const showSettlementIndexes = useMemo(() => {
+    if (isAllocationPhase) return false;
+    return currentPlayer?.unspentEntitlements?.includes('Settlement') ?? false;
+  }, [isAllocationPhase, currentPlayer?.unspentEntitlements]);
+
+  // Create board game data with current player entitlements for GameBoard
+  const boardGameData = useMemo((): BoardGameData | null => {
+    if (!gameModel) return null;
+    return {
+      tiles: gameModel.tiles,
+      harbors: gameModel.harbors,
+      buildings: gameModel.buildings,
+      roads: gameModel.roads,
+      currentPlayerEntitlements: currentPlayer?.unspentEntitlements ?? [],
+      robber: gameModel.robber,
+    };
+  }, [gameModel, currentPlayer?.unspentEntitlements]);
+
   // Game actions for NavMenu
   const gameActions = useMemo(() => ({
     isPickingBoard,
@@ -352,11 +603,16 @@ export default function GamePage(): React.ReactElement {
       <div className="relative w-full h-full overflow-hidden">
         {/* GameBoard with internal pan/zoom - fills the viewport */}
         <GameBoard
-          gameModel={gameModel}
+          gameModel={boardGameData}
           hexSize={50}
           gap={1}
           players={boardPlayers}
           selectedPlayerId={currentPlayer?.id}
+          onBuildingClick={handleBuildingClick}
+          onRoadClick={handleRoadClick}
+          onTileRightClick={handleTileRightClick}
+          rolledNumber={lastRolledNumber}
+          showSettlementIndexes={showSettlementIndexes}
         />
 
         {/* Connection status overlay */}
@@ -400,6 +656,7 @@ export default function GamePage(): React.ReactElement {
             onReset={handleShuffle}
             onStarFilterChange={handleStarFilterChange}
             onResourceSelectionChange={handleResourceSelectionChange}
+            shuffleEnabled={gameModel?.gameState === 'PickingBoard'}
           />
         </FloatingPanel>
 
@@ -412,6 +669,27 @@ export default function GamePage(): React.ReactElement {
         <FloatingPanel panelId="resources" title="Resources" icon="📦">
           <GameResourcesHeader resources={gameModel?.gameResourcesModel ?? null} />
         </FloatingPanel>
+
+        {/* GoFirst Overlay - shown during FinishedRollOrder state */}
+        {gameModel?.gameState === 'FinishedRollOrder' && (
+          <FloatingPanel panelId="goFirst" title="Go First" icon="🎯">
+            <GoFirstOverlay
+              players={gameModel.players}
+              playerProfiles={playerProfiles}
+              onSelectPlayer={handleGoFirst}
+            />
+          </FloatingPanel>
+        )}
+
+        {/* Robber Target Menu - shown when selecting steal target */}
+        {pendingRobberTile && (
+          <RobberTargetMenu
+            targetPlayers={robberTargetPlayers}
+            position={robberMenuPosition}
+            onSelectTarget={handleRobberTargetSelect}
+            onCancel={handleRobberTargetCancel}
+          />
+        )}
 
         {/* Game info badges - minimal floating overlays */}
         <div className="absolute bottom-2 left-2 bg-black/60 rounded px-2 py-1 text-xs text-gray-300 z-30 pointer-events-none">

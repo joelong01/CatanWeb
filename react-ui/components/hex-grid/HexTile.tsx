@@ -80,6 +80,8 @@ export function HexTile({
         ...style,
       }}
       onClick={disabled ? undefined : onClick}
+      // Mark as clickable for FloatingPanel's background drag detection
+      data-has-click={onClick && !disabled ? 'true' : undefined}
     >
       {children}
     </div>
