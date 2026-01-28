@@ -55,5 +55,22 @@ export {
   buildableRoads,
 } from './roadExtensions';
 
-// Future exports (uncomment as implemented):
-// export * from './gameModelExtensions';
+// GameModel extensions
+export {
+  type GamePhase,
+  currentPlayer,
+  isAllocationPhase,
+  gamePhase,
+  nextPlayerId,
+  adjacentRoadsForBuilding,
+  adjacentBuildingsForRoad,
+  tilesForBuilding,
+  buildingBetweenRoads,
+  playerIndex,
+  currentPlayerIndex,
+  isCurrentPlayer,
+  buildableBuildings,
+  buildableRoadsFromModel,
+  buildingsOwnedByPlayer,
+  roadsOwnedByPlayerFromModel,
+} from './gameModelExtensions';
