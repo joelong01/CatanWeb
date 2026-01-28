@@ -10,8 +10,22 @@
 // Player extensions
 export { playerFromId } from './playerExtensions';
 
+// Tile extensions
+export {
+  NUMBER_PIPS,
+  HEX_DIRECTIONS,
+  hexCoordsEqual,
+  hexCoordsAdd,
+  tileFromCoords,
+  adjacentTiles,
+  pipsForNumber,
+  totalStars,
+  tilesWithNumber,
+  tilesWithResource,
+  tilesWithSixOrEight,
+} from './tileExtensions';
+
 // Future exports (uncomment as implemented):
-// export * from './tileExtensions';
 // export * from './buildingExtensions';
 // export * from './roadExtensions';
 // export * from './gameModelExtensions';
