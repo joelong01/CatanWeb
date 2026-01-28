@@ -27,6 +27,7 @@
     "next": "16.1.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "use-sync-external-store": "^1.6.0",
     "zustand": "^5.0.10"
   },
   "devDependencies": {
