@@ -16,6 +16,8 @@ import {
   adjacentBuildings,
   buildingsInTile,
   ownedBuildings,
+  buildingResourceCount,
+  buildingResources,
 } from '../buildingExtensions';
 import type { BuildingModel } from '@/types/generated/models/building-model';
 import type { BuildingKey } from '@/types/generated/models/building-key';
@@ -338,6 +340,65 @@ describe('buildingExtensions', () => {
       const building = createMockBuilding(0, 0, 'TopRight', '', 'PossibleSettlement');
       const result = ownedBuildings([building], { q: 0, r: 0, s: 0 });
       expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('buildingResourceCount', () => {
+    it('returns 2 for City', () => {
+      const city = createMockBuilding(0, 0, 'TopRight', 'player-1', 'City');
+      expect(buildingResourceCount(city)).toBe(2);
+    });
+
+    it('returns 1 for Settlement', () => {
+      const settlement = createMockBuilding(0, 0, 'TopRight', 'player-1', 'Settlement');
+      expect(buildingResourceCount(settlement)).toBe(1);
+    });
+
+    it('returns 0 for PossibleSettlement', () => {
+      const possible = createMockBuilding(0, 0, 'TopRight', null, 'PossibleSettlement');
+      expect(buildingResourceCount(possible)).toBe(0);
+    });
+
+    it('returns 0 for PossibleCity', () => {
+      const possible = createMockBuilding(0, 0, 'TopRight', 'player-1', 'PossibleCity');
+      expect(buildingResourceCount(possible)).toBe(0);
+    });
+
+    it('returns 0 for NoSettlement', () => {
+      const no = createMockBuilding(0, 0, 'TopRight', null, 'NoSettlement');
+      expect(buildingResourceCount(no)).toBe(0);
+    });
+  });
+
+  describe('buildingResources', () => {
+    it('returns 2 resources for City', () => {
+      const city = createMockBuilding(0, 0, 'TopRight', 'player-1', 'City');
+      const result = buildingResources(city, 'Wheat');
+      expect(result.wheat).toBe(2);
+      expect(result.ore).toBe(0);
+    });
+
+    it('returns 1 resource for Settlement', () => {
+      const settlement = createMockBuilding(0, 0, 'TopRight', 'player-1', 'Settlement');
+      const result = buildingResources(settlement, 'Ore');
+      expect(result.ore).toBe(1);
+      expect(result.wheat).toBe(0);
+    });
+
+    it('returns 0 resources for PossibleSettlement', () => {
+      const possible = createMockBuilding(0, 0, 'TopRight', null, 'PossibleSettlement');
+      const result = buildingResources(possible, 'Brick');
+      expect(result.brick).toBe(0);
+    });
+
+    it('handles all basic resource types', () => {
+      const city = createMockBuilding(0, 0, 'TopRight', 'player-1', 'City');
+
+      expect(buildingResources(city, 'Wheat').wheat).toBe(2);
+      expect(buildingResources(city, 'Ore').ore).toBe(2);
+      expect(buildingResources(city, 'Sheep').sheep).toBe(2);
+      expect(buildingResources(city, 'Wood').wood).toBe(2);
+      expect(buildingResources(city, 'Brick').brick).toBe(2);
     });
   });
 });

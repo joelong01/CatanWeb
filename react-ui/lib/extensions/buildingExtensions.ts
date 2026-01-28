@@ -12,7 +12,10 @@ import type { BuildingModel } from '@/types/generated/models/building-model';
 import type { BuildingKey } from '@/types/generated/models/building-key';
 import type { HexCoordinates } from '@/types/generated/models/hex-coordinates';
 import type { HexPosition } from '@/types/generated/models/hex-position';
+import type { ResourcesModel } from '@/types/generated/models/resources-model';
+import type { ResourceType } from '@/types/generated/models/resource-type';
 import { hexCoordsEqual, hexCoordsAdd } from './tileExtensions';
+import { createEmptyResourcesModel, addResource } from './resourcesExtensions';
 
 /**
  * Direction type matching C# Direction enum.
@@ -334,5 +337,51 @@ export function ownedBuildings(
       result.push(building);
     }
   }
+  return result;
+}
+
+/**
+ * Gets the resource count a building produces based on its state.
+ * - City: 2 resources
+ * - Settlement: 1 resource
+ * - Other states: 0 resources
+ *
+ * @param building - The building to check
+ * @returns Resource count (0, 1, or 2)
+ */
+export function buildingResourceCount(building: BuildingModel): number {
+  if (building.buildingState === 'City') {
+    return 2;
+  }
+  if (building.buildingState === 'Settlement') {
+    return 1;
+  }
+  return 0;
+}
+
+/**
+ * Creates a ResourcesModel with the resources a building produces for a specific resource type.
+ * Based on building state: City = 2 resources, Settlement = 1 resource.
+ *
+ * @param building - The building model
+ * @param resource - The resource type to produce
+ * @returns ResourcesModel with the appropriate resource count
+ *
+ * @example
+ * const resources = buildingResources(building, 'Wheat');
+ * // If building is a City, resources.wheat will be 2
+ */
+export function buildingResources(
+  building: BuildingModel,
+  resource: ResourceType
+): ResourcesModel {
+  const result = createEmptyResourcesModel();
+
+  if (building.buildingState === 'City') {
+    addResource(result, resource, 2);
+  } else if (building.buildingState === 'Settlement') {
+    addResource(result, resource, 1);
+  }
+
   return result;
 }

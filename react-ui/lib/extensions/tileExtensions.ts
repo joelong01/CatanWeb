@@ -136,9 +136,10 @@ export function pipsForNumber(number: number): number {
 /**
  * Calculates total stars (pip sum) for a collection of tiles.
  * Stars indicate the combined probability of rolling any of the tiles.
+ * Uses the server-provided `tile.stars` property.
  *
  * @param tiles - Array of tiles to sum
- * @returns Total pip count
+ * @returns Total star count
  *
  * @example
  * const stars = totalStars(tilesAroundBuilding);
@@ -148,7 +149,7 @@ export function totalStars(tiles: TileModel[]): number {
   if (!tiles || tiles.length === 0) {
     return 0;
   }
-  return tiles.reduce((sum, tile) => sum + pipsForNumber(tile.number), 0);
+  return tiles.reduce((sum, tile) => sum + tile.stars, 0);
 }
 
 /**

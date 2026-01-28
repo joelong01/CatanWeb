@@ -18,7 +18,10 @@ import {
   buildableRoadsFromModel,
   buildingsOwnedByPlayer,
   roadsOwnedByPlayerFromModel,
+  purchaseModel,
+  resourcesForBuilding,
 } from '../gameModelExtensions';
+import type { EntitlementPurchaseModel } from '@/types/generated/models/entitlement-purchase-model';
 import type { GameModel } from '@/types/generated/models/game-model';
 import type { PlayerModel } from '@/types/generated/models/player-model';
 import type { TileModel } from '@/types/generated/models/tile-model';
@@ -60,11 +63,27 @@ function createMockPlayer(id: string, name: string): PlayerModel {
 }
 
 // Helper to create a minimal tile
-function createMockTile(q: number, r: number, number: number = 6): TileModel {
+function createMockTile(
+  q: number,
+  r: number,
+  resourceOrNumber: TileModel['resourceTileType'] | number = 6,
+  tileNumber?: number
+): TileModel {
+  // Support both old signature (q, r, number) and new signature (q, r, resource, number)
+  let resource: TileModel['resourceTileType'] = 'Ore';
+  let number: number = 6;
+
+  if (typeof resourceOrNumber === 'string') {
+    resource = resourceOrNumber;
+    number = tileNumber ?? 6;
+  } else {
+    number = resourceOrNumber;
+  }
+
   return {
     tileKey: { q, r, s: -q - r },
     number,
-    resourceTileType: 'Ore',
+    resourceTileType: resource,
     highlighted: false,
     temporarilyGold: false,
     default: {} as TileModel,
@@ -475,6 +494,109 @@ describe('gameModelExtensions', () => {
       const roads = [createMockRoad(0, 0, 'Top', 'player-1', 'Road')];
       const game = createMockGameModel({ roads });
       expect(roadsOwnedByPlayerFromModel(game, '')).toEqual([]);
+    });
+  });
+
+  describe('purchaseModel', () => {
+    const createPurchaseModels = (): EntitlementPurchaseModel[] => [
+      { entitlement: 'Settlement', enabled: true },
+      { entitlement: 'City', enabled: false },
+      { entitlement: 'Road', enabled: true },
+      { entitlement: 'DevCard', enabled: false },
+    ];
+
+    it('returns undefined when entitlementPurchaseModel is undefined', () => {
+      const game = createMockGameModel({});
+      game.entitlementPurchaseModel = undefined as unknown as EntitlementPurchaseModel[];
+      expect(purchaseModel(game, 'Settlement')).toBeUndefined();
+    });
+
+    it('returns undefined when entitlement not found', () => {
+      const game = createMockGameModel({});
+      game.entitlementPurchaseModel = createPurchaseModels();
+      expect(purchaseModel(game, 'Soldier')).toBeUndefined();
+    });
+
+    it('finds Settlement purchase model', () => {
+      const game = createMockGameModel({});
+      game.entitlementPurchaseModel = createPurchaseModels();
+      const result = purchaseModel(game, 'Settlement');
+      expect(result).toBeDefined();
+      expect(result?.entitlement).toBe('Settlement');
+      expect(result?.enabled).toBe(true);
+    });
+
+    it('finds City purchase model', () => {
+      const game = createMockGameModel({});
+      game.entitlementPurchaseModel = createPurchaseModels();
+      const result = purchaseModel(game, 'City');
+      expect(result).toBeDefined();
+      expect(result?.entitlement).toBe('City');
+      expect(result?.enabled).toBe(false);
+    });
+
+    it('finds Road purchase model', () => {
+      const game = createMockGameModel({});
+      game.entitlementPurchaseModel = createPurchaseModels();
+      const result = purchaseModel(game, 'Road');
+      expect(result).toBeDefined();
+      expect(result?.entitlement).toBe('Road');
+      expect(result?.enabled).toBe(true);
+    });
+  });
+
+  describe('resourcesForBuilding', () => {
+    it('returns empty resources for building with no adjacent tiles', () => {
+      const building = createMockBuilding(10, 10, 'TopRight', 'player-1', 'Settlement');
+      const game = createMockGameModel({ tiles: [], buildings: [building] });
+      const result = resourcesForBuilding(game, building);
+      expect(result.wheat).toBe(0);
+      expect(result.ore).toBe(0);
+      expect(result.brick).toBe(0);
+    });
+
+    it('returns 1 resource per tile for Settlement', () => {
+      const building = createMockBuilding(0, 0, 'TopRight', 'player-1', 'Settlement');
+      const tiles = [createMockTile(0, 0, 'Wheat', 6)];
+      const game = createMockGameModel({ tiles, buildings: [building] });
+      const result = resourcesForBuilding(game, building);
+      expect(result.wheat).toBe(1);
+    });
+
+    it('returns 2 resources per tile for City', () => {
+      const building = createMockBuilding(0, 0, 'TopRight', 'player-1', 'City');
+      const tiles = [createMockTile(0, 0, 'Ore', 8)];
+      const game = createMockGameModel({ tiles, buildings: [building] });
+      const result = resourcesForBuilding(game, building);
+      expect(result.ore).toBe(2);
+    });
+
+    it('sums resources from multiple adjacent tiles', () => {
+      const building = createMockBuilding(0, 0, 'TopRight', 'player-1', 'City');
+      // TopRight vertex touches: (0,0), North (0,-1), NorthEast (1,-1)
+      const tiles = [
+        createMockTile(0, 0, 'Wheat', 6),
+        createMockTile(0, -1, 'Ore', 8),
+        createMockTile(1, -1, 'Wheat', 9),
+      ];
+      const game = createMockGameModel({ tiles, buildings: [building] });
+      const result = resourcesForBuilding(game, building);
+      // City gets 2 per tile: 2 wheat + 2 ore + 2 wheat = 4 wheat, 2 ore
+      expect(result.wheat).toBe(4);
+      expect(result.ore).toBe(2);
+    });
+
+    it('handles Desert tiles (no resources)', () => {
+      const building = createMockBuilding(0, 0, 'TopRight', 'player-1', 'Settlement');
+      const tiles = [createMockTile(0, 0, 'Desert', 7)];
+      const game = createMockGameModel({ tiles, buildings: [building] });
+      const result = resourcesForBuilding(game, building);
+      // Desert shouldn't add any resources
+      expect(result.wheat).toBe(0);
+      expect(result.ore).toBe(0);
+      expect(result.brick).toBe(0);
+      expect(result.sheep).toBe(0);
+      expect(result.wood).toBe(0);
     });
   });
 });

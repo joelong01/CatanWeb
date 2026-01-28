@@ -38,6 +38,8 @@ export {
   adjacentBuildings,
   buildingsInTile,
   ownedBuildings,
+  buildingResourceCount,
+  buildingResources,
 } from './buildingExtensions';
 
 // Road extensions
@@ -58,6 +60,7 @@ export {
 // GameModel extensions
 export {
   type GamePhase,
+  type AdjacentRoadsResult,
   currentPlayer,
   isAllocationPhase,
   gamePhase,
@@ -73,4 +76,15 @@ export {
   buildableRoadsFromModel,
   buildingsOwnedByPlayer,
   roadsOwnedByPlayerFromModel,
+  starsForBuilding,
+  findAdjacentHarbor,
+  ownedAdjacentRoadsNotCounted,
+  purchaseModel,
+  resourcesForBuilding,
 } from './gameModelExtensions';
+
+// Resources extensions
+export {
+  createEmptyResourcesModel,
+  addResource,
+} from './resourcesExtensions';
