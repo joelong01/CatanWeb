@@ -10,14 +10,14 @@
 import { useStoreWithEqualityFn } from 'zustand/traditional';
 import { shallow } from 'zustand/shallow';
 import { useGameStore } from './gameStore';
-import type { GameModel } from '@/types/generated/models/game-model';
+// GameModel type is used via state.gameModel in selectors, not directly imported
 import type { PlayerModel } from '@/types/generated/models/player-model';
 import type { TileModel } from '@/types/generated/models/tile-model';
 import type { BuildingModel } from '@/types/generated/models/building-model';
 import type { RoadModel } from '@/types/generated/models/road-model';
 import type { HarborModel } from '@/types/generated/models/harbor-model';
 import type { ActionFlags } from '@/types/generated/models/action-flags';
-import type { PlayerProfile } from '@/types/player-profile';
+import type { PlayerProfile, PlayerColors } from '@/types/player-profile';
 import {
   currentPlayer,
   isAllocationPhase,
@@ -27,7 +27,9 @@ import {
   buildableRoadsFromModel,
   buildingsOwnedByPlayer,
   roadsOwnedByPlayerFromModel,
+  calculateRollStats,
   type GamePhase,
+  type RollStats,
 } from '../extensions';
 
 // ============================================================================
@@ -418,6 +420,55 @@ export function useMyProfile(): PlayerProfile | undefined {
     if (!state.currentPlayerId) return undefined;
     return state.playerProfiles.get(state.currentPlayerId);
   });
+}
+
+/**
+ * Returns a player's colors by ID.
+ * Useful for components that need to look up colors internally.
+ *
+ * @param playerId The player ID to get colors for (null/undefined returns undefined)
+ * @returns PlayerColors or undefined if player not found
+ */
+export function usePlayerColors(
+  playerId: string | null | undefined
+): PlayerColors | undefined {
+  return useGameStore((state) => {
+    if (!playerId) return undefined;
+    return state.playerProfiles.get(playerId)?.colors;
+  });
+}
+
+/**
+ * Returns the current turn player's colors.
+ */
+export function useCurrentPlayerColors(): PlayerColors | undefined {
+  return useGameStore((state) => {
+    const turnPlayerId = state.gameModel?.currentPlayerId;
+    if (!turnPlayerId) return undefined;
+    return state.playerProfiles.get(turnPlayerId)?.colors;
+  });
+}
+
+// ============================================================================
+// Roll Statistics Hooks
+// ============================================================================
+
+/** Empty roll stats constant to avoid creating new objects */
+const EMPTY_ROLL_STATS: Record<number, RollStats> = {};
+
+/**
+ * Returns roll statistics for displaying in RollRing.
+ * Maps each dice sum (2-12) to its count and percentage.
+ */
+export function useRollStats(): Record<number, RollStats> {
+  return useStoreWithEqualityFn(
+    useGameStore,
+    (state) => {
+      if (!state.gameModel) return EMPTY_ROLL_STATS;
+      return calculateRollStats(state.gameModel);
+    },
+    shallow
+  );
 }
 
 // ============================================================================

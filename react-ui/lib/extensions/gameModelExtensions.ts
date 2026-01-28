@@ -639,3 +639,45 @@ export function resourcesForBuilding(
 
   return resources;
 }
+
+// ============================================================================
+// Roll Statistics
+// ============================================================================
+
+/**
+ * Roll statistics for a single dice sum (2-12).
+ */
+export interface RollStats {
+  /** Number of times this sum was rolled */
+  count: number;
+  /** Percentage of total rolls (0-100) */
+  percentage: number;
+}
+
+/**
+ * Calculates roll statistics from the game's roll model.
+ * Returns a record mapping each dice sum (2-12) to its count and percentage.
+ *
+ * This is a UI convenience function for displaying roll history in the RollRing component.
+ *
+ * @param gameModel - The game model containing rollModel
+ * @returns Record mapping dice sums (2-12) to RollStats
+ *
+ * @example
+ * const stats = calculateRollStats(gameModel);
+ * // stats[7] = { count: 5, percentage: 25 } // 7 was rolled 5 times (25% of rolls)
+ */
+export function calculateRollStats(gameModel: GameModel): Record<number, RollStats> {
+  const stats: Record<number, RollStats> = {};
+  const rollCounts = gameModel?.rollModel?.gameRollModel?.rollCounts ?? [];
+  const totalRolls = gameModel?.rollModel?.gameRollModel?.totalRolls ?? 0;
+
+  for (let roll = 2; roll <= 12; roll++) {
+    const count = rollCounts[roll] ?? 0;
+    const percentage = totalRolls > 0 ? Math.round((count / totalRolls) * 100) : 0;
+    stats[roll] = { count, percentage };
+  }
+
+  return stats;
+}
+

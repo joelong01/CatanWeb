@@ -15,8 +15,11 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faReceipt } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import type { PlayerModel } from '@/types/generated/models/player-model';
-import type { GameModel } from '@/types/generated/models/game-model';
-import { useGameStore } from '@/lib/stores/gameStore';
+import {
+  usePlayers,
+  useCurrentTurnPlayerId,
+  usePlayerProfiles,
+} from '@/lib/stores/gameStoreHooks';
 import { createPlayerColorsWithGradient, type PlayerColorsWithGradient } from '@/lib/utils/playerColors';
 import { DEFAULT_PLAYER_COLORS, type PlayerProfile } from '@/types/player-profile';
 
@@ -25,8 +28,8 @@ import { DEFAULT_PLAYER_COLORS, type PlayerProfile } from '@/types/player-profil
 // ============================================================================
 
 export interface PlayersPanelProps {
-  /** Game model containing players and current player */
-  gameModel: GameModel | null;
+  /** @deprecated - PlayersPanel now uses internal hooks. This prop is ignored. */
+  gameModel?: unknown;
 }
 
 /** Resource types tracked for cards */
@@ -235,30 +238,21 @@ const StatTile = memo(function StatTile({
 interface PlayerTileProps {
   player: PlayerModel;
   profile: PlayerProfile | undefined;
-  gameModel: GameModel;
   isCurrentPlayer: boolean;
-  isSelected?: boolean;
-  onClick?: () => void;
 }
 
 const PlayerTile = memo(function PlayerTile({
   player,
   profile,
-  gameModel,
   isCurrentPlayer,
-  isSelected,
-  onClick,
 }: PlayerTileProps) {
   const colors = createColorsFromProfile(profile);
 
-  // Count player's buildings and roads from game model
-  const roadCount = gameModel.roads.filter(r => r.ownerId === player.id).length;
-  const settlements = gameModel.buildings.filter(
-    b => b.ownerId === player.id && b.buildingState === 'Settlement'
-  ).length;
-  const cities = gameModel.buildings.filter(
-    b => b.ownerId === player.id && b.buildingState === 'City'
-  ).length;
+  // Count from spentEntitlementsThisGame - these are placed items
+  const spentEntitlements = player.spentEntitlementsThisGame ?? [];
+  const roadCount = spentEntitlements.filter(e => e === 'Road').length;
+  const settlements = spentEntitlements.filter(e => e === 'Settlement').length;
+  const cities = spentEntitlements.filter(e => e === 'City').length;
 
   // Count soldiers from spent entitlements
   const soldierCount = player.spentEntitlementsThisGame.filter(
@@ -306,12 +300,11 @@ const PlayerTile = memo(function PlayerTile({
 
   return (
     <div
-      className={`p-1 rounded cursor-pointer transition-all ${isSelected || isCurrentPlayer ? 'ring-2 ring-amber-400' : 'hover:bg-white/5'}`}
+      className={`p-1 rounded transition-all ${isCurrentPlayer ? 'ring-2 ring-amber-400' : 'hover:bg-white/5'}`}
       style={{
         backgroundColor: `${colors.primary}20`,
         borderLeft: `4px solid ${colors.primary}`,
       }}
-      onClick={onClick}
     >
       {/* Row 1: Avatar + Stats Grid */}
       <div className="flex gap-0.5 items-start mb-0.5">
@@ -369,19 +362,18 @@ const PlayerTile = memo(function PlayerTile({
 // Scaled Players List (scales content to fit container)
 // ============================================================================
 
-interface ScaledPlayersListProps {
-  gameModel: GameModel;
-}
-
-function ScaledPlayersList({ gameModel }: ScaledPlayersListProps) {
+function ScaledPlayersList() {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const naturalSizeRef = useRef({ width: 0, height: 0 });
   const hasMeasuredRef = useRef(false);
 
-  // Get player profiles from store (reactive - updates when profiles change)
-  const playerProfiles = useGameStore((state) => state.playerProfiles);
+  // Get data from store via hooks (optimized for re-render performance)
+  // Note: PlayerTile only needs player + profile - counts come from player.spentEntitlementsThisGame
+  const players = usePlayers();
+  const currentPlayerId = useCurrentTurnPlayerId();
+  const playerProfiles = usePlayerProfiles();
 
   // Combined effect: measure natural size and set up resize observer
   useEffect(() => {
@@ -389,7 +381,7 @@ function ScaledPlayersList({ gameModel }: ScaledPlayersListProps) {
       if (!contentRef.current || !containerRef.current) return;
 
       // Only measure natural size once (or when players count changes)
-      const playersCount = gameModel.players.length;
+      const playersCount = players.length;
       if (!hasMeasuredRef.current || naturalSizeRef.current.width === 0) {
         // Temporarily reset scale to measure natural size
         const currentTransform = contentRef.current.style.transform;
@@ -435,7 +427,7 @@ function ScaledPlayersList({ gameModel }: ScaledPlayersListProps) {
     }
 
     return () => resizeObserver.disconnect();
-  }, [gameModel.players.length]); // Only re-run if player count changes
+  }, [players.length]); // Only re-run if player count changes
 
   return (
     <div
@@ -450,13 +442,12 @@ function ScaledPlayersList({ gameModel }: ScaledPlayersListProps) {
           transformOrigin: 'top left',
         }}
       >
-        {gameModel.players.map(player => (
+        {players.map(player => (
           <PlayerTile
             key={player.id}
             player={player}
             profile={playerProfiles.get(player.id)}
-            gameModel={gameModel}
-            isCurrentPlayer={player.id === gameModel.currentPlayerId}
+            isCurrentPlayer={player.id === currentPlayerId}
           />
         ))}
       </div>
@@ -468,8 +459,11 @@ function ScaledPlayersList({ gameModel }: ScaledPlayersListProps) {
 // Main PlayersPanel Component
 // ============================================================================
 
-export function PlayersPanel({ gameModel }: PlayersPanelProps): React.ReactElement {
-  if (!gameModel) {
+export function PlayersPanel(_props: PlayersPanelProps): React.ReactElement {
+  // Get players from store to check if data is loaded
+  const players = usePlayers();
+
+  if (!players || players.length === 0) {
     return (
       <div className="p-4 text-gray-400 text-center">
         Waiting for game data...
@@ -477,7 +471,7 @@ export function PlayersPanel({ gameModel }: PlayersPanelProps): React.ReactEleme
     );
   }
 
-  return <ScaledPlayersList gameModel={gameModel} />;
+  return <ScaledPlayersList />;
 }
 
 export default PlayersPanel;

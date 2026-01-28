@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { PlayerColors } from '../board/GameBoard';
+import type { PlayerColors } from '@/types/player-profile';
 import { buildCssGradient } from '@/lib/utils/playerColors';
+import { usePlayerColors } from '@/lib/stores/gameStoreHooks';
 
 /**
  * Building state (matches C# BuildingState enum)
@@ -40,10 +41,10 @@ export interface BuildingProps {
   visualState: BuildingVisualState;
   /** Number of stars for this building position (used when visualState is 'Stars' or 'Hidden' on hover) */
   stars?: number;
-  /** Player colors for owned buildings */
-  ownerColors?: PlayerColors | null;
-  /** Current player colors (used for highlighting/placement/stars) */
-  currentPlayerColors?: PlayerColors | null;
+  /** Owner player ID - component looks up colors via usePlayerColors */
+  ownerId?: string | null;
+  /** Current turn player ID - used for highlighting/placement colors */
+  currentPlayerId?: string | null;
   /** Size of the building in pixels (diameter) */
   size: number;
   /** Build index label (e.g., "A", "B" for city upgrades) */
@@ -77,8 +78,8 @@ export const Building = React.memo(function Building({
   buildingState,
   visualState,
   stars = 0,
-  ownerColors,
-  currentPlayerColors,
+  ownerId,
+  currentPlayerId,
   size,
   buildIndex,
   onClick,
@@ -86,6 +87,10 @@ export const Building = React.memo(function Building({
 }: BuildingProps) {
   // Track hover state for Hidden -> Stars transition
   const [isHovered, setIsHovered] = useState(false);
+
+  // Look up player colors from store
+  const ownerColors = usePlayerColors(ownerId);
+  const currentPlayerColors = usePlayerColors(currentPlayerId);
 
   // Determine effective visual state (Hidden becomes Stars on hover)
   const effectiveState = visualState === 'Hidden' && isHovered ? 'Stars' : visualState;

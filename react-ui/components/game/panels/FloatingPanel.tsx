@@ -26,6 +26,8 @@ interface FloatingPanelProps {
   children: ReactNode;
   /** Additional class names */
   className?: string;
+  /** Additional inline styles */
+  style?: React.CSSProperties;
   /** Whether the panel can be resized and dragged (for future toggle mode) */
   resizable?: boolean;
   /** Minimum width when resizing */
@@ -94,6 +96,7 @@ export function FloatingPanel({
   icon,
   children,
   className = '',
+  style,
   resizable = true, // All panels resizable by default; future: toggle this
   minWidth = 120,
   minHeight = 80,
@@ -507,6 +510,7 @@ export function FloatingPanel({
           : 'border-gray-700/50'
       }`}
       style={{
+        ...style,
         left: actualPosition.x,
         top: actualPosition.y,
         width: panel.size.width,

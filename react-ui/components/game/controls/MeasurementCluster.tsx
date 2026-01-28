@@ -16,7 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowsRotate, faCheck, faScaleBalanced } from '@fortawesome/free-solid-svg-icons';
 import { HexGrid, type HexGridItem, type HexCoordinate } from '@/components/hex-grid';
 import type { PlayerColorsWithGradient } from '@/lib/utils/playerColors';
-import type { GameModel } from '@/types/generated/models/game-model';
+import type { TileModel } from '@/types/generated/models/tile-model';
 
 // ============================================================================
 // Types
@@ -28,8 +28,8 @@ export interface StarCounts {
 }
 
 export interface MeasurementClusterProps {
-  /** Game model for tile data */
-  gameModel: GameModel | null;
+  /** Tiles for resource counting */
+  tiles: TileModel[];
   /** Player colors for styling */
   colors?: PlayerColorsWithGradient;
   /** Counts of building spots for each star value (8-13) */
@@ -92,10 +92,10 @@ function getStarsForNumber(num: number): number {
 }
 
 /** Calculate star count and tile count for a resource type from tiles */
-function calculateResourceStats(gameModel: GameModel | null, resourceType: string): { stars: number; tiles: number } {
-  if (!gameModel?.tiles) return { stars: 0, tiles: 0 };
+function calculateResourceStats(tiles: TileModel[], resourceType: string): { stars: number; tiles: number } {
+  if (!tiles || tiles.length === 0) return { stars: 0, tiles: 0 };
 
-  const resourceTiles = gameModel.tiles.filter((tile) => tile.resourceTileType === resourceType);
+  const resourceTiles = tiles.filter((tile) => tile.resourceTileType === resourceType);
   const stars = resourceTiles.reduce((sum, tile) => {
     return sum + (tile.number ? getStarsForNumber(tile.number) : 0);
   }, 0);
@@ -406,7 +406,7 @@ const ResetHexContent = memo(function ResetHexContent({ colors, disabled }: Rese
 // ============================================================================
 
 export const MeasurementCluster = memo(function MeasurementCluster({
-  gameModel,
+  tiles,
   colors,
   starCounts,
   onResourceSelectionChange,
@@ -420,7 +420,7 @@ export const MeasurementCluster = memo(function MeasurementCluster({
 
   // Calculate resource star counts and stats for variance
   const resourceStats = RESOURCE_CONFIG.reduce((acc, { key }) => {
-    acc[key] = calculateResourceStats(gameModel, key);
+    acc[key] = calculateResourceStats(tiles, key);
     return acc;
   }, {} as Record<string, { stars: number; tiles: number }>);
 

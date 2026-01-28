@@ -19,6 +19,9 @@ import { WaterHex } from '@/components/hex-grid/content/WaterHex';
 import { GameTile } from '@/components/game/tiles/GameTile';
 import { Building, Road, type BuildingVisualState, type RoadState } from '@/components/game/tiles';
 import { useLayoutStore } from '@/lib/stores/layoutStore';
+import { hexToRgba } from '@/lib/utils/playerColors';
+import { useBoardData, useBoardPlayers, useSelectedPlayerId, useRolledNumber } from '@/lib/hooks';
+import { useIsAllocationPhase } from '@/lib/stores/gameStoreHooks';
 
 // Import generated types
 import type { TileModel } from '@/types/generated/models/tile-model';
@@ -30,22 +33,10 @@ import type { HexPosition } from '@/types/generated/models/hex-position';
 import type { BuildingKey } from '@/types/generated/models/building-key';
 import type { RoadKey } from '@/types/generated/models/road-key';
 import type { Entitlement } from '@/types/generated/models/entitlement';
-import type { RobberModel } from '@/types/generated/models/robber-model';
 
-/**
- * Minimal game data required for board rendering.
- * Compatible with both TestGameData and full GameModel.
- */
-export interface BoardGameData {
-  tiles: TileModel[];
-  harbors: HarborModel[];
-  buildings?: BuildingModel[];
-  roads?: RoadModel[];
-  /** Current player's unspent entitlements (for determining buildable spots) */
-  currentPlayerEntitlements?: Entitlement[];
-  /** Robber position and state */
-  robber?: RobberModel;
-}
+// BoardGameData and BoardPlayer types are now in lib/hooks/useBoardData.ts
+// Re-export for backwards compatibility with any external consumers
+export type { BoardGameData, BoardPlayer } from '@/lib/hooks';
 
 /** Zoom configuration */
 const ZOOM_CONFIG = {
@@ -55,19 +46,8 @@ const ZOOM_CONFIG = {
   defaultSize: 50,
 };
 
-/** Player colors for buildings */
-export interface PlayerColors {
-  primary: string;
-  secondary: string;
-  foreground: string;
-}
-
-/** Player data for building rendering */
-export interface BoardPlayer {
-  id: string;
-  name: string;
-  colors: PlayerColors;
-}
+// PlayerColors and BoardPlayer are now imported from lib/hooks/useBoardData.ts
+import type { PlayerColors } from '@/types/player-profile';
 
 /** All 6 vertex positions on a hex (excluding 'None') */
 const ALL_POSITIONS: GeometryHexPosition[] = ['Right', 'BottomRight', 'BottomLeft', 'Left', 'TopLeft', 'TopRight'];
@@ -76,11 +56,12 @@ const ALL_POSITIONS: GeometryHexPosition[] = ['Right', 'BottomRight', 'BottomLef
 const ALL_SIDES: GeometryHexSide[] = ['Top', 'TopRight', 'BottomRight', 'Bottom', 'BottomLeft', 'TopLeft'];
 
 /**
- * Props for GameBoard component
+ * Props for GameBoard component.
+ *
+ * GameBoard uses internal Zustand hooks for game data (tiles, buildings, roads, etc.)
+ * and only accepts callbacks and configuration as props.
  */
 export interface GameBoardProps {
-  /** Game data containing tiles, harbors, buildings, roads */
-  gameModel: BoardGameData | null;
   /** Initial hex size (circumradius) - default 50. Controlled via mouse wheel after mount. */
   hexSize?: number;
   /** Gap between hexes - default 2 */
@@ -91,18 +72,10 @@ export interface GameBoardProps {
   onTileRightClick?: (tile: TileModel, event: React.MouseEvent) => void;
   /** Set of highlighted tile keys (for dice roll highlighting) */
   highlightedTiles?: Set<string>;
-  /** Players for building colors (click to assign) */
-  players?: BoardPlayer[];
-  /** Currently selected player ID (used when clicking buildings) */
-  selectedPlayerId?: string;
   /** Callback when a buildable building spot is clicked */
   onBuildingClick?: (buildingKey: BuildingKey) => void;
   /** Callback when a buildable road is clicked */
   onRoadClick?: (roadKey: RoadKey) => void;
-  /** Last rolled number (2-12). Tiles not matching this number are dimmed. */
-  rolledNumber?: number | null;
-  /** Show numbered build indexes on possible settlements (false during allocation phase) */
-  showSettlementIndexes?: boolean;
 }
 
 /**
@@ -215,8 +188,26 @@ function HarborHexContent({ harbor, ownerColors }: HarborHexContentProps) {
   // Generate unique gradient ID for this harbor's owner
   const ownerGradientId = ownerColors ? `harbor-owner-${side}` : null;
 
+  // Determine background style
+  const backgroundStyle: React.CSSProperties = {
+    clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)', // Safari support
+  };
+
+  if (ownerColors) {
+    // Owned: Fully opaque player gradient
+    const start = hexToRgba(ownerColors.primary, 1.0);
+    const end = hexToRgba(ownerColors.secondary, 1.0);
+    backgroundStyle.background = `linear-gradient(135deg, ${start}, ${end})`;
+  } else {
+    // Unowned: Frosted dark background (similar to panels)
+    // Decreased opacity to 0.3 just to be sure blur is visible if any
+    backgroundStyle.backgroundColor = 'rgba(30, 41, 59, 0.3)'; // slate-800 at 0.3
+  }
+
   return (
-    <div className="absolute inset-0" data-drag-through>
+    <div className="absolute inset-0" style={backgroundStyle} data-drag-through>
       {/* SVG for triangular dock, water triangle, and harbor circle */}
       <svg
         className="absolute inset-0 w-full h-full"
@@ -224,26 +215,6 @@ function HarborHexContent({ harbor, ownerColors }: HarborHexContentProps) {
         preserveAspectRatio="none"
       >
         <defs>
-          {/* Animation for harbor ownership background */}
-          <style>
-            {`
-              @keyframes harbor-owned {
-                from {
-                  transform: scale(0.3);
-                  opacity: 0;
-                }
-                to {
-                  transform: scale(1);
-                  opacity: 0.7;
-                }
-              }
-              .harbor-owned-bg {
-                animation: harbor-owned 0.6s ease-out forwards;
-                transform-origin: 50px 43.3px;
-                transform-box: fill-box;
-              }
-            `}
-          </style>
           {/* Wood grain gradient for dock */}
           <linearGradient id={`dock-wood-${side}`} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={DOCK_COLORS.highlight} />
@@ -268,34 +239,21 @@ function HarborHexContent({ harbor, ownerColors }: HarborHexContentProps) {
           </clipPath>
         </defs>
 
-        {/* Owner background when harbor is owned - full hex fill with player gradient */}
-        {ownerColors && ownerGradientId && (
-          <polygon
-            className="harbor-owned-bg"
-            points={hexPoints}
-            fill={`url(#${ownerGradientId})`}
-          />
-        )}
-
-        {/* Water triangle on opposite side (render first, behind dock) */}
-        <polygon
-          points={waterTrianglePoints}
-          fill={`url(#dock-water-${side})`}
-          stroke={WATER_COLORS.stroke}
+        {/* Connection lines to tile vertices (subtle 2px lines) */}
+        <line
+          x1={cx} y1={cy}
+          x2={dockVertices[0][0]} y2={dockVertices[0][1]}
+          stroke="rgba(255, 255, 255, 0.4)"
           strokeWidth="2"
-          strokeLinejoin="round"
+        />
+        <line
+          x1={cx} y1={cy}
+          x2={dockVertices[1][0]} y2={dockVertices[1][1]}
+          stroke="rgba(255, 255, 255, 0.4)"
+          strokeWidth="2"
         />
 
-        {/* Dock triangle with wood fill (toward tile connection) */}
-        <polygon
-          points={dockTrianglePoints}
-          fill={`url(#dock-wood-${side})`}
-          stroke={DOCK_COLORS.stroke}
-          strokeWidth="2.5"
-          strokeLinejoin="round"
-        />
-
-        {/* Harbor circle background - parchment/sail color */}
+        {/* Dock circle with wood fill (toward tile connection) */}
         <circle
           cx={cx}
           cy={cy}
@@ -332,26 +290,30 @@ function HarborHexContent({ harbor, ownerColors }: HarborHexContentProps) {
  * - Scrollable viewport: Board can be larger than container, use scroll to pan
  */
 export function GameBoard({
-  gameModel,
   hexSize: initialHexSize = ZOOM_CONFIG.defaultSize,
   gap = 1,
   onTileClick,
   onTileRightClick,
   highlightedTiles,
-  players = [],
-  selectedPlayerId,
   onBuildingClick,
   onRoadClick,
-  rolledNumber,
-  showSettlementIndexes = false,
 }: GameBoardProps): React.ReactElement {
-  // Handle null gameModel
-  const tiles = gameModel?.tiles ?? [];
-  const harbors = gameModel?.harbors ?? [];
-  const buildings = gameModel?.buildings ?? [];
-  const roads = gameModel?.roads ?? [];
-  const currentPlayerEntitlements = gameModel?.currentPlayerEntitlements ?? [];
-  const robber = gameModel?.robber;
+  // Use internal hooks for game data (server-driven UI pattern)
+  const boardData = useBoardData();
+  const players = useBoardPlayers();
+  const selectedPlayerId = useSelectedPlayerId();
+  const rolledNumber = useRolledNumber();
+  const isAllocationPhase = useIsAllocationPhase();
+
+  // Destructure board data from hook
+  const { tiles, harbors, buildings, roads, currentPlayerEntitlements, robber } = boardData;
+
+  // Derive showSettlementIndexes from server state (not from props)
+  // Show indexes when NOT in allocation phase and player has Settlement entitlement
+  const showSettlementIndexes = useMemo(() => {
+    if (isAllocationPhase) return false;
+    return currentPlayerEntitlements.includes('Settlement' as Entitlement);
+  }, [isAllocationPhase, currentPlayerEntitlements]);
 
   // Robber animation state - tracks the position to render (for CSS transition)
   const [animatedRobberCoords, setAnimatedRobberCoords] = useState<{ q: number; r: number } | null>(null);
@@ -602,8 +564,8 @@ export function GameBoard({
         const coord = cubicCoord(q, r);
         const key = coordKeyString(coord);
 
-        // Skip if this coord is a tile or harbor
-        if (tileCoordSet.has(key) || harborCoordSet.has(key)) continue;
+        // Skip if this coord is a tile (harbors sit on top of water)
+        if (tileCoordSet.has(key)) continue;
 
         items.push({
           id: `water-${key}`,
@@ -821,7 +783,6 @@ export function GameBoard({
           }
 
           const pixelPos = getEdgeMidpoint(coord, side, hSize, origin);
-          const owner = ownerId ? players.find((p) => p.id === ownerId) : null;
 
           // Build the road key for click handler
           const roadKey: RoadKey = {
@@ -848,8 +809,8 @@ export function GameBoard({
               <Road
                 roadState={roadState}
                 side={side}
-                ownerColors={owner?.colors}
-                currentPlayerColors={currentPlayer?.colors}
+                ownerId={ownerId}
+                currentPlayerId={selectedPlayerId}
                 hexSize={hSize}
                 buildIndex={roadModel.buildIndex}
                 onClick={roadState === 'Buildable' && onRoadClick ? () => onRoadClick(roadKey) : undefined}
@@ -902,8 +863,8 @@ export function GameBoard({
               <Building
                 buildingState={buildingState}
                 visualState={isCityUpgradeable ? 'Highlighted' : 'Normal'}
-                ownerColors={owner?.colors}
-                currentPlayerColors={currentPlayer?.colors}
+                ownerId={ownerId}
+                currentPlayerId={selectedPlayerId}
                 size={ownedBuildingSize}
                 buildIndex={cityUpgradeIndex}
                 onClick={isCityUpgradeable && onBuildingClick ? () => onBuildingClick(buildingKey) : undefined}
@@ -965,7 +926,7 @@ export function GameBoard({
                 buildingState="PossibleSettlement"
                 visualState={visualState}
                 stars={stars}
-                currentPlayerColors={currentPlayer?.colors}
+                currentPlayerId={selectedPlayerId}
                 size={buildableBuildingSize}
                 buildIndex={settlementBuildIndex}
                 onClick={onBuildingClick ? () => onBuildingClick(buildingKey) : undefined}
@@ -1059,7 +1020,8 @@ export function GameBoard({
   console.log('[GameBoard] render, tiles:', tiles.length, 'containerSize:', containerSize);
 
   // Loading state - show message but keep container mounted for ref measurement
-  const isLoading = !gameModel || tiles.length === 0;
+  // With hooks, data comes from store - check if tiles are loaded
+  const isLoading = tiles.length === 0;
 
   return (
     <div
@@ -1074,9 +1036,7 @@ export function GameBoard({
     >
       {isLoading ? (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-          <span className="text-gray-400">
-            {!gameModel ? 'Loading game board...' : 'Waiting for tiles...'}
-          </span>
+          <span className="text-gray-400">Loading game board...</span>
         </div>
       ) : containerSize ? (
         <div

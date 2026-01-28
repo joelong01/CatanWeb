@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { PlayerColors } from '../board/GameBoard';
+import type { PlayerColors } from '@/types/player-profile';
+import { usePlayerColors } from '@/lib/stores/gameStoreHooks';
 
 /**
  * Road state (matches C# RoadState enum)
@@ -21,10 +22,10 @@ export interface RoadProps {
   roadState: RoadState;
   /** Hex side this road is on (determines rotation) */
   side: HexSide;
-  /** Player colors for owned roads */
-  ownerColors?: PlayerColors | null;
-  /** Current player colors (used for Buildable state) */
-  currentPlayerColors?: PlayerColors | null;
+  /** Owner player ID - component looks up colors via usePlayerColors */
+  ownerId?: string | null;
+  /** Current turn player ID - used for Buildable state colors */
+  currentPlayerId?: string | null;
   /** Hex size (circumradius) - road dimensions scale proportionally */
   hexSize: number;
   /** Build index for numbered display (0 = no number, >0 = show number) */
@@ -107,14 +108,18 @@ function calculateRoadPolygon(hexSize: number): string {
 export const Road = React.memo(function Road({
   roadState,
   side,
-  ownerColors,
-  currentPlayerColors,
+  ownerId,
+  currentPlayerId,
   hexSize,
   buildIndex = 0,
   onClick,
   className = '',
 }: RoadProps) {
   const [isHovered, setIsHovered] = useState(false);
+
+  // Look up player colors from store
+  const ownerColors = usePlayerColors(ownerId);
+  const currentPlayerColors = usePlayerColors(currentPlayerId);
 
   // Unowned roads render nothing
   if (roadState === 'Unowned') {

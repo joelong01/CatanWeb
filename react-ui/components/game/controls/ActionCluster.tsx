@@ -146,11 +146,10 @@ const ActionHexContent = memo(function ActionHexContent({
       return (
         <FontAwesomeIcon
           icon={faIcon}
-          className={sizeClass}
+          className={`${sizeClass} transition-transform duration-150`}
           style={{
             color,
             filter: size === 'large' ? 'drop-shadow(1px 1px 2px rgba(0,0,0,0.5))' : undefined,
-            transition: 'transform 150ms',
             transform: pressed ? 'scale(0.85)' : 'scale(1)',
           }}
         />
@@ -159,13 +158,11 @@ const ActionHexContent = memo(function ActionHexContent({
 
     return (
       <span
-        className={`${useCatanFont ? 'font-catan' : ''} ${sizeClass} ${bold ? 'font-bold' : ''}`}
+        className={`${useCatanFont ? 'font-catan' : ''} ${sizeClass} ${bold ? 'font-bold' : ''} inline-block transition-transform duration-150`}
         style={{
           color,
           textShadow: size === 'large' ? '1px 1px 2px rgba(0,0,0,0.5)' : undefined,
-          transition: 'transform 150ms',
           transform: pressed ? 'scale(0.85)' : 'scale(1)',
-          display: 'inline-block',
         }}
       >
         {glyph}
@@ -253,12 +250,7 @@ const ActionHexContent = memo(function ActionHexContent({
         >
           {/* Card back with image */}
           <div
-            className="absolute inset-0 hex-clip-flat flex flex-col items-center justify-center"
-            style={{
-              backgroundImage: 'url(/themes/base/resources/back.png)',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
+            className="absolute inset-0 hex-clip-flat flex flex-col items-center justify-center bg-[url('/themes/base/resources/back.png')] bg-cover bg-center"
           >
             {/* Icon badge centered */}
             <div

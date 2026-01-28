@@ -17,9 +17,14 @@ import { MainLayout } from '@/components/layout';
 import { HexGrid, HexGridItem } from '@/components/hex-grid';
 import { HexCoordinate } from '@/components/hex-grid/hex-geometry';
 import { FloatingPanel } from '@/components/game/panels/FloatingPanel';
-import { GameBoard, type BoardGameData } from '@/components/game/board/GameBoard';
+import { GameResourcesHeader } from '@/components/game/panels/GameResourcesHeader';
+import { GameBoard } from '@/components/game/board/GameBoard';
+import type { GameModel } from '@/types/generated/models/game-model';
+import type { ResourcesModel } from '@/types/generated/models/resources-model';
 import { NumberToken } from '@/components/game/tiles/NumberToken';
-import { EXPANSION_GAME_DATA, generateRoadsForTile } from '@/lib/test-data/expansion-game';
+import { EXPANSION_GAME_DATA, generateTestBuildingsAndRoads } from '@/lib/test-data/expansion-game';
+import { gameActions } from '@/lib/stores/gameStoreHooks';
+import type { PlayerProfile } from '@/types/player-profile';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRotateLeft, faRotateRight, faArrowsRotate, faCheck, faScaleBalanced, faReceipt } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
@@ -258,6 +263,26 @@ const MOCK_PLAYERS: MockPlayer[] = [
   },
 ];
 
+/** Mock game resources for testing */
+const MOCK_RESOURCES: ResourcesModel = {
+  wheat: 12,
+  wood: 8,
+  sheep: 15,
+  brick: 6,
+  ore: 9,
+  goldMine: 2,
+  paper: 0,
+  cloth: 0,
+  coin: 0,
+  politics: 0,
+  trade: 0,
+  science: 0,
+  victoryPoint: 0,
+  anyDevCard: 0,
+  robber: 3,
+  count: 55,
+};
+
 // ============================================================================
 // Mock Game Tiles (from Expansion.catan_test for resource counting)
 // ============================================================================
@@ -373,7 +398,7 @@ interface RollHexContentProps {
 }
 
 /** Get probability stars for a roll number (7 = no stars) */
-function getRollStars(number: number): string {
+function _getRollStars(number: number): string {
   switch (number) {
     case 2:
     case 12:
@@ -794,7 +819,7 @@ interface DicePanelContentProps {
   colors?: PlayerColors & { cssGradient: string };
 }
 
-function DicePanelContent({
+function _DicePanelContent({
   die1,
   die2,
   onSelectDie1,
@@ -1508,7 +1533,7 @@ function MeasurementCluster({ tiles, colors }: MeasurementClusterProps) {
   const [selectedStars, setSelectedStars] = useState<number | null>(null);
 
   const resourceCounts = calculateResourceCounts(tiles);
-  const variance = calculateVariance(resourceCounts);
+  const _variance = calculateVariance(resourceCounts);
 
   // Toggle resource selection (multi-select up to MAX_RESOURCE_SELECTION)
   const handleResourceClick = (key: string) => {
@@ -1975,16 +2000,58 @@ export default function ControlsTestPage(): React.ReactElement {
 
   const selectedPlayer = MOCK_PLAYERS.find(p => p.id === selectedPlayerId) || MOCK_PLAYERS[0];
 
-  // Create game data with roads for the center tile owned by the selected player
-  // Cast test data to BoardGameData for compatibility with GameBoard component
-  const gameModelWithRoads = useMemo((): BoardGameData => ({
-    tiles: EXPANSION_GAME_DATA.tiles as unknown as BoardGameData['tiles'],
-    harbors: EXPANSION_GAME_DATA.harbors as unknown as BoardGameData['harbors'],
-    buildings: EXPANSION_GAME_DATA.buildings as unknown as BoardGameData['buildings'],
-    roads: generateRoadsForTile(0, 0, selectedPlayerId) as unknown as BoardGameData['roads'],
-  }), [selectedPlayerId]);
+  // Generate buildings and roads for all players to test multi-player rendering
+  const playerIds = MOCK_PLAYERS.map(p => p.id);
+  const testData = useMemo(() => generateTestBuildingsAndRoads(playerIds), []);
 
-  const handleSendRoll = () => {
+  // Robber on desert tile with first player's colors
+  const testRobber = useMemo(() => ({
+    coordinates: { q: -1, r: 2, s: -1 }, // Desert tile
+    previousCoordinates: { q: -1, r: 2, s: -1 },
+    fakeOutCoordinates: { q: -1, r: 2, s: -1 },
+    movedBy: MOCK_PLAYERS[0].id, // First player's colors
+    targeted: '',
+    resourcesStolen: 0,
+  }), []);
+
+  // Populate game store with player profiles and game model
+  // GameBoard now uses internal hooks, so we must populate the store
+  useEffect(() => {
+    // Set player profiles
+    const profiles: PlayerProfile[] = MOCK_PLAYERS.map(p => ({
+      id: p.id,
+      name: p.name,
+      colors: p.colors,
+      imageUri: `http://localhost:8080/api/images/${p.imageFileName}`,
+    }));
+    gameActions.setPlayerProfiles(profiles);
+
+    // Set current player ID (for building/road interactions)
+    gameActions.setCurrentPlayerId(selectedPlayerId);
+
+    // Create mock GameModel with test data
+    // Use 'unknown' casts for test data types that don't perfectly match generated types
+    const mockGameModel: Partial<GameModel> = {
+      tiles: EXPANSION_GAME_DATA.tiles as unknown as GameModel['tiles'],
+      harbors: EXPANSION_GAME_DATA.harbors as unknown as GameModel['harbors'],
+      buildings: testData.buildings as unknown as GameModel['buildings'],
+      roads: testData.roads as unknown as GameModel['roads'],
+      robber: testRobber as unknown as GameModel['robber'],
+      players: MOCK_PLAYERS.map(p => ({
+        id: p.id,
+        name: p.name,
+        score: 0,
+        unspentEntitlements: [],
+        spentThisTurn: [],
+        spentThisGame: [],
+      })) as unknown as GameModel['players'],
+      currentPlayerId: selectedPlayerId,
+      gameState: 'WaitingForNext' as GameModel['gameState'],
+    };
+    gameActions.setGameModel(mockGameModel as GameModel);
+  }, [testData, testRobber, selectedPlayerId]);
+
+  const _handleSendRoll = () => {
     if (die1 !== null && die2 !== null) {
       console.log(`Sending roll: ${die1} + ${die2} = ${die1 + die2}`);
       // Reset dice after sending
@@ -2051,24 +2118,29 @@ export default function ControlsTestPage(): React.ReactElement {
           />
         </FloatingPanel>
 
+        {/* Resources Panel - Total game resources */}
+        <FloatingPanel
+          panelId="resources"
+          title="Resources"
+          icon="📦"
+          className="bg-white/5 border-white/10"
+        >
+          <GameResourcesHeader resources={MOCK_RESOURCES} />
+        </FloatingPanel>
+
         {/* Game Board Panel - renders expansion board from test data */}
         <FloatingPanel
           panelId="board"
           title="Game Board (click buildings to assign)"
-          className="bg-white/5 border-white/10"
+          className="border-white/10"
+          style={{ background: selectedPlayer.colors.cssGradient }}
           minWidth={400}
           minHeight={350}
         >
+          {/* GameBoard uses internal hooks for data - store is populated in useEffect */}
           <GameBoard
-            gameModel={gameModelWithRoads}
             hexSize={50}
             gap={1}
-            players={MOCK_PLAYERS.map((p) => ({
-              id: p.id,
-              name: p.name,
-              colors: p.colors,
-            }))}
-            selectedPlayerId={selectedPlayerId}
           />
         </FloatingPanel>
 

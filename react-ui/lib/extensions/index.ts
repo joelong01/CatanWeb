@@ -61,6 +61,7 @@ export {
 export {
   type GamePhase,
   type AdjacentRoadsResult,
+  type RollStats,
   currentPlayer,
   isAllocationPhase,
   gamePhase,
@@ -81,6 +82,7 @@ export {
   ownedAdjacentRoadsNotCounted,
   purchaseModel,
   resourcesForBuilding,
+  calculateRollStats,
 } from './gameModelExtensions';
 
 // Resources extensions

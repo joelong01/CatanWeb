@@ -138,6 +138,96 @@ export function generateRoadsForTile(
   }));
 }
 
+/**
+ * Generate a single road on a specific tile side
+ */
+export function generateRoad(
+  q: number,
+  r: number,
+  side: HexSide,
+  ownerId: string | null,
+  roadState: RoadState = 'Road'
+): RoadModel {
+  const s = -q - r;
+  return {
+    roadKey: { tileKey: { q, r, s }, hexSide: side },
+    roadState,
+    ownerId,
+    buildIndex: 0,
+  };
+}
+
+/**
+ * Generate a building at a specific position
+ */
+export function generateBuilding(
+  q: number,
+  r: number,
+  position: HexPosition,
+  ownerId: string | null,
+  buildingState: BuildingState = 'Settlement'
+): BuildingModel {
+  const s = -q - r;
+  return {
+    buildingKey: { hexCoordinates: { q, r, s }, position },
+    buildingState,
+    wall: false,
+    metropolis: buildingState === 'Metropolis',
+    ownerId,
+    hasRobber: false,
+  };
+}
+
+/**
+ * Generate test data with buildings and roads for multiple players
+ * Used to verify rendering with different player colors
+ */
+export function generateTestBuildingsAndRoads(playerIds: string[]): {
+  buildings: BuildingModel[];
+  roads: RoadModel[];
+} {
+  const buildings: BuildingModel[] = [];
+  const roads: RoadModel[] = [];
+
+  // Player 1 (red): Settlement at (-1,0,1) TopRight, City at (0,0,0) Right
+  // Roads around tile (-1,0,1)
+  if (playerIds[0]) {
+    buildings.push(generateBuilding(-1, 0, 'TopRight', playerIds[0], 'Settlement'));
+    buildings.push(generateBuilding(0, 0, 'Right', playerIds[0], 'City'));
+    roads.push(generateRoad(-1, 0, 'Top', playerIds[0]));
+    roads.push(generateRoad(-1, 0, 'TopRight', playerIds[0]));
+  }
+
+  // Player 2 (blue): Settlement at (1,-1,0) BottomLeft, City at (1,0,-1) TopLeft
+  // Roads around tile (1,-1,0)
+  if (playerIds[1]) {
+    buildings.push(generateBuilding(1, -1, 'BottomLeft', playerIds[1], 'Settlement'));
+    buildings.push(generateBuilding(1, 0, 'TopLeft', playerIds[1], 'City'));
+    roads.push(generateRoad(1, -1, 'Bottom', playerIds[1]));
+    roads.push(generateRoad(1, -1, 'BottomLeft', playerIds[1]));
+  }
+
+  // Player 3 (green): Settlement at (0,1,-1) Left, City at (-1,1,0) Right
+  // Roads around tile (0,1,-1)
+  if (playerIds[2]) {
+    buildings.push(generateBuilding(0, 1, 'Left', playerIds[2], 'Settlement'));
+    buildings.push(generateBuilding(-1, 1, 'Right', playerIds[2], 'City'));
+    roads.push(generateRoad(0, 1, 'TopLeft', playerIds[2]));
+    roads.push(generateRoad(0, 1, 'BottomLeft', playerIds[2]));
+  }
+
+  // Player 4 (orange): Settlement at (0,-1,1) BottomRight, City at (1,-1,0) TopRight
+  // Roads around tile (0,-1,1)
+  if (playerIds[3]) {
+    buildings.push(generateBuilding(0, -1, 'BottomRight', playerIds[3], 'Settlement'));
+    buildings.push(generateBuilding(1, -1, 'TopRight', playerIds[3], 'City'));
+    roads.push(generateRoad(0, -1, 'BottomRight', playerIds[3]));
+    roads.push(generateRoad(0, -1, 'Bottom', playerIds[3]));
+  }
+
+  return { buildings, roads };
+}
+
 export const EXPANSION_GAME_DATA: TestGameData = {
   gameType: 'Expansion',
   gameName: 'New Expansion Game',
