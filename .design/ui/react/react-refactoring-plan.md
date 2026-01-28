@@ -661,96 +661,238 @@ After updating each component:
 
 ## Execution Plan
 
-### Phase 1: Foundation (Extensions Library)
+Each work unit follows the pattern: **implement → write tests → pass tests → commit**.
 
-#### Step 1.1: Create extension files structure
+**Test Data:** Use `react-ui/lib/test-data/expansion-game.ts` which provides a full GameModel with tiles, buildings, roads, and harbors.
 
-- [ ] Create `react-ui/lib/extensions/` directory
-- [ ] Create `index.ts` with placeholder exports
-- [ ] Create individual extension files
+---
 
-#### Step 1.2: Port pure functions (with tests)
+### Phase 1: Extensions Library
 
-Each extension file MUST have a corresponding test file. Do NOT mark a function complete until its tests pass.
+Each extension file is a separate commit. This allows incremental progress and easy rollback.
 
-- [ ] `playerExtensions.ts` + `__tests__/playerExtensions.test.ts`
-  - Port `playerFromId`
-  - Tests: empty array, found, not found
-- [ ] `tileExtensions.ts` + `__tests__/tileExtensions.test.ts`
-  - Port tile utilities (star calc, filters, adjacency)
-  - Tests: star calculation accuracy, filter edge cases, adjacency correctness
-- [ ] `buildingExtensions.ts` + `__tests__/buildingExtensions.test.ts`
-  - Port building utilities (aliases, adjacency, find)
-  - Tests: alias handling (CRITICAL), find with/without aliases, adjacency
-- [ ] `roadExtensions.ts` + `__tests__/roadExtensions.test.ts`
-  - Port road utilities (aliases, adjacency, find)
-  - Tests: alias handling (CRITICAL), find with/without aliases, adjacency
-- [ ] `gameModelExtensions.ts` + `__tests__/gameModelExtensions.test.ts`
-  - Port high-level game queries
-  - Tests: currentPlayer, phase detection, cross-model queries
+#### Work Unit 1.1: playerExtensions
 
-#### Step 1.3: Create store hooks (with tests)
+**Implement:**
 
-- [ ] Create `gameStoreHooks.ts` + `__tests__/gameStoreHooks.test.ts`
-- [ ] Implement `usePlayerColors`, `usePlayerGradient`, `usePlayerForeground`
-  - Tests: returns default colors for null/missing player, returns correct colors for valid player
-- [ ] Implement `useCurrentPlayer`, `useIsMyTurn`, `useGamePhase`
-  - Tests: correct values from mock store state
+```text
+react-ui/lib/extensions/
+├── index.ts                    // Re-exports (start here)
+└── playerExtensions.ts         // playerFromId
+```
 
-#### Step 1.4: Verify all tests pass
+**Test:** `__tests__/playerExtensions.test.ts`
 
-- [ ] All extension functions have corresponding tests
-- [ ] All alias handling is tested (building and road) - CRITICAL for correctness
-- [ ] `npm run test` passes with no failures
-- [ ] No untested exported functions (enforce via code review)
+- `playerFromId` returns undefined for empty array
+- `playerFromId` returns player when found
+- `playerFromId` returns undefined when not found
 
-### Phase 2: Analysis (Find Redundant Code)
+**Verify:** `cd react-ui && npm run test -- playerExtensions`
+
+**Commit:** `feat(extensions): add playerExtensions with playerFromId`
+
+---
+
+#### Work Unit 1.2: tileExtensions
+
+**Implement:** `tileExtensions.ts`
+
+- `tileFromCoords(tiles, coords)` - find tile by coordinates
+- `totalStars(tiles)` - sum of pip values (use `NUMBER_PIPS` from test-data)
+- `tilesWithNumber(tiles, n)` - filter by roll number
+- `tilesWithResource(tiles, r)` - filter by resource type
+- `tilesWithSixOrEight(tiles)` - high-probability tiles
+- `adjacentTiles(tiles, tile)` - 6 neighbors
+
+**Test:** `__tests__/tileExtensions.test.ts`
+
+- Use `EXPANSION_GAME_DATA.tiles` for test data
+- Star calculation: tile with number 6 = 5 pips, number 2 = 1 pip
+- Filter tests: verify correct tile counts
+
+**Verify:** `cd react-ui && npm run test -- tileExtensions`
+
+**Commit:** `feat(extensions): add tileExtensions with star calc and filters`
+
+---
+
+#### Work Unit 1.3: buildingExtensions (CRITICAL - aliases)
+
+**Implement:** `buildingExtensions.ts`
+
+- `buildingKeyAliases(key)` - returns 2 alias positions for each vertex
+- `buildingKeysEqual(a, b)` - compare keys accounting for aliases
+- `findBuilding(buildings, key)` - find with alias handling
+- `adjacentBuildings(buildings, key)` - 3 adjacent vertices
+- `buildingsInTile(buildings, coords)` - all 6 vertices of a tile
+- `ownedBuildings(buildings, coords)` - owned buildings in tile
+
+**Test:** `__tests__/buildingExtensions.test.ts`
+
+- **CRITICAL:** Test alias handling thoroughly
+  - TopRight at (0,0,0) = BottomRight at North neighbor = Left at NorthEast neighbor
+  - Verify `findBuilding` finds via any alias
+- Empty array returns undefined
+- Adjacency returns correct 3 neighbors
+
+**Verify:** `cd react-ui && npm run test -- buildingExtensions`
+
+**Commit:** `feat(extensions): add buildingExtensions with alias handling`
+
+---
+
+#### Work Unit 1.4: roadExtensions (CRITICAL - aliases)
+
+**Implement:** `roadExtensions.ts`
+
+- `roadKeyAliases(key)` - returns 1 alias position for each edge
+- `roadKeysEqual(a, b)` - compare keys accounting for aliases
+- `findRoad(roads, key)` - find with alias handling
+- `adjacentRoads(roads, key)` - 4 adjacent edges
+
+**Test:** `__tests__/roadExtensions.test.ts`
+
+- **CRITICAL:** Test alias handling
+  - TopRight at (0,0,0) = BottomLeft at NorthEast neighbor
+- Use `EXPANSION_GAME_DATA.roads` or `generateRoadsForTile()` for test data
+
+**Verify:** `cd react-ui && npm run test -- roadExtensions`
+
+**Commit:** `feat(extensions): add roadExtensions with alias handling`
+
+---
+
+#### Work Unit 1.5: gameModelExtensions
+
+**Implement:** `gameModelExtensions.ts`
+
+- `currentPlayer(game)` - get current player model
+- `isAllocationPhase(game)` - check game state
+- `gamePhase(game)` - get GamePhase enum
+- `roadsAdjacentToBuilding(game, buildingKey)` - roads touching a building
+- `buildingsAdjacentToRoad(game, roadKey)` - buildings at road endpoints
+- `tilesForBuilding(game, buildingKey)` - up to 3 tiles touching a building
+- `buildingBetweenRoads(game, r1, r2)` - building at road junction
+
+**Test:** `__tests__/gameModelExtensions.test.ts`
+
+- Create mock GameModel with players, tiles, buildings, roads
+- Test cross-model queries
+
+**Verify:** `cd react-ui && npm run test -- gameModelExtensions`
+
+**Commit:** `feat(extensions): add gameModelExtensions for cross-model queries`
+
+---
+
+#### Work Unit 1.6: gameStoreHooks
+
+**Implement:** `react-ui/lib/stores/gameStoreHooks.ts`
+
+- `usePlayerColors(playerId)` - with custom `colorsEqual` equality
+- `usePlayerGradient(playerId)` - CSS gradient string
+- `usePlayerForeground(playerId)` - foreground color
+- `useCurrentPlayer()` - current player from store
+- `useIsMyTurn()` - check if local player's turn
+- `useGamePhase()` - current game phase
+
+**Test:** `__tests__/gameStoreHooks.test.ts`
+
+- Mock Zustand store with test data
+- Verify hooks return correct values
+- Verify null/missing player returns NEUTRAL_COLORS
+
+**Verify:** `cd react-ui && npm run test -- gameStoreHooks`
+
+**Commit:** `feat(stores): add gameStoreHooks with player color selectors`
+
+---
+
+### Phase 2: Code Audit (No Commits)
+
+This phase identifies code to refactor. Document findings in this file or separate notes.
 
 #### Step 2.1: Audit game page
 
-- [ ] Document all inline logic that should use extensions
-- [ ] Document all entitlement checks
-- [ ] Document all star calculations
+- [ ] Document inline logic that should use extensions
+- [ ] Document entitlement checks
+- [ ] Document star calculations
 
 #### Step 2.2: Audit GameBoard
 
-- [ ] Document building position calculations
-- [ ] Document road position calculations
+- [ ] Document building/road position calculations
 - [ ] Document index map constructions
 
 #### Step 2.3: Audit components
 
-- [ ] List all components passing colors as props
-- [ ] List all components with inline player lookups
-- [ ] List all components duplicating game logic
+- [ ] List components passing colors as props
+- [ ] List components with inline player lookups
 
-#### Step 2.4: Create refactoring tickets
-
-- [ ] One ticket per file/component to update
-- [ ] Prioritize by impact and risk
+---
 
 ### Phase 3: Refactor Client Code
 
-#### Step 3.1: Replace inline code with extensions
+#### Work Unit 3.1: Update Building.tsx props
 
-- [ ] Replace star calculations with `totalStars()` / `building.stars`
-- [ ] Replace player lookups with `playerFromId()`
-- [ ] Replace tile lookups with `tileFromCoords()`
-- [ ] Replace building lookups with `findBuilding()`
+**Implement:**
 
-#### Step 3.2: Update visual component props (see Part 3)
+- Change `ownerColors?: PlayerColors` → `ownerId: string | null`
+- Change `currentPlayerColors?: PlayerColors` → `currentPlayerId: string`
+- Add `usePlayerColors(ownerId)` and `usePlayerColors(currentPlayerId)` inside component
 
-- [ ] Building: Change props per Section 3.6 migration table
-- [ ] Road: Change props per Section 3.6 migration table
-- [ ] Harbor: Define and implement props per Section 3.4
-- [ ] GameBoard: Update to pass IDs instead of colors
-- [ ] Create `usePlayerColors` hook in `gameStoreHooks.ts`
+**Test:** Manual - verify building renders correctly in game
 
-#### Step 3.3: Remove redundant entitlement checks
+**Verify:** `cd react-ui && npm run build`
 
-- [ ] Remove `showSettlementIndexes` computation
-- [ ] Trust `buildingState === 'PossibleSettlement'` from server
-- [ ] Document remaining legitimate entitlement uses
+**Commit:** `refactor(Building): use playerId props with color selectors`
+
+---
+
+#### Work Unit 3.2: Update Road.tsx props
+
+**Implement:**
+
+- Change `ownerColors?: PlayerColors` → `ownerId: string | null`
+- Change `currentPlayerColors?: PlayerColors` → `currentPlayerId: string`
+- Add `usePlayerColors` hook calls inside component
+
+**Test:** Manual - verify road renders correctly in game
+
+**Verify:** `cd react-ui && npm run build`
+
+**Commit:** `refactor(Road): use playerId props with color selectors`
+
+---
+
+#### Work Unit 3.3: Update GameBoard.tsx
+
+**Implement:**
+
+- Pass `ownerId` and `currentPlayerId` to Building/Road instead of looking up colors
+- Replace inline star calculations with `totalStars()` or extension functions
+- Replace inline player lookups with `playerFromId()`
+
+**Test:** Manual - verify board renders correctly
+
+**Verify:** `cd react-ui && npm run build`
+
+**Commit:** `refactor(GameBoard): pass playerIds, use extensions for lookups`
+
+---
+
+#### Work Unit 3.4: Remove redundant entitlement checks
+
+**Implement:**
+
+- Remove `showSettlementIndexes` entitlement check
+- Derive from `buildings.some(b => b.buildingState === 'PossibleSettlement')`
+- Document any remaining legitimate entitlement uses
+
+**Test:** Manual - verify settlement indexes appear when they should
+
+**Verify:** `cd react-ui && npm run build`
+
+**Commit:** `refactor(game): trust server buildingState, remove redundant checks`
 
 ---
 

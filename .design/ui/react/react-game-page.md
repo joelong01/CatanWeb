@@ -3012,15 +3012,17 @@ Some UI state is correctly client-side (not from GameModel):
 
 ### Migration Path
 
-1. **Phase 1 (Immediate):** Document architecture in design doc (this section)
-2. **Phase 2 (Server):** Add `buildIndex` and `stars` to BuildingModel in C# and TypeScript types
-3. **Phase 3 (Server):** Populate these fields in GameStateMachine when marking buildable
-4. **Phase 4 (Client):** Remove client-side index/star computation, use server values
-5. **Phase 5 (Cleanup):** Remove entitlement checks that duplicate server logic
+> **Implementation Plan:** See [react-refactoring-plan.md](react-refactoring-plan.md) for detailed execution steps.
+
+1. **Phase 1:** Port C# extension methods to TypeScript (`lib/extensions/`)
+2. **Phase 2:** Create Zustand store hooks (`gameStoreHooks.ts`)
+3. **Phase 3:** Refactor component props (pass `playerId` instead of colors)
+4. **Phase 4:** Remove redundant entitlement checks, trust server state
+
+**Note:** `stars` and `buildIndex` for buildings remain **client-side permanently**. They are UI convenience values with no game semantic - the server is authoritative for `buildingState` and `roadState` only.
 
 ### Code References
 
-- **MarkBuildableBuildings:** [GameStateMachine.cs](Catan3.Shared/GameLogic/GameStateMachine.cs) lines 2129-2214
-- **MarkBuildableRoads:** [GameStateMachine.cs](Catan3.Shared/GameLogic/GameStateMachine.cs) lines 2059-2124
-- **RoadModel with buildIndex:** [RoadModel.cs](Catan3.Shared/Models/RoadModel.cs)
-- **BuildingModel (needs fields):** [BuildingModel.cs](Catan3.Shared/Models/BuildingModel.cs)
+- **MarkBuildableBuildings:** [GameStateMachine.cs:2129-2214](Catan3.Shared/GameLogic/GameStateMachine.cs) - Sets `BuildingState.PossibleSettlement`
+- **MarkBuildableRoads:** [GameStateMachine.cs:2059-2124](Catan3.Shared/GameLogic/GameStateMachine.cs) - Sets `RoadState.Buildable` and `buildIndex`
+- **Test Data:** [expansion-game.ts](react-ui/lib/test-data/expansion-game.ts) - GameModel for testing extensions
