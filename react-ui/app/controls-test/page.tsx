@@ -16,7 +16,7 @@ import { useState, useRef, useEffect, useMemo, ReactNode } from 'react';
 import { MainLayout } from '@/components/layout';
 import { HexGrid, HexGridItem } from '@/components/hex-grid';
 import { HexCoordinate } from '@/components/hex-grid/hex-geometry';
-import { FloatingPanel } from '@/components/game/panels/FloatingPanel';
+import { FloatingPanel, MinimizedBar } from '@/components/game/panels';
 import { GameResourcesHeader } from '@/components/game/panels/GameResourcesHeader';
 import { GameBoard } from '@/components/game/board/GameBoard';
 import type { GameModel } from '@/types/generated/models/game-model';
@@ -2122,7 +2122,6 @@ export default function ControlsTestPage(): React.ReactElement {
         <FloatingPanel
           panelId="resources"
           title="Resources"
-          icon="📦"
           className="bg-white/5 border-white/10"
         >
           <GameResourcesHeader resources={MOCK_RESOURCES} />
@@ -2144,8 +2143,11 @@ export default function ControlsTestPage(): React.ReactElement {
           />
         </FloatingPanel>
 
+        {/* Minimized panels bar - fixed at bottom */}
+        <MinimizedBar />
+
         {/* Instructions overlay */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gray-800/90 px-4 py-2 rounded-lg text-sm text-gray-400">
+        <div className="absolute bottom-14 left-1/2 -translate-x-1/2 bg-gray-800/90 px-4 py-2 rounded-lg text-sm text-gray-400">
           <span className="text-amber-400">CTRL+click</span> to drag panels • Click player to change colors
         </div>
       </div>

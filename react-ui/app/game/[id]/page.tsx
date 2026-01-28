@@ -30,7 +30,7 @@ import {
   useSetLastRoll,
 } from '@/lib/stores/gameStoreHooks';
 import { GameBoard } from '@/components/game/board';
-import { FloatingPanel } from '@/components/game/panels/FloatingPanel';
+import { FloatingPanel, MinimizedBar } from '@/components/game/panels';
 import { GoFirstOverlay } from '@/components/game/overlays/GoFirstOverlay';
 import { RobberTargetMenu } from '@/components/game/overlays/RobberTargetMenu';
 import { PlayersPanel } from '@/components/game/panels/PlayersPanel';
@@ -630,7 +630,7 @@ export default function GamePage(): React.ReactElement {
 
         {/* Floating Panels - overlay on top of GameBoard */}
         {/* Dice Panel - Roll statistics and click-to-roll */}
-        <FloatingPanel panelId="dice" title="Dice" icon="🎲" className="bg-white/5 border-white/10">
+        <FloatingPanel panelId="dice" title="Dice"  className="bg-white/5 border-white/10">
           <RollRing
             rollStats={rollStats}
             onRollClick={handleRollClick}
@@ -639,7 +639,7 @@ export default function GamePage(): React.ReactElement {
         </FloatingPanel>
 
         {/* Action Controls Panel */}
-        <FloatingPanel panelId="actions" title="Actions" icon="⚡" className="bg-white/5 border-white/10">
+        <FloatingPanel panelId="actions" title="Actions"  className="bg-white/5 border-white/10">
           <ActionCluster
             colors={playerColors}
             gameState={getStateMessage(gameState)}
@@ -650,7 +650,7 @@ export default function GamePage(): React.ReactElement {
         </FloatingPanel>
 
         {/* Board Measurements Panel */}
-        <FloatingPanel panelId="measurements" title="Board" icon="📊" className="bg-white/5 border-white/10">
+        <FloatingPanel panelId="measurements" title="Board"  className="bg-white/5 border-white/10">
           <MeasurementCluster
             tiles={tiles ?? []}
             colors={playerColors}
@@ -663,18 +663,18 @@ export default function GamePage(): React.ReactElement {
         </FloatingPanel>
 
         {/* Players Panel */}
-        <FloatingPanel panelId="players" title="Players" icon="👥" resizable className="bg-white/5 border-white/10">
+        <FloatingPanel panelId="players" title="Players"  resizable className="bg-white/5 border-white/10">
           <PlayersPanel />
         </FloatingPanel>
 
         {/* Resources Panel */}
-        <FloatingPanel panelId="resources" title="Resources" icon="📦" className="bg-white/5 border-white/10">
+        <FloatingPanel panelId="resources" title="Resources"  className="bg-white/5 border-white/10">
           <GameResourcesHeader resources={gameResourcesModel ?? null} />
         </FloatingPanel>
 
         {/* GoFirst Overlay - shown during FinishedRollOrder state */}
         {gameState === 'FinishedRollOrder' && (
-          <FloatingPanel panelId="goFirst" title="Go First" icon="🎯" className="bg-white/5 border-white/10">
+          <FloatingPanel panelId="goFirst" title="Go First"  className="bg-white/5 border-white/10">
             <GoFirstOverlay
               players={players}
               playerProfiles={playerProfiles}
@@ -693,11 +693,14 @@ export default function GamePage(): React.ReactElement {
           />
         )}
 
+        {/* Minimized panels bar - fixed at bottom */}
+        <MinimizedBar />
+
         {/* Game info badges - minimal floating overlays */}
-        <div className="absolute bottom-2 left-2 bg-black/60 rounded px-2 py-1 text-xs text-gray-300 z-30 pointer-events-none">
+        <div className="absolute bottom-14 left-2 bg-black/60 rounded px-2 py-1 text-xs text-gray-300 z-30 pointer-events-none">
           {gameName || gameId}
         </div>
-        <div className="absolute bottom-2 right-2 flex items-center gap-2 z-30 pointer-events-none">
+        <div className="absolute bottom-14 right-2 flex items-center gap-2 z-30 pointer-events-none">
           <span className="bg-black/60 rounded px-2 py-1 text-xs text-gray-300">
             {gameState || 'Loading...'}
           </span>

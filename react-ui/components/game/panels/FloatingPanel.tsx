@@ -6,11 +6,14 @@
  * Drag: CTRL+click (desktop) or long press (mobile)
  * Resize: Drag corner handle (always enabled)
  * Position persists to localStorage via layoutStore.
+ *
+ * When minimized, this component returns null.
+ * The MinimizedBar component handles rendering minimized panels.
  */
 
 import { useState, useRef, useEffect, useCallback, ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import { useLayoutStore, type PanelId } from '@/lib/stores/layoutStore';
+import { useLayoutStore, type PanelId, type WindowPosition } from '@/lib/stores/layoutStore';
 
 /** Long press duration for mobile drag (ms) */
 const LONG_PRESS_DURATION = 400;
@@ -18,10 +21,8 @@ const LONG_PRESS_DURATION = 400;
 interface FloatingPanelProps {
   /** Panel identifier for persistence */
   panelId: PanelId;
-  /** Panel title (shown in tooltip and minimized state) */
+  /** Panel title (shown in tooltip) */
   title: string;
-  /** Icon to show when minimized (optional) */
-  icon?: ReactNode;
   /** Panel content */
   children: ReactNode;
   /** Additional class names */
@@ -43,23 +44,27 @@ interface FloatingPanelProps {
 }
 
 /** Default panel layout for new/unknown panels */
-const DEFAULT_PANEL_LAYOUT = {
-  position: { x: 100, y: 100 },
-  size: { width: 300, height: 200 },
+const DEFAULT_WINDOW_POSITION: WindowPosition = {
+  left: 100,
+  top: 100,
+  width: 300,
+  height: 200,
   minimized: false,
   visible: true,
   zIndex: 20,
 };
 
 /** Safely get panel with complete defaults */
-function getPanelWithDefaults(stored: typeof DEFAULT_PANEL_LAYOUT | undefined) {
-  if (!stored) return DEFAULT_PANEL_LAYOUT;
+function getPanelWithDefaults(stored: WindowPosition | undefined): WindowPosition {
+  if (!stored) return DEFAULT_WINDOW_POSITION;
   return {
-    position: stored.position ?? DEFAULT_PANEL_LAYOUT.position,
-    size: stored.size ?? DEFAULT_PANEL_LAYOUT.size,
-    minimized: stored.minimized ?? DEFAULT_PANEL_LAYOUT.minimized,
-    visible: stored.visible ?? DEFAULT_PANEL_LAYOUT.visible,
-    zIndex: stored.zIndex ?? DEFAULT_PANEL_LAYOUT.zIndex,
+    left: stored.left ?? DEFAULT_WINDOW_POSITION.left,
+    top: stored.top ?? DEFAULT_WINDOW_POSITION.top,
+    width: stored.width ?? DEFAULT_WINDOW_POSITION.width,
+    height: stored.height ?? DEFAULT_WINDOW_POSITION.height,
+    minimized: stored.minimized ?? DEFAULT_WINDOW_POSITION.minimized,
+    visible: stored.visible ?? DEFAULT_WINDOW_POSITION.visible,
+    zIndex: stored.zIndex ?? DEFAULT_WINDOW_POSITION.zIndex,
   };
 }
 
@@ -93,11 +98,9 @@ function isInteractiveElement(element: HTMLElement | null, stopAt: HTMLElement |
 export function FloatingPanel({
   panelId,
   title,
-  icon,
   children,
   className = '',
   style,
-  resizable = true, // All panels resizable by default; future: toggle this
   minWidth = 120,
   minHeight = 80,
   enableBackgroundDrag = true,
@@ -115,7 +118,6 @@ export function FloatingPanel({
   const [isResizing, setIsResizing] = useState(false);
   const [ctrlHeld, setCtrlHeld] = useState(false);
   const [longPressActive, setLongPressActive] = useState(false);
-  const [justDragged, setJustDragged] = useState(false);
   const [isOverEmptySpace, setIsOverEmptySpace] = useState(false);
 
   // Refs
@@ -124,55 +126,16 @@ export function FloatingPanel({
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Calculate actual position (handle negative values for right/bottom anchoring)
-  // Start with raw position to avoid hydration mismatch, then update on client
+  // Position state - just use raw values from store, no conversions
   const [actualPosition, setActualPosition] = useState({
-    x: panel.position.x,
-    y: panel.position.y
+    x: panel.left,
+    y: panel.top
   });
-  const [isClient, setIsClient] = useState(false);
 
-  // Mark as client-side and calculate real position with constraints
+  // Sync position when store changes (e.g., after reset)
   useEffect(() => {
-    setIsClient(true);
-
-    // Convert negative values to actual positions
-    // Only treat as right/bottom-anchored if the result places panel in right/bottom half
-    // Small negatives (left/top overhang) should be kept as-is
-    let x = panel.position.x;
-    let y = panel.position.y;
-
-    if (panel.position.x < 0) {
-      const rightAnchoredX = window.innerWidth + panel.position.x;
-      // If right-anchored position is in right half of screen, use it
-      // Otherwise, keep as left overhang
-      if (rightAnchoredX > window.innerWidth / 2) {
-        x = rightAnchoredX;
-      }
-      // else: x stays as panel.position.x (negative = left overhang)
-    }
-
-    if (panel.position.y < 0) {
-      const bottomAnchoredY = window.innerHeight + panel.position.y;
-      // If bottom-anchored position is in bottom half of screen, use it
-      // Otherwise, keep as top overhang
-      if (bottomAnchoredY > window.innerHeight / 2) {
-        y = bottomAnchoredY;
-      }
-      // else: y stays as panel.position.y (negative = top overhang)
-    }
-
-    // Constrain to keep panel visible on screen (handles window size changes)
-    // Keep at least 50px of the panel visible
-    const minX = -(panel.size.width - 50);
-    const maxX = window.innerWidth - 50;
-    const minY = 0;
-    const maxY = window.innerHeight - 50;
-    x = Math.max(minX, Math.min(maxX, x));
-    y = Math.max(minY, Math.min(maxY, y));
-
-    setActualPosition({ x, y });
-  }, [panel.position, panel.size]);
+    setActualPosition({ x: panel.left, y: panel.top });
+  }, [panel.left, panel.top]);
 
   // Track CTRL key state
   useEffect(() => {
@@ -190,43 +153,6 @@ export function FloatingPanel({
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, []);
-
-  // Update position on window resize (with constraints)
-  useEffect(() => {
-    const handleResize = () => {
-      // Convert negative values to actual positions
-      // Only treat as right/bottom-anchored if the result places panel in right/bottom half
-      let x = panel.position.x;
-      let y = panel.position.y;
-
-      if (panel.position.x < 0) {
-        const rightAnchoredX = window.innerWidth + panel.position.x;
-        if (rightAnchoredX > window.innerWidth / 2) {
-          x = rightAnchoredX;
-        }
-      }
-
-      if (panel.position.y < 0) {
-        const bottomAnchoredY = window.innerHeight + panel.position.y;
-        if (bottomAnchoredY > window.innerHeight / 2) {
-          y = bottomAnchoredY;
-        }
-      }
-
-      // Constrain to keep panel visible
-      const minX = -(panel.size.width - 50);
-      const maxX = window.innerWidth - 50;
-      const minY = 0;
-      const maxY = window.innerHeight - 50;
-      x = Math.max(minX, Math.min(maxX, x));
-      y = Math.max(minY, Math.min(maxY, y));
-
-      setActualPosition({ x, y });
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [panel.position, panel.size]);
 
   // Start drag (desktop: CTRL+click, mobile: after long press)
   const startDrag = useCallback((clientX: number, clientY: number) => {
@@ -296,31 +222,14 @@ export function FloatingPanel({
       longPressTimerRef.current = null;
     }
 
-    // If we were dragging, save position and prevent click
+    // If we were dragging, save position directly
     if (isDragging) {
       setIsDragging(false);
-      setJustDragged(true);
-      setTimeout(() => setJustDragged(false), 100);
-
-      // Save to store (convert to edge-anchored if near edge)
-      // Only anchor if the panel's edge is truly near the window edge
-      const threshold = 100;
-
-      // Check if panel RIGHT edge is near window RIGHT edge
-      const panelRight = actualPosition.x + panel.size.width;
-      const nearRight = panelRight > window.innerWidth - threshold;
-      const saveX = nearRight ? actualPosition.x - window.innerWidth : actualPosition.x;
-
-      // Check if panel BOTTOM edge is near window BOTTOM edge
-      const panelBottom = actualPosition.y + panel.size.height;
-      const nearBottom = panelBottom > window.innerHeight - threshold;
-      const saveY = nearBottom ? actualPosition.y - window.innerHeight : actualPosition.y;
-
-      setPanelPosition(panelId, { x: saveX, y: saveY });
+      setPanelPosition(panelId, actualPosition.x, actualPosition.y);
     }
 
     setLongPressActive(false);
-  }, [isDragging, actualPosition, panel.size, panelId, setPanelPosition]);
+  }, [isDragging, actualPosition, panelId, setPanelPosition]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     // Cancel long press if moved before timer fires
@@ -329,69 +238,36 @@ export function FloatingPanel({
       longPressTimerRef.current = null;
     }
 
-    // Continue drag if active
+    // Continue drag if active - no constraints, user can move anywhere
     if (isDragging) {
       const touch = e.touches[0];
       const deltaX = touch.clientX - dragStartRef.current.x;
       const deltaY = touch.clientY - dragStartRef.current.y;
-      const newX = dragStartRef.current.posX + deltaX;
-      const newY = dragStartRef.current.posY + deltaY;
-
-      // Allow panels to go partially off-screen (keep at least 50px visible)
-      const minX = -(panel.size.width - 50);
-      const maxX = window.innerWidth - 50;
-      const minY = 0;
-      const maxY = window.innerHeight - 50;
-      const constrainedX = Math.max(minX, Math.min(maxX, newX));
-      const constrainedY = Math.max(minY, Math.min(maxY, newY));
-
-      setActualPosition({ x: constrainedX, y: constrainedY });
+      setActualPosition({
+        x: dragStartRef.current.posX + deltaX,
+        y: dragStartRef.current.posY + deltaY,
+      });
     }
   }, [isDragging]);
 
-  // Drag effect (mouse)
+  // Drag effect (mouse) - no constraints, user can move anywhere
   useEffect(() => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       const deltaX = e.clientX - dragStartRef.current.x;
       const deltaY = e.clientY - dragStartRef.current.y;
-      const newX = dragStartRef.current.posX + deltaX;
-      const newY = dragStartRef.current.posY + deltaY;
-
-      // Allow panels to go partially off-screen (keep at least 50px visible)
-      const minX = -(panel.size.width - 50);
-      const maxX = window.innerWidth - 50;
-      const minY = 0;
-      const maxY = window.innerHeight - 50;
-      const constrainedX = Math.max(minX, Math.min(maxX, newX));
-      const constrainedY = Math.max(minY, Math.min(maxY, newY));
-
-      setActualPosition({ x: constrainedX, y: constrainedY });
+      setActualPosition({
+        x: dragStartRef.current.posX + deltaX,
+        y: dragStartRef.current.posY + deltaY,
+      });
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
       setLongPressActive(false);
-      // Prevent click from firing after drag
-      setJustDragged(true);
-      setTimeout(() => setJustDragged(false), 100);
-
-      // Save to store (convert to edge-anchored if near edge)
-      // Only anchor if the panel's edge is truly near the window edge
-      const threshold = 100;
-
-      // Check if panel RIGHT edge is near window RIGHT edge
-      const panelRight = actualPosition.x + panel.size.width;
-      const nearRight = panelRight > window.innerWidth - threshold;
-      const saveX = nearRight ? actualPosition.x - window.innerWidth : actualPosition.x;
-
-      // Check if panel BOTTOM edge is near window BOTTOM edge
-      const panelBottom = actualPosition.y + panel.size.height;
-      const nearBottom = panelBottom > window.innerHeight - threshold;
-      const saveY = nearBottom ? actualPosition.y - window.innerHeight : actualPosition.y;
-
-      setPanelPosition(panelId, { x: saveX, y: saveY });
+      // Save position directly - no edge-anchoring
+      setPanelPosition(panelId, actualPosition.x, actualPosition.y);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -400,7 +276,7 @@ export function FloatingPanel({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, actualPosition, panelId, panel.size, setPanelPosition]);
+  }, [isDragging, actualPosition, panelId, setPanelPosition]);
 
   // Resize handlers
   const handleResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -414,10 +290,10 @@ export function FloatingPanel({
     resizeStartRef.current = {
       x: clientX,
       y: clientY,
-      width: panel.size.width,
-      height: panel.size.height,
+      width: panel.width,
+      height: panel.height,
     };
-  }, [panel.size]);
+  }, [panel.width, panel.height]);
 
   useEffect(() => {
     if (!isResizing) return;
@@ -430,7 +306,7 @@ export function FloatingPanel({
       const deltaY = clientY - resizeStartRef.current.y;
       const newWidth = Math.max(minWidth, resizeStartRef.current.width + deltaX);
       const newHeight = Math.max(minHeight, resizeStartRef.current.height + deltaY);
-      setPanelSize(panelId, { width: newWidth, height: newHeight });
+      setPanelSize(panelId, newWidth, newHeight);
     };
 
     const handleEnd = () => {
@@ -454,47 +330,9 @@ export function FloatingPanel({
     bringToFront(panelId);
   }, [bringToFront, panelId]);
 
-  // Don't render if not visible
-  if (!panel.visible) return null;
-
-  // Don't render during SSR to avoid hydration mismatch
-  // (position calculation depends on window dimensions)
-  if (!isClient) return null;
-
-  // Minimized state - just show icon
-  if (panel.minimized) {
-    return (
-      <motion.div
-        ref={panelRef}
-        className="absolute bg-gray-900/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-700/50 cursor-pointer hover:bg-gray-800/95 transition-colors"
-        style={{
-          left: actualPosition.x,
-          top: actualPosition.y,
-          zIndex: isDragging ? 100 : panel.zIndex,
-        }}
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.15 }}
-        onClick={() => !justDragged && toggleMinimize(panelId)}
-        onMouseDown={(e) => {
-          handlePanelFocus();
-          handleMouseDown(e);
-        }}
-        onTouchStart={(e) => {
-          handlePanelFocus();
-          handleTouchStart(e);
-        }}
-        onTouchEnd={handleTouchEnd}
-        onTouchMove={handleTouchMove}
-        title={`${title} (click to expand, CTRL+click to drag)`}
-      >
-        <div className="px-3 py-2 flex items-center gap-2">
-          {icon && <span className="text-gray-400">{icon}</span>}
-          <span className="text-xs text-gray-400 font-medium">{title}</span>
-        </div>
-      </motion.div>
-    );
-  }
+  // Don't render if not visible or minimized
+  // MinimizedBar handles rendering for minimized panels
+  if (!panel.visible || panel.minimized) return null;
 
   // Determine cursor style
   const showMoveCursor = isDragging || ctrlHeld || (enableBackgroundDrag && isOverEmptySpace);
@@ -513,8 +351,8 @@ export function FloatingPanel({
         ...style,
         left: actualPosition.x,
         top: actualPosition.y,
-        width: panel.size.width,
-        height: panel.size.height,
+        width: panel.width,
+        height: panel.height,
         zIndex: isDragging ? 100 : panel.zIndex,
         cursor: showMoveCursor ? 'move' : undefined,
       }}
@@ -535,8 +373,8 @@ export function FloatingPanel({
       onTouchMove={handleTouchMove}
       title={ctrlHeld ? 'Click and drag to move' : enableBackgroundDrag ? 'Drag empty space to move, long press on mobile' : 'CTRL+click to drag, long press on mobile'}
     >
-      {/* Content */}
-      <div className="absolute inset-0 overflow-auto">
+      {/* Content - overflow-hidden prevents scrollbar flash during animations */}
+      <div className="absolute inset-0 overflow-hidden">
         {children}
       </div>
 
@@ -546,7 +384,7 @@ export function FloatingPanel({
           e.stopPropagation();
           toggleMinimize(panelId);
         }}
-        className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-700/50 rounded text-xs transition-colors z-10"
+        className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-gray-900/70 text-gray-400 hover:text-white hover:bg-gray-700 rounded text-xs transition-colors z-10 backdrop-blur-sm"
         title="Minimize"
       >
         ─

@@ -12,15 +12,29 @@ import { persist } from 'zustand/middleware';
 /** Board types with different default layouts */
 export type BoardType = 'regular' | 'expansion';
 
-/** Panel position and state */
-export interface PanelLayout {
-  position: { x: number; y: number };
-  size: { width: number; height: number };
+/**
+ * Window-like position structure for panels.
+ * Simple absolute positioning - user controls placement via drag.
+ */
+export interface WindowPosition {
+  /** Distance from left edge of viewport (pixels) */
+  left: number;
+  /** Distance from top edge of viewport (pixels) */
+  top: number;
+  /** Panel width (pixels) */
+  width: number;
+  /** Panel height (pixels) */
+  height: number;
+  /** Whether panel is minimized to the taskbar */
   minimized: boolean;
+  /** Whether panel is visible at all */
   visible: boolean;
-  /** Z-index for stacking order (higher = on top). Board should be lowest. */
+  /** Stacking order (higher = on top). Board should be lowest. */
   zIndex: number;
 }
+
+/** @deprecated Use WindowPosition instead */
+export type PanelLayout = WindowPosition;
 
 /** Viewport state for pan/zoom */
 export interface ViewportState {
@@ -38,6 +52,26 @@ export type PanelId =
   | 'board'
   | 'goFirst';
 
+/** Panel metadata for MinimizedBar display */
+export interface PanelMetadata {
+  title: string;
+  icon?: string; // Emoji or icon identifier
+}
+
+/** Metadata for each panel type */
+export const PANEL_METADATA: Record<PanelId, PanelMetadata> = {
+  dice: { title: 'Dice', icon: '🎲' },
+  actions: { title: 'Actions', icon: '⚡' },
+  measurements: { title: 'Board Stats', icon: '📊' },
+  players: { title: 'Players', icon: '👥' },
+  resources: { title: 'Resources', icon: '📦' },
+  board: { title: 'Board', icon: '🗺️' },
+  goFirst: { title: 'Go First', icon: '🏁' },
+};
+
+/** Panel order for minimized bar (consistent ordering) */
+export const PANEL_ORDER: PanelId[] = ['dice', 'actions', 'measurements', 'players', 'resources', 'board', 'goFirst'];
+
 /**
  * Landscape default panel layouts (matching Blazor 3-column layout)
  *
@@ -46,57 +80,69 @@ export type PanelId =
  * - Center: Game board
  * - Right column: Resources, Players
  *
- * Using percentages of typical viewport for floating panels:
- * - Left column starts at x=60 (clear of hamburger menu)
- * - Right column uses negative x (offset from right edge)
- * - Center board positioned after left column
+ * Absolute positions for a typical 1920x1080 viewport.
+ * User can freely reposition panels; use Reset to restore defaults.
  */
-const LANDSCAPE_PANELS: Record<PanelId, PanelLayout> = {
+const LANDSCAPE_PANELS: Record<PanelId, WindowPosition> = {
   dice: {
-    position: { x: 60, y: 80 },
-    size: { width: 260, height: 200 },
+    left: 60,
+    top: 80,
+    width: 260,
+    height: 200,
     minimized: false,
     visible: true,
     zIndex: 20,
   },
   actions: {
-    position: { x: 60, y: 300 },
-    size: { width: 200, height: 200 },
+    left: 60,
+    top: 300,
+    width: 200,
+    height: 200,
     minimized: false,
     visible: true,
     zIndex: 21,
   },
   measurements: {
-    position: { x: 60, y: 520 },
-    size: { width: 280, height: 130 },
+    left: 60,
+    top: 520,
+    width: 280,
+    height: 130,
     minimized: false,
     visible: true,
     zIndex: 22,
   },
   board: {
-    position: { x: 340, y: 80 },
-    size: { width: 600, height: 550 },
+    left: 340,
+    top: 80,
+    width: 600,
+    height: 550,
     minimized: false,
     visible: true,
     zIndex: 10, // Board is lowest - other panels float on top
   },
   resources: {
-    position: { x: -360, y: 80 },
-    size: { width: 340, height: 130 },
+    left: 960,
+    top: 80,
+    width: 340,
+    height: 130,
     minimized: false,
     visible: true,
     zIndex: 23,
   },
   players: {
-    position: { x: -360, y: 230 },
-    size: { width: 340, height: 450 },
+    left: 960,
+    top: 230,
+    width: 340,
+    height: 450,
     minimized: false,
     visible: true,
     zIndex: 24,
   },
   goFirst: {
-    position: { x: 800, y: 350 }, // Centered on typical 1920x1080 screen
-    size: { width: 320, height: 300 },
+    left: 800,
+    top: 350, // Centered on typical 1920x1080 screen
+    width: 320,
+    height: 300,
     minimized: false,
     visible: true,
     zIndex: 50, // Higher z-index - overlays should be on top
@@ -115,52 +161,66 @@ const LANDSCAPE_PANELS: Record<PanelId, PanelLayout> = {
  * - Controls (dice, actions) at bottom
  * - Some panels minimized by default to reduce clutter
  */
-const PORTRAIT_PANELS: Record<PanelId, PanelLayout> = {
+const PORTRAIT_PANELS: Record<PanelId, WindowPosition> = {
   board: {
-    position: { x: 20, y: 60 },
-    size: { width: 400, height: 400 },
+    left: 20,
+    top: 60,
+    width: 400,
+    height: 400,
     minimized: false,
     visible: true,
     zIndex: 10, // Board is lowest - other panels float on top
   },
   players: {
-    position: { x: 20, y: 480 },
-    size: { width: 400, height: 300 },
+    left: 20,
+    top: 480,
+    width: 400,
+    height: 300,
     minimized: false,
     visible: true,
     zIndex: 24,
   },
   dice: {
-    position: { x: 20, y: 800 },
-    size: { width: 200, height: 150 },
+    left: 20,
+    top: 800,
+    width: 200,
+    height: 150,
     minimized: false,
     visible: true,
     zIndex: 20,
   },
   actions: {
-    position: { x: 240, y: 800 },
-    size: { width: 180, height: 150 },
+    left: 240,
+    top: 800,
+    width: 180,
+    height: 150,
     minimized: false,
     visible: true,
     zIndex: 21,
   },
   measurements: {
-    position: { x: 20, y: 970 },
-    size: { width: 400, height: 100 },
+    left: 20,
+    top: 970,
+    width: 400,
+    height: 100,
     minimized: true,
     visible: true,
     zIndex: 22,
   },
   resources: {
-    position: { x: 20, y: 20 },
-    size: { width: 300, height: 40 },
+    left: 20,
+    top: 20,
+    width: 300,
+    height: 40,
     minimized: true,
     visible: true,
     zIndex: 23,
   },
   goFirst: {
-    position: { x: 40, y: 300 }, // Centered on typical portrait screen
-    size: { width: 320, height: 300 },
+    left: 40,
+    top: 300, // Centered on typical portrait screen
+    width: 320,
+    height: 300,
     minimized: false,
     visible: true,
     zIndex: 50, // Higher z-index - overlays should be on top
@@ -177,8 +237,8 @@ interface LayoutState {
   /** Current board type */
   boardType: BoardType;
 
-  /** Panel layouts */
-  panels: Record<PanelId, PanelLayout>;
+  /** Panel layouts (WindowPosition for each panel) */
+  panels: Record<PanelId, WindowPosition>;
 
   /** Viewport state */
   viewport: ViewportState;
@@ -198,10 +258,10 @@ interface LayoutActions {
   setBoardType: (boardType: BoardType) => void;
 
   /** Update panel position */
-  setPanelPosition: (panelId: PanelId, position: { x: number; y: number }) => void;
+  setPanelPosition: (panelId: PanelId, left: number, top: number) => void;
 
   /** Update panel size */
-  setPanelSize: (panelId: PanelId, size: { width: number; height: number }) => void;
+  setPanelSize: (panelId: PanelId, width: number, height: number) => void;
 
   /** Toggle panel minimized state */
   toggleMinimize: (panelId: PanelId) => void;
@@ -231,7 +291,7 @@ interface LayoutActions {
   resetLayout: () => void;
 }
 
-type LayoutStore = LayoutState & LayoutActions;
+export type LayoutStore = LayoutState & LayoutActions;
 
 /**
  * Detects if viewport is portrait orientation
@@ -247,8 +307,42 @@ const initialState: LayoutState = {
   viewport: { ...DEFAULT_VIEWPORT },
   starFilter: null,
   resourceFilter: null,
-  version: 5, // Bumped version for goFirst panel centering
+  version: 6, // Bumped version for WindowPosition migration
 };
+
+/**
+ * Migrate old PanelLayout format to new WindowPosition format
+ */
+function migratePanel(old: unknown): WindowPosition {
+  // Handle old format with nested position/size objects
+  const oldPanel = old as {
+    position?: { x: number; y: number };
+    size?: { width: number; height: number };
+    left?: number;
+    top?: number;
+    width?: number;
+    height?: number;
+    minimized?: boolean;
+    visible?: boolean;
+    zIndex?: number;
+  };
+
+  // Check if it's already in new format
+  if (typeof oldPanel.left === 'number' && typeof oldPanel.width === 'number') {
+    return oldPanel as WindowPosition;
+  }
+
+  // Convert from old format
+  return {
+    left: oldPanel.position?.x ?? 100,
+    top: oldPanel.position?.y ?? 100,
+    width: oldPanel.size?.width ?? 300,
+    height: oldPanel.size?.height ?? 200,
+    minimized: oldPanel.minimized ?? false,
+    visible: oldPanel.visible ?? true,
+    zIndex: oldPanel.zIndex ?? 20,
+  };
+}
 
 /**
  * Zustand store for layout state.
@@ -256,32 +350,34 @@ const initialState: LayoutState = {
  */
 export const useLayoutStore = create<LayoutStore>()(
   persist(
-    (set, _get) => ({
+    (set) => ({
       ...initialState,
 
       setBoardType: (boardType) => {
         set({ boardType });
       },
 
-      setPanelPosition: (panelId, position) => {
+      setPanelPosition: (panelId, left, top) => {
         set((state) => ({
           panels: {
             ...state.panels,
             [panelId]: {
               ...state.panels[panelId],
-              position,
+              left,
+              top,
             },
           },
         }));
       },
 
-      setPanelSize: (panelId, size) => {
+      setPanelSize: (panelId, width, height) => {
         set((state) => ({
           panels: {
             ...state.panels,
             [panelId]: {
               ...state.panels[panelId],
-              size,
+              width,
+              height,
             },
           },
         }));
@@ -320,7 +416,7 @@ export const useLayoutStore = create<LayoutStore>()(
           const maxZ = Math.max(
             ...Object.entries(state.panels)
               .filter(([id]) => id !== 'board')
-              .map(([_, p]) => p.zIndex)
+              .map(([, p]) => p.zIndex)
           );
 
           // Only update if this panel isn't already on top
@@ -381,7 +477,7 @@ export const useLayoutStore = create<LayoutStore>()(
     }),
     {
       name: 'catan-layout',
-      version: 5, // Increment when layout structure changes
+      version: 6, // Increment when layout structure changes
       partialize: (state) => ({
         boardType: state.boardType,
         panels: state.panels,
@@ -389,11 +485,30 @@ export const useLayoutStore = create<LayoutStore>()(
         version: state.version,
       }),
       migrate: (persistedState, version) => {
-        // If version < 5, reset to defaults (centers goFirst panel)
-        if (version < 5) {
-          console.log('[layoutStore] Migrating from version', version, 'to 5 - resetting panels for goFirst centering');
+        const state = persistedState as LayoutState & {
+          panels?: Record<string, unknown>;
+        };
+
+        // If version < 6, migrate to new WindowPosition format
+        if (version < 6) {
+          console.log('[layoutStore] Migrating from version', version, 'to 6 - WindowPosition format');
+
+          // Migrate each panel
+          const migratedPanels: Record<PanelId, WindowPosition> = {} as Record<PanelId, WindowPosition>;
+          for (const panelId of PANEL_ORDER) {
+            if (state.panels?.[panelId]) {
+              migratedPanels[panelId] = migratePanel(state.panels[panelId]);
+            } else {
+              // Use default if panel doesn't exist
+              migratedPanels[panelId] = LANDSCAPE_PANELS[panelId];
+            }
+          }
+
           return {
             ...initialState,
+            ...state,
+            panels: migratedPanels,
+            version: 6,
           };
         }
         return persistedState as LayoutState;
@@ -406,7 +521,7 @@ export const useLayoutStore = create<LayoutStore>()(
 // Selectors
 // ============================================================================
 
-/** Select a specific panel's layout */
+/** Select a specific panel's WindowPosition */
 export const selectPanel = (panelId: PanelId) => (state: LayoutStore) =>
   state.panels[panelId];
 
@@ -418,3 +533,24 @@ export const selectStarFilter = (state: LayoutStore) => state.starFilter;
 
 /** Select resource filter */
 export const selectResourceFilter = (state: LayoutStore) => state.resourceFilter;
+
+/** Info about a minimized panel for the MinimizedBar */
+export interface MinimizedPanelInfo {
+  id: PanelId;
+  title: string;
+  icon?: string;
+}
+
+/**
+ * Select minimized panel info in consistent order.
+ * Used by MinimizedBar to render minimized panels.
+ * Returns array - use with shallow comparison!
+ */
+export const selectMinimizedPanels = (state: LayoutStore): MinimizedPanelInfo[] =>
+  PANEL_ORDER
+    .filter((id) => state.panels[id]?.minimized && state.panels[id]?.visible)
+    .map((id) => ({
+      id,
+      title: PANEL_METADATA[id].title,
+      icon: PANEL_METADATA[id].icon,
+    }));
