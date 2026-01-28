@@ -25,7 +25,21 @@ export {
   tilesWithSixOrEight,
 } from './tileExtensions';
 
+// Building extensions
+export {
+  type Direction,
+  type BuildingAlias,
+  DIRECTION_OFFSETS,
+  HEX_POSITIONS,
+  buildingKeyAliases,
+  getAdjacentHex,
+  buildingKeysEqual,
+  findBuilding,
+  adjacentBuildings,
+  buildingsInTile,
+  ownedBuildings,
+} from './buildingExtensions';
+
 // Future exports (uncomment as implemented):
-// export * from './buildingExtensions';
 // export * from './roadExtensions';
 // export * from './gameModelExtensions';
