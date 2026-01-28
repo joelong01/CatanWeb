@@ -121,11 +121,17 @@ export function adjacentRoadKeys(key: RoadKey): RoadKey[] {
   switch (key.hexSide) {
     case 'Top':
       // Top edge connects TopLeft and TopRight vertices
-      // Adjacent: TopRight, TopLeft on this hex; BottomRight of North, BottomLeft of NorthWest
+      // At TopRight vertex: TopRight (same hex), North.BottomRight (shares vertex)
+      // At TopLeft vertex: TopLeft (same hex), NorthWest.Bottom (shares vertex)
+      // NOTE: C# reference (RoadModelExtensions.cs L52) has NorthWest.BottomLeft which is wrong:
+      // - BottomLeft edge doesn't touch TopLeft vertex at all
+      // - BottomRight edge is an alias of TopLeft (same edge, not adjacent)
+      // - Bottom edge correctly shares TopLeft vertex (= NorthWest's BottomRight vertex)
+      // This bug may cause edge cases in longest road calculations. See: CATAN-BUG-001
       keys.push({ tileKey: key.tileKey, hexSide: 'TopRight' });
       keys.push({ tileKey: key.tileKey, hexSide: 'TopLeft' });
       keys.push({ tileKey: getAdjacentHex(key.tileKey, 'North'), hexSide: 'BottomRight' });
-      keys.push({ tileKey: getAdjacentHex(key.tileKey, 'NorthWest'), hexSide: 'BottomLeft' });
+      keys.push({ tileKey: getAdjacentHex(key.tileKey, 'NorthWest'), hexSide: 'Bottom' });
       break;
 
     case 'TopRight':
