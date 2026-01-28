@@ -40,6 +40,20 @@ export {
   ownedBuildings,
 } from './buildingExtensions';
 
+// Road extensions
+export {
+  type RoadAlias,
+  HEX_SIDES,
+  roadKeyAlias,
+  roadKeysEqual,
+  findRoad,
+  adjacentRoadKeys,
+  adjacentRoads,
+  roadsInTile,
+  ownedRoads,
+  roadsOwnedByPlayer,
+  buildableRoads,
+} from './roadExtensions';
+
 // Future exports (uncomment as implemented):
-// export * from './roadExtensions';
 // export * from './gameModelExtensions';
