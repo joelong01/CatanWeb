@@ -673,7 +673,10 @@ export function calculateRollStats(gameModel: GameModel): Record<number, RollSta
   const totalRolls = gameModel?.rollModel?.gameRollModel?.totalRolls ?? 0;
 
   for (let roll = 2; roll <= 12; roll++) {
-    const count = rollCounts[roll] ?? 0;
+    // RollCounts array is 0-indexed for rolls 2-12 (index 0 = roll 2, index 1 = roll 3, etc.)
+    // Matches C# GameRollModel logic: Indexes 0 to 10 correspond to rolls 2 to 12.
+    const index = roll - 2;
+    const count = rollCounts[index] ?? 0;
     const percentage = totalRolls > 0 ? Math.round((count / totalRolls) * 100) : 0;
     stats[roll] = { count, percentage };
   }

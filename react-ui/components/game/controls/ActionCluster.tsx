@@ -21,7 +21,7 @@
  * - Soldier shows available count (unspent Soldier entitlements from dev cards in hand)
  */
 
-import { memo, useState, useMemo, type ReactNode } from 'react';
+import { memo, useState, useMemo, useEffect, type ReactNode } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRotateLeft, faRotateRight, faReceipt } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
@@ -33,12 +33,18 @@ import type { PlayerColorsWithGradient } from '@/lib/utils/playerColors';
 // Types
 // ============================================================================
 
+export interface EntityStats {
+  unspent: number;
+  spent: number;
+  max: number;
+}
+
 export interface PurchaseStats {
-  roads?: { bought: number; available: number };
-  settlements?: { bought: number; available: number };
-  cities?: { bought: number; available: number };
-  devCards?: { bought: number; available: number };
-  soldier?: { played: number; available: number };
+  roads?: EntityStats;
+  settlements?: EntityStats;
+  cities?: EntityStats;
+  devCards?: { spent: number };
+  soldier?: { played: number; unspent: number };
 }
 
 export interface EnabledButtons {
@@ -287,8 +293,31 @@ export const ActionCluster = memo(function ActionCluster({
     onAction?.(action);
   };
 
-  const formatStats = (stats?: { bought: number; available: number }) =>
-    stats ? `${stats.bought}/${stats.available}` : undefined;
+  // Add keyboard handler for Enter key to trigger Next button
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle Enter key
+      if (e.key !== 'Enter') return;
+
+      // Don't trigger if user is typing in an input field
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      // Trigger Next action if enabled
+      if (enabledButtons.next !== false) {
+        e.preventDefault();
+        handleAction('next');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [enabledButtons.next, onAction]);
+
+  const formatStats = (stats?: EntityStats) =>
+    stats ? `${stats.spent} of ${stats.max}` : undefined;
 
   // Get 3x3 square layout coordinates
   const coords = useMemo(() => LAYOUTS.SQUARE_3x3(), []);
@@ -303,8 +332,8 @@ export const ActionCluster = memo(function ActionCluster({
           label="Dev"
           tooltip="Buy Development Card"
           isEnabled={enabledButtons.devCard !== false}
-          backStats={purchaseStats?.devCards?.bought.toString()}
-          count={purchaseStats?.devCards?.bought}
+          backStats={purchaseStats?.devCards ? `${purchaseStats.devCards.spent}` : undefined}
+          count={purchaseStats?.devCards?.spent}
           colors={colors}
         />
       ),
@@ -320,7 +349,7 @@ export const ActionCluster = memo(function ActionCluster({
           tooltip="Buy City"
           isEnabled={enabledButtons.city !== false}
           backStats={formatStats(purchaseStats?.cities)}
-          count={purchaseStats?.cities?.bought}
+          count={purchaseStats?.cities?.unspent}
           colors={colors}
         />
       ),
@@ -336,7 +365,7 @@ export const ActionCluster = memo(function ActionCluster({
           tooltip="Buy Road"
           isEnabled={enabledButtons.road !== false}
           backStats={formatStats(purchaseStats?.roads)}
-          count={purchaseStats?.roads?.bought}
+          count={purchaseStats?.roads?.unspent}
           colors={colors}
           bold={true}
         />
@@ -353,7 +382,7 @@ export const ActionCluster = memo(function ActionCluster({
           tooltip="Buy Settlement"
           isEnabled={enabledButtons.settlement !== false}
           backStats={formatStats(purchaseStats?.settlements)}
-          count={purchaseStats?.settlements?.bought}
+          count={purchaseStats?.settlements?.unspent}
           colors={colors}
         />
       ),
@@ -388,7 +417,7 @@ export const ActionCluster = memo(function ActionCluster({
           tooltip="Play Soldier Card"
           isEnabled={enabledButtons.soldier === true}
           backStats={purchaseStats?.soldier?.played.toString()}
-          count={purchaseStats?.soldier?.available}
+          count={purchaseStats?.soldier?.unspent}
           colors={colors}
         />
       ),

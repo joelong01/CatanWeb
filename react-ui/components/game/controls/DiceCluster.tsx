@@ -6,11 +6,15 @@
  * Each cluster shows values 1-6 around the edge (as dice face glyphs) with
  * a confirm button in center. Players select a value on each die, then
  * click either center hex to confirm the roll.
+ * 
+ * When both dice are selected, the center hex displays the roll sum along
+ * with the count and percentage from rollStats (matching Blazor behavior).
  */
 
 import { useState, useCallback, memo } from 'react';
 import { HexGrid, type HexGridItem, type HexCoordinate } from '@/components/hex-grid';
 import type { PlayerColorsWithGradient } from '@/lib/utils/playerColors';
+import type { RollStats } from '@/lib/extensions';
 
 // ============================================================================
 // Types
@@ -25,6 +29,8 @@ export interface DiceClusterProps {
   onRoll: (die1: number, die2: number) => void;
   /** Player colors for styling */
   colors?: PlayerColorsWithGradient;
+  /** Roll statistics for each sum 2-12, used to display count/percentage for selected roll */
+  rollStats?: Record<number, RollStats>;
 }
 
 // ============================================================================
@@ -123,15 +129,24 @@ const DiceHexContent = memo(function DiceHexContent({
 });
 
 // ============================================================================
-// DiceCenterHex - "Send Roll" button in center
+// DiceCenterHex - "Send Roll" button in center with optional stats display
 // ============================================================================
 
 interface DiceCenterHexProps {
   isEnabled: boolean;
   colors?: PlayerColorsWithGradient;
+  /** Roll sum to display stats for (when both dice selected) */
+  rollSum?: number;
+  /** Roll statistics */
+  rollStats?: RollStats;
 }
 
-const DiceCenterHex = memo(function DiceCenterHex({ isEnabled, colors }: DiceCenterHexProps) {
+const DiceCenterHex = memo(function DiceCenterHex({ 
+  isEnabled, 
+  colors,
+  rollSum,
+  rollStats,
+}: DiceCenterHexProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
 
@@ -143,6 +158,9 @@ const DiceCenterHex = memo(function DiceCenterHex({ isEnabled, colors }: DiceCen
   // Scale based on interaction state (only when enabled)
   const innerScale = isEnabled && isPressed ? 0.85 : isEnabled && isHovered ? 0.88 : 0.91;
   const borderColor = isEnabled && isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
+
+  // Show stats when both dice are selected (rollSum is provided)
+  const showStats = rollSum !== undefined && rollStats !== undefined;
 
   return (
     <div
@@ -161,13 +179,35 @@ const DiceCenterHex = memo(function DiceCenterHex({ isEnabled, colors }: DiceCen
       />
       {/* Inner content */}
       <div
-        className={`absolute inset-0 hex-clip-flat flex items-center justify-center transition-all duration-150 ${!isEnabled ? 'opacity-40' : ''}`}
+        className={`absolute inset-0 hex-clip-flat flex flex-col items-center justify-center transition-all duration-150 ${!isEnabled ? 'opacity-40' : ''}`}
         style={{
           transform: `scale(${innerScale})`,
           background: isEnabled ? foreground : gradient,
         }}
       >
-        {isEnabled && (
+        {showStats ? (
+          // Show roll stats: count, sum, and percentage
+          <>
+            <span
+              className="text-[10px] font-bold leading-tight"
+              style={{ color: checkColor }}
+            >
+              {rollStats.count}×
+            </span>
+            <span
+              className="text-xl font-bold leading-tight"
+              style={{ color: checkColor }}
+            >
+              {rollSum}
+            </span>
+            <span
+              className="text-[9px] leading-tight"
+              style={{ color: checkColor, opacity: 0.8 }}
+            >
+              {rollStats.percentage}%
+            </span>
+          </>
+        ) : isEnabled ? (
           <span
             style={{
               color: checkColor,
@@ -178,7 +218,7 @@ const DiceCenterHex = memo(function DiceCenterHex({ isEnabled, colors }: DiceCen
           >
             ✓
           </span>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -194,6 +234,10 @@ interface SingleDieClusterProps {
   canSendRoll?: boolean;
   onSendRoll?: () => void;
   colors?: PlayerColorsWithGradient;
+  /** Roll sum when both dice are selected */
+  rollSum?: number;
+  /** Roll statistics for the current sum */
+  currentRollStats?: RollStats;
 }
 
 const SingleDieCluster = memo(function SingleDieCluster({
@@ -202,6 +246,8 @@ const SingleDieCluster = memo(function SingleDieCluster({
   canSendRoll = false,
   onSendRoll,
   colors,
+  rollSum,
+  currentRollStats,
 }: SingleDieClusterProps) {
   // Map die values to cluster positions
   const diePositions: { value: number; coord: HexCoordinate }[] = [
@@ -219,7 +265,7 @@ const SingleDieCluster = memo(function SingleDieCluster({
   };
 
   const items: HexGridItem[] = [
-    // Center hex - "send roll" button
+    // Center hex - "send roll" button with stats display
     {
       id: 'center',
       coord: CLUSTER_7.center,
@@ -227,6 +273,8 @@ const SingleDieCluster = memo(function SingleDieCluster({
         <DiceCenterHex
           isEnabled={canSendRoll}
           colors={colors}
+          rollSum={rollSum}
+          rollStats={currentRollStats}
         />
       ),
       onClick: canSendRoll ? onSendRoll : undefined,
@@ -268,6 +316,7 @@ export const DiceCluster = memo(function DiceCluster({
   isRolling,
   onRoll,
   colors,
+  rollStats,
 }: DiceClusterProps): React.ReactElement {
   const [die1Value, setDie1Value] = useState<number | null>(null);
   const [die2Value, setDie2Value] = useState<number | null>(null);
@@ -282,6 +331,10 @@ export const DiceCluster = memo(function DiceCluster({
   }, [die1Value, die2Value, enabled, isRolling, onRoll]);
 
   const canSendRoll = die1Value !== null && die2Value !== null && enabled && !isRolling;
+  
+  // Calculate roll sum and get stats for it when both dice are selected
+  const rollSum = (die1Value !== null && die2Value !== null) ? die1Value + die2Value : undefined;
+  const currentRollStats = rollSum !== undefined && rollStats ? rollStats[rollSum] : undefined;
 
   return (
     <div className="w-full h-full flex items-center justify-center overflow-hidden">
@@ -292,6 +345,8 @@ export const DiceCluster = memo(function DiceCluster({
           canSendRoll={canSendRoll}
           onSendRoll={handleConfirm}
           colors={colors}
+          rollSum={rollSum}
+          currentRollStats={currentRollStats}
         />
       </div>
       <div className="flex-1 h-full min-w-0">
@@ -301,6 +356,8 @@ export const DiceCluster = memo(function DiceCluster({
           canSendRoll={canSendRoll}
           onSendRoll={handleConfirm}
           colors={colors}
+          rollSum={rollSum}
+          currentRollStats={currentRollStats}
         />
       </div>
     </div>

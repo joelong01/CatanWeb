@@ -14,16 +14,14 @@ import { memo, useState, useMemo } from 'react';
 import { HexGrid, type HexGridItem, LAYOUTS } from '@/components/hex-grid';
 import { NumberToken } from '@/components/game/tiles/NumberToken';
 import type { PlayerColorsWithGradient } from '@/lib/utils/playerColors';
+import type { RollStats } from '@/lib/extensions';
+
+// Re-export for convenience
+export type { RollStats };
 
 // ============================================================================
 // Types
 // ============================================================================
-
-/** Roll stats for tracking */
-export interface RollStats {
-  count: number;
-  percentage: number;
-}
 
 export interface RollRingProps {
   /** Roll statistics for each number 2-12 */
