@@ -1,8 +1,9 @@
 'use client';
 
 import React, { memo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { TileModel } from '@/types/generated/models/tile-model';
-import { getResourceTileImage } from '@/lib/constants/board-assets';
+import { getResourceTileImage, getResourceCardImage } from '@/lib/constants/board-assets';
 import { NumberToken } from './NumberToken';
 
 /**
@@ -43,8 +44,11 @@ export const GameTile = memo(function GameTile({
   onClick,
   onRightClick,
 }: GameTileProps) {
-  const { number, resourceTileType } = tile;
-  const imageUrl = getResourceTileImage(resourceTileType);
+  const { number, resourceTileType, temporarilyGold } = tile;
+  // When temporarily gold, show gold mine background instead of original resource
+  const displayResource = temporarilyGold ? 'GoldMine' : resourceTileType;
+  const imageUrl = getResourceTileImage(displayResource);
+  const originalImageUrl = getResourceCardImage(resourceTileType);
   const isDesert = resourceTileType === 'Desert';
 
   // Inner hex scale: InnerHexSize / HexSize = 91/100 = 0.91 (from Blazor)
@@ -94,15 +98,39 @@ export const GameTile = memo(function GameTile({
       )}
 
       {/* Inner hex - resource background (91% scale for border effect) */}
-      <div
-        className="absolute inset-0 hex-clip-flat"
+      {/* Flip animation container */}
+      <motion.div
+        className="absolute inset-0"
         style={{
-          transform: `scale(${isHighlighted ? innerHexScale - 0.02 : innerHexScale})`,
-          backgroundImage: `url(${imageUrl})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          transformStyle: 'preserve-3d',
+          perspective: '1000px',
         }}
-      />
+        animate={{ rotateY: temporarilyGold ? 180 : 0 }}
+        transition={{ duration: 0.5, ease: 'easeInOut' }}
+      >
+        {/* Front face - original resource */}
+        <div
+          className="absolute inset-0 hex-clip-flat"
+          style={{
+            transform: `scale(${isHighlighted ? innerHexScale - 0.02 : innerHexScale})`,
+            backgroundImage: `url(${getResourceTileImage(resourceTileType)})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backfaceVisibility: 'hidden',
+          }}
+        />
+        {/* Back face - gold mine (pre-rotated) */}
+        <div
+          className="absolute inset-0 hex-clip-flat"
+          style={{
+            transform: `scale(${isHighlighted ? innerHexScale - 0.02 : innerHexScale}) rotateY(180deg)`,
+            backgroundImage: `url(${getResourceTileImage('GoldMine')})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backfaceVisibility: 'hidden',
+          }}
+        />
+      </motion.div>
 
       {/* Number token (not shown for desert) - positioned above center */}
       {!isDesert && number > 0 && (
@@ -119,6 +147,33 @@ export const GameTile = memo(function GameTile({
           <NumberToken number={number} className="w-full h-full" />
         </div>
       )}
+
+      {/* Gold indicator - shows original resource when temporarily gold */}
+      {/* Blazor uses 40x60px card (2:3 aspect ratio), positioned below number token */}
+      <AnimatePresence>
+        {temporarilyGold && !isDesert && (
+          <motion.div
+            className="absolute rounded overflow-hidden shadow-lg"
+            style={{
+              width: '23%', // 40px at HexSize=100, width ~174px = 23%
+              aspectRatio: '2 / 3', // Matches Blazor 40x60 card
+              top: '55%',
+              left: '50%',
+              x: '-50%',
+            }}
+            initial={{ opacity: 0, scale: 0.6, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.6, y: 10 }}
+            transition={{ delay: 0.3, duration: 0.3, ease: 'easeOut' }}
+          >
+            <img
+              src={originalImageUrl}
+              alt={`Original: ${resourceTileType}`}
+              className="w-full h-full object-cover"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 });

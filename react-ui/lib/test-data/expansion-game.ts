@@ -235,7 +235,7 @@ export const EXPANSION_GAME_DATA: TestGameData = {
   roads: generateRoadsForTile(0, 0, 'player-1'),
   tiles: [
     { tileKey: { q: -3, r: 1, s: 2 }, number: 4, resourceTileType: 'Ore', highlighted: false, temporarilyGold: false },
-    { tileKey: { q: -3, r: 2, s: 1 }, number: 8, resourceTileType: 'Wheat', highlighted: false, temporarilyGold: false },
+    { tileKey: { q: -3, r: 2, s: 1 }, number: 8, resourceTileType: 'Wheat', highlighted: false, temporarilyGold: true },
     { tileKey: { q: -3, r: 3, s: 0 }, number: 3, resourceTileType: 'Brick', highlighted: false, temporarilyGold: false },
     { tileKey: { q: -2, r: 0, s: 2 }, number: 6, resourceTileType: 'Sheep', highlighted: false, temporarilyGold: false },
     { tileKey: { q: -2, r: 1, s: 1 }, number: 2, resourceTileType: 'Wheat', highlighted: false, temporarilyGold: false },
@@ -255,7 +255,7 @@ export const EXPANSION_GAME_DATA: TestGameData = {
     { tileKey: { q: 1, r: -2, s: 1 }, number: 10, resourceTileType: 'Brick', highlighted: false, temporarilyGold: false },
     { tileKey: { q: 1, r: -1, s: 0 }, number: 5, resourceTileType: 'Wood', highlighted: false, temporarilyGold: false },
     { tileKey: { q: 1, r: 0, s: -1 }, number: 9, resourceTileType: 'Brick', highlighted: false, temporarilyGold: false },
-    { tileKey: { q: 1, r: 1, s: -2 }, number: 6, resourceTileType: 'Sheep', highlighted: false, temporarilyGold: false },
+    { tileKey: { q: 1, r: 1, s: -2 }, number: 6, resourceTileType: 'Sheep', highlighted: false, temporarilyGold: true },
     { tileKey: { q: 1, r: 2, s: -3 }, number: 5, resourceTileType: 'Wood', highlighted: false, temporarilyGold: false },
     { tileKey: { q: 2, r: -2, s: 0 }, number: 10, resourceTileType: 'Sheep', highlighted: false, temporarilyGold: false },
     { tileKey: { q: 2, r: -1, s: -1 }, number: 8, resourceTileType: 'Wheat', highlighted: false, temporarilyGold: false },

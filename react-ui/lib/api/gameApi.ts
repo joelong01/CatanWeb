@@ -36,15 +36,17 @@ export interface PlayersResponse {
 
 /**
  * Saved game summary for game list.
+ * Matches the GameSaveInfo returned by the /api/games endpoint.
  */
 export interface SavedGameSummary {
   gameId: string;
   gameName: string;
-  gameType: GameType;
-  players: string[];
-  lastModified: string;
-  isComplete: boolean;
-  winnerName?: string;
+  gameState: string;
+  playerCount: number;
+  playerNames: string;
+  turnCount: number;
+  gameType: string;
+  savedAt: string;
 }
 
 /**
@@ -216,6 +218,41 @@ export const gameApi = {
       : `/api/game/${gameId}/copy`;
 
     return apiFetch<CopyGameResponse>(url, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Deletes a game from the database.
+   *
+   * @param gameId - The ID of the game to delete
+   */
+  async deleteGame(gameId: string): Promise<ApiResponse<void>> {
+    return apiFetch<void>(`/api/game/${gameId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * Renames a game.
+   *
+   * @param gameId - The ID of the game to rename
+   * @param newName - The new name for the game
+   */
+  async renameGame(gameId: string, newName: string): Promise<ApiResponse<void>> {
+    return apiFetch<void>(`/api/game/${gameId}/rename?newName=${encodeURIComponent(newName)}`, {
+      method: 'PATCH',
+    });
+  },
+
+  /**
+   * Loads a game from the database.
+   * This makes the game the active game on the server.
+   *
+   * @param gameId - The ID of the game to load
+   */
+  async loadGame(gameId: string): Promise<ApiResponse<void>> {
+    return apiFetch<void>(`/api/game/${gameId}/load`, {
       method: 'POST',
     });
   },

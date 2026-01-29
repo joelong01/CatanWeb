@@ -67,6 +67,25 @@ export function getResourceTileImage(resourceType: ResourceType): string {
 }
 
 /**
+ * Resource type to card image mapping (for gold indicator)
+ */
+export const RESOURCE_CARD_IMAGES: Partial<Record<ResourceType, string>> = {
+  Wheat: '/themes/base/resources/wheat.png',
+  Wood: '/themes/base/resources/wood.png',
+  Sheep: '/themes/base/resources/sheep.png',
+  Brick: '/themes/base/resources/brick.png',
+  Ore: '/themes/base/resources/ore.png',
+  GoldMine: '/themes/base/resources/goldmine.png',
+};
+
+/**
+ * Get the image URL for a resource card (used in gold indicator)
+ */
+export function getResourceCardImage(resourceType: ResourceType): string {
+  return RESOURCE_CARD_IMAGES[resourceType] ?? '/themes/base/resources/back.png';
+}
+
+/**
  * Get the image URL for a harbor type
  */
 export function getHarborImage(harborType: HarborType): string {

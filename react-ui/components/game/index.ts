@@ -30,3 +30,5 @@ export { MeasurementCluster } from './controls/MeasurementCluster';
 // Overlays
 export { GoFirstOverlay } from './overlays/GoFirstOverlay';
 export type { GoFirstOverlayProps } from './overlays/GoFirstOverlay';
+export { SupplementalOverlay } from './overlays/SupplementalOverlay';
+export type { SupplementalOverlayProps } from './overlays/SupplementalOverlay';
