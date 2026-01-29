@@ -34,6 +34,10 @@ import { FloatingPanel, MinimizedBar } from '@/components/game/panels';
 import { GoFirstOverlay } from '@/components/game/overlays/GoFirstOverlay';
 import { SupplementalOverlay } from '@/components/game/overlays/SupplementalOverlay';
 import { RobberTargetMenu } from '@/components/game/overlays/RobberTargetMenu';
+import { WinnerDialog } from '@/components/game/overlays/WinnerDialog';
+import { WinnerCelebration, type PlayerInfo } from '@/components/game/overlays/WinnerCelebration';
+import { VictoryPointsOverlay, type PlayerVPInfo } from '@/components/game/overlays/VictoryPointsOverlay';
+import { AnimatePresence } from 'framer-motion';
 import { PlayersPanel } from '@/components/game/panels/PlayersPanel';
 import { GameResourcesHeader } from '@/components/game/panels/GameResourcesHeader';
 import { RollRing } from '@/components/game/controls/RollRing';
@@ -227,11 +231,11 @@ export default function GamePage(): React.ReactElement {
   const actionPurchaseStats = useMemo((): PurchaseStats => {
     if (!currentPlayer) {
       return {
-        roads: { bought: 0, available: 15 },
-        settlements: { bought: 0, available: 5 },
-        cities: { bought: 0, available: 4 },
-        devCards: { bought: 0, available: 25 },
-        soldier: { played: 0, available: 0 },
+        roads: { unspent: 0, spent: 0, max: 15 },
+        settlements: { unspent: 0, spent: 0, max: 5 },
+        cities: { unspent: 0, spent: 0, max: 4 },
+        devCards: { spent: 0 },
+        soldier: { played: 0, unspent: 0 },
       };
     }
 
@@ -244,16 +248,16 @@ export default function GamePage(): React.ReactElement {
     const maxSettlements = resourceRules?.maxSettlements ?? 5;
     const maxCities = resourceRules?.maxCities ?? 4;
 
-    // Count spent Soldier entitlements (soldiers played this game)
+    // Count spent entitlements (played this game)
     const spentEntitlements = currentPlayer.spentEntitlementsThisGame ?? [];
     const countSpent = (type: string) => spentEntitlements.filter(e => e === type).length;
 
     return {
-      roads: { bought: countUnspent('Road'), available: maxRoads },
-      settlements: { bought: countUnspent('Settlement'), available: maxSettlements },
-      cities: { bought: countUnspent('City'), available: maxCities },
-      devCards: { bought: countUnspent('DevCard'), available: 25 },
-      soldier: { played: countSpent('Soldier'), available: countUnspent('Soldier') },
+      roads: { unspent: countUnspent('Road'), spent: countSpent('Road'), max: maxRoads },
+      settlements: { unspent: countUnspent('Settlement'), spent: countSpent('Settlement'), max: maxSettlements },
+      cities: { unspent: countUnspent('City'), spent: countSpent('City'), max: maxCities },
+      devCards: { spent: countSpent('DevCard') },
+      soldier: { played: countSpent('Soldier'), unspent: countUnspent('Soldier') },
     };
   }, [currentPlayer, resourceRules]);
 
@@ -377,6 +381,13 @@ export default function GamePage(): React.ReactElement {
   const [pendingRobberTile, setPendingRobberTile] = useState<TileModel | null>(null);
   const [robberTargetPlayers, setRobberTargetPlayers] = useState<{ id: string; name: string }[]>([]);
   const [robberMenuPosition, setRobberMenuPosition] = useState({ x: 0, y: 0 });
+
+  // Winner state for confirmation dialog, celebration, and VP adjustment
+  const [showWinnerDialog, setShowWinnerDialog] = useState(false);
+  const [showWinnerCelebration, setShowWinnerCelebration] = useState(false);
+  const [showVictoryPoints, setShowVictoryPoints] = useState(false);
+  const [winnerName, setWinnerName] = useState('');
+  const [winnerId, setWinnerId] = useState('');
 
   // Roll dimming timer ref for clearing after 5 seconds (matching Blazor TileDimDurationSeconds)
   // setLastRoll hook is called earlier with other store hooks
@@ -534,9 +545,22 @@ export default function GamePage(): React.ReactElement {
         return;
       }
 
-      // Handle letter keys (A-Z) for city upgrades
+      // Handle letter keys (A-Z) for roads or city upgrades
       if (key >= 'A' && key <= 'Z') {
-        // Check if current player has City entitlement
+        const letterIndex = key.charCodeAt(0) - 65; // 'A' = 65 -> 0, 'Z' = 90 -> 25
+        const buildIndexForLetter = letterIndex + 10; // A=10, B=11, ..., Z=35 (for roads)
+
+        // First try roads (forward alphabet: A=10, B=11, etc.)
+        const road = roads?.find(r =>
+          r.roadState === 'Buildable' && r.buildIndex === buildIndexForLetter
+        );
+        if (road) {
+          console.log('[GamePage] Keyboard shortcut: building road', key);
+          proxy.purchaseRoad(road.roadKey);
+          return;
+        }
+
+        // Then try city upgrades (reverse alphabet: Z=0, Y=1, X=2, etc.)
         const hasCityEntitlement = currentPlayer?.unspentEntitlements?.includes('City');
         if (!hasCityEntitlement || !buildings || !currentPlayer) return;
 
@@ -545,11 +569,11 @@ export default function GamePage(): React.ReactElement {
           b.buildingState === 'Settlement' && b.ownerId === currentPlayer.id
         );
 
-        // Map letter to index (A=0, B=1, etc.)
-        const letterIndex = key.charCodeAt(0) - 65; // 'A' = 65
+        // Reverse alphabet mapping: Z=0, Y=1, X=2, etc.
+        const cityIndex = 25 - letterIndex; // Z (25) -> 0, Y (24) -> 1, etc.
 
-        if (letterIndex >= 0 && letterIndex < upgradeableSettlements.length) {
-          const settlement = upgradeableSettlements[letterIndex];
+        if (cityIndex >= 0 && cityIndex < upgradeableSettlements.length) {
+          const settlement = upgradeableSettlements[cityIndex];
           console.log('[GamePage] Keyboard shortcut: upgrading settlement', key);
           proxy.upgradeBuilding(settlement.buildingKey);
         }
@@ -605,11 +629,52 @@ export default function GamePage(): React.ReactElement {
     proxy.balanceBoard();
   }, [proxy]);
 
+  // Winner dialog, celebration, and VP handlers
   const handleWinner = useCallback(() => {
-    // TODO: Show winner selection dialog
-    console.log('[GamePage] Winner dialog requested');
-    // For now, just log - need to implement winner dialog
+    if (!currentPlayer) {
+      console.error('[GamePage] No current player for winner declaration');
+      return;
+    }
+
+    // Get current player's name
+    const profile = playerProfiles.get(currentPlayer.id);
+    const name = profile?.name || currentPlayer.name;
+
+    setWinnerName(name);
+    setWinnerId(currentPlayer.id);
+    setShowWinnerDialog(true);
+  }, [currentPlayer, playerProfiles]);
+
+  const handleWinnerConfirm = useCallback(() => {
+    // Hide dialog and show celebration
+    setShowWinnerDialog(false);
+    setShowWinnerCelebration(true);
   }, []);
+
+  const handleWinnerCancel = useCallback(() => {
+    setShowWinnerDialog(false);
+  }, []);
+
+  // When celebration completes, show VP adjustment
+  const handleCelebrationComplete = useCallback(() => {
+    setShowWinnerCelebration(false);
+    setShowVictoryPoints(true);
+  }, []);
+
+  // When VP adjustment is done, declare winner via API
+  const handleVictoryPointsDone = useCallback(async (victoryPoints: Record<string, number>) => {
+    setShowVictoryPoints(false);
+
+    // Declare winner via API with VP values
+    try {
+      const result = await proxy.declareWinner(winnerId, victoryPoints);
+      if (!result.success) {
+        console.error('[GamePage] Failed to declare winner:', result.error);
+      }
+    } catch (error) {
+      console.error('[GamePage] Exception declaring winner:', error);
+    }
+  }, [winnerId, proxy]);
 
   const handleSaveCopy = useCallback(async () => {
     const newName = window.prompt('Enter name for the copy:', '');
@@ -742,6 +807,55 @@ export default function GamePage(): React.ReactElement {
             onCancel={handleRobberTargetCancel}
           />
         )}
+
+        {/* Winner Dialog - confirmation before declaring winner */}
+        <AnimatePresence>
+          {showWinnerDialog && (
+            <WinnerDialog
+              playerName={winnerName}
+              onConfirm={handleWinnerConfirm}
+              onCancel={handleWinnerCancel}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Winner Celebration - hexagonal spinner animation */}
+        <AnimatePresence>
+          {showWinnerCelebration && players && (
+            <WinnerCelebration
+              players={players.map((p): PlayerInfo => {
+                const profile = playerProfiles.get(p.id);
+                return {
+                  id: p.id,
+                  name: profile?.name || p.name,
+                  colors: profile?.colors || DEFAULT_PLAYER_COLORS,
+                  avatarUrl: profile?.avatarUrl,
+                };
+              })}
+              winnerId={winnerId}
+              onComplete={handleCelebrationComplete}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Victory Points Overlay - hexagonal VP adjustment */}
+        <AnimatePresence>
+          {showVictoryPoints && players && (
+            <VictoryPointsOverlay
+              players={players.map((p): PlayerVPInfo => {
+                const profile = playerProfiles.get(p.id);
+                return {
+                  id: p.id,
+                  name: profile?.name || p.name,
+                  colors: profile?.colors || DEFAULT_PLAYER_COLORS,
+                  victoryPoints: p.victoryPoints,
+                  avatarUrl: profile?.avatarUrl,
+                };
+              })}
+              onDone={handleVictoryPointsDone}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Minimized panels bar - fixed at bottom */}
         <MinimizedBar />

@@ -21,7 +21,7 @@ import { Building, Road, type BuildingVisualState, type RoadState } from '@/comp
 import { useLayoutStore } from '@/lib/stores/layoutStore';
 import { hexToRgba } from '@/lib/utils/playerColors';
 import { useBoardData, useBoardPlayers, useRolledNumber } from '@/lib/hooks';
-import { useIsAllocationPhase } from '@/lib/stores/gameStoreHooks';
+import { useIsAllocationPhase, useGameState } from '@/lib/stores/gameStoreHooks';
 
 // Import generated types
 import type { TileModel } from '@/types/generated/models/tile-model';
@@ -303,6 +303,7 @@ export function GameBoard({
   const players = useBoardPlayers();
   const rolledNumber = useRolledNumber();
   const isAllocationPhase = useIsAllocationPhase();
+  const gameState = useGameState();
 
   // Destructure board data from hook
   const { tiles, harbors, buildings, roads, currentPlayerId, currentPlayerEntitlements, robber } = boardData;
@@ -460,7 +461,13 @@ export function GameBoard({
 
   // Build HexGrid items from tiles
   const tileItems: HexGridItem[] = useMemo(() => {
-    return tiles.map((tile) => {
+    // Show tile indexes when in MustMoveRobber state or allocation phases
+    const showTileIndexes =
+      gameState === 'MustMoveRobber' ||
+      gameState === 'AllocateResourceForward' ||
+      gameState === 'AllocateResourceReverse';
+
+    return tiles.map((tile, index) => {
       const coord = cubicCoord(tile.tileKey.q, tile.tileKey.r);
       const key = coordKeyString(coord);
       const isHighlighted = highlightedTiles?.has(key) || tile.highlighted;
@@ -479,11 +486,12 @@ export function GameBoard({
             isDimmed={isDimmed}
             onClick={onTileClick ? () => onTileClick(tile) : undefined}
             onRightClick={onTileRightClick ? (e) => onTileRightClick(tile, e) : undefined}
+            tileIndex={showTileIndexes ? index + 1 : undefined}
           />
         ),
       };
     });
-  }, [tiles, hexSize, highlightedTiles, rolledNumber, onTileClick, onTileRightClick]);
+  }, [tiles, hexSize, highlightedTiles, rolledNumber, onTileClick, onTileRightClick, gameState]);
 
   // Get the current player's colors for harbor backgrounds
   const currentPlayerColors = useMemo((): PlayerColors | undefined => {
@@ -729,17 +737,17 @@ export function GameBoard({
     const hasCityEntitlement = currentPlayerEntitlements.includes('City' as Entitlement);
     const hasRoadEntitlement = currentPlayerEntitlements.includes('Road' as Entitlement);
 
-    // Build city upgrade index map (A, B, C...) for current player's settlements
-    // Matches Blazor BuildingOverlay.razor: city upgrades get letters, settlements get numbers
+    // Build city upgrade index map (Z, Y, X...) for current player's settlements
+    // Uses reverse alphabet to avoid overlap with road labels (1-9, A-Z)
     const cityUpgradeIndexMap = new Map<string, string>();
     if (hasCityEntitlement && currentPlayer) {
-      let cityIndex = 0; // 0 = 'A', 1 = 'B', etc.
+      let cityIndex = 0; // 0 = 'Z', 1 = 'Y', etc. (reverse alphabet)
       buildingPositions.forEach(({ key }) => {
         const buildingModel = buildingMap.get(key);
         if (buildingModel &&
             buildingModel.buildingState === 'Settlement' &&
             buildingModel.ownerId === currentPlayer.id) {
-          cityUpgradeIndexMap.set(key, String.fromCharCode(65 + cityIndex)); // 65 = 'A'
+          cityUpgradeIndexMap.set(key, String.fromCharCode(90 - cityIndex)); // 90 = 'Z', descending
           cityIndex++;
         }
       });
@@ -847,7 +855,7 @@ export function GameBoard({
             ownerId === currentPlayer?.id &&
             hasCityEntitlement;
 
-          // Get city upgrade letter (A, B, C...) if this is an upgradeable settlement
+          // Get city upgrade letter (Z, Y, X...) if this is an upgradeable settlement
           const cityUpgradeIndex = cityUpgradeIndexMap.get(key);
 
           return (

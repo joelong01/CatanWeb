@@ -59,6 +59,23 @@ const NEUTRAL_COLORS: PlayerColors = {
 };
 
 /**
+ * Convert numeric index to alphanumeric label (0-9, then A-Z)
+ * @param index - Zero-based index
+ * @returns Alphanumeric label (0, 1, ..., 9, A, B, ..., Z)
+ */
+function indexToAlphanumeric(index: number): string {
+  if (index < 0) return '0';
+  if (index <= 9) return index.toString();
+  // After 9, use A-Z (index 10 = A, 11 = B, etc.)
+  const letterIndex = index - 10;
+  if (letterIndex < 26) {
+    return String.fromCharCode(65 + letterIndex); // 65 is 'A'
+  }
+  // If we somehow have more than 36 items, just show the number
+  return index.toString();
+}
+
+/**
  * Calculate the canonical road polygon points for a given hex size.
  *
  * Geometry matches Blazor BoardSvgConstants.CalculateCanonicalRoadPolygon:
@@ -193,7 +210,7 @@ export const Road = React.memo(function Road({
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         />
-        {/* Build index label - black rounded rect with white number */}
+        {/* Build index label - black rounded rect with white alphanumeric (0-9, A-Z) */}
         {buildIndex > 0 && (
           <g style={{ pointerEvents: 'auto', cursor: 'pointer' }} onClick={onClick}>
             <rect
@@ -214,7 +231,7 @@ export const Road = React.memo(function Road({
               fontWeight="bold"
               fill="white"
             >
-              {buildIndex}
+              {indexToAlphanumeric(buildIndex)}
             </text>
           </g>
         )}

@@ -22,6 +22,8 @@ export interface GameTileProps {
   onClick?: () => void;
   /** Right-click handler for tile interactions (e.g., robber placement) */
   onRightClick?: (e: React.MouseEvent) => void;
+  /** Tile index to display (1-based, for MustMoveRobber state) */
+  tileIndex?: number;
 }
 
 /**
@@ -43,6 +45,7 @@ export const GameTile = memo(function GameTile({
   isDimmed = false,
   onClick,
   onRightClick,
+  tileIndex,
 }: GameTileProps) {
   const { number, resourceTileType, temporarilyGold } = tile;
   // When temporarily gold, show gold mine background instead of original resource
@@ -135,7 +138,7 @@ export const GameTile = memo(function GameTile({
       {/* Number token (not shown for desert) - positioned above center */}
       {!isDesert && number > 0 && (
         <div
-          className="absolute"
+          className="absolute pointer-events-none"
           style={{
             width: '45%',
             height: '45%',
@@ -153,7 +156,7 @@ export const GameTile = memo(function GameTile({
       <AnimatePresence>
         {temporarilyGold && !isDesert && (
           <motion.div
-            className="absolute rounded overflow-hidden shadow-lg"
+            className="absolute rounded overflow-hidden shadow-lg pointer-events-none"
             style={{
               width: '23%', // 40px at HexSize=100, width ~174px = 23%
               aspectRatio: '2 / 3', // Matches Blazor 40x60 card
@@ -174,6 +177,31 @@ export const GameTile = memo(function GameTile({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Tile index overlay (for MustMoveRobber state) */}
+      {tileIndex !== undefined && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            bottom: '15%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+          }}
+        >
+          <div
+            className="flex items-center justify-center font-bold rounded-md px-2 py-1"
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              color: 'white',
+              fontSize: '1.2em',
+              minWidth: '1.8em',
+              textAlign: 'center',
+            }}
+          >
+            {tileIndex}
+          </div>
+        </div>
+      )}
     </div>
   );
 });
