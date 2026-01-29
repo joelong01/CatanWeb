@@ -19,7 +19,6 @@ import {
   usePlayerProfiles,
   useCurrentPlayer,
   useLastRoll,
-  useMyPlayerId,
 } from '@/lib/stores/gameStoreHooks';
 import { DEFAULT_PLAYER_COLORS, type PlayerColors } from '@/types/player-profile';
 import type { TileModel } from '@/types/generated/models/tile-model';
@@ -52,6 +51,8 @@ export interface BoardGameData {
   harbors: HarborModel[];
   buildings: BuildingModel[];
   roads: RoadModel[];
+  /** The turn player's ID (from gameModel.currentPlayerId) */
+  currentPlayerId: string | undefined;
   currentPlayerEntitlements: Entitlement[];
   robber: RobberModel | undefined;
 }
@@ -107,18 +108,12 @@ export function useBoardData(): BoardGameData {
       roads: roads ?? [],
       harbors: harbors ?? [],
       robber,
+      currentPlayerId: currentPlayer?.id,
       currentPlayerEntitlements: currentPlayer?.unspentEntitlements ?? [],
     }),
-    [tiles, buildings, roads, harbors, robber, currentPlayer?.unspentEntitlements]
+    [tiles, buildings, roads, harbors, robber, currentPlayer?.id, currentPlayer?.unspentEntitlements]
   );
 }
-
-/**
- * Returns the current player's ID from the store.
- *
- * Re-exported for convenience alongside other board hooks.
- */
-export { useMyPlayerId as useSelectedPlayerId };
 
 /**
  * Returns the last rolled dice number.

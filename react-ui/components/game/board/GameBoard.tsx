@@ -20,7 +20,7 @@ import { GameTile } from '@/components/game/tiles/GameTile';
 import { Building, Road, type BuildingVisualState, type RoadState } from '@/components/game/tiles';
 import { useLayoutStore } from '@/lib/stores/layoutStore';
 import { hexToRgba } from '@/lib/utils/playerColors';
-import { useBoardData, useBoardPlayers, useSelectedPlayerId, useRolledNumber } from '@/lib/hooks';
+import { useBoardData, useBoardPlayers, useRolledNumber } from '@/lib/hooks';
 import { useIsAllocationPhase } from '@/lib/stores/gameStoreHooks';
 
 // Import generated types
@@ -301,12 +301,11 @@ export function GameBoard({
   // Use internal hooks for game data (server-driven UI pattern)
   const boardData = useBoardData();
   const players = useBoardPlayers();
-  const selectedPlayerId = useSelectedPlayerId();
   const rolledNumber = useRolledNumber();
   const isAllocationPhase = useIsAllocationPhase();
 
   // Destructure board data from hook
-  const { tiles, harbors, buildings, roads, currentPlayerEntitlements, robber } = boardData;
+  const { tiles, harbors, buildings, roads, currentPlayerId, currentPlayerEntitlements, robber } = boardData;
 
   // Derive showSettlementIndexes from server state (not from props)
   // Show indexes when NOT in allocation phase and player has Settlement entitlement
@@ -488,10 +487,10 @@ export function GameBoard({
 
   // Get the current player's colors for harbor backgrounds
   const currentPlayerColors = useMemo((): PlayerColors | undefined => {
-    if (!selectedPlayerId || !players || players.length === 0) return undefined;
-    const player = players.find(p => p.id === selectedPlayerId);
+    if (!currentPlayerId || !players || players.length === 0) return undefined;
+    const player = players.find(p => p.id === currentPlayerId);
     return player?.colors;
-  }, [players, selectedPlayerId]);
+  }, [players, currentPlayerId]);
 
   // Build HexGrid items from harbors (at water hex positions)
   const harborItems: HexGridItem[] = useMemo(() => {
@@ -723,7 +722,7 @@ export function GameBoard({
     const roadContainerSize = hSize * 1.2;
 
     // Get current player colors
-    const currentPlayer = selectedPlayerId ? players.find(p => p.id === selectedPlayerId) : players[0];
+    const currentPlayer = currentPlayerId ? players.find(p => p.id === currentPlayerId) : players[0];
 
     // Check entitlements for current player
     const hasSettlementEntitlement = currentPlayerEntitlements.includes('Settlement' as Entitlement);
@@ -810,7 +809,7 @@ export function GameBoard({
                 roadState={roadState}
                 side={side}
                 ownerId={ownerId}
-                currentPlayerId={selectedPlayerId}
+                currentPlayerId={currentPlayerId}
                 hexSize={hSize}
                 buildIndex={roadModel.buildIndex}
                 onClick={roadState === 'Buildable' && onRoadClick ? () => onRoadClick(roadKey) : undefined}
@@ -864,7 +863,7 @@ export function GameBoard({
                 buildingState={buildingState}
                 visualState={isCityUpgradeable ? 'Highlighted' : 'Normal'}
                 ownerId={ownerId}
-                currentPlayerId={selectedPlayerId}
+                currentPlayerId={currentPlayerId}
                 size={ownedBuildingSize}
                 buildIndex={cityUpgradeIndex}
                 onClick={isCityUpgradeable && onBuildingClick ? () => onBuildingClick(buildingKey) : undefined}
@@ -926,7 +925,7 @@ export function GameBoard({
                 buildingState="PossibleSettlement"
                 visualState={visualState}
                 stars={stars}
-                currentPlayerId={selectedPlayerId}
+                currentPlayerId={currentPlayerId}
                 size={buildableBuildingSize}
                 buildIndex={settlementBuildIndex}
                 onClick={onBuildingClick ? () => onBuildingClick(buildingKey) : undefined}
@@ -1014,7 +1013,7 @@ export function GameBoard({
         )}
       </>
     );
-  }, [buildingPositions, roadPositions, buildingMap, roadMap, players, selectedPlayerId, calculateStars, starFilter, currentPlayerEntitlements, onBuildingClick, onRoadClick, robber, animatedRobberCoords, showSettlementIndexes]);
+  }, [buildingPositions, roadPositions, buildingMap, roadMap, players, currentPlayerId, calculateStars, starFilter, currentPlayerEntitlements, onBuildingClick, onRoadClick, robber, animatedRobberCoords, showSettlementIndexes]);
 
   // Debug logging
   console.log('[GameBoard] render, tiles:', tiles.length, 'containerSize:', containerSize);

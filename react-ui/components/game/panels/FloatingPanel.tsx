@@ -41,6 +41,11 @@ interface FloatingPanelProps {
    * Default: true (recommended for panels with sparse content like hex grids)
    */
   enableBackgroundDrag?: boolean;
+  /**
+   * Force panel to always be on top (z-index 1000+).
+   * Use for modal overlays like goFirst, supplemental, etc.
+   */
+  alwaysOnTop?: boolean;
 }
 
 /** Default panel layout for new/unknown panels */
@@ -104,11 +109,16 @@ export function FloatingPanel({
   minWidth = 120,
   minHeight = 80,
   enableBackgroundDrag = true,
+  alwaysOnTop = false,
 }: FloatingPanelProps): React.ReactElement | null {
   // Get panel state from store (with fallback for missing/incomplete panels)
   const storedPanel = useLayoutStore((state) => state.panels[panelId]);
   const panel = getPanelWithDefaults(storedPanel);
   const setPanelPosition = useLayoutStore((state) => state.setPanelPosition);
+
+  // DEBUG: Log what we're reading from store on mount/update
+  console.log(`[FloatingPanel:${panelId}] storedPanel:`, storedPanel);
+  console.log(`[FloatingPanel:${panelId}] panel after defaults:`, panel);
   const setPanelSize = useLayoutStore((state) => state.setPanelSize);
   const toggleMinimize = useLayoutStore((state) => state.toggleMinimize);
   const bringToFront = useLayoutStore((state) => state.bringToFront);
@@ -125,6 +135,8 @@ export function FloatingPanel({
   const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  // Track latest position during drag to avoid stale closure issues
+  const latestPositionRef = useRef({ x: panel.left, y: panel.top });
 
   // Position state - just use raw values from store, no conversions
   const [actualPosition, setActualPosition] = useState({
@@ -134,8 +146,10 @@ export function FloatingPanel({
 
   // Sync position when store changes (e.g., after reset)
   useEffect(() => {
+    console.log(`[FloatingPanel:${panelId}] Sync effect triggered - panel.left=${panel.left}, panel.top=${panel.top}`);
     setActualPosition({ x: panel.left, y: panel.top });
-  }, [panel.left, panel.top]);
+    latestPositionRef.current = { x: panel.left, y: panel.top };
+  }, [panel.left, panel.top, panelId]);
 
   // Track CTRL key state
   useEffect(() => {
@@ -156,6 +170,7 @@ export function FloatingPanel({
 
   // Start drag (desktop: CTRL+click, mobile: after long press)
   const startDrag = useCallback((clientX: number, clientY: number) => {
+    console.log(`[FloatingPanel:${panelId}] startDrag called at (${clientX}, ${clientY}), starting from position (${actualPosition.x}, ${actualPosition.y})`);
     setIsDragging(true);
     dragStartRef.current = {
       x: clientX,
@@ -163,7 +178,7 @@ export function FloatingPanel({
       posX: actualPosition.x,
       posY: actualPosition.y,
     };
-  }, [actualPosition]);
+  }, [actualPosition, panelId]);
 
   // Mouse down handler
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -180,14 +195,16 @@ export function FloatingPanel({
     // Background drag: click on non-interactive areas starts drag
     if (enableBackgroundDrag) {
       const target = e.target as HTMLElement;
+      const isInteractive = isInteractiveElement(target, panelRef.current);
+      console.log(`[FloatingPanel:${panelId}] Background drag check - target:`, target.tagName, target.className, 'isInteractive:', isInteractive);
       // Don't start drag if clicking on an interactive element
-      if (!isInteractiveElement(target, panelRef.current)) {
+      if (!isInteractive) {
         e.preventDefault();
         e.stopPropagation();
         startDrag(e.clientX, e.clientY);
       }
     }
-  }, [startDrag, enableBackgroundDrag]);
+  }, [startDrag, enableBackgroundDrag, panelId]);
 
   // Track mouse position for cursor change when enableBackgroundDrag is active
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -222,14 +239,14 @@ export function FloatingPanel({
       longPressTimerRef.current = null;
     }
 
-    // If we were dragging, save position directly
+    // If we were dragging, save position using ref (avoids stale closure)
     if (isDragging) {
       setIsDragging(false);
-      setPanelPosition(panelId, actualPosition.x, actualPosition.y);
+      setPanelPosition(panelId, latestPositionRef.current.x, latestPositionRef.current.y);
     }
 
     setLongPressActive(false);
-  }, [isDragging, actualPosition, panelId, setPanelPosition]);
+  }, [isDragging, panelId, setPanelPosition]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     // Cancel long press if moved before timer fires
@@ -243,10 +260,12 @@ export function FloatingPanel({
       const touch = e.touches[0];
       const deltaX = touch.clientX - dragStartRef.current.x;
       const deltaY = touch.clientY - dragStartRef.current.y;
-      setActualPosition({
+      const newPos = {
         x: dragStartRef.current.posX + deltaX,
         y: dragStartRef.current.posY + deltaY,
-      });
+      };
+      setActualPosition(newPos);
+      latestPositionRef.current = newPos;
     }
   }, [isDragging]);
 
@@ -257,17 +276,21 @@ export function FloatingPanel({
     const handleMouseMove = (e: MouseEvent) => {
       const deltaX = e.clientX - dragStartRef.current.x;
       const deltaY = e.clientY - dragStartRef.current.y;
-      setActualPosition({
+      const newPos = {
         x: dragStartRef.current.posX + deltaX,
         y: dragStartRef.current.posY + deltaY,
-      });
+      };
+      setActualPosition(newPos);
+      // Update ref immediately so mouse up has the latest position
+      latestPositionRef.current = newPos;
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
       setLongPressActive(false);
-      // Save position directly - no edge-anchoring
-      setPanelPosition(panelId, actualPosition.x, actualPosition.y);
+      // Save position using ref to avoid stale closure issues
+      console.log(`[FloatingPanel:${panelId}] Saving position on drag end: x=${latestPositionRef.current.x}, y=${latestPositionRef.current.y}`);
+      setPanelPosition(panelId, latestPositionRef.current.x, latestPositionRef.current.y);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -276,7 +299,7 @@ export function FloatingPanel({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, actualPosition, panelId, setPanelPosition]);
+  }, [isDragging, panelId, setPanelPosition]);
 
   // Resize handlers
   const handleResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -353,7 +376,7 @@ export function FloatingPanel({
         top: actualPosition.y,
         width: panel.width,
         height: panel.height,
-        zIndex: isDragging ? 100 : panel.zIndex,
+        zIndex: isDragging ? 1001 : alwaysOnTop ? 1000 : panel.zIndex,
         cursor: showMoveCursor ? 'move' : undefined,
       }}
       onMouseDown={(e) => {

@@ -50,7 +50,8 @@ export type PanelId =
   | 'players'
   | 'resources'
   | 'board'
-  | 'goFirst';
+  | 'goFirst'
+  | 'supplemental';
 
 /** Panel metadata for MinimizedBar display */
 export interface PanelMetadata {
@@ -67,10 +68,11 @@ export const PANEL_METADATA: Record<PanelId, PanelMetadata> = {
   resources: { title: 'Resources', icon: '📦' },
   board: { title: 'Board', icon: '🗺️' },
   goFirst: { title: 'Go First', icon: '🏁' },
+  supplemental: { title: 'Supplemental', icon: '🔨' },
 };
 
 /** Panel order for minimized bar (consistent ordering) */
-export const PANEL_ORDER: PanelId[] = ['dice', 'actions', 'measurements', 'players', 'resources', 'board', 'goFirst'];
+export const PANEL_ORDER: PanelId[] = ['dice', 'actions', 'measurements', 'players', 'resources', 'board', 'goFirst', 'supplemental'];
 
 /**
  * Landscape default panel layouts (matching Blazor 3-column layout)
@@ -139,13 +141,22 @@ const LANDSCAPE_PANELS: Record<PanelId, WindowPosition> = {
     zIndex: 24,
   },
   goFirst: {
-    left: 800,
-    top: 350, // Centered on typical 1920x1080 screen
+    left: 500,
+    top: 200, // Centered over the board area
     width: 320,
     height: 300,
     minimized: false,
     visible: true,
-    zIndex: 50, // Higher z-index - overlays should be on top
+    zIndex: 1000, // Very high z-index - modal overlay must be on top of everything
+  },
+  supplemental: {
+    left: 500,
+    top: 200, // Centered over the board area
+    width: 320,
+    height: 340, // Slightly taller to accommodate Next button
+    minimized: false,
+    visible: true,
+    zIndex: 1000, // Very high z-index - modal overlay must be on top of everything
   },
 };
 
@@ -218,12 +229,21 @@ const PORTRAIT_PANELS: Record<PanelId, WindowPosition> = {
   },
   goFirst: {
     left: 40,
-    top: 300, // Centered on typical portrait screen
+    top: 200, // Centered on typical portrait screen
     width: 320,
     height: 300,
     minimized: false,
     visible: true,
-    zIndex: 50, // Higher z-index - overlays should be on top
+    zIndex: 1000, // Very high z-index - modal overlay must be on top of everything
+  },
+  supplemental: {
+    left: 40,
+    top: 200, // Centered over the board area
+    width: 320,
+    height: 340, // Slightly taller to accommodate Next button
+    minimized: false,
+    visible: true,
+    zIndex: 1000, // Very high z-index - modal overlay must be on top of everything
   },
 };
 
@@ -307,7 +327,7 @@ const initialState: LayoutState = {
   viewport: { ...DEFAULT_VIEWPORT },
   starFilter: null,
   resourceFilter: null,
-  version: 6, // Bumped version for WindowPosition migration
+  version: 7, // Bumped version for WindowPosition migration
 };
 
 /**
@@ -358,6 +378,7 @@ export const useLayoutStore = create<LayoutStore>()(
       },
 
       setPanelPosition: (panelId, left, top) => {
+        console.log(`[layoutStore] setPanelPosition called: panelId=${panelId}, left=${left}, top=${top}`);
         set((state) => ({
           panels: {
             ...state.panels,
@@ -477,7 +498,20 @@ export const useLayoutStore = create<LayoutStore>()(
     }),
     {
       name: 'catan-layout',
-      version: 6, // Increment when layout structure changes
+      version: 7, // Increment when layout structure changes
+      onRehydrateStorage: () => {
+        console.log('[layoutStore] Starting hydration from localStorage...');
+        return (state, error) => {
+          if (error) {
+            console.error('[layoutStore] Hydration error:', error);
+          } else {
+            console.log('[layoutStore] Hydration complete. State:', state);
+            if (state?.panels?.supplemental) {
+              console.log('[layoutStore] Supplemental panel position:', state.panels.supplemental);
+            }
+          }
+        };
+      },
       partialize: (state) => ({
         boardType: state.boardType,
         panels: state.panels,
@@ -485,6 +519,7 @@ export const useLayoutStore = create<LayoutStore>()(
         version: state.version,
       }),
       migrate: (persistedState, version) => {
+        console.log(`[layoutStore] migrate called - version=${version}, persistedState:`, persistedState);
         const state = persistedState as LayoutState & {
           panels?: Record<string, unknown>;
         };
@@ -508,9 +543,56 @@ export const useLayoutStore = create<LayoutStore>()(
             ...initialState,
             ...state,
             panels: migratedPanels,
-            version: 6,
+            version: 7,
           };
         }
+
+        // If version 6, migrate to version 7 - add supplemental panel and fix z-indexes for modal overlays
+        if (version === 6) {
+          console.log('[layoutStore] Migrating from version 6 to 7 - adding supplemental panel with high z-index');
+
+          const panels = state.panels as Record<PanelId, WindowPosition>;
+
+          // Add supplemental panel if missing, and fix z-indexes for modal overlays
+          const migratedPanels: Record<PanelId, WindowPosition> = {
+            ...panels,
+            // Ensure goFirst has high z-index
+            goFirst: {
+              ...(panels.goFirst ?? LANDSCAPE_PANELS.goFirst),
+              zIndex: 1000,
+            },
+            // Add supplemental panel with high z-index
+            supplemental: LANDSCAPE_PANELS.supplemental,
+          };
+
+          return {
+            ...state,
+            panels: migratedPanels,
+            version: 7,
+          };
+        }
+
+        // Always ensure all panels exist (fills in any missing panels with defaults)
+        // This handles cases where storage was saved without all panels
+        const currentPanels = (persistedState as LayoutState).panels ?? {};
+        const completePanels: Record<PanelId, WindowPosition> = { ...currentPanels };
+        let hasMissingPanels = false;
+
+        for (const panelId of PANEL_ORDER) {
+          if (!completePanels[panelId]) {
+            console.log(`[layoutStore] Adding missing panel: ${panelId}`);
+            completePanels[panelId] = LANDSCAPE_PANELS[panelId];
+            hasMissingPanels = true;
+          }
+        }
+
+        if (hasMissingPanels) {
+          return {
+            ...(persistedState as LayoutState),
+            panels: completePanels,
+          };
+        }
+
         return persistedState as LayoutState;
       },
     }

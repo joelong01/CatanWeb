@@ -14,7 +14,7 @@ import { useParams } from 'next/navigation';
 import { MainLayout } from '@/components/layout';
 import { useGameConnection } from '@/lib/hooks/useGameConnection';
 import { useGameStore } from '@/lib/stores/gameStore';
-import { useLayoutStore } from '@/lib/stores/layoutStore';
+import { useLayoutStore, selectPanel } from '@/lib/stores/layoutStore';
 import {
   useGameState,
   usePlayers,
@@ -32,6 +32,7 @@ import {
 import { GameBoard } from '@/components/game/board';
 import { FloatingPanel, MinimizedBar } from '@/components/game/panels';
 import { GoFirstOverlay } from '@/components/game/overlays/GoFirstOverlay';
+import { SupplementalOverlay } from '@/components/game/overlays/SupplementalOverlay';
 import { RobberTargetMenu } from '@/components/game/overlays/RobberTargetMenu';
 import { PlayersPanel } from '@/components/game/panels/PlayersPanel';
 import { GameResourcesHeader } from '@/components/game/panels/GameResourcesHeader';
@@ -361,6 +362,16 @@ export default function GamePage(): React.ReactElement {
     proxy.goFirst(playerId);
   }, [proxy]);
 
+  // Supplemental toggle handler - sends participation status immediately like Blazor
+  const handleSupplementalToggle = useCallback((playerId: string, participating: boolean) => {
+    proxy.setParticipatingInSupplemental(playerId, participating);
+  }, [proxy]);
+
+  // Supplemental done handler - just advances the game state
+  const handleSupplementalDone = useCallback(() => {
+    proxy.next();
+  }, [proxy]);
+
   // Robber state for target selection (when multiple players on tile)
   const [pendingRobberCoords, setPendingRobberCoords] = useState<HexCoordinates | null>(null);
   const [pendingRobberTile, setPendingRobberTile] = useState<TileModel | null>(null);
@@ -562,6 +573,32 @@ export default function GamePage(): React.ReactElement {
     setResourceFilter(resources.length > 0 ? resources[0] : null);
   }, [setResourceFilter]);
 
+  // Center modal overlays (goFirst, supplemental) on the board when they appear
+  const boardPanel = useLayoutStore(selectPanel('board'));
+  const setPanelPosition = useLayoutStore((state) => state.setPanelPosition);
+
+  useEffect(() => {
+    // Center goFirst overlay on board when FinishedRollOrder state is entered
+    if (gameState === 'FinishedRollOrder' && boardPanel) {
+      const goFirstWidth = 320;
+      const goFirstHeight = 300;
+      const centerX = boardPanel.left + (boardPanel.width - goFirstWidth) / 2;
+      const centerY = boardPanel.top + (boardPanel.height - goFirstHeight) / 2;
+      setPanelPosition('goFirst', centerX, centerY);
+    }
+  }, [gameState === 'FinishedRollOrder', boardPanel?.left, boardPanel?.top, boardPanel?.width, boardPanel?.height, setPanelPosition]);
+
+  useEffect(() => {
+    // Center supplemental overlay on board when PickSupplementalPlayers state is entered
+    if (gameState === 'PickSupplementalPlayers' && boardPanel) {
+      const supplementalWidth = 320;
+      const supplementalHeight = 340;
+      const centerX = boardPanel.left + (boardPanel.width - supplementalWidth) / 2;
+      const centerY = boardPanel.top + (boardPanel.height - supplementalHeight) / 2;
+      setPanelPosition('supplemental', centerX, centerY);
+    }
+  }, [gameState === 'PickSupplementalPlayers', boardPanel?.left, boardPanel?.top, boardPanel?.width, boardPanel?.height, setPanelPosition]);
+
   // Game-specific menu action handlers
   const handleBalance = useCallback(() => {
     console.log('[GamePage] Balance board requested');
@@ -674,11 +711,24 @@ export default function GamePage(): React.ReactElement {
 
         {/* GoFirst Overlay - shown during FinishedRollOrder state */}
         {gameState === 'FinishedRollOrder' && (
-          <FloatingPanel panelId="goFirst" title="Go First"  className="bg-white/5 border-white/10">
+          <FloatingPanel panelId="goFirst" title="Go First" alwaysOnTop className="bg-white/5 border-white/10">
             <GoFirstOverlay
               players={players}
               playerProfiles={playerProfiles}
               onSelectPlayer={handleGoFirst}
+            />
+          </FloatingPanel>
+        )}
+
+        {/* Supplemental Overlay - shown during PickSupplementalPlayers state */}
+        {gameState === 'PickSupplementalPlayers' && currentPlayer && (
+          <FloatingPanel panelId="supplemental" title="Supplemental Build" alwaysOnTop className="bg-white/5 border-white/10">
+            <SupplementalOverlay
+              players={players}
+              currentPlayerId={currentPlayer.id}
+              playerProfiles={playerProfiles}
+              onToggle={handleSupplementalToggle}
+              onDone={handleSupplementalDone}
             />
           </FloatingPanel>
         )}
