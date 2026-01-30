@@ -622,35 +622,174 @@ body {
 /* ==========================================================================
    3D Transform Utilities (for card flips and animations)
    ========================================================================== */
-@layer utilities {
-  .backface-hidden {
-    backface-visibility: hidden;
-  }
+@utility backface-hidden {
+  backface-visibility: hidden;
+}
 
-  .preserve-3d {
-    transform-style: preserve-3d;
-  }
+@utility preserve-3d {
+  transform-style: preserve-3d;
+}
 
-  .perspective-1000 {
-    perspective: 1000px;
-  }
+@utility perspective-1000 {
+  perspective: 1000px;
+}
 
-  .rotate-y-180 {
-    transform: rotateY(180deg);
-  }
+@utility rotate-y-180 {
+  transform: rotateY(180deg);
 }
 
 /* ==========================================================================
    Hexagon Shapes (Catan theme)
    ========================================================================== */
-@layer utilities {
-  /* Pointy-top hexagon (standard Catan orientation) */
-  .hex-clip {
-    clip-path: polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%);
-  }
+/* Pointy-top hexagon (standard Catan orientation) */
+@utility hex-clip {
+  clip-path: polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%);
+}
 
-  /* Flat-top hexagon - correct geometry for aspect ratio sqrt(3)/2 ≈ 0.866 */
-  .hex-clip-flat {
-    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+/* Flat-top hexagon - correct geometry for aspect ratio sqrt(3)/2 ≈ 0.866 */
+@utility hex-clip-flat {
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+
+/* ==========================================================================
+   Winner Overlay Animations
+   ========================================================================== */
+
+/* Keyframes for winner celebration spin, confetti, and fireworks */
+@keyframes winner-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes winner-counter-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes confetti-burst {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 1;
   }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--burst-x), var(--burst-y)) scale(1) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Animation utilities (Tailwind v4 @utility directive)
+   Duration and count set via CSS custom properties from React inline styles. */
+
+@utility animate-winner-spin {
+  animation-name: winner-spin;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  animation-duration: var(--winner-spin-duration, 1667ms);
+  animation-iteration-count: var(--winner-spin-count, 3);
+}
+
+@utility animate-winner-counter-spin {
+  animation-name: winner-counter-spin;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  animation-duration: var(--winner-spin-duration, 1667ms);
+  animation-iteration-count: var(--winner-spin-count, 3);
+}
+
+@utility animate-confetti-burst {
+  animation-name: confetti-burst;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+  animation-duration: var(--confetti-duration, 1500ms);
+  animation-delay: var(--confetti-delay, 0ms);
+  animation-iteration-count: var(--confetti-count, 1);
+}
+
+/* Firework rocket: shoots upward from below the explosion point, fades on arrival.
+   Starts hidden (opacity 0) so it's invisible during animation-delay. */
+@keyframes firework-rocket {
+  0% {
+    transform: translateY(var(--rocket-travel, 150px));
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+}
+
+/* Firework flash: bright expanding circle at the explosion point */
+@keyframes firework-flash {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  15% {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* Firework spark: bursts outward from explosion, curves down with gravity.
+   Starts at scale(0) so it's invisible during animation-delay. */
+@keyframes firework-spark {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 0;
+  }
+  8% {
+    transform: translate(0, 0) scale(1.3);
+    opacity: 1;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--spark-x, 0px), calc(var(--spark-y, 0px) + 25px)) scale(0.15);
+    opacity: 0;
+  }
+}
+
+@utility animate-firework-rocket {
+  animation-name: firework-rocket;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+  animation-duration: var(--rocket-duration, 600ms);
+  animation-delay: var(--rocket-delay, 0ms);
+  animation-iteration-count: 1;
+}
+
+@utility animate-firework-flash {
+  animation-name: firework-flash;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+  animation-duration: var(--flash-duration, 400ms);
+  animation-delay: var(--flash-delay, 600ms);
+  animation-iteration-count: 1;
+}
+
+@utility animate-firework-spark {
+  animation-name: firework-spark;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+  animation-duration: var(--spark-duration, 800ms);
+  animation-delay: var(--spark-delay, 600ms);
+  animation-iteration-count: 1;
 }

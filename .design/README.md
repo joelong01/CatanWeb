@@ -1,21 +1,92 @@
 # Catan Design Documentation
 
-This directory contains the authoritative "as built" design documentation for the Catan project.
-Each file reflects the current implementation in the repository as of December 3, 2025.
+**Last updated:** January 30, 2026
 
-## Directory Structure
+Verified documentation reflecting the current implementation. These
+30 documents are the **source of truth** for how the system works.
 
-- `projects/` – Summaries for each solution project (DesktopApp, GameService, Shared, WebUI, CLI).
-- `systems/` – Cross-cutting systems such as the game state machine, save/load pipeline, rendering flow, and real-time messaging.
-- `gameplay/` – Per-game-state behavior and lifecycle notes.
-- `ui/` – Component-level design notes for the WebUI and Desktop experiences.
+Legacy and superseded documents are archived in [old/](old/).
 
-## Source Mapping
+## Architecture & Communication
 
-Each document references its originating design file in `design_docs/` when applicable. Legacy docs remain untouched for historical context.
+| Document | Purpose |
+|----------|---------|
+| [message-flow.md](message-flow.md) | State machine, message types, REST endpoints, SignalR events, adding new messages |
+| [game-service-api.md](game-service-api.md) | Complete REST API: Game, Recording, Stats controllers + SignalR hub + startup |
+| [react-architecture.md](react-architecture.md) | Dependencies, directory structure, Zustand stores, component hierarchy, data flow |
+| [serialization.md](serialization.md) | TypeGenRunner pipeline, JsonIgnore removal, enum-to-union conversion |
 
-## Maintenance Notes
+## Game Systems
 
-- Update the relevant document whenever implementation changes introduce new behavior or retire existing features.
-- Use TODO sections to track gaps between intended and implemented behavior.
-- Keep line lengths under 150 characters to satisfy markdown linting rules.
+| Document | Purpose |
+|----------|---------|
+| [game-rules-summary.md](game-rules-summary.md) | How Catan is played mapped to GameState values, hybrid play model |
+| [game-state-ui.md](game-state-ui.md) | All 33 GameStates mapped to UI requirements, ActionFlags, entitlements |
+| [board-rendering.md](board-rendering.md) | React HexGrid component system, GameBoard, tile/building/road rendering |
+| [coordinates.md](coordinates.md) | Cube coordinate system, hex math, building/road positioning |
+| [settings.md](settings.md) | House rules configuration with all properties and defaults |
+| [balance-algorithm.md](balance-algorithm.md) | Board balance algorithm: two-phase shuffle, star parity, clump prevention |
+| [grief-dodgy.md](grief-dodgy.md) | GriefDodgy house rule: tile flip, fake-out, celebration animations |
+| [devcard-tracking.md](devcard-tracking.md) | Development card tracking, VP entry at game end, score formula |
+
+## UI & Layout
+
+| Document | Purpose |
+|----------|---------|
+| [floating-panel.md](floating-panel.md) | FloatingPanel + MinimizedBar architecture, WindowPosition, layoutStore |
+| [css-theming.md](css-theming.md) | Tailwind v4 design tokens, player colors, @utility directives, typography |
+| [portrait-mode.md](portrait-mode.md) | Portrait layout: tabbed interface, Blazor vs React status |
+| [assets.md](assets.md) | Font sources (Catan.ttf, Font Awesome), theme system, glyph constants |
+| [game-play.md](game-play.md) | How humans play the hybrid game, trust model, turn flow |
+
+## Data & Persistence
+
+| Document | Purpose |
+|----------|---------|
+| [database.md](database.md) | Entity Framework Core schema, all 6 entity tables, persistence service |
+| [save-load.md](save-load.md) | Game persistence pipeline, file format, auto-save, load sources |
+| [recording-and-stats.md](recording-and-stats.md) | Recording infrastructure, replay verification, lifetime player statistics |
+
+## Development & Operations
+
+| Document | Purpose |
+|----------|---------|
+| [testing.md](testing.md) | Replay tests, unit tests, test projects, GameHash verification |
+| [cli-tooling.md](cli-tooling.md) | catan.ps1 verbs, Catan3.CLI project, flags, subsystems |
+| [troubleshooting.md](troubleshooting.md) | SSL errors, port conflicts, database locks, SignalR issues |
+| [azure-deployment.md](azure-deployment.md) | Azure resources, CI/CD pipeline, deployment scripts |
+
+## Status & Reference
+
+| Document | Purpose |
+|----------|---------|
+| [known-issues.md](known-issues.md) | Bugs, TODOs, gaps, components being replaced, session history |
+| [audit-summary.md](audit-summary.md) | Full system audit findings, accuracy issues, recommendations |
+| [react-porting-status.md](react-porting-status.md) | All 21 React design docs with implementation status and coverage |
+| [proposals.md](proposals.md) | 7 unimplemented proposals: versioning, pane visibility, CosmosDB, etc. |
+| [desktop-reference.md](desktop-reference.md) | WinUI 3 desktop app reference (DO NOT MODIFY) |
+| [blazor-legacy.md](blazor-legacy.md) | Blazor WebUI reference, features not yet ported to React |
+
+## Archived Documents
+
+Legacy and superseded design documents are in [old/](old/). These are
+retained for historical reference but may be outdated. The documents
+above are the verified source of truth.
+
+| Directory | Contents |
+|-----------|----------|
+| [old/projects/](old/projects/) | Original project-level docs (5 files) |
+| [old/systems/](old/systems/) | Original system docs (11 files) |
+| [old/ui/](old/ui/) | Blazor UI docs (7 files) |
+| [old/ui/react/](old/ui/react/) | React design docs (21 files) |
+| [old/gemini/](old/gemini/) | Gemini parallel audit (18 files) |
+| [old/reviews/](old/reviews/) | External reviews |
+
+## Maintenance
+
+- **Code is truth.** When a doc disagrees with code, the code wins.
+  Update the doc.
+- **Update after changes.** When you modify code behavior, update the
+  relevant doc in this directory.
+- **Mark uncertainty.** Use `<!-- TODO: verify -->` for anything you
+  haven't confirmed against the source.

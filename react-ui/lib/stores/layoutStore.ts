@@ -51,7 +51,8 @@ export type PanelId =
   | 'resources'
   | 'board'
   | 'goFirst'
-  | 'supplemental';
+  | 'supplemental'
+  | 'winner';
 
 /** Panel metadata for MinimizedBar display */
 export interface PanelMetadata {
@@ -69,10 +70,11 @@ export const PANEL_METADATA: Record<PanelId, PanelMetadata> = {
   board: { title: 'Board', icon: '🗺️' },
   goFirst: { title: 'Go First', icon: '🏁' },
   supplemental: { title: 'Supplemental', icon: '🔨' },
+  winner: { title: 'Winner', icon: '🏆' },
 };
 
 /** Panel order for minimized bar (consistent ordering) */
-export const PANEL_ORDER: PanelId[] = ['dice', 'actions', 'measurements', 'players', 'resources', 'board', 'goFirst', 'supplemental'];
+export const PANEL_ORDER: PanelId[] = ['dice', 'actions', 'measurements', 'players', 'resources', 'board', 'goFirst', 'supplemental', 'winner'];
 
 /**
  * Landscape default panel layouts (matching Blazor 3-column layout)
@@ -154,6 +156,15 @@ const LANDSCAPE_PANELS: Record<PanelId, WindowPosition> = {
     top: 200, // Centered over the board area
     width: 320,
     height: 340, // Slightly taller to accommodate Next button
+    minimized: false,
+    visible: true,
+    zIndex: 1000, // Very high z-index - modal overlay must be on top of everything
+  },
+  winner: {
+    left: 500,
+    top: 200, // Centered over the board area
+    width: 320,
+    height: 380, // Taller to accommodate scoring controls
     minimized: false,
     visible: true,
     zIndex: 1000, // Very high z-index - modal overlay must be on top of everything
@@ -241,6 +252,15 @@ const PORTRAIT_PANELS: Record<PanelId, WindowPosition> = {
     top: 200, // Centered over the board area
     width: 320,
     height: 340, // Slightly taller to accommodate Next button
+    minimized: false,
+    visible: true,
+    zIndex: 1000, // Very high z-index - modal overlay must be on top of everything
+  },
+  winner: {
+    left: 40,
+    top: 200, // Centered over the board area
+    width: 320,
+    height: 380, // Taller to accommodate scoring controls
     minimized: false,
     visible: true,
     zIndex: 1000, // Very high z-index - modal overlay must be on top of everything

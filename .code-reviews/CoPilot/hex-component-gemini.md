@@ -6,6 +6,7 @@
 **Based on:** Uncommitted changes (mostly Hex Grid enhancements)
 
 ## Summary
+
 This review covers the implementation of the advanced Hex Grid geometry functions (`getSpiralCoordinates`, vertices/edges logic) and the introduction of reusable content components (`CenterHex`, `MenuHex`, `WaterHex`). The changes align perfectly with the "All-DOM" architecture strategy and the recent design documents. The math implementations are robust and standard (Red Blob Games).
 
 ## Critical Issues
@@ -15,6 +16,7 @@ This review covers the implementation of the advanced Hex Grid geometry function
 ## Important Issues
 
 ### 1. Accessibility on Interactive Elements
+
 **Location:** `react-ui/components/hex-grid/content/MenuHex.tsx:65`
 **Severity:** Important
 
@@ -41,6 +43,7 @@ Add standard ARIA attributes and keyboard handlers for non-Link interactions.
 ```
 
 ### 2. Hardcoded Colors in Default Props
+
 **Location:** `CenterHex.tsx:52`, `MenuHex.tsx:59`
 **Severity:** Important
 
@@ -58,6 +61,7 @@ background = 'var(--hex-gradient-surface, linear-gradient(...))'
 ## Suggestions
 
 ### 1. Unified Direction Type
+
 **Location:** `hex-geometry.ts`
 **Severity:** Suggestion
 
@@ -65,6 +69,7 @@ The `Direction` type is defined as `keyof typeof DIRECTIONS`. This is good. Howe
 Consider exporting `DIRECTION_ORDER` constant to ensure the spiral always rotates in the correct order standard for the project (Clockwise starting North or NorthEast).
 
 ### 2. Type Safety for Geometry Inputs
+
 **Location:** `hex-geometry.ts`
 **Severity:** Suggestion
 
@@ -72,6 +77,7 @@ Consider exporting `DIRECTION_ORDER` constant to ensure the spiral always rotate
 Consider adding a helper `getCompleteRings(radius)` which calls `getSpiralCoordinates` with `1 + 6 + 12...`.
 
 ### 3. Magic Numbers in Components
+
 **Location:** `CenterHex.tsx`, `MenuHex.tsx`, `WaterHex.tsx`
 **Severity:** Suggestion
 
@@ -86,32 +92,36 @@ export const HEX_HOVER_SCALE = 0.88;
 ## Review of New Components
 
 ### `hex-geometry.ts`
-*   **Correctness:** ✅ `cubicCoord` correctly handles `-0`.
-*   **Logic:** ✅ `getSpiralCoordinates` correctly implements a North-start clockwise traversal.
-*   **Completeness:** ✅ Added `getVertexPosition` and `getEdgeMidpoint` which are essential for the upcoming game board.
+
+* **Correctness:** ✅ `cubicCoord` correctly handles `-0`.
+* **Logic:** ✅ `getSpiralCoordinates` correctly implements a North-start clockwise traversal.
+* **Completeness:** ✅ Added `getVertexPosition` and `getEdgeMidpoint` which are essential for the upcoming game board.
 
 ### `CenterHex.tsx`
-*   **Design:** ✅ Clean implementation of the branding hex.
-*   **API:** ✅ Simple prop interface.
+
+* **Design:** ✅ Clean implementation of the branding hex.
+* **API:** ✅ Simple prop interface.
 
 ### `MenuHex.tsx`
-*   **Design:** ✅ Nice hover effects (scale down + border color change).
-*   **Interactivity:** ⚠️ Needs accessibility fixes (see Important Issues).
+
+* **Design:** ✅ Nice hover effects (scale down + border color change).
+* **Interactivity:** ⚠️ Needs accessibility fixes (see Important Issues).
 
 ### `WaterHex.tsx`
-*   **Flexibility:** ✅ Handles both image-based and gradient-based water.
-*   **Consolidation:** ✅ successfully replaces duplicated JSX in `GameTypeSelector` and `PlayerSelector`.
+
+* **Flexibility:** ✅ Handles both image-based and gradient-based water.
+* **Consolidation:** ✅ successfully replaces duplicated JSX in `GameTypeSelector` and `PlayerSelector`.
 
 ## Integration Checks
 
-*   **GameTypeSelector / PlayerSelector:** The diffs show successful refactoring to use these new components.
-*   The removal of verbose JSX (`<div className="absolute inset-0 hex-clip-flat bg-blue-500/50" />`) significantly cleans up the code.
+* **GameTypeSelector / PlayerSelector:** The diffs show successful refactoring to use these new components.
+* The removal of verbose JSX (`<div className="absolute inset-0 hex-clip-flat bg-blue-500/50" />`) significantly cleans up the code.
 
 ## Follow-Up Actions
 
-- [ ] Fix accessibility in `MenuHex.tsx` (add `role="button"` and keyboard support).
-- [ ] Extract scale factors to constants.
-- [ ] Verify `getSpiralCoordinates` with a unit test (ensure it hits exactly `count` items correctly).
+* [ ] Fix accessibility in `MenuHex.tsx` (add `role="button"` and keyboard support).
+* [ ] Extract scale factors to constants.
+* [ ] Verify `getSpiralCoordinates` with a unit test (ensure it hits exactly `count` items correctly).
 
 ## Decision
 

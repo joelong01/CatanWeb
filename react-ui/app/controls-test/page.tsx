@@ -28,6 +28,8 @@ import type { PlayerProfile } from '@/types/player-profile';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRotateLeft, faRotateRight, faArrowsRotate, faCheck, faScaleBalanced, faReceipt } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import { WinnerOverlay } from '@/components/game/overlays/WinnerOverlay';
+import type { WinnerPlayer } from '@/components/game/overlays/WinnerOverlay';
 
 // ============================================================================
 // Catan Font Glyphs (from PlayerTile.razor CatanGlyph class)
@@ -1997,8 +1999,22 @@ export default function ControlsTestPage(): React.ReactElement {
   const [die1, setDie1] = useState<number | null>(null);
   const [die2, setDie2] = useState<number | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(MOCK_PLAYERS[0].id);
+  const [showWinner, setShowWinner] = useState(false);
+  const [winnerKey, setWinnerKey] = useState(0);
 
   const selectedPlayer = MOCK_PLAYERS.find(p => p.id === selectedPlayerId) || MOCK_PLAYERS[0];
+
+  // Build WinnerPlayer array from mock data
+  const winnerPlayers: WinnerPlayer[] = useMemo(() =>
+    MOCK_PLAYERS.map(p => ({
+      id: p.id,
+      name: p.name,
+      score: p.score,
+      colors: p.colors,
+      avatarUrl: `http://localhost:8080/api/images/${p.imageFileName}`,
+    })),
+    []
+  );
 
   // Generate buildings and roads for all players to test multi-player rendering
   const playerIds = MOCK_PLAYERS.map(p => p.id);
@@ -2143,12 +2159,53 @@ export default function ControlsTestPage(): React.ReactElement {
           />
         </FloatingPanel>
 
+        {/* Winner Overlay Panel */}
+        {showWinner && (
+          <FloatingPanel
+            panelId="winner"
+            title="Winner!"
+            className="bg-white/5 border-white/10"
+            minWidth={320}
+            minHeight={380}
+            alwaysOnTop
+          >
+            <WinnerOverlay
+              key={winnerKey}
+              players={winnerPlayers}
+              currentPlayerColors={selectedPlayer.colors}
+              celebrationDurationMs={5000}
+              onEndGame={(vpScores) => {
+                console.log('End Game VP scores:', vpScores);
+                setShowWinner(false);
+              }}
+            />
+          </FloatingPanel>
+        )}
+
         {/* Minimized panels bar - fixed at bottom */}
         <MinimizedBar />
 
         {/* Instructions overlay */}
-        <div className="absolute bottom-14 left-1/2 -translate-x-1/2 bg-gray-800/90 px-4 py-2 rounded-lg text-sm text-gray-400">
-          <span className="text-amber-400">CTRL+click</span> to drag panels • Click player to change colors
+        <div className="absolute bottom-14 left-1/2 -translate-x-1/2 bg-gray-800/90 px-4 py-2 rounded-lg text-sm text-gray-400 flex items-center gap-3">
+          <span><span className="text-amber-400">CTRL+click</span> to drag panels • Click player to change colors</span>
+          <button
+            onClick={() => setShowWinner(!showWinner)}
+            className={`px-3 py-1 rounded font-semibold text-sm transition-colors ${
+              showWinner
+                ? 'bg-amber-600 text-white hover:bg-amber-700'
+                : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+            }`}
+          >
+            {showWinner ? 'Hide Winner' : 'Winning!'}
+          </button>
+          {showWinner && (
+            <button
+              onClick={() => setWinnerKey(k => k + 1)}
+              className="px-3 py-1 rounded font-semibold text-sm bg-gray-600/50 text-gray-300 hover:bg-gray-500/50 transition-colors"
+            >
+              Reset
+            </button>
+          )}
         </div>
       </div>
     </MainLayout>

@@ -32,3 +32,5 @@ export { GoFirstOverlay } from './overlays/GoFirstOverlay';
 export type { GoFirstOverlayProps } from './overlays/GoFirstOverlay';
 export { SupplementalOverlay } from './overlays/SupplementalOverlay';
 export type { SupplementalOverlayProps } from './overlays/SupplementalOverlay';
+export { WinnerOverlay } from './overlays/WinnerOverlay';
+export type { WinnerOverlayProps, WinnerPlayer } from './overlays/WinnerOverlay';
