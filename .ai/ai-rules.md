@@ -71,6 +71,7 @@ When creating or updating content in `.ai/`:
 7. [Architecture and Design Patterns](#architecture-and-design-patterns)
 8. [Testing Requirements](#testing-requirements)
 9. [Git and Version Control](#git-and-version-control)
+10. [Design, Planning, and Review Workflow](#design-planning-and-review-workflow)
 
 ## General Principles
 
@@ -305,11 +306,9 @@ Catan/
 ├── .claude/                # Claude-specific commands and configurations
 │   ├── commands/          # Reusable command scripts
 │   └── sessions/          # Session summaries
-├── .design/               # Current "as built" design documentation
-│   ├── projects/          # Per-project architecture summaries
-│   ├── systems/           # Cross-cutting system designs
-│   └── ui/               # UI component design specifications
-├── design_docs/           # Legacy design documentation and historical decisions
+├── .design/               # Verified design documentation (30 docs)
+│   ├── plans/            # Implementation plans awaiting approval
+│   └── old/              # Legacy/superseded docs for reference
 ├── WebUI/
 │   ├── Components/        # Reusable Blazor components
 │   │   ├── Board/        # Board-related components
@@ -517,6 +516,85 @@ git --no-pager log --oneline -10
 - **Database location**: SQLite files in user profile (not repository)
 - **API keys**: Document where needed, never commit actual keys
 
+## Design, Planning, and Review Workflow
+
+All design artifacts live under `.design/` in purpose-specific directories:
+
+```text
+.design/
+├── *.md              # Verified as-built docs (source of truth)
+├── plans/            # Implementation plans awaiting approval
+├── reviews/          # Code and design reviews
+└── old/              # Legacy/superseded docs for reference
+```
+
+### Design Documents
+
+When documenting a system, feature, or architecture decision, write it to
+`.design/` as a verified as-built doc:
+
+- **Format**: Markdown that passes lint rules (see [Markdown Documentation Rules](#markdown-documentation-rules))
+- **Naming**: `kebab-case.md` matching the system or feature
+- **Update after changes**: When code behavior changes, update the relevant doc
+- **Code is truth**: When a doc disagrees with code, the code wins -- fix the doc
+
+### Implementation Plans
+
+Before writing code for any non-trivial task, write a plan and get approval.
+
+Plans go in `.design/plans/`:
+
+```text
+.design/plans/
+├── winner-overlay-plan.md
+├── portrait-mode-plan.md
+└── ...
+```
+
+**Plan file requirements:**
+
+- **Format**: Markdown that passes lint rules
+- **Naming**: `<feature-name>-plan.md` -- the developer provides the feature name
+- **Scope**: One plan per task -- don't combine unrelated work
+
+**Plan structure:**
+
+1. **Goal** -- one sentence describing what the plan accomplishes
+2. **Changes** -- per-file breakdown of what will be added/removed/modified
+3. **Files Modified** -- summary table of all files touched
+4. **Verification** -- how to confirm the changes work (build, test, manual steps)
+
+**Approval process:**
+
+1. AI assistant writes the plan to `.design/plans/`
+2. Present the plan to the developer for review
+3. Developer approves, requests changes, or rejects
+4. Only after approval does implementation begin
+5. Delete the plan file after the work is committed (plans are transient)
+
+**When to skip planning:**
+
+- Single-line fixes (typos, obvious bugs)
+- Adding a comment or adjusting a constant
+- Tasks where the developer gives exact instructions with no ambiguity
+
+### Reviews
+
+Code reviews and design reviews go in `.design/reviews/`:
+
+```text
+.design/reviews/
+├── winner-overlay-review-claude.md
+├── winner-overlay-review-copilot.md
+├── doc-audit-review-gemini.md
+└── ...
+```
+
+- **Naming**: `<feature-name>-review-<ai>.md` where `<ai>` identifies the
+  reviewer (e.g., `claude`, `copilot`, `gemini`)
+- **Format**: Markdown that passes lint rules
+- **Content**: Findings, recommendations, file-specific feedback
+
 ## Session Workflow
 
 ### Starting a Session
@@ -525,9 +603,9 @@ git --no-pager log --oneline -10
 2. Check `git status` and recent commits
 3. Review `.ai/project-summary.md` for latest state
 4. **Discovery phase**: Consult `.design/` directory for current architecture
-   - Start with `.design/summary.md` for project overview
-   - Check `.design/TOC.md` for complete documentation index
-   - Reference relevant project/system/ui documents as needed
+   - Start with `.design/README.md` for the document index
+   - Reference relevant design documents as needed
+   - Legacy docs are in `.design/old/` for historical reference
 5. Identify current task and next priorities
 
 ### During a Session
@@ -595,13 +673,9 @@ git --no-pager log --oneline -10
 
 ## Resources
 
-- **Current Architecture**: `.design/` directory for "as built" system documentation
-  - `.design/TOC.md` - Complete documentation index
-  - `.design/summary.md` - High-level project overview
-  - `.design/projects/` - Per-project implementation details
-  - `.design/systems/` - Cross-cutting system designs
-  - `.design/ui/` - Component-level UI specifications
+- **Current Architecture**: `.design/` directory for verified design documentation
+  - `.design/README.md` - Complete document index (30 verified docs)
+  - `.design/old/` - Legacy/superseded docs for historical reference
 - **Desktop Reference**: `DesktopApp/` for XAML patterns and styling
-- **Legacy Design Docs**: `design_docs/` for historical architectural decisions
 - **Session History**: `.ai/sessions/` for past work context
 - **Project Context**: `.ai/project-summary.md` for current state and priorities

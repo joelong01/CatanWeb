@@ -134,7 +134,7 @@ Use typed messages, not generic string commands:
 
 ## Development Rules
 
-1. **Design before implementation** - Before building an implementation plan, build the design plan first
+1. **Plan before implementation** - Write a plan to `.design/plans/` and get approval before coding (see `.ai/ai-rules.md` Planning Workflow)
 2. **GameModel is single source of truth** - All client state comes from GameModel
 3. **Desktop app is reference** - Analyze for behavior, but don't modify without explicit direction
 4. **Tests must pass** - Build and verify all tests before completing any task
@@ -155,8 +155,10 @@ Use typed messages, not generic string commands:
 ## Documentation Structure
 
 - `.ai/` - AI-agnostic rules and standards (applies to all AI tools)
-- `.design/` - Current "as built" architecture docs (start with `summary.md` and `TOC.md`)
-- `design_docs/` - Legacy historical documents
+- `.design/` - Verified design docs (start with `README.md`; 30 docs)
+- `.design/plans/` - Implementation plans awaiting approval
+- `.design/reviews/` - Code and design reviews
+- `.design/old/` - Legacy/superseded docs for historical reference
 
 ## Testing
 
