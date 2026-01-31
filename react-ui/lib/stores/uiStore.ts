@@ -30,9 +30,6 @@ interface UIState {
   /** Whether winner celebration is showing */
   isShowingCelebration: boolean;
 
-  /** Whether winner dialog is open */
-  isWinnerDialogOpen: boolean;
-
   /** Whether the robber target menu is open */
   isRobberMenuOpen: boolean;
 
@@ -59,9 +56,6 @@ interface UIActions {
   /** Show/hide winner celebration */
   setShowingCelebration: (showing: boolean) => void;
 
-  /** Show/hide winner dialog */
-  setWinnerDialogOpen: (open: boolean) => void;
-
   /** Open robber menu at position */
   openRobberMenu: (x: number, y: number) => void;
 
@@ -81,7 +75,6 @@ const initialState: UIState = {
   activePortraitTab: 'board',
   isNavMenuOpen: false,
   isShowingCelebration: false,
-  isWinnerDialogOpen: false,
   isRobberMenuOpen: false,
   menuPosition: null,
 };
@@ -109,8 +102,6 @@ export const useUIStore = create<UIStore>()(
       setShowingCelebration: (isShowingCelebration) =>
         set({ isShowingCelebration }),
 
-      setWinnerDialogOpen: (isWinnerDialogOpen) => set({ isWinnerDialogOpen }),
-
       openRobberMenu: (x, y) =>
         set({ isRobberMenuOpen: true, menuPosition: { x, y } }),
 
@@ -121,7 +112,6 @@ export const useUIStore = create<UIStore>()(
         set({
           isNavMenuOpen: false,
           isShowingCelebration: false,
-          isWinnerDialogOpen: false,
           isRobberMenuOpen: false,
           menuPosition: null,
         }),
@@ -153,6 +143,5 @@ export const selectActivePortraitTab = (state: UIStore) =>
 /** Select whether any overlay is open (for backdrop) */
 export const selectHasOpenOverlay = (state: UIStore) =>
   state.isNavMenuOpen ||
-  state.isWinnerDialogOpen ||
   state.isRobberMenuOpen ||
   state.isShowingCelebration;

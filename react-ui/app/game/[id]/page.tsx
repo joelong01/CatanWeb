@@ -34,10 +34,7 @@ import { FloatingPanel, MinimizedBar } from '@/components/game/panels';
 import { GoFirstOverlay } from '@/components/game/overlays/GoFirstOverlay';
 import { SupplementalOverlay } from '@/components/game/overlays/SupplementalOverlay';
 import { RobberTargetMenu } from '@/components/game/overlays/RobberTargetMenu';
-import { WinnerDialog } from '@/components/game/overlays/WinnerDialog';
-import { WinnerCelebration, type PlayerInfo } from '@/components/game/overlays/WinnerCelebration';
-import { VictoryPointsOverlay, type PlayerVPInfo } from '@/components/game/overlays/VictoryPointsOverlay';
-import { AnimatePresence } from 'framer-motion';
+import { WinnerOverlay, type WinnerPlayer } from '@/components/game/overlays/WinnerOverlay';
 import { PlayersPanel } from '@/components/game/panels/PlayersPanel';
 import { GameResourcesHeader } from '@/components/game/panels/GameResourcesHeader';
 import { RollRing } from '@/components/game/controls/RollRing';
@@ -48,6 +45,7 @@ import { cubicCoord, getNeighbor, Direction, type HexCoordinate } from '@/compon
 import type { HexPosition } from '@/types/generated/models/hex-position';
 import { createPlayerColors, type PlayerColorsWithGradient } from '@/lib/utils/playerColors';
 import { gameApi } from '@/lib/api/gameApi';
+import { getServiceUrl } from '@/lib/config';
 import { DEFAULT_PLAYER_COLORS } from '@/types/player-profile';
 import type { GameState } from '@/types/generated/models/game-state';
 import type { BuildingKey } from '@/types/generated/models/building-key';
@@ -382,11 +380,8 @@ export default function GamePage(): React.ReactElement {
   const [robberTargetPlayers, setRobberTargetPlayers] = useState<{ id: string; name: string }[]>([]);
   const [robberMenuPosition, setRobberMenuPosition] = useState({ x: 0, y: 0 });
 
-  // Winner state for confirmation dialog, celebration, and VP adjustment
-  const [showWinnerDialog, setShowWinnerDialog] = useState(false);
-  const [showWinnerCelebration, setShowWinnerCelebration] = useState(false);
-  const [showVictoryPoints, setShowVictoryPoints] = useState(false);
-  const [winnerName, setWinnerName] = useState('');
+  // Winner overlay state
+  const [showWinnerOverlay, setShowWinnerOverlay] = useState(false);
   const [winnerId, setWinnerId] = useState('');
 
   // Roll dimming timer ref for clearing after 5 seconds (matching Blazor TileDimDurationSeconds)
@@ -629,52 +624,41 @@ export default function GamePage(): React.ReactElement {
     proxy.balanceBoard();
   }, [proxy]);
 
-  // Winner dialog, celebration, and VP handlers
+  // Winner overlay handlers
   const handleWinner = useCallback(() => {
-    if (!currentPlayer) {
-      console.error('[GamePage] No current player for winner declaration');
-      return;
-    }
-
-    // Get current player's name
-    const profile = playerProfiles.get(currentPlayer.id);
-    const name = profile?.name || currentPlayer.name;
-
-    setWinnerName(name);
+    if (!currentPlayer) return;
     setWinnerId(currentPlayer.id);
-    setShowWinnerDialog(true);
-  }, [currentPlayer, playerProfiles]);
+    setShowWinnerOverlay(true);
+  }, [currentPlayer]);
 
-  const handleWinnerConfirm = useCallback(() => {
-    // Hide dialog and show celebration
-    setShowWinnerDialog(false);
-    setShowWinnerCelebration(true);
-  }, []);
-
-  const handleWinnerCancel = useCallback(() => {
-    setShowWinnerDialog(false);
-  }, []);
-
-  // When celebration completes, show VP adjustment
-  const handleCelebrationComplete = useCallback(() => {
-    setShowWinnerCelebration(false);
-    setShowVictoryPoints(true);
-  }, []);
-
-  // When VP adjustment is done, declare winner via API
-  const handleVictoryPointsDone = useCallback(async (victoryPoints: Record<string, number>) => {
-    setShowVictoryPoints(false);
-
-    // Declare winner via API with VP values
+  const handleEndGame = useCallback(async (vpScores: Record<string, number>) => {
+    setShowWinnerOverlay(false);
     try {
-      const result = await proxy.declareWinner(winnerId, victoryPoints);
+      const result = await proxy.declareWinner(winnerId, vpScores);
       if (!result.success) {
-        console.error('[GamePage] Failed to declare winner:', result.error);
+        console.error('[GamePage] Failed to declare winner:', result.message);
       }
     } catch (error) {
       console.error('[GamePage] Exception declaring winner:', error);
     }
   }, [winnerId, proxy]);
+
+  // Build WinnerPlayer[] from game state for the overlay
+  const winnerPlayers: WinnerPlayer[] = useMemo(() => {
+    if (!players) return [];
+    const baseUrl = getServiceUrl();
+    return players.map(p => {
+      const profile = playerProfiles.get(p.id);
+      const imageUri = profile?.imageUri;
+      return {
+        id: p.id,
+        name: profile?.name || p.name,
+        score: p.score,
+        colors: profile?.colors || DEFAULT_PLAYER_COLORS,
+        avatarUrl: imageUri ? `${baseUrl}${imageUri}` : undefined,
+      };
+    });
+  }, [players, playerProfiles]);
 
   const handleSaveCopy = useCallback(async () => {
     const newName = window.prompt('Enter name for the copy:', '');
@@ -808,54 +792,24 @@ export default function GamePage(): React.ReactElement {
           />
         )}
 
-        {/* Winner Dialog - confirmation before declaring winner */}
-        <AnimatePresence>
-          {showWinnerDialog && (
-            <WinnerDialog
-              playerName={winnerName}
-              onConfirm={handleWinnerConfirm}
-              onCancel={handleWinnerCancel}
+        {/* Winner Overlay - unified three-phase winner declaration */}
+        {showWinnerOverlay && players && (
+          <FloatingPanel
+            panelId="winner"
+            title="Winner!"
+            className="bg-white/5 border-white/10"
+            minWidth={320}
+            minHeight={380}
+            alwaysOnTop
+          >
+            <WinnerOverlay
+              players={winnerPlayers}
+              currentPlayerColors={playerColors}
+              celebrationDurationMs={5000}
+              onEndGame={handleEndGame}
             />
-          )}
-        </AnimatePresence>
-
-        {/* Winner Celebration - hexagonal spinner animation */}
-        <AnimatePresence>
-          {showWinnerCelebration && players && (
-            <WinnerCelebration
-              players={players.map((p): PlayerInfo => {
-                const profile = playerProfiles.get(p.id);
-                return {
-                  id: p.id,
-                  name: profile?.name || p.name,
-                  colors: profile?.colors || DEFAULT_PLAYER_COLORS,
-                  avatarUrl: profile?.avatarUrl,
-                };
-              })}
-              winnerId={winnerId}
-              onComplete={handleCelebrationComplete}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* Victory Points Overlay - hexagonal VP adjustment */}
-        <AnimatePresence>
-          {showVictoryPoints && players && (
-            <VictoryPointsOverlay
-              players={players.map((p): PlayerVPInfo => {
-                const profile = playerProfiles.get(p.id);
-                return {
-                  id: p.id,
-                  name: profile?.name || p.name,
-                  colors: profile?.colors || DEFAULT_PLAYER_COLORS,
-                  victoryPoints: p.victoryPoints,
-                  avatarUrl: profile?.avatarUrl,
-                };
-              })}
-              onDone={handleVictoryPointsDone}
-            />
-          )}
-        </AnimatePresence>
+          </FloatingPanel>
+        )}
 
         {/* Minimized panels bar - fixed at bottom */}
         <MinimizedBar />

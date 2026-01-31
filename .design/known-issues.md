@@ -2,26 +2,6 @@
 
 **Last verified:** January 30, 2026
 
-## Components Being Replaced
-
-### Winner Flow Refactor (In Progress)
-
-Three old components are being replaced by a single unified `WinnerOverlay`:
-
-| Old Component | Phase | Replacement |
-|---|---|---|
-| `WinnerDialog.tsx` | Confirmation dialog | WinnerOverlay phase 1 ("ready") |
-| `WinnerCelebration.tsx` | Spinning hex animation | WinnerOverlay phase 2 ("celebrating") |
-| `VictoryPointsOverlay.tsx` | VP adjustment | WinnerOverlay phase 3 ("scoring") |
-
-**Status:** `WinnerOverlay` is built and working on the `controls-test` page.
-Integration into the main game page (`app/game/[id]/page.tsx`) is the next
-step -- requires wiring `onEndGame` to `proxy.declareWinner()` and replacing
-the three old components in the JSX.
-
-The old components still exist in the game page and are functional. They
-should be deleted after the WinnerOverlay integration is verified.
-
 ## Tailwind v4 Migration
 
 ### @utility vs @layer utilities
@@ -116,6 +96,8 @@ from `lib/constants/catanGlyphs.ts`.
 
 ### Resolved in Recent Sessions
 
+- Winner flow refactor -- replaced WinnerDialog, WinnerCelebration,
+  VictoryPointsOverlay with unified WinnerOverlay (Jan 30, 2026)
 - Roll stats array indexing (off-by-one) -- fixed Jan 30, 2026
 - Purchase count badges showing wrong counts -- fixed Jan 30, 2026
 - Road/city keyboard label overlap -- fixed Jan 28, 2026

@@ -207,7 +207,6 @@ describe('uiStore', () => {
       activePortraitTab: 'board',
       isNavMenuOpen: false,
       isShowingCelebration: false,
-      isWinnerDialogOpen: false,
       isRobberMenuOpen: false,
       menuPosition: null,
     });
@@ -262,14 +261,12 @@ describe('uiStore', () => {
 
   it('should close all overlays', () => {
     useUIStore.getState().setNavMenuOpen(true);
-    useUIStore.getState().setWinnerDialogOpen(true);
     useUIStore.getState().openRobberMenu(50, 50);
 
     useUIStore.getState().closeAllOverlays();
 
     const state = useUIStore.getState();
     expect(state.isNavMenuOpen).toBe(false);
-    expect(state.isWinnerDialogOpen).toBe(false);
     expect(state.isRobberMenuOpen).toBe(false);
   });
 });

@@ -679,3 +679,13 @@ Code reviews and design reviews go in `.design/reviews/`:
 - **Desktop Reference**: `DesktopApp/` for XAML patterns and styling
 - **Session History**: `.ai/sessions/` for past work context
 - **Project Context**: `.ai/project-summary.md` for current state and priorities
+
+### 7. Evidence Integrity (Anti-Hallucination Protocol)
+
+**CRITICAL**: AI reviewers must strictly adhere to evidence-based reporting.
+
+1. **Zero Fabrication**: Never quote code or file contents that you have not explicitly read using a tool in the current session.
+2. **Verify "Missing" Items**: Before claiming an item needs to be added or removed (e.g., "Add export to index.ts" or "Remove export from index.ts"), you MUST verify the current state of that file.
+    - *Failure Mode*: "The plan missed cleaning up index.ts" (when index.ts never had the export).
+    - *Correction*: Read `index.ts` first. If the export isn't there, the plan is correct.
+3. **No "Value-Add" Bias**: Do not invent minor issues just to avoid giving a "perfect" review. If a plan is flawless, explicit approval with verification evidence is the highest value output. "No findings" is better than "False findings".
