@@ -9,7 +9,7 @@
  * Right-click (desktop) or long-press (mobile) opens a context menu.
  */
 
-import { useCallback, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   useLayoutStore,
@@ -127,6 +127,15 @@ export function MinimizedBar({ className = '' }: MinimizedBarProps): React.React
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+  }, []);
+
+  // Clean up long-press timer on unmount
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+    };
   }, []);
 
   // Build context menu items for the selected panel
