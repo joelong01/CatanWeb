@@ -154,7 +154,7 @@ function Set-StyleProperty {
 # ── Process each file ──
 
 foreach ($file in $files) {
-  $content = Get-Content -LiteralPath $file.FullName -Raw
+  $content = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
   $original = $content
   $changes = @()
 
@@ -199,6 +199,7 @@ foreach ($file in $files) {
   # Compound paths from Designer often include the hex border as a sub-path.
   # The font builder doesn't need it (the hex shape comes from the app).
   # Detect sub-paths whose bounding box covers >80% of the viewBox.
+  $script:hexOutlineCount = 0
   if ($useEvenOdd) {
     $vbMatch = [regex]::Match($content, 'viewBox="0 0 ([\d.]+) ([\d.]+)"')
     if ($vbMatch.Success) {
@@ -245,7 +246,6 @@ foreach ($file in $files) {
       }
     }
   }
-  $script:hexOutlineCount = 0
 
   # ── Clean SVG-level style attributes ──
   # Remove clip-rule, stroke-linejoin, stroke-miterlimit from <svg> style
@@ -364,7 +364,7 @@ foreach ($file in $files) {
   if ($WhatIfPreference) {
     Write-Host "  WOULD $($file.Name): $($changes -join ', ')" -ForegroundColor Yellow
   } else {
-    Set-Content -LiteralPath $file.FullName -Value $content -NoNewline
+    Set-Content -LiteralPath $file.FullName -Value $content -NoNewline -Encoding UTF8
     Write-Host "  FIXED $($file.Name): $($changes -join ', ')" -ForegroundColor Green
   }
 }

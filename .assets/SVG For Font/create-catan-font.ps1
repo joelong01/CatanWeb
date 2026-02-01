@@ -227,8 +227,8 @@ try {
     Set-Content -LiteralPath (Join-Path $resolvedWork "package.json") -Value $initPkg -NoNewline
   }
 
-  npm install svgicons2svgfont svg2ttf fast-glob yargs | Out-Null
-  npm install -D typescript tsx "@types/node" | Out-Null
+  npm install svgicons2svgfont@^15.0.1 svg2ttf@^6.0.3 fast-glob@^3.3.3 yargs@^17.7.2 | Out-Null
+  npm install -D typescript@^5.7.3 tsx@^4.19.2 "@types/node@^22.10.7" | Out-Null
 
   $tsconfig = @'
 {
@@ -388,12 +388,16 @@ if (-not $NoInstall) {
 
     if ($osInstalled) {
       # Register in per-user font registry so Windows recognizes it
-      $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
-      $regName = "$FontName (TrueType)"
-      Set-ItemProperty -Path $regPath -Name $regName -Value $osDest -Type String
+      try {
+        $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+        $regName = "$FontName (TrueType)"
+        Set-ItemProperty -Path $regPath -Name $regName -Value $osDest -Type String
+        Write-Host "  Registered in HKCU font registry" -ForegroundColor Green
+      } catch {
+        Write-Warning "  Failed to register font in registry: $($_.Exception.Message)"
+      }
 
       Write-Host "  OK  $userFontsDir" -ForegroundColor Green
-      Write-Host "  Registered in HKCU font registry" -ForegroundColor Green
     }
   } elseif ($IsMacOS) {
     $userFontsDir = Join-Path $HOME "Library/Fonts"

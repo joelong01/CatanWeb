@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft, faTableCells, faList } from '@fortawesome/free-solid-svg-icons';
@@ -30,7 +30,7 @@ function getGlyphEntries(): { key: string; char: string; hex: string; decimal: n
 
 export default function FontViewerPage(): React.ReactElement {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const entries = getGlyphEntries();
+  const entries = useMemo(() => getGlyphEntries(), []);
 
   return (
     <MainLayout>
