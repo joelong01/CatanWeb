@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catan Font Glyph Table</title>
+<style>
+  @font-face {
+    font-family: 'CatanFont';
+    src: url('../../Catan3.GameService/wwwroot/fonts/Catan.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    padding: 2rem;
+  }
+
+  h1 {
+    text-align: center;
+    margin-bottom: 0.5rem;
+    color: #f5c542;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: #888;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .glyph-card {
+    background: #16213e;
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .glyph-card:hover {
+    border-color: #f5c542;
+    transform: translateY(-2px);
+  }
+
+  .glyph-card.mapped {
+    border-left: 3px solid #4caf50;
+  }
+
+  .glyph-card.auto {
+    border-left: 3px solid #2196f3;
+  }
+
+  .glyph-render {
+    font-family: 'CatanFont', sans-serif;
+    font-size: 64px;
+    line-height: 1;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+
+  .glyph-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #f5c542;
+    margin-bottom: 0.25rem;
+    word-break: break-word;
+  }
+
+  .glyph-code {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-bottom: 0.15rem;
+  }
+
+  .glyph-file {
+    font-size: 0.7rem;
+    color: #666;
+    word-break: break-all;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 0.6rem;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-top: 0.25rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .badge.mapped { background: #4caf50; color: #fff; }
+  .badge.auto   { background: #2196f3; color: #fff; }
+
+  .legend {
+    max-width: 1400px;
+    margin: 0 auto 1.5rem;
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.85rem;
+    color: #aaa;
+  }
+
+  .legend span {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+
+  .legend .mapped-swatch { background: #4caf50; }
+  .legend .auto-swatch   { background: #2196f3; }
+
+  table.detail-table {
+    width: 100%;
+    max-width: 1400px;
+    margin: 2rem auto 0;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  table.detail-table th,
+  table.detail-table td {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #2a2a4a;
+    text-align: left;
+  }
+
+  table.detail-table th {
+    background: #16213e;
+    color: #f5c542;
+    position: sticky;
+    top: 0;
+  }
+
+  table.detail-table td.glyph-cell {
+    font-family: 'CatanFont', sans-serif;
+    font-size: 32px;
+    text-align: center;
+    width: 60px;
+  }
+
+  table.detail-table tr:hover {
+    background: #1e2d50;
+  }
+
+  .tab-bar {
+    max-width: 1400px;
+    margin: 0 auto 1.5rem;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .tab-bar button {
+    background: #16213e;
+    border: 1px solid #2a2a4a;
+    color: #e0e0e0;
+    padding: 0.5rem 1.25rem;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+
+  .tab-bar button.active {
+    background: #f5c542;
+    color: #1a1a2e;
+    border-color: #f5c542;
+    font-weight: 600;
+  }
+
+  .view { display: none; }
+  .view.active { display: block; }
+</style>
+</head>
+<body>
+
+<h1>Catan Font Glyph Table</h1>
+<div class="subtitle">
+  <span id="summary"></span>
+  &mdash; Font loaded from <code>Catan3.GameService/wwwroot/fonts/Catan.ttf</code>
+</div>
+
+<div class="legend">
+  <div><span class="mapped-swatch"></span> Mapped (explicit codepoint from glyph-map.json)</div>
+  <div><span class="auto-swatch"></span> Auto-assigned (sequential after mapped range)</div>
+</div>
+
+<div class="tab-bar">
+  <button class="active" onclick="switchView('grid')">Grid View</button>
+  <button onclick="switchView('table')">Table View</button>
+</div>
+
+<div id="grid-view" class="view active">
+  <div class="grid" id="glyph-grid"></div>
+</div>
+
+<div id="table-view" class="view">
+  <table class="detail-table">
+    <thead>
+      <tr>
+        <th>Glyph</th>
+        <th>Name</th>
+        <th>Hex</th>
+        <th>Decimal</th>
+        <th>CSS</th>
+        <th>JS/TS</th>
+        <th>Source File</th>
+        <th>Type</th>
+      </tr>
+    </thead>
+    <tbody id="glyph-tbody"></tbody>
+  </table>
+</div>
+
+<script>
+// Generated from glyph-map.json — update this when glyphs change
+// To regenerate: copy entries from .assets/SVG For Font/glyph-map.json
+const GLYPH_MAP = {
+  "city.svg": "E900", "deserter.svg": "E901", "diplomat.svg": "E902",
+  "entry.svg": "E903", "politics.svg": "E904", "intrigue.svg": "E905",
+  "inventor.svg": "E906", "laurel.svg": "E907", "merchant.svg": "E908",
+  "road.svg": "E909", "ship.svg": "E90A", "science.svg": "E90B",
+  "robber.svg": "E90C", "pirate ship.svg": "E90D", "largest army.svg": "E90E",
+  "metro.svg": "E90F", "sum of resources.svg": "E910", "star.svg": "E911",
+  "bad roll.svg": "E913", "good roll.svg": "E914", "longest road.svg": "E915",
+  "targetted.svg": "E916", "solid_shield.svg": "E925", "settlement.svg": "E926",
+  "knight.svg": "E930", "3-1-harbor.svg": "E931", "brick-bw-hex.svg": "E933",
+  "brick-harbor.svg": "E934", "check.svg": "E935", "desert-bw-hex.svg": "E936",
+  "knight-attacking.svg": "E937", "knight-kneeling.svg": "E938",
+  "knight-standing.svg": "E939", "ore-bw-hex.svg": "E93A",
+  "ore-harbor.svg": "E93B", "sheep-bw-hex.svg": "E93C",
+  "sheep-harbor.svg": "E93D", "wagon.svg": "E93E", "wheat-bw-hex.svg": "E93F",
+  "wheat-harbor.svg": "E940", "wood-bw-hex.svg": "E941", "wood-harbor.svg": "E942",
+};
+
+const entries = Object.entries(GLYPH_MAP)
+  .map(([file, hex]) => ({
+    file,
+    glyphName: file.replace('.svg', ''),
+    codepointHex: hex,
+    codepointDec: parseInt(hex, 16),
+  }))
+  .sort((a, b) => a.codepointDec - b.codepointDec);
+
+const fontMap = {
+  glyphCount: entries.length,
+  mappedCount: entries.length,
+  autoAssignedCount: 0,
+  entries,
+};
+const mappedHex = new Set(Object.values(GLYPH_MAP));
+
+function renderGlyphs(fontMap, mappedHex) {
+  document.getElementById('summary').textContent =
+    `${fontMap.glyphCount} glyphs (${fontMap.mappedCount} mapped, ${fontMap.autoAssignedCount} auto-assigned)`;
+
+  const grid = document.getElementById('glyph-grid');
+  const tbody = document.getElementById('glyph-tbody');
+
+  for (const entry of fontMap.entries) {
+    const isMapped = mappedHex.has(entry.codepointHex);
+    const char = String.fromCodePoint(entry.codepointDec);
+
+    // Grid card
+    const card = document.createElement('div');
+    card.className = `glyph-card ${isMapped ? 'mapped' : 'auto'}`;
+    card.innerHTML = `
+      <div class="glyph-render">${char}</div>
+      <div class="glyph-name">${entry.glyphName}</div>
+      <div class="glyph-code">U+${entry.codepointHex}</div>
+      <div class="glyph-code">${entry.codepointDec}</div>
+      <div class="glyph-file">${entry.file}</div>
+      <div class="badge ${isMapped ? 'mapped' : 'auto'}">${isMapped ? 'mapped' : 'auto'}</div>
+    `;
+    grid.appendChild(card);
+
+    // Table row
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="glyph-cell">${char}</td>
+      <td>${entry.glyphName}</td>
+      <td><code>U+${entry.codepointHex}</code></td>
+      <td>${entry.codepointDec}</td>
+      <td><code>content: '\\${entry.codepointHex}';</code></td>
+      <td><code>'\\u${entry.codepointHex}'</code></td>
+      <td><code>${entry.file}</code></td>
+      <td><span class="badge ${isMapped ? 'mapped' : 'auto'}">${isMapped ? 'mapped' : 'auto'}</span></td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function switchView(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+  document.getElementById(view + '-view').classList.add('active');
+  event.target.classList.add('active');
+}
+
+// Boot
+renderGlyphs(fontMap, mappedHex);
+</script>
+</body>
+</html>

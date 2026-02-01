@@ -393,3 +393,9 @@ temp_old_gameservice_statemachine.cs
 .DS_Store
 
 .publish/
+
+# Font build pipeline temp artifacts
+.iconfont-build/
+.assets/SVG For Font/.iconfont-build/
+/package.json
+/package-lock.json
