@@ -22,6 +22,7 @@ import {
 } from '@/lib/stores/gameStoreHooks';
 import { createPlayerColorsWithGradient, type PlayerColorsWithGradient } from '@/lib/utils/playerColors';
 import { DEFAULT_PLAYER_COLORS, type PlayerProfile } from '@/types/player-profile';
+import { CatanGlyph } from '@/lib/constants/catanGlyphs';
 
 // ============================================================================
 // Types
@@ -42,22 +43,6 @@ type OwnedHarbor = 'wheat' | 'wood' | 'sheep' | 'brick' | 'ore' | 'generic';
 // Catan Font Glyphs (from PlayerTile.razor CatanGlyph class)
 // ============================================================================
 
-const CatanGlyph = {
-  City: '\uE900',
-  Laurel: '\uE907',
-  Road: '\uE909',
-  Pirate: '\uE90C',
-  Settlement: '\uE926',
-  Soldier: '\uE90E',
-  Sum: '\uE910',
-  BadRoll: '\uE913',
-  GoodRoll: '\uE914',
-  LongestRoad: '\uE915',
-  Target: '\uE916',
-  Star: '\uE911',
-  DevCard: '?',
-  Ship: '\uE90A',
-};
 
 // ============================================================================
 // Player Colors Helper

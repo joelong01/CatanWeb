@@ -12,15 +12,17 @@ import {
   faWrench,
   faSpinner,
   faSlidersH,
+  faCode,
+  faFont,
 } from '@fortawesome/free-solid-svg-icons';
 import { MainLayout } from '@/components/layout';
 import { getServiceUrl } from '@/lib/config';
 import {
   HexGrid,
   HexGridItem,
-  HEX_LAYOUTS,
   CenterHex,
   MenuHex,
+  cubicCoord,
 } from '@/components/hex-grid';
 
 interface TroubleshootResult {
@@ -39,8 +41,9 @@ interface TroubleshootResult {
 /**
  * Home page - main entry point for the Catan application.
  *
- * Uses hex grid layout with center branding and surrounding menu items.
- * Layout follows CLUSTER_7 pattern (center + 6 surrounding hexes).
+ * Uses two hex clusters:
+ *   Top cluster (Game): Catan branding + New Game, Open Game, Edit Players, Stats
+ *   Bottom cluster (Dev): Dev center + Hex Test, Troubleshoot, Controls Test, Font Viewer
  */
 export default function Home(): React.ReactElement {
   // TODO: Get active game ID from connection service/store
@@ -79,12 +82,12 @@ export default function Home(): React.ReactElement {
     setTroubleshootError(null);
   }, []);
 
-  // Build hex grid items
-  const items: HexGridItem[] = [
-    // Center: Catan branding
+  // ── Game cluster (top): center + 4 surrounding ──
+  // Diamond shape: NW, N, Center, NE, S
+  const gameItems: HexGridItem[] = [
     {
-      id: 'center',
-      coord: HEX_LAYOUTS.CLUSTER_7[0], // (0, 0)
+      id: 'game-center',
+      coord: cubicCoord(0, 0),
       content: (
         <CenterHex
           icon={faDice}
@@ -94,82 +97,9 @@ export default function Home(): React.ReactElement {
       ),
       disabled: true,
     },
-
-    // North: New Game
-    {
-      id: 'new-game',
-      coord: HEX_LAYOUTS.CLUSTER_7[1], // (0, -1)
-      content: (
-        <MenuHex
-          icon={faGamepad}
-          title="New Game"
-          href="/new-game"
-          accentColor="text-amber-400"
-        />
-      ),
-    },
-
-    // NorthEast: Open Game
-    {
-      id: 'open-game',
-      coord: HEX_LAYOUTS.CLUSTER_7[2], // (1, -1)
-      content: (
-        <MenuHex
-          icon={faFolderOpen}
-          title="Open Game"
-          href="/load-game"
-          accentColor="text-blue-400"
-        />
-      ),
-    },
-
-    // SouthEast: Troubleshoot
-    {
-      id: 'troubleshoot',
-      coord: HEX_LAYOUTS.CLUSTER_7[3], // (1, 0)
-      content: (
-        <MenuHex
-          icon={isTroubleshooting ? faSpinner : faWrench}
-          title={isTroubleshooting ? 'Running...' : 'Troubleshoot'}
-          onClick={isTroubleshooting ? undefined : runTroubleshoot}
-          accentColor="text-gray-400"
-        />
-      ),
-      disabled: isTroubleshooting,
-    },
-
-    // South: Stats
-    {
-      id: 'stats',
-      coord: HEX_LAYOUTS.CLUSTER_7[4], // (0, 1)
-      content: (
-        <MenuHex
-          icon={faChartBar}
-          title="Stats"
-          href="/stats"
-          accentColor="text-purple-400"
-        />
-      ),
-    },
-
-    // SouthWest: Hex Test (development tool)
-    {
-      id: 'hex-test',
-      coord: HEX_LAYOUTS.CLUSTER_7[5], // (-1, 1)
-      content: (
-        <MenuHex
-          icon={faFlask}
-          title="Hex Test"
-          href="/hex-test"
-          accentColor="text-cyan-400"
-        />
-      ),
-    },
-
-    // NorthWest: Return to Game (if active) or Edit Players
     {
       id: 'nw-slot',
-      coord: HEX_LAYOUTS.CLUSTER_7[6], // (-1, 0)
+      coord: cubicCoord(-1, 0),
       content: activeGameId ? (
         <MenuHex
           icon={faPlay}
@@ -187,11 +117,86 @@ export default function Home(): React.ReactElement {
         />
       ),
     },
+    {
+      id: 'new-game',
+      coord: cubicCoord(0, -1),
+      content: (
+        <MenuHex
+          icon={faGamepad}
+          title="New Game"
+          href="/new-game"
+          accentColor="text-amber-400"
+        />
+      ),
+    },
+    {
+      id: 'open-game',
+      coord: cubicCoord(1, -1),
+      content: (
+        <MenuHex
+          icon={faFolderOpen}
+          title="Open Game"
+          href="/load-game"
+          accentColor="text-blue-400"
+        />
+      ),
+    },
+    {
+      id: 'stats',
+      coord: cubicCoord(0, 1),
+      content: (
+        <MenuHex
+          icon={faChartBar}
+          title="Stats"
+          href="/stats"
+          accentColor="text-purple-400"
+        />
+      ),
+    },
+  ];
 
-    // Far East: Controls Test (development tool)
+  // ── Dev cluster (bottom): same diamond shape, own coordinate space ──
+  const devItems: HexGridItem[] = [
+    {
+      id: 'dev-center',
+      coord: cubicCoord(0, 0),
+      content: (
+        <CenterHex
+          icon={faCode}
+          title="Dev"
+          accentColor="text-cyan-400"
+        />
+      ),
+      disabled: true,
+    },
+    {
+      id: 'hex-test',
+      coord: cubicCoord(-1, 0),
+      content: (
+        <MenuHex
+          icon={faFlask}
+          title="Hex Test"
+          href="/hex-test"
+          accentColor="text-cyan-400"
+        />
+      ),
+    },
+    {
+      id: 'troubleshoot',
+      coord: cubicCoord(0, -1),
+      content: (
+        <MenuHex
+          icon={isTroubleshooting ? faSpinner : faWrench}
+          title={isTroubleshooting ? 'Running...' : 'Troubleshoot'}
+          onClick={isTroubleshooting ? undefined : runTroubleshoot}
+          accentColor="text-gray-400"
+        />
+      ),
+      disabled: isTroubleshooting,
+    },
     {
       id: 'controls-test',
-      coord: { q: 2, r: -1, s: -1 }, // East of NorthEast
+      coord: cubicCoord(1, -1),
       content: (
         <MenuHex
           icon={faSlidersH}
@@ -202,14 +207,34 @@ export default function Home(): React.ReactElement {
         />
       ),
     },
+    {
+      id: 'font-viewer',
+      coord: cubicCoord(0, 1),
+      content: (
+        <MenuHex
+          icon={faFont}
+          title="Font Viewer"
+          href="/font-viewer"
+          accentColor="text-emerald-400"
+        />
+      ),
+    },
   ];
 
   return (
     <MainLayout activeGameId={activeGameId}>
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-120px)] py-8">
-        {/* Hex Grid Menu - card background matching New Game page */}
+        {/* Game Cluster */}
         <div className="bg-white/5 rounded-xl p-8 border border-white/10">
-          <HexGrid hexSize={140} items={items} gap={4} />
+          <HexGrid hexSize={140} items={gameItems} gap={4} />
+        </div>
+
+        {/* Separator */}
+        <div className="w-48 my-6 border-t border-white/10" />
+
+        {/* Dev Cluster (20% smaller) */}
+        <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+          <HexGrid hexSize={112} items={devItems} gap={3} />
         </div>
 
         {/* Troubleshoot Results */}
@@ -239,7 +264,7 @@ export default function Home(): React.ReactElement {
                 <strong className="text-green-400">Fixed:</strong>
                 <ul className="list-disc list-inside text-sm text-green-300 mt-1">
                   {troubleshootResult.fixed.map((fix, i) => (
-                    <li key={i}>✓ {fix}</li>
+                    <li key={i}>{fix}</li>
                   ))}
                 </ul>
               </div>
@@ -250,7 +275,7 @@ export default function Home(): React.ReactElement {
                 <strong className="text-yellow-400">Issues:</strong>
                 <ul className="list-disc list-inside text-sm text-yellow-300 mt-1">
                   {troubleshootResult.issues.map((issue, i) => (
-                    <li key={i}>⚠ {issue}</li>
+                    <li key={i}>{issue}</li>
                   ))}
                 </ul>
               </div>
@@ -261,7 +286,7 @@ export default function Home(): React.ReactElement {
                 <strong className="text-blue-400">Cannot Auto-Fix:</strong>
                 <ul className="list-disc list-inside text-sm text-blue-300 mt-1">
                   {troubleshootResult.cannotFix.map((item, i) => (
-                    <li key={i}>ℹ {item}</li>
+                    <li key={i}>{item}</li>
                   ))}
                 </ul>
               </div>

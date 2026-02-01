@@ -28,7 +28,7 @@ const CATAN_GLYPHS = {
   Settlement: '\uE926',
   City: '\uE900',
   Metropolis: '\uE900', // Uses city glyph with different styling
-  Knight: '\uE912', // Knight glyph
+  Knight: '\uE939', // knight-standing glyph
 } as const;
 
 /**

@@ -415,6 +415,7 @@ export const ActionCluster = memo(function ActionCluster({
           glyph={CatanGlyph.Soldier}
           label="Soldier"
           tooltip="Play Soldier Card"
+          isPrimary
           isEnabled={enabledButtons.soldier === true}
           backStats={purchaseStats?.soldier?.played.toString()}
           count={purchaseStats?.soldier?.unspent}
