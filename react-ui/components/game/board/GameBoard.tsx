@@ -15,6 +15,7 @@ import {
   type HexSide as GeometryHexSide,
 } from '@/components/hex-grid/hex-geometry';
 import { NUMBER_PIPS, getHarborImage } from '@/lib/constants/board-assets';
+import { CatanGlyph } from '@/lib/constants/catanGlyphs';
 import { WaterHex } from '@/components/hex-grid/content/WaterHex';
 import { GameTile } from '@/components/game/tiles/GameTile';
 import { Building, Road, type BuildingVisualState, type RoadState } from '@/components/game/tiles';
@@ -76,6 +77,8 @@ export interface GameBoardProps {
   onBuildingClick?: (buildingKey: BuildingKey) => void;
   /** Callback when a buildable road is clicked */
   onRoadClick?: (roadKey: RoadKey) => void;
+  /** When true, render harbors using CatanFont glyphs instead of PNG images */
+  fontRendering?: boolean;
 }
 
 /**
@@ -147,6 +150,18 @@ const WATER_COLORS = {
 };
 
 /**
+ * Font-based harbor rendering config: maps HarborType to CatanFont glyphs and colors.
+ */
+const HARBOR_FONT_CONFIG: Partial<Record<string, { hexGlyph: string; harborGlyph: string; color: string }>> = {
+  Wheat: { hexGlyph: CatanGlyph.WheatHex, harborGlyph: CatanGlyph.WheatHarbor, color: '#deb887' },
+  Wood: { hexGlyph: CatanGlyph.WoodHex, harborGlyph: CatanGlyph.WoodHarbor, color: '#228b22' },
+  Sheep: { hexGlyph: CatanGlyph.SheepHex, harborGlyph: CatanGlyph.SheepHarbor, color: '#90ee90' },
+  Brick: { hexGlyph: CatanGlyph.BrickHex, harborGlyph: CatanGlyph.BrickHarbor, color: '#cd5c5c' },
+  Ore: { hexGlyph: CatanGlyph.OreHex, harborGlyph: CatanGlyph.OreHarbor, color: '#a0a0a0' },
+  ThreeForOne: { hexGlyph: CatanGlyph.ThreeToOneHarbor, harborGlyph: CatanGlyph.ThreeToOneHarbor, color: '#c0c0c0' },
+};
+
+/**
  * Harbor hex content - displays harbor icon on a triangular wooden dock.
  *
  * When a player owns the harbor (building at adjacent vertex), the hex
@@ -157,6 +172,8 @@ interface HarborHexContentProps {
   harbor: HarborModel;
   /** Owner colors when harbor is owned by a player */
   ownerColors?: PlayerColors | null;
+  /** When true, render CatanFont glyphs instead of PNG images */
+  fontRendering?: boolean;
 }
 
 function HarborHexContent({ harbor, ownerColors }: HarborHexContentProps) {

@@ -211,6 +211,31 @@ if (-not (Test-Path -LiteralPath $MapFile)) {
 
 Ensure-Dir -Path $OutputDir
 
+# ── Verify hex SVG aspect ratios ──
+# Flat-top hex: height/width = √3/2 ≈ 0.8660 (from hex-geometry.ts).
+# The font normalizer (--normalize) scales each glyph independently, so
+# absolute viewBox size doesn't matter — only the aspect ratio matters.
+$hexRatio = [Math]::Sqrt(3) / 2  # ≈ 0.8660254
+$hexSvgs = Get-ChildItem -LiteralPath $InputDir -Filter "*.svg" | Where-Object { $_.Name -match 'hex' }
+$hexWarnings = 0
+foreach ($hexSvg in $hexSvgs) {
+  $svgContent = Get-Content -LiteralPath $hexSvg.FullName -Raw
+  $vbMatch = [regex]::Match($svgContent, 'viewBox="(-?[\d.]+)\s+(-?[\d.]+)\s+([\d.]+)\s+([\d.]+)"')
+  if ($vbMatch.Success) {
+    $vbW = [double]$vbMatch.Groups[3].Value
+    $vbH = [double]$vbMatch.Groups[4].Value
+    $correctH = [Math]::Round($vbW * $hexRatio)
+    if ($vbH -ne $correctH) {
+      $actualRatio = $vbH / $vbW
+      Write-Warning "  $($hexSvg.Name): aspect $('{0:F3}' -f $actualRatio), expected $('{0:F3}' -f $hexRatio) (viewBox ${vbW}x${vbH}, should be ${vbW}x${correctH})"
+      $hexWarnings++
+    }
+  }
+}
+if ($hexWarnings -gt 0) {
+  Write-Warning "$hexWarnings hex SVG(s) have wrong aspect ratio. Run fix-svg-for-font.ps1 to correct."
+}
+
 $resolvedInput  = (Resolve-Path -LiteralPath $InputDir).Path
 $resolvedOutput = (Resolve-Path -LiteralPath $OutputDir).Path
 $resolvedMap    = if ($MapFile) { (Resolve-Path -LiteralPath $MapFile).Path } else { $null }
