@@ -252,7 +252,7 @@ try {
     Set-Content -LiteralPath (Join-Path $resolvedWork "package.json") -Value $initPkg -NoNewline
   }
 
-  npm install svgicons2svgfont@^15.0.1 svg2ttf@^6.0.3 fast-glob@^3.3.3 yargs@^17.7.2 | Out-Null
+  npm install svgicons2svgfont@^15.0.1 svg2ttf@^6.0.3 fast-glob@^3.3.3 yargs@^17.7.2 svg-reorient@^1.0.3 | Out-Null
   npm install -D typescript@^5.7.3 tsx@^4.19.2 "@types/node@^22.10.7" | Out-Null
 
   $tsconfig = @'
@@ -275,6 +275,28 @@ try {
   $tsDest = Join-Path $resolvedWork "src/build-icon-font.ts"
   Ensure-Dir -Path (Join-Path $resolvedWork "src")
   Copy-Item -LiteralPath $TsSource -Destination $tsDest -Force
+
+  # ── Convert evenodd → nonzero winding for hex glyphs ──
+  # svgicons2svgfont ignores fill-rule:evenodd (known issue #62), so compound
+  # paths render as solid blobs. reorient-evenodd.mjs uses svg-reorient to fix
+  # subpath winding directions, producing the same visual under nonzero.
+  # Only hex SVGs need this — they have 100-400 subpaths in compound paths.
+
+  $reorientScript = Join-Path $ScriptDir "reorient-evenodd.mjs"
+  $hexEvenoddSvgs = @(Get-ChildItem -LiteralPath $resolvedInput -Filter "*hex*.svg" | Where-Object {
+    $c = Get-Content $_.FullName -Raw
+    $c -match 'fill-rule[:\s]*evenodd'
+  })
+
+  if ($hexEvenoddSvgs.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Converting $($hexEvenoddSvgs.Count) hex SVG(s) from evenodd to nonzero winding..." -ForegroundColor Cyan
+    $reorientArgs = @($reorientScript) + ($hexEvenoddSvgs | ForEach-Object { $_.FullName })
+    node @reorientArgs
+    if ($LASTEXITCODE -ne 0) {
+      throw "Evenodd-to-nonzero conversion failed"
+    }
+  }
 
   # ── Build ──
 
@@ -447,9 +469,23 @@ if (-not $NoInstall) {
 }
 
 # ── Clear .next cache ──
+# In dev mode, layout.tsx loads the font via an API route with no-cache headers,
+# so clearing .next is unnecessary (and destructive — it kills the running dev
+# server's compilation cache). Only clear when doing a clean production build.
 
 if (-not $SkipClearCache -and -not $SkipInstall) {
-  if (Test-Path -LiteralPath $NextCacheDir) {
+  # Detect if Next.js dev server is running (port 3000)
+  $devRunning = $false
+  try {
+    $listener = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue
+    if ($listener) { $devRunning = $true }
+  } catch { }
+
+  if ($devRunning) {
+    Write-Host ""
+    Write-Host "Next.js dev server detected — skipping .next cache clear." -ForegroundColor Yellow
+    Write-Host "  Hard-refresh (Ctrl+Shift+R) or press Ctrl+Shift+F to reload the font." -ForegroundColor Yellow
+  } elseif (Test-Path -LiteralPath $NextCacheDir) {
     Write-Host ""
     Write-Host "Clearing .next cache..." -ForegroundColor Cyan
     Remove-Item -LiteralPath $NextCacheDir -Recurse -Force

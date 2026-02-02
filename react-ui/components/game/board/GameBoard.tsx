@@ -21,6 +21,7 @@ import { GameTile } from '@/components/game/tiles/GameTile';
 import { Building, Road, type BuildingVisualState, type RoadState } from '@/components/game/tiles';
 import { useLayoutStore } from '@/lib/stores/layoutStore';
 import { hexToRgba } from '@/lib/utils/playerColors';
+import { faCoins } from '@fortawesome/free-solid-svg-icons';
 import { useBoardData, useBoardPlayers, useRolledNumber } from '@/lib/hooks';
 import { useIsAllocationPhase, useGameState } from '@/lib/stores/gameStoreHooks';
 
@@ -152,13 +153,13 @@ const WATER_COLORS = {
 /**
  * Font-based harbor rendering config: maps HarborType to CatanFont glyphs and colors.
  */
-const HARBOR_FONT_CONFIG: Partial<Record<string, { hexGlyph: string; harborGlyph: string; color: string }>> = {
-  Wheat: { hexGlyph: CatanGlyph.WheatHex, harborGlyph: CatanGlyph.WheatHarbor, color: '#deb887' },
-  Wood: { hexGlyph: CatanGlyph.WoodHex, harborGlyph: CatanGlyph.WoodHarbor, color: '#228b22' },
-  Sheep: { hexGlyph: CatanGlyph.SheepHex, harborGlyph: CatanGlyph.SheepHarbor, color: '#90ee90' },
-  Brick: { hexGlyph: CatanGlyph.BrickHex, harborGlyph: CatanGlyph.BrickHarbor, color: '#cd5c5c' },
-  Ore: { hexGlyph: CatanGlyph.OreHex, harborGlyph: CatanGlyph.OreHarbor, color: '#a0a0a0' },
-  ThreeForOne: { hexGlyph: CatanGlyph.ThreeToOneHarbor, harborGlyph: CatanGlyph.ThreeToOneHarbor, color: '#c0c0c0' },
+const HARBOR_FONT_CONFIG: Partial<Record<string, { hexGlyph?: string; harborGlyph: string; color: string; bgColor?: string; faIcon?: typeof faCoins }>> = {
+  Wheat: { hexGlyph: CatanGlyph.WheatHex, harborGlyph: CatanGlyph.WheatHarbor, color: '#DAA520' },
+  Wood: { hexGlyph: CatanGlyph.WoodHex, harborGlyph: CatanGlyph.WoodHarbor, color: '#2E7D32' },
+  Sheep: { hexGlyph: CatanGlyph.SheepHex, harborGlyph: CatanGlyph.SheepHarbor, color: '#A68B6B' },
+  Brick: { hexGlyph: CatanGlyph.BrickHex, harborGlyph: CatanGlyph.BrickHarbor, color: '#BF360C' },
+  Ore: { hexGlyph: CatanGlyph.OreHex, harborGlyph: CatanGlyph.OreHarbor, color: '#546E7A' },
+  ThreeForOne: { harborGlyph: CatanGlyph.ThreeToOneHarbor, color: '#D4AF37', bgColor: 'white', faIcon: faCoins },
 };
 
 /**
@@ -176,9 +177,10 @@ interface HarborHexContentProps {
   fontRendering?: boolean;
 }
 
-function HarborHexContent({ harbor, ownerColors }: HarborHexContentProps) {
+function HarborHexContent({ harbor, ownerColors, fontRendering }: HarborHexContentProps) {
   const { harborType, side } = harbor.harborKey;
   const imageUrl = getHarborImage(harborType);
+  const fontConfig = fontRendering ? HARBOR_FONT_CONFIG[harborType] : undefined;
   const dockVertices = SIDE_TO_VERTICES[side];
   const waterVertices = SIDE_TO_OPPOSITE_VERTICES[side];
 
@@ -206,22 +208,27 @@ function HarborHexContent({ harbor, ownerColors }: HarborHexContentProps) {
   const ownerGradientId = ownerColors ? `harbor-owner-${side}` : null;
 
   // Determine background style
+  const hasHexBackground = !!fontConfig?.hexGlyph || !!fontConfig?.bgColor;
   const backgroundStyle: React.CSSProperties = {
     clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
-    backdropFilter: 'blur(4px)',
-    WebkitBackdropFilter: 'blur(4px)', // Safari support
   };
+
+  if (!hasHexBackground) {
+    // Only apply frosted backdrop when NOT rendering a solid hex background
+    backgroundStyle.backdropFilter = 'blur(4px)';
+    backgroundStyle.WebkitBackdropFilter = 'blur(4px)';
+  }
 
   if (ownerColors) {
     // Owned: Fully opaque player gradient
     const start = hexToRgba(ownerColors.primary, 1.0);
     const end = hexToRgba(ownerColors.secondary, 1.0);
     backgroundStyle.background = `linear-gradient(135deg, ${start}, ${end})`;
-  } else {
-    // Unowned: Frosted dark background (similar to panels)
-    // Decreased opacity to 0.3 just to be sure blur is visible if any
-    backgroundStyle.backgroundColor = 'rgba(30, 41, 59, 0.3)'; // slate-800 at 0.3
+  } else if (!hasHexBackground) {
+    // Unowned without hex background: Frosted dark background
+    backgroundStyle.backgroundColor = 'rgba(30, 41, 59, 0.3)';
   }
+  // When hasHexBackground: fully transparent CSS — solid fill handled in SVG
 
   return (
     <div className="absolute inset-0" style={backgroundStyle} data-drag-through>
@@ -254,20 +261,51 @@ function HarborHexContent({ harbor, ownerColors }: HarborHexContentProps) {
           <clipPath id={`harbor-clip-${side}`}>
             <circle cx={cx} cy={cy} r={circleRadius - 1} />
           </clipPath>
+          {(fontConfig?.hexGlyph || fontConfig?.faIcon) && (
+            <clipPath id={`harbor-hex-clip-${side}`}>
+              <polygon points={hexPoints} />
+            </clipPath>
+          )}
         </defs>
 
-        {/* Connection lines to tile vertices (subtle 2px lines) */}
+        {/* Font-rendered hex background: solid fill + optional glyph */}
+        {(fontConfig?.hexGlyph || fontConfig?.bgColor) && (
+          <>
+            {/* Solid hex fill to prevent water bleed-through */}
+            <polygon points={hexPoints} fill={fontConfig?.bgColor ?? 'white'} />
+            {fontConfig?.hexGlyph && (
+              <text
+                x={cx}
+                y={cy}
+                textAnchor="middle"
+                dominantBaseline="central"
+                style={{ fontFamily: 'var(--font-catan)' }}
+                fontSize={150}
+                fill={fontConfig.color}
+                clipPath={`url(#harbor-hex-clip-${side})`}
+              >
+                {fontConfig.hexGlyph}
+              </text>
+            )}
+            {fontConfig?.faIcon && (
+              <path
+                d={fontConfig.faIcon.icon[4] as string}
+                fill={fontConfig.color}
+                opacity={0.6}
+                transform="translate(10, 3.3) scale(0.156)"
+                clipPath={`url(#harbor-hex-clip-${side})`}
+              />
+            )}
+          </>
+        )}
+
+        {/* Dock-side edge highlight: thick line on the edge facing the land tile */}
         <line
-          x1={cx} y1={cy}
-          x2={dockVertices[0][0]} y2={dockVertices[0][1]}
-          stroke="rgba(255, 255, 255, 0.4)"
-          strokeWidth="2"
-        />
-        <line
-          x1={cx} y1={cy}
+          x1={dockVertices[0][0]} y1={dockVertices[0][1]}
           x2={dockVertices[1][0]} y2={dockVertices[1][1]}
-          stroke="rgba(255, 255, 255, 0.4)"
-          strokeWidth="2"
+          stroke={fontConfig?.color ?? DOCK_COLORS.stroke}
+          strokeWidth="14"
+          strokeLinecap="round"
         />
 
         {/* Dock circle with wood fill (toward tile connection) */}
@@ -280,16 +318,31 @@ function HarborHexContent({ harbor, ownerColors }: HarborHexContentProps) {
           strokeWidth="2.5"
         />
 
-        {/* Harbor image inside circle */}
-        <image
-          href={imageUrl}
-          x={cx - circleRadius + 1}
-          y={cy - circleRadius + 1}
-          width={(circleRadius - 1) * 2}
-          height={(circleRadius - 1) * 2}
-          clipPath={`url(#harbor-clip-${side})`}
-          preserveAspectRatio="xMidYMid slice"
-        />
+        {/* Harbor icon inside circle */}
+        {fontConfig ? (
+          <text
+            x={cx}
+            y={cy}
+            textAnchor="middle"
+            dominantBaseline="central"
+            style={{ fontFamily: 'var(--font-catan)' }}
+            fontSize={42}
+            fill={fontConfig.color}
+            clipPath={`url(#harbor-clip-${side})`}
+          >
+            {fontConfig.harborGlyph}
+          </text>
+        ) : (
+          <image
+            href={imageUrl}
+            x={cx - circleRadius + 1}
+            y={cy - circleRadius + 1}
+            width={(circleRadius - 1) * 2}
+            height={(circleRadius - 1) * 2}
+            clipPath={`url(#harbor-clip-${side})`}
+            preserveAspectRatio="xMidYMid slice"
+          />
+        )}
       </svg>
     </div>
   );
@@ -314,6 +367,7 @@ export function GameBoard({
   highlightedTiles,
   onBuildingClick,
   onRoadClick,
+  fontRendering,
 }: GameBoardProps): React.ReactElement {
   // Use internal hooks for game data (server-driven UI pattern)
   const boardData = useBoardData();
@@ -536,10 +590,10 @@ export function GameBoard({
       return {
         id: `harbor-${key}`,
         coord: waterCoord,
-        content: <HarborHexContent harbor={harbor} ownerColors={ownerColors} />,
+        content: <HarborHexContent harbor={harbor} ownerColors={ownerColors} fontRendering={fontRendering} />,
       };
     });
-  }, [harbors, players]);
+  }, [harbors, players, fontRendering]);
 
   // Build set of harbor coordinates for quick lookup
   const harborCoordSet = useMemo(() => {

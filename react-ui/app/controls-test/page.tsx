@@ -2156,6 +2156,7 @@ export default function ControlsTestPage(): React.ReactElement {
           <GameBoard
             hexSize={50}
             gap={1}
+            fontRendering
           />
         </FloatingPanel>
 
