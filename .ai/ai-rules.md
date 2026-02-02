@@ -538,14 +538,23 @@ When documenting a system, feature, or architecture decision, write it to
 - **Update after changes**: When code behavior changes, update the relevant doc
 - **Code is truth**: When a doc disagrees with code, the code wins -- fix the doc
 
-### Implementation Plans
+### Design Documents and Implementation Plans
 
-Before writing code for any non-trivial task, write a plan and get approval.
+Non-trivial tasks require a **two-stage** approval workflow before any code is written.
 
-Plans go in `.design/plans/`:
+#### Stage 1: Design Doc
+
+Write a design document to `.design/<feature>.md` describing the architecture,
+key decisions, data flow, and high-level approach. **STOP and wait for developer
+approval before proceeding.**
+
+#### Stage 2: Implementation Plan
+
+After design approval, write a detailed implementation plan to
+`.design/implementation-plans/`:
 
 ```text
-.design/plans/
+.design/implementation-plans/
 ├── winner-overlay-plan.md
 ├── portrait-mode-plan.md
 └── ...
@@ -564,15 +573,20 @@ Plans go in `.design/plans/`:
 3. **Files Modified** -- summary table of all files touched
 4. **Verification** -- how to confirm the changes work (build, test, manual steps)
 
+**STOP and wait for developer approval before writing any code.**
+
+#### Stage 3: Implementation
+
+After plan approval, implement the plan precisely.
+
 **Approval process:**
 
-1. AI assistant writes the plan to `.design/plans/`
-2. Present the plan to the developer for review
-3. Developer approves, requests changes, or rejects
-4. Only after approval does implementation begin
-5. Delete the plan file after the work is committed (plans are transient)
+1. AI writes design doc to `.design/<feature>.md` -- waits for approval
+2. AI writes implementation plan to `.design/implementation-plans/` -- waits for approval
+3. Only after both approvals does implementation begin
+4. Delete the plan file after the work is committed (plans are transient)
 
-**When to skip planning:**
+**When to skip this workflow:**
 
 - Single-line fixes (typos, obvious bugs)
 - Adding a comment or adjusting a constant

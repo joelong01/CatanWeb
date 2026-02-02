@@ -2,6 +2,38 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Planning Workflow Override
+
+**CRITICAL: Do NOT use the built-in EnterPlanMode/ExitPlanMode system.**
+
+This project uses a manual two-stage workflow defined in `.ai/ai-rules.md`.
+The built-in plan mode writes to the wrong location and bypasses required review gates.
+
+### Stage 1: Design
+
+Write a **design doc** to `.design/<feature>.md` describing the architecture,
+key decisions, and high-level approach. Then **STOP** -- do not proceed until
+the developer explicitly approves the design.
+
+### Stage 2: Implementation Plan
+
+After design approval, write a **detailed implementation plan** to
+`.design/implementation-plans/<feature>-plan.md` with per-file changes,
+files-modified table, and verification steps. Then **STOP** -- do not
+write any code until the developer explicitly approves the plan.
+
+### Stage 3: Implementation
+
+After plan approval, implement the plan. Follow it precisely.
+
+### Rules
+
+- Never start a later stage without explicit approval of the previous stage
+- Never write plans to `~/.claude/plans/` -- always use `.design/implementation-plans/`
+- Never use `EnterPlanMode` or `ExitPlanMode` tools
+- A single "looks good" or "approved" is sufficient to proceed to the next stage
+- If unsure whether approval was given, ask
+
 ## Communication Style
 
 - Be direct and honest, not agreeable
@@ -134,7 +166,7 @@ Use typed messages, not generic string commands:
 
 ## Development Rules
 
-1. **Plan before implementation** - Write a plan to `.design/plans/` and get approval before coding (see `.ai/ai-rules.md` Planning Workflow)
+1. **Design then plan then implement** - See "Planning Workflow Override" above. Design doc first, then implementation plan, each with approval gates
 2. **GameModel is single source of truth** - All client state comes from GameModel
 3. **Desktop app is reference** - Analyze for behavior, but don't modify without explicit direction
 4. **Tests must pass** - Build and verify all tests before completing any task
@@ -156,7 +188,7 @@ Use typed messages, not generic string commands:
 
 - `.ai/` - AI-agnostic rules and standards (applies to all AI tools)
 - `.design/` - Verified design docs (start with `README.md`; 30 docs)
-- `.design/plans/` - Implementation plans awaiting approval
+- `.design/implementation-plans/` - Implementation plans awaiting approval
 - `.design/reviews/` - Code and design reviews
 - `.design/old/` - Legacy/superseded docs for historical reference
 
