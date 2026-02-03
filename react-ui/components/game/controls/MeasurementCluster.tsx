@@ -15,6 +15,8 @@ import { memo, useState, useCallback } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowsRotate, faCheck, faScaleBalanced } from '@fortawesome/free-solid-svg-icons';
 import { HexGrid, type HexGridItem, type HexCoordinate } from '@/components/hex-grid';
+import { useAssetPath } from '@/lib/theme';
+import type { AssetName } from '@/lib/theme/types';
 import type { PlayerColorsWithGradient } from '@/lib/utils/playerColors';
 import type { TileModel } from '@/types/generated/models/tile-model';
 
@@ -61,11 +63,11 @@ const CLUSTER_7: Record<string, HexCoordinate> = {
 
 /** Resource configuration for outer ring */
 const RESOURCE_CONFIG = [
-  { key: 'Sheep', label: 'Sheep', position: 'north', image: '/themes/base/resources/sheep.png' },
-  { key: 'Wood', label: 'Wood', position: 'northEast', image: '/themes/base/resources/wood.png' },
-  { key: 'Wheat', label: 'Wheat', position: 'southEast', image: '/themes/base/resources/wheat.png' },
-  { key: 'Brick', label: 'Brick', position: 'southWest', image: '/themes/base/resources/brick.png' },
-  { key: 'Ore', label: 'Ore', position: 'northWest', image: '/themes/base/resources/ore.png' },
+  { key: 'Sheep', label: 'Sheep', position: 'north', assetName: 'CardSheep' as AssetName },
+  { key: 'Wood', label: 'Wood', position: 'northEast', assetName: 'CardWood' as AssetName },
+  { key: 'Wheat', label: 'Wheat', position: 'southEast', assetName: 'CardWheat' as AssetName },
+  { key: 'Brick', label: 'Brick', position: 'southWest', assetName: 'CardBrick' as AssetName },
+  { key: 'Ore', label: 'Ore', position: 'northWest', assetName: 'CardOre' as AssetName },
 ] as const;
 
 /** Star filter values for inner cluster */
@@ -124,16 +126,17 @@ function calculateVariance(stats: Record<string, { stars: number; tiles: number 
 // ============================================================================
 
 interface ResourceHexContentProps {
-  image: string;
+  assetName: AssetName;
   count: number;
   isSelected: boolean;
 }
 
 const ResourceHexContent = memo(function ResourceHexContent({
-  image,
+  assetName,
   count,
   isSelected,
 }: ResourceHexContentProps) {
+  const image = useAssetPath(assetName);
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
 
@@ -161,7 +164,7 @@ const ResourceHexContent = memo(function ResourceHexContent({
         className="absolute inset-0 hex-clip-flat flex items-end justify-center transition-all duration-150"
         style={{
           transform: `scale(${innerScale})`,
-          backgroundImage: `url(${image})`,
+          backgroundImage: image ? `url(${image})` : undefined,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
@@ -472,12 +475,12 @@ export const MeasurementCluster = memo(function MeasurementCluster({
   // Build outer ring items (5 resources + variance)
   const outerItems: HexGridItem[] = [
     // Resources in outer ring positions
-    ...RESOURCE_CONFIG.map(({ key, position, image }) => ({
+    ...RESOURCE_CONFIG.map(({ key, position, assetName }) => ({
       id: `resource-${key}`,
       coord: CLUSTER_7[position],
       content: (
         <ResourceHexContent
-          image={image}
+          assetName={assetName}
           count={resourceCounts[key] || 0}
           isSelected={selectedResources.includes(key)}
         />

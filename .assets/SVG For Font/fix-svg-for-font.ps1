@@ -407,6 +407,25 @@ foreach ($file in $files) {
   $original = $content
   $changes = @()
 
+  # ── Strip orphaned </g> tags from previous buggy runs ──
+  # Count <g...> opens vs </g> closes; remove excess closes.
+  $gOpens = ([regex]::Matches($content, '<g[\s>]')).Count
+  $gCloses = ([regex]::Matches($content, '</g>')).Count
+  if ($gCloses -gt $gOpens) {
+    $excess = $gCloses - $gOpens
+    for ($j = 0; $j -lt $excess; $j++) {
+      # Remove one </g> at a time (prefer those right before </svg>)
+      $content = $content -replace '</g>\s*</svg>', '</svg>'
+    }
+    # If any remain (not adjacent to </svg>), strip them
+    $gOpens2 = ([regex]::Matches($content, '<g[\s>]')).Count
+    $gCloses2 = ([regex]::Matches($content, '</g>')).Count
+    $remaining = $gCloses2 - $gOpens2
+    for ($j = 0; $j -lt $remaining; $j++) {
+      $content = $content -replace '</g>', ''
+    }
+  }
+
   # Count paths before changes
   $pathCount = ([regex]::Matches($content, '<path')).Count
   if ($pathCount -eq 0) {
@@ -439,10 +458,15 @@ foreach ($file in $files) {
     $mCount = ([regex]::Matches($d.Groups[1].Value, 'M')).Count
     if ($mCount -gt $maxSubPaths) { $maxSubPaths = $mCount }
   }
-  # If any single path has many sub-paths, it's a compound path -- use evenodd
+  # If any single path has many sub-paths, it's a compound path
   $useEvenOdd = ($pathCount -le 2 -and $maxSubPaths -gt 10)
-  $targetFillRule = if ($useEvenOdd) { "evenodd" } else { "nonzero" }
-  if ($useEvenOdd) { $changes += "compound path detected, using evenodd" }
+  # If a compound path already has fill-rule:nonzero, reorient-evenodd.mjs has
+  # already fixed the winding directions.  Keep nonzero to avoid restarting
+  # the evenodd → reorient → nonzero cycle on every build.
+  $currentFillRule = [regex]::Match($content, 'fill-rule\s*:\s*(\w+)')
+  $alreadyReoriented = $useEvenOdd -and $currentFillRule.Success -and $currentFillRule.Groups[1].Value -eq 'nonzero'
+  $targetFillRule = if ($useEvenOdd -and -not $alreadyReoriented) { "evenodd" } else { "nonzero" }
+  if ($useEvenOdd -and -not $alreadyReoriented) { $changes += "compound path detected, using evenodd" }
 
   # ── Strip hex outline sub-paths from compound paths ──
   # Compound paths from Designer often include the hex border as a sub-path.
@@ -609,7 +633,10 @@ foreach ($file in $files) {
   # Calculates the bounding box of all path data (accounting for
   # <g transform="matrix(...)"> translates from Designer exports)
   # and sets the viewBox to tightly wrap the artwork.
-  if (-not $ViewBox -and -not $NoCrop) {
+  # Skip hex files: they use hex aspect ratio enforcement instead, and
+  # cropping would fight with the aspect expansion on repeated runs.
+  $isHexFile = $file.Name -match 'hex'
+  if (-not $ViewBox -and -not $NoCrop -and -not $isHexFile) {
     $cropDAttrs = [regex]::Matches($content, ' d="([^"]+)"')
     if ($cropDAttrs.Count -gt 0) {
       # Detect <g transform="matrix(a,b,c,d,e,f)"> translate offset.
@@ -618,6 +645,7 @@ foreach ($file in $files) {
       $txOffset = 0.0
       $tyOffset = 0.0
       $hasNonTrivialTransform = $false
+      # Detect <g transform="matrix(1,0,0,1,tx,ty)"> (Affinity Designer exports)
       $matrixMatch = [regex]::Match($content, '<g\s+transform="matrix\(([^)]+)\)"')
       if ($matrixMatch.Success) {
         $matrixParts = $matrixMatch.Groups[1].Value -split ','
@@ -634,6 +662,17 @@ foreach ($file in $files) {
             $tyOffset = $f
           } else {
             $hasNonTrivialTransform = $true
+          }
+        }
+      }
+      # Also detect <g transform="translate(tx,ty)"> (added by previous runs)
+      if ($txOffset -eq 0 -and $tyOffset -eq 0 -and -not $hasNonTrivialTransform) {
+        $translateMatch = [regex]::Match($content, '<g\s+transform="translate\(([^)]+)\)">')
+        if ($translateMatch.Success) {
+          $transParts = $translateMatch.Groups[1].Value -split ','
+          if ($transParts.Count -eq 2) {
+            $txOffset = [double]$transParts[0].Trim()
+            $tyOffset = [double]$transParts[1].Trim()
           }
         }
       }
@@ -754,9 +793,16 @@ foreach ($file in $files) {
     if ([Math]::Abs($fX) -gt 0.01 -or [Math]::Abs($fY) -gt 0.01) {
       # Replace viewBox with zero origin
       $content = $content -replace 'viewBox="[^"]+"', "viewBox=`"0 0 $fW $fH`""
-      # Wrap inner content in a translate group
-      $content = $content -replace '(?s)(xmlns:serif="[^"]*"[^>]*>)', "`$1`n<g transform=`"translate($(-$fX),$(-$fY))`">"
-      $content = $content -replace '</svg>', '</g></svg>'
+      # Check if there's already a translate wrapper from a previous run
+      $existingTranslate = [regex]::Match($content, '<g\s+transform="translate\(([^)]+)\)">')
+      if ($existingTranslate.Success) {
+        # Update existing translate wrapper
+        $content = $content -replace '<g\s+transform="translate\([^)]+\)">', "<g transform=`"translate($(-$fX),$(-$fY))`">"
+      } else {
+        # Wrap inner content in a new translate group
+        $content = $content -replace '(<svg[^>]*>)', "`$1`n<g transform=`"translate($(-$fX),$(-$fY))`">"
+        $content = $content -replace '</svg>', '</g></svg>'
+      }
       $changes += "viewBox origin: ($fX,$fY) -> (0,0) via translate"
     }
   }

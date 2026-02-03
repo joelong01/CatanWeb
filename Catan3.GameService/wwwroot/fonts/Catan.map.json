@@ -1,8 +1,8 @@
 {
   "fontName": "Catan",
-  "glyphCount": 42,
-  "mappedCount": 42,
-  "autoAssignedCount": 0,
+  "glyphCount": 45,
+  "mappedCount": 44,
+  "autoAssignedCount": 1,
   "entries": [
     {
       "file": "city.svg",
@@ -297,6 +297,27 @@
       "codepointHex": "E942",
       "codepointDec": 59714,
       "unicode": ""
+    },
+    {
+      "file": "gold-bw-hex.svg",
+      "glyphName": "gold-bw-hex",
+      "codepointHex": "E943",
+      "codepointDec": 59715,
+      "unicode": ""
+    },
+    {
+      "file": "tempgold-bw-hex.svg",
+      "glyphName": "tempgold-bw-hex",
+      "codepointHex": "E944",
+      "codepointDec": 59716,
+      "unicode": ""
+    },
+    {
+      "file": "skull 1.svg",
+      "glyphName": "skull 1",
+      "codepointHex": "E945",
+      "codepointDec": 59717,
+      "unicode": ""
     }
   ]
 }

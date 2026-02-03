@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import { FontReloader } from '@/components/dev/FontReloader';
+import { ThemeInitializer } from '@/components/providers/ThemeInitializer';
 import './globals.css';
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -74,6 +75,7 @@ export default function RootLayout({
         )}
       </head>
       <body className={`${catanFont.variable} antialiased`}>
+        <ThemeInitializer />
         {children}
         {isDev && <FontReloader />}
       </body>

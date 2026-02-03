@@ -52,6 +52,8 @@ export const CatanGlyph = {
   WheatHarbor: '\uE940',
   WoodHex: '\uE941',
   WoodHarbor: '\uE942',
+  GoldHex: '\uE943',
+  TempGoldHex: '\uE944',
 
   // Aliases for backward compatibility
   Soldier: '\uE939',       // KnightStanding used for purchase UI

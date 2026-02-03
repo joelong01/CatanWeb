@@ -54,20 +54,12 @@ for (const file of files) {
   result = result.replace(/fill-rule:\s*evenodd/g, 'fill-rule:nonzero');
   result = result.replace(/fill-rule="evenodd"/g, 'fill-rule="nonzero"');
 
-  // Re-apply translate wrapper if it was stripped
+  // Re-apply translate wrapper if it was stripped.
+  // Use the original translate value — the viewBox was already zeroed by fix-svg,
+  // so checking the viewBox origin would always find (0,0) and skip re-applying.
   if (hadTranslate) {
-    // Check if viewBox still has non-zero origin
-    const vbMatch = result.match(/viewBox="(-?[\d.]+)\s+(-?[\d.]+)\s+([\d.]+)\s+([\d.]+)"/);
-    if (vbMatch) {
-      const [, ox, oy, w, h] = vbMatch;
-      const x = parseFloat(ox);
-      const y = parseFloat(oy);
-      if (Math.abs(x) > 0.01 || Math.abs(y) > 0.01) {
-        result = result.replace(/viewBox="[^"]+"/, `viewBox="0 0 ${w} ${h}"`);
-        result = result.replace(/(<svg[^>]*>)/, `$1\n<g transform="translate(${-x},${-y})">`);
-        result = result.replace(/<\/svg>/, '</g></svg>');
-      }
-    }
+    result = result.replace(/(<svg[^>]*>)/, `$1\n<g transform="translate(${translateValue})">`);
+    result = result.replace(/<\/svg>/, '</g></svg>');
   }
 
   writeFileSync(file, result, 'utf-8');

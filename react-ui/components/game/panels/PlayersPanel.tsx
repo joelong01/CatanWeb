@@ -14,6 +14,8 @@ import { memo, useState, useRef, useEffect, ReactNode } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faReceipt } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import { useAssetPath } from '@/lib/theme';
+import type { AssetName } from '@/lib/theme/types';
 import type { PlayerModel } from '@/types/generated/models/player-model';
 import {
   usePlayers,
@@ -58,14 +60,25 @@ function createColorsFromProfile(profile: PlayerProfile | undefined): PlayerColo
 // Resource Card Component (flippable cards for ResourcesThisTurn)
 // ============================================================================
 
-const RESOURCE_CARD_CONFIG: { type: TrackedResourceType; image: string; label: string }[] = [
-  { type: 'wheat', image: '/themes/base/resources/wheat.png', label: 'Wheat' },
-  { type: 'wood', image: '/themes/base/resources/wood.png', label: 'Wood' },
-  { type: 'sheep', image: '/themes/base/resources/sheep.png', label: 'Sheep' },
-  { type: 'brick', image: '/themes/base/resources/brick.png', label: 'Brick' },
-  { type: 'ore', image: '/themes/base/resources/ore.png', label: 'Ore' },
-  { type: 'goldMine', image: '/themes/base/resources/goldmine.png', label: 'Gold' },
-  { type: 'robber', image: '/themes/base/resources/robber.png', label: 'Robber' },
+/** Map tracked resource types to theme asset names */
+const RESOURCE_TO_ASSET: Record<TrackedResourceType, AssetName> = {
+  wheat: 'CardWheat',
+  wood: 'CardWood',
+  sheep: 'CardSheep',
+  brick: 'CardBrick',
+  ore: 'CardOre',
+  goldMine: 'CardGoldMine',
+  robber: 'CardRobber',
+};
+
+const RESOURCE_CARD_CONFIG: { type: TrackedResourceType; label: string }[] = [
+  { type: 'wheat', label: 'Wheat' },
+  { type: 'wood', label: 'Wood' },
+  { type: 'sheep', label: 'Sheep' },
+  { type: 'brick', label: 'Brick' },
+  { type: 'ore', label: 'Ore' },
+  { type: 'goldMine', label: 'Gold' },
+  { type: 'robber', label: 'Robber' },
 ];
 
 interface ResourceCardProps {
@@ -82,6 +95,10 @@ const ResourceCard = memo(function ResourceCard({
   autoFlip = true,
 }: ResourceCardProps) {
   const [manualFlip, setManualFlip] = useState<boolean | null>(null);
+
+  // Theme-resolved asset paths
+  const imagePath = useAssetPath(RESOURCE_TO_ASSET[resourceType]);
+  const cardBackPath = useAssetPath('CardBack');
 
   const config = RESOURCE_CARD_CONFIG.find(c => c.type === resourceType);
   if (!config) return null;
@@ -114,7 +131,7 @@ const ResourceCard = memo(function ResourceCard({
         >
           <div
             className="w-full h-full bg-cover bg-center"
-            style={{ backgroundImage: `url(${config.image})` }}
+            style={{ backgroundImage: imagePath ? `url(${imagePath})` : undefined }}
           />
           <div className="absolute bottom-1 left-0 right-0 flex justify-center">
             <span
@@ -141,7 +158,7 @@ const ResourceCard = memo(function ResourceCard({
         >
           <div
             className="w-full h-full bg-cover bg-center"
-            style={{ backgroundImage: 'url(/themes/base/resources/back.png)' }}
+            style={{ backgroundImage: cardBackPath ? `url(${cardBackPath})` : undefined }}
           />
         </div>
       </div>
@@ -252,7 +269,7 @@ const PlayerTile = memo(function PlayerTile({
   // Get totals from ResourcesModel - match Blazor: r.Wheat + r.Wood + r.Sheep + r.Brick + r.Ore
   const r = player.resourcesThisGame;
   const totalResources = (r?.wheat ?? 0) + (r?.wood ?? 0) + (r?.sheep ?? 0) + (r?.brick ?? 0) + (r?.ore ?? 0);
-  const robberLoss = 0; // TODO: Not implemented yet (matches Blazor)
+  const robberLoss = r?.robber ?? 0;
 
   // 13 stats in display order (matching Blazor PlayerTile.razor)
   const stats: Omit<StatTileProps, 'colors'>[] = [

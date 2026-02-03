@@ -33,7 +33,7 @@ Every SVG is mapped to a fixed Unicode codepoint in **glyph-map.json**. All assi
 are explicit to ensure idempotent builds -- adding or removing an SVG never shifts
 other glyphs' codepoints.
 
-The codepoints live in the Unicode Private Use Area (U+E900--U+E942).
+The codepoints live in the Unicode Private Use Area (U+E900--U+E943).
 
 ## Files
 

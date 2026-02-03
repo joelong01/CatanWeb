@@ -30,6 +30,8 @@ import { faRotateLeft, faRotateRight, faArrowsRotate, faCheck, faScaleBalanced, 
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { WinnerOverlay } from '@/components/game/overlays/WinnerOverlay';
 import type { WinnerPlayer } from '@/components/game/overlays/WinnerOverlay';
+import { useAssetPath } from '@/lib/theme';
+import type { AssetName } from '@/lib/theme/types';
 
 // ============================================================================
 // Catan Font Glyphs (from PlayerTile.razor CatanGlyph class)
@@ -890,6 +892,7 @@ function ActionHexContent({
 }: ActionHexContentProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
+  const cardBackPath = useAssetPath('CardBack');
 
   const gradient = colors?.cssGradient || 'var(--hex-content-gradient)';
   const foreground = colors?.foreground || '#ffffff';
@@ -1021,7 +1024,7 @@ function ActionHexContent({
           <div
             className="absolute inset-0 hex-clip-flat flex flex-col items-center justify-center"
             style={{
-              backgroundImage: 'url(/themes/base/resources/back.png)',
+              backgroundImage: cardBackPath ? `url(${cardBackPath})` : undefined,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
@@ -1278,11 +1281,11 @@ function ActionClusterDemo({ colors }: ActionClusterDemoProps) {
 
 /** Resource configuration for outer ring (matches mockup layout) */
 const RESOURCE_CONFIG = [
-  { key: 'Sheep', label: 'Sheep', position: 'north', image: '/themes/base/resources/sheep.png' },
-  { key: 'Wood', label: 'Wood', position: 'northEast', image: '/themes/base/resources/wood.png' },
-  { key: 'Wheat', label: 'Wheat', position: 'southEast', image: '/themes/base/resources/wheat.png' },
-  { key: 'Brick', label: 'Brick', position: 'southWest', image: '/themes/base/resources/brick.png' },
-  { key: 'Ore', label: 'Ore', position: 'northWest', image: '/themes/base/resources/ore.png' },
+  { key: 'Sheep', label: 'Sheep', position: 'north', assetName: 'CardSheep' as AssetName },
+  { key: 'Wood', label: 'Wood', position: 'northEast', assetName: 'CardWood' as AssetName },
+  { key: 'Wheat', label: 'Wheat', position: 'southEast', assetName: 'CardWheat' as AssetName },
+  { key: 'Brick', label: 'Brick', position: 'southWest', assetName: 'CardBrick' as AssetName },
+  { key: 'Ore', label: 'Ore', position: 'northWest', assetName: 'CardOre' as AssetName },
 ] as const;
 
 /** Star filter values for inner cluster */
@@ -1297,17 +1300,18 @@ const STAR_VALUES_CONFIG = [
 
 /** Resource hex content for outer ring - shows resource image with count overlay */
 interface ResourceHexContentProps {
-  image: string;
+  assetName: AssetName;
   count: number;
   isSelected: boolean;
   colors?: PlayerColors & { cssGradient: string };
 }
 
 function ResourceHexContent({
-  image,
+  assetName,
   count,
   isSelected,
 }: ResourceHexContentProps) {
+  const image = useAssetPath(assetName);
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
 
@@ -1335,7 +1339,7 @@ function ResourceHexContent({
         className="absolute inset-0 hex-clip-flat flex items-end justify-center transition-all duration-150"
         style={{
           transform: `scale(${innerScale})`,
-          backgroundImage: `url(${image})`,
+          backgroundImage: image ? `url(${image})` : undefined,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
@@ -1564,12 +1568,12 @@ function MeasurementCluster({ tiles, colors }: MeasurementClusterProps) {
   // Build outer ring items (5 resources + variance)
   const outerItems: HexGridItem[] = [
     // Resources in outer ring positions
-    ...RESOURCE_CONFIG.map(({ key, position, image }) => ({
+    ...RESOURCE_CONFIG.map(({ key, position, assetName }) => ({
       id: `resource-${key}`,
       coord: CLUSTER_7[position],
       content: (
         <ResourceHexContent
-          image={image}
+          assetName={assetName}
           count={resourceCounts[key] || 0}
           isSelected={selectedResources.includes(key)}
         />
@@ -1651,15 +1655,26 @@ function MeasurementCluster({ tiles, colors }: MeasurementClusterProps) {
 // Resource Card Component (flippable cards for ResourcesThisTurn)
 // ============================================================================
 
-/** Resource card config with images */
-const RESOURCE_CARD_CONFIG: { type: TrackedResourceType; image: string; label: string }[] = [
-  { type: 'wheat', image: '/themes/base/resources/wheat.png', label: 'Wheat' },
-  { type: 'wood', image: '/themes/base/resources/wood.png', label: 'Wood' },
-  { type: 'sheep', image: '/themes/base/resources/sheep.png', label: 'Sheep' },
-  { type: 'brick', image: '/themes/base/resources/brick.png', label: 'Brick' },
-  { type: 'ore', image: '/themes/base/resources/ore.png', label: 'Ore' },
-  { type: 'goldMine', image: '/themes/base/resources/goldmine.png', label: 'Gold' },
-  { type: 'robber', image: '/themes/base/resources/robber.png', label: 'Robber' },
+/** Map tracked resource types to theme asset names */
+const RESOURCE_TO_ASSET: Record<TrackedResourceType, AssetName> = {
+  wheat: 'CardWheat',
+  wood: 'CardWood',
+  sheep: 'CardSheep',
+  brick: 'CardBrick',
+  ore: 'CardOre',
+  goldMine: 'CardGoldMine',
+  robber: 'CardRobber',
+};
+
+/** Resource card config */
+const RESOURCE_CARD_CONFIG: { type: TrackedResourceType; label: string }[] = [
+  { type: 'wheat', label: 'Wheat' },
+  { type: 'wood', label: 'Wood' },
+  { type: 'sheep', label: 'Sheep' },
+  { type: 'brick', label: 'Brick' },
+  { type: 'ore', label: 'Ore' },
+  { type: 'goldMine', label: 'Gold' },
+  { type: 'robber', label: 'Robber' },
 ];
 
 interface ResourceCardProps {
@@ -1677,6 +1692,8 @@ function ResourceCard({
   autoFlip = true,
 }: ResourceCardProps) {
   const [manualFlip, setManualFlip] = useState<boolean | null>(null);
+  const imagePath = useAssetPath(RESOURCE_TO_ASSET[resourceType]);
+  const cardBackPath = useAssetPath('CardBack');
 
   // Find the config for this resource
   const config = RESOURCE_CARD_CONFIG.find(c => c.type === resourceType);
@@ -1714,7 +1731,7 @@ function ResourceCard({
         >
           <div
             className="w-full h-full bg-cover bg-center"
-            style={{ backgroundImage: `url(${config.image})` }}
+            style={{ backgroundImage: imagePath ? `url(${imagePath})` : undefined }}
           />
           {/* Count badge at bottom */}
           <div
@@ -1747,7 +1764,7 @@ function ResourceCard({
         >
           <div
             className="w-full h-full bg-cover bg-center"
-            style={{ backgroundImage: 'url(/themes/base/resources/back.png)' }}
+            style={{ backgroundImage: cardBackPath ? `url(${cardBackPath})` : undefined }}
           />
         </div>
       </div>
@@ -2156,7 +2173,6 @@ export default function ControlsTestPage(): React.ReactElement {
           <GameBoard
             hexSize={50}
             gap={1}
-            fontRendering
           />
         </FloatingPanel>
 

@@ -26,6 +26,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRotateLeft, faRotateRight, faReceipt } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { HexGrid, type HexGridItem, LAYOUTS } from '@/components/hex-grid';
+import { useAssetPath } from '@/lib/theme';
 import { CatanGlyph } from '@/lib/constants/catanGlyphs';
 import type { PlayerColorsWithGradient } from '@/lib/utils/playerColors';
 
@@ -130,6 +131,9 @@ const ActionHexContent = memo(function ActionHexContent({
 }: ActionHexContentProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
+
+  // Theme-resolved card back for disabled state
+  const cardBackPath = useAssetPath('CardBack');
 
   const gradient = colors?.cssGradient || 'var(--hex-content-gradient)';
   const foreground = colors?.foreground || '#ffffff';
@@ -256,7 +260,8 @@ const ActionHexContent = memo(function ActionHexContent({
         >
           {/* Card back with image */}
           <div
-            className="absolute inset-0 hex-clip-flat flex flex-col items-center justify-center bg-[url('/themes/base/resources/back.png')] bg-cover bg-center"
+            className="absolute inset-0 hex-clip-flat flex flex-col items-center justify-center bg-cover bg-center"
+            style={{ backgroundImage: cardBackPath ? `url(${cardBackPath})` : undefined }}
           >
             {/* Icon badge centered */}
             <div

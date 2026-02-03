@@ -32,6 +32,10 @@
 .PARAMETER NoInstall
   Skip installing the font to the OS per-user font directory.
 
+.PARAMETER SkipFix
+  Skip running fix-svg-for-font.ps1 before building. By default, the fix
+  script is called first to clean up SVGs (remove orphaned tags, fix fill-rules, etc.).
+
 .PARAMETER SkipClearCache
   Don't clear the .next cache after installing.
 
@@ -50,7 +54,8 @@ param(
   [switch] $Help,
   [switch] $SkipInstall,
   [switch] $NoInstall,
-  [switch] $SkipClearCache
+  [switch] $SkipClearCache,
+  [switch] $SkipFix
 )
 
 Set-StrictMode -Version Latest
@@ -276,6 +281,23 @@ try {
   Ensure-Dir -Path (Join-Path $resolvedWork "src")
   Copy-Item -LiteralPath $TsSource -Destination $tsDest -Force
 
+  # ── Run fix-svg-for-font.ps1 (unless -SkipFix) ──
+  if (-not $SkipFix) {
+    $fixScript = Join-Path $ScriptDir "fix-svg-for-font.ps1"
+    if (Test-Path -LiteralPath $fixScript) {
+      Write-Host ""
+      Write-Host "Running fix-svg-for-font.ps1..." -ForegroundColor Cyan
+      & $fixScript
+      if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
+        throw "fix-svg-for-font.ps1 failed with exit code $LASTEXITCODE"
+      }
+    } else {
+      Write-Warning "fix-svg-for-font.ps1 not found at: $fixScript (skipping)"
+    }
+  } else {
+    Write-Host "  Skipping SVG fix step (-SkipFix)" -ForegroundColor DarkGray
+  }
+
   # ── Convert evenodd → nonzero winding for hex glyphs ──
   # svgicons2svgfont ignores fill-rule:evenodd (known issue #62), so compound
   # paths render as solid blobs. reorient-evenodd.mjs uses svg-reorient to fix
@@ -306,6 +328,13 @@ try {
   Write-Host "  Output: $resolvedOutput"
   if ($resolvedMap) {
     Write-Host "  Map   : $resolvedMap"
+  }
+
+  # Log which SVGs will be included
+  $svgFiles = Get-ChildItem -LiteralPath $resolvedInput -Filter "*.svg" | Sort-Object Name
+  Write-Host "  SVGs  : $($svgFiles.Count) files" -ForegroundColor Cyan
+  foreach ($svg in $svgFiles) {
+    Write-Host "          $($svg.Name)" -ForegroundColor DarkGray
   }
 
   $buildArgs = @(

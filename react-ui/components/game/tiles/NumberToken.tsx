@@ -1,6 +1,7 @@
 'use client';
 
 import React, { memo } from 'react';
+import { useAssetPath } from '@/lib/theme';
 
 /**
  * Constants matching BoardSvgConstants.cs for visual parity with Blazor app.
@@ -50,6 +51,8 @@ export interface NumberTokenProps {
   number: number;
   /** Optional className for positioning */
   className?: string;
+  /** CSS background for the outer hex border. Defaults to maple wood texture. */
+  borderBackground?: string;
 }
 
 /**
@@ -67,60 +70,68 @@ export interface NumberTokenProps {
 export const NumberToken = memo(function NumberToken({
   number,
   className = '',
+  borderBackground,
 }: NumberTokenProps) {
   const isHighProb = number === 6 || number === 8;
   const textColor = isHighProb ? NUMBER_TOKEN.highProbColor : NUMBER_TOKEN.normalNumberColor;
   const bgColor = isHighProb ? NUMBER_TOKEN.highProbBackground : NUMBER_TOKEN.normalBackground;
   const stars = getStars(number);
 
+  // Theme-resolved default border (maple wood texture in base/classic)
+  const borderFillPath = useAssetPath('BackgroundBorderFill');
+  const resolvedBorder = borderBackground || (borderFillPath ? `url(${borderFillPath}) center/cover` : undefined);
+
   // High prob numbers have 5 stars, need smaller font
   const pipsFontSize = isHighProb ? 8 : 10;
 
   return (
-    <svg
-      className={className}
-      viewBox="0 0 64 64"
-      preserveAspectRatio="xMidYMid meet"
+    <div
+      className={`hex-clip-flat ${className}`}
+      style={{
+        background: resolvedBorder,
+      }}
     >
-      {/* Background circle */}
-      <circle
-        cx="32"
-        cy="32"
-        r="30"
-        fill={bgColor}
-        stroke={NUMBER_TOKEN.strokeColor}
-        strokeWidth={NUMBER_TOKEN.strokeWidth}
-      />
-
-      {/* Roll number - centered horizontally, offset above center vertically */}
-      <text
-        x="32"
-        y={32 + NUMBER_TOKEN.numberOffsetY}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontFamily="sans-serif"
-        fontSize="24"
-        fontWeight="bold"
-        fill={textColor}
+      {/* Inner hex scaled down to reveal white border */}
+      <div
+        className="hex-clip-flat w-full h-full"
+        style={{ backgroundColor: bgColor, transform: 'scale(0.85)' }}
       >
-        {number}
-      </text>
-
-      {/* Probability stars - centered horizontally, below the number */}
-      {stars && (
-        <text
-          x="32"
-          y={32 + NUMBER_TOKEN.pipsOffsetY}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontFamily="sans-serif"
-          fontSize={pipsFontSize}
-          fill={textColor}
+        <svg
+          className="w-full h-full"
+          viewBox="0 0 64 64"
+          preserveAspectRatio="xMidYMid meet"
         >
-          {stars}
-        </text>
-      )}
-    </svg>
+          {/* Roll number - centered horizontally, offset above center vertically */}
+          <text
+            x="32"
+            y={32 + NUMBER_TOKEN.numberOffsetY}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontFamily="sans-serif"
+            fontSize="24"
+            fontWeight="bold"
+            fill={textColor}
+          >
+            {number}
+          </text>
+
+          {/* Probability stars - centered horizontally, below the number */}
+          {stars && (
+            <text
+              x="32"
+              y={32 + NUMBER_TOKEN.pipsOffsetY}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontFamily="sans-serif"
+              fontSize={pipsFontSize}
+              fill={textColor}
+            >
+              {stars}
+            </text>
+          )}
+        </svg>
+      </div>
+    </div>
   );
 });
 

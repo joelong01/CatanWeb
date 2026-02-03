@@ -15,7 +15,7 @@ import {
   type HexSide as GeometryHexSide,
 } from '@/components/hex-grid/hex-geometry';
 import { NUMBER_PIPS, getHarborImage } from '@/lib/constants/board-assets';
-import { CatanGlyph } from '@/lib/constants/catanGlyphs';
+import { useAssetPath, useFontRendering, useHarborFontConfig } from '@/lib/theme';
 import { WaterHex } from '@/components/hex-grid/content/WaterHex';
 import { GameTile } from '@/components/game/tiles/GameTile';
 import { Building, Road, type BuildingVisualState, type RoadState } from '@/components/game/tiles';
@@ -78,8 +78,6 @@ export interface GameBoardProps {
   onBuildingClick?: (buildingKey: BuildingKey) => void;
   /** Callback when a buildable road is clicked */
   onRoadClick?: (roadKey: RoadKey) => void;
-  /** When true, render harbors using CatanFont glyphs instead of PNG images */
-  fontRendering?: boolean;
 }
 
 /**
@@ -119,20 +117,6 @@ const SIDE_TO_VERTICES: Record<HexSide, [[number, number], [number, number]]> = 
 };
 
 /**
- * Map HexSide to the OPPOSITE edge vertices (for water triangle on far side).
- * These face away from the connected tile, toward open water.
- */
-const SIDE_TO_OPPOSITE_VERTICES: Record<HexSide, [[number, number], [number, number]]> = {
-  Top: [[75, 0], [25, 0]],             // Top edge (opposite of bottom)
-  TopRight: [[100, 43.3], [75, 0]],    // Top-right edge (opposite of bottom-left)
-  BottomRight: [[75, 86.6], [100, 43.3]], // Bottom-right edge (opposite of top-left)
-  Bottom: [[25, 86.6], [75, 86.6]],    // Bottom edge (opposite of top)
-  BottomLeft: [[0, 43.3], [25, 86.6]], // Bottom-left edge (opposite of top-right)
-  TopLeft: [[25, 0], [0, 43.3]],       // Top-left edge (opposite of bottom-right)
-  None: [[50, 50], [50, 50]],          // Fallback
-};
-
-/**
  * Dock/pier colors - neutral wood tones that don't imply ownership
  */
 const DOCK_COLORS = {
@@ -141,25 +125,9 @@ const DOCK_COLORS = {
   highlight: '#A08060', // Lighter wood accent
 };
 
-/**
- * Water colors for harbor water triangle (opposite side of dock)
- */
-const WATER_COLORS = {
-  fill: '#1e4078',      // Deep ocean blue
-  stroke: '#162e5a',    // Darker water border
-  highlight: '#2a5090', // Lighter water accent
-};
-
-/**
- * Font-based harbor rendering config: maps HarborType to CatanFont glyphs and colors.
- */
-const HARBOR_FONT_CONFIG: Partial<Record<string, { hexGlyph?: string; harborGlyph: string; color: string; bgColor?: string; faIcon?: typeof faCoins }>> = {
-  Wheat: { hexGlyph: CatanGlyph.WheatHex, harborGlyph: CatanGlyph.WheatHarbor, color: '#DAA520' },
-  Wood: { hexGlyph: CatanGlyph.WoodHex, harborGlyph: CatanGlyph.WoodHarbor, color: '#2E7D32' },
-  Sheep: { hexGlyph: CatanGlyph.SheepHex, harborGlyph: CatanGlyph.SheepHarbor, color: '#A68B6B' },
-  Brick: { hexGlyph: CatanGlyph.BrickHex, harborGlyph: CatanGlyph.BrickHarbor, color: '#BF360C' },
-  Ore: { hexGlyph: CatanGlyph.OreHex, harborGlyph: CatanGlyph.OreHarbor, color: '#546E7A' },
-  ThreeForOne: { harborGlyph: CatanGlyph.ThreeToOneHarbor, color: '#D4AF37', bgColor: 'white', faIcon: faCoins },
+/** Map faIcon string names from theme.json to FA icon SVG path data. */
+const FA_ICON_PATHS: Record<string, string> = {
+  coins: faCoins.icon[4] as string,
 };
 
 /**
@@ -173,16 +141,15 @@ interface HarborHexContentProps {
   harbor: HarborModel;
   /** Owner colors when harbor is owned by a player */
   ownerColors?: PlayerColors | null;
-  /** When true, render CatanFont glyphs instead of PNG images */
-  fontRendering?: boolean;
 }
 
-function HarborHexContent({ harbor, ownerColors, fontRendering }: HarborHexContentProps) {
+function HarborHexContent({ harbor, ownerColors }: HarborHexContentProps) {
   const { harborType, side } = harbor.harborKey;
   const imageUrl = getHarborImage(harborType);
-  const fontConfig = fontRendering ? HARBOR_FONT_CONFIG[harborType] : undefined;
+  const isFontMode = useFontRendering();
+  const themeFontConfig = useHarborFontConfig(harborType);
+  const fontConfig = isFontMode ? themeFontConfig : undefined;
   const dockVertices = SIDE_TO_VERTICES[side];
-  const waterVertices = SIDE_TO_OPPOSITE_VERTICES[side];
 
   // Circle parameters (in viewBox units)
   const cx = 50;
@@ -195,131 +162,82 @@ function HarborHexContent({ harbor, ownerColors, fontRendering }: HarborHexConte
   }
 
   // Full hex polygon points (flat-top hex, viewBox 100x86.6)
-  // Vertices clockwise from top-left: top-left, top-right, right, bottom-right, bottom-left, left
   const hexPoints = '25,0 75,0 100,43.3 75,86.6 25,86.6 0,43.3';
 
-  // Dock triangle points: center + two edge vertices facing the tile
-  const dockTrianglePoints = `${cx},${cy} ${dockVertices[0][0]},${dockVertices[0][1]} ${dockVertices[1][0]},${dockVertices[1][1]}`;
+  // Font mode: tile-like rendering with harbor ship in center
+  if (fontConfig) {
+    const hexOpacity = fontConfig.hexOpacity ?? 0.6;
 
-  // Water triangle points: center + two edge vertices facing open water
-  const waterTrianglePoints = `${cx},${cy} ${waterVertices[0][0]},${waterVertices[0][1]} ${waterVertices[1][0]},${waterVertices[1][1]}`;
-
-  // Generate unique gradient ID for this harbor's owner
-  const ownerGradientId = ownerColors ? `harbor-owner-${side}` : null;
-
-  // Determine background style
-  const hasHexBackground = !!fontConfig?.hexGlyph || !!fontConfig?.bgColor;
-  const backgroundStyle: React.CSSProperties = {
-    clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
-  };
-
-  if (!hasHexBackground) {
-    // Only apply frosted backdrop when NOT rendering a solid hex background
-    backgroundStyle.backdropFilter = 'blur(4px)';
-    backgroundStyle.WebkitBackdropFilter = 'blur(4px)';
-  }
-
-  if (ownerColors) {
-    // Owned: Fully opaque player gradient
-    const start = hexToRgba(ownerColors.primary, 1.0);
-    const end = hexToRgba(ownerColors.secondary, 1.0);
-    backgroundStyle.background = `linear-gradient(135deg, ${start}, ${end})`;
-  } else if (!hasHexBackground) {
-    // Unowned without hex background: Frosted dark background
-    backgroundStyle.backgroundColor = 'rgba(30, 41, 59, 0.3)';
-  }
-  // When hasHexBackground: fully transparent CSS — solid fill handled in SVG
-
-  return (
-    <div className="absolute inset-0" style={backgroundStyle} data-drag-through>
-      {/* SVG for triangular dock, water triangle, and harbor circle */}
-      <svg
-        className="absolute inset-0 w-full h-full"
-        viewBox="0 0 100 86.6"
-        preserveAspectRatio="none"
-      >
-        <defs>
-          {/* Wood grain gradient for dock */}
-          <linearGradient id={`dock-wood-${side}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={DOCK_COLORS.highlight} />
-            <stop offset="50%" stopColor={DOCK_COLORS.fill} />
-            <stop offset="100%" stopColor={DOCK_COLORS.stroke} />
-          </linearGradient>
-          {/* Water gradient for opposite side */}
-          <linearGradient id={`dock-water-${side}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={WATER_COLORS.highlight} />
-            <stop offset="50%" stopColor={WATER_COLORS.fill} />
-            <stop offset="100%" stopColor={WATER_COLORS.stroke} />
-          </linearGradient>
-          {/* Owner gradient when harbor is owned */}
-          {ownerColors && ownerGradientId && (
-            <linearGradient id={ownerGradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={ownerColors.primary} />
-              <stop offset="100%" stopColor={ownerColors.secondary} />
-            </linearGradient>
-          )}
-          <clipPath id={`harbor-clip-${side}`}>
-            <circle cx={cx} cy={cy} r={circleRadius - 1} />
-          </clipPath>
-          {(fontConfig?.hexGlyph || fontConfig?.faIcon) && (
-            <clipPath id={`harbor-hex-clip-${side}`}>
-              <polygon points={hexPoints} />
+    return (
+      <div className="absolute inset-0" data-drag-through>
+        <svg
+          className="absolute inset-0 w-full h-full"
+          viewBox="0 0 100 86.6"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <clipPath id={`harbor-clip-${side}`}>
+              <circle cx={cx} cy={cy} r={circleRadius - 1} />
             </clipPath>
+          </defs>
+
+          {/* Solid base behind the hex glyph (theme bgColor or black fallback) */}
+          <polygon points={hexPoints} fill={fontConfig.bgColor || 'black'} />
+
+          {/* Hex glyph background at reduced opacity (looks like a faded tile) */}
+          {fontConfig.hexGlyph && (
+            <g opacity={hexOpacity}>
+              <svg x="0" y="0" width="100" height="86.6" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <text
+                  x="50"
+                  y="50"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  style={{ fontFamily: 'var(--font-catan)' }}
+                  fontSize="100"
+                  fill={fontConfig.color}
+                >
+                  {fontConfig.hexGlyph}
+                </text>
+              </svg>
+            </g>
           )}
-        </defs>
 
-        {/* Font-rendered hex background: solid fill + optional glyph */}
-        {(fontConfig?.hexGlyph || fontConfig?.bgColor) && (
-          <>
-            {/* Solid hex fill to prevent water bleed-through */}
-            <polygon points={hexPoints} fill={fontConfig?.bgColor ?? 'white'} />
-            {fontConfig?.hexGlyph && (
-              <text
-                x={cx}
-                y={cy}
-                textAnchor="middle"
-                dominantBaseline="central"
-                style={{ fontFamily: 'var(--font-catan)' }}
-                fontSize={150}
-                fill={fontConfig.color}
-                clipPath={`url(#harbor-hex-clip-${side})`}
-              >
-                {fontConfig.hexGlyph}
-              </text>
-            )}
-            {fontConfig?.faIcon && (
-              <path
-                d={fontConfig.faIcon.icon[4] as string}
-                fill={fontConfig.color}
-                opacity={0.6}
-                transform="translate(10, 3.3) scale(0.156)"
-                clipPath={`url(#harbor-hex-clip-${side})`}
-              />
-            )}
-          </>
-        )}
+          {/* Fallback solid background (ThreeForOne: no hex glyph) */}
+          {!fontConfig.hexGlyph && fontConfig.bgColor && (
+            <polygon points={hexPoints} fill={fontConfig.bgColor} opacity={hexOpacity} />
+          )}
 
-        {/* Dock-side edge highlight: thick line on the edge facing the land tile */}
-        <line
-          x1={dockVertices[0][0]} y1={dockVertices[0][1]}
-          x2={dockVertices[1][0]} y2={dockVertices[1][1]}
-          stroke={fontConfig?.color ?? DOCK_COLORS.stroke}
-          strokeWidth="14"
-          strokeLinecap="round"
-        />
+          {/* FontAwesome icon fill for ThreeForOne */}
+          {fontConfig.faIcon && FA_ICON_PATHS[fontConfig.faIcon] && (
+            <path
+              d={FA_ICON_PATHS[fontConfig.faIcon]}
+              fill={fontConfig.color}
+              opacity={0.3}
+              transform="translate(10, 3.3) scale(0.156)"
+            />
+          )}
 
-        {/* Dock circle with wood fill (toward tile connection) */}
-        <circle
-          cx={cx}
-          cy={cy}
-          r={circleRadius}
-          fill="#f5f0e1"
-          stroke={DOCK_COLORS.stroke}
-          strokeWidth="2.5"
-        />
+          {/* Connection rectangle on dock-side edge (faces the owning tile) */}
+          <line
+            x1={dockVertices[0][0]} y1={dockVertices[0][1]}
+            x2={dockVertices[1][0]} y2={dockVertices[1][1]}
+            stroke={fontConfig.color}
+            strokeWidth="10"
+            strokeLinecap="butt"
+          />
 
-        {/* Harbor icon inside circle */}
-        {fontConfig ? (
+          {/* Center circle: owner's primary color border when owned, theme color when unowned */}
+          <circle
+            cx={cx}
+            cy={cy}
+            r={circleRadius}
+            fill="#f5f0e1"
+            stroke={ownerColors ? ownerColors.primary : fontConfig.color}
+            strokeWidth={ownerColors ? 4 : 2}
+          />
+
+          {/* Harbor ship/resource glyph inside circle */}
           <text
             x={cx}
             y={cy}
@@ -332,17 +250,73 @@ function HarborHexContent({ harbor, ownerColors, fontRendering }: HarborHexConte
           >
             {fontConfig.harborGlyph}
           </text>
-        ) : (
-          <image
-            href={imageUrl}
-            x={cx - circleRadius + 1}
-            y={cy - circleRadius + 1}
-            width={(circleRadius - 1) * 2}
-            height={(circleRadius - 1) * 2}
-            clipPath={`url(#harbor-clip-${side})`}
-            preserveAspectRatio="xMidYMid slice"
-          />
-        )}
+        </svg>
+      </div>
+    );
+  }
+
+  // Image mode: frosted backdrop with dock/circle design
+  const backgroundStyle: React.CSSProperties = {
+    clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)',
+  };
+
+  if (ownerColors) {
+    const start = hexToRgba(ownerColors.primary, 1.0);
+    const end = hexToRgba(ownerColors.secondary, 1.0);
+    backgroundStyle.background = `linear-gradient(135deg, ${start}, ${end})`;
+  } else {
+    backgroundStyle.backgroundColor = 'rgba(30, 41, 59, 0.3)';
+  }
+
+  return (
+    <div className="absolute inset-0" style={backgroundStyle} data-drag-through>
+      <svg
+        className="absolute inset-0 w-full h-full"
+        viewBox="0 0 100 86.6"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id={`dock-wood-${side}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={DOCK_COLORS.highlight} />
+            <stop offset="50%" stopColor={DOCK_COLORS.fill} />
+            <stop offset="100%" stopColor={DOCK_COLORS.stroke} />
+          </linearGradient>
+          <clipPath id={`harbor-clip-${side}`}>
+            <circle cx={cx} cy={cy} r={circleRadius - 1} />
+          </clipPath>
+        </defs>
+
+        {/* Dock-side edge highlight */}
+        <line
+          x1={dockVertices[0][0]} y1={dockVertices[0][1]}
+          x2={dockVertices[1][0]} y2={dockVertices[1][1]}
+          stroke={DOCK_COLORS.stroke}
+          strokeWidth="14"
+          strokeLinecap="round"
+        />
+
+        {/* Harbor circle */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={circleRadius}
+          fill="#f5f0e1"
+          stroke={DOCK_COLORS.stroke}
+          strokeWidth="2.5"
+        />
+
+        {/* Harbor image inside circle */}
+        <image
+          href={imageUrl}
+          x={cx - circleRadius + 1}
+          y={cy - circleRadius + 1}
+          width={(circleRadius - 1) * 2}
+          height={(circleRadius - 1) * 2}
+          clipPath={`url(#harbor-clip-${side})`}
+          preserveAspectRatio="xMidYMid slice"
+        />
       </svg>
     </div>
   );
@@ -367,7 +341,6 @@ export function GameBoard({
   highlightedTiles,
   onBuildingClick,
   onRoadClick,
-  fontRendering,
 }: GameBoardProps): React.ReactElement {
   // Use internal hooks for game data (server-driven UI pattern)
   const boardData = useBoardData();
@@ -564,13 +537,6 @@ export function GameBoard({
     });
   }, [tiles, hexSize, highlightedTiles, rolledNumber, onTileClick, onTileRightClick, gameState]);
 
-  // Get the current player's colors for harbor backgrounds
-  const currentPlayerColors = useMemo((): PlayerColors | undefined => {
-    if (!currentPlayerId || !players || players.length === 0) return undefined;
-    const player = players.find(p => p.id === currentPlayerId);
-    return player?.colors;
-  }, [players, currentPlayerId]);
-
   // Build HexGrid items from harbors (at water hex positions)
   const harborItems: HexGridItem[] = useMemo(() => {
     return harbors.map((harbor) => {
@@ -590,10 +556,10 @@ export function GameBoard({
       return {
         id: `harbor-${key}`,
         coord: waterCoord,
-        content: <HarborHexContent harbor={harbor} ownerColors={ownerColors} fontRendering={fontRendering} />,
+        content: <HarborHexContent harbor={harbor} ownerColors={ownerColors} />,
       };
     });
-  }, [harbors, players, fontRendering]);
+  }, [harbors, players]);
 
   // Build set of harbor coordinates for quick lookup
   const harborCoordSet = useMemo(() => {
@@ -615,6 +581,9 @@ export function GameBoard({
     });
     return { minQ, maxQ, minR, maxR };
   }, [tiles]);
+
+  // Theme-resolved sea tile image for water hexes
+  const seaTilePath = useAssetPath('TileSea');
 
   // Generate water hexes as a rectangular grid CENTERED around the board
   // For flat-top hexes: x = 1.5*q (columns), y = sqrt(3)*(r + q/2)
@@ -651,7 +620,7 @@ export function GameBoard({
           excludeFromBounds: true, // Don't affect HexGrid's bounding box
           content: (
             <WaterHex
-              imageUrl="/themes/base/tiles/back.jpg"
+              imageUrl={seaTilePath || undefined}
               opacity={1}
             />
           ),
@@ -660,7 +629,7 @@ export function GameBoard({
     }
 
     return items;
-  }, [boardBounds, tileCoordSet, harborCoordSet]);
+  }, [boardBounds, tileCoordSet, harborCoordSet, seaTilePath]);
 
   // Generate all unique building positions (vertices shared between tiles)
   // Each vertex is identified by the tile coord + position
@@ -1067,7 +1036,7 @@ export function GameBoard({
                     y={svgSize / 2}
                     textAnchor="middle"
                     dominantBaseline="central"
-                    fontFamily="Catan"
+                    style={{ fontFamily: 'var(--font-catan)' }}
                     fontSize={robberFontSize}
                     fill="url(#robber-gradient)"
                   >
@@ -1079,12 +1048,27 @@ export function GameBoard({
                     y={svgSize / 2}
                     textAnchor="middle"
                     dominantBaseline="central"
-                    fontFamily="Catan"
+                    style={{ fontFamily: 'var(--font-catan)' }}
                     fontSize={robberFontSize * 0.8}
                     fill={foregroundColor}
                   >
                     {'\uE90C'}
                   </text>
+                  {/* Resources stolen count (matches Blazor RobberLayer.razor RenderResourcesStolen) */}
+                  {robber.resourcesStolen > 0 && (
+                    <text
+                      x={svgSize / 2}
+                      y={svgSize / 2 + robberFontSize * 0.35}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      style={{ fontFamily: 'Segoe UI, sans-serif' }}
+                      fontSize={22}
+                      fontWeight="bold"
+                      fill={foregroundColor}
+                    >
+                      {robber.resourcesStolen}
+                    </text>
+                  )}
                 </svg>
               </div>
             );

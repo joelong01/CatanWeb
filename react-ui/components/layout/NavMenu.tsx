@@ -23,9 +23,12 @@ import {
   faChevronRight,
   faChevronDown,
   faObjectGroup,
+  faPalette,
+  faCheck,
 } from '@fortawesome/free-solid-svg-icons';
 import { useLayoutStore, PANEL_ORDER, PANEL_METADATA, type PanelId } from '@/lib/stores/layoutStore';
 import { useGameState } from '@/lib/stores/gameStoreHooks';
+import { useAvailableThemes, useCurrentThemeName, useThemeStore } from '@/lib/theme';
 import { SaveLayoutDialog } from '@/components/game/panels/SaveLayoutDialog';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
@@ -284,6 +287,42 @@ function LayoutSection({ onMenuAction }: { onMenuAction: () => void }): React.Re
 }
 
 /**
+ * Theme selection section rendered inside NavMenu.
+ * Lists available themes with active indicator.
+ */
+function ThemeSection({ onMenuAction }: { onMenuAction: () => void }): React.ReactElement {
+  const themes = useAvailableThemes();
+  const currentTheme = useCurrentThemeName();
+  const setTheme = useThemeStore((s) => s.setTheme);
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <>
+      <NavMenuItem
+        icon={faPalette}
+        label="Theme"
+        onClick={() => setExpanded(!expanded)}
+      />
+      {expanded && (
+        <div style={{ paddingLeft: 4 }}>
+          {themes.map((theme) => (
+            <NavSubItem
+              key={theme.name}
+              label={theme.displayName}
+              icon={theme.name === currentTheme ? faCheck : undefined}
+              onClick={() => {
+                setTheme(theme.name);
+                onMenuAction();
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
  * Navigation menu component displayed in the sidebar.
  * Shows context-aware menu items based on current page.
  */
@@ -487,6 +526,7 @@ export function NavMenu({ onMenuAction, activeGameId, gameActions }: NavMenuProp
             />
           )}
           <LayoutSection onMenuAction={onMenuAction} />
+          <ThemeSection onMenuAction={onMenuAction} />
         </>
       )}
 
@@ -494,6 +534,7 @@ export function NavMenu({ onMenuAction, activeGameId, gameActions }: NavMenuProp
         <>
           <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
           <LayoutSection onMenuAction={onMenuAction} />
+          <ThemeSection onMenuAction={onMenuAction} />
           {hasActiveGame && (
             <NavMenuItem
               icon={faPlay}
