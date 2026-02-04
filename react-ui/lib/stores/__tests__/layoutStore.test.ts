@@ -279,6 +279,23 @@ describe('layoutStore actions', () => {
     });
   });
 
+  describe('setResourceFilters', () => {
+    it('sets resource filters array', () => {
+      const { setResourceFilters } = useLayoutStore.getState();
+      setResourceFilters(['Brick', 'Wood', 'Wheat']);
+      expect(useLayoutStore.getState().resourceFilters).toEqual(['Brick', 'Wood', 'Wheat']);
+    });
+
+    it('clears resource filters with empty array', () => {
+      const { setResourceFilters } = useLayoutStore.getState();
+      setResourceFilters(['Brick', 'Wood']);
+      expect(useLayoutStore.getState().resourceFilters).toEqual(['Brick', 'Wood']);
+      
+      setResourceFilters([]);
+      expect(useLayoutStore.getState().resourceFilters).toEqual([]);
+    });
+  });
+
   describe('minimizeAll', () => {
     it('minimizes all 9 panels', () => {
       useLayoutStore.getState().minimizeAll();
@@ -339,17 +356,17 @@ describe('layoutStore actions', () => {
 
   describe('resetLayout', () => {
     it('resets all panels and clears filters', () => {
-      const { setStarFilter, setResourceFilter, saveLayout, resetLayout } = useLayoutStore.getState();
+      const { setStarFilter, setResourceFilters, saveLayout, resetLayout } = useLayoutStore.getState();
 
       setStarFilter(8);
-      setResourceFilter('brick');
+      setResourceFilters(['Brick', 'Wood']);
       saveLayout('SomeLayout');
 
       resetLayout();
       const state = useLayoutStore.getState();
 
       expect(state.starFilter).toBeNull();
-      expect(state.resourceFilter).toBeNull();
+      expect(state.resourceFilters).toEqual([]);
       expect(state.currentLayoutName).toBeNull();
       // Panels should exist for all IDs
       for (const id of PANEL_ORDER) {
@@ -543,7 +560,7 @@ describe('arrangeLayout action', () => {
 
   it('applies game-state-aware layout', () => {
     useLayoutStore.getState().arrangeLayout('WaitingForRoll');
-    const { panels, viewport, starFilter, resourceFilter, currentLayoutName } =
+    const { panels, viewport, starFilter, resourceFilters, currentLayoutName } =
       useLayoutStore.getState();
 
     expect(panels.measurements.minimized).toBe(true);
@@ -551,20 +568,20 @@ describe('arrangeLayout action', () => {
     expect(viewport.zoom).toBe(1);
     expect(viewport.pan.x).toBe(0);
     expect(starFilter).toBeNull();
-    expect(resourceFilter).toBeNull();
+    expect(resourceFilters).toEqual([]);
     expect(currentLayoutName).toBeNull();
   });
 
   it('clears filters and layout name', () => {
     const store = useLayoutStore.getState();
     store.setStarFilter(10);
-    store.setResourceFilter('wheat');
+    store.setResourceFilters(['Wheat', 'Ore']);
     store.saveLayout('Test');
 
     useLayoutStore.getState().arrangeLayout('WaitingForNext');
     const state = useLayoutStore.getState();
     expect(state.starFilter).toBeNull();
-    expect(state.resourceFilter).toBeNull();
+    expect(state.resourceFilters).toEqual([]);
     expect(state.currentLayoutName).toBeNull();
   });
 
@@ -656,7 +673,7 @@ describe('saveLayout/loadLayout viewport', () => {
 // ============================================================================
 
 describe('layoutStore migrations', () => {
-  it('version 7 state migrates to version 8 with savedLayouts and currentLayoutName', () => {
+  it('version 7 state migrates to version 9 with savedLayouts, currentLayoutName, and resourceFilters', () => {
     // Access the persist config to test migration directly
     const persistConfig = (useLayoutStore as unknown as { persist: { getOptions: () => { migrate: (state: unknown, version: number) => unknown } } }).persist.getOptions();
 
@@ -683,8 +700,71 @@ describe('layoutStore migrations', () => {
 
     expect(migrated.savedLayouts).toEqual([]);
     expect(migrated.currentLayoutName).toBeNull();
-    expect(migrated.version).toBe(8);
+    expect(migrated.resourceFilters).toEqual([]);
+    expect(migrated.version).toBe(9);
     // Panels should be preserved
     expect((migrated.panels as Record<string, WindowPosition>).dice.left).toBe(60);
+  });
+
+  it('version 8 state migrates to version 9 with resourceFilters array', () => {
+    const persistConfig = (useLayoutStore as unknown as { persist: { getOptions: () => { migrate: (state: unknown, version: number) => unknown } } }).persist.getOptions();
+
+    const v8State = {
+      boardType: 'regular',
+      panels: {
+        dice: { left: 60, top: 80, width: 260, height: 200, minimized: false, visible: true, zIndex: 20 },
+        actions: { left: 60, top: 300, width: 200, height: 200, minimized: false, visible: true, zIndex: 21 },
+        measurements: { left: 60, top: 520, width: 280, height: 130, minimized: false, visible: true, zIndex: 22 },
+        board: { left: 340, top: 80, width: 600, height: 550, minimized: false, visible: true, zIndex: 10 },
+        resources: { left: 960, top: 80, width: 340, height: 130, minimized: false, visible: true, zIndex: 23 },
+        players: { left: 960, top: 230, width: 340, height: 450, minimized: false, visible: true, zIndex: 24 },
+        goFirst: { left: 500, top: 200, width: 320, height: 300, minimized: false, visible: true, zIndex: 1000 },
+        supplemental: { left: 500, top: 200, width: 320, height: 340, minimized: false, visible: true, zIndex: 1000 },
+        winner: { left: 500, top: 200, width: 320, height: 380, minimized: false, visible: true, zIndex: 1000 },
+      },
+      viewport: { pan: { x: 0, y: 0 }, zoom: 1 },
+      starFilter: null,
+      resourceFilter: 'Wheat', // Old single-resource filter
+      savedLayouts: [],
+      currentLayoutName: null,
+      version: 8,
+    };
+
+    const migrated = persistConfig.migrate(v8State, 8) as Record<string, unknown>;
+
+    expect(migrated.resourceFilters).toEqual(['Wheat']); // Single resource migrated to array
+    expect(migrated.version).toBe(9);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((migrated as any).resourceFilter).toBeUndefined(); // Old field removed
+  });
+
+  it('version 8 state with null resourceFilter migrates to empty array', () => {
+    const persistConfig = (useLayoutStore as unknown as { persist: { getOptions: () => { migrate: (state: unknown, version: number) => unknown } } }).persist.getOptions();
+
+    const v8State = {
+      boardType: 'regular',
+      panels: {
+        dice: { left: 60, top: 80, width: 260, height: 200, minimized: false, visible: true, zIndex: 20 },
+        actions: { left: 60, top: 300, width: 200, height: 200, minimized: false, visible: true, zIndex: 21 },
+        measurements: { left: 60, top: 520, width: 280, height: 130, minimized: false, visible: true, zIndex: 22 },
+        board: { left: 340, top: 80, width: 600, height: 550, minimized: false, visible: true, zIndex: 10 },
+        resources: { left: 960, top: 80, width: 340, height: 130, minimized: false, visible: true, zIndex: 23 },
+        players: { left: 960, top: 230, width: 340, height: 450, minimized: false, visible: true, zIndex: 24 },
+        goFirst: { left: 500, top: 200, width: 320, height: 300, minimized: false, visible: true, zIndex: 1000 },
+        supplemental: { left: 500, top: 200, width: 320, height: 340, minimized: false, visible: true, zIndex: 1000 },
+        winner: { left: 500, top: 200, width: 320, height: 380, minimized: false, visible: true, zIndex: 1000 },
+      },
+      viewport: { pan: { x: 0, y: 0 }, zoom: 1 },
+      starFilter: null,
+      resourceFilter: null, // Old null resource filter
+      savedLayouts: [],
+      currentLayoutName: null,
+      version: 8,
+    };
+
+    const migrated = persistConfig.migrate(v8State, 8) as Record<string, unknown>;
+
+    expect(migrated.resourceFilters).toEqual([]); // null migrated to empty array
+    expect(migrated.version).toBe(9);
   });
 });
