@@ -29,11 +29,18 @@ const GLYPH_CATEGORIES: { label: string; keys: string[] }[] = [
   },
   {
     label: 'Resource Tiles',
-    keys: ['BrickHex', 'DesertHex', 'OreHex', 'SheepHex', 'WheatHex', 'WoodHex'],
+    keys: ['BrickHex', 'DesertHex', 'GoldHex', 'TempGoldHex', 'OreHex', 'SheepHex', 'WheatHex', 'WoodHex'],
   },
   {
     label: 'Harbors',
     keys: ['ThreeToOneHarbor', 'BrickHarbor', 'OreHarbor', 'SheepHarbor', 'WheatHarbor', 'WoodHarbor'],
+  },
+  {
+    label: 'Catan Numbers (E945–E95F)',
+    keys: [
+      'Number2', 'Number3', 'Number4', 'Number5', 'Number6',
+      'Number7', 'Number8', 'Number9', 'Number10', 'Number11', 'Number12',
+    ],
   },
   {
     label: 'Knights & Cities',
@@ -52,7 +59,7 @@ const GLYPH_CATEGORIES: { label: string; keys: string[] }[] = [
   },
   {
     label: 'Game Elements',
-    keys: ['Ship', 'Robber', 'PirateShip', 'SolidShield'],
+    keys: ['Ship', 'Robber', 'PirateShip', 'SolidShield', 'Skull'],
   },
 ];
 
@@ -130,8 +137,8 @@ export default function FontViewerPage(): React.ReactElement {
   }, []);
 
   return (
-    <MainLayout>
-      <div className="min-h-[calc(100vh-120px)] py-8 px-4">
+    <MainLayout className="overflow-y-auto">
+      <div className="min-h-[calc(100vh-120px)] pt-[60px] pb-8 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">

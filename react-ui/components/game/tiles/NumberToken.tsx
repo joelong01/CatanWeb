@@ -40,6 +40,8 @@ function getStars(number: number): string {
     case 6:
     case 8:
       return '★★★★★';
+    case 7:
+      return '\uE90C'; // Robber glyph from Catan font
     default:
       return '';
   }
@@ -76,8 +78,9 @@ export const NumberToken = memo(function NumberToken({
   const bgColor = isHighProb ? NUMBER_TOKEN.highProbBackground : NUMBER_TOKEN.normalBackground;
   const stars = getStars(number);
 
-  // High prob numbers have 5 stars, need smaller font
-  const pipsFontSize = isHighProb ? 8 : 10;
+  // High prob numbers are bigger to fill the available space
+  const numberFontSize = isHighProb ? 28 : 24;
+  const pipsFontSize = isHighProb ? 12 : number === 7 ? 16 : 10;
 
   return (
     <div
@@ -103,21 +106,21 @@ export const NumberToken = memo(function NumberToken({
             textAnchor="middle"
             dominantBaseline="middle"
             fontFamily="sans-serif"
-            fontSize="24"
+            fontSize={numberFontSize}
             fontWeight="bold"
             fill={textColor}
           >
             {number}
           </text>
 
-          {/* Probability stars - centered horizontally, below the number */}
+          {/* Probability stars (or robber icon for 7) - below the number */}
           {stars && (
             <text
               x="32"
               y={32 + NUMBER_TOKEN.pipsOffsetY}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontFamily="sans-serif"
+              fontFamily={number === 7 ? 'Catan' : 'sans-serif'}
               fontSize={pipsFontSize}
               fill={textColor}
             >

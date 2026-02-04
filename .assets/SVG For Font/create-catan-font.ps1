@@ -42,6 +42,16 @@
 .EXAMPLE
   pwsh ./.assets/SVG\ For\ Font/create-catan-font.ps1
 
+.PARAMETER Command
+  Optional verb. Use 'update' to sync glyph-map.json with SVG files in the directory
+  (adds missing SVGs with the next available codepoints, preserving existing mappings).
+
+.EXAMPLE
+  pwsh ./.assets/SVG\ For\ Font/create-catan-font.ps1
+
+.EXAMPLE
+  pwsh ./.assets/SVG\ For\ Font/create-catan-font.ps1 update
+
 .EXAMPLE
   pwsh ./.assets/SVG\ For\ Font/create-catan-font.ps1 -SkipInstall
 
@@ -51,6 +61,8 @@
 
 [CmdletBinding()]
 param(
+  [Parameter(Position = 0)]
+  [string] $Command,
   [switch] $Help,
   [switch] $SkipInstall,
   [switch] $NoInstall,
@@ -78,6 +90,76 @@ $MapFile     = Join-Path $ScriptDir "glyph-map.json"
 $TsSource    = Join-Path $ScriptDir "svg-font.ts"
 $WorkDir     = Join-Path $ProjectRoot ".iconfont-build"
 $StartHex    = "E000"
+
+# ── Update command: sync glyph-map.json with SVG files ──
+if ($Command -eq 'update') {
+  Write-Host "Updating glyph-map.json..." -ForegroundColor Cyan
+
+  # Read existing map
+  $mapContent = Get-Content -LiteralPath $MapFile -Raw | ConvertFrom-Json
+  $existingMap = [ordered]@{}
+  foreach ($prop in $mapContent.PSObject.Properties) {
+    if ($prop.Name -eq '_comment') { continue }
+    $existingMap[$prop.Name] = $prop.Value
+  }
+
+  # Find highest existing codepoint
+  $maxCodepoint = 0
+  foreach ($hex in $existingMap.Values) {
+    $val = [Convert]::ToInt32($hex, 16)
+    if ($val -gt $maxCodepoint) { $maxCodepoint = $val }
+  }
+
+  # Scan directory for SVG files
+  $svgFiles = Get-ChildItem -LiteralPath $InputDir -Filter "*.svg" | Sort-Object Name
+  $newFiles = @()
+  foreach ($svg in $svgFiles) {
+    if (-not $existingMap.Contains($svg.Name)) {
+      $newFiles += $svg.Name
+    }
+  }
+
+  if ($newFiles.Count -eq 0) {
+    Write-Host "  No new SVGs found. glyph-map.json is up to date." -ForegroundColor Green
+    return
+  }
+
+  # Assign next sequential codepoints
+  $nextCodepoint = $maxCodepoint + 1
+  Write-Host "  Found $($newFiles.Count) new SVG(s):" -ForegroundColor Yellow
+  foreach ($name in $newFiles) {
+    $hex = $nextCodepoint.ToString("X4")
+    $existingMap[$name] = $hex
+    Write-Host "    $name -> $hex" -ForegroundColor Green
+    $nextCodepoint++
+  }
+
+  # Write updated map preserving order: _comment first, then all entries
+  $lines = @()
+  $lines += '{'
+  $lines += '  "_comment": "Maps every SVG filename to a fixed Unicode codepoint. All assignments are explicit for idempotent builds.",'
+  $lines += ''
+  $entries = @($existingMap.GetEnumerator())
+  for ($i = 0; $i -lt $entries.Count; $i++) {
+    $key = $entries[$i].Key
+    $val = $entries[$i].Value
+    $comma = if ($i -lt $entries.Count - 1) { ',' } else { '' }
+    $lines += "  `"$key`": `"$val`"$comma"
+  }
+  $lines += '}'
+  $lines += ''
+  $newContent = $lines -join "`n"
+  Set-Content -LiteralPath $MapFile -Value $newContent -NoNewline -Encoding UTF8
+
+  Write-Host ""
+  Write-Host "  Updated $MapFile" -ForegroundColor Green
+  Write-Host "  Total glyphs: $($existingMap.Count) ($($newFiles.Count) added)" -ForegroundColor Cyan
+  Write-Host ""
+  Write-Host "  Next steps:" -ForegroundColor Yellow
+  Write-Host "    1. Add entries to react-ui/lib/constants/catanGlyphs.ts" -ForegroundColor Yellow
+  Write-Host "    2. Run: pwsh './.assets/SVG For Font/create-catan-font.ps1'" -ForegroundColor Yellow
+  return
+}
 
 # Destinations to copy the built font (relative to project root)
 $CopyTargets = @(
@@ -391,7 +473,7 @@ if (-not $SkipInstall) {
           if (Test-Path -LiteralPath $backup) {
             Move-Item -LiteralPath $backup -Destination $destFile -Force -ErrorAction SilentlyContinue
           }
-          $lockers = Get-LockingProcesses -FilePath $destFile
+          $lockers = @(Get-LockingProcesses -FilePath $destFile)
           if ($lockers.Count -gt 0) {
             Write-Warning "  SKIP $rel (file locked by: $($lockers -join ', '))"
           } else {
@@ -441,7 +523,7 @@ if (-not $NoInstall) {
           Move-Item -LiteralPath $backup -Destination $osDest -Force -ErrorAction SilentlyContinue
         }
         # Report which processes are locking the file
-        $lockers = Get-LockingProcesses -FilePath $osDest
+        $lockers = @(Get-LockingProcesses -FilePath $osDest)
         if ($lockers.Count -gt 0) {
           Write-Warning "  SKIP OS font install (file locked by: $($lockers -join ', '))"
         } else {
@@ -453,7 +535,7 @@ if (-not $NoInstall) {
         Copy-Item -LiteralPath $builtTtf -Destination $osDest -Force
         $osInstalled = $true
       } catch {
-        $lockers = Get-LockingProcesses -FilePath $osDest
+        $lockers = @(Get-LockingProcesses -FilePath $osDest)
         if ($lockers.Count -gt 0) {
           Write-Warning "  SKIP OS font install (file locked by: $($lockers -join ', '))"
         } else {

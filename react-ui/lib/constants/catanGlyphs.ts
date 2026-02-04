@@ -55,6 +55,23 @@ export const CatanGlyph = {
   GoldHex: '\uE943',
   TempGoldHex: '\uE944',
 
+  // Number glyphs (E945-E94F)
+
+  Number2: '\uE945',
+  Number3: '\uE946',
+  Number4: '\uE947',
+  Number5: '\uE948',
+  Number6: '\uE949',
+  Number7: '\uE94A',
+  Number8: '\uE94B',
+  Number9: '\uE94C',
+  Number10: '\uE94D',
+  Number11: '\uE94E',
+  Number12: '\uE94F',
+
+  // Misc glyphs (E950+)
+  Skull: '\uE950',
+
   // Aliases for backward compatibility
   Soldier: '\uE939',       // KnightStanding used for purchase UI
   Pirate: '\uE90C',        // Legacy alias for Robber

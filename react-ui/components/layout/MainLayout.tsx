@@ -21,6 +21,8 @@ interface GameActions {
 interface MainLayoutProps {
   /** Child content to render in the main area */
   children: React.ReactNode;
+  /** Optional CSS class applied to the root .page div (e.g., "overflow-y-auto" for scrollable pages) */
+  className?: string;
   /** Current active game ID, if any */
   activeGameId?: string | null;
   /** Game-specific actions (only used on Game page) */
@@ -31,7 +33,7 @@ interface MainLayoutProps {
  * Main layout component providing the hamburger menu and page structure.
  * Matches the Blazor WebUI MainLayout.razor behavior.
  */
-export function MainLayout({ children, activeGameId, gameActions }: MainLayoutProps): React.ReactElement {
+export function MainLayout({ children, className, activeGameId, gameActions }: MainLayoutProps): React.ReactElement {
   const [showMenu, setShowMenu] = useState(false);
 
   const toggleSidebar = useCallback((): void => {
@@ -39,7 +41,7 @@ export function MainLayout({ children, activeGameId, gameActions }: MainLayoutPr
   }, []);
 
   return (
-    <div className="page">
+    <div className={`page${className ? ` ${className}` : ''}`}>
       {/* Hamburger button - always visible */}
       <button className="hamburger-btn" onClick={toggleSidebar} aria-label="Toggle menu">
         <FontAwesomeIcon icon={faBars} />

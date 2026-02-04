@@ -223,7 +223,7 @@ export default function Home(): React.ReactElement {
 
   return (
     <MainLayout activeGameId={activeGameId}>
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-120px)] py-8">
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-120px)] pt-[60px] pb-8">
         {/* Game Cluster */}
         <div className="bg-white/5 rounded-xl p-8 border border-white/10">
           <HexGrid hexSize={140} items={gameItems} gap={4} />

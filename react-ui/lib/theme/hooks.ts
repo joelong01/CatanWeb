@@ -10,7 +10,7 @@ import { useMemo } from 'react';
 import { CatanGlyph } from '@/lib/constants/catanGlyphs';
 import { useThemeStore } from './themeStore';
 import type { ResolvedHarborFontConfig, ResolvedTileFontConfig } from './themeStore';
-import type { AssetName, RenderMode, ThemeMetadata } from './types';
+import type { AssetName, RenderMode, ThemeDefinition, ThemeMetadata } from './types';
 
 /** Whether theme data has been loaded from theme.json files. */
 export function useThemeInitialized(): boolean {
@@ -41,7 +41,7 @@ export function useAssetPath(asset: AssetName): string {
   let name: string | undefined = currentTheme;
   while (name && !visited.has(name)) {
     visited.add(name);
-    const theme = themes[name];
+    const theme: ThemeDefinition | undefined = themes[name];
     if (!theme) break;
     const path = theme.assets[asset];
     if (path) return path;

@@ -78,10 +78,23 @@ export interface GameStats {
  * Each represents a distinct player color that works well visually.
  */
 export const PRESET_PLAYER_COLORS: PlayerColors[] = [
-  { primary: '#E63946', secondary: '#C1121F', foreground: '#FFFFFF' }, // Red
+  // Classic Catan player colors (from database seed)
+  { primary: '#0000FF', secondary: '#000080', foreground: '#FFFFFF' }, // Blue
+  { primary: '#FF0000', secondary: '#800000', foreground: '#FFFFFF' }, // Red
+  { primary: '#008000', secondary: '#004000', foreground: '#FFFFFF' }, // Green
+  { primary: '#800080', secondary: '#400040', foreground: '#FFFFFF' }, // Purple
+  { primary: '#000000', secondary: '#333333', foreground: '#FFFFFF' }, // Black
+  // Extended palette
+  { primary: '#E63946', secondary: '#C1121F', foreground: '#FFFFFF' }, // Crimson
   { primary: '#2A9D8F', secondary: '#1D7A6D', foreground: '#FFFFFF' }, // Teal
   { primary: '#E9C46A', secondary: '#D4A843', foreground: '#1A1A1A' }, // Gold
   { primary: '#264653', secondary: '#1A3540', foreground: '#FFFFFF' }, // Navy
   { primary: '#F4A261', secondary: '#E07B39', foreground: '#1A1A1A' }, // Orange
-  { primary: '#9B5DE5', secondary: '#7B2CBF', foreground: '#FFFFFF' }, // Purple
+  { primary: '#9B5DE5', secondary: '#7B2CBF', foreground: '#FFFFFF' }, // Violet
+  { primary: '#2E7D32', secondary: '#1B5E20', foreground: '#FFFFFF' }, // Forest
+  { primary: '#E91E63', secondary: '#C2185B', foreground: '#FFFFFF' }, // Pink
+  { primary: '#42A5F5', secondary: '#1E88E5', foreground: '#FFFFFF' }, // Sky
+  { primary: '#795548', secondary: '#5D4037', foreground: '#FFFFFF' }, // Brown
+  { primary: '#8BC34A', secondary: '#689F38', foreground: '#1A1A1A' }, // Lime
+  { primary: '#607D8B', secondary: '#455A64', foreground: '#FFFFFF' }, // Slate
 ];

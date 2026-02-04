@@ -2096,7 +2096,7 @@ export default function ControlsTestPage(): React.ReactElement {
   return (
     <MainLayout>
       {/* Full viewport for floating panels */}
-      <div className="relative w-full h-full min-h-screen">
+      <div className="relative w-full h-full min-h-screen pt-[60px] pl-4">
         {/* Rolls Panel - Roll statistics with hex buttons */}
         <FloatingPanel
           panelId="dice"

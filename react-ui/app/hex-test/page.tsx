@@ -378,7 +378,7 @@ export default function HexTestPage(): React.ReactElement {
 
   return (
     <MainLayout>
-      <div className="flex flex-col lg:flex-row gap-6 p-6 min-h-[calc(100vh-80px)]">
+      <div className="flex flex-col lg:flex-row gap-6 pt-[60px] px-6 pb-6 min-h-[calc(100vh-80px)]">
         {/* Control Panel */}
         <div className="lg:w-80 flex-shrink-0 bg-gray-800/50 rounded-xl p-6 space-y-6">
           <h2 className="text-xl font-bold text-white">Hex Grid Controls</h2>

@@ -1,6 +1,5 @@
 {
   "_comment": "Maps every SVG filename to a fixed Unicode codepoint. All assignments are explicit for idempotent builds.",
-
   "city.svg": "E900",
   "deserter.svg": "E901",
   "diplomat.svg": "E902",
@@ -44,5 +43,17 @@
   "wood-bw-hex.svg": "E941",
   "wood-harbor.svg": "E942",
   "gold-bw-hex.svg": "E943",
-  "tempgold-bw-hex.svg": "E944"
+  "tempgold-bw-hex.svg": "E944",
+  "2.svg": "E945",
+  "3.svg": "E946",
+  "4.svg": "E947",
+  "5.svg": "E948",
+  "6.svg": "E949",
+  "7.svg": "E94A",
+  "8.svg": "E94B",
+  "9.svg": "E94C",
+  "10.svg": "E94D",
+  "11.svg": "E94E",
+  "12.svg": "E95F",
+  "skull 1.svg": "E945"
 }

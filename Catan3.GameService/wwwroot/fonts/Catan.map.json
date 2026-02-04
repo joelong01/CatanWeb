@@ -1,8 +1,8 @@
 {
   "fontName": "Catan",
-  "glyphCount": 45,
-  "mappedCount": 44,
-  "autoAssignedCount": 1,
+  "glyphCount": 56,
+  "mappedCount": 56,
+  "autoAssignedCount": 0,
   "entries": [
     {
       "file": "city.svg",
@@ -318,6 +318,83 @@
       "codepointHex": "E945",
       "codepointDec": 59717,
       "unicode": ""
+    },
+    {
+      "file": "2.svg",
+      "glyphName": "2",
+      "codepointHex": "E946",
+      "codepointDec": 59718,
+      "unicode": ""
+    },
+    {
+      "file": "3.svg",
+      "glyphName": "3",
+      "codepointHex": "E947",
+      "codepointDec": 59719,
+      "unicode": ""
+    },
+    {
+      "file": "4.svg",
+      "glyphName": "4",
+      "codepointHex": "E948",
+      "codepointDec": 59720,
+      "unicode": ""
+    },
+    {
+      "file": "5.svg",
+      "glyphName": "5",
+      "codepointHex": "E949",
+      "codepointDec": 59721,
+      "unicode": ""
+    },
+    {
+      "file": "6.svg",
+      "glyphName": "6",
+      "codepointHex": "E94A",
+      "codepointDec": 59722,
+      "unicode": ""
+    },
+    {
+      "file": "7.svg",
+      "glyphName": "7",
+      "codepointHex": "E94B",
+      "codepointDec": 59723,
+      "unicode": ""
+    },
+    {
+      "file": "8.svg",
+      "glyphName": "8",
+      "codepointHex": "E94C",
+      "codepointDec": 59724,
+      "unicode": ""
+    },
+    {
+      "file": "9.svg",
+      "glyphName": "9",
+      "codepointHex": "E94D",
+      "codepointDec": 59725,
+      "unicode": ""
+    },
+    {
+      "file": "10.svg",
+      "glyphName": "10",
+      "codepointHex": "E94E",
+      "codepointDec": 59726,
+      "unicode": ""
+    },
+    {
+      "file": "11.svg",
+      "glyphName": "11",
+      "codepointHex": "E94F",
+      "codepointDec": 59727,
+      "unicode": ""
+    },
+    {
+      "file": "12.svg",
+      "glyphName": "12",
+      "codepointHex": "E950",
+      "codepointDec": 59728,
+      "unicode": ""
     }
   ]
 }

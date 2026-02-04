@@ -188,38 +188,44 @@ body {
 
 /* ==========================================================================
    Layout Styles (ported from MainLayout.razor.css)
+   Placed in @layer components so Tailwind utilities (e.g., overflow-y-auto)
+   can override these defaults on specific pages.
    ========================================================================== */
 
-.page {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  background: var(--game-bg-primary);
-  width: 100%;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh; /* Dynamic viewport height - excludes browser chrome */
-  overflow: hidden;
-}
+@layer components {
+  .page {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--game-bg-primary);
+    width: 100%;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height - excludes browser chrome */
+    overflow: hidden;
+  }
 
-.page main {
-  flex: 1;
-  background: var(--game-bg-primary);
-  position: relative;
-  min-height: 0;
-}
+  .page main {
+    flex: 1;
+    background: var(--game-bg-primary);
+    position: relative;
+    min-height: 0;
+  }
 
-.page .content {
-  height: 100%;
-  padding: 0;
-  background: var(--game-bg-primary);
+  .page .content {
+    height: 100%;
+    padding: 0;
+    background: var(--game-bg-primary);
+  }
 }
 
 /* Mobile devices - enable scrolling */
 @media (pointer: coarse) {
-  .page {
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
+  @layer components {
+    .page {
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
   }
 }
 

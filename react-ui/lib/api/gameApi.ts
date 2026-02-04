@@ -256,4 +256,30 @@ export const gameApi = {
       method: 'POST',
     });
   },
+
+  /**
+   * Uploads a player image (avatar).
+   * Uses multipart/form-data (no Content-Type header -- browser sets boundary).
+   *
+   * @param playerId - The player ID to upload the image for
+   * @param file - The image file (JPEG, PNG, GIF; max 5MB)
+   * @returns The image URI on success
+   */
+  async uploadPlayerImage(playerId: string, file: File): Promise<ApiResponse<string>> {
+    const url = `${serviceConfig.serviceUrl}/api/players/${playerId}/image`;
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await fetch(url, { method: 'POST', body: formData });
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: errorText || `HTTP ${response.status}` };
+      }
+      const data = await response.json();
+      return { success: true, data: data.imageUri };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Upload failed';
+      return { success: false, error: `Network error: ${message}` };
+    }
+  },
 };

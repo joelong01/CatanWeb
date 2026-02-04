@@ -26,11 +26,11 @@ function getLuminance(hex: string): number {
 
 /**
  * Build CSS gradient from PlayerColors.
- * Heavy gradient: Primary → Secondary → (black for light colors, white for dark).
- * Matches the visual depth effect in Blazor.
+ * 3-stop gradient: Primary → Secondary → auto-contrast.
+ * The third stop is black for light color schemes, white for dark ones,
+ * creating visual depth.
  */
 export function buildCssGradient(colors: PlayerColors): string {
-  // Determine if colors are light or dark based on average luminance
   const avgLuminance = (getLuminance(colors.primary) + getLuminance(colors.secondary)) / 2;
   const endColor = avgLuminance > 0.4 ? '#000000' : '#ffffff';
   return `linear-gradient(135deg, ${colors.primary}, ${colors.secondary}, ${endColor})`;
