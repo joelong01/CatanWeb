@@ -130,7 +130,7 @@ export default function FontViewerPage(): React.ReactElement {
   }, []);
 
   return (
-    <MainLayout>
+    <MainLayout className="overflow-y-auto">
       <div className="min-h-[calc(100vh-120px)] py-8 px-4">
         <div className="max-w-6xl mx-auto">
           {/* Header */}

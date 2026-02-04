@@ -25,13 +25,15 @@ interface MainLayoutProps {
   activeGameId?: string | null;
   /** Game-specific actions (only used on Game page) */
   gameActions?: GameActions;
+  /** Optional CSS class to apply to the root page element */
+  className?: string;
 }
 
 /**
  * Main layout component providing the hamburger menu and page structure.
  * Matches the Blazor WebUI MainLayout.razor behavior.
  */
-export function MainLayout({ children, activeGameId, gameActions }: MainLayoutProps): React.ReactElement {
+export function MainLayout({ children, activeGameId, gameActions, className }: MainLayoutProps): React.ReactElement {
   const [showMenu, setShowMenu] = useState(false);
 
   const toggleSidebar = useCallback((): void => {
@@ -39,7 +41,7 @@ export function MainLayout({ children, activeGameId, gameActions }: MainLayoutPr
   }, []);
 
   return (
-    <div className="page">
+    <div className={className ? `page ${className}` : 'page'}>
       {/* Hamburger button - always visible */}
       <button className="hamburger-btn" onClick={toggleSidebar} aria-label="Toggle menu">
         <FontAwesomeIcon icon={faBars} />
