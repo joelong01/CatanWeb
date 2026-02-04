@@ -809,7 +809,7 @@ export function GameBoard({
     });
 
     // Check if ALL selected resources are present (AND logic)
-    return resourceFilters.every(filter => adjacentResources.has(filter));
+    return resourceFilters.every(resourceType => adjacentResources.has(resourceType));
   }, [resourceFilters, tileResourceMap]);
 
   // Render buildings and roads overlay (DOM divs)
