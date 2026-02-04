@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars } from '@fortawesome/free-solid-svg-icons';
+import clsx from 'clsx';
 import { NavMenu } from './NavMenu';
 
 /** Game-specific actions for NavMenu */
@@ -41,7 +42,7 @@ export function MainLayout({ children, activeGameId, gameActions, className }: M
   }, []);
 
   return (
-    <div className={className ? `page ${className}` : 'page'}>
+    <div className={clsx('page', className)}>
       {/* Hamburger button - always visible */}
       <button className="hamburger-btn" onClick={toggleSidebar} aria-label="Toggle menu">
         <FontAwesomeIcon icon={faBars} />
