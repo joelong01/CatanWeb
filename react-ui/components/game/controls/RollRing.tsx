@@ -93,8 +93,8 @@ const RollHexContent = memo(function RollHexContent({
         </span>
 
         {/* Number token - using the same component as the board tiles */}
-        <div className="w-10 hex-aspect-flat">
-          <NumberToken number={rollNumber} className="w-full h-full" borderBackground={gradient} />
+        <div className="w-8 aspect-square">
+          <NumberToken number={rollNumber} className="w-full h-full" borderColor="transparent" />
         </div>
 
         {/* Percentage at bottom */}

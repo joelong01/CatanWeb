@@ -7,6 +7,18 @@ import { getResourceTileImage, getResourceCardImage } from '@/lib/constants/boar
 import { useAssetPath, useFontRendering, useTileFontConfig } from '@/lib/theme';
 import { NumberToken } from './NumberToken';
 
+/** Primary color per resource type for number token border ring. */
+const RESOURCE_COLORS: Record<string, string> = {
+  Wheat: '#CC7A00',
+  Wood: '#228B22',
+  Sheep: '#A68B6B',
+  Brick: '#BF360C',
+  Ore: '#4682B4',
+  Desert: '#F59E0B',
+  GoldMine: '#FFD700',
+  TempGold: '#FFD700',
+};
+
 /**
  * Props for GameTile component
  */
@@ -54,6 +66,7 @@ export const GameTile = memo(function GameTile({
   const imageUrl = getResourceTileImage(displayResource);
   const originalImageUrl = getResourceCardImage(resourceTileType);
   const isDesert = resourceTileType === 'Desert';
+  const tokenBorderColor = RESOURCE_COLORS[resourceTileType] ?? 'white';
 
   // Theme-driven font rendering
   const isFontMode = useFontRendering();
@@ -301,11 +314,11 @@ export const GameTile = memo(function GameTile({
             }
             style={{
               width: '38%',
-              height: '38%',
+              aspectRatio: '1',
               left: '50%',
             }}
           >
-            <NumberToken number={number} className="w-full h-full" />
+            <NumberToken number={number} className="w-full h-full" borderColor={tokenBorderColor} />
           </motion.div>
         ) : (
           /* Image mode: static position above center */
@@ -313,13 +326,13 @@ export const GameTile = memo(function GameTile({
             className="absolute pointer-events-none"
             style={{
               width: '38%',
-              height: '38%',
+              aspectRatio: '1',
               top: '27%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
             }}
           >
-            <NumberToken number={number} className="w-full h-full" />
+            <NumberToken number={number} className="w-full h-full" borderColor={tokenBorderColor} />
           </div>
         )
       )}

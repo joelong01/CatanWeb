@@ -1,7 +1,6 @@
 'use client';
 
 import React, { memo } from 'react';
-import { useAssetPath } from '@/lib/theme';
 
 /**
  * Constants matching BoardSvgConstants.cs for visual parity with Blazor app.
@@ -51,8 +50,8 @@ export interface NumberTokenProps {
   number: number;
   /** Optional className for positioning */
   className?: string;
-  /** CSS background for the outer hex border. Defaults to maple wood texture. */
-  borderBackground?: string;
+  /** Border ring color. Defaults to 'white'. */
+  borderColor?: string;
 }
 
 /**
@@ -70,30 +69,26 @@ export interface NumberTokenProps {
 export const NumberToken = memo(function NumberToken({
   number,
   className = '',
-  borderBackground,
+  borderColor = 'white',
 }: NumberTokenProps) {
   const isHighProb = number === 6 || number === 8;
   const textColor = isHighProb ? NUMBER_TOKEN.highProbColor : NUMBER_TOKEN.normalNumberColor;
   const bgColor = isHighProb ? NUMBER_TOKEN.highProbBackground : NUMBER_TOKEN.normalBackground;
   const stars = getStars(number);
 
-  // Theme-resolved default border (maple wood texture in base/classic)
-  const borderFillPath = useAssetPath('BackgroundBorderFill');
-  const resolvedBorder = borderBackground || (borderFillPath ? `url(${borderFillPath}) center/cover` : undefined);
-
   // High prob numbers have 5 stars, need smaller font
   const pipsFontSize = isHighProb ? 8 : 10;
 
   return (
     <div
-      className={`hex-clip-flat ${className}`}
+      className={`rounded-full aspect-square ${className}`}
       style={{
-        background: resolvedBorder,
+        backgroundColor: borderColor,
       }}
     >
-      {/* Inner hex scaled down to reveal white border */}
+      {/* Inner circle scaled down to reveal border ring */}
       <div
-        className="hex-clip-flat w-full h-full"
+        className="rounded-full w-full h-full"
         style={{ backgroundColor: bgColor, transform: 'scale(0.85)' }}
       >
         <svg
