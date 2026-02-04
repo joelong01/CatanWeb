@@ -597,8 +597,8 @@ interface LayoutState {
   /** Star filter threshold (8-13 or null) */
   starFilter: number | null;
 
-  /** Resource filter (resource type or null) */
-  resourceFilter: string | null;
+  /** Resource filters (array of selected resource types, max 3) */
+  resourceFilters: string[];
 
   /** Layout version for migrations */
   version: number;
@@ -635,8 +635,8 @@ interface LayoutActions {
   /** Set star filter */
   setStarFilter: (stars: number | null) => void;
 
-  /** Set resource filter */
-  setResourceFilter: (resource: string | null) => void;
+  /** Set resource filters */
+  setResourceFilters: (resourceFilters: string[]) => void;
 
   /** Reset layout based on current viewport (viewport-aware computed positions) */
   resetLayout: () => void;
@@ -667,8 +667,8 @@ const initialState: LayoutState = {
   panels: { ...LANDSCAPE_PANELS },
   viewport: { ...DEFAULT_VIEWPORT },
   starFilter: null,
-  resourceFilter: null,
-  version: 8,
+  resourceFilters: [],
+  version: 9,
   savedLayouts: [],
   currentLayoutName: null,
 };
@@ -809,7 +809,7 @@ export const useLayoutStore = create<LayoutStore>()(
 
       setStarFilter: (starFilter) => set({ starFilter }),
 
-      setResourceFilter: (resourceFilter) => set({ resourceFilter }),
+      setResourceFilters: (resourceFilters) => set({ resourceFilters }),
 
       resetLayout: () => {
         const vw = typeof window !== 'undefined' ? window.innerWidth : 1920;
@@ -819,7 +819,7 @@ export const useLayoutStore = create<LayoutStore>()(
           panels,
           viewport: { ...DEFAULT_VIEWPORT },
           starFilter: null,
-          resourceFilter: null,
+          resourceFilters: [],
           currentLayoutName: null,
         });
       },
@@ -894,14 +894,14 @@ export const useLayoutStore = create<LayoutStore>()(
           panels,
           // Preserve current viewport (pan/zoom) — don't reset the user's board view
           starFilter: null,
-          resourceFilter: null,
+          resourceFilters: [],
           currentLayoutName: null,
         });
       },
     }),
     {
       name: 'catan-layout',
-      version: 8, // Increment when layout structure changes
+      version: 9, // Increment when layout structure changes
       onRehydrateStorage: () => {
         console.log('[layoutStore] Starting hydration from localStorage...');
         return (state, error) => {
@@ -950,7 +950,8 @@ export const useLayoutStore = create<LayoutStore>()(
             panels: migratedPanels,
             savedLayouts: [],
             currentLayoutName: null,
-            version: 8,
+            resourceFilters: [],
+            version: 9,
           };
         }
 
@@ -975,18 +976,40 @@ export const useLayoutStore = create<LayoutStore>()(
             panels: migratedPanels,
             savedLayouts: [],
             currentLayoutName: null,
-            version: 8,
+            resourceFilters: [],
+            version: 9,
           };
         }
 
         // Version 7 -> 8: add savedLayouts and currentLayoutName
         if (version === 7) {
           console.log('[layoutStore] Migrating from version 7 to 8 - adding savedLayouts');
-          return {
+          // Also migrate to v8->v9 below
+          const migrated = {
             ...(persistedState as LayoutState),
             savedLayouts: [],
             currentLayoutName: null,
             version: 8,
+          };
+          // Continue to v8->v9 migration below
+          return {
+            ...migrated,
+            resourceFilters: [],
+            version: 9,
+          };
+        }
+
+        // Version 8 -> 9: migrate resourceFilter (string | null) to resourceFilters (string[])
+        if (version === 8) {
+          console.log('[layoutStore] Migrating from version 8 to 9 - resourceFilter to resourceFilters');
+          const oldState = persistedState as LayoutState & { resourceFilter?: string | null };
+          const resourceFilters = oldState.resourceFilter ? [oldState.resourceFilter] : [];
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { resourceFilter, ...rest } = oldState;
+          return {
+            ...rest,
+            resourceFilters,
+            version: 9,
           };
         }
 
@@ -1031,8 +1054,8 @@ export const selectViewport = (state: LayoutStore) => state.viewport;
 /** Select star filter */
 export const selectStarFilter = (state: LayoutStore) => state.starFilter;
 
-/** Select resource filter */
-export const selectResourceFilter = (state: LayoutStore) => state.resourceFilter;
+/** Select resource filters */
+export const selectResourceFilters = (state: LayoutStore) => state.resourceFilters;
 
 /** Info about a minimized panel for the MinimizedBar */
 export interface MinimizedPanelInfo {

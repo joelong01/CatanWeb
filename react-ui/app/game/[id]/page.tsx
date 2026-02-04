@@ -586,11 +586,11 @@ export default function GamePage(): React.ReactElement {
   }, [setStarFilter]);
 
   // Resource filter changed handler (stores in layoutStore for board filtering)
-  const setResourceFilter = useLayoutStore((state) => state.setResourceFilter);
+  const setResourceFilters = useLayoutStore((state) => state.setResourceFilters);
   const handleResourceSelectionChange = useCallback((resources: string[]) => {
-    // Store first selected resource (or null if empty)
-    setResourceFilter(resources.length > 0 ? resources[0] : null);
-  }, [setResourceFilter]);
+    // Store all selected resources (up to 3)
+    setResourceFilters(resources);
+  }, [setResourceFilters]);
 
   // Center modal overlays (goFirst, supplemental) on the board when they appear
   const boardPanel = useLayoutStore(selectPanel('board'));

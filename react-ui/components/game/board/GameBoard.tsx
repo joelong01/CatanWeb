@@ -426,6 +426,9 @@ export function GameBoard({
   // Star filter from layoutStore (filters building spots by minimum star value)
   const starFilter = useLayoutStore((state) => state.starFilter);
 
+  // Resource filters from layoutStore (filters building spots by selected resources)
+  const resourceFilters = useLayoutStore((state) => state.resourceFilters);
+
   // Use viewport zoom or initial prop (viewport.zoom is a multiplier, convert to hexSize)
   const hexSize = viewport.zoom > 0 ? Math.round(initialHexSize * viewport.zoom) : initialHexSize;
   const panOffset = viewport.pan;
@@ -723,6 +726,21 @@ export function GameBoard({
     return map;
   }, [tiles]);
 
+  // Build resource type map: coord key -> resource type (for resource filtering)
+  const tileResourceMap = useMemo(() => {
+    const map = new Map<string, string>();
+    tiles.forEach((tile) => {
+      const coord = cubicCoord(tile.tileKey.q, tile.tileKey.r);
+      const key = coordKeyString(coord);
+      // Store resource type (empty string for desert/water/null)
+      const resourceType = tile.resourceTileType || '';
+      if (resourceType) {
+        map.set(key, resourceType);
+      }
+    });
+    return map;
+  }, [tiles]);
+
   // Calculate star value for a building position based on adjacent tiles' pips
   // Stars = sum of pips from all tiles touching this vertex (up to 3 tiles)
   const calculateStars = useCallback((coord: HexCoordinate, position: GeometryHexPosition): number => {
@@ -755,6 +773,44 @@ export function GameBoard({
 
     return totalPips;
   }, [tilePipsMap]);
+
+  // Check if a building position touches ALL selected resources
+  // A spot is visible only if it produces all required resources
+  const matchesResourceFilters = useCallback((coord: HexCoordinate, position: GeometryHexPosition): boolean => {
+    // If no filters active, all spots match
+    if (resourceFilters.length === 0) {
+      return true;
+    }
+
+    // Get adjacent tiles for this building position (same logic as calculateStars)
+    const adjacentCoords: HexCoordinate[] = [coord];
+    const neighborDirections: Record<GeometryHexPosition, Direction[]> = {
+      Right: [Direction.NorthEast, Direction.SouthEast],
+      BottomRight: [Direction.SouthEast, Direction.South],
+      BottomLeft: [Direction.South, Direction.SouthWest],
+      Left: [Direction.SouthWest, Direction.NorthWest],
+      TopLeft: [Direction.NorthWest, Direction.North],
+      TopRight: [Direction.North, Direction.NorthEast],
+    };
+
+    const directions = neighborDirections[position];
+    directions.forEach((dir) => {
+      adjacentCoords.push(getNeighbor(coord, dir));
+    });
+
+    // Collect all resource types from adjacent tiles
+    const adjacentResources = new Set<string>();
+    adjacentCoords.forEach((c) => {
+      const key = coordKeyString(c);
+      const resourceType = tileResourceMap.get(key);
+      if (resourceType) {
+        adjacentResources.add(resourceType);
+      }
+    });
+
+    // Check if ALL selected resources are present (AND logic)
+    return resourceFilters.every(filter => adjacentResources.has(filter));
+  }, [resourceFilters, tileResourceMap]);
 
   // Render buildings and roads overlay (DOM divs)
   // Implements Blazor BuildingOverlay.razor and RoadOverlay.razor logic
@@ -941,10 +997,17 @@ export function GameBoard({
           // Get settlement build index (1, 2, 3...) if showing indexes
           const settlementBuildIndex = settlementIndexMap.get(key);
 
+          // Check if spot matches resource filters
+          const matchesResources = matchesResourceFilters(coord, position);
+
           // Determine if spot should be hidden (invisible but hoverable)
           // When build indexes are shown, all spots visible (no hiding per Blazor line 232)
-          // Otherwise: No filter = all hidden (hover to reveal), filter active = hide spots below threshold
-          const isHidden = settlementBuildIndex ? false : (starFilter === null || stars < starFilter);
+          // Otherwise: Apply both star and resource filters (AND logic)
+          // - Star filter: hide if no filter OR stars below threshold
+          // - Resource filter: hide if doesn't match ALL selected resources
+          const isHidden = settlementBuildIndex 
+            ? false 
+            : (starFilter === null || stars < starFilter) || !matchesResources;
 
           const pixelPos = getVertexPosition(coord, position, hSize, origin);
 
@@ -1076,7 +1139,7 @@ export function GameBoard({
         )}
       </>
     );
-  }, [buildingPositions, roadPositions, buildingMap, roadMap, players, currentPlayerId, calculateStars, starFilter, currentPlayerEntitlements, onBuildingClick, onRoadClick, robber, animatedRobberCoords, showSettlementIndexes]);
+  }, [buildingPositions, roadPositions, buildingMap, roadMap, players, currentPlayerId, calculateStars, matchesResourceFilters, starFilter, currentPlayerEntitlements, onBuildingClick, onRoadClick, robber, animatedRobberCoords, showSettlementIndexes]);
 
   // Debug logging
   console.log('[GameBoard] render, tiles:', tiles.length, 'containerSize:', containerSize);
