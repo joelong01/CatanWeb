@@ -1,0 +1,10 @@
+{
+  "pages": {},
+  "app": {
+    "[project]/react-ui/app/load-game/page": [
+      "static/media/Catan-s.p.622117a1.ttf"
+    ]
+  },
+  "appUsingSizeAdjust": true,
+  "pagesUsingSizeAdjust": false
+}

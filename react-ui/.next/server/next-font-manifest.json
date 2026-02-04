@@ -1,0 +1,40 @@
+{
+  "app": {
+    "[project]/react-ui/app/_not-found/page": [
+      "static/media/Catan-s.p.622117a1.ttf"
+    ],
+    "[project]/react-ui/app/controls-test/page": [
+      "static/media/Catan-s.p.622117a1.ttf"
+    ],
+    "[project]/react-ui/app/edit-players/page": [
+      "static/media/Catan-s.p.622117a1.ttf"
+    ],
+    "[project]/react-ui/app/font-viewer/page": [
+      "static/media/Catan-s.p.622117a1.ttf"
+    ],
+    "[project]/react-ui/app/game/[id]/page": [
+      "static/media/Catan-s.p.622117a1.ttf"
+    ],
+    "[project]/react-ui/app/hex-test/page": [
+      "static/media/Catan-s.p.622117a1.ttf"
+    ],
+    "[project]/react-ui/app/load-game/page": [
+      "static/media/Catan-s.p.622117a1.ttf"
+    ],
+    "[project]/react-ui/app/new-game/page": [
+      "static/media/Catan-s.p.622117a1.ttf"
+    ],
+    "[project]/react-ui/app/page": [
+      "static/media/Catan-s.p.622117a1.ttf"
+    ],
+    "[project]/react-ui/app/settings/page": [
+      "static/media/Catan-s.p.622117a1.ttf"
+    ],
+    "[project]/react-ui/app/stats/page": [
+      "static/media/Catan-s.p.622117a1.ttf"
+    ]
+  },
+  "appUsingSizeAdjust": true,
+  "pages": {},
+  "pagesUsingSizeAdjust": false
+}

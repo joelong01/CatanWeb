@@ -1,0 +1,16 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/dev/font/route": "app/api/dev/font/route.js",
+  "/controls-test/page": "app/controls-test/page.js",
+  "/edit-players/page": "app/edit-players/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/font-viewer/page": "app/font-viewer/page.js",
+  "/game/[id]/page": "app/game/[id]/page.js",
+  "/hex-test/page": "app/hex-test/page.js",
+  "/load-game/page": "app/load-game/page.js",
+  "/new-game/page": "app/new-game/page.js",
+  "/page": "app/page.js",
+  "/settings/page": "app/settings/page.js",
+  "/stats/page": "app/stats/page.js"
+}
