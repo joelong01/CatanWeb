@@ -9,7 +9,7 @@ import { MainLayout } from '@/components/layout';
  */
 export default function Stats(): React.ReactElement {
   return (
-    <MainLayout>
+    <MainLayout className="overflow-y-auto">
       <div className="placeholder-page">
         <h1>Stats</h1>
         <div className="todo-badge">To Do</div>

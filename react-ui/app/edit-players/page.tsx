@@ -331,7 +331,7 @@ export default function EditPlayers(): React.ReactElement {
 
   if (loading) {
     return (
-      <MainLayout>
+      <MainLayout className="overflow-y-auto">
         <div className="flex items-center justify-center h-full text-gray-400">
           Loading players...
         </div>
@@ -340,7 +340,7 @@ export default function EditPlayers(): React.ReactElement {
   }
 
   return (
-    <MainLayout>
+    <MainLayout className="overflow-y-auto">
       <div className="flex flex-col sm:flex-row h-full overflow-hidden pt-[60px] pl-4 sm:pl-6">
         {/* ── Player List (left) ─────────────────────────── */}
         <div className="w-full sm:w-60 shrink-0 border-b sm:border-b-0 sm:border-r border-gray-700 flex flex-col">

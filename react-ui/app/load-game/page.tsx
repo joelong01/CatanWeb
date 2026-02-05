@@ -361,7 +361,7 @@ export default function LoadGame(): React.ReactElement {
   };
 
   return (
-    <MainLayout>
+    <MainLayout className="overflow-y-auto">
       <div className="pt-[60px] px-8 pb-8 md:px-12 md:pb-12 max-w-5xl">
         <h1 className="text-4xl font-bold text-white mb-6">Open Game</h1>
 

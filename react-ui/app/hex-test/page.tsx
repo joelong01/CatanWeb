@@ -377,7 +377,7 @@ export default function HexTestPage(): React.ReactElement {
   const aspectRatio = Math.sqrt(3) / 2;
 
   return (
-    <MainLayout>
+    <MainLayout className="overflow-y-auto">
       <div className="flex flex-col lg:flex-row gap-6 pt-[60px] px-6 pb-6 min-h-[calc(100vh-80px)]">
         {/* Control Panel */}
         <div className="lg:w-80 flex-shrink-0 bg-gray-800/50 rounded-xl p-6 space-y-6">
