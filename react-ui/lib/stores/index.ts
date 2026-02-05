@@ -44,3 +44,12 @@ export {
   selectErrorMessage,
   type ConnectionStatus,
 } from './connectionStore';
+
+export {
+  useSettingsStore,
+  selectExpansionGoldTiles,
+  selectRegularGoldTiles,
+  selectSupplementalMinPlayers,
+  selectAnimationSpeed,
+  selectIsInitialized,
+} from './settingsStore';

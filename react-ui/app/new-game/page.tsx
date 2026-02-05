@@ -25,9 +25,10 @@ import {
   faUser,
 } from '@fortawesome/free-solid-svg-icons';
 import type { PlayerProfile } from '@/types/player-profile';
-import type { GameType, HouseRules } from '@/types/generated/models';
+import type { GameType } from '@/types/generated/models';
 import Link from 'next/link';
 import { serviceConfig } from '@/lib/services/config';
+import { useSettingsStore } from '@/lib/stores/settingsStore';
 
 /**
  * Get the full image URL for a player.
@@ -70,6 +71,14 @@ export default function NewGame(): React.ReactElement {
   // Submit state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Settings store for house rules
+  const settingsStore = useSettingsStore();
+
+  // Initialize settings on mount
+  useEffect(() => {
+    settingsStore.initialize();
+  }, [settingsStore]);
 
   // Load players on mount
   useEffect(() => {
@@ -142,18 +151,9 @@ export default function NewGame(): React.ReactElement {
     setIsSubmitting(true);
     setSubmitError(null);
 
-    // Create house rules object if enabled (matching Blazor defaults)
-    const houseRules: Partial<HouseRules> | undefined = gameOptions.useHouseRules
-      ? {
-          goldTiles: gameType === 'Expansion' ? 2 : 1,
-          griefDodgy: false, // OFF by default - must be explicitly enabled in Settings
-          wallsProtectCities: true,
-          knightMovesBaronBeforeRoll: true,
-          hideBaronBeforeInvasion: false,
-          knightMovesRobberBeforeRoll: false,
-          hideRobberBeforeInvasion: false,
-          supplementalMinPlayers: 5,
-        }
+    // Get house rules from settings store if enabled
+    const houseRules = gameOptions.useHouseRules
+      ? settingsStore.getHouseRules(gameType)
       : undefined;
 
     const result = await gameApi.createGame(
@@ -171,11 +171,11 @@ export default function NewGame(): React.ReactElement {
       setSubmitError(result.error ?? 'Failed to create game');
       setIsSubmitting(false);
     }
-  }, [isValid, isSubmitting, gameType, selectedPlayerIds, gameName, gameOptions.useHouseRules, gameOptions.updateStats, router]);
+  }, [isValid, isSubmitting, gameType, selectedPlayerIds, gameName, gameOptions.useHouseRules, gameOptions.updateStats, router, settingsStore]);
 
   return (
-    <MainLayout>
-      <div className="min-h-screen h-full py-5 pt-[60px] pb-[60px] px-5 max-w-[1400px] mx-auto overflow-y-auto">
+    <MainLayout className="overflow-y-auto">
+      <div className="min-h-screen h-full py-5 pt-[60px] pb-[60px] px-5 max-w-[1400px] mx-auto">
         {/* Header */}
         <header className="flex items-center gap-4 mb-6">
           <Link
