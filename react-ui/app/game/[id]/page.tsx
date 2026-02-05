@@ -132,6 +132,11 @@ export default function GamePage(): React.ReactElement {
     autoConnect: true,
   });
 
+  // Save current game ID to localStorage for "Return to Game" navigation
+  useEffect(() => {
+    localStorage.setItem('current_gameId', gameId);
+  }, [gameId]);
+
   // Connection status
   const { isConnected, isConnecting, proxy } = connection;
 

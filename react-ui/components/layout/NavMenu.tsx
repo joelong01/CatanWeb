@@ -294,6 +294,15 @@ export function NavMenu({ onMenuAction, activeGameId, gameActions }: NavMenuProp
       {/* Always visible: Hide */}
       <NavMenuItem icon={faXmark} label="Hide" onClick={onMenuAction} />
 
+      {/* Return to Game - always visible when there's an active game and not on game page */}
+      {hasActiveGame && currentPage !== 'Game' && (
+        <NavMenuItem
+          icon={faPlay}
+          label="Return to Game"
+          onClick={() => navigateTo(`/game/${activeGameId}`)}
+        />
+      )}
+
       {/* Always visible: Full Screen */}
       <NavMenuItem icon={faExpand} label="Full Screen" onClick={toggleFullScreen} />
 
@@ -327,13 +336,6 @@ export function NavMenu({ onMenuAction, activeGameId, gameActions }: NavMenuProp
             label="Edit Players"
             onClick={() => navigateTo('/edit-players')}
           />
-          {hasActiveGame && (
-            <NavMenuItem
-              icon={faPlay}
-              label="Return to Game"
-              onClick={() => navigateTo(`/game/${activeGameId}`)}
-            />
-          )}
         </>
       )}
 
@@ -346,13 +348,6 @@ export function NavMenu({ onMenuAction, activeGameId, gameActions }: NavMenuProp
             label="Edit Players"
             onClick={() => navigateTo('/edit-players')}
           />
-          {hasActiveGame && (
-            <NavMenuItem
-              icon={faPlay}
-              label="Return to Game"
-              onClick={() => navigateTo(`/game/${activeGameId}`)}
-            />
-          )}
         </>
       )}
 
@@ -365,13 +360,6 @@ export function NavMenu({ onMenuAction, activeGameId, gameActions }: NavMenuProp
             label="Open Game"
             onClick={() => navigateTo('/load-game')}
           />
-          {hasActiveGame && (
-            <NavMenuItem
-              icon={faPlay}
-              label="Return to Game"
-              onClick={() => navigateTo(`/game/${activeGameId}`)}
-            />
-          )}
         </>
       )}
 
@@ -384,27 +372,11 @@ export function NavMenu({ onMenuAction, activeGameId, gameActions }: NavMenuProp
             label="Open Game"
             onClick={() => navigateTo('/load-game')}
           />
-          {hasActiveGame && (
-            <NavMenuItem
-              icon={faPlay}
-              label="Return to Game"
-              onClick={() => navigateTo(`/game/${activeGameId}`)}
-            />
-          )}
         </>
       )}
 
       {currentPage === 'Stats' && (
-        <>
-          <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
-          {hasActiveGame && (
-            <NavMenuItem
-              icon={faPlay}
-              label="Return to Game"
-              onClick={() => navigateTo(`/game/${activeGameId}`)}
-            />
-          )}
-        </>
+        <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
       )}
 
       {currentPage === 'Game' && (
@@ -456,13 +428,6 @@ export function NavMenu({ onMenuAction, activeGameId, gameActions }: NavMenuProp
           <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
           <LayoutSection onMenuAction={onMenuAction} />
           <ThemeSection onMenuAction={onMenuAction} />
-          {hasActiveGame && (
-            <NavMenuItem
-              icon={faPlay}
-              label="Return to Game"
-              onClick={() => navigateTo(`/game/${activeGameId}`)}
-            />
-          )}
         </>
       )}
 
