@@ -783,8 +783,8 @@ export const useLayoutStore = create<LayoutStore>()(
               .map(([, p]) => p.zIndex)
           );
 
-          // Only update if this panel isn't already on top
-          if (state.panels[panelId].zIndex >= maxZ) return state;
+          // Only update if panel exists and isn't already on top
+          if (!state.panels[panelId] || state.panels[panelId].zIndex >= maxZ) return state;
 
           return {
             panels: {
