@@ -471,16 +471,13 @@ export function WinnerOverlay({
 }: WinnerOverlayProps): React.ReactElement {
   const [phase, setPhase] = useState<WinnerPhase>('ready');
 
-  // VP scores: initialized from each player's current score
+  // VP scores: initialized to 0 (represents VP card count, not final score)
   const [vpScores, setVpScores] = useState<Record<string, number>>(() =>
-    Object.fromEntries(players.map(p => [p.id, p.score]))
+    Object.fromEntries(players.map(p => [p.id, 0]))
   );
 
-  // Store initial scores as floor values for decrement
-  const initialScores = useMemo(
-    () => Object.fromEntries(players.map(p => [p.id, p.score])),
-    [players]
-  );
+  // Floor for decrement is 0 (can't have negative VP cards)
+  const minVpCount = 0;
 
   // Auto-advance from celebrating to scoring after duration
   useEffect(() => {
@@ -496,10 +493,9 @@ export function WinnerOverlay({
   const decrementVP = useCallback((playerId: string) => {
     setVpScores(prev => {
       const current = prev[playerId] || 0;
-      const floor = initialScores[playerId] || 0;
-      return { ...prev, [playerId]: Math.max(floor, current - 1) };
+      return { ...prev, [playerId]: Math.max(minVpCount, current - 1) };
     });
-  }, [initialScores]);
+  }, []);
 
   const handleEndGame = useCallback(() => {
     onEndGame(vpScores);
@@ -566,7 +562,7 @@ export function WinnerOverlay({
             <PlayerScoringHex
               player={player}
               vpScore={vpScores[player.id] || 0}
-              minScore={initialScores[player.id] || 0}
+              minScore={minVpCount}
               onIncrement={() => incrementVP(player.id)}
               onDecrement={() => decrementVP(player.id)}
             />
@@ -590,14 +586,14 @@ export function WinnerOverlay({
     });
 
     return items;
-  }, [phase, players, currentPlayerColors, vpScores, initialScores, incrementVP, decrementVP, handleEndGame, wrapCounterSpin]);
+  }, [phase, players, currentPlayerColors, vpScores, incrementVP, decrementVP, handleEndGame, wrapCounterSpin]);
 
   // Phase title text
   const titleText = phase === 'ready'
     ? 'Click Winner! to celebrate'
     : phase === 'celebrating'
       ? 'Celebrating!'
-      : 'Adjust Score: how victory points do you have?';
+      : 'How many hidden Victory Point cards does each player have?';
 
   return (
     <div className="w-full h-full flex flex-col">
