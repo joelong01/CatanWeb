@@ -339,17 +339,17 @@ describe('layoutStore actions', () => {
 
   describe('resetLayout', () => {
     it('resets all panels and clears filters', () => {
-      const { setStarFilter, setResourceFilter, saveLayout, resetLayout } = useLayoutStore.getState();
+      const { setStarFilter, setResourceFilters, saveLayout, resetLayout } = useLayoutStore.getState();
 
       setStarFilter(8);
-      setResourceFilter('brick');
+      setResourceFilters(['brick']);
       saveLayout('SomeLayout');
 
       resetLayout();
       const state = useLayoutStore.getState();
 
       expect(state.starFilter).toBeNull();
-      expect(state.resourceFilter).toBeNull();
+      expect(state.resourceFilters).toEqual([]);
       expect(state.currentLayoutName).toBeNull();
       // Panels should exist for all IDs
       for (const id of PANEL_ORDER) {
@@ -543,7 +543,7 @@ describe('arrangeLayout action', () => {
 
   it('applies game-state-aware layout', () => {
     useLayoutStore.getState().arrangeLayout('WaitingForRoll');
-    const { panels, viewport, starFilter, resourceFilter, currentLayoutName } =
+    const { panels, viewport, starFilter, resourceFilters, currentLayoutName } =
       useLayoutStore.getState();
 
     expect(panels.measurements.minimized).toBe(true);
@@ -551,20 +551,20 @@ describe('arrangeLayout action', () => {
     expect(viewport.zoom).toBe(1);
     expect(viewport.pan.x).toBe(0);
     expect(starFilter).toBeNull();
-    expect(resourceFilter).toBeNull();
+    expect(resourceFilters).toEqual([]);
     expect(currentLayoutName).toBeNull();
   });
 
   it('clears filters and layout name', () => {
     const store = useLayoutStore.getState();
     store.setStarFilter(10);
-    store.setResourceFilter('wheat');
+    store.setResourceFilters(['wheat']);
     store.saveLayout('Test');
 
     useLayoutStore.getState().arrangeLayout('WaitingForNext');
     const state = useLayoutStore.getState();
     expect(state.starFilter).toBeNull();
-    expect(state.resourceFilter).toBeNull();
+    expect(state.resourceFilters).toEqual([]);
     expect(state.currentLayoutName).toBeNull();
   });
 
@@ -675,7 +675,7 @@ describe('layoutStore migrations', () => {
       },
       viewport: { pan: { x: 0, y: 0 }, zoom: 1 },
       starFilter: null,
-      resourceFilter: null,
+      resourceFilters: [],
       version: 7,
     };
 

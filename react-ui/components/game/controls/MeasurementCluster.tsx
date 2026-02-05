@@ -70,14 +70,14 @@ const RESOURCE_CONFIG = [
   { key: 'Ore', label: 'Ore', position: 'northWest', assetName: 'CardOre' as AssetName },
 ] as const;
 
-/** Star filter values for inner cluster */
+/** Star filter values for inner cluster. 0 = "show all" (no star threshold). */
 const STAR_VALUES_CONFIG = [
   { value: 13, position: 'north' },
   { value: 12, position: 'northEast' },
   { value: 11, position: 'southEast' },
   { value: 10, position: 'south' },
   { value: 9, position: 'southWest' },
-  { value: 8, position: 'northWest' },
+  { value: 0, position: 'northWest' },
 ] as const;
 
 /** Max resources that can be selected at once */
@@ -310,15 +310,16 @@ const StarHexContent = memo(function StarHexContent({
           background: isSelected ? (colors?.cssGradient || purpleBgSelected) : purpleBg,
         }}
       >
-        {/* Star value (top) */}
+        {/* Star value (top) — 0 means "show all" */}
         <span
-          className="font-bold text-[8px] leading-none transition-transform duration-150"
+          className="font-bold leading-none transition-transform duration-150"
           style={{
             color: textColor,
             transform: isPressed ? 'scale(0.85)' : 'scale(1)',
+            fontSize: value === 0 ? '6px' : '8px',
           }}
         >
-          {value}
+          {value === 0 ? 'All' : value}
         </span>
         {/* Divider line */}
         {count !== undefined && (

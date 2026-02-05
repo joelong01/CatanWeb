@@ -597,8 +597,8 @@ interface LayoutState {
   /** Star filter threshold (8-13 or null) */
   starFilter: number | null;
 
-  /** Resource filter (resource type or null) */
-  resourceFilter: string | null;
+  /** Resource filters — up to 3 selected resource types (AND logic) */
+  resourceFilters: string[];
 
   /** Layout version for migrations */
   version: number;
@@ -636,7 +636,7 @@ interface LayoutActions {
   setStarFilter: (stars: number | null) => void;
 
   /** Set resource filter */
-  setResourceFilter: (resource: string | null) => void;
+  setResourceFilters: (resources: string[]) => void;
 
   /** Reset layout based on current viewport (viewport-aware computed positions) */
   resetLayout: () => void;
@@ -667,7 +667,7 @@ const initialState: LayoutState = {
   panels: { ...LANDSCAPE_PANELS },
   viewport: { ...DEFAULT_VIEWPORT },
   starFilter: null,
-  resourceFilter: null,
+  resourceFilters: [],
   version: 8,
   savedLayouts: [],
   currentLayoutName: null,
@@ -809,7 +809,7 @@ export const useLayoutStore = create<LayoutStore>()(
 
       setStarFilter: (starFilter) => set({ starFilter }),
 
-      setResourceFilter: (resourceFilter) => set({ resourceFilter }),
+      setResourceFilters: (resourceFilters) => set({ resourceFilters }),
 
       resetLayout: () => {
         const vw = typeof window !== 'undefined' ? window.innerWidth : 1920;
@@ -819,7 +819,7 @@ export const useLayoutStore = create<LayoutStore>()(
           panels,
           viewport: { ...DEFAULT_VIEWPORT },
           starFilter: null,
-          resourceFilter: null,
+          resourceFilters: [],
           currentLayoutName: null,
         });
       },
@@ -894,7 +894,7 @@ export const useLayoutStore = create<LayoutStore>()(
           panels,
           // Preserve current viewport (pan/zoom) — don't reset the user's board view
           starFilter: null,
-          resourceFilter: null,
+          resourceFilters: [],
           currentLayoutName: null,
         });
       },
@@ -1031,8 +1031,8 @@ export const selectViewport = (state: LayoutStore) => state.viewport;
 /** Select star filter */
 export const selectStarFilter = (state: LayoutStore) => state.starFilter;
 
-/** Select resource filter */
-export const selectResourceFilter = (state: LayoutStore) => state.resourceFilter;
+/** Select resource filters */
+export const selectResourceFilters = (state: LayoutStore) => state.resourceFilters;
 
 /** Info about a minimized panel for the MinimizedBar */
 export interface MinimizedPanelInfo {

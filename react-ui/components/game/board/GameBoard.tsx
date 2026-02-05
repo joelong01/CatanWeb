@@ -117,6 +117,20 @@ const SIDE_TO_VERTICES: Record<HexSide, [[number, number], [number, number]]> = 
 };
 
 /**
+ * Map vertex position to which 2 neighbor directions also touch this vertex.
+ * Each vertex is shared by 3 hexes: the tile itself + 2 neighbors.
+ * Used by calculateStars and getAdjacentResources.
+ */
+const VERTEX_NEIGHBOR_DIRECTIONS: Record<GeometryHexPosition, Direction[]> = {
+  Right: [Direction.NorthEast, Direction.SouthEast],
+  BottomRight: [Direction.SouthEast, Direction.South],
+  BottomLeft: [Direction.South, Direction.SouthWest],
+  Left: [Direction.SouthWest, Direction.NorthWest],
+  TopLeft: [Direction.NorthWest, Direction.North],
+  TopRight: [Direction.North, Direction.NorthEast],
+};
+
+/**
  * Dock/pier colors - neutral wood tones that don't imply ownership
  */
 const DOCK_COLORS = {
@@ -426,6 +440,9 @@ export function GameBoard({
   // Star filter from layoutStore (filters building spots by minimum star value)
   const starFilter = useLayoutStore((state) => state.starFilter);
 
+  // Resource filters from layoutStore (up to 3 selected resources, AND logic)
+  const resourceFilters = useLayoutStore((state) => state.resourceFilters);
+
   // Use viewport zoom or initial prop (viewport.zoom is a multiplier, convert to hexSize)
   const hexSize = viewport.zoom > 0 ? Math.round(initialHexSize * viewport.zoom) : initialHexSize;
   const panOffset = viewport.pan;
@@ -723,38 +740,50 @@ export function GameBoard({
     return map;
   }, [tiles]);
 
+  // Build a map of tile coordinates to their resource type for resource filtering
+  const tileResourceMap = useMemo(() => {
+    const map = new Map<string, string>();
+    tiles.forEach((tile) => {
+      const coord = cubicCoord(tile.tileKey.q, tile.tileKey.r);
+      map.set(coordKeyString(coord), tile.resourceTileType);
+    });
+    return map;
+  }, [tiles]);
+
   // Calculate star value for a building position based on adjacent tiles' pips
   // Stars = sum of pips from all tiles touching this vertex (up to 3 tiles)
   const calculateStars = useCallback((coord: HexCoordinate, position: GeometryHexPosition): number => {
-    // A vertex touches up to 3 tiles depending on its position
-    // For each HexPosition, we need to check the current tile and its neighbors
     const adjacentCoords: HexCoordinate[] = [coord];
-
-    // Map vertex position to which neighbors also touch this vertex
-    // Based on hex geometry: each vertex is shared by 3 hexes
-    const neighborDirections: Record<GeometryHexPosition, Direction[]> = {
-      Right: [Direction.NorthEast, Direction.SouthEast],
-      BottomRight: [Direction.SouthEast, Direction.South],
-      BottomLeft: [Direction.South, Direction.SouthWest],
-      Left: [Direction.SouthWest, Direction.NorthWest],
-      TopLeft: [Direction.NorthWest, Direction.North],
-      TopRight: [Direction.North, Direction.NorthEast],
-    };
-
-    const directions = neighborDirections[position];
+    const directions = VERTEX_NEIGHBOR_DIRECTIONS[position];
     directions.forEach((dir) => {
       adjacentCoords.push(getNeighbor(coord, dir));
     });
 
-    // Sum pips from all adjacent tiles
     let totalPips = 0;
     adjacentCoords.forEach((c) => {
-      const key = coordKeyString(c);
-      totalPips += tilePipsMap.get(key) ?? 0;
+      totalPips += tilePipsMap.get(coordKeyString(c)) ?? 0;
     });
 
     return totalPips;
   }, [tilePipsMap]);
+
+  // Get resource types of tiles adjacent to a building vertex (up to 3, excluding Desert/Sea/None)
+  const getAdjacentResources = useCallback((coord: HexCoordinate, position: GeometryHexPosition): string[] => {
+    const adjacentCoords: HexCoordinate[] = [coord];
+    const directions = VERTEX_NEIGHBOR_DIRECTIONS[position];
+    directions.forEach((dir) => {
+      adjacentCoords.push(getNeighbor(coord, dir));
+    });
+
+    const resources: string[] = [];
+    adjacentCoords.forEach((c) => {
+      const r = tileResourceMap.get(coordKeyString(c));
+      if (r && r !== 'Desert' && r !== 'Sea' && r !== 'None') {
+        resources.push(r);
+      }
+    });
+    return resources;
+  }, [tileResourceMap]);
 
   // Render buildings and roads overlay (DOM divs)
   // Implements Blazor BuildingOverlay.razor and RoadOverlay.razor logic
@@ -935,6 +964,12 @@ export function GameBoard({
           // Only render PossibleSettlement spots (not NotBuildable)
           if (buildingState !== 'PossibleSettlement') return null;
 
+          // Resource filter: ALL selected resources must be adjacent (AND logic, per Blazor)
+          if (resourceFilters.length > 0) {
+            const adjResources = getAdjacentResources(coord, position);
+            if (!resourceFilters.every((r) => adjResources.includes(r))) return null;
+          }
+
           // Calculate stars for this position
           const stars = calculateStars(coord, position);
 
@@ -1076,7 +1111,7 @@ export function GameBoard({
         )}
       </>
     );
-  }, [buildingPositions, roadPositions, buildingMap, roadMap, players, currentPlayerId, calculateStars, starFilter, currentPlayerEntitlements, onBuildingClick, onRoadClick, robber, animatedRobberCoords, showSettlementIndexes]);
+  }, [buildingPositions, roadPositions, buildingMap, roadMap, players, currentPlayerId, calculateStars, starFilter, resourceFilters, getAdjacentResources, currentPlayerEntitlements, onBuildingClick, onRoadClick, robber, animatedRobberCoords, showSettlementIndexes]);
 
   // Debug logging
   console.log('[GameBoard] render, tiles:', tiles.length, 'containerSize:', containerSize);

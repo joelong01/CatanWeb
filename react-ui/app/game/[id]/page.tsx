@@ -325,6 +325,9 @@ export default function GamePage(): React.ReactElement {
       counts[stars] = (counts[stars] ?? 0) + 1;
     });
 
+    // "All" (value 0) = total of all building spots
+    counts[0] = Object.values(counts).reduce((sum, c) => sum + c, 0);
+
     return counts;
   }, [buildings, tiles]);
 
@@ -586,11 +589,10 @@ export default function GamePage(): React.ReactElement {
   }, [setStarFilter]);
 
   // Resource filter changed handler (stores in layoutStore for board filtering)
-  const setResourceFilter = useLayoutStore((state) => state.setResourceFilter);
+  const setResourceFilters = useLayoutStore((state) => state.setResourceFilters);
   const handleResourceSelectionChange = useCallback((resources: string[]) => {
-    // Store first selected resource (or null if empty)
-    setResourceFilter(resources.length > 0 ? resources[0] : null);
-  }, [setResourceFilter]);
+    setResourceFilters(resources);
+  }, [setResourceFilters]);
 
   // Center modal overlays (goFirst, supplemental) on the board when they appear
   const boardPanel = useLayoutStore(selectPanel('board'));
