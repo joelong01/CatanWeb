@@ -14,6 +14,9 @@ import {
   faSync,
   faCheck,
   faTimes,
+  faEye,
+  faExpand,
+  faStop,
 } from '@fortawesome/free-solid-svg-icons';
 import { MainLayout } from '@/components/layout';
 import {
@@ -22,6 +25,8 @@ import {
   type ActionSummary,
   type StepResult,
 } from '@/lib/api/gameApi';
+import { ReplayBoardPreview } from '@/components/game/board/ReplayBoardPreview';
+import type { PlayerColors } from '@/types/player-profile';
 
 /** Local test result for the "Run All" results display. */
 interface TestResult {
@@ -97,6 +102,22 @@ export default function TestRecordingsPage(): React.ReactElement {
   const [newRecordingName, setNewRecordingName] = useState('');
   const renameInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Player colors (for board preview) ──
+  const [playerColorMap, setPlayerColorMap] = useState<Map<string, PlayerColors>>(new Map());
+
+  // ── View mode ──
+  const [viewMode, setViewMode] = useState(false);
+  const [viewRecording, setViewRecording] = useState<RecordingSummary | null>(null);
+  const [viewSessionId, setViewSessionId] = useState<string | null>(null);
+  const [viewActions, setViewActions] = useState<ActionSummary[]>([]);
+  const [viewCurrentIndex, setViewCurrentIndex] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [viewGameModel, setViewGameModel] = useState<any>(null);
+  const [viewResults, setViewResults] = useState<Map<number, StepResult>>(new Map());
+  const [movesToPlay, setMovesToPlay] = useState(1);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showBoardZoom, setShowBoardZoom] = useState(false);
+
   // ── Load recordings on mount ──
   const loadRecordings = useCallback(async () => {
     setIsLoading(true);
@@ -113,6 +134,21 @@ export default function TestRecordingsPage(): React.ReactElement {
   useEffect(() => {
     loadRecordings();
   }, [loadRecordings]);
+
+  // ── Load player profiles for board rendering ──
+  useEffect(() => {
+    async function loadProfiles() {
+      const result = await gameApi.getPlayers();
+      if (result.success && result.data) {
+        const map = new Map<string, PlayerColors>();
+        result.data.forEach((p) => {
+          if (p.colors) map.set(p.id, p.colors);
+        });
+        setPlayerColorMap(map);
+      }
+    }
+    loadProfiles();
+  }, []);
 
   // ── End replay session (fire-and-forget) ──
   const endReplaySession = useCallback(async () => {
@@ -132,6 +168,23 @@ export default function TestRecordingsPage(): React.ReactElement {
   const selectRecording = useCallback(
     async (recording: RecordingSummary) => {
       if (replaySessionId) await endReplaySession();
+      // Close view mode if active
+      if (viewMode) {
+        if (viewSessionId) {
+          try {
+            await gameApi.endReplaySession(viewSessionId);
+          } catch {
+            /* ignore */
+          }
+        }
+        setViewMode(false);
+        setViewRecording(null);
+        setViewSessionId(null);
+        setViewActions([]);
+        setViewCurrentIndex(0);
+        setViewGameModel(null);
+        setViewResults(new Map());
+      }
 
       setSelectedRecordingId(recording.id);
       setSelectedRecordingName(recording.name);
@@ -148,7 +201,7 @@ export default function TestRecordingsPage(): React.ReactElement {
       }
       setIsLoadingActions(false);
     },
-    [replaySessionId, endReplaySession],
+    [replaySessionId, endReplaySession, viewMode, viewSessionId],
   );
 
   // ── Clear selection ──
@@ -265,6 +318,9 @@ export default function TestRecordingsPage(): React.ReactElement {
       if (selectedRecordingId === recordingToDelete.id) {
         clearSelection();
       }
+      if (viewRecording?.id === recordingToDelete.id) {
+        exitViewMode();
+      }
     } else {
       setErrorMessage(result.error ?? 'Failed to delete recording');
     }
@@ -307,6 +363,131 @@ export default function TestRecordingsPage(): React.ReactElement {
       cancelRename();
     }
   };
+
+  // ── View mode ──
+
+  const exitViewMode = useCallback(async () => {
+    if (viewSessionId) {
+      try {
+        await gameApi.endReplaySession(viewSessionId);
+      } catch {
+        /* ignore */
+      }
+    }
+    setViewMode(false);
+    setViewRecording(null);
+    setViewSessionId(null);
+    setViewActions([]);
+    setViewCurrentIndex(0);
+    setViewGameModel(null);
+    setViewResults(new Map());
+    setMovesToPlay(1);
+    setIsPlaying(false);
+    setShowBoardZoom(false);
+  }, [viewSessionId]);
+
+  const enterViewMode = useCallback(
+    async (recording: RecordingSummary) => {
+      // Close select mode if active
+      if (replaySessionId) await endReplaySession();
+      setSelectedRecordingId(null);
+      setSelectedRecordingName(null);
+      setActions([]);
+      setActionResults(new Map());
+      setCurrentActionIndex(0);
+
+      // Close existing view mode if different recording
+      if (viewSessionId) {
+        try {
+          await gameApi.endReplaySession(viewSessionId);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      setViewMode(true);
+      setViewRecording(recording);
+      setViewGameModel(null);
+      setViewCurrentIndex(0);
+      setViewResults(new Map());
+      setMovesToPlay(1);
+      setIsPlaying(false);
+
+      // Load actions
+      const actionsResult = await gameApi.getRecordingActions(recording.id);
+      if (actionsResult.success && actionsResult.data) {
+        setViewActions(actionsResult.data);
+      } else {
+        setErrorMessage(actionsResult.error ?? 'Failed to load actions');
+      }
+
+      // Start replay session
+      const sessionResult = await gameApi.startReplaySession(recording.id);
+      if (sessionResult.success && sessionResult.data) {
+        setViewSessionId(sessionResult.data.sessionId);
+      } else {
+        setErrorMessage(sessionResult.error ?? 'Failed to start replay session');
+      }
+    },
+    [replaySessionId, endReplaySession, viewSessionId],
+  );
+
+  const playMoves = useCallback(async () => {
+    if (!viewSessionId || isPlaying) return;
+    setIsPlaying(true);
+
+    const remaining = viewActions.length - viewCurrentIndex;
+    const stepsToPlay = Math.min(movesToPlay, remaining);
+
+    for (let i = 0; i < stepsToPlay; i++) {
+      const result = await gameApi.stepReplay(viewSessionId, true);
+      if (result.success && result.data) {
+        const step = result.data;
+        setViewResults((prev) => new Map(prev).set(step.actionIndex, step));
+        setViewCurrentIndex(step.actionIndex + 1);
+        if (step.gameModel) {
+          setViewGameModel(step.gameModel);
+        }
+        if (!step.hashMatch) {
+          setErrorMessage(
+            `Hash mismatch at action ${step.actionIndex}: expected ${truncateHash(step.expectedHash)}, got ${truncateHash(step.actualHash)}`,
+          );
+          break;
+        }
+      } else {
+        setErrorMessage(result.error ?? 'Step failed');
+        break;
+      }
+    }
+
+    setIsPlaying(false);
+  }, [viewSessionId, isPlaying, viewActions.length, viewCurrentIndex, movesToPlay]);
+
+  const resetViewReplay = useCallback(async () => {
+    if (viewSessionId) {
+      try {
+        await gameApi.endReplaySession(viewSessionId);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    setViewCurrentIndex(0);
+    setViewGameModel(null);
+    setViewResults(new Map());
+    setMovesToPlay(1);
+
+    if (viewRecording) {
+      const result = await gameApi.startReplaySession(viewRecording.id);
+      if (result.success && result.data) {
+        setViewSessionId(result.data.sessionId);
+      }
+    }
+  }, [viewSessionId, viewRecording]);
+
+  // Computed view mode values
+  const viewRemaining = viewActions.length - viewCurrentIndex;
+  const viewHashErrors = Array.from(viewResults.values()).filter((r) => !r.hashMatch);
 
   return (
     <MainLayout className="overflow-y-auto">
@@ -387,14 +568,18 @@ export default function TestRecordingsPage(): React.ReactElement {
                   </tr>
                 </thead>
                 <tbody>
-                  {recordings.map((rec) => (
+                  {recordings.map((rec) => {
+                    const isSelected = rec.id === selectedRecordingId;
+                    const isViewed = viewRecording?.id === rec.id;
+                    const rowHighlight = isSelected
+                      ? 'bg-blue-900/20 border-l-2 border-l-blue-400'
+                      : isViewed
+                        ? 'bg-purple-900/20 border-l-2 border-l-purple-400'
+                        : 'hover:bg-gray-800/50';
+                    return (
                     <tr
                       key={rec.id}
-                      className={`border-t border-gray-700/50 transition-colors ${
-                        rec.id === selectedRecordingId
-                          ? 'bg-blue-900/20 border-l-2 border-l-blue-400'
-                          : 'hover:bg-gray-800/50'
-                      }`}
+                      className={`border-t border-gray-700/50 transition-colors ${rowHighlight}`}
                     >
                       <td className="px-4 py-2 text-gray-100 font-medium">{rec.name}</td>
                       <td className="px-4 py-2 text-gray-400 text-xs">{formatDate(rec.createdAt)}</td>
@@ -406,6 +591,14 @@ export default function TestRecordingsPage(): React.ReactElement {
                           <span className="text-yellow-400 text-xs animate-pulse">Running...</span>
                         ) : (
                           <div className="flex gap-1.5 justify-end">
+                            <button
+                              onClick={() => enterViewMode(rec)}
+                              disabled={isRunning}
+                              className="px-2 py-1 rounded text-xs bg-purple-700 text-white hover:bg-purple-600 disabled:opacity-50"
+                            >
+                              <FontAwesomeIcon icon={faEye} className="mr-1" />
+                              View
+                            </button>
                             <button
                               onClick={() => selectRecording(rec)}
                               disabled={isRunning}
@@ -438,7 +631,8 @@ export default function TestRecordingsPage(): React.ReactElement {
                         )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -464,6 +658,105 @@ export default function TestRecordingsPage(): React.ReactElement {
                     <span className="text-xs">{tr.message}</span>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* View mode panel */}
+            {viewMode && viewRecording && (
+              <div className="mb-6 border border-purple-700/50 rounded-lg overflow-hidden">
+                {/* View header */}
+                <div className="flex items-center justify-between px-4 py-3 bg-purple-900/20">
+                  <h2 className="text-lg font-semibold text-gray-200">
+                    <FontAwesomeIcon icon={faEye} className="mr-2 text-purple-400" />
+                    Viewing: <span className="text-purple-300">{viewRecording.name}</span>
+                    <span className="text-gray-500 text-sm font-normal ml-3">
+                      Step {viewCurrentIndex} / {viewActions.length}
+                    </span>
+                  </h2>
+                  <button
+                    onClick={exitViewMode}
+                    className="px-3 py-1.5 rounded text-sm bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors"
+                  >
+                    <FontAwesomeIcon icon={faXmark} className="mr-1.5" />
+                    Close
+                  </button>
+                </div>
+
+                {/* Controls bar */}
+                <div className="flex items-center gap-3 px-4 py-3 bg-gray-800/50 border-t border-purple-700/30">
+                  <label className="text-sm text-gray-300">Moves:</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={Math.max(1, viewRemaining)}
+                    value={movesToPlay}
+                    onChange={(e) => setMovesToPlay(Math.max(1, Math.min(viewRemaining || 1, parseInt(e.target.value) || 1)))}
+                    disabled={isPlaying || viewRemaining === 0}
+                    className="w-20 px-2 py-1.5 bg-gray-900 border border-gray-600 rounded text-white text-sm text-center focus:outline-none focus:border-purple-500 disabled:opacity-50"
+                  />
+                  <button
+                    onClick={playMoves}
+                    disabled={isPlaying || viewRemaining === 0}
+                    className="px-3 py-1.5 rounded text-sm bg-purple-700 text-white hover:bg-purple-600 transition-colors disabled:opacity-50"
+                  >
+                    <FontAwesomeIcon icon={isPlaying ? faStop : faPlay} className="mr-1.5" />
+                    {isPlaying ? 'Playing...' : 'Play'}
+                  </button>
+                  <button
+                    onClick={resetViewReplay}
+                    disabled={isPlaying || viewCurrentIndex === 0}
+                    className="px-3 py-1.5 rounded text-sm bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors disabled:opacity-50"
+                  >
+                    <FontAwesomeIcon icon={faRotateLeft} className="mr-1.5" />
+                    Reset
+                  </button>
+                  <span className="text-xs text-gray-500 ml-auto">
+                    {viewRemaining === 0
+                      ? 'Replay complete'
+                      : `${viewRemaining} remaining`}
+                  </span>
+                  {viewHashErrors.length > 0 && (
+                    <span className="text-xs text-red-400">
+                      <FontAwesomeIcon icon={faTimes} className="mr-1" />
+                      {viewHashErrors.length} hash error{viewHashErrors.length > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+
+                {/* Board preview */}
+                <div className="p-4 border-t border-purple-700/30">
+                  {viewGameModel ? (
+                    <div className="flex gap-4">
+                      {/* Board */}
+                      <div
+                        className="flex-1 bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden"
+                        style={{ height: '500px' }}
+                      >
+                        <ReplayBoardPreview
+                          gameModel={viewGameModel}
+                          playerColorMap={playerColorMap}
+                          onClick={() => setShowBoardZoom(true)}
+                        />
+                      </div>
+                      {/* Expand button overlay */}
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => setShowBoardZoom(true)}
+                          className="px-2 py-1.5 rounded text-xs bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+                          title="Expand board"
+                        >
+                          <FontAwesomeIcon icon={faExpand} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-[200px] text-gray-500 text-sm">
+                      {viewSessionId
+                        ? 'Click Play to start replay and see the board'
+                        : 'Starting replay session...'}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -637,6 +930,34 @@ export default function TestRecordingsPage(): React.ReactElement {
                 >
                   Rename
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Board zoom modal */}
+        {showBoardZoom && viewGameModel && (
+          <div
+            className="fixed inset-0 bg-black/85 flex items-center justify-center z-[1000]"
+            onClick={() => setShowBoardZoom(false)}
+          >
+            <div
+              className="relative bg-gray-900 rounded-lg border border-gray-600"
+              style={{ width: '90vw', height: '85vh' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowBoardZoom(false)}
+                className="absolute top-3 right-3 z-10 px-2 py-1 rounded text-sm bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors"
+              >
+                <FontAwesomeIcon icon={faXmark} className="mr-1" />
+                Close
+              </button>
+              <div className="w-full h-full p-4">
+                <ReplayBoardPreview
+                  gameModel={viewGameModel}
+                  playerColorMap={playerColorMap}
+                />
               </div>
             </div>
           </div>
