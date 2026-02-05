@@ -79,7 +79,7 @@ export const NumberToken = memo(function NumberToken({
   const stars = getStars(number);
 
   // High prob numbers are bigger to fill the available space
-  const numberFontSize = isHighProb ? 28 : 24;
+  const numberFontSize = isHighProb ? 29 : 25;
   const pipsFontSize = isHighProb ? 12 : number === 7 ? 16 : 10;
 
   return (

@@ -78,7 +78,7 @@ const RollHexContent = memo(function RollHexContent({
       />
       {/* Inner content */}
       <div
-        className="absolute inset-0 hex-clip-flat flex flex-col items-center justify-center transition-all duration-150"
+        className="absolute inset-0 hex-clip-flat flex flex-col items-center justify-center gap-0.5 transition-all duration-150"
         style={{
           transform: `scale(${scale})`,
           background: gradient,
@@ -86,20 +86,20 @@ const RollHexContent = memo(function RollHexContent({
       >
         {/* Count at top */}
         <span
-          className="text-[10px] font-bold"
+          className="text-sm font-bold leading-none"
           style={{ color: foreground }}
         >
           {count}
         </span>
 
         {/* Number token - using the same component as the board tiles */}
-        <div className="w-8 aspect-square">
+        <div className="w-9 aspect-square">
           <NumberToken number={rollNumber} className="w-full h-full" borderColor="transparent" />
         </div>
 
         {/* Percentage at bottom */}
         <span
-          className="text-[9px]"
+          className="text-xs leading-none"
           style={{ color: foreground, opacity: 0.8 }}
         >
           {percentage}%
