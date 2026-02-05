@@ -465,13 +465,10 @@ export const MeasurementCluster = memo(function MeasurementCluster({
     });
   }, [onStarFilterChange]);
 
-  const handleReset = useCallback(() => {
-    setSelectedResources([]);
-    setSelectedStars(null);
-    onResourceSelectionChange?.([]);
-    onStarFilterChange?.(null);
+  // Shuffle only — preserve current filter selections
+  const handleShuffle = useCallback(() => {
     onReset?.();
-  }, [onResourceSelectionChange, onStarFilterChange, onReset]);
+  }, [onReset]);
 
   // Build outer ring items (5 resources + variance)
   const outerItems: HexGridItem[] = [
@@ -503,7 +500,7 @@ export const MeasurementCluster = memo(function MeasurementCluster({
       id: 'reset',
       coord: CLUSTER_7.center,
       content: <ResetHexContent colors={colors} disabled={!shuffleEnabled} />,
-      onClick: shuffleEnabled ? handleReset : undefined,
+      onClick: shuffleEnabled ? handleShuffle : undefined,
     },
     // Star values around the outside
     ...STAR_VALUES_CONFIG.map(({ value, position }) => ({

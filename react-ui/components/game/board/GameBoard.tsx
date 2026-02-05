@@ -362,6 +362,7 @@ export function GameBoard({
   const rolledNumber = useRolledNumber();
   const isAllocationPhase = useIsAllocationPhase();
   const gameState = useGameState();
+  const isPickingBoard = gameState === 'PickingBoard';
 
   // Destructure board data from hook
   const { tiles, harbors, buildings, roads, currentPlayerId, currentPlayerEntitlements, robber } = boardData;
@@ -949,7 +950,10 @@ export function GameBoard({
           );
         })}
 
-        {/* Loop 2: Buildable spots - only show when player has Settlement entitlement */}
+        {/* Loop 2: Building spots — three-state logic matching Blazor BuildingOverlay.razor
+            PickingBoard: show all spots (incl. NotBuildable) for star evaluation, not buildable
+            Allocation:   show PossibleSettlement with star/resource filters, buildable
+            Gameplay:     show PossibleSettlement with numbered build indexes, buildable */}
         {buildingPositions.map(({ key, coord, position }) => {
           const buildingModel = buildingMap.get(key);
           const buildingState = buildingModel?.buildingState ?? 'PossibleSettlement';
@@ -958,28 +962,57 @@ export function GameBoard({
           // Skip owned buildings (handled in Loop 1)
           if (ownerId !== null) return null;
 
-          // Only show buildable spots when player has Settlement entitlement
-          if (!hasSettlementEntitlement) return null;
-
-          // Only render PossibleSettlement spots (not NotBuildable)
-          if (buildingState !== 'PossibleSettlement') return null;
-
-          // Resource filter: ALL selected resources must be adjacent (AND logic, per Blazor)
-          if (resourceFilters.length > 0) {
-            const adjResources = getAdjacentResources(coord, position);
-            if (!resourceFilters.every((r) => adjResources.includes(r))) return null;
+          // During PickingBoard: show both PossibleSettlement and NotBuildable for evaluation
+          // Otherwise: only show PossibleSettlement
+          if (buildingState === 'NotBuildable') {
+            if (!isPickingBoard) return null;
+          } else if (buildingState !== 'PossibleSettlement') {
+            return null;
           }
 
           // Calculate stars for this position
           const stars = calculateStars(coord, position);
 
-          // Get settlement build index (1, 2, 3...) if showing indexes
-          const settlementBuildIndex = settlementIndexMap.get(key);
+          // During PickingBoard: skip 0-star spots (no production value to evaluate)
+          if (stars <= 0 && isPickingBoard) return null;
 
-          // Determine if spot should be hidden (invisible but hoverable)
-          // When build indexes are shown, all spots visible (no hiding per Blazor line 232)
-          // Otherwise: No filter = all hidden (hover to reveal), filter active = hide spots below threshold
-          const isHidden = settlementBuildIndex ? false : (starFilter === null || stars < starFilter);
+          // Resource filter: apply during PickingBoard and allocation (not regular gameplay)
+          // Matches Blazor BuildingOverlay.razor line 193
+          if (resourceFilters.length > 0 && (isPickingBoard || isAllocationPhase)) {
+            const adjResources = getAdjacentResources(coord, position);
+            if (!resourceFilters.every((r) => adjResources.includes(r))) return null;
+          }
+
+          // Determine visibility based on game state (Blazor lines 214-248)
+          let isBuildable: boolean;
+          let isHidden: boolean;
+          let settlementBuildIndex: string | undefined;
+
+          if (isPickingBoard) {
+            // PickingBoard: evaluation mode — show stars, not buildable
+            isBuildable = false;
+            // No star filter selected → hide all evaluation spots (user must choose a filter)
+            if (starFilter === null) return null;
+            // starFilter=0 ("All") → stars < 0 always false → show everything
+            // starFilter>0 → hide spots below threshold
+            if (stars < starFilter) return null;
+            isHidden = false;
+          } else if (hasSettlementEntitlement && buildingState === 'PossibleSettlement') {
+            // Buildable settlement spot
+            isBuildable = true;
+            settlementBuildIndex = settlementIndexMap.get(key);
+
+            if (settlementBuildIndex !== undefined) {
+              // Regular gameplay: indexed spots always visible (per Blazor line 232)
+              isHidden = false;
+            } else {
+              // Allocation phase: star threshold for visibility (hover reveals hidden spots)
+              isHidden = starFilter === null || stars < starFilter;
+            }
+          } else {
+            // Not buildable, not picking board — don't show
+            return null;
+          }
 
           const pixelPos = getVertexPosition(coord, position, hSize, origin);
 
@@ -991,7 +1024,7 @@ export function GameBoard({
           } as BuildingKey;
 
           // Visual state: Highlighted when showing build indexes, Stars when visible, Hidden otherwise
-          const visualState: BuildingVisualState = settlementBuildIndex
+          const visualState: BuildingVisualState = settlementBuildIndex !== undefined
             ? 'Highlighted'
             : isHidden ? 'Hidden' : 'Stars';
 
@@ -1011,7 +1044,7 @@ export function GameBoard({
                 currentPlayerId={currentPlayerId}
                 size={buildableBuildingSize}
                 buildIndex={settlementBuildIndex}
-                onClick={onBuildingClick ? () => onBuildingClick(buildingKey) : undefined}
+                onClick={isBuildable && onBuildingClick ? () => onBuildingClick(buildingKey) : undefined}
               />
             </div>
           );
@@ -1111,7 +1144,7 @@ export function GameBoard({
         )}
       </>
     );
-  }, [buildingPositions, roadPositions, buildingMap, roadMap, players, currentPlayerId, calculateStars, starFilter, resourceFilters, getAdjacentResources, currentPlayerEntitlements, onBuildingClick, onRoadClick, robber, animatedRobberCoords, showSettlementIndexes]);
+  }, [buildingPositions, roadPositions, buildingMap, roadMap, players, currentPlayerId, calculateStars, starFilter, resourceFilters, getAdjacentResources, currentPlayerEntitlements, onBuildingClick, onRoadClick, robber, animatedRobberCoords, showSettlementIndexes, isPickingBoard, isAllocationPhase]);
 
   // Debug logging
   console.log('[GameBoard] render, tiles:', tiles.length, 'containerSize:', containerSize);
