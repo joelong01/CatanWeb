@@ -61,6 +61,22 @@
   /* Icon Styles */
   --icon-font-size: 20px;
 
+  /* Animation Durations (set dynamically by useAnimationSpeed hook based on settings)
+   * Categories match Desktop app pattern:
+   * - fast: Quick UI feedback (100ms)
+   * - medium: Standard animations (250ms)
+   * - slow: Longer transitions (500ms)
+   * - extra-slow: Delayed animations (2000ms)
+   */
+  --animation-fast: 100ms;
+  --animation-medium: 250ms;
+  --animation-slow: 500ms;
+  --animation-extra-slow: 2000ms;
+  --animation-button-press: 200ms;
+  --animation-color-transition: 300ms;
+  --animation-delay: 1000ms;
+  --animation-duration: 250ms; /* Legacy alias for --animation-medium */
+
   /* Note: --font-catan is injected by Next.js font loader in layout.tsx */
 }
 

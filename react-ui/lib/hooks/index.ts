@@ -10,3 +10,5 @@ export {
   type BoardPlayer,
   type BoardGameData,
 } from './useBoardData';
+
+export { useAnimationSpeed, getAnimationDuration } from './useAnimationSpeed';

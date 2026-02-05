@@ -194,10 +194,11 @@ const ActionHexContent = memo(function ActionHexContent({
     >
       {/* Flip container */}
       <div
-        className="relative w-full h-full transition-transform duration-500"
+        className="relative w-full h-full transition-transform"
         style={{
           transformStyle: 'preserve-3d',
           transform: isEnabled ? 'rotateY(0deg)' : 'rotateY(180deg)',
+          transitionDuration: 'var(--animation-slow)',
         }}
       >
         {/* Front face (enabled state) */}

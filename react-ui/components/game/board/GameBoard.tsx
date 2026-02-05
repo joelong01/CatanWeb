@@ -1080,8 +1080,9 @@ export function GameBoard({
                   top: robberPos.y,
                   transform: 'translate(-50%, -50%)',
                   filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.5))',
-                  // CSS transition for smooth animation (1.2s matches Blazor)
-                  transition: 'left 1.2s ease-in-out, top 1.2s ease-in-out',
+                  // CSS transition for smooth animation - uses --animation-slow (500ms at Normal)
+                  // Scales with AnimationSpeed setting (Slow=1s, Normal=500ms, Fast=250ms, None=0ms)
+                  transition: 'left var(--animation-slow) ease-in-out, top var(--animation-slow) ease-in-out',
                 }}
               >
                 {/* Inline SVG for proper gradient rendering (matches Blazor RobberLayer.razor) */}

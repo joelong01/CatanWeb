@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars } from '@fortawesome/free-solid-svg-icons';
 import { NavMenu } from './NavMenu';
+import { useAnimationSpeed } from '@/lib/hooks';
 
 /** Game-specific actions for NavMenu */
 interface GameActions {
@@ -35,6 +36,9 @@ interface MainLayoutProps {
  */
 export function MainLayout({ children, className, activeGameId, gameActions }: MainLayoutProps): React.ReactElement {
   const [showMenu, setShowMenu] = useState(false);
+
+  // Apply animation speed CSS variables based on user settings
+  useAnimationSpeed();
 
   const toggleSidebar = useCallback((): void => {
     setShowMenu((prev) => !prev);

@@ -118,10 +118,11 @@ const ResourceCard = memo(function ResourceCard({
       title={`${config.label}: ${count} (right-click to flip)`}
     >
       <div
-        className="relative w-full h-full transition-transform duration-500"
+        className="relative w-full h-full transition-transform"
         style={{
           transformStyle: 'preserve-3d',
           transform: isShowingFront ? 'rotateY(0deg)' : 'rotateY(180deg)',
+          transitionDuration: 'var(--animation-slow)',
         }}
       >
         {/* Front face */}
