@@ -124,7 +124,7 @@ eliminates the need for separate fallback constants.
 | File | What to use instead |
 |------|-------------------|
 | `GameTile.tsx` | `useAssetPath('BackgroundBorderFill')` for maple border |
-| `NumberToken.tsx` | Accept `borderBackground` prop; board passes maple via `useAssetPath` |
+| `NumberToken.tsx` | `borderColor` prop; font mode passes resource color, image mode passes `'transparent'` |
 | `GameBoard.tsx` | `useAssetPath('TileSea')` for water tiles |
 | `ActionCluster.tsx` | `useAssetPath('CardBack')` for card back background |
 | `MeasurementCluster.tsx` | `useAssetPath('CardSheep')`, etc. for resource images |
@@ -414,5 +414,10 @@ at a glance, even at small tile sizes.
 ## Future Work (not in this design)
 
 - Baron/Robber theming: add colors section for robber rendering
-- Number token theming: add token colors/styles to theme config
 - Additional themes (e.g., black-and-white font variant)
+
+## Completed Extensions
+
+- **Number token border theming**: GameTile passes per-resource `borderColor` from
+  `RESOURCE_COLORS` to NumberToken in font mode; image mode passes `'transparent'`
+  so the colored ring is hidden and only the inner circle shows.

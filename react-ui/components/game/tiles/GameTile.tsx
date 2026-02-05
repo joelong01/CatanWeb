@@ -66,7 +66,6 @@ export const GameTile = memo(function GameTile({
   const imageUrl = getResourceTileImage(displayResource);
   const originalImageUrl = getResourceCardImage(resourceTileType);
   const isDesert = resourceTileType === 'Desert';
-  const tokenBorderColor = RESOURCE_COLORS[resourceTileType] ?? 'white';
 
   // Theme-driven font rendering
   const isFontMode = useFontRendering();
@@ -78,6 +77,10 @@ export const GameTile = memo(function GameTile({
   const useFont = isFontMode && !!baseFontConfig;
   // Whether the gold flip animation is possible (need both base and gold configs)
   const canFlipGold = useFont && !!goldFontConfig;
+  // Font mode: colored border ring per resource. Image mode: transparent (border hidden).
+  const tokenBorderColor = useFont
+    ? (RESOURCE_COLORS[resourceTileType] ?? 'white')
+    : 'transparent';
 
   // Inner hex scale: InnerHexSize / HexSize = 91/100 = 0.91 (from Blazor)
   const innerHexScale = 0.91;
