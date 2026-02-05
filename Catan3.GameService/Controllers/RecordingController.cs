@@ -101,6 +101,10 @@ public class StepResult
     public string ActualHash { get; set; } = string.Empty;
     public bool HashMatch { get; set; }
     public string? ErrorMessage { get; set; }
+    /// <summary>
+    /// Full game state after the action. Only populated when includeGameModel=true.
+    /// </summary>
+    public GameModel? GameModel { get; set; }
 }
 
 /// <summary>
@@ -594,7 +598,9 @@ public class RecordingController : ControllerBase
     /// Executes the next action in a replay session.
     /// </summary>
     [HttpPost("replay/{sessionId}/step")]
-    public async Task<ActionResult<StepResult>> StepReplaySession(string sessionId)
+    public async Task<ActionResult<StepResult>> StepReplaySession(
+        string sessionId,
+        [FromQuery] bool includeGameModel = false)
     {
         if (!_replaySessions.TryGetValue(sessionId, out var session))
         {
@@ -629,7 +635,8 @@ public class RecordingController : ControllerBase
                 ActionIndex = actionIndex,
                 ExpectedHash = expectedHash,
                 ActualHash = resultModel.GameHash,
-                HashMatch = hashMatch
+                HashMatch = hashMatch,
+                GameModel = includeGameModel ? resultModel : null
             });
         }
         catch (Exception ex)

@@ -68,6 +68,70 @@ export interface CopyGameResponse {
   message?: string;
 }
 
+// ── Recording types ──
+
+/**
+ * Summary of a saved recording for list display.
+ */
+export interface RecordingSummary {
+  id: string;
+  name: string;
+  createdAt: string;
+  gameType: string;
+  playerCount: number;
+  actionCount: number;
+  gameId: string;
+}
+
+/**
+ * Summary of a single action in a recording.
+ */
+export interface ActionSummary {
+  index: number;
+  actionType: string;
+  gameState: string;
+  expectedHash: string;
+  details: string;
+}
+
+/**
+ * Result of executing a single replay step.
+ */
+export interface StepResult {
+  success: boolean;
+  actionIndex: number;
+  expectedHash: string;
+  actualHash: string;
+  hashMatch: boolean;
+  errorMessage?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  gameModel?: any;
+}
+
+/**
+ * Result of a full recording replay.
+ */
+export interface ReplayResult {
+  success: boolean;
+  recordingName: string;
+  actionsReplayed: number;
+  totalActions: number;
+  failedAtAction?: number;
+  expectedHash?: string;
+  actualHash?: string;
+  errorMessage?: string;
+}
+
+/**
+ * Response from starting a step-by-step replay session.
+ */
+export interface StartSessionResult {
+  sessionId: string;
+  recordingName: string;
+  totalActions: number;
+  currentIndex: number;
+}
+
 /**
  * Makes a fetch request with standard error handling.
  */
@@ -281,5 +345,80 @@ export const gameApi = {
       const message = error instanceof Error ? error.message : 'Upload failed';
       return { success: false, error: `Network error: ${message}` };
     }
+  },
+
+  // ── Recording API ──
+
+  /**
+   * Fetches all saved recordings.
+   */
+  async getRecordings(): Promise<ApiResponse<RecordingSummary[]>> {
+    return apiFetch<RecordingSummary[]>('/api/recordings');
+  },
+
+  /**
+   * Gets action details for a recording.
+   */
+  async getRecordingActions(id: string): Promise<ApiResponse<ActionSummary[]>> {
+    return apiFetch<ActionSummary[]>(`/api/recording/${id}/actions`);
+  },
+
+  /**
+   * Runs full replay with hash validation.
+   */
+  async replayRecording(id: string): Promise<ApiResponse<ReplayResult>> {
+    return apiFetch<ReplayResult>(`/api/recording/${id}/replay`, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Starts a step-by-step replay session.
+   */
+  async startReplaySession(id: string): Promise<ApiResponse<StartSessionResult>> {
+    return apiFetch<StartSessionResult>(`/api/recording/${id}/replay/start`, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Executes next step in a replay session.
+   *
+   * @param sessionId - The replay session ID
+   * @param includeGameModel - When true, response includes full GameModel for board rendering
+   */
+  async stepReplay(sessionId: string, includeGameModel = false): Promise<ApiResponse<StepResult>> {
+    const query = includeGameModel ? '?includeGameModel=true' : '';
+    return apiFetch<StepResult>(`/api/replay/${sessionId}/step${query}`, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Ends a replay session.
+   */
+  async endReplaySession(sessionId: string): Promise<ApiResponse<void>> {
+    return apiFetch<void>(`/api/replay/${sessionId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * Renames a recording.
+   */
+  async renameRecording(id: string, name: string): Promise<ApiResponse<void>> {
+    return apiFetch<void>(`/api/recording/${id}/rename`, {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+    });
+  },
+
+  /**
+   * Deletes a recording.
+   */
+  async deleteRecording(id: string): Promise<ApiResponse<void>> {
+    return apiFetch<void>(`/api/recording/${id}`, {
+      method: 'DELETE',
+    });
   },
 };

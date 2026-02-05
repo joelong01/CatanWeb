@@ -14,6 +14,7 @@ import {
   faSlidersH,
   faCode,
   faFont,
+  faVial,
 } from '@fortawesome/free-solid-svg-icons';
 import { MainLayout } from '@/components/layout';
 import { getServiceUrl } from '@/lib/config';
@@ -216,6 +217,18 @@ export default function Home(): React.ReactElement {
           title="Font Viewer"
           href="/font-viewer"
           accentColor="text-emerald-400"
+        />
+      ),
+    },
+    {
+      id: 'tests',
+      coord: cubicCoord(-1, 1),
+      content: (
+        <MenuHex
+          icon={faVial}
+          title="Tests"
+          href="/tests"
+          accentColor="text-red-400"
         />
       ),
     },
