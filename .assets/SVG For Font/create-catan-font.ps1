@@ -499,8 +499,34 @@ if (-not $NoInstall) {
     throw "Built font not found: $builtTtf"
   }
 
+  # Check if font is already installed (system or per-user) and uninstall first
+  $uninstallScript = Join-Path $ScriptDir "uninstall-catan-font.ps1"
+  $fontAlreadyInstalled = $false
+
+  if ($IsWindows) {
+    $systemFont = Join-Path $env:WINDIR "Fonts\$FontName.ttf"
+    $userFont = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts\$FontName.ttf"
+    if ((Test-Path -LiteralPath $systemFont) -or (Test-Path -LiteralPath $userFont)) {
+      $fontAlreadyInstalled = $true
+    }
+  } elseif ($IsMacOS) {
+    if (Test-Path -LiteralPath (Join-Path $HOME "Library/Fonts/$FontName.ttf")) {
+      $fontAlreadyInstalled = $true
+    }
+  } elseif ($IsLinux) {
+    if (Test-Path -LiteralPath (Join-Path $HOME ".local/share/fonts/$FontName.ttf")) {
+      $fontAlreadyInstalled = $true
+    }
+  }
+
+  if ($fontAlreadyInstalled -and (Test-Path -LiteralPath $uninstallScript)) {
+    Write-Host ""
+    Write-Host "Font already installed — uninstalling old version first..." -ForegroundColor Yellow
+    & $uninstallScript -FontName $FontName -Quiet:$false
+  }
+
   Write-Host ""
-  Write-Host "Installing $FontName.ttf to OS fonts..." -ForegroundColor Cyan
+  Write-Host "Installing $FontName.ttf to OS fonts (per-user)..." -ForegroundColor Cyan
 
   if ($IsWindows) {
     # Per-user font directory (no admin required)
@@ -508,54 +534,21 @@ if (-not $NoInstall) {
     Ensure-Dir -Path $userFontsDir
     $osDest = Join-Path $userFontsDir "$FontName.ttf"
 
-    # Handle EBUSY: rename-then-copy (font may be loaded by a process)
-    $osInstalled = $false
-    if (Test-Path -LiteralPath $osDest) {
-      $backup = "$osDest.old"
-      try {
-        Move-Item -LiteralPath $osDest -Destination $backup -Force -ErrorAction Stop
-        Copy-Item -LiteralPath $builtTtf -Destination $osDest -Force
-        Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue
-        $osInstalled = $true
-      } catch {
-        # Restore backup if copy failed
-        if (Test-Path -LiteralPath $backup) {
-          Move-Item -LiteralPath $backup -Destination $osDest -Force -ErrorAction SilentlyContinue
-        }
-        # Report which processes are locking the file
-        $lockers = @(Get-LockingProcesses -FilePath $osDest)
-        if ($lockers.Count -gt 0) {
-          Write-Warning "  SKIP OS font install (file locked by: $($lockers -join ', '))"
-        } else {
-          Write-Warning "  SKIP OS font install (file locked: $_)"
-        }
-      }
-    } else {
-      try {
-        Copy-Item -LiteralPath $builtTtf -Destination $osDest -Force
-        $osInstalled = $true
-      } catch {
-        $lockers = @(Get-LockingProcesses -FilePath $osDest)
-        if ($lockers.Count -gt 0) {
-          Write-Warning "  SKIP OS font install (file locked by: $($lockers -join ', '))"
-        } else {
-          Write-Warning "  SKIP OS font install (failed: $_)"
-        }
-      }
-    }
-
-    if ($osInstalled) {
+    try {
+      Copy-Item -LiteralPath $builtTtf -Destination $osDest -Force
       # Register in per-user font registry so Windows recognizes it
-      try {
-        $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
-        $regName = "$FontName (TrueType)"
-        Set-ItemProperty -Path $regPath -Name $regName -Value $osDest -Type String
-        Write-Host "  Registered in HKCU font registry" -ForegroundColor Green
-      } catch {
-        Write-Warning "  Failed to register font in registry: $($_.Exception.Message)"
-      }
-
+      $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+      $regName = "$FontName (TrueType)"
+      Set-ItemProperty -Path $regPath -Name $regName -Value $osDest -Type String
+      Write-Host "  Registered in HKCU font registry" -ForegroundColor Green
       Write-Host "  OK  $userFontsDir" -ForegroundColor Green
+    } catch {
+      $lockers = @(Get-LockingProcesses -FilePath $osDest)
+      if ($lockers.Count -gt 0) {
+        Write-Warning "  SKIP OS font install (file locked by: $($lockers -join ', '))"
+      } else {
+        Write-Warning "  SKIP OS font install (failed: $_)"
+      }
     }
   } elseif ($IsMacOS) {
     $userFontsDir = Join-Path $HOME "Library/Fonts"
