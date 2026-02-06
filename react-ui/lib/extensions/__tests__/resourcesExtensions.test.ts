@@ -4,7 +4,6 @@
 
 import { describe, it, expect } from 'vitest';
 import { createEmptyResourcesModel, addResource } from '../resourcesExtensions';
-import type { ResourcesModel } from '@/types/generated/models/resources-model';
 
 describe('resourcesExtensions', () => {
   describe('createEmptyResourcesModel', () => {

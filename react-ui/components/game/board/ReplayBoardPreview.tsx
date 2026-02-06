@@ -59,15 +59,14 @@ export function ReplayBoardPreview({
   playerColorMap,
   onClick,
 }: ReplayBoardPreviewProps): React.ReactElement | null {
-  if (!gameModel) return null;
-
-  const tiles: TileModel[] = gameModel.tiles ?? [];
+  // Extract data before hooks (nullish coalescing handles missing gameModel)
+  const tiles: TileModel[] = gameModel?.tiles ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const buildings: any[] = gameModel.buildings ?? [];
+  const buildings: any[] = gameModel?.buildings ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const roads: any[] = gameModel.roads ?? [];
+  const roads: any[] = gameModel?.roads ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const players: any[] = gameModel.players ?? [];
+  const players: any[] = gameModel?.players ?? [];
 
   // Resolve player color by ID, falling back to positional colors
   const getColor = useCallback(
@@ -78,7 +77,7 @@ export function ReplayBoardPreview({
       const idx = players.findIndex((p: any) => p.id === playerId);
       return PLAYER_FALLBACKS[idx >= 0 ? idx % PLAYER_FALLBACKS.length : 0];
     },
-    [playerColorMap, players],
+    [playerColorMap, players]
   );
 
   const tileItems: HexGridItem[] = useMemo(
@@ -91,7 +90,7 @@ export function ReplayBoardPreview({
           content: <GameTile tile={tile} hexSize={50} />,
         };
       }),
-    [tiles],
+    [tiles]
   );
 
   // Only buildings that are placed on the board (owned settlements/cities)
@@ -99,18 +98,16 @@ export function ReplayBoardPreview({
     () =>
       buildings.filter(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (b: any) =>
-          b.ownerId &&
-          (b.buildingState === 'Settlement' || b.buildingState === 'City'),
+        (b: any) => b.ownerId && (b.buildingState === 'Settlement' || b.buildingState === 'City')
       ),
-    [buildings],
+    [buildings]
   );
 
   // Only roads that belong to a player
   const ownedRoads = useMemo(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     () => roads.filter((r: any) => r.ownerId),
-    [roads],
+    [roads]
   );
 
   const renderOverlay = useCallback(
@@ -157,12 +154,7 @@ export function ReplayBoardPreview({
             if (!hexCoords || !position || position === 'None') return null;
 
             const coord = cubicCoord(hexCoords.q, hexCoords.r);
-            const pos = getVertexPosition(
-              coord,
-              position as GeometryHexPosition,
-              hexSize,
-              origin,
-            );
+            const pos = getVertexPosition(coord, position as GeometryHexPosition, hexSize, origin);
             const colors = getColor(b.ownerId);
             const r = b.buildingState === 'City' ? hexSize * 0.16 : hexSize * 0.12;
 
@@ -193,10 +185,10 @@ export function ReplayBoardPreview({
         </svg>
       );
     },
-    [ownedBuildings, ownedRoads, getColor],
+    [ownedBuildings, ownedRoads, getColor]
   );
 
-  if (tileItems.length === 0) return null;
+  if (!gameModel || tileItems.length === 0) return null;
 
   return (
     <div
@@ -204,13 +196,7 @@ export function ReplayBoardPreview({
       onClick={onClick}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
-      <HexGrid
-        hexSize={50}
-        items={tileItems}
-        gap={2}
-        fitToParent
-        overlay={renderOverlay}
-      />
+      <HexGrid hexSize={50} items={tileItems} gap={2} fitToParent overlay={renderOverlay} />
     </div>
   );
 }

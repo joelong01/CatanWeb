@@ -4,7 +4,7 @@
  * Tests the custom Zustand hooks with their equality functions.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useGameStore } from '../gameStore';
 import {
@@ -12,7 +12,6 @@ import {
   useCurrentTurnPlayerId,
   useIsMyTurn,
   useGameId,
-  useGameType,
   useShownStars,
   useLastRoll,
   useMyPlayerId,

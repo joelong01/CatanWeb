@@ -15,7 +15,6 @@ import type { BuildingModel } from '@/types/generated/models/building-model';
 import type { BuildingKey } from '@/types/generated/models/building-key';
 import type { RoadKey } from '@/types/generated/models/road-key';
 import type { HexCoordinates } from '@/types/generated/models/hex-coordinates';
-import type { GameState } from '@/types/generated/models/game-state';
 import type { HarborModel } from '@/types/generated/models/harbor-model';
 import type { HexSide } from '@/types/generated/models/hex-side';
 import type { HexPosition } from '@/types/generated/models/hex-position';

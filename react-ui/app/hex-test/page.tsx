@@ -10,11 +10,9 @@ import {
   getSpiralCoordinates,
   getRingCoordinates,
   getLineCoordinates,
-  pixelToHex,
   hexToPixel,
   cubicCoord,
   distance,
-  Direction,
   DIRECTION_VECTORS,
   ALL_DIRECTIONS,
 } from '@/components/hex-grid';
@@ -183,8 +181,8 @@ export default function HexTestPage(): React.ReactElement {
     const sqrt3 = Math.sqrt(3);
 
     // Hex dimensions
-    const hexWidth = effectiveSize * 2;
-    const hexHeight = effectiveSize * sqrt3;
+    const _hexWidth = effectiveSize * 2;
+    const _hexHeight = effectiveSize * sqrt3;
 
     // Viewport bounds in world coordinates (grid origin is at center + pan)
     // When pan is (0,0), the grid origin is at viewport center

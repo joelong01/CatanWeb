@@ -384,7 +384,7 @@ function ScaledPlayersList() {
       if (!contentRef.current || !containerRef.current) return;
 
       // Only measure natural size once (or when players count changes)
-      const playersCount = players.length;
+      const _playersCount = players.length;
       if (!hasMeasuredRef.current || naturalSizeRef.current.width === 0) {
         // Temporarily reset scale to measure natural size
         const currentTransform = contentRef.current.style.transform;

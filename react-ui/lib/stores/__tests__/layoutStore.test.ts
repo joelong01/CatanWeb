@@ -2,7 +2,7 @@
  * Tests for layoutStore - computed layout functions, store actions, and migrations.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   computeLandscape,
   computePortrait,

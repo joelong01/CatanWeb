@@ -102,7 +102,7 @@ function isInteractiveElement(element: HTMLElement | null, stopAt: HTMLElement |
 
 export function FloatingPanel({
   panelId,
-  title,
+  title: _title,
   children,
   className = '',
   style,

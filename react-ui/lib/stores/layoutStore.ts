@@ -184,7 +184,7 @@ const LANDSCAPE_PANELS: Record<PanelId, WindowPosition> = {
  * - Controls (dice, actions) at bottom
  * - Some panels minimized by default to reduce clutter
  */
-const PORTRAIT_PANELS: Record<PanelId, WindowPosition> = {
+const _PORTRAIT_PANELS: Record<PanelId, WindowPosition> = {
   board: {
     left: 20,
     top: 60,

@@ -48,7 +48,6 @@ export interface WinnerOverlayProps {
   onEndGame: (vpScores: Record<string, number>) => void;
 }
 
-
 // ============================================================================
 // WinnerCenterHex - Phase 1: "Winner!" button
 // ============================================================================
@@ -62,13 +61,16 @@ function WinnerCenterHex({
 }): React.ReactElement {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
-  const innerScale = isPressed ? 0.88 : isHovered ? 0.90 : 0.92;
+  const innerScale = isPressed ? 0.88 : isHovered ? 0.9 : 0.92;
 
   return (
     <div
       className="absolute inset-0 cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onClick={onClick}
@@ -86,16 +88,10 @@ function WinnerCenterHex({
           background: colors.cssGradient,
         }}
       >
-        <span
-          className="text-sm font-bold leading-tight"
-          style={{ color: colors.foreground }}
-        >
+        <span className="text-sm font-bold leading-tight" style={{ color: colors.foreground }}>
           Winner!
         </span>
-        <span
-          className="text-xs opacity-70"
-          style={{ color: colors.foreground }}
-        >
+        <span className="text-xs opacity-70" style={{ color: colors.foreground }}>
           (Click)
         </span>
       </div>
@@ -127,11 +123,7 @@ function CelebrationCenterHex({
           background: colors.cssGradient,
         }}
       >
-        <FontAwesomeIcon
-          icon={faTrophy}
-          className="text-2xl"
-          style={{ color: '#FFD700' }}
-        />
+        <FontAwesomeIcon icon={faTrophy} className="text-2xl" style={{ color: '#FFD700' }} />
       </div>
     </div>
   );
@@ -141,14 +133,10 @@ function CelebrationCenterHex({
 // EndGameCenterHex - Phase 3: "End Game" button
 // ============================================================================
 
-function EndGameCenterHex({
-  onClick,
-}: {
-  onClick: () => void;
-}): React.ReactElement {
+function EndGameCenterHex({ onClick }: { onClick: () => void }): React.ReactElement {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
-  const innerScale = isPressed ? 0.88 : isHovered ? 0.90 : 0.92;
+  const innerScale = isPressed ? 0.88 : isHovered ? 0.9 : 0.92;
   const bgColor = isPressed
     ? 'linear-gradient(135deg, #15803d, #14532d)'
     : isHovered
@@ -159,7 +147,10 @@ function EndGameCenterHex({
     <div
       className="absolute inset-0 cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onClick={onClick}
@@ -177,9 +168,7 @@ function EndGameCenterHex({
           background: bgColor,
         }}
       >
-        <span className="text-white text-sm font-bold leading-tight">
-          End Game
-        </span>
+        <span className="text-white text-sm font-bold leading-tight">End Game</span>
       </div>
     </div>
   );
@@ -189,11 +178,7 @@ function EndGameCenterHex({
 // PlayerDisplayHex - Phases 1 & 2: Avatar + name (non-interactive)
 // ============================================================================
 
-function PlayerDisplayHex({
-  player,
-}: {
-  player: WinnerPlayer;
-}): React.ReactElement {
+function PlayerDisplayHex({ player }: { player: WinnerPlayer }): React.ReactElement {
   const [imageError, setImageError] = useState(false);
   const colors = player.colors ?? DEFAULT_PLAYER_COLORS;
   const gradient = buildCssGradient(colors);
@@ -309,7 +294,10 @@ function PlayerScoringHex({
               color: canDecrement ? '#fff' : 'rgba(255,255,255,0.3)',
               cursor: canDecrement ? 'pointer' : 'default',
             }}
-            onClick={(e) => { e.stopPropagation(); if (canDecrement) onDecrement(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (canDecrement) onDecrement();
+            }}
           >
             -
           </button>
@@ -322,7 +310,10 @@ function PlayerScoringHex({
           <button
             className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold cursor-pointer"
             style={{ background: 'rgba(0,0,0,0.4)', color: '#fff' }}
-            onClick={(e) => { e.stopPropagation(); onIncrement(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onIncrement();
+            }}
           >
             +
           </button>
@@ -344,47 +335,51 @@ function PlayerScoringHex({
 // ============================================================================
 
 const FIREWORK_COLORS = [
-  '#FFD700', '#FF69B4', '#00CED1', '#FF4500',
-  '#32CD32', '#DA70D6', '#FF6347', '#1E90FF',
+  '#FFD700',
+  '#FF69B4',
+  '#00CED1',
+  '#FF4500',
+  '#32CD32',
+  '#DA70D6',
+  '#FF6347',
+  '#1E90FF',
 ];
 
 interface FireworkData {
   id: number;
-  x: number;           // % across container width
-  y: number;           // % from top (explosion point)
+  x: number; // % across container width
+  y: number; // % from top (explosion point)
   rocketTravel: number; // px the rocket travels upward to reach explosion point
-  delay: number;        // ms before this firework launches
+  delay: number; // ms before this firework launches
   rocketDuration: number;
   color: string;
-  flashSize: number;    // px diameter of the explosion flash
+  flashSize: number; // px diameter of the explosion flash
   sparks: { x: number; y: number; size: number; duration: number }[];
 }
 
-function FireworksOverlay({
-  durationMs,
-}: {
-  durationMs: number;
-}): React.ReactElement {
+function FireworksOverlay({ durationMs }: { durationMs: number }): React.ReactElement {
+  // Math.random() is intentional — one-time firework position generation on mount
+  /* eslint-disable react-hooks/purity */
   const fireworks = useMemo((): FireworkData[] => {
     const count = 15;
     return Array.from({ length: count }, (_, i) => {
-      const x = 15 + Math.random() * 70;              // 15-85% across
-      const y = 10 + Math.random() * 40;              // 10-50% from top (upper half)
-      const rocketTravel = 100 + Math.random() * 80;   // 100-180px upward
+      const x = 15 + Math.random() * 70; // 15-85% across
+      const y = 10 + Math.random() * 40; // 10-50% from top (upper half)
+      const rocketTravel = 100 + Math.random() * 80; // 100-180px upward
       const delay = (i / count) * (durationMs - 1600); // stagger across duration
       const rocketDuration = 500 + Math.random() * 300;
       const color = FIREWORK_COLORS[i % FIREWORK_COLORS.length];
-      const flashSize = 30 + Math.random() * 20;       // 30-50px explosion flash
+      const flashSize = 30 + Math.random() * 20; // 30-50px explosion flash
       const sparkCount = 16 + Math.floor(Math.random() * 8); // 16-23 sparks
 
       const sparks = Array.from({ length: sparkCount }, (_, j) => {
-        const angle = (j * 360 / sparkCount) + (Math.random() * 15 - 7.5);
-        const rad = angle * Math.PI / 180;
-        const distance = 50 + Math.random() * 80;      // 50-130px burst radius
+        const angle = (j * 360) / sparkCount + (Math.random() * 15 - 7.5);
+        const rad = (angle * Math.PI) / 180;
+        const distance = 50 + Math.random() * 80; // 50-130px burst radius
         return {
           x: Math.cos(rad) * distance,
           y: Math.sin(rad) * distance,
-          size: 3 + Math.random() * 5,                  // 3-8px sparks
+          size: 3 + Math.random() * 5, // 3-8px sparks
           duration: 700 + Math.random() * 600,
         };
       });
@@ -392,58 +387,61 @@ function FireworksOverlay({
       return { id: i, x, y, rocketTravel, delay, rocketDuration, color, flashSize, sparks };
     });
   }, [durationMs]);
+  /* eslint-enable react-hooks/purity */
 
   return (
     <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
       {fireworks.map((fw) => (
-        <div
-          key={fw.id}
-          className="absolute"
-          style={{ left: `${fw.x}%`, top: `${fw.y}%` }}
-        >
+        <div key={fw.id} className="absolute" style={{ left: `${fw.x}%`, top: `${fw.y}%` }}>
           {/* Rocket: glowing trail that shoots upward to this point */}
           <div
             className="absolute w-1.5 h-5 rounded-full animate-firework-rocket motion-reduce:hidden"
-            style={{
-              backgroundColor: fw.color,
-              boxShadow: `0 0 6px ${fw.color}, 0 0 12px ${fw.color}`,
-              marginLeft: -3,
-              '--rocket-travel': `${fw.rocketTravel}px`,
-              '--rocket-duration': `${fw.rocketDuration}ms`,
-              '--rocket-delay': `${fw.delay}ms`,
-            } as React.CSSProperties}
+            style={
+              {
+                backgroundColor: fw.color,
+                boxShadow: `0 0 6px ${fw.color}, 0 0 12px ${fw.color}`,
+                marginLeft: -3,
+                '--rocket-travel': `${fw.rocketTravel}px`,
+                '--rocket-duration': `${fw.rocketDuration}ms`,
+                '--rocket-delay': `${fw.delay}ms`,
+              } as React.CSSProperties
+            }
           />
           {/* Flash: bright expanding circle at the explosion point */}
           <div
             className="absolute rounded-full animate-firework-flash motion-reduce:hidden"
-            style={{
-              width: fw.flashSize,
-              height: fw.flashSize,
-              marginLeft: -fw.flashSize / 2,
-              marginTop: -fw.flashSize / 2,
-              background: `radial-gradient(circle, white 0%, ${fw.color} 40%, transparent 70%)`,
-              boxShadow: `0 0 15px ${fw.color}, 0 0 30px ${fw.color}, 0 0 45px ${fw.color}80`,
-              '--flash-duration': '500ms',
-              '--flash-delay': `${fw.delay + fw.rocketDuration}ms`,
-            } as React.CSSProperties}
+            style={
+              {
+                width: fw.flashSize,
+                height: fw.flashSize,
+                marginLeft: -fw.flashSize / 2,
+                marginTop: -fw.flashSize / 2,
+                background: `radial-gradient(circle, white 0%, ${fw.color} 40%, transparent 70%)`,
+                boxShadow: `0 0 15px ${fw.color}, 0 0 30px ${fw.color}, 0 0 45px ${fw.color}80`,
+                '--flash-duration': '500ms',
+                '--flash-delay': `${fw.delay + fw.rocketDuration}ms`,
+              } as React.CSSProperties
+            }
           />
           {/* Sparks: burst radially from explosion point */}
           {fw.sparks.map((spark, j) => (
             <div
               key={j}
               className="absolute rounded-full animate-firework-spark motion-reduce:hidden"
-              style={{
-                width: spark.size,
-                height: spark.size,
-                backgroundColor: fw.color,
-                boxShadow: `0 0 4px ${fw.color}, 0 0 10px ${fw.color}`,
-                marginLeft: -spark.size / 2,
-                marginTop: -spark.size / 2,
-                '--spark-x': `${spark.x}px`,
-                '--spark-y': `${spark.y}px`,
-                '--spark-duration': `${spark.duration}ms`,
-                '--spark-delay': `${fw.delay + fw.rocketDuration}ms`,
-              } as React.CSSProperties}
+              style={
+                {
+                  width: spark.size,
+                  height: spark.size,
+                  backgroundColor: fw.color,
+                  boxShadow: `0 0 4px ${fw.color}, 0 0 10px ${fw.color}`,
+                  marginLeft: -spark.size / 2,
+                  marginTop: -spark.size / 2,
+                  '--spark-x': `${spark.x}px`,
+                  '--spark-y': `${spark.y}px`,
+                  '--spark-duration': `${spark.duration}ms`,
+                  '--spark-delay': `${fw.delay + fw.rocketDuration}ms`,
+                } as React.CSSProperties
+              }
             />
           ))}
         </div>
@@ -473,7 +471,7 @@ export function WinnerOverlay({
 
   // VP scores: initialized to 0 (represents VP card count, not final score)
   const [vpScores, setVpScores] = useState<Record<string, number>>(() =>
-    Object.fromEntries(players.map(p => [p.id, 0]))
+    Object.fromEntries(players.map((p) => [p.id, 0]))
   );
 
   // Floor for decrement is 0 (can't have negative VP cards)
@@ -487,11 +485,11 @@ export function WinnerOverlay({
   }, [phase, celebrationDurationMs]);
 
   const incrementVP = useCallback((playerId: string) => {
-    setVpScores(prev => ({ ...prev, [playerId]: (prev[playerId] || 0) + 1 }));
+    setVpScores((prev) => ({ ...prev, [playerId]: (prev[playerId] || 0) + 1 }));
   }, []);
 
   const decrementVP = useCallback((playerId: string) => {
-    setVpScores(prev => {
+    setVpScores((prev) => {
       const current = prev[playerId] || 0;
       return { ...prev, [playerId]: Math.max(minVpCount, current - 1) };
     });
@@ -505,17 +503,27 @@ export function WinnerOverlay({
   const spinRotations = Math.max(1, Math.floor(celebrationDurationMs / 1500));
 
   // CSS custom properties for spin animations (shared by spin + counter-spin)
-  const spinVars = useMemo(() => ({
-    '--winner-spin-duration': `${celebrationDurationMs / spinRotations}ms`,
-    '--winner-spin-count': `${spinRotations}`,
-  } as React.CSSProperties), [celebrationDurationMs, spinRotations]);
+  const spinVars = useMemo(
+    () =>
+      ({
+        '--winner-spin-duration': `${celebrationDurationMs / spinRotations}ms`,
+        '--winner-spin-count': `${spinRotations}`,
+      }) as React.CSSProperties,
+    [celebrationDurationMs, spinRotations]
+  );
 
   // Wrap content in counter-spin so hex faces stay upright while the ring rotates
-  const wrapCounterSpin = useCallback((content: React.ReactNode) => (
-    <div className="absolute inset-0 animate-winner-counter-spin motion-reduce:animate-none" style={spinVars}>
-      {content}
-    </div>
-  ), [spinVars]);
+  const wrapCounterSpin = useCallback(
+    (content: React.ReactNode) => (
+      <div
+        className="absolute inset-0 animate-winner-counter-spin motion-reduce:animate-none"
+        style={spinVars}
+      >
+        {content}
+      </div>
+    ),
+    [spinVars]
+  );
 
   // Build hex grid items based on current phase
   const hexItems = useMemo((): HexGridItem[] => {
@@ -528,10 +536,7 @@ export function WinnerOverlay({
         id: 'center',
         coord: cubicCoord(0, 0),
         content: (
-          <WinnerCenterHex
-            colors={currentPlayerColors}
-            onClick={() => setPhase('celebrating')}
-          />
+          <WinnerCenterHex colors={currentPlayerColors} onClick={() => setPhase('celebrating')} />
         ),
       });
     } else if (phase === 'celebrating') {
@@ -586,35 +591,40 @@ export function WinnerOverlay({
     });
 
     return items;
-  }, [phase, players, currentPlayerColors, vpScores, incrementVP, decrementVP, handleEndGame, wrapCounterSpin]);
+  }, [
+    phase,
+    players,
+    currentPlayerColors,
+    vpScores,
+    incrementVP,
+    decrementVP,
+    handleEndGame,
+    wrapCounterSpin,
+  ]);
 
   // Phase title text
-  const titleText = phase === 'ready'
-    ? 'Click Winner! to celebrate'
-    : phase === 'celebrating'
-      ? 'Celebrating!'
-      : 'How many hidden Victory Point cards does each player have?';
+  const titleText =
+    phase === 'ready'
+      ? 'Click Winner! to celebrate'
+      : phase === 'celebrating'
+        ? 'Celebrating!'
+        : 'How many hidden Victory Point cards does each player have?';
 
   return (
     <div className="w-full h-full flex flex-col">
       {/* Title */}
-      <div className="text-center text-white/80 text-sm mb-2">
-        {titleText}
-      </div>
+      <div className="text-center text-white/80 text-sm mb-2">{titleText}</div>
       {/* Hex grid with optional spin wrapper */}
       <div className="flex-1 flex items-center justify-center p-2 relative">
         <div
-          className={phase === 'celebrating'
-            ? 'animate-winner-spin motion-reduce:animate-none w-full h-full'
-            : 'w-full h-full'}
+          className={
+            phase === 'celebrating'
+              ? 'animate-winner-spin motion-reduce:animate-none w-full h-full'
+              : 'w-full h-full'
+          }
           style={phase === 'celebrating' ? spinVars : undefined}
         >
-          <HexGrid
-            hexSize={50}
-            gap={3}
-            items={hexItems}
-            fitToParent
-          />
+          <HexGrid hexSize={50} gap={3} items={hexItems} fitToParent />
         </div>
         {/* Fireworks during celebration */}
         {phase === 'celebrating' && <FireworksOverlay durationMs={celebrationDurationMs} />}

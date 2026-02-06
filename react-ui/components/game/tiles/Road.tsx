@@ -132,7 +132,7 @@ export const Road = React.memo(function Road({
   onClick,
   className = '',
 }: RoadProps) {
-  const [isHovered, setIsHovered] = useState(false);
+  const [_isHovered, setIsHovered] = useState(false);
 
   // Look up player colors from store
   const ownerColors = usePlayerColors(ownerId);

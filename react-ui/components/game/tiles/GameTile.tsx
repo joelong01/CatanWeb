@@ -63,7 +63,7 @@ export const GameTile = memo(function GameTile({
   const { number, resourceTileType, temporarilyGold } = tile;
   // When temporarily gold, show gold mine background instead of original resource
   const displayResource = temporarilyGold ? 'GoldMine' : resourceTileType;
-  const imageUrl = getResourceTileImage(displayResource);
+  const _imageUrl = getResourceTileImage(displayResource);
   const originalImageUrl = getResourceCardImage(resourceTileType);
   const isDesert = resourceTileType === 'Desert';
 

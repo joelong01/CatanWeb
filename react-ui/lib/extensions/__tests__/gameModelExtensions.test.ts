@@ -29,7 +29,6 @@ import type { BuildingModel } from '@/types/generated/models/building-model';
 import type { RoadModel } from '@/types/generated/models/road-model';
 import type { BuildingKey } from '@/types/generated/models/building-key';
 import type { RoadKey } from '@/types/generated/models/road-key';
-import type { HexCoordinates } from '@/types/generated/models/hex-coordinates';
 import type { GameState } from '@/types/generated/models/game-state';
 
 // Helper to create a minimal player

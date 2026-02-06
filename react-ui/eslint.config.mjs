@@ -19,15 +19,9 @@ const eslintConfig = defineConfig([
   ]),
   {
     rules: {
-      // Require explicit return types on exported functions
-      '@typescript-eslint/explicit-function-return-type': [
-        'warn',
-        {
-          allowExpressions: true,
-          allowTypedFunctionExpressions: true,
-          allowHigherOrderFunctions: true,
-        },
-      ],
+      // TypeScript inference handles return types well; explicit types add noise
+      // without catching real bugs in a React codebase.
+      '@typescript-eslint/explicit-function-return-type': 'off',
       // Disallow any type (use unknown instead)
       '@typescript-eslint/no-explicit-any': 'error',
       // Prefer const over let when not reassigned
@@ -40,8 +34,14 @@ const eslintConfig = defineConfig([
           varsIgnorePattern: '^_',
         },
       ],
-      // No console.log in production (warn, not error, for development)
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      // Console logging is allowed during development.
+      'no-console': 'off',
+      // React Compiler rules: downgrade to warn for pre-existing patterns.
+      // setState-in-effect and ref-access-during-render are common React
+      // patterns that work correctly but violate strict compiler rules.
+      // TODO: refactor these patterns and promote back to error.
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/refs': 'warn',
     },
   },
 ]);

@@ -6,7 +6,7 @@
 
 import type { HexCoordinates, HexSide, HexPosition } from '@/types/generated/models';
 import { HEX_SIZE, CENTER_X, CENTER_Y } from './boardConstants';
-import { DIRECTION_VECTORS, Direction, ALL_DIRECTIONS } from '@/components/hex-grid/hex-geometry';
+import { DIRECTION_VECTORS, ALL_DIRECTIONS } from '@/components/hex-grid/hex-geometry';
 
 /**
  * Type alias for HexCoordinates - used throughout the geometry module.

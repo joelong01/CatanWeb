@@ -3,7 +3,7 @@
 import React, { memo, useMemo } from 'react';
 import type { HarborModel, HexSide } from '@/lib/test-data/expansion-game';
 import { HARBOR_IMAGES } from '@/lib/test-data/expansion-game';
-import { hexToPixel, cubicCoord, getEdgeMidpoint } from '@/components/hex-grid/hex-geometry';
+import { hexToPixel, cubicCoord } from '@/components/hex-grid/hex-geometry';
 
 /**
  * Props for HarborHex component

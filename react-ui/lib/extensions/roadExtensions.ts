@@ -11,7 +11,7 @@ import type { RoadModel } from '@/types/generated/models/road-model';
 import type { RoadKey } from '@/types/generated/models/road-key';
 import type { HexCoordinates } from '@/types/generated/models/hex-coordinates';
 import type { HexSide } from '@/types/generated/models/hex-side';
-import { getAdjacentHex, type Direction, DIRECTION_OFFSETS } from './buildingExtensions';
+import { getAdjacentHex, type Direction } from './buildingExtensions';
 
 /**
  * Valid hex sides (excluding None)
