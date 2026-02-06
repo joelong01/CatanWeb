@@ -54,18 +54,19 @@ const RollHexContent = memo(function RollHexContent({
 
   const gradient = colors?.cssGradient || 'var(--hex-content-gradient)';
   const foreground = colors?.foreground || '#ffffff';
-  const borderColor = isHovered
-    ? 'var(--hex-border-hover)'
-    : 'var(--hex-border-idle)';
+  const borderColor = isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
 
   // Button scale: normal 0.96, hover 0.94, pressed 0.90
-  const scale = isPressed ? 0.90 : isHovered ? 0.94 : 0.96;
+  const scale = isPressed ? 0.9 : isHovered ? 0.94 : 0.96;
 
   return (
     <div
       className="absolute inset-0 cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onTouchStart={() => setIsPressed(true)}
@@ -78,29 +79,29 @@ const RollHexContent = memo(function RollHexContent({
       />
       {/* Inner content */}
       <div
-        className="absolute inset-0 hex-clip-flat flex flex-col items-center justify-center gap-0.5 transition-all duration-150"
+        className="absolute inset-0 hex-clip-flat transition-all duration-150"
         style={{
           transform: `scale(${scale})`,
           background: gradient,
         }}
       >
-        {/* Count at top */}
+        {/* Count - centered in top third */}
         <span
-          className="text-sm font-bold leading-none"
+          className="absolute top-[3%] left-1/2 -translate-x-1/2 text-sm font-bold leading-none"
           style={{ color: foreground }}
         >
           {count}
         </span>
 
-        {/* Number token - using the same component as the board tiles */}
-        <div className="w-9 aspect-square">
+        {/* Number token - centered */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-9 aspect-square">
           <NumberToken number={rollNumber} className="w-full h-full" borderColor="transparent" />
         </div>
 
-        {/* Percentage at bottom */}
+        {/* Percentage - centered in bottom third */}
         <span
-          className="text-xs leading-none"
-          style={{ color: foreground, opacity: 0.8 }}
+          className="absolute bottom-[3%] left-1/2 -translate-x-1/2 text-xs leading-none opacity-80"
+          style={{ color: foreground }}
         >
           {percentage}%
         </span>

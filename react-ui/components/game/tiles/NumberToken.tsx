@@ -1,51 +1,35 @@
 'use client';
 
 import React, { memo } from 'react';
+import { CatanGlyph } from '@/lib/constants/catanGlyphs';
 
 /**
- * Constants matching BoardSvgConstants.cs for visual parity with Blazor app.
+ * Map roll number (2-12) to the corresponding Catan font glyph.
+ * Each glyph includes the number and probability pips.
+ */
+const NUMBER_GLYPHS: Record<number, string> = {
+  2: CatanGlyph.Number2,
+  3: CatanGlyph.Number3,
+  4: CatanGlyph.Number4,
+  5: CatanGlyph.Number5,
+  6: CatanGlyph.Number6,
+  7: CatanGlyph.Number7,
+  8: CatanGlyph.Number8,
+  9: CatanGlyph.Number9,
+  10: CatanGlyph.Number10,
+  11: CatanGlyph.Number11,
+  12: CatanGlyph.Number12,
+};
+
+/**
+ * Color scheme matching BoardSvgConstants.cs for visual parity with Blazor app.
  */
 const NUMBER_TOKEN = {
-  // Colors
   normalNumberColor: '#fff',
   highProbColor: '#c00',
   normalBackground: '#2F6999',
   highProbBackground: 'black',
-  strokeColor: 'white',
-  strokeWidth: 0.5,
-
-  // Text positioning (relative to center, scaled to viewBox)
-  numberOffsetY: -8,  // Number slightly above center
-  pipsOffsetY: 12,    // Pips below center
 } as const;
-
-/**
- * Get probability stars for a roll number.
- * Matches CatanNumberSvg.GetPips() in Blazor.
- */
-function getStars(number: number): string {
-  switch (number) {
-    case 2:
-    case 12:
-      return '★';
-    case 3:
-    case 11:
-      return '★★';
-    case 4:
-    case 10:
-      return '★★★';
-    case 5:
-    case 9:
-      return '★★★★';
-    case 6:
-    case 8:
-      return '★★★★★';
-    case 7:
-      return '\uE90C'; // Robber glyph from Catan font
-    default:
-      return '';
-  }
-}
 
 export interface NumberTokenProps {
   /** Roll number (2-12) */
@@ -57,16 +41,12 @@ export interface NumberTokenProps {
 }
 
 /**
- * NumberToken - Renders a Catan number token with proper styling.
+ * NumberToken - Renders a Catan number token using the Catan font.
  *
- * Matches the Blazor CatanNumberSvg.cs rendering:
+ * Uses Catan font glyphs (E945-E94F) which include the number and
+ * probability pips in a single glyph. Preserves the color scheme:
  * - Blue circle background for normal numbers
  * - Black background with red text for high probability (6, 8)
- * - White star characters (★) for probability pips
- * - Number positioned slightly above center
- * - Pips positioned below the number
- *
- * Uses SVG for pixel-perfect circular rendering.
  */
 export const NumberToken = memo(function NumberToken({
   number,
@@ -76,57 +56,32 @@ export const NumberToken = memo(function NumberToken({
   const isHighProb = number === 6 || number === 8;
   const textColor = isHighProb ? NUMBER_TOKEN.highProbColor : NUMBER_TOKEN.normalNumberColor;
   const bgColor = isHighProb ? NUMBER_TOKEN.highProbBackground : NUMBER_TOKEN.normalBackground;
-  const stars = getStars(number);
+  const glyph = NUMBER_GLYPHS[number];
 
-  // High prob numbers are bigger to fill the available space
-  const numberFontSize = isHighProb ? 29 : 25;
-  const pipsFontSize = isHighProb ? 12 : number === 7 ? 16 : 10;
+  if (!glyph) return null;
 
   return (
     <div
       className={`rounded-full aspect-square ${className}`}
-      style={{
-        backgroundColor: borderColor,
-      }}
+      style={{ backgroundColor: borderColor }}
     >
       {/* Inner circle scaled down to reveal border ring */}
       <div
         className="rounded-full w-full h-full"
         style={{ backgroundColor: bgColor, transform: 'scale(0.85)' }}
       >
-        <svg
-          className="w-full h-full"
-          viewBox="0 0 64 64"
-          preserveAspectRatio="xMidYMid meet"
-        >
-          {/* Roll number - centered horizontally, offset above center vertically */}
+        <svg className="w-full h-full" viewBox="0 0 64 64" preserveAspectRatio="xMidYMid meet">
           <text
             x="32"
-            y={32 + NUMBER_TOKEN.numberOffsetY}
+            y="32"
             textAnchor="middle"
-            dominantBaseline="middle"
-            fontFamily="sans-serif"
-            fontSize={numberFontSize}
-            fontWeight="bold"
+            dominantBaseline="central"
+            className="font-catan"
+            fontSize={46}
             fill={textColor}
           >
-            {number}
+            {glyph}
           </text>
-
-          {/* Probability stars (or robber icon for 7) - below the number */}
-          {stars && (
-            <text
-              x="32"
-              y={32 + NUMBER_TOKEN.pipsOffsetY}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontFamily={number === 7 ? 'Catan' : 'sans-serif'}
-              fontSize={pipsFontSize}
-              fill={textColor}
-            >
-              {stars}
-            </text>
-          )}
         </svg>
       </div>
     </div>
