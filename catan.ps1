@@ -288,10 +288,18 @@ function Start-ReactUI {
         return
     }
 
-    # Check if node_modules exists
+    # Check if npm install is needed (missing node_modules or package.json changed)
     $nodeModulesPath = Join-Path $reactUIPath "node_modules"
+    $packageJsonPath = Join-Path $reactUIPath "package.json"
+    $needsInstall = $false
     if (-not (Test-Path $nodeModulesPath)) {
         Write-Host "node_modules not found. Running npm install..." -ForegroundColor Yellow
+        $needsInstall = $true
+    } elseif ((Get-Item $packageJsonPath).LastWriteTime -gt (Get-Item $nodeModulesPath).LastWriteTime) {
+        Write-Host "package.json is newer than node_modules. Running npm install..." -ForegroundColor Yellow
+        $needsInstall = $true
+    }
+    if ($needsInstall) {
         Push-Location $reactUIPath
         try {
             & npm install

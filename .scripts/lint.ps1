@@ -186,6 +186,30 @@ function Invoke-TypeScriptLint {
 
     Push-Location $reactUiPath
     try {
+        # Step 1: TypeScript type-check (whole-project, matches VS Code diagnostics)
+        Write-Info "Running tsc --noEmit..."
+        $tscOutput = & npx tsc --noEmit 2>&1
+        $tscExit = $LASTEXITCODE
+
+        if ($tscExit -eq 0) {
+            Write-Success "TypeScript clean"
+        }
+        else {
+            $tscErrors = @($tscOutput | Select-String -Pattern "error TS\d+")
+            $script:totalIssues += $tscErrors.Count
+            $script:failedLinters += "TypeScript"
+            Write-Error "TypeScript found $($tscErrors.Count) error(s)"
+
+            # Show first 10 errors
+            $tscErrors | Select-Object -First 10 | ForEach-Object {
+                Write-Host "    $_" -ForegroundColor Gray
+            }
+            if ($tscErrors.Count -gt 10) {
+                Write-Info "    ... and $($tscErrors.Count - 10) more (run 'npm run typecheck' for full output)"
+            }
+        }
+
+        # Step 2: ESLint (per-file)
         # Get relative paths for eslint
         $relativePaths = $tsFiles | ForEach-Object {
             $_.Replace("$reactUiPath\", "").Replace("$reactUiPath/", "")
@@ -554,6 +578,9 @@ else {
     Write-Error "$($script:totalIssues) issue(s) found in: $($script:failedLinters -join ', ')"
     Write-Host ""
     Write-Host "  To fix:" -ForegroundColor Yellow
+    if ($script:failedLinters -contains "TypeScript") {
+        Write-Host "    • TypeScript: cd react-ui && npm run typecheck" -ForegroundColor Gray
+    }
     if ($script:failedLinters -contains "ESLint") {
         Write-Host "    • ESLint: cd react-ui && npm run lint -- --fix" -ForegroundColor Gray
     }

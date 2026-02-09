@@ -119,16 +119,13 @@ export default function Settings(): React.ReactElement {
   const store = useSettingsStore();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(true);
-  const [activeGameId, setActiveGameId] = useState<string | null>(null);
+  const [activeGameId] = useState<string | null>(
+    () => localStorage.getItem('current_gameId'),
+  );
 
-  // Initialize store and check for active game on mount
+  // Initialize store on mount
   useEffect(() => {
     store.initialize();
-    // Check for active game to enable "Back to Game" navigation
-    const gameId = localStorage.getItem('current_gameId');
-    if (gameId) {
-      setActiveGameId(gameId);
-    }
   }, [store]);
 
   // Clear save message after 3 seconds
