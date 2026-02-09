@@ -178,14 +178,19 @@ function Invoke-PrettierFormat {
 
     Push-Location $reactUiPath
     try {
-        # Convert to relative paths for Prettier
-        $relativePaths = $webFiles | ForEach-Object {
-            $_.Replace("$reactUiPath\", "").Replace("$reactUiPath/", "")
+        # Use "." for large file counts to avoid Windows command line length limits
+        if ($webFiles.Count -gt 50) {
+            $prettierTargets = @(".")
+        }
+        else {
+            $prettierTargets = @($webFiles | ForEach-Object {
+                $_.Replace("$reactUiPath\", "").Replace("$reactUiPath/", "")
+            })
         }
 
         $prettierAction = if ($Check) { "--check" } else { "--write" }
         Write-Info "Running prettier $prettierAction..."
-        $output = & npx prettier $prettierAction @relativePaths 2>&1
+        $output = & npx prettier $prettierAction @prettierTargets 2>&1
 
         $prettierExit = $LASTEXITCODE
 

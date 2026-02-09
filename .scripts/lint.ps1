@@ -256,18 +256,22 @@ function Invoke-TypeScriptLint {
         }
 
         # Step 2: ESLint (per-file)
-        # Get relative paths for eslint
-        $relativePaths = $tsFiles | ForEach-Object {
-            $_.Replace("$reactUiPath\", "").Replace("$reactUiPath/", "")
-        }
-
         $fixArg = if (-not $NoFix) { "--fix" } else { "" }
 
         Write-Info "Running ESLint$(if ($fixArg) { ' with --fix' } else { '' })..."
 
-        # Run eslint on specific files
+        # Use "." for large file counts to avoid Windows command line length limits
+        if ($tsFiles.Count -gt 50) {
+            $eslintTargets = @(".")
+        }
+        else {
+            $eslintTargets = @($tsFiles | ForEach-Object {
+                $_.Replace("$reactUiPath\", "").Replace("$reactUiPath/", "")
+            })
+        }
+
         # --no-warn-ignored suppresses "File ignored because of a matching ignore pattern" warnings
-        $eslintArgs = @($relativePaths) + @("--format", "stylish", "--no-warn-ignored")
+        $eslintArgs = @($eslintTargets) + @("--format", "stylish", "--no-warn-ignored")
         if ($fixArg) { $eslintArgs += "--fix" }
 
         $eslintOutput = & npx eslint @eslintArgs 2>&1
@@ -305,12 +309,17 @@ function Invoke-TypeScriptLint {
         # Step 3: Prettier format check
         Write-Info "Running Prettier --check..."
 
-        # Prettier checks all web files, not just TS (CSS, JSON, etc.)
-        $prettierFiles = $tsFiles | ForEach-Object {
-            $_.Replace("$reactUiPath\", "").Replace("$reactUiPath/", "")
+        # Use "." for large file counts to avoid Windows command line length limits
+        if ($tsFiles.Count -gt 50) {
+            $prettierTargets = @(".")
+        }
+        else {
+            $prettierTargets = @($tsFiles | ForEach-Object {
+                $_.Replace("$reactUiPath\", "").Replace("$reactUiPath/", "")
+            })
         }
 
-        $prettierOutput = & npx prettier --check @prettierFiles 2>&1
+        $prettierOutput = & npx prettier --check @prettierTargets 2>&1
         $prettierExit = $LASTEXITCODE
 
         if ($prettierExit -eq 0) {
