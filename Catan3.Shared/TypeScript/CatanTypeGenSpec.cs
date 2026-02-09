@@ -1,5 +1,6 @@
 using TypeGen.Core.SpecGeneration;
 using Catan3.Shared.Models;
+using Catan3.Shared.Profiles;
 using Catan3.Shared.Utility;
 
 namespace Catan3.Shared.TypeScript;
@@ -18,6 +19,12 @@ public class CatanTypeGenSpec : GenerationSpec
 
         // Player models
         AddInterface<PlayerModel>();
+
+        // Player profile models (persistent identity, colors, statistics)
+        AddInterface<PlayerProfile>();
+        AddInterface<PlayerColors>();
+        AddInterface<LifetimeStats>();
+        AddInterface<GameStats>();
 
         // Board models
         AddInterface<TileModel>();

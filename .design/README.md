@@ -1,9 +1,9 @@
 # Catan Design Documentation
 
-**Last updated:** January 30, 2026
+**Last updated:** February 6, 2026
 
 Verified documentation reflecting the current implementation. These
-30 documents are the **source of truth** for how the system works.
+31 documents are the **source of truth** for how the system works.
 
 Legacy and superseded documents are archived in [old/](old/).
 
@@ -15,6 +15,7 @@ Legacy and superseded documents are archived in [old/](old/).
 | [game-service-api.md](game-service-api.md) | Complete REST API: Game, Recording, Stats controllers + SignalR hub + startup |
 | [react-architecture.md](react-architecture.md) | Dependencies, directory structure, Zustand stores, component hierarchy, data flow |
 | [serialization.md](serialization.md) | TypeGenRunner pipeline, JsonIgnore removal, enum-to-union conversion |
+| [typescript-model-transforms.md](typescript-model-transforms.md) | Full TypeGen setup: file locations, pipeline steps, covered types, adding new types |
 
 ## Game Systems
 

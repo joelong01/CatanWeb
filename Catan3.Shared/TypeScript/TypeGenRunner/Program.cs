@@ -57,6 +57,11 @@ Console.WriteLine();
 Console.WriteLine("Step 2b: Removing [JsonIgnore] properties from generated types...");
 RemoveJsonIgnoredProperties(outputPath);
 
+// Step 2c: Make nullable/computed properties optional in TypeScript
+Console.WriteLine();
+Console.WriteLine("Step 2c: Making nullable/computed properties optional...");
+MakeOptionalProperties(outputPath);
+
 // Step 3: Generate enum descriptions
 Console.WriteLine();
 Console.WriteLine("Step 3: Generating enum descriptions...");
@@ -340,7 +345,10 @@ static Dictionary<string, List<string>> GetJsonIgnoredPropertiesMap()
     var typesToCheck = new Type[]
     {
         typeof(HexCoordinates),
-        // Add other types here as needed
+        typeof(Catan3.Shared.Profiles.PlayerProfile),
+        typeof(Catan3.Shared.Profiles.PlayerColors),
+        typeof(Catan3.Shared.Profiles.LifetimeStats),
+        typeof(Catan3.Shared.Profiles.GameStats),
     };
 
     foreach (var type in typesToCheck)
@@ -402,6 +410,97 @@ static string RemoveUnusedImports(string content)
     }
 
     return content;
+}
+
+// ============================================================================
+// Optional Property Handling
+// ============================================================================
+
+/// <summary>
+/// Makes C# nullable and server-computed properties optional in generated TypeScript.
+/// TypeGen does not handle C# nullable reference types (string?, T?) so we detect them
+/// via reflection and convert "prop: Type;" to "prop?: Type;" in the output.
+/// </summary>
+static void MakeOptionalProperties(string outputPath)
+{
+    var optionalMap = GetOptionalPropertiesMap();
+
+    foreach (var (typeName, optionalProps) in optionalMap)
+    {
+        if (optionalProps.Count == 0) continue;
+
+        var fileName = ToKebabCase(typeName) + ".ts";
+        var filePath = Path.Combine(outputPath, fileName);
+
+        if (!File.Exists(filePath))
+        {
+            Console.WriteLine($"  Warning: {fileName} not found, skipping");
+            continue;
+        }
+
+        var content = File.ReadAllText(filePath);
+        var originalContent = content;
+
+        foreach (var propName in optionalProps)
+        {
+            var camelPropName = char.ToLowerInvariant(propName[0]) + propName[1..];
+
+            // Convert "    propName: SomeType;" to "    propName?: SomeType;"
+            var pattern = $@"(\s+){camelPropName}(\s*:\s*)";
+            content = Regex.Replace(content, pattern, $"$1{camelPropName}?$2");
+        }
+
+        if (content != originalContent)
+        {
+            File.WriteAllText(filePath, content);
+            Console.WriteLine($"  Fixed {fileName}: made {optionalProps.Count} properties optional");
+        }
+    }
+}
+
+/// <summary>
+/// Builds a map of C# type names to properties that should be optional in TypeScript.
+/// Detects nullable reference types and value types via NullabilityInfoContext.
+/// </summary>
+static Dictionary<string, List<string>> GetOptionalPropertiesMap()
+{
+    var result = new Dictionary<string, List<string>>();
+    var nullabilityCtx = new NullabilityInfoContext();
+
+    // Types that are exported via TypeGen and may have nullable properties
+    var typesToCheck = new Type[]
+    {
+        typeof(Catan3.Shared.Profiles.PlayerProfile),
+        typeof(Catan3.Shared.Profiles.PlayerColors),
+    };
+
+    foreach (var type in typesToCheck)
+    {
+        var optionalProps = new List<string>();
+
+        foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            var nullInfo = nullabilityCtx.Create(prop);
+            if (nullInfo.WriteState == NullabilityState.Nullable
+                || nullInfo.ReadState == NullabilityState.Nullable)
+            {
+                optionalProps.Add(prop.Name);
+            }
+        }
+
+        if (optionalProps.Count > 0)
+        {
+            result[type.Name] = optionalProps;
+        }
+    }
+
+    // Server-computed properties: present in API responses but not required for client construction
+    if (!result.ContainsKey("PlayerColors"))
+        result["PlayerColors"] = [];
+    result["PlayerColors"].Add("SvgGradientStops");
+    result["PlayerColors"].Add("CssGradient");
+
+    return result;
 }
 
 // ============================================================================
