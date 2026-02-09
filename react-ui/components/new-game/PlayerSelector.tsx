@@ -56,7 +56,7 @@ function getPlayerImageUrl(imageUri: string | undefined): string | null {
  * Get win count from player's lifetime stats.
  */
 function getWinCount(player: PlayerProfile): number {
-  return player.lifetimeStats?.totals?.gamesWon ?? 0;
+  return player.lifetimeStats?.wins ?? 0;
 }
 
 /**
