@@ -95,6 +95,9 @@ param(
     [Parameter()]
     [switch]$Desktop,
 
+    [Parameter()]
+    [switch]$All,
+
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArgs
 )
@@ -151,9 +154,9 @@ function Stop-ProcessOnPort {
     } else {
         # macOS/Linux: use lsof
         $pids = lsof -ti ":$Port" 2>$null
-        foreach ($pid in $pids) {
-            if ($pid) {
-                & kill -9 $pid 2>$null
+        foreach ($procId in $pids) {
+            if ($procId) {
+                Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
             }
         }
     }
@@ -313,7 +316,7 @@ function Start-ReactUI {
     }
 
     if ($IsWindows) {
-        $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$reactUIPath'; npm run dev" -WindowStyle Normal -PassThru
+        $null = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$reactUIPath'; npm run dev" -WindowStyle Normal -PassThru
         # Note: Not saving PID to pidFile since React runs on different port
     } else {
         # macOS: Open new Terminal window
@@ -722,7 +725,7 @@ function Stop-Services {
         foreach ($procId in $gameServicePids) {
             if ($procId) {
                 Stop-ChildProcesses -ParentPid $procId
-                & kill -9 $procId 2>$null
+                Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
                 Write-Host "  Killed process $procId (GameService port)" -ForegroundColor Gray
                 $killedCount++
             }
@@ -732,7 +735,7 @@ function Stop-Services {
         foreach ($procId in $webUIPids) {
             if ($procId) {
                 Stop-ChildProcesses -ParentPid $procId
-                & kill -9 $procId 2>$null
+                Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
                 Write-Host "  Killed process $procId (WebUI port)" -ForegroundColor Gray
                 $killedCount++
             }
@@ -742,7 +745,7 @@ function Stop-Services {
         foreach ($procId in $reactUIPids) {
             if ($procId) {
                 Stop-ChildProcesses -ParentPid $procId
-                & kill -9 $procId 2>$null
+                Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
                 Write-Host "  Killed process $procId (React UI port)" -ForegroundColor Gray
                 $killedCount++
             }
@@ -752,7 +755,7 @@ function Stop-Services {
         $procIds = pgrep -f "Catan3.GameService|Catan3.WebUI|dotnet.*watch.*run" 2>$null
         foreach ($procId in $procIds) {
             if ($procId) {
-                & kill -9 $procId 2>$null
+                Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
                 Write-Host "  Killed process $procId" -ForegroundColor Gray
                 $killedCount++
             }
@@ -840,7 +843,7 @@ switch ($Verb) {
 
             # Generate model types from C# using TypeGenRunner (TypeGen 7.0.0)
             $typegenRunnerProject = Join-Path $PSScriptRoot "Catan3.Shared\TypeScript\TypeGenRunner\TypeGenRunner.csproj"
-            $typegenResult = & dotnet run --project $typegenRunnerProject --no-build 2>&1
+            $null = & dotnet run --project $typegenRunnerProject --no-build 2>&1
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "  [OK] Model types updated (TypeGen 7.0.0)" -ForegroundColor Green
             } else {
@@ -891,27 +894,58 @@ switch ($Verb) {
 
     "lint" {
         # Smart linting - by default only lint changed files
-        # Use 'lint all' to lint entire codebase
+        # Use 'lint -All' or 'lint all' to lint entire codebase
         # SubCommand can be: all (lint everything), or a type filter: cs, ts, md, json, ps1, spell
         $lintScript = Join-Path $PSScriptRoot ".scripts\lint.ps1"
+        $lintArgs = @{}
 
-        if ($SubCommand -eq "all") {
-            # Lint all files in codebase
-            & $lintScript -All
+        # -All switch or 'all' subcommand
+        if ($All -or $SubCommand -eq "all") {
+            $lintArgs.All = $true
         }
-        elseif ($SubCommand -in @("cs", "ts", "md", "json", "ps1", "spell")) {
-            # Lint only specific file type (changed files only)
-            & $lintScript -Type $SubCommand
+
+        # Type filter subcommand
+        if ($SubCommand -in @("cs", "ts", "md", "json", "ps1", "spell")) {
+            $lintArgs.Type = $SubCommand
         }
-        elseif ($SubCommand -and $SubCommand -ne "") {
+        elseif ($SubCommand -and $SubCommand -ne "" -and $SubCommand -ne "all") {
             Write-Host "Unknown lint type: $SubCommand" -ForegroundColor Red
-            Write-Host "Valid types: all, cs, ts, md, json, ps1, spell" -ForegroundColor Yellow
+            Write-Host "Valid: ./catan.ps1 lint [-All] [all|cs|ts|md|json|ps1|spell]" -ForegroundColor Yellow
             exit 1
         }
-        else {
-            # Default: lint changed files
-            & $lintScript
+
+        & $lintScript @lintArgs
+        exit $LASTEXITCODE
+    }
+
+    "format" {
+        # Auto-format source files
+        # Use 'format -All' or 'format all' to format entire codebase
+        # SubCommand can be: all, check, cs, ts
+        $formatScript = Join-Path $PSScriptRoot ".scripts\format.ps1"
+        $formatArgs = @{}
+
+        # -All switch or 'all' subcommand
+        if ($All -or $SubCommand -eq "all") {
+            $formatArgs.All = $true
         }
+
+        # 'check' subcommand
+        if ($SubCommand -eq "check") {
+            $formatArgs.Check = $true
+        }
+
+        # Type filter subcommand
+        if ($SubCommand -in @("cs", "ts")) {
+            $formatArgs.Type = $SubCommand
+        }
+        elseif ($SubCommand -and $SubCommand -ne "" -and $SubCommand -notin @("all", "check")) {
+            Write-Host "Unknown format type: $SubCommand" -ForegroundColor Red
+            Write-Host "Valid: ./catan.ps1 format [-All] [all|check|cs|ts]" -ForegroundColor Yellow
+            exit 1
+        }
+
+        & $formatScript @formatArgs
         exit $LASTEXITCODE
     }
 
@@ -1651,6 +1685,42 @@ switch ($Verb) {
         Write-Host "Checking dependencies..." -ForegroundColor Yellow
         & "$PSScriptRoot\.scripts\dependencies.ps1" -Doctor
         Write-Host ""
+
+        # Check react-ui npm packages (Prettier, ESLint, etc.)
+        $reactUiCheck = Join-Path $PSScriptRoot "react-ui"
+        if (Test-Path $reactUiCheck) {
+            Write-Host "Checking react-ui npm packages..." -ForegroundColor Yellow
+            $nodeModules = Join-Path $reactUiCheck "node_modules"
+            $prettierBin = Join-Path $nodeModules ".bin\prettier"
+            $eslintBin = Join-Path $nodeModules ".bin\eslint"
+
+            if (-not (Test-Path $nodeModules)) {
+                Write-Host "  [WARN] node_modules not found. Run: cd react-ui && npm install" -ForegroundColor Yellow
+            }
+            else {
+                $allGood = $true
+                if (Test-Path $prettierBin) {
+                    $prettierVer = & npx --prefix $reactUiCheck prettier --version 2>$null
+                    Write-Host "  [OK] Prettier v$prettierVer" -ForegroundColor Green
+                }
+                else {
+                    Write-Host "  [WARN] Prettier not found. Run: cd react-ui && npm install" -ForegroundColor Yellow
+                    $allGood = $false
+                }
+                if (Test-Path $eslintBin) {
+                    $eslintVer = & npx --prefix $reactUiCheck eslint --version 2>$null
+                    Write-Host "  [OK] ESLint v$eslintVer" -ForegroundColor Green
+                }
+                else {
+                    Write-Host "  [WARN] ESLint not found. Run: cd react-ui && npm install" -ForegroundColor Yellow
+                    $allGood = $false
+                }
+                if ($allGood) {
+                    Write-Host "  [OK] All react-ui npm packages installed" -ForegroundColor Green
+                }
+            }
+            Write-Host ""
+        }
 
         # Check database
         Write-Host "Checking database..." -ForegroundColor Yellow

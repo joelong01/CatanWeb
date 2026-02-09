@@ -163,11 +163,57 @@ function Invoke-CSharpLint {
     }
 }
 
+function Invoke-EnsureNodeModules {
+    <#
+    .SYNOPSIS
+        Ensures react-ui node_modules are installed. Runs npm install if needed.
+    .OUTPUTS
+        [bool] True if node_modules are available.
+    #>
+    if (-not (Test-Path $reactUiPath)) { return $false }
+
+    $nodeModulesPath = Join-Path $reactUiPath "node_modules"
+    $packageJsonPath = Join-Path $reactUiPath "package.json"
+
+    $needsInstall = $false
+    if (-not (Test-Path $nodeModulesPath)) {
+        Write-Info "node_modules not found. Running npm install..."
+        $needsInstall = $true
+    }
+    elseif ((Get-Item $packageJsonPath).LastWriteTime -gt (Get-Item $nodeModulesPath).LastWriteTime) {
+        Write-Info "package.json is newer than node_modules. Running npm install..."
+        $needsInstall = $true
+    }
+
+    if ($needsInstall) {
+        Push-Location $reactUiPath
+        try {
+            & npm install
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "npm install failed"
+                return $false
+            }
+        }
+        finally {
+            Pop-Location
+        }
+    }
+
+    return $true
+}
+
 function Invoke-TypeScriptLint {
     param([string[]]$Files)
 
     if (-not (Test-Path $reactUiPath)) {
         Write-Info "react-ui directory not found, skipping TypeScript lint"
+        return
+    }
+
+    # Ensure node_modules are installed
+    if (-not (Invoke-EnsureNodeModules)) {
+        $script:failedLinters += "TypeScript"
+        Write-Error "Cannot run TypeScript lint — npm install failed"
         return
     }
 
@@ -254,6 +300,49 @@ function Invoke-TypeScriptLint {
             if (($eslintOutput | Select-String -Pattern "^\s+\d+:\d+").Count -gt 10) {
                 Write-Info "    ... and more (run manually for full output)"
             }
+        }
+
+        # Step 3: Prettier format check
+        Write-Info "Running Prettier --check..."
+
+        # Prettier checks all web files, not just TS (CSS, JSON, etc.)
+        $prettierFiles = $tsFiles | ForEach-Object {
+            $_.Replace("$reactUiPath\", "").Replace("$reactUiPath/", "")
+        }
+
+        $prettierOutput = & npx prettier --check @prettierFiles 2>&1
+        $prettierExit = $LASTEXITCODE
+
+        if ($prettierExit -eq 0) {
+            Write-Success "Prettier formatting clean"
+        }
+        else {
+            # Strip ANSI escape codes before matching (Prettier v3 outputs colored [warn])
+            $unformatted = @($prettierOutput | Where-Object {
+                $stripped = $_ -replace '\x1b\[[0-9;]*m', ''
+                $stripped -match "\[warn\]" -and $stripped -notmatch "Code style"
+            })
+            $unformattedCount = $unformatted.Count
+
+            if ($unformattedCount -gt 0) {
+                $script:totalIssues += $unformattedCount
+                $script:failedLinters += "Prettier"
+                Write-Error "Prettier found $unformattedCount unformatted file(s)"
+                $unformatted | Select-Object -First 5 | ForEach-Object {
+                    $clean = $_ -replace '\x1b\[[0-9;]*m', ''
+                    Write-Host "    $clean" -ForegroundColor Gray
+                }
+            }
+            else {
+                # Non-zero exit but no [warn] lines — could be a parse error
+                $script:totalIssues++
+                $script:failedLinters += "Prettier"
+                Write-Error "Prettier check failed"
+                $prettierOutput | Select-Object -First 3 | ForEach-Object {
+                    Write-Host "    $_" -ForegroundColor Gray
+                }
+            }
+            Write-Info "Fix with: ./catan.ps1 format ts"
         }
     }
     finally {
@@ -589,6 +678,9 @@ else {
     }
     if ($script:failedLinters -contains "Spelling") {
         Write-Host "    • Spelling: Add words to cspell.json or fix typos" -ForegroundColor Gray
+    }
+    if ($script:failedLinters -contains "Prettier") {
+        Write-Host "    • Prettier: ./catan.ps1 format ts" -ForegroundColor Gray
     }
     if ($script:failedLinters -contains "C#") {
         Write-Host "    • C#: Fix compiler warnings/errors" -ForegroundColor Gray
