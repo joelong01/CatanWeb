@@ -292,10 +292,8 @@ export function HexGrid({
           height: `${layout.containerHeight}px`,
           transform: `scale(${finalScale})`,
           transformOrigin: 'top left',
-          left: '50%',
-          top: '50%',
-          marginLeft: `-${layout.containerWidth / 2}px`,
-          marginTop: `-${layout.containerHeight / 2}px`,
+          left: 0,
+          top: 0,
         }}
       >
         {/* Pass 1: Border layer (if borderColor provided) */}

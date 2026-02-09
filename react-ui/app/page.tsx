@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   faGamepad,
   faFolderOpen,
@@ -43,6 +43,19 @@ interface TroubleshootResult {
 export default function Home(): React.ReactElement {
   // TODO: Get active game ID from connection service/store
   const activeGameId: string | null = null;
+
+  // Responsive scale: shrink hex grids on narrow viewports so they fit.
+  // Game grid at hexSize=140 is ~700px wide; with p-8 wrapper padding (64px) = 764px total.
+  const [hexScale, setHexScale] = useState(1);
+  useEffect(() => {
+    const update = (): void => {
+      const available = window.innerWidth - 32; // 16px margin each side
+      setHexScale(Math.min(1, available / 764));
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   // Troubleshoot state
   const [isTroubleshooting, setIsTroubleshooting] = useState(false);
@@ -199,7 +212,7 @@ export default function Home(): React.ReactElement {
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-120px)] pt-[60px] pb-8">
         {/* Game Cluster */}
         <div className="bg-white/5 rounded-xl p-8 border border-white/10">
-          <HexGrid hexSize={140} items={gameItems} gap={4} />
+          <HexGrid hexSize={140} items={gameItems} gap={4} scale={hexScale} />
         </div>
 
         {/* Separator */}
@@ -207,7 +220,7 @@ export default function Home(): React.ReactElement {
 
         {/* Dev Cluster (20% smaller) */}
         <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-          <HexGrid hexSize={112} items={devItems} gap={3} />
+          <HexGrid hexSize={112} items={devItems} gap={3} scale={hexScale} />
         </div>
 
         {/* Troubleshoot Results */}

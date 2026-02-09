@@ -232,6 +232,7 @@ body {
     background: var(--game-bg-primary);
     position: relative;
     min-height: 0;
+    overflow-y: auto;
   }
 
   .page .content {
