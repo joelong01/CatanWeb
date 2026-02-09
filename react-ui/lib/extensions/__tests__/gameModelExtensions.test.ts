@@ -51,8 +51,40 @@ function createMockPlayer(id: string, name: string): PlayerModel {
     timesTargeted: 0,
     participatingInSupplemental: false,
     finishedSupplemental: false,
-    resourcesThisTurn: { wheat: 0, wood: 0, ore: 0, sheep: 0, brick: 0, goldMine: 0, coin: 0, paper: 0, cloth: 0, politics: 0, trade: 0, science: 0, victoryPoint: 0, anyDevCard: 0, robber: 0, count: 0 },
-    resourcesThisGame: { wheat: 0, wood: 0, ore: 0, sheep: 0, brick: 0, goldMine: 0, coin: 0, paper: 0, cloth: 0, politics: 0, trade: 0, science: 0, victoryPoint: 0, anyDevCard: 0, robber: 0, count: 0 },
+    resourcesThisTurn: {
+      wheat: 0,
+      wood: 0,
+      ore: 0,
+      sheep: 0,
+      brick: 0,
+      goldMine: 0,
+      coin: 0,
+      paper: 0,
+      cloth: 0,
+      politics: 0,
+      trade: 0,
+      science: 0,
+      victoryPoint: 0,
+      anyDevCard: 0,
+      robber: 0,
+    },
+    resourcesThisGame: {
+      wheat: 0,
+      wood: 0,
+      ore: 0,
+      sheep: 0,
+      brick: 0,
+      goldMine: 0,
+      coin: 0,
+      paper: 0,
+      cloth: 0,
+      politics: 0,
+      trade: 0,
+      science: 0,
+      victoryPoint: 0,
+      anyDevCard: 0,
+      robber: 0,
+    },
     unspentEntitlements: [],
     spentEntitlementsThisGame: [],
     spentEntitlementsThisTurn: [],
@@ -85,8 +117,6 @@ function createMockTile(
     resourceTileType: resource,
     highlighted: false,
     temporarilyGold: false,
-    default: {} as TileModel,
-    stars: number === 6 || number === 8 ? 5 : 0,
   };
 }
 
@@ -102,14 +132,12 @@ function createMockBuilding(
     buildingKey: {
       hexCoordinates: { q, r, s: -q - r },
       position,
-      default: {} as BuildingKey,
     },
     buildingState,
     wall: false,
     metropolis: false,
     ownerId: ownerId ?? '',
     hasRobber: false,
-    default: {} as BuildingModel,
   };
 }
 
@@ -133,9 +161,7 @@ function createMockRoad(
 }
 
 // Helper to create a minimal game model
-function createMockGameModel(
-  overrides: Partial<GameModel> = {}
-): GameModel {
+function createMockGameModel(overrides: Partial<GameModel> = {}): GameModel {
   return {
     gameId: 'test-game',
     gameName: 'Test Game',
@@ -285,7 +311,6 @@ describe('gameModelExtensions', () => {
       const key: BuildingKey = {
         hexCoordinates: { q: 0, r: 0, s: 0 },
         position: 'TopRight',
-        default: {} as BuildingKey,
       };
       expect(adjacentRoadsForBuilding(game, key)).toEqual([]);
     });
@@ -300,7 +325,6 @@ describe('gameModelExtensions', () => {
       const key: BuildingKey = {
         hexCoordinates: { q: 0, r: 0, s: 0 },
         position: 'TopRight',
-        default: {} as BuildingKey,
       };
       const result = adjacentRoadsForBuilding(game, key);
       expect(result).toHaveLength(3);
@@ -312,7 +336,6 @@ describe('gameModelExtensions', () => {
       const key: BuildingKey = {
         hexCoordinates: { q: 0, r: 0, s: 0 },
         position: 'TopRight',
-        default: {} as BuildingKey,
       };
       const result = adjacentRoadsForBuilding(game, key);
       expect(result).toHaveLength(1);
@@ -344,7 +367,6 @@ describe('gameModelExtensions', () => {
       const key: BuildingKey = {
         hexCoordinates: { q: 0, r: 0, s: 0 },
         position: 'TopRight',
-        default: {} as BuildingKey,
       };
       expect(tilesForBuilding(game, key)).toEqual([]);
     });
@@ -354,7 +376,6 @@ describe('gameModelExtensions', () => {
       const key: BuildingKey = {
         hexCoordinates: { q: 0, r: 0, s: 0 },
         position: 'TopRight',
-        default: {} as BuildingKey,
       };
       const result = tilesForBuilding(game, key);
       // TopRight vertex touches current tile, North neighbor, and NorthEast neighbor

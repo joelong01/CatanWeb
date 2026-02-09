@@ -7,6 +7,7 @@
  */
 
 import type { ResourcesModel } from '@/types/generated/models/resources-model';
+import { resourceCount } from '@/lib/extensions/resourcesExtensions';
 
 interface ResourcesPanelProps {
   /** Game resources model */
@@ -24,22 +25,14 @@ const RESOURCES = [
 
 export function ResourcesPanel({ resources }: ResourcesPanelProps): React.ReactElement {
   if (!resources) {
-    return (
-      <div className="p-4 text-gray-400 text-center">
-        No resource data
-      </div>
-    );
+    return <div className="p-4 text-gray-400 text-center">No resource data</div>;
   }
 
   return (
     <div className="p-3">
       <div className="grid grid-cols-5 gap-2">
         {RESOURCES.map(({ key, label, icon, color }) => (
-          <div
-            key={key}
-            className="flex flex-col items-center"
-            title={label}
-          >
+          <div key={key} className="flex flex-col items-center" title={label}>
             <div
               className={`
                 w-10 h-10 rounded-lg flex items-center justify-center
@@ -59,7 +52,7 @@ export function ResourcesPanel({ resources }: ResourcesPanelProps): React.ReactE
       {/* Total resources */}
       <div className="mt-3 pt-2 border-t border-gray-700 text-center">
         <span className="text-xs text-gray-400">Total Resources: </span>
-        <span className="text-sm font-bold text-gray-200">{resources.count}</span>
+        <span className="text-sm font-bold text-gray-200">{resourceCount(resources)}</span>
       </div>
     </div>
   );

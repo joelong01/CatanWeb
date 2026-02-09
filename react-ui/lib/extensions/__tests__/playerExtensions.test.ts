@@ -42,7 +42,6 @@ function createMockPlayer(id: string, name: string): PlayerModel {
       victoryPoint: 0,
       anyDevCard: 0,
       robber: 0,
-      count: 0
     },
     resourcesThisGame: {
       wheat: 0,
@@ -60,7 +59,6 @@ function createMockPlayer(id: string, name: string): PlayerModel {
       victoryPoint: 0,
       anyDevCard: 0,
       robber: 0,
-      count: 0
     },
     unspentEntitlements: [],
     spentEntitlementsThisGame: [],

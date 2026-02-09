@@ -25,7 +25,6 @@ describe('resourcesExtensions', () => {
       expect(model.victoryPoint).toBe(0);
       expect(model.anyDevCard).toBe(0);
       expect(model.robber).toBe(0);
-      expect(model.count).toBe(0);
     });
   });
 

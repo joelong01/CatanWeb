@@ -12,6 +12,4 @@ export interface TileModel {
     resourceTileType: ResourceType;
     highlighted: boolean;
     temporarilyGold: boolean;
-    default: TileModel;
-    stars: number;
 }

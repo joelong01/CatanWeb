@@ -21,13 +21,7 @@ import { createEmptyResourcesModel, addResource } from './resourcesExtensions';
  * Direction type matching C# Direction enum.
  * Used for calculating adjacent hex positions.
  */
-export type Direction =
-  | 'North'
-  | 'NorthEast'
-  | 'SouthEast'
-  | 'South'
-  | 'SouthWest'
-  | 'NorthWest';
+export type Direction = 'North' | 'NorthEast' | 'SouthEast' | 'South' | 'SouthWest' | 'NorthWest';
 
 /**
  * Direction offsets for hex coordinate system.
@@ -123,10 +117,7 @@ export function buildingKeyAliases(key: BuildingKey): BuildingAlias[] {
  * @param direction - Direction to move
  * @returns Coordinates of the adjacent hex
  */
-export function getAdjacentHex(
-  coords: HexCoordinates,
-  direction: Direction
-): HexCoordinates {
+export function getAdjacentHex(coords: HexCoordinates, direction: Direction): HexCoordinates {
   return hexCoordsAdd(coords, DIRECTION_OFFSETS[direction]);
 }
 
@@ -139,9 +130,7 @@ export function getAdjacentHex(
  * @returns True if keys are exactly equal
  */
 export function buildingKeysEqual(a: BuildingKey, b: BuildingKey): boolean {
-  return (
-    a.position === b.position && hexCoordsEqual(a.hexCoordinates, b.hexCoordinates)
-  );
+  return a.position === b.position && hexCoordsEqual(a.hexCoordinates, b.hexCoordinates);
 }
 
 /**
@@ -186,11 +175,8 @@ export function findBuilding(
     const aliasKey: BuildingKey = {
       hexCoordinates: aliasCoords,
       position: alias.position,
-      default: {} as BuildingKey,
     };
-    const aliasMatch = buildings.find((b) =>
-      buildingKeysEqual(b.buildingKey, aliasKey)
-    );
+    const aliasMatch = buildings.find((b) => buildingKeysEqual(b.buildingKey, aliasKey));
     if (aliasMatch) {
       return aliasMatch;
     }
@@ -211,10 +197,7 @@ export function findBuilding(
  * const neighbors = adjacentBuildings(gameModel.buildings, buildingKey);
  * // Used to check settlement spacing rule (no adjacent settlements)
  */
-export function adjacentBuildings(
-  buildings: BuildingModel[],
-  key: BuildingKey
-): BuildingModel[] {
+export function adjacentBuildings(buildings: BuildingModel[], key: BuildingKey): BuildingModel[] {
   if (!buildings || !key) {
     return [];
   }
@@ -226,44 +209,44 @@ export function adjacentBuildings(
   switch (key.position) {
     case 'Right':
       adjacentKeys.push(
-        { hexCoordinates: key.hexCoordinates, position: 'TopRight', default: {} as BuildingKey },
-        { hexCoordinates: key.hexCoordinates, position: 'BottomRight', default: {} as BuildingKey },
-        { hexCoordinates: getAdjacentHex(key.hexCoordinates, 'NorthEast'), position: 'BottomRight', default: {} as BuildingKey }
+        { hexCoordinates: key.hexCoordinates, position: 'TopRight' },
+        { hexCoordinates: key.hexCoordinates, position: 'BottomRight' },
+        { hexCoordinates: getAdjacentHex(key.hexCoordinates, 'NorthEast'), position: 'BottomRight' }
       );
       break;
     case 'BottomRight':
       adjacentKeys.push(
-        { hexCoordinates: key.hexCoordinates, position: 'Right', default: {} as BuildingKey },
-        { hexCoordinates: key.hexCoordinates, position: 'BottomLeft', default: {} as BuildingKey },
-        { hexCoordinates: getAdjacentHex(key.hexCoordinates, 'South'), position: 'Right', default: {} as BuildingKey }
+        { hexCoordinates: key.hexCoordinates, position: 'Right' },
+        { hexCoordinates: key.hexCoordinates, position: 'BottomLeft' },
+        { hexCoordinates: getAdjacentHex(key.hexCoordinates, 'South'), position: 'Right' }
       );
       break;
     case 'BottomLeft':
       adjacentKeys.push(
-        { hexCoordinates: key.hexCoordinates, position: 'Left', default: {} as BuildingKey },
-        { hexCoordinates: key.hexCoordinates, position: 'BottomRight', default: {} as BuildingKey },
-        { hexCoordinates: getAdjacentHex(key.hexCoordinates, 'South'), position: 'Left', default: {} as BuildingKey }
+        { hexCoordinates: key.hexCoordinates, position: 'Left' },
+        { hexCoordinates: key.hexCoordinates, position: 'BottomRight' },
+        { hexCoordinates: getAdjacentHex(key.hexCoordinates, 'South'), position: 'Left' }
       );
       break;
     case 'Left':
       adjacentKeys.push(
-        { hexCoordinates: key.hexCoordinates, position: 'TopLeft', default: {} as BuildingKey },
-        { hexCoordinates: key.hexCoordinates, position: 'BottomLeft', default: {} as BuildingKey },
-        { hexCoordinates: getAdjacentHex(key.hexCoordinates, 'NorthWest'), position: 'BottomLeft', default: {} as BuildingKey }
+        { hexCoordinates: key.hexCoordinates, position: 'TopLeft' },
+        { hexCoordinates: key.hexCoordinates, position: 'BottomLeft' },
+        { hexCoordinates: getAdjacentHex(key.hexCoordinates, 'NorthWest'), position: 'BottomLeft' }
       );
       break;
     case 'TopLeft':
       adjacentKeys.push(
-        { hexCoordinates: key.hexCoordinates, position: 'TopRight', default: {} as BuildingKey },
-        { hexCoordinates: key.hexCoordinates, position: 'Left', default: {} as BuildingKey },
-        { hexCoordinates: getAdjacentHex(key.hexCoordinates, 'NorthWest'), position: 'TopRight', default: {} as BuildingKey }
+        { hexCoordinates: key.hexCoordinates, position: 'TopRight' },
+        { hexCoordinates: key.hexCoordinates, position: 'Left' },
+        { hexCoordinates: getAdjacentHex(key.hexCoordinates, 'NorthWest'), position: 'TopRight' }
       );
       break;
     case 'TopRight':
       adjacentKeys.push(
-        { hexCoordinates: key.hexCoordinates, position: 'TopLeft', default: {} as BuildingKey },
-        { hexCoordinates: key.hexCoordinates, position: 'Right', default: {} as BuildingKey },
-        { hexCoordinates: getAdjacentHex(key.hexCoordinates, 'North'), position: 'Right', default: {} as BuildingKey }
+        { hexCoordinates: key.hexCoordinates, position: 'TopLeft' },
+        { hexCoordinates: key.hexCoordinates, position: 'Right' },
+        { hexCoordinates: getAdjacentHex(key.hexCoordinates, 'North'), position: 'Right' }
       );
       break;
   }
@@ -300,7 +283,6 @@ export function buildingsInTile(
     const key: BuildingKey = {
       hexCoordinates: coords,
       position,
-      default: {} as BuildingKey,
     };
     const building = findBuilding(buildings, key);
     if (building) {
@@ -330,7 +312,6 @@ export function ownedBuildings(
     const key: BuildingKey = {
       hexCoordinates: coords,
       position,
-      default: {} as BuildingKey,
     };
     const building = findBuilding(buildings, key);
     if (building && building.ownerId) {
@@ -371,10 +352,7 @@ export function buildingResourceCount(building: BuildingModel): number {
  * const resources = buildingResources(building, 'Wheat');
  * // If building is a City, resources.wheat will be 2
  */
-export function buildingResources(
-  building: BuildingModel,
-  resource: ResourceType
-): ResourcesModel {
+export function buildingResources(building: BuildingModel, resource: ResourceType): ResourcesModel {
   const result = createEmptyResourcesModel();
 
   if (building.buildingState === 'City') {

@@ -9,5 +9,4 @@ import { PlayerModel } from './player-model';
 export interface HarborModel {
     harborKey: HarborKey;
     owner: PlayerModel;
-    default: HarborModel;
 }

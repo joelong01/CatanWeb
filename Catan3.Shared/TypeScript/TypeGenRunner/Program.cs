@@ -349,6 +349,14 @@ static Dictionary<string, List<string>> GetJsonIgnoredPropertiesMap()
         typeof(Catan3.Shared.Profiles.PlayerColors),
         typeof(Catan3.Shared.Profiles.LifetimeStats),
         typeof(Catan3.Shared.Profiles.GameStats),
+        // Game model types with static Default or [JsonIgnore] properties
+        typeof(TileModel),
+        typeof(BuildingModel),
+        typeof(BuildingKey),
+        typeof(HarborModel),
+        typeof(HouseRules),
+        typeof(ResourceRules),
+        typeof(ResourcesModel),
     };
 
     foreach (var type in typesToCheck)

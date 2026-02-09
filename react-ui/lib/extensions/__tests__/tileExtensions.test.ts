@@ -20,7 +20,7 @@ import { EXPANSION_GAME_DATA } from '@/lib/test-data/expansion-game';
 import type { TileModel } from '@/types/generated/models/tile-model';
 import type { HexCoordinates } from '@/types/generated/models/hex-coordinates';
 
-// Helper to create a minimal tile for testing
+// Helper to create a minimal tile for testing (matches wire format — no phantom fields)
 function createMockTile(
   q: number,
   r: number,
@@ -33,8 +33,6 @@ function createMockTile(
     resourceTileType: resourceTileType as TileModel['resourceTileType'],
     highlighted: false,
     temporarilyGold: false,
-    default: {} as TileModel,
-    stars: NUMBER_PIPS[number] ?? 0,
   };
 }
 

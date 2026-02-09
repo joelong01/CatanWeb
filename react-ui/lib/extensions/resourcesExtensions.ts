@@ -31,8 +31,31 @@ export function createEmptyResourcesModel(): ResourcesModel {
     victoryPoint: 0,
     anyDevCard: 0,
     robber: 0,
-    count: 0,
   };
+}
+
+/**
+ * Computes the total count of all resources in a ResourcesModel.
+ * This is the client-side equivalent of C#'s [JsonIgnore] Count property.
+ */
+export function resourceCount(model: ResourcesModel): number {
+  return (
+    model.wheat +
+    model.wood +
+    model.brick +
+    model.ore +
+    model.sheep +
+    model.goldMine +
+    model.cloth +
+    model.coin +
+    model.paper +
+    model.victoryPoint +
+    model.politics +
+    model.science +
+    model.trade +
+    model.anyDevCard +
+    model.robber
+  );
 }
 
 /**

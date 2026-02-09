@@ -201,10 +201,7 @@ export function adjacentRoadsForBuilding(
 /**
  * Returns the buildings adjacent to a road (the 2 buildings at each end).
  */
-export function adjacentBuildingsForRoad(
-  gameModel: GameModel,
-  roadKey: RoadKey
-): BuildingModel[] {
+export function adjacentBuildingsForRoad(gameModel: GameModel, roadKey: RoadKey): BuildingModel[] {
   if (!gameModel.buildings || gameModel.buildings.length === 0) {
     return [];
   }
@@ -214,28 +211,28 @@ export function adjacentBuildingsForRoad(
 
   switch (roadKey.hexSide) {
     case 'Top':
-      buildingKeys.push({ hexCoordinates: coords, position: 'TopLeft', default: {} as BuildingKey });
-      buildingKeys.push({ hexCoordinates: coords, position: 'TopRight', default: {} as BuildingKey });
+      buildingKeys.push({ hexCoordinates: coords, position: 'TopLeft' });
+      buildingKeys.push({ hexCoordinates: coords, position: 'TopRight' });
       break;
     case 'TopRight':
-      buildingKeys.push({ hexCoordinates: coords, position: 'TopRight', default: {} as BuildingKey });
-      buildingKeys.push({ hexCoordinates: coords, position: 'Right', default: {} as BuildingKey });
+      buildingKeys.push({ hexCoordinates: coords, position: 'TopRight' });
+      buildingKeys.push({ hexCoordinates: coords, position: 'Right' });
       break;
     case 'BottomRight':
-      buildingKeys.push({ hexCoordinates: coords, position: 'Right', default: {} as BuildingKey });
-      buildingKeys.push({ hexCoordinates: coords, position: 'BottomRight', default: {} as BuildingKey });
+      buildingKeys.push({ hexCoordinates: coords, position: 'Right' });
+      buildingKeys.push({ hexCoordinates: coords, position: 'BottomRight' });
       break;
     case 'Bottom':
-      buildingKeys.push({ hexCoordinates: coords, position: 'BottomRight', default: {} as BuildingKey });
-      buildingKeys.push({ hexCoordinates: coords, position: 'BottomLeft', default: {} as BuildingKey });
+      buildingKeys.push({ hexCoordinates: coords, position: 'BottomRight' });
+      buildingKeys.push({ hexCoordinates: coords, position: 'BottomLeft' });
       break;
     case 'BottomLeft':
-      buildingKeys.push({ hexCoordinates: coords, position: 'BottomLeft', default: {} as BuildingKey });
-      buildingKeys.push({ hexCoordinates: coords, position: 'Left', default: {} as BuildingKey });
+      buildingKeys.push({ hexCoordinates: coords, position: 'BottomLeft' });
+      buildingKeys.push({ hexCoordinates: coords, position: 'Left' });
       break;
     case 'TopLeft':
-      buildingKeys.push({ hexCoordinates: coords, position: 'Left', default: {} as BuildingKey });
-      buildingKeys.push({ hexCoordinates: coords, position: 'TopLeft', default: {} as BuildingKey });
+      buildingKeys.push({ hexCoordinates: coords, position: 'Left' });
+      buildingKeys.push({ hexCoordinates: coords, position: 'TopLeft' });
       break;
     case 'None':
     default:
@@ -256,10 +253,7 @@ export function adjacentBuildingsForRoad(
 /**
  * Returns the tiles that a building connects to (up to 3 tiles sharing that vertex).
  */
-export function tilesForBuilding(
-  gameModel: GameModel,
-  buildingKey: BuildingKey
-): TileModel[] {
+export function tilesForBuilding(gameModel: GameModel, buildingKey: BuildingKey): TileModel[] {
   if (!gameModel.tiles || gameModel.tiles.length === 0) {
     return [];
   }
@@ -365,34 +359,25 @@ export function buildableRoadsFromModel(gameModel: GameModel): RoadModel[] {
 /**
  * Gets all buildings owned by a specific player.
  */
-export function buildingsOwnedByPlayer(
-  gameModel: GameModel,
-  playerId: string
-): BuildingModel[] {
+export function buildingsOwnedByPlayer(gameModel: GameModel, playerId: string): BuildingModel[] {
   if (!gameModel.buildings || !playerId) {
     return [];
   }
   return gameModel.buildings.filter(
     (b) =>
-      b.ownerId === playerId &&
-      (b.buildingState === 'Settlement' || b.buildingState === 'City')
+      b.ownerId === playerId && (b.buildingState === 'Settlement' || b.buildingState === 'City')
   );
 }
 
 /**
  * Gets all roads owned by a specific player.
  */
-export function roadsOwnedByPlayerFromModel(
-  gameModel: GameModel,
-  playerId: string
-): RoadModel[] {
+export function roadsOwnedByPlayerFromModel(gameModel: GameModel, playerId: string): RoadModel[] {
   if (!gameModel.roads || !playerId) {
     return [];
   }
   return gameModel.roads.filter(
-    (r) =>
-      r.ownerId === playerId &&
-      (r.roadState === 'Road' || r.roadState === 'Ship')
+    (r) => r.ownerId === playerId && (r.roadState === 'Road' || r.roadState === 'Ship')
   );
 }
 
@@ -409,10 +394,7 @@ export function roadsOwnedByPlayerFromModel(
  * const stars = starsForBuilding(gameModel, building.buildingKey);
  * // Returns 14 if building touches tiles with numbers 6, 8, 9 (5+5+4)
  */
-export function starsForBuilding(
-  gameModel: GameModel,
-  buildingKey: BuildingKey
-): number {
+export function starsForBuilding(gameModel: GameModel, buildingKey: BuildingKey): number {
   const tiles = tilesForBuilding(gameModel, buildingKey);
   return totalStars(tiles);
 }
@@ -492,8 +474,7 @@ export function findAdjacentHarbor(
 
   for (const { hex, side } of locations) {
     const harbor = gameModel.harbors.find(
-      (h) =>
-        hexCoordsEqual(h.harborKey.hexCoordinates, hex) && h.harborKey.side === side
+      (h) => hexCoordsEqual(h.harborKey.hexCoordinates, hex) && h.harborKey.side === side
     );
     if (harbor) {
       return harbor;
@@ -543,9 +524,7 @@ export function ownedAdjacentRoadsNotCounted(
 
   // Get adjacent roads owned by the same player
   const allAdjacentRoads = adjacentRoads(gameModel.roads, road.roadKey);
-  const ownedAdjacentRoads = allAdjacentRoads.filter(
-    (r) => r.ownerId === road.ownerId
-  );
+  const ownedAdjacentRoads = allAdjacentRoads.filter((r) => r.ownerId === road.ownerId);
 
   for (const r of ownedAdjacentRoads) {
     // Check if there's a building between the roads
@@ -600,9 +579,7 @@ export function purchaseModel(
   if (!gameModel.entitlementPurchaseModel) {
     return undefined;
   }
-  return gameModel.entitlementPurchaseModel.find(
-    (m) => m.entitlement === entitlement
-  );
+  return gameModel.entitlementPurchaseModel.find((m) => m.entitlement === entitlement);
 }
 
 /**
@@ -682,4 +659,3 @@ export function calculateRollStats(gameModel: GameModel): Record<number, RollSta
 
   return stats;
 }
-

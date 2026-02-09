@@ -9,5 +9,4 @@ import { HexPosition } from './hex-position';
 export interface BuildingKey {
     hexCoordinates: HexCoordinates;
     position: HexPosition;
-    default: BuildingKey;
 }

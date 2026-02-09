@@ -12,5 +12,4 @@ export interface HouseRules {
     knightMovesRobberBeforeRoll: boolean;
     supplementalMinPlayers: number;
     griefDodgy: boolean;
-    default: HouseRules;
 }

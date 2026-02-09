@@ -9,5 +9,4 @@ export interface ResourceRules {
     maxRoads: number;
     minPlayers: number;
     maxPlayers: number;
-    default: ResourceRules;
 }

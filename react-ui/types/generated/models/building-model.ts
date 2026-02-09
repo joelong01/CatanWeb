@@ -13,5 +13,4 @@ export interface BuildingModel {
     metropolis: boolean;
     ownerId: string;
     hasRobber: boolean;
-    default: BuildingModel;
 }

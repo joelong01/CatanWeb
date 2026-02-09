@@ -1,7 +1,8 @@
 'use client';
 
 import React, { memo, useMemo } from 'react';
-import type { HarborModel, HexSide } from '@/lib/test-data/expansion-game';
+import type { HarborModel } from '@/types/generated/models/harbor-model';
+import type { HexSide } from '@/types/generated/models/hex-side';
 import { HARBOR_IMAGES } from '@/lib/test-data/expansion-game';
 import { hexToPixel, cubicCoord } from '@/components/hex-grid/hex-geometry';
 
@@ -21,13 +22,13 @@ export interface HarborHexProps {
  * Edge vertex indices for each hex side (for creating the water triangle)
  * Each side connects two adjacent vertices.
  */
-const EDGE_VERTICES: Record<HexSide, [number, number]> = {
-  Top: [5, 0],      // TopLeft vertex (5) to Right vertex (0)
+const EDGE_VERTICES: Record<Exclude<HexSide, 'None'>, [number, number]> = {
+  Top: [5, 0], // TopLeft vertex (5) to Right vertex (0)
   TopRight: [0, 1], // Right (0) to BottomRight (1)
   BottomRight: [1, 2], // BottomRight (1) to BottomLeft (2)
-  Bottom: [2, 3],   // BottomLeft (2) to Left (3)
+  Bottom: [2, 3], // BottomLeft (2) to Left (3)
   BottomLeft: [3, 4], // Left (3) to TopLeft (4)
-  TopLeft: [4, 5],  // TopLeft (4) to Top (5)
+  TopLeft: [4, 5], // TopLeft (4) to Top (5)
 };
 
 /**
@@ -39,7 +40,8 @@ function getEdgeVertices(
   hexSize: number,
   side: HexSide
 ): { v1: { x: number; y: number }; v2: { x: number; y: number } } {
-  const [idx1, idx2] = EDGE_VERTICES[side];
+  const indices = EDGE_VERTICES[side as Exclude<HexSide, 'None'>];
+  const [idx1, idx2] = indices;
 
   // Flat-topped hex vertices: 0° = right, going counterclockwise
   // Vertex angles: 0°, 60°, 120°, 180°, 240°, 300°
@@ -125,11 +127,7 @@ export const HarborHex = memo(function HarborHex({
   return (
     <g className="harbor" data-type={harborType}>
       {/* Water triangle background */}
-      <polygon
-        points={trianglePoints}
-        fill="url(#pattern-water)"
-        className="harbor-triangle"
-      />
+      <polygon points={trianglePoints} fill="url(#pattern-water)" className="harbor-triangle" />
 
       {/* Harbor circle with icon */}
       <circle

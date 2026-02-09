@@ -26,7 +26,14 @@ import { EXPANSION_GAME_DATA, generateTestBuildingsAndRoads } from '@/lib/test-d
 import { gameActions } from '@/lib/stores/gameStoreHooks';
 import type { PlayerProfile } from '@/types/player-profile';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faRotateLeft, faRotateRight, faArrowsRotate, faCheck, faScaleBalanced, faReceipt } from '@fortawesome/free-solid-svg-icons';
+import {
+  faRotateLeft,
+  faRotateRight,
+  faArrowsRotate,
+  faCheck,
+  faScaleBalanced,
+  faReceipt,
+} from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { WinnerOverlay } from '@/components/game/overlays/WinnerOverlay';
 import type { WinnerPlayer } from '@/components/game/overlays/WinnerOverlay';
@@ -100,7 +107,11 @@ function buildCssGradient(colors: PlayerColors): string {
 /**
  * Create PlayerColors with computed gradient.
  */
-function createPlayerColors(primary: string, secondary: string, foreground: string): PlayerColors & { cssGradient: string } {
+function createPlayerColors(
+  primary: string,
+  secondary: string,
+  foreground: string
+): PlayerColors & { cssGradient: string } {
   const colors: PlayerColors = { primary, secondary, foreground };
   return {
     ...colors,
@@ -284,7 +295,6 @@ const MOCK_RESOURCES: ResourcesModel = {
   victoryPoint: 0,
   anyDevCard: 0,
   robber: 3,
-  count: 55,
 };
 
 // ============================================================================
@@ -426,29 +436,25 @@ function _getRollStars(number: number): string {
 }
 
 /** Hex content for a roll button showing number token, count, and percentage */
-function RollHexContent({
-  rollNumber,
-  count,
-  percentage,
-  colors,
-}: RollHexContentProps) {
+function RollHexContent({ rollNumber, count, percentage, colors }: RollHexContentProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
 
   const gradient = colors?.cssGradient || 'var(--hex-content-gradient)';
   const foreground = colors?.foreground || '#ffffff';
-  const borderColor = isHovered
-    ? 'var(--hex-border-hover)'
-    : 'var(--hex-border-idle)';
+  const borderColor = isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
 
   // Button scale: normal 0.96, hover 0.94, pressed 0.90
-  const scale = isPressed ? 0.90 : isHovered ? 0.94 : 0.96;
+  const scale = isPressed ? 0.9 : isHovered ? 0.94 : 0.96;
 
   return (
     <div
       className="absolute inset-0 cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
     >
@@ -466,10 +472,7 @@ function RollHexContent({
         }}
       >
         {/* Count at top */}
-        <span
-          className="text-[10px] font-bold"
-          style={{ color: foreground }}
-        >
+        <span className="text-[10px] font-bold" style={{ color: foreground }}>
           {count}
         </span>
 
@@ -479,10 +482,7 @@ function RollHexContent({
         </div>
 
         {/* Percentage at bottom */}
-        <span
-          className="text-[9px]"
-          style={{ color: foreground, opacity: 0.8 }}
-        >
+        <span className="text-[9px]" style={{ color: foreground, opacity: 0.8 }}>
           {percentage}%
         </span>
       </div>
@@ -504,11 +504,7 @@ interface RollRingProps {
  * RollRing - 11 hex buttons for roll numbers 2-12
  * Arranged in 3 rows: 4-4-3 pattern matching Blazor layout
  */
-function RollRing({
-  rollStats,
-  onRollClick,
-  colors,
-}: RollRingProps) {
+function RollRing({ rollStats, onRollClick, colors }: RollRingProps) {
   // Hex coordinates for 3-4-3 COLUMN layout with 7 isolated
   // Reading top-to-bottom within each column, left-to-right across columns
   // 7 is special (robber roll) so it's isolated at bottom-left edge
@@ -613,11 +609,7 @@ interface DiceHexContentProps {
   colors?: PlayerColors & { cssGradient: string };
 }
 
-function DiceHexContent({
-  value,
-  isSelected,
-  colors,
-}: DiceHexContentProps) {
+function DiceHexContent({ value, isSelected, colors }: DiceHexContentProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
 
@@ -627,9 +619,7 @@ function DiceHexContent({
 
   // Unselected: player gradient background, foreground text
   // Selected: foreground as background, primary as text (inverted)
-  const bgStyle = isSelected
-    ? { background: foreground }
-    : { background: gradient };
+  const bgStyle = isSelected ? { background: foreground } : { background: gradient };
 
   const textColor = isSelected ? primary : foreground;
 
@@ -638,13 +628,17 @@ function DiceHexContent({
 
   // Scale based on interaction state
   const innerScale = isPressed ? 0.85 : isHovered ? 0.88 : 0.91;
-  const borderColor = isSelected || isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
+  const borderColor =
+    isSelected || isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
 
   return (
     <div
       className="absolute inset-0"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onTouchStart={() => setIsPressed(true)}
@@ -703,7 +697,10 @@ function DiceCenterHex({ isEnabled, colors }: DiceCenterHexProps) {
     <div
       className="absolute inset-0"
       onMouseEnter={() => isEnabled && setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => isEnabled && setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onTouchStart={() => isEnabled && setIsPressed(true)}
@@ -777,12 +774,7 @@ function DiceCluster({
     {
       id: 'center',
       coord: CLUSTER_7.center,
-      content: (
-        <DiceCenterHex
-          isEnabled={canSendRoll}
-          colors={colors}
-        />
-      ),
+      content: <DiceCenterHex isEnabled={canSendRoll} colors={colors} />,
       onClick: canSendRoll ? onSendRoll : undefined,
       disabled: !canSendRoll,
     },
@@ -791,11 +783,7 @@ function DiceCluster({
       id: `die-${value}`,
       coord,
       content: (
-        <DiceHexContent
-          value={value}
-          isSelected={selectedValue === value}
-          colors={colors}
-        />
+        <DiceHexContent value={value} isSelected={selectedValue === value} colors={colors} />
       ),
       onClick: () => handleSelect(value),
     })),
@@ -901,14 +889,12 @@ function ActionHexContent({
   const frontBg = gradient;
 
   // Scale based on interaction state (only when enabled)
-  const innerScale = isEnabled && isPressed ? 0.90 : isEnabled && isHovered ? 0.93 : 0.96;
+  const innerScale = isEnabled && isPressed ? 0.9 : isEnabled && isHovered ? 0.93 : 0.96;
   const borderColor = isEnabled && isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
 
   // Render the icon/glyph content
   const renderIcon = (size: 'large' | 'small', pressed = false): ReactNode => {
-    const sizeClass = size === 'large'
-      ? (isPrimary ? 'text-3xl' : 'text-2xl')
-      : 'text-base';
+    const sizeClass = size === 'large' ? (isPrimary ? 'text-3xl' : 'text-2xl') : 'text-base';
     // All face-up buttons use player foreground color
     const color = foreground;
 
@@ -948,7 +934,10 @@ function ActionHexContent({
       className="absolute inset-0"
       style={{ perspective: '500px' }}
       onMouseEnter={() => isEnabled && setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => isEnabled && setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onTouchStart={() => isEnabled && setIsPressed(true)}
@@ -963,10 +952,7 @@ function ActionHexContent({
         }}
       >
         {/* Front face (enabled state) */}
-        <div
-          className="absolute inset-0"
-          style={{ backfaceVisibility: 'hidden' }}
-        >
+        <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}>
           {/* Outer border */}
           <div
             className="absolute inset-0 hex-clip-flat transition-colors duration-150"
@@ -1030,10 +1016,7 @@ function ActionHexContent({
             }}
           >
             {/* Icon badge centered */}
-            <div
-              className="rounded-sm px-1.5 py-0.5"
-              style={{ background: gradient }}
-            >
+            <div className="rounded-sm px-1.5 py-0.5" style={{ background: gradient }}>
               {renderIcon('small')}
             </div>
             {/* Stats below icon */}
@@ -1306,11 +1289,7 @@ interface ResourceHexContentProps {
   colors?: PlayerColors & { cssGradient: string };
 }
 
-function ResourceHexContent({
-  assetName,
-  count,
-  isSelected,
-}: ResourceHexContentProps) {
+function ResourceHexContent({ assetName, count, isSelected }: ResourceHexContentProps) {
   const image = useAssetPath(assetName);
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
@@ -1323,7 +1302,10 @@ function ResourceHexContent({
     <div
       className="absolute inset-0"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onTouchStart={() => setIsPressed(true)}
@@ -1352,9 +1334,7 @@ function ResourceHexContent({
             transform: isPressed ? 'scale(0.9)' : 'scale(1)',
           }}
         >
-          <span className="font-bold text-xl text-white leading-none">
-            {count}
-          </span>
+          <span className="font-bold text-xl text-white leading-none">{count}</span>
         </div>
       </div>
       {/* Selection checkmark - upper-right area (matching PlayerSelector) */}
@@ -1363,10 +1343,7 @@ function ResourceHexContent({
           className="absolute z-10 w-6 h-6 rounded-full flex items-center justify-center bg-black/50 border border-white/50 -translate-x-1/2 -translate-y-1/2"
           style={{ top: '16%', left: '68%' }}
         >
-          <FontAwesomeIcon
-            icon={faCheck}
-            className="text-xs text-white"
-          />
+          <FontAwesomeIcon icon={faCheck} className="text-xs text-white" />
         </div>
       )}
     </div>
@@ -1399,16 +1376,9 @@ function VarianceHexContent({ variance, colors }: VarianceHexContentProps) {
         }}
       >
         {/* Scale icon */}
-        <FontAwesomeIcon
-          icon={faScaleBalanced}
-          className="text-xl"
-          style={{ color: foreground }}
-        />
+        <FontAwesomeIcon icon={faScaleBalanced} className="text-xl" style={{ color: foreground }} />
         {/* Variance value */}
-        <span
-          className="text-lg font-bold"
-          style={{ color: foreground }}
-        >
+        <span className="text-lg font-bold" style={{ color: foreground }}>
           {variance.toFixed(1)}
         </span>
       </div>
@@ -1432,14 +1402,21 @@ function StarHexContent({ value, isSelected, colors }: StarHexContentProps) {
   const purpleBgSelected = '#6366f1'; // indigo-500
 
   // Scale based on interaction state
-  const innerScale = isPressed ? 0.80 : isHovered ? 0.84 : 0.88;
-  const borderColor = isSelected ? (colors?.primary || purpleBgSelected) : isHovered ? '#a5b4fc' : '#818cf8';
+  const innerScale = isPressed ? 0.8 : isHovered ? 0.84 : 0.88;
+  const borderColor = isSelected
+    ? colors?.primary || purpleBgSelected
+    : isHovered
+      ? '#a5b4fc'
+      : '#818cf8';
 
   return (
     <div
       className="absolute inset-0"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onTouchStart={() => setIsPressed(true)}
@@ -1455,13 +1432,13 @@ function StarHexContent({ value, isSelected, colors }: StarHexContentProps) {
         className="absolute inset-0 hex-clip-flat flex items-center justify-center transition-all duration-150"
         style={{
           transform: `scale(${innerScale})`,
-          background: isSelected ? (colors?.cssGradient || purpleBgSelected) : purpleBg,
+          background: isSelected ? colors?.cssGradient || purpleBgSelected : purpleBg,
         }}
       >
         <span
           className="font-bold text-[9px] leading-none transition-transform duration-150"
           style={{
-            color: isSelected ? (colors?.foreground || '#ffffff') : '#1e1b4b',
+            color: isSelected ? colors?.foreground || '#ffffff' : '#1e1b4b',
             transform: isPressed ? 'scale(0.85)' : 'scale(1)',
           }}
         >
@@ -1485,14 +1462,17 @@ function ResetHexContent({ colors }: ResetHexContentProps) {
   const purpleBg = '#a5b4fc'; // indigo-300
 
   // Scale based on interaction state
-  const innerScale = isPressed ? 0.80 : isHovered ? 0.84 : 0.88;
+  const innerScale = isPressed ? 0.8 : isHovered ? 0.84 : 0.88;
   const borderColor = isHovered ? '#a5b4fc' : '#818cf8';
 
   return (
     <div
       className="absolute inset-0"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onTouchStart={() => setIsPressed(true)}
@@ -1545,7 +1525,7 @@ function MeasurementCluster({ tiles, colors }: MeasurementClusterProps) {
   const handleResourceClick = (key: string) => {
     if (selectedResources.includes(key)) {
       // Deselect if already selected
-      setSelectedResources(selectedResources.filter(r => r !== key));
+      setSelectedResources(selectedResources.filter((r) => r !== key));
     } else if (selectedResources.length < MAX_RESOURCE_SELECTION) {
       // Add to selection if under limit
       setSelectedResources([...selectedResources, key]);
@@ -1602,11 +1582,7 @@ function MeasurementCluster({ tiles, colors }: MeasurementClusterProps) {
       id: `star-${value}`,
       coord: CLUSTER_7[position],
       content: (
-        <StarHexContent
-          value={value}
-          isSelected={selectedStars === value}
-          colors={colors}
-        />
+        <StarHexContent value={value} isSelected={selectedStars === value} colors={colors} />
       ),
       onClick: () => handleStarClick(value),
     })),
@@ -1696,11 +1672,11 @@ function ResourceCard({
   const cardBackPath = useAssetPath('CardBack');
 
   // Find the config for this resource
-  const config = RESOURCE_CARD_CONFIG.find(c => c.type === resourceType);
+  const config = RESOURCE_CARD_CONFIG.find((c) => c.type === resourceType);
   if (!config) return null;
 
   // Determine if showing front
-  const isShowingFront = manualFlip !== null ? manualFlip : (autoFlip ? count > 0 : true);
+  const isShowingFront = manualFlip !== null ? manualFlip : autoFlip ? count > 0 : true;
 
   // Right-click to manually flip
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -1734,9 +1710,7 @@ function ResourceCard({
             style={{ backgroundImage: imagePath ? `url(${imagePath})` : undefined }}
           />
           {/* Count badge at bottom */}
-          <div
-            className="absolute bottom-1 left-0 right-0 flex justify-center"
-          >
+          <div className="absolute bottom-1 left-0 right-0 flex justify-center">
             <span
               className="px-2 py-1 rounded text-white font-bold text-lg leading-none"
               style={{ background: 'rgba(0, 0, 0, 0.85)' }}
@@ -1746,9 +1720,7 @@ function ResourceCard({
           </div>
           {/* Harbor indicator (ship glyph) */}
           {hasHarbor && (
-            <div
-              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black flex items-center justify-center"
-            >
+            <div className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black flex items-center justify-center">
               <span className="font-catan text-white text-base">{'\uE90D'}</span>
             </div>
           )}
@@ -1804,16 +1776,10 @@ function StatTile({
   const renderIcon = (className: string) => {
     if (faIcon) {
       return (
-        <FontAwesomeIcon
-          icon={faIcon}
-          className={className}
-          style={{ color: colors.foreground }}
-        />
+        <FontAwesomeIcon icon={faIcon} className={className} style={{ color: colors.foreground }} />
       );
     }
-    return (
-      <span className={`font-catan ${className}`}>{glyph}</span>
-    );
+    return <span className={`font-catan ${className}`}>{glyph}</span>;
   };
 
   if (isScore) {
@@ -1850,7 +1816,12 @@ interface PlayerTileProps {
 function PlayerTile({ player, isSelected, onClick }: PlayerTileProps) {
   // 13 stats in display order (matching Blazor PlayerTile.razor)
   const stats: Omit<StatTileProps, 'colors'>[] = [
-    { glyph: CatanGlyph.Laurel, count: player.score, isHighlighted: player.hasHighestScore, isScore: true },
+    {
+      glyph: CatanGlyph.Laurel,
+      count: player.score,
+      isHighlighted: player.hasHighestScore,
+      isScore: true,
+    },
     { glyph: CatanGlyph.Road, count: player.roads },
     { glyph: CatanGlyph.City, count: player.cities },
     { glyph: CatanGlyph.Settlement, count: player.settlements },
@@ -1859,7 +1830,11 @@ function PlayerTile({ player, isSelected, onClick }: PlayerTileProps) {
     { glyph: CatanGlyph.Pirate, count: player.robberLoss },
     { glyph: CatanGlyph.Target, count: player.timesTargeted },
     { glyph: CatanGlyph.Sum, count: player.totalResources },
-    { glyph: CatanGlyph.LongestRoad, count: player.longestRoad, isHighlighted: player.hasLongestRoad },
+    {
+      glyph: CatanGlyph.LongestRoad,
+      count: player.longestRoad,
+      isHighlighted: player.hasLongestRoad,
+    },
     { glyph: CatanGlyph.GoodRoll, count: player.goodRolls },
     { glyph: CatanGlyph.BadRoll, count: player.badRolls },
     { glyph: CatanGlyph.Star, count: player.stars },
@@ -1909,7 +1884,9 @@ function PlayerTile({ player, isSelected, onClick }: PlayerTileProps) {
         {RESOURCE_CARD_CONFIG.map(({ type }) => {
           const count = player.resourcesThisTurn[type];
           // Check if player has harbor for this resource (excluding goldMine and robber)
-          const hasHarbor = type !== 'goldMine' && type !== 'robber' &&
+          const hasHarbor =
+            type !== 'goldMine' &&
+            type !== 'robber' &&
             player.ownedHarbors.includes(type as OwnedHarbor);
           return (
             <ResourceCard
@@ -1983,10 +1960,7 @@ function ScaledPlayersList({ players, selectedPlayerId, onSelectPlayer }: Scaled
   }, [naturalSize]);
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full overflow-hidden"
-    >
+    <div ref={containerRef} className="w-full h-full overflow-hidden">
       <div
         ref={contentRef}
         className="space-y-2 p-2 inline-block"
@@ -1995,7 +1969,7 @@ function ScaledPlayersList({ players, selectedPlayerId, onSelectPlayer }: Scaled
           transformOrigin: 'top left',
         }}
       >
-        {players.map(player => (
+        {players.map((player) => (
           <PlayerTile
             key={player.id}
             player={player}
@@ -2019,39 +1993,43 @@ export default function ControlsTestPage(): React.ReactElement {
   const [showWinner, setShowWinner] = useState(false);
   const [winnerKey, setWinnerKey] = useState(0);
 
-  const selectedPlayer = MOCK_PLAYERS.find(p => p.id === selectedPlayerId) || MOCK_PLAYERS[0];
+  const selectedPlayer = MOCK_PLAYERS.find((p) => p.id === selectedPlayerId) || MOCK_PLAYERS[0];
 
   // Build WinnerPlayer array from mock data
-  const winnerPlayers: WinnerPlayer[] = useMemo(() =>
-    MOCK_PLAYERS.map(p => ({
-      id: p.id,
-      name: p.name,
-      score: p.score,
-      colors: p.colors,
-      avatarUrl: `http://localhost:8080/api/images/${p.imageFileName}`,
-    })),
+  const winnerPlayers: WinnerPlayer[] = useMemo(
+    () =>
+      MOCK_PLAYERS.map((p) => ({
+        id: p.id,
+        name: p.name,
+        score: p.score,
+        colors: p.colors,
+        avatarUrl: `http://localhost:8080/api/images/${p.imageFileName}`,
+      })),
     []
   );
 
   // Generate buildings and roads for all players to test multi-player rendering
-  const playerIds = MOCK_PLAYERS.map(p => p.id);
+  const playerIds = MOCK_PLAYERS.map((p) => p.id);
   const testData = useMemo(() => generateTestBuildingsAndRoads(playerIds), []);
 
   // Robber on desert tile with first player's colors
-  const testRobber = useMemo(() => ({
-    coordinates: { q: -1, r: 2, s: -1 }, // Desert tile
-    previousCoordinates: { q: -1, r: 2, s: -1 },
-    fakeOutCoordinates: { q: -1, r: 2, s: -1 },
-    movedBy: MOCK_PLAYERS[0].id, // First player's colors
-    targeted: '',
-    resourcesStolen: 0,
-  }), []);
+  const testRobber = useMemo(
+    () => ({
+      coordinates: { q: -1, r: 2, s: -1 }, // Desert tile
+      previousCoordinates: { q: -1, r: 2, s: -1 },
+      fakeOutCoordinates: { q: -1, r: 2, s: -1 },
+      movedBy: MOCK_PLAYERS[0].id, // First player's colors
+      targeted: '',
+      resourcesStolen: 0,
+    }),
+    []
+  );
 
   // Populate game store with player profiles and game model
   // GameBoard now uses internal hooks, so we must populate the store
   useEffect(() => {
     // Set player profiles
-    const profiles: PlayerProfile[] = MOCK_PLAYERS.map(p => ({
+    const profiles: PlayerProfile[] = MOCK_PLAYERS.map((p) => ({
       id: p.id,
       name: p.name,
       colors: p.colors,
@@ -2070,7 +2048,7 @@ export default function ControlsTestPage(): React.ReactElement {
       buildings: testData.buildings as unknown as GameModel['buildings'],
       roads: testData.roads as unknown as GameModel['roads'],
       robber: testRobber as unknown as GameModel['robber'],
-      players: MOCK_PLAYERS.map(p => ({
+      players: MOCK_PLAYERS.map((p) => ({
         id: p.id,
         name: p.name,
         score: 0,
@@ -2152,11 +2130,7 @@ export default function ControlsTestPage(): React.ReactElement {
         </FloatingPanel>
 
         {/* Resources Panel - Total game resources */}
-        <FloatingPanel
-          panelId="resources"
-          title="Resources"
-          className="bg-white/5 border-white/10"
-        >
+        <FloatingPanel panelId="resources" title="Resources" className="bg-white/5 border-white/10">
           <GameResourcesHeader resources={MOCK_RESOURCES} />
         </FloatingPanel>
 
@@ -2170,10 +2144,7 @@ export default function ControlsTestPage(): React.ReactElement {
           minHeight={350}
         >
           {/* GameBoard uses internal hooks for data - store is populated in useEffect */}
-          <GameBoard
-            hexSize={50}
-            gap={1}
-          />
+          <GameBoard hexSize={50} gap={1} />
         </FloatingPanel>
 
         {/* Winner Overlay Panel */}
@@ -2204,7 +2175,10 @@ export default function ControlsTestPage(): React.ReactElement {
 
         {/* Instructions overlay */}
         <div className="absolute bottom-14 left-1/2 -translate-x-1/2 bg-gray-800/90 px-4 py-2 rounded-lg text-sm text-gray-400 flex items-center gap-3">
-          <span><span className="text-amber-400">CTRL+click</span> to drag panels • Click player to change colors</span>
+          <span>
+            <span className="text-amber-400">CTRL+click</span> to drag panels • Click player to
+            change colors
+          </span>
           <button
             onClick={() => setShowWinner(!showWinner)}
             className={`px-3 py-1 rounded font-semibold text-sm transition-colors ${
@@ -2217,7 +2191,7 @@ export default function ControlsTestPage(): React.ReactElement {
           </button>
           {showWinner && (
             <button
-              onClick={() => setWinnerKey(k => k + 1)}
+              onClick={() => setWinnerKey((k) => k + 1)}
               className="px-3 py-1 rounded font-semibold text-sm bg-gray-600/50 text-gray-300 hover:bg-gray-500/50 transition-colors"
             >
               Reset

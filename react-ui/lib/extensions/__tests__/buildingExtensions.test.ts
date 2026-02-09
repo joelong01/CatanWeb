@@ -35,14 +35,12 @@ function createMockBuilding(
     buildingKey: {
       hexCoordinates: { q, r, s: -q - r },
       position,
-      default: {} as BuildingKey,
     },
     buildingState,
     wall: false,
     metropolis: false,
     ownerId: ownerId ?? '',
     hasRobber: false,
-    default: {} as BuildingModel,
   };
 }
 
@@ -51,7 +49,6 @@ function createKey(q: number, r: number, position: BuildingKey['position']): Bui
   return {
     hexCoordinates: { q, r, s: -q - r },
     position,
-    default: {} as BuildingKey,
   };
 }
 
@@ -311,9 +308,7 @@ describe('buildingExtensions', () => {
     });
 
     it('returns up to 6 buildings', () => {
-      const buildings = HEX_POSITIONS.map((pos, i) =>
-        createMockBuilding(0, 0, pos, `player-${i}`)
-      );
+      const buildings = HEX_POSITIONS.map((pos, i) => createMockBuilding(0, 0, pos, `player-${i}`));
 
       const result = buildingsInTile(buildings, { q: 0, r: 0, s: 0 });
       expect(result).toHaveLength(6);
@@ -359,14 +354,14 @@ describe('buildingExtensions', () => {
       expect(buildingResourceCount(possible)).toBe(0);
     });
 
-    it('returns 0 for PossibleCity', () => {
-      const possible = createMockBuilding(0, 0, 'TopRight', 'player-1', 'PossibleCity');
-      expect(buildingResourceCount(possible)).toBe(0);
+    it('returns 0 for Knight', () => {
+      const knight = createMockBuilding(0, 0, 'TopRight', 'player-1', 'Knight');
+      expect(buildingResourceCount(knight)).toBe(0);
     });
 
-    it('returns 0 for NoSettlement', () => {
-      const no = createMockBuilding(0, 0, 'TopRight', null, 'NoSettlement');
-      expect(buildingResourceCount(no)).toBe(0);
+    it('returns 0 for NotBuildable', () => {
+      const notBuildable = createMockBuilding(0, 0, 'TopRight', null, 'NotBuildable');
+      expect(buildingResourceCount(notBuildable)).toBe(0);
     });
   });
 

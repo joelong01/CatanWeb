@@ -50,10 +50,7 @@ export const HEX_DIRECTIONS: HexCoordinates[] = [
  * @param b - Second coordinate
  * @returns True if coordinates are equal
  */
-export function hexCoordsEqual(
-  a: HexCoordinates,
-  b: HexCoordinates
-): boolean {
+export function hexCoordsEqual(a: HexCoordinates, b: HexCoordinates): boolean {
   return a.q === b.q && a.r === b.r && a.s === b.s;
 }
 
@@ -64,10 +61,7 @@ export function hexCoordsEqual(
  * @param b - Second coordinate (or direction offset)
  * @returns Sum of the two coordinates
  */
-export function hexCoordsAdd(
-  a: HexCoordinates,
-  b: HexCoordinates
-): HexCoordinates {
+export function hexCoordsAdd(a: HexCoordinates, b: HexCoordinates): HexCoordinates {
   return {
     q: a.q + b.q,
     r: a.r + b.r,
@@ -85,10 +79,7 @@ export function hexCoordsAdd(
  * @example
  * const tile = tileFromCoords(gameModel.tiles, { q: 0, r: 0, s: 0 });
  */
-export function tileFromCoords(
-  tiles: TileModel[],
-  coords: HexCoordinates
-): TileModel | undefined {
+export function tileFromCoords(tiles: TileModel[], coords: HexCoordinates): TileModel | undefined {
   if (!tiles || tiles.length === 0 || !coords) {
     return undefined;
   }
@@ -105,10 +96,7 @@ export function tileFromCoords(
  * @example
  * const neighbors = adjacentTiles(gameModel.tiles, centerTile);
  */
-export function adjacentTiles(
-  tiles: TileModel[],
-  tile: TileModel
-): TileModel[] {
+export function adjacentTiles(tiles: TileModel[], tile: TileModel): TileModel[] {
   if (!tiles || !tile) {
     return [];
   }
@@ -136,7 +124,7 @@ export function pipsForNumber(number: number): number {
 /**
  * Calculates total stars (pip sum) for a collection of tiles.
  * Stars indicate the combined probability of rolling any of the tiles.
- * Uses the server-provided `tile.stars` property.
+ * Computed client-side from tile numbers (stars/pips are not in the wire format).
  *
  * @param tiles - Array of tiles to sum
  * @returns Total star count
@@ -149,7 +137,7 @@ export function totalStars(tiles: TileModel[]): number {
   if (!tiles || tiles.length === 0) {
     return 0;
   }
-  return tiles.reduce((sum, tile) => sum + tile.stars, 0);
+  return tiles.reduce((sum, tile) => sum + pipsForNumber(tile.number), 0);
 }
 
 /**
@@ -162,10 +150,7 @@ export function totalStars(tiles: TileModel[]): number {
  * @example
  * const sixes = tilesWithNumber(gameModel.tiles, 6);
  */
-export function tilesWithNumber(
-  tiles: TileModel[],
-  number: number
-): TileModel[] {
+export function tilesWithNumber(tiles: TileModel[], number: number): TileModel[] {
   if (!tiles) {
     return [];
   }
@@ -182,10 +167,7 @@ export function tilesWithNumber(
  * @example
  * const oreTiles = tilesWithResource(gameModel.tiles, 'Ore');
  */
-export function tilesWithResource(
-  tiles: TileModel[],
-  resource: ResourceType
-): TileModel[] {
+export function tilesWithResource(tiles: TileModel[], resource: ResourceType): TileModel[] {
   if (!tiles) {
     return [];
   }

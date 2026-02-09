@@ -20,5 +20,4 @@ export interface ResourcesModel {
     victoryPoint: number;
     anyDevCard: number;
     robber: number;
-    count: number;
 }
