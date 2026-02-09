@@ -1,9 +1,9 @@
 # Catan Design Documentation
 
-**Last updated:** February 6, 2026
+**Last updated:** February 9, 2026
 
 Verified documentation reflecting the current implementation. These
-32 documents are the **source of truth** for how the system works.
+33 documents are the **source of truth** for how the system works.
 
 Legacy and superseded documents are archived in [old/](old/).
 
@@ -34,6 +34,7 @@ Legacy and superseded documents are archived in [old/](old/).
 
 | Document | Purpose |
 |----------|---------|
+| [app-shell.md](app-shell.md) | Three-zone app shell: nav column, header bar, content area with independent zoom |
 | [floating-panel.md](floating-panel.md) | FloatingPanel + MinimizedBar architecture, WindowPosition, layoutStore |
 | [css-theming.md](css-theming.md) | Tailwind v4 design tokens, player colors, @utility directives, typography |
 | [portrait-mode.md](portrait-mode.md) | Portrait layout: tabbed interface, Blazor vs React status |

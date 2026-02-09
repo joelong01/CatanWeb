@@ -9,6 +9,10 @@ in portrait orientation (aspect ratio < 4:3). The layout switches
 from the multi-panel landscape view to a tabbed interface with
 Board, Controls, and Players tabs.
 
+The outer app shell (nav column + header bar + content area) is
+identical in both orientations. Portrait mode only changes what
+renders inside the content area. See [app-shell.md](app-shell.md).
+
 ## Implementation Status
 
 | Component | Blazor | React |

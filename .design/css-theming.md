@@ -148,6 +148,8 @@ Used for game-specific glyphs (shield, pirate, resource icons) via
 ## Responsive Layout
 
 - **Dark theme** always active (`<html class="dark">`)
+- **App shell:** Three-zone grid layout (nav column + header bar +
+  content area). See [app-shell.md](app-shell.md) for full details.
 - **Landscape:** Full board with floating panels around edges
 - **Portrait:** Planned tabbed layout (board vs controls) -- not yet
   fully implemented
