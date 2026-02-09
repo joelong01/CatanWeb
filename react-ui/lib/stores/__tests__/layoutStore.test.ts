@@ -34,11 +34,11 @@ describe('computeLandscape', () => {
 
     // Left column panels should be in the left ~22%
     const leftEdge = result.dice.left + result.dice.width;
-    expect(leftEdge).toBeLessThan(1920 * 0.30);
+    expect(leftEdge).toBeLessThan(1920 * 0.3);
 
     // Right column panels should start past 70%
-    expect(result.resources.left).toBeGreaterThan(1920 * 0.70);
-    expect(result.players.left).toBeGreaterThan(1920 * 0.70);
+    expect(result.resources.left).toBeGreaterThan(1920 * 0.7);
+    expect(result.players.left).toBeGreaterThan(1920 * 0.7);
 
     // Board should be between left and right columns
     expect(result.board.left).toBeGreaterThan(leftEdge);
@@ -81,12 +81,21 @@ describe('computeLandscape', () => {
   it('stacks left column panels vertically without overlap', () => {
     const result = computeLandscape(1920, 1080);
     expect(result.actions.top).toBeGreaterThanOrEqual(result.dice.top + result.dice.height);
-    expect(result.measurements.top).toBeGreaterThanOrEqual(result.actions.top + result.actions.height);
+    expect(result.measurements.top).toBeGreaterThanOrEqual(
+      result.actions.top + result.actions.height
+    );
   });
 
   it('all non-modal panels are not minimized', () => {
     const result = computeLandscape(1920, 1080);
-    const nonModals: PanelId[] = ['dice', 'actions', 'measurements', 'board', 'resources', 'players'];
+    const nonModals: PanelId[] = [
+      'dice',
+      'actions',
+      'measurements',
+      'board',
+      'resources',
+      'players',
+    ];
     for (const id of nonModals) {
       expect(result[id].minimized).toBe(false);
       expect(result[id].visible).toBe(true);
@@ -339,7 +348,8 @@ describe('layoutStore actions', () => {
 
   describe('resetLayout', () => {
     it('resets all panels and clears filters', () => {
-      const { setStarFilter, setResourceFilters, saveLayout, resetLayout } = useLayoutStore.getState();
+      const { setStarFilter, setResourceFilters, saveLayout, resetLayout } =
+        useLayoutStore.getState();
 
       setStarFilter(8);
       setResourceFilters(['brick']);
@@ -446,7 +456,14 @@ describe('classifyGameState', () => {
 describe('computeArrangedLayout', () => {
   it('returns all panels visible when gameState is undefined', () => {
     const result = computeArrangedLayout(1920, 1080, undefined);
-    const nonModals: PanelId[] = ['dice', 'actions', 'measurements', 'players', 'resources', 'board'];
+    const nonModals: PanelId[] = [
+      'dice',
+      'actions',
+      'measurements',
+      'players',
+      'resources',
+      'board',
+    ];
     for (const id of nonModals) {
       expect(result[id].minimized).toBe(false);
     }
@@ -516,8 +533,12 @@ describe('computeArrangedLayout', () => {
 
   it('never minimizes board or players regardless of state', () => {
     const states = [
-      'PickingBoard', 'WaitingForRoll', 'WaitingForNext',
-      'GameOver', 'AllocateResourceForward', 'MustMoveRobber',
+      'PickingBoard',
+      'WaitingForRoll',
+      'WaitingForNext',
+      'GameOver',
+      'AllocateResourceForward',
+      'MustMoveRobber',
     ] as const;
     for (const gs of states) {
       const result = computeArrangedLayout(1920, 1080, gs);
@@ -583,7 +604,14 @@ describe('arrangeLayout action', () => {
     const { panels } = useLayoutStore.getState();
 
     // Default phase: no panels minimized (in landscape)
-    const nonModals: PanelId[] = ['dice', 'actions', 'measurements', 'players', 'resources', 'board'];
+    const nonModals: PanelId[] = [
+      'dice',
+      'actions',
+      'measurements',
+      'players',
+      'resources',
+      'board',
+    ];
     for (const id of nonModals) {
       expect(panels[id].minimized).toBe(false);
     }
@@ -630,13 +658,15 @@ describe('saveLayout/loadLayout viewport', () => {
   it('loadLayout falls back to default viewport for legacy layouts without viewport', () => {
     // Simulate a legacy saved layout without viewport field
     useLayoutStore.setState((state) => ({
-      savedLayouts: [{
-        name: 'Legacy',
-        panels: { ...state.panels },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any],
+      savedLayouts: [
+        {
+          name: 'Legacy',
+          panels: { ...state.panels },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
+      ],
     }));
 
     // Change viewport to non-default
@@ -658,20 +688,96 @@ describe('saveLayout/loadLayout viewport', () => {
 describe('layoutStore migrations', () => {
   it('version 7 state migrates to version 8 with savedLayouts and currentLayoutName', () => {
     // Access the persist config to test migration directly
-    const persistConfig = (useLayoutStore as unknown as { persist: { getOptions: () => { migrate: (state: unknown, version: number) => unknown } } }).persist.getOptions();
+    const persistConfig = (
+      useLayoutStore as unknown as {
+        persist: { getOptions: () => { migrate: (state: unknown, version: number) => unknown } };
+      }
+    ).persist.getOptions();
 
     const v7State = {
       boardType: 'regular',
       panels: {
-        dice: { left: 60, top: 80, width: 260, height: 200, minimized: false, visible: true, zIndex: 20 },
-        actions: { left: 60, top: 300, width: 200, height: 200, minimized: false, visible: true, zIndex: 21 },
-        measurements: { left: 60, top: 520, width: 280, height: 130, minimized: false, visible: true, zIndex: 22 },
-        board: { left: 340, top: 80, width: 600, height: 550, minimized: false, visible: true, zIndex: 10 },
-        resources: { left: 960, top: 80, width: 340, height: 130, minimized: false, visible: true, zIndex: 23 },
-        players: { left: 960, top: 230, width: 340, height: 450, minimized: false, visible: true, zIndex: 24 },
-        goFirst: { left: 500, top: 200, width: 320, height: 300, minimized: false, visible: true, zIndex: 1000 },
-        supplemental: { left: 500, top: 200, width: 320, height: 340, minimized: false, visible: true, zIndex: 1000 },
-        winner: { left: 500, top: 200, width: 320, height: 380, minimized: false, visible: true, zIndex: 1000 },
+        dice: {
+          left: 60,
+          top: 80,
+          width: 260,
+          height: 200,
+          minimized: false,
+          visible: true,
+          zIndex: 20,
+        },
+        actions: {
+          left: 60,
+          top: 300,
+          width: 200,
+          height: 200,
+          minimized: false,
+          visible: true,
+          zIndex: 21,
+        },
+        measurements: {
+          left: 60,
+          top: 520,
+          width: 280,
+          height: 130,
+          minimized: false,
+          visible: true,
+          zIndex: 22,
+        },
+        board: {
+          left: 340,
+          top: 80,
+          width: 600,
+          height: 550,
+          minimized: false,
+          visible: true,
+          zIndex: 10,
+        },
+        resources: {
+          left: 960,
+          top: 80,
+          width: 340,
+          height: 130,
+          minimized: false,
+          visible: true,
+          zIndex: 23,
+        },
+        players: {
+          left: 960,
+          top: 230,
+          width: 340,
+          height: 450,
+          minimized: false,
+          visible: true,
+          zIndex: 24,
+        },
+        goFirst: {
+          left: 500,
+          top: 200,
+          width: 320,
+          height: 300,
+          minimized: false,
+          visible: true,
+          zIndex: 1000,
+        },
+        supplemental: {
+          left: 500,
+          top: 200,
+          width: 320,
+          height: 340,
+          minimized: false,
+          visible: true,
+          zIndex: 1000,
+        },
+        winner: {
+          left: 500,
+          top: 200,
+          width: 320,
+          height: 380,
+          minimized: false,
+          visible: true,
+          zIndex: 1000,
+        },
       },
       viewport: { pan: { x: 0, y: 0 }, zoom: 1 },
       starFilter: null,

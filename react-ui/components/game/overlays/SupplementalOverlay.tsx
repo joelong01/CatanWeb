@@ -59,7 +59,7 @@ function NextButtonContent({
   isPressed: boolean;
   setIsPressed: (p: boolean) => void;
 }): React.ReactElement {
-  const innerScale = isPressed ? 0.88 : isHovered ? 0.90 : 0.92;
+  const innerScale = isPressed ? 0.88 : isHovered ? 0.9 : 0.92;
   const bgColor = isPressed
     ? 'linear-gradient(135deg, #1e40af, #1e3a8a)'
     : isHovered
@@ -91,12 +91,8 @@ function NextButtonContent({
           background: bgColor,
         }}
       >
-        <span className="text-white text-sm font-bold leading-tight">
-          Next
-        </span>
-        <span className="text-white/70 text-xs">
-          (Enter)
-        </span>
+        <span className="text-white text-sm font-bold leading-tight">Next</span>
+        <span className="text-white/70 text-xs">(Enter)</span>
       </div>
     </div>
   );
@@ -129,7 +125,7 @@ function PlayerHexContent({
   const gradient = buildCssGradient(colors);
 
   // Scale based on interaction state
-  const innerScale = isPressed ? 0.88 : isHovered ? 0.90 : 0.92;
+  const innerScale = isPressed ? 0.88 : isHovered ? 0.9 : 0.92;
 
   // Border color: brighter when selected or hovered
   const borderColor = isSelected
@@ -229,13 +225,16 @@ export function SupplementalOverlay({
   );
 
   // Toggle player selection - sends immediately to server like Blazor
-  const togglePlayer = useCallback((playerId: string) => {
-    const player = eligiblePlayers.find((p) => p.id === playerId);
-    if (player) {
-      // Toggle the current state
-      onToggle(playerId, !player.participatingInSupplemental);
-    }
-  }, [eligiblePlayers, onToggle]);
+  const togglePlayer = useCallback(
+    (playerId: string) => {
+      const player = eligiblePlayers.find((p) => p.id === playerId);
+      if (player) {
+        // Toggle the current state
+        onToggle(playerId, !player.participatingInSupplemental);
+      }
+    },
+    [eligiblePlayers, onToggle]
+  );
 
   // Keyboard handler for Enter key
   useEffect(() => {
@@ -297,7 +296,15 @@ export function SupplementalOverlay({
     });
 
     return items;
-  }, [eligiblePlayers, playerProfiles, selectedIds, togglePlayer, onDone, nextHovered, nextPressed]);
+  }, [
+    eligiblePlayers,
+    playerProfiles,
+    selectedIds,
+    togglePlayer,
+    onDone,
+    nextHovered,
+    nextPressed,
+  ]);
 
   return (
     <div className="w-full h-full flex flex-col">
@@ -307,12 +314,7 @@ export function SupplementalOverlay({
       </div>
       {/* Hex grid */}
       <div className="flex-1 flex items-center justify-center p-2">
-        <HexGrid
-          hexSize={50}
-          gap={3}
-          items={hexItems}
-          fitToParent
-        />
+        <HexGrid hexSize={50} gap={3} items={hexItems} fitToParent />
       </div>
       {/* Selected count */}
       <div className="text-center text-white/60 text-xs mt-1">

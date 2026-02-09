@@ -8,10 +8,7 @@ export type {
   TileFontConfig,
 } from './types';
 
-export type {
-  ResolvedHarborFontConfig,
-  ResolvedTileFontConfig,
-} from './themeStore';
+export type { ResolvedHarborFontConfig, ResolvedTileFontConfig } from './themeStore';
 
 export { useThemeStore } from './themeStore';
 

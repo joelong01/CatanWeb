@@ -81,7 +81,7 @@ export interface HexCoordinate {
  */
 export function cubicCoord(q: number, r: number): HexCoordinate {
   // Use `|| 0` to normalize -0 to 0 (JavaScript quirk: -0 - 0 = -0)
-  return { q, r, s: (-q - r) || 0 };
+  return { q, r, s: -q - r || 0 };
 }
 
 /**
@@ -123,7 +123,6 @@ export const ALL_DIRECTIONS: readonly Direction[] = [
   Direction.NorthWest,
 ];
 
-
 /**
  * Manhattan distance between two hexes using cubic coordinates.
  */
@@ -143,7 +142,7 @@ export function getNeighbor(coord: HexCoordinate, dir: Direction): HexCoordinate
  * Get all 6 neighboring hex coordinates.
  */
 export function getAllNeighbors(coord: HexCoordinate): HexCoordinate[] {
-  return ALL_DIRECTIONS.map(dir => getNeighbor(coord, dir));
+  return ALL_DIRECTIONS.map((dir) => getNeighbor(coord, dir));
 }
 
 /**
@@ -307,8 +306,12 @@ export function getSpiralCoordinates(count: number): HexCoordinate[] {
 
     // Walk around the ring clockwise (starting from North, we go SE, S, SW, NW, N, NE)
     const walkDirections: Direction[] = [
-      Direction.SouthEast, Direction.South, Direction.SouthWest,
-      Direction.NorthWest, Direction.North, Direction.NorthEast,
+      Direction.SouthEast,
+      Direction.South,
+      Direction.SouthWest,
+      Direction.NorthWest,
+      Direction.North,
+      Direction.NorthEast,
     ];
 
     for (const dir of walkDirections) {
@@ -343,10 +346,7 @@ export function getSpiralCoordinates(count: number): HexCoordinate[] {
  * // waterRing.length === 18
  * ```
  */
-export function getRingCoordinates(
-  center: HexCoordinate,
-  radius: number
-): HexCoordinate[] {
+export function getRingCoordinates(center: HexCoordinate, radius: number): HexCoordinate[] {
   if (radius < 0) return [];
   if (radius === 0) return [center];
 
@@ -362,8 +362,12 @@ export function getRingCoordinates(
 
   // Walk around the ring clockwise
   const walkDirections: Direction[] = [
-    Direction.SouthEast, Direction.South, Direction.SouthWest,
-    Direction.NorthWest, Direction.North, Direction.NorthEast,
+    Direction.SouthEast,
+    Direction.South,
+    Direction.SouthWest,
+    Direction.NorthWest,
+    Direction.North,
+    Direction.NorthEast,
   ];
 
   for (const dir of walkDirections) {
@@ -396,10 +400,7 @@ export function getRingCoordinates(
  * // line includes all hexes crossed by the line
  * ```
  */
-export function getLineCoordinates(
-  start: HexCoordinate,
-  end: HexCoordinate
-): HexCoordinate[] {
+export function getLineCoordinates(start: HexCoordinate, end: HexCoordinate): HexCoordinate[] {
   const n = distance(start, end);
   if (n === 0) return [start];
 
@@ -456,7 +457,7 @@ export function getVertexPosition(
   origin: PixelPosition = { x: 0, y: 0 }
 ): PixelPosition {
   const center = hexToPixel(coord, size, origin);
-  const angleRad = VERTEX_ANGLES[position] * Math.PI / 180;
+  const angleRad = (VERTEX_ANGLES[position] * Math.PI) / 180;
   return {
     x: center.x + size * Math.cos(angleRad),
     y: center.y + size * Math.sin(angleRad),
@@ -497,9 +498,9 @@ export function getEdgeMidpoint(
   origin: PixelPosition = { x: 0, y: 0 }
 ): PixelPosition {
   const center = hexToPixel(coord, size, origin);
-  const apothem = size * Math.sqrt(3) / 2;
+  const apothem = (size * Math.sqrt(3)) / 2;
   // Edge midpoint direction is perpendicular to edge (edge angle - 90°)
-  const angleRad = (EDGE_ANGLES[side] - 90) * Math.PI / 180;
+  const angleRad = ((EDGE_ANGLES[side] - 90) * Math.PI) / 180;
   return {
     x: center.x + apothem * Math.cos(angleRad),
     y: center.y + apothem * Math.sin(angleRad),
@@ -540,13 +541,13 @@ export const HEX_LAYOUTS = {
    *          [4]
    */
   CLUSTER_7: [
-    { q: 0, r: 0, s: 0 },    // [0] Center
-    { q: 0, r: -1, s: 1 },   // [1] North
-    { q: 1, r: -1, s: 0 },   // [2] NorthEast
-    { q: 1, r: 0, s: -1 },   // [3] SouthEast
-    { q: 0, r: 1, s: -1 },   // [4] South
-    { q: -1, r: 1, s: 0 },   // [5] SouthWest
-    { q: -1, r: 0, s: 1 },   // [6] NorthWest
+    { q: 0, r: 0, s: 0 }, // [0] Center
+    { q: 0, r: -1, s: 1 }, // [1] North
+    { q: 1, r: -1, s: 0 }, // [2] NorthEast
+    { q: 1, r: 0, s: -1 }, // [3] SouthEast
+    { q: 0, r: 1, s: -1 }, // [4] South
+    { q: -1, r: 1, s: 0 }, // [5] SouthWest
+    { q: -1, r: 0, s: 1 }, // [6] NorthWest
   ] as const,
 
   /**
@@ -561,15 +562,29 @@ export const HEX_LAYOUTS = {
    */
   CLUSTER_19: [
     // Row -2
-    { q: 0, r: -2, s: 2 }, { q: 1, r: -2, s: 1 }, { q: 2, r: -2, s: 0 },
+    { q: 0, r: -2, s: 2 },
+    { q: 1, r: -2, s: 1 },
+    { q: 2, r: -2, s: 0 },
     // Row -1
-    { q: -1, r: -1, s: 2 }, { q: 0, r: -1, s: 1 }, { q: 1, r: -1, s: 0 }, { q: 2, r: -1, s: -1 },
+    { q: -1, r: -1, s: 2 },
+    { q: 0, r: -1, s: 1 },
+    { q: 1, r: -1, s: 0 },
+    { q: 2, r: -1, s: -1 },
     // Row 0 (center)
-    { q: -2, r: 0, s: 2 }, { q: -1, r: 0, s: 1 }, { q: 0, r: 0, s: 0 }, { q: 1, r: 0, s: -1 }, { q: 2, r: 0, s: -2 },
+    { q: -2, r: 0, s: 2 },
+    { q: -1, r: 0, s: 1 },
+    { q: 0, r: 0, s: 0 },
+    { q: 1, r: 0, s: -1 },
+    { q: 2, r: 0, s: -2 },
     // Row 1
-    { q: -2, r: 1, s: 1 }, { q: -1, r: 1, s: 0 }, { q: 0, r: 1, s: -1 }, { q: 1, r: 1, s: -2 },
+    { q: -2, r: 1, s: 1 },
+    { q: -1, r: 1, s: 0 },
+    { q: 0, r: 1, s: -1 },
+    { q: 1, r: 1, s: -2 },
     // Row 2
-    { q: -2, r: 2, s: 0 }, { q: -1, r: 2, s: -1 }, { q: 0, r: 2, s: -2 },
+    { q: -2, r: 2, s: 0 },
+    { q: -1, r: 2, s: -1 },
+    { q: 0, r: 2, s: -2 },
   ] as const,
 
   /**
@@ -586,17 +601,41 @@ export const HEX_LAYOUTS = {
    */
   CLUSTER_30: [
     // Row -2 (4 hexes)
-    { q: 0, r: -2, s: 2 }, { q: 1, r: -2, s: 1 }, { q: 2, r: -2, s: 0 }, { q: 3, r: -2, s: -1 },
+    { q: 0, r: -2, s: 2 },
+    { q: 1, r: -2, s: 1 },
+    { q: 2, r: -2, s: 0 },
+    { q: 3, r: -2, s: -1 },
     // Row -1 (5 hexes)
-    { q: -1, r: -1, s: 2 }, { q: 0, r: -1, s: 1 }, { q: 1, r: -1, s: 0 }, { q: 2, r: -1, s: -1 }, { q: 3, r: -1, s: -2 },
+    { q: -1, r: -1, s: 2 },
+    { q: 0, r: -1, s: 1 },
+    { q: 1, r: -1, s: 0 },
+    { q: 2, r: -1, s: -1 },
+    { q: 3, r: -1, s: -2 },
     // Row 0 (6 hexes)
-    { q: -2, r: 0, s: 2 }, { q: -1, r: 0, s: 1 }, { q: 0, r: 0, s: 0 }, { q: 1, r: 0, s: -1 }, { q: 2, r: 0, s: -2 }, { q: 3, r: 0, s: -3 },
+    { q: -2, r: 0, s: 2 },
+    { q: -1, r: 0, s: 1 },
+    { q: 0, r: 0, s: 0 },
+    { q: 1, r: 0, s: -1 },
+    { q: 2, r: 0, s: -2 },
+    { q: 3, r: 0, s: -3 },
     // Row 1 (6 hexes)
-    { q: -3, r: 1, s: 2 }, { q: -2, r: 1, s: 1 }, { q: -1, r: 1, s: 0 }, { q: 0, r: 1, s: -1 }, { q: 1, r: 1, s: -2 }, { q: 2, r: 1, s: -3 },
+    { q: -3, r: 1, s: 2 },
+    { q: -2, r: 1, s: 1 },
+    { q: -1, r: 1, s: 0 },
+    { q: 0, r: 1, s: -1 },
+    { q: 1, r: 1, s: -2 },
+    { q: 2, r: 1, s: -3 },
     // Row 2 (5 hexes)
-    { q: -3, r: 2, s: 1 }, { q: -2, r: 2, s: 0 }, { q: -1, r: 2, s: -1 }, { q: 0, r: 2, s: -2 }, { q: 1, r: 2, s: -3 },
+    { q: -3, r: 2, s: 1 },
+    { q: -2, r: 2, s: 0 },
+    { q: -1, r: 2, s: -1 },
+    { q: 0, r: 2, s: -2 },
+    { q: 1, r: 2, s: -3 },
     // Row 3 (4 hexes)
-    { q: -3, r: 3, s: 0 }, { q: -2, r: 3, s: -1 }, { q: -1, r: 3, s: -2 }, { q: 0, r: 3, s: -3 },
+    { q: -3, r: 3, s: 0 },
+    { q: -2, r: 3, s: -1 },
+    { q: -1, r: 3, s: -2 },
+    { q: 0, r: 3, s: -3 },
   ] as const,
 } as const;
 
@@ -740,9 +779,7 @@ export class HexGridCollection<T> {
   /**
    * Create a collection from an array of {coord, value} objects.
    */
-  static fromArray<T>(
-    items: Array<{ coord: HexCoordinate; value: T }>
-  ): HexGridCollection<T> {
+  static fromArray<T>(items: Array<{ coord: HexCoordinate; value: T }>): HexGridCollection<T> {
     const collection = new HexGridCollection<T>();
     for (const { coord, value } of items) {
       collection.set(coord, value);

@@ -48,7 +48,7 @@ export default function LoadGame(): React.ReactElement {
 
   // Filter games based on criteria
   const filteredGames = useMemo(() => {
-    return savedGames.filter(game => {
+    return savedGames.filter((game) => {
       // Filter by max moves
       if (maxMoves !== null && game.turnCount > maxMoves) {
         return false;
@@ -63,20 +63,20 @@ export default function LoadGame(): React.ReactElement {
 
   // Get unique game states for dropdown
   const gameStates = useMemo(() => {
-    const states = new Set(savedGames.map(g => g.gameState));
+    const states = new Set(savedGames.map((g) => g.gameState));
     return Array.from(states).sort();
   }, [savedGames]);
 
   // Check if all filtered games are checked
   const allFilteredChecked = useMemo(() => {
     if (filteredGames.length === 0) return false;
-    return filteredGames.every(g => checkedGameIds.has(g.gameId));
+    return filteredGames.every((g) => checkedGameIds.has(g.gameId));
   }, [filteredGames, checkedGameIds]);
 
   // Check if some (but not all) filtered games are checked
   const someFilteredChecked = useMemo(() => {
     if (filteredGames.length === 0) return false;
-    const checkedCount = filteredGames.filter(g => checkedGameIds.has(g.gameId)).length;
+    const checkedCount = filteredGames.filter((g) => checkedGameIds.has(g.gameId)).length;
     return checkedCount > 0 && checkedCount < filteredGames.length;
   }, [filteredGames, checkedGameIds]);
 
@@ -93,42 +93,55 @@ export default function LoadGame(): React.ReactElement {
         setErrorMessage(result.error ?? 'Failed to load saved games');
       }
     } catch (error) {
-      setErrorMessage(`Error loading games: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setErrorMessage(
+        `Error loading games: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  const selectGame = useCallback((gameId: string) => {
-    if (editingGameId) return; // Don't change selection while editing
-    setSelectedGameId(gameId);
-  }, [editingGameId]);
+  const selectGame = useCallback(
+    (gameId: string) => {
+      if (editingGameId) return; // Don't change selection while editing
+      setSelectedGameId(gameId);
+    },
+    [editingGameId]
+  );
 
-  const openGame = useCallback(async (gameId: string) => {
-    setErrorMessage(null);
-    try {
-      // Load the game on the server
-      const result = await gameApi.loadGame(gameId);
-      if (!result.success) {
-        setErrorMessage(result.error ?? 'Failed to load game');
-        return;
+  const openGame = useCallback(
+    async (gameId: string) => {
+      setErrorMessage(null);
+      try {
+        // Load the game on the server
+        const result = await gameApi.loadGame(gameId);
+        if (!result.success) {
+          setErrorMessage(result.error ?? 'Failed to load game');
+          return;
+        }
+        // Navigate to game page
+        router.push(`/game/${gameId}`);
+      } catch (error) {
+        setErrorMessage(
+          `Error loading game: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
-      // Navigate to game page
-      router.push(`/game/${gameId}`);
-    } catch (error) {
-      setErrorMessage(`Error loading game: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }, [router]);
+    },
+    [router]
+  );
 
-  const startEditingName = useCallback((gameId: string) => {
-    const game = savedGames.find(g => g.gameId === gameId);
-    if (!game) return;
+  const startEditingName = useCallback(
+    (gameId: string) => {
+      const game = savedGames.find((g) => g.gameId === gameId);
+      if (!game) return;
 
-    setSelectedGameId(gameId);
-    setOriginalName(game.gameName);
-    setEditingName(game.gameName);
-    setEditingGameId(gameId);
-  }, [savedGames]);
+      setSelectedGameId(gameId);
+      setOriginalName(game.gameName);
+      setEditingName(game.gameName);
+      setEditingGameId(gameId);
+    },
+    [savedGames]
+  );
 
   const saveName = useCallback(async () => {
     if (!editingGameId) return;
@@ -144,10 +157,8 @@ export default function LoadGame(): React.ReactElement {
       const result = await gameApi.renameGame(editingGameId, trimmedName);
       if (result.success) {
         // Update local list
-        setSavedGames(prev =>
-          prev.map(g =>
-            g.gameId === editingGameId ? { ...g, gameName: trimmedName } : g
-          )
+        setSavedGames((prev) =>
+          prev.map((g) => (g.gameId === editingGameId ? { ...g, gameName: trimmedName } : g))
         );
       }
     } catch (error) {
@@ -159,58 +170,65 @@ export default function LoadGame(): React.ReactElement {
     setEditingGameId(null);
   }, []);
 
-  const deleteGame = useCallback(async (gameId: string) => {
-    const game = savedGames.find(g => g.gameId === gameId);
-    if (!game) return;
+  const deleteGame = useCallback(
+    async (gameId: string) => {
+      const game = savedGames.find((g) => g.gameId === gameId);
+      if (!game) return;
 
-    // Check if this is the currently active game
-    const currentGameId = typeof window !== 'undefined'
-      ? localStorage.getItem('current_gameId')
-      : null;
-    if (currentGameId === gameId) {
-      alert('Cannot delete the currently active game. Please start or load a different game first.');
-      return;
-    }
-
-    const confirmed = confirm(`Delete game '${game.gameName}'?`);
-    if (!confirmed) return;
-
-    try {
-      const result = await gameApi.deleteGame(gameId);
-      if (result.success) {
-        const currentIndex = savedGames.findIndex(g => g.gameId === gameId);
-        const newGames = savedGames.filter(g => g.gameId !== gameId);
-        setSavedGames(newGames);
-        setCheckedGameIds(prev => {
-          const next = new Set(prev);
-          next.delete(gameId);
-          return next;
-        });
-
-        if (newGames.length > 0) {
-          const newIndex = Math.min(currentIndex, newGames.length - 1);
-          setSelectedGameId(newGames[newIndex].gameId);
-        } else {
-          setSelectedGameId(null);
-        }
-      } else {
-        setErrorMessage(result.error ?? 'Failed to delete game');
+      // Check if this is the currently active game
+      const currentGameId =
+        typeof window !== 'undefined' ? localStorage.getItem('current_gameId') : null;
+      if (currentGameId === gameId) {
+        alert(
+          'Cannot delete the currently active game. Please start or load a different game first.'
+        );
+        return;
       }
-    } catch (error) {
-      setErrorMessage(`Error deleting game: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }, [savedGames]);
+
+      const confirmed = confirm(`Delete game '${game.gameName}'?`);
+      if (!confirmed) return;
+
+      try {
+        const result = await gameApi.deleteGame(gameId);
+        if (result.success) {
+          const currentIndex = savedGames.findIndex((g) => g.gameId === gameId);
+          const newGames = savedGames.filter((g) => g.gameId !== gameId);
+          setSavedGames(newGames);
+          setCheckedGameIds((prev) => {
+            const next = new Set(prev);
+            next.delete(gameId);
+            return next;
+          });
+
+          if (newGames.length > 0) {
+            const newIndex = Math.min(currentIndex, newGames.length - 1);
+            setSelectedGameId(newGames[newIndex].gameId);
+          } else {
+            setSelectedGameId(null);
+          }
+        } else {
+          setErrorMessage(result.error ?? 'Failed to delete game');
+        }
+      } catch (error) {
+        setErrorMessage(
+          `Error deleting game: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
+    },
+    [savedGames]
+  );
 
   // Bulk delete checked games
   const deleteCheckedGames = useCallback(async () => {
     if (checkedGameIds.size === 0) return;
 
     // Check if any checked game is the active game
-    const currentGameId = typeof window !== 'undefined'
-      ? localStorage.getItem('current_gameId')
-      : null;
+    const currentGameId =
+      typeof window !== 'undefined' ? localStorage.getItem('current_gameId') : null;
     if (currentGameId && checkedGameIds.has(currentGameId)) {
-      alert('Cannot delete the currently active game. Please uncheck it or load a different game first.');
+      alert(
+        'Cannot delete the currently active game. Please uncheck it or load a different game first.'
+      );
       return;
     }
 
@@ -235,7 +253,9 @@ export default function LoadGame(): React.ReactElement {
     }
 
     // Update local state
-    setSavedGames(prev => prev.filter(g => !checkedGameIds.has(g.gameId) || failedIds.includes(g.gameId)));
+    setSavedGames((prev) =>
+      prev.filter((g) => !checkedGameIds.has(g.gameId) || failedIds.includes(g.gameId))
+    );
     setCheckedGameIds(new Set(failedIds));
 
     if (failedIds.length > 0) {
@@ -243,8 +263,14 @@ export default function LoadGame(): React.ReactElement {
     }
 
     // Update selection if current selection was deleted
-    if (selectedGameId && checkedGameIds.has(selectedGameId) && !failedIds.includes(selectedGameId)) {
-      const remaining = savedGames.filter(g => !checkedGameIds.has(g.gameId) || failedIds.includes(g.gameId));
+    if (
+      selectedGameId &&
+      checkedGameIds.has(selectedGameId) &&
+      !failedIds.includes(selectedGameId)
+    ) {
+      const remaining = savedGames.filter(
+        (g) => !checkedGameIds.has(g.gameId) || failedIds.includes(g.gameId)
+      );
       setSelectedGameId(remaining.length > 0 ? remaining[0].gameId : null);
     }
 
@@ -254,7 +280,7 @@ export default function LoadGame(): React.ReactElement {
   // Toggle checkbox for a single game
   const toggleGameChecked = useCallback((gameId: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setCheckedGameIds(prev => {
+    setCheckedGameIds((prev) => {
       const next = new Set(prev);
       if (next.has(gameId)) {
         next.delete(gameId);
@@ -269,80 +295,97 @@ export default function LoadGame(): React.ReactElement {
   const toggleAllFiltered = useCallback(() => {
     if (allFilteredChecked) {
       // Uncheck all filtered
-      setCheckedGameIds(prev => {
+      setCheckedGameIds((prev) => {
         const next = new Set(prev);
-        filteredGames.forEach(g => next.delete(g.gameId));
+        filteredGames.forEach((g) => next.delete(g.gameId));
         return next;
       });
     } else {
       // Check all filtered
-      setCheckedGameIds(prev => {
+      setCheckedGameIds((prev) => {
         const next = new Set(prev);
-        filteredGames.forEach(g => next.add(g.gameId));
+        filteredGames.forEach((g) => next.add(g.gameId));
         return next;
       });
     }
   }, [allFilteredChecked, filteredGames]);
 
-  const selectNextGame = useCallback((direction: number) => {
-    if (!selectedGameId || filteredGames.length === 0) return;
+  const selectNextGame = useCallback(
+    (direction: number) => {
+      if (!selectedGameId || filteredGames.length === 0) return;
 
-    const currentIndex = filteredGames.findIndex(g => g.gameId === selectedGameId);
-    const newIndex = currentIndex + direction;
+      const currentIndex = filteredGames.findIndex((g) => g.gameId === selectedGameId);
+      const newIndex = currentIndex + direction;
 
-    if (newIndex >= 0 && newIndex < filteredGames.length) {
-      setSelectedGameId(filteredGames[newIndex].gameId);
-    }
-  }, [selectedGameId, filteredGames]);
+      if (newIndex >= 0 && newIndex < filteredGames.length) {
+        setSelectedGameId(filteredGames[newIndex].gameId);
+      }
+    },
+    [selectedGameId, filteredGames]
+  );
 
-  const handleTableKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (editingGameId) return;
+  const handleTableKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (editingGameId) return;
 
-    switch (e.key) {
-      case 'F2':
-        if (selectedGameId) {
+      switch (e.key) {
+        case 'F2':
+          if (selectedGameId) {
+            e.preventDefault();
+            startEditingName(selectedGameId);
+          }
+          break;
+        case 'Enter':
+          if (selectedGameId) {
+            e.preventDefault();
+            openGame(selectedGameId);
+          }
+          break;
+        case 'Delete':
+          if (selectedGameId) {
+            e.preventDefault();
+            deleteGame(selectedGameId);
+          }
+          break;
+        case 'ArrowDown':
           e.preventDefault();
-          startEditingName(selectedGameId);
-        }
-        break;
-      case 'Enter':
-        if (selectedGameId) {
+          selectNextGame(1);
+          break;
+        case 'ArrowUp':
           e.preventDefault();
-          openGame(selectedGameId);
-        }
-        break;
-      case 'Delete':
-        if (selectedGameId) {
-          e.preventDefault();
-          deleteGame(selectedGameId);
-        }
-        break;
-      case 'ArrowDown':
+          selectNextGame(-1);
+          break;
+        case ' ':
+          if (selectedGameId) {
+            e.preventDefault();
+            toggleGameChecked(selectedGameId);
+          }
+          break;
+      }
+    },
+    [
+      editingGameId,
+      selectedGameId,
+      startEditingName,
+      openGame,
+      deleteGame,
+      selectNextGame,
+      toggleGameChecked,
+    ]
+  );
+
+  const handleNameKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
         e.preventDefault();
-        selectNextGame(1);
-        break;
-      case 'ArrowUp':
+        saveName();
+      } else if (e.key === 'Escape') {
         e.preventDefault();
-        selectNextGame(-1);
-        break;
-      case ' ':
-        if (selectedGameId) {
-          e.preventDefault();
-          toggleGameChecked(selectedGameId);
-        }
-        break;
-    }
-  }, [editingGameId, selectedGameId, startEditingName, openGame, deleteGame, selectNextGame, toggleGameChecked]);
-
-  const handleNameKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      saveName();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      cancelEditing();
-    }
-  }, [saveName, cancelEditing]);
+        cancelEditing();
+      }
+    },
+    [saveName, cancelEditing]
+  );
 
   const formatDate = (dateString: string) => {
     try {
@@ -372,15 +415,11 @@ export default function LoadGame(): React.ReactElement {
 
         {/* Error message */}
         {errorMessage && (
-          <div className="bg-red-600 text-white px-4 py-3 rounded mb-4">
-            {errorMessage}
-          </div>
+          <div className="bg-red-600 text-white px-4 py-3 rounded mb-4">{errorMessage}</div>
         )}
 
         {/* Loading state */}
-        {isLoading && (
-          <p className="text-gray-400">Loading saved games...</p>
-        )}
+        {isLoading && <p className="text-gray-400">Loading saved games...</p>}
 
         {/* Empty state */}
         {!isLoading && savedGames.length === 0 && (
@@ -412,8 +451,10 @@ export default function LoadGame(): React.ReactElement {
                 className="px-2 py-1 bg-gray-700 text-white border border-gray-600 rounded text-sm"
               >
                 <option value="">All</option>
-                {gameStates.map(state => (
-                  <option key={state} value={state}>{state}</option>
+                {gameStates.map((state) => (
+                  <option key={state} value={state}>
+                    {state}
+                  </option>
                 ))}
               </select>
             </div>
@@ -446,11 +487,7 @@ export default function LoadGame(): React.ReactElement {
                 disabled={isDeleting}
                 className="px-4 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {isDeleting ? (
-                  <>Deleting...</>
-                ) : (
-                  <>🗑️ Delete {checkedGameIds.size} selected</>
-                )}
+                {isDeleting ? <>Deleting...</> : <>🗑️ Delete {checkedGameIds.size} selected</>}
               </button>
             )}
           </div>
@@ -472,7 +509,7 @@ export default function LoadGame(): React.ReactElement {
                     <input
                       type="checkbox"
                       checked={allFilteredChecked}
-                      ref={el => {
+                      ref={(el) => {
                         if (el) el.indeterminate = someFilteredChecked;
                       }}
                       onChange={toggleAllFiltered}
@@ -481,12 +518,24 @@ export default function LoadGame(): React.ReactElement {
                     />
                   </th>
                   <th className="w-16 text-center border border-gray-300 px-3 py-2"></th>
-                  <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-left font-semibold text-gray-700">Name</th>
-                  <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-left font-semibold text-gray-700">Players</th>
-                  <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-center font-semibold text-gray-700">Moves</th>
-                  <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-left font-semibold text-gray-700">State</th>
-                  <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-left font-semibold text-gray-700">Type</th>
-                  <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-left font-semibold text-gray-700">Saved</th>
+                  <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-left font-semibold text-gray-700">
+                    Name
+                  </th>
+                  <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-left font-semibold text-gray-700">
+                    Players
+                  </th>
+                  <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-center font-semibold text-gray-700">
+                    Moves
+                  </th>
+                  <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-left font-semibold text-gray-700">
+                    State
+                  </th>
+                  <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-left font-semibold text-gray-700">
+                    Type
+                  </th>
+                  <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-left font-semibold text-gray-700">
+                    Saved
+                  </th>
                   <th className="w-12 text-center border border-gray-300 px-3 py-2"></th>
                 </tr>
               </thead>
@@ -527,14 +576,20 @@ export default function LoadGame(): React.ReactElement {
                         <button
                           className={`px-1 transition-opacity ${isSelected ? 'opacity-90 hover:opacity-100' : 'opacity-70 hover:opacity-100'}`}
                           title="Edit name"
-                          onClick={(e) => { e.stopPropagation(); startEditingName(game.gameId); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEditingName(game.gameId);
+                          }}
                         >
                           ✏️
                         </button>
                         <button
                           className={`px-1 transition-opacity ${isSelected ? 'opacity-90 hover:opacity-100' : 'opacity-70 hover:opacity-100'}`}
                           title="Open game"
-                          onClick={(e) => { e.stopPropagation(); openGame(game.gameId); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openGame(game.gameId);
+                          }}
                         >
                           ▶️
                         </button>
@@ -559,17 +614,24 @@ export default function LoadGame(): React.ReactElement {
                       </td>
 
                       <td className="border border-gray-300 px-3 py-2">{game.playerNames}</td>
-                      <td className="border border-gray-300 px-3 py-2 text-center">{game.turnCount}</td>
+                      <td className="border border-gray-300 px-3 py-2 text-center">
+                        {game.turnCount}
+                      </td>
                       <td className="border border-gray-300 px-3 py-2">{game.gameState}</td>
                       <td className="border border-gray-300 px-3 py-2">{game.gameType}</td>
-                      <td className="border border-gray-300 px-3 py-2">{formatDate(game.savedAt)}</td>
+                      <td className="border border-gray-300 px-3 py-2">
+                        {formatDate(game.savedAt)}
+                      </td>
 
                       {/* Delete icon */}
                       <td className="border border-gray-300 px-2 py-2 text-center">
                         <button
                           className={`px-1 transition-opacity ${isSelected ? 'opacity-90 hover:opacity-100' : 'opacity-70 hover:opacity-100'}`}
                           title="Delete game"
-                          onClick={(e) => { e.stopPropagation(); deleteGame(game.gameId); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteGame(game.gameId);
+                          }}
                         >
                           🗑️
                         </button>
@@ -602,7 +664,11 @@ export default function LoadGame(): React.ReactElement {
                   <div
                     key={game.gameId}
                     className={`bg-white rounded-xl p-3 shadow-lg border-3 ${
-                      isSelected ? 'border-blue-500 bg-blue-50' : isChecked ? 'border-amber-400 bg-amber-50' : 'border-transparent'
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50'
+                        : isChecked
+                          ? 'border-amber-400 bg-amber-50'
+                          : 'border-transparent'
                     }`}
                     onClick={() => selectGame(game.gameId)}
                   >
@@ -620,7 +686,10 @@ export default function LoadGame(): React.ReactElement {
                       <button
                         className="w-20 h-20 min-w-[80px] bg-blue-600 text-white text-4xl rounded-xl flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-transform"
                         title="Open game"
-                        onClick={(e) => { e.stopPropagation(); openGame(game.gameId); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openGame(game.gameId);
+                        }}
                       >
                         ▶️
                       </button>
@@ -646,7 +715,10 @@ export default function LoadGame(): React.ReactElement {
                       <button
                         className="w-20 h-20 min-w-[80px] bg-gray-100 text-gray-400 text-4xl rounded-xl flex items-center justify-center hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
                         title="Delete game"
-                        onClick={(e) => { e.stopPropagation(); deleteGame(game.gameId); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteGame(game.gameId);
+                        }}
                       >
                         🗑️
                       </button>

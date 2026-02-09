@@ -55,9 +55,7 @@ function resolveGlyph(glyphName: string): string | undefined {
 }
 
 /** Get resolved tile font config for a resource type, or undefined if not available. */
-export function useTileFontConfig(
-  resourceType: string
-): ResolvedTileFontConfig | undefined {
+export function useTileFontConfig(resourceType: string): ResolvedTileFontConfig | undefined {
   const currentTheme = useThemeStore((s) => s.currentTheme);
   const themes = useThemeStore((s) => s.themes);
 
@@ -71,9 +69,7 @@ export function useTileFontConfig(
 }
 
 /** Get resolved harbor font config for a harbor type, or undefined if not available. */
-export function useHarborFontConfig(
-  harborType: string
-): ResolvedHarborFontConfig | undefined {
+export function useHarborFontConfig(harborType: string): ResolvedHarborFontConfig | undefined {
   const currentTheme = useThemeStore((s) => s.currentTheme);
   const themes = useThemeStore((s) => s.themes);
 
@@ -83,7 +79,14 @@ export function useHarborFontConfig(
     const harborGlyph = resolveGlyph(raw.harborGlyph);
     if (!harborGlyph) return undefined;
     const hexGlyph = raw.hexGlyph ? resolveGlyph(raw.hexGlyph) : undefined;
-    return { harborGlyph, hexGlyph, color: raw.color, bgColor: raw.bgColor, hexOpacity: raw.hexOpacity, faIcon: raw.faIcon };
+    return {
+      harborGlyph,
+      hexGlyph,
+      color: raw.color,
+      bgColor: raw.bgColor,
+      hexOpacity: raw.hexOpacity,
+      faIcon: raw.faIcon,
+    };
   }, [themes, currentTheme, harborType]);
 }
 

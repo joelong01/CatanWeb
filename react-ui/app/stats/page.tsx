@@ -27,7 +27,7 @@ const STAT_MODES: { value: StatMode; label: string }[] = [
 function getStatValue(
   stats: LifetimeStats | undefined,
   column: 'score' | 'soldiers' | 'stars' | 'targeted' | 'robber',
-  mode: StatMode,
+  mode: StatMode
 ): number | null {
   if (!stats || stats.gamesPlayed === 0) return null;
 
@@ -160,9 +160,7 @@ export default function Stats(): React.ReactElement {
           </div>
         )}
 
-        {error && (
-          <div className="text-center py-10 text-red-400 text-lg">{error}</div>
-        )}
+        {error && <div className="text-center py-10 text-red-400 text-lg">{error}</div>}
 
         {!isLoading && !error && (
           <div className="overflow-x-auto rounded-lg shadow-lg">

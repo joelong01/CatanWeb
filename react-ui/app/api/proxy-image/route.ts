@@ -11,19 +11,15 @@ const BROWSER_UA =
  */
 function extractOgImage(html: string): string | null {
   // Try og:image first
-  const ogMatch = html.match(
-    /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i
-  ) ?? html.match(
-    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i
-  );
+  const ogMatch =
+    html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ??
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
   if (ogMatch) return ogMatch[1];
 
   // Try twitter:image
-  const twMatch = html.match(
-    /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i
-  ) ?? html.match(
-    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i
-  );
+  const twMatch =
+    html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ??
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i);
   if (twMatch) return twMatch[1];
 
   return null;
@@ -34,7 +30,7 @@ function extractOgImage(html: string): string | null {
  * Follows redirects. Validates size and content type.
  */
 async function fetchImage(
-  url: string,
+  url: string
 ): Promise<{ data: ArrayBuffer; contentType: string } | { error: string }> {
   const response = await fetch(url, {
     headers: { 'User-Agent': BROWSER_UA },
@@ -61,7 +57,10 @@ async function fetchImage(
     const html = await response.text();
     const ogUrl = extractOgImage(html);
     if (!ogUrl) {
-      return { error: 'Page does not contain a direct image. Try right-clicking the image and copying the image address.' };
+      return {
+        error:
+          'Page does not contain a direct image. Try right-clicking the image and copying the image address.',
+      };
     }
 
     // Fetch the og:image URL

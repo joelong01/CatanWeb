@@ -73,9 +73,9 @@ export const CatanGlyph = {
   Skull: '\uE950',
 
   // Aliases for backward compatibility
-  Soldier: '\uE939',       // KnightStanding used for purchase UI
-  Pirate: '\uE90C',        // Legacy alias for Robber
-  DevCard: '?',             // Placeholder - uses FontAwesome icon instead
+  Soldier: '\uE939', // KnightStanding used for purchase UI
+  Pirate: '\uE90C', // Legacy alias for Robber
+  DevCard: '?', // Placeholder - uses FontAwesome icon instead
 } as const;
 
 export type CatanGlyphKey = keyof typeof CatanGlyph;

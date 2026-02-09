@@ -29,32 +29,75 @@ const GLYPH_CATEGORIES: { label: string; keys: string[] }[] = [
   },
   {
     label: 'Resource Tiles',
-    keys: ['BrickHex', 'DesertHex', 'GoldHex', 'TempGoldHex', 'OreHex', 'SheepHex', 'WheatHex', 'WoodHex'],
+    keys: [
+      'BrickHex',
+      'DesertHex',
+      'GoldHex',
+      'TempGoldHex',
+      'OreHex',
+      'SheepHex',
+      'WheatHex',
+      'WoodHex',
+    ],
   },
   {
     label: 'Harbors',
-    keys: ['ThreeToOneHarbor', 'BrickHarbor', 'OreHarbor', 'SheepHarbor', 'WheatHarbor', 'WoodHarbor'],
+    keys: [
+      'ThreeToOneHarbor',
+      'BrickHarbor',
+      'OreHarbor',
+      'SheepHarbor',
+      'WheatHarbor',
+      'WoodHarbor',
+    ],
   },
   {
     label: 'Catan Numbers (E945–E95F)',
     keys: [
-      'Number2', 'Number3', 'Number4', 'Number5', 'Number6',
-      'Number7', 'Number8', 'Number9', 'Number10', 'Number11', 'Number12',
+      'Number2',
+      'Number3',
+      'Number4',
+      'Number5',
+      'Number6',
+      'Number7',
+      'Number8',
+      'Number9',
+      'Number10',
+      'Number11',
+      'Number12',
     ],
   },
   {
     label: 'Knights & Cities',
     keys: [
-      'Knight', 'KnightAttacking', 'KnightKneeling', 'KnightStanding',
-      'Deserter', 'Diplomat', 'Inventor', 'Merchant',
-      'Politics', 'Intrigue', 'Science', 'Entry', 'Metro', 'Wagon',
+      'Knight',
+      'KnightAttacking',
+      'KnightKneeling',
+      'KnightStanding',
+      'Deserter',
+      'Diplomat',
+      'Inventor',
+      'Merchant',
+      'Politics',
+      'Intrigue',
+      'Science',
+      'Entry',
+      'Metro',
+      'Wagon',
     ],
   },
   {
     label: 'Stats & Scoring',
     keys: [
-      'Laurel', 'Star', 'Sum', 'BadRoll', 'GoodRoll',
-      'LargestArmy', 'LongestRoad', 'Target', 'Check',
+      'Laurel',
+      'Star',
+      'Sum',
+      'BadRoll',
+      'GoodRoll',
+      'LargestArmy',
+      'LongestRoad',
+      'Target',
+      'Check',
     ],
   },
   {
@@ -80,8 +123,7 @@ function makeEntry(key: string, char: string): GlyphEntry {
 /** Build display entries grouped by category. */
 function getGroupedEntries(): GlyphCategory[] {
   const glyphMap = new Map(
-    (Object.entries(CatanGlyph) as [CatanGlyphKey, string][])
-      .filter(([key]) => !ALIASES.has(key))
+    (Object.entries(CatanGlyph) as [CatanGlyphKey, string][]).filter(([key]) => !ALIASES.has(key))
   );
 
   const usedKeys = new Set<string>();
@@ -122,7 +164,7 @@ export default function FontViewerPage(): React.ReactElement {
   const categories = useMemo(() => getGroupedEntries(), []);
   const totalCount = useMemo(
     () => categories.reduce((sum, cat) => sum + cat.entries.length, 0),
-    [categories],
+    [categories]
   );
 
   const handleCopy = useCallback(async (entry: GlyphEntry, e: React.MouseEvent) => {
@@ -143,10 +185,7 @@ export default function FontViewerPage(): React.ReactElement {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <Link
-                href="/"
-                className="text-gray-400 hover:text-white transition-colors"
-              >
+              <Link href="/" className="text-gray-400 hover:text-white transition-colors">
                 <FontAwesomeIcon icon={faArrowLeft} className="w-5 h-5" />
               </Link>
               <div>
@@ -212,17 +251,15 @@ export default function FontViewerPage(): React.ReactElement {
                         <div className="text-sm font-semibold text-amber-400 mb-1 break-words">
                           {entry.key}
                         </div>
-                        <div className="text-xs text-gray-500 font-mono">
-                          U+{entry.hex}
-                        </div>
-                        <div className="text-xs text-gray-600 font-mono">
-                          {entry.decimal}
-                        </div>
+                        <div className="text-xs text-gray-500 font-mono">U+{entry.hex}</div>
+                        <div className="text-xs text-gray-600 font-mono">{entry.decimal}</div>
                         {/* Copied feedback */}
                         {copiedKey === entry.key && (
-                          <div className="absolute inset-0 flex items-center justify-center
+                          <div
+                            className="absolute inset-0 flex items-center justify-center
                                           bg-black/70 rounded-lg text-green-400 font-semibold text-sm
-                                          animate-pulse">
+                                          animate-pulse"
+                          >
                             Copied!
                           </div>
                         )}
@@ -275,9 +312,11 @@ export default function FontViewerPage(): React.ReactElement {
                               {entry.char}
                             </span>
                             {copiedKey === entry.key && (
-                              <span className="absolute inset-0 flex items-center justify-center
+                              <span
+                                className="absolute inset-0 flex items-center justify-center
                                               bg-black/70 text-green-400 font-semibold text-xs
-                                              animate-pulse">
+                                              animate-pulse"
+                              >
                                 Copied!
                               </span>
                             )}

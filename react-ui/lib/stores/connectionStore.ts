@@ -9,11 +9,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 
 /** Connection status enum matching SignalR HubConnectionState */
-export type ConnectionStatus =
-  | 'disconnected'
-  | 'connecting'
-  | 'connected'
-  | 'reconnecting';
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
 interface ConnectionState {
   /** Current connection status */
@@ -115,8 +111,7 @@ export const useConnectionStore = create<ConnectionStore>()(
 // ============================================================================
 
 /** Select whether we're connected */
-export const selectIsConnected = (state: ConnectionStore) =>
-  state.status === 'connected';
+export const selectIsConnected = (state: ConnectionStore) => state.status === 'connected';
 
 /** Select whether we're attempting to connect */
 export const selectIsConnecting = (state: ConnectionStore) =>
@@ -129,8 +124,7 @@ export const selectConnectionStatus = (state: ConnectionStore) => state.status;
 export const selectConnectedGameId = (state: ConnectionStore) => state.gameId;
 
 /** Select whether there's an error */
-export const selectHasError = (state: ConnectionStore) =>
-  state.lastError !== null;
+export const selectHasError = (state: ConnectionStore) => state.lastError !== null;
 
 /** Select the error message */
 export const selectErrorMessage = (state: ConnectionStore) => state.lastError;

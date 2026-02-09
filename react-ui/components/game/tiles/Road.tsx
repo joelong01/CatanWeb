@@ -41,12 +41,12 @@ export interface RoadProps {
  * Canonical polygon is horizontal (tips at left/right), so we rotate to match edge orientation.
  */
 const EDGE_ANGLES: Record<HexSide, number> = {
-  Top: 0,           // Edge runs horizontally
-  TopRight: 60,     // Edge runs at 60°
+  Top: 0, // Edge runs horizontally
+  TopRight: 60, // Edge runs at 60°
   BottomRight: 120, // Edge runs at 120°
-  Bottom: 180,      // Edge runs horizontally (same as 0°)
-  BottomLeft: 240,  // Edge runs at 240°
-  TopLeft: 300,     // Edge runs at 300°
+  Bottom: 180, // Edge runs horizontally (same as 0°)
+  BottomLeft: 240, // Edge runs at 240°
+  TopLeft: 300, // Edge runs at 300°
 };
 
 /**
@@ -86,26 +86,26 @@ function indexToAlphanumeric(index: number): string {
  * Inner hex ratio: 91/100 = 0.91 (from Blazor: InnerHexSize = HexSize - TileGap - InnerHexStrokeThickness * 0.5)
  */
 function calculateRoadPolygon(hexSize: number): string {
-  const R = hexSize;           // Outer hex circumradius
-  const innerRatio = 0.91;     // InnerHexSize / HexSize (91/100 from Blazor)
-  const r = R * innerRatio;    // Inner hex circumradius
+  const R = hexSize; // Outer hex circumradius
+  const innerRatio = 0.91; // InnerHexSize / HexSize (91/100 from Blazor)
+  const r = R * innerRatio; // Inner hex circumradius
 
-  const apothemOuter = R * Math.sqrt(3) / 2;  // Distance from center to edge midpoint (outer)
-  const apothemInner = r * Math.sqrt(3) / 2;  // Distance from center to edge midpoint (inner)
+  const apothemOuter = (R * Math.sqrt(3)) / 2; // Distance from center to edge midpoint (outer)
+  const apothemInner = (r * Math.sqrt(3)) / 2; // Distance from center to edge midpoint (inner)
 
-  const tipX = R / 2;          // Tip distance from midpoint along edge (50 at R=100)
-  const innerX = r / 2;        // Inner vertex distance from midpoint along edge (45.5 at r=91)
-  const perpDist = apothemOuter - apothemInner;  // Perpendicular offset for inner vertices (~7.8)
+  const tipX = R / 2; // Tip distance from midpoint along edge (50 at R=100)
+  const innerX = r / 2; // Inner vertex distance from midpoint along edge (45.5 at r=91)
+  const perpDist = apothemOuter - apothemInner; // Perpendicular offset for inner vertices (~7.8)
 
   // 6 points forming the bowtie shape (horizontal, centered at origin):
   // tip1 (left) -> innerA1 (left-top) -> innerA2 (right-top) -> tip2 (right) -> innerB2 (right-bottom) -> innerB1 (left-bottom)
   const points = [
-    [-tipX, 0],           // tip1: left vertex
+    [-tipX, 0], // tip1: left vertex
     [-innerX, -perpDist], // innerA1: left inner vertex, above edge
-    [innerX, -perpDist],  // innerA2: right inner vertex, above edge
-    [tipX, 0],            // tip2: right vertex
-    [innerX, perpDist],   // innerB2: right inner vertex, below edge
-    [-innerX, perpDist],  // innerB1: left inner vertex, below edge
+    [innerX, -perpDist], // innerA2: right inner vertex, above edge
+    [tipX, 0], // tip2: right vertex
+    [innerX, perpDist], // innerB2: right inner vertex, below edge
+    [-innerX, perpDist], // innerB1: left inner vertex, below edge
   ];
 
   return points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
@@ -144,9 +144,10 @@ export const Road = React.memo(function Road({
   }
 
   // Determine colors based on state
-  const colors = roadState === 'Buildable'
-    ? (currentPlayerColors ?? NEUTRAL_COLORS)
-    : (ownerColors ?? NEUTRAL_COLORS);
+  const colors =
+    roadState === 'Buildable'
+      ? (currentPlayerColors ?? NEUTRAL_COLORS)
+      : (ownerColors ?? NEUTRAL_COLORS);
 
   // Rotation based on edge
   const rotation = EDGE_ANGLES[side];

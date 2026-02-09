@@ -65,10 +65,7 @@ function arraysEqual<T>(a: T[] | undefined, b: T[] | undefined): boolean {
 /**
  * Compare ActionFlags objects for equality.
  */
-function actionFlagsEqual(
-  a: ActionFlags | undefined,
-  b: ActionFlags | undefined
-): boolean {
+function actionFlagsEqual(a: ActionFlags | undefined, b: ActionFlags | undefined): boolean {
   if (a === b) return true;
   if (!a || !b) return false;
   return (
@@ -82,10 +79,7 @@ function actionFlagsEqual(
 /**
  * Compare player profiles map by checking each entry.
  */
-function profilesEqual(
-  a: Map<string, PlayerProfile>,
-  b: Map<string, PlayerProfile>
-): boolean {
+function profilesEqual(a: Map<string, PlayerProfile>, b: Map<string, PlayerProfile>): boolean {
   if (a === b) return true;
   if (a.size !== b.size) return false;
   for (const [key, val] of a) {
@@ -128,9 +122,7 @@ export function useCurrentTurnPlayerId() {
  * Returns whether it's the local player's turn.
  */
 export function useIsMyTurn() {
-  return useGameStore(
-    (state) => state.gameModel?.currentPlayerId === state.currentPlayerId
-  );
+  return useGameStore((state) => state.gameModel?.currentPlayerId === state.currentPlayerId);
 }
 
 /**
@@ -248,22 +240,14 @@ export function useHarbors(): HarborModel[] {
  * Returns the robber position.
  */
 export function useRobber() {
-  return useStoreWithEqualityFn(
-    useGameStore,
-    (state) => state.gameModel?.robber,
-    shallow
-  );
+  return useStoreWithEqualityFn(useGameStore, (state) => state.gameModel?.robber, shallow);
 }
 
 /**
  * Returns house rules.
  */
 export function useHouseRules() {
-  return useStoreWithEqualityFn(
-    useGameStore,
-    (state) => state.gameModel?.houseRules,
-    shallow
-  );
+  return useStoreWithEqualityFn(useGameStore, (state) => state.gameModel?.houseRules, shallow);
 }
 
 /**
@@ -429,9 +413,7 @@ export function useMyProfile(): PlayerProfile | undefined {
  * @param playerId The player ID to get colors for (null/undefined returns undefined)
  * @returns PlayerColors or undefined if player not found
  */
-export function usePlayerColors(
-  playerId: string | null | undefined
-): PlayerColors | undefined {
+export function usePlayerColors(playerId: string | null | undefined): PlayerColors | undefined {
   return useGameStore((state) => {
     if (!playerId) return undefined;
     return state.playerProfiles.get(playerId)?.colors;

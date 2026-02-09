@@ -78,9 +78,7 @@ export const GameTile = memo(function GameTile({
   // Whether the gold flip animation is possible (need both base and gold configs)
   const canFlipGold = useFont && !!goldFontConfig;
   // Font mode: colored border ring per resource. Image mode: transparent (border hidden).
-  const tokenBorderColor = useFont
-    ? (RESOURCE_COLORS[resourceTileType] ?? 'white')
-    : 'transparent';
+  const tokenBorderColor = useFont ? (RESOURCE_COLORS[resourceTileType] ?? 'white') : 'transparent';
 
   // Inner hex scale: InnerHexSize / HexSize = 91/100 = 0.91 (from Blazor)
   const innerHexScale = 0.91;
@@ -233,8 +231,9 @@ export const GameTile = memo(function GameTile({
       {/* Gold indicator - shows original resource when temporarily gold */}
       {/* Rendered BEFORE number token so number stays on top in z-order */}
       <AnimatePresence>
-        {temporarilyGold && !isDesert && (
-          useFont && baseFontConfig ? (
+        {temporarilyGold &&
+          !isDesert &&
+          (useFont && baseFontConfig ? (
             /* Font mode: hex-clipped glyph of original resource in bottom half.
                Same hex-clip-flat shape as NumberToken so the two stack cleanly. */
             <motion.div
@@ -251,11 +250,7 @@ export const GameTile = memo(function GameTile({
               transition={{ delay: 2.0, duration: 1.0, ease: 'easeOut' }}
             >
               <div className="hex-clip-flat w-full h-full" style={{ backgroundColor: 'white' }}>
-                <svg
-                  className="w-full h-full"
-                  viewBox="0 0 100 100"
-                  preserveAspectRatio="none"
-                >
+                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <text
                     x="50"
                     y="50"
@@ -293,13 +288,13 @@ export const GameTile = memo(function GameTile({
                 className="w-full h-full object-cover"
               />
             </motion.div>
-          )
-        )}
+          ))}
       </AnimatePresence>
 
       {/* Number token (not shown for desert) - on top of gold indicator */}
-      {!isDesert && number > 0 && (
-        useFont ? (
+      {!isDesert &&
+        number > 0 &&
+        (useFont ? (
           /* Font mode: animated position — centered normally, slides up when gold.
              Delay 0.5s on gold entry (after tile flip), instant on exit. */
           <motion.div
@@ -337,8 +332,7 @@ export const GameTile = memo(function GameTile({
           >
             <NumberToken number={number} className="w-full h-full" borderColor={tokenBorderColor} />
           </div>
-        )
-      )}
+        ))}
 
       {/* Tile index overlay (for MustMoveRobber state) */}
       {tileIndex !== undefined && (

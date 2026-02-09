@@ -34,7 +34,12 @@ interface MainLayoutProps {
  * Main layout component providing the hamburger menu and page structure.
  * Matches the Blazor WebUI MainLayout.razor behavior.
  */
-export function MainLayout({ children, className, activeGameId, gameActions }: MainLayoutProps): React.ReactElement {
+export function MainLayout({
+  children,
+  className,
+  activeGameId,
+  gameActions,
+}: MainLayoutProps): React.ReactElement {
   const [showMenu, setShowMenu] = useState(false);
 
   // Apply animation speed CSS variables based on user settings
@@ -55,7 +60,11 @@ export function MainLayout({ children, className, activeGameId, gameActions }: M
       {showMenu && (
         <div className="menu-overlay" onClick={toggleSidebar}>
           <div className="menu-panel" onClick={(e) => e.stopPropagation()}>
-            <NavMenu onMenuAction={toggleSidebar} activeGameId={activeGameId} gameActions={gameActions} />
+            <NavMenu
+              onMenuAction={toggleSidebar}
+              activeGameId={activeGameId}
+              gameActions={gameActions}
+            />
           </div>
         </div>
       )}

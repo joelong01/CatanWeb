@@ -12,10 +12,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
-import {
-  RecordingPlayer,
-  type RecordingListItem,
-} from './RecordingPlayer';
+import { RecordingPlayer, type RecordingListItem } from './RecordingPlayer';
 
 const SERVICE_URL = 'http://localhost:8080';
 const TEST_TIMEOUT = 120000; // 120 seconds for full recording playback
@@ -104,8 +101,7 @@ describe('RecordingPlayer Integration Tests', () => {
       }
 
       // Find a recording with reasonable action count
-      const testRecording =
-        list.find((r) => r.actionCount > 0 && r.actionCount < 50) ?? list[0];
+      const testRecording = list.find((r) => r.actionCount > 0 && r.actionCount < 50) ?? list[0];
 
       const data = await player.loadRecording(testRecording.id);
 
@@ -126,133 +122,147 @@ describe('RecordingPlayer Integration Tests', () => {
   });
 
   describe('Playback Initialization', () => {
-    it('should initialize playback from a recording', async () => {
-      if (!serviceAvailable) return;
+    it(
+      'should initialize playback from a recording',
+      async () => {
+        if (!serviceAvailable) return;
 
-      player = new RecordingPlayer(SERVICE_URL);
+        player = new RecordingPlayer(SERVICE_URL);
 
-      if (recordings.length === 0) {
-        if (DEBUG) console.log('No recordings available to test');
-        return;
-      }
+        if (recordings.length === 0) {
+          if (DEBUG) console.log('No recordings available to test');
+          return;
+        }
 
-      const testRecording = recordings[0];
-      await player.loadRecording(testRecording.id);
+        const testRecording = recordings[0];
+        await player.loadRecording(testRecording.id);
 
-      const gameId = await player.initializePlayback();
+        const gameId = await player.initializePlayback();
 
-      expect(gameId).toBeDefined();
-      expect(typeof gameId).toBe('string');
-      expect(player.gameModel).not.toBeNull();
+        expect(gameId).toBeDefined();
+        expect(typeof gameId).toBe('string');
+        expect(player.gameModel).not.toBeNull();
 
-      if (DEBUG) {
-        console.log(
-          `Initialized playback: gameId=${gameId}, ` +
-            `state=${player.gameModel?.gameState}`
-        );
-      }
-    }, TEST_TIMEOUT);
+        if (DEBUG) {
+          console.log(
+            `Initialized playback: gameId=${gameId}, ` + `state=${player.gameModel?.gameState}`
+          );
+        }
+      },
+      TEST_TIMEOUT
+    );
   });
 
   describe('Full Recording Playback', () => {
     // Run all recordings in parallel - models multiple concurrent games
     // Use SMOKE=1 to run only the largest recording for quick validation
-    it('should play all recordings in parallel', async () => {
-      if (!serviceAvailable) return;
+    it(
+      'should play all recordings in parallel',
+      async () => {
+        if (!serviceAvailable) return;
 
-      if (recordings.length === 0) {
-        console.log('No recordings found. Create some recordings first!');
-        return;
-      }
-
-      // In smoke test mode, only run the recording with the most actions
-      let recordingsToRun = recordings;
-      if (SMOKE_TEST) {
-        const largest = recordings.reduce((max, r) =>
-          r.actionCount > max.actionCount ? r : max
-        );
-        recordingsToRun = [largest];
-      }
-
-      console.log('');
-      console.log(`Recording Replay Tests (TypeScript Proxy${SMOKE_TEST ? ' - SMOKE' : ' - Parallel'})`);
-      console.log('====================================================');
-      console.log(`Running ${recordingsToRun.length} recording(s)${SMOKE_TEST ? ' (smoke test)' : ' in parallel'}...`);
-
-      const startTime = Date.now();
-
-      // Run recordings in parallel (or single in smoke test mode)
-      const results = await Promise.all(
-        recordingsToRun.map(async (recording) => {
-          const recPlayer = new RecordingPlayer(SERVICE_URL);
-          try {
-            const result = await recPlayer.playRecording(recording.id);
-            return { recording, result, error: null as string | null };
-          } catch (error) {
-            return {
-              recording,
-              result: null,
-              error: error instanceof Error ? error.message : String(error),
-            };
-          } finally {
-            await recPlayer.dispose();
-          }
-        })
-      );
-
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-
-      // Collect and print results
-      const passed: string[] = [];
-      const failedTests: Array<{
-        name: string;
-        actions: number;
-        error: string;
-        expected?: string;
-        actual?: string;
-      }> = [];
-
-      console.log('');
-      for (const { recording, result, error } of results) {
-        const info = `${recording.name} (${recording.actionCount} actions)`;
-        if (error) {
-          console.log(`  FAIL: ${info}`);
-          failedTests.push({ name: recording.name, actions: recording.actionCount, error });
-        } else if (result?.success) {
-          console.log(`  PASS: ${info}`);
-          passed.push(recording.name);
-        } else if (result) {
-          console.log(`  FAIL: ${info}`);
-          const errorMsg = result.failedAtIndex !== undefined
-            ? `Action ${result.failedAtIndex}: ${result.error}`
-            : result.error ?? 'Unknown error';
-          failedTests.push({
-            name: recording.name,
-            actions: recording.actionCount,
-            error: errorMsg,
-            expected: result.hashMismatch?.expected,
-            actual: result.hashMismatch?.actual,
-          });
+        if (recordings.length === 0) {
+          console.log('No recordings found. Create some recordings first!');
+          return;
         }
-      }
 
-      // Print summary
-      console.log('');
-      console.log(`Results: ${passed.length} passed, ${failedTests.length} failed in ${elapsed}s`);
+        // In smoke test mode, only run the recording with the most actions
+        let recordingsToRun = recordings;
+        if (SMOKE_TEST) {
+          const largest = recordings.reduce((max, r) =>
+            r.actionCount > max.actionCount ? r : max
+          );
+          recordingsToRun = [largest];
+        }
 
-      if (failedTests.length > 0) {
         console.log('');
-        console.log('Failures:');
-        for (const test of failedTests) {
-          console.log(`  ${test.name}: ${test.error}`);
-          if (test.expected && test.actual) {
-            console.log(`    Expected: ${test.expected}, Actual: ${test.actual}`);
+        console.log(
+          `Recording Replay Tests (TypeScript Proxy${SMOKE_TEST ? ' - SMOKE' : ' - Parallel'})`
+        );
+        console.log('====================================================');
+        console.log(
+          `Running ${recordingsToRun.length} recording(s)${SMOKE_TEST ? ' (smoke test)' : ' in parallel'}...`
+        );
+
+        const startTime = Date.now();
+
+        // Run recordings in parallel (or single in smoke test mode)
+        const results = await Promise.all(
+          recordingsToRun.map(async (recording) => {
+            const recPlayer = new RecordingPlayer(SERVICE_URL);
+            try {
+              const result = await recPlayer.playRecording(recording.id);
+              return { recording, result, error: null as string | null };
+            } catch (error) {
+              return {
+                recording,
+                result: null,
+                error: error instanceof Error ? error.message : String(error),
+              };
+            } finally {
+              await recPlayer.dispose();
+            }
+          })
+        );
+
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+
+        // Collect and print results
+        const passed: string[] = [];
+        const failedTests: Array<{
+          name: string;
+          actions: number;
+          error: string;
+          expected?: string;
+          actual?: string;
+        }> = [];
+
+        console.log('');
+        for (const { recording, result, error } of results) {
+          const info = `${recording.name} (${recording.actionCount} actions)`;
+          if (error) {
+            console.log(`  FAIL: ${info}`);
+            failedTests.push({ name: recording.name, actions: recording.actionCount, error });
+          } else if (result?.success) {
+            console.log(`  PASS: ${info}`);
+            passed.push(recording.name);
+          } else if (result) {
+            console.log(`  FAIL: ${info}`);
+            const errorMsg =
+              result.failedAtIndex !== undefined
+                ? `Action ${result.failedAtIndex}: ${result.error}`
+                : (result.error ?? 'Unknown error');
+            failedTests.push({
+              name: recording.name,
+              actions: recording.actionCount,
+              error: errorMsg,
+              expected: result.hashMismatch?.expected,
+              actual: result.hashMismatch?.actual,
+            });
           }
         }
-      }
 
-      expect(failedTests.length).toBe(0);
-    }, TEST_TIMEOUT * 2);
+        // Print summary
+        console.log('');
+        console.log(
+          `Results: ${passed.length} passed, ${failedTests.length} failed in ${elapsed}s`
+        );
+
+        if (failedTests.length > 0) {
+          console.log('');
+          console.log('Failures:');
+          for (const test of failedTests) {
+            console.log(`  ${test.name}: ${test.error}`);
+            if (test.expected && test.actual) {
+              console.log(`    Expected: ${test.expected}, Actual: ${test.actual}`);
+            }
+          }
+        }
+
+        expect(failedTests.length).toBe(0);
+      },
+      TEST_TIMEOUT * 2
+    );
   });
 
   describe('Error Handling', () => {
@@ -261,9 +271,7 @@ describe('RecordingPlayer Integration Tests', () => {
 
       player = new RecordingPlayer(SERVICE_URL);
 
-      await expect(
-        player.loadRecording('non-existent-recording-id')
-      ).rejects.toThrow();
+      await expect(player.loadRecording('non-existent-recording-id')).rejects.toThrow();
     });
 
     it('should handle playback without initialization', async () => {
@@ -276,9 +284,7 @@ describe('RecordingPlayer Integration Tests', () => {
       await player.loadRecording(recordings[0].id);
 
       // Should throw because we didn't call initializePlayback
-      await expect(player.executeStep()).rejects.toThrow(
-        'Playback not initialized'
-      );
+      await expect(player.executeStep()).rejects.toThrow('Playback not initialized');
     });
   });
 });

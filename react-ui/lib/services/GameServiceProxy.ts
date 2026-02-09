@@ -52,11 +52,7 @@ export interface PlayerProfile {
 }
 
 /** Connection state for external monitoring */
-export type ConnectionState =
-  | 'disconnected'
-  | 'connecting'
-  | 'connected'
-  | 'reconnecting';
+export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
 /** Event handler types */
 export interface GameServiceProxyEvents {
@@ -135,7 +131,8 @@ export class GameServiceProxy {
 
     try {
       // Configure SignalR logging based on DEBUG environment
-      const isDebug = typeof process !== 'undefined' &&
+      const isDebug =
+        typeof process !== 'undefined' &&
         (process.env?.DEBUG === 'true' || process.env?.DEBUG === '1');
 
       this.connection = new HubConnectionBuilder()
@@ -149,10 +146,7 @@ export class GameServiceProxy {
         .withAutomaticReconnect({
           nextRetryDelayInMilliseconds: (retryContext) => {
             // Exponential backoff: 0, 2s, 4s, 8s, 16s, max 30s
-            const delay = Math.min(
-              1000 * Math.pow(2, retryContext.previousRetryCount),
-              30000
-            );
+            const delay = Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000);
             return delay;
           },
         })
@@ -308,7 +302,9 @@ export class GameServiceProxy {
   async getGameState(gameId: string): Promise<GameModel | null> {
     console.log(`[GameServiceProxy] getGameState: GET /api/gamestate/${gameId}`);
     const response = await this.get(`/api/gamestate/${gameId}`);
-    console.log(`[GameServiceProxy] getGameState: response.ok=${response.ok}, status=${response.status}`);
+    console.log(
+      `[GameServiceProxy] getGameState: response.ok=${response.ok}, status=${response.status}`
+    );
     if (response.ok) {
       const data = await response.json();
       console.log(`[GameServiceProxy] getGameState: got data, tiles:`, data?.tiles?.length);
@@ -324,8 +320,16 @@ export class GameServiceProxy {
   async refreshGameState(gameId: string): Promise<void> {
     console.log(`[GameServiceProxy] refreshGameState: fetching for ${gameId}`);
     const gameModel = await this.getGameState(gameId);
-    console.log(`[GameServiceProxy] refreshGameState: got gameModel?`, !!gameModel, 'tiles:', gameModel?.tiles?.length);
-    console.log(`[GameServiceProxy] refreshGameState: handler set?`, !!this.events.onGameStateUpdated);
+    console.log(
+      `[GameServiceProxy] refreshGameState: got gameModel?`,
+      !!gameModel,
+      'tiles:',
+      gameModel?.tiles?.length
+    );
+    console.log(
+      `[GameServiceProxy] refreshGameState: handler set?`,
+      !!this.events.onGameStateUpdated
+    );
     if (gameModel && this.events.onGameStateUpdated) {
       console.log(`[GameServiceProxy] refreshGameState: calling handler`);
       this.events.onGameStateUpdated(gameModel);
@@ -362,10 +366,7 @@ export class GameServiceProxy {
    * @param gameModel - The complete GameModel to load
    * @param isTest - If true, marks as test game (no persistence)
    */
-  async loadGameModel(
-    gameModel: GameModel,
-    isTest: boolean = true
-  ): Promise<CommandResult> {
+  async loadGameModel(gameModel: GameModel, isTest: boolean = true): Promise<CommandResult> {
     const response = await this.post('/api/game/loadmodel', {
       gameModelJson: JSON.stringify(gameModel),
       isTest,
@@ -428,8 +429,17 @@ export class GameServiceProxy {
     // Calculate the ValidCatanRoll enum value (sum of dice)
     const total = die1 + die2;
     const normalRollMap: Record<number, string> = {
-      2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five', 6: 'Six',
-      7: 'Seven', 8: 'Eight', 9: 'Nine', 10: 'Ten', 11: 'Eleven', 12: 'Twelve',
+      2: 'Two',
+      3: 'Three',
+      4: 'Four',
+      5: 'Five',
+      6: 'Six',
+      7: 'Seven',
+      8: 'Eight',
+      9: 'Nine',
+      10: 'Ten',
+      11: 'Eleven',
+      12: 'Twelve',
     };
     return this.executeCommand('RollMessage', {
       roll: {
@@ -463,10 +473,7 @@ export class GameServiceProxy {
   /**
    * Execute Move Robber command.
    */
-  async moveRobber(
-    coordinates: HexCoordinates,
-    targetPlayerId?: string
-  ): Promise<CommandResult> {
+  async moveRobber(coordinates: HexCoordinates, targetPlayerId?: string): Promise<CommandResult> {
     return this.executeCommand('MoveRobberMessage', {
       coordinates,
       targetPlayerId: targetPlayerId ?? null,
@@ -566,9 +573,7 @@ export class GameServiceProxy {
   /**
    * Subscribe to connection state changes.
    */
-  onConnectionStateChanged(
-    handler: (state: ConnectionState) => void
-  ): () => void {
+  onConnectionStateChanged(handler: (state: ConnectionState) => void): () => void {
     this.events.onConnectionStateChanged = handler;
     return () => {
       this.events.onConnectionStateChanged = undefined;
@@ -705,10 +710,7 @@ export class GameServiceProxy {
     });
   }
 
-  private async post(
-    path: string,
-    body: Record<string, unknown>
-  ): Promise<Response> {
+  private async post(path: string, body: Record<string, unknown>): Promise<Response> {
     return fetch(`${this.serviceUrl}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -736,16 +738,15 @@ export class GameServiceProxy {
   }
 
   private log(message: string, error?: unknown): void {
-    const isDebug = typeof process !== 'undefined' &&
+    const isDebug =
+      typeof process !== 'undefined' &&
       (process.env?.DEBUG === 'true' || process.env?.DEBUG === '1');
 
     const prefix = `[GameServiceProxy] [${this.playerId}]`;
     if (error) {
       // Always log errors
       console.error(`${prefix} ${message}`, error);
-      this.events.onError?.(
-        error instanceof Error ? error.message : String(error)
-      );
+      this.events.onError?.(error instanceof Error ? error.message : String(error));
     } else if (isDebug) {
       // Only log info in debug mode
       console.log(`${prefix} ${message}`);

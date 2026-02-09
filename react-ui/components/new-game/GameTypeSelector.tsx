@@ -162,7 +162,9 @@ function GameTypeContent({ config, isSelected }: GameTypeContentProps): React.Re
           </div>
 
           {/* Title */}
-          <h3 className="text-base font-bold text-white text-center leading-tight">{config.title}</h3>
+          <h3 className="text-base font-bold text-white text-center leading-tight">
+            {config.title}
+          </h3>
 
           {/* Players badge */}
           <span className="text-xs px-2.5 py-1 rounded-lg bg-white/10 text-gray-400">
@@ -188,10 +190,7 @@ function GameTypeContent({ config, isSelected }: GameTypeContentProps): React.Re
  * - 4 game type hexes (Regular, Expansion, Cities & Knights, Seafarers)
  * - 2 water placeholder hexes (face down tiles)
  */
-export function GameTypeSelector({
-  value,
-  onChange,
-}: GameTypeSelectorProps): React.ReactElement {
+export function GameTypeSelector({ value, onChange }: GameTypeSelectorProps): React.ReactElement {
   // Hex size: 100 to fit all content (icon, title, players, tiles) without clipping
   const hexSize = 100;
 
@@ -286,7 +285,5 @@ export function GameTypeSelector({
     },
   ];
 
-  return (
-    <HexGrid hexSize={hexSize} items={items} scale={1.0} />
-  );
+  return <HexGrid hexSize={hexSize} items={items} scale={1.0} />;
 }

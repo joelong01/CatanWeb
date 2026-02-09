@@ -58,10 +58,7 @@ export function SaveLayoutDialog({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-[1999] bg-black/50"
-        onClick={onCancel}
-      />
+      <div className="fixed inset-0 z-[1999] bg-black/50" onClick={onCancel} />
 
       {/* Dialog */}
       <div
@@ -73,9 +70,7 @@ export function SaveLayoutDialog({
         }}
       >
         {/* Title */}
-        <div className="px-4 pt-4 pb-2 text-white text-sm font-medium">
-          Save Layout As
-        </div>
+        <div className="px-4 pt-4 pb-2 text-white text-sm font-medium">Save Layout As</div>
 
         {/* Input */}
         <div className="px-4 pb-2">

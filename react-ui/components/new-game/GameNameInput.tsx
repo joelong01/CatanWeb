@@ -79,7 +79,8 @@ export function GameNameInput({
     prevGameTypeRef.current = gameType;
 
     // Check if current value looks like a generated name
-    const generatedPattern = /^(Catan|Catan 5-6|Game) (Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{1,2}(AM|PM)$/;
+    const generatedPattern =
+      /^(Catan|Catan 5-6|Game) (Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{1,2}(AM|PM)$/;
     if (generatedPattern.test(value)) {
       onChange(generateGameName(gameType));
     }
@@ -94,10 +95,7 @@ export function GameNameInput({
     <div className="mb-6">
       <h2 className="text-xl font-semibold text-white mb-4">Game Name</h2>
       <div className="relative flex items-center">
-        <FontAwesomeIcon
-          icon={faGamepad}
-          className="absolute left-4 text-gray-500"
-        />
+        <FontAwesomeIcon icon={faGamepad} className="absolute left-4 text-gray-500" />
         <input
           ref={inputRef}
           type="text"
@@ -115,9 +113,7 @@ export function GameNameInput({
             focus:outline-none focus:border-blue-500
           "
         />
-        <span className="absolute right-4 text-xs text-gray-500">
-          {value.length}/50
-        </span>
+        <span className="absolute right-4 text-xs text-gray-500">{value.length}/50</span>
       </div>
     </div>
   );

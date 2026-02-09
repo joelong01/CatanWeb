@@ -94,7 +94,10 @@ function getStarsForNumber(num: number): number {
 }
 
 /** Calculate star count and tile count for a resource type from tiles */
-function calculateResourceStats(tiles: TileModel[], resourceType: string): { stars: number; tiles: number } {
+function calculateResourceStats(
+  tiles: TileModel[],
+  resourceType: string
+): { stars: number; tiles: number } {
   if (!tiles || tiles.length === 0) return { stars: 0, tiles: 0 };
 
   const resourceTiles = tiles.filter((tile) => tile.resourceTileType === resourceType);
@@ -111,8 +114,8 @@ function calculateResourceStats(tiles: TileModel[], resourceType: string): { sta
  */
 function calculateVariance(stats: Record<string, { stars: number; tiles: number }>): number {
   const averages = Object.values(stats)
-    .filter(s => s.tiles > 0)
-    .map(s => s.stars / s.tiles);
+    .filter((s) => s.tiles > 0)
+    .map((s) => s.stars / s.tiles);
 
   if (averages.length === 0) return 0;
 
@@ -148,7 +151,10 @@ const ResourceHexContent = memo(function ResourceHexContent({
     <div
       className="absolute inset-0"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onTouchStart={() => setIsPressed(true)}
@@ -177,9 +183,7 @@ const ResourceHexContent = memo(function ResourceHexContent({
             transform: isPressed ? 'scale(0.9)' : 'scale(1)',
           }}
         >
-          <span className="font-bold text-xl text-white leading-none">
-            {count}
-          </span>
+          <span className="font-bold text-xl text-white leading-none">{count}</span>
         </div>
       </div>
       {/* Selection checkmark - upper-right area */}
@@ -188,10 +192,7 @@ const ResourceHexContent = memo(function ResourceHexContent({
           className="absolute z-10 w-6 h-6 rounded-full flex items-center justify-center bg-black/50 border border-white/50 -translate-x-1/2 -translate-y-1/2"
           style={{ top: '16%', left: '68%' }}
         >
-          <FontAwesomeIcon
-            icon={faCheck}
-            className="text-xs text-white"
-          />
+          <FontAwesomeIcon icon={faCheck} className="text-xs text-white" />
         </div>
       )}
     </div>
@@ -283,15 +284,22 @@ const StarHexContent = memo(function StarHexContent({
   const purpleBgSelected = '#6366f1'; // indigo-500
 
   // Scale based on interaction state
-  const innerScale = isPressed ? 0.80 : isHovered ? 0.84 : 0.88;
-  const borderColor = isSelected ? (colors?.primary || purpleBgSelected) : isHovered ? '#a5b4fc' : '#818cf8';
-  const textColor = isSelected ? (colors?.foreground || '#ffffff') : '#1e1b4b';
+  const innerScale = isPressed ? 0.8 : isHovered ? 0.84 : 0.88;
+  const borderColor = isSelected
+    ? colors?.primary || purpleBgSelected
+    : isHovered
+      ? '#a5b4fc'
+      : '#818cf8';
+  const textColor = isSelected ? colors?.foreground || '#ffffff' : '#1e1b4b';
 
   return (
     <div
       className="absolute inset-0"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onTouchStart={() => setIsPressed(true)}
@@ -307,7 +315,7 @@ const StarHexContent = memo(function StarHexContent({
         className="absolute inset-0 hex-clip-flat flex flex-col items-center justify-center transition-all duration-150"
         style={{
           transform: `scale(${innerScale})`,
-          background: isSelected ? (colors?.cssGradient || purpleBgSelected) : purpleBg,
+          background: isSelected ? colors?.cssGradient || purpleBgSelected : purpleBg,
         }}
       >
         {/* Star value (top) — 0 means "show all" */}
@@ -323,10 +331,7 @@ const StarHexContent = memo(function StarHexContent({
         </span>
         {/* Divider line */}
         {count !== undefined && (
-          <div
-            className="w-3/5 h-px my-0.5"
-            style={{ background: textColor, opacity: 0.5 }}
-          />
+          <div className="w-3/5 h-px my-0.5" style={{ background: textColor, opacity: 0.5 }} />
         )}
         {/* Count (bottom) */}
         {count !== undefined && (
@@ -364,14 +369,17 @@ const ResetHexContent = memo(function ResetHexContent({ colors, disabled }: Rese
   const disabledBg = '#6b7280'; // gray-500
 
   // Scale based on interaction state (no interaction when disabled)
-  const innerScale = disabled ? 0.88 : isPressed ? 0.80 : isHovered ? 0.84 : 0.88;
+  const innerScale = disabled ? 0.88 : isPressed ? 0.8 : isHovered ? 0.84 : 0.88;
   const borderColor = disabled ? '#4b5563' : isHovered ? '#a5b4fc' : '#818cf8';
 
   return (
     <div
       className="absolute inset-0"
       onMouseEnter={() => !disabled && setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => !disabled && setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onTouchStart={() => !disabled && setIsPressed(true)}
@@ -388,7 +396,7 @@ const ResetHexContent = memo(function ResetHexContent({ colors, disabled }: Rese
         className="absolute inset-0 hex-clip-flat flex items-center justify-center transition-all duration-150"
         style={{
           transform: `scale(${innerScale})`,
-          background: disabled ? disabledBg : (colors?.cssGradient || purpleBg),
+          background: disabled ? disabledBg : colors?.cssGradient || purpleBg,
           opacity: disabled ? 0.6 : 1,
         }}
       >
@@ -396,7 +404,7 @@ const ResetHexContent = memo(function ResetHexContent({ colors, disabled }: Rese
           icon={faArrowsRotate}
           className="text-[9px] transition-transform duration-150"
           style={{
-            color: disabled ? '#9ca3af' : (colors?.foreground || '#1e1b4b'),
+            color: disabled ? '#9ca3af' : colors?.foreground || '#1e1b4b',
             transform: isPressed ? 'scale(0.85)' : 'scale(1)',
           }}
         />
@@ -423,47 +431,59 @@ export const MeasurementCluster = memo(function MeasurementCluster({
   const [selectedStars, setSelectedStars] = useState<number | null>(null);
 
   // Calculate resource star counts and stats for variance
-  const resourceStats = RESOURCE_CONFIG.reduce((acc, { key }) => {
-    acc[key] = calculateResourceStats(tiles, key);
-    return acc;
-  }, {} as Record<string, { stars: number; tiles: number }>);
+  const resourceStats = RESOURCE_CONFIG.reduce(
+    (acc, { key }) => {
+      acc[key] = calculateResourceStats(tiles, key);
+      return acc;
+    },
+    {} as Record<string, { stars: number; tiles: number }>
+  );
 
   // Extract just the star totals for display
-  const resourceCounts = Object.entries(resourceStats).reduce((acc, [key, stats]) => {
-    acc[key] = stats.stars;
-    return acc;
-  }, {} as Record<string, number>);
+  const resourceCounts = Object.entries(resourceStats).reduce(
+    (acc, [key, stats]) => {
+      acc[key] = stats.stars;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   // Calculate variance (max-min of averages, matching C# CalculateVariance)
   const variance = calculateVariance(resourceStats);
 
   // Toggle resource selection (multi-select up to MAX_RESOURCE_SELECTION)
-  const handleResourceClick = useCallback((key: string) => {
-    setSelectedResources(prev => {
-      let newSelection: string[];
-      if (prev.includes(key)) {
-        // Deselect if already selected
-        newSelection = prev.filter(r => r !== key);
-      } else if (prev.length < MAX_RESOURCE_SELECTION) {
-        // Add to selection if under limit
-        newSelection = [...prev, key];
-      } else {
-        // At max: remove oldest, add new (circular selection)
-        newSelection = [...prev.slice(1), key];
-      }
-      onResourceSelectionChange?.(newSelection);
-      return newSelection;
-    });
-  }, [onResourceSelectionChange]);
+  const handleResourceClick = useCallback(
+    (key: string) => {
+      setSelectedResources((prev) => {
+        let newSelection: string[];
+        if (prev.includes(key)) {
+          // Deselect if already selected
+          newSelection = prev.filter((r) => r !== key);
+        } else if (prev.length < MAX_RESOURCE_SELECTION) {
+          // Add to selection if under limit
+          newSelection = [...prev, key];
+        } else {
+          // At max: remove oldest, add new (circular selection)
+          newSelection = [...prev.slice(1), key];
+        }
+        onResourceSelectionChange?.(newSelection);
+        return newSelection;
+      });
+    },
+    [onResourceSelectionChange]
+  );
 
   // Single-select for star filter
-  const handleStarClick = useCallback((value: number) => {
-    setSelectedStars(prev => {
-      const newValue = prev === value ? null : value;
-      onStarFilterChange?.(newValue);
-      return newValue;
-    });
-  }, [onStarFilterChange]);
+  const handleStarClick = useCallback(
+    (value: number) => {
+      setSelectedStars((prev) => {
+        const newValue = prev === value ? null : value;
+        onStarFilterChange?.(newValue);
+        return newValue;
+      });
+    },
+    [onStarFilterChange]
+  );
 
   // Shuffle only — preserve current filter selections
   const handleShuffle = useCallback(() => {

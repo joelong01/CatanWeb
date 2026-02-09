@@ -65,10 +65,7 @@ function shallowEqual(a: unknown, b: unknown): boolean {
   if (keysA.length !== keysB.length) return false;
 
   for (const key of keysA) {
-    if (
-      (a as Record<string, unknown>)[key] !==
-      (b as Record<string, unknown>)[key]
-    ) {
+    if ((a as Record<string, unknown>)[key] !== (b as Record<string, unknown>)[key]) {
       return false;
     }
   }
@@ -104,12 +101,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 
   for (const key of keysA) {
     if (!keysB.includes(key)) return false;
-    if (
-      !deepEqual(
-        (a as Record<string, unknown>)[key],
-        (b as Record<string, unknown>)[key]
-      )
-    ) {
+    if (!deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])) {
       return false;
     }
   }
@@ -131,11 +123,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
  *
  * If the entire array is unchanged, return the old array reference.
  */
-export function reconcileArray<T>(
-  prev: T[],
-  next: T[],
-  getKey: (item: T) => string
-): T[] {
+export function reconcileArray<T>(prev: T[], next: T[], getKey: (item: T) => string): T[] {
   // If same reference, return as-is
   if (prev === next) return prev;
 
@@ -204,10 +192,7 @@ export function reconcileArray<T>(
  * Note: On F5/refresh, prev is null so we return next directly (no reconciliation).
  * The server always sends a new gameHash, so we don't use it for early exit.
  */
-export function reconcileGameModel(
-  prev: GameModel | null,
-  next: GameModel
-): GameModel {
+export function reconcileGameModel(prev: GameModel | null, next: GameModel): GameModel {
   // No previous model (F5 refresh, initial load) - just return next
   if (!prev) return next;
 
@@ -215,18 +200,12 @@ export function reconcileGameModel(
   if (prev.gameId !== next.gameId) return next;
 
   // Reconcile each array
-  const tiles = reconcileArray(prev.tiles, next.tiles, (t) =>
-    tileKeyString(t)
-  );
-  const roads = reconcileArray(prev.roads, next.roads, (r) =>
-    roadKeyString(r.roadKey)
-  );
+  const tiles = reconcileArray(prev.tiles, next.tiles, (t) => tileKeyString(t));
+  const roads = reconcileArray(prev.roads, next.roads, (r) => roadKeyString(r.roadKey));
   const buildings = reconcileArray(prev.buildings, next.buildings, (b) =>
     buildingKeyString(b.buildingKey)
   );
-  const harbors = reconcileArray(prev.harbors, next.harbors, (h) =>
-    harborKeyString(h.harborKey)
-  );
+  const harbors = reconcileArray(prev.harbors, next.harbors, (h) => harborKeyString(h.harborKey));
   const players = reconcileArray(prev.players, next.players, (p) => p.id);
 
   // Check if all arrays are unchanged (same references)

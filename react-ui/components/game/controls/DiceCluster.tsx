@@ -6,7 +6,7 @@
  * Each cluster shows values 1-6 around the edge (as dice face glyphs) with
  * a confirm button in center. Players select a value on each die, then
  * click either center hex to confirm the roll.
- * 
+ *
  * When both dice are selected, the center hex displays the roll sum along
  * with the count and percentage from rollStats (matching Blazor behavior).
  */
@@ -75,9 +75,7 @@ const DiceHexContent = memo(function DiceHexContent({
 
   // Unselected: player gradient background, foreground text
   // Selected: foreground as background, primary as text (inverted)
-  const bgStyle = isSelected
-    ? { background: foreground }
-    : { background: gradient };
+  const bgStyle = isSelected ? { background: foreground } : { background: gradient };
 
   const textColor = isSelected ? primary : foreground;
 
@@ -86,13 +84,17 @@ const DiceHexContent = memo(function DiceHexContent({
 
   // Scale based on interaction state
   const innerScale = isPressed ? 0.85 : isHovered ? 0.88 : 0.91;
-  const borderColor = isSelected || isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
+  const borderColor =
+    isSelected || isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
 
   return (
     <div
       className="absolute inset-0"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onTouchStart={() => setIsPressed(true)}
@@ -141,8 +143,8 @@ interface DiceCenterHexProps {
   rollStats?: RollStats;
 }
 
-const DiceCenterHex = memo(function DiceCenterHex({ 
-  isEnabled, 
+const DiceCenterHex = memo(function DiceCenterHex({
+  isEnabled,
   colors,
   rollSum,
   rollStats,
@@ -166,7 +168,10 @@ const DiceCenterHex = memo(function DiceCenterHex({
     <div
       className="absolute inset-0"
       onMouseEnter={() => isEnabled && setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => isEnabled && setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onTouchStart={() => isEnabled && setIsPressed(true)}
@@ -188,22 +193,13 @@ const DiceCenterHex = memo(function DiceCenterHex({
         {showStats ? (
           // Show roll stats: count, sum, and percentage
           <>
-            <span
-              className="text-[10px] font-bold leading-tight"
-              style={{ color: checkColor }}
-            >
+            <span className="text-[10px] font-bold leading-tight" style={{ color: checkColor }}>
               {rollStats.count}×
             </span>
-            <span
-              className="text-xl font-bold leading-tight"
-              style={{ color: checkColor }}
-            >
+            <span className="text-xl font-bold leading-tight" style={{ color: checkColor }}>
               {rollSum}
             </span>
-            <span
-              className="text-[9px] leading-tight"
-              style={{ color: checkColor, opacity: 0.8 }}
-            >
+            <span className="text-[9px] leading-tight" style={{ color: checkColor, opacity: 0.8 }}>
               {rollStats.percentage}%
             </span>
           </>
@@ -285,11 +281,7 @@ const SingleDieCluster = memo(function SingleDieCluster({
       id: `die-${value}`,
       coord,
       content: (
-        <DiceHexContent
-          value={value}
-          isSelected={selectedValue === value}
-          colors={colors}
-        />
+        <DiceHexContent value={value} isSelected={selectedValue === value} colors={colors} />
       ),
       onClick: () => handleSelect(value),
     })),
@@ -331,9 +323,9 @@ export const DiceCluster = memo(function DiceCluster({
   }, [die1Value, die2Value, enabled, isRolling, onRoll]);
 
   const canSendRoll = die1Value !== null && die2Value !== null && enabled && !isRolling;
-  
+
   // Calculate roll sum and get stats for it when both dice are selected
-  const rollSum = (die1Value !== null && die2Value !== null) ? die1Value + die2Value : undefined;
+  const rollSum = die1Value !== null && die2Value !== null ? die1Value + die2Value : undefined;
   const currentRollStats = rollSum !== undefined && rollStats ? rollStats[rollSum] : undefined;
 
   return (

@@ -71,10 +71,9 @@ export function MinimizedBar({ className = '' }: MinimizedBarProps): React.React
   const longPressPanelRef = useRef<PanelId | null>(null);
 
   // Derive minimized panels array - only recomputes when panels object changes
-  const minimizedPanels = useMemo((): MinimizedPanelInfo[] =>
-    PANEL_ORDER
-      .filter((id) => panels[id]?.minimized && panels[id]?.visible)
-      .map((id) => ({
+  const minimizedPanels = useMemo(
+    (): MinimizedPanelInfo[] =>
+      PANEL_ORDER.filter((id) => panels[id]?.minimized && panels[id]?.visible).map((id) => ({
         id,
         title: PANEL_METADATA[id].title,
         icon: PANEL_METADATA[id].icon,
@@ -91,28 +90,22 @@ export function MinimizedBar({ className = '' }: MinimizedBarProps): React.React
   );
 
   // Handle right-click context menu
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent, panelId: PanelId) => {
-      e.preventDefault();
-      setContextMenu({ panelId, x: e.clientX, y: e.clientY });
-    },
-    []
-  );
+  const handleContextMenu = useCallback((e: React.MouseEvent, panelId: PanelId) => {
+    e.preventDefault();
+    setContextMenu({ panelId, x: e.clientX, y: e.clientY });
+  }, []);
 
   // Long-press handlers for mobile
-  const handleTouchStart = useCallback(
-    (panelId: PanelId, e: React.TouchEvent) => {
-      longPressPanelRef.current = panelId;
-      const touch = e.touches[0];
-      longPressTimerRef.current = setTimeout(() => {
-        setContextMenu({ panelId, x: touch.clientX, y: touch.clientY });
-        if ('vibrate' in navigator) {
-          navigator.vibrate(50);
-        }
-      }, LONG_PRESS_DURATION);
-    },
-    []
-  );
+  const handleTouchStart = useCallback((panelId: PanelId, e: React.TouchEvent) => {
+    longPressPanelRef.current = panelId;
+    const touch = e.touches[0];
+    longPressTimerRef.current = setTimeout(() => {
+      setContextMenu({ panelId, x: touch.clientX, y: touch.clientY });
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+    }, LONG_PRESS_DURATION);
+  }, []);
 
   const handleTouchEnd = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -175,7 +168,15 @@ export function MinimizedBar({ className = '' }: MinimizedBarProps): React.React
         },
       },
     ];
-  }, [contextMenu, toggleMinimize, arrangeLayout, gameState, resetPanel, saveLayout, currentLayoutName]);
+  }, [
+    contextMenu,
+    toggleMinimize,
+    arrangeLayout,
+    gameState,
+    resetPanel,
+    saveLayout,
+    currentLayoutName,
+  ]);
 
   // Don't render if no panels are minimized
   if (minimizedPanels.length === 0 && !contextMenu) {
@@ -212,9 +213,7 @@ export function MinimizedBar({ className = '' }: MinimizedBarProps): React.React
               }}
               title={`${panel.title} (click to expand, right-click for options)`}
             >
-              {panel.icon && (
-                <span className="text-gray-400 text-sm">{panel.icon}</span>
-              )}
+              {panel.icon && <span className="text-gray-400 text-sm">{panel.icon}</span>}
               <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
                 {panel.title}
               </span>

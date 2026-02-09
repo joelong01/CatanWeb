@@ -188,8 +188,16 @@ describe('gameStore', () => {
 
   it('should set player profiles', () => {
     useGameStore.getState().setPlayerProfiles([
-      { id: 'player-1', name: 'Alice', color: '#ff0000' },
-      { id: 'player-2', name: 'Bob', color: '#0000ff' },
+      {
+        id: 'player-1',
+        name: 'Alice',
+        colors: { primary: '#ff0000', secondary: '#cc0000', foreground: '#ffffff' },
+      },
+      {
+        id: 'player-2',
+        name: 'Bob',
+        colors: { primary: '#0000ff', secondary: '#0000cc', foreground: '#ffffff' },
+      },
     ]);
 
     const state = useGameStore.getState();

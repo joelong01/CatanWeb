@@ -7,22 +7,98 @@
   "renderMode": "font",
   "colors": {
     "tiles": {
-      "Wheat":   { "glyph": "WheatHex",  "color": "#CC7A00", "bgColor": "black", "borderColor": "#995C00" },
-      "Wood":    { "glyph": "WoodHex",   "color": "#228B22", "bgColor": "black", "borderColor": "#1B5E20" },
-      "Sheep":   { "glyph": "SheepHex",  "color": "#A68B6B", "bgColor": "black", "borderColor": "#7D6850" },
-      "Brick":   { "glyph": "BrickHex",  "color": "#BF360C", "bgColor": "black", "borderColor": "#8C2700" },
-      "Ore":     { "glyph": "OreHex",    "color": "#4682B4", "bgColor": "black", "borderColor": "#31628A" },
-      "Desert":  { "glyph": "DesertHex", "color": "#F59E0B", "bgColor": "black", "borderColor": "#D97706" },
-      "GoldMine":  { "glyph": "GoldHex",     "color": "#FFD700", "bgColor": "black", "borderColor": "#B8960B" },
-      "TempGold":  { "glyph": "TempGoldHex", "color": "#FFD700", "bgColor": "black", "borderColor": "#B8960B" }
+      "Wheat": {
+        "glyph": "WheatHex",
+        "color": "#CC7A00",
+        "bgColor": "black",
+        "borderColor": "#995C00"
+      },
+      "Wood": {
+        "glyph": "WoodHex",
+        "color": "#228B22",
+        "bgColor": "black",
+        "borderColor": "#1B5E20"
+      },
+      "Sheep": {
+        "glyph": "SheepHex",
+        "color": "#A68B6B",
+        "bgColor": "black",
+        "borderColor": "#7D6850"
+      },
+      "Brick": {
+        "glyph": "BrickHex",
+        "color": "#BF360C",
+        "bgColor": "black",
+        "borderColor": "#8C2700"
+      },
+      "Ore": {
+        "glyph": "OreHex",
+        "color": "#4682B4",
+        "bgColor": "black",
+        "borderColor": "#31628A"
+      },
+      "Desert": {
+        "glyph": "DesertHex",
+        "color": "#F59E0B",
+        "bgColor": "black",
+        "borderColor": "#D97706"
+      },
+      "GoldMine": {
+        "glyph": "GoldHex",
+        "color": "#FFD700",
+        "bgColor": "black",
+        "borderColor": "#B8960B"
+      },
+      "TempGold": {
+        "glyph": "TempGoldHex",
+        "color": "#FFD700",
+        "bgColor": "black",
+        "borderColor": "#B8960B"
+      }
     },
     "harbors": {
-      "Wheat":       { "hexGlyph": "WheatHex",  "harborGlyph": "WheatHarbor",       "color": "#CC7A00", "bgColor": "black", "hexOpacity": 0.9 },
-      "Wood":        { "hexGlyph": "WoodHex",   "harborGlyph": "WoodHarbor",        "color": "#228B22", "bgColor": "black", "hexOpacity": 0.9 },
-      "Sheep":       { "hexGlyph": "SheepHex",  "harborGlyph": "SheepHarbor",       "color": "#A68B6B", "bgColor": "black", "hexOpacity": 0.9 },
-      "Brick":       { "hexGlyph": "BrickHex",  "harborGlyph": "BrickHarbor",       "color": "#BF360C", "bgColor": "black", "hexOpacity": 0.9 },
-      "Ore":         { "hexGlyph": "OreHex",    "harborGlyph": "OreHarbor",         "color": "#4682B4", "bgColor": "black", "hexOpacity": 0.9 },
-      "ThreeForOne": { "hexGlyph": "GoldHex", "harborGlyph": "ThreeToOneHarbor", "color": "#D4AF37", "bgColor": "black", "hexOpacity": 0.9 }
+      "Wheat": {
+        "hexGlyph": "WheatHex",
+        "harborGlyph": "WheatHarbor",
+        "color": "#CC7A00",
+        "bgColor": "black",
+        "hexOpacity": 0.9
+      },
+      "Wood": {
+        "hexGlyph": "WoodHex",
+        "harborGlyph": "WoodHarbor",
+        "color": "#228B22",
+        "bgColor": "black",
+        "hexOpacity": 0.9
+      },
+      "Sheep": {
+        "hexGlyph": "SheepHex",
+        "harborGlyph": "SheepHarbor",
+        "color": "#A68B6B",
+        "bgColor": "black",
+        "hexOpacity": 0.9
+      },
+      "Brick": {
+        "hexGlyph": "BrickHex",
+        "harborGlyph": "BrickHarbor",
+        "color": "#BF360C",
+        "bgColor": "black",
+        "hexOpacity": 0.9
+      },
+      "Ore": {
+        "hexGlyph": "OreHex",
+        "harborGlyph": "OreHarbor",
+        "color": "#4682B4",
+        "bgColor": "black",
+        "hexOpacity": 0.9
+      },
+      "ThreeForOne": {
+        "hexGlyph": "GoldHex",
+        "harborGlyph": "ThreeToOneHarbor",
+        "color": "#D4AF37",
+        "bgColor": "black",
+        "hexOpacity": 0.9
+      }
     }
   },
   "assets": {}

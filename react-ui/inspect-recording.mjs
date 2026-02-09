@@ -15,7 +15,14 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Default to the most comprehensive checked-in recording
-const defaultRecording = join(__dirname, '..', 'Catan3.GameService', 'Default Data', 'Recordings', 'full-simulated-game-with-VPs.json');
+const defaultRecording = join(
+  __dirname,
+  '..',
+  'Catan3.GameService',
+  'Default Data',
+  'Recordings',
+  'full-simulated-game-with-VPs.json'
+);
 const recordingFile = process.argv[2] || defaultRecording;
 
 console.log(`Loading recording from: ${recordingFile}`);
@@ -45,7 +52,7 @@ console.log();
 
 console.log('=== Recording Data Format ===');
 // Find first buildingUpgrade action for inspection (field is "type" not "actionType")
-const buildingUpgradeIdx = data.actions.findIndex(a => a.type === 'buildingUpgrade');
+const buildingUpgradeIdx = data.actions.findIndex((a) => a.type === 'buildingUpgrade');
 if (buildingUpgradeIdx >= 0) {
   const action = data.actions[buildingUpgradeIdx];
   console.log(`Action ${buildingUpgradeIdx} (buildingUpgrade from recording):`);
@@ -58,8 +65,8 @@ if (buildingUpgradeIdx >= 0) {
     playerId: 'test-player',
     messageType: 'BuildingUpgradeMessage',
     messageData: {
-      buildingKey: action.buildingKey
-    }
+      buildingKey: action.buildingKey,
+    },
   };
   console.log('Proxy command body:');
   console.log(JSON.stringify(proxyPayload, null, 2));

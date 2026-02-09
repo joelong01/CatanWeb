@@ -88,7 +88,17 @@ export interface ActionClusterProps {
  * SQUARE_3x3 produces coords column-by-column:
  * [0]=(0,0) [1]=(0,1) [2]=(0,2) [3]=(1,0) [4]=(1,1) [5]=(1,2) [6]=(2,-1) [7]=(2,0) [8]=(2,1)
  */
-const BUTTON_ORDER = ['devcard', 'city', 'road', 'settlement', 'state', 'soldier', 'undo', 'next', 'redo'] as const;
+const BUTTON_ORDER = [
+  'devcard',
+  'city',
+  'road',
+  'settlement',
+  'state',
+  'soldier',
+  'undo',
+  'next',
+  'redo',
+] as const;
 
 // ============================================================================
 // ActionHexContent - Individual hex button with 3D flip
@@ -142,14 +152,12 @@ const ActionHexContent = memo(function ActionHexContent({
   const frontBg = gradient;
 
   // Scale based on interaction state (only when enabled)
-  const innerScale = isEnabled && isPressed ? 0.90 : isEnabled && isHovered ? 0.93 : 0.96;
+  const innerScale = isEnabled && isPressed ? 0.9 : isEnabled && isHovered ? 0.93 : 0.96;
   const borderColor = isEnabled && isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
 
   // Render the icon/glyph content
   const renderIcon = (size: 'large' | 'small', pressed = false): ReactNode => {
-    const sizeClass = size === 'large'
-      ? (isPrimary ? 'text-3xl' : 'text-2xl')
-      : 'text-base';
+    const sizeClass = size === 'large' ? (isPrimary ? 'text-3xl' : 'text-2xl') : 'text-base';
     const color = foreground;
 
     if (faIcon) {
@@ -186,7 +194,10 @@ const ActionHexContent = memo(function ActionHexContent({
       style={{ perspective: '500px' }}
       title={tooltip}
       onMouseEnter={() => isEnabled && setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => isEnabled && setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onTouchStart={() => isEnabled && setIsPressed(true)}
@@ -202,10 +213,7 @@ const ActionHexContent = memo(function ActionHexContent({
         }}
       >
         {/* Front face (enabled state) */}
-        <div
-          className="absolute inset-0"
-          style={{ backfaceVisibility: 'hidden' }}
-        >
+        <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}>
           {/* Outer border */}
           <div
             className="absolute inset-0 hex-clip-flat transition-colors duration-150"
@@ -265,10 +273,7 @@ const ActionHexContent = memo(function ActionHexContent({
             style={{ backgroundImage: cardBackPath ? `url(${cardBackPath})` : undefined }}
           >
             {/* Icon badge centered */}
-            <div
-              className="rounded-sm px-1.5 py-0.5"
-              style={{ background: gradient }}
-            >
+            <div className="rounded-sm px-1.5 py-0.5" style={{ background: gradient }}>
               {renderIcon('small')}
             </div>
             {/* Stats below icon */}

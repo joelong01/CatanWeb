@@ -171,7 +171,17 @@ export default function NewGame(): React.ReactElement {
       setSubmitError(result.error ?? 'Failed to create game');
       setIsSubmitting(false);
     }
-  }, [isValid, isSubmitting, gameType, selectedPlayerIds, gameName, gameOptions.useHouseRules, gameOptions.updateStats, router, settingsStore]);
+  }, [
+    isValid,
+    isSubmitting,
+    gameType,
+    selectedPlayerIds,
+    gameName,
+    gameOptions.useHouseRules,
+    gameOptions.updateStats,
+    router,
+    settingsStore,
+  ]);
 
   return (
     <MainLayout className="overflow-y-auto">
@@ -261,7 +271,13 @@ export default function NewGame(): React.ReactElement {
                         <FontAwesomeIcon icon={faGripVertical} className="opacity-60 text-xs" />
                         <div className="w-7 h-7 hex-clip-flat overflow-hidden bg-black/20 flex items-center justify-center">
                           {imageUrl ? (
-                            <Image src={imageUrl} alt={player.name} width={28} height={28} unoptimized />
+                            <Image
+                              src={imageUrl}
+                              alt={player.name}
+                              width={28}
+                              height={28}
+                              unoptimized
+                            />
                           ) : (
                             <FontAwesomeIcon icon={faUser} className="text-xs" />
                           )}
@@ -277,66 +293,63 @@ export default function NewGame(): React.ReactElement {
 
           {/* Bottom section: Game Name, Options, Start */}
           <div className="space-y-4">
+            <GameNameInput value={gameName} onChange={setGameName} gameType={gameType} />
 
-              <GameNameInput
-                value={gameName}
-                onChange={setGameName}
-                gameType={gameType}
-              />
+            <GameOptions options={gameOptions} onChange={setGameOptions} />
 
-              <GameOptions options={gameOptions} onChange={setGameOptions} />
-
-              {/* Error banner */}
-              {submitError && (
-                <div
-                  className="
+            {/* Error banner */}
+            {submitError && (
+              <div
+                className="
                     flex items-center gap-3 px-5 py-4
                     bg-red-500/10 border border-red-500 rounded-xl
                     text-red-500
                   "
-                >
-                  <FontAwesomeIcon icon={faExclamationTriangle} />
-                  <span>{submitError}</span>
-                </div>
-              )}
+              >
+                <FontAwesomeIcon icon={faExclamationTriangle} />
+                <span>{submitError}</span>
+              </div>
+            )}
 
-              {/* Form actions */}
-              <div className="flex flex-col items-center gap-4 pt-5 border-t border-white/10">
-                <button
-                  type="button"
-                  className={`
+            {/* Form actions */}
+            <div className="flex flex-col items-center gap-4 pt-5 border-t border-white/10">
+              <button
+                type="button"
+                className={`
                     flex items-center justify-center gap-3
                     w-full landscape:w-auto
                     px-12 py-[18px] rounded-xl
                     text-white text-xl font-semibold
                     transition-all duration-300
-                    ${isValid && !isSubmitting
-                      ? 'bg-gradient-to-br from-green-500 to-green-700 cursor-pointer hover:-translate-y-0.5 hover:shadow-xl hover:shadow-green-500/40'
-                      : 'bg-gray-600 cursor-not-allowed'
+                    ${
+                      isValid && !isSubmitting
+                        ? 'bg-gradient-to-br from-green-500 to-green-700 cursor-pointer hover:-translate-y-0.5 hover:shadow-xl hover:shadow-green-500/40'
+                        : 'bg-gray-600 cursor-not-allowed'
                     }
                   `}
-                  onClick={handleStartGame}
-                  disabled={!isValid || isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <FontAwesomeIcon icon={faSpinner} spin />
-                      <span>Creating Game...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FontAwesomeIcon icon={faPlay} />
-                      <span>Start Game</span>
-                    </>
-                  )}
-                </button>
+                onClick={handleStartGame}
+                disabled={!isValid || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <FontAwesomeIcon icon={faSpinner} spin />
+                    <span>Creating Game...</span>
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon icon={faPlay} />
+                    <span>Start Game</span>
+                  </>
+                )}
+              </button>
 
-                <p className="text-sm text-gray-500">
-                  {gameType === 'Expansion' ? 'Expansion' : 'Classic'} with {selectedPlayerIds.length} Player{selectedPlayerIds.length !== 1 ? 's' : ''}
-                </p>
-              </div>
+              <p className="text-sm text-gray-500">
+                {gameType === 'Expansion' ? 'Expansion' : 'Classic'} with {selectedPlayerIds.length}{' '}
+                Player{selectedPlayerIds.length !== 1 ? 's' : ''}
+              </p>
             </div>
           </div>
+        </div>
       </div>
     </MainLayout>
   );

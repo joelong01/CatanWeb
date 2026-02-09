@@ -17,12 +17,11 @@ import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { useAssetPath } from '@/lib/theme';
 import type { AssetName } from '@/lib/theme/types';
 import type { PlayerModel } from '@/types/generated/models/player-model';
+import { usePlayers, useCurrentTurnPlayerId, usePlayerProfiles } from '@/lib/stores/gameStoreHooks';
 import {
-  usePlayers,
-  useCurrentTurnPlayerId,
-  usePlayerProfiles,
-} from '@/lib/stores/gameStoreHooks';
-import { createPlayerColorsWithGradient, type PlayerColorsWithGradient } from '@/lib/utils/playerColors';
+  createPlayerColorsWithGradient,
+  type PlayerColorsWithGradient,
+} from '@/lib/utils/playerColors';
 import { DEFAULT_PLAYER_COLORS, type PlayerProfile } from '@/types/player-profile';
 import { CatanGlyph } from '@/lib/constants/catanGlyphs';
 
@@ -44,7 +43,6 @@ type OwnedHarbor = 'wheat' | 'wood' | 'sheep' | 'brick' | 'ore' | 'generic';
 // ============================================================================
 // Catan Font Glyphs (from PlayerTile.razor CatanGlyph class)
 // ============================================================================
-
 
 // ============================================================================
 // Player Colors Helper
@@ -100,10 +98,10 @@ const ResourceCard = memo(function ResourceCard({
   const imagePath = useAssetPath(RESOURCE_TO_ASSET[resourceType]);
   const cardBackPath = useAssetPath('CardBack');
 
-  const config = RESOURCE_CARD_CONFIG.find(c => c.type === resourceType);
+  const config = RESOURCE_CARD_CONFIG.find((c) => c.type === resourceType);
   if (!config) return null;
 
-  const isShowingFront = manualFlip !== null ? manualFlip : (autoFlip ? count > 0 : true);
+  const isShowingFront = manualFlip !== null ? manualFlip : autoFlip ? count > 0 : true;
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -199,16 +197,10 @@ const StatTile = memo(function StatTile({
   const renderIcon = (className: string): ReactNode => {
     if (faIcon) {
       return (
-        <FontAwesomeIcon
-          icon={faIcon}
-          className={className}
-          style={{ color: colors.foreground }}
-        />
+        <FontAwesomeIcon icon={faIcon} className={className} style={{ color: colors.foreground }} />
       );
     }
-    return (
-      <span className={`font-catan ${className} ${bold ? 'font-bold' : ''}`}>{glyph}</span>
-    );
+    return <span className={`font-catan ${className} ${bold ? 'font-bold' : ''}`}>{glyph}</span>;
   };
 
   if (isScore) {
@@ -244,37 +236,35 @@ interface PlayerTileProps {
   isCurrentPlayer: boolean;
 }
 
-const PlayerTile = memo(function PlayerTile({
-  player,
-  profile,
-  isCurrentPlayer,
-}: PlayerTileProps) {
+const PlayerTile = memo(function PlayerTile({ player, profile, isCurrentPlayer }: PlayerTileProps) {
   const colors = createColorsFromProfile(profile);
 
   // Count from spentEntitlementsThisGame - these are placed items
   const spentEntitlements = player.spentEntitlementsThisGame ?? [];
-  const roadCount = spentEntitlements.filter(e => e === 'Road').length;
-  const settlements = spentEntitlements.filter(e => e === 'Settlement').length;
-  const cities = spentEntitlements.filter(e => e === 'City').length;
+  const roadCount = spentEntitlements.filter((e) => e === 'Road').length;
+  const settlements = spentEntitlements.filter((e) => e === 'Settlement').length;
+  const cities = spentEntitlements.filter((e) => e === 'City').length;
 
   // Count soldiers from spent entitlements
-  const soldierCount = player.spentEntitlementsThisGame.filter(
-    e => e === 'Soldier'
-  ).length;
+  const soldierCount = player.spentEntitlementsThisGame.filter((e) => e === 'Soldier').length;
 
   // Count dev cards
-  const devCardCount = player.spentEntitlementsThisGame.filter(
-    e => e === 'DevCard'
-  ).length;
+  const devCardCount = player.spentEntitlementsThisGame.filter((e) => e === 'DevCard').length;
 
   // Get totals from ResourcesModel - match Blazor: r.Wheat + r.Wood + r.Sheep + r.Brick + r.Ore
   const r = player.resourcesThisGame;
-  const totalResources = (r?.wheat ?? 0) + (r?.wood ?? 0) + (r?.sheep ?? 0) + (r?.brick ?? 0) + (r?.ore ?? 0);
+  const totalResources =
+    (r?.wheat ?? 0) + (r?.wood ?? 0) + (r?.sheep ?? 0) + (r?.brick ?? 0) + (r?.ore ?? 0);
   const robberLoss = r?.robber ?? 0;
 
   // 13 stats in display order (matching Blazor PlayerTile.razor)
   const stats: Omit<StatTileProps, 'colors'>[] = [
-    { glyph: CatanGlyph.Laurel, count: player.score, isHighlighted: player.highestScore, isScore: true },
+    {
+      glyph: CatanGlyph.Laurel,
+      count: player.score,
+      isHighlighted: player.highestScore,
+      isScore: true,
+    },
     { glyph: CatanGlyph.Road, count: roadCount, bold: true },
     { glyph: CatanGlyph.City, count: cities },
     { glyph: CatanGlyph.Settlement, count: settlements },
@@ -283,19 +273,30 @@ const PlayerTile = memo(function PlayerTile({
     { glyph: CatanGlyph.Pirate, count: robberLoss },
     { glyph: CatanGlyph.Target, count: player.timesTargeted },
     { glyph: CatanGlyph.Sum, count: totalResources },
-    { glyph: CatanGlyph.LongestRoad, count: player.longestRoad, isHighlighted: player.hasLongestRoad, bold: true },
+    {
+      glyph: CatanGlyph.LongestRoad,
+      count: player.longestRoad,
+      isHighlighted: player.hasLongestRoad,
+      bold: true,
+    },
     { glyph: CatanGlyph.GoodRoll, count: player.goodRolls },
     { glyph: CatanGlyph.BadRoll, count: player.badRolls },
     { glyph: CatanGlyph.Star, count: player.stars },
   ];
 
   // Get owned harbors from player model - extract harbor type from HarborKey
-  const ownedHarbors: OwnedHarbor[] = (player.ownedHarbors || []).map(h => {
+  const ownedHarbors: OwnedHarbor[] = (player.ownedHarbors || []).map((h) => {
     // HarborKey has harborType property
     const harborType = h.harborType ?? '';
     const lower = harborType.toLowerCase();
-    if (lower === 'wheat' || lower === 'wood' || lower === 'sheep' ||
-        lower === 'brick' || lower === 'ore' || lower === 'generic') {
+    if (
+      lower === 'wheat' ||
+      lower === 'wood' ||
+      lower === 'sheep' ||
+      lower === 'brick' ||
+      lower === 'ore' ||
+      lower === 'generic'
+    ) {
       return lower as OwnedHarbor;
     }
     return 'generic';
@@ -315,7 +316,9 @@ const PlayerTile = memo(function PlayerTile({
         <div
           className="w-10 h-10 rounded-full bg-cover bg-center flex-shrink-0 flex items-center justify-center text-white font-bold"
           style={{
-            backgroundImage: profile?.imageUri ? `url('http://localhost:8080${profile.imageUri}')` : undefined,
+            backgroundImage: profile?.imageUri
+              ? `url('http://localhost:8080${profile.imageUri}')`
+              : undefined,
             border: `1px solid ${colors.foreground}`,
             backgroundColor: colors.primary,
           }}
@@ -344,8 +347,8 @@ const PlayerTile = memo(function PlayerTile({
       <div className="flex gap-0.5 mt-1">
         {RESOURCE_CARD_CONFIG.map(({ type }) => {
           const count = player.resourcesThisTurn?.[type] ?? 0;
-          const hasHarbor = type !== 'goldMine' && type !== 'robber' &&
-            ownedHarbors.includes(type as OwnedHarbor);
+          const hasHarbor =
+            type !== 'goldMine' && type !== 'robber' && ownedHarbors.includes(type as OwnedHarbor);
           return (
             <ResourceCard
               key={type}
@@ -433,10 +436,7 @@ function ScaledPlayersList() {
   }, [players.length]); // Only re-run if player count changes
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full overflow-hidden"
-    >
+    <div ref={containerRef} className="w-full h-full overflow-hidden">
       <div
         ref={contentRef}
         className="space-y-2 p-2 inline-block"
@@ -445,7 +445,7 @@ function ScaledPlayersList() {
           transformOrigin: 'top left',
         }}
       >
-        {players.map(player => (
+        {players.map((player) => (
           <PlayerTile
             key={player.id}
             player={player}
@@ -467,11 +467,7 @@ export function PlayersPanel(_props: PlayersPanelProps): React.ReactElement {
   const players = usePlayers();
 
   if (!players || players.length === 0) {
-    return (
-      <div className="p-4 text-gray-400 text-center">
-        Waiting for game data...
-      </div>
-    );
+    return <div className="p-4 text-gray-400 text-center">Waiting for game data...</div>;
   }
 
   return <ScaledPlayersList />;

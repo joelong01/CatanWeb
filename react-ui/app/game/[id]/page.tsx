@@ -38,10 +38,19 @@ import { WinnerOverlay, type WinnerPlayer } from '@/components/game/overlays/Win
 import { PlayersPanel } from '@/components/game/panels/PlayersPanel';
 import { GameResourcesHeader } from '@/components/game/panels/GameResourcesHeader';
 import { RollRing } from '@/components/game/controls/RollRing';
-import { ActionCluster, type EnabledButtons, type PurchaseStats } from '@/components/game/controls/ActionCluster';
+import {
+  ActionCluster,
+  type EnabledButtons,
+  type PurchaseStats,
+} from '@/components/game/controls/ActionCluster';
 import { MeasurementCluster, type StarCounts } from '@/components/game/controls/MeasurementCluster';
 import { NUMBER_PIPS } from '@/lib/constants/board-assets';
-import { cubicCoord, getNeighbor, Direction, type HexCoordinate } from '@/components/hex-grid/hex-geometry';
+import {
+  cubicCoord,
+  getNeighbor,
+  Direction,
+  type HexCoordinate,
+} from '@/components/hex-grid/hex-geometry';
 import type { HexPosition } from '@/types/generated/models/hex-position';
 import { createPlayerColors, type PlayerColorsWithGradient } from '@/lib/utils/playerColors';
 import { gameApi } from '@/lib/api/gameApi';
@@ -156,13 +165,22 @@ export default function GamePage(): React.ReactElement {
   const setLastRoll = useSetLastRoll();
 
   // Narrow selectors for less common fields (no dedicated hooks yet)
-  const entitlementPurchaseModel = useGameStore((state) => state.gameModel?.entitlementPurchaseModel);
+  const entitlementPurchaseModel = useGameStore(
+    (state) => state.gameModel?.entitlementPurchaseModel
+  );
   const resourceRules = useGameStore((state) => state.gameModel?.resourceRules);
   const gameResourcesModel = useGameStore((state) => state.gameModel?.gameResourcesModel);
   const gameName = useGameStore((state) => state.gameModel?.gameName);
 
   // Debug: log when game state changes
-  console.log('[GamePage] render, gameState:', gameState, 'tiles:', tiles?.length, 'players:', players?.length);
+  console.log(
+    '[GamePage] render, gameState:',
+    gameState,
+    'tiles:',
+    tiles?.length,
+    'players:',
+    players?.length
+  );
 
   // Load player profiles on mount (like Blazor LoadPlayerProfilesAsync)
   useEffect(() => {
@@ -180,54 +198,73 @@ export default function GamePage(): React.ReactElement {
   // rollStats is now obtained from useRollStats() hook above
 
   // Handle roll click - convert roll sum to two dice values
-  const handleRollClick = useCallback((rollSum: number) => {
-    // Split into two dice values (prefer balanced split)
-    const die1 = Math.max(1, Math.min(6, Math.ceil(rollSum / 2)));
-    const die2 = rollSum - die1;
+  const handleRollClick = useCallback(
+    (rollSum: number) => {
+      // Split into two dice values (prefer balanced split)
+      const die1 = Math.max(1, Math.min(6, Math.ceil(rollSum / 2)));
+      const die2 = rollSum - die1;
 
-    // Ensure die2 is valid (1-6)
-    if (die2 >= 1 && die2 <= 6) {
-      proxy.roll(die1, die2);
+      // Ensure die2 is valid (1-6)
+      if (die2 >= 1 && die2 <= 6) {
+        proxy.roll(die1, die2);
 
-      // Trigger tile dimming animation (matches Blazor DimTiles)
-      // Clear any existing timer
-      if (rollDimTimerRef.current) {
-        clearTimeout(rollDimTimerRef.current);
+        // Trigger tile dimming animation (matches Blazor DimTiles)
+        // Clear any existing timer
+        if (rollDimTimerRef.current) {
+          clearTimeout(rollDimTimerRef.current);
+        }
+        // Set the rolled number to dim non-matching tiles (stored in Zustand for GameBoard)
+        setLastRoll(rollSum);
+        // Clear after 5 seconds (matches Blazor TileDimDurationSeconds)
+        rollDimTimerRef.current = setTimeout(() => {
+          setLastRoll(null);
+        }, 5000);
       }
-      // Set the rolled number to dim non-matching tiles (stored in Zustand for GameBoard)
-      setLastRoll(rollSum);
-      // Clear after 5 seconds (matches Blazor TileDimDurationSeconds)
-      rollDimTimerRef.current = setTimeout(() => {
-        setLastRoll(null);
-      }, 5000);
-    }
-  }, [proxy, setLastRoll]);
+    },
+    [proxy, setLastRoll]
+  );
 
   // Helper to get enabled state from entitlementPurchaseModel (matches Blazor GetIsFaceUp)
-  const getPurchaseEnabled = useCallback((entitlement: string): boolean => {
-    if (!entitlementPurchaseModel) return false;
-    const model = entitlementPurchaseModel.find(m => m.entitlement === entitlement);
-    return model?.enabled ?? false;
-  }, [entitlementPurchaseModel]);
+  const getPurchaseEnabled = useCallback(
+    (entitlement: string): boolean => {
+      if (!entitlementPurchaseModel) return false;
+      const model = entitlementPurchaseModel.find((m) => m.entitlement === entitlement);
+      return model?.enabled ?? false;
+    },
+    [entitlementPurchaseModel]
+  );
 
   // Check purchase capabilities - uses entitlementPurchaseModel.enabled (matches Blazor)
   const canPurchaseRoad = useMemo(() => getPurchaseEnabled('Road'), [getPurchaseEnabled]);
-  const canPurchaseSettlement = useMemo(() => getPurchaseEnabled('Settlement'), [getPurchaseEnabled]);
+  const canPurchaseSettlement = useMemo(
+    () => getPurchaseEnabled('Settlement'),
+    [getPurchaseEnabled]
+  );
   const canPurchaseCity = useMemo(() => getPurchaseEnabled('City'), [getPurchaseEnabled]);
   const canPurchaseDevCard = useMemo(() => getPurchaseEnabled('DevCard'), [getPurchaseEnabled]);
   const canPlaySoldier = useMemo(() => getPurchaseEnabled('Soldier'), [getPurchaseEnabled]);
 
   // Action cluster enabled buttons
-  const actionEnabledButtons = useMemo((): EnabledButtons => ({
-    next: actionFlags?.nextEnabled ?? false,
-    undo: actionFlags?.undoEnabled ?? false,
-    redo: actionFlags?.redoEnabled ?? false,
-    soldier: canPlaySoldier,
-    road: canPurchaseRoad,
-    settlement: canPurchaseSettlement,
-    city: canPurchaseCity,
-    devCard: canPurchaseDevCard,
-  }), [actionFlags, canPlaySoldier, canPurchaseRoad, canPurchaseSettlement, canPurchaseCity, canPurchaseDevCard]);
+  const actionEnabledButtons = useMemo(
+    (): EnabledButtons => ({
+      next: actionFlags?.nextEnabled ?? false,
+      undo: actionFlags?.undoEnabled ?? false,
+      redo: actionFlags?.redoEnabled ?? false,
+      soldier: canPlaySoldier,
+      road: canPurchaseRoad,
+      settlement: canPurchaseSettlement,
+      city: canPurchaseCity,
+      devCard: canPurchaseDevCard,
+    }),
+    [
+      actionFlags,
+      canPlaySoldier,
+      canPurchaseRoad,
+      canPurchaseSettlement,
+      canPurchaseCity,
+      canPurchaseDevCard,
+    ]
+  );
 
   // Action cluster purchase stats - computed from current player
   // Shows UNSPENT entitlements (pending placement) as the count badge
@@ -244,7 +281,7 @@ export default function GamePage(): React.ReactElement {
 
     // Count UNSPENT entitlements (pending placement) - this is what shows in the badge
     const unspentEntitlements = currentPlayer.unspentEntitlements ?? [];
-    const countUnspent = (type: string) => unspentEntitlements.filter(e => e === type).length;
+    const countUnspent = (type: string) => unspentEntitlements.filter((e) => e === type).length;
 
     // Max values from resource rules (with defaults matching Blazor)
     const maxRoads = resourceRules?.maxRoads ?? 15;
@@ -253,11 +290,15 @@ export default function GamePage(): React.ReactElement {
 
     // Count spent entitlements (played this game)
     const spentEntitlements = currentPlayer.spentEntitlementsThisGame ?? [];
-    const countSpent = (type: string) => spentEntitlements.filter(e => e === type).length;
+    const countSpent = (type: string) => spentEntitlements.filter((e) => e === type).length;
 
     return {
       roads: { unspent: countUnspent('Road'), spent: countSpent('Road'), max: maxRoads },
-      settlements: { unspent: countUnspent('Settlement'), spent: countSpent('Settlement'), max: maxSettlements },
+      settlements: {
+        unspent: countUnspent('Settlement'),
+        spent: countSpent('Settlement'),
+        max: maxSettlements,
+      },
       cities: { unspent: countUnspent('City'), spent: countSpent('City'), max: maxCities },
       devCards: { spent: countSpent('DevCard') },
       soldier: { played: countSpent('Soldier'), unspent: countUnspent('Soldier') },
@@ -271,7 +312,11 @@ export default function GamePage(): React.ReactElement {
       const colors = profile?.colors ?? DEFAULT_PLAYER_COLORS;
       return createPlayerColors(colors.primary, colors.secondary, colors.foreground);
     }
-    return createPlayerColors(DEFAULT_PLAYER_COLORS.primary, DEFAULT_PLAYER_COLORS.secondary, DEFAULT_PLAYER_COLORS.foreground);
+    return createPlayerColors(
+      DEFAULT_PLAYER_COLORS.primary,
+      DEFAULT_PLAYER_COLORS.secondary,
+      DEFAULT_PLAYER_COLORS.foreground
+    );
   }, [currentPlayer, playerProfiles]);
 
   // Compute star counts for MeasurementCluster (how many building spots have each star value)
@@ -337,18 +382,37 @@ export default function GamePage(): React.ReactElement {
   }, [buildings, tiles]);
 
   // Action handler
-  const handleAction = useCallback((action: string) => {
-    switch (action) {
-      case 'next': proxy.next(); break;
-      case 'undo': proxy.undo(); break;
-      case 'redo': proxy.redo(); break;
-      case 'road': proxy.purchase('Road'); break;
-      case 'settlement': proxy.purchase('Settlement'); break;
-      case 'city': proxy.purchase('City'); break;
-      case 'devcard': proxy.purchase('DevCard'); break;
-      case 'soldier': proxy.purchase('Soldier'); break;
-    }
-  }, [proxy]);
+  const handleAction = useCallback(
+    (action: string) => {
+      switch (action) {
+        case 'next':
+          proxy.next();
+          break;
+        case 'undo':
+          proxy.undo();
+          break;
+        case 'redo':
+          proxy.redo();
+          break;
+        case 'road':
+          proxy.purchase('Road');
+          break;
+        case 'settlement':
+          proxy.purchase('Settlement');
+          break;
+        case 'city':
+          proxy.purchase('City');
+          break;
+        case 'devcard':
+          proxy.purchase('DevCard');
+          break;
+        case 'soldier':
+          proxy.purchase('Soldier');
+          break;
+      }
+    },
+    [proxy]
+  );
 
   // Shuffle handler for MeasurementCluster reset button
   const handleShuffle = useCallback(() => {
@@ -356,26 +420,38 @@ export default function GamePage(): React.ReactElement {
   }, [proxy]);
 
   // Building click handler - calls upgradeBuilding for placement
-  const handleBuildingClick = useCallback((buildingKey: BuildingKey) => {
-    console.log('[GamePage] Building clicked:', buildingKey);
-    proxy.upgradeBuilding(buildingKey);
-  }, [proxy]);
+  const handleBuildingClick = useCallback(
+    (buildingKey: BuildingKey) => {
+      console.log('[GamePage] Building clicked:', buildingKey);
+      proxy.upgradeBuilding(buildingKey);
+    },
+    [proxy]
+  );
 
   // Road click handler - calls purchaseRoad for placement
-  const handleRoadClick = useCallback((roadKey: RoadKey) => {
-    console.log('[GamePage] Road clicked:', roadKey);
-    proxy.purchaseRoad(roadKey);
-  }, [proxy]);
+  const handleRoadClick = useCallback(
+    (roadKey: RoadKey) => {
+      console.log('[GamePage] Road clicked:', roadKey);
+      proxy.purchaseRoad(roadKey);
+    },
+    [proxy]
+  );
 
   // GoFirst handler - selects which player goes first
-  const handleGoFirst = useCallback((playerId: string) => {
-    proxy.goFirst(playerId);
-  }, [proxy]);
+  const handleGoFirst = useCallback(
+    (playerId: string) => {
+      proxy.goFirst(playerId);
+    },
+    [proxy]
+  );
 
   // Supplemental toggle handler - sends participation status immediately like Blazor
-  const handleSupplementalToggle = useCallback((playerId: string, participating: boolean) => {
-    proxy.setParticipatingInSupplemental(playerId, participating);
-  }, [proxy]);
+  const handleSupplementalToggle = useCallback(
+    (playerId: string, participating: boolean) => {
+      proxy.setParticipatingInSupplemental(playerId, participating);
+    },
+    [proxy]
+  );
 
   // Supplemental done handler - just advances the game state
   const handleSupplementalDone = useCallback(() => {
@@ -385,7 +461,9 @@ export default function GamePage(): React.ReactElement {
   // Robber state for target selection (when multiple players on tile)
   const [pendingRobberCoords, setPendingRobberCoords] = useState<HexCoordinates | null>(null);
   const [pendingRobberTile, setPendingRobberTile] = useState<TileModel | null>(null);
-  const [robberTargetPlayers, setRobberTargetPlayers] = useState<{ id: string; name: string }[]>([]);
+  const [robberTargetPlayers, setRobberTargetPlayers] = useState<{ id: string; name: string }[]>(
+    []
+  );
   const [robberMenuPosition, setRobberMenuPosition] = useState({ x: 0, y: 0 });
 
   // Winner overlay state
@@ -398,102 +476,125 @@ export default function GamePage(): React.ReactElement {
 
   // Helper: Get players with buildings adjacent to a tile coordinate
   // Returns simple { id, name } objects matching Blazor's RobberTarget record
-  const getPlayersWithBuildingsOnTile = useCallback((tileCoords: HexCoordinates): { id: string; name: string }[] => {
-    if (!buildings || !players || buildings.length === 0) return [];
+  const getPlayersWithBuildingsOnTile = useCallback(
+    (tileCoords: HexCoordinates): { id: string; name: string }[] => {
+      if (!buildings || !players || buildings.length === 0) return [];
 
-    const targetPlayerIds = new Set<string>();
+      const targetPlayerIds = new Set<string>();
 
-    // Check all buildings to find ones adjacent to this tile
-    buildings.forEach(building => {
-      // Skip unowned buildings
-      if (!building.ownerId) return;
-      // Skip current player (can't steal from yourself)
-      if (building.ownerId === currentPlayer?.id) return;
+      // Check all buildings to find ones adjacent to this tile
+      buildings.forEach((building) => {
+        // Skip unowned buildings
+        if (!building.ownerId) return;
+        // Skip current player (can't steal from yourself)
+        if (building.ownerId === currentPlayer?.id) return;
 
-      const buildingCoord = building.buildingKey.hexCoordinates;
-      const position = building.buildingKey.position;
+        const buildingCoord = building.buildingKey.hexCoordinates;
+        const position = building.buildingKey.position;
 
-      // Check if this building is on or adjacent to the target tile
-      // A building at a vertex touches up to 3 tiles
-      const buildingHexCoord = cubicCoord(buildingCoord.q, buildingCoord.r);
+        // Check if this building is on or adjacent to the target tile
+        // A building at a vertex touches up to 3 tiles
+        const buildingHexCoord = cubicCoord(buildingCoord.q, buildingCoord.r);
 
-      // Map vertex position to which neighbors also touch this vertex
-      const neighborDirections: Record<HexPosition, Direction[]> = {
-        Right: [Direction.NorthEast, Direction.SouthEast],
-        BottomRight: [Direction.SouthEast, Direction.South],
-        BottomLeft: [Direction.South, Direction.SouthWest],
-        Left: [Direction.SouthWest, Direction.NorthWest],
-        TopLeft: [Direction.NorthWest, Direction.North],
-        TopRight: [Direction.North, Direction.NorthEast],
-        None: [],
-      };
+        // Map vertex position to which neighbors also touch this vertex
+        const neighborDirections: Record<HexPosition, Direction[]> = {
+          Right: [Direction.NorthEast, Direction.SouthEast],
+          BottomRight: [Direction.SouthEast, Direction.South],
+          BottomLeft: [Direction.South, Direction.SouthWest],
+          Left: [Direction.SouthWest, Direction.NorthWest],
+          TopLeft: [Direction.NorthWest, Direction.North],
+          TopRight: [Direction.North, Direction.NorthEast],
+          None: [],
+        };
 
-      // Get all tiles this building touches
-      const touchedTiles: HexCoordinate[] = [buildingHexCoord];
-      const directions = neighborDirections[position as HexPosition] ?? [];
-      directions.forEach((dir) => {
-        touchedTiles.push(getNeighbor(buildingHexCoord, dir));
+        // Get all tiles this building touches
+        const touchedTiles: HexCoordinate[] = [buildingHexCoord];
+        const directions = neighborDirections[position as HexPosition] ?? [];
+        directions.forEach((dir) => {
+          touchedTiles.push(getNeighbor(buildingHexCoord, dir));
+        });
+
+        // Check if target tile is in the touched tiles
+        const targetCoord = cubicCoord(tileCoords.q, tileCoords.r);
+        const touchesTarget = touchedTiles.some(
+          (t) => t.q === targetCoord.q && t.r === targetCoord.r
+        );
+
+        if (
+          touchesTarget &&
+          (building.buildingState === 'Settlement' || building.buildingState === 'City')
+        ) {
+          targetPlayerIds.add(building.ownerId);
+        }
       });
 
-      // Check if target tile is in the touched tiles
-      const targetCoord = cubicCoord(tileCoords.q, tileCoords.r);
-      const touchesTarget = touchedTiles.some(
-        t => t.q === targetCoord.q && t.r === targetCoord.r
-      );
-
-      if (touchesTarget && (building.buildingState === 'Settlement' || building.buildingState === 'City')) {
-        targetPlayerIds.add(building.ownerId);
-      }
-    });
-
-    // Convert IDs to { id, name } objects matching Blazor's RobberTarget
-    // Double-filter to ensure current player is excluded (defensive check)
-    const currentId = currentPlayer?.id;
-    return players
-      .filter(p => targetPlayerIds.has(p.id) && p.id !== currentId)
-      .map(p => ({ id: p.id, name: p.name }));
-  }, [buildings, players, currentPlayer?.id]);
+      // Convert IDs to { id, name } objects matching Blazor's RobberTarget
+      // Double-filter to ensure current player is excluded (defensive check)
+      const currentId = currentPlayer?.id;
+      return players
+        .filter((p) => targetPlayerIds.has(p.id) && p.id !== currentId)
+        .map((p) => ({ id: p.id, name: p.name }));
+    },
+    [buildings, players, currentPlayer?.id]
+  );
 
   // Tile right-click handler for robber movement (matches Blazor: right-click shows menu)
-  const handleTileRightClick = useCallback((tile: TileModel, event: React.MouseEvent) => {
-    // Only handle during MustMoveRobber state
-    if (gameState !== 'MustMoveRobber') return;
+  const handleTileRightClick = useCallback(
+    (tile: TileModel, event: React.MouseEvent) => {
+      // Only handle during MustMoveRobber state
+      if (gameState !== 'MustMoveRobber') return;
 
-    // Can't place robber on water/sea tiles
-    if (tile.resourceTileType === 'Sea' || tile.resourceTileType === 'Back') return;
+      // Can't place robber on water/sea tiles
+      if (tile.resourceTileType === 'Sea' || tile.resourceTileType === 'Back') return;
 
-    // Can't place robber on current position (unless Desert for GriefDodgy)
-    const robberCoords = robber?.coordinates;
-    if (robberCoords &&
+      // Can't place robber on current position (unless Desert for GriefDodgy)
+      const robberCoords = robber?.coordinates;
+      if (
+        robberCoords &&
         tile.tileKey.q === robberCoords.q &&
         tile.tileKey.r === robberCoords.r &&
-        tile.resourceTileType !== 'Desert') {
-      console.log('[GamePage] Cannot place robber on current position');
-      return;
-    }
+        tile.resourceTileType !== 'Desert'
+      ) {
+        console.log('[GamePage] Cannot place robber on current position');
+        return;
+      }
 
-    const coords: HexCoordinates = { q: tile.tileKey.q, r: tile.tileKey.r, s: -tile.tileKey.q - tile.tileKey.r };
-    const targetPlayers = getPlayersWithBuildingsOnTile(coords);
+      const coords: HexCoordinates = {
+        q: tile.tileKey.q,
+        r: tile.tileKey.r,
+        s: -tile.tileKey.q - tile.tileKey.r,
+      };
+      const targetPlayers = getPlayersWithBuildingsOnTile(coords);
 
-    console.log('[GamePage] Tile right-clicked for robber:', coords, 'targets:', targetPlayers.length);
+      console.log(
+        '[GamePage] Tile right-clicked for robber:',
+        coords,
+        'targets:',
+        targetPlayers.length
+      );
 
-    // Always show menu (matches Blazor behavior - menu has "Nobody" option)
-    setPendingRobberCoords(coords);
-    setPendingRobberTile(tile);
-    setRobberTargetPlayers(targetPlayers);
-    setRobberMenuPosition({ x: event.clientX, y: event.clientY });
-  }, [gameState, robber?.coordinates, getPlayersWithBuildingsOnTile]);
+      // Always show menu (matches Blazor behavior - menu has "Nobody" option)
+      setPendingRobberCoords(coords);
+      setPendingRobberTile(tile);
+      setRobberTargetPlayers(targetPlayers);
+      setRobberMenuPosition({ x: event.clientX, y: event.clientY });
+    },
+    [gameState, robber?.coordinates, getPlayersWithBuildingsOnTile]
+  );
 
   // Handler for selecting a robber target from the menu
   // playerId is undefined when "Nobody. Hatred Deferred." is selected
-  const handleRobberTargetSelect = useCallback((playerId: string | undefined) => {
-    if (pendingRobberCoords) {
-      proxy.moveRobber(pendingRobberCoords, playerId);
-      setPendingRobberCoords(null);
-      setPendingRobberTile(null);
-      setRobberTargetPlayers([]);
-    }
-  }, [pendingRobberCoords, proxy]);
+  const handleRobberTargetSelect = useCallback(
+    (playerId: string | undefined) => {
+      if (pendingRobberCoords) {
+        proxy.moveRobber(pendingRobberCoords, playerId);
+        setPendingRobberCoords(null);
+        setPendingRobberTile(null);
+        setRobberTargetPlayers([]);
+      }
+    },
+    [pendingRobberCoords, proxy]
+  );
 
   // Cancel robber target selection
   const handleRobberTargetCancel = useCallback(() => {
@@ -516,9 +617,7 @@ export default function GamePage(): React.ReactElement {
       const num = parseInt(e.key);
       if (!isNaN(num) && num >= 1 && num <= 9) {
         // First try roads (they have buildIndex from server)
-        const road = roads?.find(r =>
-          r.roadState === 'Buildable' && r.buildIndex === num
-        );
+        const road = roads?.find((r) => r.roadState === 'Buildable' && r.buildIndex === num);
         if (road) {
           console.log('[GamePage] Keyboard shortcut: building road', num);
           proxy.purchaseRoad(road.roadKey);
@@ -527,13 +626,13 @@ export default function GamePage(): React.ReactElement {
 
         // Then try settlements (only during regular gameplay, not allocation)
         const hasSettlementEntitlement = currentPlayer?.unspentEntitlements?.includes('Settlement');
-        const inAllocation = gameState === 'AllocateResourceForward' ||
-                            gameState === 'AllocateResourceReverse';
+        const inAllocation =
+          gameState === 'AllocateResourceForward' || gameState === 'AllocateResourceReverse';
 
         if (hasSettlementEntitlement && !inAllocation && buildings) {
           // Build list of possible settlements (same order as GameBoard)
-          const possibleSettlements = buildings.filter(b =>
-            b.buildingState === 'PossibleSettlement' && b.ownerId === null
+          const possibleSettlements = buildings.filter(
+            (b) => b.buildingState === 'PossibleSettlement' && b.ownerId === null
           );
 
           // 1-based index (num=1 -> index 0)
@@ -554,8 +653,8 @@ export default function GamePage(): React.ReactElement {
         const buildIndexForLetter = letterIndex + 10; // A=10, B=11, ..., Z=35 (for roads)
 
         // First try roads (forward alphabet: A=10, B=11, etc.)
-        const road = roads?.find(r =>
-          r.roadState === 'Buildable' && r.buildIndex === buildIndexForLetter
+        const road = roads?.find(
+          (r) => r.roadState === 'Buildable' && r.buildIndex === buildIndexForLetter
         );
         if (road) {
           console.log('[GamePage] Keyboard shortcut: building road', key);
@@ -568,8 +667,8 @@ export default function GamePage(): React.ReactElement {
         if (!hasCityEntitlement || !buildings || !currentPlayer) return;
 
         // Build list of upgradeable settlements (same logic as GameBoard)
-        const upgradeableSettlements = buildings.filter(b =>
-          b.buildingState === 'Settlement' && b.ownerId === currentPlayer.id
+        const upgradeableSettlements = buildings.filter(
+          (b) => b.buildingState === 'Settlement' && b.ownerId === currentPlayer.id
         );
 
         // Reverse alphabet mapping: Z=0, Y=1, X=2, etc.
@@ -589,15 +688,21 @@ export default function GamePage(): React.ReactElement {
 
   // Star filter changed handler (stores in layoutStore for board filtering)
   const setStarFilter = useLayoutStore((state) => state.setStarFilter);
-  const handleStarFilterChange = useCallback((stars: number | null) => {
-    setStarFilter(stars);
-  }, [setStarFilter]);
+  const handleStarFilterChange = useCallback(
+    (stars: number | null) => {
+      setStarFilter(stars);
+    },
+    [setStarFilter]
+  );
 
   // Resource filter changed handler (stores in layoutStore for board filtering)
   const setResourceFilters = useLayoutStore((state) => state.setResourceFilters);
-  const handleResourceSelectionChange = useCallback((resources: string[]) => {
-    setResourceFilters(resources);
-  }, [setResourceFilters]);
+  const handleResourceSelectionChange = useCallback(
+    (resources: string[]) => {
+      setResourceFilters(resources);
+    },
+    [setResourceFilters]
+  );
 
   // Center modal overlays (goFirst, supplemental) on the board when they appear
   const boardPanel = useLayoutStore(selectPanel('board'));
@@ -612,7 +717,14 @@ export default function GamePage(): React.ReactElement {
       const centerY = boardPanel.top + (boardPanel.height - goFirstHeight) / 2;
       setPanelPosition('goFirst', centerX, centerY);
     }
-  }, [gameState === 'FinishedRollOrder', boardPanel?.left, boardPanel?.top, boardPanel?.width, boardPanel?.height, setPanelPosition]);
+  }, [
+    gameState === 'FinishedRollOrder',
+    boardPanel?.left,
+    boardPanel?.top,
+    boardPanel?.width,
+    boardPanel?.height,
+    setPanelPosition,
+  ]);
 
   useEffect(() => {
     // Center supplemental overlay on board when PickSupplementalPlayers state is entered
@@ -623,7 +735,14 @@ export default function GamePage(): React.ReactElement {
       const centerY = boardPanel.top + (boardPanel.height - supplementalHeight) / 2;
       setPanelPosition('supplemental', centerX, centerY);
     }
-  }, [gameState === 'PickSupplementalPlayers', boardPanel?.left, boardPanel?.top, boardPanel?.width, boardPanel?.height, setPanelPosition]);
+  }, [
+    gameState === 'PickSupplementalPlayers',
+    boardPanel?.left,
+    boardPanel?.top,
+    boardPanel?.width,
+    boardPanel?.height,
+    setPanelPosition,
+  ]);
 
   // Game-specific menu action handlers
   const handleBalance = useCallback(() => {
@@ -638,23 +757,26 @@ export default function GamePage(): React.ReactElement {
     setShowWinnerOverlay(true);
   }, [currentPlayer]);
 
-  const handleEndGame = useCallback(async (vpScores: Record<string, number>) => {
-    setShowWinnerOverlay(false);
-    try {
-      const result = await proxy.declareWinner(winnerId, vpScores);
-      if (!result.success) {
-        console.error('[GamePage] Failed to declare winner:', result.message);
+  const handleEndGame = useCallback(
+    async (vpScores: Record<string, number>) => {
+      setShowWinnerOverlay(false);
+      try {
+        const result = await proxy.declareWinner(winnerId, vpScores);
+        if (!result.success) {
+          console.error('[GamePage] Failed to declare winner:', result.message);
+        }
+      } catch (error) {
+        console.error('[GamePage] Exception declaring winner:', error);
       }
-    } catch (error) {
-      console.error('[GamePage] Exception declaring winner:', error);
-    }
-  }, [winnerId, proxy]);
+    },
+    [winnerId, proxy]
+  );
 
   // Build WinnerPlayer[] from game state for the overlay
   const winnerPlayers: WinnerPlayer[] = useMemo(() => {
     if (!players) return [];
     const baseUrl = getServiceUrl();
-    return players.map(p => {
+    return players.map((p) => {
       const profile = playerProfiles.get(p.id);
       const imageUri = profile?.imageUri;
       return {
@@ -688,14 +810,16 @@ export default function GamePage(): React.ReactElement {
   // GameBoard now uses internal hooks for data (useBoardData, useBoardPlayers, etc.)
   // Removed: isAllocationPhase, showSettlementIndexes, boardGameData - all derived internally
 
-
   // Game actions for NavMenu
-  const gameActions = useMemo(() => ({
-    isPickingBoard,
-    onBalance: handleBalance,
-    onWinner: handleWinner,
-    onSaveCopy: handleSaveCopy,
-  }), [isPickingBoard, handleBalance, handleWinner, handleSaveCopy]);
+  const gameActions = useMemo(
+    () => ({
+      isPickingBoard,
+      onBalance: handleBalance,
+      onWinner: handleWinner,
+      onSaveCopy: handleSaveCopy,
+    }),
+    [isPickingBoard, handleBalance, handleWinner, handleSaveCopy]
+  );
 
   return (
     <MainLayout activeGameId={gameId} gameActions={gameActions}>
@@ -723,16 +847,12 @@ export default function GamePage(): React.ReactElement {
 
         {/* Floating Panels - overlay on top of GameBoard */}
         {/* Dice Panel - Roll statistics and click-to-roll */}
-        <FloatingPanel panelId="dice" title="Dice"  className="bg-white/5 border-white/10">
-          <RollRing
-            rollStats={rollStats}
-            onRollClick={handleRollClick}
-            colors={playerColors}
-          />
+        <FloatingPanel panelId="dice" title="Dice" className="bg-white/5 border-white/10">
+          <RollRing rollStats={rollStats} onRollClick={handleRollClick} colors={playerColors} />
         </FloatingPanel>
 
         {/* Action Controls Panel */}
-        <FloatingPanel panelId="actions" title="Actions"  className="bg-white/5 border-white/10">
+        <FloatingPanel panelId="actions" title="Actions" className="bg-white/5 border-white/10">
           <ActionCluster
             colors={playerColors}
             gameState={getStateMessage(gameState)}
@@ -743,7 +863,7 @@ export default function GamePage(): React.ReactElement {
         </FloatingPanel>
 
         {/* Board Measurements Panel */}
-        <FloatingPanel panelId="measurements" title="Board"  className="bg-white/5 border-white/10">
+        <FloatingPanel panelId="measurements" title="Board" className="bg-white/5 border-white/10">
           <MeasurementCluster
             tiles={tiles ?? []}
             colors={playerColors}
@@ -756,18 +876,28 @@ export default function GamePage(): React.ReactElement {
         </FloatingPanel>
 
         {/* Players Panel */}
-        <FloatingPanel panelId="players" title="Players"  resizable className="bg-white/5 border-white/10">
+        <FloatingPanel
+          panelId="players"
+          title="Players"
+          resizable
+          className="bg-white/5 border-white/10"
+        >
           <PlayersPanel />
         </FloatingPanel>
 
         {/* Resources Panel */}
-        <FloatingPanel panelId="resources" title="Resources"  className="bg-white/5 border-white/10">
+        <FloatingPanel panelId="resources" title="Resources" className="bg-white/5 border-white/10">
           <GameResourcesHeader resources={gameResourcesModel ?? null} />
         </FloatingPanel>
 
         {/* GoFirst Overlay - shown during FinishedRollOrder state */}
         {gameState === 'FinishedRollOrder' && (
-          <FloatingPanel panelId="goFirst" title="Go First" alwaysOnTop className="bg-white/5 border-white/10">
+          <FloatingPanel
+            panelId="goFirst"
+            title="Go First"
+            alwaysOnTop
+            className="bg-white/5 border-white/10"
+          >
             <GoFirstOverlay
               players={players}
               playerProfiles={playerProfiles}
@@ -778,7 +908,12 @@ export default function GamePage(): React.ReactElement {
 
         {/* Supplemental Overlay - shown during PickSupplementalPlayers state */}
         {gameState === 'PickSupplementalPlayers' && currentPlayer && (
-          <FloatingPanel panelId="supplemental" title="Supplemental Build" alwaysOnTop className="bg-white/5 border-white/10">
+          <FloatingPanel
+            panelId="supplemental"
+            title="Supplemental Build"
+            alwaysOnTop
+            className="bg-white/5 border-white/10"
+          >
             <SupplementalOverlay
               players={players}
               currentPlayerId={currentPlayer.id}
@@ -833,11 +968,12 @@ export default function GamePage(): React.ReactElement {
             {isConnected ? (
               <span className="text-green-400">● Connected</span>
             ) : (
-              <span className="text-amber-400">○ {isConnecting ? 'Connecting' : 'Disconnected'}</span>
+              <span className="text-amber-400">
+                ○ {isConnecting ? 'Connecting' : 'Disconnected'}
+              </span>
             )}
           </span>
         </div>
-
       </div>
     </MainLayout>
   );

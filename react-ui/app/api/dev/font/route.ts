@@ -19,18 +19,15 @@ export async function GET() {
   const fontPath = join(process.cwd(), 'public/fonts/Catan.ttf');
 
   try {
-    const [buffer, fileStat] = await Promise.all([
-      readFile(fontPath),
-      stat(fontPath),
-    ]);
+    const [buffer, fileStat] = await Promise.all([readFile(fontPath), stat(fontPath)]);
 
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'font/ttf',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-        'ETag': `"${fileStat.mtimeMs.toString(36)}"`,
+        Pragma: 'no-cache',
+        Expires: '0',
+        ETag: `"${fileStat.mtimeMs.toString(36)}"`,
         'Last-Modified': fileStat.mtime.toUTCString(),
       },
     });

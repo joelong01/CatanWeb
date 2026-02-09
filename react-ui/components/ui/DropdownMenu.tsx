@@ -28,7 +28,11 @@ interface DropdownMenuProps {
  * Renders via portal to escape sidebar stacking context.
  * Supports icons, checkmarks, separators, and expandable sub-sections.
  */
-export function DropdownMenu({ items, anchorEl, onClose }: DropdownMenuProps): React.ReactElement | null {
+export function DropdownMenu({
+  items,
+  anchorEl,
+  onClose,
+}: DropdownMenuProps): React.ReactElement | null {
   const menuRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -90,8 +94,11 @@ export function DropdownMenu({ items, anchorEl, onClose }: DropdownMenuProps): R
       }}
     >
       <span className="w-4 text-center text-xs shrink-0">
-        {child.checked ? <FontAwesomeIcon icon={faCheck} /> :
-         child.icon ? <FontAwesomeIcon icon={child.icon} /> : null}
+        {child.checked ? (
+          <FontAwesomeIcon icon={faCheck} />
+        ) : child.icon ? (
+          <FontAwesomeIcon icon={child.icon} />
+        ) : null}
       </span>
       <span>{child.label}</span>
     </div>
@@ -124,8 +131,11 @@ export function DropdownMenu({ items, anchorEl, onClose }: DropdownMenuProps): R
           }}
         >
           <span className="w-4 text-center text-xs shrink-0">
-            {item.checked ? <FontAwesomeIcon icon={faCheck} /> :
-             item.icon ? <FontAwesomeIcon icon={item.icon} /> : null}
+            {item.checked ? (
+              <FontAwesomeIcon icon={faCheck} />
+            ) : item.icon ? (
+              <FontAwesomeIcon icon={item.icon} />
+            ) : null}
           </span>
           <span className="flex-1">{item.label}</span>
           {hasChildren && (
@@ -137,9 +147,7 @@ export function DropdownMenu({ items, anchorEl, onClose }: DropdownMenuProps): R
         </div>
 
         {hasChildren && isExpanded && (
-          <div className="bg-[#222]">
-            {item.children!.map(renderChild)}
-          </div>
+          <div className="bg-[#222]">{item.children!.map(renderChild)}</div>
         )}
       </div>
     );

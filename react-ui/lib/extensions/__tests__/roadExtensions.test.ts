@@ -47,7 +47,7 @@ function createMockRoad(
 // Note: Using `|| 0` to normalize -0 to 0 for consistent equality checks
 function createKey(q: number, r: number, hexSide: HexSide): RoadKey {
   return {
-    tileKey: { q, r, s: (-q - r) || 0 },
+    tileKey: { q, r, s: -q - r || 0 },
     hexSide,
   };
 }
@@ -328,9 +328,7 @@ describe('roadExtensions', () => {
     });
 
     it('returns up to 6 roads', () => {
-      const roads = HEX_SIDES.map((side, i) =>
-        createMockRoad(0, 0, side, `player-${i}`, 'Road')
-      );
+      const roads = HEX_SIDES.map((side, i) => createMockRoad(0, 0, side, `player-${i}`, 'Road'));
 
       const result = roadsInTile(roads, { q: 0, r: 0, s: 0 });
       expect(result).toHaveLength(6);

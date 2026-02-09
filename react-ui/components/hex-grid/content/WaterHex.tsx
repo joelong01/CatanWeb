@@ -39,9 +39,7 @@ export function WaterHex({
   if (imageUrl) {
     return (
       <div className="w-full h-full" style={{ opacity }} data-drag-through>
-        {showBorder && (
-          <div className="absolute inset-0 hex-clip-flat bg-blue-500/40" />
-        )}
+        {showBorder && <div className="absolute inset-0 hex-clip-flat bg-blue-500/40" />}
         <div
           className="absolute inset-0 hex-clip-flat"
           style={{

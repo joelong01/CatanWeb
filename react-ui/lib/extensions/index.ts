@@ -86,7 +86,4 @@ export {
 } from './gameModelExtensions';
 
 // Resources extensions
-export {
-  createEmptyResourcesModel,
-  addResource,
-} from './resourcesExtensions';
+export { createEmptyResourcesModel, addResource } from './resourcesExtensions';

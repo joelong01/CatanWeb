@@ -40,7 +40,7 @@ async function getCroppedBlob(imageSrc: string, crop: Area): Promise<Blob> {
         else reject(new Error('Failed to create blob'));
       },
       'image/jpeg',
-      0.9,
+      0.9
     );
   });
 }

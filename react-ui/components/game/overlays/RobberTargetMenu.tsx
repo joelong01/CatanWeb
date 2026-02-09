@@ -41,10 +41,7 @@ export const RobberTargetMenu = memo(function RobberTargetMenu({
   return (
     <>
       {/* Transparent backdrop for click-away dismissal */}
-      <div
-        className="fixed inset-0 z-[999]"
-        onClick={onCancel}
-      />
+      <div className="fixed inset-0 z-[999]" onClick={onCancel} />
 
       {/* Menu positioned at click location */}
       <div

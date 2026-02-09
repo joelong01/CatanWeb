@@ -57,11 +57,7 @@ function formatDate(dateStr: string): string {
 }
 
 /** Return Tailwind class for action row based on replay state. */
-function getRowClass(
-  index: number,
-  result: StepResult | undefined,
-  isCurrent: boolean,
-): string {
+function getRowClass(index: number, result: StepResult | undefined, isCurrent: boolean): string {
   const classes: string[] = [];
   if (isCurrent) classes.push('bg-blue-900/30 border-l-2 border-blue-400');
   if (result) {
@@ -201,7 +197,7 @@ export default function TestRecordingsPage(): React.ReactElement {
       }
       setIsLoadingActions(false);
     },
-    [replaySessionId, endReplaySession, viewMode, viewSessionId],
+    [replaySessionId, endReplaySession, viewMode, viewSessionId]
   );
 
   // ── Clear selection ──
@@ -262,7 +258,11 @@ export default function TestRecordingsPage(): React.ReactElement {
           if (data.success) {
             setTestResults((prev) => [
               ...prev,
-              { name, success: true, message: `Replay successful (${data.actionsReplayed} actions)` },
+              {
+                name,
+                success: true,
+                message: `Replay successful (${data.actionsReplayed} actions)`,
+              },
             ]);
           } else {
             let message = data.errorMessage ?? 'Unknown error';
@@ -288,7 +288,7 @@ export default function TestRecordingsPage(): React.ReactElement {
         setIsRunning(false);
       }
     },
-    [recordings],
+    [recordings]
   );
 
   // ── Run all recordings ──
@@ -429,7 +429,7 @@ export default function TestRecordingsPage(): React.ReactElement {
         setErrorMessage(sessionResult.error ?? 'Failed to start replay session');
       }
     },
-    [replaySessionId, endReplaySession, viewSessionId],
+    [replaySessionId, endReplaySession, viewSessionId]
   );
 
   const playMoves = useCallback(async () => {
@@ -450,7 +450,7 @@ export default function TestRecordingsPage(): React.ReactElement {
         }
         if (!step.hashMatch) {
           setErrorMessage(
-            `Hash mismatch at action ${step.actionIndex}: expected ${truncateHash(step.expectedHash)}, got ${truncateHash(step.actualHash)}`,
+            `Hash mismatch at action ${step.actionIndex}: expected ${truncateHash(step.expectedHash)}, got ${truncateHash(step.actualHash)}`
           );
           break;
         }
@@ -507,16 +507,17 @@ export default function TestRecordingsPage(): React.ReactElement {
         {errorMessage && (
           <div className="mb-4 px-4 py-3 rounded bg-red-900/40 border border-red-700 text-red-300 text-sm flex items-center justify-between">
             <span>{errorMessage}</span>
-            <button onClick={() => setErrorMessage(null)} className="text-red-400 hover:text-white ml-4">
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="text-red-400 hover:text-white ml-4"
+            >
               <FontAwesomeIcon icon={faXmark} />
             </button>
           </div>
         )}
 
         {/* Loading */}
-        {isLoading && (
-          <div className="text-gray-400 text-center py-12">Loading recordings...</div>
-        )}
+        {isLoading && <div className="text-gray-400 text-center py-12">Loading recordings...</div>}
 
         {/* Empty state */}
         {!isLoading && !errorMessage && recordings.length === 0 && (
@@ -577,60 +578,64 @@ export default function TestRecordingsPage(): React.ReactElement {
                         ? 'bg-purple-900/20 border-l-2 border-l-purple-400'
                         : 'hover:bg-gray-800/50';
                     return (
-                    <tr
-                      key={rec.id}
-                      className={`border-t border-gray-700/50 transition-colors ${rowHighlight}`}
-                    >
-                      <td className="px-4 py-2 text-gray-100 font-medium">{rec.name}</td>
-                      <td className="px-4 py-2 text-gray-400 text-xs">{formatDate(rec.createdAt)}</td>
-                      <td className="px-4 py-2 text-gray-400">{rec.gameType}</td>
-                      <td className="px-4 py-2 text-gray-400 text-center">{rec.playerCount}</td>
-                      <td className="px-4 py-2 text-gray-400 text-center">{rec.actionCount}</td>
-                      <td className="px-4 py-2 text-right">
-                        {runningRecordingId === rec.id ? (
-                          <span className="text-yellow-400 text-xs animate-pulse">Running...</span>
-                        ) : (
-                          <div className="flex gap-1.5 justify-end">
-                            <button
-                              onClick={() => enterViewMode(rec)}
-                              disabled={isRunning}
-                              className="px-2 py-1 rounded text-xs bg-purple-700 text-white hover:bg-purple-600 disabled:opacity-50"
-                            >
-                              <FontAwesomeIcon icon={faEye} className="mr-1" />
-                              View
-                            </button>
-                            <button
-                              onClick={() => selectRecording(rec)}
-                              disabled={isRunning}
-                              className="px-2 py-1 rounded text-xs bg-blue-700 text-white hover:bg-blue-600 disabled:opacity-50"
-                            >
-                              Select
-                            </button>
-                            <button
-                              onClick={() => runRecording(rec.id)}
-                              disabled={isRunning}
-                              className="px-2 py-1 rounded text-xs bg-green-700 text-white hover:bg-green-600 disabled:opacity-50"
-                            >
-                              Run
-                            </button>
-                            <button
-                              onClick={() => openRename(rec)}
-                              disabled={isRunning}
-                              className="px-2 py-1 rounded text-xs bg-gray-600 text-gray-200 hover:bg-gray-500 disabled:opacity-50"
-                            >
-                              <FontAwesomeIcon icon={faPen} />
-                            </button>
-                            <button
-                              onClick={() => confirmDelete(rec)}
-                              disabled={isRunning}
-                              className="px-2 py-1 rounded text-xs bg-red-800 text-red-200 hover:bg-red-700 disabled:opacity-50"
-                            >
-                              <FontAwesomeIcon icon={faTrash} />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
+                      <tr
+                        key={rec.id}
+                        className={`border-t border-gray-700/50 transition-colors ${rowHighlight}`}
+                      >
+                        <td className="px-4 py-2 text-gray-100 font-medium">{rec.name}</td>
+                        <td className="px-4 py-2 text-gray-400 text-xs">
+                          {formatDate(rec.createdAt)}
+                        </td>
+                        <td className="px-4 py-2 text-gray-400">{rec.gameType}</td>
+                        <td className="px-4 py-2 text-gray-400 text-center">{rec.playerCount}</td>
+                        <td className="px-4 py-2 text-gray-400 text-center">{rec.actionCount}</td>
+                        <td className="px-4 py-2 text-right">
+                          {runningRecordingId === rec.id ? (
+                            <span className="text-yellow-400 text-xs animate-pulse">
+                              Running...
+                            </span>
+                          ) : (
+                            <div className="flex gap-1.5 justify-end">
+                              <button
+                                onClick={() => enterViewMode(rec)}
+                                disabled={isRunning}
+                                className="px-2 py-1 rounded text-xs bg-purple-700 text-white hover:bg-purple-600 disabled:opacity-50"
+                              >
+                                <FontAwesomeIcon icon={faEye} className="mr-1" />
+                                View
+                              </button>
+                              <button
+                                onClick={() => selectRecording(rec)}
+                                disabled={isRunning}
+                                className="px-2 py-1 rounded text-xs bg-blue-700 text-white hover:bg-blue-600 disabled:opacity-50"
+                              >
+                                Select
+                              </button>
+                              <button
+                                onClick={() => runRecording(rec.id)}
+                                disabled={isRunning}
+                                className="px-2 py-1 rounded text-xs bg-green-700 text-white hover:bg-green-600 disabled:opacity-50"
+                              >
+                                Run
+                              </button>
+                              <button
+                                onClick={() => openRename(rec)}
+                                disabled={isRunning}
+                                className="px-2 py-1 rounded text-xs bg-gray-600 text-gray-200 hover:bg-gray-500 disabled:opacity-50"
+                              >
+                                <FontAwesomeIcon icon={faPen} />
+                              </button>
+                              <button
+                                onClick={() => confirmDelete(rec)}
+                                disabled={isRunning}
+                                className="px-2 py-1 rounded text-xs bg-red-800 text-red-200 hover:bg-red-700 disabled:opacity-50"
+                              >
+                                <FontAwesomeIcon icon={faTrash} />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
                     );
                   })}
                 </tbody>
@@ -690,7 +695,11 @@ export default function TestRecordingsPage(): React.ReactElement {
                     min={1}
                     max={Math.max(1, viewRemaining)}
                     value={movesToPlay}
-                    onChange={(e) => setMovesToPlay(Math.max(1, Math.min(viewRemaining || 1, parseInt(e.target.value) || 1)))}
+                    onChange={(e) =>
+                      setMovesToPlay(
+                        Math.max(1, Math.min(viewRemaining || 1, parseInt(e.target.value) || 1))
+                      )
+                    }
                     disabled={isPlaying || viewRemaining === 0}
                     className="w-20 px-2 py-1.5 bg-gray-900 border border-gray-600 rounded text-white text-sm text-center focus:outline-none focus:border-purple-500 disabled:opacity-50"
                   />
@@ -711,9 +720,7 @@ export default function TestRecordingsPage(): React.ReactElement {
                     Reset
                   </button>
                   <span className="text-xs text-gray-500 ml-auto">
-                    {viewRemaining === 0
-                      ? 'Replay complete'
-                      : `${viewRemaining} remaining`}
+                    {viewRemaining === 0 ? 'Replay complete' : `${viewRemaining} remaining`}
                   </span>
                   {viewHashErrors.length > 0 && (
                     <span className="text-xs text-red-400">
@@ -815,13 +822,27 @@ export default function TestRecordingsPage(): React.ReactElement {
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 z-10 bg-gray-700">
                         <tr>
-                          <th className="px-3 py-2.5 text-center text-gray-200 font-semibold w-12">#</th>
-                          <th className="px-3 py-2.5 text-left text-gray-200 font-semibold">Action</th>
-                          <th className="px-3 py-2.5 text-left text-gray-200 font-semibold">State</th>
-                          <th className="px-3 py-2.5 text-left text-gray-200 font-semibold">Details</th>
-                          <th className="px-3 py-2.5 text-left text-gray-200 font-semibold font-mono text-xs">Expected</th>
-                          <th className="px-3 py-2.5 text-left text-gray-200 font-semibold font-mono text-xs">Actual</th>
-                          <th className="px-3 py-2.5 text-center text-gray-200 font-semibold w-12">OK</th>
+                          <th className="px-3 py-2.5 text-center text-gray-200 font-semibold w-12">
+                            #
+                          </th>
+                          <th className="px-3 py-2.5 text-left text-gray-200 font-semibold">
+                            Action
+                          </th>
+                          <th className="px-3 py-2.5 text-left text-gray-200 font-semibold">
+                            State
+                          </th>
+                          <th className="px-3 py-2.5 text-left text-gray-200 font-semibold">
+                            Details
+                          </th>
+                          <th className="px-3 py-2.5 text-left text-gray-200 font-semibold font-mono text-xs">
+                            Expected
+                          </th>
+                          <th className="px-3 py-2.5 text-left text-gray-200 font-semibold font-mono text-xs">
+                            Actual
+                          </th>
+                          <th className="px-3 py-2.5 text-center text-gray-200 font-semibold w-12">
+                            OK
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -836,7 +857,7 @@ export default function TestRecordingsPage(): React.ReactElement {
                               className={`border-t border-gray-700/30 transition-colors ${getRowClass(
                                 action.index,
                                 result,
-                                isCurrent,
+                                isCurrent
                               )}`}
                             >
                               <td className="px-3 py-1.5 text-center text-gray-500 font-mono text-xs">
@@ -844,7 +865,9 @@ export default function TestRecordingsPage(): React.ReactElement {
                               </td>
                               <td className="px-3 py-1.5 text-gray-200">{action.actionType}</td>
                               <td className="px-3 py-1.5 text-gray-400">{action.gameState}</td>
-                              <td className="px-3 py-1.5 text-gray-400 text-xs">{action.details}</td>
+                              <td className="px-3 py-1.5 text-gray-400 text-xs">
+                                {action.details}
+                              </td>
                               <td className="px-3 py-1.5 font-mono text-gray-500 text-xs">
                                 {truncateHash(action.expectedHash)}
                               </td>
@@ -954,10 +977,7 @@ export default function TestRecordingsPage(): React.ReactElement {
                 Close
               </button>
               <div className="w-full h-full p-4">
-                <ReplayBoardPreview
-                  gameModel={viewGameModel}
-                  playerColorMap={playerColorMap}
-                />
+                <ReplayBoardPreview gameModel={viewGameModel} playerColorMap={playerColorMap} />
               </div>
             </div>
           </div>

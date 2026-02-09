@@ -58,7 +58,7 @@ function resolveGlyph(glyphName: string): string | undefined {
  */
 function* themeChain(
   themeName: string,
-  themes: Record<string, ThemeDefinition>,
+  themes: Record<string, ThemeDefinition>
 ): Generator<ThemeDefinition> {
   const visited = new Set<string>();
   let current: string | undefined = themeName;
@@ -114,9 +114,7 @@ export const useThemeStore = create<ThemeStore>()(
         if (get().initialized) return;
 
         try {
-          const results = await Promise.all(
-            THEME_NAMES.map((name) => fetchTheme(name))
-          );
+          const results = await Promise.all(THEME_NAMES.map((name) => fetchTheme(name)));
           const themes: Record<string, ThemeDefinition> = {};
           for (const theme of results) {
             themes[theme.name] = theme;
@@ -153,8 +151,7 @@ export const useThemeStore = create<ThemeStore>()(
       getTileFontConfig: (resourceType) => {
         const { themes, currentTheme } = get();
         for (const theme of themeChain(currentTheme, themes)) {
-          const raw: TileFontConfig | undefined =
-            theme.colors?.tiles?.[resourceType];
+          const raw: TileFontConfig | undefined = theme.colors?.tiles?.[resourceType];
           if (!raw) continue;
 
           const glyph = resolveGlyph(raw.glyph);
@@ -173,8 +170,7 @@ export const useThemeStore = create<ThemeStore>()(
       getHarborFontConfig: (harborType) => {
         const { themes, currentTheme } = get();
         for (const theme of themeChain(currentTheme, themes)) {
-          const raw: HarborFontConfig | undefined =
-            theme.colors?.harbors?.[harborType];
+          const raw: HarborFontConfig | undefined = theme.colors?.harbors?.[harborType];
           if (!raw) continue;
 
           const harborGlyph = resolveGlyph(raw.harborGlyph);

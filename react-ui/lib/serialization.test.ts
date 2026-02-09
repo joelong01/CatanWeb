@@ -178,9 +178,7 @@ describe('TypeGen Generated Model Serialization', () => {
 
     it('should have desert tile with number 7', () => {
       const gameModel = loadTestGameModel();
-      const desertTile = gameModel.tiles.find(
-        (t) => t.resourceTileType === ResourceType.Desert
-      );
+      const desertTile = gameModel.tiles.find((t) => t.resourceTileType === ResourceType.Desert);
 
       expect(desertTile).toBeDefined();
       expect(desertTile!.number).toBe(7);

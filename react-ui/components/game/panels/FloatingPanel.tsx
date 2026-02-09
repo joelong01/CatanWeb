@@ -141,12 +141,14 @@ export function FloatingPanel({
   // Position state - just use raw values from store, no conversions
   const [actualPosition, setActualPosition] = useState({
     x: panel.left,
-    y: panel.top
+    y: panel.top,
   });
 
   // Sync position when store changes (e.g., after reset)
   useEffect(() => {
-    console.log(`[FloatingPanel:${panelId}] Sync effect triggered - panel.left=${panel.left}, panel.top=${panel.top}`);
+    console.log(
+      `[FloatingPanel:${panelId}] Sync effect triggered - panel.left=${panel.left}, panel.top=${panel.top}`
+    );
     setActualPosition({ x: panel.left, y: panel.top });
     latestPositionRef.current = { x: panel.left, y: panel.top };
   }, [panel.left, panel.top, panelId]);
@@ -169,69 +171,89 @@ export function FloatingPanel({
   }, []);
 
   // Start drag (desktop: CTRL+click, mobile: after long press)
-  const startDrag = useCallback((clientX: number, clientY: number) => {
-    console.log(`[FloatingPanel:${panelId}] startDrag called at (${clientX}, ${clientY}), starting from position (${actualPosition.x}, ${actualPosition.y})`);
-    setIsDragging(true);
-    dragStartRef.current = {
-      x: clientX,
-      y: clientY,
-      posX: actualPosition.x,
-      posY: actualPosition.y,
-    };
-  }, [actualPosition, panelId]);
+  const startDrag = useCallback(
+    (clientX: number, clientY: number) => {
+      console.log(
+        `[FloatingPanel:${panelId}] startDrag called at (${clientX}, ${clientY}), starting from position (${actualPosition.x}, ${actualPosition.y})`
+      );
+      setIsDragging(true);
+      dragStartRef.current = {
+        x: clientX,
+        y: clientY,
+        posX: actualPosition.x,
+        posY: actualPosition.y,
+      };
+    },
+    [actualPosition, panelId]
+  );
 
   // Mouse down handler
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button !== 0) return;
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button !== 0) return;
 
-    // CTRL+click to drag (always works)
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      e.stopPropagation();
-      startDrag(e.clientX, e.clientY);
-      return;
-    }
-
-    // Background drag: click on non-interactive areas starts drag
-    if (enableBackgroundDrag) {
-      const target = e.target as HTMLElement;
-      const isInteractive = isInteractiveElement(target, panelRef.current);
-      console.log(`[FloatingPanel:${panelId}] Background drag check - target:`, target.tagName, target.className, 'isInteractive:', isInteractive);
-      // Don't start drag if clicking on an interactive element
-      if (!isInteractive) {
+      // CTRL+click to drag (always works)
+      if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         e.stopPropagation();
         startDrag(e.clientX, e.clientY);
+        return;
       }
-    }
-  }, [startDrag, enableBackgroundDrag, panelId]);
+
+      // Background drag: click on non-interactive areas starts drag
+      if (enableBackgroundDrag) {
+        const target = e.target as HTMLElement;
+        const isInteractive = isInteractiveElement(target, panelRef.current);
+        console.log(
+          `[FloatingPanel:${panelId}] Background drag check - target:`,
+          target.tagName,
+          target.className,
+          'isInteractive:',
+          isInteractive
+        );
+        // Don't start drag if clicking on an interactive element
+        if (!isInteractive) {
+          e.preventDefault();
+          e.stopPropagation();
+          startDrag(e.clientX, e.clientY);
+        }
+      }
+    },
+    [startDrag, enableBackgroundDrag, panelId]
+  );
 
   // Track mouse position for cursor change when enableBackgroundDrag is active
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!enableBackgroundDrag || isDragging) return;
-    const target = e.target as HTMLElement;
-    const overEmpty = !isInteractiveElement(target, panelRef.current);
-    setIsOverEmptySpace(overEmpty);
-  }, [enableBackgroundDrag, isDragging]);
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!enableBackgroundDrag || isDragging) return;
+      const target = e.target as HTMLElement;
+      const overEmpty = !isInteractiveElement(target, panelRef.current);
+      setIsOverEmptySpace(overEmpty);
+    },
+    [enableBackgroundDrag, isDragging]
+  );
 
   const handleMouseLeave = useCallback(() => {
     setIsOverEmptySpace(false);
   }, []);
 
   // Touch handlers for long press
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      const touch = e.touches[0];
 
-    // Start long press timer
-    longPressTimerRef.current = setTimeout(() => {
-      setLongPressActive(true);
-      startDrag(touch.clientX, touch.clientY);
-      // Haptic feedback if available
-      if ('vibrate' in navigator) {
-        navigator.vibrate(50);
-      }
-    }, LONG_PRESS_DURATION);
-  }, [startDrag]);
+      // Start long press timer
+      longPressTimerRef.current = setTimeout(() => {
+        setLongPressActive(true);
+        startDrag(touch.clientX, touch.clientY);
+        // Haptic feedback if available
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
+      }, LONG_PRESS_DURATION);
+    },
+    [startDrag]
+  );
 
   const handleTouchEnd = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -248,26 +270,29 @@ export function FloatingPanel({
     setLongPressActive(false);
   }, [isDragging, panelId, setPanelPosition]);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    // Cancel long press if moved before timer fires
-    if (!isDragging && longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      // Cancel long press if moved before timer fires
+      if (!isDragging && longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
 
-    // Continue drag if active - no constraints, user can move anywhere
-    if (isDragging) {
-      const touch = e.touches[0];
-      const deltaX = touch.clientX - dragStartRef.current.x;
-      const deltaY = touch.clientY - dragStartRef.current.y;
-      const newPos = {
-        x: dragStartRef.current.posX + deltaX,
-        y: dragStartRef.current.posY + deltaY,
-      };
-      setActualPosition(newPos);
-      latestPositionRef.current = newPos;
-    }
-  }, [isDragging]);
+      // Continue drag if active - no constraints, user can move anywhere
+      if (isDragging) {
+        const touch = e.touches[0];
+        const deltaX = touch.clientX - dragStartRef.current.x;
+        const deltaY = touch.clientY - dragStartRef.current.y;
+        const newPos = {
+          x: dragStartRef.current.posX + deltaX,
+          y: dragStartRef.current.posY + deltaY,
+        };
+        setActualPosition(newPos);
+        latestPositionRef.current = newPos;
+      }
+    },
+    [isDragging]
+  );
 
   // Drag effect (mouse) - no constraints, user can move anywhere
   useEffect(() => {
@@ -289,7 +314,9 @@ export function FloatingPanel({
       setIsDragging(false);
       setLongPressActive(false);
       // Save position using ref to avoid stale closure issues
-      console.log(`[FloatingPanel:${panelId}] Saving position on drag end: x=${latestPositionRef.current.x}, y=${latestPositionRef.current.y}`);
+      console.log(
+        `[FloatingPanel:${panelId}] Saving position on drag end: x=${latestPositionRef.current.x}, y=${latestPositionRef.current.y}`
+      );
       setPanelPosition(panelId, latestPositionRef.current.x, latestPositionRef.current.y);
     };
 
@@ -302,21 +329,24 @@ export function FloatingPanel({
   }, [isDragging, panelId, setPanelPosition]);
 
   // Resize handlers
-  const handleResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsResizing(true);
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsResizing(true);
 
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
-    resizeStartRef.current = {
-      x: clientX,
-      y: clientY,
-      width: panel.width,
-      height: panel.height,
-    };
-  }, [panel.width, panel.height]);
+      resizeStartRef.current = {
+        x: clientX,
+        y: clientY,
+        width: panel.width,
+        height: panel.height,
+      };
+    },
+    [panel.width, panel.height]
+  );
 
   useEffect(() => {
     if (!isResizing) return;
@@ -367,8 +397,8 @@ export function FloatingPanel({
         isDragging || longPressActive
           ? 'border-amber-500/50 ring-2 ring-amber-500/30'
           : ctrlHeld || (enableBackgroundDrag && isOverEmptySpace)
-          ? 'border-gray-600'
-          : 'border-gray-700/50'
+            ? 'border-gray-600'
+            : 'border-gray-700/50'
       }`}
       style={{
         ...style,
@@ -394,12 +424,16 @@ export function FloatingPanel({
       }}
       onTouchEnd={handleTouchEnd}
       onTouchMove={handleTouchMove}
-      title={ctrlHeld ? 'Click and drag to move' : enableBackgroundDrag ? 'Drag empty space to move, long press on mobile' : 'CTRL+click to drag, long press on mobile'}
+      title={
+        ctrlHeld
+          ? 'Click and drag to move'
+          : enableBackgroundDrag
+            ? 'Drag empty space to move, long press on mobile'
+            : 'CTRL+click to drag, long press on mobile'
+      }
     >
       {/* Content - overflow-hidden prevents scrollbar flash during animations */}
-      <div className="absolute inset-0 overflow-hidden">
-        {children}
-      </div>
+      <div className="absolute inset-0 overflow-hidden">{children}</div>
 
       {/* Minimize button (top-right corner) */}
       <button

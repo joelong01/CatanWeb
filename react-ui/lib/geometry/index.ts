@@ -70,8 +70,4 @@ export {
 } from './boardGeometry';
 
 // Direction exports from hex-geometry (canonical source)
-export {
-  Direction,
-  DIRECTION_VECTORS,
-  ALL_DIRECTIONS,
-} from '@/components/hex-grid/hex-geometry';
+export { Direction, DIRECTION_VECTORS, ALL_DIRECTIONS } from '@/components/hex-grid/hex-geometry';

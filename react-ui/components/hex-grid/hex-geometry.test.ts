@@ -242,11 +242,25 @@ describe('HEX_LAYOUTS', () => {
     it('should match C# RegularBoardInfo.TileKeys coordinates', () => {
       // From Catan3.Shared/Models/RegularBoardInfo.cs TileKeys
       const csharpTileKeys: HexCoordinate[] = [
-        cubicCoord(-2, 0), cubicCoord(-2, 1), cubicCoord(-2, 2),
-        cubicCoord(-1, -1), cubicCoord(-1, 0), cubicCoord(-1, 1), cubicCoord(-1, 2),
-        cubicCoord(0, -2), cubicCoord(0, -1), cubicCoord(0, 0), cubicCoord(0, 1), cubicCoord(0, 2),
-        cubicCoord(1, -2), cubicCoord(1, -1), cubicCoord(1, 0), cubicCoord(1, 1),
-        cubicCoord(2, -2), cubicCoord(2, -1), cubicCoord(2, 0),
+        cubicCoord(-2, 0),
+        cubicCoord(-2, 1),
+        cubicCoord(-2, 2),
+        cubicCoord(-1, -1),
+        cubicCoord(-1, 0),
+        cubicCoord(-1, 1),
+        cubicCoord(-1, 2),
+        cubicCoord(0, -2),
+        cubicCoord(0, -1),
+        cubicCoord(0, 0),
+        cubicCoord(0, 1),
+        cubicCoord(0, 2),
+        cubicCoord(1, -2),
+        cubicCoord(1, -1),
+        cubicCoord(1, 0),
+        cubicCoord(1, 1),
+        cubicCoord(2, -2),
+        cubicCoord(2, -1),
+        cubicCoord(2, 0),
       ];
 
       const tsCoordSet = new Set(HEX_LAYOUTS.CLUSTER_19.map((c) => `${c.q},${c.r}`));
@@ -296,19 +310,42 @@ describe('HEX_LAYOUTS', () => {
       // From Catan3.Shared/Models/ExpansionBoardInfo.cs TileKeys
       const csharpTileKeys: HexCoordinate[] = [
         // Column 1 (q=-3)
-        cubicCoord(-3, 1), cubicCoord(-3, 2), cubicCoord(-3, 3),
+        cubicCoord(-3, 1),
+        cubicCoord(-3, 2),
+        cubicCoord(-3, 3),
         // Column 2 (q=-2)
-        cubicCoord(-2, 0), cubicCoord(-2, 1), cubicCoord(-2, 2), cubicCoord(-2, 3),
+        cubicCoord(-2, 0),
+        cubicCoord(-2, 1),
+        cubicCoord(-2, 2),
+        cubicCoord(-2, 3),
         // Column 3 (q=-1)
-        cubicCoord(-1, -1), cubicCoord(-1, 0), cubicCoord(-1, 1), cubicCoord(-1, 2), cubicCoord(-1, 3),
+        cubicCoord(-1, -1),
+        cubicCoord(-1, 0),
+        cubicCoord(-1, 1),
+        cubicCoord(-1, 2),
+        cubicCoord(-1, 3),
         // Column 4 (q=0)
-        cubicCoord(0, -2), cubicCoord(0, -1), cubicCoord(0, 0), cubicCoord(0, 1), cubicCoord(0, 2), cubicCoord(0, 3),
+        cubicCoord(0, -2),
+        cubicCoord(0, -1),
+        cubicCoord(0, 0),
+        cubicCoord(0, 1),
+        cubicCoord(0, 2),
+        cubicCoord(0, 3),
         // Column 5 (q=1)
-        cubicCoord(1, -2), cubicCoord(1, -1), cubicCoord(1, 0), cubicCoord(1, 1), cubicCoord(1, 2),
+        cubicCoord(1, -2),
+        cubicCoord(1, -1),
+        cubicCoord(1, 0),
+        cubicCoord(1, 1),
+        cubicCoord(1, 2),
         // Column 6 (q=2)
-        cubicCoord(2, -2), cubicCoord(2, -1), cubicCoord(2, 0), cubicCoord(2, 1),
+        cubicCoord(2, -2),
+        cubicCoord(2, -1),
+        cubicCoord(2, 0),
+        cubicCoord(2, 1),
         // Column 7 (q=3)
-        cubicCoord(3, -2), cubicCoord(3, -1), cubicCoord(3, 0),
+        cubicCoord(3, -2),
+        cubicCoord(3, -1),
+        cubicCoord(3, 0),
       ];
 
       const tsCoordSet = new Set(HEX_LAYOUTS.CLUSTER_30.map((c) => `${c.q},${c.r}`));
@@ -735,10 +772,10 @@ describe('HexGridCollection', () => {
     });
 
     it('should create from layout with mapper', () => {
-      const collection = HexGridCollection.fromLayout(
-        HEX_LAYOUTS.CLUSTER_7,
-        (coord, i) => ({ id: i, coord })
-      );
+      const collection = HexGridCollection.fromLayout(HEX_LAYOUTS.CLUSTER_7, (coord, i) => ({
+        id: i,
+        coord,
+      }));
 
       expect(collection.size).toBe(7);
       const centerItem = collection.get(cubicCoord(0, 0));

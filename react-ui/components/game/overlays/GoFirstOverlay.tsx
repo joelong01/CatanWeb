@@ -37,7 +37,6 @@ export interface GoFirstOverlayProps {
   onSelectPlayer: (playerId: string) => void;
 }
 
-
 /**
  * Content for the center hex showing the title.
  * Uses absolute positioning to fill the hex tile.
@@ -58,9 +57,7 @@ function CenterContent(): React.ReactElement {
           background: 'linear-gradient(135deg, #374151, #1f2937)',
         }}
       >
-        <span className="text-white text-xs font-semibold leading-tight">
-          Goes First
-        </span>
+        <span className="text-white text-xs font-semibold leading-tight">Goes First</span>
       </div>
     </div>
   );
@@ -89,7 +86,7 @@ function PlayerHexContent({
   const gradient = buildCssGradient(colors);
 
   // Scale based on interaction state
-  const innerScale = isPressed ? 0.88 : isHovered ? 0.90 : 0.92;
+  const innerScale = isPressed ? 0.88 : isHovered ? 0.9 : 0.92;
   const borderColor = isHovered ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.3)';
 
   return (
@@ -163,7 +160,12 @@ export function GoFirstOverlay({
   playerProfiles,
   onSelectPlayer,
 }: GoFirstOverlayProps): React.ReactElement {
-  console.log('[GoFirstOverlay] render, players:', players.length, 'profiles:', playerProfiles.size);
+  console.log(
+    '[GoFirstOverlay] render, players:',
+    players.length,
+    'profiles:',
+    playerProfiles.size
+  );
 
   // Build hex grid items: center (title) + surrounding player hexes
   const hexItems = useMemo((): HexGridItem[] => {
@@ -201,12 +203,7 @@ export function GoFirstOverlay({
 
   return (
     <div className="w-full h-full flex items-center justify-center p-4">
-      <HexGrid
-        hexSize={50}
-        gap={3}
-        items={hexItems}
-        fitToParent
-      />
+      <HexGrid hexSize={50} gap={3} items={hexItems} fitToParent />
     </div>
   );
 }

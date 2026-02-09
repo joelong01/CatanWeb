@@ -72,11 +72,14 @@ export function MenuHex({
   };
 
   // Accessibility props for non-link usage
-  const a11yProps = !href && onClick ? {
-    role: 'button' as const,
-    tabIndex: 0,
-    onKeyDown: handleKeyDown,
-  } : {};
+  const a11yProps =
+    !href && onClick
+      ? {
+          role: 'button' as const,
+          tabIndex: 0,
+          onKeyDown: handleKeyDown,
+        }
+      : {};
 
   const content = (
     <div

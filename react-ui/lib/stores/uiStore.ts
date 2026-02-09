@@ -94,19 +94,15 @@ export const useUIStore = create<UIStore>()(
 
       setActivePortraitTab: (activePortraitTab) => set({ activePortraitTab }),
 
-      toggleNavMenu: () =>
-        set((state) => ({ isNavMenuOpen: !state.isNavMenuOpen })),
+      toggleNavMenu: () => set((state) => ({ isNavMenuOpen: !state.isNavMenuOpen })),
 
       setNavMenuOpen: (isNavMenuOpen) => set({ isNavMenuOpen }),
 
-      setShowingCelebration: (isShowingCelebration) =>
-        set({ isShowingCelebration }),
+      setShowingCelebration: (isShowingCelebration) => set({ isShowingCelebration }),
 
-      openRobberMenu: (x, y) =>
-        set({ isRobberMenuOpen: true, menuPosition: { x, y } }),
+      openRobberMenu: (x, y) => set({ isRobberMenuOpen: true, menuPosition: { x, y } }),
 
-      closeRobberMenu: () =>
-        set({ isRobberMenuOpen: false, menuPosition: null }),
+      closeRobberMenu: () => set({ isRobberMenuOpen: false, menuPosition: null }),
 
       closeAllOverlays: () =>
         set({
@@ -137,11 +133,8 @@ export const selectIsPortrait = (state: UIStore) => state.isPortrait;
 export const selectIsMobile = (state: UIStore) => state.isMobile;
 
 /** Select current portrait tab */
-export const selectActivePortraitTab = (state: UIStore) =>
-  state.activePortraitTab;
+export const selectActivePortraitTab = (state: UIStore) => state.activePortraitTab;
 
 /** Select whether any overlay is open (for backdrop) */
 export const selectHasOpenOverlay = (state: UIStore) =>
-  state.isNavMenuOpen ||
-  state.isRobberMenuOpen ||
-  state.isShowingCelebration;
+  state.isNavMenuOpen || state.isRobberMenuOpen || state.isShowingCelebration;

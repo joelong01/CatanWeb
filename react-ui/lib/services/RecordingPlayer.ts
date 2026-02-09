@@ -217,9 +217,7 @@ export class RecordingPlayer {
    * Load a recording by ID.
    */
   async loadRecording(recordingId: string): Promise<RecordingData> {
-    const response = await fetch(
-      `${this.serviceUrl}/api/recording/${recordingId}`
-    );
+    const response = await fetch(`${this.serviceUrl}/api/recording/${recordingId}`);
     if (!response.ok) {
       throw new Error(`Failed to load recording: ${response.status}`);
     }
@@ -478,10 +476,7 @@ export class RecordingPlayer {
         return this.proxy.roll(action.roll.redRoll, action.roll.whiteRoll);
 
       case 'moveRobber':
-        return this.proxy.moveRobber(
-          action.coordinates,
-          action.targetPlayerId ?? undefined
-        );
+        return this.proxy.moveRobber(action.coordinates, action.targetPlayerId ?? undefined);
 
       case 'goFirst':
         return this.proxy.goFirst(action.playerId);
@@ -493,10 +488,7 @@ export class RecordingPlayer {
         return this.proxy.declareWinner(action.winnerId, action.victoryPoints);
 
       case 'participatingInSupplemental':
-        return this.proxy.setParticipatingInSupplemental(
-          action.playerId,
-          action.participating
-        );
+        return this.proxy.setParticipatingInSupplemental(action.playerId, action.participating);
 
       case 'swapTileResources':
         return this.proxy.swapTileResources(
@@ -530,10 +522,7 @@ export class RecordingPlayer {
   ): Promise<void> {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
-      if (
-        this.latestGameModel &&
-        this.latestGameModel.gameHash !== previousHash
-      ) {
+      if (this.latestGameModel && this.latestGameModel.gameHash !== previousHash) {
         return;
       }
       await new Promise((r) => setTimeout(r, 50));

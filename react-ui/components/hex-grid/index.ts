@@ -67,8 +67,4 @@ export {
   parseSquareLayout,
   getBounds,
 } from './layouts';
-export type {
-  SquareLayoutOptions,
-  RadialLayoutOptions,
-  DiamondLayoutOptions,
-} from './layouts';
+export type { SquareLayoutOptions, RadialLayoutOptions, DiamondLayoutOptions } from './layouts';

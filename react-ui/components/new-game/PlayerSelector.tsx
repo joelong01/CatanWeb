@@ -3,12 +3,7 @@
 import React, { useMemo } from 'react';
 import Image from 'next/image';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faUser,
-  faUserPlus,
-  faTrophy,
-  faCheck,
-} from '@fortawesome/free-solid-svg-icons';
+import { faUser, faUserPlus, faTrophy, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { HexGrid, HexGridItem, HEX_LAYOUTS, cubicCoord, CenterHex } from '@/components/hex-grid';
 import { serviceConfig } from '@/lib/services/config';
 import type { PlayerProfile } from '@/types/player-profile';
@@ -70,10 +65,7 @@ interface PlayerCardContentProps {
   isSelected: boolean;
 }
 
-function PlayerCardContent({
-  player,
-  isSelected,
-}: PlayerCardContentProps): React.ReactElement {
+function PlayerCardContent({ player, isSelected }: PlayerCardContentProps): React.ReactElement {
   const imageUrl = getPlayerImageUrl(player.imageUri);
   const wins = getWinCount(player);
   const [isHovered, setIsHovered] = React.useState(false);
@@ -106,7 +98,11 @@ function PlayerCardContent({
             {imageUrl ? (
               <Image src={imageUrl} alt={player.name} width={56} height={56} unoptimized />
             ) : (
-              <FontAwesomeIcon icon={faUser} className="text-2xl" style={{ color: player.colors.foreground }} />
+              <FontAwesomeIcon
+                icon={faUser}
+                className="text-2xl"
+                style={{ color: player.colors.foreground }}
+              />
             )}
           </div>
 
@@ -120,9 +116,7 @@ function PlayerCardContent({
 
           {/* Trophy badge - wins count */}
           {wins > 0 && (
-            <span
-              className="absolute bottom-2 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-amber-400 font-semibold"
-            >
+            <span className="absolute bottom-2 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-amber-400 font-semibold">
               <FontAwesomeIcon icon={faTrophy} className="text-[8px]" />
               {wins}
             </span>
@@ -136,10 +130,7 @@ function PlayerCardContent({
           className="absolute z-10 w-6 h-6 rounded-full flex items-center justify-center bg-black/50 border border-white/50 -translate-x-1/2 -translate-y-1/2"
           style={{ top: '16%', left: '68%' }}
         >
-          <FontAwesomeIcon
-            icon={faCheck}
-            className="text-xs text-white"
-          />
+          <FontAwesomeIcon icon={faCheck} className="text-xs text-white" />
         </div>
       )}
     </div>
@@ -259,27 +250,28 @@ export function PlayerSelector({
       id: player.id,
       coord: HEX_LAYOUTS.CLUSTER_7[idx + 1], // Positions 1-6 (surrounding)
       content: (
-        <PlayerCardContent
-          player={player}
-          isSelected={selectedPlayerIds.includes(player.id)}
-        />
+        <PlayerCardContent player={player} isSelected={selectedPlayerIds.includes(player.id)} />
       ),
       onClick: () => handleTogglePlayer(player.id),
     })),
 
     // Guest hex - shown below the cluster when "Include Guest" is checked
     // Position (0, 2) is directly below the south hex, maintaining horizontal centering
-    ...(includeGuest && guestPlayer ? [{
-      id: guestPlayer.id,
-      coord: cubicCoord(0, 2), // Below south hex
-      content: (
-        <PlayerCardContent
-          player={guestPlayer}
-          isSelected={selectedPlayerIds.includes(guestPlayer.id)}
-        />
-      ),
-      onClick: () => handleTogglePlayer(guestPlayer.id),
-    }] : []),
+    ...(includeGuest && guestPlayer
+      ? [
+          {
+            id: guestPlayer.id,
+            coord: cubicCoord(0, 2), // Below south hex
+            content: (
+              <PlayerCardContent
+                player={guestPlayer}
+                isSelected={selectedPlayerIds.includes(guestPlayer.id)}
+              />
+            ),
+            onClick: () => handleTogglePlayer(guestPlayer.id),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -306,12 +298,10 @@ export function PlayerSelector({
             />
             <span className="text-xs text-gray-300">Include Guest</span>
           </label>
-        ) : <div />}
-        {needsMore && (
-          <p className="text-amber-400 text-xs">
-            Select at least {min} players
-          </p>
+        ) : (
+          <div />
         )}
+        {needsMore && <p className="text-amber-400 text-xs">Select at least {min} players</p>}
       </div>
     </div>
   );

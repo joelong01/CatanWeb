@@ -102,7 +102,7 @@ describe('Coordinate Conversion', () => {
         expect(result.q).toBe(q);
         expect(result.r).toBe(r);
         // Use || 0 to handle -0 == 0 comparison (JavaScript signed zero)
-        expect(result.s).toBe((-q - r) || 0);
+        expect(result.s).toBe(-q - r || 0);
       }
     });
   });

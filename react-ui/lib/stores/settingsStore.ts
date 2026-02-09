@@ -8,11 +8,7 @@
 
 import { create } from 'zustand';
 import type { AnimationSpeed } from '@/types/settings';
-import {
-  SETTINGS_DEFAULTS,
-  SETTING_KEY_PREFIX,
-  HOUSE_RULES_KEY,
-} from '@/types/settings';
+import { SETTINGS_DEFAULTS, SETTING_KEY_PREFIX, HOUSE_RULES_KEY } from '@/types/settings';
 import type { HouseRules, GameType } from '@/types/generated/models';
 
 // ============================================================================
@@ -157,8 +153,14 @@ export const useSettingsStore = create<SettingsStore>()((set, get) => ({
     const newState: Partial<SettingsState> = {
       expansionGoldTiles: readSetting('ExpansionGoldTiles', SETTINGS_DEFAULTS.expansionGoldTiles),
       regularGoldTiles: readSetting('RegularGoldTiles', SETTINGS_DEFAULTS.regularGoldTiles),
-      supplementalMinPlayers: readSetting('SupplementalMinPlayers', SETTINGS_DEFAULTS.supplementalMinPlayers),
-      animationSpeed: readSetting('AnimationSpeed', SETTINGS_DEFAULTS.animationSpeed) as AnimationSpeed,
+      supplementalMinPlayers: readSetting(
+        'SupplementalMinPlayers',
+        SETTINGS_DEFAULTS.supplementalMinPlayers
+      ),
+      animationSpeed: readSetting(
+        'AnimationSpeed',
+        SETTINGS_DEFAULTS.animationSpeed
+      ) as AnimationSpeed,
       isInitialized: true,
     };
 
@@ -222,9 +224,7 @@ export const useSettingsStore = create<SettingsStore>()((set, get) => ({
     initialize();
 
     const state = get();
-    const goldTiles = gameType === 'Expansion'
-      ? state.expansionGoldTiles
-      : state.regularGoldTiles;
+    const goldTiles = gameType === 'Expansion' ? state.expansionGoldTiles : state.regularGoldTiles;
 
     return {
       goldTiles,

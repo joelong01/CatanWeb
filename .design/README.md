@@ -3,7 +3,7 @@
 **Last updated:** February 6, 2026
 
 Verified documentation reflecting the current implementation. These
-31 documents are the **source of truth** for how the system works.
+32 documents are the **source of truth** for how the system works.
 
 Legacy and superseded documents are archived in [old/](old/).
 
@@ -53,6 +53,7 @@ Legacy and superseded documents are archived in [old/](old/).
 | Document | Purpose |
 |----------|---------|
 | [testing.md](testing.md) | Replay tests, unit tests, test projects, GameHash verification |
+| [ts-test-strategy.md](ts-test-strategy.md) | React test strategy: truth sets, generated types only, no parallel type system |
 | [cli-tooling.md](cli-tooling.md) | catan.ps1 verbs, Catan3.CLI project, flags, subsystems |
 | [troubleshooting.md](troubleshooting.md) | SSL errors, port conflicts, database locks, SignalR issues |
 | [azure-deployment.md](azure-deployment.md) | Azure resources, CI/CD pipeline, deployment scripts |

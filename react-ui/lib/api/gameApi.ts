@@ -135,10 +135,7 @@ export interface StartSessionResult {
 /**
  * Makes a fetch request with standard error handling.
  */
-async function apiFetch<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> {
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const url = `${serviceConfig.serviceUrl}${endpoint}`;
 
   try {

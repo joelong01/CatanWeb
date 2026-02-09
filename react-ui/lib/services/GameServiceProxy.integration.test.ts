@@ -92,23 +92,27 @@ describe('GameServiceProxy Integration Tests', () => {
   });
 
   describe('REST API - Game Lifecycle', () => {
-    it('should create a new game', async () => {
-      if (!serviceAvailable) return;
+    it(
+      'should create a new game',
+      async () => {
+        if (!serviceAvailable) return;
 
-      const proxy = new GameServiceProxy(PLAYER_IDS[0], SERVICE_URL);
+        const proxy = new GameServiceProxy(PLAYER_IDS[0], SERVICE_URL);
 
-      const result = await proxy.createGame(
-        GameType.Regular,
-        PLAYER_IDS,
-        'Integration Test Game'
-      );
+        const result = await proxy.createGame(
+          GameType.Regular,
+          PLAYER_IDS,
+          'Integration Test Game'
+        );
 
-      expect(result.success).toBe(true);
-      expect(result.gameId).toBeDefined();
-      console.log(`Created game: ${result.gameId}`);
+        expect(result.success).toBe(true);
+        expect(result.gameId).toBeDefined();
+        console.log(`Created game: ${result.gameId}`);
 
-      await proxy.dispose();
-    }, TEST_TIMEOUT);
+        await proxy.dispose();
+      },
+      TEST_TIMEOUT
+    );
 
     it('should get available games', async () => {
       if (!serviceAvailable) return;
@@ -133,11 +137,7 @@ describe('GameServiceProxy Integration Tests', () => {
       proxy = new GameServiceProxy(PLAYER_IDS[0], SERVICE_URL);
 
       // Create a game first
-      const result = await proxy.createGame(
-        GameType.Regular,
-        PLAYER_IDS,
-        'SignalR Test Game'
-      );
+      const result = await proxy.createGame(GameType.Regular, PLAYER_IDS, 'SignalR Test Game');
       expect(result.success).toBe(true);
       gameId = result.gameId!;
     });
@@ -148,27 +148,31 @@ describe('GameServiceProxy Integration Tests', () => {
       }
     });
 
-    it('should connect to SignalR and join game', async () => {
-      if (!serviceAvailable) return;
+    it(
+      'should connect to SignalR and join game',
+      async () => {
+        if (!serviceAvailable) return;
 
-      let receivedGameModel: GameModel | null = null;
+        let receivedGameModel: GameModel | null = null;
 
-      proxy.onGameStateUpdated((gameModel) => {
-        receivedGameModel = gameModel;
-      });
+        proxy.onGameStateUpdated((gameModel) => {
+          receivedGameModel = gameModel;
+        });
 
-      await proxy.connect(gameId);
+        await proxy.connect(gameId);
 
-      // Wait for initial GameStateUpdated
-      await waitFor(() => receivedGameModel !== null, 10000);
+        // Wait for initial GameStateUpdated
+        await waitFor(() => receivedGameModel !== null, 10000);
 
-      expect(receivedGameModel).not.toBeNull();
-      expect(receivedGameModel!.gameId).toBe(gameId);
-      // Game starts in PickingBoard state (players auto-join on creation)
-      expect(receivedGameModel!.gameState).toBe(GameState.PickingBoard);
+        expect(receivedGameModel).not.toBeNull();
+        expect(receivedGameModel!.gameId).toBe(gameId);
+        // Game starts in PickingBoard state (players auto-join on creation)
+        expect(receivedGameModel!.gameState).toBe(GameState.PickingBoard);
 
-      console.log(`Connected to game ${gameId}, state: ${receivedGameModel!.gameState}`);
-    }, TEST_TIMEOUT);
+        console.log(`Connected to game ${gameId}, state: ${receivedGameModel!.gameState}`);
+      },
+      TEST_TIMEOUT
+    );
   });
 
   describe('Game Actions', () => {
@@ -183,11 +187,7 @@ describe('GameServiceProxy Integration Tests', () => {
       proxies = PLAYER_IDS.map((id) => new GameServiceProxy(id, SERVICE_URL));
 
       // Create game with first player
-      const result = await proxies[0].createGame(
-        GameType.Regular,
-        PLAYER_IDS,
-        'Action Test Game'
-      );
+      const result = await proxies[0].createGame(GameType.Regular, PLAYER_IDS, 'Action Test Game');
       expect(result.success).toBe(true);
       gameId = result.gameId!;
 
@@ -213,89 +213,101 @@ describe('GameServiceProxy Integration Tests', () => {
       latestGameModel = null;
     });
 
-    it('should execute shuffle command during board picking', async () => {
-      if (!serviceAvailable) return;
+    it(
+      'should execute shuffle command during board picking',
+      async () => {
+        if (!serviceAvailable) return;
 
-      expect(latestGameModel).not.toBeNull();
-      // Game starts directly in PickingBoard state
-      console.log(`Initial state: ${latestGameModel!.gameState}`);
-      console.log(`Proxy gameId: ${proxies[0].currentGameId}`);
-      console.log(`Proxy playerId: ${proxies[0].currentPlayerId}`);
-      expect(latestGameModel!.gameState).toBe(GameState.PickingBoard);
+        expect(latestGameModel).not.toBeNull();
+        // Game starts directly in PickingBoard state
+        console.log(`Initial state: ${latestGameModel!.gameState}`);
+        console.log(`Proxy gameId: ${proxies[0].currentGameId}`);
+        console.log(`Proxy playerId: ${proxies[0].currentPlayerId}`);
+        expect(latestGameModel!.gameState).toBe(GameState.PickingBoard);
 
-      const hashBefore = latestGameModel!.gameHash;
+        const hashBefore = latestGameModel!.gameHash;
 
-      const result = await proxies[0].shuffle();
-      console.log(`Shuffle result: ${result.success}, message: ${result.message}`);
-      expect(result.success).toBe(true);
+        const result = await proxies[0].shuffle();
+        console.log(`Shuffle result: ${result.success}, message: ${result.message}`);
+        expect(result.success).toBe(true);
 
-      // Wait for state update (board should change)
-      await waitFor(() => latestGameModel!.gameHash !== hashBefore, 5000);
-      console.log(`Shuffled board, new hash: ${latestGameModel!.gameHash}`);
-    }, TEST_TIMEOUT);
+        // Wait for state update (board should change)
+        await waitFor(() => latestGameModel!.gameHash !== hashBefore, 5000);
+        console.log(`Shuffled board, new hash: ${latestGameModel!.gameHash}`);
+      },
+      TEST_TIMEOUT
+    );
 
-    it('should execute undo/redo commands', async () => {
-      if (!serviceAvailable) return;
+    it(
+      'should execute undo/redo commands',
+      async () => {
+        if (!serviceAvailable) return;
 
-      expect(latestGameModel).not.toBeNull();
-      // Game starts directly in PickingBoard
-      expect(latestGameModel!.gameState).toBe(GameState.PickingBoard);
+        expect(latestGameModel).not.toBeNull();
+        // Game starts directly in PickingBoard
+        expect(latestGameModel!.gameState).toBe(GameState.PickingBoard);
 
-      // Shuffle to create something to undo
-      await proxies[0].shuffle();
-      await new Promise((r) => setTimeout(r, 500)); // Brief wait for state update
+        // Shuffle to create something to undo
+        await proxies[0].shuffle();
+        await new Promise((r) => setTimeout(r, 500)); // Brief wait for state update
 
-      const hashBeforeUndo = latestGameModel!.gameHash;
+        const hashBeforeUndo = latestGameModel!.gameHash;
 
-      // Undo should be enabled after shuffle
-      if (latestGameModel!.actionFlags.undoEnabled) {
-        const undoResult = await proxies[0].undo();
-        expect(undoResult.success).toBe(true);
+        // Undo should be enabled after shuffle
+        if (latestGameModel!.actionFlags.undoEnabled) {
+          const undoResult = await proxies[0].undo();
+          expect(undoResult.success).toBe(true);
 
-        await waitFor(() => latestGameModel!.gameHash !== hashBeforeUndo, 5000);
-        console.log(`Undo successful, hash changed`);
+          await waitFor(() => latestGameModel!.gameHash !== hashBeforeUndo, 5000);
+          console.log(`Undo successful, hash changed`);
 
-        // Redo should now be enabled
-        const hashBeforeRedo = latestGameModel!.gameHash;
-        if (latestGameModel!.actionFlags.redoEnabled) {
-          const redoResult = await proxies[0].redo();
-          expect(redoResult.success).toBe(true);
+          // Redo should now be enabled
+          const hashBeforeRedo = latestGameModel!.gameHash;
+          if (latestGameModel!.actionFlags.redoEnabled) {
+            const redoResult = await proxies[0].redo();
+            expect(redoResult.success).toBe(true);
 
-          await waitFor(() => latestGameModel!.gameHash !== hashBeforeRedo, 5000);
-          console.log(`Redo successful, hash changed`);
+            await waitFor(() => latestGameModel!.gameHash !== hashBeforeRedo, 5000);
+            console.log(`Redo successful, hash changed`);
+          }
         }
-      }
-    }, TEST_TIMEOUT);
+      },
+      TEST_TIMEOUT
+    );
 
-    it('should receive updates on all connected proxies', async () => {
-      if (!serviceAvailable) return;
+    it(
+      'should receive updates on all connected proxies',
+      async () => {
+        if (!serviceAvailable) return;
 
-      // Set up listeners on all proxies
-      const receivedUpdates: Map<string, GameModel> = new Map();
+        // Set up listeners on all proxies
+        const receivedUpdates: Map<string, GameModel> = new Map();
 
-      proxies.forEach((proxy, i) => {
-        proxy.onGameStateUpdated((gameModel) => {
-          receivedUpdates.set(PLAYER_IDS[i], gameModel);
+        proxies.forEach((proxy, i) => {
+          proxy.onGameStateUpdated((gameModel) => {
+            receivedUpdates.set(PLAYER_IDS[i], gameModel);
+          });
         });
-      });
 
-      // Game starts in PickingBoard - execute shuffle action
-      expect(latestGameModel!.gameState).toBe(GameState.PickingBoard);
+        // Game starts in PickingBoard - execute shuffle action
+        expect(latestGameModel!.gameState).toBe(GameState.PickingBoard);
 
-      // Clear any previous updates
-      receivedUpdates.clear();
+        // Clear any previous updates
+        receivedUpdates.clear();
 
-      await proxies[0].shuffle();
+        await proxies[0].shuffle();
 
-      // Wait for all proxies to receive update
-      await waitFor(() => receivedUpdates.size === proxies.length, 10000);
+        // Wait for all proxies to receive update
+        await waitFor(() => receivedUpdates.size === proxies.length, 10000);
 
-      // Verify all proxies have the same game state
-      const hashes = Array.from(receivedUpdates.values()).map((gm) => gm.gameHash);
-      const allSameHash = hashes.every((h) => h === hashes[0]);
+        // Verify all proxies have the same game state
+        const hashes = Array.from(receivedUpdates.values()).map((gm) => gm.gameHash);
+        const allSameHash = hashes.every((h) => h === hashes[0]);
 
-      expect(allSameHash).toBe(true);
-      console.log(`All ${proxies.length} proxies received consistent update`);
-    }, TEST_TIMEOUT);
+        expect(allSameHash).toBe(true);
+        console.log(`All ${proxies.length} proxies received consistent update`);
+      },
+      TEST_TIMEOUT
+    );
   });
 });

@@ -18,12 +18,12 @@ import type {
   GameModel,
   PlayerModel,
 } from '@/types/generated/models';
+import { addHexCoords, hexEquals, type HexCoords } from '../geometry/boardGeometry';
 import {
-  addHexCoords,
-  hexEquals,
-  type HexCoords,
-} from '../geometry/boardGeometry';
-import { DIRECTION_VECTORS, Direction as DirectionEnum, ALL_DIRECTIONS } from '@/components/hex-grid/hex-geometry';
+  DIRECTION_VECTORS,
+  Direction as DirectionEnum,
+  ALL_DIRECTIONS,
+} from '@/components/hex-grid/hex-geometry';
 
 // =============================================================================
 // Key Comparison Utilities
@@ -151,7 +151,10 @@ export function getAdjacentBuildings(
 
   switch (key.position) {
     case 'Right':
-      adjacentKeys.push({ hexCoordinates: key.hexCoordinates, position: 'TopRight' } as BuildingKey);
+      adjacentKeys.push({
+        hexCoordinates: key.hexCoordinates,
+        position: 'TopRight',
+      } as BuildingKey);
       adjacentKeys.push({
         hexCoordinates: key.hexCoordinates,
         position: 'BottomRight',
@@ -195,7 +198,10 @@ export function getAdjacentBuildings(
       } as BuildingKey);
       break;
     case 'TopLeft':
-      adjacentKeys.push({ hexCoordinates: key.hexCoordinates, position: 'TopRight' } as BuildingKey);
+      adjacentKeys.push({
+        hexCoordinates: key.hexCoordinates,
+        position: 'TopRight',
+      } as BuildingKey);
       adjacentKeys.push({ hexCoordinates: key.hexCoordinates, position: 'Left' } as BuildingKey);
       adjacentKeys.push({
         hexCoordinates: getAdjacentTile(key.hexCoordinates, 'NorthWest'),
@@ -227,10 +233,7 @@ export function getAdjacentBuildings(
  * Gets all buildings within a tile (6 vertices).
  * Matches C# BuildingModelExtensions.BuildingsInTile().
  */
-export function getBuildingsInTile(
-  buildings: BuildingModel[],
-  coords: HexCoords
-): BuildingModel[] {
+export function getBuildingsInTile(buildings: BuildingModel[], coords: HexCoords): BuildingModel[] {
   const positions: HexPosition[] = [
     'Right',
     'BottomRight',
@@ -505,10 +508,7 @@ export function getTilesWithNumber(tiles: TileModel[], number: number): TileMode
  * Gets all tiles with the specified resource type.
  * Matches C# TileModelExtensions.TilesWithResource().
  */
-export function getTilesWithResource(
-  tiles: TileModel[],
-  resource: string
-): TileModel[] {
+export function getTilesWithResource(tiles: TileModel[], resource: string): TileModel[] {
   return tiles.filter((t) => t.resourceTileType === resource);
 }
 
@@ -547,10 +547,7 @@ export function getCurrentPlayer(game: GameModel): PlayerModel | undefined {
  * Gets roads adjacent to a building (for road building validation visuals).
  * Uses the game's road collection.
  */
-export function getRoadsAdjacentToBuilding(
-  game: GameModel,
-  buildingKey: BuildingKey
-): RoadModel[] {
+export function getRoadsAdjacentToBuilding(game: GameModel, buildingKey: BuildingKey): RoadModel[] {
   // A building vertex touches 3 road edges
   const roadKeys: RoadKey[] = [];
 

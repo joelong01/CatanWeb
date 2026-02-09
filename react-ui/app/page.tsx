@@ -18,13 +18,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { MainLayout } from '@/components/layout';
 import { getServiceUrl } from '@/lib/config';
-import {
-  HexGrid,
-  HexGridItem,
-  CenterHex,
-  MenuHex,
-  cubicCoord,
-} from '@/components/hex-grid';
+import { HexGrid, HexGridItem, CenterHex, MenuHex, cubicCoord } from '@/components/hex-grid';
 
 interface TroubleshootResult {
   timestamp: string;
@@ -89,13 +83,7 @@ export default function Home(): React.ReactElement {
     {
       id: 'game-center',
       coord: cubicCoord(0, 0),
-      content: (
-        <CenterHex
-          icon={faDice}
-          title="Catan"
-          accentColor="text-amber-400"
-        />
-      ),
+      content: <CenterHex icon={faDice} title="Catan" accentColor="text-amber-400" />,
       disabled: true,
     },
     {
@@ -122,12 +110,7 @@ export default function Home(): React.ReactElement {
       id: 'new-game',
       coord: cubicCoord(0, -1),
       content: (
-        <MenuHex
-          icon={faGamepad}
-          title="New Game"
-          href="/new-game"
-          accentColor="text-amber-400"
-        />
+        <MenuHex icon={faGamepad} title="New Game" href="/new-game" accentColor="text-amber-400" />
       ),
     },
     {
@@ -146,12 +129,7 @@ export default function Home(): React.ReactElement {
       id: 'stats',
       coord: cubicCoord(0, 1),
       content: (
-        <MenuHex
-          icon={faChartBar}
-          title="Stats"
-          href="/stats"
-          accentColor="text-purple-400"
-        />
+        <MenuHex icon={faChartBar} title="Stats" href="/stats" accentColor="text-purple-400" />
       ),
     },
   ];
@@ -161,25 +139,14 @@ export default function Home(): React.ReactElement {
     {
       id: 'dev-center',
       coord: cubicCoord(0, 0),
-      content: (
-        <CenterHex
-          icon={faCode}
-          title="Dev"
-          accentColor="text-cyan-400"
-        />
-      ),
+      content: <CenterHex icon={faCode} title="Dev" accentColor="text-cyan-400" />,
       disabled: true,
     },
     {
       id: 'hex-test',
       coord: cubicCoord(-1, 0),
       content: (
-        <MenuHex
-          icon={faFlask}
-          title="Hex Test"
-          href="/hex-test"
-          accentColor="text-cyan-400"
-        />
+        <MenuHex icon={faFlask} title="Hex Test" href="/hex-test" accentColor="text-cyan-400" />
       ),
     },
     {
@@ -223,14 +190,7 @@ export default function Home(): React.ReactElement {
     {
       id: 'tests',
       coord: cubicCoord(-1, 1),
-      content: (
-        <MenuHex
-          icon={faVial}
-          title="Tests"
-          href="/tests"
-          accentColor="text-red-400"
-        />
-      ),
+      content: <MenuHex icon={faVial} title="Tests" href="/tests" accentColor="text-red-400" />,
     },
   ];
 

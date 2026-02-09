@@ -1,12 +1,7 @@
 'use client';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faVideo,
-  faFloppyDisk,
-  faChartLine,
-  faGavel,
-} from '@fortawesome/free-solid-svg-icons';
+import { faVideo, faFloppyDisk, faChartLine, faGavel } from '@fortawesome/free-solid-svg-icons';
 
 /**
  * Game options configuration.
@@ -52,22 +47,14 @@ interface CompactOptionProps {
   onChange: (checked: boolean) => void;
 }
 
-function CompactOption({
-  icon,
-  label,
-  checked,
-  onChange,
-}: CompactOptionProps): React.ReactElement {
+function CompactOption({ icon, label, checked, onChange }: CompactOptionProps): React.ReactElement {
   return (
     <label className="flex items-center gap-3 cursor-pointer group">
       <div
         className={`
           w-5 h-5 rounded border-2 flex items-center justify-center
           transition-all duration-200
-          ${checked
-            ? 'bg-blue-500 border-blue-500'
-            : 'border-gray-500 group-hover:border-gray-400'
-          }
+          ${checked ? 'bg-blue-500 border-blue-500' : 'border-gray-500 group-hover:border-gray-400'}
         `}
       >
         {checked && (
@@ -90,9 +77,7 @@ function CompactOption({
         icon={icon}
         className={`text-sm ${checked ? 'text-blue-400' : 'text-gray-500'}`}
       />
-      <span className={`text-sm ${checked ? 'text-white' : 'text-gray-400'}`}>
-        {label}
-      </span>
+      <span className={`text-sm ${checked ? 'text-white' : 'text-gray-400'}`}>{label}</span>
     </label>
   );
 }
@@ -101,10 +86,7 @@ function CompactOption({
  * Game options configuration section - compact 2x2 grid layout.
  * Allows toggling recording, saving, stats tracking, and house rules.
  */
-export function GameOptions({
-  options,
-  onChange,
-}: GameOptionsProps): React.ReactElement {
+export function GameOptions({ options, onChange }: GameOptionsProps): React.ReactElement {
   return (
     <div className="mb-6">
       <h2 className="text-xl font-semibold text-white mb-4">Game Options</h2>

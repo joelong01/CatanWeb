@@ -39,12 +39,7 @@ import {
 
 const CENTER_HEX = { q: 0, r: 0, s: 0 };
 
-function makeBuildingKey(
-  q: number,
-  r: number,
-  s: number,
-  position: string
-): BuildingKey {
+function makeBuildingKey(q: number, r: number, s: number, position: string): BuildingKey {
   return {
     hexCoordinates: { q, r, s },
     position,
@@ -255,17 +250,10 @@ describe('getAdjacentBuildings', () => {
       makeBuildingModel(0, 0, 0, 'Left', 'not-adjacent'),
     ];
 
-    const adjacent = getAdjacentBuildings(
-      buildings,
-      makeBuildingKey(0, 0, 0, 'Right')
-    );
+    const adjacent = getAdjacentBuildings(buildings, makeBuildingKey(0, 0, 0, 'Right'));
 
     expect(adjacent).toHaveLength(3);
-    expect(adjacent.map((b) => b.ownerId).sort()).toEqual([
-      'adjacent1',
-      'adjacent2',
-      'adjacent3',
-    ]);
+    expect(adjacent.map((b) => b.ownerId).sort()).toEqual(['adjacent1', 'adjacent2', 'adjacent3']);
   });
 });
 

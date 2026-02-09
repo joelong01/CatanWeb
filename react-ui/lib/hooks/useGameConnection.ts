@@ -45,9 +45,7 @@ interface UseGameConnectionResult {
 /**
  * Hook for managing GameService connection with Zustand integration.
  */
-export function useGameConnection(
-  options: UseGameConnectionOptions
-): UseGameConnectionResult {
+export function useGameConnection(options: UseGameConnectionOptions): UseGameConnectionResult {
   const { playerId, gameId, autoConnect = true } = options;
 
   // Get game store actions (stable references from Zustand)
@@ -59,7 +57,9 @@ export function useGameConnection(
   const setConnected = useConnectionStore((state) => state.setConnected);
   const setStatus = useConnectionStore((state) => state.setStatus);
   const setReconnecting = useConnectionStore((state) => state.setReconnecting);
-  const incrementReconnectAttempts = useConnectionStore((state) => state.incrementReconnectAttempts);
+  const incrementReconnectAttempts = useConnectionStore(
+    (state) => state.incrementReconnectAttempts
+  );
   const setDisconnected = useConnectionStore((state) => state.setDisconnected);
   const setPageVisible = useConnectionStore((state) => state.setPageVisible);
 
@@ -80,10 +80,19 @@ export function useGameConnection(
     // Reconciliation preserves references to unchanged items, enabling
     // React.memo to skip re-renders for tiles/roads/buildings that didn't change
     const unsubGameState = proxy.onGameStateUpdated((gameModel: GameModel) => {
-      console.log('[useGameConnection] onGameStateUpdated handler called, tiles:', gameModel?.tiles?.length);
-      console.log('[useGameConnection] prevGameModelRef.current tiles:', prevGameModelRef.current?.tiles?.length ?? 'null');
+      console.log(
+        '[useGameConnection] onGameStateUpdated handler called, tiles:',
+        gameModel?.tiles?.length
+      );
+      console.log(
+        '[useGameConnection] prevGameModelRef.current tiles:',
+        prevGameModelRef.current?.tiles?.length ?? 'null'
+      );
       const reconciled = reconcileGameModel(prevGameModelRef.current, gameModel);
-      console.log('[useGameConnection] Reconciled same as prev?', reconciled === prevGameModelRef.current);
+      console.log(
+        '[useGameConnection] Reconciled same as prev?',
+        reconciled === prevGameModelRef.current
+      );
       console.log('[useGameConnection] Reconciled same as incoming?', reconciled === gameModel);
       console.log('[useGameConnection] Calling setGameModel, tiles:', reconciled?.tiles?.length);
       prevGameModelRef.current = reconciled;
@@ -121,7 +130,17 @@ export function useGameConnection(
       unsubGameState();
       unsubConnection();
     };
-  }, [proxy, playerId, setGameModel, setCurrentPlayerId, setConnected, setStatus, setReconnecting, incrementReconnectAttempts, setDisconnected]);
+  }, [
+    proxy,
+    playerId,
+    setGameModel,
+    setCurrentPlayerId,
+    setConnected,
+    setStatus,
+    setReconnecting,
+    incrementReconnectAttempts,
+    setDisconnected,
+  ]);
 
   // Page visibility handler for mobile sleep/wake recovery
   // When iOS/Android suspends the browser, the WebSocket is killed by the OS.
@@ -140,9 +159,7 @@ export function useGameConnection(
           console.log('[useGameConnection] Reconnected successfully');
         } catch (error) {
           console.error('[useGameConnection] Reconnect failed:', error);
-          setDisconnected(
-            error instanceof Error ? error.message : 'Reconnection failed'
-          );
+          setDisconnected(error instanceof Error ? error.message : 'Reconnection failed');
         }
       }
     };
@@ -197,9 +214,7 @@ export function useGameConnection(
   return {
     proxy,
     isConnected: connectionStatus === 'connected',
-    isConnecting:
-      connectionStatus === 'connecting' ||
-      connectionStatus === 'reconnecting',
+    isConnecting: connectionStatus === 'connecting' || connectionStatus === 'reconnecting',
     currentGameId: proxy.currentGameId,
     connect,
     disconnect,
@@ -216,9 +231,7 @@ export function useGameCommands() {
   const playerId = useGameStore((state) => state.currentPlayerId);
 
   if (!playerId) {
-    throw new Error(
-      'useGameCommands must be used within a connected game context'
-    );
+    throw new Error('useGameCommands must be used within a connected game context');
   }
 
   const proxy = getGameServiceProxy(playerId);

@@ -151,21 +151,21 @@ export function HexGrid({
   // Calculate inner content scale based on gap
   // Content renders smaller to reveal gap between hexes
   const contentScale = useMemo(() => {
-    return 1 - (gap / hexSize);
+    return 1 - gap / hexSize;
   }, [gap, hexSize]);
 
   // Memoize layout calculations (positions, bounding box, container size, origin)
   // Only recalculates when items coordinates or hexSize changes
   const layout = useMemo(() => {
     // Filter items for bounding box calculation (exclude items marked excludeFromBounds)
-    const boundsItems = items.filter(item => !item.excludeFromBounds);
-    const boundsPositions = boundsItems.map(item => hexToPixel(item.coord, hexSize));
+    const boundsItems = items.filter((item) => !item.excludeFromBounds);
+    const boundsPositions = boundsItems.map((item) => hexToPixel(item.coord, hexSize));
 
     // Calculate bounding box from items that affect layout
-    const minX = Math.min(...boundsPositions.map(p => p.x));
-    const maxX = Math.max(...boundsPositions.map(p => p.x));
-    const minY = Math.min(...boundsPositions.map(p => p.y));
-    const maxY = Math.max(...boundsPositions.map(p => p.y));
+    const minX = Math.min(...boundsPositions.map((p) => p.x));
+    const maxX = Math.max(...boundsPositions.map((p) => p.x));
+    const minY = Math.min(...boundsPositions.map((p) => p.y));
+    const maxY = Math.max(...boundsPositions.map((p) => p.y));
 
     // Container dimensions (add hex width/height to account for tile size)
     const containerWidth = maxX - minX + dims.width;
@@ -227,47 +227,48 @@ export function HexGrid({
               transformOrigin: 'top left',
             }}
           >
-          {/* Pass 1: Border layer (if borderColor provided) */}
-          {borderColor && items.map(item => {
-            const pos = hexToPixel(item.coord, hexSize, layout.origin);
+            {/* Pass 1: Border layer (if borderColor provided) */}
+            {borderColor &&
+              items.map((item) => {
+                const pos = hexToPixel(item.coord, hexSize, layout.origin);
 
-            return (
-              <div
-                key={`border-${item.id}`}
-                className="absolute hex-clip-flat"
-                style={{
-                  width: `${dims.width}px`,
-                  height: `${dims.height}px`,
-                  left: `${pos.x}px`,
-                  top: `${pos.y}px`,
-                  transform: 'translate(-50%, -50%)',
-                  background: borderColor,
-                }}
-              />
-            );
-          })}
+                return (
+                  <div
+                    key={`border-${item.id}`}
+                    className="absolute hex-clip-flat"
+                    style={{
+                      width: `${dims.width}px`,
+                      height: `${dims.height}px`,
+                      left: `${pos.x}px`,
+                      top: `${pos.y}px`,
+                      transform: 'translate(-50%, -50%)',
+                      background: borderColor,
+                    }}
+                  />
+                );
+              })}
 
-          {/* Pass 2: Content layer */}
-          {items.map(item => {
-            const pos = hexToPixel(item.coord, hexSize, layout.origin);
+            {/* Pass 2: Content layer */}
+            {items.map((item) => {
+              const pos = hexToPixel(item.coord, hexSize, layout.origin);
 
-            return (
-              <HexTile
-                key={item.id}
-                width={dims.width * contentScale}
-                height={dims.height * contentScale}
-                position={pos}
-                className={item.className}
-                onClick={item.onClick}
-                disabled={item.disabled}
-              >
-                {item.content}
-              </HexTile>
-            );
-          })}
+              return (
+                <HexTile
+                  key={item.id}
+                  width={dims.width * contentScale}
+                  height={dims.height * contentScale}
+                  position={pos}
+                  className={item.className}
+                  onClick={item.onClick}
+                  disabled={item.disabled}
+                >
+                  {item.content}
+                </HexTile>
+              );
+            })}
 
-          {/* Overlay layer (buildings, roads, etc.) */}
-          {overlay?.({ origin: layout.origin, hexSize, dims })}
+            {/* Overlay layer (buildings, roads, etc.) */}
+            {overlay?.({ origin: layout.origin, hexSize, dims })}
           </div>
         </div>
       </div>
@@ -298,27 +299,28 @@ export function HexGrid({
         }}
       >
         {/* Pass 1: Border layer (if borderColor provided) */}
-        {borderColor && items.map(item => {
-          const pos = hexToPixel(item.coord, hexSize, layout.origin);
+        {borderColor &&
+          items.map((item) => {
+            const pos = hexToPixel(item.coord, hexSize, layout.origin);
 
-          return (
-            <div
-              key={`border-${item.id}`}
-              className="absolute hex-clip-flat"
-              style={{
-                width: `${dims.width}px`,
-                height: `${dims.height}px`,
-                left: `${pos.x}px`,
-                top: `${pos.y}px`,
-                transform: 'translate(-50%, -50%)',
-                background: borderColor,
-              }}
-            />
-          );
-        })}
+            return (
+              <div
+                key={`border-${item.id}`}
+                className="absolute hex-clip-flat"
+                style={{
+                  width: `${dims.width}px`,
+                  height: `${dims.height}px`,
+                  left: `${pos.x}px`,
+                  top: `${pos.y}px`,
+                  transform: 'translate(-50%, -50%)',
+                  background: borderColor,
+                }}
+              />
+            );
+          })}
 
         {/* Pass 2: Content layer */}
-        {items.map(item => {
+        {items.map((item) => {
           const pos = hexToPixel(item.coord, hexSize, layout.origin);
 
           return (

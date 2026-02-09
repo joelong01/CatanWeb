@@ -65,10 +65,10 @@ export function hexToRgba(hex: string, alpha: number): string {
   const rgb = hex.replace('#', '');
   // Handle shorthand hex #RGB
   if (rgb.length === 3) {
-      const r = parseInt(rgb[0] + rgb[0], 16);
-      const g = parseInt(rgb[1] + rgb[1], 16);
-      const b = parseInt(rgb[2] + rgb[2], 16);
-      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    const r = parseInt(rgb[0] + rgb[0], 16);
+    const g = parseInt(rgb[1] + rgb[1], 16);
+    const b = parseInt(rgb[2] + rgb[2], 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
   const r = parseInt(rgb.substring(0, 2), 16);
   const g = parseInt(rgb.substring(2, 4), 16);

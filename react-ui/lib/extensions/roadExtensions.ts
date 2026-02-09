@@ -69,21 +69,14 @@ export function roadKeyAlias(key: RoadKey): RoadAlias | undefined {
  * Compares two RoadKey objects for equality
  */
 export function roadKeysEqual(a: RoadKey, b: RoadKey): boolean {
-  return (
-    a.tileKey.q === b.tileKey.q &&
-    a.tileKey.r === b.tileKey.r &&
-    a.hexSide === b.hexSide
-  );
+  return a.tileKey.q === b.tileKey.q && a.tileKey.r === b.tileKey.r && a.hexSide === b.hexSide;
 }
 
 /**
  * Finds a road by its key, checking both direct match and alias.
  * Returns undefined if not found.
  */
-export function findRoad(
-  roads: RoadModel[],
-  key: RoadKey
-): RoadModel | undefined {
+export function findRoad(roads: RoadModel[], key: RoadKey): RoadModel | undefined {
   if (!roads || roads.length === 0) {
     return undefined;
   }
@@ -209,10 +202,7 @@ export function adjacentRoads(roads: RoadModel[], key: RoadKey): RoadModel[] {
  * Finds all roads at a tile's edges (up to 6 roads).
  * Uses alias handling to find roads stored at neighbor coordinates.
  */
-export function roadsInTile(
-  roads: RoadModel[],
-  coords: HexCoordinates
-): RoadModel[] {
+export function roadsInTile(roads: RoadModel[], coords: HexCoordinates): RoadModel[] {
   if (!roads || roads.length === 0) {
     return [];
   }
@@ -233,10 +223,7 @@ export function roadsInTile(
 /**
  * Filters roads to only those that are owned (have an ownerId and state is Road or Ship)
  */
-export function ownedRoads(
-  roads: RoadModel[],
-  coords: HexCoordinates
-): RoadModel[] {
+export function ownedRoads(roads: RoadModel[], coords: HexCoordinates): RoadModel[] {
   return roadsInTile(roads, coords).filter(
     (r) => r.ownerId && r.ownerId !== '' && (r.roadState === 'Road' || r.roadState === 'Ship')
   );
@@ -245,10 +232,7 @@ export function ownedRoads(
 /**
  * Finds all roads owned by a specific player
  */
-export function roadsOwnedByPlayer(
-  roads: RoadModel[],
-  playerId: string
-): RoadModel[] {
+export function roadsOwnedByPlayer(roads: RoadModel[], playerId: string): RoadModel[] {
   if (!roads || roads.length === 0 || !playerId) {
     return [];
   }

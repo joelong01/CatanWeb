@@ -23,7 +23,12 @@ import {
   faObjectGroup,
   faPalette,
 } from '@fortawesome/free-solid-svg-icons';
-import { useLayoutStore, PANEL_ORDER, PANEL_METADATA, type PanelId } from '@/lib/stores/layoutStore';
+import {
+  useLayoutStore,
+  PANEL_ORDER,
+  PANEL_METADATA,
+  type PanelId,
+} from '@/lib/stores/layoutStore';
 import { useGameState } from '@/lib/stores/gameStoreHooks';
 import { useAvailableThemes, useCurrentThemeName, useThemeStore } from '@/lib/theme';
 import { SaveLayoutDialog } from '@/components/game/panels/SaveLayoutDialog';
@@ -115,13 +120,19 @@ function LayoutSection({ onMenuAction }: { onMenuAction: () => void }): React.Re
       id: 'arrange',
       label: 'Arrange',
       icon: faObjectGroup,
-      onClick: () => { arrangeLayout(gameState); onMenuAction(); },
+      onClick: () => {
+        arrangeLayout(gameState);
+        onMenuAction();
+      },
     },
     {
       id: 'minimize',
       label: 'Minimize All',
       icon: faWindowMinimize,
-      onClick: () => { minimizeAll(); onMenuAction(); },
+      onClick: () => {
+        minimizeAll();
+        onMenuAction();
+      },
     },
     { id: 'sep1', label: '', type: 'separator' },
     {
@@ -132,12 +143,18 @@ function LayoutSection({ onMenuAction }: { onMenuAction: () => void }): React.Re
         {
           id: 'reset-all',
           label: 'All',
-          onClick: () => { resetLayout(); onMenuAction(); },
+          onClick: () => {
+            resetLayout();
+            onMenuAction();
+          },
         },
         ...PANEL_ORDER.map((id: PanelId) => ({
           id: `reset-${id}`,
           label: PANEL_METADATA[id].title,
-          onClick: () => { resetPanel(id); onMenuAction(); },
+          onClick: () => {
+            resetPanel(id);
+            onMenuAction();
+          },
         })),
       ],
     },
@@ -159,19 +176,25 @@ function LayoutSection({ onMenuAction }: { onMenuAction: () => void }): React.Re
       id: 'saveas',
       label: 'Save As...',
       icon: faFloppyDisk,
-      onClick: () => { setShowSaveDialog(true); },
+      onClick: () => {
+        setShowSaveDialog(true);
+      },
     },
     {
       id: 'open',
       label: 'Open',
       icon: faFolderOpen,
-      children: savedLayouts.length === 0
-        ? [{ id: 'no-layouts', label: '(no saved layouts)', disabled: true }]
-        : savedLayouts.map((layout) => ({
-            id: `open-${layout.name}`,
-            label: layout.name,
-            onClick: () => { loadLayout(layout.name); onMenuAction(); },
-          })),
+      children:
+        savedLayouts.length === 0
+          ? [{ id: 'no-layouts', label: '(no saved layouts)', disabled: true }]
+          : savedLayouts.map((layout) => ({
+              id: `open-${layout.name}`,
+              label: layout.name,
+              onClick: () => {
+                loadLayout(layout.name);
+                onMenuAction();
+              },
+            })),
     },
   ];
 
@@ -219,7 +242,10 @@ function ThemeSection({ onMenuAction }: { onMenuAction: () => void }): React.Rea
     id: theme.name,
     label: theme.displayName,
     checked: theme.name === currentTheme,
-    onClick: () => { setTheme(theme.name); onMenuAction(); },
+    onClick: () => {
+      setTheme(theme.name);
+      onMenuAction();
+    },
   }));
 
   return (
@@ -247,7 +273,11 @@ function ThemeSection({ onMenuAction }: { onMenuAction: () => void }): React.Rea
  * Navigation menu component displayed in the sidebar.
  * Shows context-aware menu items based on current page.
  */
-export function NavMenu({ onMenuAction, activeGameId, gameActions }: NavMenuProps): React.ReactElement {
+export function NavMenu({
+  onMenuAction,
+  activeGameId,
+  gameActions,
+}: NavMenuProps): React.ReactElement {
   const pathname = usePathname();
   const router = useRouter();
 

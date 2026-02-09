@@ -75,7 +75,17 @@ export const PANEL_METADATA: Record<PanelId, PanelMetadata> = {
 };
 
 /** Panel order for minimized bar (consistent ordering) */
-export const PANEL_ORDER: PanelId[] = ['dice', 'actions', 'measurements', 'players', 'resources', 'board', 'goFirst', 'supplemental', 'winner'];
+export const PANEL_ORDER: PanelId[] = [
+  'dice',
+  'actions',
+  'measurements',
+  'players',
+  'resources',
+  'board',
+  'goFirst',
+  'supplemental',
+  'winner',
+];
 
 /**
  * Landscape default panel layouts (matching Blazor 3-column layout)
@@ -332,12 +342,60 @@ export function computeLandscape(vw: number, vh: number): Record<PanelId, Window
   }
 
   return {
-    dice: { left: MARGIN, top: TOP, width: leftW, height: diceH, minimized: false, visible: true, zIndex: 20 },
-    actions: { left: MARGIN, top: actionsTop, width: leftW, height: actionsH, minimized: false, visible: true, zIndex: 21 },
-    measurements: { left: MARGIN, top: measTop, width: leftW, height: measH, minimized: false, visible: true, zIndex: 22 },
-    board: { left: centerX, top: TOP, width: centerW, height: boardH, minimized: false, visible: true, zIndex: 10 },
-    resources: { left: rightX, top: TOP, width: rightW, height: resourcesH, minimized: false, visible: true, zIndex: 23 },
-    players: { left: rightX, top: playersTop, width: rightW, height: playersH, minimized: false, visible: true, zIndex: 24 },
+    dice: {
+      left: MARGIN,
+      top: TOP,
+      width: leftW,
+      height: diceH,
+      minimized: false,
+      visible: true,
+      zIndex: 20,
+    },
+    actions: {
+      left: MARGIN,
+      top: actionsTop,
+      width: leftW,
+      height: actionsH,
+      minimized: false,
+      visible: true,
+      zIndex: 21,
+    },
+    measurements: {
+      left: MARGIN,
+      top: measTop,
+      width: leftW,
+      height: measH,
+      minimized: false,
+      visible: true,
+      zIndex: 22,
+    },
+    board: {
+      left: centerX,
+      top: TOP,
+      width: centerW,
+      height: boardH,
+      minimized: false,
+      visible: true,
+      zIndex: 10,
+    },
+    resources: {
+      left: rightX,
+      top: TOP,
+      width: rightW,
+      height: resourcesH,
+      minimized: false,
+      visible: true,
+      zIndex: 23,
+    },
+    players: {
+      left: rightX,
+      top: playersTop,
+      width: rightW,
+      height: playersH,
+      minimized: false,
+      visible: true,
+      zIndex: 24,
+    },
     goFirst: modal('goFirst'),
     supplemental: modal('supplemental'),
     winner: modal('winner'),
@@ -354,7 +412,7 @@ export function computePortrait(vw: number, vh: number): Record<PanelId, WindowP
   const TOP = 60;
   const fullW = vw - 2 * MARGIN;
 
-  const boardH = Math.floor(vh * 0.50);
+  const boardH = Math.floor(vh * 0.5);
   const playersTop = TOP + boardH + GAP;
   const playersH = Math.floor(vh * 0.18);
   const controlsTop = playersTop + playersH + GAP;
@@ -377,12 +435,60 @@ export function computePortrait(vw: number, vh: number): Record<PanelId, WindowP
   }
 
   return {
-    board: { left: MARGIN, top: TOP, width: fullW, height: boardH, minimized: false, visible: true, zIndex: 10 },
-    players: { left: MARGIN, top: playersTop, width: fullW, height: playersH, minimized: false, visible: true, zIndex: 24 },
-    dice: { left: MARGIN, top: controlsTop, width: diceW, height: controlsH, minimized: false, visible: true, zIndex: 20 },
-    actions: { left: MARGIN + diceW + GAP, top: controlsTop, width: actionsW, height: controlsH, minimized: false, visible: true, zIndex: 21 },
-    measurements: { left: MARGIN, top: 0, width: fullW, height: 100, minimized: true, visible: true, zIndex: 22 },
-    resources: { left: MARGIN, top: 0, width: fullW, height: 40, minimized: true, visible: true, zIndex: 23 },
+    board: {
+      left: MARGIN,
+      top: TOP,
+      width: fullW,
+      height: boardH,
+      minimized: false,
+      visible: true,
+      zIndex: 10,
+    },
+    players: {
+      left: MARGIN,
+      top: playersTop,
+      width: fullW,
+      height: playersH,
+      minimized: false,
+      visible: true,
+      zIndex: 24,
+    },
+    dice: {
+      left: MARGIN,
+      top: controlsTop,
+      width: diceW,
+      height: controlsH,
+      minimized: false,
+      visible: true,
+      zIndex: 20,
+    },
+    actions: {
+      left: MARGIN + diceW + GAP,
+      top: controlsTop,
+      width: actionsW,
+      height: controlsH,
+      minimized: false,
+      visible: true,
+      zIndex: 21,
+    },
+    measurements: {
+      left: MARGIN,
+      top: 0,
+      width: fullW,
+      height: 100,
+      minimized: true,
+      visible: true,
+      zIndex: 22,
+    },
+    resources: {
+      left: MARGIN,
+      top: 0,
+      width: fullW,
+      height: 40,
+      minimized: true,
+      visible: true,
+      zIndex: 23,
+    },
     goFirst: modal('goFirst'),
     supplemental: modal('supplemental'),
     winner: modal('winner'),
@@ -394,7 +500,7 @@ export function computePortrait(vw: number, vh: number): Record<PanelId, WindowP
  * Dispatches to landscape or portrait based on aspect ratio.
  */
 export function computePanelDefault(panelId: PanelId, vw: number, vh: number): WindowPosition {
-  const all = (vh > vw) ? computePortrait(vw, vh) : computeLandscape(vw, vh);
+  const all = vh > vw ? computePortrait(vw, vh) : computeLandscape(vw, vh);
   return all[panelId];
 }
 
@@ -447,8 +553,7 @@ export function classifyGameState(gameState?: GameState | null): ArrangePhase {
 
 /** Create a WindowPosition for a minimized panel */
 function minPos(w: number, h: number, z: number): WindowPosition {
-  return { left: 0, top: 0, width: w, height: h,
-           minimized: true, visible: true, zIndex: z };
+  return { left: 0, top: 0, width: w, height: h, minimized: true, visible: true, zIndex: z };
 }
 
 /** Create a visible WindowPosition */
@@ -472,15 +577,15 @@ function visPos(left: number, top: number, w: number, h: number, z: number): Win
 export function computeArrangedLayout(
   vw: number,
   vh: number,
-  gameState?: GameState | null,
+  gameState?: GameState | null
 ): Record<PanelId, WindowPosition> {
   const phase = classifyGameState(gameState);
   const minimizedSet = new Set(PHASE_MINIMIZED[phase]);
   const isPortrait = vh > vw;
 
-  const M = 8;     // edge margin
-  const G = 6;     // inter-panel gap
-  const TOP = 56;  // navbar clearance
+  const M = 8; // edge margin
+  const G = 6; // inter-panel gap
+  const TOP = 56; // navbar clearance
   const fullW = vw - 2 * M;
   const usableH = vh - TOP - M;
 
@@ -497,7 +602,10 @@ export function computeArrangedLayout(
     result[id] = visPos(
       Math.round(bcx - MODAL_WIDTH / 2),
       Math.round(bcy - mh / 2),
-      MODAL_WIDTH, mh, 1000);
+      MODAL_WIDTH,
+      mh,
+      1000
+    );
   }
 
   /** Place a panel or mark it minimized. Visible panels float above board. */
@@ -505,8 +613,7 @@ export function computeArrangedLayout(
     if (minimizedSet.has(id)) {
       result[id] = minPos(w, h, 20);
     } else {
-      result[id] = visPos(Math.round(left), Math.round(top),
-                          Math.round(w), Math.round(h), z);
+      result[id] = visPos(Math.round(left), Math.round(top), Math.round(w), Math.round(h), z);
     }
   }
 
@@ -522,8 +629,8 @@ export function computeArrangedLayout(
     const rightW = fullW - colW - G;
     const rightX = M + colW + G;
 
-    place('dice',    M, TOP,                          colW, diceH, 1001);
-    place('actions', M, TOP + diceH + G,              colW, actionsH, 1002);
+    place('dice', M, TOP, colW, diceH, 1001);
+    place('actions', M, TOP + diceH + G, colW, actionsH, 1002);
     place('measurements', M, TOP + diceH + G + actionsH + G, colW, measH, 1003);
 
     place('players', rightX, TOP, rightW, Math.round(usableH * 0.75), 1004);
@@ -532,7 +639,6 @@ export function computeArrangedLayout(
     const resW = Math.round(fullW * 0.65);
     const resX = M + (fullW - resW) / 2;
     place('resources', resX, TOP + usableH - resH, resW, resH, 1005);
-
   } else {
     // ---- LANDSCAPE ----
     // Left column: dice (top), actions (mid), measurements (bottom) -- ~22% width
@@ -544,8 +650,8 @@ export function computeArrangedLayout(
     const actionsH = Math.round(usableH * 0.38);
     const measH = Math.round(usableH * 0.12);
 
-    place('dice',    M, TOP,                          leftW, diceH, 1001);
-    place('actions', M, TOP + diceH + G,              leftW, actionsH, 1002);
+    place('dice', M, TOP, leftW, diceH, 1001);
+    place('actions', M, TOP + diceH + G, leftW, actionsH, 1002);
     place('measurements', M, TOP + diceH + G + actionsH + G, leftW, measH, 1003);
 
     const playersH = Math.round(usableH * 0.72);
@@ -721,7 +827,9 @@ export const useLayoutStore = create<LayoutStore>()(
       },
 
       setPanelPosition: (panelId, left, top) => {
-        console.log(`[layoutStore] setPanelPosition called: panelId=${panelId}, left=${left}, top=${top}`);
+        console.log(
+          `[layoutStore] setPanelPosition called: panelId=${panelId}, left=${left}, top=${top}`
+        );
         set((state) => ({
           panels: {
             ...state.panels,
@@ -814,7 +922,7 @@ export const useLayoutStore = create<LayoutStore>()(
       resetLayout: () => {
         const vw = typeof window !== 'undefined' ? window.innerWidth : 1920;
         const vh = typeof window !== 'undefined' ? window.innerHeight : 1080;
-        const panels = (vh > vw) ? computePortrait(vw, vh) : computeLandscape(vw, vh);
+        const panels = vh > vw ? computePortrait(vw, vh) : computeLandscape(vw, vh);
         set({
           panels,
           viewport: { ...DEFAULT_VIEWPORT },
@@ -924,17 +1032,27 @@ export const useLayoutStore = create<LayoutStore>()(
         currentLayoutName: state.currentLayoutName,
       }),
       migrate: (persistedState, version) => {
-        console.log(`[layoutStore] migrate called - version=${version}, persistedState:`, persistedState);
+        console.log(
+          `[layoutStore] migrate called - version=${version}, persistedState:`,
+          persistedState
+        );
         const state = persistedState as LayoutState & {
           panels?: Record<string, unknown>;
         };
 
         // If version < 6, migrate to new WindowPosition format
         if (version < 6) {
-          console.log('[layoutStore] Migrating from version', version, 'to 6 - WindowPosition format');
+          console.log(
+            '[layoutStore] Migrating from version',
+            version,
+            'to 6 - WindowPosition format'
+          );
 
           // Migrate each panel
-          const migratedPanels: Record<PanelId, WindowPosition> = {} as Record<PanelId, WindowPosition>;
+          const migratedPanels: Record<PanelId, WindowPosition> = {} as Record<
+            PanelId,
+            WindowPosition
+          >;
           for (const panelId of PANEL_ORDER) {
             if (state.panels?.[panelId]) {
               migratedPanels[panelId] = migratePanel(state.panels[panelId]);
@@ -956,7 +1074,9 @@ export const useLayoutStore = create<LayoutStore>()(
 
         // If version 6, migrate to version 7 format then fall through to 7->8
         if (version === 6) {
-          console.log('[layoutStore] Migrating from version 6 to 7 - adding supplemental panel with high z-index');
+          console.log(
+            '[layoutStore] Migrating from version 6 to 7 - adding supplemental panel with high z-index'
+          );
 
           const panels = state.panels as Record<PanelId, WindowPosition>;
 
@@ -1022,8 +1142,7 @@ export const useLayoutStore = create<LayoutStore>()(
 // ============================================================================
 
 /** Select a specific panel's WindowPosition */
-export const selectPanel = (panelId: PanelId) => (state: LayoutStore) =>
-  state.panels[panelId];
+export const selectPanel = (panelId: PanelId) => (state: LayoutStore) => state.panels[panelId];
 
 /** Select viewport state */
 export const selectViewport = (state: LayoutStore) => state.viewport;
@@ -1047,10 +1166,10 @@ export interface MinimizedPanelInfo {
  * Returns array - use with shallow comparison!
  */
 export const selectMinimizedPanels = (state: LayoutStore): MinimizedPanelInfo[] =>
-  PANEL_ORDER
-    .filter((id) => state.panels[id]?.minimized && state.panels[id]?.visible)
-    .map((id) => ({
+  PANEL_ORDER.filter((id) => state.panels[id]?.minimized && state.panels[id]?.visible).map(
+    (id) => ({
       id,
       title: PANEL_METADATA[id].title,
       icon: PANEL_METADATA[id].icon,
-    }));
+    })
+  );

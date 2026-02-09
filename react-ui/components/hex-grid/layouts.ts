@@ -102,12 +102,12 @@ export interface RadialLayoutOptions {
  * Direction vectors for the 6 neighbors of a hex (flat-top orientation).
  */
 const DIRECTIONS: HexCoordinate[] = [
-  { q: 1, r: 0, s: -1 },   // East
-  { q: 1, r: -1, s: 0 },   // Northeast
-  { q: 0, r: -1, s: 1 },   // Northwest
-  { q: -1, r: 0, s: 1 },   // West
-  { q: -1, r: 1, s: 0 },   // Southwest
-  { q: 0, r: 1, s: -1 },   // Southeast
+  { q: 1, r: 0, s: -1 }, // East
+  { q: 1, r: -1, s: 0 }, // Northeast
+  { q: 0, r: -1, s: 1 }, // Northwest
+  { q: -1, r: 0, s: 1 }, // West
+  { q: -1, r: 1, s: 0 }, // Southwest
+  { q: 0, r: 1, s: -1 }, // Southeast
 ];
 
 /**

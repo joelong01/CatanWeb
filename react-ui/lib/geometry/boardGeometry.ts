@@ -20,7 +20,7 @@ export type HexCoords = HexCoordinates;
  */
 export function axialToPixel(q: number, r: number): { x: number; y: number } {
   const x = HEX_SIZE * (3.0 / 2) * q;
-  const y = HEX_SIZE * (Math.sqrt(3) / 2 * q + Math.sqrt(3) * r);
+  const y = HEX_SIZE * ((Math.sqrt(3) / 2) * q + Math.sqrt(3) * r);
   return { x: x + CENTER_X, y: y + CENTER_Y };
 }
 
@@ -34,8 +34,8 @@ export function pixelToHex(px: number, py: number): HexCoords {
   const y = py - CENTER_Y;
 
   // Convert to fractional axial coordinates
-  const qf = (2.0 / 3.0) * x / HEX_SIZE;
-  const rf = (-1.0 / 3.0 * x + Math.sqrt(3) / 3.0 * y) / HEX_SIZE;
+  const qf = ((2.0 / 3.0) * x) / HEX_SIZE;
+  const rf = ((-1.0 / 3.0) * x + (Math.sqrt(3) / 3.0) * y) / HEX_SIZE;
 
   // Convert to cube coordinates for rounding
   const cubeX = qf;
@@ -157,7 +157,6 @@ export function getVertexPosition(
 
   return vertices[vertexIndex];
 }
-
 
 /**
  * Adds two hex coordinates.

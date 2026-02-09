@@ -58,16 +58,19 @@ export default function HexTestPage(): React.ReactElement {
   const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
 
   // Handle resize drag
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    resizeStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      width: boxSize.width,
-      height: boxSize.height,
-    };
-  }, [boxSize]);
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      setIsResizing(true);
+      resizeStartRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        width: boxSize.width,
+        height: boxSize.height,
+      };
+    },
+    [boxSize]
+  );
 
   useEffect(() => {
     if (!isResizing) return;
@@ -113,17 +116,20 @@ export default function HexTestPage(): React.ReactElement {
   }, []);
 
   // Pan handlers for infinite mode
-  const handlePanStart = useCallback((e: React.MouseEvent) => {
-    if (viewMode !== 'infinite') return;
-    e.preventDefault();
-    setIsPanning(true);
-    panStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      panX: pan.x,
-      panY: pan.y,
-    };
-  }, [viewMode, pan]);
+  const handlePanStart = useCallback(
+    (e: React.MouseEvent) => {
+      if (viewMode !== 'infinite') return;
+      e.preventDefault();
+      setIsPanning(true);
+      panStartRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        panX: pan.x,
+        panY: pan.y,
+      };
+    },
+    [viewMode, pan]
+  );
 
   useEffect(() => {
     if (!isPanning) return;
@@ -150,17 +156,20 @@ export default function HexTestPage(): React.ReactElement {
   }, [isPanning]);
 
   // Zoom handler for infinite mode - zooms to CENTER (origin stays fixed)
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (viewMode !== 'infinite') return;
-    e.preventDefault();
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      if (viewMode !== 'infinite') return;
+      e.preventDefault();
 
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    const newZoom = Math.max(0.1, Math.min(3, zoom * zoomFactor));
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newZoom = Math.max(0.1, Math.min(3, zoom * zoomFactor));
 
-    // Zoom to center - just change zoom, don't adjust pan
-    // This keeps the origin (0,0,0) at its current screen position
-    setZoom(newZoom);
-  }, [viewMode, zoom]);
+      // Zoom to center - just change zoom, don't adjust pan
+      // This keeps the origin (0,0,0) at its current screen position
+      setZoom(newZoom);
+    },
+    [viewMode, zoom]
+  );
 
   // Reset pan/zoom
   const resetView = useCallback(() => {
@@ -255,33 +264,36 @@ export default function HexTestPage(): React.ReactElement {
   }, [viewMode, visibleHexCoords, layoutMode, count, ringRadius, lineStart, lineEnd]);
 
   // Handle hex click
-  const handleHexClick = useCallback((coord: HexCoordinate) => {
-    setLastClicked(coord);
+  const handleHexClick = useCallback(
+    (coord: HexCoordinate) => {
+      setLastClicked(coord);
 
-    // In line mode, set start/end points
-    if (layoutMode === 'line') {
-      if (!lineStart) {
-        setLineStart(coord);
-        setLineEnd(null);
-      } else if (!lineEnd) {
-        setLineEnd(coord);
-      } else {
-        // Reset and start new line
-        setLineStart(coord);
-        setLineEnd(null);
+      // In line mode, set start/end points
+      if (layoutMode === 'line') {
+        if (!lineStart) {
+          setLineStart(coord);
+          setLineEnd(null);
+        } else if (!lineEnd) {
+          setLineEnd(coord);
+        } else {
+          // Reset and start new line
+          setLineStart(coord);
+          setLineEnd(null);
+        }
       }
-    }
-  }, [layoutMode, lineStart, lineEnd]);
+    },
+    [layoutMode, lineStart, lineEnd]
+  );
 
   // Build hex grid items
   const items: HexGridItem[] = useMemo(() => {
     return coordinates.map((coord, index) => {
-      const isLineEndpoint = layoutMode === 'line' &&
+      const isLineEndpoint =
+        layoutMode === 'line' &&
         ((lineStart && coord.q === lineStart.q && coord.r === lineStart.r) ||
-         (lineEnd && coord.q === lineEnd.q && coord.r === lineEnd.r));
+          (lineEnd && coord.q === lineEnd.q && coord.r === lineEnd.r));
 
-      const isLastClicked = lastClicked &&
-        coord.q === lastClicked.q && coord.r === lastClicked.r;
+      const isLastClicked = lastClicked && coord.q === lastClicked.q && coord.r === lastClicked.r;
 
       return {
         id: `hex-${coord.q}-${coord.r}`,
@@ -303,9 +315,7 @@ export default function HexTestPage(): React.ReactElement {
                 <span className="text-xs font-mono text-gray-300">
                   {coord.q},{coord.r},{coord.s}
                 </span>
-                <span className="text-[10px] text-gray-500">
-                  #{index}
-                </span>
+                <span className="text-[10px] text-gray-500">#{index}</span>
               </>
             )}
           </div>
@@ -322,8 +332,10 @@ export default function HexTestPage(): React.ReactElement {
     const sqrt3 = Math.sqrt(3);
 
     // Find q and r extents
-    let minQ = Infinity, maxQ = -Infinity;
-    let minYUnit = Infinity, maxYUnit = -Infinity;
+    let minQ = Infinity,
+      maxQ = -Infinity;
+    let minYUnit = Infinity,
+      maxYUnit = -Infinity;
 
     for (const coord of coordinates) {
       minQ = Math.min(minQ, coord.q);
@@ -424,9 +436,7 @@ export default function HexTestPage(): React.ReactElement {
 
           {/* Size Controls */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
-              Size
-            </h3>
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Size</h3>
 
             <div className={viewMode === 'scaleToFit' ? 'opacity-50' : ''}>
               <label className="flex justify-between text-sm text-gray-300 mb-1">
@@ -555,9 +565,7 @@ export default function HexTestPage(): React.ReactElement {
                     </div>
                   )}
                   {lineStart && lineEnd && (
-                    <div className="text-amber-400">
-                      Distance: {distance(lineStart, lineEnd)}
-                    </div>
+                    <div className="text-amber-400">Distance: {distance(lineStart, lineEnd)}</div>
                   )}
                 </div>
               )}
@@ -620,9 +628,7 @@ export default function HexTestPage(): React.ReactElement {
 
           {/* Info Panel */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
-              Info
-            </h3>
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Info</h3>
             <div className="text-xs text-gray-500 bg-gray-900/50 rounded p-2 space-y-1">
               <div>Total hexes: {coordinates.length}</div>
               {viewMode === 'scaleToFit' && (
@@ -635,9 +641,7 @@ export default function HexTestPage(): React.ReactElement {
                   <div className="text-purple-400">
                     Pan: ({pan.x.toFixed(0)}, {pan.y.toFixed(0)})
                   </div>
-                  <div className="text-purple-400">
-                    Zoom: {(zoom * 100).toFixed(0)}%
-                  </div>
+                  <div className="text-purple-400">Zoom: {(zoom * 100).toFixed(0)}%</div>
                 </>
               )}
               {lastClicked && (
@@ -729,10 +733,10 @@ export default function HexTestPage(): React.ReactElement {
                   const pixel = hexToPixel(coord, effectiveHexSize);
                   const hexWidth = effectiveHexSize * 2;
                   const hexHeight = effectiveHexSize * Math.sqrt(3);
-                  const contentScale = 1 - (gap / effectiveHexSize);
+                  const contentScale = 1 - gap / effectiveHexSize;
 
-                  const isLastClicked = lastClicked &&
-                    coord.q === lastClicked.q && coord.r === lastClicked.r;
+                  const isLastClicked =
+                    lastClicked && coord.q === lastClicked.q && coord.r === lastClicked.r;
 
                   return (
                     <div
@@ -806,7 +810,8 @@ export default function HexTestPage(): React.ReactElement {
 
               {/* Viewport info */}
               <div className="absolute top-2 left-2 text-xs font-mono text-gray-500 bg-gray-900/70 px-2 py-1 rounded">
-                {viewportSize.width.toFixed(0)} x {viewportSize.height.toFixed(0)} | {coordinates.length} hexes
+                {viewportSize.width.toFixed(0)} x {viewportSize.height.toFixed(0)} |{' '}
+                {coordinates.length} hexes
               </div>
 
               {/* Zoom indicator */}

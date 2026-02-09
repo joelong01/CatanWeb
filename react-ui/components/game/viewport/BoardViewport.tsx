@@ -10,11 +10,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect, ReactNode } from 'react';
-import {
-  HexCoordinate,
-  cubicCoord,
-  hexToPixel,
-} from '@/components/hex-grid';
+import { HexCoordinate, cubicCoord, hexToPixel } from '@/components/hex-grid';
 import { useLayoutStore } from '@/lib/stores/layoutStore';
 import { WaterHex } from '@/components/hex-grid/content';
 
@@ -77,18 +73,21 @@ export function BoardViewport({
   }, []);
 
   // Pan handlers
-  const handlePanStart = useCallback((e: React.MouseEvent) => {
-    // Only pan on left mouse button
-    if (e.button !== 0) return;
-    e.preventDefault();
-    setIsPanning(true);
-    panStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      panX: pan.x,
-      panY: pan.y,
-    };
-  }, [pan]);
+  const handlePanStart = useCallback(
+    (e: React.MouseEvent) => {
+      // Only pan on left mouse button
+      if (e.button !== 0) return;
+      e.preventDefault();
+      setIsPanning(true);
+      panStartRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        panX: pan.x,
+        panY: pan.y,
+      };
+    },
+    [pan]
+  );
 
   useEffect(() => {
     if (!isPanning) return;
@@ -117,15 +116,18 @@ export function BoardViewport({
   }, [isPanning, pan, setViewport]);
 
   // Zoom handler - zooms to center
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      e.preventDefault();
 
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    const newZoom = Math.max(0.3, Math.min(3, zoom * zoomFactor));
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newZoom = Math.max(0.3, Math.min(3, zoom * zoomFactor));
 
-    setZoom(newZoom);
-    setViewport({ zoom: newZoom });
-  }, [zoom, setViewport]);
+      setZoom(newZoom);
+      setViewport({ zoom: newZoom });
+    },
+    [zoom, setViewport]
+  );
 
   // Calculate effective hex size after zoom
   const effectiveHexSize = hexSize * zoom;
@@ -167,16 +169,19 @@ export function BoardViewport({
   }, [effectiveHexSize, pan, viewportSize]);
 
   // Render a single hex
-  const renderHexContent = useCallback((coord: HexCoordinate) => {
-    // If custom render function provided, use it
-    if (renderHex) {
-      const content = renderHex(coord);
-      if (content) return content;
-    }
+  const renderHexContent = useCallback(
+    (coord: HexCoordinate) => {
+      // If custom render function provided, use it
+      if (renderHex) {
+        const content = renderHex(coord);
+        if (content) return content;
+      }
 
-    // Default: render water hex
-    return <WaterHex />;
-  }, [renderHex]);
+      // Default: render water hex
+      return <WaterHex />;
+    },
+    [renderHex]
+  );
 
   return (
     <div
@@ -199,7 +204,7 @@ export function BoardViewport({
           const pixel = hexToPixel(coord, effectiveHexSize);
           const hexWidth = effectiveHexSize * 2;
           const hexHeight = effectiveHexSize * Math.sqrt(3);
-          const contentScale = 1 - (gap / effectiveHexSize);
+          const contentScale = 1 - gap / effectiveHexSize;
 
           return (
             <div
@@ -233,9 +238,7 @@ export function BoardViewport({
 
       {/* Floating panels and other children */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="pointer-events-auto">
-          {children}
-        </div>
+        <div className="pointer-events-auto">{children}</div>
       </div>
 
       {/* Zoom indicator */}

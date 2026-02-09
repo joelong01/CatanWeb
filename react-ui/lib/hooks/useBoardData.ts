@@ -111,7 +111,15 @@ export function useBoardData(): BoardGameData {
       currentPlayerId: currentPlayer?.id,
       currentPlayerEntitlements: currentPlayer?.unspentEntitlements ?? [],
     }),
-    [tiles, buildings, roads, harbors, robber, currentPlayer?.id, currentPlayer?.unspentEntitlements]
+    [
+      tiles,
+      buildings,
+      roads,
+      harbors,
+      robber,
+      currentPlayer?.id,
+      currentPlayer?.unspentEntitlements,
+    ]
   );
 }
 

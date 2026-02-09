@@ -96,9 +96,10 @@ export const Building = React.memo(function Building({
   const effectiveState = visualState === 'Hidden' && isHovered ? 'Stars' : visualState;
 
   // Determine which colors to use
-  const colors = effectiveState === 'Highlighted' || effectiveState === 'Stars'
-    ? (currentPlayerColors ?? NEUTRAL_COLORS)
-    : (ownerColors ?? NEUTRAL_COLORS);
+  const colors =
+    effectiveState === 'Highlighted' || effectiveState === 'Stars'
+      ? (currentPlayerColors ?? NEUTRAL_COLORS)
+      : (ownerColors ?? NEUTRAL_COLORS);
 
   // Determine what to render inside the circle
   // If buildIndex is set, show that instead of glyph (matches Blazor: BuildIndex ?? Stars)
@@ -219,7 +220,8 @@ export const Building = React.memo(function Building({
         height: size,
         background: gradient,
         border: `2px solid ${colors.foreground}`,
-        boxShadow: effectiveState === 'Highlighted' ? '0 0 8px rgba(255, 255, 255, 0.5)' : undefined,
+        boxShadow:
+          effectiveState === 'Highlighted' ? '0 0 8px rgba(255, 255, 255, 0.5)' : undefined,
         transform: isHovered ? 'scale(1.15)' : 'scale(1)',
       }}
       onClick={onClick}

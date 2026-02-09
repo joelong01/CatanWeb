@@ -91,41 +91,35 @@ export const useGameStore = create<GameStore>()(
 export const selectGameState = (state: GameStore) => state.gameModel?.gameState;
 
 /** Select the current player's turn */
-export const selectCurrentTurnPlayerId = (state: GameStore) =>
-  state.gameModel?.currentPlayerId;
+export const selectCurrentTurnPlayerId = (state: GameStore) => state.gameModel?.currentPlayerId;
 
 /** Select whether it's the local player's turn */
 export const selectIsMyTurn = (state: GameStore) =>
   state.gameModel?.currentPlayerId === state.currentPlayerId;
 
 /** Select action flags for UI button states */
-export const selectActionFlags = (state: GameStore) =>
-  state.gameModel?.actionFlags;
+export const selectActionFlags = (state: GameStore) => state.gameModel?.actionFlags;
 
 /** Select all players in game order */
-export const selectPlayers = (state: GameStore): PlayerModel[] =>
-  state.gameModel?.players ?? [];
+export const selectPlayers = (state: GameStore): PlayerModel[] => state.gameModel?.players ?? [];
 
 /** Select tiles for board rendering */
 export const selectTiles = (state: GameStore) => state.gameModel?.tiles ?? [];
 
 /** Select buildings for board rendering */
-export const selectBuildings = (state: GameStore) =>
-  state.gameModel?.buildings ?? [];
+export const selectBuildings = (state: GameStore) => state.gameModel?.buildings ?? [];
 
 /** Select roads for board rendering */
 export const selectRoads = (state: GameStore) => state.gameModel?.roads ?? [];
 
 /** Select harbors for board rendering */
-export const selectHarbors = (state: GameStore) =>
-  state.gameModel?.harbors ?? [];
+export const selectHarbors = (state: GameStore) => state.gameModel?.harbors ?? [];
 
 /** Select robber position */
 export const selectRobber = (state: GameStore) => state.gameModel?.robber;
 
 /** Select house rules */
-export const selectHouseRules = (state: GameStore) =>
-  state.gameModel?.houseRules;
+export const selectHouseRules = (state: GameStore) => state.gameModel?.houseRules;
 
 /** Select the game ID */
 export const selectGameId = (state: GameStore) => state.gameModel?.gameId;
@@ -134,9 +128,8 @@ export const selectGameId = (state: GameStore) => state.gameModel?.gameId;
 export const selectGameType = (state: GameStore) => state.gameModel?.gameType;
 
 /** Get a player profile by ID */
-export const selectPlayerProfile =
-  (playerId: string) => (state: GameStore) =>
-    state.playerProfiles.get(playerId);
+export const selectPlayerProfile = (playerId: string) => (state: GameStore) =>
+  state.playerProfiles.get(playerId);
 
 /** Get the current player model (local user) */
 export const selectMyPlayer = (state: GameStore): PlayerModel | undefined =>

@@ -17,8 +17,7 @@ const LOCAL_SERVICE_URL = 'http://localhost:8080';
 export function getServiceUrl(): string {
   // Check for window injection (runtime config in production)
   if (typeof window !== 'undefined') {
-    const configuredUrl = (window as { __CATAN_SERVICE_URL__?: string })
-      .__CATAN_SERVICE_URL__;
+    const configuredUrl = (window as { __CATAN_SERVICE_URL__?: string }).__CATAN_SERVICE_URL__;
     if (configuredUrl) {
       return configuredUrl;
     }
@@ -70,4 +69,3 @@ export const serviceConfig = {
   apiTimeout: config.apiTimeout,
   reconnectTimeout: config.reconnectTimeout,
 } as const;
-

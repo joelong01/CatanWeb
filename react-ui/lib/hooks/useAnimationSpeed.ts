@@ -63,8 +63,14 @@ export function useAnimationSpeed(): void {
     root.style.setProperty('--animation-medium', `${BASE_DURATIONS.medium * multiplier}ms`);
     root.style.setProperty('--animation-slow', `${BASE_DURATIONS.slow * multiplier}ms`);
     root.style.setProperty('--animation-extra-slow', `${BASE_DURATIONS.extraSlow * multiplier}ms`);
-    root.style.setProperty('--animation-button-press', `${BASE_DURATIONS.buttonPress * multiplier}ms`);
-    root.style.setProperty('--animation-color-transition', `${BASE_DURATIONS.colorTransition * multiplier}ms`);
+    root.style.setProperty(
+      '--animation-button-press',
+      `${BASE_DURATIONS.buttonPress * multiplier}ms`
+    );
+    root.style.setProperty(
+      '--animation-color-transition',
+      `${BASE_DURATIONS.colorTransition * multiplier}ms`
+    );
     root.style.setProperty('--animation-delay', `${BASE_DURATIONS.delay * multiplier}ms`);
 
     // Also set the legacy variable for backwards compatibility

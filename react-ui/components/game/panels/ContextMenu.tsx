@@ -25,11 +25,7 @@ interface ContextMenuProps {
   onClose: () => void;
 }
 
-export function ContextMenu({
-  position,
-  items,
-  onClose,
-}: ContextMenuProps): React.ReactElement {
+export function ContextMenu({ position, items, onClose }: ContextMenuProps): React.ReactElement {
   const menuRef = useRef<HTMLDivElement>(null);
   const [adjustedPos, setAdjustedPos] = useState(position);
 
@@ -63,10 +59,7 @@ export function ContextMenu({
   return (
     <>
       {/* Transparent backdrop for click-away dismissal */}
-      <div
-        className="fixed inset-0 z-[999]"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 z-[999]" onClick={onClose} />
 
       {/* Menu */}
       <div

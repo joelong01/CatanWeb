@@ -496,7 +496,9 @@ export default function EditPlayers(): React.ReactElement {
                             value={imageUrl}
                             onChange={(e) => setImageUrl(e.target.value)}
                             placeholder="https://..."
-                            onKeyDown={(e) => { if (e.key === 'Enter') handleLoadUrl(); }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleLoadUrl();
+                            }}
                             className="flex-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded text-sm text-white focus:outline-none focus:border-blue-500"
                             autoFocus
                           />
@@ -508,7 +510,10 @@ export default function EditPlayers(): React.ReactElement {
                             Load
                           </button>
                           <button
-                            onClick={() => { setShowUrlInput(false); setImageUrl(''); }}
+                            onClick={() => {
+                              setShowUrlInput(false);
+                              setImageUrl('');
+                            }}
                             className="px-2 py-2 rounded text-sm text-gray-400 hover:text-white transition-colors"
                           >
                             Cancel
@@ -524,8 +529,16 @@ export default function EditPlayers(): React.ReactElement {
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-gray-300">Colors</h3>
                 <ColorPickerRow label="Primary" value={editPrimary} onChange={setEditPrimary} />
-                <ColorPickerRow label="Secondary" value={editSecondary} onChange={setEditSecondary} />
-                <ColorPickerRow label="Foreground" value={editForeground} onChange={setEditForeground} />
+                <ColorPickerRow
+                  label="Secondary"
+                  value={editSecondary}
+                  onChange={setEditSecondary}
+                />
+                <ColorPickerRow
+                  label="Foreground"
+                  value={editForeground}
+                  onChange={setEditForeground}
+                />
               </div>
 
               {/* Preset swatches */}
@@ -543,7 +556,9 @@ export default function EditPlayers(): React.ReactElement {
                         key={i}
                         onClick={() => applyPreset(preset)}
                         className={`w-10 h-10 rounded-full border-2 transition-all ${
-                          isActive ? 'border-white scale-110' : 'border-gray-600 hover:border-gray-400'
+                          isActive
+                            ? 'border-white scale-110'
+                            : 'border-gray-600 hover:border-gray-400'
                         }`}
                         style={{ background: presetGradient }}
                         title={`Preset ${i + 1}`}
@@ -596,7 +611,6 @@ export default function EditPlayers(): React.ReactElement {
           )}
         </div>
       </div>
-
     </MainLayout>
   );
 }

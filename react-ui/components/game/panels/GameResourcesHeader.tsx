@@ -76,11 +76,11 @@ const ResourceCard = memo(function ResourceCard({
   const cardBackPath = useAssetPath('CardBack');
 
   // Find the config for this resource
-  const config = RESOURCE_CARD_CONFIG.find(c => c.type === resourceType);
+  const config = RESOURCE_CARD_CONFIG.find((c) => c.type === resourceType);
   if (!config) return null;
 
   // Determine if showing front
-  const isShowingFront = manualFlip !== null ? manualFlip : (autoFlip ? count > 0 : true);
+  const isShowingFront = manualFlip !== null ? manualFlip : autoFlip ? count > 0 : true;
 
   // Right-click to manually flip
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -195,10 +195,7 @@ function ScaledResourcesList({ resources }: ScaledResourcesListProps) {
   }, [naturalSize]);
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full overflow-hidden"
-    >
+    <div ref={containerRef} className="w-full h-full overflow-hidden">
       <div
         ref={contentRef}
         className="p-2 inline-block"
@@ -230,11 +227,7 @@ export const GameResourcesHeader = memo(function GameResourcesHeader({
   resources,
 }: GameResourcesHeaderProps): React.ReactElement {
   if (!resources) {
-    return (
-      <div className="p-2 text-gray-400 text-center text-sm">
-        Loading resources...
-      </div>
-    );
+    return <div className="p-2 text-gray-400 text-center text-sm">Loading resources...</div>;
   }
 
   return <ScaledResourcesList resources={resources} />;

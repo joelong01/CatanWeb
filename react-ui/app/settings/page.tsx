@@ -119,9 +119,7 @@ export default function Settings(): React.ReactElement {
   const store = useSettingsStore();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(true);
-  const [activeGameId] = useState<string | null>(
-    () => localStorage.getItem('current_gameId'),
-  );
+  const [activeGameId] = useState<string | null>(() => localStorage.getItem('current_gameId'));
 
   // Initialize store on mount
   useEffect(() => {
@@ -273,9 +271,10 @@ export default function Settings(): React.ReactElement {
             <div
               className={`
                 flex items-center gap-2 px-4 py-3 rounded-lg
-                ${saveSuccess
-                  ? 'bg-green-600/20 border border-green-500 text-green-400'
-                  : 'bg-red-600/20 border border-red-500 text-red-400'
+                ${
+                  saveSuccess
+                    ? 'bg-green-600/20 border border-green-500 text-green-400'
+                    : 'bg-red-600/20 border border-red-500 text-red-400'
                 }
               `}
             >
