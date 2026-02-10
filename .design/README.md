@@ -39,6 +39,7 @@ Legacy and superseded documents are archived in [old/](old/).
 | [css-theming.md](css-theming.md) | Tailwind v4 design tokens, player colors, @utility directives, typography |
 | [portrait-mode.md](portrait-mode.md) | Portrait layout: tabbed interface, Blazor vs React status |
 | [assets.md](assets.md) | Font sources (Catan.ttf, Font Awesome), theme system, glyph constants |
+| [board-interaction.md](board-interaction.md) | Unified board interaction: hit-testing, pan/zoom, touch, dispatch model |
 | [game-play.md](game-play.md) | How humans play the hybrid game, trust model, turn flow |
 
 ## Data & Persistence
