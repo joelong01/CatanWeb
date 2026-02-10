@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faArrowLeft,
   faPlay,
   faStepForward,
   faRotateLeft,
@@ -67,6 +66,8 @@ function getRowClass(index: number, result: StepResult | undefined, isCurrent: b
 }
 
 export default function TestRecordingsPage(): React.ReactElement {
+  const router = useRouter();
+
   // ── Recordings state ──
   const [recordings, setRecordings] = useState<RecordingSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -490,18 +491,8 @@ export default function TestRecordingsPage(): React.ReactElement {
   const viewHashErrors = Array.from(viewResults.values()).filter((r) => !r.hashMatch);
 
   return (
-    <MainLayout className="overflow-y-auto">
-      <div className="pt-[60px] px-6 pb-8 md:px-10 md:pb-10 max-w-[1400px] mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-2">
-          <Link href="/" className="text-gray-400 hover:text-white transition-colors">
-            <FontAwesomeIcon icon={faArrowLeft} className="w-5 h-5" />
-          </Link>
-          <h1 className="text-2xl font-bold text-amber-400">Test Recordings</h1>
-        </div>
-        <p className="text-sm text-gray-500 mb-6 ml-9">
-          Recorded gameplay for testing GameService consistency
-        </p>
+    <MainLayout title="Test Recordings" subtitle="Recorded gameplay for testing GameService consistency" onBack={() => router.push('/')}>
+      <div className="px-6 pb-8 md:px-10 md:pb-10 max-w-[1400px] mx-auto">
 
         {/* Error banner */}
         {errorMessage && (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/layout';
 import { gameApi } from '@/lib/api/gameApi';
 import { useGameStore } from '@/lib/stores/gameStore';
@@ -74,6 +75,8 @@ function ColorPickerRow({
  * Edit Players page - manage player profiles.
  */
 export default function EditPlayers(): React.ReactElement {
+  const router = useRouter();
+
   // Player data
   const [players, setPlayers] = useState<PlayerProfile[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -331,7 +334,7 @@ export default function EditPlayers(): React.ReactElement {
 
   if (loading) {
     return (
-      <MainLayout className="overflow-y-auto">
+      <MainLayout title="Edit Players" onBack={() => router.push('/')}>
         <div className="flex items-center justify-center h-full text-gray-400">
           Loading players...
         </div>
@@ -340,8 +343,8 @@ export default function EditPlayers(): React.ReactElement {
   }
 
   return (
-    <MainLayout className="overflow-y-auto">
-      <div className="flex flex-col sm:flex-row h-full overflow-hidden pt-[60px] pl-4 sm:pl-6">
+    <MainLayout title="Edit Players" onBack={() => router.push('/')}>
+      <div className="flex flex-col sm:flex-row h-full overflow-hidden pl-4 sm:pl-6">
         {/* ── Player List (left) ─────────────────────────── */}
         <div className="w-full sm:w-60 shrink-0 border-b sm:border-b-0 sm:border-r border-gray-700 flex flex-col">
           <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700">

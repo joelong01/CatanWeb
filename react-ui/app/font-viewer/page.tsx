@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faTableCells, faList } from '@fortawesome/free-solid-svg-icons';
+import { faTableCells, faList } from '@fortawesome/free-solid-svg-icons';
 import { MainLayout } from '@/components/layout';
 import { CatanGlyph, type CatanGlyphKey } from '@/lib/constants/catanGlyphs';
 
@@ -159,6 +159,7 @@ function getGroupedEntries(): GlyphCategory[] {
 }
 
 export default function FontViewerPage(): React.ReactElement {
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const categories = useMemo(() => getGroupedEntries(), []);
@@ -179,24 +180,11 @@ export default function FontViewerPage(): React.ReactElement {
   }, []);
 
   return (
-    <MainLayout className="overflow-y-auto">
-      <div className="min-h-[calc(100vh-120px)] pt-[60px] pb-8 px-4 sm:px-6">
+    <MainLayout title="Catan Font Viewer" subtitle={`${totalCount} glyphs · Right-click to copy`} onBack={() => router.push('/')}>
+      <div className="pb-8 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="text-gray-400 hover:text-white transition-colors">
-                <FontAwesomeIcon icon={faArrowLeft} className="w-5 h-5" />
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-amber-400">Catan Font Viewer</h1>
-                <p className="text-sm text-gray-400">
-                  {totalCount} glyphs from Catan.ttf (U+E900–E942) · Right-click to copy
-                </p>
-              </div>
-            </div>
-
-            {/* View toggle */}
+          {/* View toggle */}
+          <div className="flex justify-end mb-6">
             <div className="flex gap-1 bg-white/5 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('grid')}

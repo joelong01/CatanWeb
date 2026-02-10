@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { MainLayout } from '@/components/layout';
 import { gameApi, type SavedGameSummary } from '@/lib/api/gameApi';
 
@@ -404,15 +403,8 @@ export default function LoadGame(): React.ReactElement {
   };
 
   return (
-    <MainLayout className="overflow-y-auto">
-      <div className="pt-[60px] px-8 pb-8 md:px-12 md:pb-12 max-w-5xl">
-        <h1 className="text-4xl font-bold text-white mb-6">Open Game</h1>
-
-        {/* Back link */}
-        <Link href="/" className="text-blue-400 hover:text-blue-300 mb-6 inline-block">
-          ← Back to Home
-        </Link>
-
+    <MainLayout title="Open Game" onBack={() => router.push('/')}>
+      <div className="px-8 pb-8 md:px-12 md:pb-12 max-w-5xl">
         {/* Error message */}
         {errorMessage && (
           <div className="bg-red-600 text-white px-4 py-3 rounded mb-4">{errorMessage}</div>

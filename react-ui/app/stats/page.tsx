@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/layout';
 import { gameApi } from '@/lib/api';
 import { serviceConfig } from '@/lib/services/config';
@@ -89,6 +90,7 @@ function getInitials(name: string | undefined): string {
  * Stats page - displays player leaderboard with lifetime statistics.
  */
 export default function Stats(): React.ReactElement {
+  const router = useRouter();
   const [players, setPlayers] = useState<PlayerProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -130,11 +132,9 @@ export default function Stats(): React.ReactElement {
   }, [players]);
 
   return (
-    <MainLayout className="overflow-y-auto">
-      <div className="pt-[60px] px-4 pb-8 md:px-8 max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-5">
-          <h1 className="text-2xl font-bold text-white">Player Statistics</h1>
-
+    <MainLayout title="Player Statistics" onBack={() => router.push('/')}>
+      <div className="px-4 pb-8 md:px-8 max-w-6xl mx-auto">
+        <div className="flex items-center justify-end mb-5">
           {/* Mode selector */}
           <div className="flex rounded-lg overflow-hidden border border-white/20">
             {STAT_MODES.map(({ value, label }) => (

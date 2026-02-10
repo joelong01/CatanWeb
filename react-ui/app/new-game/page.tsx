@@ -17,16 +17,13 @@ import { gameApi } from '@/lib/api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faPlay,
-  faArrowLeft,
   faSpinner,
   faExclamationTriangle,
-  faDice,
   faGripVertical,
   faUser,
 } from '@fortawesome/free-solid-svg-icons';
 import type { PlayerProfile } from '@/types/player-profile';
 import type { GameType } from '@/types/generated/models';
-import Link from 'next/link';
 import { serviceConfig } from '@/lib/services/config';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
 
@@ -184,33 +181,8 @@ export default function NewGame(): React.ReactElement {
   ]);
 
   return (
-    <MainLayout className="overflow-y-auto">
-      <div className="min-h-screen h-full py-5 pt-[60px] pb-[60px] px-5 max-w-[1400px] mx-auto">
-        {/* Header */}
-        <header className="flex items-center gap-4 mb-6">
-          <Link
-            href="/"
-            className="
-              flex items-center gap-2 px-4 py-2.5
-              bg-white/5 rounded-lg
-              text-gray-400 text-sm font-medium
-              transition-all duration-200
-              hover:bg-white/10 hover:text-white
-            "
-          >
-            <FontAwesomeIcon icon={faArrowLeft} />
-            <span>Back</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center">
-              <FontAwesomeIcon icon={faDice} className="text-white text-xl" />
-            </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">
-              New Game
-            </h1>
-          </div>
-        </header>
-
+    <MainLayout title="New Game" onBack={() => router.push('/')}>
+      <div className="min-h-screen h-full py-5 pb-[60px] px-5 max-w-[1400px] mx-auto">
         {/* Main content - tight, organized layout */}
         <div className="flex flex-col gap-6">
           {/* Game Type + Player Selection + Sitting Order

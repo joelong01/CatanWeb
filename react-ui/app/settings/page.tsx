@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/layout';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faArrowLeft,
-  faGear,
   faRotateLeft,
   faFloppyDisk,
   faCircleQuestion,
@@ -116,10 +114,13 @@ function SettingsCategory({
  * Settings page - allows users to configure game and app preferences.
  */
 export default function Settings(): React.ReactElement {
+  const router = useRouter();
   const store = useSettingsStore();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(true);
-  const [activeGameId] = useState<string | null>(() => localStorage.getItem('current_gameId'));
+  const [activeGameId] = useState<string | null>(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('current_gameId') : null
+  );
 
   // Initialize store on mount
   useEffect(() => {
@@ -156,34 +157,8 @@ export default function Settings(): React.ReactElement {
   const backLabel = activeGameId ? 'Back to Game' : 'Back';
 
   return (
-    <MainLayout activeGameId={activeGameId} className="overflow-y-auto">
-      <div className="min-h-screen h-full py-5 pt-[60px] pb-[60px] px-5 max-w-[600px] mx-auto">
-        {/* Header */}
-        <header className="flex items-center gap-4 mb-6">
-          <Link
-            href={backHref}
-            className="
-              flex items-center gap-2 px-4 py-2.5
-              bg-white/5 rounded-lg
-              text-gray-400 text-sm font-medium
-              transition-all duration-200
-              hover:bg-white/10 hover:text-white
-            "
-          >
-            <FontAwesomeIcon icon={faArrowLeft} />
-            <span>{backLabel}</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center">
-              <FontAwesomeIcon icon={faGear} className="text-white text-xl" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Settings</h1>
-              <p className="text-gray-400 text-sm">Configure game preferences</p>
-            </div>
-          </div>
-        </header>
-
+    <MainLayout activeGameId={activeGameId} title="Settings" subtitle="Configure game preferences" onBack={() => router.push(backHref)}>
+      <div className="min-h-screen h-full py-5 pb-[60px] px-5 max-w-[600px] mx-auto">
         {/* Settings content */}
         <div className="space-y-6">
           {/* House Rules */}

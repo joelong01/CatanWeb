@@ -2072,9 +2072,9 @@ export default function ControlsTestPage(): React.ReactElement {
   };
 
   return (
-    <MainLayout className="overflow-y-auto">
+    <MainLayout title="Controls Test">
       {/* Full viewport for floating panels */}
-      <div className="relative w-full h-full min-h-screen pt-[60px] pl-4">
+      <div className="relative w-full h-full min-h-screen pl-4">
         {/* Rolls Panel - Roll statistics with hex buttons */}
         <FloatingPanel
           panelId="dice"
