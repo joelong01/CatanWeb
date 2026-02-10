@@ -246,10 +246,10 @@ const PlayerTile = memo(function PlayerTile({ player, profile, isCurrentPlayer }
   const cities = spentEntitlements.filter((e) => e === 'City').length;
 
   // Count soldiers from spent entitlements
-  const soldierCount = player.spentEntitlementsThisGame.filter((e) => e === 'Soldier').length;
+  const soldierCount = spentEntitlements.filter((e) => e === 'Soldier').length;
 
   // Count dev cards
-  const devCardCount = player.spentEntitlementsThisGame.filter((e) => e === 'DevCard').length;
+  const devCardCount = spentEntitlements.filter((e) => e === 'DevCard').length;
 
   // Get totals from ResourcesModel - match Blazor: r.Wheat + r.Wood + r.Sheep + r.Brick + r.Ore
   const r = player.resourcesThisGame;
@@ -372,8 +372,6 @@ function ScaledPlayersList() {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const naturalSizeRef = useRef({ width: 0, height: 0 });
-  const hasMeasuredRef = useRef(false);
 
   // Get data from store via hooks (optimized for re-render performance)
   // Note: PlayerTile only needs player + profile - counts come from player.spentEntitlementsThisGame
@@ -381,59 +379,40 @@ function ScaledPlayersList() {
   const currentPlayerId = useCurrentTurnPlayerId();
   const playerProfiles = usePlayerProfiles();
 
-  // Combined effect: measure natural size and set up resize observer
+  // Measure content and container, compute scale to fit
   useEffect(() => {
-    const measureAndScale = () => {
-      if (!contentRef.current || !containerRef.current) return;
+    const container = containerRef.current;
+    const content = contentRef.current;
+    if (!container || !content) return;
 
-      // Only measure natural size once (or when players count changes)
-      const _playersCount = players.length;
-      if (!hasMeasuredRef.current || naturalSizeRef.current.width === 0) {
-        // Temporarily reset scale to measure natural size
-        const currentTransform = contentRef.current.style.transform;
-        contentRef.current.style.transform = 'scale(1)';
-
-        // Force layout
-        void contentRef.current.offsetHeight;
-
-        naturalSizeRef.current = {
-          width: contentRef.current.scrollWidth,
-          height: contentRef.current.scrollHeight,
-        };
-
-        // Restore transform
-        contentRef.current.style.transform = currentTransform;
-        hasMeasuredRef.current = true;
-      }
-
-      const { width: naturalWidth, height: naturalHeight } = naturalSizeRef.current;
+    const updateScale = () => {
+      // scrollWidth/scrollHeight are layout dimensions, unaffected by CSS transforms.
+      // No need to temporarily reset scale — transform: scale() never changes layout.
+      const naturalWidth = content.scrollWidth;
+      const naturalHeight = content.scrollHeight;
       if (!naturalWidth || !naturalHeight) return;
 
-      const containerWidth = containerRef.current.clientWidth;
-      const containerHeight = containerRef.current.clientHeight;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      if (containerWidth <= 0 || containerHeight <= 0) return;
 
-      if (containerWidth > 0 && containerHeight > 0) {
-        const widthScale = containerWidth / naturalWidth;
-        const heightScale = containerHeight / naturalHeight;
-        const newScale = Math.min(widthScale, heightScale); // Scale to fit container
-        setScale(newScale > 0 ? newScale : 1);
-      }
+      const newScale = Math.min(
+        containerWidth / naturalWidth,
+        containerHeight / naturalHeight
+      );
+      setScale(newScale > 0 ? newScale : 1);
     };
 
-    // Initial measurement
-    measureAndScale();
+    // Observe both: container (panel resize) and content (player count/layout changes)
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(container);
+    observer.observe(content);
 
-    // Set up resize observer
-    const resizeObserver = new ResizeObserver(() => {
-      measureAndScale();
-    });
+    // Defer initial measurement to ensure DOM is fully laid out
+    requestAnimationFrame(updateScale);
 
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => resizeObserver.disconnect();
-  }, [players.length]); // Only re-run if player count changes
+    return () => observer.disconnect();
+  }, [players.length]);
 
   return (
     <div ref={containerRef} className="w-full h-full overflow-hidden">

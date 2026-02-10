@@ -63,11 +63,11 @@ const CLUSTER_7: Record<string, HexCoordinate> = {
 
 /** Resource configuration for outer ring */
 const RESOURCE_CONFIG = [
-  { key: 'Sheep', label: 'Sheep', position: 'north', assetName: 'CardSheep' as AssetName },
-  { key: 'Wood', label: 'Wood', position: 'northEast', assetName: 'CardWood' as AssetName },
-  { key: 'Wheat', label: 'Wheat', position: 'southEast', assetName: 'CardWheat' as AssetName },
-  { key: 'Brick', label: 'Brick', position: 'southWest', assetName: 'CardBrick' as AssetName },
-  { key: 'Ore', label: 'Ore', position: 'northWest', assetName: 'CardOre' as AssetName },
+  { key: 'Sheep', label: 'Sheep', position: 'north', assetName: 'TileSheep' as AssetName },
+  { key: 'Wood', label: 'Wood', position: 'northEast', assetName: 'TileWood' as AssetName },
+  { key: 'Wheat', label: 'Wheat', position: 'southEast', assetName: 'TileWheat' as AssetName },
+  { key: 'Brick', label: 'Brick', position: 'southWest', assetName: 'TileBrick' as AssetName },
+  { key: 'Ore', label: 'Ore', position: 'northWest', assetName: 'TileOre' as AssetName },
 ] as const;
 
 /** Star filter values for inner cluster. 0 = "show all" (no star threshold). */
@@ -454,35 +454,31 @@ export const MeasurementCluster = memo(function MeasurementCluster({
   // Toggle resource selection (multi-select up to MAX_RESOURCE_SELECTION)
   const handleResourceClick = useCallback(
     (key: string) => {
-      setSelectedResources((prev) => {
-        let newSelection: string[];
-        if (prev.includes(key)) {
-          // Deselect if already selected
-          newSelection = prev.filter((r) => r !== key);
-        } else if (prev.length < MAX_RESOURCE_SELECTION) {
-          // Add to selection if under limit
-          newSelection = [...prev, key];
-        } else {
-          // At max: remove oldest, add new (circular selection)
-          newSelection = [...prev.slice(1), key];
-        }
-        onResourceSelectionChange?.(newSelection);
-        return newSelection;
-      });
+      let newSelection: string[];
+      if (selectedResources.includes(key)) {
+        // Deselect if already selected
+        newSelection = selectedResources.filter((r) => r !== key);
+      } else if (selectedResources.length < MAX_RESOURCE_SELECTION) {
+        // Add to selection if under limit
+        newSelection = [...selectedResources, key];
+      } else {
+        // At max: remove oldest, add new (circular selection)
+        newSelection = [...selectedResources.slice(1), key];
+      }
+      setSelectedResources(newSelection);
+      onResourceSelectionChange?.(newSelection);
     },
-    [onResourceSelectionChange]
+    [selectedResources, onResourceSelectionChange]
   );
 
   // Single-select for star filter
   const handleStarClick = useCallback(
     (value: number) => {
-      setSelectedStars((prev) => {
-        const newValue = prev === value ? null : value;
-        onStarFilterChange?.(newValue);
-        return newValue;
-      });
+      const newValue = selectedStars === value ? null : value;
+      setSelectedStars(newValue);
+      onStarFilterChange?.(newValue);
     },
-    [onStarFilterChange]
+    [selectedStars, onStarFilterChange]
   );
 
   // Shuffle only — preserve current filter selections
