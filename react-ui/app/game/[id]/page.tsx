@@ -822,7 +822,7 @@ export default function GamePage(): React.ReactElement {
   );
 
   return (
-    <MainLayout activeGameId={gameId} gameActions={gameActions}>
+    <MainLayout fullScreen activeGameId={gameId} gameActions={gameActions}>
       <div className="relative w-full h-full overflow-hidden">
         {/* GameBoard with internal pan/zoom - fills the viewport */}
         {/* GameBoard uses internal hooks for data - only pass callbacks and configuration */}
@@ -949,6 +949,7 @@ export default function GamePage(): React.ReactElement {
               currentPlayerColors={playerColors}
               celebrationDurationMs={5000}
               onEndGame={handleEndGame}
+              onCancel={() => setShowWinnerOverlay(false)}
             />
           </FloatingPanel>
         )}

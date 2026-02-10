@@ -19,7 +19,7 @@ import type { PlayerColorsWithGradient } from '@/lib/utils/playerColors';
 import type { PlayerColors } from '@/types/player-profile';
 import { DEFAULT_PLAYER_COLORS } from '@/types/player-profile';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrophy } from '@fortawesome/free-solid-svg-icons';
+import { faTrophy, faXmark } from '@fortawesome/free-solid-svg-icons';
 
 // ============================================================================
 // Types
@@ -46,6 +46,8 @@ export interface WinnerOverlayProps {
   celebrationDurationMs?: number;
   /** Called when "End Game" is clicked with final VP scores */
   onEndGame: (vpScores: Record<string, number>) => void;
+  /** Called when the user cancels/dismisses the winner overlay */
+  onCancel?: () => void;
 }
 
 // ============================================================================
@@ -466,6 +468,7 @@ export function WinnerOverlay({
   currentPlayerColors,
   celebrationDurationMs = 5000,
   onEndGame,
+  onCancel,
 }: WinnerOverlayProps): React.ReactElement {
   const [phase, setPhase] = useState<WinnerPhase>('ready');
 
@@ -612,8 +615,19 @@ export function WinnerOverlay({
 
   return (
     <div className="w-full h-full flex flex-col">
-      {/* Title */}
-      <div className="text-center text-white/80 text-sm mb-2">{titleText}</div>
+      {/* Title + Cancel */}
+      <div className="relative text-center text-white/80 text-sm mb-2">
+        {titleText}
+        {onCancel && phase !== 'celebrating' && (
+          <button
+            onClick={onCancel}
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+            title="Cancel"
+          >
+            <FontAwesomeIcon icon={faXmark} className="text-sm" />
+          </button>
+        )}
+      </div>
       {/* Hex grid with optional spin wrapper */}
       <div className="flex-1 flex items-center justify-center p-2 relative">
         <div
