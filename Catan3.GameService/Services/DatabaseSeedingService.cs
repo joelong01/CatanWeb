@@ -20,6 +20,11 @@ public class DatabaseSeedingService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Yield immediately so Kestrel can start listening before we do any work.
+        // Without this, everything before the first 'await' runs synchronously and
+        // blocks the host startup pipeline (service resolution, DB connections, etc.).
+        await Task.Yield();
+
         var defaultDataPath = _dbDetector.GetDefaultDataPath();
         Console.WriteLine($"[SEEDER-BG] Starting background database seeding (defaultDataPath: {defaultDataPath})");
 
