@@ -44,7 +44,7 @@
 
 ## Important Context
 
-- RobberLayer has internal animation state machine (_fakeOutPhase, _animationPending)
+- RobberLayer has internal animation state machine (_fakeOutPhase,_animationPending)
 - Must reset this state when server clears animation coordinates
 - MoveRobber transitions to WaitingForNext (rolled 7) or PreviousGameState (Soldier)
 

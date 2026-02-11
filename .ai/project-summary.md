@@ -89,6 +89,7 @@ JavaScript-based uniform scaling matching XAML Viewbox behavior:
 ### Environment Indicator
 
 CSS pseudo-element shows environment and orientation:
+
 - `data-env="local"` or `data-env="web"`
 - `data-layout-mode="landscape"` or `data-layout-mode="portrait"`
 - Version string: `CSS 2025-12-09 v11 LOCAL landscape`
@@ -149,8 +150,8 @@ CSS pseudo-element shows environment and orientation:
 
 ### Service URLs
 
-- **Local GameService**: http://localhost:8080
-- **Local WebUI**: http://localhost:5296
+- **Local GameService**: <http://localhost:8080>
+- **Local WebUI**: <http://localhost:5296>
 - **Azure GameService**: https://{baseName}-api.azurewebsites.net
 - **Azure WebUI**: https://{baseName}-ui.azurewebsites.net
 

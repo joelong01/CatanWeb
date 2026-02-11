@@ -5,7 +5,7 @@ agent: agent
 argument-hint: "Optional: extra context to apply with the rules"
 ---
 
-#files:"./.ai/ai-rules.md"
+# files:"./.ai/ai-rules.md"
 
 Load and fully follow the rules contained in the file above.
 

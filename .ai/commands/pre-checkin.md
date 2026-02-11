@@ -65,14 +65,14 @@ The goal is to avoid build/test noise from obvious clutter.
 
 For each relevant project/component:
 
-1. If the project supports a “clean” step, run it first. Examples:
+1. If the project supports a "clean" step, run it first. Examples:
    - Node/TS: `npm run clean` or `rm -rf dist build`
-   - .NET: `dotnet clean`
+   - .NET (this project): `pwsh ./catan.ps1 clean`
    - Rust: `cargo clean`
    - Python: remove `__pycache__` / `.pytest_cache` / `build` dirs where needed
 2. Run the **standard build** command(s). Examples:
    - Node/TS: `npm run build` or `pnpm build`
-   - .NET: `dotnet build`
+   - .NET (this project): `pwsh ./catan.ps1 build`
    - Rust: `cargo build --release` or `cargo build`
    - Go: `go build ./...`
    - Others per project docs
@@ -106,14 +106,14 @@ cannot.
 1. **Full test suite** (recommended):
 
    ```powershell
-   pwsh ./build.ps1
+   pwsh ./catan.ps1 test
    ```
 
    - Builds and runs all tests
    - Takes 2-3 minutes
    - Most comprehensive validation
 
-2. **Specific test projects**:
+2. **Specific test projects** (when full suite is too slow):
 
    ```powershell
    dotnet test Tests/GameService
@@ -172,8 +172,8 @@ For each language or toolchain in the repo:
    - Node/TS:
      - Lint: `npm run lint`, `eslint .`
      - Format: `npm run format`, `prettier --check .` / `--write`
-   - .NET:
-     - Analyzers via `dotnet build` / `dotnet format`
+   - .NET (this project):
+     - Analyzers via `pwsh ./catan.ps1 build`
    - Python:
      - Lint: `ruff check .`, `flake8`, `pylint`
      - Format: `black .`, `ruff format .`

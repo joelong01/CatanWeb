@@ -10,6 +10,7 @@
 ### Major Features
 
 #### 1. Stats Page Implementation
+
 Implemented comprehensive player statistics tracking with updated data models and UI.
 
 - **Key files:**
@@ -34,6 +35,7 @@ Implemented comprehensive player statistics tracking with updated data models an
   - `AverageTargeted` - Times targeted per game
 
 #### 2. Stats Page UI Columns
+
 Updated Stats.razor table with new columns:
 
 | Column | Description |
@@ -53,6 +55,7 @@ Updated Stats.razor table with new columns:
 ### Documentation
 
 #### Design Document: `.design/ui/winning.md`
+
 Created comprehensive design doc covering:
 
 1. **Statistics Update Logic** - 4-step process:
@@ -102,6 +105,7 @@ Created comprehensive design doc covering:
 ### Key Code Patterns
 
 **GameStats Capture from PlayerModel:**
+
 ```csharp
 private GameStats CalculateGameStats(PlayerModel player, GameModel gameModel)
 {
@@ -116,6 +120,7 @@ private GameStats CalculateGameStats(PlayerModel player, GameModel gameModel)
 ```
 
 **LifetimeStats AddGame Pattern:**
+
 ```csharp
 public LifetimeStats AddGame(
     GameStats gameStats,
@@ -155,6 +160,7 @@ public LifetimeStats AddGame(
    - Implement score correction before stats are saved
 
 ### Follow-Up Tasks
+
 - [ ] Test Stats page in browser
 - [ ] Verify stats capture works on game end
 - [ ] Consider adding refresh button to Stats page
@@ -162,12 +168,15 @@ public LifetimeStats AddGame(
 ## Environment Notes
 
 ### Build Configuration
+
 - All projects building successfully: Yes
 - Build command: `pwsh ./catan.ps1 build`
 - Warnings: 1 pre-existing warning (HttpClientService.cs:35)
 
 ### Files Changed (17 total)
+
 **Modified (14):**
+
 - `Catan3.GameService/Controllers/GameApiController.cs`
 - `Catan3.GameService/Data/CatanDbContext.cs`
 - `Catan3.Shared/GameLogic/GameStateMachine.cs`
@@ -184,6 +193,7 @@ public LifetimeStats AddGame(
 - `WebUI/Services/GameStateService.cs`
 
 **New (3):**
+
 - `.design/ui/winning.md`
 - `WebUI/Pages/Stats.razor`
 - `WebUI/Pages/Stats.razor.css`
@@ -191,21 +201,25 @@ public LifetimeStats AddGame(
 ## Quick Start for Next Session
 
 ### Immediate Actions
+
 1. **Verify build:**
+
    ```bash
    pwsh ./catan.ps1 build
    ```
 
 2. **Run services:**
+
    ```bash
    pwsh ./catan.ps1 run
    ```
 
 3. **Test Stats page:**
-   - Navigate to http://localhost:5296/stats
+   - Navigate to <http://localhost:5296/stats>
    - Verify player data displays with new columns
 
 ### Context to Load
+
 - Read `.design/ui/winning.md` for stats capture design
 - Read `Catan3.Shared/PlayerProfile/LifetimeStats.cs` for aggregation logic
 - Read `WebUI/Pages/Stats.razor` for UI implementation

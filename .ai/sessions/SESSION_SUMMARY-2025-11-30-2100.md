@@ -8,6 +8,7 @@
 ## Work Completed
 
 ### Major Features
+
 - **Theme System Implementation**: Added complete theme/asset service architecture to WebUI
   - Key files: `WebUI/Models/AssetName.cs`, `WebUI/Models/IAssetService.cs`, `WebUI/Services/ClientAssetService.cs`
   - Created strongly-typed `AssetName` enum for all game assets
@@ -22,21 +23,25 @@
   - Created `theme.json` files for both themes
 
 ### Bug Fixes
+
 - **Fixed singleton/scoped service conflict**: Changed `HttpClient` registration from `AddScoped` to `AddSingleton` in `Program.cs` to resolve "cannot consume scoped service from singleton" error
 - **Fixed missing cherry border**: The border between tiles disappeared because both maple and cherry patterns were using `AssetName.BackgroundBorder`. Split into `BackgroundBorderFill` (maple) and `BackgroundBorderStroke` (cherry) to restore the visual effect
 - **Copied missing cherry.jpg**: The cherry.jpg texture was missing from `/themes/base/backgrounds/`, copied from `/images/cherry.jpg`
 
 ### Refactoring
+
 - **Updated BoardSvgGenerator**: Added optional `IAssetService` parameter to `GenerateSvg()` for theme-aware asset paths
   - Pattern generators now use `assetService?.GetAssetPath()` with fallback defaults
   - Added `shape-rendering="geometricPrecision"` to SVG for better thin-line rendering
 
 ### UI Changes
+
 - Changed board container SVG constraints from `max-width: 95%; max-height: 95vh` to `max-width: 100%; max-height: 100%` to fill available space
 
 ## Work in Progress
 
 ### Incomplete Features
+
 - **ThemePicker Component**: Not yet implemented
   - What's done: Backend infrastructure (IAssetService, ClientAssetService, theme.json)
   - What remains: UI component for users to select themes
@@ -45,6 +50,7 @@
 ## Decisions Made
 
 ### Architecture Decisions
+
 1. **Theme System Location**
    - **Context:** Initially placed theme code in Catan3.GameService and Catan3.Shared
    - **Decision:** Moved entirely to WebUI/Models/ and WebUI/Services/
@@ -64,17 +70,20 @@
    - **Rationale:** "Any problem in computer science can be solved by adding a layer of indirection" - flexibility for future changes without recompilation
 
 ### Design Patterns
+
 - Asset service uses fallback pattern: `assetService?.GetAssetPath(asset) ?? defaultPath`
 - This maintains backwards compatibility when service not available
 
 ## Blockers & Issues
 
 ### Known Issues
+
 - **HttpClient as Singleton**: Changed from scoped to singleton for Blazor WASM
   - Severity: Minor (acceptable for WASM where there's one user per app instance)
   - Impact: None expected for single-user browser context
 
 ### Technical Debt
+
 - **Asset path hardcoding**: Some places still have hardcoded paths as fallbacks
   - Priority: Low (fallbacks are intentional for backwards compatibility)
 
@@ -94,6 +103,7 @@
    - Could hardcode theme data instead of loading via HTTP
 
 ### Follow-Up Tasks
+
 - [ ] Implement ThemePicker UI component
 - [ ] Add more themes (startrek, etc.)
 - [ ] Test theme switching with all asset types
@@ -101,14 +111,17 @@
 ## Important Context
 
 ### Critical Information
+
 - **Asset Naming**: Use `BackgroundBorderFill` (maple) and `BackgroundBorderStroke` (cherry) - NOT a single `BackgroundBorder`
 - **Service Registration**: `ClientAssetService` and `HttpClient` must both be singleton in WebUI
 
 ### Gotchas & Non-Obvious Aspects
+
 - The cherry wood border between tiles requires TWO separate assets (fill and stroke patterns)
 - File locking errors during build are transient - retry usually works
 
 ### Key Files & Patterns
+
 - **Theme System:**
   - `WebUI/Models/AssetName.cs` - All asset identifiers
   - `WebUI/Models/IAssetService.cs` - Interface + ThemeMetadata + ThemeDefinition
@@ -119,11 +132,13 @@
 ## Environment Notes
 
 ### Build Configuration
+
 - WebUI project building successfully: Yes
 - Build command: `dotnet build "D:\GitHub\Catan\WebUI\Catan3.WebUI.csproj"`
 - Warnings: 1 (CS8604 in NewGame.razor - pre-existing)
 
 ### New Files Created
+
 - `WebUI/Models/AssetName.cs`
 - `WebUI/Models/IAssetService.cs`
 - `WebUI/Services/ClientAssetService.cs`
@@ -134,7 +149,9 @@
 ## Quick Start for Next Session
 
 ### Immediate Actions
+
 1. **Start Here:**
+
    ```bash
    dotnet build "D:\GitHub\Catan\WebUI\Catan3.WebUI.csproj"
    ```
@@ -149,6 +166,7 @@
    - Next task: Create ThemePicker component
 
 ### Open Questions
+
 - Should ClientAssetService load themes via HTTP or hardcode theme data?
   - Context: User questioned need for HttpClient dependency
   - Options: Keep HTTP (flexibility) vs hardcode (simplicity)

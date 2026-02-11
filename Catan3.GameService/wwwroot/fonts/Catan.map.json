@@ -1,0 +1,442 @@
+{
+  "fontName": "Catan",
+  "glyphCount": 62,
+  "mappedCount": 62,
+  "autoAssignedCount": 0,
+  "entries": [
+    {
+      "file": "city.svg",
+      "glyphName": "city",
+      "codepointHex": "E900",
+      "codepointDec": 59648,
+      "unicode": ""
+    },
+    {
+      "file": "deserter.svg",
+      "glyphName": "deserter",
+      "codepointHex": "E901",
+      "codepointDec": 59649,
+      "unicode": ""
+    },
+    {
+      "file": "diplomat.svg",
+      "glyphName": "diplomat",
+      "codepointHex": "E902",
+      "codepointDec": 59650,
+      "unicode": ""
+    },
+    {
+      "file": "entry.svg",
+      "glyphName": "entry",
+      "codepointHex": "E903",
+      "codepointDec": 59651,
+      "unicode": ""
+    },
+    {
+      "file": "politics.svg",
+      "glyphName": "politics",
+      "codepointHex": "E904",
+      "codepointDec": 59652,
+      "unicode": ""
+    },
+    {
+      "file": "intrigue.svg",
+      "glyphName": "intrigue",
+      "codepointHex": "E905",
+      "codepointDec": 59653,
+      "unicode": ""
+    },
+    {
+      "file": "inventor.svg",
+      "glyphName": "inventor",
+      "codepointHex": "E906",
+      "codepointDec": 59654,
+      "unicode": ""
+    },
+    {
+      "file": "laurel.svg",
+      "glyphName": "laurel",
+      "codepointHex": "E907",
+      "codepointDec": 59655,
+      "unicode": ""
+    },
+    {
+      "file": "merchant.svg",
+      "glyphName": "merchant",
+      "codepointHex": "E908",
+      "codepointDec": 59656,
+      "unicode": ""
+    },
+    {
+      "file": "road.svg",
+      "glyphName": "road",
+      "codepointHex": "E909",
+      "codepointDec": 59657,
+      "unicode": ""
+    },
+    {
+      "file": "ship.svg",
+      "glyphName": "ship",
+      "codepointHex": "E90A",
+      "codepointDec": 59658,
+      "unicode": ""
+    },
+    {
+      "file": "science.svg",
+      "glyphName": "science",
+      "codepointHex": "E90B",
+      "codepointDec": 59659,
+      "unicode": ""
+    },
+    {
+      "file": "robber.svg",
+      "glyphName": "robber",
+      "codepointHex": "E90C",
+      "codepointDec": 59660,
+      "unicode": ""
+    },
+    {
+      "file": "pirate ship.svg",
+      "glyphName": "pirate ship",
+      "codepointHex": "E90D",
+      "codepointDec": 59661,
+      "unicode": ""
+    },
+    {
+      "file": "largest army.svg",
+      "glyphName": "largest army",
+      "codepointHex": "E90E",
+      "codepointDec": 59662,
+      "unicode": ""
+    },
+    {
+      "file": "metro.svg",
+      "glyphName": "metro",
+      "codepointHex": "E90F",
+      "codepointDec": 59663,
+      "unicode": ""
+    },
+    {
+      "file": "sum of resources.svg",
+      "glyphName": "sum of resources",
+      "codepointHex": "E910",
+      "codepointDec": 59664,
+      "unicode": ""
+    },
+    {
+      "file": "star.svg",
+      "glyphName": "star",
+      "codepointHex": "E911",
+      "codepointDec": 59665,
+      "unicode": ""
+    },
+    {
+      "file": "bad roll.svg",
+      "glyphName": "bad roll",
+      "codepointHex": "E913",
+      "codepointDec": 59667,
+      "unicode": ""
+    },
+    {
+      "file": "good roll.svg",
+      "glyphName": "good roll",
+      "codepointHex": "E914",
+      "codepointDec": 59668,
+      "unicode": ""
+    },
+    {
+      "file": "longest road.svg",
+      "glyphName": "longest road",
+      "codepointHex": "E915",
+      "codepointDec": 59669,
+      "unicode": ""
+    },
+    {
+      "file": "targetted.svg",
+      "glyphName": "targetted",
+      "codepointHex": "E916",
+      "codepointDec": 59670,
+      "unicode": ""
+    },
+    {
+      "file": "solid_shield.svg",
+      "glyphName": "solid_shield",
+      "codepointHex": "E925",
+      "codepointDec": 59685,
+      "unicode": ""
+    },
+    {
+      "file": "settlement.svg",
+      "glyphName": "settlement",
+      "codepointHex": "E926",
+      "codepointDec": 59686,
+      "unicode": ""
+    },
+    {
+      "file": "knight.svg",
+      "glyphName": "knight",
+      "codepointHex": "E930",
+      "codepointDec": 59696,
+      "unicode": ""
+    },
+    {
+      "file": "3-1-harbor.svg",
+      "glyphName": "3-1-harbor",
+      "codepointHex": "E931",
+      "codepointDec": 59697,
+      "unicode": ""
+    },
+    {
+      "file": "brick-bw-hex.svg",
+      "glyphName": "brick-bw-hex",
+      "codepointHex": "E933",
+      "codepointDec": 59699,
+      "unicode": ""
+    },
+    {
+      "file": "brick-harbor.svg",
+      "glyphName": "brick-harbor",
+      "codepointHex": "E934",
+      "codepointDec": 59700,
+      "unicode": ""
+    },
+    {
+      "file": "check.svg",
+      "glyphName": "check",
+      "codepointHex": "E935",
+      "codepointDec": 59701,
+      "unicode": ""
+    },
+    {
+      "file": "desert-bw-hex.svg",
+      "glyphName": "desert-bw-hex",
+      "codepointHex": "E936",
+      "codepointDec": 59702,
+      "unicode": ""
+    },
+    {
+      "file": "knight-attacking.svg",
+      "glyphName": "knight-attacking",
+      "codepointHex": "E937",
+      "codepointDec": 59703,
+      "unicode": ""
+    },
+    {
+      "file": "knight-kneeling.svg",
+      "glyphName": "knight-kneeling",
+      "codepointHex": "E938",
+      "codepointDec": 59704,
+      "unicode": ""
+    },
+    {
+      "file": "knight-standing.svg",
+      "glyphName": "knight-standing",
+      "codepointHex": "E939",
+      "codepointDec": 59705,
+      "unicode": ""
+    },
+    {
+      "file": "ore-bw-hex.svg",
+      "glyphName": "ore-bw-hex",
+      "codepointHex": "E93A",
+      "codepointDec": 59706,
+      "unicode": ""
+    },
+    {
+      "file": "ore-harbor.svg",
+      "glyphName": "ore-harbor",
+      "codepointHex": "E93B",
+      "codepointDec": 59707,
+      "unicode": ""
+    },
+    {
+      "file": "sheep-bw-hex.svg",
+      "glyphName": "sheep-bw-hex",
+      "codepointHex": "E93C",
+      "codepointDec": 59708,
+      "unicode": ""
+    },
+    {
+      "file": "sheep-harbor.svg",
+      "glyphName": "sheep-harbor",
+      "codepointHex": "E93D",
+      "codepointDec": 59709,
+      "unicode": ""
+    },
+    {
+      "file": "wagon.svg",
+      "glyphName": "wagon",
+      "codepointHex": "E93E",
+      "codepointDec": 59710,
+      "unicode": ""
+    },
+    {
+      "file": "wheat-bw-hex.svg",
+      "glyphName": "wheat-bw-hex",
+      "codepointHex": "E93F",
+      "codepointDec": 59711,
+      "unicode": ""
+    },
+    {
+      "file": "wheat-harbor.svg",
+      "glyphName": "wheat-harbor",
+      "codepointHex": "E940",
+      "codepointDec": 59712,
+      "unicode": ""
+    },
+    {
+      "file": "wood-bw-hex.svg",
+      "glyphName": "wood-bw-hex",
+      "codepointHex": "E941",
+      "codepointDec": 59713,
+      "unicode": ""
+    },
+    {
+      "file": "wood-harbor.svg",
+      "glyphName": "wood-harbor",
+      "codepointHex": "E942",
+      "codepointDec": 59714,
+      "unicode": ""
+    },
+    {
+      "file": "gold-bw-hex.svg",
+      "glyphName": "gold-bw-hex",
+      "codepointHex": "E943",
+      "codepointDec": 59715,
+      "unicode": ""
+    },
+    {
+      "file": "tempgold-bw-hex.svg",
+      "glyphName": "tempgold-bw-hex",
+      "codepointHex": "E944",
+      "codepointDec": 59716,
+      "unicode": ""
+    },
+    {
+      "file": "2.svg",
+      "glyphName": "2",
+      "codepointHex": "E945",
+      "codepointDec": 59717,
+      "unicode": ""
+    },
+    {
+      "file": "3.svg",
+      "glyphName": "3",
+      "codepointHex": "E946",
+      "codepointDec": 59718,
+      "unicode": ""
+    },
+    {
+      "file": "4.svg",
+      "glyphName": "4",
+      "codepointHex": "E947",
+      "codepointDec": 59719,
+      "unicode": ""
+    },
+    {
+      "file": "5.svg",
+      "glyphName": "5",
+      "codepointHex": "E948",
+      "codepointDec": 59720,
+      "unicode": ""
+    },
+    {
+      "file": "6.svg",
+      "glyphName": "6",
+      "codepointHex": "E949",
+      "codepointDec": 59721,
+      "unicode": ""
+    },
+    {
+      "file": "7.svg",
+      "glyphName": "7",
+      "codepointHex": "E94A",
+      "codepointDec": 59722,
+      "unicode": ""
+    },
+    {
+      "file": "8.svg",
+      "glyphName": "8",
+      "codepointHex": "E94B",
+      "codepointDec": 59723,
+      "unicode": ""
+    },
+    {
+      "file": "9.svg",
+      "glyphName": "9",
+      "codepointHex": "E94C",
+      "codepointDec": 59724,
+      "unicode": ""
+    },
+    {
+      "file": "10.svg",
+      "glyphName": "10",
+      "codepointHex": "E94D",
+      "codepointDec": 59725,
+      "unicode": ""
+    },
+    {
+      "file": "11.svg",
+      "glyphName": "11",
+      "codepointHex": "E94E",
+      "codepointDec": 59726,
+      "unicode": ""
+    },
+    {
+      "file": "12.svg",
+      "glyphName": "12",
+      "codepointHex": "E94F",
+      "codepointDec": 59727,
+      "unicode": ""
+    },
+    {
+      "file": "skull 1.svg",
+      "glyphName": "skull 1",
+      "codepointHex": "E950",
+      "codepointDec": 59728,
+      "unicode": ""
+    },
+    {
+      "file": "simple-brick.svg",
+      "glyphName": "simple-brick",
+      "codepointHex": "E951",
+      "codepointDec": 59729,
+      "unicode": ""
+    },
+    {
+      "file": "simple-desert.svg",
+      "glyphName": "simple-desert",
+      "codepointHex": "E952",
+      "codepointDec": 59730,
+      "unicode": ""
+    },
+    {
+      "file": "simple-ore.svg",
+      "glyphName": "simple-ore",
+      "codepointHex": "E953",
+      "codepointDec": 59731,
+      "unicode": ""
+    },
+    {
+      "file": "simple-sheep.svg",
+      "glyphName": "simple-sheep",
+      "codepointHex": "E954",
+      "codepointDec": 59732,
+      "unicode": ""
+    },
+    {
+      "file": "simple-wheat.svg",
+      "glyphName": "simple-wheat",
+      "codepointHex": "E955",
+      "codepointDec": 59733,
+      "unicode": ""
+    },
+    {
+      "file": "simple-wood.svg",
+      "glyphName": "simple-wood",
+      "codepointHex": "E956",
+      "codepointDec": 59734,
+      "unicode": ""
+    }
+  ]
+}

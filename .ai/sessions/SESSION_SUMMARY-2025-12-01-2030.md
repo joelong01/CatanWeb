@@ -65,11 +65,13 @@
 ## Work in Progress
 
 ### Incomplete Features
+
 - **Zoom Scaling**: Currently set to `zoom: 1` for debugging
   - Need to restore to `var(--tile-scale, 1)` after verification
   - Files: `PlayerTile.razor.css`, `ResourceTracking.razor.css`
 
 ### Pending Design Doc
+
 - Catan font design document needs to be saved to repo
   - Source: `C:\Users\joelong\.claude\plans\wiggly-skipping-valley.md`
   - Destination: `design_docs/catan-font-design.md`
@@ -98,6 +100,7 @@
    - **Rationale:** Enables theming, player colors, states without regenerating font
 
 ### Design Patterns
+
 - Stat icons now use font-family 'Catan' with Unicode escape codes
 - Color inherited from parent element's `color` CSS property
 - Example: `<span class="stat-glyph">\uE907</span>`
@@ -105,11 +108,13 @@
 ## Blockers & Issues
 
 ### Known Issues
+
 - **Hot Reload Limitation:** Removing `@inject` directives requires full browser refresh
   - Severity: Minor (development inconvenience)
   - Workaround: Ctrl+Shift+R to clear cached WASM
 
 ### Technical Debt
+
 - Zoom is hardcoded to 1 for debugging
   - Should be `var(--tile-scale, 1)` for responsive scaling
   - Priority: Medium (blocks responsive design verification)
@@ -130,6 +135,7 @@
    - Test highlighted states
 
 ### Follow-Up Tasks
+
 - [ ] Restore zoom from 1 to var(--tile-scale)
 - [ ] Save catan-font-design.md to design_docs/
 - [ ] Verify stat glyphs render correctly in all themes
@@ -138,16 +144,19 @@
 ## Important Context
 
 ### Critical Information
+
 - **Catan Font Location:** `WebUI/wwwroot/themes/base/fonts/Catan.ttf`
 - **Glyph Mappings Source:** `DesktopApp/Layout/CatanFont.cs`
 - **WebUI Glyph Class:** `PlayerTile.razor` contains `CatanGlyph` static class
 
 ### Gotchas & Non-Obvious Aspects
+
 - Hot reload doesn't handle removed `@inject` directives - requires full refresh
 - CSS `zoom` is non-standard but works in all modern browsers
 - Font glyphs colored via inherited `color` CSS, not filters
 
 ### Key Files & Patterns
+
 - **PlayerTile styling:** `WebUI/Components/Players/PlayerTile.razor.css`
 - **Font declaration:** `WebUI/wwwroot/css/app.css` (lines 1-7)
 - **Glyph codes:** `PlayerTile.razor` CatanGlyph class (lines 103-120)
@@ -155,17 +164,20 @@
 ## Environment Notes
 
 ### Build Configuration
+
 - All projects building successfully
 - dotnet watch running (hot reload active)
 - Browser refresh required for inject changes
 
 ### Configuration Changes
+
 - Added @font-face for Catan font in app.css
 - Added StatLaurel to AssetName.cs and theme.json
 
 ## Quick Start for Next Session
 
 ### Immediate Actions
+
 1. **Verify current state:**
    - Open browser to WebUI game page
    - Check player tiles show font glyphs (not SVG images)
@@ -179,6 +191,7 @@
    - Copy plan file to `design_docs/catan-font-design.md`
 
 ### Current Focus Area
+
 - Working on: PlayersPanel/PlayerTile visual design
 - Key classes: `PlayerTile.razor`, `CatanGlyph`
 - Next task: Restore zoom scaling and verify responsive behavior

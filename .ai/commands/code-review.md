@@ -108,7 +108,7 @@ Code reviews ensure:
 - [ ] Tests are clear and understandable
 - [ ] Test names describe what they test
 - [ ] No flaky tests
-- [ ] Tests run successfully (`dotnet test`)
+- [ ] Tests run successfully (`pwsh ./catan.ps1 test`)
 
 ### 5. Security
 
@@ -273,8 +273,8 @@ Code reviews ensure:
 
 1. **Before Requesting Review**
    - Self-review using this checklist
-   - Run full build: `dotnet build Catan.sln`
-   - Run all tests: `dotnet test`
+   - Run full build: `pwsh ./catan.ps1 build`
+   - Run all tests: `pwsh ./catan.ps1 test`
    - Update `.ai/project-summary.md` if architecture changed
    - Create/update design docs if needed
    - Ensure code follows `.ai/ai-rules.md`
@@ -414,20 +414,23 @@ Before reviewing code, read these files using the Read tool:
 
 #### 4. Follow the Three-Phase Process
 
-**Phase 1: Context Gathering (15-20% of time)**
+##### Phase 1: Context Gathering (15-20% of time)
+
 - Read all context documents
 - Understand the change scope and purpose
 - Identify files to review and their relationships
 - Note specific concerns or areas of focus
 
-**Phase 2: Thorough Review (60-70% of time)**
+##### Phase 2: Thorough Review (60-70% of time)
+
 - Read each target file completely
 - Analyze architecture, logic, standards compliance
 - Check for bugs, performance issues, security concerns
 - Compare with Desktop implementation (for WebUI)
 - Document findings as you go
 
-**Phase 3: Documentation (15-20% of time)**
+##### Phase 3: Documentation (15-20% of time)
+
 - Create one `.code-reviews/<file>-cr-<ai>.md` per reviewed file
 - Use the standard template (see Review File Template section)
 - Organize findings by severity

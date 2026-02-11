@@ -77,20 +77,24 @@
 ## Performance Results
 
 **Before (F1 Free tier):**
+
 - Cold start: 10-20+ seconds
 - Warm: 0.7s-16s (inconsistent, occasional 16s spikes)
 
 **After (B1 Basic tier + Always On + DbContext pooling):**
+
 - Cold start: ~4s (acceptable with Always On keeping it warm)
 - Warm: 0.8-0.9s (consistent)
 
 ## Blockers & Issues
 
 ### Known Issues
+
 - UI shows "Site Responding: MISSING" - needs deploy
   - Severity: Minor (site actually works, just health check timing)
 
 ### Future Optimizations Identified
+
 1. **Fire-and-forget database writes** - Don't block response for game saves
 2. **Player image loading performance** - Slow initial load on mobile
    - User reported: "when I first connect on the phone it takes forever to load the player pictures"
@@ -111,6 +115,7 @@
    - Consider: caching headers, image compression, lazy loading
 
 ### Follow-Up Tasks
+
 - [ ] Deploy UI to Azure
 - [ ] Implement fire-and-forget saves
 - [ ] Investigate player image loading performance
@@ -119,15 +124,18 @@
 ## Important Context
 
 ### Critical Information
+
 - **Azure SQL now requires B1+ tier** - F1 doesn't support Always On
 - **Connection string changed** - Added pooling settings, need `database deploy -Force` to update
 
 ### Gotchas & Non-Obvious Aspects
+
 - `doctor` without a noun now runs on ALL resources (new behavior)
 - DbContext pooling only applies to SQL Server, SQLite still uses regular AddDbContext
 - App Service Plan upgrade may cause brief downtime during resize
 
 ### Key Files & Patterns
+
 - **Azure script:** `.scripts/catan-azure.ps1`
   - Doctor functions: `Get-GameServiceDoctor`, `Get-DatabaseDoctor`, `Get-UIDoctor`
   - Install functions: `Install-GameService`, `Install-Database`, `Install-UI`
@@ -136,11 +144,13 @@
 ## Environment Notes
 
 ### Build Configuration
+
 - All projects building successfully: Yes
 - Build command: `pwsh ./catan.ps1 build`
 - Warnings: None
 
 ### Configuration Changes
+
 - Updated `catan-azure.ps1` with:
   - Public network access check/fix
   - SKU check and auto-upgrade
@@ -152,23 +162,28 @@
 ## Quick Start for Next Session
 
 ### Immediate Actions
+
 1. **Commit changes:**
+
    ```bash
    git add -A
    git commit -m "feat: Add Azure performance diagnostics and auto-fixes"
    ```
 
 2. **Deploy UI:**
+
    ```bash
    ./catan.ps1 azure ui deploy
    ```
 
 3. **Verify all healthy:**
+
    ```bash
    ./.scripts/catan-azure.ps1 doctor
    ```
 
 ### Commands & Workflows
+
 - **Check Azure health:** `./.scripts/catan-azure.ps1 doctor`
 - **Check with perf test:** `./.scripts/catan-azure.ps1 doctor -Perf`
 - **Upgrade SKU:** `./.scripts/catan-azure.ps1 game-service install`

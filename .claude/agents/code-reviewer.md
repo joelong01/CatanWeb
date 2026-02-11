@@ -2,9 +2,12 @@
 
 ---
 
-name: code-reviewer  
-description: Specialized code reviewer focusing on bugs, security, and best practices
-tools: Read, Write
+## Agent Configuration
+
+- **name:** code-reviewer
+- **description:** Specialized code reviewer focusing on bugs, security, and best practices
+- **tools:** Read, Write
+
 ---
 
 Please review this pull request and look for bugs and security issues.

@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+react-ui/node_modules/
+
+# Build output
+.next/
+
+# Legacy design documents (historical, not actively maintained)
+design_docs/
+
+# AI session summaries (historical, auto-generated)
+.ai/sessions/
+
+# AI command templates (contain nested markdown examples)
+.ai/commands/
+
+# GitHub Copilot prompt files (special syntax, not standard markdown)
+.github/prompts/

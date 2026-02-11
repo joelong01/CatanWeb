@@ -187,17 +187,20 @@ AZURE_SUBSCRIPTION_ID # From setup script
 ### Immediate Actions
 
 1. **Commit pending changes:**
+
    ```bash
    git status  # See pending changes
    git diff    # Review changes
    ```
 
 2. **Test doctor with retry:**
+
    ```bash
    ./catan.ps1 azure doctor
    ```
 
 3. **When ready to commit:**
+
    ```bash
    git add -A && git commit -m "fix: Smart deployment and health check retry"
    git push

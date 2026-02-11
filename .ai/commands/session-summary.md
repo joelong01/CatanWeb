@@ -64,10 +64,10 @@ git status --short | wc -l
 
 ```bash
 # Verify build status
-dotnet build Catan.sln
+pwsh ./catan.ps1 build
 
 # Check test status
-dotnet test
+pwsh ./catan.ps1 test
 
 # Note any failures or warnings
 ```
@@ -81,6 +81,7 @@ dotnet test
 ### 4. Recall Key Decisions
 
 Think back through the session:
+
 - What design choices were made?
 - What alternatives were considered and rejected?
 - What trade-offs were accepted?
@@ -104,6 +105,7 @@ Think back through the session:
 Create: `.ai/sessions/SESSION_SUMMARY-{date}-{hhmm}.md`
 
 Where:
+
 - `{date}` is `YYYY-MM-DD` format (e.g., `2025-11-27`)
 - `{hhmm}` is 24-hour time format (e.g., `1430` for 2:30 PM, `0900` for 9:00 AM)
 
@@ -272,8 +274,9 @@ Example: `.ai/sessions/SESSION_SUMMARY-2025-11-27-1430.md`
 ## Environment Notes
 
 ### Build Configuration
+
 - All projects building successfully: Yes / No
-- Build command: `dotnet build Catan.sln`
+- Build command: `pwsh ./catan.ps1 build`
 - Build time: ~{N} seconds
 - Warnings: [list any warnings]
 
@@ -305,47 +308,54 @@ Example: `.ai/sessions/SESSION_SUMMARY-2025-11-27-1430.md`
 ## Quick Start for Next Session
 
 ### Immediate Actions
+
 1. **Start Here:**
+
    ```bash
    # Pull latest changes (if working with team)
    git pull origin {branch-name}
 
    # Verify build
-   dotnet build Catan.sln
+   pwsh ./catan.ps1 build
 
    # Check database is current
-   ./webui.ps1 database check
+   pwsh ./catan.ps1 database doctor
    ```
 
-2. **Review These Files First:**
+1. **Review These Files First:**
    - `.ai/project-summary.md` - Current project state
    - `design_docs/[file].md` - Recent design decisions
    - `code-reviews/[file]-cr.md` - Outstanding review items
 
-3. **Current Focus Area:**
+1. **Current Focus Area:**
    - Working on: [component/feature]
    - Key classes: `ClassName1`, `ClassName2`
    - Next task: [specific next step]
 
 ### Commands & Workflows
+
 - **Run services:**
+
   ```bash
-  ./webui.ps1 run
+  pwsh ./catan.ps1 run
   ```
 
 - **Database rebuild:**
+
   ```bash
-  ./webui.ps1 database install
+  pwsh ./catan.ps1 database install
   ```
 
 - **Run tests:**
+
   ```bash
-  dotnet test
+  pwsh ./catan.ps1 test
   # Or specific project:
   dotnet test Tests/GameService
   ```
 
 ### Context to Load
+
 - If continuing [feature], read:
   - `path/to/file1.cs` - [why]
   - `path/to/file2.cs` - [why]
@@ -355,10 +365,12 @@ Example: `.ai/sessions/SESSION_SUMMARY-2025-11-27-1430.md`
   - [Relevant background]
 
 ### Open Questions
+
 - Should we [decision to make]?
   - Context: [background]
   - Options: [alternatives]
   - Input needed: [from whom]
+
 ```
 
 ---
@@ -417,12 +429,12 @@ Write as if explaining to someone who:
    git commit -m "docs: Add session summary for {date} {hhmm}"
    ```
 
-3. **Update project-summary.md if needed:**
+1. **Update project-summary.md if needed:**
    - Major architectural changes should be reflected
    - New features should be documented
    - Current status should be updated
 
-4. **Create todo list for next session if helpful:**
+1. **Create todo list for next session if helpful:**
    - Extract action items from "Next Session Priority"
    - Add to issue tracker or project board if used
 

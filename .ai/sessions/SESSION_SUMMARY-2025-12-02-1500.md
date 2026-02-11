@@ -144,6 +144,7 @@
 ### Immediate Actions
 
 1. **Verify build:**
+
    ```bash
    dotnet build Catan.sln
    ```

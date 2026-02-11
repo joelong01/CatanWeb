@@ -8,6 +8,7 @@
 ## Work Completed
 
 ### Major Features
+
 - **Visual Design Convergence Document**: Created comprehensive analysis comparing Desktop WinUI3 and WebUI Blazor implementations
   - Key files: `design_docs/visual-design.md`
   - Documented 6-phase implementation plan for achieving visual parity
@@ -44,6 +45,7 @@
   - Harbor triangle connections now use textured water background
 
 ### Bug Fixes
+
 - **Fixed Resource Card Aspect Ratios**: Multiple fixes to maintain 1:1.5 ratio
   - Root cause: Fixed heights without calculated widths, or missing aspect-ratio property
   - Solution:
@@ -67,6 +69,7 @@
   - Location: `WebUI/Components/Players/PlayerTile.razor.css`
 
 ### Refactoring
+
 - **Made ResourceCard Component Responsive**: Changed from fixed to flexible sizing
   - Before: Fixed 67x100px dimensions
   - After: 100% width/height, sized by parent container
@@ -80,6 +83,7 @@
   - Location: `WebUI/Components/Players/PlayerTile.razor` - `GetSvgFilterStyle()` method
 
 ### Infrastructure/Tooling
+
 - **Asset Organization**: Moved resource card images from DesktopApp to WebUI
   - Deleted: `DesktopApp/Assets/ResourceCards/*` (19 files)
   - Added: `WebUI/wwwroot/images/resources/*` (matching files)
@@ -88,6 +92,7 @@
   - Added: `WebUI/wwwroot/images/svg/ore.svg`
 
 ### Documentation
+
 - **Created Visual Design Document**: `design_docs/visual-design.md`
   - Detailed Desktop vs WebUI comparison
   - Implementation plan with 6 phases
@@ -101,9 +106,11 @@
 ## Work in Progress
 
 ### Incomplete Features
+
 None - all planned features for this session were completed.
 
 ### Experimental Code
+
 - **Tunable Scale Factor**: CSS variable `--stat-scale` set to 1.6
   - Purpose: Allow easy adjustment of player tile stat sizes for different displays
   - Findings: Works well with calc() for all dimensions (width, height, gap, font-size)
@@ -112,6 +119,7 @@ None - all planned features for this session were completed.
 ## Decisions Made
 
 ### Architecture Decisions
+
 1. **Board-Priority Grid Layout**
    - **Context:** Original fixed-width columns didn't optimize for widescreen displays
    - **Options Considered:**
@@ -138,6 +146,7 @@ None - all planned features for this session were completed.
    - **Documentation:** Comments in `BoardSvgGenerator.cs:284-290`
 
 ### Design Patterns
+
 - **Component CSS Variables for Tuning**: Used `--stat-scale` variable for player tile sizing
   - Follows modern CSS best practices for customizable components
   - Rationale: Allows non-developer adjustment without touching code
@@ -147,6 +156,7 @@ None - all planned features for this session were completed.
   - Rationale: Principle of least privilege - renderers only get display data, not full player state
 
 ### Trade-offs
+
 - **Fixed Panel Widths vs. Flexible**: Chose fixed 280px (left) and 650px (right)
   - Benefits: Predictable sizing, no layout thrashing, easy to tune
   - Costs: Not responsive to very small screens (acceptable for desktop-focused game)
@@ -160,9 +170,11 @@ None - all planned features for this session were completed.
 ## Blockers & Issues
 
 ### Critical Blockers
+
 None
 
 ### Known Issues
+
 - **Water Texture File Extension**: Initially referenced `back.png` but file is actually `back.jpg`
   - Severity: Minor
   - Location: `BoardSvgGenerator.cs:288`
@@ -170,6 +182,7 @@ None
   - Plan: Already fixed by user
 
 ### Technical Debt
+
 - **SVG Icon HTTP Requests**: Each stat icon loads separately (12 per player × 7 players = 84 requests)
   - Current state: Individual `<img src="/images/svg/...">` tags
   - Ideal state: SVG sprite sheet or inline SVG definitions in defs
@@ -181,6 +194,7 @@ None
   - Priority: Low - current values work well
 
 ### External Dependencies
+
 None
 
 ## Next Session Priority
@@ -207,6 +221,7 @@ None
      - Desktop reference: `DesktopApp/Game/GameView/GameViewModel.cs`
 
 ### Follow-Up Tasks
+
 - [ ] Test player images loading from GameService API with real player profiles
 - [ ] Verify water texture renders correctly in all browsers
 - [ ] Consider SVG sprite optimization if icon loading becomes performance issue
@@ -215,6 +230,7 @@ None
 ## Important Context
 
 ### Critical Information
+
 - **Scale Factor Tuning**: Player tiles use `--stat-scale: 1.6` CSS variable
   - Location: `WebUI/Components/Players/PlayerTile.razor.css:8, 14`
   - Affects: All stat tile dimensions, player avatar size
@@ -226,6 +242,7 @@ None
   - Implementation varies by context (aspect-ratio property, calculated width, fixed dimensions)
 
 ### Gotchas & Non-Obvious Aspects
+
 - **Water Texture File**: Located at `/images/tiles/back.jpg` (not .png!)
   - Symptom: Broken image if referenced as .png
   - Cause: Original file is JPEG format
@@ -264,6 +281,7 @@ None
   - Why: Allows easy adjustment without code changes, single source of truth
 
 ### Reference Documentation
+
 - Relied heavily on:
   - `design_docs/visual-design.md` (created this session)
   - `design_docs/web-full-view.jpg` (visual reference)
@@ -276,12 +294,14 @@ None
 ## Environment Notes
 
 ### Build Configuration
+
 - All projects building successfully: Yes (user confirmed)
 - Build command: `dotnet build Catan.sln`
 - Build time: Not measured
 - Warnings: None reported
 
 ### Test Status
+
 - Total tests: Not run (skipped per user request)
 - Passing: N/A
 - Failing: N/A
@@ -290,19 +310,24 @@ None
 **Note:** User explicitly requested skipping tests for this handover.
 
 ### Configuration Changes
+
 None
 
 ### New Dependencies
+
 None
 
 ### Database Schema
+
 - No schema changes this session
 - Current schema: Uses nested `PlayerColors` structure (from previous sessions)
 
 ## Quick Start for Next Session
 
 ### Immediate Actions
+
 1. **Start Here:**
+
    ```bash
    # Verify build
    dotnet build Catan.sln
@@ -325,22 +350,27 @@ None
    - Next task: Implement purchase buttons for dev cards and buildings
 
 ### Commands & Workflows
+
 - **Run services:**
+
   ```bash
   ./webui.ps1 run
   ```
 
 - **Build solution:**
+
   ```bash
   dotnet build Catan.sln
   ```
 
 - **Run tests:**
+
   ```bash
   dotnet test
   ```
 
 ### Context to Load
+
 - If implementing purchase buttons, read:
   - `DesktopApp/Game/GameView/GameViewModel.cs` - Desktop purchase logic
   - `Shared/Models/Entitlement.cs` - What can be purchased
@@ -351,6 +381,7 @@ None
   - `WebUI/Components/Resources/ResourceCard.razor.css` - Where to add animation triggers
 
 ### Open Questions
+
 - Should purchase buttons be in a separate panel or overlay?
   - Context: Desktop has purchase UI integrated into game view
   - Options: Fixed panel (like left/right columns) vs modal/overlay vs inline buttons

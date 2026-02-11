@@ -13,10 +13,17 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.7" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.Json" Version="9.0.7" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
+    <PackageReference Include="TypeGen" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Messages\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Exclude TypeGenRunner from this project - it's a separate console app -->
+    <Compile Remove="TypeScript\TypeGenRunner\**" />
+    <None Remove="TypeScript\TypeGenRunner\**" />
   </ItemGroup>
 
 

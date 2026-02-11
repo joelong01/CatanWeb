@@ -56,6 +56,8 @@ public class RecordingService
 
     /// <summary>
     /// Starts recording for a game. Captures the initial game state and saves to database immediately.
+    /// If a previous recording exists for this GameID, it is deleted to prevent duplicates with
+    /// divergent states (which can happen when stop+start recording on the same game).
     /// </summary>
     /// <param name="gameId">The game ID to record</param>
     /// <param name="name">The recording name (typically the game name)</param>
@@ -70,6 +72,10 @@ public class RecordingService
             _logger.LogWarning("Game {GameId} is already being recorded", gameId);
             return null;
         }
+
+        // Delete any existing recordings for this GameID to prevent duplicates
+        // This handles the case where recording was stopped and started again on the same game
+        await DeleteRecordingsByGameIdAsync(initialGameModel.GameId);
 
         // Save to database immediately
         await SaveRecordingToDatabaseAsync(recording);
@@ -250,6 +256,32 @@ public class RecordingService
 
         _logger.LogInformation("Deleted recording {RecordingId}", recordingId);
         return true;
+    }
+
+    /// <summary>
+    /// Deletes all recordings that contain the specified GameID in their data.
+    /// This prevents duplicate recordings when stop+start recording on the same game.
+    /// </summary>
+    private async Task DeleteRecordingsByGameIdAsync(string gameId)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
+
+        // Find recordings where the data contains this gameId
+        // We search for the JSON pattern "gameId":"<gameId>" to match the embedded GameID
+        var searchPattern = $"\"gameId\":\"{gameId}\"";
+        var matchingRecordings = await dbContext.Recordings
+            .Where(r => r.Data.Contains(searchPattern))
+            .ToListAsync();
+
+        if (matchingRecordings.Count > 0)
+        {
+            dbContext.Recordings.RemoveRange(matchingRecordings);
+            await dbContext.SaveChangesAsync();
+
+            _logger.LogInformation("Deleted {Count} existing recording(s) for GameID {GameId} to prevent duplicates",
+                matchingRecordings.Count, gameId);
+        }
     }
 
     /// <summary>

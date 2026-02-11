@@ -1,0 +1,67 @@
+name: Deploy React UI to Staging
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'react-ui/**'
+      - '.github/workflows/deploy-react-staging.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy React UI
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: react-ui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: react-ui
+        run: npm ci
+
+      - name: Build Next.js (standalone)
+        working-directory: react-ui
+        env:
+          NEXT_PUBLIC_GAME_SERVICE_URL: https://catan-api.azurewebsites.net
+        run: npm run build
+
+      - name: Assemble deployment package
+        run: |
+          mkdir -p deploy
+          # Standalone output is nested under react-ui/ due to monorepo detection
+          cp -r react-ui/.next/standalone/react-ui/* deploy/
+          cp -r react-ui/.next/static deploy/.next/static
+          cp -r react-ui/public deploy/public
+          cd deploy && zip -r ../react-ui.zip .
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to staging slot
+        run: |
+          az webapp deploy \
+            --name catan \
+            --resource-group rg-catan \
+            --slot staging \
+            --src-path react-ui.zip \
+            --type zip \
+            --async true

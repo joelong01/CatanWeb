@@ -102,6 +102,7 @@ None.
 ### Testing Notes
 
 Build completes successfully with output:
+
 - "MSIX certificate created and configured" (new cert) or "MSIX certificate found" (existing)
 - "Font registered successfully"
 - "Build process completed successfully!"

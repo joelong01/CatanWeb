@@ -1,0 +1,73 @@
+/**
+ * Geometry module for hexagonal board rendering.
+ * Re-exports all geometry constants and functions.
+ */
+
+// Constants
+export {
+  HEX_SIZE,
+  HEX_WIDTH,
+  HEX_HEIGHT,
+  CENTER_X,
+  CENTER_Y,
+  PADDING,
+  TILE_GAP,
+  INNER_HEX_STROKE_THICKNESS,
+  INNER_HEX_SIZE,
+  ROAD_STROKE_THICKNESS,
+  BUILDING_SIZE,
+  SETTLEMENT_RADIUS,
+  NUMBER_TOKEN_RADIUS,
+  NUMBER_TOKEN_OFFSET_Y,
+  NUMBER_TOKEN_OPACITY,
+  NUMBER_FONT_SIZE,
+  PIPS_FONT_SIZE,
+  NUMBER_OFFSET_Y,
+  PIPS_OFFSET_Y,
+  NUMBER_TOKEN_STROKE_WIDTH,
+  HARBOR_CIRCLE_RADIUS,
+  HARBOR_OFFSET,
+  WATER_TRIANGLE_SIZE,
+  WATER_COLOR,
+  TILE_DIM_DURATION_SECONDS,
+  HEX_BORDER_FILL_PATTERN,
+  HEX_BORDER_STROKE_PATTERN,
+  HEX_HIGHLIGHT_COLOR,
+  NUMBER_TOKEN_FILL,
+  NUMBER_TOKEN_STROKE,
+  HIGH_PROB_COLOR,
+  NORMAL_NUMBER_COLOR,
+  BACKGROUND_COLOR,
+  ROAD_EDGE_ANGLES,
+  ROAD_EDGE_MIDPOINT_OFFSETS,
+  CANONICAL_ROAD_POLYGON,
+  getPatternId,
+  getHarborPatternId,
+} from './boardConstants';
+
+// Geometry functions and types
+// HexCoords is a type alias for the generated HexCoordinates (which now only has q, r, s)
+export {
+  type HexCoords,
+  type HexCoords as HexCoordinates, // Re-export for convenience
+  axialToPixel,
+  pixelToHex,
+  getHexVertices,
+  generateHexPath,
+  getEdgeVerticesForSide,
+  getVertexIndexForPosition,
+  getVertexPosition,
+  addHexCoords,
+  subtractHexCoords,
+  hexDistance,
+  getHexNeighbors,
+  areHexesAdjacent,
+  isValidHexCoordinate,
+  hexFromAxial,
+  hexToString,
+  hexFromString,
+  hexEquals,
+} from './boardGeometry';
+
+// Direction exports from hex-geometry (canonical source)
+export { Direction, DIRECTION_VECTORS, ALL_DIRECTIONS } from '@/components/hex-grid/hex-geometry';

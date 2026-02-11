@@ -1214,6 +1214,11 @@
           "System.Xml.ReaderWriter": "4.3.0"
         }
       },
+      "TypeGen": {
+        "type": "Transitive",
+        "resolved": "7.0.0",
+        "contentHash": "Wa75efpUNY/S16fQyjq0z96AL1JlqR6J76PjbRuSlI/1/YWEUN1HvUR9fZX69Qe4MDHDRK4Yn7NvbYmZXLMzaA=="
+      },
       "catan3.shared": {
         "type": "Project",
         "dependencies": {
@@ -1221,7 +1226,8 @@
           "Microsoft.AspNetCore.SignalR.Client": "[9.0.7, )",
           "Microsoft.AspNetCore.SignalR.Protocols.Json": "[9.0.7, )",
           "Microsoft.Extensions.Logging.Abstractions": "[9.0.7, )",
-          "System.Text.Json": "[9.0.7, )"
+          "System.Text.Json": "[9.0.7, )",
+          "TypeGen": "[7.0.0, )"
         }
       }
     },

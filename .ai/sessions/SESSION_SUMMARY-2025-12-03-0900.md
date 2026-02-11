@@ -10,6 +10,7 @@
 ### Major Features
 
 #### 1. Robber Implementation (MustMoveRobber GameState)
+
 - **RobberLayer.razor**: CatanFont glyphs (SolidShield `\uE925` + Pirate `\uE90C`)
   - Size: 50% of hex height (reduced from 75% to show tile number)
   - Colors: Player gradient via `url(#gradient-{playerId})`
@@ -22,6 +23,7 @@
 - Key files: `RobberLayer.razor`, `Game.razor`, `BoardGeometry.cs`, `boardSizer.js`
 
 #### 2. Building Indexes for Allocation Phase
+
 - **BuildingOverlay.razor**: Numbered indexes for buildable spots
   - Settlements: 1, 2, 3... (numeric)
   - Cities: A, B, C... (alphabetic)
@@ -30,6 +32,7 @@
 - Key files: `BuildingOverlay.razor`, `BuildingOverlay.razor.css`
 
 #### 3. Tile Dimming After Roll
+
 - **Game.razor**: Timer-based dimming, purely UI-driven
   - `DimTiles(rollNumber)` called from `OnRollClick`, not from GameModel state
   - Duration configurable via `BoardSvgConstants.TileDimDurationSeconds`
@@ -37,12 +40,14 @@
 - Key files: `Game.razor`, `BaseLayer.razor`, `BoardSvgConstants.cs`
 
 #### 4. Gold Tile Resource Card Positioning
+
 - **GoldTilesLayer.razor**: Resource overlay positioned above roads
   - Offset by `BoardSvgConstants.InnerHexStrokeThickness / 2`
   - Removed white border to match other resource cards
 - Key files: `GoldTilesLayer.razor`
 
 #### 5. Pixel-to-Axial Coordinate Conversion
+
 - **BoardGeometry.cs**: Added `PixelToAxial()` method
   - Uses cube coordinate rounding algorithm (Red Blob Games)
   - Inverse of existing `AxialToPixel()`
@@ -169,6 +174,7 @@ WebUI/wwwroot/js/boardSizer.js                    - getBounds()
 ### Immediate Actions
 
 1. **Start Here:**
+
    ```bash
    git status
    pwsh ./webui.ps1 build
@@ -190,5 +196,5 @@ WebUI/wwwroot/js/boardSizer.js                    - getBounds()
 
 ## Reference
 
-- Red Blob Games hex guide: https://www.redblobgames.com/grids/hexagons/
+- Red Blob Games hex guide: <https://www.redblobgames.com/grids/hexagons/>
 - Cube coordinate rounding algorithm used for PixelToAxial

@@ -82,15 +82,18 @@
 ## Key Files Modified
 
 ### GameService
+
 - `GameApiController.cs` - Added UpdateHouseRules endpoint
 - `GameStateMachine.cs` - Added HandleUpdateHouseRulesAsync, fixed SetTempGoldTiles
 
 ### Shared
+
 - `HouseRules.cs` - Added SupplementalMinPlayers property
 - `MessageObjects.cs` - Added UpdateHouseRulesMessage
 - `RecordedMessage.cs` - Added UpdateHouseRulesRecord and ToRecord extension
 
 ### WebUI
+
 - `Settings.razor` - New settings page with category grouping
 - `settings.json` - Settings definitions with categories
 - `NewGame.razor` - Added House Rules checkbox
@@ -111,7 +114,9 @@
 ## Quick Start for Next Session
 
 ### Immediate Actions
+
 1. **Verify Build:**
+
    ```bash
    dotnet build Catan.sln
    ```
@@ -123,6 +128,7 @@
    - Next turn should show 2 gold tiles
 
 ### Key Patterns
+
 - HouseRules changes MUST go through `HandleUpdateHouseRulesAsync`
 - Settings page reads `current_gameId` from localStorage to POST changes
 - `SetTempGoldTiles` is called at turn transitions (DoneResourceAllocation → WaitingForRoll)

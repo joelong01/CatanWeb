@@ -42,6 +42,7 @@
 ### Key Files Modified
 
 **Shared Project:**
+
 - `PlayerModel.cs` - Added `VictoryPointCards` property
 - `RegularBoardInfo.cs`, `ExpansionBoardInfo.cs` - Added DevCard entitlement
 - `GameStateMachine.cs` - DevCard purchase, VP processing, score calculation
@@ -50,10 +51,12 @@
 - `GameModelExtensions.cs` - Intentionally excluded SpentEntitlementsThisGame from hash
 
 **GameService:**
+
 - `GameApiController.cs` - Pass VPs to DeclareWinnerMessage
 - `RecordingController.cs` - Pass VPs during replay
 
 **WebUI:**
+
 - `Game.razor` - VP flow, OnVictoryPointsDone handler
 - `Game.razor.css` - 3x2 grid, updated column widths
 - `PlayersPanel.razor` - IsVPEntryPhase, local VP storage, Done button
@@ -109,10 +112,12 @@
 ## Environment Notes
 
 ### New Recordings
+
 - `VP-test.json` - VP entry test recording
 - `full-simulated-game-with-VPs.json` - Full game with VP cards
 
 ### CSS Version
+
 - Updated to `CSS 2026-01-15 v3`
 - index.html version: `2026-01-15-v3`
 
@@ -127,6 +132,7 @@
 ```
 
 ### Key Files for VP Feature
+
 - `WebUI/Pages/Game.razor:1701-1753` - VP flow handlers
 - `WebUI/Components/Players/PlayersPanel.razor` - VP local storage
 - `Catan3.Shared/GameLogic/GameStateMachine.cs:628-673` - HandleDeclareWinnerAsync

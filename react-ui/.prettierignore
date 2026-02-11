@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+out/
+build/
+
+# Generated files - never edit manually
+types/generated/
+
+# Package lock
+package-lock.json

@@ -71,8 +71,32 @@ When creating or updating content in `.ai/`:
 7. [Architecture and Design Patterns](#architecture-and-design-patterns)
 8. [Testing Requirements](#testing-requirements)
 9. [Git and Version Control](#git-and-version-control)
+10. [Design, Planning, and Review Workflow](#design-planning-and-review-workflow)
 
 ## General Principles
+
+### React Port: Check Existing Implementations First
+
+**CRITICAL RULE:** Before inventing something new when doing the React port, follow this hierarchy:
+
+1. **Check the Blazor/Razor app first** - How did we implement this feature in `WebUI/`?
+2. **Check the Desktop app second** - How did we implement it in `DesktopApp/`?
+3. **Check the design documents** - Is it documented in `.design/ui/react/` or `.design/`?
+4. **Ask the developer** - If not found in the above, ask how to proceed
+
+This is the **most important rule for the port** because:
+
+- It prevents inventing new patterns that conflict with existing mechanisms
+- It ensures consistency across platforms (Blazor, Desktop, React)
+- Data structures, API patterns, and state management already exist - use them
+- Player colors, profiles, and other data come from existing database collections
+
+**Example:** If you need player colors in React:
+
+1. Check `WebUI/Pages/Game.razor` - How does Blazor get `PlayerColorMap`?
+2. Check `WebUI/Components/Players/PlayersPanel.razor` - How are colors passed and used?
+3. Trace the data flow back to its source (database, API, SignalR)
+4. Implement the same pattern in React
 
 ### Minimize Changes
 
@@ -258,6 +282,14 @@ All markdown files must be **Markdown Lint error-free**. Pay special attention t
 Use "text" for plain output or when no language applies
 ```
 
+### Linting Workflow
+
+After writing or modifying any markdown file:
+
+1. Run `npx markdownlint-cli "path/to/file.md" --fix` to auto-correct formatting.
+2. Run `npx markdownlint-cli "path/to/file.md"` to report remaining issues.
+3. Manually fix all reported issues before committing.
+
 ### Line Length Management
 
 - Hard wrap at 150 characters
@@ -274,11 +306,9 @@ Catan/
 ├── .claude/                # Claude-specific commands and configurations
 │   ├── commands/          # Reusable command scripts
 │   └── sessions/          # Session summaries
-├── .design/               # Current "as built" design documentation
-│   ├── projects/          # Per-project architecture summaries
-│   ├── systems/           # Cross-cutting system designs
-│   └── ui/               # UI component design specifications
-├── design_docs/           # Legacy design documentation and historical decisions
+├── .design/               # Verified design documentation (30 docs)
+│   ├── plans/            # Implementation plans awaiting approval
+│   └── old/              # Legacy/superseded docs for reference
 ├── WebUI/
 │   ├── Components/        # Reusable Blazor components
 │   │   ├── Board/        # Board-related components
@@ -328,17 +358,20 @@ The `.test-images/` directory (excluded from git) contains images for AI assista
 
 ### Build Commands
 
+Use `./catan.ps1` as the unified entry point for all development tasks:
+
 - **PowerShell scripts**: Always use `pwsh` (PowerShell 7+), not `powershell` (legacy)
-- **WebUI build**: `pwsh ./webui.ps1 help` to see available commands
-- **Full build**: `pwsh ./build.ps1` (includes tests)
-- **Quick build**: `dotnet build` (should succeed with no errors)
-- **Clean build**: `pwsh ./build.ps1 -NoTest -Clean`
+- **Build only**: `pwsh ./catan.ps1 build` (no tests)
+- **Build with tests**: `pwsh ./catan.ps1 test`
+- **Clean build**: `pwsh ./catan.ps1 clean` (preserves database)
+- **Start development**: `pwsh ./catan.ps1 run` (build, start services, launch browser)
+- **Check setup**: `pwsh ./catan.ps1 doctor`
 
 ### Development Workflow
 
-1. Check build status: `dotnet build`
+1. Check build status: `pwsh ./catan.ps1 build`
 2. Make minimal, surgical changes
-3. Verify build: `dotnet build`
+3. Verify build: `pwsh ./catan.ps1 build`
 4. Run relevant tests if applicable
 5. Commit with clear message
 
@@ -347,11 +380,11 @@ The `.test-images/` directory (excluded from git) contains images for AI assista
 - **Browser caching**: Hard refresh (Ctrl+Shift+R) after code changes
 - **SVG caching**: Create new game to bypass cache or restart GameService
 - **GameService restart required**: For SVG generation code changes
-- **Blazor hot reload**: Some changes require full rebuild and restart
+- **Blazor hot reload**: Some changes require full rebuild (`pwsh ./catan.ps1 update`)
 
 ### Testing Commands
 
-- **All tests**: `./build.ps1` (includes test run)
+- **All tests**: `pwsh ./catan.ps1 test`
 - **Specific tests**: `dotnet test Tests/GameService --filter "TestName"`
 - **With verbose**: Add `--verbosity normal` to see detailed output
 
@@ -419,10 +452,17 @@ Tests/
 
 ### Commit Guidelines
 
+- **ALWAYS ask permission**: AI assistants must ask the user for permission before creating any commit
 - **Commit frequently**: Small, logical commits
 - **Clear messages**: Describe what and why, not how
 - **Group related changes**: Stage files that belong together
 - **Test before commit**: Ensure build passes
+- **Lint before commit**: Run `./catan.ps1 lint` to check all changed files:
+  - This single command checks: C#, TypeScript/ESLint, Markdown, JSON, PowerShell, and spelling
+  - Auto-fixes are applied where possible (use `-NoFix` to disable)
+  - Fix any remaining issues before committing
+  - Use `./catan.ps1 lint all` to check entire codebase (slower)
+  - Use `./catan.ps1 lint ts` to check only TypeScript, etc. (cs, ts, md, json, ps1, spell)
 
 ### Git Best Practices
 
@@ -476,6 +516,99 @@ git --no-pager log --oneline -10
 - **Database location**: SQLite files in user profile (not repository)
 - **API keys**: Document where needed, never commit actual keys
 
+## Design, Planning, and Review Workflow
+
+All design artifacts live under `.design/` in purpose-specific directories:
+
+```text
+.design/
+├── *.md              # Verified as-built docs (source of truth)
+├── plans/            # Implementation plans awaiting approval
+├── reviews/          # Code and design reviews
+└── old/              # Legacy/superseded docs for reference
+```
+
+### Design Documents
+
+When documenting a system, feature, or architecture decision, write it to
+`.design/` as a verified as-built doc:
+
+- **Format**: Markdown that passes lint rules (see [Markdown Documentation Rules](#markdown-documentation-rules))
+- **Naming**: `kebab-case.md` matching the system or feature
+- **Update after changes**: When code behavior changes, update the relevant doc
+- **Code is truth**: When a doc disagrees with code, the code wins -- fix the doc
+
+### Design Documents and Implementation Plans
+
+Non-trivial tasks require a **two-stage** approval workflow before any code is written.
+
+#### Stage 1: Design Doc
+
+Write a design document to `.design/<feature>.md` describing the architecture,
+key decisions, data flow, and high-level approach. **STOP and wait for developer
+approval before proceeding.**
+
+#### Stage 2: Implementation Plan
+
+After design approval, write a detailed implementation plan to
+`.design/implementation-plans/`:
+
+```text
+.design/implementation-plans/
+├── winner-overlay-plan.md
+├── portrait-mode-plan.md
+└── ...
+```
+
+**Plan file requirements:**
+
+- **Format**: Markdown that passes lint rules
+- **Naming**: `<feature-name>-plan.md` -- the developer provides the feature name
+- **Scope**: One plan per task -- don't combine unrelated work
+
+**Plan structure:**
+
+1. **Goal** -- one sentence describing what the plan accomplishes
+2. **Changes** -- per-file breakdown of what will be added/removed/modified
+3. **Files Modified** -- summary table of all files touched
+4. **Verification** -- how to confirm the changes work (build, test, manual steps)
+
+**STOP and wait for developer approval before writing any code.**
+
+#### Stage 3: Implementation
+
+After plan approval, implement the plan precisely.
+
+**Approval process:**
+
+1. AI writes design doc to `.design/<feature>.md` -- waits for approval
+2. AI writes implementation plan to `.design/implementation-plans/` -- waits for approval
+3. Only after both approvals does implementation begin
+4. Delete the plan file after the work is committed (plans are transient)
+
+**When to skip this workflow:**
+
+- Single-line fixes (typos, obvious bugs)
+- Adding a comment or adjusting a constant
+- Tasks where the developer gives exact instructions with no ambiguity
+
+### Reviews
+
+Code reviews and design reviews go in `.design/reviews/`:
+
+```text
+.design/reviews/
+├── winner-overlay-review-claude.md
+├── winner-overlay-review-copilot.md
+├── doc-audit-review-gemini.md
+└── ...
+```
+
+- **Naming**: `<feature-name>-review-<ai>.md` where `<ai>` identifies the
+  reviewer (e.g., `claude`, `copilot`, `gemini`)
+- **Format**: Markdown that passes lint rules
+- **Content**: Findings, recommendations, file-specific feedback
+
 ## Session Workflow
 
 ### Starting a Session
@@ -484,9 +617,9 @@ git --no-pager log --oneline -10
 2. Check `git status` and recent commits
 3. Review `.ai/project-summary.md` for latest state
 4. **Discovery phase**: Consult `.design/` directory for current architecture
-   - Start with `.design/summary.md` for project overview
-   - Check `.design/TOC.md` for complete documentation index
-   - Reference relevant project/system/ui documents as needed
+   - Start with `.design/README.md` for the document index
+   - Reference relevant design documents as needed
+   - Legacy docs are in `.design/old/` for historical reference
 5. Identify current task and next priorities
 
 ### During a Session
@@ -536,15 +669,15 @@ git --no-pager log --oneline -10
 
 ### Build Failures
 
-- **File locked by process**: Stop GameService/WebUI before building
-- **Missing dependencies**: Run `dotnet restore`
-- **Cache issues**: Use `./build.ps1 -Clean`
+- **File locked by process**: Run `pwsh ./catan.ps1 stop` then rebuild
+- **Missing dependencies**: Run `pwsh ./catan.ps1 install`
+- **Cache issues**: Run `pwsh ./catan.ps1 clean`
 
 ### Runtime Issues
 
 - **SVG not updating**: Restart GameService or create new game
 - **Styles not applying**: Check CSS variable definitions in `app.css`
-- **Hot reload not working**: Full rebuild required for some changes
+- **Hot reload not working**: Run `pwsh ./catan.ps1 update`
 
 ### Test Failures
 
@@ -554,13 +687,19 @@ git --no-pager log --oneline -10
 
 ## Resources
 
-- **Current Architecture**: `.design/` directory for "as built" system documentation
-  - `.design/TOC.md` - Complete documentation index
-  - `.design/summary.md` - High-level project overview
-  - `.design/projects/` - Per-project implementation details
-  - `.design/systems/` - Cross-cutting system designs
-  - `.design/ui/` - Component-level UI specifications
+- **Current Architecture**: `.design/` directory for verified design documentation
+  - `.design/README.md` - Complete document index (30 verified docs)
+  - `.design/old/` - Legacy/superseded docs for historical reference
 - **Desktop Reference**: `DesktopApp/` for XAML patterns and styling
-- **Legacy Design Docs**: `design_docs/` for historical architectural decisions
 - **Session History**: `.ai/sessions/` for past work context
 - **Project Context**: `.ai/project-summary.md` for current state and priorities
+
+### 7. Evidence Integrity (Anti-Hallucination Protocol)
+
+**CRITICAL**: AI reviewers must strictly adhere to evidence-based reporting.
+
+1. **Zero Fabrication**: Never quote code or file contents that you have not explicitly read using a tool in the current session.
+2. **Verify "Missing" Items**: Before claiming an item needs to be added or removed (e.g., "Add export to index.ts" or "Remove export from index.ts"), you MUST verify the current state of that file.
+    - *Failure Mode*: "The plan missed cleaning up index.ts" (when index.ts never had the export).
+    - *Correction*: Read `index.ts` first. If the export isn't there, the plan is correct.
+3. **No "Value-Add" Bias**: Do not invent minor issues just to avoid giving a "perfect" review. If a plan is flawless, explicit approval with verification evidence is the highest value output. "No findings" is better than "False findings".

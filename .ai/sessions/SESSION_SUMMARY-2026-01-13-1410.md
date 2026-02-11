@@ -88,6 +88,7 @@
    - Update to use GameService replay API instead of client-side replay
 
 ### Follow-Up Tasks
+
 - [ ] Create at least 3 recordings covering different game scenarios
 - [ ] Fix ReplayExpansionTest to use GameService replay API
 
@@ -134,17 +135,20 @@
 ### Immediate Actions
 
 1. **Start services:**
+
    ```bash
    pwsh ./catan.ps1 run
    ```
 
 2. **Run tests:**
+
    ```bash
    pwsh ./catan.ps1 test
    pwsh ./catan.ps1 replay
    ```
 
 3. **Check Azure health:**
+
    ```bash
    pwsh ./catan.ps1 azure doctor
    ```
@@ -152,6 +156,7 @@
 ### Commands & Workflows
 
 - **Fix Azure schema issues:**
+
   ```bash
   pwsh ./catan.ps1 azure deploy
   # or specifically:
@@ -159,6 +164,7 @@
   ```
 
 - **Direct schema check:**
+
   ```bash
   # From PowerShell:
   # Test-DatabaseSchema -Config $config

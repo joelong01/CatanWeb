@@ -1,187 +1,156 @@
-# Portrait Mode Design
+# Portrait Mode
+
+**Last verified:** January 30, 2026
 
 ## Overview
 
-When the viewport aspect ratio is less than 4:3 (portrait orientation), the game switches to a tabbed interface to maximize use of screen real estate.
+Portrait mode provides a mobile-friendly layout for devices held
+in portrait orientation (aspect ratio < 4:3). The layout switches
+from the multi-panel landscape view to a tabbed interface with
+Board, Controls, and Players tabs.
 
-## Scaling Architecture
+The outer app shell (nav column + header bar + content area) is
+identical in both orientations. Portrait mode only changes what
+renders inside the content area. See [app-shell.md](app-shell.md).
 
-Portrait mode uses the same `viewportScaler.js` as landscape mode. There is **no separate panel scaling** - the entire game container scales uniformly as a single unit.
+## Implementation Status
 
-**Key principle:** All components use fixed pixel dimensions designed for the reference resolution (1080x1920 for portrait). The viewport scaler handles fitting this to any screen size.
+| Component | Blazor | React |
+|-----------|--------|-------|
+| Orientation detection | Implemented (JS callback) | **Infrastructure only** |
+| Tabbed interface | Implemented (3 tabs) | **Not implemented** |
+| Panel layout presets | Implemented | Store methods exist |
+| Tab persistence | Implemented (sessionStorage) | Store property exists |
+| CSS variants | Implemented | Defined but unused |
+| Viewport scaler | Implemented (viewportScaler.js) | **Not implemented** |
 
-See `.design/ui/uiscale-design.md` for the complete scaling architecture.
+## Detection
 
-## Layout Structure
+### Blazor
 
-```text
-┌─────────────────────────────────────┐
-│  Board  │  Controls  │   Players   │  ← Tab bar (60px, only visible in portrait)
-├─────────────────────────────────────┤
-│                                     │
-│                                     │
-│         Tab Content Area            │  ← 1080x1860 reference coordinates
-│    (Board, Controls, or Players)    │
-│                                     │
-│                                     │
-└─────────────────────────────────────┘
+`viewportScaler.js` detects orientation changes and calls back to
+Blazor via `OnOrientationChanged(bool isPortrait)`. Trigger
+threshold: aspect ratio < 1.333 (4:3).
+
+### React
+
+`uiStore.ts` has the infrastructure:
+
+```typescript
+interface UIState {
+    isPortrait: boolean;
+    isMobile: boolean;         // detects coarse pointer (touch)
+    activePortraitTab: 'board' | 'controls' | 'players';
+}
 ```
 
-## Tab Descriptions
+`layoutStore.ts` provides:
+- `isPortraitViewport()` function
+- `PORTRAIT_PANELS` preset with vertical stacking
+- `resetToPortrait()` and `resetToLandscape()` actions
 
-### Board Tab (Default)
+**Gap:** `setOrientation()` is never called. No component wires up
+the resize/orientation listener.
 
-- Shows the game board centered in available space
-- Resource Tracking component displayed above the board
-- Board scales to fit while maintaining aspect ratio
+## Layout
 
-### Controls Tab
+### Landscape (Default)
 
-- Contains all game controls from the left panel:
-  - Game name (editable)
-  - Current player indicator
-  - Undo / Next / Redo buttons
-  - Purchase buttons (Road, Settlement, City, Soldier)
-  - Roll entry grid (4 columns in portrait for better use of width)
-  - Board measurements (during allocation phase)
-- Content uses same fixed pixel sizes as landscape
-- Centered horizontally in the 1080px width
+Three-column layout with floating panels:
 
-### Players Tab
-
-- Player tiles stacked vertically
-- Each tile is 500px wide (same as landscape)
-- Tiles centered horizontally (not right-aligned like landscape)
-- No separate Resource Tracking here (it's on Board tab)
-
-## CSS Architecture for Portrait Mode
-
-### The IsPortrait Parameter Pattern
-
-Components that need different styling in portrait mode receive an `IsPortrait` parameter:
-
-```csharp
-[Parameter] public bool IsPortrait { get; set; }
+```
++--Left--+-----Center------+--Right--+
+| Dice   |                  | Players |
+| Actions|     Game Board   |         |
+| Measure|                  |         |
++---------+------------------+---------+
 ```
 
-This parameter flows down from `Game.razor` through the component hierarchy:
+### Portrait (Tabbed)
 
-```text
-Game.razor (calculates _isPortrait from viewportScaler)
-├── PlayersPanel (IsPortrait)
-│   └── PlayerCard (IsPortrait)
-│       └── PlayerTile (IsPortrait)
-├── ResourceTracking
-├── BoardMeasurement
-└── PurchaseButton
+Single column with 60px tab bar:
+
+```
++--Tab Bar: [Board] [Controls] [Players]--+
+|                                           |
+|          (Selected tab content)           |
+|                                           |
++-------------------------------------------+
 ```
 
-### Portrait CSS Classes
+Only one tab's content is visible at a time. Board tab shows the
+game board at full width. Controls tab shows dice, actions, and
+measurement panels stacked vertically. Players tab shows the
+players panel.
 
-Components apply a `.portrait` class when `IsPortrait` is true:
+## CSS Support
 
-```razor
-<div class="player-tile @(IsPortrait ? "portrait" : "")">
-```
+### Blazor
 
-Then in scoped CSS:
+Uses `data-layout-mode` attribute:
 
 ```css
-.player-tile {
-    width: 500px;
-    margin-left: auto;  /* Right-align in landscape */
-}
+.game-container[data-layout-mode="portrait"] { ... }
+.game-container[data-layout-mode="portrait"][data-game-active="true"] { ... }
+```
 
-.player-tile.portrait {
-    margin-left: auto;
-    margin-right: auto;  /* Center in portrait */
+Portrait-specific purchase grid maintains 3x2 layout:
+```css
+.portrait-purchase .purchase-grid {
+    grid-template-columns: repeat(3, 1fr);
 }
 ```
 
-### What Changes in Portrait Mode
+### React
 
-| Component | Landscape | Portrait |
-|-----------|-----------|----------|
-| PlayerTile | Right-aligned (`margin-left: auto`) | Centered (`margin: auto`) |
-| PlayerCard | Right-aligned | Centered |
-| PlayersPanel | `align-items: flex-end` | `align-items: center` |
-| Roll Grid | 3 columns | 4 columns (uses width better) |
-| Resource Tracking | In right panel | On Board tab |
+CSS custom variants defined in `globals.css`:
 
-### What Stays the Same
-
-- All pixel dimensions (tile widths, stat sizes, fonts)
-- Component internal layouts
-- Colors, gradients, styling
-
-## State Persistence
-
-- Selected tab stored in `sessionStorage` as `portraitTab`
-- Valid values: `"board"`, `"controls"`, `"players"`
-- Persists across page refreshes within same session
-- Blazor's `SetPortraitTab()` method handles tab switching
-
-## Implementation Files
-
-- **Scaling**: `wwwroot/js/viewportScaler.js` - Uniform container scaling
-- **Layout CSS**: `Pages/Game.razor.css` - Panel visibility, tab bar
-- **Tab State**: `Pages/Game.razor` - `_portraitTab` field, `SetPortraitTab()` method
-- **Component CSS**: Each component's `.razor.css` file has `.portrait` rules
-
-## Portrait Detection
-
-Portrait mode activates when viewport aspect ratio < 4:3 (1.333):
-
-- 16:9 (1.78) = landscape
-- 4:3 (1.33) = landscape (boundary case)
-- 9:16 (0.56) = portrait
-- 3:4 (0.75) = portrait
-
-The `viewportScaler.js` sets `data-layout-mode="portrait"` on the game container, which CSS uses for panel visibility.
-
-### Dynamic Orientation Changes
-
-When the user resizes the browser window and crosses the portrait/landscape threshold, the layout updates automatically:
-
-1. `viewportScaler.updateScale()` runs on window resize
-2. JavaScript detects orientation changed, calls Blazor via `DotNetObjectReference`
-3. Blazor's `OnOrientationChanged(bool isPortrait)` method updates `_isPortrait`
-4. `StateHasChanged()` triggers re-render with new `IsPortrait` values
-5. Components apply/remove `.portrait` CSS classes accordingly
-
-**Implementation:**
-
-```javascript
-// viewportScaler.js - notifies Blazor when orientation changes
-if (this._lastIsPortrait !== isPortrait) {
-    this._lastIsPortrait = isPortrait;
-    if (this._dotNetRef) {
-        this._dotNetRef.invokeMethodAsync('OnOrientationChanged', isPortrait);
-    }
-}
+```css
+@custom-variant portrait { ... }
+@custom-variant landscape { ... }
 ```
 
-```csharp
-// Game.razor - receives orientation change callback
-[JSInvokable]
-public void OnOrientationChanged(bool isPortrait)
-{
-    if (_isPortrait != isPortrait)
-    {
-        _isPortrait = isPortrait;
-        InvokeAsync(StateHasChanged);
-    }
-}
-```
+CSS variables:
+- `--portrait-width: 1080px`
+- `--portrait-height: 1920px`
+- `--portrait-tab-height: 60px`
 
-## Landscape Mode (Default)
+Mobile touch targets via `@media (pointer: coarse)`.
 
-- Tab bar is hidden (`display: none`)
-- Standard 3-column grid layout
-- Left panel (controls), Center panel (board), Right panel (players)
-- All panels visible simultaneously
+## Tab Persistence
 
-## Future Considerations
+### Blazor
 
-- Swipe gestures between tabs on touch devices
-- Indicator badges on tabs (e.g., "your turn" on Controls)
+Selected tab stored in `sessionStorage` as `"portraitTab"`. Restored
+on page init. Default tab: `"board"`.
+
+### React
+
+`uiStore.activePortraitTab` property exists but is not wired to
+any persistence mechanism.
+
+## Base Dimensions
+
+Both orientations use the same pixel dimensions for game elements.
+Scaling is uniform (not per-element):
+
+| Mode | Base Resolution |
+|------|-----------------|
+| Landscape | 1920 x 1080 |
+| Portrait | 1080 x 1920 |
+
+Scale factor: `min(viewport / base, 1.0)` -- never scales above 1x.
+
+## What Changes in Portrait
+
+- Player tiles align center instead of right
+- Roll grid changes from 3 to 4 columns
+- Tab visibility replaces panel visibility
+- Floating panels collapse to tab content areas
+
+## What Stays the Same
+
+- All pixel dimensions within components
+- Colors and styling
+- Game logic and state handling
+- Font sizes relative to their containers

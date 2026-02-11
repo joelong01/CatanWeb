@@ -130,11 +130,13 @@
 ### Immediate Actions
 
 1. **Verify deployment:**
+
    ```bash
    pwsh .scripts/catan-azure.ps1 doctor -Perf
    ```
 
 2. **Test health endpoint:**
+
    ```bash
    curl -s "https://catan-api.azurewebsites.net/health?checkDatabase=true" | python3 -m json.tool
    ```

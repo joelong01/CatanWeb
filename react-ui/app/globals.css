@@ -1,0 +1,1011 @@
+@import 'tailwindcss';
+
+/* Orientation variants for responsive design */
+@custom-variant portrait (@media (orientation: portrait));
+@custom-variant landscape (@media (orientation: landscape));
+
+/**
+ * Catan Theme Configuration
+ *
+ * Ported from WebUI/wwwroot/css/app.css to maintain visual consistency.
+ * Uses Tailwind v4 @theme directive for custom design tokens.
+ */
+
+/* ==========================================================================
+   CSS Custom Properties (for direct use and Tailwind extension)
+   ========================================================================== */
+:root {
+  /* Game Background Colors */
+  --game-bg-primary: #222222;
+  --game-bg-secondary: #333333;
+  --game-bg-panel: #2a2a2a;
+
+  /* Text Colors */
+  --text-primary: #eeeeee;
+  --text-secondary: #cccccc;
+  --text-muted: #999999;
+
+  /* Accent Colors */
+  --accent-primary: #007bff;
+  --accent-hover: #0056b3;
+  --accent-success: #4caf50;
+  --accent-error: #f44336;
+  --accent-warning: #ff9800;
+
+  /* Overlay/Transparent Backgrounds */
+  --overlay-dark: rgba(0, 0, 0, 0.6);
+  --overlay-darker: rgba(0, 0, 0, 0.8);
+  --overlay-light: rgba(255, 255, 255, 0.1);
+  --overlay-lighter: rgba(255, 255, 255, 0.2);
+
+  /* Hex Grid Gradients */
+  --hex-content-gradient: linear-gradient(
+    160deg,
+    rgba(30, 41, 59, 0.9) 0%,
+    rgba(15, 23, 42, 0.95) 100%
+  );
+  --hex-border-idle: rgba(255, 255, 255, 0.3);
+  --hex-border-hover: #3b82f6;
+  --hex-disabled-border: rgba(255, 255, 255, 0.1);
+
+  /* Layout Proportions (match XAML Grid.ColumnDefinitions) */
+  --left-panel-width: 25fr;
+  --center-panel-width: 60fr;
+  --right-panel-width: 26fr;
+
+  /* Reference dimensions per orientation */
+  --landscape-width: 1920px;
+  --landscape-height: 1080px;
+  --portrait-width: 1080px;
+  --portrait-height: 1920px;
+
+  /* Portrait Mode Layout */
+  --portrait-tab-height: 60px;
+
+  /* App Shell Layout */
+  --nav-width-collapsed: 48px;
+  --nav-width-expanded: 220px;
+  --nav-width: var(--nav-width-collapsed);
+  --header-height: 44px;
+
+  /* Icon Styles */
+  --icon-font-size: 20px;
+
+  /* Animation Durations (set dynamically by useAnimationSpeed hook based on settings)
+   * Categories match Desktop app pattern:
+   * - fast: Quick UI feedback (100ms)
+   * - medium: Standard animations (250ms)
+   * - slow: Longer transitions (500ms)
+   * - extra-slow: Delayed animations (2000ms)
+   */
+  --animation-fast: 100ms;
+  --animation-medium: 250ms;
+  --animation-slow: 500ms;
+  --animation-extra-slow: 2000ms;
+  --animation-button-press: 200ms;
+  --animation-color-transition: 300ms;
+  --animation-delay: 1000ms;
+  --animation-duration: 250ms;
+  /* Legacy alias for --animation-medium */
+
+  /* Note: --font-catan is injected by Next.js font loader in layout.tsx */
+}
+
+/* ==========================================================================
+   Tailwind v4 Theme Extension
+   ========================================================================== */
+@theme inline {
+  /* Colors */
+  --color-game-bg-primary: var(--game-bg-primary);
+  --color-game-bg-secondary: var(--game-bg-secondary);
+  --color-game-bg-panel: var(--game-bg-panel);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-success: var(--accent-success);
+  --color-accent-error: var(--accent-error);
+  --color-accent-warning: var(--accent-warning);
+
+  --color-overlay-dark: var(--overlay-dark);
+  --color-overlay-darker: var(--overlay-darker);
+  --color-overlay-light: var(--overlay-light);
+  --color-overlay-lighter: var(--overlay-lighter);
+
+  /* Player Colors - Primary/Secondary/Foreground for each player */
+  --color-player-white-primary: #ffffff;
+  --color-player-white-secondary: #d0d0d0;
+  --color-player-white-foreground: #000000;
+
+  --color-player-blue-primary: #0078d4;
+  --color-player-blue-secondary: #005a9e;
+  --color-player-blue-foreground: #ffffff;
+
+  --color-player-orange-primary: #ff8c00;
+  --color-player-orange-secondary: #d67700;
+  --color-player-orange-foreground: #000000;
+
+  --color-player-red-primary: #e81123;
+  --color-player-red-secondary: #c50f1f;
+  --color-player-red-foreground: #ffffff;
+
+  --color-player-green-primary: #107c10;
+  --color-player-green-secondary: #0b5c0b;
+  --color-player-green-foreground: #ffffff;
+
+  --color-player-brown-primary: #8b4513;
+  --color-player-brown-secondary: #6b3410;
+  --color-player-brown-foreground: #ffffff;
+
+  /* Resource Colors */
+  --color-resource-wheat: #f4d03f;
+  --color-resource-wood: #2e7d32;
+  --color-resource-brick: #c0392b;
+  --color-resource-sheep: #81c784;
+  --color-resource-ore: #607d8b;
+  --color-resource-desert: #d4a574;
+
+  /* Fonts */
+  --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* --font-catan is injected by Next.js font loader, no need to redefine */
+
+  /* Spacing */
+  --spacing-panel: 1rem;
+  --spacing-card: 0.75rem;
+}
+
+/* ==========================================================================
+   Base Styles
+   ========================================================================== */
+html,
+body {
+  font-family: var(--font-sans);
+  background: var(--game-bg-primary);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  min-height: -webkit-fill-available;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/*
+ * Mobile devices - enable scrolling and touch gestures.
+ * This allows pinch-to-zoom which is critical for game board interaction.
+ * Matches Blazor WebUI behavior. Individual panels use overflow-y: auto for scrolling.
+ */
+@media (pointer: coarse) {
+  html,
+  body {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: auto;
+  }
+}
+
+/* ==========================================================================
+   Utility Classes for Catan-specific styling
+   ========================================================================== */
+
+/* Catan font for game icons */
+.font-catan {
+  font-family: var(--font-catan);
+}
+
+/* Panel backgrounds with consistent styling */
+.panel-bg {
+  background: var(--game-bg-panel);
+  border-radius: 0.5rem;
+}
+
+/* Player tile gradient background */
+.player-gradient {
+  background: linear-gradient(135deg, var(--player-primary) 0%, var(--player-secondary) 100%);
+}
+
+/* Debug borders (toggle via CSS variable) */
+.debug-borders * {
+  outline: 1px solid red;
+}
+
+/* ==========================================================================
+   App Shell Layout
+   Two modes: standard (nav + header + content) and fullscreen (game page).
+   See .design/app-shell.md for architecture details.
+   ========================================================================== */
+
+@layer components {
+  /* Standard mode: CSS Grid with nav column + main area */
+  .app-shell {
+    display: grid;
+    grid-template-columns: var(--nav-width) 1fr;
+    width: 100vw;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--game-bg-primary);
+  }
+
+  /* Nav column: icon strip, never scrolls */
+  .app-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--game-bg-primary);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 0.5rem;
+    overflow: hidden;
+    z-index: 100;
+  }
+
+  /* Nav toggle button inside nav column */
+  .nav-toggle {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-toggle:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  /* Main area: header + content stacked vertically */
+  .app-main {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Header bar: optional, contains back + title */
+  .app-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0 1rem;
+    height: var(--header-height);
+    min-height: var(--header-height);
+    background: var(--game-bg-secondary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+  }
+
+  .app-header .back-button {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    transition:
+      color 0.2s,
+      background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .app-header .back-button:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .app-header .page-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .app-header .page-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  /* Content area: the ONLY zone that scrolls */
+  .app-content {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Full-screen mode (game page): entire viewport, no nav/header */
+  .app-shell-fullscreen {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--game-bg-primary);
+    width: 100vw;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app-shell-fullscreen main {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+  }
+}
+
+/* Mobile: larger touch targets for nav */
+@media (pointer: coarse) {
+  :root {
+    --nav-width-collapsed: 56px;
+    --nav-width-expanded: 260px;
+    --header-height: 52px;
+  }
+
+  @layer components {
+    .nav-toggle {
+      font-size: 1.75rem;
+      width: 44px;
+      height: 44px;
+    }
+  }
+}
+
+/* ==========================================================================
+   Hamburger Button
+   ========================================================================== */
+
+.hamburger-btn {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  color: var(--text-primary);
+  transition: opacity 0.2s;
+  z-index: 2000;
+  line-height: 1;
+}
+
+.hamburger-btn:hover {
+  opacity: 0.7;
+}
+
+/* Mobile - ensure hamburger meets 44px touch target */
+@media (max-width: 768px), (pointer: coarse) {
+  .hamburger-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   Menu Overlay and Panel
+   ========================================================================== */
+
+.menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1500;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.menu-panel {
+  background: #000;
+  width: 100px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: 60px;
+  padding-left: 5px;
+  padding-right: 5px;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.5);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Mobile - allow menu panel to scroll on short screens */
+@media (max-width: 768px), (pointer: coarse) {
+  .menu-panel {
+    overflow-y: auto;
+  }
+}
+
+/* ==========================================================================
+   Navigation Menu (ported from NavMenu.razor.css)
+   ========================================================================== */
+
+.nav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.nav-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none !important;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  padding: 12px 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  min-height: 70px;
+  border-radius: 4px;
+}
+
+.nav-menu-item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.nav-menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nav-menu-item.active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-icon {
+  font-size: var(--icon-font-size);
+  margin-bottom: 6px;
+  line-height: 1;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+}
+
+.nav-label {
+  font-size: 11px;
+  text-align: center;
+  color: var(--text-primary);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* Mobile - keep desktop sizes, just ensure touch targets */
+@media (max-width: 768px), (pointer: coarse) {
+  .nav-menu-item {
+    min-height: 44px;
+  }
+}
+
+/* ==========================================================================
+   Home Page Styles (ported from Home.razor)
+   ========================================================================== */
+
+.home-container {
+  text-align: center;
+  padding: 50px 20px 20px 50px;
+  /* top right bottom left - clear burger menu */
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.home-container h1 {
+  font-size: 3rem;
+  color: #8b4513;
+  margin-bottom: 10px;
+}
+
+.home-subtitle {
+  font-size: 1.2rem;
+  color: #666;
+  margin-bottom: 40px;
+}
+
+.menu-options {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 40px;
+}
+
+.menu-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  padding: 20px 30px;
+  font-size: 1.2rem;
+  border: 2px solid #8b4513;
+  border-radius: 8px;
+  background-color: #fff8dc;
+  color: #8b4513;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.menu-button:hover:not(:disabled) {
+  background-color: #8b4513;
+  color: white;
+}
+
+.menu-button.return-game {
+  background-color: #228b22;
+  border-color: #228b22;
+  color: white;
+}
+
+.menu-button.return-game:hover {
+  background-color: #1a6b1a;
+  border-color: #1a6b1a;
+}
+
+.menu-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.menu-button .icon {
+  font-size: 1.5rem;
+}
+
+.menu-separator {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #ccc, transparent);
+  margin: 10px 0;
+}
+
+.menu-button.utility-button {
+  border-color: #666;
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.menu-button.utility-button:hover:not(:disabled) {
+  background-color: #666;
+  color: white;
+}
+
+.info-section {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.info-section code {
+  background-color: #f4f4f4;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #333;
+}
+
+/* Mobile responsive - larger fonts and touch targets */
+@media (max-width: 768px), (pointer: coarse) {
+  .home-container {
+    padding: 50px 30px;
+    max-width: 100%;
+  }
+
+  .home-container h1 {
+    font-size: 9rem;
+    margin-bottom: 25px;
+  }
+
+  .home-subtitle {
+    font-size: 3.5rem;
+    margin-bottom: 80px;
+  }
+
+  .menu-options {
+    gap: 30px;
+    margin-bottom: 80px;
+  }
+
+  .menu-button {
+    padding: 36px 48px;
+    font-size: 3rem;
+    border-radius: 20px;
+    border-width: 4px;
+  }
+
+  .menu-button .icon {
+    font-size: 4rem;
+  }
+
+  .menu-separator {
+    margin: 20px 0;
+  }
+
+  .info-section {
+    font-size: 2rem;
+  }
+}
+
+/* Slightly smaller for very small phones */
+@media (max-width: 400px) {
+  .home-container h1 {
+    font-size: 6rem;
+  }
+
+  .home-subtitle {
+    font-size: 2.5rem;
+  }
+
+  .menu-button {
+    padding: 30px 36px;
+    font-size: 2.4rem;
+  }
+
+  .menu-button .icon {
+    font-size: 3rem;
+  }
+}
+
+/* ==========================================================================
+   Placeholder Page Styles
+   ========================================================================== */
+
+.placeholder-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 50px 20px 20px 60px;
+  text-align: center;
+}
+
+.placeholder-page h1 {
+  font-size: 2.5rem;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+}
+
+.placeholder-page .todo-badge {
+  background: var(--accent-warning);
+  color: #000;
+  padding: 8px 24px;
+  border-radius: 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 30px;
+}
+
+.placeholder-page p {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  max-width: 400px;
+}
+
+.placeholder-page .back-link {
+  margin-top: 30px;
+  color: var(--accent-primary);
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.placeholder-page .back-link:hover {
+  text-decoration: underline;
+}
+
+/* Mobile placeholder styles */
+@media (max-width: 768px), (pointer: coarse) {
+  .placeholder-page {
+    padding: 80px 30px 30px 30px;
+  }
+
+  .placeholder-page h1 {
+    font-size: 5rem;
+  }
+
+  .placeholder-page .todo-badge {
+    padding: 16px 40px;
+    font-size: 2rem;
+    border-radius: 30px;
+  }
+
+  .placeholder-page p {
+    font-size: 2.5rem;
+    max-width: 100%;
+  }
+
+  .placeholder-page .back-link {
+    font-size: 2rem;
+    margin-top: 50px;
+  }
+}
+
+/* ==========================================================================
+   Scrollbar Styling
+   Forces scrollbars to be visible on Windows (which auto-hides by default)
+   and styles them to match the dark theme.
+   ========================================================================== */
+
+/* Webkit browsers (Chrome, Edge, Safari) */
+.app-content::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-y-scroll::-webkit-scrollbar {
+  width: 12px;
+}
+
+.app-content::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track,
+.overflow-y-scroll::-webkit-scrollbar-track {
+  background: var(--game-bg-secondary);
+  border-radius: 6px;
+}
+
+.app-content::-webkit-scrollbar-thumb,
+.overflow-y-auto::-webkit-scrollbar-thumb,
+.overflow-y-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  border: 2px solid var(--game-bg-secondary);
+}
+
+.app-content::-webkit-scrollbar-thumb:hover,
+.overflow-y-auto::-webkit-scrollbar-thumb:hover,
+.overflow-y-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Firefox */
+.app-content,
+.overflow-y-auto,
+.overflow-y-scroll {
+  scrollbar-width: auto;
+  scrollbar-color: rgba(255, 255, 255, 0.3) var(--game-bg-secondary);
+}
+
+/* Ensure scrollbar gutter is reserved to prevent layout shift */
+.app-content,
+.overflow-y-auto,
+.overflow-y-scroll {
+  scrollbar-gutter: stable;
+}
+
+/* ==========================================================================
+   3D Transform Utilities (for card flips and animations)
+   ========================================================================== */
+@utility backface-hidden {
+  backface-visibility: hidden;
+}
+
+@utility preserve-3d {
+  transform-style: preserve-3d;
+}
+
+@utility perspective-1000 {
+  perspective: 1000px;
+}
+
+@utility rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* ==========================================================================
+   Hexagon Shapes (Catan theme)
+   ========================================================================== */
+/* Pointy-top hexagon (standard Catan orientation) */
+@utility hex-clip {
+  clip-path: polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%);
+}
+
+/* Flat-top hexagon - correct geometry for aspect ratio sqrt(3)/2 ≈ 0.866 */
+@utility hex-clip-flat {
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+
+/* Enforces the mathematically correct flat-top hex aspect ratio (W:H = 2:sqrt(3)).
+   Use on any standalone hex container so hex-clip-flat produces a regular hexagon. */
+@utility hex-aspect-flat {
+  aspect-ratio: 2 / 1.732;
+}
+
+/* Pulsing white glow for highlighted tiles (e.g., matching roll number).
+   Uses drop-shadow which respects clip-path, unlike box-shadow. */
+.tile-highlight-glow {
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.9))
+    drop-shadow(0 0 14px rgba(255, 255, 255, 0.5));
+  animation: tile-glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes tile-glow-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.9))
+      drop-shadow(0 0 14px rgba(255, 255, 255, 0.5));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 1))
+      drop-shadow(0 0 22px rgba(255, 255, 255, 0.7));
+  }
+}
+
+/* ==========================================================================
+   Winner Overlay Animations
+   ========================================================================== */
+
+/* Keyframes for winner celebration spin, confetti, and fireworks */
+@keyframes winner-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes winner-counter-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes confetti-burst {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(var(--burst-x), var(--burst-y)) scale(1) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Animation utilities (Tailwind v4 @utility directive)
+   Duration and count set via CSS custom properties from React inline styles. */
+
+@utility animate-winner-spin {
+  animation-name: winner-spin;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  animation-duration: var(--winner-spin-duration, 1667ms);
+  animation-iteration-count: var(--winner-spin-count, 3);
+}
+
+@utility animate-winner-counter-spin {
+  animation-name: winner-counter-spin;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  animation-duration: var(--winner-spin-duration, 1667ms);
+  animation-iteration-count: var(--winner-spin-count, 3);
+}
+
+@utility animate-confetti-burst {
+  animation-name: confetti-burst;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+  animation-duration: var(--confetti-duration, 1500ms);
+  animation-delay: var(--confetti-delay, 0ms);
+  animation-iteration-count: var(--confetti-count, 1);
+}
+
+/* Firework rocket: shoots upward from below the explosion point, fades on arrival.
+   Starts hidden (opacity 0) so it's invisible during animation-delay. */
+@keyframes firework-rocket {
+  0% {
+    transform: translateY(var(--rocket-travel, 150px));
+    opacity: 0;
+  }
+
+  5% {
+    opacity: 1;
+  }
+
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+}
+
+/* Firework flash: bright expanding circle at the explosion point */
+@keyframes firework-flash {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  15% {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+
+  40% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* Firework spark: bursts outward from explosion, curves down with gravity.
+   Starts at scale(0) so it's invisible during animation-delay. */
+@keyframes firework-spark {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 0;
+  }
+
+  8% {
+    transform: translate(0, 0) scale(1.3);
+    opacity: 1;
+  }
+
+  40% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(var(--spark-x, 0px), calc(var(--spark-y, 0px) + 25px)) scale(0.15);
+    opacity: 0;
+  }
+}
+
+@utility animate-firework-rocket {
+  animation-name: firework-rocket;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+  animation-duration: var(--rocket-duration, 600ms);
+  animation-delay: var(--rocket-delay, 0ms);
+  animation-iteration-count: 1;
+}
+
+@utility animate-firework-flash {
+  animation-name: firework-flash;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+  animation-duration: var(--flash-duration, 400ms);
+  animation-delay: var(--flash-delay, 600ms);
+  animation-iteration-count: 1;
+}
+
+@utility animate-firework-spark {
+  animation-name: firework-spark;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+  animation-duration: var(--spark-duration, 800ms);
+  animation-delay: var(--spark-delay, 600ms);
+  animation-iteration-count: 1;
+}

@@ -138,12 +138,14 @@
 ### Immediate Actions
 
 1. **Commit changes:**
+
    ```bash
    git add -A
    git commit -m "feat: Add Desktop test logging and fix test failures"
    ```
 
 2. **Verify tests still pass:**
+
    ```bash
    dotnet test
    ```

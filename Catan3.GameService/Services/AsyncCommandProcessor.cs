@@ -41,10 +41,7 @@ namespace Catan3.GameService.Services
             try
             {
                 // Extract gameId for error reporting
-                if (request.TryGetProperty("gameId", out var gameIdElement))
-                {
-                    gameId = gameIdElement.GetString();
-                }
+                gameId = request.OptionalString("gameId");
 
                 _logger.LogEvent("Process Command", $"Processing command {commandId} for game {gameId}");
 
@@ -120,28 +117,19 @@ namespace Catan3.GameService.Services
         /// <summary>
         /// Executes the game logic using the provided GameStateMachine function
         /// </summary>
-        /// <param name="request">The game command request</param>
-        /// <param name="getGameStateMachine">Function to get GameStateMachine by gameId</param>
-        /// <returns>The updated game model and the game state machine (for persistence)</returns>
         private async Task<(GameModel gameModel, GameStateMachine stateMachine)> ExecuteGameLogicAsync(JsonElement request, Func<string, GameStateMachine> getGameStateMachine)
         {
-            // Execute synchronously but wrap in Task for async interface
             return await Task.Run(() =>
             {
-                var gameId = request.GetProperty("gameId").GetString() ??
-                    throw new ArgumentException("gameId is required");
-                var playerId = request.GetProperty("playerId").GetString() ??
-                    throw new ArgumentException("playerId is required");
-                var messageType = request.GetProperty("messageType").GetString() ??
-                    throw new ArgumentException("messageType is required");
-                var messageData = request.GetProperty("messageData");
+                var gameId = request.RequireString("gameId", "request");
+                var playerId = request.RequireString("playerId", "request");
+                var messageType = request.RequireString("messageType", "request");
+                var messageData = request.RequireProperty("messageData", "request");
 
                 _logger.LogDebug("Processing message type: {MessageType} for game {GameId}", messageType, gameId);
 
-                // Get the GameStateMachine directly from the controller
                 var gameStateMachine = getGameStateMachine(gameId);
 
-                // Execute the action directly on the GameStateMachine
                 GameModel? updatedGameModel = messageType switch
                 {
                     "UndoMessage" => ProcessUndoMessage(messageData, gameStateMachine),
@@ -155,7 +143,15 @@ namespace Catan3.GameService.Services
                     "SetPlayerOrderMessage" => ProcessSetPlayerOrder(messageData, gameStateMachine),
                     "BalanceBoardMessage" => ProcessBalanceBoard(messageData, gameStateMachine),
                     "GoFirstMessage" => ProcessGoFirst(messageData, gameStateMachine),
-                    _ => throw new ArgumentException($"Unknown message type: {messageType}")
+                    "ShuffleMessage" => ProcessShuffleMessage(messageData, gameStateMachine),
+                    "ParticipatingInSupplementalMessage" => ProcessParticipatingInSupplemental(messageData, gameStateMachine),
+                    "SwapTileResourcesMessage" => ProcessSwapTileResources(messageData, gameStateMachine),
+                    "DeclareWinnerMessage" => ProcessDeclareWinner(messageData, gameStateMachine),
+                    _ => throw new JsonException($"Unknown message type: '{messageType}'. " +
+                        $"Valid types: UndoMessage, RedoMessage, NextMessage, PurchaseMessage, " +
+                        $"RoadPurchaseMessage, BuildingUpgradeMessage, MoveRobberMessage, RollMessage, " +
+                        $"SetPlayerOrderMessage, BalanceBoardMessage, GoFirstMessage, ShuffleMessage, " +
+                        $"ParticipatingInSupplementalMessage, SwapTileResourcesMessage, DeclareWinnerMessage")
                 };
 
                 var result = updatedGameModel ?? throw new InvalidOperationException("Game action failed to return updated model");
@@ -163,114 +159,70 @@ namespace Catan3.GameService.Services
             });
         }
 
+        // ============================================================================
         // Individual message processing methods
+        // All use RequireXxx extension methods for descriptive error messages
+        // ============================================================================
+
         private GameModel ProcessUndoMessage(JsonElement messageData, GameStateMachine gameStateMachine)
         {
-            var message = new UndoMessage();
-            return gameStateMachine.HandleUndoAsync(message).Result;
+            return gameStateMachine.HandleUndoAsync(new UndoMessage()).Result;
         }
 
         private GameModel ProcessRedoMessage(JsonElement messageData, GameStateMachine gameStateMachine)
         {
-            var message = new RedoMessage();
-            return gameStateMachine.HandleRedoAsync(message).Result;
+            return gameStateMachine.HandleRedoAsync(new RedoMessage()).Result;
         }
 
         private GameModel ProcessNextMessage(JsonElement messageData, GameStateMachine gameStateMachine)
         {
-            var message = new NextMessage();
-            return gameStateMachine.HandleNextAsync(message).Result;
+            return gameStateMachine.HandleNextAsync(new NextMessage()).Result;
         }
 
         private GameModel ProcessPurchaseMessage(JsonElement messageData, GameStateMachine gameStateMachine)
         {
-            var entitlementStr = messageData.GetProperty("entitlement").GetString();
-            if (Enum.TryParse<Entitlement>(entitlementStr, out var entitlement))
-            {
-                var message = new PurchaseMessage(entitlement);
-                return gameStateMachine.HandlePurchaseAsync(message).Result;
-            }
-            throw new ArgumentException($"Invalid entitlement: {entitlementStr}");
+            var entitlement = messageData.RequireEnum<Entitlement>("entitlement", "PurchaseMessage");
+            return gameStateMachine.HandlePurchaseAsync(new PurchaseMessage(entitlement)).Result;
         }
 
         private GameModel ProcessRoadPurchase(JsonElement messageData, GameStateMachine gameStateMachine)
         {
-            var roadKeyData = messageData.GetProperty("roadKey");
-            var tileKeyData = roadKeyData.GetProperty("tileKey");
-            var sideStr = roadKeyData.GetProperty("side").GetString();
+            var roadKeyData = messageData.RequireProperty("roadKey", "RoadPurchaseMessage");
+            var tileKey = roadKeyData.RequireHexCoordinates("tileKey", "roadKey");
+            var hexSide = roadKeyData.RequireEnum<HexSide>("hexSide", "roadKey");
 
-            var q = tileKeyData.GetProperty("q").GetInt32();
-            var r = tileKeyData.GetProperty("r").GetInt32();
-            var s = tileKeyData.GetProperty("s").GetInt32();
-
-            if (!Enum.TryParse<Catan3.Shared.Models.HexSide>(sideStr, out var side))
-            {
-                throw new ArgumentException($"Invalid side: {sideStr}");
-            }
-
-            var tileKey = new HexCoordinates(q, r, s);
-            var roadKey = new RoadKey { TileKey = tileKey, HexSide = side };
-            var message = new RoadPurchaseMessage(roadKey);
-            return gameStateMachine.HandleRoadPurchaseAsync(message).Result;
+            var roadKey = new RoadKey(tileKey, hexSide);
+            return gameStateMachine.HandleRoadPurchaseAsync(new RoadPurchaseMessage(roadKey)).Result;
         }
 
         private GameModel ProcessBuildingUpgrade(JsonElement messageData, GameStateMachine gameStateMachine)
         {
-            var buildingKeyData = messageData.GetProperty("buildingKey");
-            var hexCoordinatesData = buildingKeyData.GetProperty("hexCoordinates");
-            var positionStr = buildingKeyData.GetProperty("position").GetString();
+            var buildingKeyData = messageData.RequireProperty("buildingKey", "BuildingUpgradeMessage");
+            var hexCoordinates = buildingKeyData.RequireHexCoordinates("hexCoordinates", "buildingKey");
+            var position = buildingKeyData.RequireEnum<HexPosition>("position", "buildingKey");
 
-            var q = hexCoordinatesData.GetProperty("q").GetInt32();
-            var r = hexCoordinatesData.GetProperty("r").GetInt32();
-            var s = hexCoordinatesData.GetProperty("s").GetInt32();
-
-            if (!Enum.TryParse<Catan3.Shared.Models.HexPosition>(positionStr, out var position))
-            {
-                throw new ArgumentException($"Invalid hex position: {positionStr}");
-            }
-
-            var hexCoordinates = new HexCoordinates(q, r, s);
             var buildingKey = new BuildingKey(hexCoordinates, position);
-            var message = new BuildingUpgradeMessage(buildingKey);
-            return gameStateMachine.HandleBuildingUpgradeAsync(message).Result;
+            return gameStateMachine.HandleBuildingUpgradeAsync(new BuildingUpgradeMessage(buildingKey)).Result;
         }
 
         private GameModel ProcessMoveRobber(JsonElement messageData, GameStateMachine gameStateMachine)
         {
-            var coordinatesData = messageData.GetProperty("coordinates");
-            var q = coordinatesData.GetProperty("q").GetInt32();
-            var r = coordinatesData.GetProperty("r").GetInt32();
-            var s = coordinatesData.GetProperty("s").GetInt32();
+            var coordinates = messageData.RequireHexCoordinates("coordinates", "MoveRobberMessage");
+            var targetPlayerId = messageData.OptionalString("targetPlayerId");
 
-            string? targetPlayerId = null;
-            if (messageData.TryGetProperty("targetPlayerId", out var targetElement))
-            {
-                targetPlayerId = targetElement.GetString();
-            }
-
-            var coordinates = new HexCoordinates(q, r, s);
-            var message = new MoveRobberMessage(coordinates, targetPlayerId);
-            return gameStateMachine.HandleMoveRobberAsync(message).Result;
+            return gameStateMachine.HandleMoveRobberAsync(new MoveRobberMessage(coordinates, targetPlayerId)).Result;
         }
 
         private GameModel ProcessRoll(JsonElement messageData, GameStateMachine gameStateMachine)
         {
-            var rollData = messageData.GetProperty("roll");
-            var normalRollStr = rollData.GetProperty("normalRoll").GetString();
-
-            if (!Enum.TryParse<ValidCatanRoll>(normalRollStr, out var normalRoll))
-            {
-                throw new ArgumentException($"Invalid roll: {normalRollStr}");
-            }
+            var rollData = messageData.RequireProperty("roll", "RollMessage");
+            var normalRoll = rollData.RequireEnum<ValidCatanRoll>("normalRoll", "roll");
 
             var specialDice = SpecialDice.None;
-            if (rollData.TryGetProperty("specialDice", out var specialElement))
+            var specialStr = rollData.OptionalString("specialDice");
+            if (!string.IsNullOrEmpty(specialStr))
             {
-                var specialStr = specialElement.GetString();
-                if (!string.IsNullOrEmpty(specialStr))
-                {
-                    Enum.TryParse<SpecialDice>(specialStr, out specialDice);
-                }
+                Enum.TryParse<SpecialDice>(specialStr, out specialDice);
             }
 
             // Calculate individual dice rolls that sum to the normal roll
@@ -278,41 +230,80 @@ namespace Catan3.GameService.Services
             int redRoll = totalRoll / 2;
             int whiteRoll = totalRoll - redRoll;
 
-            var roll = new TurnRollModel(redRoll, whiteRoll)
-            {
-                SpecialDice = specialDice
-            };
-
-            var message = new RollMessage(roll);
-            return gameStateMachine.HandleRollAsync(message).Result;
+            var roll = new TurnRollModel(redRoll, whiteRoll) { SpecialDice = specialDice };
+            return gameStateMachine.HandleRollAsync(new RollMessage(roll)).Result;
         }
 
         private GameModel ProcessSetPlayerOrder(JsonElement messageData, GameStateMachine gameStateMachine)
         {
-            var playerIds = messageData.GetProperty("playerIds").EnumerateArray()
+            var playerIdsElement = messageData.RequireProperty("playerIds", "SetPlayerOrderMessage");
+            var playerIds = playerIdsElement.EnumerateArray()
                 .Select(element => element.GetString())
                 .Where(id => !string.IsNullOrEmpty(id))
                 .Cast<string>()
                 .ToList();
 
-            var message = new SetPlayerOrderMessage(playerIds);
-            return gameStateMachine.HandleSetPlayerOrderAsync(message).Result;
-        }
+            if (playerIds.Count == 0)
+            {
+                throw new JsonException("SetPlayerOrderMessage requires at least one player ID in 'playerIds' array");
+            }
 
+            return gameStateMachine.HandleSetPlayerOrderAsync(new SetPlayerOrderMessage(playerIds)).Result;
+        }
 
         private GameModel ProcessBalanceBoard(JsonElement messageData, GameStateMachine gameStateMachine)
         {
-            var message = new BalanceBoardMessage();
-            return gameStateMachine.HandleBalanceBoardAsync(message).Result;
+            return gameStateMachine.HandleBalanceBoardAsync(new BalanceBoardMessage()).Result;
         }
 
         private GameModel ProcessGoFirst(JsonElement messageData, GameStateMachine gameStateMachine)
         {
-            var playerId = messageData.GetProperty("playerId").GetString()
-                ?? throw new ArgumentException("Missing playerId");
+            var playerId = messageData.RequireString("playerId", "GoFirstMessage");
+            return gameStateMachine.HandleGoFirstAsync(new GoFirstMessage(playerId)).Result;
+        }
 
-            var message = new GoFirstMessage(playerId);
-            return gameStateMachine.HandleGoFirstAsync(message).Result;
+        private GameModel ProcessShuffleMessage(JsonElement messageData, GameStateMachine gameStateMachine)
+        {
+            return gameStateMachine.HandleShuffleAsync(new ShuffleMessage()).Result;
+        }
+
+        private GameModel ProcessParticipatingInSupplemental(JsonElement messageData, GameStateMachine gameStateMachine)
+        {
+            var playerId = messageData.RequireString("playerId", "ParticipatingInSupplementalMessage");
+            var participating = messageData.RequireBool("participating", "ParticipatingInSupplementalMessage");
+
+            return gameStateMachine.HandleParticipatingInSupplementalAsync(
+                new ParticipatingInSupplementalMessage(playerId, participating)).Result;
+        }
+
+        private GameModel ProcessSwapTileResources(JsonElement messageData, GameStateMachine gameStateMachine)
+        {
+            var sourceCoords = messageData.RequireHexCoordinates("sourceTileCoordinates", "SwapTileResourcesMessage");
+            var destCoords = messageData.RequireHexCoordinates("destinationTileCoordinates", "SwapTileResourcesMessage");
+            var sourceResource = messageData.RequireEnum<ResourceType>("sourceCurrentResource", "SwapTileResourcesMessage");
+            var destResource = messageData.RequireEnum<ResourceType>("destinationCurrentResource", "SwapTileResourcesMessage");
+
+            return gameStateMachine.HandleSwapResourcesAsync(
+                new SwapTileResources(sourceCoords, destCoords, sourceResource, destResource)).Result;
+        }
+
+        private GameModel ProcessDeclareWinner(JsonElement messageData, GameStateMachine gameStateMachine)
+        {
+            var winnerId = messageData.RequireString("winnerId", "DeclareWinnerMessage");
+
+            var message = new DeclareWinnerMessage { WinnerId = winnerId };
+
+            // Parse optional victory points dictionary
+            if (messageData.TryGetProperty("victoryPoints", out var vpElement))
+            {
+                message.VictoryPoints = new Dictionary<string, int>();
+                foreach (var prop in vpElement.EnumerateObject())
+                {
+                    message.VictoryPoints[prop.Name] = prop.Value.GetInt32();
+                }
+            }
+
+            return gameStateMachine.HandleDeclareWinnerAsync(message).Result;
         }
     }
 }

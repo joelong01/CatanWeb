@@ -107,11 +107,13 @@
 ## Next Session Priority
 
 1. **Run full test suite**
+
    ```bash
    ./catan.ps1 test
    ```
 
 2. **Test stats commands**
+
    ```bash
    ./catan.ps1 stats list
    ./catan.ps1 stats export
@@ -170,16 +172,19 @@
 ### Immediate Actions
 
 1. **Verify build:**
+
    ```bash
    ./catan.ps1 build
    ```
 
 2. **Run tests:**
+
    ```bash
    ./catan.ps1 test
    ```
 
 3. **Test stats commands:**
+
    ```bash
    ./catan.ps1 stats list
    ./catan.ps1 stats list -Azure

@@ -1,4 +1,7 @@
 {
+    "css.lint.unknownAtRules": "ignore",
+    "css.lint.compatibleVendorPrefixes": "ignore",
+    "scss.lint.unknownAtRules": "ignore",
     "dotnet.defaultSolution": "Catan.sln",
     "dotnet.server.useOmnisharp": false,
     "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
@@ -17,8 +20,15 @@
         "csdevkit",
         "csproj",
         "dotnettools",
+        "FOUT",
         "msbuild",
+        "nologo",
+        "nswag",
         "omnisharp",
+        "onreconnected",
+        "onreconnecting",
+        "partialize",
+        "Plyr",
         "pscustomobject",
         "refs",
         "retarget",
@@ -26,7 +36,6 @@
         "tfms",
         "vscode",
         "vswhere",
-        "winui",
-        "nologo"
+        "winui"
     ]
 }

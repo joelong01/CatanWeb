@@ -55,12 +55,14 @@
 ### BuildingSvgRenderer Changes
 
 Added `isAllocationPhase` parameter to `RenderSvg()`:
+
 - When `Hidden` state + `AllocationPhase` + unowned + stars > 0 → render hoverable stars
 - New `RenderHoverableStars()` method creates SVG group with class `building-hoverable`
 
 ### AllocationPhase Definition
 
 From `GameModelExtensions.cs:118-123`:
+
 ```csharp
 public static bool AllocationPhase(this GameModel gameModel)
 {

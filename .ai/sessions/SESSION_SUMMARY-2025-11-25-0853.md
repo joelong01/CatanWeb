@@ -3,6 +3,7 @@
 ## Work Completed
 
 ### WebUI Client Self-Contained Architecture
+
 - **Removed serviceUrl Dependency**: Eliminated runtime dependency on GameService for static assets
   - Changed tile image references from `{serviceUrl}/images/tiles/` to `/images/tiles/`
   - Changed harbor image references from `{serviceUrl}/images/harbors/` to `/images/harbors/`
@@ -14,6 +15,7 @@
   - `Game.razor` - removed `Config.BaseUrl` from render call
 
 ### Workflow Documentation Improvements
+
 - **checkin.md Enhancements**:
   - Completed Section 5 (Craft High-Quality Commit Messages) with full format
   - Added NEW Section 6 (Create Session Summary) with complete template
@@ -26,6 +28,7 @@
   - Fixed format typo from `{data}` to `{date}` and clarified `{hhmm}` format
 
 ### Project Documentation
+
 - Updated `.ai/project-summary.md` with today's session highlights
 - Removed obsolete root-level `SESSION_SUMMARY.md` (from September)
 
@@ -58,17 +61,20 @@
 ## Important Context
 
 ### Client Architecture
+
 - WebUI is now completely self-contained for static assets
 - All images (tiles, harbors, buildings, roads, cities) served from `WebUI/wwwroot/images/`
 - Image paths use relative URLs (e.g., `/images/tiles/wheat.png`)
 - No `serviceUrl` parameter needed anywhere in rendering code
 
 ### Session Summary Location
+
 - Session summaries stored in `.ai/sessions/`
 - Format: `SESSION_SUMMARY-{date}-{hhmm}.md`
 - Old root-level SESSION_SUMMARY.md removed (was outdated)
 
 ### Commit Strategy
+
 - Three logical commits created:
   1. `refactor:` WebUI client self-contained assets (main feature)
   2. `docs:` Enhanced workflow commands and project summary

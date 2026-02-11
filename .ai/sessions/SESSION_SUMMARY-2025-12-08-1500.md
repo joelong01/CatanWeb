@@ -167,6 +167,7 @@ None critical. All code review items have been addressed.
 ### Files Changed This Session
 
 18 files modified, 1 new file:
+
 - `.ai/commands/code-review.md` - Updated naming conventions
 - `.gitignore` - Added `.code-reviews/`
 - `WebUI/Pages/Game.razor` - Fixed data-layout-mode binding, added disposed guard
@@ -181,6 +182,7 @@ None critical. All code review items have been addressed.
 ### Immediate Actions
 
 1. **Start Here:**
+
    ```bash
    pwsh ./webui.ps1 run
    ```

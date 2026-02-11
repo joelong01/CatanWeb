@@ -74,6 +74,7 @@
 ## Work in Progress
 
 ### Supplemental Players Done Button
+
 - Tab switches TO `PickSupplementalPlayers` state but doesn't switch away
 - Needs a "Done" button to collect selected supplemental players and send message
 - Message would need to include list of participating players
@@ -81,9 +82,11 @@
 ## Blockers & Issues
 
 ### Known Issues
+
 - Build warning: `DatabaseProviderDetector.cs` non-nullable field warning (pre-existing)
 
 ### Technical Debt
+
 - Remove debug `Console.WriteLine` statements in `DatabaseBackedPersistenceService` after verification
 - `AsyncCommandProcessor.SaveGameToDatabaseAsync` may be redundant now that Log saves work
 
@@ -106,15 +109,18 @@
 ## Important Context
 
 ### Critical Information
+
 - **Game saves now work** via `Log.SaveAsync()` → `DatabaseBackedPersistenceService` → database
 - `Log.FilePath` is still set but no longer used for database saves - `gameModel.GameId` is passed directly
 
 ### Gotchas & Non-Obvious Aspects
+
 - CSS `::deep` selector from parent component doesn't penetrate child component scoped CSS
 - Must add styles directly to component's own CSS file or pass class via parameter
 - `previousState` must be captured BEFORE `GameModel = gameModel` assignment
 
 ### Key Files & Patterns
+
 - **Game state tab switching:** `WebUI/Pages/Game.razor:884-918`
 - **Purchase button styles:** `WebUI/Components/Shared/PurchaseButton.razor.css`
 - **Database persistence:** `Catan3.GameService/Services/DatabasePersistenceService.cs`
@@ -122,16 +128,20 @@
 ## Environment Notes
 
 ### Build Configuration
+
 - All projects building successfully (except DesktopApp on Mac - expected)
 - Use `pwsh ./catan.ps1 build` to avoid building DesktopApp on Mac
 
 ### Configuration Changes
+
 - CSS version string updated to `2025-12-16 v2`
 
 ## Quick Start for Next Session
 
 ### Immediate Actions
+
 1. **Verify game saves work:**
+
    ```bash
    pwsh ./catan.ps1 run
    # Create game, make moves, check database
@@ -142,5 +152,6 @@
    - Look for `[PERSIST]` log messages in console
 
 ### Current Focus Area
+
 - Working on: Portrait mode UX and game persistence
 - Next task: Supplemental players Done button

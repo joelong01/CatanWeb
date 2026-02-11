@@ -1,0 +1,55 @@
+/**
+ * Zustand stores barrel export.
+ * Import stores and selectors from this file for convenience.
+ */
+
+export {
+  useGameStore,
+  selectGameState,
+  selectCurrentTurnPlayerId,
+  selectIsMyTurn,
+  selectActionFlags,
+  selectPlayers,
+  selectTiles,
+  selectBuildings,
+  selectRoads,
+  selectHarbors,
+  selectRobber,
+  selectHouseRules,
+  selectGameId,
+  selectGameType,
+  selectPlayerProfile,
+  selectMyPlayer,
+} from './gameStore';
+
+// Re-export PlayerProfile from types
+export type { PlayerProfile } from '@/types/player-profile';
+
+export {
+  useUIStore,
+  selectIsPortrait,
+  selectIsMobile,
+  selectActivePortraitTab,
+  selectHasOpenOverlay,
+  type PortraitTab,
+} from './uiStore';
+
+export {
+  useConnectionStore,
+  selectIsConnected,
+  selectIsConnecting,
+  selectConnectionStatus,
+  selectConnectedGameId,
+  selectHasError,
+  selectErrorMessage,
+  type ConnectionStatus,
+} from './connectionStore';
+
+export {
+  useSettingsStore,
+  selectExpansionGoldTiles,
+  selectRegularGoldTiles,
+  selectSupplementalMinPlayers,
+  selectAnimationSpeed,
+  selectIsInitialized,
+} from './settingsStore';

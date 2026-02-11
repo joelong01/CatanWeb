@@ -5,8 +5,9 @@ agent: agent
 argument-hint: "Optional: extra context to include in this handover"
 ---
 
-#files:"./.ai/ai-rules.md"
-#files:"./.ai/commands/handover.md"
+# files:"./.ai/ai-rules.md"
+
+# files:"./.ai/commands/handover.md"
 
 Load and fully follow the rules defined in `.ai/ai-rules.md`.
 
