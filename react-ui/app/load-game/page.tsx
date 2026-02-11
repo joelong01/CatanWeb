@@ -691,9 +691,7 @@ export default function LoadGame(): React.ReactElement {
                         <div className="text-base font-semibold text-gray-800 truncate">
                           {game.gameName}
                         </div>
-                        <div className="text-sm text-gray-600 truncate">
-                          {game.playerNames}
-                        </div>
+                        <div className="text-sm text-gray-600 truncate">{game.playerNames}</div>
                         <div className="text-xs text-gray-500 truncate">
                           {game.gameState}
                           <span className="mx-1 text-gray-400">•</span>

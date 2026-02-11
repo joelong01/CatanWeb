@@ -13,9 +13,10 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { createRequire } from 'module';
 import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 // Resolve svg-reorient from .iconfont-build/node_modules (where npm installs it)
-const projectRoot = join(dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1')), '../..');
+const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const require = createRequire(join(projectRoot, '.iconfont-build', 'package.json'));
 const { reorient } = require('svg-reorient');
 

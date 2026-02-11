@@ -147,7 +147,11 @@ export const GameTile = memo(function GameTile({
           {/* Front face - base resource glyph on bgColor background, clipped to inner hex */}
           <div
             className="absolute inset-0 hex-clip-flat"
-            style={{ backfaceVisibility: 'hidden', transform: `scale(${innerHexScale})`, backgroundColor: baseFontConfig!.bgColor }}
+            style={{
+              backfaceVisibility: 'hidden',
+              transform: `scale(${innerHexScale})`,
+              backgroundColor: baseFontConfig!.bgColor,
+            }}
           >
             <svg
               className="absolute inset-0 w-full h-full"
@@ -171,7 +175,11 @@ export const GameTile = memo(function GameTile({
           {goldFontConfig && (
             <div
               className="absolute inset-0 hex-clip-flat"
-              style={{ backfaceVisibility: 'hidden', transform: `scale(${innerHexScale}) rotateY(180deg)`, backgroundColor: goldFontConfig.bgColor }}
+              style={{
+                backfaceVisibility: 'hidden',
+                transform: `scale(${innerHexScale}) rotateY(180deg)`,
+                backgroundColor: goldFontConfig.bgColor,
+              }}
             >
               <svg
                 className="absolute inset-0 w-full h-full"

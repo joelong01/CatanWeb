@@ -396,10 +396,7 @@ function ScaledPlayersList() {
       const containerHeight = container.clientHeight;
       if (containerWidth <= 0 || containerHeight <= 0) return;
 
-      const newScale = Math.min(
-        containerWidth / naturalWidth,
-        containerHeight / naturalHeight
-      );
+      const newScale = Math.min(containerWidth / naturalWidth, containerHeight / naturalHeight);
       setScale(newScale > 0 ? newScale : 1);
     };
 

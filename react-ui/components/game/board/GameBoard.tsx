@@ -819,7 +819,14 @@ export function GameBoard({
       const buildingHitRadius = hSize * 0.3;
       let closestBuilding: { key: string; model: BuildingModel; dist: number } | null = null;
 
-      const allDirections = [Direction.North, Direction.NorthEast, Direction.SouthEast, Direction.South, Direction.SouthWest, Direction.NorthWest];
+      const allDirections = [
+        Direction.North,
+        Direction.NorthEast,
+        Direction.SouthEast,
+        Direction.South,
+        Direction.SouthWest,
+        Direction.NorthWest,
+      ];
       const hexesToCheck = [hexCoord, ...allDirections.map((dir) => getNeighbor(hexCoord, dir))];
       const hexKeySet = new Set(hexesToCheck.map(coordKeyString));
 
@@ -911,174 +918,191 @@ export function GameBoard({
 
   // --- Pointer event handlers (must be after hitTest/dispatchInteraction) ---
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (e.button !== 0) return; // Left button only for pan/click
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.button !== 0) return; // Left button only for pan/click
 
-    // Track pointer for pinch-to-zoom
-    activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-    // Second finger → start pinch-zoom, cancel any single-finger interaction
-    if (activePointersRef.current.size === 2) {
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
-      dragStateRef.current = null;
-      setIsPanningForCursor(false);
-
-      const pointers = Array.from(activePointersRef.current.values());
-      const dx = pointers[0].x - pointers[1].x;
-      const dy = pointers[0].y - pointers[1].y;
-      pinchStateRef.current = {
-        initialDist: Math.sqrt(dx * dx + dy * dy),
-        initialZoom: viewport.zoom > 0 ? viewport.zoom : 1,
-      };
-      e.preventDefault();
-      return;
-    }
-
-    // Third+ finger → ignore
-    if (activePointersRef.current.size > 2) return;
-
-    const target = hitTest(e.clientX, e.clientY);
-    const isModifier = e.ctrlKey || e.metaKey;
-    const isTouch = e.pointerType === 'touch';
-
-    // For mouse on pan-only surfaces (water/void), skip drag threshold — start panning
-    // immediately. These surfaces have no click action, so there's nothing to disambiguate.
-    const isPanOnlySurface = !isTouch && !isModifier &&
-      (target.type === 'none' || (target.type === 'tile' && target.tile.resourceTileType === 'Sea'));
-
-    dragStateRef.current = {
-      panning: isPanOnlySurface,
-      startClient: { x: e.clientX, y: e.clientY },
-      startPan: { ...panOffset },
-      hitTarget: target,
-      isModifier,
-      isTouch,
-      longPressFired: false,
-    };
-
-    if (isPanOnlySurface) {
-      setIsPanningForCursor(true);
-    }
-
-    // Pointer capture so we get move/up even if cursor leaves
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-
-    // Start long-press timer for touch
-    if (isTouch) {
-      longPressTimerRef.current = setTimeout(() => {
-        const state = dragStateRef.current;
-        if (state && !state.panning) {
-          state.longPressFired = true;
-          navigator.vibrate?.(50);
-          dispatchInteraction(state.hitTarget, 'right', state.startClient.x, state.startClient.y);
-        }
-      }, LONG_PRESS_MS);
-    }
-
-    // Prevent text selection if we might pan
-    if (canPan(target, isModifier, isTouch)) {
-      e.preventDefault();
-    }
-  }, [hitTest, panOffset, dispatchInteraction, viewport.zoom]);
-
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    // Update pointer position for pinch tracking
-    if (activePointersRef.current.has(e.pointerId)) {
+      // Track pointer for pinch-to-zoom
       activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    }
 
-    // Handle pinch-to-zoom when two pointers are active
-    if (pinchStateRef.current && activePointersRef.current.size >= 2) {
-      const pointers = Array.from(activePointersRef.current.values());
-      const dx = pointers[0].x - pointers[1].x;
-      const dy = pointers[0].y - pointers[1].y;
-      const currentDist = Math.sqrt(dx * dx + dy * dy);
-      const scale = currentDist / pinchStateRef.current.initialDist;
-      const newZoom = pinchStateRef.current.initialZoom * scale;
-
-      const minZoom = ZOOM_CONFIG.minHexSize / initialHexSize;
-      const maxZoom = ZOOM_CONFIG.maxHexSize / initialHexSize;
-      setViewport({ zoom: Math.max(minZoom, Math.min(maxZoom, newZoom)) });
-      return;
-    }
-
-    // Single-pointer pan handling
-    const state = dragStateRef.current;
-    if (!state) return;
-
-    const dx = e.clientX - state.startClient.x;
-    const dy = e.clientY - state.startClient.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (!state.panning) {
-      if (dist >= PAN_DRAG_THRESHOLD) {
-        // Cancel long-press
+      // Second finger → start pinch-zoom, cancel any single-finger interaction
+      if (activePointersRef.current.size === 2) {
         if (longPressTimerRef.current) {
           clearTimeout(longPressTimerRef.current);
           longPressTimerRef.current = null;
         }
+        dragStateRef.current = null;
+        setIsPanningForCursor(false);
 
-        if (canPan(state.hitTarget, state.isModifier, state.isTouch)) {
-          state.panning = true;
-          setIsPanningForCursor(true);
+        const pointers = Array.from(activePointersRef.current.values());
+        const dx = pointers[0].x - pointers[1].x;
+        const dy = pointers[0].y - pointers[1].y;
+        pinchStateRef.current = {
+          initialDist: Math.sqrt(dx * dx + dy * dy),
+          initialZoom: viewport.zoom > 0 ? viewport.zoom : 1,
+        };
+        e.preventDefault();
+        return;
+      }
+
+      // Third+ finger → ignore
+      if (activePointersRef.current.size > 2) return;
+
+      const target = hitTest(e.clientX, e.clientY);
+      const isModifier = e.ctrlKey || e.metaKey;
+      const isTouch = e.pointerType === 'touch';
+
+      // For mouse on pan-only surfaces (water/void), skip drag threshold — start panning
+      // immediately. These surfaces have no click action, so there's nothing to disambiguate.
+      const isPanOnlySurface =
+        !isTouch &&
+        !isModifier &&
+        (target.type === 'none' ||
+          (target.type === 'tile' && target.tile.resourceTileType === 'Sea'));
+
+      dragStateRef.current = {
+        panning: isPanOnlySurface,
+        startClient: { x: e.clientX, y: e.clientY },
+        startPan: { ...panOffset },
+        hitTarget: target,
+        isModifier,
+        isTouch,
+        longPressFired: false,
+      };
+
+      if (isPanOnlySurface) {
+        setIsPanningForCursor(true);
+      }
+
+      // Pointer capture so we get move/up even if cursor leaves
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+
+      // Start long-press timer for touch
+      if (isTouch) {
+        longPressTimerRef.current = setTimeout(() => {
+          const state = dragStateRef.current;
+          if (state && !state.panning) {
+            state.longPressFired = true;
+            navigator.vibrate?.(50);
+            dispatchInteraction(state.hitTarget, 'right', state.startClient.x, state.startClient.y);
+          }
+        }, LONG_PRESS_MS);
+      }
+
+      // Prevent text selection if we might pan
+      if (canPan(target, isModifier, isTouch)) {
+        e.preventDefault();
+      }
+    },
+    [hitTest, panOffset, dispatchInteraction, viewport.zoom]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      // Update pointer position for pinch tracking
+      if (activePointersRef.current.has(e.pointerId)) {
+        activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+
+      // Handle pinch-to-zoom when two pointers are active
+      if (pinchStateRef.current && activePointersRef.current.size >= 2) {
+        const pointers = Array.from(activePointersRef.current.values());
+        const dx = pointers[0].x - pointers[1].x;
+        const dy = pointers[0].y - pointers[1].y;
+        const currentDist = Math.sqrt(dx * dx + dy * dy);
+        const scale = currentDist / pinchStateRef.current.initialDist;
+        const newZoom = pinchStateRef.current.initialZoom * scale;
+
+        const minZoom = ZOOM_CONFIG.minHexSize / initialHexSize;
+        const maxZoom = ZOOM_CONFIG.maxHexSize / initialHexSize;
+        setViewport({ zoom: Math.max(minZoom, Math.min(maxZoom, newZoom)) });
+        return;
+      }
+
+      // Single-pointer pan handling
+      const state = dragStateRef.current;
+      if (!state) return;
+
+      const dx = e.clientX - state.startClient.x;
+      const dy = e.clientY - state.startClient.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (!state.panning) {
+        if (dist >= PAN_DRAG_THRESHOLD) {
+          // Cancel long-press
+          if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+          }
+
+          if (canPan(state.hitTarget, state.isModifier, state.isTouch)) {
+            state.panning = true;
+            setIsPanningForCursor(true);
+          }
         }
       }
-    }
 
-    if (state.panning) {
-      setViewport({
-        pan: {
-          x: state.startPan.x + dx,
-          y: state.startPan.y + dy,
-        },
-      });
-    }
-  }, [setViewport, initialHexSize]);
-
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    // Remove pointer from tracking
-    activePointersRef.current.delete(e.pointerId);
-
-    // End pinch if was pinching
-    if (pinchStateRef.current) {
-      if (activePointersRef.current.size < 2) {
-        pinchStateRef.current = null;
+      if (state.panning) {
+        setViewport({
+          pan: {
+            x: state.startPan.x + dx,
+            y: state.startPan.y + dy,
+          },
+        });
       }
+    },
+    [setViewport, initialHexSize]
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      // Remove pointer from tracking
+      activePointersRef.current.delete(e.pointerId);
+
+      // End pinch if was pinching
+      if (pinchStateRef.current) {
+        if (activePointersRef.current.size < 2) {
+          pinchStateRef.current = null;
+        }
+        dragStateRef.current = null;
+        return; // Don't dispatch click after pinch
+      }
+
+      const state = dragStateRef.current;
+      if (!state) return;
+
+      // Cancel long-press timer
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+
+      if (state.panning) {
+        // Suppress click after pan
+        recentPanRef.current = true;
+        setTimeout(() => {
+          recentPanRef.current = false;
+        }, 0);
+        setIsPanningForCursor(false);
+      } else if (!state.longPressFired) {
+        // Not panning, not long-press → dispatch as click
+        dispatchInteraction(state.hitTarget, 'left');
+      }
+
       dragStateRef.current = null;
-      return; // Don't dispatch click after pinch
-    }
+    },
+    [dispatchInteraction]
+  );
 
-    const state = dragStateRef.current;
-    if (!state) return;
-
-    // Cancel long-press timer
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-
-    if (state.panning) {
-      // Suppress click after pan
-      recentPanRef.current = true;
-      setTimeout(() => { recentPanRef.current = false; }, 0);
-      setIsPanningForCursor(false);
-    } else if (!state.longPressFired) {
-      // Not panning, not long-press → dispatch as click
-      dispatchInteraction(state.hitTarget, 'left');
-    }
-
-    dragStateRef.current = null;
-  }, [dispatchInteraction]);
-
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    if (recentPanRef.current) return;
-    const target = hitTest(e.clientX, e.clientY);
-    dispatchInteraction(target, 'right', e.clientX, e.clientY);
-  }, [hitTest, dispatchInteraction]);
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (recentPanRef.current) return;
+      const target = hitTest(e.clientX, e.clientY);
+      dispatchInteraction(target, 'right', e.clientX, e.clientY);
+    },
+    [hitTest, dispatchInteraction]
+  );
 
   // Combine all items: water first (background), then tiles, then harbors
   const allItems = useMemo(() => {
@@ -1578,19 +1602,26 @@ export function GameBoard({
             gap={gap}
             borderColor="transparent"
             fitToParent={false}
-            overlay={players.length > 0 ? (layoutInfo) => {
-              layoutInfoRef.current = layoutInfo;
-              return (
-                <>
-                  <div ref={(el) => {
-                    if (el?.parentElement) {
-                      hexGridContentRef.current = el.parentElement as HTMLDivElement;
-                    }
-                  }} style={{ display: 'none' }} />
-                  {renderOverlay(layoutInfo)}
-                </>
-              );
-            } : undefined}
+            overlay={
+              players.length > 0
+                ? (layoutInfo) => {
+                    layoutInfoRef.current = layoutInfo;
+                    return (
+                      <>
+                        <div
+                          ref={(el) => {
+                            if (el?.parentElement) {
+                              hexGridContentRef.current = el.parentElement as HTMLDivElement;
+                            }
+                          }}
+                          style={{ display: 'none' }}
+                        />
+                        {renderOverlay(layoutInfo)}
+                      </>
+                    );
+                  }
+                : undefined
+            }
           />
         </div>
       ) : null}

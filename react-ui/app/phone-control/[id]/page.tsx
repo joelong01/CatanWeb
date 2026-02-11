@@ -59,9 +59,7 @@ function NextHexContent({
   isPressed: boolean;
   setIsPressed: (p: boolean) => void;
 }): React.ReactElement {
-  const innerScale = !enabled
-    ? 0.92
-    : isPressed ? 0.88 : isHovered ? 0.9 : 0.92;
+  const innerScale = !enabled ? 0.92 : isPressed ? 0.88 : isHovered ? 0.9 : 0.92;
 
   const bgColor = !enabled
     ? 'linear-gradient(135deg, #1f2937, #111827)'
@@ -78,7 +76,10 @@ function NextHexContent({
     <div
       className={`absolute inset-0 ${enabled ? 'cursor-pointer' : 'cursor-not-allowed'}`}
       onMouseEnter={() => enabled && setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => enabled && setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onClick={() => enabled && onClick()}
@@ -129,7 +130,10 @@ function PlayerHexContent({
     <div
       className="absolute inset-0 cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onClick={onToggle}
@@ -229,7 +233,7 @@ export default function PhoneControlPage(): React.ReactElement {
 
   // Eligible players for supplemental ring
   const eligiblePlayers = useMemo(
-    () => currentPlayer ? players.filter((p) => p.id !== currentPlayer.id) : [],
+    () => (currentPlayer ? players.filter((p) => p.id !== currentPlayer.id) : []),
     [players, currentPlayer]
   );
 
@@ -294,8 +298,15 @@ export default function PhoneControlPage(): React.ReactElement {
 
     return items;
   }, [
-    nextEnabled, handleNext, nextHovered, nextPressed,
-    isSupplemental, eligiblePlayers, playerProfiles, selectedIds, togglePlayer,
+    nextEnabled,
+    handleNext,
+    nextHovered,
+    nextPressed,
+    isSupplemental,
+    eligiblePlayers,
+    playerProfiles,
+    selectedIds,
+    togglePlayer,
   ]);
 
   // Connection status
@@ -305,10 +316,7 @@ export default function PhoneControlPage(): React.ReactElement {
         <div className="text-gray-400 text-lg">
           {isConnecting ? 'Connecting...' : 'Disconnected'}
         </div>
-        <Link
-          href={`/game/${gameId}`}
-          className="mt-6 text-blue-400 hover:text-blue-300 text-sm"
-        >
+        <Link href={`/game/${gameId}`} className="mt-6 text-blue-400 hover:text-blue-300 text-sm">
           <FontAwesomeIcon icon={faArrowLeft} className="mr-2" />
           Back to Game
         </Link>
@@ -323,9 +331,7 @@ export default function PhoneControlPage(): React.ReactElement {
         <div className="text-gray-500 text-xs uppercase tracking-wider mb-1">
           {isSupplemental ? 'Pick Supplemental Players' : 'Game State'}
         </div>
-        <div className="text-white text-xl font-medium">
-          {stateMessage || 'Loading...'}
-        </div>
+        <div className="text-white text-xl font-medium">{stateMessage || 'Loading...'}</div>
       </div>
 
       {/* Hex grid — single Next hex, or Next + player ring */}
@@ -343,10 +349,7 @@ export default function PhoneControlPage(): React.ReactElement {
       )}
 
       {/* Back link */}
-      <Link
-        href={`/game/${gameId}`}
-        className="text-blue-400 hover:text-blue-300 text-sm"
-      >
+      <Link href={`/game/${gameId}`} className="text-blue-400 hover:text-blue-300 text-sm">
         <FontAwesomeIcon icon={faArrowLeft} className="mr-2" />
         Back to Game
       </Link>

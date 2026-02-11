@@ -309,17 +309,26 @@ export function NavMenu({
 
   /** Toggle fullscreen mode (with webkit prefix fallback for Safari) */
   const toggleFullScreen = (): void => {
-    const doc = document as Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => Promise<void> };
-    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> };
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element;
+      webkitExitFullscreen?: () => Promise<void>;
+    };
+    const el = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void>;
+    };
 
     const isFullscreen = doc.fullscreenElement ?? doc.webkitFullscreenElement;
 
     if (!isFullscreen) {
       const request = el.requestFullscreen?.bind(el) ?? el.webkitRequestFullscreen?.bind(el);
-      request?.()?.catch(() => { /* not supported or denied */ });
+      request?.()?.catch(() => {
+        /* not supported or denied */
+      });
     } else {
       const exit = doc.exitFullscreen?.bind(doc) ?? doc.webkitExitFullscreen?.bind(doc);
-      exit?.()?.catch(() => { /* exit failed */ });
+      exit?.()?.catch(() => {
+        /* exit failed */
+      });
     }
   };
 

@@ -491,9 +491,12 @@ export default function TestRecordingsPage(): React.ReactElement {
   const viewHashErrors = Array.from(viewResults.values()).filter((r) => !r.hashMatch);
 
   return (
-    <MainLayout title="Test Recordings" subtitle="Recorded gameplay for testing GameService consistency" onBack={() => router.push('/')}>
+    <MainLayout
+      title="Test Recordings"
+      subtitle="Recorded gameplay for testing GameService consistency"
+      onBack={() => router.push('/')}
+    >
       <div className="px-6 pb-8 md:px-10 md:pb-10 max-w-[1400px] mx-auto">
-
         {/* Error banner */}
         {errorMessage && (
           <div className="mb-4 px-4 py-3 rounded bg-red-900/40 border border-red-700 text-red-300 text-sm flex items-center justify-between">

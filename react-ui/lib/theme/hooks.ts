@@ -64,7 +64,13 @@ export function useTileFontConfig(resourceType: string): ResolvedTileFontConfig 
     if (!raw) return undefined;
     const glyph = resolveGlyph(raw.glyph);
     if (!glyph) return undefined;
-    return { glyph, color: raw.color, bgColor: raw.bgColor, borderColor: raw.borderColor, glyphScale: raw.glyphScale ?? 1 };
+    return {
+      glyph,
+      color: raw.color,
+      bgColor: raw.bgColor,
+      borderColor: raw.borderColor,
+      glyphScale: raw.glyphScale ?? 1,
+    };
   }, [themes, currentTheme, resourceType]);
 }
 

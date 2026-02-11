@@ -180,7 +180,11 @@ export default function FontViewerPage(): React.ReactElement {
   }, []);
 
   return (
-    <MainLayout title="Catan Font Viewer" subtitle={`${totalCount} glyphs · Right-click to copy`} onBack={() => router.push('/')}>
+    <MainLayout
+      title="Catan Font Viewer"
+      subtitle={`${totalCount} glyphs · Right-click to copy`}
+      onBack={() => router.push('/')}
+    >
       <div className="pb-8 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
           {/* View toggle */}

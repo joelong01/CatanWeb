@@ -206,8 +206,8 @@
 </div>
 
 <div class="tab-bar">
-  <button class="active" onclick="switchView('grid')">Grid View</button>
-  <button onclick="switchView('table')">Table View</button>
+  <button class="active" onclick="switchView('grid', event)">Grid View</button>
+  <button onclick="switchView('table', event)">Table View</button>
 </div>
 
 <div id="grid-view" class="view active">
@@ -251,6 +251,14 @@ const GLYPH_MAP = {
   "ore-harbor.svg": "E93B", "sheep-bw-hex.svg": "E93C",
   "sheep-harbor.svg": "E93D", "wagon.svg": "E93E", "wheat-bw-hex.svg": "E93F",
   "wheat-harbor.svg": "E940", "wood-bw-hex.svg": "E941", "wood-harbor.svg": "E942",
+  "gold-bw-hex.svg": "E943", "tempgold-bw-hex.svg": "E944",
+  "2.svg": "E945", "3.svg": "E946", "4.svg": "E947", "5.svg": "E948",
+  "6.svg": "E949", "7.svg": "E94A", "8.svg": "E94B", "9.svg": "E94C",
+  "10.svg": "E94D", "11.svg": "E94E", "12.svg": "E94F",
+  "skull 1.svg": "E950",
+  "simple-brick.svg": "E951", "simple-desert.svg": "E952",
+  "simple-ore.svg": "E953", "simple-sheep.svg": "E954",
+  "simple-wheat.svg": "E955", "simple-wood.svg": "E956",
 };
 
 const entries = Object.entries(GLYPH_MAP)
@@ -310,11 +318,11 @@ function renderGlyphs(fontMap, mappedHex) {
   }
 }
 
-function switchView(view) {
+function switchView(view, evt) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
   document.getElementById(view + '-view').classList.add('active');
-  event.target.classList.add('active');
+  evt.target.classList.add('active');
 }
 
 // Boot

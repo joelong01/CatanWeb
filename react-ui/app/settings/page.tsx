@@ -148,7 +148,9 @@ export default function Settings(): React.ReactElement {
       if (activeGameId && gameType) {
         const houseRules = store.getHouseRules(gameType) as HouseRules;
         const result = await gameApi.updateHouseRules(activeGameId, houseRules);
-        setSaveMessage(result.success ? 'Settings saved & game updated' : 'Settings saved (game update failed)');
+        setSaveMessage(
+          result.success ? 'Settings saved & game updated' : 'Settings saved (game update failed)'
+        );
       } else {
         setSaveMessage('Settings saved');
       }
@@ -169,7 +171,12 @@ export default function Settings(): React.ReactElement {
   const backLabel = activeGameId ? 'Back to Game' : 'Back';
 
   return (
-    <MainLayout activeGameId={activeGameId} title="Settings" subtitle="Configure game preferences" onBack={() => router.push(backHref)}>
+    <MainLayout
+      activeGameId={activeGameId}
+      title="Settings"
+      subtitle="Configure game preferences"
+      onBack={() => router.push(backHref)}
+    >
       <div className="min-h-screen h-full py-5 pb-[60px] px-5 max-w-[600px] mx-auto">
         {/* Settings content */}
         <div className="space-y-6">

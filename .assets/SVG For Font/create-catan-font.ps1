@@ -103,8 +103,8 @@ if ($Command -eq 'update') {
     $existingMap[$prop.Name] = $prop.Value
   }
 
-  # Find highest existing codepoint
-  $maxCodepoint = 0
+  # Find highest existing codepoint (floor at StartHex - 1 so empty maps start in PUA)
+  $maxCodepoint = [Convert]::ToInt32($StartHex, 16) - 1
   foreach ($hex in $existingMap.Values) {
     $val = [Convert]::ToInt32($hex, 16)
     if ($val -gt $maxCodepoint) { $maxCodepoint = $val }
@@ -581,8 +581,13 @@ if (-not $SkipClearCache -and -not $SkipInstall) {
   # Detect if Next.js dev server is running (port 3000)
   $devRunning = $false
   try {
-    $listener = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue
-    if ($listener) { $devRunning = $true }
+    if ($IsWindows) {
+      $listener = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue
+      if ($listener) { $devRunning = $true }
+    } else {
+      $result = bash -c "lsof -ti:3000 2>/dev/null"
+      if ($result) { $devRunning = $true }
+    }
   } catch { }
 
   if ($devRunning) {
