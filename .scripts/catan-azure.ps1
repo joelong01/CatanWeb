@@ -1592,6 +1592,12 @@ function Install-GameService {
     Write-Log -Level "INFO" -Message "Enabling Always On for $appName..."
     Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --always-on true" -SuppressOutput
 
+    # Increase container startup timeout from default 230s to 600s
+    # The GameService does background DB seeding on first start which can be slow
+    # on cold Azure SQL connections with Managed Identity
+    Write-Log -Level "INFO" -Message "Setting container startup timeout to 600s..."
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
+
     # Install and connect Application Insights
     $appInsightsConnectionString = Install-AppInsights -Config $Config
     if ($appInsightsConnectionString) {
@@ -2069,6 +2075,7 @@ function Get-GameServiceDoctor {
             webApp           = $false
             managedIdentity  = $false
             alwaysOn         = $false
+            startupTimeout   = $false
             codeDeployed     = $false
             healthEndpoint   = $false
         }
@@ -2129,6 +2136,17 @@ function Get-GameServiceDoctor {
         $result.checks.alwaysOn = ($alwaysOn -eq "true")
         if (-not $result.checks.alwaysOn) {
             $result.performanceWarnings = @("Always On is disabled - app will have cold start delays")
+        }
+
+        # Check container startup timeout (default 230s is too short for cold DB connections)
+        Write-Log -Level "DEBUG" -Message "Checking container startup timeout" -TraceLevel $TraceLevel
+        $appSettings = Invoke-AzCommand "webapp config appsettings list --name $appName --resource-group $rgName" -FailOnError $false -JsonOutput
+        $timeoutSetting = $appSettings | Where-Object { $_.name -eq 'WEBSITES_CONTAINER_START_TIME_LIMIT' } | Select-Object -First 1
+        $timeoutValue = if ($timeoutSetting) { [int]$timeoutSetting.value } else { 230 }
+        $result.checks.startupTimeout = ($timeoutValue -ge 600)
+        if (-not $result.checks.startupTimeout) {
+            if (-not $result.performanceWarnings) { $result.performanceWarnings = @() }
+            $result.performanceWarnings += "Container startup timeout is ${timeoutValue}s (need 600s) — run: $($script:CmdHintPrefix) game-service install"
         }
 
         # Get current git commit
@@ -2612,6 +2630,7 @@ function Show-DoctorResult {
                 "webApp" { "Web App" }
                 "managedIdentity" { "Managed Identity" }
                 "alwaysOn" { "Always On" }
+                "startupTimeout" { "Startup Timeout" }
                 "planSkuOk" { "Plan SKU" }
                 "codeDeployed" { "Code Deployed" }
                 "healthEndpoint" { "Health Endpoint" }
@@ -2644,6 +2663,8 @@ function Show-DoctorResult {
                     "current: $($Result.currentSku), need: B1+"
                 } elseif ($key -eq "alwaysOn") {
                     "(requires B1+ SKU)"
+                } elseif ($key -eq "startupTimeout") {
+                    "$script:CmdHintPrefix $noun install"
                 } elseif ($key -in @("publicNetworkAccess", "firewallRule")) {
                     "$script:CmdHintPrefix $noun fix"
                 } elseif ($key -eq "stagingSlot") {
