@@ -104,6 +104,10 @@ builder.Services.AddSingleton<AsyncCommandProcessor>();
 // Register recording service for test recording/replay
 builder.Services.AddSingleton<RecordingService>();
 
+// Register background database seeding (runs after Kestrel starts listening,
+// preventing Azure warmup probe timeouts on cold DB connections)
+builder.Services.AddHostedService<DatabaseSeedingService>();
+
 // Database provider detection (zero-config: SQLite locally, SQL Server on Azure)
 Console.WriteLine("[STARTUP] Creating DatabaseProviderDetector...");
 var dbDetector = new DatabaseProviderDetector(builder.Configuration);
@@ -170,42 +174,28 @@ catch (Exception ex)
 var defaultDataPath = dbDetector.GetDefaultDataPath();
 Console.WriteLine($"[STARTUP] Default data path: {defaultDataPath}");
 
-// Always auto-seed on startup if database is empty (idempotent operation)
-// Wrapped in try/catch to prevent startup crash if database is unavailable (e.g., Azure SQL serverless auto-pause)
-Console.WriteLine("[STARTUP] Starting database seeding...");
-try
-{
-    using var scope = app.Services.CreateScope();
-    Console.WriteLine("[STARTUP] Created service scope");
-
-    var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
-    Console.WriteLine("[STARTUP] Got CatanDbContext");
-
-    var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
-    Console.WriteLine("[STARTUP] Got IGamePersistence, calling DatabaseSeeder.SeedAsync...");
-
-    await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence, dbDetector.UseSqlServer);
-    Console.WriteLine("[STARTUP] Database seeding completed successfully");
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"[STARTUP] WARNING: Database seeding failed: {ex.Message}");
-    Console.WriteLine($"[STARTUP] Exception type: {ex.GetType().FullName}");
-    Console.WriteLine($"[STARTUP] Stack trace: {ex.StackTrace}");
-    if (ex.InnerException != null)
-    {
-        Console.WriteLine($"[STARTUP] Inner exception: {ex.InnerException.Message}");
-        Console.WriteLine($"[STARTUP] Inner stack trace: {ex.InnerException.StackTrace}");
-    }
-    Console.WriteLine("[STARTUP] The service will continue to start, but database operations may fail until connection is restored.");
-}
-
-// Handle --seed-database command (exit after seeding for explicit seed-only mode)
+// Handle --seed-database command (synchronous seeding, then exit)
 if (args.Contains("--seed-database"))
 {
-    Console.WriteLine("[STARTUP] --seed-database flag detected, exiting after seeding");
+    Console.WriteLine("[STARTUP] --seed-database flag detected, seeding synchronously...");
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
+        var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
+        await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence, dbDetector.UseSqlServer);
+        Console.WriteLine("[STARTUP] Database seeding completed, exiting");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[STARTUP] Database seeding failed: {ex.Message}");
+    }
     return;
 }
+
+// Normal startup: database seeding runs in background via DatabaseSeedingService
+// (registered as IHostedService above) so Kestrel starts listening immediately
+Console.WriteLine("[STARTUP] Database seeding will run in background after server starts");
 
 Console.WriteLine("[STARTUP] Configuring HTTP request pipeline...");
 // Configure the HTTP request pipeline.
