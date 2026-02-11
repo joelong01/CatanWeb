@@ -45,6 +45,8 @@ jobs:
           mkdir -p deploy
           # Standalone output is nested under react-ui/ due to monorepo detection
           cp -r react-ui/.next/standalone/react-ui/* deploy/
+          # Static assets aren't included in standalone output — copy them separately
+          mkdir -p deploy/.next
           cp -r react-ui/.next/static deploy/.next/static
           cp -r react-ui/public deploy/public
           cd deploy && zip -r ../react-ui.zip .

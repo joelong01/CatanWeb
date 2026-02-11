@@ -2236,14 +2236,11 @@ switch ($Verb) {
                             Write-Host "  UI (Blazor): Up to date - skipping" -ForegroundColor Green
                         }
 
-                        # React → staging (Deploy-ReactStaging has its own skip-if-current logic)
-                        Write-Host "  UI (React): Deploying to staging..." -ForegroundColor Yellow
-                        & $azureScript ui deploy-staging -Force:$Force -TraceLevel $TraceLevel
-                        if ($LASTEXITCODE -ne 0) { exit 1 }
+                        # React staging is deployed by the deploy-react-staging.yml workflow
+                        # Use './catan.ps1 azure ui deploy-staging' to deploy manually
 
                         Write-Host ""
-                        Write-Host "UI deployments complete!" -ForegroundColor Green
-                        Write-Host "  To swap React into production: ./catan.ps1 azure swap-slots" -ForegroundColor Gray
+                        Write-Host "UI deployment complete!" -ForegroundColor Green
                     }
                     "game-service" {
                         Write-Host "Deploying GameService to Azure..." -ForegroundColor Cyan
@@ -2359,18 +2356,13 @@ switch ($Verb) {
                             Write-Host "  UI (Blazor): OK - skipping" -ForegroundColor Green
                         }
 
-                        # React UI → staging slot (Deploy-ReactStaging has its own skip-if-current logic)
-                        Write-Host "  UI (React): Deploying to staging..." -ForegroundColor Yellow
-                        & $azureScript ui deploy-staging -Force:$Force -TraceLevel $TraceLevel
-                        if ($LASTEXITCODE -ne 0) {
-                            Write-Host "  UI (React): Staging deploy failed" -ForegroundColor Red
-                            exit 1
-                        }
-                        Write-Host "  UI (React): Deployed to staging" -ForegroundColor Green
+                        # React UI staging is deployed by the deploy-react-staging.yml workflow
+                        # (triggered on push to main when react-ui/** changes). Don't duplicate
+                        # that here — it requires Node.js which the deploy-azure.yml workflow
+                        # doesn't set up, and would hang the deploy pipeline.
 
                         Write-Host ""
                         Write-Host "All deployments complete!" -ForegroundColor Green
-                        Write-Host "  To swap React into production: ./catan.ps1 azure swap-slots" -ForegroundColor Gray
                     }
                     default {
                         Write-Host "Unknown deploy target: $deployTarget" -ForegroundColor Red
