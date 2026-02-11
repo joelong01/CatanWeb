@@ -144,46 +144,47 @@ export const GameTile = memo(function GameTile({
           animate={{ rotateY: canFlipGold && temporarilyGold ? 180 : 0 }}
           transition={{ duration: 1.0, ease: 'easeInOut' }}
         >
-          {/* Front face - base resource glyph on bgColor background */}
-          <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}>
+          {/* Front face - base resource glyph on bgColor background, clipped to inner hex */}
+          <div
+            className="absolute inset-0 hex-clip-flat"
+            style={{ backfaceVisibility: 'hidden', transform: `scale(${innerHexScale})`, backgroundColor: baseFontConfig!.bgColor }}
+          >
             <svg
               className="absolute inset-0 w-full h-full"
               viewBox="0 0 100 100"
-              preserveAspectRatio="none"
+              preserveAspectRatio="xMidYMid meet"
             >
-              <rect width="100" height="100" fill={baseFontConfig!.bgColor} />
               <text
                 x="50"
                 y="50"
                 textAnchor="middle"
                 dominantBaseline="central"
                 style={{ fontFamily: 'var(--font-catan)' }}
-                fontSize="100"
+                fontSize={100 * baseFontConfig!.glyphScale}
                 fill={baseFontConfig!.color}
               >
                 {baseFontConfig!.glyph}
               </text>
             </svg>
           </div>
-          {/* Back face - gold glyph (pre-rotated 180°) */}
+          {/* Back face - gold glyph (pre-rotated 180°), clipped to inner hex */}
           {goldFontConfig && (
             <div
-              className="absolute inset-0"
-              style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+              className="absolute inset-0 hex-clip-flat"
+              style={{ backfaceVisibility: 'hidden', transform: `scale(${innerHexScale}) rotateY(180deg)`, backgroundColor: goldFontConfig.bgColor }}
             >
               <svg
                 className="absolute inset-0 w-full h-full"
                 viewBox="0 0 100 100"
-                preserveAspectRatio="none"
+                preserveAspectRatio="xMidYMid meet"
               >
-                <rect width="100" height="100" fill={goldFontConfig.bgColor} />
                 <text
                   x="50"
                   y="50"
                   textAnchor="middle"
                   dominantBaseline="central"
                   style={{ fontFamily: 'var(--font-catan)' }}
-                  fontSize="100"
+                  fontSize={100 * goldFontConfig.glyphScale}
                   fill={goldFontConfig.color}
                 >
                   {goldFontConfig.glyph}

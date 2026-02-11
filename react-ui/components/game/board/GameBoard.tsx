@@ -8,6 +8,7 @@ import {
   getVertexPosition,
   getEdgeMidpoint,
   hexToPixel,
+  pixelToHex,
   Direction,
   type HexCoordinate,
   type PixelPosition,
@@ -483,6 +484,8 @@ export function GameBoard({
   }, [robber, isRobberAnimating]);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const layoutInfoRef = useRef<HexGridLayoutInfo | null>(null);
+  const hexGridContentRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(
     null
   );
@@ -501,9 +504,38 @@ export function GameBoard({
   const hexSize = viewport.zoom > 0 ? Math.round(initialHexSize * viewport.zoom) : initialHexSize;
   const panOffset = viewport.pan;
 
-  // Local pan interaction state
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState<PixelPosition>({ x: 0, y: 0 });
+  // --- Unified pointer interaction state ---
+  const PAN_DRAG_THRESHOLD = 5;
+  const LONG_PRESS_MS = 500;
+
+  const dragStateRef = useRef<{
+    panning: boolean;
+    startClient: PixelPosition;
+    startPan: PixelPosition;
+    hitTarget: HitTarget;
+    isModifier: boolean;
+    isTouch: boolean;
+    longPressFired: boolean;
+  } | null>(null);
+
+  const recentPanRef = useRef(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isPanningForCursor, setIsPanningForCursor] = useState(false);
+
+  // Pinch-to-zoom state
+  const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchStateRef = useRef<{
+    initialDist: number;
+    initialZoom: number;
+  } | null>(null);
+
+  const canPan = (target: HitTarget, isModifier: boolean, isTouch: boolean) => {
+    if (isModifier) return true;
+    if (target.type === 'none') return true;
+    if (isTouch) return true; // Touch always pans (drag threshold disambiguates)
+    if (target.type === 'tile' && target.tile.resourceTileType === 'Sea') return true;
+    return false;
+  };
 
   // Measure container size
   useEffect(() => {
@@ -542,40 +574,6 @@ export function GameBoard({
     [hexSize, initialHexSize, setViewport]
   );
 
-  // Handle CTRL+drag panning (matches FloatingPanel behavior)
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        setIsPanning(true);
-        setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
-      }
-    },
-    [panOffset]
-  );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (isPanning) {
-        setViewport({
-          pan: {
-            x: e.clientX - panStart.x,
-            y: e.clientY - panStart.y,
-          },
-        });
-      }
-    },
-    [isPanning, panStart, setViewport]
-  );
-
-  const handleMouseUp = useCallback(() => {
-    setIsPanning(false);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    setIsPanning(false);
-  }, []);
-
   // Build set of tile coordinates for quick lookup
   const tileCoordSet = useMemo(() => {
     const set = new Set<string>();
@@ -584,6 +582,16 @@ export function GameBoard({
       set.add(coordKeyString(coord));
     });
     return set;
+  }, [tiles]);
+
+  // Build tile lookup map for O(1) coord → TileModel access
+  const tileMap = useMemo(() => {
+    const map = new Map<string, TileModel>();
+    tiles.forEach((tile) => {
+      const coord = cubicCoord(tile.tileKey.q, tile.tileKey.r);
+      map.set(coordKeyString(coord), tile);
+    });
+    return map;
   }, [tiles]);
 
   // Build HexGrid items from tiles
@@ -612,14 +620,12 @@ export function GameBoard({
             hexSize={hexSize}
             isHighlighted={isHighlighted}
             isDimmed={isDimmed}
-            onClick={onTileClick ? () => onTileClick(tile) : undefined}
-            onRightClick={onTileRightClick ? (e) => onTileRightClick(tile, e) : undefined}
             tileIndex={showTileIndexes ? index + 1 : undefined}
           />
         ),
       };
     });
-  }, [tiles, hexSize, highlightedTiles, rolledNumber, onTileClick, onTileRightClick, gameState]);
+  }, [tiles, hexSize, highlightedTiles, rolledNumber, gameState]);
 
   // Build HexGrid items from harbors (at water hex positions)
   const harborItems: HexGridItem[] = useMemo(() => {
@@ -781,6 +787,298 @@ export function GameBoard({
     });
     return map;
   }, [roads]);
+
+  // --- Unified interaction: hit-test and dispatch ---
+
+  type HitTarget =
+    | { type: 'tile'; tile: TileModel }
+    | { type: 'road'; key: string; model: RoadModel; tile: TileModel }
+    | { type: 'building'; key: string; model: BuildingModel; tile: TileModel }
+    | { type: 'none' };
+
+  const hitTest = useCallback(
+    (clientX: number, clientY: number): HitTarget => {
+      const layout = layoutInfoRef.current;
+      const contentEl = hexGridContentRef.current;
+      if (!layout || !contentEl) return { type: 'none' };
+
+      // Convert client coords → hex-grid-local coords
+      const rect = contentEl.getBoundingClientRect();
+      const localX = clientX - rect.left;
+      const localY = clientY - rect.top;
+
+      const { origin, hexSize: hSize } = layout;
+
+      // 1. Resolve underlying tile
+      const hexCoord = pixelToHex({ x: localX, y: localY }, hSize, origin);
+      const tileKey = coordKeyString(hexCoord);
+      const tile = tileMap.get(tileKey);
+      if (!tile) return { type: 'none' };
+
+      // 2. Building check — search clicked hex + 6 neighbors
+      const buildingHitRadius = hSize * 0.3;
+      let closestBuilding: { key: string; model: BuildingModel; dist: number } | null = null;
+
+      const allDirections = [Direction.North, Direction.NorthEast, Direction.SouthEast, Direction.South, Direction.SouthWest, Direction.NorthWest];
+      const hexesToCheck = [hexCoord, ...allDirections.map((dir) => getNeighbor(hexCoord, dir))];
+      const hexKeySet = new Set(hexesToCheck.map(coordKeyString));
+
+      for (const bp of buildingPositions) {
+        if (!hexKeySet.has(coordKeyString(bp.coord))) continue;
+        const model = buildingMap.get(bp.key);
+        if (!model) continue;
+        const pos = getVertexPosition(bp.coord, bp.position, hSize, origin);
+        const dx = localX - pos.x;
+        const dy = localY - pos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < buildingHitRadius && (!closestBuilding || dist < closestBuilding.dist)) {
+          closestBuilding = { key: bp.key, model, dist };
+        }
+      }
+
+      if (closestBuilding) {
+        return { type: 'building', key: closestBuilding.key, model: closestBuilding.model, tile };
+      }
+
+      // 3. Road check — same neighbor set
+      const roadHitRadius = hSize * 0.25;
+      let closestRoad: { key: string; model: RoadModel; dist: number } | null = null;
+
+      for (const rp of roadPositions) {
+        if (!hexKeySet.has(coordKeyString(rp.coord))) continue;
+        const model = roadMap.get(rp.key);
+        if (!model) continue;
+        const pos = getEdgeMidpoint(rp.coord, rp.side, hSize, origin);
+        const dx = localX - pos.x;
+        const dy = localY - pos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < roadHitRadius && (!closestRoad || dist < closestRoad.dist)) {
+          closestRoad = { key: rp.key, model, dist };
+        }
+      }
+
+      if (closestRoad) {
+        return { type: 'road', key: closestRoad.key, model: closestRoad.model, tile };
+      }
+
+      // 4. Tile
+      return { type: 'tile', tile };
+    },
+    [tileMap, buildingPositions, roadPositions, buildingMap, roadMap]
+  );
+
+  const dispatchInteraction = useCallback(
+    (target: HitTarget, button: 'left' | 'right', clientX?: number, clientY?: number) => {
+      if (target.type === 'none') return;
+
+      const tile = target.tile;
+
+      // Sea tiles are pan-only — no game actions
+      if (tile.resourceTileType === 'Sea') return;
+
+      // Right-click always goes to the tile (robber placement, etc.)
+      if (button === 'right') {
+        // Synthesize a minimal MouseEvent with real coordinates for menu positioning
+        const syntheticEvent = { clientX: clientX ?? 0, clientY: clientY ?? 0 } as React.MouseEvent;
+        onTileRightClick?.(tile, syntheticEvent);
+        return;
+      }
+
+      // Left-click: dispatch based on target type with fallthrough
+      switch (target.type) {
+        case 'building': {
+          if (onBuildingClick) {
+            const bk = target.model.buildingKey;
+            onBuildingClick(bk);
+            return;
+          }
+          break;
+        }
+        case 'road': {
+          if (target.model.roadState === 'Buildable' && onRoadClick) {
+            onRoadClick(target.model.roadKey);
+            return;
+          }
+          break; // Non-buildable road → fall through to tile
+        }
+      }
+
+      // Tile-level left-click (or fallthrough)
+      onTileClick?.(tile);
+    },
+    [onTileClick, onTileRightClick, onBuildingClick, onRoadClick]
+  );
+
+  // --- Pointer event handlers (must be after hitTest/dispatchInteraction) ---
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0) return; // Left button only for pan/click
+
+    // Track pointer for pinch-to-zoom
+    activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // Second finger → start pinch-zoom, cancel any single-finger interaction
+    if (activePointersRef.current.size === 2) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+      dragStateRef.current = null;
+      setIsPanningForCursor(false);
+
+      const pointers = Array.from(activePointersRef.current.values());
+      const dx = pointers[0].x - pointers[1].x;
+      const dy = pointers[0].y - pointers[1].y;
+      pinchStateRef.current = {
+        initialDist: Math.sqrt(dx * dx + dy * dy),
+        initialZoom: viewport.zoom > 0 ? viewport.zoom : 1,
+      };
+      e.preventDefault();
+      return;
+    }
+
+    // Third+ finger → ignore
+    if (activePointersRef.current.size > 2) return;
+
+    const target = hitTest(e.clientX, e.clientY);
+    const isModifier = e.ctrlKey || e.metaKey;
+    const isTouch = e.pointerType === 'touch';
+
+    // For mouse on pan-only surfaces (water/void), skip drag threshold — start panning
+    // immediately. These surfaces have no click action, so there's nothing to disambiguate.
+    const isPanOnlySurface = !isTouch && !isModifier &&
+      (target.type === 'none' || (target.type === 'tile' && target.tile.resourceTileType === 'Sea'));
+
+    dragStateRef.current = {
+      panning: isPanOnlySurface,
+      startClient: { x: e.clientX, y: e.clientY },
+      startPan: { ...panOffset },
+      hitTarget: target,
+      isModifier,
+      isTouch,
+      longPressFired: false,
+    };
+
+    if (isPanOnlySurface) {
+      setIsPanningForCursor(true);
+    }
+
+    // Pointer capture so we get move/up even if cursor leaves
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+
+    // Start long-press timer for touch
+    if (isTouch) {
+      longPressTimerRef.current = setTimeout(() => {
+        const state = dragStateRef.current;
+        if (state && !state.panning) {
+          state.longPressFired = true;
+          navigator.vibrate?.(50);
+          dispatchInteraction(state.hitTarget, 'right', state.startClient.x, state.startClient.y);
+        }
+      }, LONG_PRESS_MS);
+    }
+
+    // Prevent text selection if we might pan
+    if (canPan(target, isModifier, isTouch)) {
+      e.preventDefault();
+    }
+  }, [hitTest, panOffset, dispatchInteraction, viewport.zoom]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    // Update pointer position for pinch tracking
+    if (activePointersRef.current.has(e.pointerId)) {
+      activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    // Handle pinch-to-zoom when two pointers are active
+    if (pinchStateRef.current && activePointersRef.current.size >= 2) {
+      const pointers = Array.from(activePointersRef.current.values());
+      const dx = pointers[0].x - pointers[1].x;
+      const dy = pointers[0].y - pointers[1].y;
+      const currentDist = Math.sqrt(dx * dx + dy * dy);
+      const scale = currentDist / pinchStateRef.current.initialDist;
+      const newZoom = pinchStateRef.current.initialZoom * scale;
+
+      const minZoom = ZOOM_CONFIG.minHexSize / initialHexSize;
+      const maxZoom = ZOOM_CONFIG.maxHexSize / initialHexSize;
+      setViewport({ zoom: Math.max(minZoom, Math.min(maxZoom, newZoom)) });
+      return;
+    }
+
+    // Single-pointer pan handling
+    const state = dragStateRef.current;
+    if (!state) return;
+
+    const dx = e.clientX - state.startClient.x;
+    const dy = e.clientY - state.startClient.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (!state.panning) {
+      if (dist >= PAN_DRAG_THRESHOLD) {
+        // Cancel long-press
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+
+        if (canPan(state.hitTarget, state.isModifier, state.isTouch)) {
+          state.panning = true;
+          setIsPanningForCursor(true);
+        }
+      }
+    }
+
+    if (state.panning) {
+      setViewport({
+        pan: {
+          x: state.startPan.x + dx,
+          y: state.startPan.y + dy,
+        },
+      });
+    }
+  }, [setViewport, initialHexSize]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    // Remove pointer from tracking
+    activePointersRef.current.delete(e.pointerId);
+
+    // End pinch if was pinching
+    if (pinchStateRef.current) {
+      if (activePointersRef.current.size < 2) {
+        pinchStateRef.current = null;
+      }
+      dragStateRef.current = null;
+      return; // Don't dispatch click after pinch
+    }
+
+    const state = dragStateRef.current;
+    if (!state) return;
+
+    // Cancel long-press timer
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    if (state.panning) {
+      // Suppress click after pan
+      recentPanRef.current = true;
+      setTimeout(() => { recentPanRef.current = false; }, 0);
+      setIsPanningForCursor(false);
+    } else if (!state.longPressFired) {
+      // Not panning, not long-press → dispatch as click
+      dispatchInteraction(state.hitTarget, 'left');
+    }
+
+    dragStateRef.current = null;
+  }, [dispatchInteraction]);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (recentPanRef.current) return;
+    const target = hitTest(e.clientX, e.clientY);
+    dispatchInteraction(target, 'right', e.clientX, e.clientY);
+  }, [hitTest, dispatchInteraction]);
 
   // Combine all items: water first (background), then tiles, then harbors
   const allItems = useMemo(() => {
@@ -971,11 +1269,6 @@ export function GameBoard({
                   currentPlayerId={currentPlayerId}
                   hexSize={hSize}
                   buildIndex={roadModel.buildIndex}
-                  onClick={
-                    roadState === 'Buildable' && onRoadClick
-                      ? () => onRoadClick(roadKey)
-                      : undefined
-                  }
                 />
               </div>
             );
@@ -1028,11 +1321,6 @@ export function GameBoard({
                   currentPlayerId={currentPlayerId}
                   size={ownedBuildingSize}
                   buildIndex={cityUpgradeIndex}
-                  onClick={
-                    isCityUpgradeable && onBuildingClick
-                      ? () => onBuildingClick(buildingKey)
-                      : undefined
-                  }
                 />
               </div>
             );
@@ -1131,9 +1419,6 @@ export function GameBoard({
                   currentPlayerId={currentPlayerId}
                   size={buildableBuildingSize}
                   buildIndex={settlementBuildIndex}
-                  onClick={
-                    isBuildable && onBuildingClick ? () => onBuildingClick(buildingKey) : undefined
-                  }
                 />
               </div>
             );
@@ -1158,8 +1443,10 @@ export function GameBoard({
               const secondaryColor = movedByColors?.secondary || '#888';
               const foregroundColor = movedByColors?.foreground || '#fff';
 
+              // Shield is larger than the robber icon so the count fits inside
+              const shieldFontSize = robberFontSize * 1.2;
               // SVG viewBox size - large enough for the glyphs
-              const svgSize = robberFontSize * 1.5;
+              const svgSize = shieldFontSize * 1.5;
 
               return (
                 <div
@@ -1197,15 +1484,15 @@ export function GameBoard({
                       textAnchor="middle"
                       dominantBaseline="central"
                       style={{ fontFamily: 'var(--font-catan)' }}
-                      fontSize={robberFontSize}
+                      fontSize={shieldFontSize}
                       fill="url(#robber-gradient)"
                     >
                       {'\uE925'}
                     </text>
-                    {/* Foreground: Pirate glyph (E90C) with player foreground color */}
+                    {/* Foreground: Pirate glyph (E90C) with player foreground color, shifted up */}
                     <text
                       x={svgSize / 2}
-                      y={svgSize / 2}
+                      y={svgSize / 2 - shieldFontSize * 0.1}
                       textAnchor="middle"
                       dominantBaseline="central"
                       style={{ fontFamily: 'var(--font-catan)' }}
@@ -1218,11 +1505,11 @@ export function GameBoard({
                     {robber.resourcesStolen > 0 && (
                       <text
                         x={svgSize / 2}
-                        y={svgSize / 2 + robberFontSize * 0.35}
+                        y={svgSize / 2 + shieldFontSize * 0.28}
                         textAnchor="middle"
                         dominantBaseline="central"
                         style={{ fontFamily: 'Segoe UI, sans-serif' }}
-                        fontSize={22}
+                        fontSize={shieldFontSize * 0.4}
                         fontWeight="bold"
                         fill={foregroundColor}
                       >
@@ -1248,8 +1535,6 @@ export function GameBoard({
       resourceFilters,
       getAdjacentResources,
       currentPlayerEntitlements,
-      onBuildingClick,
-      onRoadClick,
       robber,
       animatedRobberCoords,
       showSettlementIndexes,
@@ -1257,9 +1542,6 @@ export function GameBoard({
       isAllocationPhase,
     ]
   );
-
-  // Debug logging
-  console.log('[GameBoard] render, tiles:', tiles.length, 'containerSize:', containerSize);
 
   // Loading state - show message but keep container mounted for ref measurement
   // With hooks, data comes from store - check if tiles are loaded
@@ -1270,11 +1552,14 @@ export function GameBoard({
       ref={containerRef}
       className="relative w-full h-full overflow-hidden select-none"
       onWheel={handleWheel}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
-      style={{ cursor: isPanning ? 'grabbing' : 'default' }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onContextMenu={handleContextMenu}
+      style={{
+        cursor: isPanningForCursor ? 'grabbing' : 'grab',
+        touchAction: 'none',
+      }}
     >
       {isLoading ? (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
@@ -1293,7 +1578,19 @@ export function GameBoard({
             gap={gap}
             borderColor="transparent"
             fitToParent={false}
-            overlay={players.length > 0 ? (layoutInfo) => renderOverlay(layoutInfo) : undefined}
+            overlay={players.length > 0 ? (layoutInfo) => {
+              layoutInfoRef.current = layoutInfo;
+              return (
+                <>
+                  <div ref={(el) => {
+                    if (el?.parentElement) {
+                      hexGridContentRef.current = el.parentElement as HTMLDivElement;
+                    }
+                  }} style={{ display: 'none' }} />
+                  {renderOverlay(layoutInfo)}
+                </>
+              );
+            } : undefined}
           />
         </div>
       ) : null}
