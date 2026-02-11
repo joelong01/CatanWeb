@@ -46,10 +46,15 @@ namespace Catan3.Shared.Extensions
                 case HexSide.None:
                     throw new System.Exception($"Roadkey {key} has HexSide=None");
                 case HexSide.Top:
+                    // Top edge connects TopLeft and TopRight vertices
+                    // At TopRight vertex: TopRight (same hex), North.BottomRight (shares vertex)
+                    // At TopLeft vertex: TopLeft (same hex), NorthWest.Bottom (shares vertex)
+                    // NOTE: BottomLeft was incorrect - it doesn't touch TopLeft vertex at all.
+                    // Bottom edge correctly shares TopLeft vertex (= NorthWest's TopRight vertex)
                     adjacentKeys.Add(new RoadKey { TileKey = key.TileKey, HexSide = HexSide.TopRight });
                     adjacentKeys.Add(new RoadKey { TileKey = key.TileKey, HexSide = HexSide.TopLeft });
                     adjacentKeys.Add(new RoadKey { TileKey = key.TileKey.North, HexSide = HexSide.BottomRight });
-                    adjacentKeys.Add(new RoadKey { TileKey = key.TileKey.NorthWest, HexSide = HexSide.BottomLeft });
+                    adjacentKeys.Add(new RoadKey { TileKey = key.TileKey.NorthWest, HexSide = HexSide.Bottom });
                     break;
                 case HexSide.TopRight:
                     adjacentKeys.Add(new RoadKey { TileKey = key.TileKey, HexSide = HexSide.BottomRight });
