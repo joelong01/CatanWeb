@@ -22,6 +22,7 @@ import {
   faFloppyDisk,
   faObjectGroup,
   faPalette,
+  faMobileScreenButton,
 } from '@fortawesome/free-solid-svg-icons';
 import {
   useLayoutStore,
@@ -306,16 +307,19 @@ export function NavMenu({
     router.push(path);
   };
 
-  /** Toggle fullscreen mode */
+  /** Toggle fullscreen mode (with webkit prefix fallback for Safari) */
   const toggleFullScreen = (): void => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {
-        // Fullscreen not supported or denied
-      });
+    const doc = document as Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => Promise<void> };
+    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> };
+
+    const isFullscreen = doc.fullscreenElement ?? doc.webkitFullscreenElement;
+
+    if (!isFullscreen) {
+      const request = el.requestFullscreen?.bind(el) ?? el.webkitRequestFullscreen?.bind(el);
+      request?.()?.catch(() => { /* not supported or denied */ });
     } else {
-      document.exitFullscreen().catch(() => {
-        // Exit fullscreen failed
-      });
+      const exit = doc.exitFullscreen?.bind(doc) ?? doc.webkitExitFullscreen?.bind(doc);
+      exit?.()?.catch(() => { /* exit failed */ });
     }
   };
 
@@ -412,6 +416,13 @@ export function NavMenu({
       {currentPage === 'Game' && (
         <>
           <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
+          {activeGameId && (
+            <NavMenuItem
+              icon={faMobileScreenButton}
+              label="Remote"
+              onClick={() => navigateTo(`/phone-control/${activeGameId}`)}
+            />
+          )}
           {gameActions?.onSaveCopy && (
             <NavMenuItem
               icon={faDownload}

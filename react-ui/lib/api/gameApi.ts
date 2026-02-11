@@ -418,4 +418,18 @@ export const gameApi = {
       method: 'DELETE',
     });
   },
+
+  /**
+   * Updates house rules on a running game.
+   * Routes through GameStateMachine for undo/redo support.
+   *
+   * @param gameId - The active game ID
+   * @param houseRules - Complete house rules object
+   */
+  async updateHouseRules(gameId: string, houseRules: HouseRules): Promise<ApiResponse<void>> {
+    return apiFetch<void>(`/api/game/${gameId}/houserules`, {
+      method: 'PUT',
+      body: JSON.stringify(houseRules),
+    });
+  },
 };

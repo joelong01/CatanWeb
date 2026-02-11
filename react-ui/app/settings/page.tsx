@@ -11,6 +11,9 @@ import {
   faCheck,
 } from '@fortawesome/free-solid-svg-icons';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
+import { useGameType } from '@/lib/stores/gameStoreHooks';
+import { gameApi } from '@/lib/api/gameApi';
+import type { HouseRules } from '@/types/generated/models';
 import type { AnimationSpeed } from '@/types/settings';
 
 /**
@@ -116,6 +119,7 @@ function SettingsCategory({
 export default function Settings(): React.ReactElement {
   const router = useRouter();
   const store = useSettingsStore();
+  const gameType = useGameType();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(true);
   const [activeGameId] = useState<string | null>(() =>
@@ -135,16 +139,24 @@ export default function Settings(): React.ReactElement {
     }
   }, [saveMessage]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     try {
       store.saveToStorage();
-      setSaveMessage('Settings saved');
       setSaveSuccess(true);
+
+      // Push server-side settings to running game if one is active
+      if (activeGameId && gameType) {
+        const houseRules = store.getHouseRules(gameType) as HouseRules;
+        const result = await gameApi.updateHouseRules(activeGameId, houseRules);
+        setSaveMessage(result.success ? 'Settings saved & game updated' : 'Settings saved (game update failed)');
+      } else {
+        setSaveMessage('Settings saved');
+      }
     } catch {
       setSaveMessage('Error saving settings');
       setSaveSuccess(false);
     }
-  }, [store]);
+  }, [store, activeGameId, gameType]);
 
   const handleReset = useCallback(() => {
     store.resetToDefaults();

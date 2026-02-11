@@ -56,76 +56,13 @@ import { createPlayerColors, type PlayerColorsWithGradient } from '@/lib/utils/p
 import { gameApi } from '@/lib/api/gameApi';
 import { getServiceUrl } from '@/lib/config';
 import { DEFAULT_PLAYER_COLORS } from '@/types/player-profile';
-import type { GameState } from '@/types/generated/models/game-state';
 import type { BuildingKey } from '@/types/generated/models/building-key';
 import type { RoadKey } from '@/types/generated/models/road-key';
 // BoardGameData removed - GameBoard uses internal hooks now
 import type { TileModel } from '@/types/generated/models/tile-model';
 import type { HexCoordinates } from '@/types/generated/models/hex-coordinates';
-
-/**
- * Convert GameState enum to display string.
- * Maps from C# GameState [Description] attributes in GameEnums.cs.
- * TODO: Auto-generate this from C# during build phase.
- */
-const GAME_STATE_MESSAGES: Record<GameState, string> = {
-  Uninitialized: 'Uninitialized',
-  WaitingForNewGame: 'New Game',
-  BeginResourceAllocation: 'Start Pick Resources',
-  WaitingForPlayers: 'Pick Board...',
-  PickingBoard: 'Accept Board',
-  WaitingForRollForOrder: 'Roll For Order...',
-  FinishedRollOrder: 'Order Done',
-  AllocateResourceForward: 'Next',
-  AllocateResourceReverse: 'Next',
-  DoneResourceAllocation: 'Start Game...',
-  WaitingForRoll: 'Select Roll...',
-  WaitingForNext: 'Build or click Next.',
-  Supplemental: 'Supplemental',
-  TooManyCards: 'Discard Cards',
-  MustDestroyCity: 'Destroy City',
-  PickingRandomGoldTiles: 'Picking Random Gold Cards',
-  HandlePirates: 'Handling Pirate',
-  DoneDestroyingCities: 'Done',
-  MustMoveMerchant: 'Move Merchant',
-  DestroyRoad: 'Destroy Road',
-  SwapNumbers: 'Swap Numbers',
-  PickDeserter: 'Pick a Deserter',
-  PlaceDeserterKnight: 'Place Deserter',
-  DoneWithDeserter: 'DoneWithDeserter',
-  UpgradeToMetro: 'Pick City',
-  TestCheckpoint: 'Test Checkpoint',
-  MustMoveRobber: 'Move Robber',
-  DisplaceVictimKnight: 'DnD Aggressor on Victim',
-  DisplaceKnightMoveVictim: 'Move Target Knight',
-  ClickOnKnight: 'Select Knight',
-  PickSupplementalPlayers: 'Pick Supplemental Players',
-  GameOver: 'Game Over',
-};
-
-function getStateMessage(gameState: GameState | null | undefined): string {
-  if (!gameState) return '';
-  const message = GAME_STATE_MESSAGES[gameState];
-  if (!message) {
-    console.error(`[getStateMessage] Unknown GameState: ${gameState}`);
-    return gameState;
-  }
-  return message;
-}
-
-/** Get a temporary player ID for development */
-function getDevPlayerId(): string {
-  if (typeof window === 'undefined') return 'dev-player';
-
-  // Check localStorage for existing ID
-  const stored = localStorage.getItem('catan-dev-player-id');
-  if (stored) return stored;
-
-  // Generate new ID
-  const newId = `player-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  localStorage.setItem('catan-dev-player-id', newId);
-  return newId;
-}
+import { getDevPlayerId } from '@/lib/utils/getDevPlayerId';
+import { getStateMessage } from '@/lib/utils/gameStateMessages';
 
 export default function GamePage(): React.ReactElement {
   const params = useParams();
@@ -570,7 +507,11 @@ export default function GamePage(): React.ReactElement {
         '[GamePage] Tile right-clicked for robber:',
         coords,
         'targets:',
-        targetPlayers.length
+        targetPlayers.length,
+        targetPlayers.map((p) => p.name),
+        'currentPlayer:',
+        currentPlayer?.id,
+        currentPlayer?.name
       );
 
       // Always show menu (matches Blazor behavior - menu has "Nobody" option)
