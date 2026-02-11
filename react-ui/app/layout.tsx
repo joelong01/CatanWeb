@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { FontReloader } from '@/components/dev/FontReloader';
 import { ThemeInitializer } from '@/components/providers/ThemeInitializer';
@@ -46,6 +46,13 @@ const devFontStyle = `
 export const metadata: Metadata = {
   title: 'Catan',
   description: 'Settlers of Catan game tracker',
+};
+
+/** Viewport configuration — viewportFit: cover handles iPhone notch. */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 /**

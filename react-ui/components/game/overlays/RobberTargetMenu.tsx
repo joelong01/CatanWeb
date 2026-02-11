@@ -11,7 +11,7 @@
  * - Dark theme styling
  */
 
-import { memo } from 'react';
+import { memo, useRef, useEffect } from 'react';
 
 export interface RobberTarget {
   id: string;
@@ -38,60 +38,71 @@ export const RobberTargetMenu = memo(function RobberTargetMenu({
   onSelectTarget,
   onCancel,
 }: RobberTargetMenuProps): React.ReactElement {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Click-outside dismissal — uses pointerdown so right-clicks on new tiles
+  // pass through to the board's contextmenu handler, allowing single-action
+  // close-and-reopen on a different tile.
+  useEffect(() => {
+    const handleClickOutside = (e: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onCancel();
+      }
+    };
+    document.addEventListener('pointerdown', handleClickOutside);
+    return () => document.removeEventListener('pointerdown', handleClickOutside);
+  }, [onCancel]);
+
   return (
-    <>
-      {/* Transparent backdrop for click-away dismissal */}
-      <div className="fixed inset-0 z-[999]" onClick={onCancel} />
-
-      {/* Menu positioned at click location */}
-      <div
-        className="fixed z-[1000] min-w-[200px] rounded-lg overflow-hidden"
-        style={{
-          left: position.x,
-          top: position.y,
-          backgroundColor: '#2a2a2a',
-          border: '1px solid #444',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
-        }}
-      >
-        {/* Target players */}
-        {targetPlayers.map((target) => (
-          <div
-            key={target.id}
-            className="px-4 py-2.5 text-white cursor-pointer transition-colors hover:bg-[#3a3a3a]"
-            onClick={() => onSelectTarget(target.id)}
-          >
-            Target {target.name}
-          </div>
-        ))}
-
-        {/* Separator (only if there are targets) */}
-        {targetPlayers.length > 0 && (
-          <div className="h-px my-1.5" style={{ backgroundColor: '#444' }} />
-        )}
-
-        {/* Nobody option */}
+    <div
+      ref={menuRef}
+      className="fixed z-[1000] min-w-[200px] rounded-lg overflow-hidden"
+      style={{
+        left: position.x,
+        top: position.y,
+        backgroundColor: '#2a2a2a',
+        border: '1px solid #444',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {/* Target players */}
+      {targetPlayers.map((target) => (
         <div
-          className="px-4 py-2.5 italic cursor-pointer transition-colors hover:bg-[#3a3a3a]"
-          style={{ color: '#aaa' }}
-          onClick={() => onSelectTarget(undefined)}
+          key={target.id}
+          className="px-4 py-2.5 text-white cursor-pointer transition-colors hover:bg-[#3a3a3a]"
+          onClick={() => onSelectTarget(target.id)}
         >
-          Nobody. Hatred Deferred.
+          Target {target.name}
         </div>
+      ))}
 
-        {/* Separator */}
+      {/* Separator (only if there are targets) */}
+      {targetPlayers.length > 0 && (
         <div className="h-px my-1.5" style={{ backgroundColor: '#444' }} />
+      )}
 
-        {/* Cancel option */}
-        <div
-          className="px-4 py-2.5 cursor-pointer transition-colors hover:bg-[#3a3a3a]"
-          style={{ color: '#888' }}
-          onClick={onCancel}
-        >
-          Cancel
-        </div>
+      {/* Nobody option */}
+      <div
+        className="px-4 py-2.5 italic cursor-pointer transition-colors hover:bg-[#3a3a3a]"
+        style={{ color: '#aaa' }}
+        onClick={() => onSelectTarget(undefined)}
+      >
+        Nobody. Hatred Deferred.
       </div>
-    </>
+
+      {/* Separator */}
+      <div className="h-px my-1.5" style={{ backgroundColor: '#444' }} />
+
+      {/* Cancel option */}
+      <div
+        className="px-4 py-2.5 cursor-pointer transition-colors hover:bg-[#3a3a3a]"
+        style={{ color: '#888' }}
+        onClick={onCancel}
+      >
+        Cancel
+      </div>
+    </div>
   );
 });
 

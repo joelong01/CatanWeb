@@ -385,15 +385,11 @@ body {
   opacity: 0.7;
 }
 
-/* Mobile - larger hamburger */
+/* Mobile - ensure hamburger meets 44px touch target */
 @media (max-width: 768px), (pointer: coarse) {
   .hamburger-btn {
-    font-size: 4.5rem;
-    padding: 1.5rem;
-    top: 20px;
-    left: 20px;
-    min-width: 90px;
-    min-height: 90px;
+    min-width: 44px;
+    min-height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -429,13 +425,10 @@ body {
   border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Mobile - larger menu panel */
+/* Mobile - allow menu panel to scroll on short screens */
 @media (max-width: 768px), (pointer: coarse) {
   .menu-panel {
-    width: 260px;
-    padding-top: 130px;
-    padding-left: 16px;
-    padding-right: 16px;
+    overflow-y: auto;
   }
 }
 
@@ -499,26 +492,10 @@ body {
   line-height: 1.2;
 }
 
-/* Mobile - larger menu items */
+/* Mobile - keep desktop sizes, just ensure touch targets */
 @media (max-width: 768px), (pointer: coarse) {
-  .nav-menu {
-    gap: 15px;
-  }
-
   .nav-menu-item {
-    padding: 24px 16px;
-    min-height: 130px;
-    border-radius: 12px;
-  }
-
-  .nav-icon {
-    font-size: 3rem;
-    margin-bottom: 12px;
-  }
-
-  .nav-label {
-    font-size: 1.5rem;
-    font-weight: 600;
+    min-height: 44px;
   }
 }
 

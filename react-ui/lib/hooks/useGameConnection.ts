@@ -142,18 +142,18 @@ export function useGameConnection(options: UseGameConnectionOptions): UseGameCon
     setDisconnected,
   ]);
 
-  // Page visibility handler for mobile sleep/wake recovery
+  // Mobile sleep/wake recovery.
   // When iOS/Android suspends the browser, the WebSocket is killed by the OS.
   // SignalR's withAutomaticReconnect doesn't help because the connection
-  // goes to Disconnected state (not Reconnecting). We detect this on wake.
+  // goes to Disconnected state (not Reconnecting). We detect this on wake
+  // via three events:
+  //   - visibilitychange: screen on/off, tab switch
+  //   - pageshow (persisted): iOS BFCache restoration
+  //   - online: network reconnection after Wi-Fi/cellular drop
   useEffect(() => {
-    const handleVisibilityChange = async () => {
-      const isVisible = document.visibilityState === 'visible';
-      setPageVisible(isVisible);
-
-      if (isVisible && proxy.needsReconnection()) {
-        // Page became visible and connection is dead - force reconnect
-        console.log('[useGameConnection] Page visible, connection dead, reconnecting...');
+    const tryReconnect = async (source: string) => {
+      if (proxy.needsReconnection()) {
+        console.log(`[useGameConnection] ${source}, connection dead, reconnecting...`);
         try {
           await proxy.forceReconnect();
           console.log('[useGameConnection] Reconnected successfully');
@@ -164,9 +164,25 @@ export function useGameConnection(options: UseGameConnectionOptions): UseGameCon
       }
     };
 
+    const handleVisibilityChange = () => {
+      const isVisible = document.visibilityState === 'visible';
+      setPageVisible(isVisible);
+      if (isVisible) tryReconnect('Page visible');
+    };
+
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) tryReconnect('BFCache restore');
+    };
+
+    const handleOnline = () => tryReconnect('Network online');
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('online', handleOnline);
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('online', handleOnline);
     };
   }, [proxy, setPageVisible, setDisconnected]);
 

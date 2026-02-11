@@ -664,19 +664,19 @@ export default function LoadGame(): React.ReactElement {
                     }`}
                     onClick={() => selectGame(game.gameId)}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       {/* Checkbox */}
                       <input
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => toggleGameChecked(game.gameId)}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-6 h-6 cursor-pointer flex-shrink-0"
+                        className="w-5 h-5 cursor-pointer flex-shrink-0"
                       />
 
                       {/* Play button */}
                       <button
-                        className="w-20 h-20 min-w-[80px] bg-blue-600 text-white text-4xl rounded-xl flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-transform"
+                        className="w-12 h-12 min-w-[48px] bg-blue-600 text-white text-xl rounded-lg flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-transform flex-shrink-0"
                         title="Open game"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -688,24 +688,24 @@ export default function LoadGame(): React.ReactElement {
 
                       {/* Content */}
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <div className="text-2xl font-bold text-gray-800 truncate">
+                        <div className="text-base font-semibold text-gray-800 truncate">
                           {game.gameName}
                         </div>
-                        <div className="text-lg text-gray-600 truncate">
-                          <span>{game.playerNames}</span>
-                          <span className="mx-2 text-gray-400">•</span>
-                          <span>{game.turnCount} moves</span>
+                        <div className="text-sm text-gray-600 truncate">
+                          {game.playerNames}
                         </div>
-                        <div className="text-lg text-gray-600 truncate">
-                          <span>{game.gameState}</span>
-                          <span className="mx-2 text-gray-400">•</span>
-                          <span>{formatDate(game.savedAt)}</span>
+                        <div className="text-xs text-gray-500 truncate">
+                          {game.gameState}
+                          <span className="mx-1 text-gray-400">•</span>
+                          {game.turnCount} moves
+                          <span className="mx-1 text-gray-400">•</span>
+                          {formatDate(game.savedAt)}
                         </div>
                       </div>
 
                       {/* Delete button */}
                       <button
-                        className="w-20 h-20 min-w-[80px] bg-gray-100 text-gray-400 text-4xl rounded-xl flex items-center justify-center hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
+                        className="w-12 h-12 min-w-[48px] bg-gray-100 text-gray-400 text-xl rounded-lg flex items-center justify-center hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all flex-shrink-0"
                         title="Delete game"
                         onClick={(e) => {
                           e.stopPropagation();

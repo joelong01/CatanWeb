@@ -3,7 +3,7 @@
 /**
  * FloatingPanel - Draggable, resizable panel without title bar.
  *
- * Drag: CTRL+click (desktop) or long press (mobile)
+ * Drag: CTRL+click or background drag (desktop), touch drag on empty space (mobile)
  * Resize: Drag corner handle (always enabled)
  * Position persists to localStorage via layoutStore.
  *
@@ -17,6 +17,9 @@ import { useLayoutStore, type PanelId, type WindowPosition } from '@/lib/stores/
 
 /** Long press duration for mobile drag (ms) */
 const LONG_PRESS_DURATION = 400;
+
+/** Touch drag threshold — movement beyond this starts a drag (px) */
+const TOUCH_DRAG_THRESHOLD = 8;
 
 interface FloatingPanelProps {
   /** Panel identifier for persistence */
@@ -116,9 +119,6 @@ export function FloatingPanel({
   const panel = getPanelWithDefaults(storedPanel);
   const setPanelPosition = useLayoutStore((state) => state.setPanelPosition);
 
-  // DEBUG: Log what we're reading from store on mount/update
-  console.log(`[FloatingPanel:${panelId}] storedPanel:`, storedPanel);
-  console.log(`[FloatingPanel:${panelId}] panel after defaults:`, panel);
   const setPanelSize = useLayoutStore((state) => state.setPanelSize);
   const toggleMinimize = useLayoutStore((state) => state.toggleMinimize);
   const bringToFront = useLayoutStore((state) => state.bringToFront);
@@ -137,6 +137,8 @@ export function FloatingPanel({
   const panelRef = useRef<HTMLDivElement>(null);
   // Track latest position during drag to avoid stale closure issues
   const latestPositionRef = useRef({ x: panel.left, y: panel.top });
+  // Track touch start for threshold-based background drag
+  const touchStartRef = useRef<{ x: number; y: number; backgroundDrag: boolean } | null>(null);
 
   // Position state - just use raw values from store, no conversions
   const [actualPosition, setActualPosition] = useState({
@@ -146,9 +148,6 @@ export function FloatingPanel({
 
   // Sync position when store changes (e.g., after reset)
   useEffect(() => {
-    console.log(
-      `[FloatingPanel:${panelId}] Sync effect triggered - panel.left=${panel.left}, panel.top=${panel.top}`
-    );
     setActualPosition({ x: panel.left, y: panel.top });
     latestPositionRef.current = { x: panel.left, y: panel.top };
   }, [panel.left, panel.top, panelId]);
@@ -173,9 +172,6 @@ export function FloatingPanel({
   // Start drag (desktop: CTRL+click, mobile: after long press)
   const startDrag = useCallback(
     (clientX: number, clientY: number) => {
-      console.log(
-        `[FloatingPanel:${panelId}] startDrag called at (${clientX}, ${clientY}), starting from position (${actualPosition.x}, ${actualPosition.y})`
-      );
       setIsDragging(true);
       dragStartRef.current = {
         x: clientX,
@@ -204,13 +200,6 @@ export function FloatingPanel({
       if (enableBackgroundDrag) {
         const target = e.target as HTMLElement;
         const isInteractive = isInteractiveElement(target, panelRef.current);
-        console.log(
-          `[FloatingPanel:${panelId}] Background drag check - target:`,
-          target.tagName,
-          target.className,
-          'isInteractive:',
-          isInteractive
-        );
         // Don't start drag if clicking on an interactive element
         if (!isInteractive) {
           e.preventDefault();
@@ -237,22 +226,31 @@ export function FloatingPanel({
     setIsOverEmptySpace(false);
   }, []);
 
-  // Touch handlers for long press
+  // Touch handlers — background drag uses threshold, interactive areas use long-press
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
       const touch = e.touches[0];
 
-      // Start long press timer
+      // Background drag: touch on non-interactive areas uses threshold-based drag
+      if (enableBackgroundDrag) {
+        const target = e.target as HTMLElement;
+        if (!isInteractiveElement(target, panelRef.current)) {
+          touchStartRef.current = { x: touch.clientX, y: touch.clientY, backgroundDrag: true };
+          return;
+        }
+      }
+
+      // Interactive area: use long-press to initiate drag
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY, backgroundDrag: false };
       longPressTimerRef.current = setTimeout(() => {
         setLongPressActive(true);
         startDrag(touch.clientX, touch.clientY);
-        // Haptic feedback if available
         if ('vibrate' in navigator) {
           navigator.vibrate(50);
         }
       }, LONG_PRESS_DURATION);
     },
-    [startDrag]
+    [startDrag, enableBackgroundDrag]
   );
 
   const handleTouchEnd = useCallback(() => {
@@ -260,6 +258,7 @@ export function FloatingPanel({
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+    touchStartRef.current = null;
 
     // If we were dragging, save position using ref (avoids stale closure)
     if (isDragging) {
@@ -272,15 +271,10 @@ export function FloatingPanel({
 
   const handleTouchMove = useCallback(
     (e: React.TouchEvent) => {
-      // Cancel long press if moved before timer fires
-      if (!isDragging && longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
+      const touch = e.touches[0];
 
-      // Continue drag if active - no constraints, user can move anywhere
+      // Already dragging — continue moving
       if (isDragging) {
-        const touch = e.touches[0];
         const deltaX = touch.clientX - dragStartRef.current.x;
         const deltaY = touch.clientY - dragStartRef.current.y;
         const newPos = {
@@ -289,9 +283,29 @@ export function FloatingPanel({
         };
         setActualPosition(newPos);
         latestPositionRef.current = newPos;
+        return;
+      }
+
+      const ts = touchStartRef.current;
+      if (!ts) return;
+
+      // Background drag: start drag after exceeding threshold
+      if (ts.backgroundDrag) {
+        const dx = touch.clientX - ts.x;
+        const dy = touch.clientY - ts.y;
+        if (Math.sqrt(dx * dx + dy * dy) >= TOUCH_DRAG_THRESHOLD) {
+          startDrag(ts.x, ts.y);
+        }
+        return;
+      }
+
+      // Long-press mode: cancel timer if finger moved
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
       }
     },
-    [isDragging]
+    [isDragging, startDrag]
   );
 
   // Drag effect (mouse) - no constraints, user can move anywhere
@@ -314,9 +328,6 @@ export function FloatingPanel({
       setIsDragging(false);
       setLongPressActive(false);
       // Save position using ref to avoid stale closure issues
-      console.log(
-        `[FloatingPanel:${panelId}] Saving position on drag end: x=${latestPositionRef.current.x}, y=${latestPositionRef.current.y}`
-      );
       setPanelPosition(panelId, latestPositionRef.current.x, latestPositionRef.current.y);
     };
 
@@ -435,26 +446,28 @@ export function FloatingPanel({
       {/* Content - overflow-hidden prevents scrollbar flash during animations */}
       <div className="absolute inset-0 overflow-hidden">{children}</div>
 
-      {/* Minimize button (top-right corner) */}
+      {/* Minimize button (top-right corner) — 44px touch target, compact visual */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           toggleMinimize(panelId);
         }}
-        className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-gray-900/70 text-gray-400 hover:text-white hover:bg-gray-700 rounded text-xs transition-colors z-10 backdrop-blur-sm"
+        className="absolute top-0 right-0 w-11 h-11 flex items-center justify-center z-10"
         title="Minimize"
       >
-        ─
+        <span className="w-5 h-5 flex items-center justify-center bg-gray-900/70 text-gray-400 hover:text-white hover:bg-gray-700 rounded text-xs transition-colors backdrop-blur-sm">
+          ─
+        </span>
       </button>
 
-      {/* Resize handle (bottom-right corner) */}
+      {/* Resize handle (bottom-right corner) — 44px touch target, compact visual */}
       <div
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-10"
+        className="absolute bottom-0 right-0 w-11 h-11 cursor-se-resize z-10"
         onMouseDown={handleResizeStart}
         onTouchStart={handleResizeStart}
       >
         <svg
-          className="w-full h-full text-gray-600 hover:text-gray-400 transition-colors"
+          className="absolute bottom-0 right-0 w-4 h-4 text-gray-600 hover:text-gray-400 transition-colors"
           viewBox="0 0 16 16"
           fill="currentColor"
         >
