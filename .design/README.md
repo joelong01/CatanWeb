@@ -41,6 +41,7 @@ Legacy and superseded documents are archived in [old/](old/).
 | [assets.md](assets.md) | Font sources (Catan.ttf, Font Awesome), theme system, glyph constants |
 | [board-interaction.md](board-interaction.md) | Unified board interaction: hit-testing, pan/zoom, touch, dispatch model |
 | [game-play.md](game-play.md) | How humans play the hybrid game, trust model, turn flow |
+| [phone-control.md](phone-control.md) | Phone remote control: minimal Next + supplemental picking for mobile |
 
 ## Data & Persistence
 

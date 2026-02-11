@@ -1,7 +1,7 @@
 {
   "fontName": "Catan",
-  "glyphCount": 56,
-  "mappedCount": 56,
+  "glyphCount": 62,
+  "mappedCount": 62,
   "autoAssignedCount": 0,
   "entries": [
     {
@@ -395,6 +395,48 @@
       "codepointHex": "E950",
       "codepointDec": 59728,
       "unicode": ""
+    },
+    {
+      "file": "simple-brick.svg",
+      "glyphName": "simple-brick",
+      "codepointHex": "E951",
+      "codepointDec": 59729,
+      "unicode": ""
+    },
+    {
+      "file": "simple-desert.svg",
+      "glyphName": "simple-desert",
+      "codepointHex": "E952",
+      "codepointDec": 59730,
+      "unicode": ""
+    },
+    {
+      "file": "simple-ore.svg",
+      "glyphName": "simple-ore",
+      "codepointHex": "E953",
+      "codepointDec": 59731,
+      "unicode": ""
+    },
+    {
+      "file": "simple-sheep.svg",
+      "glyphName": "simple-sheep",
+      "codepointHex": "E954",
+      "codepointDec": 59732,
+      "unicode": ""
+    },
+    {
+      "file": "simple-wheat.svg",
+      "glyphName": "simple-wheat",
+      "codepointHex": "E955",
+      "codepointDec": 59733,
+      "unicode": ""
+    },
+    {
+      "file": "simple-wood.svg",
+      "glyphName": "simple-wood",
+      "codepointHex": "E956",
+      "codepointDec": 59734,
+      "unicode": ""
     }
   ]
 }

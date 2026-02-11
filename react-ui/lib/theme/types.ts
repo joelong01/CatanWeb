@@ -91,6 +91,8 @@ export interface TileFontConfig {
   bgColor: string;
   /** Outer hex border color */
   borderColor: string;
+  /** Glyph scale relative to tile (0-1, default 1). Figurative glyphs use ~0.7 to fit within hex. */
+  glyphScale?: number;
 }
 
 /** Font config for a harbor in theme.json colors.harbors section. */

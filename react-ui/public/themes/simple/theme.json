@@ -1,0 +1,105 @@
+{
+  "name": "simple",
+  "displayName": "Simple",
+  "description": "Simplified tile artwork with resource-colored backgrounds",
+  "preview": "/themes/base/tiles/wheat.png",
+  "parent": "classic",
+  "renderMode": "font",
+  "colors": {
+    "tiles": {
+      "Wheat": {
+        "glyph": "SimpleWheatHex",
+        "color": "#8B5E00",
+        "bgColor": "#FDE68A",
+        "borderColor": "#B8860B"
+      },
+      "Wood": {
+        "glyph": "SimpleWoodHex",
+        "color": "#1B4332",
+        "bgColor": "#A7D9A0",
+        "borderColor": "#2D6A4F"
+      },
+      "Sheep": {
+        "glyph": "SimpleSheepHex",
+        "color": "#4A6741",
+        "bgColor": "#D5ECD0",
+        "borderColor": "#6B8E65"
+      },
+      "Brick": {
+        "glyph": "SimpleBrickHex",
+        "color": "#7C2D12",
+        "bgColor": "#FBBF8E",
+        "borderColor": "#9A3412"
+      },
+      "Ore": {
+        "glyph": "SimpleOreHex",
+        "color": "#1E3A5F",
+        "bgColor": "#B0C4DE",
+        "borderColor": "#2C5282"
+      },
+      "Desert": {
+        "glyph": "SimpleDesertHex",
+        "color": "#92400E",
+        "bgColor": "#FEF3C7",
+        "borderColor": "#D97706"
+      },
+      "GoldMine": {
+        "glyph": "GoldHex",
+        "color": "#92400E",
+        "bgColor": "#FEF08A",
+        "borderColor": "#B8960B"
+      },
+      "TempGold": {
+        "glyph": "TempGoldHex",
+        "color": "#92400E",
+        "bgColor": "#FEF08A",
+        "borderColor": "#B8960B"
+      }
+    },
+    "harbors": {
+      "Wheat": {
+        "hexGlyph": "SimpleWheatHex",
+        "harborGlyph": "WheatHarbor",
+        "color": "#CC7A00",
+        "bgColor": "#FDE68A",
+        "hexOpacity": 0.9
+      },
+      "Wood": {
+        "hexGlyph": "SimpleWoodHex",
+        "harborGlyph": "WoodHarbor",
+        "color": "#228B22",
+        "bgColor": "#A7D9A0",
+        "hexOpacity": 0.9
+      },
+      "Sheep": {
+        "hexGlyph": "SimpleSheepHex",
+        "harborGlyph": "SheepHarbor",
+        "color": "#A68B6B",
+        "bgColor": "#D5ECD0",
+        "hexOpacity": 0.9
+      },
+      "Brick": {
+        "hexGlyph": "SimpleBrickHex",
+        "harborGlyph": "BrickHarbor",
+        "color": "#BF360C",
+        "bgColor": "#FBBF8E",
+        "hexOpacity": 0.9
+      },
+      "Ore": {
+        "hexGlyph": "SimpleOreHex",
+        "harborGlyph": "OreHarbor",
+        "color": "#4682B4",
+        "bgColor": "#B0C4DE",
+        "hexOpacity": 0.9
+      },
+      "ThreeForOne": {
+        "hexGlyph": "GoldHex",
+        "harborGlyph": "ThreeToOneHarbor",
+        "color": "#D4AF37",
+        "bgColor": "white",
+        "hexOpacity": 0.9
+      }
+    }
+  },
+  "assets": {}
+}

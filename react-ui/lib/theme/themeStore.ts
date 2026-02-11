@@ -31,6 +31,8 @@ export interface ResolvedTileFontConfig {
   color: string;
   bgColor: string;
   borderColor: string;
+  /** Glyph scale (0-1, default 1). Figurative glyphs use ~0.7 to fit within hex clip. */
+  glyphScale: number;
 }
 
 /** HarborFontConfig with glyph names resolved to actual CatanFont characters. */
@@ -93,7 +95,7 @@ interface ThemeActions {
 
 type ThemeStore = ThemeState & ThemeActions;
 
-const THEME_NAMES = ['base', 'classic', 'modern', 'modern-dark'] as const;
+const THEME_NAMES = ['base', 'classic', 'modern', 'modern-dark', 'simple'] as const;
 
 async function fetchTheme(name: string): Promise<ThemeDefinition> {
   const response = await fetch(`/themes/${name}/theme.json`);
@@ -162,6 +164,7 @@ export const useThemeStore = create<ThemeStore>()(
             color: raw.color,
             bgColor: raw.bgColor,
             borderColor: raw.borderColor,
+            glyphScale: raw.glyphScale ?? 1,
           };
         }
         return undefined;

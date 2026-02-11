@@ -145,6 +145,140 @@ Used for game-specific glyphs (shield, pirate, resource icons) via
 - **FontAwesome 6.x** -- General UI icons
 - **Catan.ttf** -- Game-specific glyphs (robber, buildings, resources)
 
+## Theme System
+
+### Overview
+
+Themes control how game elements (tiles, harbors, cards) are rendered.
+Each theme is a directory under `react-ui/public/themes/<name>/` containing
+a `theme.json` file.
+
+Themes form a **parent chain** for fallback resolution:
+
+```text
+simple → classic → base
+modern → classic → base
+modern-dark → modern → classic → base
+```
+
+When resolving an asset or color config, the system walks the chain until
+a value is found.
+
+### Theme Definition (`theme.json`)
+
+```json
+{
+  "name": "simple",
+  "displayName": "Simple",
+  "description": "Simplified tile artwork with resource-colored backgrounds",
+  "preview": "/themes/base/tiles/wheat.png",
+  "parent": "classic",
+  "renderMode": "font",
+  "colors": {
+    "tiles": { ... },
+    "harbors": { ... }
+  },
+  "assets": {}
+}
+```
+
+| Field | Purpose |
+|-------|---------|
+| `name` | Directory name, used as key |
+| `displayName` | Shown in theme picker UI |
+| `parent` | Fallback theme for unresolved assets/configs |
+| `renderMode` | `"image"` (PNG tiles) or `"font"` (CatanFont glyphs) |
+| `colors.tiles` | Per-resource `TileFontConfig` (font mode only) |
+| `colors.harbors` | Per-resource `HarborFontConfig` (font mode only) |
+| `assets` | Override asset paths (image mode) |
+
+### Render Modes
+
+- **`image`** — Tiles render as PNG images from `assets` paths. Used by
+  `classic` and `base` themes.
+- **`font`** — Tiles render as CatanFont glyphs with configurable colors.
+  Used by `modern`, `modern-dark`, and `simple` themes.
+
+### Tile Font Config
+
+Each tile entry in `colors.tiles` maps a resource type to a glyph and
+color scheme:
+
+```json
+{
+  "glyph": "SimpleWheatHex",
+  "color": "#8B5E00",
+  "bgColor": "#FDE68A",
+  "borderColor": "#B8860B"
+}
+```
+
+| Field | Purpose |
+|-------|---------|
+| `glyph` | Key name from `CatanGlyph` constant (not the Unicode value) |
+| `color` | Glyph foreground fill color |
+| `bgColor` | Hex tile background fill |
+| `borderColor` | Outer hex border color |
+
+Resource type keys: `Wheat`, `Wood`, `Sheep`, `Brick`, `Ore`, `Desert`,
+`GoldMine`, `TempGold`.
+
+### Harbor Font Config
+
+```json
+{
+  "hexGlyph": "SimpleWheatHex",
+  "harborGlyph": "WheatHarbor",
+  "color": "#CC7A00",
+  "bgColor": "#FDE68A",
+  "hexOpacity": 0.9
+}
+```
+
+| Field | Purpose |
+|-------|---------|
+| `harborGlyph` | Harbor circle glyph (from CatanGlyph) |
+| `hexGlyph` | Background hex glyph (optional) |
+| `hexOpacity` | Opacity for the hex background (0-1) |
+
+Harbor type keys: `Wheat`, `Wood`, `Sheep`, `Brick`, `Ore`, `ThreeForOne`.
+
+### Creating a New Theme
+
+1. Create directory: `react-ui/public/themes/<name>/`
+2. Create `theme.json` with the fields above
+3. Add the theme name to `THEME_NAMES` in
+   `react-ui/lib/theme/themeStore.ts`
+4. If using new font glyphs:
+   a. Add SVGs to `.assets/SVG For Font/`
+   b. Add entries to `.assets/SVG For Font/glyph-map.json`
+   c. Add constants to `react-ui/lib/constants/catanGlyphs.ts`
+   d. Run `pwsh "./.assets/SVG For Font/create-catan-font.ps1"`
+
+### Available Themes
+
+| Theme | Render Mode | Description |
+|-------|-------------|-------------|
+| `base` | image | Fallback layer with all asset paths |
+| `classic` | image | Traditional PNG tile images |
+| `modern` | font | CatanFont glyphs, white backgrounds |
+| `modern-dark` | font | CatanFont glyphs, black backgrounds |
+| `simple` | font | Simplified artwork, resource-colored backgrounds |
+
+### Runtime API
+
+Components access theme data through hooks in `react-ui/lib/theme/hooks.ts`:
+
+- `useFontRendering()` — Whether current theme uses font mode
+- `useTileFontConfig(resourceType)` — Resolved tile config with actual
+  glyph character
+- `useHarborFontConfig(harborType)` — Resolved harbor config
+- `useAssetPath(asset)` — Resolve image path through parent chain
+- `useAvailableThemes()` — List of selectable themes
+
+The theme store (`themeStore.ts`) resolves glyph names to Unicode
+characters via `CatanGlyph` constants at access time.
+
 ## Responsive Layout
 
 - **Dark theme** always active (`<html class="dark">`)
