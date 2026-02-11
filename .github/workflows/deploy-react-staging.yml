@@ -56,6 +56,14 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Ensure staging slot exists
+        run: |
+          if ! az webapp deployment slot list --name catan --resource-group rg-catan \
+               --query "[?name=='staging'].name" -o tsv | grep -q staging; then
+            echo "Creating staging slot..."
+            az webapp deployment slot create --name catan --resource-group rg-catan --slot staging
+          fi
+
       - name: Deploy to staging slot
         run: |
           az webapp deploy \

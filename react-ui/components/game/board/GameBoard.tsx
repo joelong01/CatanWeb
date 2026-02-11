@@ -93,6 +93,8 @@ export interface GameBoardProps {
   onBuildingClick?: (buildingKey: BuildingKey) => void;
   /** Callback when a buildable road is clicked */
   onRoadClick?: (roadKey: RoadKey) => void;
+  /** Ref updated with the screen position of hex (0,0,0) whenever layout changes */
+  hexCenterRef?: React.RefObject<{ x: number; y: number } | null>;
 }
 
 /**
@@ -402,6 +404,7 @@ export function GameBoard({
   highlightedTiles,
   onBuildingClick,
   onRoadClick,
+  hexCenterRef,
 }: GameBoardProps): React.ReactElement {
   // Use internal hooks for game data (server-driven UI pattern)
   const boardData = useBoardData();
@@ -557,6 +560,29 @@ export function GameBoard({
 
     return () => observer.disconnect();
   }, []);
+
+  // Update hex (0,0,0) screen position for overlay positioning
+  useEffect(() => {
+    if (!hexCenterRef) return;
+    const contentEl = hexGridContentRef.current;
+    const layout = layoutInfoRef.current;
+    if (!contentEl || !layout) {
+      hexCenterRef.current = null;
+      return;
+    }
+    const rect = contentEl.getBoundingClientRect();
+    hexCenterRef.current = {
+      x: rect.left + layout.origin.x,
+      y: rect.top + layout.origin.y,
+    };
+  }, [
+    hexCenterRef,
+    panOffset.x,
+    panOffset.y,
+    hexSize,
+    containerSize?.width,
+    containerSize?.height,
+  ]);
 
   // Handle mouse wheel zoom
   const handleWheel = useCallback(
