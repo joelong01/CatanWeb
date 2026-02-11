@@ -43,6 +43,9 @@ param(
     [Parameter(Position = 1)]
     [string]$SubCommand,
 
+    [Parameter(Position = 2)]
+    [string]$Target,
+
     [Parameter()]
     [switch]$Yes,
 
@@ -2208,108 +2211,180 @@ switch ($Verb) {
                 Write-Host "All Azure resources installed and configured!" -ForegroundColor Green
             }
             "deploy" {
-                Write-Host "Deploying to Azure..." -ForegroundColor Cyan
-                Write-Host ""
+                # Support targeted deploys: ./catan.ps1 azure deploy [ui|game-service|database]
+                # Without a target, deploys everything.
+                $deployTarget = if ($Target) { $Target.ToLower() } else { "all" }
 
-                # Run all doctors to determine what needs to be done
-                Write-Host "Checking deployment status..." -ForegroundColor Gray
+                switch ($deployTarget) {
+                    "ui" {
+                        Write-Host "Deploying UI to Azure..." -ForegroundColor Cyan
+                        Write-Host ""
 
-                # GameService doctor - check first since database depends on it for connection test
-                $gsDoctor = & $azureScript game-service doctor -HashTable -TraceLevel $TraceLevel
-                $gsNeedsInstall = $gsDoctor.needsInstall
-                $gsNeedsDeploy = $gsDoctor.needsDeploy
-                $gsHealthy = $gsDoctor.healthy
+                        $uiDoctor = & $azureScript ui doctor -HashTable -TraceLevel $TraceLevel
+                        if ($uiDoctor.needsInstall) {
+                            Write-Host "  UI: Not installed - installing..." -ForegroundColor Yellow
+                            & $azureScript ui install -TraceLevel $TraceLevel
+                            if ($LASTEXITCODE -ne 0) { exit 1 }
+                        }
 
-                if ($gsNeedsInstall) {
-                    Write-Host "  GameService: Not installed - installing..." -ForegroundColor Yellow
-                    & $azureScript game-service install -TraceLevel $TraceLevel
-                    if ($LASTEXITCODE -ne 0) { exit 1 }
-                    $gsNeedsDeploy = $true  # Need to deploy after install
-                }
+                        # Blazor → production
+                        if ($uiDoctor.needsDeploy -or $Force) {
+                            Write-Host "  UI (Blazor): Deploying to production..." -ForegroundColor Yellow
+                            & $azureScript ui deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
+                            if ($LASTEXITCODE -ne 0) { exit 1 }
+                        } else {
+                            Write-Host "  UI (Blazor): Up to date - skipping" -ForegroundColor Green
+                        }
 
-                if ($gsHealthy -and -not $gsNeedsDeploy -and -not $Force) {
-                    Write-Host "  GameService: Up to date - skipping" -ForegroundColor Green
-                }
-                elseif ($gsNeedsDeploy -or $Force) {
-                    Write-Host "  GameService: Needs deploy" -ForegroundColor Yellow
-                    & $azureScript game-service deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
-                    if ($LASTEXITCODE -ne 0) { exit 1 }
-                }
-                else {
-                    Write-Host "  GameService: OK - skipping" -ForegroundColor Green
-                }
+                        # React → staging (Deploy-ReactStaging has its own skip-if-current logic)
+                        Write-Host "  UI (React): Deploying to staging..." -ForegroundColor Yellow
+                        & $azureScript ui deploy-staging -Force:$Force -TraceLevel $TraceLevel
+                        if ($LASTEXITCODE -ne 0) { exit 1 }
 
-                # Database doctor - get hashtable result
-                $dbDoctor = & $azureScript database doctor -HashTable -TraceLevel $TraceLevel
-                $dbNeedsInstall = $dbDoctor.needsInstall
-                $dbConnected = $dbDoctor.checks.gameServiceConnected
-                $dbNeedsDeploy = $dbDoctor.needsDeploy
-                $dbSchemaValid = $dbDoctor.checks.schemaValid
+                        Write-Host ""
+                        Write-Host "UI deployments complete!" -ForegroundColor Green
+                        Write-Host "  To swap React into production: ./catan.ps1 azure swap-slots" -ForegroundColor Gray
+                    }
+                    "game-service" {
+                        Write-Host "Deploying GameService to Azure..." -ForegroundColor Cyan
+                        Write-Host ""
+                        & $azureScript game-service deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
+                        if ($LASTEXITCODE -ne 0) { exit 1 }
+                        Write-Host ""
+                        Write-Host "GameService deployment complete!" -ForegroundColor Green
+                    }
+                    "database" {
+                        Write-Host "Deploying database configuration..." -ForegroundColor Cyan
+                        Write-Host ""
+                        & $azureScript database deploy -Force:$Force -TraceLevel $TraceLevel
+                        if ($LASTEXITCODE -ne 0) { exit 1 }
+                        Write-Host ""
+                        Write-Host "Database deployment complete!" -ForegroundColor Green
+                    }
+                    "all" {
+                        Write-Host "Deploying to Azure..." -ForegroundColor Cyan
+                        Write-Host ""
 
-                if ($dbNeedsInstall) {
-                    Write-Host "  Database: Not installed - installing..." -ForegroundColor Yellow
-                    & $azureScript database install -TraceLevel $TraceLevel
-                    if ($LASTEXITCODE -ne 0) { exit 1 }
-                    $dbNeedsDeploy = $true  # Need to deploy after install
-                }
+                        # Run all doctors to determine what needs to be done
+                        Write-Host "Checking deployment status..." -ForegroundColor Gray
 
-                if ($dbConnected -and -not $Force) {
-                    Write-Host "  Database: Connected - skipping" -ForegroundColor Green
-                }
-                elseif ($dbNeedsDeploy -or $Force) {
-                    Write-Host "  Database: Needs configuration" -ForegroundColor Yellow
-                    & $azureScript database deploy -Force:$Force -TraceLevel $TraceLevel
-                    if ($LASTEXITCODE -ne 0) { exit 1 }
-                }
-                else {
-                    Write-Host "  Database: OK - skipping" -ForegroundColor Green
-                }
+                        # GameService doctor
+                        $gsDoctor = & $azureScript game-service doctor -HashTable -TraceLevel $TraceLevel
+                        $gsNeedsInstall = $gsDoctor.needsInstall
+                        $gsNeedsDeploy = $gsDoctor.needsDeploy
+                        $gsHealthy = $gsDoctor.healthy
 
-                # Check for schema issues (missing tables) after database configuration
-                if (-not $dbSchemaValid -and $dbDoctor.missingTables) {
-                    Write-Host "  Database: Schema missing tables - creating directly..." -ForegroundColor Yellow
-                    Write-Host "  Database: Missing: $($dbDoctor.missingTables -join ', ')" -ForegroundColor Yellow
+                        if ($gsNeedsInstall) {
+                            Write-Host "  GameService: Not installed - installing..." -ForegroundColor Yellow
+                            & $azureScript game-service install -TraceLevel $TraceLevel
+                            if ($LASTEXITCODE -ne 0) { exit 1 }
+                            $gsNeedsDeploy = $true
+                        }
 
-                    # Use Repair-DatabaseSchema to create tables directly (no GameService dependency)
-                    & $azureScript database fix -TraceLevel $TraceLevel
-                    if ($LASTEXITCODE -ne 0) {
-                        Write-Host "  Database: Failed to create missing tables" -ForegroundColor Red
+                        if ($gsHealthy -and -not $gsNeedsDeploy -and -not $Force) {
+                            Write-Host "  GameService: Up to date - skipping" -ForegroundColor Green
+                        }
+                        elseif ($gsNeedsDeploy -or $Force) {
+                            Write-Host "  GameService: Needs deploy" -ForegroundColor Yellow
+                            & $azureScript game-service deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
+                            if ($LASTEXITCODE -ne 0) { exit 1 }
+                        }
+                        else {
+                            Write-Host "  GameService: OK - skipping" -ForegroundColor Green
+                        }
+
+                        # Database doctor
+                        $dbDoctor = & $azureScript database doctor -HashTable -TraceLevel $TraceLevel
+                        $dbNeedsInstall = $dbDoctor.needsInstall
+                        $dbConnected = $dbDoctor.checks.gameServiceConnected
+                        $dbNeedsDeploy = $dbDoctor.needsDeploy
+                        $dbSchemaValid = $dbDoctor.checks.schemaValid
+
+                        if ($dbNeedsInstall) {
+                            Write-Host "  Database: Not installed - installing..." -ForegroundColor Yellow
+                            & $azureScript database install -TraceLevel $TraceLevel
+                            if ($LASTEXITCODE -ne 0) { exit 1 }
+                            $dbNeedsDeploy = $true
+                        }
+
+                        if ($dbConnected -and -not $Force) {
+                            Write-Host "  Database: Connected - skipping" -ForegroundColor Green
+                        }
+                        elseif ($dbNeedsDeploy -or $Force) {
+                            Write-Host "  Database: Needs configuration" -ForegroundColor Yellow
+                            & $azureScript database deploy -Force:$Force -TraceLevel $TraceLevel
+                            if ($LASTEXITCODE -ne 0) { exit 1 }
+                        }
+                        else {
+                            Write-Host "  Database: OK - skipping" -ForegroundColor Green
+                        }
+
+                        # Check for schema issues
+                        if (-not $dbSchemaValid -and $dbDoctor.missingTables) {
+                            Write-Host "  Database: Schema missing tables - creating directly..." -ForegroundColor Yellow
+                            Write-Host "  Database: Missing: $($dbDoctor.missingTables -join ', ')" -ForegroundColor Yellow
+                            & $azureScript database fix -TraceLevel $TraceLevel
+                            if ($LASTEXITCODE -ne 0) {
+                                Write-Host "  Database: Failed to create missing tables" -ForegroundColor Red
+                                exit 1
+                            }
+                            Write-Host "  Database: Schema repaired successfully" -ForegroundColor Green
+                        }
+                        elseif (-not $dbSchemaValid) {
+                            Write-Host "  Database: Schema check incomplete - may need to run deploy again after database wakes" -ForegroundColor Yellow
+                        }
+
+                        # UI doctor
+                        $uiDoctor = & $azureScript ui doctor -HashTable -TraceLevel $TraceLevel
+                        $uiNeedsInstall = $uiDoctor.needsInstall
+                        $uiNeedsDeploy = $uiDoctor.needsDeploy
+                        $uiHealthy = $uiDoctor.healthy
+
+                        if ($uiNeedsInstall) {
+                            Write-Host "  UI: Not installed - installing..." -ForegroundColor Yellow
+                            & $azureScript ui install -TraceLevel $TraceLevel
+                            if ($LASTEXITCODE -ne 0) { exit 1 }
+                            $uiNeedsDeploy = $true
+                        }
+
+                        if ($uiHealthy -and -not $uiNeedsDeploy -and -not $Force) {
+                            Write-Host "  UI (Blazor): Up to date - skipping" -ForegroundColor Green
+                        }
+                        elseif ($uiNeedsDeploy -or $Force) {
+                            Write-Host "  UI (Blazor): Needs deploy" -ForegroundColor Yellow
+                            & $azureScript ui deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
+                            if ($LASTEXITCODE -ne 0) { exit 1 }
+                        }
+                        else {
+                            Write-Host "  UI (Blazor): OK - skipping" -ForegroundColor Green
+                        }
+
+                        # React UI → staging slot (Deploy-ReactStaging has its own skip-if-current logic)
+                        Write-Host "  UI (React): Deploying to staging..." -ForegroundColor Yellow
+                        & $azureScript ui deploy-staging -Force:$Force -TraceLevel $TraceLevel
+                        if ($LASTEXITCODE -ne 0) {
+                            Write-Host "  UI (React): Staging deploy failed" -ForegroundColor Red
+                            exit 1
+                        }
+                        Write-Host "  UI (React): Deployed to staging" -ForegroundColor Green
+
+                        Write-Host ""
+                        Write-Host "All deployments complete!" -ForegroundColor Green
+                        Write-Host "  To swap React into production: ./catan.ps1 azure swap-slots" -ForegroundColor Gray
+                    }
+                    default {
+                        Write-Host "Unknown deploy target: $deployTarget" -ForegroundColor Red
+                        Write-Host ""
+                        Write-Host "Usage: ./catan.ps1 azure deploy [target]" -ForegroundColor Yellow
+                        Write-Host ""
+                        Write-Host "Targets:" -ForegroundColor Yellow
+                        Write-Host "  ui            - Deploy Blazor (prod) + React (staging)"
+                        Write-Host "  game-service  - Deploy GameService only"
+                        Write-Host "  database      - Deploy database configuration only"
+                        Write-Host "  (no target)   - Deploy everything"
                         exit 1
                     }
-                    Write-Host "  Database: Schema repaired successfully" -ForegroundColor Green
                 }
-                elseif (-not $dbSchemaValid) {
-                    # Schema check didn't complete (possibly database paused)
-                    Write-Host "  Database: Schema check incomplete - may need to run deploy again after database wakes" -ForegroundColor Yellow
-                }
-
-                # UI doctor - get hashtable result
-                $uiDoctor = & $azureScript ui doctor -HashTable -TraceLevel $TraceLevel
-                $uiNeedsInstall = $uiDoctor.needsInstall
-                $uiNeedsDeploy = $uiDoctor.needsDeploy
-                $uiHealthy = $uiDoctor.healthy
-
-                if ($uiNeedsInstall) {
-                    Write-Host "  UI: Not installed - installing..." -ForegroundColor Yellow
-                    & $azureScript ui install -TraceLevel $TraceLevel
-                    if ($LASTEXITCODE -ne 0) { exit 1 }
-                    $uiNeedsDeploy = $true  # Need to deploy after install
-                }
-
-                if ($uiHealthy -and -not $uiNeedsDeploy -and -not $Force) {
-                    Write-Host "  UI: Up to date - skipping" -ForegroundColor Green
-                }
-                elseif ($uiNeedsDeploy -or $Force) {
-                    Write-Host "  UI: Needs deploy" -ForegroundColor Yellow
-                    & $azureScript ui deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
-                    if ($LASTEXITCODE -ne 0) { exit 1 }
-                }
-                else {
-                    Write-Host "  UI: OK - skipping" -ForegroundColor Green
-                }
-
-                Write-Host ""
-                Write-Host "All deployments complete!" -ForegroundColor Green
             }
             "doctor" {
                 Write-Host "Checking Azure health..." -ForegroundColor Cyan
@@ -2330,31 +2405,113 @@ switch ($Verb) {
                 }
             }
             "swap-slots" {
-                # Load Azure config to get app name and resource group
+                Write-Host "Swap Azure Deployment Slots" -ForegroundColor Cyan
+                Write-Host "==========================" -ForegroundColor Cyan
+                Write-Host ""
+
+                # Load config for app name and resource group
                 $azureConfigFile = Join-Path $PSScriptRoot ".azure/catan-azure.json"
                 if (-not (Test-Path $azureConfigFile)) {
                     Write-Host "Azure configuration not found. Run './catan.ps1 azure install' first." -ForegroundColor Red
                     exit 1
                 }
                 $azureConfig = Get-Content $azureConfigFile -Raw | ConvertFrom-Json
-
                 $appName = $azureConfig.ui.appName
                 $rgName = $azureConfig.resourceGroup
 
-                Write-Host "Swap Azure Deployment Slots" -ForegroundColor Cyan
-                Write-Host "==========================" -ForegroundColor Cyan
-                Write-Host ""
-                Write-Host "This will swap the staging slot (React app) into production." -ForegroundColor Yellow
+                # Use doctor to get complete picture of the system
+                Write-Host "Running UI health check..." -ForegroundColor Gray
+                $uiDoctor = & $azureScript ui doctor -HashTable -TraceLevel $TraceLevel
+
+                if ($uiDoctor.needsInstall) {
+                    Write-Host "UI is not installed. Run './catan.ps1 azure install' first." -ForegroundColor Red
+                    exit 1
+                }
+
+                # Show current state from doctor
+                Write-Host "This will swap the staging slot into production." -ForegroundColor Yellow
                 Write-Host ""
                 Write-Host "  App:         $appName" -ForegroundColor Gray
-                Write-Host "  Staging:     https://$appName-staging.azurewebsites.net" -ForegroundColor Gray
                 Write-Host "  Production:  https://$appName.azurewebsites.net" -ForegroundColor Gray
-                Write-Host ""
-                Write-Host "After swap:" -ForegroundColor Yellow
-                Write-Host "  - Production will serve the React app (currently in staging)" -ForegroundColor Gray
-                Write-Host "  - Staging will have the old Blazor app (can swap back)" -ForegroundColor Gray
+                Write-Host "  Staging:     https://$appName-staging.azurewebsites.net" -ForegroundColor Gray
                 Write-Host ""
 
+                # Show what's currently in each slot
+                if ($uiDoctor.prodRuntime -or $uiDoctor.stagingRuntime) {
+                    function Get-SwapRuntimeLabel {
+                        param([string]$Runtime)
+                        if ([string]::IsNullOrWhiteSpace($Runtime)) { return "unknown" }
+                        if ($Runtime -like "DOTNETCORE*") { return "Blazor ($Runtime)" }
+                        if ($Runtime -like "NODE*") { return "React/Next.js ($Runtime)" }
+                        return $Runtime
+                    }
+                    Write-Host "Current configuration:" -ForegroundColor Yellow
+                    Write-Host "  Production: $(Get-SwapRuntimeLabel $uiDoctor.prodRuntime)" -ForegroundColor Gray
+                    Write-Host "  Staging:    $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -ForegroundColor Gray
+                    Write-Host ""
+                    Write-Host "After swap:" -ForegroundColor Yellow
+                    Write-Host "  Production: $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -ForegroundColor Gray
+                    Write-Host "  Staging:    $(Get-SwapRuntimeLabel $uiDoctor.prodRuntime)" -ForegroundColor Gray
+                    Write-Host ""
+                }
+
+                # Check staging slot exists
+                if (-not $uiDoctor.checks.stagingSlot) {
+                    Write-Host "Staging slot does not exist." -ForegroundColor Red
+                    Write-Host "  Run: ./catan.ps1 azure install" -ForegroundColor Cyan
+                    exit 1
+                }
+
+                # Check staging has code deployed
+                if (-not $uiDoctor.checks.stagingCodeDeployed) {
+                    Write-Host "Staging slot has no code deployed." -ForegroundColor Red
+                    Write-Host "  Run: ./catan.ps1 azure deploy ui" -ForegroundColor Cyan
+                    exit 1
+                }
+
+                # Show staging commit info
+                if ($uiDoctor.stagingDeployedCommit) {
+                    Write-Host "  Staging commit: $($uiDoctor.stagingDeployedCommit)" -ForegroundColor Gray
+                }
+
+                # Check staging runtime is correct (NODE for React)
+                if (-not $uiDoctor.checks.stagingRuntime) {
+                    Write-Host "Staging slot runtime is not configured for Node.js." -ForegroundColor Red
+                    Write-Host "  Current: $($uiDoctor.stagingRuntime)" -ForegroundColor Gray
+                    Write-Host "  Run: ./catan.ps1 azure ui deploy-staging" -ForegroundColor Cyan
+                    exit 1
+                }
+
+                # Check staging is responding (with retry for cold starts)
+                if (-not $uiDoctor.checks.stagingResponding) {
+                    Write-Host "Staging slot is not responding. Warming up..." -ForegroundColor Yellow
+                    $stagingUrl = "https://$appName-staging.azurewebsites.net"
+                    $healthy = $false
+                    for ($attempt = 1; $attempt -le 3; $attempt++) {
+                        try {
+                            $response = Invoke-WebRequest -Uri $stagingUrl -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
+                            Write-Host "  Staging slot is responding (HTTP $($response.StatusCode))" -ForegroundColor Green
+                            $healthy = $true
+                            break
+                        }
+                        catch {
+                            if ($attempt -lt 3) {
+                                Write-Host "  Attempt $attempt/3: staging not ready, retrying..." -ForegroundColor Yellow
+                                Start-Sleep -Seconds 5
+                            }
+                        }
+                    }
+                    if (-not $healthy) {
+                        Write-Host "Staging slot is not responding after 3 attempts." -ForegroundColor Red
+                        Write-Host ""
+                        Write-Host "Try:" -ForegroundColor Yellow
+                        Write-Host "  1. Wait a minute and retry (cold start can be slow)" -ForegroundColor Gray
+                        Write-Host "  2. Redeploy: ./catan.ps1 azure deploy ui -Force" -ForegroundColor Gray
+                        exit 1
+                    }
+                }
+
+                # Confirm
                 if (-not $Yes) {
                     $confirm = Read-Host "Proceed with swap? (y/N)"
                     if ($confirm -ne 'y' -and $confirm -ne 'Y') {
@@ -2372,7 +2529,7 @@ switch ($Verb) {
 
                 Write-Host ""
                 Write-Host "Slot swap complete!" -ForegroundColor Green
-                Write-Host "  Production is now serving the React app." -ForegroundColor Gray
+                Write-Host "  Production is now serving: $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -ForegroundColor Gray
                 Write-Host "  To swap back: ./catan.ps1 azure swap-slots" -ForegroundColor Gray
             }
             "clean" {
@@ -2398,37 +2555,52 @@ switch ($Verb) {
                 Write-Host ""
                 Write-Host "All Azure resources cleaned!" -ForegroundColor Green
             }
+            # Noun-first routing: ./catan.ps1 azure <noun> <verb>
+            # Passes through directly to catan-azure.ps1
+            { $_ -in @("ui", "game-service", "database") } {
+                if (-not $Target) {
+                    Write-Host "Usage: ./catan.ps1 azure $SubCommand <verb>" -ForegroundColor Yellow
+                    Write-Host ""
+                    Write-Host "Verbs: install, deploy, deploy-staging, doctor, clean, fix" -ForegroundColor Gray
+                    exit 1
+                }
+                & $azureScript $SubCommand $Target -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                if ($LASTEXITCODE -ne 0) { exit 1 }
+            }
             default {
                 Write-Host ""
                 Write-Host "Azure Commands" -ForegroundColor Cyan
                 Write-Host "==============" -ForegroundColor Cyan
                 Write-Host ""
-                Write-Host "Usage: ./catan.ps1 azure <subcommand>" -ForegroundColor Yellow
+                Write-Host "Usage: ./catan.ps1 azure <verb> [target]" -ForegroundColor Yellow
+                Write-Host "       ./catan.ps1 azure <target> <verb>" -ForegroundColor Yellow
                 Write-Host ""
-                Write-Host "Subcommands:" -ForegroundColor Yellow
+                Write-Host "Verbs (operate on all resources):" -ForegroundColor Yellow
                 Write-Host "  install     - Create all Azure resources (idempotent)"
-                Write-Host "  deploy      - Deploy all code and data to Azure"
-                Write-Host "  swap-slots  - Swap staging (React) and production (Blazor) slots"
+                Write-Host "  deploy      - Deploy everything to Azure"
                 Write-Host "  doctor      - Check health of all Azure resources"
                 Write-Host "  clean       - Delete all Azure resources"
+                Write-Host "  swap-slots  - Swap staging (React) and production (Blazor) slots"
+                Write-Host ""
+                Write-Host "Targeted (verb + target or target + verb):" -ForegroundColor Yellow
+                Write-Host "  deploy ui              - Deploy Blazor (prod) + React (staging)"
+                Write-Host "  deploy game-service    - Deploy GameService only"
+                Write-Host "  deploy database        - Deploy database config only"
+                Write-Host "  ui doctor              - Check UI health only"
+                Write-Host "  ui deploy-staging      - Deploy React to staging only"
+                Write-Host "  game-service deploy    - Deploy GameService only"
                 Write-Host ""
                 Write-Host "Options:" -ForegroundColor Yellow
-                Write-Host "  -Force       Skip confirmation prompts"
+                Write-Host "  -Force       Force deploy even if up-to-date"
                 Write-Host "  -Json        Output doctor as JSON"
                 Write-Host "  -HashTable   Output doctor as PowerShell hashtable"
                 Write-Host "  -TraceLevel  Output detail: ERROR, WARN, INFO (default), DEBUG"
                 Write-Host ""
                 Write-Host "Examples:" -ForegroundColor Yellow
-                Write-Host "  ./catan.ps1 azure install                   - First-time Azure setup"
-                Write-Host "  ./catan.ps1 azure install -TraceLevel DEBUG - Verbose install"
-                Write-Host "  ./catan.ps1 azure deploy                    - Deploy after code changes"
-                Write-Host "  ./catan.ps1 azure swap-slots                - Swap staging <-> production"
-                Write-Host "  ./catan.ps1 azure doctor                    - Check all resources"
-                Write-Host "  ./catan.ps1 azure clean -Force              - Tear down everything"
-                Write-Host ""
-                Write-Host "For individual resources, use catan-azure.ps1 directly:" -ForegroundColor Gray
-                Write-Host "  ./catan-azure.ps1 game-service deploy"
-                Write-Host "  ./catan-azure.ps1 database doctor -Json"
+                Write-Host "  ./catan.ps1 azure deploy ui -Force    - Force deploy UI"
+                Write-Host "  ./catan.ps1 azure ui doctor            - Check UI health"
+                Write-Host "  ./catan.ps1 azure doctor               - Check all resources"
+                Write-Host "  ./catan.ps1 azure swap-slots           - Swap staging <-> production"
                 Write-Host ""
 
                 if ($SubCommand) {

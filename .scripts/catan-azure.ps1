@@ -35,7 +35,7 @@ param(
     [string]$Noun,
 
     [Parameter(Position = 1)]
-    [ValidateSet("install", "deploy", "doctor", "clean", "fix")]
+    [ValidateSet("install", "deploy", "deploy-staging", "doctor", "clean", "fix")]
     [string]$Verb,
 
     [Parameter()]
@@ -79,6 +79,17 @@ $PSDefaultParameterValues = @{
 $ProjectRoot = Split-Path -Parent $ScriptDir
 $AzureConfigDir = Join-Path $ProjectRoot ".azure"
 $AzureConfigFile = Join-Path $AzureConfigDir "catan-azure.json"
+
+# Detect invocation context for command hints in doctor output
+# If called via catan.ps1, use "./catan.ps1 azure <noun> <verb>"
+# If called directly, use ".scripts/catan-azure.ps1 <noun> <verb>"
+$callerStack = Get-PSCallStack
+$calledViaCatan = $callerStack | Where-Object { $_.ScriptName -like "*catan.ps1" -and $_.ScriptName -notlike "*catan-azure.ps1" }
+if ($calledViaCatan) {
+    $script:CmdHintPrefix = "./catan.ps1 azure"
+} else {
+    $script:CmdHintPrefix = ".scripts/catan-azure.ps1"
+}
 
 Write-Log -Level "DEBUG" -Message "Script directory: $ScriptDir"
 Write-Log -Level "DEBUG" -Message "Project root: $ProjectRoot"
@@ -1365,13 +1376,15 @@ function Get-DatabaseDoctor {
         }
 
         # Check connection string from Azure (not from GameService)
+        # CLI returns an array of objects with name/value/type, not a keyed object
         Write-Log -Level "DEBUG" -Message "Checking connection string configuration" -TraceLevel $TraceLevel
         $connStrings = Invoke-AzCommand "webapp config connection-string list --name $gameServiceAppName --resource-group $rgName" -FailOnError $false -JsonOutput
-        $result.checks.connectionString = ($connStrings -and $connStrings.AzureSql)
+        $azureSqlConn = if ($connStrings) { $connStrings | Where-Object { $_.name -eq 'AzureSql' } | Select-Object -First 1 } else { $null }
+        $result.checks.connectionString = ($null -ne $azureSqlConn)
 
         # Check if connection pooling is configured in connection string
-        if ($connStrings -and $connStrings.AzureSql) {
-            $connStr = $connStrings.AzureSql.value
+        if ($azureSqlConn) {
+            $connStr = $azureSqlConn.value
             $result.checks.connectionPooling = ($connStr -match "Pooling=True" -or $connStr -match "Min Pool Size")
         }
 
@@ -1675,6 +1688,26 @@ function Install-UI {
     Write-Log -Level "INFO" -Message "Configuring app settings..."
     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings GAMESERVICE_URL=$($Config.gameService.url)" -SuppressOutput
 
+    # Create staging deployment slot (used by GitHub Actions and swap-slots)
+    # Requires Standard (S1) tier or higher — upgrade from Basic if needed
+    Write-Log -Level "INFO" -Message "Checking staging slot..."
+    $stagingSlot = Invoke-AzCommand "webapp deployment slot list --name $appName --resource-group $rgName --query `"[?name=='staging']`"" -FailOnError $false -JsonOutput
+    if (-not $stagingSlot -or $stagingSlot.Count -eq 0) {
+        # Check if plan SKU supports slots (Standard S1+ required)
+        $planSku = Invoke-AzCommand "appservice plan show --name $planName --resource-group $rgName --query sku.tier -o tsv" -FailOnError $false
+        if ($planSku -and $planSku -notin @('Standard', 'Premium', 'PremiumV2', 'PremiumV3', 'Isolated', 'IsolatedV2')) {
+            Write-Log -Level "INFO" -Message "App Service Plan is '$planSku' tier — upgrading to Standard (S1) for deployment slot support..."
+            Invoke-AzCommand "appservice plan update --name $planName --resource-group $rgName --sku S1" -SuppressOutput
+            Write-Log -Level "INFO" -Message "Plan upgraded to S1"
+        }
+        Write-Log -Level "INFO" -Message "Creating staging slot for $appName..."
+        Invoke-AzCommand "webapp deployment slot create --name $appName --resource-group $rgName --slot staging" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Staging slot created"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Staging slot exists"
+    }
+
     return $true
 }
 
@@ -1867,6 +1900,131 @@ function Deploy-UI {
     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings DEPLOY_COMMIT=$commitHash DEPLOY_BUILD_TIME=`"$buildTime`"" -SuppressOutput
 
     Write-Log -Level "INFO" -Message "UI deployed: $($Config.ui.url)"
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Builds and deploys the React UI to the Azure staging slot.
+.DESCRIPTION
+    Builds the Next.js standalone app, packages it, and deploys to the
+    staging deployment slot. Use swap-slots to promote to production.
+.PARAMETER Config
+    Azure configuration hashtable
+.PARAMETER Force
+    Force deployment even if no changes detected
+.OUTPUTS
+    Boolean - $true on success
+#>
+function Deploy-ReactStaging {
+    param(
+        [hashtable]$Config,
+        [bool]$Force = $false,
+        [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+        [string]$TraceLevel = "ERROR"
+    )
+
+    $rgName = $Config.resourceGroup
+    $appName = $Config.ui.appName
+    $reactDir = Join-Path $ProjectRoot "react-ui"
+    $deployDir = Join-Path $ProjectRoot ".publish/react-staging"
+    $zipPath = Join-Path $ProjectRoot ".publish/react-ui.zip"
+    $gameServiceUrl = $Config.gameService.url
+
+    # Check staging slot exists
+    $stagingSlot = Invoke-AzCommand "webapp deployment slot list --name $appName --resource-group $rgName --query `"[?name=='staging']`"" -FailOnError $false -JsonOutput
+    if (-not $stagingSlot -or $stagingSlot.Count -eq 0) {
+        Write-Log -Level "ERROR" -Message "Staging slot does not exist. Run './catan.ps1 azure install' first."
+        return $false
+    }
+
+    # Skip if already current (unless -Force)
+    $currentCommit = Get-GitCommitHash
+    if (-not $Force) {
+        $stagingSettings = Invoke-AzCommand "webapp config appsettings list --name $appName --resource-group $rgName --slot staging" -FailOnError $false -JsonOutput
+        $deployedCommit = if ($stagingSettings) {
+            ($stagingSettings | Where-Object { $_.name -eq 'DEPLOY_COMMIT' } | Select-Object -First 1).value
+        }
+        if ($deployedCommit -and $deployedCommit -eq $currentCommit) {
+            Write-Log -Level "INFO" -Message "Staging already at commit $currentCommit — skipping (use -Force to override)"
+            return $true
+        }
+    }
+
+    # Install dependencies
+    Write-Log -Level "INFO" -Message "Installing React UI dependencies..."
+    Push-Location $reactDir
+    try {
+        $npmOutput = npm ci 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log -Level "ERROR" -Message "npm ci failed:"
+            $npmOutput | ForEach-Object { Write-Log -Level "ERROR" -Message "  $_" }
+            return $false
+        }
+        Write-Log -Level "DEBUG" -Message "npm ci completed" -TraceLevel $TraceLevel
+
+        # Build Next.js standalone
+        # Note: next.config.ts sets images.unoptimized=true, so sharp is not needed
+        # This avoids cross-platform native binary issues (macOS build → Linux deploy)
+        Write-Log -Level "INFO" -Message "Building React UI (standalone)..."
+        $env:NEXT_PUBLIC_GAME_SERVICE_URL = $gameServiceUrl
+        $buildOutput = npm run build 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log -Level "ERROR" -Message "Next.js build failed:"
+            $buildOutput | ForEach-Object { Write-Log -Level "ERROR" -Message "  $_" }
+            return $false
+        }
+        $buildOutput | ForEach-Object { Write-Log -Level "DEBUG" -Message $_ -TraceLevel $TraceLevel }
+    }
+    finally {
+        Pop-Location
+    }
+
+    # Assemble deployment package (mirrors GitHub Action)
+    Write-Log -Level "INFO" -Message "Assembling deployment package..."
+    if (Test-Path $deployDir) { Remove-Item $deployDir -Recurse -Force }
+    New-Item -ItemType Directory -Path $deployDir -Force | Out-Null
+
+    $standalonePath = Join-Path $reactDir ".next/standalone/react-ui"
+    if (-not (Test-Path $standalonePath)) {
+        # Fallback: standalone may be at .next/standalone directly
+        $standalonePath = Join-Path $reactDir ".next/standalone"
+    }
+    Copy-Item -Path "$standalonePath/*" -Destination $deployDir -Recurse -Force
+    Copy-Item -Path (Join-Path $reactDir ".next/static") -Destination (Join-Path $deployDir ".next/static") -Recurse -Force
+    Copy-Item -Path (Join-Path $reactDir "public") -Destination (Join-Path $deployDir "public") -Recurse -Force
+
+    # Create zip
+    if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+    Compress-Archive -Path "$deployDir/*" -DestinationPath $zipPath
+
+    $zipSize = (Get-Item $zipPath).Length / 1MB
+    Write-Log -Level "INFO" -Message "Deploying React UI to staging ($([math]::Round($zipSize, 1)) MB)..."
+
+    # Configure staging slot for Node.js (production slot uses .NET for Blazor)
+    Write-Log -Level "INFO" -Message "Configuring staging slot for Node.js..."
+    Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --slot staging --linux-fx-version `"NODE|22-lts`" --startup-file `"node server.js`"" -SuppressOutput
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot staging --settings WEBSITE_NODE_DEFAULT_VERSION=~22 NEXT_PUBLIC_GAME_SERVICE_URL=$gameServiceUrl" -SuppressOutput
+
+    # Deploy zip using Invoke-BackgroundInstaller to isolate az CLI progress bar output
+    # (az webapp deploy writes ANSI progress directly to terminal, bypassing PowerShell redirection)
+    # Set AZURE_CORE_ONLY_SHOW_ERRORS to suppress the progress bar that writes directly to /dev/tty
+    $prevOnlyShowErrors = $env:AZURE_CORE_ONLY_SHOW_ERRORS
+    $env:AZURE_CORE_ONLY_SHOW_ERRORS = "true"
+    $deployArgs = @("webapp", "deploy", "--name", $appName, "--resource-group", $rgName, "--slot", "staging", "--src-path", $zipPath, "--type", "zip", "--async", "true")
+    $deployResult = Invoke-BackgroundInstaller -FilePath "az" -ArgumentList $deployArgs -OperationName "Staging zip deploy" -ProgressInterval 2 -TraceLevel $TraceLevel
+    $env:AZURE_CORE_ONLY_SHOW_ERRORS = $prevOnlyShowErrors
+    if (-not $deployResult.Success) {
+        Write-Log -Level "ERROR" -Message "az webapp deploy failed (exit $($deployResult.ExitCode))"
+        return $false
+    }
+
+    # Store deployed commit in staging slot settings
+    $commitHash = Get-GitCommitHash
+    $buildTime = (Get-Date -Format "o")
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot staging --settings DEPLOY_COMMIT=$commitHash DEPLOY_BUILD_TIME=`"$buildTime`"" -SuppressOutput
+
+    Write-Log -Level "INFO" -Message "React UI deployed to staging: https://$appName-staging.azurewebsites.net"
     return $true
 }
 
@@ -2098,62 +2256,97 @@ function Get-UIDoctor {
         timestamp = (Get-Date -Format "o")
         # Detailed checks for each install/deploy step
         checks    = @{
-            resourceGroup     = $false
-            appServicePlan    = $false
-            webApp            = $false
-            managedIdentity   = $false
-            gameServiceUrl    = $false
-            codeDeployed      = $false
-            siteResponding    = $false
+            resourceGroup          = $false
+            appServicePlan         = $false
+            webApp                 = $false
+            managedIdentity        = $false
+            gameServiceUrl         = $false
+            codeDeployed           = $false
+            siteResponding         = $false
+            stagingSlot            = $false
+            stagingRuntime         = $false
+            stagingStartup         = $false
+            stagingCodeDeployed    = $false
+            stagingResponding      = $false
         }
         # Git commit tracking
-        currentCommit  = $null
-        deployedCommit = $null
+        currentCommit         = $null
+        deployedCommit        = $null
+        stagingDeployedCommit = $null
         # What actions are needed
-        needsInstall   = $false
-        needsDeploy    = $false
+        needsInstall          = $false
+        needsDeploy           = $false
+        needsStagingDeploy    = $false
     }
 
     try {
         # Check resource group exists
+        Write-Log -Level "STATUS" -Message "Checking resource group..."
         Write-Log -Level "DEBUG" -Message "Checking resource group: $rgName" -TraceLevel $TraceLevel
         $rg = Invoke-AzCommand "group show --name $rgName" -FailOnError $false -JsonOutput
         $result.checks.resourceGroup = ($null -ne $rg)
 
         # Check App Service Plan exists
+        Write-Log -Level "STATUS" -Message "Checking app service plan..."
         Write-Log -Level "DEBUG" -Message "Checking app service plan: $planName" -TraceLevel $TraceLevel
         $plan = Invoke-AzCommand "appservice plan show --name $planName --resource-group $rgName" -FailOnError $false -JsonOutput
         $result.checks.appServicePlan = ($null -ne $plan)
 
         # Check web app exists
+        Write-Log -Level "STATUS" -Message "Checking web app..."
         Write-Log -Level "DEBUG" -Message "Checking web app: $appName" -TraceLevel $TraceLevel
         $app = Invoke-AzCommand "webapp show --name $appName --resource-group $rgName" -FailOnError $false -JsonOutput
         if (-not $app) {
             $result.status = "not-found"
             $result.needsInstall = $true
             Write-Log -Level "DEBUG" -Message "Web app not found, needsInstall=true" -TraceLevel $TraceLevel
+            Complete-StatusMessage
             return $result
         }
         $result.checks.webApp = $true
         $result.status = $app.state.ToLower()
 
-        # Check managed identity
-        Write-Log -Level "DEBUG" -Message "Checking managed identity" -TraceLevel $TraceLevel
-        $identity = Invoke-AzCommand "webapp identity show --name $appName --resource-group $rgName --query principalId -o tsv" -FailOnError $false
+        # --- Parallel batch 1: production config checks (all independent once web app exists) ---
+        Write-Log -Level "STATUS" -Message "Checking production configuration..."
+
+        # Run independent az calls in parallel using background jobs
+        $jobs = @()
+        $jobs += Start-Job -ScriptBlock { az webapp config show --name $using:appName --resource-group $using:rgName --query linuxFxVersion -o tsv 2>$null }
+        $jobs += Start-Job -ScriptBlock { az webapp identity show --name $using:appName --resource-group $using:rgName --query principalId -o tsv 2>$null }
+        $jobs += Start-Job -ScriptBlock { az webapp config appsettings list --name $using:appName --resource-group $using:rgName 2>$null }
+        $jobs += Start-Job -ScriptBlock { az webapp deployment slot list --name $using:appName --resource-group $using:rgName 2>$null }
+
+        # Wait for all jobs (with STATUS updates)
+        $allDone = $false
+        while (-not $allDone) {
+            $allDone = ($jobs | Where-Object { $_.State -eq 'Running' }).Count -eq 0
+            if (-not $allDone) { Start-Sleep -Milliseconds 500 }
+        }
+
+        # Collect results
+        $prodRuntime = (Receive-Job $jobs[0]).Trim()
+        Write-Log -Level "DEBUG" -Message "Production runtime: $prodRuntime" -TraceLevel $TraceLevel
+        $result.prodRuntime = $prodRuntime
+
+        $identity = (Receive-Job $jobs[1]).Trim()
         $result.checks.managedIdentity = (-not [string]::IsNullOrWhiteSpace($identity))
 
-        # Check GameService URL configured in app settings
-        Write-Log -Level "DEBUG" -Message "Checking GameService URL config" -TraceLevel $TraceLevel
-        $configuredUrl = Invoke-AzCommand "webapp config appsettings list --name $appName --resource-group $rgName --query `"[?name=='GAMESERVICE_URL'].value | [0]`" -o tsv" -FailOnError $false
+        $appSettingsJson = (Receive-Job $jobs[2]) -join "`n"
+        $appSettings = if ($appSettingsJson) { $appSettingsJson | ConvertFrom-Json -ErrorAction SilentlyContinue } else { $null }
+        $configuredUrl = if ($appSettings) { ($appSettings | Where-Object { $_.name -eq 'GAMESERVICE_URL' } | Select-Object -First 1).value } else { $null }
         $result.checks.gameServiceUrl = ($configuredUrl -eq $gameServiceUrl)
+        $result.deployedCommit = if ($appSettings) { ($appSettings | Where-Object { $_.name -eq 'DEPLOY_COMMIT' } | Select-Object -First 1).value } else { $null }
+        Write-Log -Level "DEBUG" -Message "Deployed commit: $($result.deployedCommit)" -TraceLevel $TraceLevel
+
+        $slotsJson = (Receive-Job $jobs[3]) -join "`n"
+        $slots = if ($slotsJson) { $slotsJson | ConvertFrom-Json -ErrorAction SilentlyContinue } else { $null }
+        $stagingSlotData = if ($slots) { $slots | Where-Object { $_.name -eq 'staging' } } else { $null }
+
+        $jobs | Remove-Job -Force
 
         # Get current git commit
         $result.currentCommit = Get-GitCommitHash
         Write-Log -Level "DEBUG" -Message "Current git commit: $($result.currentCommit)" -TraceLevel $TraceLevel
-
-        # Get deployed commit from app settings
-        $result.deployedCommit = Invoke-AzCommand "webapp config appsettings list --name $appName --resource-group $rgName --query `"[?name=='DEPLOY_COMMIT'].value | [0]`" -o tsv" -FailOnError $false
-        Write-Log -Level "DEBUG" -Message "Deployed commit: $($result.deployedCommit)" -TraceLevel $TraceLevel
 
         # Check if code has been deployed
         $result.checks.codeDeployed = (-not [string]::IsNullOrWhiteSpace($result.deployedCommit))
@@ -2166,34 +2359,134 @@ function Get-UIDoctor {
             $result.needsDeploy = $true
         }
 
-        # Check if UI responds
-        Write-Log -Level "DEBUG" -Message "Checking site response: $url" -TraceLevel $TraceLevel
-        try {
-            $response = Invoke-WebRequest -Uri $url -TimeoutSec 10 -UseBasicParsing
-            $result.checks.siteResponding = ($response.StatusCode -eq 200)
-            # If site responds, code must be deployed and GameService URL must be configured
-            if ($result.checks.siteResponding) {
-                $result.checks.codeDeployed = $true
-                $result.checks.gameServiceUrl = $true  # If UI works, URL must be configured
+        # --- Parallel batch 2: HTTP health checks + staging config (all independent) ---
+        Write-Log -Level "STATUS" -Message "Checking site health..."
+
+        # Start HTTP checks as jobs (these are the slow ones: 10-15s timeout each)
+        $httpJobs = @()
+        $httpJobs += Start-Job -ScriptBlock {
+            try {
+                $response = Invoke-WebRequest -Uri $using:url -TimeoutSec 10 -UseBasicParsing -ErrorAction Stop
+                return @{ ok = $true; status = $response.StatusCode }
+            } catch {
+                return @{ ok = $false; error = $_.Exception.Message }
             }
         }
-        catch {
+
+        $stagingUrl = "https://$appName-staging.azurewebsites.net"
+        $hasStagingSlot = ($null -ne $stagingSlotData)
+        $result.checks.stagingSlot = $hasStagingSlot
+
+        if ($hasStagingSlot) {
+            # Start staging HTTP check in parallel
+            $httpJobs += Start-Job -ScriptBlock {
+                try {
+                    $response = Invoke-WebRequest -Uri $using:stagingUrl -TimeoutSec 15 -UseBasicParsing -ErrorAction Stop
+                    return @{ ok = $true; status = $response.StatusCode }
+                } catch {
+                    return @{ ok = $false; error = $_.Exception.Message }
+                }
+            }
+
+            # Start staging config checks in parallel
+            $stagingJobs = @()
+            $stagingJobs += Start-Job -ScriptBlock { az webapp config show --name $using:appName --resource-group $using:rgName --slot staging 2>$null }
+            $stagingJobs += Start-Job -ScriptBlock { az webapp config appsettings list --name $using:appName --resource-group $using:rgName --slot staging 2>$null }
+        }
+
+        # Wait for all jobs
+        $allJobs = $httpJobs + $(if ($hasStagingSlot) { $stagingJobs } else { @() })
+        $allDone = $false
+        $lastStatusTime = Get-Date
+        while (-not $allDone) {
+            $running = ($allJobs | Where-Object { $_.State -eq 'Running' }).Count
+            $allDone = $running -eq 0
+            if (-not $allDone) {
+                $elapsed = [math]::Round(((Get-Date) - $lastStatusTime).TotalSeconds)
+                if ($elapsed -ge 2) {
+                    Write-Log -Level "STATUS" -Message "Checking site health... ($running checks remaining)"
+                    $lastStatusTime = Get-Date
+                }
+                Start-Sleep -Milliseconds 500
+            }
+        }
+
+        # Collect production HTTP result
+        $prodHttp = Receive-Job $httpJobs[0]
+        if ($prodHttp.ok) {
+            $result.checks.siteResponding = $true
+            $result.checks.codeDeployed = $true
+            $result.checks.gameServiceUrl = $true
+        } else {
             $result.checks.siteResponding = $false
-            Write-Log -Level "DEBUG" -Message "Site not responding: $_" -TraceLevel $TraceLevel
-            # If app exists but not responding, needs deploy
-            if (-not $result.needsDeploy) {
+            Write-Log -Level "DEBUG" -Message "Site not responding: $($prodHttp.error)" -TraceLevel $TraceLevel
+            # Only set needsDeploy if code isn't deployed or commit doesn't match
+            # A timeout with matching commit means cold start, not missing deploy
+            if (-not $result.checks.codeDeployed) {
                 $result.needsDeploy = $true
             }
         }
 
-        # Determine overall health - site responding is the definitive test
+        if ($hasStagingSlot) {
+            # Collect staging HTTP result
+            $stagingHttp = Receive-Job $httpJobs[1]
+            $result.checks.stagingResponding = $stagingHttp.ok
+            if ($stagingHttp.ok) {
+                Write-Log -Level "DEBUG" -Message "Staging responding: HTTP $($stagingHttp.status)" -TraceLevel $TraceLevel
+                $result.checks.stagingCodeDeployed = $true
+            } else {
+                Write-Log -Level "DEBUG" -Message "Staging not responding: $($stagingHttp.error)" -TraceLevel $TraceLevel
+            }
+
+            # Collect staging config results
+            $stagingConfigJson = (Receive-Job $stagingJobs[0]) -join "`n"
+            $stagingConfig = if ($stagingConfigJson) { $stagingConfigJson | ConvertFrom-Json -ErrorAction SilentlyContinue } else { $null }
+            $stagingRuntime = if ($stagingConfig) { $stagingConfig.linuxFxVersion } else { $null }
+            $stagingStartup = if ($stagingConfig) { $stagingConfig.appCommandLine } else { $null }
+            Write-Log -Level "DEBUG" -Message "Staging runtime: $stagingRuntime" -TraceLevel $TraceLevel
+            Write-Log -Level "DEBUG" -Message "Staging startup: $stagingStartup" -TraceLevel $TraceLevel
+            $result.checks.stagingRuntime = ($stagingRuntime -like "NODE*")
+            $result.stagingRuntime = $stagingRuntime
+            $result.checks.stagingStartup = ($stagingStartup -eq "node server.js")
+            $result.stagingStartup = $stagingStartup
+
+            $stagingSettingsJson = (Receive-Job $stagingJobs[1]) -join "`n"
+            $stagingSettings = if ($stagingSettingsJson) { $stagingSettingsJson | ConvertFrom-Json -ErrorAction SilentlyContinue } else { $null }
+            $result.stagingDeployedCommit = if ($stagingSettings) { ($stagingSettings | Where-Object { $_.name -eq 'DEPLOY_COMMIT' } | Select-Object -First 1).value } else { $null }
+            Write-Log -Level "DEBUG" -Message "Staging deployed commit: $($result.stagingDeployedCommit)" -TraceLevel $TraceLevel
+            $result.checks.stagingCodeDeployed = $result.checks.stagingCodeDeployed -or (-not [string]::IsNullOrWhiteSpace($result.stagingDeployedCommit))
+
+            # Determine if staging needs deploy (config or code issues, NOT just HTTP timeout)
+            # A non-responding staging slot with correct config/code is a cold start, not a deploy issue
+            if (-not $result.checks.stagingRuntime -or -not $result.checks.stagingStartup -or -not $result.checks.stagingCodeDeployed) {
+                $result.needsStagingDeploy = $true
+            }
+
+            $stagingJobs | Remove-Job -Force
+        }
+        else {
+            Write-Log -Level "DEBUG" -Message "Staging slot missing, needsInstall=true" -TraceLevel $TraceLevel
+            $result.needsInstall = $true
+        }
+
+        $httpJobs | Remove-Job -Force
+
+        # Determine overall health
+        # Site responding is the best signal, but code deployed + commit match
+        # with no response is a cold start, not an unhealthy deployment
         if ($result.checks.siteResponding) {
             $result.healthy = $true
         }
+        elseif ($result.checks.codeDeployed -and -not $result.needsDeploy) {
+            $result.healthy = $true
+            $result.coldStart = $true
+        }
 
+        Complete-StatusMessage
         Write-Log -Level "DEBUG" -Message "UI doctor complete: healthy=$($result.healthy), needsDeploy=$($result.needsDeploy)" -TraceLevel $TraceLevel
     }
     catch {
+        Complete-StatusMessage
         $result.status = "error"
         $result.error = $_.Exception.Message
         Write-Log -Level "DEBUG" -Message "UI doctor error: $($_.Exception.Message)" -TraceLevel $TraceLevel
@@ -2332,25 +2625,70 @@ function Show-DoctorResult {
                 "gameServiceConnected" { "GameService Connected" }
                 "gameServiceUrl" { "GameService URL" }
                 "siteResponding" { "Site Responding" }
+                "stagingSlot" { "Staging Slot" }
+                "stagingRuntime" { "Staging Runtime" }
+                "stagingStartup" { "Staging Startup Cmd" }
+                "stagingCodeDeployed" { "Staging Code Deployed" }
+                "stagingResponding" { "Staging Responding" }
                 default { $key }
             }
 
             $action = ""
             if (-not $Result.checks[$key]) {
-                $action = if ($key -in @("codeDeployed", "healthEndpoint", "connectionString", "connectionPooling", "managedIdentityUser", "gameServiceConnected", "siteResponding")) {
-                    "run: deploy"
+                $noun = $Result.resource  # e.g. "ui", "game-service", "database"
+                $action = if ($key -eq "siteResponding") {
+                    if ($Result.checks.codeDeployed -and -not $Result.needsDeploy) { "cold start — browse URL to wake" } else { "$script:CmdHintPrefix $noun deploy" }
+                } elseif ($key -in @("codeDeployed", "healthEndpoint", "connectionString", "connectionPooling", "managedIdentityUser", "gameServiceConnected")) {
+                    "$script:CmdHintPrefix $noun deploy"
                 } elseif ($key -eq "planSkuOk") {
                     "current: $($Result.currentSku), need: B1+"
                 } elseif ($key -eq "alwaysOn") {
                     "(requires B1+ SKU)"
                 } elseif ($key -in @("publicNetworkAccess", "firewallRule")) {
-                    "run: fix"
+                    "$script:CmdHintPrefix $noun fix"
+                } elseif ($key -eq "stagingSlot") {
+                    "$script:CmdHintPrefix $noun install"
+                } elseif ($key -eq "stagingRuntime") {
+                    $rt = if ($Result.stagingRuntime) { $Result.stagingRuntime } else { "unknown" }
+                    "have: $rt, need: NODE|22-lts — $script:CmdHintPrefix ui deploy-staging"
+                } elseif ($key -eq "stagingStartup") {
+                    $sc = if ($Result.stagingStartup) { $Result.stagingStartup } else { "none" }
+                    "have: $sc, need: node server.js — $script:CmdHintPrefix ui deploy-staging"
+                } elseif ($key -eq "stagingResponding") {
+                    if ($Result.checks.stagingCodeDeployed -and -not $Result.needsStagingDeploy) { "cold start — browse URL to wake" } else { "$script:CmdHintPrefix ui deploy-staging" }
+                } elseif ($key -eq "stagingCodeDeployed") {
+                    "$script:CmdHintPrefix ui deploy-staging"
                 } else {
-                    "run: install"
+                    "$script:CmdHintPrefix $noun install"
                 }
             }
             Show-CheckRow -Name $displayName -Status $Result.checks[$key] -Details $action
         }
+    }
+
+    # Show slot configuration summary (what's serving production vs staging)
+    if ($Result.prodRuntime -or $Result.stagingRuntime) {
+        Write-Host ""
+        Write-Host "  Slot Configuration:" -ForegroundColor Yellow
+
+        function Get-RuntimeLabel {
+            param([string]$Runtime)
+            if ([string]::IsNullOrWhiteSpace($Runtime)) { return "unknown" }
+            if ($Runtime -like "DOTNETCORE*") { return "Blazor ($Runtime)" }
+            if ($Runtime -like "NODE*") { return "React/Next.js ($Runtime)" }
+            return $Runtime
+        }
+
+        $prodLabel = Get-RuntimeLabel $Result.prodRuntime
+        $stagingLabel = if ($Result.checks.stagingSlot) { Get-RuntimeLabel $Result.stagingRuntime } else { "no slot" }
+
+        Write-Host -NoNewline ("    Production").PadRight($col1)
+        $prodColor = if ($Result.checks.siteResponding) { "Green" } else { "Red" }
+        Write-Host $prodLabel -ForegroundColor $prodColor
+
+        Write-Host -NoNewline ("    Staging").PadRight($col1)
+        $stagingColor = if ($Result.checks.stagingResponding) { "Green" } elseif ($Result.checks.stagingSlot) { "Yellow" } else { "Red" }
+        Write-Host $stagingLabel -ForegroundColor $stagingColor
     }
 
     # Show git commit info if available
@@ -2366,6 +2704,18 @@ function Show-DoctorResult {
         } else {
             Write-Host -NoNewline "NONE".PadRight($col2) -ForegroundColor Yellow
             Write-Host "not yet deployed" -ForegroundColor Gray
+        }
+    }
+
+    # Show staging commit info if available
+    if ($Result.stagingDeployedCommit) {
+        Write-Host -NoNewline ("  Staging Commit").PadRight($col1)
+        if ($Result.currentCommit -eq $Result.stagingDeployedCommit) {
+            Write-Host -NoNewline "MATCH".PadRight($col2) -ForegroundColor Green
+            Write-Host "$($Result.stagingDeployedCommit)" -ForegroundColor Gray
+        } else {
+            Write-Host -NoNewline "MISMATCH".PadRight($col2) -ForegroundColor Yellow
+            Write-Host "deployed: $($Result.stagingDeployedCommit) -> current: $($Result.currentCommit)" -ForegroundColor Gray
         }
     }
 
@@ -2416,22 +2766,33 @@ function Show-DoctorResult {
     if ($Result.needsInstall) {
         Write-Host "NEEDS INSTALL" -ForegroundColor Red
         Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
-        Write-Host "./catan-azure.ps1 $($Result.resource) install" -ForegroundColor Cyan
+        Write-Host "$script:CmdHintPrefix $($Result.resource) install" -ForegroundColor Cyan
     } elseif ($Result.needsFix) {
         Write-Host "NEEDS FIX" -ForegroundColor Yellow
         Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
-        Write-Host "./catan-azure.ps1 $($Result.resource) fix" -ForegroundColor Cyan
+        Write-Host "$script:CmdHintPrefix $($Result.resource) fix" -ForegroundColor Cyan
     } elseif ($Result.needsDeploy) {
         Write-Host "NEEDS DEPLOY" -ForegroundColor Yellow
         if ($Result.deployReason) {
             Write-Host "  Reason: $($Result.deployReason)" -ForegroundColor Gray
         }
         Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
-        Write-Host "./catan-azure.ps1 $($Result.resource) deploy" -ForegroundColor Cyan
+        Write-Host "$script:CmdHintPrefix $($Result.resource) deploy" -ForegroundColor Cyan
+    } elseif ($Result.healthy -and $Result.coldStart) {
+        Write-Host "HEALTHY " -ForegroundColor Green -NoNewline
+        Write-Host "(site not responding — likely cold start, browse URL to wake)" -ForegroundColor Yellow
     } elseif ($Result.healthy) {
         Write-Host "HEALTHY" -ForegroundColor Green
     } else {
         Write-Host "UNKNOWN" -ForegroundColor Red
+    }
+
+    # Show staging deploy status separately (staging issues don't block production)
+    if ($Result.needsStagingDeploy) {
+        Write-Host -NoNewline "Staging: "
+        Write-Host "NEEDS DEPLOY" -ForegroundColor Yellow
+        Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
+        Write-Host "$script:CmdHintPrefix ui deploy-staging" -ForegroundColor Cyan
     }
 
     # Show performance warnings if any
@@ -2822,6 +3183,7 @@ switch ($Noun) {
         switch ($Verb) {
             "install" { $success = Install-UI -Config $config }
             "deploy" { $success = Deploy-UI -Config $config -Force $Force -NoBuild $NoBuild }
+            "deploy-staging" { $success = Deploy-ReactStaging -Config $config -Force $Force -TraceLevel $TraceLevel }
             "doctor" {
                 $result = Get-UIDoctor -Config $config -TraceLevel $TraceLevel
                 if ($Json) {
