@@ -2329,6 +2329,52 @@ switch ($Verb) {
                     Write-Host "  GameService: https://catan-api.azurewebsites.net" -ForegroundColor Gray
                 }
             }
+            "swap-slots" {
+                # Load Azure config to get app name and resource group
+                $azureConfigFile = Join-Path $PSScriptRoot ".azure/catan-azure.json"
+                if (-not (Test-Path $azureConfigFile)) {
+                    Write-Host "Azure configuration not found. Run './catan.ps1 azure install' first." -ForegroundColor Red
+                    exit 1
+                }
+                $azureConfig = Get-Content $azureConfigFile -Raw | ConvertFrom-Json
+
+                $appName = $azureConfig.ui.appName
+                $rgName = $azureConfig.resourceGroup
+
+                Write-Host "Swap Azure Deployment Slots" -ForegroundColor Cyan
+                Write-Host "==========================" -ForegroundColor Cyan
+                Write-Host ""
+                Write-Host "This will swap the staging slot (React app) into production." -ForegroundColor Yellow
+                Write-Host ""
+                Write-Host "  App:         $appName" -ForegroundColor Gray
+                Write-Host "  Staging:     https://$appName-staging.azurewebsites.net" -ForegroundColor Gray
+                Write-Host "  Production:  https://$appName.azurewebsites.net" -ForegroundColor Gray
+                Write-Host ""
+                Write-Host "After swap:" -ForegroundColor Yellow
+                Write-Host "  - Production will serve the React app (currently in staging)" -ForegroundColor Gray
+                Write-Host "  - Staging will have the old Blazor app (can swap back)" -ForegroundColor Gray
+                Write-Host ""
+
+                if (-not $Yes) {
+                    $confirm = Read-Host "Proceed with swap? (y/N)"
+                    if ($confirm -ne 'y' -and $confirm -ne 'Y') {
+                        Write-Host "Swap cancelled." -ForegroundColor Yellow
+                        exit 0
+                    }
+                }
+
+                Write-Host "Swapping staging -> production..." -ForegroundColor Cyan
+                az webapp deployment slot swap --name $appName --resource-group $rgName --slot staging
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "Slot swap failed!" -ForegroundColor Red
+                    exit 1
+                }
+
+                Write-Host ""
+                Write-Host "Slot swap complete!" -ForegroundColor Green
+                Write-Host "  Production is now serving the React app." -ForegroundColor Gray
+                Write-Host "  To swap back: ./catan.ps1 azure swap-slots" -ForegroundColor Gray
+            }
             "clean" {
                 Write-Host "Cleaning all Azure resources..." -ForegroundColor Yellow
                 Write-Host ""
@@ -2360,10 +2406,11 @@ switch ($Verb) {
                 Write-Host "Usage: ./catan.ps1 azure <subcommand>" -ForegroundColor Yellow
                 Write-Host ""
                 Write-Host "Subcommands:" -ForegroundColor Yellow
-                Write-Host "  install  - Create all Azure resources (idempotent)"
-                Write-Host "  deploy   - Deploy all code and data to Azure"
-                Write-Host "  doctor   - Check health of all Azure resources"
-                Write-Host "  clean    - Delete all Azure resources"
+                Write-Host "  install     - Create all Azure resources (idempotent)"
+                Write-Host "  deploy      - Deploy all code and data to Azure"
+                Write-Host "  swap-slots  - Swap staging (React) and production (Blazor) slots"
+                Write-Host "  doctor      - Check health of all Azure resources"
+                Write-Host "  clean       - Delete all Azure resources"
                 Write-Host ""
                 Write-Host "Options:" -ForegroundColor Yellow
                 Write-Host "  -Force       Skip confirmation prompts"
@@ -2375,6 +2422,7 @@ switch ($Verb) {
                 Write-Host "  ./catan.ps1 azure install                   - First-time Azure setup"
                 Write-Host "  ./catan.ps1 azure install -TraceLevel DEBUG - Verbose install"
                 Write-Host "  ./catan.ps1 azure deploy                    - Deploy after code changes"
+                Write-Host "  ./catan.ps1 azure swap-slots                - Swap staging <-> production"
                 Write-Host "  ./catan.ps1 azure doctor                    - Check all resources"
                 Write-Host "  ./catan.ps1 azure clean -Force              - Tear down everything"
                 Write-Host ""
@@ -2452,6 +2500,7 @@ switch ($Verb) {
         Write-Host "  ./catan.ps1 azure doctor     - Check Azure deployment health"
         Write-Host "  ./catan.ps1 azure install    - Create all Azure resources"
         Write-Host "  ./catan.ps1 azure deploy     - Deploy everything to Azure"
+        Write-Host "  ./catan.ps1 azure swap-slots - Swap staging <-> production"
         Write-Host "  ./catan.ps1 azure clean      - Delete all Azure resources"
         Write-Host ""
         Write-Host "Typical workflow:" -ForegroundColor Yellow
