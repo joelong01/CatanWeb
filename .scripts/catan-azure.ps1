@@ -2040,6 +2040,17 @@ function Deploy-GameService {
     $slotArgs = if ($Slot) { " --slot $Slot" } else { "" }
     $slotLabel = if ($Slot) { " (slot: $Slot)" } else { "" }
 
+    # Ensure staging slot exists when deploying to a slot
+    if ($Slot) {
+        $existingSlots = Invoke-AzCommand "webapp deployment slot list --name $appName --resource-group $rgName --query `"[].name`" -o tsv" -FailOnError $false
+        if ($existingSlots -notcontains $Slot) {
+            Write-Log -Level "INFO" -Message "Creating deployment slot '$Slot' on $appName..."
+            Invoke-AzCommand "webapp deployment slot create --name $appName --resource-group $rgName --slot $Slot" -SuppressOutput
+            Invoke-AzCommand "webapp identity assign --name $appName --resource-group $rgName --slot $Slot" -SuppressOutput
+            Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot $Slot --settings WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
+        }
+    }
+
     # Check if deployment is needed
     if (-not (Test-DeploymentNeeded -AppName $appName -ResourceGroup $rgName -Force $Force -Slot $Slot)) {
         return $true
