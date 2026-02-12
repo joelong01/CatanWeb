@@ -75,14 +75,14 @@ jobs:
 
       - name: Verify React staging
         run: |
-          for i in $(seq 1 12); do
+          for i in $(seq 1 30); do
             CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 10 \
               https://catan-staging.azurewebsites.net 2>/dev/null || echo "000")
             echo "React staging ($((i*10))s): HTTP $CODE"
             [ "$CODE" = "200" ] && exit 0
             sleep 10
           done
-          echo "::error::React staging did not respond within 2 minutes"
+          echo "::error::React staging did not respond within 5 minutes"
           exit 1
 
   verify:
