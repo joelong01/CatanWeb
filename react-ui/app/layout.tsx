@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { FontReloader } from '@/components/dev/FontReloader';
+import { StartupLogger } from '@/components/StartupLogger';
 import { ThemeInitializer } from '@/components/providers/ThemeInitializer';
 import './globals.css';
 
@@ -84,6 +85,7 @@ export default function RootLayout({
       <body className={`${catanFont.variable} antialiased`}>
         <ThemeInitializer />
         {children}
+        <StartupLogger />
         {isDev && <FontReloader />}
       </body>
     </html>
