@@ -221,3 +221,8 @@ for GitHub Actions. Eliminates need for stored secrets.
 
 - **Infrastructure as Code** (Bicep/Terraform) -- planned future
 - **CDN/load balancing** -- not needed at current scale
+- **Staging slot creation via `doctor fix`** -- Currently
+  `Deploy-GameService` auto-creates missing staging slots inline.
+  This should be refactored into an `Ensure-GameServiceSlot` helper
+  that `doctor fix` can also invoke, matching the existing pattern
+  where `doctor` diagnoses and `fix` remediates
