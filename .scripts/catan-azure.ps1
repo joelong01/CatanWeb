@@ -659,7 +659,7 @@ function Install-Database {
         Write-Log -Level "INFO" -Message "Granting SQL Server Contributor role to GameService managed identity..."
         $existingRole = Invoke-AzCommand "role assignment list --assignee $principalId --role 'SQL Server Contributor' --scope $sqlServerScope --query [0].id -o tsv" -FailOnError $false
         if (-not $existingRole) {
-            Invoke-AzCommand "role assignment create --assignee $principalId --role 'SQL Server Contributor' --scope $sqlServerScope" -SuppressOutput
+            Invoke-AzCommand "role assignment create --assignee-object-id $principalId --assignee-principal-type ServicePrincipal --role 'SQL Server Contributor' --scope $sqlServerScope" -SuppressOutput
             Write-Log -Level "INFO" -Message "SQL Server Contributor role granted"
         }
         else {
@@ -1740,9 +1740,11 @@ function Install-GameService {
     $rgScope = "/subscriptions/$subscriptionId/resourceGroups/$rgName"
 
     Write-Log -Level "INFO" -Message "Granting Reader role on resource group to managed identity..."
+    # Use --assignee-object-id + --assignee-principal-type to avoid Azure AD graph lookup
+    # (newly created managed identities may not be replicated to graph yet)
     $existingRole = Invoke-AzCommand "role assignment list --assignee $principalId --role Reader --scope $rgScope --query [0].id -o tsv" -FailOnError $false
     if (-not $existingRole) {
-        Invoke-AzCommand "role assignment create --assignee $principalId --role Reader --scope $rgScope" -SuppressOutput
+        Invoke-AzCommand "role assignment create --assignee-object-id $principalId --assignee-principal-type ServicePrincipal --role Reader --scope $rgScope" -SuppressOutput
         Write-Log -Level "INFO" -Message "Reader role granted on resource group"
     }
     else {
@@ -1877,12 +1879,13 @@ function Deploy-KuduZip {
         [string]$Slot = $null
     )
 
-    # Get publishing credentials
-    $slotArgs = if ($Slot) { " --slot $Slot" } else { "" }
-    $creds = Invoke-AzCommand "webapp deployment list-publishing-credentials --name $AppName --resource-group $ResourceGroup$slotArgs" -JsonOutput
-
-    $user = $creds.publishingUserName
-    $pass = $creds.publishingPassword
+    # Get Azure AD bearer token for Kudu auth (works even when SCM basic auth is disabled)
+    $tokenResult = Invoke-AzCommand "account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv" -FailOnError $false
+    if (-not $tokenResult) {
+        Write-Log -Level "ERROR" -Message "Failed to get Azure access token"
+        return $false
+    }
+    $headers = @{ Authorization = "Bearer $tokenResult" }
 
     # Determine SCM hostname
     $scmHost = if ($Slot) {
@@ -1890,12 +1893,6 @@ function Deploy-KuduZip {
     } else {
         "$AppName.scm.azurewebsites.net"
     }
-
-    # Build Basic auth header
-    $pair = "${user}:${pass}"
-    $bytes = [System.Text.Encoding]::ASCII.GetBytes($pair)
-    $base64 = [Convert]::ToBase64String($bytes)
-    $headers = @{ Authorization = "Basic $base64" }
 
     $slotLabel = if ($Slot) { " (slot: $Slot)" } else { "" }
     Write-Log -Level "INFO" -Message "Deploying via Kudu API to $scmHost$slotLabel..."
@@ -2052,7 +2049,7 @@ function Deploy-GameService {
 
         # Always ensure required settings are present (idempotent)
         Write-Log -Level "INFO" -Message "Configuring slot '$Slot' settings..."
-        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot $Slot --settings DATABASE_MODE=azure AZURE_STORAGE_ACCOUNT=$($Config.storageAccount) AZURE_STORAGE_CONTAINER=$($Config.storageContainer) WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
+        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot $Slot --settings DATABASE_MODE=azure AZURE_STORAGE_ACCOUNT=$($Config.storageAccount) AZURE_STORAGE_CONTAINER=$($Config.storageContainer) WEBSITES_CONTAINER_START_TIME_LIMIT=600 SCM_DO_BUILD_DURING_DEPLOYMENT=false" -SuppressOutput
 
         # Copy connection string from production if missing
         $slotConnStr = Invoke-AzCommand "webapp config connection-string list --name $appName --resource-group $rgName --slot $Slot" -FailOnError $false -JsonOutput
@@ -2090,6 +2087,11 @@ function Deploy-GameService {
     if (-not (Deploy-KuduZip -AppName $appName -ResourceGroup $rgName -ZipPath $zipPath -Slot $Slot)) {
         return $false
     }
+
+    # Restart the app after deploy to ensure the new code is loaded
+    # Kudu async zipdeploy may not trigger an automatic restart
+    Write-Log -Level "INFO" -Message "Restarting app to load new deployment$slotLabel..."
+    Invoke-AzCommand "webapp restart --name $appName --resource-group $rgName$slotArgs" -SuppressOutput
 
     # Store the deployed commit hash and build timestamp
     $commitHash = Get-GitCommitHash
@@ -2158,6 +2160,10 @@ function Deploy-UI {
         return $false
     }
 
+    # Restart the app after deploy to ensure the new code is loaded
+    Write-Log -Level "INFO" -Message "Restarting app to load new deployment..."
+    Invoke-AzCommand "webapp restart --name $appName --resource-group $rgName" -SuppressOutput
+
     # Store the deployed commit hash and build timestamp
     $commitHash = Get-GitCommitHash
     $buildTime = (Get-Date -Format "o")  # ISO 8601 format
@@ -2194,7 +2200,8 @@ function Deploy-ReactStaging {
     $reactDir = Join-Path $ProjectRoot "react-ui"
     $deployDir = Join-Path $ProjectRoot ".publish/react-staging"
     $zipPath = Join-Path $ProjectRoot ".publish/react-ui.zip"
-    $gameServiceUrl = if ($GameServiceUrl) { $GameServiceUrl } else { $Config.gameService.url }
+    # Default to staging GameService URL (not production) since this deploys to a staging slot
+    $gameServiceUrl = if ($GameServiceUrl) { $GameServiceUrl } else { "https://$($Config.gameService.appName)-staging.azurewebsites.net" }
 
     # Check staging slot exists
     $stagingSlot = Invoke-AzCommand "webapp deployment slot list --name $appName --resource-group $rgName --query `"[?name=='staging']`"" -FailOnError $false -JsonOutput
@@ -2259,9 +2266,10 @@ function Deploy-ReactStaging {
     Copy-Item -Path (Join-Path $reactDir ".next/static") -Destination (Join-Path $deployDir ".next/static") -Recurse -Force
     Copy-Item -Path (Join-Path $reactDir "public") -Destination (Join-Path $deployDir "public") -Recurse -Force
 
-    # Create zip
+    # Create zip (-Force includes hidden dirs like .next)
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-    Compress-Archive -Path "$deployDir/*" -DestinationPath $zipPath
+    $items = Get-ChildItem -Path $deployDir -Force | Where-Object { $_.Name -ne '.' -and $_.Name -ne '..' }
+    Compress-Archive -Path $items.FullName -DestinationPath $zipPath
 
     $zipSize = (Get-Item $zipPath).Length / 1MB
     Write-Log -Level "INFO" -Message "Deploying React UI to staging ($([math]::Round($zipSize, 1)) MB)..."
@@ -2269,12 +2277,16 @@ function Deploy-ReactStaging {
     # Configure staging slot for Node.js (production slot uses .NET for Blazor)
     Write-Log -Level "INFO" -Message "Configuring staging slot for Node.js..."
     Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --slot staging --linux-fx-version `"NODE|22-lts`" --startup-file `"node server.js`"" -SuppressOutput
-    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot staging --settings WEBSITE_NODE_DEFAULT_VERSION=~22 NEXT_PUBLIC_GAME_SERVICE_URL=$gameServiceUrl" -SuppressOutput
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot staging --settings WEBSITE_NODE_DEFAULT_VERSION=~22 NEXT_PUBLIC_GAME_SERVICE_URL=$gameServiceUrl SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
 
     # Deploy via Kudu ZIP Deploy API (truly async, unlike az webapp deploy --async true)
     if (-not (Deploy-KuduZip -AppName $appName -ResourceGroup $rgName -ZipPath $zipPath -Slot "staging")) {
         return $false
     }
+
+    # Restart the app after deploy to ensure the new code is loaded
+    Write-Log -Level "INFO" -Message "Restarting staging slot to load new deployment..."
+    Invoke-AzCommand "webapp restart --name $appName --resource-group $rgName --slot staging" -SuppressOutput
 
     # Store deployed commit in staging slot settings
     $commitHash = Get-GitCommitHash

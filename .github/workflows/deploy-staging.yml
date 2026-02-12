@@ -1,4 +1,4 @@
-name: Deploy to Staging
+name: Deploy React to Staging
 
 on:
   push:
@@ -6,48 +6,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy-gameservice:
-    name: Deploy GameService (staging)
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-
-      - uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deploy GameService to staging slot
-        shell: pwsh
-        run: |
-          ./.scripts/catan-azure.ps1 game-service deploy -Slot staging -TraceLevel INFO
-
-      - name: Grant staging slot DB access
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          ./.scripts/catan-azure.ps1 database deploy-staging-access -TraceLevel INFO
-
-      - name: Verify GameService staging health
-        run: |
-          for i in $(seq 1 30); do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 10 \
-              https://catan-api-staging.azurewebsites.net/health 2>/dev/null || echo "000")
-            echo "Health check ($((i*10))s): HTTP $CODE"
-            [ "$CODE" = "200" ] && exit 0
-            sleep 10
-          done
-          echo "::error::GameService staging did not respond within 5 minutes"
-          exit 1
-
   deploy-react:
     name: Deploy React UI (staging)
     runs-on: ubuntu-latest
@@ -69,10 +27,16 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Install PowerShell modules
+        shell: pwsh
+        run: |
+          # catan-azure.ps1 uses Az CLI, no extra modules needed
+          az --version | head -1
+
       - name: Deploy React UI to staging slot
         shell: pwsh
         run: |
-          ./.scripts/catan-azure.ps1 ui deploy-staging -Force -TraceLevel INFO -GameServiceUrl https://catan-api-staging.azurewebsites.net
+          ./.scripts/catan-azure.ps1 ui deploy-staging -Force -TraceLevel INFO
 
       - name: Verify React staging
         run: |
@@ -86,34 +50,12 @@ jobs:
           echo "::error::React staging did not respond within 5 minutes"
           exit 1
 
-  verify:
-    name: Verify Staging
-    needs: [deploy-gameservice, deploy-react]
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Cross-component verification
+      - name: Verify GameService staging (informational)
+        continue-on-error: true
         run: |
-          echo "=== GameService Staging ==="
-          curl -sf https://catan-api-staging.azurewebsites.net/health | jq . || echo "FAILED"
-
-          echo ""
-          echo "=== Database Connectivity ==="
-          curl -sf "https://catan-api-staging.azurewebsites.net/health?checkDatabase=true" | jq .database || echo "FAILED"
-
-          echo ""
-          echo "=== React Staging ==="
-          curl -s -o /dev/null -w "HTTP %{http_code}\n" https://catan-staging.azurewebsites.net
-
+          echo "=== GameService Staging Health ==="
+          curl -sf https://catan-api-staging.azurewebsites.net/health | jq . || echo "GameService staging not responding (deploy separately if needed)"
           echo ""
           echo "=== Staging URLs ==="
-          echo "GameService: https://catan-api-staging.azurewebsites.net"
           echo "React UI:    https://catan-staging.azurewebsites.net"
+          echo "GameService: https://catan-api-staging.azurewebsites.net"

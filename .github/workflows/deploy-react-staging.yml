@@ -1,4 +1,4 @@
-name: Deploy React UI to Staging
+name: Deploy React UI to Staging (from main)
 
 on:
   push:
@@ -30,27 +30,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: react-ui/package-lock.json
 
-      - name: Install dependencies
-        working-directory: react-ui
-        run: npm ci
-
-      - name: Build Next.js (standalone)
-        working-directory: react-ui
-        env:
-          NEXT_PUBLIC_GAME_SERVICE_URL: https://catan-api.azurewebsites.net
-        run: npm run build
-
-      - name: Assemble deployment package
-        run: |
-          mkdir -p deploy
-          # Standalone output is nested under react-ui/ due to monorepo detection
-          cp -r react-ui/.next/standalone/react-ui/* deploy/
-          # Static assets aren't included in standalone output — copy them separately
-          mkdir -p deploy/.next
-          cp -r react-ui/.next/static deploy/.next/static
-          cp -r react-ui/public deploy/public
-          cd deploy && zip -r ../react-ui.zip .
-
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -58,20 +37,20 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Ensure staging slot exists
+      - name: Deploy React UI to staging slot
+        shell: pwsh
         run: |
-          if ! az webapp deployment slot list --name catan --resource-group rg-catan \
-               --query "[?name=='staging'].name" -o tsv | grep -q staging; then
-            echo "Creating staging slot..."
-            az webapp deployment slot create --name catan --resource-group rg-catan --slot staging
-          fi
+          # Points at PRODUCTION GameService (tests React changes against prod backend)
+          ./.scripts/catan-azure.ps1 ui deploy-staging -Force -TraceLevel INFO -GameServiceUrl https://catan-api.azurewebsites.net
 
-      - name: Deploy to staging slot
+      - name: Verify React staging
         run: |
-          az webapp deploy \
-            --name catan \
-            --resource-group rg-catan \
-            --slot staging \
-            --src-path react-ui.zip \
-            --type zip \
-            --async true
+          for i in $(seq 1 30); do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 10 \
+              https://catan-staging.azurewebsites.net 2>/dev/null || echo "000")
+            echo "React staging ($((i*10))s): HTTP $CODE"
+            [ "$CODE" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "::error::React staging did not respond within 5 minutes"
+          exit 1

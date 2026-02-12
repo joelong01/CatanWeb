@@ -18,6 +18,7 @@ import { useAssetPath } from '@/lib/theme';
 import type { AssetName } from '@/lib/theme/types';
 import type { PlayerModel } from '@/types/generated/models/player-model';
 import { usePlayers, useCurrentTurnPlayerId, usePlayerProfiles } from '@/lib/stores/gameStoreHooks';
+import { getServiceUrl } from '@/lib/config';
 import {
   createPlayerColorsWithGradient,
   type PlayerColorsWithGradient,
@@ -317,7 +318,7 @@ const PlayerTile = memo(function PlayerTile({ player, profile, isCurrentPlayer }
           className="w-10 h-10 rounded-full bg-cover bg-center flex-shrink-0 flex items-center justify-center text-white font-bold"
           style={{
             backgroundImage: profile?.imageUri
-              ? `url('http://localhost:8080${profile.imageUri}')`
+              ? `url('${getServiceUrl()}${profile.imageUri}')`
               : undefined,
             border: `1px solid ${colors.foreground}`,
             backgroundColor: colors.primary,

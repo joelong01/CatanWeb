@@ -1,46 +1,85 @@
-name: Deploy to Azure
+name: Deploy to Production (Blue-Green)
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   deploy:
-    name: Deploy
+    name: Deploy React + Swap
     runs-on: ubuntu-latest
     permissions:
-      id-token: write  # Required for OIDC authentication
+      id-token: write
       contents: read
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
+      - uses: actions/checkout@v4
 
-      - name: Setup .NET 9
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-node@v4
         with:
-          dotnet-version: '9.0.x'
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: react-ui/package-lock.json
 
-      - name: Login to Azure
-        uses: azure/login@v2
+      - uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build web projects
-        run: dotnet build CatanWeb.slnf -c Release
-
-      - name: Deploy to Azure
+      # Deploy React to the staging slot (inactive)
+      # Points at PRODUCTION GameService since this will become production
+      - name: Deploy React to staging slot
         shell: pwsh
         run: |
-          ./catan.ps1 azure deploy -NoBuild -TraceLevel INFO
+          ./.scripts/catan-azure.ps1 ui deploy-staging -Force -TraceLevel INFO `
+            -GameServiceUrl https://catan-api.azurewebsites.net
 
-      - name: Fix database connectivity (if needed)
-        shell: pwsh
+      # Verify the staging slot is healthy before swapping
+      - name: Verify staging slot
         run: |
-          ./.scripts/catan-azure.ps1 database fix -TraceLevel INFO
+          for i in $(seq 1 30); do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 10 \
+              https://catan-staging.azurewebsites.net 2>/dev/null || echo "000")
+            echo "Staging ($((i*10))s): HTTP $CODE"
+            [ "$CODE" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "::error::Staging slot did not respond within 5 minutes"
+          exit 1
+
+      # Swap: staging becomes production, production becomes staging
+      - name: Swap slots
+        run: |
+          echo "Swapping staging → production..."
+          az webapp deployment slot swap \
+            --name catan \
+            --resource-group rg-catan \
+            --slot staging \
+            --target-slot production
+          echo "Swap complete"
+
+      # Verify production is serving the new version
+      - name: Verify production
+        run: |
+          sleep 10  # brief settle time after swap
+          for i in $(seq 1 18); do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 10 \
+              https://catan.azurewebsites.net 2>/dev/null || echo "000")
+            echo "Production ($((i*10))s): HTTP $CODE"
+            [ "$CODE" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "::warning::Production did not respond within 3 minutes after swap"
+          exit 1
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "=== Deployment Summary ==="
+          echo "Production: https://catan.azurewebsites.net"
+          echo "Staging:    https://catan-staging.azurewebsites.net (rollback)"
+          echo ""
+          echo "To rollback: az webapp deployment slot swap --name catan --resource-group rg-catan --slot staging --target-slot production"

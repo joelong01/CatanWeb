@@ -101,6 +101,12 @@ param(
     [Parameter()]
     [switch]$All,
 
+    [Parameter()]
+    [string]$Slot,
+
+    [Parameter()]
+    [string]$AzureGameServiceUrl,
+
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArgs
 )
@@ -2243,9 +2249,12 @@ switch ($Verb) {
                         Write-Host "UI deployment complete!" -ForegroundColor Green
                     }
                     "game-service" {
-                        Write-Host "Deploying GameService to Azure..." -ForegroundColor Cyan
+                        $slotLabel = if ($Slot) { " to slot '$Slot'" } else { "" }
+                        Write-Host "Deploying GameService${slotLabel} to Azure..." -ForegroundColor Cyan
                         Write-Host ""
-                        & $azureScript game-service deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
+                        $gsArgs = @{}
+                        if ($Slot) { $gsArgs['Slot'] = $Slot }
+                        & $azureScript game-service deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel @gsArgs
                         if ($LASTEXITCODE -ne 0) { exit 1 }
                         Write-Host ""
                         Write-Host "GameService deployment complete!" -ForegroundColor Green
@@ -2556,7 +2565,10 @@ switch ($Verb) {
                     Write-Host "Verbs: install, deploy, deploy-staging, doctor, clean, fix" -ForegroundColor Gray
                     exit 1
                 }
-                & $azureScript $SubCommand $Target -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                $extraArgs = @{}
+                if ($Slot) { $extraArgs['Slot'] = $Slot }
+                if ($AzureGameServiceUrl) { $extraArgs['GameServiceUrl'] = $AzureGameServiceUrl }
+                & $azureScript $SubCommand $Target -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable @extraArgs
                 if ($LASTEXITCODE -ne 0) { exit 1 }
             }
             default {
@@ -2583,16 +2595,20 @@ switch ($Verb) {
                 Write-Host "  game-service deploy    - Deploy GameService only"
                 Write-Host ""
                 Write-Host "Options:" -ForegroundColor Yellow
-                Write-Host "  -Force       Force deploy even if up-to-date"
-                Write-Host "  -Json        Output doctor as JSON"
-                Write-Host "  -HashTable   Output doctor as PowerShell hashtable"
-                Write-Host "  -TraceLevel  Output detail: ERROR, WARN, INFO (default), DEBUG"
+                Write-Host "  -Force                  Force deploy even if up-to-date"
+                Write-Host "  -Slot <name>            Deploy to a specific slot (e.g., staging)"
+                Write-Host "  -AzureGameServiceUrl    GameService URL for React staging builds"
+                Write-Host "  -Json                   Output doctor as JSON"
+                Write-Host "  -HashTable              Output doctor as PowerShell hashtable"
+                Write-Host "  -TraceLevel             Output detail: ERROR, WARN, INFO (default), DEBUG"
                 Write-Host ""
                 Write-Host "Examples:" -ForegroundColor Yellow
                 Write-Host "  ./catan.ps1 azure deploy ui -Force    - Force deploy UI"
                 Write-Host "  ./catan.ps1 azure ui doctor            - Check UI health"
                 Write-Host "  ./catan.ps1 azure doctor               - Check all resources"
                 Write-Host "  ./catan.ps1 azure swap-slots           - Swap staging <-> production"
+                Write-Host "  ./catan.ps1 azure game-service deploy -Slot staging  - Deploy to staging slot"
+                Write-Host "  ./catan.ps1 azure ui deploy-staging -AzureGameServiceUrl https://catan-api-staging.azurewebsites.net"
                 Write-Host ""
 
                 if ($SubCommand) {
