@@ -442,8 +442,9 @@ export function GameBoard({
     const prevCoords = robber.previousCoordinates;
 
     // Check if we have a valid movement to animate
-    const hasValidCurrent = currCoords && (currCoords.q !== 0 || currCoords.r !== 0);
-    const hasValidPrevious = prevCoords && (prevCoords.q !== 0 || prevCoords.r !== 0);
+    // Note: (0,0,0) is the center tile and is a valid position
+    const hasValidCurrent = currCoords !== null && currCoords !== undefined;
+    const hasValidPrevious = prevCoords !== null && prevCoords !== undefined;
     const coordsDiffer =
       hasValidCurrent &&
       hasValidPrevious &&
