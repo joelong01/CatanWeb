@@ -2041,13 +2041,27 @@ function Deploy-GameService {
     $slotLabel = if ($Slot) { " (slot: $Slot)" } else { "" }
 
     # Ensure staging slot exists when deploying to a slot
+    # See .design/staging-slot-config.md for the full list of required settings
     if ($Slot) {
         $existingSlots = Invoke-AzCommand "webapp deployment slot list --name $appName --resource-group $rgName --query `"[].name`" -o tsv" -FailOnError $false
         if ($existingSlots -notcontains $Slot) {
             Write-Log -Level "INFO" -Message "Creating deployment slot '$Slot' on $appName..."
             Invoke-AzCommand "webapp deployment slot create --name $appName --resource-group $rgName --slot $Slot" -SuppressOutput
             Invoke-AzCommand "webapp identity assign --name $appName --resource-group $rgName --slot $Slot" -SuppressOutput
-            Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot $Slot --settings WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
+        }
+
+        # Always ensure required settings are present (idempotent)
+        Write-Log -Level "INFO" -Message "Configuring slot '$Slot' settings..."
+        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot $Slot --settings DATABASE_MODE=azure AZURE_STORAGE_ACCOUNT=$($Config.storageAccount) AZURE_STORAGE_CONTAINER=$($Config.storageContainer) WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
+
+        # Copy connection string from production if missing
+        $slotConnStr = Invoke-AzCommand "webapp config connection-string list --name $appName --resource-group $rgName --slot $Slot" -FailOnError $false -JsonOutput
+        if (-not $slotConnStr -or $slotConnStr.Count -eq 0) {
+            Write-Log -Level "INFO" -Message "Copying connection string from production to slot '$Slot'..."
+            $prodConnStr = Invoke-AzCommand "webapp config connection-string list --name $appName --resource-group $rgName" -JsonOutput
+            foreach ($cs in $prodConnStr) {
+                Invoke-AzCommand "webapp config connection-string set --name $appName --resource-group $rgName --slot $Slot --connection-string-type $($cs.type) --settings $($cs.name)=`"$($cs.value)`"" -SuppressOutput
+            }
         }
     }
 
