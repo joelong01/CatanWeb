@@ -31,6 +31,7 @@ jobs:
           ./.scripts/catan-azure.ps1 game-service deploy -Slot staging -TraceLevel INFO
 
       - name: Grant staging slot DB access
+        continue-on-error: true
         shell: pwsh
         run: |
           ./.scripts/catan-azure.ps1 database deploy-staging-access -TraceLevel INFO

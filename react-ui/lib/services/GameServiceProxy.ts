@@ -543,9 +543,10 @@ export class GameServiceProxy {
     };
 
     const response = await this.post(`/api/game/${this.gameId}/winner`, body);
+    const data = response.ok ? await response.json().catch(() => ({})) : {};
     return {
-      success: response.success ?? false,
-      message: response.message ?? 'Winner declared',
+      success: response.ok && (data.success ?? true),
+      message: data.message ?? (response.ok ? 'Winner declared' : `HTTP ${response.status}`),
     };
   }
 
