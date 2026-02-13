@@ -14,7 +14,10 @@
     },
     "files.exclude": {
         "**/bin": true,
-        "**/obj": true
+        "**/obj": true,
+        "Tests/Desktop": true,
+        "DesktopApp": true,
+        "Catan3.WebUI": true
     },
     "cSpell.words": [
         "csdevkit",

@@ -90,5 +90,12 @@ public class CatanTypeGenSpec : GenerationSpec
         AddInterface<BalanceBoardMessage>();
         AddInterface<LoadGameMessage>();
         AddInterface<UpdateHouseRulesMessage>();
+
+        // Game template models (for template CRUD API)
+        AddInterface<GameTemplateData>();
+        AddInterface<GameTemplateSummary>();
+        AddInterface<TemplateTile>();
+        AddInterface<TemplateHarbor>();
+        AddInterface<TemplateEntitlement>();
     }
 }

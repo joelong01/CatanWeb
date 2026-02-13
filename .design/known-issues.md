@@ -1,6 +1,6 @@
 # Known Issues & TODOs
 
-**Last verified:** January 30, 2026
+**Last verified:** February 13, 2026
 
 ## Tailwind v4 Migration
 
@@ -29,7 +29,7 @@ The docs in `.design/` root are the verified source of truth.
 | `old/systems/game-service-api.md` | Labels `/api/game/action` as "legacy desktop path" -- it is actually the PRIMARY command endpoint for React. See [game-service-api.md](game-service-api.md) for corrected reference. |
 | `old/systems/board-rendering.md` | Describes Blazor SVG string generation pipeline. React uses DOM-based HexGrid components instead. See [board-rendering.md](board-rendering.md). |
 | `old/systems/mvvm-messaging.md` | Describes Desktop MVVM pattern only. No coverage of React POST-based command flow. |
-| `old/systems/database.md` | Lists 4 entity tables. Actual schema has 6 (missing CompletedGameEntity, RecordingEntity). See [database.md](database.md). |
+| `old/systems/database.md` | Lists 4 entity tables. Actual schema has 7 (missing CompletedGameEntity, RecordingEntity, GameTemplateEntity). See [database.md](database.md). |
 | `old/systems/settings.md` | Missing `GriefDodgy` house rule property. See [settings.md](settings.md). |
 | `old/ui/board-measurement.md` | Blazor-specific board sizing. React uses HexGrid auto-sizing. |
 | `old/ui/player-viewmodel.md` | Blazor ViewModel pattern. React uses Zustand stores. |
@@ -116,3 +116,4 @@ from `lib/constants/catanGlyphs.ts`.
 | Jan 30 AM | Roll stats fix, purchase badges, Enter key, WinnerOverlay fireworks |
 | Jan 30 PM | As-built documentation audit (19 docs), Gemini comparison |
 | Jan 30 PM | Expanded to 30 docs: all design files verified and absorbed |
+| Feb 13 | Deprecated Blazor/Desktop from build; Game template engine (M1-M5); Staging deploy (M6) |

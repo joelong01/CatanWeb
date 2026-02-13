@@ -12,4 +12,5 @@ export interface NewGameMessage {
     gameName: string;
     houseRules: HouseRules;
     saveLifetimeStats: boolean;
+    templateId: string;
 }

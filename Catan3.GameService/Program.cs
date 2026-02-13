@@ -104,6 +104,9 @@ builder.Services.AddSingleton<AsyncCommandProcessor>();
 // Register recording service for test recording/replay
 builder.Services.AddSingleton<RecordingService>();
 
+// Register game template service for template CRUD operations
+builder.Services.AddScoped<GameTemplateService>();
+
 // Register background database seeding (runs after Kestrel starts listening,
 // preventing Azure warmup probe timeouts on cold DB connections)
 builder.Services.AddHostedService<DatabaseSeedingService>();
@@ -177,18 +180,19 @@ Console.WriteLine($"[STARTUP] Default data path: {defaultDataPath}");
 // Handle --seed-database command (synchronous seeding, then exit)
 if (args.Contains("--seed-database"))
 {
-    Console.WriteLine("[STARTUP] --seed-database flag detected, seeding synchronously...");
+    var seedLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseSeeder");
+    seedLogger.LogInformation("[STARTUP] --seed-database flag detected, seeding synchronously...");
     try
     {
         using var scope = app.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
         var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
-        await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence, dbDetector.UseSqlServer);
-        Console.WriteLine("[STARTUP] Database seeding completed, exiting");
+        await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence, dbDetector.UseSqlServer, seedLogger);
+        seedLogger.LogInformation("[STARTUP] Database seeding completed, exiting");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"[STARTUP] Database seeding failed: {ex.Message}");
+        seedLogger.LogError(ex, "[STARTUP] Database seeding failed");
     }
     return;
 }

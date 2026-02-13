@@ -155,6 +155,39 @@ namespace Tests.Shared.Serialization
         }
 
         [Fact]
+        public async Task GameTemplateData_RoundTrip()
+        {
+            var original = new GameTemplateData
+            {
+                Id = "test-regular",
+                Name = "Regular Game",
+                Category = "Base",
+                Version = 1,
+                Description = "Regular Game",
+                Engine = "base",
+                GameType = "Regular",
+                ResourceRules = new ResourceRules(4, 5, 15, 3, 4),
+                HouseRules = new HouseRules { GoldTiles = 1 },
+                HasSupplemental = false,
+                Tiles =
+                [
+                    new TemplateTile { Q = -2, R = 0, Resource = "Desert", Number = 7 },
+                    new TemplateTile { Q = -2, R = 1, Resource = "Brick", Number = 2 }
+                ],
+                Harbors =
+                [
+                    new TemplateHarbor { Q = 0, R = -2, Side = "Top", Type = "Ore" }
+                ],
+                Entitlements =
+                [
+                    new TemplateEntitlement { Entitlement = "City" },
+                    new TemplateEntitlement { Entitlement = "Road" }
+                ]
+            };
+            await TestRoundTrip(original, "GameTemplateData");
+        }
+
+        [Fact]
         public async Task AllMessageTypes_CommandPayloads_RoundTrip()
         {
             // Test the exact payloads that GameServiceProxy sends to the REST API

@@ -13,20 +13,11 @@
     Bind services to all network interfaces (0.0.0.0) instead of localhost only.
     Use this to access services from iPhone simulator or other devices on the network.
 
-.PARAMETER Razor
-    Build and run the Blazor WebUI instead of React UI.
-
-.PARAMETER Desktop
-    Also build and deploy the Windows Desktop app (MSIX).
-
 .EXAMPLE
     ./catan.ps1 run              # Build GameService + React UI, start services, launch browser
     ./catan.ps1 run -Network     # Same, but accessible from other devices
-    ./catan.ps1 run -Razor       # Build GameService + Blazor WebUI instead of React
-    ./catan.ps1 run -Desktop     # Also build/deploy Windows Desktop app
     ./catan.ps1 stop             # Stop running services
     ./catan.ps1 build            # Build GameService + React UI
-    ./catan.ps1 build -Desktop   # Build everything including Desktop app
     ./catan.ps1 test             # Run all tests
     ./catan.ps1 doctor           # Check dependencies and database health
     ./catan.ps1 install          # Install dependencies and database
@@ -92,11 +83,6 @@ param(
     [Parameter()]
     [switch]$NoBuild,
 
-    [Parameter()]
-    [switch]$Razor,
-
-    [Parameter()]
-    [switch]$Desktop,
 
     [Parameter()]
     [switch]$All,
@@ -129,10 +115,8 @@ if ($RemainingArgs) {
 }
 
 $GameServicePort = 8080
-$WebUIPort = 5296
 $ReactUIPort = 3000
 $GameServiceUrl = "http://localhost:$GameServicePort"
-$WebUIUrl = "http://localhost:$WebUIPort"
 $ReactUIUrl = "http://localhost:$ReactUIPort"
 $DatabasePath = Join-Path $PSScriptRoot "Catan3.GameService\Data\catan.db"
 $PidFile = Join-Path $PSScriptRoot ".webui-pids.json"
@@ -254,44 +238,6 @@ function Start-GameService {
     Write-Host "GameService running at $GameServiceUrl" -ForegroundColor Green
 }
 
-function Start-WebUI {
-    param([switch]$NetworkBinding)
-
-    Write-Host "Starting WebUI..." -ForegroundColor Cyan
-
-    $webUIPath = Join-Path $PSScriptRoot "WebUI"
-
-    if ($IsWindows) {
-        $urlsArg = if ($NetworkBinding) { " --urls `"http://0.0.0.0:$WebUIPort`"" } else { "" }
-        # When using network binding, suppress dotnet's browser launch (it tries to open 0.0.0.0 which fails)
-        # We'll manually open localhost instead
-        $envPrefix = if ($NetworkBinding) { "`$env:DOTNET_WATCH_SUPPRESS_LAUNCH_BROWSER='true'; " } else { "" }
-        $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "${envPrefix}cd '$webUIPath'; dotnet watch run$urlsArg" -WindowStyle Normal -PassThru
-        Save-Pids -WebUIPid $process.Id
-        if ($NetworkBinding) {
-            # Open browser with localhost since 0.0.0.0 won't work in browser
-            Start-Sleep -Seconds 2  # Give the service a moment to start
-            Start-Process "http://localhost:$WebUIPort"
-        }
-    } else {
-        # macOS: Open new Terminal window - use single quotes for URL to avoid AppleScript escaping issues
-        $urlsArg = if ($NetworkBinding) { " --urls 'http://0.0.0.0:$WebUIPort'" } else { "" }
-        $pidFile = Join-Path $PSScriptRoot ".webui.pid"
-        $script = "cd '$webUIPath' && echo `$`$ > '$pidFile' && dotnet watch run$urlsArg"
-        & osascript -e "tell application `"Terminal`" to do script `"$script`""
-        # Wait for PID file to be created
-        Start-Sleep -Milliseconds 500
-        if (Test-Path $pidFile) {
-            $procId = [int](Get-Content $pidFile).Trim()
-            Save-Pids -WebUIPid $procId
-        }
-    }
-
-    Write-Host "Waiting for WebUI..." -ForegroundColor Yellow
-    Wait-ForService -Url $WebUIUrl -TimeoutSeconds 30 | Out-Null
-    Write-Host "WebUI running at $WebUIUrl" -ForegroundColor Green
-}
-
 function Start-ReactUI {
     Write-Host "Starting React UI..." -ForegroundColor Cyan
 
@@ -303,23 +249,27 @@ function Start-ReactUI {
         return
     }
 
-    # Check if npm install is needed (missing node_modules or package.json changed)
+    # Check if npm install is needed
     $nodeModulesPath = Join-Path $reactUIPath "node_modules"
     $packageJsonPath = Join-Path $reactUIPath "package.json"
+    $nextBinPath = Join-Path $reactUIPath "node_modules" ".bin" "next"
     $needsInstall = $false
     if (-not (Test-Path $nodeModulesPath)) {
-        Write-Host "node_modules not found. Running npm install..." -ForegroundColor Yellow
+        Write-Host "node_modules not found. Running npm ci..." -ForegroundColor Yellow
+        $needsInstall = $true
+    } elseif (-not (Test-Path $nextBinPath)) {
+        Write-Host "next binary missing from node_modules. Running npm ci..." -ForegroundColor Yellow
         $needsInstall = $true
     } elseif ((Get-Item $packageJsonPath).LastWriteTime -gt (Get-Item $nodeModulesPath).LastWriteTime) {
-        Write-Host "package.json is newer than node_modules. Running npm install..." -ForegroundColor Yellow
+        Write-Host "package.json is newer than node_modules. Running npm ci..." -ForegroundColor Yellow
         $needsInstall = $true
     }
     if ($needsInstall) {
         Push-Location $reactUIPath
         try {
-            & npm install
+            & npm ci
             if ($LASTEXITCODE -ne 0) {
-                Write-Host "npm install failed!" -ForegroundColor Red
+                Write-Host "npm ci failed!" -ForegroundColor Red
                 return
             }
         } finally {
@@ -707,7 +657,7 @@ function Stop-Services {
         # netstat -ano returns: Proto  LocalAddress  ForeignAddress  State  PID
         $netstatOutput = netstat -ano 2>$null | Select-String "LISTENING"
 
-        foreach ($port in @($GameServicePort, $WebUIPort, $ReactUIPort)) {
+        foreach ($port in @($GameServicePort, $ReactUIPort)) {
             $portMatches = $netstatOutput | Where-Object { $_ -match ":$port\s" }
             foreach ($match in $portMatches) {
                 # Extract PID from the last column
@@ -743,16 +693,6 @@ function Stop-Services {
             }
         }
 
-        $webUIPids = lsof -ti ":$WebUIPort" 2>$null
-        foreach ($procId in $webUIPids) {
-            if ($procId) {
-                Stop-ChildProcesses -ParentPid $procId
-                Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
-                Write-Host "  Killed process $procId (WebUI port)" -ForegroundColor Gray
-                $killedCount++
-            }
-        }
-
         $reactUIPids = lsof -ti ":$ReactUIPort" 2>$null
         foreach ($procId in $reactUIPids) {
             if ($procId) {
@@ -763,8 +703,8 @@ function Stop-Services {
             }
         }
 
-        # Kill any dotnet processes running GameService or WebUI
-        $procIds = pgrep -f "Catan3.GameService|Catan3.WebUI|dotnet.*watch.*run" 2>$null
+        # Kill any dotnet processes running GameService
+        $procIds = pgrep -f "Catan3.GameService|dotnet.*watch.*run" 2>$null
         foreach ($procId in $procIds) {
             if ($procId) {
                 Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
@@ -806,19 +746,16 @@ end tell
     }
     # Clean up macOS pid files
     $gameServicePidFile = Join-Path $PSScriptRoot ".gameservice.pid"
-    $webUIPidFile = Join-Path $PSScriptRoot ".webui.pid"
     if (Test-Path $gameServicePidFile) { Remove-Item $gameServicePidFile -Force }
-    if (Test-Path $webUIPidFile) { Remove-Item $webUIPidFile -Force }
 
     # Wait for ports to be released
     Start-Sleep -Milliseconds 500
 
     # Verify ports are free
     $gameStillRunning = Test-PortInUse -Port $GameServicePort
-    $webUIStillRunning = Test-PortInUse -Port $WebUIPort
     $reactUIStillRunning = Test-PortInUse -Port $ReactUIPort
 
-    if ($gameStillRunning -or $webUIStillRunning -or $reactUIStillRunning) {
+    if ($gameStillRunning -or $reactUIStillRunning) {
         Write-Host "  Waiting for ports to be released..." -ForegroundColor Yellow
         Start-Sleep -Seconds 2
     }
@@ -834,13 +771,7 @@ if ($Help) {
 switch ($Verb) {
     "build" {
         Write-Host "Building solution..." -ForegroundColor Cyan
-        if ($Desktop) {
-            # Full build including Desktop app
-            & "$PSScriptRoot\.scripts\build.ps1" -NoTest
-        } else {
-            # Skip Desktop app (default - faster for web development)
-            & "$PSScriptRoot\.scripts\build.ps1" -NoTest -NoDesktop
-        }
+        & "$PSScriptRoot\.scripts\build.ps1" -NoTest
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Build failed!" -ForegroundColor Red
             exit 1
@@ -1779,19 +1710,8 @@ switch ($Verb) {
     }
 
     "run" {
-        # Build based on flags:
-        # - Default: Build Shared + GameService + React UI (skip Desktop)
-        # - With -Razor: Build Shared + GameService + Blazor WebUI (skip Desktop)
-        # - With -Desktop: Also build Desktop app
         Write-Host "Building..." -ForegroundColor Cyan
-
-        if ($Desktop) {
-            # Full build including Desktop app
-            & "$PSScriptRoot\.scripts\build.ps1" -NoTest
-        } else {
-            # Skip Desktop app build (faster)
-            & "$PSScriptRoot\.scripts\build.ps1" -NoTest -NoDesktop
-        }
+        & "$PSScriptRoot\.scripts\build.ps1" -NoTest
 
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Build failed! Cannot start services." -ForegroundColor Red
@@ -1826,57 +1746,29 @@ switch ($Verb) {
             Start-GameService -NetworkBinding:$Network
         }
 
-        # Start UI based on flags:
-        # - Default: React UI (Next.js on port 3000)
-        # - With -Razor: Blazor WebUI (port 5296)
-        if ($Razor) {
-            # Start Blazor WebUI
-            $webUIRunning = $false
-            if (Test-PortInUse -Port $WebUIPort) {
-                $responding = Wait-ForService -Url $WebUIUrl -TimeoutSeconds 3
-                if ($responding) {
-                    Write-Host "Blazor WebUI already running on port $WebUIPort" -ForegroundColor Green
-                    $webUIRunning = $true
-                }
-                else {
-                    Write-Host "Port $WebUIPort in use but service not responding. Killing stale process..." -ForegroundColor Yellow
-                    Stop-ProcessOnPort -Port $WebUIPort
-                    Start-Sleep -Milliseconds 500
-                }
+        # Start React UI
+        $reactUIRunning = $false
+        if (Test-PortInUse -Port $ReactUIPort) {
+            $responding = Wait-ForService -Url $ReactUIUrl -TimeoutSeconds 3
+            if ($responding) {
+                Write-Host "React UI already running on port $ReactUIPort" -ForegroundColor Green
+                $reactUIRunning = $true
             }
+            else {
+                Write-Host "Port $ReactUIPort in use but service not responding. Killing stale process..." -ForegroundColor Yellow
+                Stop-ProcessOnPort -Port $ReactUIPort
+                Start-Sleep -Milliseconds 500
+            }
+        }
 
-            if (-not $webUIRunning) {
-                Start-WebUI -NetworkBinding:$Network
-            }
-        } else {
-            # Start React UI (default)
-            $reactUIRunning = $false
-            if (Test-PortInUse -Port $ReactUIPort) {
-                $responding = Wait-ForService -Url $ReactUIUrl -TimeoutSeconds 3
-                if ($responding) {
-                    Write-Host "React UI already running on port $ReactUIPort" -ForegroundColor Green
-                    $reactUIRunning = $true
-                }
-                else {
-                    Write-Host "Port $ReactUIPort in use but service not responding. Killing stale process..." -ForegroundColor Yellow
-                    Stop-ProcessOnPort -Port $ReactUIPort
-                    Start-Sleep -Milliseconds 500
-                }
-            }
-
-            if (-not $reactUIRunning) {
-                Start-ReactUI
-            }
+        if (-not $reactUIRunning) {
+            Start-ReactUI
         }
 
         Write-Host ""
         Write-Host "Services running:" -ForegroundColor Green
         Write-Host "  GameService: $GameServiceUrl" -ForegroundColor White
-        if ($Razor) {
-            Write-Host "  Blazor UI:   $WebUIUrl" -ForegroundColor White
-        } else {
-            Write-Host "  React UI:    $ReactUIUrl" -ForegroundColor White
-        }
+        Write-Host "  React UI:    $ReactUIUrl" -ForegroundColor White
 
         if ($Network) {
             # Get the local IP address for network access
@@ -1888,7 +1780,7 @@ switch ($Verb) {
             if ($localIp) {
                 Write-Host ""
                 Write-Host "Network access (for iPhone simulator, other devices):" -ForegroundColor Cyan
-                Write-Host "  WebUI:       http://${localIp}:$WebUIPort" -ForegroundColor White
+                Write-Host "  React UI:    http://${localIp}:$ReactUIPort" -ForegroundColor White
             }
         }
 
@@ -1907,14 +1799,12 @@ switch ($Verb) {
         Write-Host ""
         Write-Host "  1. Open VS Code in the Catan directory" -ForegroundColor Yellow
         Write-Host "  2. Press F5 or use Run > Start Debugging" -ForegroundColor Yellow
-        Write-Host "  3. Select 'WebUI + GameService' compound configuration" -ForegroundColor Yellow
+        Write-Host "  3. Select 'GameService' launch configuration" -ForegroundColor Yellow
         Write-Host ""
-        Write-Host "This will launch both services with debuggers attached." -ForegroundColor White
+        Write-Host "This will launch GameService with debugger attached." -ForegroundColor White
         Write-Host ""
-        Write-Host "Alternatively, debug individual services:" -ForegroundColor White
+        Write-Host "Debug configurations:" -ForegroundColor White
         Write-Host "  - 'Debug GameService' - GameService only" -ForegroundColor Gray
-        Write-Host "  - 'Debug WebUI' - WebUI only" -ForegroundColor Gray
-        Write-Host "  - 'Debug WebUI (with GameService)' - WebUI with GameService pre-started" -ForegroundColor Gray
         Write-Host ""
 
         # Offer to open VS Code
@@ -1941,18 +1831,14 @@ switch ($Verb) {
             Clear-Database
         }
 
-        # Clean build artifacts (skip DesktopApp on non-Windows - it's Windows-only)
+        # Clean build artifacts
         Write-Host "Cleaning build artifacts..." -ForegroundColor Yellow
         $projectsToClean = @(
             "Catan3.Shared/Catan3.Shared.csproj",
             "Catan3.GameService/Catan3.GameService.csproj",
-            "WebUI/Catan3.WebUI.csproj",
             "Catan3.CLI/Catan3.CLI.csproj",
             "Tests/GameService/Catan3.Tests.GameService.csproj"
         )
-        if ($IsWindows) {
-            $projectsToClean += "DesktopApp/Catan Desktop.csproj"
-        }
         foreach ($proj in $projectsToClean) {
             $projPath = Join-Path $PSScriptRoot $proj
             if (Test-Path $projPath) {
@@ -1994,12 +1880,12 @@ switch ($Verb) {
         }
 
         Start-GameService
-        Start-WebUI
+        Start-ReactUI
 
         Write-Host ""
         Write-Host "Services restarted:" -ForegroundColor Green
         Write-Host "  GameService: $GameServiceUrl" -ForegroundColor White
-        Write-Host "  WebUI:       $WebUIUrl" -ForegroundColor White
+        Write-Host "  React UI:    $ReactUIUrl" -ForegroundColor White
     }
 
     "update" {
@@ -2030,24 +1916,11 @@ switch ($Verb) {
         }
         Write-Host "GameService rebuilt." -ForegroundColor Green
 
-        # Build Blazor WebUI only if -Razor flag is set
-        if ($Razor) {
-            Write-Host "Rebuilding Blazor WebUI..." -ForegroundColor Cyan
-            $webUIPath = Join-Path $PSScriptRoot "WebUI"
-            & dotnet build $webUIPath --verbosity quiet
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "WebUI build failed!" -ForegroundColor Red
-                exit 1
-            }
-            Write-Host "WebUI rebuilt." -ForegroundColor Green
-        }
-
         # Check what services are running
         $gameRunning = Test-PortInUse -Port $GameServicePort
-        $webRunning = Test-PortInUse -Port $WebUIPort
         $reactRunning = Test-PortInUse -Port $ReactUIPort
 
-        if ($gameRunning -or $webRunning -or $reactRunning) {
+        if ($gameRunning -or $reactRunning) {
             Write-Host "Restarting services..." -ForegroundColor Yellow
             Stop-Services
             Start-Sleep -Milliseconds 500
@@ -2055,9 +1928,7 @@ switch ($Verb) {
             if ($gameRunning) {
                 Start-GameService
             }
-            if ($Razor -and $webRunning) {
-                Start-WebUI
-            } elseif ($reactRunning) {
+            if ($reactRunning) {
                 Start-ReactUI
             }
             Write-Host "Services rebuilt and restarted! Refresh browser to load changes." -ForegroundColor Green
@@ -2066,11 +1937,7 @@ switch ($Verb) {
             # -Terminate killed the services, so start them fresh
             Write-Host "Starting services..." -ForegroundColor Yellow
             Start-GameService
-            if ($Razor) {
-                Start-WebUI
-            } else {
-                Start-ReactUI
-            }
+            Start-ReactUI
             Write-Host "Services rebuilt and started! Refresh browser to load changes." -ForegroundColor Green
         }
         else {
@@ -2236,13 +2103,12 @@ switch ($Verb) {
                             if ($LASTEXITCODE -ne 0) { exit 1 }
                         }
 
-                        # Blazor → production
                         if ($uiDoctor.needsDeploy -or $Force) {
-                            Write-Host "  UI (Blazor): Deploying to production..." -ForegroundColor Yellow
+                            Write-Host "  UI: Deploying..." -ForegroundColor Yellow
                             & $azureScript ui deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
                         } else {
-                            Write-Host "  UI (Blazor): Up to date - skipping" -ForegroundColor Green
+                            Write-Host "  UI: Up to date - skipping" -ForegroundColor Green
                         }
 
                         # React staging is deployed by the deploy-react-staging.yml workflow
@@ -2357,15 +2223,15 @@ switch ($Verb) {
                         }
 
                         if ($uiHealthy -and -not $uiNeedsDeploy -and -not $Force) {
-                            Write-Host "  UI (Blazor): Up to date - skipping" -ForegroundColor Green
+                            Write-Host "  UI: Up to date - skipping" -ForegroundColor Green
                         }
                         elseif ($uiNeedsDeploy -or $Force) {
-                            Write-Host "  UI (Blazor): Needs deploy" -ForegroundColor Yellow
+                            Write-Host "  UI: Needs deploy" -ForegroundColor Yellow
                             & $azureScript ui deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
                         }
                         else {
-                            Write-Host "  UI (Blazor): OK - skipping" -ForegroundColor Green
+                            Write-Host "  UI: OK - skipping" -ForegroundColor Green
                         }
 
                         # React UI staging is deployed by the deploy-react-staging.yml workflow
@@ -2382,7 +2248,7 @@ switch ($Verb) {
                         Write-Host "Usage: ./catan.ps1 azure deploy [target]" -ForegroundColor Yellow
                         Write-Host ""
                         Write-Host "Targets:" -ForegroundColor Yellow
-                        Write-Host "  ui            - Deploy Blazor (prod) + React (staging)"
+                        Write-Host "  ui            - Deploy UI"
                         Write-Host "  game-service  - Deploy GameService only"
                         Write-Host "  database      - Deploy database configuration only"
                         Write-Host "  (no target)   - Deploy everything"
@@ -2595,10 +2461,10 @@ switch ($Verb) {
                 Write-Host "  deploy      - Deploy everything to Azure"
                 Write-Host "  doctor      - Check health of all Azure resources"
                 Write-Host "  clean       - Delete all Azure resources"
-                Write-Host "  swap-slots  - Swap staging (React) and production (Blazor) slots"
+                Write-Host "  swap-slots  - Swap staging and production slots"
                 Write-Host ""
                 Write-Host "Targeted (verb + target or target + verb):" -ForegroundColor Yellow
-                Write-Host "  deploy ui              - Deploy Blazor (prod) + React (staging)"
+                Write-Host "  deploy ui              - Deploy UI"
                 Write-Host "  deploy game-service    - Deploy GameService only"
                 Write-Host "  deploy database        - Deploy database config only"
                 Write-Host "  ui doctor              - Check UI health only"
@@ -2642,16 +2508,13 @@ switch ($Verb) {
         Write-Host "  ./catan.ps1 run              - Build, start services, launch browser"
         Write-Host ""
         Write-Host "Development:" -ForegroundColor Yellow
-        Write-Host "  ./catan.ps1 run              - Start GameService + React UI (default)"
+        Write-Host "  ./catan.ps1 run              - Start GameService + React UI"
         Write-Host "  ./catan.ps1 run -Network     - Same, but accessible from other devices"
-        Write-Host "  ./catan.ps1 run -Razor       - Use Blazor WebUI instead of React"
-        Write-Host "  ./catan.ps1 run -Desktop     - Also build/deploy Desktop app (Windows)"
         Write-Host "  ./catan.ps1 stop             - Stop running services"
         Write-Host "  ./catan.ps1 restart          - Stop and restart services"
         Write-Host "  ./catan.ps1 update           - Rebuild and restart (when hot reload fails)"
         Write-Host "  ./catan.ps1 update -Terminate - Same, but close all Terminal windows first (macOS)"
         Write-Host "  ./catan.ps1 build            - Build GameService + React UI (no tests)"
-        Write-Host "  ./catan.ps1 build -Desktop   - Build all including Desktop app"
         Write-Host "  ./catan.ps1 test             - Build and run all tests"
         Write-Host "  ./catan.ps1 lint             - Format, lint, and spell check (PS, TS, MD)"
         Write-Host "  ./catan.ps1 generate-types   - Generate TypeScript types from C# models (TypeGen 7.0.0)"
@@ -2702,7 +2565,7 @@ switch ($Verb) {
         Write-Host ""
         Write-Host "URLs:" -ForegroundColor Yellow
         Write-Host "  GameService: $GameServiceUrl"
-        Write-Host "  WebUI:       $WebUIUrl"
+        Write-Host "  React UI:    $ReactUIUrl"
         Write-Host ""
     }
 

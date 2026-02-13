@@ -106,7 +106,7 @@ namespace Catan3.Shared.Models
         public override string ToString() => $"UpdateHouseRulesMessage: GoldTiles={HouseRules.GoldTiles}, SupplementalMinPlayers={HouseRules.SupplementalMinPlayers}";
     }
 
-    public class NewGameMessage(GameType GameType, IList<string> PlayerIds, string GameName, HouseRules? HouseRules = null, bool SaveLifetimeStats = true)
+    public class NewGameMessage(GameType GameType, IList<string> PlayerIds, string GameName, HouseRules? HouseRules = null, bool SaveLifetimeStats = true, string? TemplateId = null)
     {
         public GameType GameType { get; } = GameType;
         public IList<string> PlayerIds { get; set; } = PlayerIds;
@@ -120,6 +120,11 @@ namespace Catan3.Shared.Models
         /// Default is true. Set to false for test games to avoid polluting stats.
         /// </summary>
         public bool SaveLifetimeStats { get; set; } = SaveLifetimeStats;
+        /// <summary>
+        /// Optional template ID. If provided, loads the board configuration from the database.
+        /// If null, falls back to GameType-based template lookup.
+        /// </summary>
+        public string? TemplateId { get; set; } = TemplateId;
         public override string ToString() => $"NewGameMessage: {GameName} ({GameType}), Players: {PlayerIds.Count}";
     }
 

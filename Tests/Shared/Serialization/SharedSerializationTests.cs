@@ -549,6 +549,90 @@ namespace Tests.Shared.Serialization
             }
         }
 
+        [Fact]
+        public async Task GameTemplateData_ShouldSerializeAndDeserialize_AllFields()
+        {
+            using (new FunctionTimer("GameTemplateData_Serialization", enableOverride: false))
+            {
+                await Task.Run(() =>
+                {
+                    var template = new GameTemplateData
+                    {
+                        Id = "test-template",
+                        Name = "Test Template",
+                        Category = "Test",
+                        Version = 1,
+                        Description = "A test template",
+                        Engine = "base",
+                        GameType = "Regular",
+                        ResourceRules = new ResourceRules(4, 5, 15, 3, 4),
+                        HouseRules = new HouseRules { GoldTiles = 1 },
+                        HasSupplemental = false,
+                        Tiles =
+                        [
+                            new TemplateTile { Q = -2, R = 0, Resource = "Desert", Number = 7 },
+                            new TemplateTile { Q = -2, R = 1, Resource = "Brick", Number = 2 },
+                            new TemplateTile { Q = 0, R = 0, Resource = "Wheat", Number = 6 }
+                        ],
+                        Harbors =
+                        [
+                            new TemplateHarbor { Q = 0, R = -2, Side = "Top", Type = "Ore" },
+                            new TemplateHarbor { Q = -1, R = 2, Side = "BottomLeft", Type = "ThreeForOne" }
+                        ],
+                        Entitlements =
+                        [
+                            new TemplateEntitlement { Entitlement = "City" },
+                            new TemplateEntitlement { Entitlement = "Settlement" },
+                            new TemplateEntitlement { Entitlement = "Road" }
+                        ]
+                    };
+
+                    var json = JsonHelper.Serialize(template);
+                    var deserialized = JsonHelper.Deserialize<GameTemplateData>(json);
+
+                    Assert.NotNull(deserialized);
+                    Assert.Equal(template.Id, deserialized.Id);
+                    Assert.Equal(template.Name, deserialized.Name);
+                    Assert.Equal(template.Category, deserialized.Category);
+                    Assert.Equal(template.Version, deserialized.Version);
+                    Assert.Equal(template.Description, deserialized.Description);
+                    Assert.Equal(template.Engine, deserialized.Engine);
+                    Assert.Equal(template.GameType, deserialized.GameType);
+                    Assert.Equal(template.HasSupplemental, deserialized.HasSupplemental);
+                    Assert.Equal(template.ResourceRules.MaxCities, deserialized.ResourceRules.MaxCities);
+                    Assert.Equal(template.ResourceRules.MinPlayers, deserialized.ResourceRules.MinPlayers);
+                    Assert.Equal(template.HouseRules.GoldTiles, deserialized.HouseRules.GoldTiles);
+
+                    // Tiles
+                    Assert.Equal(template.Tiles.Count, deserialized.Tiles.Count);
+                    for (int i = 0; i < template.Tiles.Count; i++)
+                    {
+                        Assert.Equal(template.Tiles[i].Q, deserialized.Tiles[i].Q);
+                        Assert.Equal(template.Tiles[i].R, deserialized.Tiles[i].R);
+                        Assert.Equal(template.Tiles[i].Resource, deserialized.Tiles[i].Resource);
+                        Assert.Equal(template.Tiles[i].Number, deserialized.Tiles[i].Number);
+                    }
+
+                    // Harbors
+                    Assert.Equal(template.Harbors.Count, deserialized.Harbors.Count);
+                    for (int i = 0; i < template.Harbors.Count; i++)
+                    {
+                        Assert.Equal(template.Harbors[i].Q, deserialized.Harbors[i].Q);
+                        Assert.Equal(template.Harbors[i].R, deserialized.Harbors[i].R);
+                        Assert.Equal(template.Harbors[i].Side, deserialized.Harbors[i].Side);
+                        Assert.Equal(template.Harbors[i].Type, deserialized.Harbors[i].Type);
+                    }
+
+                    // Entitlements
+                    Assert.Equal(template.Entitlements.Count, deserialized.Entitlements.Count);
+                    for (int i = 0; i < template.Entitlements.Count; i++)
+                    {
+                        Assert.Equal(template.Entitlements[i].Entitlement, deserialized.Entitlements[i].Entitlement);
+                    }
+                });
+            }
+        }
+
         #endregion
 
         #region Message Object Tests

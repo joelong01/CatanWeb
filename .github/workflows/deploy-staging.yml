@@ -1,4 +1,4 @@
-name: Deploy React to Staging
+name: Deploy to Staging
 
 on:
   push:
@@ -6,8 +6,117 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Detect which components changed so we only deploy what's needed
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - id: filter
+        run: |
+          # Compare with parent commit to detect changed paths
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Backend: GameService or Shared code changes
+          if echo "$CHANGED" | grep -qE '^(Catan3\.GameService|Catan3\.Shared)/'; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Frontend: React UI changes
+          if echo "$CHANGED" | grep -qE '^react-ui/'; then
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "frontend=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # On workflow_dispatch, deploy everything
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy-gameservice:
+    name: Deploy GameService (staging)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy GameService to staging slot
+        shell: pwsh
+        run: |
+          ./.scripts/catan-azure.ps1 game-service deploy -Slot staging -Force -TraceLevel INFO
+
+      - name: Verify GameService staging health
+        run: |
+          echo "Waiting for GameService staging to start..."
+          for i in $(seq 1 60); do
+            RESPONSE=$(curl -sf -m 10 \
+              https://catan-api-staging.azurewebsites.net/health 2>/dev/null || echo "")
+            if [ -n "$RESPONSE" ]; then
+              STATUS=$(echo "$RESPONSE" | jq -r '.status' 2>/dev/null || echo "")
+              if [ "$STATUS" = "healthy" ]; then
+                echo "GameService staging healthy after $((i*10))s"
+                echo "$RESPONSE" | jq .
+                exit 0
+              fi
+            fi
+            echo "GameService staging ($((i*10))s): waiting..."
+            sleep 10
+          done
+          echo "::error::GameService staging did not become healthy within 10 minutes"
+          exit 1
+
+  deploy-database:
+    name: Ensure database access (staging)
+    needs: [changes, deploy-gameservice]
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Grant staging slot database access
+        shell: pwsh
+        run: |
+          ./.scripts/catan-azure.ps1 database deploy-staging-access -TraceLevel INFO
+
   deploy-react:
     name: Deploy React UI (staging)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -27,12 +136,6 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Install PowerShell modules
-        shell: pwsh
-        run: |
-          # catan-azure.ps1 uses Az CLI, no extra modules needed
-          az --version | head -1
-
       - name: Deploy React UI to staging slot
         shell: pwsh
         run: |
@@ -50,12 +153,24 @@ jobs:
           echo "::error::React staging did not respond within 5 minutes"
           exit 1
 
-      - name: Verify GameService staging (informational)
-        continue-on-error: true
+  verify:
+    name: Verify staging
+    needs: [changes, deploy-gameservice, deploy-react, deploy-database]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Staging summary
         run: |
-          echo "=== GameService Staging Health ==="
-          curl -sf https://catan-api-staging.azurewebsites.net/health | jq . || echo "GameService staging not responding (deploy separately if needed)"
+          echo "=== Staging Deployment Summary ==="
+          echo ""
+          echo "Backend deployed: ${{ needs.changes.outputs.backend }}"
+          echo "Frontend deployed: ${{ needs.changes.outputs.frontend }}"
           echo ""
           echo "=== Staging URLs ==="
           echo "React UI:    https://catan-staging.azurewebsites.net"
           echo "GameService: https://catan-api-staging.azurewebsites.net"
+          echo ""
+          echo "=== Health Check ==="
+          curl -sf https://catan-api-staging.azurewebsites.net/health | jq . || echo "GameService not responding"
+          echo ""
+          curl -sf -o /dev/null -w "React UI: HTTP %{http_code}\n" https://catan-staging.azurewebsites.net || echo "React UI not responding"

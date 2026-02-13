@@ -195,12 +195,16 @@ export const gameApi = {
     houseRules?: Partial<HouseRules>,
     saveLifetimeStats: boolean = true
   ): Promise<ApiResponse<string>> {
+    // Map gameType to templateId for the template engine
+    const templateId = gameType === 'Regular' ? 'regular' : 'expansion';
+
     const message: NewGameMessage = {
       gameType,
       playerIds,
       gameName: gameName ?? 'Untitled Game',
       houseRules: houseRules as HouseRules,
       saveLifetimeStats,
+      templateId,
     };
 
     const result = await apiFetch<CreateGameResponse>('/api/game/new', {

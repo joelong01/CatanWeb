@@ -1,9 +1,9 @@
 # Catan Design Documentation
 
-**Last updated:** February 9, 2026
+**Last updated:** February 13, 2026
 
 Verified documentation reflecting the current implementation. These
-33 documents are the **source of truth** for how the system works.
+35 documents are the **source of truth** for how the system works.
 
 Legacy and superseded documents are archived in [old/](old/).
 
@@ -42,6 +42,13 @@ Legacy and superseded documents are archived in [old/](old/).
 | [board-interaction.md](board-interaction.md) | Unified board interaction: hit-testing, pan/zoom, touch, dispatch model |
 | [game-play.md](game-play.md) | How humans play the hybrid game, trust model, turn flow |
 | [phone-control.md](phone-control.md) | Phone remote control: minimal Next + supplemental picking for mobile |
+
+## Game Configuration
+
+| Document | Purpose |
+|----------|---------|
+| [game-creation-page.md](game-creation-page.md) | Game template engine: database-driven board configs, adapter pattern, CRUD API |
+| [game-state-machine.md](game-state-machine.md) | GameStateMachine architecture: state flow, handlers, extensibility boundaries |
 
 ## Data & Persistence
 

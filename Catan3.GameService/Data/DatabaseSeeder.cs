@@ -3,6 +3,7 @@ using Catan3.Shared.Profiles;
 using Catan3.Shared.Models;
 using Catan3.GameService.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Catan3.GameService.Data;
 
@@ -15,89 +16,106 @@ public static class DatabaseSeeder
     /// <param name="defaultDataPath">Path to "Default Data" folder containing Players and Games subfolders</param>
     /// <param name="gamePersistence">Game persistence service for saving games</param>
     /// <param name="useSqlServer">True if using SQL Server (uses migrations), false for SQLite (uses EnsureCreated)</param>
+    /// <param name="logger">Logger instance</param>
     public static async Task SeedAsync(
         CatanDbContext context,
         string defaultDataPath,
         IGamePersistence? gamePersistence = null,
-        bool useSqlServer = false)
+        bool useSqlServer = false,
+        ILogger? logger = null)
     {
-        Console.WriteLine($"[SEEDER] SeedAsync called - useSqlServer: {useSqlServer}, defaultDataPath: {defaultDataPath}");
+        logger?.LogInformation("[SEEDER] SeedAsync called - useSqlServer: {UseSqlServer}, defaultDataPath: {DefaultDataPath}", useSqlServer, defaultDataPath);
 
         // Initialize database schema
         if (useSqlServer)
         {
             // SQL Server: Check if we have pending migrations
-            Console.WriteLine("[SEEDER] SQL Server mode - checking pending migrations...");
+            logger?.LogInformation("[SEEDER] SQL Server mode - checking pending migrations...");
             var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
-            Console.WriteLine($"[SEEDER] Pending migrations: {pendingMigrations.Count()}");
+            logger?.LogInformation("[SEEDER] Pending migrations: {Count}", pendingMigrations.Count());
             if (pendingMigrations.Any())
             {
-                Console.WriteLine($"[SEEDER] Applying {pendingMigrations.Count()} pending migration(s) (SQL Server)...");
+                logger?.LogInformation("[SEEDER] Applying {Count} pending migration(s) (SQL Server)...", pendingMigrations.Count());
                 await context.Database.MigrateAsync();
-                Console.WriteLine("[SEEDER] Migrations applied successfully");
+                logger?.LogInformation("[SEEDER] Migrations applied successfully");
             }
             else
             {
                 // No migrations yet - use EnsureCreated for initial schema
                 // This will be replaced by migrations once they're added
-                Console.WriteLine("[SEEDER] Ensuring database schema exists (SQL Server)...");
+                logger?.LogInformation("[SEEDER] Ensuring database schema exists (SQL Server)...");
                 await context.Database.EnsureCreatedAsync();
-                Console.WriteLine("[SEEDER] EnsureCreatedAsync completed");
+                logger?.LogInformation("[SEEDER] EnsureCreatedAsync completed");
             }
         }
         else
         {
             // SQLite: Create database if it doesn't exist
             // EnsureCreatedAsync is fine for development with SQLite
-            Console.WriteLine("[SEEDER] SQLite mode - calling EnsureCreatedAsync...");
+            logger?.LogInformation("[SEEDER] SQLite mode - calling EnsureCreatedAsync...");
             await context.Database.EnsureCreatedAsync();
-            Console.WriteLine("[SEEDER] SQLite EnsureCreatedAsync completed");
+            logger?.LogInformation("[SEEDER] SQLite EnsureCreatedAsync completed");
         }
 
         var playersPath = Path.Combine(defaultDataPath, "Players");
         var gamesPath = Path.Combine(defaultDataPath, "Games");
-        Console.WriteLine($"[SEEDER] Players path: {playersPath}");
-        Console.WriteLine($"[SEEDER] Games path: {gamesPath}");
+        logger?.LogInformation("[SEEDER] Players path: {PlayersPath}", playersPath);
+        logger?.LogInformation("[SEEDER] Games path: {GamesPath}", gamesPath);
 
         // Seed players if not already seeded
-        Console.WriteLine("[SEEDER] Checking if players need to be seeded...");
+        logger?.LogInformation("[SEEDER] Checking if players need to be seeded...");
         var hasPlayers = await context.Players.AnyAsync();
-        Console.WriteLine($"[SEEDER] Players.Any() = {hasPlayers}");
+        logger?.LogInformation("[SEEDER] Players.Any() = {HasPlayers}", hasPlayers);
 
         if (!hasPlayers)
         {
-            Console.WriteLine($"[SEEDER] Seeding players from: {playersPath}");
-            await SeedPlayersAsync(context, playersPath);
-            Console.WriteLine("[SEEDER] SeedPlayersAsync completed");
+            logger?.LogInformation("[SEEDER] Seeding players from: {PlayersPath}", playersPath);
+            await SeedPlayersAsync(context, playersPath, logger);
+            logger?.LogInformation("[SEEDER] SeedPlayersAsync completed");
         }
         else
         {
-            Console.WriteLine("[SEEDER] Players already seeded, skipping");
+            logger?.LogInformation("[SEEDER] Players already seeded, skipping");
         }
 
         // Seed games if games folder exists and persistence service available
-        Console.WriteLine($"[SEEDER] Checking games - gamePersistence null: {gamePersistence == null}, gamesPath exists: {Directory.Exists(gamesPath)}");
+        logger?.LogInformation("[SEEDER] Checking games - gamePersistence null: {IsNull}, gamesPath exists: {Exists}", gamePersistence == null, Directory.Exists(gamesPath));
         if (gamePersistence != null && Directory.Exists(gamesPath))
         {
-            Console.WriteLine("[SEEDER] Seeding games...");
-            await SeedGamesAsync(context, gamesPath, gamePersistence);
-            Console.WriteLine("[SEEDER] SeedGamesAsync completed");
+            logger?.LogInformation("[SEEDER] Seeding games...");
+            await SeedGamesAsync(context, gamesPath, gamePersistence, logger);
+            logger?.LogInformation("[SEEDER] SeedGamesAsync completed");
         }
 
         // Seed recordings if recordings folder exists
         var recordingsPath = Path.Combine(defaultDataPath, "Recordings");
-        Console.WriteLine($"[SEEDER] Checking recordings - recordingsPath exists: {Directory.Exists(recordingsPath)}");
+        logger?.LogInformation("[SEEDER] Checking recordings - recordingsPath exists: {Exists}", Directory.Exists(recordingsPath));
         if (Directory.Exists(recordingsPath))
         {
-            Console.WriteLine("[SEEDER] Seeding recordings...");
-            await SeedRecordingsAsync(context, recordingsPath);
-            Console.WriteLine("[SEEDER] SeedRecordingsAsync completed");
+            logger?.LogInformation("[SEEDER] Seeding recordings...");
+            await SeedRecordingsAsync(context, recordingsPath, logger);
+            logger?.LogInformation("[SEEDER] SeedRecordingsAsync completed");
         }
 
-        Console.WriteLine("[SEEDER] Database seeding complete");
+        // Seed game templates if not already seeded
+        logger?.LogInformation("[SEEDER] Checking if game templates need to be seeded...");
+        var hasTemplates = await context.GameTemplates.AnyAsync();
+        logger?.LogInformation("[SEEDER] GameTemplates.Any() = {HasTemplates}", hasTemplates);
+        if (!hasTemplates)
+        {
+            logger?.LogInformation("[SEEDER] Seeding game templates...");
+            await SeedTemplatesAsync(context, logger);
+            logger?.LogInformation("[SEEDER] SeedTemplatesAsync completed");
+        }
+        else
+        {
+            logger?.LogInformation("[SEEDER] Game templates already seeded, skipping");
+        }
+
+        logger?.LogInformation("[SEEDER] Database seeding complete");
     }
 
-    private static async Task SeedPlayersAsync(CatanDbContext context, string imagesSourcePath)
+    private static async Task SeedPlayersAsync(CatanDbContext context, string imagesSourcePath, ILogger? logger)
     {
         // Default players with their colors (primary, secondary for gradient, foreground)
         // IDs match Desktop App (PascalCase): Joe-001, Dodgy-001, etc.
@@ -133,7 +151,7 @@ public static class DatabaseSeeder
                 Data = JsonHelper.Serialize(player)
             };
             context.Players.Add(playerEntity);
-            Console.WriteLine($"  Added player: {player.Name} ({player.Id})");
+            logger?.LogInformation("  Added player: {Name} ({Id})", player.Name, player.Id);
         }
 
         // Seed images
@@ -152,28 +170,28 @@ public static class DatabaseSeeder
                     Data = imageData
                 };
                 context.Images.Add(imageEntity);
-                Console.WriteLine($"  Added image: {fileName} ({imageData.Length} bytes)");
+                logger?.LogInformation("  Added image: {FileName} ({Size} bytes)", fileName, imageData.Length);
             }
             else
             {
-                Console.WriteLine($"  Warning: Image not found: {imagePath}");
+                logger?.LogWarning("  Image not found: {ImagePath}", imagePath);
             }
         }
 
         await context.SaveChangesAsync();
-        Console.WriteLine("Players seeding complete.");
+        logger?.LogInformation("Players seeding complete.");
     }
 
-    private static async Task SeedGamesAsync(CatanDbContext context, string gamesPath, IGamePersistence gamePersistence)
+    private static async Task SeedGamesAsync(CatanDbContext context, string gamesPath, IGamePersistence gamePersistence, ILogger? logger)
     {
         var gameFiles = Directory.GetFiles(gamesPath, "*.catan");
         if (gameFiles.Length == 0)
         {
-            Console.WriteLine("No .catan game files found to seed.");
+            logger?.LogInformation("No .catan game files found to seed.");
             return;
         }
 
-        Console.WriteLine($"Seeding {gameFiles.Length} game(s) from: {gamesPath}");
+        logger?.LogInformation("Seeding {Count} game(s) from: {GamesPath}", gameFiles.Length, gamesPath);
 
         foreach (var gameFile in gameFiles)
         {
@@ -190,7 +208,7 @@ public static class DatabaseSeeder
 
                 if (serializableLog == null || serializableLog.DoneCount == 0)
                 {
-                    Console.WriteLine($"  Warning: {fileName} appears empty or invalid, skipping");
+                    logger?.LogWarning("  {FileName} appears empty or invalid, skipping", fileName);
                     continue;
                 }
 
@@ -198,14 +216,14 @@ public static class DatabaseSeeder
                 var currentGameJson = serializableLog.DoneStack.LastOrDefault();
                 if (currentGameJson == null)
                 {
-                    Console.WriteLine($"  Warning: {fileName} has no game states, skipping");
+                    logger?.LogWarning("  {FileName} has no game states, skipping", fileName);
                     continue;
                 }
 
                 var gameModel = JsonHelper.Deserialize<GameModel>(currentGameJson);
                 if (gameModel == null)
                 {
-                    Console.WriteLine($"  Warning: {fileName} could not deserialize game model, skipping");
+                    logger?.LogWarning("  {FileName} could not deserialize game model, skipping", fileName);
                     continue;
                 }
 
@@ -216,7 +234,7 @@ public static class DatabaseSeeder
                 var existingGame = context.GameSaveMetadata.FirstOrDefault(m => m.GameId == gameId);
                 if (existingGame != null)
                 {
-                    Console.WriteLine($"  Skipping {fileName} - already seeded as {existingGame.GameId}");
+                    logger?.LogInformation("  Skipping {FileName} - already seeded as {GameId}", fileName, existingGame.GameId);
                     continue;
                 }
 
@@ -234,11 +252,11 @@ public static class DatabaseSeeder
 
                 // Save to database
                 await gamePersistence.SaveAsync(gameId, compressedData, metadata);
-                Console.WriteLine($"  Seeded game: {fileName} ({metadata.PlayerNames}) - {metadata.TurnCount} turns");
+                logger?.LogInformation("  Seeded game: {FileName} ({PlayerNames}) - {TurnCount} turns", fileName, metadata.PlayerNames, metadata.TurnCount);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"  Error seeding {gameFile}: {ex.Message}");
+                logger?.LogError(ex, "  Error seeding {GameFile}", gameFile);
             }
         }
     }
@@ -256,16 +274,16 @@ public static class DatabaseSeeder
         };
     }
 
-    private static async Task SeedRecordingsAsync(CatanDbContext context, string recordingsPath)
+    private static async Task SeedRecordingsAsync(CatanDbContext context, string recordingsPath, ILogger? logger)
     {
         var recordingFiles = Directory.GetFiles(recordingsPath, "*.json");
         if (recordingFiles.Length == 0)
         {
-            Console.WriteLine("No .json recording files found to seed.");
+            logger?.LogInformation("No .json recording files found to seed.");
             return;
         }
 
-        Console.WriteLine($"Seeding {recordingFiles.Length} recording(s) from: {recordingsPath}");
+        logger?.LogInformation("Seeding {Count} recording(s) from: {RecordingsPath}", recordingFiles.Length, recordingsPath);
 
         foreach (var recordingFile in recordingFiles)
         {
@@ -279,7 +297,7 @@ public static class DatabaseSeeder
 
                 if (recording == null)
                 {
-                    Console.WriteLine($"  Warning: {fileName} could not be deserialized, skipping");
+                    logger?.LogWarning("  {FileName} could not be deserialized, skipping", fileName);
                     continue;
                 }
 
@@ -287,7 +305,7 @@ public static class DatabaseSeeder
                 var existingRecording = await context.Recordings.FindAsync(recording.Id);
                 if (existingRecording != null)
                 {
-                    Console.WriteLine($"  Skipping {fileName} - already seeded as {recording.Name}");
+                    logger?.LogInformation("  Skipping {FileName} - already seeded as {Name}", fileName, recording.Name);
                     continue;
                 }
 
@@ -305,16 +323,102 @@ public static class DatabaseSeeder
                 };
 
                 context.Recordings.Add(entity);
-                Console.WriteLine($"  Seeded recording: {recording.Name} ({recording.ActionCount} actions)");
+                logger?.LogInformation("  Seeded recording: {Name} ({ActionCount} actions)", recording.Name, recording.ActionCount);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"  Error seeding {recordingFile}: {ex.Message}");
+                logger?.LogError(ex, "  Error seeding {RecordingFile}", recordingFile);
             }
         }
 
         await context.SaveChangesAsync();
-        Console.WriteLine("Recordings seeding complete.");
+        logger?.LogInformation("Recordings seeding complete.");
+    }
+
+    internal static async Task SeedTemplatesAsync(CatanDbContext context, ILogger? logger = null)
+    {
+        var now = DateTime.UtcNow;
+
+        var regularTemplate = BuildTemplateFromMetadata(
+            RegularBoardInfo.Default, "regular", "Regular Game", "Base");
+        var expansionTemplate = BuildTemplateFromMetadata(
+            ExpansionBoardInfo.Default, "expansion", "Expansion Game", "Expansion");
+
+        var entities = new[]
+        {
+            new GameTemplateEntity
+            {
+                Id = "regular",
+                Name = "Regular Game",
+                Category = "Base",
+                IsSystemTemplate = true,
+                Version = 1,
+                Data = JsonHelper.Serialize(regularTemplate),
+                CreatedAt = now,
+                UpdatedAt = now
+            },
+            new GameTemplateEntity
+            {
+                Id = "expansion",
+                Name = "Expansion Game",
+                Category = "Expansion",
+                IsSystemTemplate = true,
+                Version = 1,
+                Data = JsonHelper.Serialize(expansionTemplate),
+                CreatedAt = now,
+                UpdatedAt = now
+            }
+        };
+
+        context.GameTemplates.AddRange(entities);
+        await context.SaveChangesAsync();
+        logger?.LogInformation("  Seeded {Count} game templates (regular, expansion)", entities.Length);
+    }
+
+    private static GameTemplateData BuildTemplateFromMetadata(
+        IGameMetadata metadata, string id, string name, string category)
+    {
+        var tiles = new List<TemplateTile>();
+        for (int i = 0; i < metadata.TileKeys.Count; i++)
+        {
+            tiles.Add(new TemplateTile
+            {
+                Q = metadata.TileKeys[i].Q,
+                R = metadata.TileKeys[i].R,
+                Resource = metadata.Resources[i].ToString(),
+                Number = metadata.Numbers[i]
+            });
+        }
+
+        var harbors = metadata.Harbors.Select(h => new TemplateHarbor
+        {
+            Q = h.HarborKey.HexCoordinates.Q,
+            R = h.HarborKey.HexCoordinates.R,
+            Side = h.HarborKey.Side.ToString(),
+            Type = h.HarborKey.HarborType.ToString()
+        }).ToList();
+
+        var entitlements = metadata.PurchaseableEntitlements.Select(e => new TemplateEntitlement
+        {
+            Entitlement = e.Entitlement.ToString()
+        }).ToList();
+
+        return new GameTemplateData
+        {
+            Id = id,
+            Name = name,
+            Category = category,
+            Version = 1,
+            Description = metadata.Description,
+            Engine = "base",
+            GameType = metadata.GameType.ToString(),
+            ResourceRules = metadata.ResourceRules,
+            HouseRules = metadata.HouseRules,
+            HasSupplemental = metadata.HasSupplemental,
+            Tiles = tiles,
+            Harbors = harbors,
+            Entitlements = entitlements
+        };
     }
 
     /// <summary>
