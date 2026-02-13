@@ -2364,7 +2364,7 @@ namespace Catan3.GameService.Controllers
                     try
                     {
                         _logger.LogEvent("Database Migrate", "Seeding default game templates...");
-                        await DatabaseSeeder.SeedTemplatesAsync(_dbContext);
+                        await DatabaseSeeder.SeedTemplatesAsync(_dbContext, _logger);
                         _logger.LogEvent("Database Migrate", "Default game templates seeded");
                     }
                     catch (Exception ex)
