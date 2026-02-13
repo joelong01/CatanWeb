@@ -2267,10 +2267,39 @@ namespace Catan3.GameService.Controllers
                         );
                         CREATE INDEX ""IX_Recordings_Name"" ON ""Recordings"" (""Name"");
                         CREATE INDEX ""IX_Recordings_CreatedAt"" ON ""Recordings"" (""CreatedAt"")"
+                    ),
+                    ["GameTemplates"] = (
+                        @"CREATE TABLE [GameTemplates] (
+                            [Id] NVARCHAR(100) NOT NULL,
+                            [Name] NVARCHAR(255) NOT NULL,
+                            [Category] NVARCHAR(50) NULL,
+                            [IsSystemTemplate] BIT NOT NULL DEFAULT 0,
+                            [Version] INT NOT NULL DEFAULT 1,
+                            [Data] NVARCHAR(MAX) NOT NULL,
+                            [CreatedAt] DATETIME2 NOT NULL,
+                            [UpdatedAt] DATETIME2 NOT NULL,
+                            CONSTRAINT [PK_GameTemplates] PRIMARY KEY ([Id])
+                        );
+                        CREATE INDEX [IX_GameTemplates_Category] ON [GameTemplates] ([Category])",
+                        @"CREATE TABLE ""GameTemplates"" (
+                            ""Id"" TEXT NOT NULL CONSTRAINT ""PK_GameTemplates"" PRIMARY KEY,
+                            ""Name"" TEXT NOT NULL,
+                            ""Category"" TEXT NULL,
+                            ""IsSystemTemplate"" INTEGER NOT NULL DEFAULT 0,
+                            ""Version"" INTEGER NOT NULL DEFAULT 1,
+                            ""Data"" TEXT NOT NULL,
+                            ""CreatedAt"" TEXT NOT NULL,
+                            ""UpdatedAt"" TEXT NOT NULL
+                        );
+                        CREATE INDEX ""IX_GameTemplates_Category"" ON ""GameTemplates"" (""Category"")"
                     )
                 };
 
                 // Check which tables exist and create missing ones
+                var connection = _dbContext.Database.GetDbConnection();
+                await connection.OpenAsync();
+                try
+                {
                 foreach (var (tableName, (sqlServerSql, sqliteSql)) in requiredTables)
                 {
                     try
@@ -2279,10 +2308,6 @@ namespace Catan3.GameService.Controllers
                         if (isSqlServer)
                         {
                             var checkSql = $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'";
-                            var count = await _dbContext.Database.ExecuteSqlRawAsync(checkSql);
-                            // ExecuteSqlRawAsync returns rows affected, not the count, so we need a different approach
-                            var connection = _dbContext.Database.GetDbConnection();
-                            await connection.OpenAsync();
                             using var command = connection.CreateCommand();
                             command.CommandText = checkSql;
                             var existsResult = await command.ExecuteScalarAsync();
@@ -2291,8 +2316,6 @@ namespace Catan3.GameService.Controllers
                         else
                         {
                             var checkSql = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{tableName}'";
-                            var connection = _dbContext.Database.GetDbConnection();
-                            await connection.OpenAsync();
                             using var command = connection.CreateCommand();
                             command.CommandText = checkSql;
                             var existsResult = await command.ExecuteScalarAsync();
@@ -2327,6 +2350,27 @@ namespace Catan3.GameService.Controllers
                     {
                         errors.Add($"Error processing table '{tableName}': {ex.Message}");
                         _logger.LogEvent("Database Migrate Error", $"Error with table '{tableName}': {ex.Message}", LogLevel.Error);
+                    }
+                }
+                }
+                finally
+                {
+                    await connection.CloseAsync();
+                }
+
+                // If GameTemplates was just created, seed the default templates
+                if (tablesCreated.Contains("GameTemplates"))
+                {
+                    try
+                    {
+                        _logger.LogEvent("Database Migrate", "Seeding default game templates...");
+                        await DatabaseSeeder.SeedTemplatesAsync(_dbContext);
+                        _logger.LogEvent("Database Migrate", "Default game templates seeded");
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"Error seeding templates: {ex.Message}");
+                        _logger.LogEvent("Database Migrate Error", $"Error seeding templates: {ex.Message}", LogLevel.Error);
                     }
                 }
 

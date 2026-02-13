@@ -332,7 +332,7 @@ public static class DatabaseSeeder
         Console.WriteLine("Recordings seeding complete.");
     }
 
-    private static async Task SeedTemplatesAsync(CatanDbContext context)
+    internal static async Task SeedTemplatesAsync(CatanDbContext context)
     {
         var now = DateTime.UtcNow;
 
