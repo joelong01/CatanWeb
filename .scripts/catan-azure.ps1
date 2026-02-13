@@ -67,7 +67,10 @@ param(
     [string]$Slot,
 
     [Parameter()]
-    [string]$GameServiceUrl
+    [string]$GameServiceUrl,
+
+    [Parameter()]
+    [switch]$Staging
 )
 
 $ErrorActionPreference = "Stop"
@@ -2073,6 +2076,194 @@ function Get-GitHubDoctor {
 
 <#
 .SYNOPSIS
+    Checks health of all staging environment endpoints.
+.DESCRIPTION
+    Verifies the staging slots for GameService and UI are responding,
+    checks GameService staging database connectivity, and reports versions.
+.PARAMETER Config
+    Azure configuration hashtable
+.PARAMETER TraceLevel
+    Output detail level
+.OUTPUTS
+    Hashtable with staging doctor result
+#>
+function Get-StagingDoctor {
+    param(
+        [hashtable]$Config,
+        [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+        [string]$TraceLevel = "ERROR"
+    )
+
+    $gsAppName = $Config.gameService.appName
+    $uiAppName = $Config.ui.appName
+    $gsStagingUrl = "https://$gsAppName-staging.azurewebsites.net"
+    $uiStagingUrl = "https://$uiAppName-staging.azurewebsites.net"
+    $rgName = $Config.resourceGroup
+
+    Write-Log -Level "DEBUG" -Message "Get-StagingDoctor started" -TraceLevel $TraceLevel
+
+    $result = @{
+        resource  = "staging"
+        name      = "Staging Environment"
+        status    = "unknown"
+        healthy   = $false
+        timestamp = (Get-Date -Format "o")
+        checks    = [ordered]@{
+            gameServiceSlot     = $false
+            gameServiceHealth   = $false
+            gameServiceDatabase = $false
+            uiSlot              = $false
+            uiResponding        = $false
+        }
+        details   = @{
+            gameServiceUrl    = $gsStagingUrl
+            uiUrl             = $uiStagingUrl
+            gameServiceCommit = $null
+            uiCommit          = $null
+        }
+    }
+
+    # Check GameService staging slot exists
+    Write-Log -Level "INFO" -Message "Checking GameService staging slot..." -TraceLevel $TraceLevel
+    $gsSlot = Invoke-AzCommand "webapp deployment slot list --name $gsAppName --resource-group $rgName --query `"[?name=='staging']`"" -FailOnError $false -JsonOutput
+    if ($gsSlot -and $gsSlot.Count -gt 0) {
+        $result.checks.gameServiceSlot = $true
+
+        # Check health endpoint
+        Write-Log -Level "INFO" -Message "Checking GameService staging health..." -TraceLevel $TraceLevel
+        try {
+            $healthResponse = Invoke-RestMethod -Uri "$gsStagingUrl/health?checkDatabase=true" -TimeoutSec 15 -ErrorAction Stop
+            $result.checks.gameServiceHealth = $true
+            if ($healthResponse.version.commit) {
+                $result.details.gameServiceCommit = $healthResponse.version.commit
+            }
+            if ($healthResponse.databaseDiagnostics.connected -eq $true) {
+                $result.checks.gameServiceDatabase = $true
+            }
+        }
+        catch {
+            Write-Log -Level "DEBUG" -Message "GameService staging health check failed: $_" -TraceLevel $TraceLevel
+        }
+    }
+
+    # Check UI staging slot exists
+    Write-Log -Level "INFO" -Message "Checking UI staging slot..." -TraceLevel $TraceLevel
+    $uiSlot = Invoke-AzCommand "webapp deployment slot list --name $uiAppName --resource-group $rgName --query `"[?name=='staging']`"" -FailOnError $false -JsonOutput
+    if ($uiSlot -and $uiSlot.Count -gt 0) {
+        $result.checks.uiSlot = $true
+
+        # Check UI responding
+        Write-Log -Level "INFO" -Message "Checking UI staging response..." -TraceLevel $TraceLevel
+        try {
+            $webResponse = Invoke-WebRequest -Uri $uiStagingUrl -TimeoutSec 15 -UseBasicParsing -ErrorAction Stop
+            if ($webResponse.StatusCode -eq 200) {
+                $result.checks.uiResponding = $true
+            }
+        }
+        catch {
+            Write-Log -Level "DEBUG" -Message "UI staging check failed: $_" -TraceLevel $TraceLevel
+        }
+
+        # Get UI staging commit from app settings
+        $uiSettings = Invoke-AzCommand "webapp config appsettings list --name $uiAppName --resource-group $rgName --slot staging --query `"[?name=='GIT_COMMIT'].value | [0]`" -o tsv" -FailOnError $false
+        if ($uiSettings) {
+            $result.details.uiCommit = $uiSettings
+        }
+    }
+
+    # Determine overall health
+    $failedChecks = $result.checks.Values | Where-Object { $_ -eq $false }
+    if ($failedChecks.Count -eq 0) {
+        $result.healthy = $true
+        $result.status = "healthy"
+    }
+    else {
+        $result.status = "unhealthy"
+    }
+
+    return $result
+}
+
+<#
+.SYNOPSIS
+    Displays staging doctor results in a formatted table.
+.PARAMETER Result
+    The staging doctor result hashtable
+#>
+function Show-StagingDoctorResult {
+    param([hashtable]$Result)
+
+    $col1 = 25
+    $col2 = 12
+
+    Write-Host ""
+    Write-Host "Staging Environment" -ForegroundColor Cyan
+    Write-Host ("-" * 60)
+    Write-Host ("Check".PadRight($col1) + "Status".PadRight($col2) + "Details") -ForegroundColor Yellow
+
+    $displayNames = @{
+        gameServiceSlot     = "GameService Slot"
+        gameServiceHealth   = "GameService Health"
+        gameServiceDatabase = "Database Connected"
+        uiSlot              = "UI Slot"
+        uiResponding        = "UI Responding"
+    }
+
+    $actionHints = @{
+        gameServiceSlot     = "$script:CmdHintPrefix game-service install"
+        gameServiceHealth   = "$script:CmdHintPrefix game-service deploy -Slot staging"
+        gameServiceDatabase = "$script:CmdHintPrefix database deploy-staging-access"
+        uiSlot              = "$script:CmdHintPrefix ui install"
+        uiResponding        = "$script:CmdHintPrefix ui deploy-staging"
+    }
+
+    foreach ($key in $Result.checks.Keys) {
+        $name = if ($displayNames[$key]) { $displayNames[$key] } else { $key }
+        $status = $Result.checks[$key]
+        $statusText = if ($status) { "OK" } else { "MISSING" }
+        $statusColor = if ($status) { "Green" } else { "Red" }
+        $detail = if (-not $status -and $actionHints[$key]) { $actionHints[$key] } else { "" }
+
+        Write-Host -NoNewline ("  " + $name).PadRight($col1)
+        Write-Host -NoNewline $statusText.PadRight($col2) -ForegroundColor $statusColor
+        if ($detail) {
+            Write-Host $detail -ForegroundColor Gray
+        } else {
+            Write-Host ""
+        }
+    }
+
+    # Show version info
+    if ($Result.details.gameServiceCommit -or $Result.details.uiCommit) {
+        Write-Host ""
+        Write-Host "  Versions:" -ForegroundColor Yellow
+        if ($Result.details.gameServiceCommit) {
+            Write-Host "    GameService:  $($Result.details.gameServiceCommit)" -ForegroundColor Gray
+        }
+        if ($Result.details.uiCommit) {
+            Write-Host "    UI:           $($Result.details.uiCommit)" -ForegroundColor Gray
+        }
+    }
+
+    # URLs
+    Write-Host ""
+    Write-Host "  URLs:" -ForegroundColor Yellow
+    Write-Host "    GameService:  $($Result.details.gameServiceUrl)" -ForegroundColor Gray
+    Write-Host "    UI:           $($Result.details.uiUrl)" -ForegroundColor Gray
+
+    # Overall status
+    Write-Host ""
+    Write-Host -NoNewline "Status: "
+    if ($Result.healthy) {
+        Write-Host "HEALTHY" -ForegroundColor Green
+    }
+    else {
+        Write-Host "UNHEALTHY" -ForegroundColor Red
+    }
+}
+
+<#
+.SYNOPSIS
     Gets the current git commit hash for change detection.
 .DESCRIPTION
     Returns the short git commit hash of HEAD for tracking deployments.
@@ -3495,11 +3686,13 @@ Options:
     -Force          Force deploy even if no changes detected
     -Json           Output doctor results as JSON
     -HashTable      Output doctor results as PowerShell hashtable
+    -Staging        Check staging environment health (doctor only)
     -Perf           Run performance test (game-service doctor only)
     -TraceLevel     Output verbosity (ERROR, WARN, INFO, DEBUG)
 
 Examples:
     ./catan-azure.ps1 doctor                   Check health of ALL resources
+    ./catan-azure.ps1 doctor -Staging           Check staging environment health
     ./catan-azure.ps1 doctor -Perf             Check all health + run perf test
     ./catan-azure.ps1 install                  Create ALL Azure resources
     ./catan-azure.ps1 deploy                   Deploy ALL code/data
@@ -3570,6 +3763,22 @@ if ($Noun -in @("doctor", "install", "deploy", "clean") -and -not $Verb) {
 
     switch ($actualVerb) {
         "doctor" {
+            # Staging doctor: quick check of staging environment
+            if ($Staging) {
+                Write-Log -Level "HEADER" -Message "Catan Azure: staging doctor"
+                Write-Log -Level "HEADER" -Message ("=" * 40)
+                $stagingResult = Get-StagingDoctor -Config $config -TraceLevel $TraceLevel
+                if ($Json) {
+                    Write-Output ($stagingResult | ConvertTo-Json -Depth 10)
+                } elseif ($HashTable) {
+                    Write-Output $stagingResult
+                } else {
+                    Show-StagingDoctorResult -Result $stagingResult
+                }
+                $success = $stagingResult.healthy
+                if ($success) { exit 0 } else { exit 1 }
+            }
+
             # Run doctor on all resources
             $allHealthy = $true
 

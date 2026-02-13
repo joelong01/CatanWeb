@@ -107,6 +107,9 @@ param(
     [Parameter()]
     [string]$AzureGameServiceUrl,
 
+    [Parameter()]
+    [switch]$Staging,
+
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArgs
 )
@@ -2388,21 +2391,29 @@ switch ($Verb) {
                 }
             }
             "doctor" {
-                Write-Host "Checking Azure health..." -ForegroundColor Cyan
-                Write-Host ""
-
-                # Pass through -Json and -HashTable to the individual doctor calls
-                # The catan-azure.ps1 script now handles all formatting
-                & $azureScript game-service doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
-                & $azureScript database doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
-                & $azureScript ui doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
-
-                # Show summary if not in JSON/HashTable mode
-                if (-not $Json -and -not $HashTable) {
+                if ($Staging) {
+                    Write-Host "Checking staging health..." -ForegroundColor Cyan
                     Write-Host ""
-                    Write-Host "Service URLs:" -ForegroundColor Gray
-                    Write-Host "  WebUI:       https://catan.azurewebsites.net" -ForegroundColor Gray
-                    Write-Host "  GameService: https://catan-api.azurewebsites.net" -ForegroundColor Gray
+                    & $azureScript doctor -Staging -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                }
+                else {
+                    Write-Host "Checking Azure health..." -ForegroundColor Cyan
+                    Write-Host ""
+
+                    # Pass through -Json and -HashTable to the individual doctor calls
+                    # The catan-azure.ps1 script now handles all formatting
+                    & $azureScript game-service doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                    & $azureScript database doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                    & $azureScript ui doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+
+                    # Show summary if not in JSON/HashTable mode
+                    if (-not $Json -and -not $HashTable) {
+                        Write-Host ""
+                        Write-Host "Service URLs:" -ForegroundColor Gray
+                        Write-Host "  WebUI:       https://catan.azurewebsites.net" -ForegroundColor Gray
+                        Write-Host "  GameService: https://catan-api.azurewebsites.net" -ForegroundColor Gray
+                    }
                 }
             }
             "swap-slots" {
