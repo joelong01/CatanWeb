@@ -5,7 +5,7 @@ using Catan3.GameService.Services;
 namespace Catan3.GameService.Controllers;
 
 [ApiController]
-[Route("api/game")]
+[Route("api/game/templates")]
 public class TemplateApiController : ControllerBase
 {
     private readonly GameTemplateService _templateService;
@@ -15,14 +15,14 @@ public class TemplateApiController : ControllerBase
         _templateService = templateService;
     }
 
-    [HttpGet("templates")]
+    [HttpGet]
     public async Task<IActionResult> ListTemplates([FromQuery] string? category)
     {
         var templates = await _templateService.ListAsync(category);
         return Ok(templates);
     }
 
-    [HttpGet("templates/{id}")]
+    [HttpGet("{id}")]
     public async Task<IActionResult> GetTemplate(string id)
     {
         var template = await _templateService.GetAsync(id);
@@ -34,7 +34,7 @@ public class TemplateApiController : ControllerBase
         return Ok(template);
     }
 
-    [HttpPut("templates/{id}")]
+    [HttpPut("{id}")]
     public async Task<IActionResult> UpdateTemplate(string id, [FromBody] GameTemplateData template)
     {
         template.Id = id;
@@ -53,7 +53,7 @@ public class TemplateApiController : ControllerBase
         }
     }
 
-    [HttpPost("templates")]
+    [HttpPost]
     public async Task<IActionResult> CreateTemplate([FromBody] GameTemplateData template)
     {
         try
@@ -67,7 +67,7 @@ public class TemplateApiController : ControllerBase
         }
     }
 
-    [HttpDelete("templates/{id}")]
+    [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteTemplate(string id)
     {
         try
