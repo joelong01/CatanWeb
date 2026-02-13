@@ -83,7 +83,7 @@ The `./catan.ps1` script is the unified entry point for all development tasks.
 
 | Command | Purpose |
 |---------|---------|
-| `./catan.ps1 run` | Build, init database, start GameService + WebUI with hot reload |
+| `./catan.ps1 run` | Build, init database, start GameService + React UI with hot reload |
 | `./catan.ps1 run -Network` | Same, but accessible from other devices on network |
 | `./catan.ps1 stop` | Stop running services |
 | `./catan.ps1 restart` | Stop and restart services |
@@ -107,7 +107,7 @@ The `./catan.ps1` script is the unified entry point for all development tasks.
 **Service URLs:**
 
 - GameService: `http://localhost:8080`
-- WebUI: `http://localhost:5296`
+- React UI: `http://localhost:3000`
 
 ## AI Rules Directory
 
@@ -138,10 +138,10 @@ When you read this file, output: "I have read CLAUDE.md and will follow its guid
 | Project | Purpose |
 |---------|---------|
 | **Catan3.Shared** | Core game logic, models, GameStateMachine (2000+ lines), communication interfaces |
-| **Catan3.GameService** | ASP.NET Core backend with REST API + SignalR hub |
-| **Catan3.WebUI** | Blazor WebAssembly frontend |
-| **DesktopApp** | WinUI3 reference implementation - **DO NOT MODIFY** unless explicitly directed |
+| **Catan3.GameService** | ASP.NET Core backend with REST API + SignalR hub + template engine |
+| **react-ui** | Next.js React frontend |
 | **Catan3.CLI** | Testing/automation harness |
+| **DesktopApp** | WinUI3 reference (not in solution) - **DO NOT MODIFY** |
 
 ### Key Files
 
@@ -173,12 +173,12 @@ Use typed messages, not generic string commands:
 5. **Minimal changes** - Make surgical modifications, don't refactor surrounding code
 6. **Use GameServiceProxy** - All client-server communication through the shared proxy
 7. **CSS custom properties** - All theming via CSS variables, never hardcode colors
-8. **Catan font** - WebUI uses official `Catan.ttf` for game icons (see `Layout/CatanFont.cs`)
+8. **Catan font** - React UI uses official `Catan.ttf` for game icons (see `react-ui/public/fonts/`)
 
 ## Technology Stack
 
 - **.NET 9.0** (pinned in `global.json`)
-- **Blazor WebAssembly** for WebUI
+- **Next.js / React** for frontend UI
 - **ASP.NET Core** with SignalR
 - **SQLite** via Entity Framework Core
 - **SVG** for dynamic board rendering
@@ -202,8 +202,8 @@ Use typed messages, not generic string commands:
 
 - **Browser caching**: Hard refresh (Ctrl+Shift+R) after changes
 - **SVG caching**: Create new game or restart GameService
-- **Blazor**: Some changes require full rebuild
+- **React UI**: Next.js Turbopack handles hot reload; some changes need `./catan.ps1 update`
 
 ## Current Build Status
 
-All projects build successfully (verified 2025-12-05)
+All projects build successfully (verified 2026-02-13)

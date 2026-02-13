@@ -10,6 +10,7 @@ public class CatanDbContext : DbContext
     public DbSet<GameSaveMetadataEntity> GameSaveMetadata { get; set; } = null!;
     public DbSet<CompletedGameEntity> CompletedGames { get; set; } = null!;
     public DbSet<RecordingEntity> Recordings { get; set; } = null!;
+    public DbSet<GameTemplateEntity> GameTemplates { get; set; } = null!;
 
     public CatanDbContext(DbContextOptions<CatanDbContext> options) : base(options)
     {
@@ -102,6 +103,19 @@ public class CatanDbContext : DbContext
             // Indexes for common queries
             entity.HasIndex(e => e.Name);
             entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // Game templates - document-style storage for board configurations
+        modelBuilder.Entity<GameTemplateEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Category).HasMaxLength(50);
+            entity.HasIndex(e => e.Category);
+            entity.Property(e => e.Data).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
         });
     }
 }
@@ -347,4 +361,51 @@ public class RecordingEntity
     /// JSON document containing initialGameModel and recorded actions
     /// </summary>
     public string Data { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Game template entity with document-style storage for board configurations.
+/// The Data column contains the full GameTemplateData JSON document.
+/// </summary>
+public class GameTemplateEntity
+{
+    /// <summary>
+    /// Template ID (e.g., "regular", "expansion")
+    /// </summary>
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Display name (e.g., "Regular Game", "Expansion Game")
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Template category for grouping (e.g., "Base", "Expansion")
+    /// </summary>
+    public string Category { get; set; } = string.Empty;
+
+    /// <summary>
+    /// True for built-in templates, false for user-created
+    /// </summary>
+    public bool IsSystemTemplate { get; set; }
+
+    /// <summary>
+    /// Schema version for forward compatibility
+    /// </summary>
+    public int Version { get; set; } = 1;
+
+    /// <summary>
+    /// JSON document containing the full GameTemplateData
+    /// </summary>
+    public string Data { get; set; } = string.Empty;
+
+    /// <summary>
+    /// When the template was created
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// When the template was last modified
+    /// </summary>
+    public DateTime UpdatedAt { get; set; }
 }

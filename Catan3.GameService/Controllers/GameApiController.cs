@@ -66,6 +66,7 @@ namespace Catan3.GameService.Controllers
         private readonly IGamePersistence _gamePersistence;
         private readonly AzureSqlDiagnosticService _sqlDiagnostics;
         private readonly RecordingService _recordingService;
+        private readonly GameTemplateService _templateService;
 
         public GameApiController(
             IOptions<GameApiOptions> options,
@@ -76,7 +77,8 @@ namespace Catan3.GameService.Controllers
             IHubContext<GameHub> hubContext,
             IGamePersistence gamePersistence,
             AzureSqlDiagnosticService sqlDiagnostics,
-            RecordingService recordingService)
+            RecordingService recordingService,
+            GameTemplateService templateService)
         {
             _options = options.Value;
             _persistenceService = persistenceService;
@@ -87,6 +89,7 @@ namespace Catan3.GameService.Controllers
             _gamePersistence = gamePersistence;
             _sqlDiagnostics = sqlDiagnostics;
             _recordingService = recordingService;
+            _templateService = templateService;
         }
 
         /// <summary>
@@ -285,10 +288,33 @@ namespace Catan3.GameService.Controllers
                     return BadRequest("Invalid game creation request - must specify game type and players");
                 }
 
-                // Get the appropriate game metadata based on game type
-                IGameMetadata gameInfo = newGameMessage.GameType == GameType.Regular
-                    ? RegularBoardInfo.Default
-                    : ExpansionBoardInfo.Default;
+                // Resolve template: prefer TemplateId, fall back to GameType mapping
+                IGameMetadata gameInfo;
+                if (!string.IsNullOrEmpty(newGameMessage.TemplateId))
+                {
+                    var templateData = await _templateService.GetAsync(newGameMessage.TemplateId);
+                    if (templateData is null)
+                        return BadRequest($"Template '{newGameMessage.TemplateId}' not found");
+                    gameInfo = new Catan3.GameService.Factory.BoardInfoJsonAdapter(templateData);
+                }
+                else
+                {
+                    // Backward compatibility: map GameType to default template
+                    var templateId = newGameMessage.GameType == GameType.Regular
+                        ? "regular" : "expansion";
+                    var templateData = await _templateService.GetAsync(templateId);
+                    if (templateData is null)
+                    {
+                        // Fallback to hardcoded singletons if templates not seeded
+                        gameInfo = newGameMessage.GameType == GameType.Regular
+                            ? RegularBoardInfo.Default
+                            : ExpansionBoardInfo.Default;
+                    }
+                    else
+                    {
+                        gameInfo = new Catan3.GameService.Factory.BoardInfoJsonAdapter(templateData);
+                    }
+                }
 
                 // Generate a temporary save file path for the game log
                 var tempSaveFilePath = $"{newGameMessage.GameName ?? "Untitled Game"}-{Guid.NewGuid()}.catan";

@@ -104,6 +104,9 @@ builder.Services.AddSingleton<AsyncCommandProcessor>();
 // Register recording service for test recording/replay
 builder.Services.AddSingleton<RecordingService>();
 
+// Register game template service for template CRUD operations
+builder.Services.AddScoped<GameTemplateService>();
+
 // Register background database seeding (runs after Kestrel starts listening,
 // preventing Azure warmup probe timeouts on cold DB connections)
 builder.Services.AddHostedService<DatabaseSeedingService>();

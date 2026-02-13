@@ -94,6 +94,21 @@ public static class DatabaseSeeder
             Console.WriteLine("[SEEDER] SeedRecordingsAsync completed");
         }
 
+        // Seed game templates if not already seeded
+        Console.WriteLine("[SEEDER] Checking if game templates need to be seeded...");
+        var hasTemplates = await context.GameTemplates.AnyAsync();
+        Console.WriteLine($"[SEEDER] GameTemplates.Any() = {hasTemplates}");
+        if (!hasTemplates)
+        {
+            Console.WriteLine("[SEEDER] Seeding game templates...");
+            await SeedTemplatesAsync(context);
+            Console.WriteLine("[SEEDER] SeedTemplatesAsync completed");
+        }
+        else
+        {
+            Console.WriteLine("[SEEDER] Game templates already seeded, skipping");
+        }
+
         Console.WriteLine("[SEEDER] Database seeding complete");
     }
 
@@ -315,6 +330,92 @@ public static class DatabaseSeeder
 
         await context.SaveChangesAsync();
         Console.WriteLine("Recordings seeding complete.");
+    }
+
+    private static async Task SeedTemplatesAsync(CatanDbContext context)
+    {
+        var now = DateTime.UtcNow;
+
+        var regularTemplate = BuildTemplateFromMetadata(
+            RegularBoardInfo.Default, "regular", "Regular Game", "Base");
+        var expansionTemplate = BuildTemplateFromMetadata(
+            ExpansionBoardInfo.Default, "expansion", "Expansion Game", "Expansion");
+
+        var entities = new[]
+        {
+            new GameTemplateEntity
+            {
+                Id = "regular",
+                Name = "Regular Game",
+                Category = "Base",
+                IsSystemTemplate = true,
+                Version = 1,
+                Data = JsonHelper.Serialize(regularTemplate),
+                CreatedAt = now,
+                UpdatedAt = now
+            },
+            new GameTemplateEntity
+            {
+                Id = "expansion",
+                Name = "Expansion Game",
+                Category = "Expansion",
+                IsSystemTemplate = true,
+                Version = 1,
+                Data = JsonHelper.Serialize(expansionTemplate),
+                CreatedAt = now,
+                UpdatedAt = now
+            }
+        };
+
+        context.GameTemplates.AddRange(entities);
+        await context.SaveChangesAsync();
+        Console.WriteLine($"  Seeded {entities.Length} game templates (regular, expansion)");
+    }
+
+    private static GameTemplateData BuildTemplateFromMetadata(
+        IGameMetadata metadata, string id, string name, string category)
+    {
+        var tiles = new List<TemplateTile>();
+        for (int i = 0; i < metadata.TileKeys.Count; i++)
+        {
+            tiles.Add(new TemplateTile
+            {
+                Q = metadata.TileKeys[i].Q,
+                R = metadata.TileKeys[i].R,
+                Resource = metadata.Resources[i].ToString(),
+                Number = metadata.Numbers[i]
+            });
+        }
+
+        var harbors = metadata.Harbors.Select(h => new TemplateHarbor
+        {
+            Q = h.HarborKey.HexCoordinates.Q,
+            R = h.HarborKey.HexCoordinates.R,
+            Side = h.HarborKey.Side.ToString(),
+            Type = h.HarborKey.HarborType.ToString()
+        }).ToList();
+
+        var entitlements = metadata.PurchaseableEntitlements.Select(e => new TemplateEntitlement
+        {
+            Entitlement = e.Entitlement.ToString()
+        }).ToList();
+
+        return new GameTemplateData
+        {
+            Id = id,
+            Name = name,
+            Category = category,
+            Version = 1,
+            Description = metadata.Description,
+            Engine = "base",
+            GameType = metadata.GameType.ToString(),
+            ResourceRules = metadata.ResourceRules,
+            HouseRules = metadata.HouseRules,
+            HasSupplemental = metadata.HasSupplemental,
+            Tiles = tiles,
+            Harbors = harbors,
+            Entitlements = entitlements
+        };
     }
 
     /// <summary>
