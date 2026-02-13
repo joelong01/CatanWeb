@@ -247,6 +247,7 @@ Invoked via `./catan.ps1 azure <noun> <verb>`:
 | `azure database deploy-staging-access` | Grant staging slot DB access |
 | `azure ui install` | Create UI app + staging slot |
 | `azure ui deploy-staging` | Build and deploy React to staging |
+| `azure github install` | Setup GitHub Actions OIDC (app registration, federated credentials, secrets) |
 | `azure swap-slots` | Swap active/inactive production slots |
 | `azure doctor` | Health check all resources |
 | `azure clean` | Remove all Azure resources |

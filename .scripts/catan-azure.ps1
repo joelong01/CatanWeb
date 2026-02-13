@@ -31,7 +31,7 @@
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("ui", "database", "game-service", "help", "doctor", "install", "deploy", "clean")]
+    [ValidateSet("ui", "database", "game-service", "github", "help", "doctor", "install", "deploy", "clean")]
     [string]$Noun,
 
     [Parameter(Position = 1)]
@@ -1833,6 +1833,246 @@ function Install-UI {
 
 <#
 .SYNOPSIS
+    Idempotently creates Azure AD app registration and federated credentials for GitHub Actions OIDC.
+.DESCRIPTION
+    Creates the app registration, service principal, federated credentials for main and staging
+    branches, assigns Contributor role on the resource group, and sets GitHub secrets.
+    Safe to run repeatedly — checks each resource before creating.
+.PARAMETER Config
+    Azure configuration hashtable
+.OUTPUTS
+    Boolean - $true on success
+#>
+function Install-GitHubOidc {
+    param([hashtable]$Config)
+
+    $rgName = $Config.resourceGroup
+    $baseName = $Config.baseName
+    $appDisplayName = "github-actions-$baseName-deploy"
+
+    # Detect GitHub repo
+    Write-Log -Level "INFO" -Message "Detecting GitHub repository..."
+    $ghRepo = $null
+    try {
+        $ghRepo = & gh repo view --json nameWithOwner -q .nameWithOwner 2>$null
+    } catch {}
+    if (-not $ghRepo) {
+        Write-Log -Level "ERROR" -Message "Could not detect GitHub repository. Ensure 'gh' CLI is installed and authenticated."
+        return $false
+    }
+    Write-Log -Level "INFO" -Message "GitHub repo: $ghRepo"
+
+    # Get subscription and tenant IDs
+    $accountInfo = Invoke-AzCommand "account show --query `"{subscriptionId:id, tenantId:tenantId}`"" -JsonOutput
+    if (-not $accountInfo) {
+        Write-Log -Level "ERROR" -Message "Could not get Azure account info"
+        return $false
+    }
+    $subscriptionId = $accountInfo.subscriptionId
+    $tenantId = $accountInfo.tenantId
+    Write-Log -Level "INFO" -Message "Subscription: $subscriptionId"
+    Write-Log -Level "INFO" -Message "Tenant: $tenantId"
+
+    # Check if app registration exists
+    Write-Log -Level "INFO" -Message "Checking app registration: $appDisplayName"
+    $existingApps = Invoke-AzCommand "ad app list --display-name `"$appDisplayName`" --query `"[?displayName=='$appDisplayName']`"" -FailOnError $false -JsonOutput
+    if ($existingApps -and $existingApps.Count -gt 0) {
+        $appObjectId = $existingApps[0].id
+        $appId = $existingApps[0].appId
+        Write-Log -Level "INFO" -Message "App registration exists: $appDisplayName (appId: $appId)"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Creating app registration: $appDisplayName"
+        $newApp = Invoke-AzCommand "ad app create --display-name `"$appDisplayName`"" -JsonOutput
+        $appObjectId = $newApp.id
+        $appId = $newApp.appId
+        Write-Log -Level "INFO" -Message "App registration created: $appDisplayName (appId: $appId)"
+    }
+
+    # Ensure service principal exists
+    Write-Log -Level "INFO" -Message "Checking service principal..."
+    $sp = Invoke-AzCommand "ad sp show --id $appId" -FailOnError $false -JsonOutput
+    if (-not $sp) {
+        Write-Log -Level "INFO" -Message "Creating service principal..."
+        $sp = Invoke-AzCommand "ad sp create --id $appId" -JsonOutput
+        Write-Log -Level "INFO" -Message "Service principal created"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Service principal exists"
+    }
+    $spObjectId = $sp.id
+
+    # Ensure federated credentials for main and staging branches
+    $branches = @("main", "staging")
+    $existingCreds = Invoke-AzCommand "ad app federated-credential list --id $appObjectId" -FailOnError $false -JsonOutput
+    if (-not $existingCreds) { $existingCreds = @() }
+
+    foreach ($branch in $branches) {
+        $credName = "github-actions-$branch"
+        $subject = "repo:${ghRepo}:ref:refs/heads/$branch"
+
+        $existing = $existingCreds | Where-Object { $_.name -eq $credName }
+        if ($existing) {
+            Write-Log -Level "INFO" -Message "Federated credential exists: $credName"
+        }
+        else {
+            Write-Log -Level "INFO" -Message "Creating federated credential: $credName (subject: $subject)"
+            $credParams = @{
+                name      = $credName
+                issuer    = "https://token.actions.githubusercontent.com"
+                subject   = $subject
+                audiences = @("api://AzureADTokenExchange")
+            } | ConvertTo-Json -Compress
+            # Write to temp file because az CLI doesn't accept inline JSON well on all platforms
+            $tempFile = [System.IO.Path]::GetTempFileName()
+            $credParams | Set-Content -Path $tempFile -Encoding UTF8
+            try {
+                Invoke-AzCommand "ad app federated-credential create --id $appObjectId --parameters @$tempFile" -SuppressOutput
+                Write-Log -Level "INFO" -Message "Federated credential created: $credName"
+            }
+            finally {
+                Remove-Item $tempFile -ErrorAction SilentlyContinue
+            }
+        }
+    }
+
+    # Assign Contributor role on resource group (if not already assigned)
+    Write-Log -Level "INFO" -Message "Checking Contributor role on $rgName..."
+    $roleAssignments = Invoke-AzCommand "role assignment list --assignee $spObjectId --role Contributor --scope /subscriptions/$subscriptionId/resourceGroups/$rgName" -FailOnError $false -JsonOutput
+    if ($roleAssignments -and $roleAssignments.Count -gt 0) {
+        Write-Log -Level "INFO" -Message "Contributor role already assigned"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Assigning Contributor role on $rgName..."
+        Invoke-AzCommand "role assignment create --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal --role Contributor --scope /subscriptions/$subscriptionId/resourceGroups/$rgName" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Contributor role assigned"
+    }
+
+    # Set GitHub secrets
+    Write-Log -Level "INFO" -Message "Setting GitHub secrets..."
+    $secretErrors = 0
+    foreach ($pair in @(
+        @{ name = "AZURE_CLIENT_ID"; value = $appId },
+        @{ name = "AZURE_TENANT_ID"; value = $tenantId },
+        @{ name = "AZURE_SUBSCRIPTION_ID"; value = $subscriptionId }
+    )) {
+        try {
+            $result = & gh secret set $pair.name --body $pair.value 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Log -Level "WARN" -Message "Failed to set secret $($pair.name): $result"
+                $secretErrors++
+            }
+            else {
+                Write-Log -Level "INFO" -Message "Secret set: $($pair.name)"
+            }
+        }
+        catch {
+            Write-Log -Level "WARN" -Message "Failed to set secret $($pair.name): $_"
+            $secretErrors++
+        }
+    }
+
+    if ($secretErrors -gt 0) {
+        Write-Log -Level "WARN" -Message "$secretErrors secret(s) failed to set. Ensure 'gh' CLI has repo admin access."
+    }
+
+    Write-Log -Level "INFO" -Message "GitHub OIDC setup complete"
+    Write-Log -Level "INFO" -Message "  App: $appDisplayName"
+    Write-Log -Level "INFO" -Message "  Client ID: $appId"
+    Write-Log -Level "INFO" -Message "  Branches: $($branches -join ', ')"
+    Write-Log -Level "INFO" -Message "  Role: Contributor on $rgName"
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Checks the health of GitHub Actions OIDC configuration.
+.DESCRIPTION
+    Verifies app registration, service principal, federated credentials, role assignments,
+    and GitHub secrets exist and are correctly configured.
+.PARAMETER Config
+    Azure configuration hashtable
+.PARAMETER TraceLevel
+    Output detail level
+.OUTPUTS
+    Hashtable with doctor result (resource, name, healthy, status, checks)
+#>
+function Get-GitHubDoctor {
+    param(
+        [hashtable]$Config,
+        [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+        [string]$TraceLevel = "ERROR"
+    )
+
+    $baseName = $Config.baseName
+    $rgName = $Config.resourceGroup
+    $appDisplayName = "github-actions-$baseName-deploy"
+
+    Write-Log -Level "DEBUG" -Message "Get-GitHubDoctor started" -TraceLevel $TraceLevel
+
+    $result = @{
+        resource  = "github"
+        name      = $appDisplayName
+        status    = "unknown"
+        healthy   = $false
+        timestamp = (Get-Date -Format "o")
+        checks    = @{
+            appRegistration    = $false
+            servicePrincipal   = $false
+            federatedMain      = $false
+            federatedStaging   = $false
+            contributorRole    = $false
+        }
+    }
+
+    # Check app registration
+    $existingApps = Invoke-AzCommand "ad app list --display-name `"$appDisplayName`" --query `"[?displayName=='$appDisplayName']`"" -FailOnError $false -JsonOutput
+    if ($existingApps -and $existingApps.Count -gt 0) {
+        $result.checks.appRegistration = $true
+        $appObjectId = $existingApps[0].id
+        $appId = $existingApps[0].appId
+
+        # Check service principal
+        $sp = Invoke-AzCommand "ad sp show --id $appId" -FailOnError $false -JsonOutput
+        if ($sp) {
+            $result.checks.servicePrincipal = $true
+            $spObjectId = $sp.id
+
+            # Check Contributor role
+            $accountInfo = Invoke-AzCommand "account show --query id -o tsv" -FailOnError $false
+            if ($accountInfo) {
+                $roleAssignments = Invoke-AzCommand "role assignment list --assignee $spObjectId --role Contributor --scope /subscriptions/$accountInfo/resourceGroups/$rgName" -FailOnError $false -JsonOutput
+                if ($roleAssignments -and $roleAssignments.Count -gt 0) {
+                    $result.checks.contributorRole = $true
+                }
+            }
+        }
+
+        # Check federated credentials
+        $creds = Invoke-AzCommand "ad app federated-credential list --id $appObjectId" -FailOnError $false -JsonOutput
+        if ($creds) {
+            foreach ($cred in $creds) {
+                if ($cred.name -eq "github-actions-main") { $result.checks.federatedMain = $true }
+                if ($cred.name -eq "github-actions-staging") { $result.checks.federatedStaging = $true }
+            }
+        }
+    }
+
+    # Determine overall health
+    $allChecks = $result.checks.Values | Where-Object { $_ -eq $false }
+    if ($allChecks.Count -eq 0) {
+        $result.healthy = $true
+        $result.status = "healthy"
+    }
+    else {
+        $result.status = "needs-install"
+    }
+
+    return $result
+}
+
+<#
+.SYNOPSIS
     Gets the current git commit hash for change detection.
 .DESCRIPTION
     Returns the short git commit hash of HEAD for tracking deployments.
@@ -2912,6 +3152,11 @@ function Show-DoctorResult {
                 "stagingStartup" { "Staging Startup Cmd" }
                 "stagingCodeDeployed" { "Staging Code Deployed" }
                 "stagingResponding" { "Staging Responding" }
+                "appRegistration" { "App Registration" }
+                "servicePrincipal" { "Service Principal" }
+                "federatedMain" { "Federated (main)" }
+                "federatedStaging" { "Federated (staging)" }
+                "contributorRole" { "Contributor Role" }
                 default { $key }
             }
 
@@ -2942,6 +3187,8 @@ function Show-DoctorResult {
                     if ($Result.checks.stagingCodeDeployed -and -not $Result.needsStagingDeploy) { "cold start — browse URL to wake" } else { "$script:CmdHintPrefix ui deploy-staging" }
                 } elseif ($key -eq "stagingCodeDeployed") {
                     "$script:CmdHintPrefix ui deploy-staging"
+                } elseif ($key -in @("appRegistration", "servicePrincipal", "federatedMain", "federatedStaging", "contributorRole")) {
+                    "$script:CmdHintPrefix github install"
                 } else {
                     "$script:CmdHintPrefix $noun install"
                 }
@@ -3234,6 +3481,7 @@ Nouns:
     ui              WebUI Blazor application
     database        Azure SQL Serverless database
     game-service    GameService ASP.NET Core API
+    github          GitHub Actions OIDC authentication
 
 Verbs:
     install         Create Azure resources (idempotent)
@@ -3259,6 +3507,7 @@ Examples:
     ./catan-azure.ps1 database deploy          Configure SQL connection string
     ./catan-azure.ps1 database fix             Fix SQL network access and firewall
     ./catan-azure.ps1 ui doctor -Json          Check UI health (JSON output)
+    ./catan-azure.ps1 github install            Setup GitHub Actions OIDC
     ./catan-azure.ps1 game-service clean       Delete GameService only
 "@
     Write-Host $help
@@ -3356,12 +3605,22 @@ if ($Noun -in @("doctor", "install", "deploy", "clean") -and -not $Verb) {
             }
             if (-not $uiResult.healthy) { $allHealthy = $false }
 
+            # GitHub OIDC
+            Write-Log -Level "HEADER" -Message "Catan Azure: github doctor"
+            Write-Log -Level "HEADER" -Message ("=" * 40)
+            $ghResult = Get-GitHubDoctor -Config $config -TraceLevel $TraceLevel
+            if (-not $Json) {
+                Show-DoctorResult -Result $ghResult -Config $config
+            }
+            if (-not $ghResult.healthy) { $allHealthy = $false }
+
             # Output JSON if requested
             if ($Json) {
                 $allResults = @{
                     gameService = $gsResult
                     database = $dbResult
                     ui = $uiResult
+                    github = $ghResult
                 }
                 Write-Output ($allResults | ConvertTo-Json -Depth 10)
             }
@@ -3380,7 +3639,8 @@ if ($Noun -in @("doctor", "install", "deploy", "clean") -and -not $Verb) {
             Write-Log -Level "HEADER" -Message ("=" * 40)
             $success = (Install-GameService -Config $config) -and
                        (Install-Database -Config $config) -and
-                       (Install-UI -Config $config)
+                       (Install-UI -Config $config) -and
+                       (Install-GitHubOidc -Config $config)
         }
         "deploy" {
             # Deploy all resources
@@ -3388,7 +3648,8 @@ if ($Noun -in @("doctor", "install", "deploy", "clean") -and -not $Verb) {
             Write-Log -Level "HEADER" -Message ("=" * 40)
             $success = (Deploy-GameService -Config $config -Force $Force -NoBuild $NoBuild) -and
                        (Deploy-Database -Config $config -Force $Force) -and
-                       (Deploy-UI -Config $config -Force $Force -NoBuild $NoBuild)
+                       (Deploy-UI -Config $config -Force $Force -NoBuild $NoBuild) -and
+                       (Install-GitHubOidc -Config $config)
         }
         "clean" {
             $confirm = Get-UserConfirmation -Question "Delete ALL Azure resources?" -TraceLevel $TraceLevel -Yes:$Yes
@@ -3487,6 +3748,26 @@ switch ($Noun) {
                     exit 0
                 }
                 $success = Clean-UI -Config $config
+            }
+        }
+    }
+    "github" {
+        switch ($Verb) {
+            "install" { $success = Install-GitHubOidc -Config $config }
+            "doctor" {
+                $result = Get-GitHubDoctor -Config $config -TraceLevel $TraceLevel
+                if ($Json) {
+                    Write-Output ($result | ConvertTo-Json -Depth 10)
+                } elseif ($HashTable) {
+                    Write-Output $result
+                } else {
+                    Show-DoctorResult -Result $result -Config $config
+                }
+                $success = $result.healthy
+            }
+            default {
+                Write-Log -Level "ERROR" -Message "Unknown verb '$Verb' for github. Use: install, doctor"
+                exit 1
             }
         }
     }

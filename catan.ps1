@@ -2558,7 +2558,7 @@ switch ($Verb) {
             }
             # Noun-first routing: ./catan.ps1 azure <noun> <verb>
             # Passes through directly to catan-azure.ps1
-            { $_ -in @("ui", "game-service", "database") } {
+            { $_ -in @("ui", "game-service", "database", "github") } {
                 if (-not $Target) {
                     Write-Host "Usage: ./catan.ps1 azure $SubCommand <verb>" -ForegroundColor Yellow
                     Write-Host ""
@@ -2593,6 +2593,7 @@ switch ($Verb) {
                 Write-Host "  ui doctor              - Check UI health only"
                 Write-Host "  ui deploy-staging      - Deploy React to staging only"
                 Write-Host "  game-service deploy    - Deploy GameService only"
+                Write-Host "  github install         - Setup GitHub Actions OIDC"
                 Write-Host ""
                 Write-Host "Options:" -ForegroundColor Yellow
                 Write-Host "  -Force                  Force deploy even if up-to-date"
