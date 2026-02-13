@@ -101,6 +101,15 @@ param(
     [Parameter()]
     [switch]$All,
 
+    [Parameter()]
+    [string]$Slot,
+
+    [Parameter()]
+    [string]$AzureGameServiceUrl,
+
+    [Parameter()]
+    [switch]$Staging,
+
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArgs
 )
@@ -2243,9 +2252,12 @@ switch ($Verb) {
                         Write-Host "UI deployment complete!" -ForegroundColor Green
                     }
                     "game-service" {
-                        Write-Host "Deploying GameService to Azure..." -ForegroundColor Cyan
+                        $slotLabel = if ($Slot) { " to slot '$Slot'" } else { "" }
+                        Write-Host "Deploying GameService${slotLabel} to Azure..." -ForegroundColor Cyan
                         Write-Host ""
-                        & $azureScript game-service deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
+                        $gsArgs = @{}
+                        if ($Slot) { $gsArgs['Slot'] = $Slot }
+                        & $azureScript game-service deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel @gsArgs
                         if ($LASTEXITCODE -ne 0) { exit 1 }
                         Write-Host ""
                         Write-Host "GameService deployment complete!" -ForegroundColor Green
@@ -2379,21 +2391,29 @@ switch ($Verb) {
                 }
             }
             "doctor" {
-                Write-Host "Checking Azure health..." -ForegroundColor Cyan
-                Write-Host ""
-
-                # Pass through -Json and -HashTable to the individual doctor calls
-                # The catan-azure.ps1 script now handles all formatting
-                & $azureScript game-service doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
-                & $azureScript database doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
-                & $azureScript ui doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
-
-                # Show summary if not in JSON/HashTable mode
-                if (-not $Json -and -not $HashTable) {
+                if ($Staging) {
+                    Write-Host "Checking staging health..." -ForegroundColor Cyan
                     Write-Host ""
-                    Write-Host "Service URLs:" -ForegroundColor Gray
-                    Write-Host "  WebUI:       https://catan.azurewebsites.net" -ForegroundColor Gray
-                    Write-Host "  GameService: https://catan-api.azurewebsites.net" -ForegroundColor Gray
+                    & $azureScript doctor -Staging -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                }
+                else {
+                    Write-Host "Checking Azure health..." -ForegroundColor Cyan
+                    Write-Host ""
+
+                    # Pass through -Json and -HashTable to the individual doctor calls
+                    # The catan-azure.ps1 script now handles all formatting
+                    & $azureScript game-service doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                    & $azureScript database doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                    & $azureScript ui doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+
+                    # Show summary if not in JSON/HashTable mode
+                    if (-not $Json -and -not $HashTable) {
+                        Write-Host ""
+                        Write-Host "Service URLs:" -ForegroundColor Gray
+                        Write-Host "  WebUI:       https://catan.azurewebsites.net" -ForegroundColor Gray
+                        Write-Host "  GameService: https://catan-api.azurewebsites.net" -ForegroundColor Gray
+                    }
                 }
             }
             "swap-slots" {
@@ -2549,14 +2569,17 @@ switch ($Verb) {
             }
             # Noun-first routing: ./catan.ps1 azure <noun> <verb>
             # Passes through directly to catan-azure.ps1
-            { $_ -in @("ui", "game-service", "database") } {
+            { $_ -in @("ui", "game-service", "database", "github") } {
                 if (-not $Target) {
                     Write-Host "Usage: ./catan.ps1 azure $SubCommand <verb>" -ForegroundColor Yellow
                     Write-Host ""
                     Write-Host "Verbs: install, deploy, deploy-staging, doctor, clean, fix" -ForegroundColor Gray
                     exit 1
                 }
-                & $azureScript $SubCommand $Target -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                $extraArgs = @{}
+                if ($Slot) { $extraArgs['Slot'] = $Slot }
+                if ($AzureGameServiceUrl) { $extraArgs['GameServiceUrl'] = $AzureGameServiceUrl }
+                & $azureScript $SubCommand $Target -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable @extraArgs
                 if ($LASTEXITCODE -ne 0) { exit 1 }
             }
             default {
@@ -2581,18 +2604,23 @@ switch ($Verb) {
                 Write-Host "  ui doctor              - Check UI health only"
                 Write-Host "  ui deploy-staging      - Deploy React to staging only"
                 Write-Host "  game-service deploy    - Deploy GameService only"
+                Write-Host "  github install         - Setup GitHub Actions OIDC"
                 Write-Host ""
                 Write-Host "Options:" -ForegroundColor Yellow
-                Write-Host "  -Force       Force deploy even if up-to-date"
-                Write-Host "  -Json        Output doctor as JSON"
-                Write-Host "  -HashTable   Output doctor as PowerShell hashtable"
-                Write-Host "  -TraceLevel  Output detail: ERROR, WARN, INFO (default), DEBUG"
+                Write-Host "  -Force                  Force deploy even if up-to-date"
+                Write-Host "  -Slot <name>            Deploy to a specific slot (e.g., staging)"
+                Write-Host "  -AzureGameServiceUrl    GameService URL for React staging builds"
+                Write-Host "  -Json                   Output doctor as JSON"
+                Write-Host "  -HashTable              Output doctor as PowerShell hashtable"
+                Write-Host "  -TraceLevel             Output detail: ERROR, WARN, INFO (default), DEBUG"
                 Write-Host ""
                 Write-Host "Examples:" -ForegroundColor Yellow
                 Write-Host "  ./catan.ps1 azure deploy ui -Force    - Force deploy UI"
                 Write-Host "  ./catan.ps1 azure ui doctor            - Check UI health"
                 Write-Host "  ./catan.ps1 azure doctor               - Check all resources"
                 Write-Host "  ./catan.ps1 azure swap-slots           - Swap staging <-> production"
+                Write-Host "  ./catan.ps1 azure game-service deploy -Slot staging  - Deploy to staging slot"
+                Write-Host "  ./catan.ps1 azure ui deploy-staging -AzureGameServiceUrl https://catan-api-staging.azurewebsites.net"
                 Write-Host ""
 
                 if ($SubCommand) {

@@ -1,47 +1,42 @@
-name: Deploy React UI to Staging (from main)
+name: Deploy React to Staging
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'react-ui/**'
-      - '.github/workflows/deploy-react-staging.yml'
+    branches: [staging]
   workflow_dispatch:
 
 jobs:
-  deploy:
-    name: Deploy React UI
+  deploy-react:
+    name: Deploy React UI (staging)
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js 22
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: react-ui/package-lock.json
 
-      - name: Login to Azure
-        uses: azure/login@v2
+      - uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Install PowerShell modules
+        shell: pwsh
+        run: |
+          # catan-azure.ps1 uses Az CLI, no extra modules needed
+          az --version | head -1
+
       - name: Deploy React UI to staging slot
         shell: pwsh
         run: |
-          # Points at PRODUCTION GameService (tests React changes against prod backend)
-          ./.scripts/catan-azure.ps1 ui deploy-staging -Force -TraceLevel INFO -GameServiceUrl https://catan-api.azurewebsites.net
+          ./.scripts/catan-azure.ps1 ui deploy-staging -Force -TraceLevel INFO
 
       - name: Verify React staging
         run: |
@@ -54,3 +49,13 @@ jobs:
           done
           echo "::error::React staging did not respond within 5 minutes"
           exit 1
+
+      - name: Verify GameService staging (informational)
+        continue-on-error: true
+        run: |
+          echo "=== GameService Staging Health ==="
+          curl -sf https://catan-api-staging.azurewebsites.net/health | jq . || echo "GameService staging not responding (deploy separately if needed)"
+          echo ""
+          echo "=== Staging URLs ==="
+          echo "React UI:    https://catan-staging.azurewebsites.net"
+          echo "GameService: https://catan-api-staging.azurewebsites.net"

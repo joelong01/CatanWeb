@@ -526,17 +526,28 @@ export class GameServiceProxy {
   }
 
   /**
-   * Execute Declare Winner command.
-   * Transitions game to GameOver state.
+   * Declare Winner - transitions game to GameOver state and updates lifetime stats.
+   * Uses dedicated endpoint (not executeCommand) to ensure stats are properly updated.
    */
   async declareWinner(
     winnerId: string,
     victoryPoints?: Record<string, number>
   ): Promise<CommandResult> {
-    return this.executeCommand('DeclareWinnerMessage', {
+    if (!this.gameId) {
+      return { success: false, message: 'Not connected to a game' };
+    }
+
+    const body = {
       winnerId,
       victoryPoints: victoryPoints ?? {},
-    });
+    };
+
+    const response = await this.post(`/api/game/${this.gameId}/winner`, body);
+    const data = response.ok ? await response.json().catch(() => ({})) : {};
+    return {
+      success: response.ok && (data.success ?? true),
+      message: data.message ?? (response.ok ? 'Winner declared' : `HTTP ${response.status}`),
+    };
   }
 
   // ==========================================================================

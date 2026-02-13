@@ -60,6 +60,8 @@ Legacy and superseded documents are archived in [old/](old/).
 | [cli-tooling.md](cli-tooling.md) | catan.ps1 verbs, Catan3.CLI project, flags, subsystems |
 | [troubleshooting.md](troubleshooting.md) | SSL errors, port conflicts, database locks, SignalR issues |
 | [azure-deployment.md](azure-deployment.md) | Azure resources, CI/CD pipeline, deployment scripts |
+| [clean-azure-recreation.md](clean-azure-recreation.md) | Nuke-and-rebuild plan for Azure infrastructure |
+| [staging-slot-config.md](staging-slot-config.md) | Required configuration for staging deployment slots |
 
 ## Status & Reference
 

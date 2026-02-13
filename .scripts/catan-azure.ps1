@@ -31,11 +31,11 @@
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("ui", "database", "game-service", "help", "doctor", "install", "deploy", "clean")]
+    [ValidateSet("ui", "database", "game-service", "github", "help", "doctor", "install", "deploy", "clean")]
     [string]$Noun,
 
     [Parameter(Position = 1)]
-    [ValidateSet("install", "deploy", "deploy-staging", "doctor", "clean", "fix")]
+    [ValidateSet("install", "deploy", "deploy-staging", "deploy-staging-access", "doctor", "clean", "fix")]
     [string]$Verb,
 
     [Parameter()]
@@ -61,7 +61,16 @@ param(
     [switch]$Force,
 
     [Parameter()]
-    [switch]$NoBuild
+    [switch]$NoBuild,
+
+    [Parameter()]
+    [string]$Slot,
+
+    [Parameter()]
+    [string]$GameServiceUrl,
+
+    [Parameter()]
+    [switch]$Staging
 )
 
 $ErrorActionPreference = "Stop"
@@ -653,7 +662,7 @@ function Install-Database {
         Write-Log -Level "INFO" -Message "Granting SQL Server Contributor role to GameService managed identity..."
         $existingRole = Invoke-AzCommand "role assignment list --assignee $principalId --role 'SQL Server Contributor' --scope $sqlServerScope --query [0].id -o tsv" -FailOnError $false
         if (-not $existingRole) {
-            Invoke-AzCommand "role assignment create --assignee $principalId --role 'SQL Server Contributor' --scope $sqlServerScope" -SuppressOutput
+            Invoke-AzCommand "role assignment create --assignee-object-id $principalId --assignee-principal-type ServicePrincipal --role 'SQL Server Contributor' --scope $sqlServerScope" -SuppressOutput
             Write-Log -Level "INFO" -Message "SQL Server Contributor role granted"
         }
         else {
@@ -817,6 +826,112 @@ END
     }
     else {
         Write-Log -Level "INFO" -Message "Database permissions already configured - skipping"
+    }
+
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Grants database access to the GameService staging slot's managed identity.
+.DESCRIPTION
+    Deployment slots have their own managed identity with a different principal ID.
+    This function grants db_datareader, db_datawriter, and db_ddladmin roles to the
+    staging slot identity. Idempotent -- safe to run multiple times.
+.PARAMETER Config
+    Azure configuration hashtable
+.OUTPUTS
+    Boolean indicating success
+#>
+function Grant-StagingDatabaseAccess {
+    param(
+        [hashtable]$Config
+    )
+
+    $rgName = $Config.resourceGroup
+    $sqlServerName = $Config.sqlServer.serverName
+    $databaseName = $Config.sqlServer.databaseName
+    $fqdn = $Config.sqlServer.fqdn
+    $appName = $Config.gameService.appName
+
+    # Ensure staging slot exists and has managed identity
+    Write-Log -Level "INFO" -Message "Ensuring GameService staging slot has managed identity..."
+    $identity = Invoke-AzCommand "webapp identity show --name $appName --resource-group $rgName --slot staging --query principalId -o tsv" -FailOnError $false
+    if (-not $identity) {
+        Write-Log -Level "INFO" -Message "Assigning managed identity to staging slot..."
+        Invoke-AzCommand "webapp identity assign --name $appName --resource-group $rgName --slot staging" -SuppressOutput
+    }
+
+    # Install SqlServer module if not available
+    if (-not (Get-Module -ListAvailable -Name SqlServer)) {
+        Write-Log -Level "INFO" -Message "Installing SqlServer PowerShell module..."
+        Install-Module -Name SqlServer -Scope CurrentUser -Force -AllowClobber
+    }
+
+    # Add firewall rule for current IP
+    Write-Log -Level "INFO" -Message "Adding temporary firewall rule for staging DB access..."
+    $myIp = (Invoke-WebRequest -Uri "https://api.ipify.org" -UseBasicParsing -TimeoutSec 10).Content.Trim()
+    $fwRuleName = "StagingAccess-$([guid]::NewGuid().ToString().Substring(0,8))"
+    Invoke-AzCommand "sql server firewall-rule create --server $sqlServerName --resource-group $rgName --name $fwRuleName --start-ip-address $myIp --end-ip-address $myIp" -SuppressOutput
+
+    try {
+        # Get access token
+        Write-Log -Level "DEBUG" -Message "Acquiring Azure AD access token for SQL..."
+        $accessToken = (Invoke-AzCommand "account get-access-token --resource https://database.windows.net/ --query accessToken -o tsv").Trim()
+
+        # The staging slot identity name is 'appName/slots/staging'
+        $slotIdentityName = "$appName/slots/staging"
+
+        $sql = @"
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = '$slotIdentityName')
+BEGIN
+    CREATE USER [$slotIdentityName] FROM EXTERNAL PROVIDER;
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members rm
+               JOIN sys.database_principals r ON rm.role_principal_id = r.principal_id
+               JOIN sys.database_principals m ON rm.member_principal_id = m.principal_id
+               WHERE r.name = 'db_datareader' AND m.name = '$slotIdentityName')
+BEGIN
+    ALTER ROLE db_datareader ADD MEMBER [$slotIdentityName];
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members rm
+               JOIN sys.database_principals r ON rm.role_principal_id = r.principal_id
+               JOIN sys.database_principals m ON rm.member_principal_id = m.principal_id
+               WHERE r.name = 'db_datawriter' AND m.name = '$slotIdentityName')
+BEGIN
+    ALTER ROLE db_datawriter ADD MEMBER [$slotIdentityName];
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members rm
+               JOIN sys.database_principals r ON rm.role_principal_id = r.principal_id
+               JOIN sys.database_principals m ON rm.member_principal_id = m.principal_id
+               WHERE r.name = 'db_ddladmin' AND m.name = '$slotIdentityName')
+BEGIN
+    ALTER ROLE db_ddladmin ADD MEMBER [$slotIdentityName];
+END
+"@
+
+        Write-Log -Level "INFO" -Message "Granting database access to staging identity: $slotIdentityName"
+        Import-Module SqlServer -ErrorAction Stop
+        Invoke-Sqlcmd -ServerInstance $fqdn -Database $databaseName -AccessToken $accessToken -Query $sql -ErrorAction Stop
+
+        Write-Log -Level "INFO" -Message "Database permissions granted to staging slot"
+    }
+    catch {
+        Write-Log -Level "ERROR" -Message "Failed to grant staging DB access: $($_.Exception.Message)"
+        Write-Log -Level "WARN" -Message ""
+        Write-Log -Level "WARN" -Message "Manual alternative - run this SQL as server admin:"
+        Write-Log -Level "WARN" -Message "  CREATE USER [$slotIdentityName] FROM EXTERNAL PROVIDER;"
+        Write-Log -Level "WARN" -Message "  ALTER ROLE db_datareader ADD MEMBER [$slotIdentityName];"
+        Write-Log -Level "WARN" -Message "  ALTER ROLE db_datawriter ADD MEMBER [$slotIdentityName];"
+        Write-Log -Level "WARN" -Message "  ALTER ROLE db_ddladmin ADD MEMBER [$slotIdentityName];"
+        # Don't fail the whole deploy for this -- the service may still work with inherited permissions
+    }
+    finally {
+        Write-Log -Level "DEBUG" -Message "Removing temporary firewall rule..."
+        Invoke-AzCommand "sql server firewall-rule delete --server $sqlServerName --resource-group $rgName --name $fwRuleName" -FailOnError $false -SuppressOutput
     }
 
     return $true
@@ -1628,9 +1743,11 @@ function Install-GameService {
     $rgScope = "/subscriptions/$subscriptionId/resourceGroups/$rgName"
 
     Write-Log -Level "INFO" -Message "Granting Reader role on resource group to managed identity..."
+    # Use --assignee-object-id + --assignee-principal-type to avoid Azure AD graph lookup
+    # (newly created managed identities may not be replicated to graph yet)
     $existingRole = Invoke-AzCommand "role assignment list --assignee $principalId --role Reader --scope $rgScope --query [0].id -o tsv" -FailOnError $false
     if (-not $existingRole) {
-        Invoke-AzCommand "role assignment create --assignee $principalId --role Reader --scope $rgScope" -SuppressOutput
+        Invoke-AzCommand "role assignment create --assignee-object-id $principalId --assignee-principal-type ServicePrincipal --role Reader --scope $rgScope" -SuppressOutput
         Write-Log -Level "INFO" -Message "Reader role granted on resource group"
     }
     else {
@@ -1719,6 +1836,434 @@ function Install-UI {
 
 <#
 .SYNOPSIS
+    Idempotently creates Azure AD app registration and federated credentials for GitHub Actions OIDC.
+.DESCRIPTION
+    Creates the app registration, service principal, federated credentials for main and staging
+    branches, assigns Contributor role on the resource group, and sets GitHub secrets.
+    Safe to run repeatedly — checks each resource before creating.
+.PARAMETER Config
+    Azure configuration hashtable
+.OUTPUTS
+    Boolean - $true on success
+#>
+function Install-GitHubOidc {
+    param([hashtable]$Config)
+
+    $rgName = $Config.resourceGroup
+    $baseName = $Config.baseName
+    $appDisplayName = "github-actions-$baseName-deploy"
+
+    # Detect GitHub repo
+    Write-Log -Level "INFO" -Message "Detecting GitHub repository..."
+    $ghRepo = $null
+    try {
+        $ghRepo = & gh repo view --json nameWithOwner -q .nameWithOwner 2>$null
+    } catch {}
+    if (-not $ghRepo) {
+        Write-Log -Level "ERROR" -Message "Could not detect GitHub repository. Ensure 'gh' CLI is installed and authenticated."
+        return $false
+    }
+    Write-Log -Level "INFO" -Message "GitHub repo: $ghRepo"
+
+    # Get subscription and tenant IDs
+    $accountInfo = Invoke-AzCommand "account show --query `"{subscriptionId:id, tenantId:tenantId}`"" -JsonOutput
+    if (-not $accountInfo) {
+        Write-Log -Level "ERROR" -Message "Could not get Azure account info"
+        return $false
+    }
+    $subscriptionId = $accountInfo.subscriptionId
+    $tenantId = $accountInfo.tenantId
+    Write-Log -Level "INFO" -Message "Subscription: $subscriptionId"
+    Write-Log -Level "INFO" -Message "Tenant: $tenantId"
+
+    # Check if app registration exists
+    Write-Log -Level "INFO" -Message "Checking app registration: $appDisplayName"
+    $existingApps = Invoke-AzCommand "ad app list --display-name `"$appDisplayName`" --query `"[?displayName=='$appDisplayName']`"" -FailOnError $false -JsonOutput
+    if ($existingApps -and $existingApps.Count -gt 0) {
+        $appObjectId = $existingApps[0].id
+        $appId = $existingApps[0].appId
+        Write-Log -Level "INFO" -Message "App registration exists: $appDisplayName (appId: $appId)"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Creating app registration: $appDisplayName"
+        $newApp = Invoke-AzCommand "ad app create --display-name `"$appDisplayName`"" -JsonOutput
+        $appObjectId = $newApp.id
+        $appId = $newApp.appId
+        Write-Log -Level "INFO" -Message "App registration created: $appDisplayName (appId: $appId)"
+    }
+
+    # Ensure service principal exists
+    Write-Log -Level "INFO" -Message "Checking service principal..."
+    $sp = Invoke-AzCommand "ad sp show --id $appId" -FailOnError $false -JsonOutput
+    if (-not $sp) {
+        Write-Log -Level "INFO" -Message "Creating service principal..."
+        $sp = Invoke-AzCommand "ad sp create --id $appId" -JsonOutput
+        Write-Log -Level "INFO" -Message "Service principal created"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Service principal exists"
+    }
+    $spObjectId = $sp.id
+
+    # Ensure federated credentials for main and staging branches
+    $branches = @("main", "staging")
+    $existingCreds = Invoke-AzCommand "ad app federated-credential list --id $appObjectId" -FailOnError $false -JsonOutput
+    if (-not $existingCreds) { $existingCreds = @() }
+
+    foreach ($branch in $branches) {
+        $credName = "github-actions-$branch"
+        $subject = "repo:${ghRepo}:ref:refs/heads/$branch"
+
+        $existing = $existingCreds | Where-Object { $_.name -eq $credName }
+        if ($existing) {
+            Write-Log -Level "INFO" -Message "Federated credential exists: $credName"
+        }
+        else {
+            Write-Log -Level "INFO" -Message "Creating federated credential: $credName (subject: $subject)"
+            $credParams = @{
+                name      = $credName
+                issuer    = "https://token.actions.githubusercontent.com"
+                subject   = $subject
+                audiences = @("api://AzureADTokenExchange")
+            } | ConvertTo-Json -Compress
+            # Write to temp file because az CLI doesn't accept inline JSON well on all platforms
+            $tempFile = [System.IO.Path]::GetTempFileName()
+            $credParams | Set-Content -Path $tempFile -Encoding UTF8
+            try {
+                Invoke-AzCommand "ad app federated-credential create --id $appObjectId --parameters @$tempFile" -SuppressOutput
+                Write-Log -Level "INFO" -Message "Federated credential created: $credName"
+            }
+            finally {
+                Remove-Item $tempFile -ErrorAction SilentlyContinue
+            }
+        }
+    }
+
+    # Assign Contributor role on resource group (if not already assigned)
+    Write-Log -Level "INFO" -Message "Checking Contributor role on $rgName..."
+    $roleAssignments = Invoke-AzCommand "role assignment list --assignee $spObjectId --role Contributor --scope /subscriptions/$subscriptionId/resourceGroups/$rgName" -FailOnError $false -JsonOutput
+    if ($roleAssignments -and $roleAssignments.Count -gt 0) {
+        Write-Log -Level "INFO" -Message "Contributor role already assigned"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Assigning Contributor role on $rgName..."
+        Invoke-AzCommand "role assignment create --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal --role Contributor --scope /subscriptions/$subscriptionId/resourceGroups/$rgName" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Contributor role assigned"
+    }
+
+    # Set GitHub secrets
+    Write-Log -Level "INFO" -Message "Setting GitHub secrets..."
+    $secretErrors = 0
+    foreach ($pair in @(
+        @{ name = "AZURE_CLIENT_ID"; value = $appId },
+        @{ name = "AZURE_TENANT_ID"; value = $tenantId },
+        @{ name = "AZURE_SUBSCRIPTION_ID"; value = $subscriptionId }
+    )) {
+        try {
+            $result = & gh secret set $pair.name --body $pair.value 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Log -Level "WARN" -Message "Failed to set secret $($pair.name): $result"
+                $secretErrors++
+            }
+            else {
+                Write-Log -Level "INFO" -Message "Secret set: $($pair.name)"
+            }
+        }
+        catch {
+            Write-Log -Level "WARN" -Message "Failed to set secret $($pair.name): $_"
+            $secretErrors++
+        }
+    }
+
+    if ($secretErrors -gt 0) {
+        Write-Log -Level "WARN" -Message "$secretErrors secret(s) failed to set. Ensure 'gh' CLI has repo admin access."
+    }
+
+    Write-Log -Level "INFO" -Message "GitHub OIDC setup complete"
+    Write-Log -Level "INFO" -Message "  App: $appDisplayName"
+    Write-Log -Level "INFO" -Message "  Client ID: $appId"
+    Write-Log -Level "INFO" -Message "  Branches: $($branches -join ', ')"
+    Write-Log -Level "INFO" -Message "  Role: Contributor on $rgName"
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Checks the health of GitHub Actions OIDC configuration.
+.DESCRIPTION
+    Verifies app registration, service principal, federated credentials, role assignments,
+    and GitHub secrets exist and are correctly configured.
+.PARAMETER Config
+    Azure configuration hashtable
+.PARAMETER TraceLevel
+    Output detail level
+.OUTPUTS
+    Hashtable with doctor result (resource, name, healthy, status, checks)
+#>
+function Get-GitHubDoctor {
+    param(
+        [hashtable]$Config,
+        [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+        [string]$TraceLevel = "ERROR"
+    )
+
+    $baseName = $Config.baseName
+    $rgName = $Config.resourceGroup
+    $appDisplayName = "github-actions-$baseName-deploy"
+
+    Write-Log -Level "DEBUG" -Message "Get-GitHubDoctor started" -TraceLevel $TraceLevel
+
+    $result = @{
+        resource  = "github"
+        name      = $appDisplayName
+        status    = "unknown"
+        healthy   = $false
+        timestamp = (Get-Date -Format "o")
+        checks    = @{
+            appRegistration    = $false
+            servicePrincipal   = $false
+            federatedMain      = $false
+            federatedStaging   = $false
+            contributorRole    = $false
+        }
+    }
+
+    # Check app registration
+    $existingApps = Invoke-AzCommand "ad app list --display-name `"$appDisplayName`" --query `"[?displayName=='$appDisplayName']`"" -FailOnError $false -JsonOutput
+    if ($existingApps -and $existingApps.Count -gt 0) {
+        $result.checks.appRegistration = $true
+        $appObjectId = $existingApps[0].id
+        $appId = $existingApps[0].appId
+
+        # Check service principal
+        $sp = Invoke-AzCommand "ad sp show --id $appId" -FailOnError $false -JsonOutput
+        if ($sp) {
+            $result.checks.servicePrincipal = $true
+            $spObjectId = $sp.id
+
+            # Check Contributor role
+            $accountInfo = Invoke-AzCommand "account show --query id -o tsv" -FailOnError $false
+            if ($accountInfo) {
+                $roleAssignments = Invoke-AzCommand "role assignment list --assignee $spObjectId --role Contributor --scope /subscriptions/$accountInfo/resourceGroups/$rgName" -FailOnError $false -JsonOutput
+                if ($roleAssignments -and $roleAssignments.Count -gt 0) {
+                    $result.checks.contributorRole = $true
+                }
+            }
+        }
+
+        # Check federated credentials
+        $creds = Invoke-AzCommand "ad app federated-credential list --id $appObjectId" -FailOnError $false -JsonOutput
+        if ($creds) {
+            foreach ($cred in $creds) {
+                if ($cred.name -eq "github-actions-main") { $result.checks.federatedMain = $true }
+                if ($cred.name -eq "github-actions-staging") { $result.checks.federatedStaging = $true }
+            }
+        }
+    }
+
+    # Determine overall health
+    $allChecks = $result.checks.Values | Where-Object { $_ -eq $false }
+    if ($allChecks.Count -eq 0) {
+        $result.healthy = $true
+        $result.status = "healthy"
+    }
+    else {
+        $result.status = "needs-install"
+    }
+
+    return $result
+}
+
+<#
+.SYNOPSIS
+    Checks health of all staging environment endpoints.
+.DESCRIPTION
+    Verifies the staging slots for GameService and UI are responding,
+    checks GameService staging database connectivity, and reports versions.
+.PARAMETER Config
+    Azure configuration hashtable
+.PARAMETER TraceLevel
+    Output detail level
+.OUTPUTS
+    Hashtable with staging doctor result
+#>
+function Get-StagingDoctor {
+    param(
+        [hashtable]$Config,
+        [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+        [string]$TraceLevel = "ERROR"
+    )
+
+    $gsAppName = $Config.gameService.appName
+    $uiAppName = $Config.ui.appName
+    $gsStagingUrl = "https://$gsAppName-staging.azurewebsites.net"
+    $uiStagingUrl = "https://$uiAppName-staging.azurewebsites.net"
+    $rgName = $Config.resourceGroup
+
+    Write-Log -Level "DEBUG" -Message "Get-StagingDoctor started" -TraceLevel $TraceLevel
+
+    $result = @{
+        resource  = "staging"
+        name      = "Staging Environment"
+        status    = "unknown"
+        healthy   = $false
+        timestamp = (Get-Date -Format "o")
+        checks    = [ordered]@{
+            gameServiceSlot     = $false
+            gameServiceHealth   = $false
+            gameServiceDatabase = $false
+            uiSlot              = $false
+            uiResponding        = $false
+        }
+        details   = @{
+            gameServiceUrl    = $gsStagingUrl
+            uiUrl             = $uiStagingUrl
+            gameServiceCommit = $null
+            uiCommit          = $null
+        }
+    }
+
+    # Check GameService staging slot exists
+    Write-Log -Level "INFO" -Message "Checking GameService staging slot..." -TraceLevel $TraceLevel
+    $gsSlot = Invoke-AzCommand "webapp deployment slot list --name $gsAppName --resource-group $rgName --query `"[?name=='staging']`"" -FailOnError $false -JsonOutput
+    if ($gsSlot -and $gsSlot.Count -gt 0) {
+        $result.checks.gameServiceSlot = $true
+
+        # Check health endpoint
+        Write-Log -Level "INFO" -Message "Checking GameService staging health..." -TraceLevel $TraceLevel
+        try {
+            $healthResponse = Invoke-RestMethod -Uri "$gsStagingUrl/health?checkDatabase=true" -TimeoutSec 15 -ErrorAction Stop
+            $result.checks.gameServiceHealth = $true
+            if ($healthResponse.version.commit) {
+                $result.details.gameServiceCommit = $healthResponse.version.commit
+            }
+            if ($healthResponse.databaseDiagnostics.connected -eq $true) {
+                $result.checks.gameServiceDatabase = $true
+            }
+        }
+        catch {
+            Write-Log -Level "DEBUG" -Message "GameService staging health check failed: $_" -TraceLevel $TraceLevel
+        }
+    }
+
+    # Check UI staging slot exists
+    Write-Log -Level "INFO" -Message "Checking UI staging slot..." -TraceLevel $TraceLevel
+    $uiSlot = Invoke-AzCommand "webapp deployment slot list --name $uiAppName --resource-group $rgName --query `"[?name=='staging']`"" -FailOnError $false -JsonOutput
+    if ($uiSlot -and $uiSlot.Count -gt 0) {
+        $result.checks.uiSlot = $true
+
+        # Check UI responding
+        Write-Log -Level "INFO" -Message "Checking UI staging response..." -TraceLevel $TraceLevel
+        try {
+            $webResponse = Invoke-WebRequest -Uri $uiStagingUrl -TimeoutSec 15 -UseBasicParsing -ErrorAction Stop
+            if ($webResponse.StatusCode -eq 200) {
+                $result.checks.uiResponding = $true
+            }
+        }
+        catch {
+            Write-Log -Level "DEBUG" -Message "UI staging check failed: $_" -TraceLevel $TraceLevel
+        }
+
+        # Get UI staging commit from app settings
+        $uiSettings = Invoke-AzCommand "webapp config appsettings list --name $uiAppName --resource-group $rgName --slot staging --query `"[?name=='GIT_COMMIT'].value | [0]`" -o tsv" -FailOnError $false
+        if ($uiSettings) {
+            $result.details.uiCommit = $uiSettings
+        }
+    }
+
+    # Determine overall health
+    $failedChecks = $result.checks.Values | Where-Object { $_ -eq $false }
+    if ($failedChecks.Count -eq 0) {
+        $result.healthy = $true
+        $result.status = "healthy"
+    }
+    else {
+        $result.status = "unhealthy"
+    }
+
+    return $result
+}
+
+<#
+.SYNOPSIS
+    Displays staging doctor results in a formatted table.
+.PARAMETER Result
+    The staging doctor result hashtable
+#>
+function Show-StagingDoctorResult {
+    param([hashtable]$Result)
+
+    $col1 = 25
+    $col2 = 12
+
+    Write-Host ""
+    Write-Host "Staging Environment" -ForegroundColor Cyan
+    Write-Host ("-" * 60)
+    Write-Host ("Check".PadRight($col1) + "Status".PadRight($col2) + "Details") -ForegroundColor Yellow
+
+    $displayNames = @{
+        gameServiceSlot     = "GameService Slot"
+        gameServiceHealth   = "GameService Health"
+        gameServiceDatabase = "Database Connected"
+        uiSlot              = "UI Slot"
+        uiResponding        = "UI Responding"
+    }
+
+    $actionHints = @{
+        gameServiceSlot     = "$script:CmdHintPrefix game-service install"
+        gameServiceHealth   = "$script:CmdHintPrefix game-service deploy -Slot staging"
+        gameServiceDatabase = "$script:CmdHintPrefix database deploy-staging-access"
+        uiSlot              = "$script:CmdHintPrefix ui install"
+        uiResponding        = "$script:CmdHintPrefix ui deploy-staging"
+    }
+
+    foreach ($key in $Result.checks.Keys) {
+        $name = if ($displayNames[$key]) { $displayNames[$key] } else { $key }
+        $status = $Result.checks[$key]
+        $statusText = if ($status) { "OK" } else { "MISSING" }
+        $statusColor = if ($status) { "Green" } else { "Red" }
+        $detail = if (-not $status -and $actionHints[$key]) { $actionHints[$key] } else { "" }
+
+        Write-Host -NoNewline ("  " + $name).PadRight($col1)
+        Write-Host -NoNewline $statusText.PadRight($col2) -ForegroundColor $statusColor
+        if ($detail) {
+            Write-Host $detail -ForegroundColor Gray
+        } else {
+            Write-Host ""
+        }
+    }
+
+    # Show version info
+    if ($Result.details.gameServiceCommit -or $Result.details.uiCommit) {
+        Write-Host ""
+        Write-Host "  Versions:" -ForegroundColor Yellow
+        if ($Result.details.gameServiceCommit) {
+            Write-Host "    GameService:  $($Result.details.gameServiceCommit)" -ForegroundColor Gray
+        }
+        if ($Result.details.uiCommit) {
+            Write-Host "    UI:           $($Result.details.uiCommit)" -ForegroundColor Gray
+        }
+    }
+
+    # URLs
+    Write-Host ""
+    Write-Host "  URLs:" -ForegroundColor Yellow
+    Write-Host "    GameService:  $($Result.details.gameServiceUrl)" -ForegroundColor Gray
+    Write-Host "    UI:           $($Result.details.uiUrl)" -ForegroundColor Gray
+
+    # Overall status
+    Write-Host ""
+    Write-Host -NoNewline "Status: "
+    if ($Result.healthy) {
+        Write-Host "HEALTHY" -ForegroundColor Green
+    }
+    else {
+        Write-Host "UNHEALTHY" -ForegroundColor Red
+    }
+}
+
+<#
+.SYNOPSIS
     Gets the current git commit hash for change detection.
 .DESCRIPTION
     Returns the short git commit hash of HEAD for tracking deployments.
@@ -1733,6 +2278,113 @@ function Get-GitCommitHash {
     catch {
         return "unknown"
     }
+}
+
+<#
+.SYNOPSIS
+    Deploys a zip package via the Kudu ZIP Deploy REST API.
+.DESCRIPTION
+    Uses the Kudu /api/zipdeploy?isAsync=true endpoint which genuinely returns
+    202 immediately, unlike 'az webapp deploy --async true' which has a known bug
+    (https://github.com/Azure/azure-cli/issues/29003) that still polls for site startup.
+    After submitting the zip, polls the deployment status endpoint with a controlled timeout.
+.PARAMETER AppName
+    The Azure web app name
+.PARAMETER ResourceGroup
+    The Azure resource group name
+.PARAMETER ZipPath
+    Path to the zip file to deploy
+.PARAMETER Slot
+    Optional deployment slot name (e.g., 'staging'). If omitted, deploys to production.
+.OUTPUTS
+    Boolean - $true on success
+#>
+function Deploy-KuduZip {
+    param(
+        [Parameter(Mandatory)]
+        [string]$AppName,
+        [Parameter(Mandatory)]
+        [string]$ResourceGroup,
+        [Parameter(Mandatory)]
+        [string]$ZipPath,
+        [string]$Slot = $null
+    )
+
+    # Get Azure AD bearer token for Kudu auth (works even when SCM basic auth is disabled)
+    $tokenResult = Invoke-AzCommand "account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv" -FailOnError $false
+    if (-not $tokenResult) {
+        Write-Log -Level "ERROR" -Message "Failed to get Azure access token"
+        return $false
+    }
+    $headers = @{ Authorization = "Bearer $tokenResult" }
+
+    # Determine SCM hostname
+    $scmHost = if ($Slot) {
+        "$AppName-$Slot.scm.azurewebsites.net"
+    } else {
+        "$AppName.scm.azurewebsites.net"
+    }
+
+    $slotLabel = if ($Slot) { " (slot: $Slot)" } else { "" }
+    Write-Log -Level "INFO" -Message "Deploying via Kudu API to $scmHost$slotLabel..."
+
+    # POST zip to Kudu (truly async — returns 202 immediately)
+    $uri = "https://$scmHost/api/zipdeploy?isAsync=true"
+    try {
+        $response = Invoke-WebRequest -Uri $uri -Method Post `
+            -InFile $ZipPath `
+            -ContentType "application/zip" `
+            -Headers $headers `
+            -UseBasicParsing `
+            -TimeoutSec 300
+    }
+    catch {
+        Write-Log -Level "ERROR" -Message "Kudu deploy request failed: $_"
+        return $false
+    }
+
+    if ($response.StatusCode -ne 202) {
+        Write-Log -Level "ERROR" -Message "Kudu deploy returned HTTP $($response.StatusCode) (expected 202)"
+        return $false
+    }
+
+    Write-Log -Level "INFO" -Message "Deploy submitted (HTTP 202). Polling status..."
+
+    # Poll deployment status with timeout (60 x 10s = 10 min max)
+    $statusUri = "https://$scmHost/api/deployments/latest"
+    for ($i = 1; $i -le 60; $i++) {
+        Start-Sleep -Seconds 10
+        try {
+            $status = Invoke-RestMethod -Uri $statusUri -Headers $headers -TimeoutSec 15
+            $code = $status.status
+            # Kudu status codes: 0=Pending, 1=Building, 2=Deploying, 3=Failed, 4=Success
+            $statusLabel = switch ($code) {
+                0 { "Pending" }
+                1 { "Building" }
+                2 { "Deploying" }
+                3 { "Failed" }
+                4 { "Success" }
+                default { "Unknown ($code)" }
+            }
+            $level = if ($i % 6 -eq 0) { "INFO" } else { "DEBUG" }
+            Write-Log -Level $level -Message "  Deploy status ($($i * 10)s): $statusLabel"
+            if ($code -eq 4) {
+                Write-Log -Level "INFO" -Message "Kudu deployment succeeded"
+                return $true
+            }
+            if ($code -eq 3) {
+                Write-Log -Level "ERROR" -Message "Kudu deployment failed"
+                return $false
+            }
+        }
+        catch {
+            Write-Log -Level "DEBUG" -Message "  Status poll error: $_"
+        }
+    }
+
+    # Timed out but the deploy was submitted — the site may still be starting
+    Write-Log -Level "WARN" -Message "Deploy status polling timed out after 10 min (deploy was submitted)"
+    return $true
 }
 
 <#
@@ -1754,7 +2406,8 @@ function Test-DeploymentNeeded {
     param(
         [string]$AppName,
         [string]$ResourceGroup,
-        [bool]$Force
+        [bool]$Force,
+        [string]$Slot = $null
     )
 
     if ($Force) {
@@ -1766,7 +2419,8 @@ function Test-DeploymentNeeded {
     Write-Log -Level "DEBUG" -Message "Current git commit: $currentHash"
 
     # Get deployed version from app settings
-    $deployedHash = Invoke-AzCommand "webapp config appsettings list --name $AppName --resource-group $ResourceGroup --query `"[?name=='DEPLOY_COMMIT'].value | [0]`" -o tsv" -FailOnError $false
+    $slotArgs = if ($Slot) { " --slot $Slot" } else { "" }
+    $deployedHash = Invoke-AzCommand "webapp config appsettings list --name $AppName --resource-group $ResourceGroup$slotArgs --query `"[?name=='DEPLOY_COMMIT'].value | [0]`" -o tsv" -FailOnError $false
 
     if (-not $deployedHash) {
         Write-Log -Level "INFO" -Message "No previous deployment found"
@@ -1802,7 +2456,8 @@ function Deploy-GameService {
     param(
         [hashtable]$Config,
         [bool]$Force = $false,
-        [bool]$NoBuild = $false
+        [bool]$NoBuild = $false,
+        [string]$Slot = $null
     )
 
     $rgName = $Config.resourceGroup
@@ -1810,13 +2465,40 @@ function Deploy-GameService {
     $projectPath = Join-Path $ProjectRoot "Catan3.GameService"
     $publishPath = Join-Path $ProjectRoot ".publish/gameservice"
     $zipPath = Join-Path $ProjectRoot ".publish/gameservice.zip"
+    $slotArgs = if ($Slot) { " --slot $Slot" } else { "" }
+    $slotLabel = if ($Slot) { " (slot: $Slot)" } else { "" }
+
+    # Ensure staging slot exists when deploying to a slot
+    # See .design/staging-slot-config.md for the full list of required settings
+    if ($Slot) {
+        $existingSlots = Invoke-AzCommand "webapp deployment slot list --name $appName --resource-group $rgName --query `"[].name`" -o tsv" -FailOnError $false
+        if ($existingSlots -notcontains $Slot) {
+            Write-Log -Level "INFO" -Message "Creating deployment slot '$Slot' on $appName..."
+            Invoke-AzCommand "webapp deployment slot create --name $appName --resource-group $rgName --slot $Slot" -SuppressOutput
+            Invoke-AzCommand "webapp identity assign --name $appName --resource-group $rgName --slot $Slot" -SuppressOutput
+        }
+
+        # Always ensure required settings are present (idempotent)
+        Write-Log -Level "INFO" -Message "Configuring slot '$Slot' settings..."
+        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot $Slot --settings DATABASE_MODE=azure AZURE_STORAGE_ACCOUNT=$($Config.storageAccount) AZURE_STORAGE_CONTAINER=$($Config.storageContainer) WEBSITES_CONTAINER_START_TIME_LIMIT=600 SCM_DO_BUILD_DURING_DEPLOYMENT=false" -SuppressOutput
+
+        # Copy connection string from production if missing
+        $slotConnStr = Invoke-AzCommand "webapp config connection-string list --name $appName --resource-group $rgName --slot $Slot" -FailOnError $false -JsonOutput
+        if (-not $slotConnStr -or $slotConnStr.Count -eq 0) {
+            Write-Log -Level "INFO" -Message "Copying connection string from production to slot '$Slot'..."
+            $prodConnStr = Invoke-AzCommand "webapp config connection-string list --name $appName --resource-group $rgName" -JsonOutput
+            foreach ($cs in $prodConnStr) {
+                Invoke-AzCommand "webapp config connection-string set --name $appName --resource-group $rgName --slot $Slot --connection-string-type $($cs.type) --settings $($cs.name)=`"$($cs.value)`"" -SuppressOutput
+            }
+        }
+    }
 
     # Check if deployment is needed
-    if (-not (Test-DeploymentNeeded -AppName $appName -ResourceGroup $rgName -Force $Force)) {
+    if (-not (Test-DeploymentNeeded -AppName $appName -ResourceGroup $rgName -Force $Force -Slot $Slot)) {
         return $true
     }
 
-    Write-Log -Level "INFO" -Message "Publishing GameService..."
+    Write-Log -Level "INFO" -Message "Publishing GameService$slotLabel..."
     $publishArgs = @($projectPath, "-c", "Release", "-o", $publishPath, "--nologo", "-v", "q")
     if ($NoBuild) { $publishArgs += "--no-build" }
     dotnet publish @publishArgs
@@ -1826,22 +2508,29 @@ function Deploy-GameService {
     Compress-Archive -Path "$publishPath/*" -DestinationPath $zipPath
 
     $zipSize = (Get-Item $zipPath).Length / 1MB
-    Write-Log -Level "INFO" -Message "Deploying to Azure ($([math]::Round($zipSize, 1)) MB)..."
+    Write-Log -Level "INFO" -Message "Deploying to Azure$slotLabel ($([math]::Round($zipSize, 1)) MB)..."
 
     # Enable logging to diagnose startup failures
     Write-Log -Level "DEBUG" -Message "Enabling App Service logging..."
-    Invoke-AzCommand "webapp log config --name $appName --resource-group $rgName --docker-container-logging filesystem --detailed-error-messages true --web-server-logging filesystem" -SuppressOutput
+    Invoke-AzCommand "webapp log config --name $appName --resource-group $rgName$slotArgs --docker-container-logging filesystem --detailed-error-messages true --web-server-logging filesystem" -SuppressOutput
 
-    # Use --async true to avoid infinite polling bug in az cli 2.61+
-    # See: https://github.com/Azure/azure-cli/issues/29003
-    Invoke-AzCommand "webapp deploy --name $appName --resource-group $rgName --src-path `"$zipPath`" --type zip --async true" -SuppressOutput
+    # Deploy via Kudu ZIP Deploy API (truly async, unlike az webapp deploy --async true)
+    if (-not (Deploy-KuduZip -AppName $appName -ResourceGroup $rgName -ZipPath $zipPath -Slot $Slot)) {
+        return $false
+    }
+
+    # Restart the app after deploy to ensure the new code is loaded
+    # Kudu async zipdeploy may not trigger an automatic restart
+    Write-Log -Level "INFO" -Message "Restarting app to load new deployment$slotLabel..."
+    Invoke-AzCommand "webapp restart --name $appName --resource-group $rgName$slotArgs" -SuppressOutput
 
     # Store the deployed commit hash and build timestamp
     $commitHash = Get-GitCommitHash
     $buildTime = (Get-Date -Format "o")  # ISO 8601 format
-    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings DEPLOY_COMMIT=$commitHash DEPLOY_BUILD_TIME=`"$buildTime`"" -SuppressOutput
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName$slotArgs --settings DEPLOY_COMMIT=$commitHash DEPLOY_BUILD_TIME=`"$buildTime`"" -SuppressOutput
 
-    Write-Log -Level "INFO" -Message "GameService deployed: $($Config.gameService.url)"
+    $url = if ($Slot) { "https://$appName-$Slot.azurewebsites.net" } else { $Config.gameService.url }
+    Write-Log -Level "INFO" -Message "GameService deployed: $url"
     return $true
 }
 
@@ -1897,8 +2586,14 @@ function Deploy-UI {
     $zipSize = (Get-Item $zipPath).Length / 1MB
     Write-Log -Level "INFO" -Message "Deploying to Azure ($([math]::Round($zipSize, 1)) MB)..."
 
-    # Use --async true to avoid infinite polling bug in az cli 2.61+
-    Invoke-AzCommand "webapp deploy --name $appName --resource-group $rgName --src-path `"$zipPath`" --type zip --async true" -SuppressOutput
+    # Deploy via Kudu ZIP Deploy API (truly async, unlike az webapp deploy --async true)
+    if (-not (Deploy-KuduZip -AppName $appName -ResourceGroup $rgName -ZipPath $zipPath)) {
+        return $false
+    }
+
+    # Restart the app after deploy to ensure the new code is loaded
+    Write-Log -Level "INFO" -Message "Restarting app to load new deployment..."
+    Invoke-AzCommand "webapp restart --name $appName --resource-group $rgName" -SuppressOutput
 
     # Store the deployed commit hash and build timestamp
     $commitHash = Get-GitCommitHash
@@ -1927,7 +2622,8 @@ function Deploy-ReactStaging {
         [hashtable]$Config,
         [bool]$Force = $false,
         [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
-        [string]$TraceLevel = "ERROR"
+        [string]$TraceLevel = "ERROR",
+        [string]$GameServiceUrl = $null
     )
 
     $rgName = $Config.resourceGroup
@@ -1935,7 +2631,8 @@ function Deploy-ReactStaging {
     $reactDir = Join-Path $ProjectRoot "react-ui"
     $deployDir = Join-Path $ProjectRoot ".publish/react-staging"
     $zipPath = Join-Path $ProjectRoot ".publish/react-ui.zip"
-    $gameServiceUrl = $Config.gameService.url
+    # Default to staging GameService URL (not production) since this deploys to a staging slot
+    $gameServiceUrl = if ($GameServiceUrl) { $GameServiceUrl } else { "https://$($Config.gameService.appName)-staging.azurewebsites.net" }
 
     # Check staging slot exists
     $stagingSlot = Invoke-AzCommand "webapp deployment slot list --name $appName --resource-group $rgName --query `"[?name=='staging']`"" -FailOnError $false -JsonOutput
@@ -2000,9 +2697,10 @@ function Deploy-ReactStaging {
     Copy-Item -Path (Join-Path $reactDir ".next/static") -Destination (Join-Path $deployDir ".next/static") -Recurse -Force
     Copy-Item -Path (Join-Path $reactDir "public") -Destination (Join-Path $deployDir "public") -Recurse -Force
 
-    # Create zip
+    # Create zip (-Force includes hidden dirs like .next)
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-    Compress-Archive -Path "$deployDir/*" -DestinationPath $zipPath
+    $items = Get-ChildItem -Path $deployDir -Force | Where-Object { $_.Name -ne '.' -and $_.Name -ne '..' }
+    Compress-Archive -Path $items.FullName -DestinationPath $zipPath
 
     $zipSize = (Get-Item $zipPath).Length / 1MB
     Write-Log -Level "INFO" -Message "Deploying React UI to staging ($([math]::Round($zipSize, 1)) MB)..."
@@ -2010,20 +2708,16 @@ function Deploy-ReactStaging {
     # Configure staging slot for Node.js (production slot uses .NET for Blazor)
     Write-Log -Level "INFO" -Message "Configuring staging slot for Node.js..."
     Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --slot staging --linux-fx-version `"NODE|22-lts`" --startup-file `"node server.js`"" -SuppressOutput
-    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot staging --settings WEBSITE_NODE_DEFAULT_VERSION=~22 NEXT_PUBLIC_GAME_SERVICE_URL=$gameServiceUrl" -SuppressOutput
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot staging --settings WEBSITE_NODE_DEFAULT_VERSION=~22 NEXT_PUBLIC_GAME_SERVICE_URL=$gameServiceUrl SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
 
-    # Deploy zip using Invoke-BackgroundInstaller to isolate az CLI progress bar output
-    # (az webapp deploy writes ANSI progress directly to terminal, bypassing PowerShell redirection)
-    # Set AZURE_CORE_ONLY_SHOW_ERRORS to suppress the progress bar that writes directly to /dev/tty
-    $prevOnlyShowErrors = $env:AZURE_CORE_ONLY_SHOW_ERRORS
-    $env:AZURE_CORE_ONLY_SHOW_ERRORS = "true"
-    $deployArgs = @("webapp", "deploy", "--name", $appName, "--resource-group", $rgName, "--slot", "staging", "--src-path", $zipPath, "--type", "zip", "--async", "true")
-    $deployResult = Invoke-BackgroundInstaller -FilePath "az" -ArgumentList $deployArgs -OperationName "Staging zip deploy" -ProgressInterval 2 -TraceLevel $TraceLevel
-    $env:AZURE_CORE_ONLY_SHOW_ERRORS = $prevOnlyShowErrors
-    if (-not $deployResult.Success) {
-        Write-Log -Level "ERROR" -Message "az webapp deploy failed (exit $($deployResult.ExitCode))"
+    # Deploy via Kudu ZIP Deploy API (truly async, unlike az webapp deploy --async true)
+    if (-not (Deploy-KuduZip -AppName $appName -ResourceGroup $rgName -ZipPath $zipPath -Slot "staging")) {
         return $false
     }
+
+    # Restart the app after deploy to ensure the new code is loaded
+    Write-Log -Level "INFO" -Message "Restarting staging slot to load new deployment..."
+    Invoke-AzCommand "webapp restart --name $appName --resource-group $rgName --slot staging" -SuppressOutput
 
     # Store deployed commit in staging slot settings
     $commitHash = Get-GitCommitHash
@@ -2649,6 +3343,11 @@ function Show-DoctorResult {
                 "stagingStartup" { "Staging Startup Cmd" }
                 "stagingCodeDeployed" { "Staging Code Deployed" }
                 "stagingResponding" { "Staging Responding" }
+                "appRegistration" { "App Registration" }
+                "servicePrincipal" { "Service Principal" }
+                "federatedMain" { "Federated (main)" }
+                "federatedStaging" { "Federated (staging)" }
+                "contributorRole" { "Contributor Role" }
                 default { $key }
             }
 
@@ -2679,6 +3378,8 @@ function Show-DoctorResult {
                     if ($Result.checks.stagingCodeDeployed -and -not $Result.needsStagingDeploy) { "cold start — browse URL to wake" } else { "$script:CmdHintPrefix ui deploy-staging" }
                 } elseif ($key -eq "stagingCodeDeployed") {
                     "$script:CmdHintPrefix ui deploy-staging"
+                } elseif ($key -in @("appRegistration", "servicePrincipal", "federatedMain", "federatedStaging", "contributorRole")) {
+                    "$script:CmdHintPrefix github install"
                 } else {
                     "$script:CmdHintPrefix $noun install"
                 }
@@ -2971,6 +3672,7 @@ Nouns:
     ui              WebUI Blazor application
     database        Azure SQL Serverless database
     game-service    GameService ASP.NET Core API
+    github          GitHub Actions OIDC authentication
 
 Verbs:
     install         Create Azure resources (idempotent)
@@ -2984,11 +3686,13 @@ Options:
     -Force          Force deploy even if no changes detected
     -Json           Output doctor results as JSON
     -HashTable      Output doctor results as PowerShell hashtable
+    -Staging        Check staging environment health (doctor only)
     -Perf           Run performance test (game-service doctor only)
     -TraceLevel     Output verbosity (ERROR, WARN, INFO, DEBUG)
 
 Examples:
     ./catan-azure.ps1 doctor                   Check health of ALL resources
+    ./catan-azure.ps1 doctor -Staging           Check staging environment health
     ./catan-azure.ps1 doctor -Perf             Check all health + run perf test
     ./catan-azure.ps1 install                  Create ALL Azure resources
     ./catan-azure.ps1 deploy                   Deploy ALL code/data
@@ -2996,6 +3700,7 @@ Examples:
     ./catan-azure.ps1 database deploy          Configure SQL connection string
     ./catan-azure.ps1 database fix             Fix SQL network access and firewall
     ./catan-azure.ps1 ui doctor -Json          Check UI health (JSON output)
+    ./catan-azure.ps1 github install            Setup GitHub Actions OIDC
     ./catan-azure.ps1 game-service clean       Delete GameService only
 "@
     Write-Host $help
@@ -3058,6 +3763,22 @@ if ($Noun -in @("doctor", "install", "deploy", "clean") -and -not $Verb) {
 
     switch ($actualVerb) {
         "doctor" {
+            # Staging doctor: quick check of staging environment
+            if ($Staging) {
+                Write-Log -Level "HEADER" -Message "Catan Azure: staging doctor"
+                Write-Log -Level "HEADER" -Message ("=" * 40)
+                $stagingResult = Get-StagingDoctor -Config $config -TraceLevel $TraceLevel
+                if ($Json) {
+                    Write-Output ($stagingResult | ConvertTo-Json -Depth 10)
+                } elseif ($HashTable) {
+                    Write-Output $stagingResult
+                } else {
+                    Show-StagingDoctorResult -Result $stagingResult
+                }
+                $success = $stagingResult.healthy
+                if ($success) { exit 0 } else { exit 1 }
+            }
+
             # Run doctor on all resources
             $allHealthy = $true
 
@@ -3093,12 +3814,22 @@ if ($Noun -in @("doctor", "install", "deploy", "clean") -and -not $Verb) {
             }
             if (-not $uiResult.healthy) { $allHealthy = $false }
 
+            # GitHub OIDC
+            Write-Log -Level "HEADER" -Message "Catan Azure: github doctor"
+            Write-Log -Level "HEADER" -Message ("=" * 40)
+            $ghResult = Get-GitHubDoctor -Config $config -TraceLevel $TraceLevel
+            if (-not $Json) {
+                Show-DoctorResult -Result $ghResult -Config $config
+            }
+            if (-not $ghResult.healthy) { $allHealthy = $false }
+
             # Output JSON if requested
             if ($Json) {
                 $allResults = @{
                     gameService = $gsResult
                     database = $dbResult
                     ui = $uiResult
+                    github = $ghResult
                 }
                 Write-Output ($allResults | ConvertTo-Json -Depth 10)
             }
@@ -3117,7 +3848,8 @@ if ($Noun -in @("doctor", "install", "deploy", "clean") -and -not $Verb) {
             Write-Log -Level "HEADER" -Message ("=" * 40)
             $success = (Install-GameService -Config $config) -and
                        (Install-Database -Config $config) -and
-                       (Install-UI -Config $config)
+                       (Install-UI -Config $config) -and
+                       (Install-GitHubOidc -Config $config)
         }
         "deploy" {
             # Deploy all resources
@@ -3125,7 +3857,8 @@ if ($Noun -in @("doctor", "install", "deploy", "clean") -and -not $Verb) {
             Write-Log -Level "HEADER" -Message ("=" * 40)
             $success = (Deploy-GameService -Config $config -Force $Force -NoBuild $NoBuild) -and
                        (Deploy-Database -Config $config -Force $Force) -and
-                       (Deploy-UI -Config $config -Force $Force -NoBuild $NoBuild)
+                       (Deploy-UI -Config $config -Force $Force -NoBuild $NoBuild) -and
+                       (Install-GitHubOidc -Config $config)
         }
         "clean" {
             $confirm = Get-UserConfirmation -Question "Delete ALL Azure resources?" -TraceLevel $TraceLevel -Yes:$Yes
@@ -3148,7 +3881,7 @@ switch ($Noun) {
     "game-service" {
         switch ($Verb) {
             "install" { $success = Install-GameService -Config $config }
-            "deploy" { $success = Deploy-GameService -Config $config -Force $Force -NoBuild $NoBuild }
+            "deploy" { $success = Deploy-GameService -Config $config -Force $Force -NoBuild $NoBuild -Slot $Slot }
             "doctor" {
                 $result = Get-GameServiceDoctor -Config $config -TraceLevel $TraceLevel
                 if ($Json) {
@@ -3198,13 +3931,14 @@ switch ($Noun) {
                 }
                 $success = Clean-Database -Config $config
             }
+            "deploy-staging-access" { $success = Grant-StagingDatabaseAccess -Config $config }
         }
     }
     "ui" {
         switch ($Verb) {
             "install" { $success = Install-UI -Config $config }
             "deploy" { $success = Deploy-UI -Config $config -Force $Force -NoBuild $NoBuild }
-            "deploy-staging" { $success = Deploy-ReactStaging -Config $config -Force $Force -TraceLevel $TraceLevel }
+            "deploy-staging" { $success = Deploy-ReactStaging -Config $config -Force $Force -TraceLevel $TraceLevel -GameServiceUrl $GameServiceUrl }
             "doctor" {
                 $result = Get-UIDoctor -Config $config -TraceLevel $TraceLevel
                 if ($Json) {
@@ -3223,6 +3957,26 @@ switch ($Noun) {
                     exit 0
                 }
                 $success = Clean-UI -Config $config
+            }
+        }
+    }
+    "github" {
+        switch ($Verb) {
+            "install" { $success = Install-GitHubOidc -Config $config }
+            "doctor" {
+                $result = Get-GitHubDoctor -Config $config -TraceLevel $TraceLevel
+                if ($Json) {
+                    Write-Output ($result | ConvertTo-Json -Depth 10)
+                } elseif ($HashTable) {
+                    Write-Output $result
+                } else {
+                    Show-DoctorResult -Result $result -Config $config
+                }
+                $success = $result.healthy
+            }
+            default {
+                Write-Log -Level "ERROR" -Message "Unknown verb '$Verb' for github. Use: install, doctor"
+                exit 1
             }
         }
     }

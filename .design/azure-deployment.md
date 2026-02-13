@@ -1,25 +1,111 @@
 # Azure Deployment
 
-**Last verified:** January 30, 2026
+**Last verified:** February 12, 2026
 
 ## Overview
 
 The application deploys to Azure App Service with Azure SQL
-Serverless for persistence. Deployment is managed by PowerShell
-scripts and GitHub Actions CI/CD.
+Serverless for persistence. GitHub Actions with OIDC authentication
+(no stored secrets) drive all deployments.
 
 **Zero Azure dependencies** for local development -- the app uses
 SQLite locally and Azure SQL in production.
 
-## Architecture
+**React is the primary UI.** Blazor and Desktop are deprecated.
 
+## Deployment Model
+
+Three environments, two branches, blue-green production:
+
+```text
+staging branch ──► GitHub Actions ──► Staging Environment
+                                        catan-staging.azurewebsites.net
+                                        catan-api-staging.azurewebsites.net
+                                        (test here, iterate, verify)
+        │
+        │  PR to main (when staging looks good)
+        ▼
+main branch ────► GitHub Actions ──► Production (blue-green)
+                                        1. Deploy to INACTIVE slot
+                                        2. Swap slots
+                                        3. New version serves traffic
+                                        4. Old version stays as rollback
 ```
-GitHub (main branch)
-  └── GitHub Actions (deploy-azure.yml)
-        └── OIDC Authentication (no stored secrets)
-              ├── GameService → catan-api.azurewebsites.net
-              ├── WebUI → catan.azurewebsites.net
-              └── Azure SQL → sql-catan / catan
+
+### Staging
+
+Two ways to deploy to staging:
+
+**Option A: CI/CD (branch-based).** Push to the `staging` branch
+triggers GitHub Actions, which builds and deploys automatically.
+Use this for the normal dev workflow -- branch off `staging`, make
+changes, PR back into `staging`.
+
+**Option B: Script (direct push).** Run the deploy script locally
+to push your current working tree to staging without updating the
+branch. Use this for quick iteration, debugging, or testing local
+changes before committing.
+
+```bash
+# Option A: CI/CD -- merge to staging branch, GitHub Actions deploys
+git checkout staging
+git merge my-feature-branch
+git push   # triggers deploy-staging.yml
+
+# Option B: Direct push -- deploy current code without updating the branch
+# React UI to staging (defaults to staging GameService)
+pwsh ./catan.ps1 azure ui deploy-staging -Force -TraceLevel DEBUG
+
+# GameService to staging (only needed when backend changes)
+pwsh ./catan.ps1 azure game-service deploy -Slot staging -Force -TraceLevel DEBUG
+
+# Grant staging slot database access (after fresh slot creation)
+pwsh ./catan.ps1 azure database deploy-staging-access -TraceLevel DEBUG
+```
+
+- **URL:** `https://catan-staging.azurewebsites.net`
+- **GameService:** `https://catan-api-staging.azurewebsites.net`
+- **Database:** Shared Azure SQL (same data as production)
+- **Purpose:** Verify changes before promoting to production
+
+### Production (Blue-Green)
+
+The `catan` app has two slots. At any given time:
+
+- **Active slot** serves `https://catan.azurewebsites.net` (version N)
+- **Inactive slot** holds the previous version (version N-1)
+
+When main deploys:
+
+1. New build (version N+1) deploys to the **inactive** slot
+2. `swap-slots` puts N+1 active, N becomes the rollback
+3. If something is wrong: `swap-slots` again → N is back, N+1 is
+   inactive for debugging
+
+```text
+Before deploy:
+  Active slot  → version N   (serving traffic)
+  Inactive slot → version N-1
+
+After deploy + swap:
+  Active slot  → version N+1 (serving traffic)
+  Inactive slot → version N   (rollback ready)
+
+Rollback (if needed):
+  Active slot  → version N   (restored)
+  Inactive slot → version N+1 (for debugging)
+```
+
+### Workflow
+
+```text
+1. Develop on feature branches
+2. Merge to staging → auto-deploy to staging environment
+3. Test at https://catan-staging.azurewebsites.net
+4. PR staging → main
+5. Main deploy → build, deploy to inactive slot, swap
+6. Verify at https://catan.azurewebsites.net
+7. If broken → swap-slots to rollback
 ```
 
 ## Azure Resources
@@ -27,110 +113,160 @@ GitHub (main branch)
 Configuration stored in `.azure/catan-azure.json`:
 
 | Resource | Name | Type |
-|----------|------|------|
+| -------- | ---- | ---- |
 | Resource Group | `rg-catan` | Resource Group |
-| GameService | `catan-api` | App Service |
-| WebUI | `catan` | App Service |
+| App Service Plan | `asp-catan` | S1 (supports slots) |
+| GameService | `catan-api` | App Service (.NET 9) |
+| GameService Staging | `catan-api` slot `staging` | Deployment Slot |
+| UI | `catan` | App Service |
+| UI Staging | `catan` slot `staging` | Deployment Slot (Node.js 22) |
 | SQL Server | `sql-catan` | Azure SQL Serverless |
 | Database | `catan` | Azure SQL Database |
 | Storage | `stcatan` | Storage Account |
 | Monitoring | `ai-catan` | App Insights |
 | Region | `westus2` | |
 
-## Scripts
+### Slot Identity
 
-### Primary Script
+Each slot gets its **own managed identity** with a different
+principal ID. Database access must be granted separately per slot.
+App settings and connection strings are NOT inherited.
 
-**File:** `.scripts/catan-azure.ps1` (~2800 lines)
+## Deploy Internals
 
-Invoked via `./catan.ps1 azure <verb>`:
+The scripts use the **Kudu ZIP Deploy API** with Azure AD bearer
+tokens (not `az webapp deploy`, which has a
+[known hang bug](https://github.com/Azure/azure-cli/issues/29003)).
+SCM basic auth is disabled by subscription policy, so bearer tokens
+are required. All of this is handled inside `Deploy-KuduZip` in
+`catan-azure.ps1` -- developers just run `./catan.ps1` commands.
 
-| Command | Purpose |
-|---------|---------|
-| `azure install` | Create all Azure resources (idempotent) |
-| `azure deploy` | Build and deploy GameService + WebUI |
-| `azure doctor` | Health check all resources |
-| `azure clean` | Remove all Azure resources (with confirmation) |
+## Next.js Standalone Packaging
 
-### Deployment Functions
+The React UI uses Next.js `output: 'standalone'` mode. The deploy
+zip must include:
 
-**Deploy-GameService:**
-1. `dotnet publish` GameService in Release mode
-2. Create zip package
-3. `az webapp deploy --type zip` (async to avoid CLI polling bugs)
-4. Store deployment metadata (commit hash, timestamp) as app settings
-5. Enable logging for diagnostics
+- `server.js` -- standalone entrypoint
+- `.next/` -- compiled pages and server code
+- `node_modules/` -- minimal runtime dependencies
+- `public/` -- static assets (themes, fonts, images)
+- `package.json`
 
-**Deploy-UI:**
-1. `dotnet publish` WebUI.Server (hosts Blazor WASM)
-2. Remove BlazorDebugProxy (~11 MB optimization)
-3. Deploy via zip
-4. Track deployment info
+**Critical:** PowerShell's `Compress-Archive -Path "$dir/*"` skips
+dotfiles. The `.next` directory must be explicitly included using
+`Get-ChildItem -Force`.
 
-**Deploy-Database:**
-1. Configure SQL Server connection strings
-2. Set up managed identity authentication
-3. Verify database connectivity
+App settings to prevent Azure Oryx from overwriting the pre-built
+deployment:
 
-### Intelligence Features
+- `SCM_DO_BUILD_DURING_DEPLOYMENT=false`
+- `ENABLE_ORYX_BUILD=false`
 
-- **Change detection**: Skips deployment if no changes since last deploy
-- **Async deployment**: Uses `--async true` to avoid Azure CLI polling bugs
-- **Resource discovery**: Automatic naming pattern fallback
-  (`catan` -> `catangame` -> `catan-{random4}`)
+## CI/CD Workflows
 
-### Setup Script
-
-**File:** `.scripts/setup-github-actions-azure.ps1`
-
-Creates Azure AD App Registration with OIDC federated credentials
-for GitHub Actions. Eliminates need for stored secrets.
-
-## CI/CD
-
-**File:** `.github/workflows/deploy-azure.yml`
+### `deploy-staging.yml` -- Staging (React)
 
 | Trigger | Action |
-|---------|--------|
-| Push to `main` | Full deploy (GameService + WebUI) |
-| Manual dispatch | Full deploy |
+| ------- | ------ |
+| Push to `staging` | Deploy React UI to staging slot |
+| Manual dispatch | Deploy React UI to staging slot |
 
-**Steps:**
-1. Authenticate via Azure OIDC (no secrets)
-2. Build all projects
-3. Run `./catan.ps1 azure deploy`
-4. Fix database connectivity if needed
+Single job: build Next.js standalone, deploy to `catan` staging
+slot via Kudu API, verify HTTP 200. Points at staging GameService.
 
-## Database Strategy
+GameService staging is deployed separately via `./catan.ps1` when
+backend changes are needed.
+
+### `deploy-azure.yml` -- Production (Blue-Green)
+
+**Status:** Not yet updated. Currently deploys GameService + Blazor
+directly to production. Needs to be rewritten to match the
+blue-green model below.
+
+| Trigger | Action |
+| ------- | ------ |
+| Push to `main` | Deploy React to inactive slot, then swap |
+| Manual dispatch | Deploy React to inactive slot, then swap |
+
+Steps:
+
+1. Build Next.js standalone
+2. Determine which slot is inactive (not serving traffic)
+3. Deploy to the inactive slot via Kudu API
+4. Verify health on the inactive slot
+5. Swap slots -- new version now serves traffic
+6. Verify health on the now-active slot
+
+### `deploy-react-staging.yml` -- Legacy
+
+Deploys React to staging on `main` push (react-ui/** changes).
+Points at **production** GameService. Will be removed once the
+blue-green production workflow is in place.
+
+## Database
 
 | Environment | Database | Provider |
-|-------------|----------|----------|
+| ----------- | -------- | -------- |
 | Local | SQLite | `Data/catan.db` |
-| Azure | Azure SQL Serverless | Connection string in App Settings |
+| Azure (all slots) | Azure SQL Serverless | Connection string |
 
-Azure SQL Serverless was chosen over CosmosDB for simplicity:
-- Same EF Core code works everywhere
-- Connection string switching only
-- ~$5-15/month with auto-pause
-- No complex DAL abstraction needed
+All slots share the same database instance. Each slot's managed
+identity needs its own access grant via:
 
-See [proposals.md](proposals.md) for the CosmosDB alternative that
-was evaluated and rejected.
+```sql
+CREATE USER [catan-api/slots/staging] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [catan-api/slots/staging];
+ALTER ROLE db_datawriter ADD MEMBER [catan-api/slots/staging];
+ALTER ROLE db_ddladmin ADD MEMBER [catan-api/slots/staging];
+```
+
+The `./catan.ps1 azure database deploy-staging-access` command
+automates this.
 
 ## Health Endpoints
 
 | Endpoint | Purpose |
-|----------|---------|
-| `/health` | Service uptime metadata |
-| `/api/database/health` | Database connectivity and stats |
+| -------- | ------- |
+| `/health` | Service uptime, version, database status |
+| `/health?checkDatabase=true` | Full database connectivity check |
+| `/api/database/health` | Detailed database diagnostics |
 
-Used by `azure doctor` and provisioning scripts.
+## Scripts
 
-## What's Not Implemented
+**File:** `.scripts/catan-azure.ps1` (~3400 lines)
 
-- **Deployment slots** (staging/production swap) -- designed but
-  not configured
-- **Infrastructure as Code** (Bicep/Terraform) -- planned future
-- **CDN/load balancing** -- not needed at current scale
-- **Branch-based environments** -- staging branch workflow designed
-  but not active
+Invoked via `./catan.ps1 azure <noun> <verb>`:
+
+| Command | Purpose |
+| ------- | ------- |
+| `azure game-service install` | Create GameService app + managed identity |
+| `azure game-service deploy` | Build and deploy GameService |
+| `azure game-service deploy -Slot staging` | Deploy to staging slot |
+| `azure database install` | Create SQL Server + database |
+| `azure database deploy` | Configure connection strings + DB access |
+| `azure database deploy-staging-access` | Grant staging slot DB access |
+| `azure ui install` | Create UI app + staging slot |
+| `azure ui deploy-staging` | Build and deploy React to staging |
+| `azure github install` | Setup GitHub Actions OIDC (app registration, federated credentials, secrets) |
+| `azure swap-slots` | Swap active/inactive production slots |
+| `azure doctor` | Health check all resources |
+| `azure clean` | Remove all Azure resources |
+
+## Recreating from Scratch
+
+If resources get into a bad state, nuke and rebuild. See
+[clean-azure-recreation.md](clean-azure-recreation.md).
+
+**Install order** (GameService first): managed identity must exist
+before database install can grant it roles.
+
+**Deploy order** (Database first): GameService needs the database
+connection on startup.
+
+## Versioning
+
+**Status:** Not yet defined. Currently each deploy stores the git
+commit hash and build timestamp as app settings. The `/health`
+endpoint reports these as `version.commit` and `version.buildTime`.
+A formal versioning scheme (semver tags, build numbers, etc.) has
+not been established yet.

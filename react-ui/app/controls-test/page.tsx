@@ -25,6 +25,7 @@ import { NumberToken } from '@/components/game/tiles/NumberToken';
 import { EXPANSION_GAME_DATA, generateTestBuildingsAndRoads } from '@/lib/test-data/expansion-game';
 import { gameActions } from '@/lib/stores/gameStoreHooks';
 import type { PlayerProfile } from '@/types/player-profile';
+import { getServiceUrl } from '@/lib/config';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faRotateLeft,
@@ -1855,7 +1856,7 @@ function PlayerTile({ player, isSelected, onClick }: PlayerTileProps) {
         <div
           className="w-10 h-10 rounded-full bg-cover bg-center flex-shrink-0 flex items-center justify-center"
           style={{
-            backgroundImage: `url('http://localhost:8080/api/images/${player.imageFileName}')`,
+            backgroundImage: `url('${getServiceUrl()}/api/images/${player.imageFileName}')`,
             border: `1px solid ${player.colors.foreground}`,
             backgroundColor: '#333',
           }}
@@ -2003,7 +2004,7 @@ export default function ControlsTestPage(): React.ReactElement {
         name: p.name,
         score: p.score,
         colors: p.colors,
-        avatarUrl: `http://localhost:8080/api/images/${p.imageFileName}`,
+        avatarUrl: `${getServiceUrl()}/api/images/${p.imageFileName}`,
       })),
     []
   );
@@ -2033,7 +2034,7 @@ export default function ControlsTestPage(): React.ReactElement {
       id: p.id,
       name: p.name,
       colors: p.colors,
-      imageUri: `http://localhost:8080/api/images/${p.imageFileName}`,
+      imageUri: `${getServiceUrl()}/api/images/${p.imageFileName}`,
     }));
     gameActions.setPlayerProfiles(profiles);
 
