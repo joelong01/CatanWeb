@@ -124,6 +124,32 @@ export const ALL_DIRECTIONS: readonly Direction[] = [
 ];
 
 /**
+ * Maps HexSide (screen-relative edge names) to Direction (compass neighbor directions).
+ * Matches C# HexCoordinates.cs SideToDirection dictionary.
+ */
+export const SIDE_TO_DIRECTION: Record<HexSide, Direction> = {
+  Top: Direction.North,
+  TopRight: Direction.NorthEast,
+  BottomRight: Direction.SouthEast,
+  Bottom: Direction.South,
+  BottomLeft: Direction.SouthWest,
+  TopLeft: Direction.NorthWest,
+};
+
+/**
+ * Maps Direction (compass neighbor directions) to HexSide (screen-relative edge names).
+ * Matches C# HexCoordinates.cs DirectionToSide dictionary.
+ */
+export const DIRECTION_TO_SIDE: Record<Direction, HexSide> = {
+  [Direction.North]: 'Top',
+  [Direction.NorthEast]: 'TopRight',
+  [Direction.SouthEast]: 'BottomRight',
+  [Direction.South]: 'Bottom',
+  [Direction.SouthWest]: 'BottomLeft',
+  [Direction.NorthWest]: 'TopLeft',
+};
+
+/**
  * Manhattan distance between two hexes using cubic coordinates.
  */
 export function distance(a: HexCoordinate, b: HexCoordinate): number {
@@ -321,6 +347,133 @@ export function getSpiralCoordinates(count: number): HexCoordinate[] {
       }
     }
     ring++;
+  }
+
+  return coords;
+}
+
+/**
+ * Generate hex coordinates in a compact "square" column layout.
+ *
+ * Adjacent columns differ by at most 1 in height. Tries hill patterns
+ * (center tallest) first, then valley (edges tallest), picking the
+ * arrangement with the best pixel aspect ratio.
+ *
+ * Must match C# HexCoordinates.GenerateSquareCoordinates() exactly.
+ *
+ * @param count - Number of coordinates to generate
+ *
+ * @example
+ * ```typescript
+ * getSquareCoordinates(19)  // columns [3,4,5,4,3] — regular board shape
+ * getSquareCoordinates(30)  // columns [3,4,5,6,5,4,3] — expansion board shape
+ * getSquareCoordinates(11)  // columns [4,3,4] — RollRing shape
+ * ```
+ */
+export function getSquareCoordinates(count: number): HexCoordinate[] {
+  if (count <= 0) return [];
+  if (count === 1) return [cubicCoord(0, 0)];
+
+  const heights = computeSquareColumnHeights(count);
+  return generateFromColumnHeights(heights);
+}
+
+/**
+ * Compute column heights for a square layout. Exported for testing.
+ */
+export function computeSquareColumnHeights(count: number): number[] {
+  if (count <= 0) return [];
+  if (count === 1) return [1];
+
+  let bestHeights = [count];
+  let bestScore = Infinity;
+
+  for (let c = 1; c <= count; c += 2) {
+    const k = (c - 1) / 2;
+
+    // Hill pattern: sum = c*base + k², base = (count - k²) / c
+    if (k * k < count) {
+      const remainder = count - k * k;
+      if (remainder > 0 && remainder % c === 0) {
+        const b = remainder / c;
+        if (b >= 1) {
+          const heights = buildHillHeights(c, b, k);
+          const score = squarenessScore(heights);
+          if (score < bestScore) {
+            bestScore = score;
+            bestHeights = heights;
+          }
+        }
+      }
+    }
+
+    // Valley pattern: sum = c*peak - k², peak = (count + k²) / c
+    if (k > 0) {
+      const numerator = count + k * k;
+      if (numerator % c === 0) {
+        const p = numerator / c;
+        if (p >= 1 && p - k >= 1) {
+          const heights = buildValleyHeights(c, p, k);
+          const score = squarenessScore(heights) + 0.001;
+          if (score < bestScore) {
+            bestScore = score;
+            bestHeights = heights;
+          }
+        }
+      }
+    }
+
+    if (c > count) break;
+  }
+
+  return bestHeights;
+}
+
+function buildHillHeights(columns: number, baseHeight: number, halfWidth: number): number[] {
+  const heights: number[] = [];
+  for (let i = 0; i < columns; i++) {
+    heights.push(baseHeight + halfWidth - Math.abs(i - halfWidth));
+  }
+  return heights;
+}
+
+function buildValleyHeights(columns: number, peak: number, halfWidth: number): number[] {
+  const heights: number[] = [];
+  for (let i = 0; i < columns; i++) {
+    heights.push(peak - halfWidth + Math.abs(i - halfWidth));
+  }
+  return heights;
+}
+
+function squarenessScore(heights: number[]): number {
+  const c = heights.length;
+  const maxH = Math.max(...heights);
+  const minH = Math.min(...heights);
+  const ratio = (c * 1.5) / (maxH * 1.732);
+  let score = Math.abs(Math.log(ratio));
+  if (minH < 2) score += 10.0; // Heavily penalize single-hex columns
+  return score;
+}
+
+function generateFromColumnHeights(heights: number[]): HexCoordinate[] {
+  const c = heights.length;
+  const centerOffset = (c - 1) / 2;
+  const coords: HexCoordinate[] = [];
+
+  const q0 = -centerOffset;
+  let rMin = Math.round((-q0 - heights[0] + 1) / 2);
+
+  for (let i = 0; i < c; i++) {
+    if (i > 0) {
+      if (heights[i] > heights[i - 1]) {
+        rMin--;
+      }
+    }
+
+    const q = i - centerOffset;
+    for (let r = rMin; r < rMin + heights[i]; r++) {
+      coords.push(cubicCoord(q, r));
+    }
   }
 
   return coords;

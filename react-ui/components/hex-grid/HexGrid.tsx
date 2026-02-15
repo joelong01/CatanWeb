@@ -1,7 +1,12 @@
 'use client';
 
 import { ReactNode, useMemo, useRef, useState, useEffect } from 'react';
-import { calculateHexDimensions, hexToPixel, HexCoordinate, PixelPosition } from './hex-geometry';
+import {
+  calculateHexDimensions,
+  hexToPixel,
+  HexCoordinate,
+  PixelPosition,
+} from './hex-geometry';
 import { HexTile } from './HexTile';
 
 /**
@@ -38,12 +43,36 @@ export interface HexGridLayoutInfo {
 
 /**
  * Props for the HexGrid component.
+ *
+ * Supports two rendering modes:
+ *
+ * 1. **Explicit items** (existing): Pass `items` array with coordinates and content per item.
+ * 2. **Layout-driven** (ItemsControl pattern): Pass `coordinates` + `renderItem`.
+ *    HexGrid generates positions from the coordinate array; caller provides a render
+ *    function for each position. Use with `getSpiralCoordinates(n)`, `LAYOUTS`, etc.
+ *
+ * These modes are mutually exclusive -- provide one or the other, not both.
  */
 export interface HexGridProps {
   /** Hex circumradius (distance from center to vertex) */
   hexSize: number;
-  /** Array of hex items to render */
-  items: HexGridItem[];
+
+  // --- Mode 1: Explicit items ---
+  /** Array of hex items to render (mutually exclusive with coordinates + renderItem) */
+  items?: HexGridItem[];
+
+  // --- Mode 2: Layout-driven (ItemsControl) ---
+  /** Hex coordinates for each item (from getSpiralCoordinates, LAYOUTS, etc.) */
+  coordinates?: HexCoordinate[];
+  /** Render function called for each coordinate position */
+  renderItem?: (coord: HexCoordinate, index: number) => ReactNode;
+  /** Optional explicit IDs per item (default: "item-{index}") */
+  itemIds?: string[];
+  /** Shared className applied to every item */
+  itemClassName?: string;
+  /** Per-item flag to exclude from bounding box calculation */
+  excludeFromBounds?: boolean[];
+
   /** Optional className for container */
   className?: string;
   /** Optional scale factor for zoom (default: 1.0) */
@@ -106,7 +135,12 @@ export interface HexGridProps {
  */
 export function HexGrid({
   hexSize,
-  items,
+  items: explicitItems,
+  coordinates,
+  renderItem,
+  itemIds,
+  itemClassName,
+  excludeFromBounds: excludeFromBoundsArr,
   className = '',
   scale = 1.0,
   gap = 4,
@@ -118,6 +152,23 @@ export function HexGrid({
 }: HexGridProps): React.ReactElement {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [parentSize, setParentSize] = useState<{ width: number; height: number } | null>(null);
+
+  // Derive items from coordinates + renderItem when in layout-driven mode
+  const items = useMemo((): HexGridItem[] => {
+    if (explicitItems && coordinates) {
+      console.error('HexGrid: Provide either "items" or "coordinates + renderItem", not both.');
+    }
+    if (coordinates && renderItem) {
+      return coordinates.map((coord, i) => ({
+        id: itemIds?.[i] ?? `item-${i}`,
+        coord,
+        content: renderItem(coord, i),
+        className: itemClassName,
+        excludeFromBounds: excludeFromBoundsArr?.[i],
+      }));
+    }
+    return explicitItems ?? [];
+  }, [explicitItems, coordinates, renderItem, itemIds, itemClassName, excludeFromBoundsArr]);
 
   // Measure parent container when fitToParent is enabled
   useEffect(() => {
