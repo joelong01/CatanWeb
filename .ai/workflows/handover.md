@@ -81,30 +81,36 @@ workflow and report to the user. Do not proceed to step 3.
 
 ---
 
-### Step 2.5: Format Code
+### Step 2.5: Format and Lint
 
-**Action:** Run the project formatter to ensure all code follows the configured
-style rules (Prettier for TypeScript/React, dotnet format for C#).
+**Action:** Run the project formatter and linters to ensure all code follows
+the configured style rules and passes static analysis.
 
 **Commands to run:**
 
 ```bash
+# Format all code (Prettier for TS/React, dotnet format for C#)
 pwsh ./catan.ps1 format -All
+
+# Lint changed files (ESLint, markdownlint, cspell, JSON validation)
+pwsh ./catan.ps1 lint
 ```
 
-**Purpose:** AI-generated code frequently violates line-length and formatting
-rules. Running the formatter before committing ensures consistent style and
-avoids noisy formatting-only diffs in future PRs.
+**Purpose:** AI-generated code frequently violates line-length, formatting, and
+lint rules. Running format + lint before committing ensures consistent style,
+catches unused variables, missing dependencies in hooks, and markdown issues.
 
 **Process:**
 
-1. Run `pwsh ./catan.ps1 format -All`
-2. Check `git diff --stat` for any files changed by the formatter
-3. If files were changed, they will be included in the commits in Step 3
-4. If the formatter introduced build errors (rare), fix them before proceeding
+1. Run `pwsh ./catan.ps1 format -All` to auto-fix formatting
+2. Run `pwsh ./catan.ps1 lint` to check and auto-fix lint issues
+3. Check `git diff --stat` for any files changed
+4. Fix any remaining lint errors that auto-fix could not resolve
+5. If fixes were made, they will be included in the commits in Step 3
 
-**Note:** This step is non-blocking. Formatting changes are cosmetic and should
-not require re-running tests.
+**Note:** Use `lint` (default) to check only changed files. Use `lint -All` to
+check the entire codebase. The default is sufficient for handover since we only
+need our changes to be clean.
 
 ---
 
@@ -307,10 +313,11 @@ of individual commands. Instead:
    → If critical failures: STOP and report
    → Otherwise: Continue
 
-2.5. Format Code
+2.5. Format and Lint
    → Run: pwsh ./catan.ps1 format -All
-   → Check git diff --stat for formatter changes
-   → Include formatted files in Step 3 commits
+   → Run: pwsh ./catan.ps1 lint
+   → Fix any lint errors, check git diff --stat
+   → Include fixed files in Step 3 commits
 
 3. Load .ai/commands/checkin.md
    → Execute all steps in that file

@@ -894,7 +894,7 @@ This algorithm must produce identical results in C# and TypeScript.
 It is a small pure function (~30 lines) that can be implemented in
 both languages and verified with a shared test case.
 
-#### Validation
+#### Template Constraints
 
 The template enforces:
 

@@ -362,12 +362,9 @@ export function EditorBoard({
     }
   }, []);
 
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+  const handlePointerUp = useCallback((_e: React.PointerEvent) => {
     const state = dragStateRef.current;
     if (!state) return;
-    if (!state.panning) {
-      // It was a click, not a drag - let click events propagate naturally
-    }
     setIsPanning(false);
     dragStateRef.current = null;
   }, []);
