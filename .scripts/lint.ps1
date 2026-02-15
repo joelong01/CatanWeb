@@ -297,12 +297,22 @@ function Invoke-TypeScriptLint {
                 Write-Warning "ESLint found $warningCount warning(s) (no errors)"
             }
 
-            # Show summary of issues
-            $eslintOutput | Select-String -Pattern "^\s+\d+:\d+" | Select-Object -First 10 | ForEach-Object {
-                Write-Host "    $_" -ForegroundColor Gray
-            }
-            if (($eslintOutput | Select-String -Pattern "^\s+\d+:\d+").Count -gt 10) {
-                Write-Info "    ... and more (run manually for full output)"
+            # Show full ESLint output (includes file paths and all issues)
+            $eslintOutput | ForEach-Object {
+                $line = "$_"
+                if ($line -match "error") {
+                    Write-Host "    $line" -ForegroundColor Red
+                }
+                elseif ($line -match "warning") {
+                    Write-Host "    $line" -ForegroundColor Yellow
+                }
+                elseif ($line -match "^\S") {
+                    # File path header
+                    Write-Host "  $line" -ForegroundColor White
+                }
+                elseif ($line.Trim()) {
+                    Write-Host "    $line" -ForegroundColor Gray
+                }
             }
         }
 

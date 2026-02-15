@@ -51,6 +51,36 @@ namespace Catan3.Shared.Utility
             };
 
         /// <summary>
+        /// Maps HexSide (screen-relative edge names) to Direction (compass neighbor directions).
+        /// HexSide.None maps to Direction.North as a fallback.
+        /// </summary>
+        [JsonIgnore]
+        public static Dictionary<HexSide, Direction> SideToDirection { get; } = new()
+            {
+                { HexSide.Top, Direction.North },
+                { HexSide.TopRight, Direction.NorthEast },
+                { HexSide.BottomRight, Direction.SouthEast },
+                { HexSide.Bottom, Direction.South },
+                { HexSide.BottomLeft, Direction.SouthWest },
+                { HexSide.TopLeft, Direction.NorthWest },
+                { HexSide.None, Direction.North },
+            };
+
+        /// <summary>
+        /// Maps Direction (compass neighbor directions) to HexSide (screen-relative edge names).
+        /// </summary>
+        [JsonIgnore]
+        public static Dictionary<Direction, HexSide> DirectionToSide { get; } = new()
+            {
+                { Direction.North, HexSide.Top },
+                { Direction.NorthEast, HexSide.TopRight },
+                { Direction.SouthEast, HexSide.BottomRight },
+                { Direction.South, HexSide.Bottom },
+                { Direction.SouthWest, HexSide.BottomLeft },
+                { Direction.NorthWest, HexSide.TopLeft },
+            };
+
+        /// <summary>
         /// Returns a string representation of the HexCoordinates.
         /// </summary>
         /// <returns>A string in the format "(Q,R,S)".</returns>
@@ -315,6 +345,166 @@ namespace Catan3.Shared.Utility
             double x = size * 1.5 * Q + offsetX;
             double y = size * Math.Sqrt(3) * (R + Q / 2.0) + offsetY;
             return new Point(x, y);
+        }
+
+        /// <summary>
+        /// Generates hex coordinates in spiral order from center outward.
+        /// Ring 0: center. Ring N: 6N hexes clockwise from North.
+        /// Must match TypeScript getSpiralCoordinates() exactly.
+        /// </summary>
+        public static List<HexCoordinates> GenerateSpiralCoordinates(int count)
+        {
+            if (count <= 0) return [];
+            var coords = new List<HexCoordinates> { new(0, 0, 0) };
+            if (count == 1) return coords;
+
+            int ring = 1;
+            while (coords.Count < count)
+            {
+                var current = new HexCoordinates(0, -ring, ring);
+                Direction[] walkDirs =
+                [
+                    Direction.SouthEast, Direction.South, Direction.SouthWest,
+                    Direction.NorthWest, Direction.North, Direction.NorthEast
+                ];
+                foreach (var dir in walkDirs)
+                {
+                    for (int step = 0; step < ring && coords.Count < count; step++)
+                    {
+                        coords.Add(current);
+                        current = current.GetAdjacentTile(dir);
+                    }
+                }
+                ring++;
+            }
+            return coords;
+        }
+
+        /// <summary>
+        /// Generates hex coordinates in a compact "square" column layout.
+        /// Adjacent columns differ by at most 1 in height. Tries hill patterns
+        /// (center tallest) first, then valley (edges tallest).
+        /// Must match TypeScript getSquareCoordinates() exactly.
+        /// </summary>
+        public static List<HexCoordinates> GenerateSquareCoordinates(int count)
+        {
+            if (count <= 0) return [];
+            if (count == 1) return [new(0, 0, 0)];
+
+            var heights = ComputeSquareColumnHeights(count);
+            return GenerateFromColumnHeights(heights);
+        }
+
+        /// <summary>
+        /// Computes the column height array for a square layout with the given tile count.
+        /// Exposed for testing.
+        /// </summary>
+        public static int[] ComputeSquareColumnHeights(int count)
+        {
+            if (count <= 0) return [];
+            if (count == 1) return [1];
+
+            int[] bestHeights = [count];
+            double bestScore = double.MaxValue;
+
+            for (int c = 1; c <= count; c += 2)
+            {
+                int k = (c - 1) / 2;
+
+                // Hill pattern: sum = c*base + k², base = (count - k²) / c
+                if (k * k < count)
+                {
+                    int remainder = count - k * k;
+                    if (remainder > 0 && remainder % c == 0)
+                    {
+                        int b = remainder / c;
+                        if (b >= 1)
+                        {
+                            var heights = BuildHillHeights(c, b, k);
+                            double score = SquarenessScore(heights);
+                            if (score < bestScore) { bestScore = score; bestHeights = heights; }
+                        }
+                    }
+                }
+
+                // Valley pattern: sum = c*peak - k², peak = (count + k²) / c
+                if (k > 0)
+                {
+                    int numerator = count + k * k;
+                    if (numerator % c == 0)
+                    {
+                        int p = numerator / c;
+                        if (p >= 1 && p - k >= 1)
+                        {
+                            var heights = BuildValleyHeights(c, p, k);
+                            double score = SquarenessScore(heights) + 0.001;
+                            if (score < bestScore) { bestScore = score; bestHeights = heights; }
+                        }
+                    }
+                }
+
+                if (c > count) break;
+            }
+
+            return bestHeights;
+        }
+
+        private static int[] BuildHillHeights(int columns, int baseHeight, int halfWidth)
+        {
+            var heights = new int[columns];
+            for (int i = 0; i < columns; i++)
+                heights[i] = baseHeight + halfWidth - Math.Abs(i - halfWidth);
+            return heights;
+        }
+
+        private static int[] BuildValleyHeights(int columns, int peak, int halfWidth)
+        {
+            var heights = new int[columns];
+            for (int i = 0; i < columns; i++)
+                heights[i] = peak - halfWidth + Math.Abs(i - halfWidth);
+            return heights;
+        }
+
+        private static double SquarenessScore(int[] heights)
+        {
+            int c = heights.Length;
+            int maxH = 0;
+            int minH = int.MaxValue;
+            foreach (var h in heights)
+            {
+                if (h > maxH) maxH = h;
+                if (h < minH) minH = h;
+            }
+            double ratio = (c * 1.5) / (maxH * 1.732);
+            double score = Math.Abs(Math.Log(ratio));
+            if (minH < 2) score += 10.0; // Heavily penalize single-hex columns
+            return score;
+        }
+
+        private static List<HexCoordinates> GenerateFromColumnHeights(int[] heights)
+        {
+            int c = heights.Length;
+            int centerOffset = (c - 1) / 2;
+            var coords = new List<HexCoordinates>();
+
+            int q0 = -centerOffset;
+            int rMin = (int)Math.Round((-q0 - heights[0] + 1) / 2.0, MidpointRounding.AwayFromZero);
+
+            for (int i = 0; i < c; i++)
+            {
+                if (i > 0)
+                {
+                    if (heights[i] > heights[i - 1])
+                        rMin--;
+                }
+
+                for (int r = rMin; r < rMin + heights[i]; r++)
+                {
+                    coords.Add(new HexCoordinates(i - centerOffset, r, -(i - centerOffset) - r));
+                }
+            }
+
+            return coords;
         }
 
         /// <summary>

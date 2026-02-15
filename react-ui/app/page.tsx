@@ -15,10 +15,21 @@ import {
   faCode,
   faFont,
   faVial,
+  faMap,
+  faCrown,
+  faShip,
 } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { MainLayout } from '@/components/layout';
 import { getServiceUrl } from '@/lib/config';
-import { HexGrid, HexGridItem, CenterHex, MenuHex, cubicCoord } from '@/components/hex-grid';
+import {
+  HexGrid,
+  CenterHex,
+  MenuHex,
+  HEX_CONTENT_SCALE,
+  getSpiralCoordinates,
+} from '@/components/hex-grid';
 
 interface TroubleshootResult {
   timestamp: string;
@@ -33,11 +44,57 @@ interface TroubleshootResult {
   cannotFix: string[];
 }
 
+/** Disabled hex with a diagonal "Coming Soon" banner. */
+function ComingSoonHex({
+  icon,
+  title,
+  accentColor,
+}: {
+  icon: IconDefinition;
+  title: string;
+  accentColor: string;
+}): React.ReactElement {
+  return (
+    <div className="w-full h-full opacity-60 cursor-not-allowed">
+      {/* Outer hex - border */}
+      <div
+        className="absolute inset-0 hex-clip-flat"
+        style={{ background: 'var(--hex-border-idle)' }}
+      />
+      {/* Inner hex - content */}
+      <div
+        className="absolute inset-0 flex items-center justify-center hex-clip-flat"
+        style={{
+          background: 'var(--hex-content-gradient)',
+          transform: `scale(${HEX_CONTENT_SCALE})`,
+        }}
+      >
+        <div className="text-center px-4">
+          <FontAwesomeIcon icon={icon} className={`${accentColor} text-5xl mb-2`} />
+          <h3 className={`text-xl font-bold ${accentColor} tracking-wide leading-tight`}>
+            {title}
+          </h3>
+        </div>
+      </div>
+      {/* Coming Soon banner */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-10 hex-clip-flat">
+        <span
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-[35deg]
+            font-bold text-xs uppercase tracking-widest py-2 px-12 whitespace-nowrap
+            shadow-lg text-black bg-amber-500"
+        >
+          Coming Soon
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Home page - main entry point for the Catan application.
  *
  * Uses two hex clusters:
- *   Top cluster (Game): Catan branding + New Game, Open Game, Edit Players, Stats
+ *   Top cluster (Game): Catan branding + New Game, Open Game, Edit Players, Stats, Coming Soon ×2
  *   Bottom cluster (Dev): Dev center + Hex Test, Troubleshoot, Controls Test, Font Viewer
  */
 export default function Home(): React.ReactElement {
@@ -90,121 +147,99 @@ export default function Home(): React.ReactElement {
     setTroubleshootError(null);
   }, []);
 
-  // ── Game cluster (top): center + 4 surrounding ──
-  // Diamond shape: NW, N, Center, NE, S
-  const gameItems: HexGridItem[] = [
-    {
-      id: 'game-center',
-      coord: cubicCoord(0, 0),
-      content: <CenterHex icon={faDice} title="Catan" accentColor="text-amber-400" />,
-      disabled: true,
-    },
-    {
-      id: 'nw-slot',
-      coord: cubicCoord(-1, 0),
-      content: activeGameId ? (
-        <MenuHex
-          icon={faPlay}
-          title="Return to"
-          subtitle="Game"
-          href={`/game/${activeGameId}`}
-          accentColor="text-green-400"
-        />
-      ) : (
-        <MenuHex
-          icon={faUsers}
-          title="Edit Players"
-          href="/edit-players"
-          accentColor="text-green-400"
-        />
-      ),
-    },
-    {
-      id: 'new-game',
-      coord: cubicCoord(0, -1),
-      content: (
-        <MenuHex icon={faGamepad} title="New Game" href="/new-game" accentColor="text-amber-400" />
-      ),
-    },
-    {
-      id: 'open-game',
-      coord: cubicCoord(1, -1),
-      content: (
-        <MenuHex
-          icon={faFolderOpen}
-          title="Open Game"
-          href="/load-game"
-          accentColor="text-blue-400"
-        />
-      ),
-    },
-    {
-      id: 'stats',
-      coord: cubicCoord(0, 1),
-      content: (
-        <MenuHex icon={faChartBar} title="Stats" href="/stats" accentColor="text-purple-400" />
-      ),
-    },
+  // ── Game cluster (top): center + 6 surrounding (full ring) ──
+  // Spiral order: center, top, top-right, bottom-right, bottom, bottom-left, top-left
+  const gameContent = [
+    <CenterHex key="c" icon={faDice} title="Catan" accentColor="text-amber-400" />,
+    <MenuHex
+      key="new"
+      icon={faGamepad}
+      title="New Game"
+      href="/new-game"
+      accentColor="text-amber-400"
+    />,
+    <MenuHex
+      key="open"
+      icon={faFolderOpen}
+      title="Open Game"
+      href="/load-game"
+      accentColor="text-blue-400"
+    />,
+    activeGameId ? (
+      <MenuHex
+        key="active"
+        icon={faPlay}
+        title="Return to"
+        subtitle="Game"
+        href={`/game/${activeGameId}`}
+        accentColor="text-green-400"
+      />
+    ) : (
+      <MenuHex
+        key="players"
+        icon={faUsers}
+        title="Edit Players"
+        href="/edit-players"
+        accentColor="text-green-400"
+      />
+    ),
+    <MenuHex
+      key="stats"
+      icon={faChartBar}
+      title="Stats"
+      href="/stats"
+      accentColor="text-purple-400"
+    />,
+    <ComingSoonHex key="seafarers" icon={faShip} title="Seafarers" accentColor="text-sky-400" />,
+    <ComingSoonHex
+      key="cities"
+      icon={faCrown}
+      title="Cities &amp;"
+      accentColor="text-violet-400"
+    />,
   ];
 
-  // ── Dev cluster (bottom): same diamond shape, own coordinate space ──
-  const devItems: HexGridItem[] = [
-    {
-      id: 'dev-center',
-      coord: cubicCoord(0, 0),
-      content: <CenterHex icon={faCode} title="Dev" accentColor="text-cyan-400" />,
-      disabled: true,
-    },
-    {
-      id: 'hex-test',
-      coord: cubicCoord(-1, 0),
-      content: (
-        <MenuHex icon={faFlask} title="Hex Test" href="/hex-test" accentColor="text-cyan-400" />
-      ),
-    },
-    {
-      id: 'troubleshoot',
-      coord: cubicCoord(0, -1),
-      content: (
-        <MenuHex
-          icon={isTroubleshooting ? faSpinner : faWrench}
-          title={isTroubleshooting ? 'Running...' : 'Troubleshoot'}
-          onClick={isTroubleshooting ? undefined : runTroubleshoot}
-          accentColor="text-gray-400"
-        />
-      ),
-      disabled: isTroubleshooting,
-    },
-    {
-      id: 'controls-test',
-      coord: cubicCoord(1, -1),
-      content: (
-        <MenuHex
-          icon={faSlidersH}
-          title="Controls"
-          subtitle="Test"
-          href="/controls-test"
-          accentColor="text-orange-400"
-        />
-      ),
-    },
-    {
-      id: 'font-viewer',
-      coord: cubicCoord(0, 1),
-      content: (
-        <MenuHex
-          icon={faFont}
-          title="Font Viewer"
-          href="/font-viewer"
-          accentColor="text-emerald-400"
-        />
-      ),
-    },
-    {
-      id: 'tests',
-      coord: cubicCoord(-1, 1),
-      content: <MenuHex icon={faVial} title="Tests" href="/tests" accentColor="text-red-400" />,
-    },
+  // ── Dev cluster (bottom): center + 6 surrounding ──
+  // Spiral order: center, top, top-right, right, bottom, bottom-left, left
+  const devContent = [
+    <CenterHex key="c" icon={faCode} title="Dev" accentColor="text-cyan-400" />,
+    <MenuHex
+      key="trouble"
+      icon={isTroubleshooting ? faSpinner : faWrench}
+      title={isTroubleshooting ? 'Running...' : 'Troubleshoot'}
+      onClick={isTroubleshooting ? undefined : runTroubleshoot}
+      accentColor="text-gray-400"
+    />,
+    <MenuHex
+      key="controls"
+      icon={faSlidersH}
+      title="Controls"
+      subtitle="Test"
+      href="/controls-test"
+      accentColor="text-orange-400"
+    />,
+    <MenuHex
+      key="editor"
+      icon={faMap}
+      title="Board Editor"
+      href="/templates"
+      accentColor="text-teal-400"
+    />,
+    <MenuHex
+      key="font"
+      icon={faFont}
+      title="Font Viewer"
+      href="/font-viewer"
+      accentColor="text-emerald-400"
+    />,
+    <MenuHex key="tests" icon={faVial} title="Tests" href="/tests" accentColor="text-red-400" />,
+    <MenuHex
+      key="hex"
+      icon={faFlask}
+      title="Hex Test"
+      href="/hex-test"
+      accentColor="text-cyan-400"
+    />,
   ];
 
   return (
@@ -212,7 +247,13 @@ export default function Home(): React.ReactElement {
       <div className="flex flex-col items-center justify-center min-h-full pb-8">
         {/* Game Cluster */}
         <div className="bg-white/5 rounded-xl p-8 border border-white/10">
-          <HexGrid hexSize={140} items={gameItems} gap={4} scale={hexScale} />
+          <HexGrid
+            hexSize={140}
+            coordinates={getSpiralCoordinates(gameContent.length)}
+            renderItem={(_coord, i) => gameContent[i]}
+            gap={4}
+            scale={hexScale}
+          />
         </div>
 
         {/* Separator */}
@@ -220,7 +261,13 @@ export default function Home(): React.ReactElement {
 
         {/* Dev Cluster (20% smaller) */}
         <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-          <HexGrid hexSize={112} items={devItems} gap={3} scale={hexScale} />
+          <HexGrid
+            hexSize={112}
+            coordinates={getSpiralCoordinates(devContent.length)}
+            renderItem={(_coord, i) => devContent[i]}
+            gap={3}
+            scale={hexScale}
+          />
         </div>
 
         {/* Troubleshoot Results */}

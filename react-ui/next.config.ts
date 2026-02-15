@@ -10,9 +10,7 @@ const nextConfig: NextConfig = {
       {
         // Theme assets: cache but always revalidate (ETag handles 304s efficiently)
         source: '/themes/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, no-cache' },
-        ],
+        headers: [{ key: 'Cache-Control', value: 'public, no-cache' }],
       },
     ];
   },

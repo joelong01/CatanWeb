@@ -11,11 +11,13 @@ public class DatabaseSeedingService : BackgroundService
 {
     private readonly IServiceProvider _services;
     private readonly DatabaseProviderDetector _dbDetector;
+    private readonly ILogger<DatabaseSeedingService> _logger;
 
-    public DatabaseSeedingService(IServiceProvider services, DatabaseProviderDetector dbDetector)
+    public DatabaseSeedingService(IServiceProvider services, DatabaseProviderDetector dbDetector, ILogger<DatabaseSeedingService> logger)
     {
         _services = services;
         _dbDetector = dbDetector;
+        _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -26,7 +28,7 @@ public class DatabaseSeedingService : BackgroundService
         await Task.Yield();
 
         var defaultDataPath = _dbDetector.GetDefaultDataPath();
-        Console.WriteLine($"[SEEDER-BG] Starting background database seeding (defaultDataPath: {defaultDataPath})");
+        _logger.LogInformation("[SEEDER-BG] Starting background database seeding (defaultDataPath: {DefaultDataPath})", defaultDataPath);
 
         try
         {
@@ -34,18 +36,12 @@ public class DatabaseSeedingService : BackgroundService
             var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
             var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
 
-            await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence, _dbDetector.UseSqlServer);
-            Console.WriteLine("[SEEDER-BG] Database seeding completed successfully");
+            await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence, _dbDetector.UseSqlServer, _logger);
+            _logger.LogInformation("[SEEDER-BG] Database seeding completed successfully");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[SEEDER-BG] WARNING: Database seeding failed: {ex.Message}");
-            Console.WriteLine($"[SEEDER-BG] Exception type: {ex.GetType().FullName}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"[SEEDER-BG] Inner exception: {ex.InnerException.Message}");
-            }
-            Console.WriteLine("[SEEDER-BG] The service is running, but database operations may fail until connection is restored.");
+            _logger.LogWarning(ex, "[SEEDER-BG] Database seeding failed. The service is running, but database operations may fail until connection is restored.");
         }
     }
 }

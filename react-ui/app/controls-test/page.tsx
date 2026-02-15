@@ -7,7 +7,6 @@
  * a live SignalR connection. Similar approach to /hex-test for geometry.
  *
  * Implements hex-based UI per .design/ui/react/game-page.md:
- * - DiceCluster: Two 7-hex clusters for dice selection
  * - ActionCluster: 7-hex cluster for game controls
  * - PlayerTile: 13 stats with Catan font glyphs
  */
@@ -593,256 +592,6 @@ function RollRingDemo({ colors }: RollRingDemoProps) {
       onRollClick={(roll) => console.log(`Roll ${roll} clicked`)}
       colors={colors}
     />
-  );
-}
-
-// ============================================================================
-// Dice Cluster Component
-// ============================================================================
-
-/** Unicode dice face glyphs */
-const DICE_GLYPHS = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-
-interface DiceHexContentProps {
-  value: number;
-  isSelected: boolean;
-  /** Player colors for styling */
-  colors?: PlayerColors & { cssGradient: string };
-}
-
-function DiceHexContent({ value, isSelected, colors }: DiceHexContentProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isPressed, setIsPressed] = useState(false);
-
-  const gradient = colors?.cssGradient || 'var(--hex-content-gradient)';
-  const foreground = colors?.foreground || '#ffffff';
-  const primary = colors?.primary || '#e53935';
-
-  // Unselected: player gradient background, foreground text
-  // Selected: foreground as background, primary as text (inverted)
-  const bgStyle = isSelected ? { background: foreground } : { background: gradient };
-
-  const textColor = isSelected ? primary : foreground;
-
-  // Get dice glyph for value 1-6
-  const glyph = DICE_GLYPHS[value] || '';
-
-  // Scale based on interaction state
-  const innerScale = isPressed ? 0.85 : isHovered ? 0.88 : 0.91;
-  const borderColor =
-    isSelected || isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
-
-  return (
-    <div
-      className="absolute inset-0"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setIsPressed(false);
-      }}
-      onMouseDown={() => setIsPressed(true)}
-      onMouseUp={() => setIsPressed(false)}
-      onTouchStart={() => setIsPressed(true)}
-      onTouchEnd={() => setIsPressed(false)}
-    >
-      {/* Outer border */}
-      <div
-        className="absolute inset-0 hex-clip-flat transition-colors duration-150"
-        style={{ background: borderColor }}
-      />
-      {/* Inner content */}
-      <div
-        className="absolute inset-0 hex-clip-flat flex items-center justify-center transition-all duration-150"
-        style={{
-          transform: `scale(${innerScale})`,
-          ...bgStyle,
-        }}
-      >
-        <span
-          style={{
-            color: textColor,
-            fontSize: '3em',
-            textShadow: isSelected ? 'none' : '2px 2px 6px rgba(0,0,0,0.6)',
-            fontWeight: 'normal',
-            transition: 'transform 150ms',
-            transform: isPressed ? 'scale(0.9)' : 'scale(1)',
-          }}
-        >
-          {glyph}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/** Center hex - "Send Roll" button */
-interface DiceCenterHexProps {
-  isEnabled: boolean;
-  colors?: PlayerColors & { cssGradient: string };
-}
-
-function DiceCenterHex({ isEnabled, colors }: DiceCenterHexProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isPressed, setIsPressed] = useState(false);
-
-  const gradient = colors?.cssGradient || 'var(--hex-content-gradient)';
-  const foreground = colors?.foreground || '#ffffff';
-  // Use primary color for checkmark (contrasts with foreground background)
-  const checkColor = colors?.primary || '#1a1a1a';
-
-  // Scale based on interaction state (only when enabled)
-  const innerScale = isEnabled && isPressed ? 0.85 : isEnabled && isHovered ? 0.88 : 0.91;
-  const borderColor = isEnabled && isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
-
-  return (
-    <div
-      className="absolute inset-0"
-      onMouseEnter={() => isEnabled && setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setIsPressed(false);
-      }}
-      onMouseDown={() => isEnabled && setIsPressed(true)}
-      onMouseUp={() => setIsPressed(false)}
-      onTouchStart={() => isEnabled && setIsPressed(true)}
-      onTouchEnd={() => setIsPressed(false)}
-    >
-      {/* Outer border */}
-      <div
-        className="absolute inset-0 hex-clip-flat transition-colors duration-150"
-        style={{ background: borderColor }}
-      />
-      {/* Inner content */}
-      <div
-        className={`absolute inset-0 hex-clip-flat flex items-center justify-center transition-all duration-150 ${!isEnabled ? 'opacity-40' : ''}`}
-        style={{
-          transform: `scale(${innerScale})`,
-          background: isEnabled ? foreground : gradient,
-        }}
-      >
-        {isEnabled && (
-          <span
-            style={{
-              color: checkColor,
-              fontSize: '2.5em',
-              transition: 'transform 150ms',
-              transform: isPressed ? 'scale(0.85)' : 'scale(1)',
-            }}
-          >
-            ✓
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-interface DiceClusterProps {
-  selectedValue: number | null;
-  onSelect: (value: number | null) => void;
-  /** Whether the center "send" button is enabled (both dice selected) */
-  canSendRoll?: boolean;
-  /** Callback when center button clicked */
-  onSendRoll?: () => void;
-  /** Player colors for styling */
-  colors?: PlayerColors & { cssGradient: string };
-}
-
-function DiceCluster({
-  selectedValue,
-  onSelect,
-  canSendRoll = false,
-  onSendRoll,
-  colors,
-}: DiceClusterProps) {
-  // Map die values to cluster positions
-  const diePositions: { value: number; coord: HexCoordinate }[] = [
-    { value: 1, coord: CLUSTER_7.north },
-    { value: 2, coord: CLUSTER_7.northEast },
-    { value: 3, coord: CLUSTER_7.southEast },
-    { value: 4, coord: CLUSTER_7.south },
-    { value: 5, coord: CLUSTER_7.southWest },
-    { value: 6, coord: CLUSTER_7.northWest },
-  ];
-
-  // Toggle behavior: clicking selected value unselects it
-  const handleSelect = (value: number) => {
-    onSelect(selectedValue === value ? null : value);
-  };
-
-  const items: HexGridItem[] = [
-    // Center hex - "send roll" button
-    {
-      id: 'center',
-      coord: CLUSTER_7.center,
-      content: <DiceCenterHex isEnabled={canSendRoll} colors={colors} />,
-      onClick: canSendRoll ? onSendRoll : undefined,
-      disabled: !canSendRoll,
-    },
-    // Value hexes around the outside
-    ...diePositions.map(({ value, coord }) => ({
-      id: `die-${value}`,
-      coord,
-      content: (
-        <DiceHexContent value={value} isSelected={selectedValue === value} colors={colors} />
-      ),
-      onClick: () => handleSelect(value),
-    })),
-  ];
-
-  return (
-    <HexGrid
-      hexSize={40}
-      items={items}
-      gap={2}
-      borderColor="transparent"
-      fitToParent={true}
-      fitPadding={0}
-    />
-  );
-}
-
-/** Two dice clusters side by side */
-interface DicePanelContentProps {
-  die1: number | null;
-  die2: number | null;
-  onSelectDie1: (value: number | null) => void;
-  onSelectDie2: (value: number | null) => void;
-  onSendRoll?: () => void;
-  colors?: PlayerColors & { cssGradient: string };
-}
-
-function _DicePanelContent({
-  die1,
-  die2,
-  onSelectDie1,
-  onSelectDie2,
-  onSendRoll,
-  colors,
-}: DicePanelContentProps) {
-  const canSendRoll = die1 !== null && die2 !== null;
-
-  return (
-    <div className="w-full h-full flex items-center justify-center overflow-hidden">
-      <div className="flex-1 h-full min-w-0">
-        <DiceCluster
-          selectedValue={die1}
-          onSelect={onSelectDie1}
-          canSendRoll={canSendRoll}
-          onSendRoll={onSendRoll}
-          colors={colors}
-        />
-      </div>
-      <div className="flex-1 h-full min-w-0">
-        <DiceCluster
-          selectedValue={die2}
-          onSelect={onSelectDie2}
-          canSendRoll={canSendRoll}
-          onSendRoll={onSendRoll}
-          colors={colors}
-        />
-      </div>
-    </div>
   );
 }
 
@@ -1988,8 +1737,6 @@ function ScaledPlayersList({ players, selectedPlayerId, onSelectPlayer }: Scaled
 // ============================================================================
 
 export default function ControlsTestPage(): React.ReactElement {
-  const [die1, setDie1] = useState<number | null>(null);
-  const [die2, setDie2] = useState<number | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(MOCK_PLAYERS[0].id);
   const [showWinner, setShowWinner] = useState(false);
   const [winnerKey, setWinnerKey] = useState(0);
@@ -2010,8 +1757,7 @@ export default function ControlsTestPage(): React.ReactElement {
   );
 
   // Generate buildings and roads for all players to test multi-player rendering
-  const playerIds = MOCK_PLAYERS.map((p) => p.id);
-  const testData = useMemo(() => generateTestBuildingsAndRoads(playerIds), []);
+  const testData = useMemo(() => generateTestBuildingsAndRoads(MOCK_PLAYERS.map((p) => p.id)), []);
 
   // Robber on desert tile with first player's colors
   const testRobber = useMemo(
@@ -2062,15 +1808,6 @@ export default function ControlsTestPage(): React.ReactElement {
     };
     gameActions.setGameModel(mockGameModel as GameModel);
   }, [testData, testRobber, selectedPlayerId]);
-
-  const _handleSendRoll = () => {
-    if (die1 !== null && die2 !== null) {
-      console.log(`Sending roll: ${die1} + ${die2} = ${die1 + die2}`);
-      // Reset dice after sending
-      setDie1(null);
-      setDie2(null);
-    }
-  };
 
   return (
     <MainLayout title="Controls Test">

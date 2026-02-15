@@ -10,6 +10,7 @@ import {
   hexToPixel,
   pixelToHex,
   Direction,
+  SIDE_TO_DIRECTION,
   type HexCoordinate,
   type PixelPosition,
   type HexPosition as GeometryHexPosition,
@@ -103,19 +104,6 @@ export interface GameBoardProps {
 function coordKeyString(coord: HexCoordinate): string {
   return `${coord.q},${coord.r},${coord.s}`;
 }
-
-/**
- * Map HexSide (from game data) to Direction (for neighbor calculation)
- */
-const SIDE_TO_DIRECTION: Record<HexSide, Direction> = {
-  Top: Direction.North,
-  TopRight: Direction.NorthEast,
-  BottomRight: Direction.SouthEast,
-  Bottom: Direction.South,
-  BottomLeft: Direction.SouthWest,
-  TopLeft: Direction.NorthWest,
-  None: Direction.North, // Fallback
-};
 
 /**
  * Map HexSide to the two vertex positions (in viewBox coordinates) that the harbor connects to.
@@ -533,13 +521,13 @@ export function GameBoard({
     initialZoom: number;
   } | null>(null);
 
-  const canPan = (target: HitTarget, isModifier: boolean, isTouch: boolean) => {
+  const canPan = useCallback((target: HitTarget, isModifier: boolean, isTouch: boolean) => {
     if (isModifier) return true;
     if (target.type === 'none') return true;
     if (isTouch) return true; // Touch always pans (drag threshold disambiguates)
     if (target.type === 'tile' && target.tile.resourceTileType === 'Sea') return true;
     return false;
-  };
+  }, []);
 
   // Measure container size
   useEffect(() => {
@@ -656,36 +644,29 @@ export function GameBoard({
 
   // Build HexGrid items from harbors (at water hex positions)
   const harborItems: HexGridItem[] = useMemo(() => {
-    return harbors.map((harbor) => {
-      const { hexCoordinates, side } = harbor.harborKey;
-      const tileCoord = cubicCoord(hexCoordinates.q, hexCoordinates.r);
+    return harbors
+      .filter((h) => h.harborKey.side !== 'None')
+      .map((harbor) => {
+        const { hexCoordinates, side } = harbor.harborKey;
+        const tileCoord = cubicCoord(hexCoordinates.q, hexCoordinates.r);
 
-      // Find the water hex adjacent to the tile in the harbor's direction
-      const direction = SIDE_TO_DIRECTION[side];
-      const waterCoord = getNeighbor(tileCoord, direction);
-      const key = coordKeyString(waterCoord);
+        // Find the water hex adjacent to the tile in the harbor's direction
+        const direction = SIDE_TO_DIRECTION[side as GeometryHexSide];
+        const waterCoord = getNeighbor(tileCoord, direction);
+        const key = coordKeyString(waterCoord);
 
-      // Get owner colors if harbor is owned
-      const ownerColors = harbor.owner?.id
-        ? players.find((p) => p.id === harbor.owner.id)?.colors
-        : null;
+        // Get owner colors if harbor is owned
+        const ownerColors = harbor.owner?.id
+          ? players.find((p) => p.id === harbor.owner.id)?.colors
+          : null;
 
-      return {
-        id: `harbor-${key}`,
-        coord: waterCoord,
-        content: <HarborHexContent harbor={harbor} ownerColors={ownerColors} />,
-      };
-    });
+        return {
+          id: `harbor-${key}`,
+          coord: waterCoord,
+          content: <HarborHexContent harbor={harbor} ownerColors={ownerColors} />,
+        };
+      });
   }, [harbors, players]);
-
-  // Build set of harbor coordinates for quick lookup
-  const harborCoordSet = useMemo(() => {
-    const set = new Set<string>();
-    harborItems.forEach((item) => {
-      set.add(coordKeyString(item.coord));
-    });
-    return set;
-  }, [harborItems]);
 
   // Calculate board bounds (for water generation) - NO pan offset here
   const boardBounds = useMemo(() => {
@@ -744,7 +725,7 @@ export function GameBoard({
     }
 
     return items;
-  }, [boardBounds, tileCoordSet, harborCoordSet, seaTilePath]);
+  }, [boardBounds, tileCoordSet, seaTilePath]);
 
   // Generate all unique building positions (vertices shared between tiles)
   // Each vertex is identified by the tile coord + position
@@ -1021,7 +1002,7 @@ export function GameBoard({
         e.preventDefault();
       }
     },
-    [hitTest, panOffset, dispatchInteraction, viewport.zoom]
+    [hitTest, panOffset, dispatchInteraction, viewport.zoom, canPan]
   );
 
   const handlePointerMove = useCallback(
@@ -1078,7 +1059,7 @@ export function GameBoard({
         });
       }
     },
-    [setViewport, initialHexSize]
+    [setViewport, initialHexSize, canPan]
   );
 
   const handlePointerUp = useCallback(
@@ -1291,7 +1272,7 @@ export function GameBoard({
             const pixelPos = getEdgeMidpoint(coord, side, hSize, origin);
 
             // Build the road key for click handler
-            const roadKey: RoadKey = {
+            const _roadKey: RoadKey = {
               tileKey: { q: coord.q, r: coord.r, s: coord.s },
               hexSide: side as HexSide,
             };
@@ -1344,7 +1325,7 @@ export function GameBoard({
 
             // Build the building key for click handler (city upgrades)
             // Cast needed because generated BuildingKey has spurious 'default' property
-            const buildingKey = {
+            const _buildingKey = {
               hexCoordinates: { q: coord.q, r: coord.r, s: coord.s },
               position: position as HexPosition,
             } as BuildingKey;
@@ -1411,13 +1392,13 @@ export function GameBoard({
             }
 
             // Determine visibility based on game state (Blazor lines 214-248)
-            let isBuildable: boolean;
+            let _isBuildable: boolean;
             let isHidden: boolean;
             let settlementBuildIndex: string | undefined;
 
             if (isPickingBoard) {
               // PickingBoard: evaluation mode — show stars, not buildable
-              isBuildable = false;
+              _isBuildable = false;
               // No star filter selected → hide all evaluation spots (user must choose a filter)
               if (starFilter === null) return null;
               // starFilter=0 ("All") → stars < 0 always false → show everything
@@ -1426,7 +1407,7 @@ export function GameBoard({
               isHidden = false;
             } else if (hasSettlementEntitlement && buildingState === 'PossibleSettlement') {
               // Buildable settlement spot
-              isBuildable = true;
+              _isBuildable = true;
               settlementBuildIndex = settlementIndexMap.get(key);
 
               if (settlementBuildIndex !== undefined) {
@@ -1445,7 +1426,7 @@ export function GameBoard({
 
             // Build the building key for click handler
             // Cast needed because generated BuildingKey has spurious 'default' property
-            const buildingKey = {
+            const _buildingKey = {
               hexCoordinates: { q: coord.q, r: coord.r, s: coord.s },
               position: position as HexPosition,
             } as BuildingKey;

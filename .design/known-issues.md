@@ -1,6 +1,6 @@
 # Known Issues & TODOs
 
-**Last verified:** January 30, 2026
+**Last verified:** February 13, 2026
 
 ## Tailwind v4 Migration
 
@@ -116,4 +116,4 @@ from `lib/constants/catanGlyphs.ts`.
 | Jan 30 AM | Roll stats fix, purchase badges, Enter key, WinnerOverlay fireworks |
 | Jan 30 PM | As-built documentation audit (19 docs), Gemini comparison |
 | Jan 30 PM | Expanded to 30 docs: all design files verified and absorbed |
-| Feb 13 | Deprecated Blazor/Desktop from build; Game template engine (M1-M5) |
+| Feb 13 | Deprecated Blazor/Desktop from build; Game template engine (M1-M5); Staging deploy (M6) |

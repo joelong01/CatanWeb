@@ -11,7 +11,7 @@ import {
   faMapLocationDot,
   faDice,
 } from '@fortawesome/free-solid-svg-icons';
-import { HexGrid, HexGridItem, HEX_LAYOUTS, CenterHex, WaterHex } from '@/components/hex-grid';
+import { HexGrid, CenterHex, WaterHex, getSpiralCoordinates } from '@/components/hex-grid';
 
 /**
  * Props for the GameTypeSelector component.
@@ -107,17 +107,23 @@ const GAME_TYPES: GameTypeConfig[] = [
 interface GameTypeContentProps {
   config: GameTypeConfig;
   isSelected: boolean;
+  onClick?: () => void;
 }
 
-function GameTypeContent({ config, isSelected }: GameTypeContentProps): React.ReactElement {
+function GameTypeContent({
+  config,
+  isSelected,
+  onClick,
+}: GameTypeContentProps): React.ReactElement {
   const isDisabled = !config.enabled;
   const [isHovered, setIsHovered] = React.useState(false);
 
   return (
     <div
-      className="w-full h-full group"
+      className={`w-full h-full group ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
       onMouseEnter={() => !isDisabled && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={isDisabled ? undefined : onClick}
     >
       {/* Outer hex - border (full size) */}
       <div
@@ -194,96 +200,37 @@ export function GameTypeSelector({ value, onChange }: GameTypeSelectorProps): Re
   // Hex size: 100 to fit all content (icon, title, players, tiles) without clipping
   const hexSize = 100;
 
-  // Build hex grid items
-  const items: HexGridItem[] = [
-    // Center hex - "Choose Game" label
-    {
-      id: 'center',
-      coord: HEX_LAYOUTS.CLUSTER_7[0], // Center (0, 0)
-      content: (
-        <CenterHex
-          icon={faDice}
-          title="Choose"
-          subtitle="Game"
-          accentColor="text-amber-400"
-          background="linear-gradient(160deg, rgba(120, 53, 15, 0.4) 0%, rgba(69, 26, 3, 0.4) 100%)"
-        />
-      ),
-      disabled: true,
-    },
+  const gameTypeItem = (config: GameTypeConfig): React.ReactNode => (
+    <GameTypeContent
+      config={config}
+      isSelected={value === config.type && config.enabled}
+      onClick={() => config.enabled && onChange(config.type)}
+    />
+  );
 
-    // North: Expansion
-    {
-      id: 'expansion',
-      coord: HEX_LAYOUTS.CLUSTER_7[1], // North (0, -1)
-      content: (
-        <GameTypeContent
-          config={GAME_TYPES[1]}
-          isSelected={value === GAME_TYPES[1].type && GAME_TYPES[1].enabled}
-        />
-      ),
-      onClick: () => GAME_TYPES[1].enabled && onChange(GAME_TYPES[1].type),
-      disabled: !GAME_TYPES[1].enabled,
-    },
-
-    // NorthEast: Seafarers
-    {
-      id: 'seafarers',
-      coord: HEX_LAYOUTS.CLUSTER_7[2], // NorthEast (1, -1)
-      content: (
-        <GameTypeContent
-          config={GAME_TYPES[3]}
-          isSelected={value === GAME_TYPES[3].type && GAME_TYPES[3].enabled}
-        />
-      ),
-      onClick: () => GAME_TYPES[3].enabled && onChange(GAME_TYPES[3].type),
-      disabled: !GAME_TYPES[3].enabled,
-    },
-
-    // SouthEast: Water placeholder
-    {
-      id: 'water-se',
-      coord: HEX_LAYOUTS.CLUSTER_7[3], // SouthEast (1, 0)
-      content: <WaterHex imageUrl="/water.png" showBorder opacity={0.6} />,
-      disabled: true,
-    },
-
-    // South: Water placeholder
-    {
-      id: 'water-s',
-      coord: HEX_LAYOUTS.CLUSTER_7[4], // South (0, 1)
-      content: <WaterHex imageUrl="/water.png" showBorder opacity={0.6} />,
-      disabled: true,
-    },
-
-    // SouthWest: Cities & Knights
-    {
-      id: 'cities-knights',
-      coord: HEX_LAYOUTS.CLUSTER_7[5], // SouthWest (-1, 1)
-      content: (
-        <GameTypeContent
-          config={GAME_TYPES[2]}
-          isSelected={value === GAME_TYPES[2].type && GAME_TYPES[2].enabled}
-        />
-      ),
-      onClick: () => GAME_TYPES[2].enabled && onChange(GAME_TYPES[2].type),
-      disabled: !GAME_TYPES[2].enabled,
-    },
-
-    // NorthWest: Regular/Classic
-    {
-      id: 'regular',
-      coord: HEX_LAYOUTS.CLUSTER_7[6], // NorthWest (-1, 0)
-      content: (
-        <GameTypeContent
-          config={GAME_TYPES[0]}
-          isSelected={value === GAME_TYPES[0].type && GAME_TYPES[0].enabled}
-        />
-      ),
-      onClick: () => GAME_TYPES[0].enabled && onChange(GAME_TYPES[0].type),
-      disabled: !GAME_TYPES[0].enabled,
-    },
+  // Spiral order: center, top, top-right, right, bottom, bottom-left, left
+  const content = [
+    <CenterHex
+      key="c"
+      icon={faDice}
+      title="Choose"
+      subtitle="Game"
+      accentColor="text-amber-400"
+      background="linear-gradient(160deg, rgba(120, 53, 15, 0.4) 0%, rgba(69, 26, 3, 0.4) 100%)"
+    />,
+    gameTypeItem(GAME_TYPES[1]), // Expansion (top)
+    gameTypeItem(GAME_TYPES[3]), // Seafarers (top-right)
+    <WaterHex key="w1" imageUrl="/water.png" showBorder opacity={0.6} />, // right
+    <WaterHex key="w2" imageUrl="/water.png" showBorder opacity={0.6} />, // bottom
+    gameTypeItem(GAME_TYPES[2]), // Cities & Knights (bottom-left)
+    gameTypeItem(GAME_TYPES[0]), // Regular/Classic (left)
   ];
 
-  return <HexGrid hexSize={hexSize} items={items} scale={1.0} />;
+  return (
+    <HexGrid
+      hexSize={hexSize}
+      coordinates={getSpiralCoordinates(content.length)}
+      renderItem={(_coord, i) => content[i]}
+    />
+  );
 }

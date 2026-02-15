@@ -1,12 +1,12 @@
 # Database Architecture
 
-**Last verified:** January 30, 2026
+**Last verified:** February 13, 2026
 
 ## Overview
 
 The game service uses **Entity Framework Core** with SQLite (local dev) or
 Azure SQL (production). The database stores player profiles, game saves,
-completed game archives, and test recordings.
+completed game archives, test recordings, and game templates.
 
 **DbContext:** `Catan3.GameService/Data/CatanDbContext.cs`
 
@@ -94,6 +94,21 @@ Test recordings for replay verification.
 | `PlayerIds` | string(500) | required | Comma-separated player IDs |
 | `ActionCount` | int | | Number of recorded actions |
 | `Data` | TEXT | | JSON: initialGameModel + actions |
+
+### 7. GameTemplateEntity
+
+Board configuration templates for game creation.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `Id` | string(100) | PK | Template identifier (e.g., "regular") |
+| `Name` | string(255) | required | Display name |
+| `Category` | string(50) | indexed | "Base" or "Expansion" |
+| `IsSystemTemplate` | bool | | True for built-in templates (cannot be deleted) |
+| `Version` | int | | Template version number |
+| `Data` | TEXT | required | JSON-serialized `GameTemplateData` |
+| `CreatedAt` | DateTime | required | Creation time |
+| `UpdatedAt` | DateTime | required | Last modification time |
 
 ## Persistence Service
 

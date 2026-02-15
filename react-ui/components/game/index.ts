@@ -23,7 +23,6 @@ export { PlayersPanel } from './panels/PlayersPanel';
 export { ResourcesPanel } from './panels/ResourcesPanel';
 
 // Controls
-export { DiceCluster } from './controls/DiceCluster';
 export { ActionCluster } from './controls/ActionCluster';
 export { MeasurementCluster } from './controls/MeasurementCluster';
 

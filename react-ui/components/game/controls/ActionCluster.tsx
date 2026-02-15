@@ -319,7 +319,7 @@ export const ActionCluster = memo(function ActionCluster({
       // Trigger Next action if enabled
       if (enabledButtons.next !== false) {
         e.preventDefault();
-        handleAction('next');
+        onAction?.('next');
       }
     };
 
