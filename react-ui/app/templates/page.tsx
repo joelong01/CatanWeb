@@ -82,20 +82,17 @@ export default function TemplateBrowser(): React.ReactElement {
     [router]
   );
 
-  const handleDelete = useCallback(
-    async (id: string) => {
-      if (!confirm(`Delete template "${id}"? This cannot be undone.`)) return;
-      setDeletingId(id);
-      const result = await gameApi.deleteTemplate(id);
-      if (result.success) {
-        setTemplates((prev) => prev.filter((t) => t.id !== id));
-      } else {
-        setError(result.error ?? 'Failed to delete template');
-      }
-      setDeletingId(null);
-    },
-    []
-  );
+  const handleDelete = useCallback(async (id: string) => {
+    if (!confirm(`Delete template "${id}"? This cannot be undone.`)) return;
+    setDeletingId(id);
+    const result = await gameApi.deleteTemplate(id);
+    if (result.success) {
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+    } else {
+      setError(result.error ?? 'Failed to delete template');
+    }
+    setDeletingId(null);
+  }, []);
 
   return (
     <MainLayout title="Game Templates" onBack={() => router.push('/')}>
@@ -173,7 +170,9 @@ export default function TemplateBrowser(): React.ReactElement {
                 </div>
 
                 <div className="flex items-center gap-4 text-xs text-gray-500">
-                  <span>{template.minPlayers}-{template.maxPlayers} players</span>
+                  <span>
+                    {template.minPlayers}-{template.maxPlayers} players
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-2 pt-1">
@@ -212,9 +211,7 @@ export default function TemplateBrowser(): React.ReactElement {
         )}
 
         {!isLoading && filteredTemplates.length === 0 && !error && (
-          <div className="text-center py-12 text-gray-500">
-            No templates found.
-          </div>
+          <div className="text-center py-12 text-gray-500">No templates found.</div>
         )}
       </div>
     </MainLayout>

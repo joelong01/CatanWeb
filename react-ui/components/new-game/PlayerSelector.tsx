@@ -66,7 +66,11 @@ interface PlayerCardContentProps {
   onClick?: () => void;
 }
 
-function PlayerCardContent({ player, isSelected, onClick }: PlayerCardContentProps): React.ReactElement {
+function PlayerCardContent({
+  player,
+  isSelected,
+  onClick,
+}: PlayerCardContentProps): React.ReactElement {
   const imageUrl = getPlayerImageUrl(player.imageUri);
   const wins = getWinCount(player);
   const [isHovered, setIsHovered] = React.useState(false);
@@ -231,10 +235,7 @@ export function PlayerSelector({
 
   // All players in spiral order: center + players + optionally guest
   // Guest naturally occupies the next spiral position (no detached coordinate)
-  const allPlayers = [
-    ...visiblePlayers,
-    ...(includeGuest && guestPlayer ? [guestPlayer] : []),
-  ];
+  const allPlayers = [...visiblePlayers, ...(includeGuest && guestPlayer ? [guestPlayer] : [])];
 
   const coords = getSpiralCoordinates(allPlayers.length + 1); // +1 for center
 

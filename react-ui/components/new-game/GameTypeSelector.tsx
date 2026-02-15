@@ -110,7 +110,11 @@ interface GameTypeContentProps {
   onClick?: () => void;
 }
 
-function GameTypeContent({ config, isSelected, onClick }: GameTypeContentProps): React.ReactElement {
+function GameTypeContent({
+  config,
+  isSelected,
+  onClick,
+}: GameTypeContentProps): React.ReactElement {
   const isDisabled = !config.enabled;
   const [isHovered, setIsHovered] = React.useState(false);
 
@@ -214,12 +218,12 @@ export function GameTypeSelector({ value, onChange }: GameTypeSelectorProps): Re
       accentColor="text-amber-400"
       background="linear-gradient(160deg, rgba(120, 53, 15, 0.4) 0%, rgba(69, 26, 3, 0.4) 100%)"
     />,
-    gameTypeItem(GAME_TYPES[1]),  // Expansion (top)
-    gameTypeItem(GAME_TYPES[3]),  // Seafarers (top-right)
-    <WaterHex key="w1" imageUrl="/water.png" showBorder opacity={0.6} />,  // right
-    <WaterHex key="w2" imageUrl="/water.png" showBorder opacity={0.6} />,  // bottom
-    gameTypeItem(GAME_TYPES[2]),  // Cities & Knights (bottom-left)
-    gameTypeItem(GAME_TYPES[0]),  // Regular/Classic (left)
+    gameTypeItem(GAME_TYPES[1]), // Expansion (top)
+    gameTypeItem(GAME_TYPES[3]), // Seafarers (top-right)
+    <WaterHex key="w1" imageUrl="/water.png" showBorder opacity={0.6} />, // right
+    <WaterHex key="w2" imageUrl="/water.png" showBorder opacity={0.6} />, // bottom
+    gameTypeItem(GAME_TYPES[2]), // Cities & Knights (bottom-left)
+    gameTypeItem(GAME_TYPES[0]), // Regular/Classic (left)
   ];
 
   return (

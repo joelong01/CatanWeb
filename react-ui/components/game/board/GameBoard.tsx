@@ -644,26 +644,28 @@ export function GameBoard({
 
   // Build HexGrid items from harbors (at water hex positions)
   const harborItems: HexGridItem[] = useMemo(() => {
-    return harbors.filter((h) => h.harborKey.side !== 'None').map((harbor) => {
-      const { hexCoordinates, side } = harbor.harborKey;
-      const tileCoord = cubicCoord(hexCoordinates.q, hexCoordinates.r);
+    return harbors
+      .filter((h) => h.harborKey.side !== 'None')
+      .map((harbor) => {
+        const { hexCoordinates, side } = harbor.harborKey;
+        const tileCoord = cubicCoord(hexCoordinates.q, hexCoordinates.r);
 
-      // Find the water hex adjacent to the tile in the harbor's direction
-      const direction = SIDE_TO_DIRECTION[side as GeometryHexSide];
-      const waterCoord = getNeighbor(tileCoord, direction);
-      const key = coordKeyString(waterCoord);
+        // Find the water hex adjacent to the tile in the harbor's direction
+        const direction = SIDE_TO_DIRECTION[side as GeometryHexSide];
+        const waterCoord = getNeighbor(tileCoord, direction);
+        const key = coordKeyString(waterCoord);
 
-      // Get owner colors if harbor is owned
-      const ownerColors = harbor.owner?.id
-        ? players.find((p) => p.id === harbor.owner.id)?.colors
-        : null;
+        // Get owner colors if harbor is owned
+        const ownerColors = harbor.owner?.id
+          ? players.find((p) => p.id === harbor.owner.id)?.colors
+          : null;
 
-      return {
-        id: `harbor-${key}`,
-        coord: waterCoord,
-        content: <HarborHexContent harbor={harbor} ownerColors={ownerColors} />,
-      };
-    });
+        return {
+          id: `harbor-${key}`,
+          coord: waterCoord,
+          content: <HarborHexContent harbor={harbor} ownerColors={ownerColors} />,
+        };
+      });
   }, [harbors, players]);
 
   // Build set of harbor coordinates for quick lookup

@@ -13,13 +13,7 @@ import type { HexCoordinate } from '@/components/hex-grid/hex-geometry';
 import { cubicCoord } from '@/components/hex-grid/hex-geometry';
 import { getSpiralCoordinates, getSquareCoordinates } from '@/components/hex-grid';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faSave,
-  faSpinner,
-  faTrash,
-  faPlus,
-  faMinus,
-} from '@fortawesome/free-solid-svg-icons';
+import { faSave, faSpinner, faTrash, faPlus, faMinus } from '@fortawesome/free-solid-svg-icons';
 
 type LayoutType = 'Spiral' | 'Square';
 
@@ -157,25 +151,31 @@ export default function TemplateEditor(): React.ReactElement {
     [applyLayout]
   );
 
-  const addResourceTile = useCallback((resource: string) => {
-    setTemplate((prev) => {
-      if (!prev) return prev;
-      const num = resource === 'Desert' ? 0 : 0;
-      const newTiles = [...prev.tiles, { q: 0, r: 0, resource, number: num }];
-      return { ...prev, tiles: applyLayout(newTiles, layout) };
-    });
-  }, [applyLayout, layout]);
+  const addResourceTile = useCallback(
+    (resource: string) => {
+      setTemplate((prev) => {
+        if (!prev) return prev;
+        const num = resource === 'Desert' ? 0 : 0;
+        const newTiles = [...prev.tiles, { q: 0, r: 0, resource, number: num }];
+        return { ...prev, tiles: applyLayout(newTiles, layout) };
+      });
+    },
+    [applyLayout, layout]
+  );
 
-  const removeResourceTile = useCallback((resource: string) => {
-    setTemplate((prev) => {
-      if (!prev) return prev;
-      const idx = prev.tiles.findLastIndex((t) => t.resource === resource);
-      if (idx === -1) return prev;
-      const tiles = prev.tiles.filter((_, i) => i !== idx);
-      return { ...prev, tiles: applyLayout(tiles, layout) };
-    });
-    setSelectedTileIndex(null);
-  }, [applyLayout, layout]);
+  const removeResourceTile = useCallback(
+    (resource: string) => {
+      setTemplate((prev) => {
+        if (!prev) return prev;
+        const idx = prev.tiles.findLastIndex((t) => t.resource === resource);
+        if (idx === -1) return prev;
+        const tiles = prev.tiles.filter((_, i) => i !== idx);
+        return { ...prev, tiles: applyLayout(tiles, layout) };
+      });
+      setSelectedTileIndex(null);
+    },
+    [applyLayout, layout]
+  );
 
   // Tile CRUD for context menu and tile table
   const updateTile = useCallback((index: number, updates: Partial<TemplateTile>) => {
@@ -187,17 +187,20 @@ export default function TemplateEditor(): React.ReactElement {
     });
   }, []);
 
-  const removeTile = useCallback((index: number) => {
-    setTemplate((prev) => {
-      if (!prev) return prev;
-      const removed = prev.tiles[index];
-      if (removed) {
-        triggerFlip(cubicCoord(removed.q, removed.r));
-      }
-      return { ...prev, tiles: prev.tiles.filter((_, i) => i !== index) };
-    });
-    setSelectedTileIndex(null);
-  }, [triggerFlip]);
+  const removeTile = useCallback(
+    (index: number) => {
+      setTemplate((prev) => {
+        if (!prev) return prev;
+        const removed = prev.tiles[index];
+        if (removed) {
+          triggerFlip(cubicCoord(removed.q, removed.r));
+        }
+        return { ...prev, tiles: prev.tiles.filter((_, i) => i !== index) };
+      });
+      setSelectedTileIndex(null);
+    },
+    [triggerFlip]
+  );
 
   // Water hex right-click context menu state
   const [waterMenu, setWaterMenu] = useState<{
@@ -213,21 +216,31 @@ export default function TemplateEditor(): React.ReactElement {
   } | null>(null);
 
   // Water right-click — show menu with Add Tile / Add Harbor options
-  const handleWaterRightClick = useCallback((coord: HexCoordinate, adjacentTiles: { q: number; r: number; side: string }[], event: React.MouseEvent) => {
-    setWaterMenu({ coord, adjacentTiles, position: { x: event.clientX, y: event.clientY } });
-  }, []);
+  const handleWaterRightClick = useCallback(
+    (
+      coord: HexCoordinate,
+      adjacentTiles: { q: number; r: number; side: string }[],
+      event: React.MouseEvent
+    ) => {
+      setWaterMenu({ coord, adjacentTiles, position: { x: event.clientX, y: event.clientY } });
+    },
+    []
+  );
 
-  const addTileAtCoord = useCallback((coord: HexCoordinate) => {
-    triggerFlip(coord);
-    setTemplate((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        tiles: [...prev.tiles, { q: coord.q, r: coord.r, resource: 'Desert', number: 0 }],
-      };
-    });
-    setWaterMenu(null);
-  }, [triggerFlip]);
+  const addTileAtCoord = useCallback(
+    (coord: HexCoordinate) => {
+      triggerFlip(coord);
+      setTemplate((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          tiles: [...prev.tiles, { q: coord.q, r: coord.r, resource: 'Desert', number: 0 }],
+        };
+      });
+      setWaterMenu(null);
+    },
+    [triggerFlip]
+  );
 
   const addHarborAtCoord = useCallback((tileQ: number, tileR: number, side: string) => {
     setTemplate((prev) => {
@@ -475,7 +488,9 @@ export default function TemplateEditor(): React.ReactElement {
                           else tileRowRefs.current.delete(i);
                         }}
                         className={`flex items-center text-sm px-2 py-0.5 cursor-pointer transition-colors ${
-                          isSelected ? 'bg-blue-600/20 border-l-2 border-blue-500' : 'hover:bg-white/5 border-l-2 border-transparent'
+                          isSelected
+                            ? 'bg-blue-600/20 border-l-2 border-blue-500'
+                            : 'hover:bg-white/5 border-l-2 border-transparent'
                         }`}
                         onClick={() => setSelectedTileIndex(i)}
                       >
@@ -494,7 +509,9 @@ export default function TemplateEditor(): React.ReactElement {
                           onClick={(e) => e.stopPropagation()}
                         >
                           {RESOURCE_OPTIONS.map((r) => (
-                            <option key={r} value={r}>{r}</option>
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
                           ))}
                         </select>
                         <select
@@ -505,11 +522,16 @@ export default function TemplateEditor(): React.ReactElement {
                           onClick={(e) => e.stopPropagation()}
                         >
                           {NUMBER_OPTIONS.map((n) => (
-                            <option key={n} value={n}>{n === 0 ? '—' : n}</option>
+                            <option key={n} value={n}>
+                              {n === 0 ? '—' : n}
+                            </option>
                           ))}
                         </select>
                         <button
-                          onClick={(e) => { e.stopPropagation(); removeTile(i); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeTile(i);
+                          }}
                           className="w-6 text-red-400/40 hover:text-red-400 text-xs"
                         >
                           <FontAwesomeIcon icon={faTrash} />
@@ -534,7 +556,9 @@ export default function TemplateEditor(): React.ReactElement {
                       key={num}
                       className="flex items-center justify-between text-sm px-2 py-1 rounded bg-white/5"
                     >
-                      <span className={`font-mono ${num === 6 || num === 8 ? 'text-red-400 font-bold' : 'text-gray-300'}`}>
+                      <span
+                        className={`font-mono ${num === 6 || num === 8 ? 'text-red-400 font-bold' : 'text-gray-300'}`}
+                      >
                         {num}
                       </span>
                       <span className="text-white w-6 text-center font-mono">{count}</span>
@@ -606,10 +630,7 @@ export default function TemplateEditor(): React.ReactElement {
               </h2>
               <div className="space-y-1">
                 {template.entitlements.map((ent, i) => (
-                  <div
-                    key={i}
-                    className="text-sm px-2 py-1 rounded bg-white/5 text-gray-300"
-                  >
+                  <div key={i} className="text-sm px-2 py-1 rounded bg-white/5 text-gray-300">
                     {ent.entitlement}
                   </div>
                 ))}
@@ -674,7 +695,10 @@ export default function TemplateEditor(): React.ReactElement {
           harborIndex={harborMenu.harborIndex}
           position={harborMenu.position}
           onUpdateHarbor={updateHarbor}
-          onRemoveHarbor={(i) => { removeHarbor(i); closeHarborMenu(); }}
+          onRemoveHarbor={(i) => {
+            removeHarbor(i);
+            closeHarborMenu();
+          }}
           onClose={closeHarborMenu}
         />
       )}

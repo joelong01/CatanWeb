@@ -1,12 +1,7 @@
 'use client';
 
 import { ReactNode, useMemo, useRef, useState, useEffect } from 'react';
-import {
-  calculateHexDimensions,
-  hexToPixel,
-  HexCoordinate,
-  PixelPosition,
-} from './hex-geometry';
+import { calculateHexDimensions, hexToPixel, HexCoordinate, PixelPosition } from './hex-geometry';
 import { HexTile } from './HexTile';
 
 /**

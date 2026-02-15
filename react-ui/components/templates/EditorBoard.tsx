@@ -26,12 +26,30 @@ import { faCoins } from '@fortawesome/free-solid-svg-icons';
  * ViewBox is 100x86.6 (flat-top hex proportions). Center is at (50, 43.3).
  */
 const SIDE_TO_VERTICES: Record<string, [[number, number], [number, number]]> = {
-  Top: [[25, 86.6], [75, 86.6]],
-  TopRight: [[0, 43.3], [25, 86.6]],
-  BottomRight: [[25, 0], [0, 43.3]],
-  Bottom: [[75, 0], [25, 0]],
-  BottomLeft: [[100, 43.3], [75, 0]],
-  TopLeft: [[75, 86.6], [100, 43.3]],
+  Top: [
+    [25, 86.6],
+    [75, 86.6],
+  ],
+  TopRight: [
+    [0, 43.3],
+    [25, 86.6],
+  ],
+  BottomRight: [
+    [25, 0],
+    [0, 43.3],
+  ],
+  Bottom: [
+    [75, 0],
+    [25, 0],
+  ],
+  BottomLeft: [
+    [100, 43.3],
+    [75, 0],
+  ],
+  TopLeft: [
+    [75, 86.6],
+    [100, 43.3],
+  ],
 };
 
 /** FA icon SVG path data for harbors. */
@@ -63,7 +81,11 @@ interface EditorBoardProps {
   /** Right-click an existing harbor to edit/remove it. */
   onHarborRightClick?: (index: number, event: React.MouseEvent) => void;
   /** Right-click an adjacent water hex. Includes the adjacent tile+side pairs for harbor placement. */
-  onWaterRightClick?: (coord: HexCoordinate, adjacentTiles: { q: number; r: number; side: string }[], event: React.MouseEvent) => void;
+  onWaterRightClick?: (
+    coord: HexCoordinate,
+    adjacentTiles: { q: number; r: number; side: string }[],
+    event: React.MouseEvent
+  ) => void;
   flippingCoords?: Set<string>;
 }
 
@@ -86,7 +108,15 @@ export function coordKey(coord: HexCoordinate): string {
  * Harbor hex content - renders harbor icon on a wooden dock.
  * Replicates HarborHexContent from GameBoard for template editing.
  */
-function EditorHarborHex({ side, harborType, uniqueId }: { side: string; harborType: string; uniqueId: string }) {
+function EditorHarborHex({
+  side,
+  harborType,
+  uniqueId,
+}: {
+  side: string;
+  harborType: string;
+  uniqueId: string;
+}) {
   const imageUrl = getHarborImage(harborType as HarborType);
   const isFontMode = useFontRendering();
   const themeFontConfig = useHarborFontConfig(harborType);
@@ -105,7 +135,11 @@ function EditorHarborHex({ side, harborType, uniqueId }: { side: string; harborT
     const hexOpacity = fontConfig.hexOpacity ?? 0.6;
     return (
       <div className="absolute inset-0" data-drag-through>
-        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 86.6" preserveAspectRatio="none">
+        <svg
+          className="absolute inset-0 w-full h-full"
+          viewBox="0 0 100 86.6"
+          preserveAspectRatio="none"
+        >
           <defs>
             <clipPath id={`editor-harbor-clip-${uniqueId}`}>
               <circle cx={cx} cy={cy} r={circleRadius - 1} />
@@ -114,9 +148,23 @@ function EditorHarborHex({ side, harborType, uniqueId }: { side: string; harborT
           <polygon points={hexPoints} fill={fontConfig.bgColor || 'black'} />
           {fontConfig.hexGlyph && (
             <g opacity={hexOpacity}>
-              <svg x="0" y="0" width="100" height="86.6" viewBox="0 0 100 100" preserveAspectRatio="none">
-                <text x="50" y="50" textAnchor="middle" dominantBaseline="central"
-                  style={{ fontFamily: 'var(--font-catan)' }} fontSize="100" fill={fontConfig.color}>
+              <svg
+                x="0"
+                y="0"
+                width="100"
+                height="86.6"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+              >
+                <text
+                  x="50"
+                  y="50"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  style={{ fontFamily: 'var(--font-catan)' }}
+                  fontSize="100"
+                  fill={fontConfig.color}
+                >
                   {fontConfig.hexGlyph}
                 </text>
               </svg>
@@ -126,16 +174,40 @@ function EditorHarborHex({ side, harborType, uniqueId }: { side: string; harborT
             <polygon points={hexPoints} fill={fontConfig.bgColor} opacity={hexOpacity} />
           )}
           {fontConfig.faIcon && FA_ICON_PATHS[fontConfig.faIcon] && (
-            <path d={FA_ICON_PATHS[fontConfig.faIcon]} fill={fontConfig.color} opacity={0.3}
-              transform="translate(10, 3.3) scale(0.156)" />
+            <path
+              d={FA_ICON_PATHS[fontConfig.faIcon]}
+              fill={fontConfig.color}
+              opacity={0.3}
+              transform="translate(10, 3.3) scale(0.156)"
+            />
           )}
-          <line x1={dockVertices[0][0]} y1={dockVertices[0][1]}
-            x2={dockVertices[1][0]} y2={dockVertices[1][1]}
-            stroke={fontConfig.color} strokeWidth="10" strokeLinecap="butt" />
-          <circle cx={cx} cy={cy} r={circleRadius} fill="#f5f0e1" stroke={fontConfig.color} strokeWidth={2} />
-          <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
-            style={{ fontFamily: 'var(--font-catan)' }} fontSize={42} fill={fontConfig.color}
-            clipPath={`url(#editor-harbor-clip-${uniqueId})`}>
+          <line
+            x1={dockVertices[0][0]}
+            y1={dockVertices[0][1]}
+            x2={dockVertices[1][0]}
+            y2={dockVertices[1][1]}
+            stroke={fontConfig.color}
+            strokeWidth="10"
+            strokeLinecap="butt"
+          />
+          <circle
+            cx={cx}
+            cy={cy}
+            r={circleRadius}
+            fill="#f5f0e1"
+            stroke={fontConfig.color}
+            strokeWidth={2}
+          />
+          <text
+            x={cx}
+            y={cy}
+            textAnchor="middle"
+            dominantBaseline="central"
+            style={{ fontFamily: 'var(--font-catan)' }}
+            fontSize={42}
+            fill={fontConfig.color}
+            clipPath={`url(#editor-harbor-clip-${uniqueId})`}
+          >
             {fontConfig.harborGlyph}
           </text>
         </svg>
@@ -153,7 +225,11 @@ function EditorHarborHex({ side, harborType, uniqueId }: { side: string; harborT
 
   return (
     <div className="absolute inset-0" style={backgroundStyle} data-drag-through>
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 86.6" preserveAspectRatio="none">
+      <svg
+        className="absolute inset-0 w-full h-full"
+        viewBox="0 0 100 86.6"
+        preserveAspectRatio="none"
+      >
         <defs>
           <linearGradient id={`editor-dock-wood-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={DOCK_COLORS.highlight} />
@@ -164,13 +240,32 @@ function EditorHarborHex({ side, harborType, uniqueId }: { side: string; harborT
             <circle cx={cx} cy={cy} r={circleRadius - 1} />
           </clipPath>
         </defs>
-        <line x1={dockVertices[0][0]} y1={dockVertices[0][1]}
-          x2={dockVertices[1][0]} y2={dockVertices[1][1]}
-          stroke={DOCK_COLORS.stroke} strokeWidth="14" strokeLinecap="round" />
-        <circle cx={cx} cy={cy} r={circleRadius} fill="#f5f0e1" stroke={DOCK_COLORS.stroke} strokeWidth="2.5" />
-        <image href={imageUrl} x={cx - circleRadius + 1} y={cy - circleRadius + 1}
-          width={(circleRadius - 1) * 2} height={(circleRadius - 1) * 2}
-          clipPath={`url(#editor-harbor-clip-${uniqueId})`} preserveAspectRatio="xMidYMid slice" />
+        <line
+          x1={dockVertices[0][0]}
+          y1={dockVertices[0][1]}
+          x2={dockVertices[1][0]}
+          y2={dockVertices[1][1]}
+          stroke={DOCK_COLORS.stroke}
+          strokeWidth="14"
+          strokeLinecap="round"
+        />
+        <circle
+          cx={cx}
+          cy={cy}
+          r={circleRadius}
+          fill="#f5f0e1"
+          stroke={DOCK_COLORS.stroke}
+          strokeWidth="2.5"
+        />
+        <image
+          href={imageUrl}
+          x={cx - circleRadius + 1}
+          y={cy - circleRadius + 1}
+          width={(circleRadius - 1) * 2}
+          height={(circleRadius - 1) * 2}
+          clipPath={`url(#editor-harbor-clip-${uniqueId})`}
+          preserveAspectRatio="xMidYMid slice"
+        />
       </svg>
     </div>
   );
@@ -200,7 +295,9 @@ export function EditorBoard({
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(
+    null
+  );
 
   const dragStateRef = useRef<{
     panning: boolean;
@@ -230,20 +327,25 @@ export function EditorBoard({
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -ZOOM_CONFIG.zoomStep : ZOOM_CONFIG.zoomStep;
-    setHexSize((prev) => Math.max(ZOOM_CONFIG.minHexSize, Math.min(ZOOM_CONFIG.maxHexSize, prev + delta)));
+    setHexSize((prev) =>
+      Math.max(ZOOM_CONFIG.minHexSize, Math.min(ZOOM_CONFIG.maxHexSize, prev + delta))
+    );
   }, []);
 
   // Pan via pointer events
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (e.button !== 0) return;
-    dragStateRef.current = {
-      panning: false,
-      startClient: { x: e.clientX, y: e.clientY },
-      startPan: { ...panOffset },
-    };
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    e.preventDefault();
-  }, [panOffset]);
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.button !== 0) return;
+      dragStateRef.current = {
+        panning: false,
+        startClient: { x: e.clientX, y: e.clientY },
+        startPan: { ...panOffset },
+      };
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      e.preventDefault();
+    },
+    [panOffset]
+  );
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     const state = dragStateRef.current;
@@ -339,7 +441,10 @@ export function EditorBoard({
               >
                 <span
                   className="text-white font-mono leading-none px-1 rounded"
-                  style={{ fontSize: Math.max(8, hexSize * 0.18), backgroundColor: 'rgba(0,0,0,0.6)' }}
+                  style={{
+                    fontSize: Math.max(8, hexSize * 0.18),
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                  }}
                 >
                   ({tile.q},{tile.r})
                 </span>
@@ -365,7 +470,11 @@ export function EditorBoard({
         content: (
           <div
             className="cursor-pointer"
-            onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onHarborRightClick?.(index, e); }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onHarborRightClick?.(index, e);
+            }}
           >
             <EditorHarborHex side={harbor.side} harborType={harbor.type} uniqueId={harborId} />
           </div>
@@ -376,7 +485,10 @@ export function EditorBoard({
 
   // Generate water hexes (same algorithm as GameBoard)
   const boardBounds = useMemo(() => {
-    let minQ = Infinity, maxQ = -Infinity, minR = Infinity, maxR = -Infinity;
+    let minQ = Infinity,
+      maxQ = -Infinity,
+      minR = Infinity,
+      maxR = -Infinity;
     tiles.forEach((t) => {
       minQ = Math.min(minQ, t.q);
       maxQ = Math.max(maxQ, t.q);
@@ -434,11 +546,20 @@ export function EditorBoard({
             <div
               className={clickable ? 'cursor-pointer group' : ''}
               style={isFlipping ? { animation: 'hexFlip 0.3s ease-in-out' } : undefined}
-              onContextMenu={clickable ? (e) => { e.preventDefault(); e.stopPropagation(); onWaterRightClick(coord, adjacentTiles!, e); } : undefined}
+              onContextMenu={
+                clickable
+                  ? (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onWaterRightClick(coord, adjacentTiles!, e);
+                    }
+                  : undefined
+              }
             >
               <WaterHex imageUrl={seaTilePath || undefined} opacity={1} />
               {clickable && (
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                <div
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
                   style={{
                     clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
                     backgroundColor: 'rgba(59, 130, 246, 0.2)',
@@ -456,9 +577,7 @@ export function EditorBoard({
 
   // Combine: water first, then tiles, then harbors
   const allItems = useMemo(() => {
-    const harborFiltered = harborItems.filter(
-      (item) => !tileCoordSet.has(coordKey(item.coord))
-    );
+    const harborFiltered = harborItems.filter((item) => !tileCoordSet.has(coordKey(item.coord)));
     return [...waterItems, ...tileItems, ...harborFiltered];
   }, [waterItems, tileItems, harborItems, tileCoordSet]);
 

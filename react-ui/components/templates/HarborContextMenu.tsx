@@ -85,7 +85,9 @@ export function HarborContextMenu({
           className="w-full mt-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-white"
         >
           {HARBOR_TYPE_OPTIONS.map((t) => (
-            <option key={t} value={t}>{t}</option>
+            <option key={t} value={t}>
+              {t}
+            </option>
           ))}
         </select>
       </label>
@@ -98,7 +100,9 @@ export function HarborContextMenu({
           className="w-full mt-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-white"
         >
           {HARBOR_SIDE_OPTIONS.map((s) => (
-            <option key={s} value={s}>{s}</option>
+            <option key={s} value={s}>
+              {s}
+            </option>
           ))}
         </select>
       </label>
