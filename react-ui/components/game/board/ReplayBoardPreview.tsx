@@ -59,14 +59,23 @@ export function ReplayBoardPreview({
   playerColorMap,
   onClick,
 }: ReplayBoardPreviewProps): React.ReactElement | null {
-  // Extract data before hooks (nullish coalescing handles missing gameModel)
-  const tiles: TileModel[] = gameModel?.tiles ?? [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const buildings: any[] = gameModel?.buildings ?? [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const roads: any[] = gameModel?.roads ?? [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const players: any[] = gameModel?.players ?? [];
+  // Extract data with stable references (avoids new [] on every render when gameModel is null)
+  const tiles = useMemo((): TileModel[] => gameModel?.tiles ?? [], [gameModel?.tiles]);
+  const buildings = useMemo(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (): any[] => gameModel?.buildings ?? [],
+    [gameModel?.buildings]
+  );
+  const roads = useMemo(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (): any[] => gameModel?.roads ?? [],
+    [gameModel?.roads]
+  );
+  const players = useMemo(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (): any[] => gameModel?.players ?? [],
+    [gameModel?.players]
+  );
 
   // Resolve player color by ID, falling back to positional colors
   const getColor = useCallback(

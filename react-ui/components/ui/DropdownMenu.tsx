@@ -43,7 +43,7 @@ export function DropdownMenu({
   // SSR guard + initial position
   useEffect(() => {
     const rect = anchorEl.getBoundingClientRect();
-    setPosition({ x: rect.right + 4, y: rect.top });
+    setPosition({ x: rect.right + 4, y: rect.top }); // eslint-disable-line react-hooks/set-state-in-effect -- DOM measurement
     setMounted(true);
   }, [anchorEl]);
 
@@ -62,6 +62,7 @@ export function DropdownMenu({
     if (y + rect.height > vh - 8) y = Math.max(8, vh - rect.height - 8);
 
     if (x !== position.x || y !== position.y) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement → position
       setPosition({ x, y });
     }
   }, [mounted, position, expandedId]);

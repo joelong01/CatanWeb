@@ -525,7 +525,13 @@ export default function GamePage(): React.ReactElement {
       setRobberTargetPlayers(targetPlayers);
       setRobberMenuPosition({ x: event.clientX, y: event.clientY });
     },
-    [gameState, robber?.coordinates, getPlayersWithBuildingsOnTile]
+    [
+      gameState,
+      robber?.coordinates,
+      getPlayersWithBuildingsOnTile,
+      currentPlayer?.id,
+      currentPlayer?.name,
+    ]
   );
 
   // Handler for selecting a robber target from the menu
@@ -680,17 +686,7 @@ export default function GamePage(): React.ReactElement {
     } else {
       setPanelVisible('goFirst', false);
     }
-  }, [
-    gameState,
-    boardPanel?.left,
-    boardPanel?.top,
-    boardPanel?.width,
-    boardPanel?.height,
-    setPanelPosition,
-    setPanelSize,
-    setPanelVisible,
-    toggleMinimize,
-  ]);
+  }, [gameState, boardPanel, setPanelPosition, setPanelSize, setPanelVisible, toggleMinimize]);
 
   // Show/hide supplemental overlay based on game state.
   // Board-sized, positioned so the overlay center aligns with hex (0,0,0) on the board.
@@ -716,17 +712,7 @@ export default function GamePage(): React.ReactElement {
     } else {
       setPanelVisible('supplemental', false);
     }
-  }, [
-    gameState,
-    boardPanel?.left,
-    boardPanel?.top,
-    boardPanel?.width,
-    boardPanel?.height,
-    setPanelPosition,
-    setPanelSize,
-    setPanelVisible,
-    toggleMinimize,
-  ]);
+  }, [gameState, boardPanel, setPanelPosition, setPanelSize, setPanelVisible, toggleMinimize]);
 
   // Game-specific menu action handlers
   const handleBalance = useCallback(() => {

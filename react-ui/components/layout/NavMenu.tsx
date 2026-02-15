@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -106,7 +106,7 @@ function LayoutSection({ onMenuAction }: { onMenuAction: () => void }): React.Re
   const currentLayoutName = useLayoutStore((s) => s.currentLayoutName);
   const gameState = useGameState();
 
-  const triggerRef = useRef<HTMLDivElement>(null);
+  const [triggerEl, setTriggerEl] = useState<HTMLDivElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
 
@@ -174,7 +174,7 @@ function LayoutSection({ onMenuAction }: { onMenuAction: () => void }): React.Re
       },
     },
     {
-      id: 'saveas',
+      id: 'save-as',
       label: 'Save As...',
       icon: faFloppyDisk,
       onClick: () => {
@@ -201,7 +201,7 @@ function LayoutSection({ onMenuAction }: { onMenuAction: () => void }): React.Re
 
   return (
     <>
-      <div ref={triggerRef}>
+      <div ref={setTriggerEl}>
         <NavMenuItem
           icon={faTableColumns}
           label="Layout"
@@ -209,12 +209,8 @@ function LayoutSection({ onMenuAction }: { onMenuAction: () => void }): React.Re
           className="w-full"
         />
       </div>
-      {menuOpen && triggerRef.current && (
-        <DropdownMenu
-          items={items}
-          anchorEl={triggerRef.current}
-          onClose={() => setMenuOpen(false)}
-        />
+      {menuOpen && triggerEl && (
+        <DropdownMenu items={items} anchorEl={triggerEl} onClose={() => setMenuOpen(false)} />
       )}
       {showSaveDialog && (
         <SaveLayoutDialog
@@ -236,7 +232,7 @@ function ThemeSection({ onMenuAction }: { onMenuAction: () => void }): React.Rea
   const themes = useAvailableThemes();
   const currentTheme = useCurrentThemeName();
   const setTheme = useThemeStore((s) => s.setTheme);
-  const triggerRef = useRef<HTMLDivElement>(null);
+  const [triggerEl, setTriggerEl] = useState<HTMLDivElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const items: DropdownItem[] = themes.map((theme) => ({
@@ -251,7 +247,7 @@ function ThemeSection({ onMenuAction }: { onMenuAction: () => void }): React.Rea
 
   return (
     <>
-      <div ref={triggerRef}>
+      <div ref={setTriggerEl}>
         <NavMenuItem
           icon={faPalette}
           label="Theme"
@@ -259,12 +255,8 @@ function ThemeSection({ onMenuAction }: { onMenuAction: () => void }): React.Rea
           className="w-full"
         />
       </div>
-      {menuOpen && triggerRef.current && (
-        <DropdownMenu
-          items={items}
-          anchorEl={triggerRef.current}
-          onClose={() => setMenuOpen(false)}
-        />
+      {menuOpen && triggerEl && (
+        <DropdownMenu items={items} anchorEl={triggerEl} onClose={() => setMenuOpen(false)} />
       )}
     </>
   );

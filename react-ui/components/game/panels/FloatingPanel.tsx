@@ -148,6 +148,7 @@ export function FloatingPanel({
 
   // Sync position when store changes (e.g., after reset)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- store → local state sync
     setActualPosition({ x: panel.left, y: panel.top });
     latestPositionRef.current = { x: panel.left, y: panel.top };
   }, [panel.left, panel.top, panelId]);
@@ -180,7 +181,7 @@ export function FloatingPanel({
         posY: actualPosition.y,
       };
     },
-    [actualPosition, panelId]
+    [actualPosition]
   );
 
   // Mouse down handler
@@ -208,7 +209,7 @@ export function FloatingPanel({
         }
       }
     },
-    [startDrag, enableBackgroundDrag, panelId]
+    [startDrag, enableBackgroundDrag]
   );
 
   // Track mouse position for cursor change when enableBackgroundDrag is active

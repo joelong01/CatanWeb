@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/layout';
-import { gameApi, type ApiResponse } from '@/lib/api/gameApi';
+import { gameApi } from '@/lib/api/gameApi';
 import type { GameTemplateSummary } from '@/types/generated/models';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -37,7 +37,7 @@ export default function TemplateBrowser(): React.ReactElement {
   }, []);
 
   useEffect(() => {
-    loadTemplates();
+    loadTemplates(); // eslint-disable-line react-hooks/set-state-in-effect -- async data fetch
   }, [loadTemplates]);
 
   const categories = useMemo(() => {

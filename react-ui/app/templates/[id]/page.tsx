@@ -87,16 +87,6 @@ export default function TemplateEditor(): React.ReactElement {
     []
   );
 
-  // Load template on mount
-  useEffect(() => {
-    if (isNew) {
-      setTemplate(createDefaultTemplate());
-      setIsLoading(false);
-    } else {
-      loadTemplate();
-    }
-  }, [templateId]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const loadTemplate = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -108,6 +98,18 @@ export default function TemplateEditor(): React.ReactElement {
     }
     setIsLoading(false);
   }, [templateId]);
+
+  // Load template on mount
+  useEffect(() => {
+    if (isNew) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- initialization
+      setTemplate(createDefaultTemplate());
+
+      setIsLoading(false);
+    } else {
+      loadTemplate();
+    }
+  }, [isNew, loadTemplate]);
 
   const handleSave = useCallback(async () => {
     if (!template) return;

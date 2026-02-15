@@ -521,13 +521,13 @@ export function GameBoard({
     initialZoom: number;
   } | null>(null);
 
-  const canPan = (target: HitTarget, isModifier: boolean, isTouch: boolean) => {
+  const canPan = useCallback((target: HitTarget, isModifier: boolean, isTouch: boolean) => {
     if (isModifier) return true;
     if (target.type === 'none') return true;
     if (isTouch) return true; // Touch always pans (drag threshold disambiguates)
     if (target.type === 'tile' && target.tile.resourceTileType === 'Sea') return true;
     return false;
-  };
+  }, []);
 
   // Measure container size
   useEffect(() => {
@@ -668,15 +668,6 @@ export function GameBoard({
       });
   }, [harbors, players]);
 
-  // Build set of harbor coordinates for quick lookup
-  const harborCoordSet = useMemo(() => {
-    const set = new Set<string>();
-    harborItems.forEach((item) => {
-      set.add(coordKeyString(item.coord));
-    });
-    return set;
-  }, [harborItems]);
-
   // Calculate board bounds (for water generation) - NO pan offset here
   const boardBounds = useMemo(() => {
     let minQ = Infinity,
@@ -734,7 +725,7 @@ export function GameBoard({
     }
 
     return items;
-  }, [boardBounds, tileCoordSet, harborCoordSet, seaTilePath]);
+  }, [boardBounds, tileCoordSet, seaTilePath]);
 
   // Generate all unique building positions (vertices shared between tiles)
   // Each vertex is identified by the tile coord + position
@@ -1011,7 +1002,7 @@ export function GameBoard({
         e.preventDefault();
       }
     },
-    [hitTest, panOffset, dispatchInteraction, viewport.zoom]
+    [hitTest, panOffset, dispatchInteraction, viewport.zoom, canPan]
   );
 
   const handlePointerMove = useCallback(
@@ -1068,7 +1059,7 @@ export function GameBoard({
         });
       }
     },
-    [setViewport, initialHexSize]
+    [setViewport, initialHexSize, canPan]
   );
 
   const handlePointerUp = useCallback(
@@ -1281,7 +1272,7 @@ export function GameBoard({
             const pixelPos = getEdgeMidpoint(coord, side, hSize, origin);
 
             // Build the road key for click handler
-            const roadKey: RoadKey = {
+            const _roadKey: RoadKey = {
               tileKey: { q: coord.q, r: coord.r, s: coord.s },
               hexSide: side as HexSide,
             };
@@ -1334,7 +1325,7 @@ export function GameBoard({
 
             // Build the building key for click handler (city upgrades)
             // Cast needed because generated BuildingKey has spurious 'default' property
-            const buildingKey = {
+            const _buildingKey = {
               hexCoordinates: { q: coord.q, r: coord.r, s: coord.s },
               position: position as HexPosition,
             } as BuildingKey;
@@ -1401,13 +1392,13 @@ export function GameBoard({
             }
 
             // Determine visibility based on game state (Blazor lines 214-248)
-            let isBuildable: boolean;
+            let _isBuildable: boolean;
             let isHidden: boolean;
             let settlementBuildIndex: string | undefined;
 
             if (isPickingBoard) {
               // PickingBoard: evaluation mode — show stars, not buildable
-              isBuildable = false;
+              _isBuildable = false;
               // No star filter selected → hide all evaluation spots (user must choose a filter)
               if (starFilter === null) return null;
               // starFilter=0 ("All") → stars < 0 always false → show everything
@@ -1416,7 +1407,7 @@ export function GameBoard({
               isHidden = false;
             } else if (hasSettlementEntitlement && buildingState === 'PossibleSettlement') {
               // Buildable settlement spot
-              isBuildable = true;
+              _isBuildable = true;
               settlementBuildIndex = settlementIndexMap.get(key);
 
               if (settlementBuildIndex !== undefined) {
@@ -1435,7 +1426,7 @@ export function GameBoard({
 
             // Build the building key for click handler
             // Cast needed because generated BuildingKey has spurious 'default' property
-            const buildingKey = {
+            const _buildingKey = {
               hexCoordinates: { q: coord.q, r: coord.r, s: coord.s },
               position: position as HexPosition,
             } as BuildingKey;
