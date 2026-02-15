@@ -161,6 +161,9 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
       };
     }
 
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return { success: true, data: undefined as T };
+    }
     const data = await response.json();
     return { success: true, data };
   } catch (error) {

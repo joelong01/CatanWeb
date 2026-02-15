@@ -69,7 +69,7 @@ export default function TemplateBrowser(): React.ReactElement {
       }
       const clone = {
         ...fullResult.data,
-        id: `${template.id}-copy`,
+        id: `${template.id}-copy-${Date.now()}`,
         name: `${template.name} (Copy)`,
       };
       const createResult = await gameApi.createTemplate(clone);

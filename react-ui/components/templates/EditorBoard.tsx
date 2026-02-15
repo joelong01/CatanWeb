@@ -86,7 +86,7 @@ export function coordKey(coord: HexCoordinate): string {
  * Harbor hex content - renders harbor icon on a wooden dock.
  * Replicates HarborHexContent from GameBoard for template editing.
  */
-function EditorHarborHex({ side, harborType }: { side: string; harborType: string }) {
+function EditorHarborHex({ side, harborType, uniqueId }: { side: string; harborType: string; uniqueId: string }) {
   const imageUrl = getHarborImage(harborType as HarborType);
   const isFontMode = useFontRendering();
   const themeFontConfig = useHarborFontConfig(harborType);
@@ -107,7 +107,7 @@ function EditorHarborHex({ side, harborType }: { side: string; harborType: strin
       <div className="absolute inset-0" data-drag-through>
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 86.6" preserveAspectRatio="none">
           <defs>
-            <clipPath id={`editor-harbor-clip-${side}`}>
+            <clipPath id={`editor-harbor-clip-${uniqueId}`}>
               <circle cx={cx} cy={cy} r={circleRadius - 1} />
             </clipPath>
           </defs>
@@ -135,7 +135,7 @@ function EditorHarborHex({ side, harborType }: { side: string; harborType: strin
           <circle cx={cx} cy={cy} r={circleRadius} fill="#f5f0e1" stroke={fontConfig.color} strokeWidth={2} />
           <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
             style={{ fontFamily: 'var(--font-catan)' }} fontSize={42} fill={fontConfig.color}
-            clipPath={`url(#editor-harbor-clip-${side})`}>
+            clipPath={`url(#editor-harbor-clip-${uniqueId})`}>
             {fontConfig.harborGlyph}
           </text>
         </svg>
@@ -155,12 +155,12 @@ function EditorHarborHex({ side, harborType }: { side: string; harborType: strin
     <div className="absolute inset-0" style={backgroundStyle} data-drag-through>
       <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 86.6" preserveAspectRatio="none">
         <defs>
-          <linearGradient id={`editor-dock-wood-${side}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id={`editor-dock-wood-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={DOCK_COLORS.highlight} />
             <stop offset="50%" stopColor={DOCK_COLORS.fill} />
             <stop offset="100%" stopColor={DOCK_COLORS.stroke} />
           </linearGradient>
-          <clipPath id={`editor-harbor-clip-${side}`}>
+          <clipPath id={`editor-harbor-clip-${uniqueId}`}>
             <circle cx={cx} cy={cy} r={circleRadius - 1} />
           </clipPath>
         </defs>
@@ -170,7 +170,7 @@ function EditorHarborHex({ side, harborType }: { side: string; harborType: strin
         <circle cx={cx} cy={cy} r={circleRadius} fill="#f5f0e1" stroke={DOCK_COLORS.stroke} strokeWidth="2.5" />
         <image href={imageUrl} x={cx - circleRadius + 1} y={cy - circleRadius + 1}
           width={(circleRadius - 1) * 2} height={(circleRadius - 1) * 2}
-          clipPath={`url(#editor-harbor-clip-${side})`} preserveAspectRatio="xMidYMid slice" />
+          clipPath={`url(#editor-harbor-clip-${uniqueId})`} preserveAspectRatio="xMidYMid slice" />
       </svg>
     </div>
   );
@@ -358,15 +358,16 @@ export function EditorBoard({
       const direction = SIDE_TO_DIRECTION[harbor.side as HexSide];
       const waterCoord = direction ? getNeighbor(tileCoord, direction) : tileCoord;
 
+      const harborId = `${harbor.q}-${harbor.r}-${harbor.side}`;
       return {
-        id: `harbor-${coordKey(waterCoord)}`,
+        id: `harbor-${harborId}`,
         coord: waterCoord,
         content: (
           <div
             className="cursor-pointer"
             onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onHarborRightClick?.(index, e); }}
           >
-            <EditorHarborHex side={harbor.side} harborType={harbor.type} />
+            <EditorHarborHex side={harbor.side} harborType={harbor.type} uniqueId={harborId} />
           </div>
         ),
       };
