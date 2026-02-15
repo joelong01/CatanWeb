@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import Image from 'next/image';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faUserPlus, faTrophy, faCheck } from '@fortawesome/free-solid-svg-icons';
-import { HexGrid, HexGridItem, HEX_LAYOUTS, cubicCoord, CenterHex } from '@/components/hex-grid';
+import { HexGrid, CenterHex, getSpiralCoordinates } from '@/components/hex-grid';
 import { serviceConfig } from '@/lib/services/config';
 import type { PlayerProfile } from '@/types/player-profile';
 import type { GameType } from '@/types/generated/models';
@@ -63,18 +63,20 @@ function getWinCount(player: PlayerProfile): number {
 interface PlayerCardContentProps {
   player: PlayerProfile;
   isSelected: boolean;
+  onClick?: () => void;
 }
 
-function PlayerCardContent({ player, isSelected }: PlayerCardContentProps): React.ReactElement {
+function PlayerCardContent({ player, isSelected, onClick }: PlayerCardContentProps): React.ReactElement {
   const imageUrl = getPlayerImageUrl(player.imageUri);
   const wins = getWinCount(player);
   const [isHovered, setIsHovered] = React.useState(false);
 
   return (
     <div
-      className="w-full h-full"
+      className="w-full h-full cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={onClick}
     >
       {/* Outer hex - border (hover always shows blue, selection uses checkmark not border) */}
       <div
@@ -227,57 +229,43 @@ export function PlayerSelector({
   // Visible players (up to 6 surrounding the center hex)
   const visiblePlayers = sortedPlayers.slice(0, 6);
 
-  // Build hex grid items
-  const items: HexGridItem[] = [
-    // Center hex - "Choose Players" label
-    {
-      id: 'center',
-      coord: HEX_LAYOUTS.CLUSTER_7[0], // Center (0, 0)
-      content: (
-        <CenterHex
-          icon={faUser}
-          title="Choose"
-          subtitle="Players"
-          accentColor="text-blue-400"
-          background="linear-gradient(160deg, rgba(30, 58, 138, 0.4) 0%, rgba(23, 37, 84, 0.4) 100%)"
-        />
-      ),
-      disabled: true,
-    },
-
-    // Surrounding player hexes (up to 6 positions)
-    ...visiblePlayers.map((player, idx) => ({
-      id: player.id,
-      coord: HEX_LAYOUTS.CLUSTER_7[idx + 1], // Positions 1-6 (surrounding)
-      content: (
-        <PlayerCardContent player={player} isSelected={selectedPlayerIds.includes(player.id)} />
-      ),
-      onClick: () => handleTogglePlayer(player.id),
-    })),
-
-    // Guest hex - shown below the cluster when "Include Guest" is checked
-    // Position (0, 2) is directly below the south hex, maintaining horizontal centering
-    ...(includeGuest && guestPlayer
-      ? [
-          {
-            id: guestPlayer.id,
-            coord: cubicCoord(0, 2), // Below south hex
-            content: (
-              <PlayerCardContent
-                player={guestPlayer}
-                isSelected={selectedPlayerIds.includes(guestPlayer.id)}
-              />
-            ),
-            onClick: () => handleTogglePlayer(guestPlayer.id),
-          },
-        ]
-      : []),
+  // All players in spiral order: center + players + optionally guest
+  // Guest naturally occupies the next spiral position (no detached coordinate)
+  const allPlayers = [
+    ...visiblePlayers,
+    ...(includeGuest && guestPlayer ? [guestPlayer] : []),
   ];
+
+  const coords = getSpiralCoordinates(allPlayers.length + 1); // +1 for center
 
   return (
     <div className="flex flex-col">
-      {/* Hex Grid Layout - grows vertically when Guest is added */}
-      <HexGrid hexSize={hexSize} items={items} />
+      {/* Hex Grid Layout */}
+      <HexGrid
+        hexSize={hexSize}
+        coordinates={coords}
+        renderItem={(_coord, index) => {
+          if (index === 0) {
+            return (
+              <CenterHex
+                icon={faUser}
+                title="Choose"
+                subtitle="Players"
+                accentColor="text-blue-400"
+                background="linear-gradient(160deg, rgba(30, 58, 138, 0.4) 0%, rgba(23, 37, 84, 0.4) 100%)"
+              />
+            );
+          }
+          const player = allPlayers[index - 1];
+          return (
+            <PlayerCardContent
+              player={player}
+              isSelected={selectedPlayerIds.includes(player.id)}
+              onClick={() => handleTogglePlayer(player.id)}
+            />
+          );
+        }}
+      />
 
       {/* Guest toggle + validation */}
       <div className="flex items-center justify-between mt-2 px-1">
