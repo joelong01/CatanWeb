@@ -5,7 +5,13 @@
 
 import { serviceConfig } from '../services/config';
 import type { PlayerProfile } from '@/types/player-profile';
-import type { NewGameMessage, GameType, HouseRules } from '@/types/generated/models';
+import type {
+  NewGameMessage,
+  GameType,
+  HouseRules,
+  GameTemplateData,
+  GameTemplateSummary,
+} from '@/types/generated/models';
 
 /**
  * API response wrapper with success/error handling.
@@ -434,6 +440,37 @@ export const gameApi = {
     return apiFetch<void>(`/api/game/${gameId}/houserules`, {
       method: 'PUT',
       body: JSON.stringify(houseRules),
+    });
+  },
+
+  // ── Template API ──
+
+  async getTemplates(category?: string): Promise<ApiResponse<GameTemplateSummary[]>> {
+    const query = category ? `?category=${encodeURIComponent(category)}` : '';
+    return apiFetch<GameTemplateSummary[]>(`/api/game/templates${query}`);
+  },
+
+  async getTemplate(id: string): Promise<ApiResponse<GameTemplateData>> {
+    return apiFetch<GameTemplateData>(`/api/game/templates/${encodeURIComponent(id)}`);
+  },
+
+  async updateTemplate(id: string, data: GameTemplateData): Promise<ApiResponse<GameTemplateData>> {
+    return apiFetch<GameTemplateData>(`/api/game/templates/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async createTemplate(data: GameTemplateData): Promise<ApiResponse<GameTemplateData>> {
+    return apiFetch<GameTemplateData>('/api/game/templates', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteTemplate(id: string): Promise<ApiResponse<void>> {
+    return apiFetch<void>(`/api/game/templates/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
     });
   },
 };
