@@ -177,6 +177,133 @@ catch (Exception ex)
 var defaultDataPath = dbDetector.GetDefaultDataPath();
 Console.WriteLine($"[STARTUP] Default data path: {defaultDataPath}");
 
+// Handle --check-database command (schema + data verification, JSON output, then exit)
+if (args.Contains("--check-database"))
+{
+    var result = new Dictionary<string, object?>
+    {
+        ["healthy"] = false,
+        ["databaseExists"] = false,
+        ["schemaValid"] = false,
+        ["hasPlayers"] = false,
+        ["hasGames"] = false,
+        ["hasTemplates"] = false,
+        ["playerCount"] = 0,
+        ["gameCount"] = 0,
+        ["templateCount"] = 0,
+        ["missingTables"] = Array.Empty<string>(),
+        ["extraTables"] = Array.Empty<string>(),
+        ["action"] = "install"
+    };
+
+    try
+    {
+        // Check if database file exists (SQLite only)
+        if (!dbDetector.UseSqlServer)
+        {
+            var dbPath = dbDetector.ConnectionString
+                .Replace("Data Source=", "", StringComparison.OrdinalIgnoreCase)
+                .Trim();
+            result["databaseExists"] = File.Exists(dbPath);
+            if (!(bool)result["databaseExists"])
+            {
+                result["action"] = "create";
+                Console.Write(System.Text.Json.JsonSerializer.Serialize(result));
+                return;
+            }
+        }
+        else
+        {
+            result["databaseExists"] = true; // SQL Server existence checked differently
+        }
+
+        using var scope = app.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
+
+        // Get expected tables from EF Core model
+        var expectedTables = context.Model.GetEntityTypes()
+            .Select(e => e.GetTableName()!)
+            .Where(t => t != null)
+            .OrderBy(t => t)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Get actual tables from database
+        var actualTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var conn = context.Database.GetDbConnection();
+        await conn.OpenAsync();
+        try
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = dbDetector.UseSqlServer
+                ? "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
+                : "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != '__EFMigrationsHistory'";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                actualTables.Add(reader.GetString(0));
+            }
+        }
+        finally
+        {
+            await conn.CloseAsync();
+        }
+
+        var missing = expectedTables.Except(actualTables, StringComparer.OrdinalIgnoreCase).OrderBy(t => t).ToArray();
+        var extra = actualTables.Except(expectedTables, StringComparer.OrdinalIgnoreCase).OrderBy(t => t).ToArray();
+
+        result["missingTables"] = missing;
+        result["extraTables"] = extra;
+        result["schemaValid"] = missing.Length == 0;
+
+        // Check data if schema is valid
+        if (missing.Length == 0)
+        {
+            try
+            {
+                var playerCount = await context.Players.CountAsync();
+                var gameCount = await context.GameSaveMetadata.CountAsync();
+                var templateCount = await context.GameTemplates.CountAsync();
+
+                result["playerCount"] = playerCount;
+                result["gameCount"] = gameCount;
+                result["templateCount"] = templateCount;
+                result["hasPlayers"] = playerCount > 0;
+                result["hasGames"] = gameCount > 0;
+                result["hasTemplates"] = templateCount > 0;
+
+                // Determine action needed
+                if (playerCount == 0 || templateCount == 0)
+                {
+                    result["action"] = "install"; // needs seeding
+                }
+                else
+                {
+                    result["action"] = null; // everything looks good
+                    result["healthy"] = true;
+                }
+            }
+            catch
+            {
+                // Tables exist but queries fail -- schema mismatch
+                result["schemaValid"] = false;
+                result["action"] = "install";
+            }
+        }
+        else
+        {
+            result["action"] = "install"; // missing tables
+        }
+    }
+    catch (Exception ex)
+    {
+        result["action"] = "install";
+        result["error"] = ex.Message;
+    }
+
+    Console.Write(System.Text.Json.JsonSerializer.Serialize(result));
+    return;
+}
+
 // Handle --seed-database command (synchronous seeding, then exit)
 if (args.Contains("--seed-database"))
 {
