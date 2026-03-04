@@ -329,13 +329,21 @@ function Install-Database {
 function Initialize-Database {
     Write-Host "Checking database..." -ForegroundColor Cyan
 
-    # Check if database exists
-    if (Test-Path $DatabasePath) {
-        Write-Host "Database exists at $DatabasePath" -ForegroundColor Green
+    $dbStatus = Invoke-DatabaseDoctor -Quiet
+
+    if ($null -eq $dbStatus.Action) {
+        Write-Host "Database is healthy" -ForegroundColor Green
         return $true
     }
 
-    Write-Host "Database not found. Installing..." -ForegroundColor Yellow
+    # Database needs work -- action is "create" or "install"
+    if (-not $dbStatus.SchemaValid -and (Test-Path $DatabasePath)) {
+        Write-Host "Database schema is invalid; clearing and reinstalling..." -ForegroundColor Yellow
+        Clear-Database
+    }
+    else {
+        Write-Host "Database needs $($dbStatus.Action): installing..." -ForegroundColor Yellow
+    }
     return Install-Database
 }
 
@@ -357,214 +365,186 @@ function Clear-Database {
     }
 }
 
-function Test-DatabaseSchema {
-    # Run GameService tests that validate the database schema
-    # Returns $true if schema is valid, $false otherwise
-
-    $testProject = Join-Path $PSScriptRoot "Tests\GameService\Tests.GameService.csproj"
-
-    if (-not (Test-Path $testProject)) {
-        return $null  # Can't verify - test project not found
-    }
-
-    # Run tests with a filter for database-related tests
-    & dotnet test $testProject --filter "Category=Database" --verbosity quiet --nologo 2>&1 | Out-Null
-    return ($LASTEXITCODE -eq 0)
-}
-
 function Invoke-DatabaseDoctor {
     param(
-        [switch]$UseApi  # Force using API instead of sqlite3
+        [switch]$UseApi,     # Force using API instead of dotnet check
+        [switch]$Quiet       # Suppress display output (for programmatic use)
     )
 
-    Write-Host ""
-    Write-Host "Database Doctor" -ForegroundColor Cyan
-    Write-Host "===============" -ForegroundColor Cyan
-    Write-Host ""
+    # Default result shape -- every caller gets the same keys
+    $result = @{
+        Healthy       = $false
+        SchemaValid   = $false
+        HasPlayers    = $false
+        HasGames      = $false
+        HasTemplates  = $false
+        PlayerCount   = 0
+        GameCount     = 0
+        TemplateCount = 0
+        MissingTables = @()
+        Action        = "install"
+    }
 
-    $healthy = $true
-    $needsGames = $false
+    if (-not $Quiet) {
+        Write-Host ""
+        Write-Host "Database Doctor" -ForegroundColor Cyan
+        Write-Host "===============" -ForegroundColor Cyan
+        Write-Host ""
+    }
 
-    # Check if GameService is running - prefer API for authoritative results
+    # ── Path 1: API check (when GameService is already running) ──
     $serviceRunning = Test-PortInUse -Port $GameServicePort
-
     if ($serviceRunning -or $UseApi) {
-        Write-Host "Checking via GameService API..." -ForegroundColor Yellow
-
+        if (-not $Quiet) { Write-Host "Checking via GameService API..." -ForegroundColor Yellow }
         try {
-            $healthResponse = Invoke-RestMethod -Uri "$GameServiceUrl/api/database/health" -Method Get -TimeoutSec 5
+            $resp = Invoke-RestMethod -Uri "$GameServiceUrl/api/database/health" -Method Get -TimeoutSec 5
+            $result.HasPlayers    = ($resp.playerCount -gt 0)
+            $result.HasGames      = ($resp.gameCount -gt 0)
+            $result.PlayerCount   = $resp.playerCount
+            $result.GameCount     = $resp.gameCount
+            $result.Healthy       = [bool]$resp.healthy
+            # Derive schema validity from the response: if API reports unhealthy with an error, schema may be broken
+            $hasError = ($resp.PSObject.Properties.Name -contains 'error') -and (-not [string]::IsNullOrWhiteSpace([string]$resp.error))
+            $result.SchemaValid   = -not ($hasError -and -not [bool]$resp.healthy)
 
-            if ($healthResponse.healthy) {
-                Write-Host "  [OK] Database is healthy" -ForegroundColor Green
-                Write-Host "  Players: $($healthResponse.playerCount)" -ForegroundColor Gray
-                Write-Host "  Games:   $($healthResponse.gameCount)" -ForegroundColor Gray
+            if ($resp.healthy) {
+                $result.Action = $null
+            }
+            elseif ($resp.needsSeeding) {
+                $result.Action = "install"
+            }
 
-                if ($healthResponse.needsSeeding) {
-                    Write-Host "  [WARN] No players configured - run './catan.ps1 database install'" -ForegroundColor Yellow
-                    $healthy = $false
+            if (-not $Quiet) {
+                if ($resp.healthy) {
+                    Write-Host "  [OK] Database is healthy" -ForegroundColor Green
                 }
-
-                if ($healthResponse.needsGames) {
-                    Write-Host "  [INFO] No saved games in database" -ForegroundColor Cyan
-                    $needsGames = $true
+                else {
+                    Write-Host "  [WARN] Database needs attention" -ForegroundColor Yellow
                 }
+                Write-Host "  Players:   $($resp.playerCount)" -ForegroundColor Gray
+                Write-Host "  Games:     $($resp.gameCount)" -ForegroundColor Gray
             }
-            else {
-                Write-Host "  [FAIL] Database is unhealthy: $($healthResponse.error)" -ForegroundColor Red
-                $healthy = $false
-            }
-
-            # Return object with status
-            return @{
-                Healthy = $healthy
-                NeedsGames = $needsGames
-                PlayerCount = $healthResponse.playerCount
-                GameCount = $healthResponse.gameCount
-            }
+            return $result
         }
         catch {
-            Write-Host "  [FAIL] Could not reach health endpoint: $_" -ForegroundColor Red
-            if (-not $serviceRunning) {
-                Write-Host "  GameService is not running - start with './catan.ps1 run'" -ForegroundColor Yellow
+            if (-not $Quiet) {
+                Write-Host "  [FAIL] Could not reach health endpoint: $_" -ForegroundColor Red
             }
-            return @{ Healthy = $false; NeedsGames = $true; PlayerCount = 0; GameCount = 0 }
+            return $result
         }
     }
 
-    # Fallback: Check database file exists
-    Write-Host "Checking database file..." -ForegroundColor Yellow
-    if (Test-Path $DatabasePath) {
+    # ── Path 2: Offline check via `dotnet run -- --check-database` ──
+
+    # Quick check: does the database file even exist?
+    if (-not (Test-Path $DatabasePath)) {
+        $result.Action = "create"
+        if (-not $Quiet) {
+            Write-Host "  [FAIL] Database not found: $DatabasePath" -ForegroundColor Red
+            Write-Host ""
+            Write-Host "  Fix: ./catan.ps1 database install" -ForegroundColor Yellow
+        }
+        return $result
+    }
+
+    if (-not $Quiet) {
         $fileInfo = Get-Item $DatabasePath
-        Write-Host "  [OK] Database exists: $DatabasePath ($([math]::Round($fileInfo.Length / 1024, 1)) KB)" -ForegroundColor Green
+        Write-Host "  [OK] Database file: $DatabasePath ($([math]::Round($fileInfo.Length / 1024, 1)) KB)" -ForegroundColor Green
+    }
+
+    # Run --check-database (uses EF Core model as source of truth)
+    if (-not $Quiet) { Write-Host "  Checking schema and data..." -ForegroundColor Yellow }
+
+    $gameServiceDir = Join-Path $PSScriptRoot "Catan3.GameService"
+    $stderrFile = [System.IO.Path]::GetTempFileName()
+    try {
+        $rawOutput = & dotnet run --project $gameServiceDir -- --check-database 2>$stderrFile
+    }
+    finally {
+        $stderrContent = if (Test-Path $stderrFile) { Get-Content $stderrFile -Raw } else { $null }
+        Remove-Item $stderrFile -Force -ErrorAction SilentlyContinue
+    }
+
+    # Extract JSON line from output (startup logs may precede it)
+    $jsonLine = $rawOutput | Where-Object { $_ -match '^\s*\{' } | Select-Object -Last 1
+
+    if (-not $jsonLine) {
+        if (-not $Quiet) {
+            Write-Host "  [FAIL] Could not read database check output" -ForegroundColor Red
+            if ($stderrContent) {
+                Write-Host "  stderr: $($stderrContent.Trim())" -ForegroundColor Red
+            }
+            Write-Host "  Try: dotnet build Catan3.GameService first" -ForegroundColor Yellow
+        }
+        return $result
+    }
+
+    try {
+        $check = $jsonLine | ConvertFrom-Json
+    }
+    catch {
+        if (-not $Quiet) {
+            Write-Host "  [FAIL] Invalid JSON from database check: $_" -ForegroundColor Red
+        }
+        return $result
+    }
+
+    # Map JSON result into our hashtable
+    $result.Healthy       = [bool]$check.healthy
+    $result.SchemaValid   = [bool]$check.schemaValid
+    $result.HasPlayers    = [bool]$check.hasPlayers
+    $result.HasGames      = [bool]$check.hasGames
+    $result.HasTemplates  = [bool]$check.hasTemplates
+    $result.PlayerCount   = [int]$check.playerCount
+    $result.GameCount     = [int]$check.gameCount
+    $result.TemplateCount = [int]$check.templateCount
+    $result.MissingTables = @($check.missingTables)
+    $result.Action        = $check.action   # $null, "install", or "create"
+
+    if ($Quiet) { return $result }
+
+    # ── Display results ──
+
+    # Schema
+    if ($check.schemaValid) {
+        Write-Host "  [OK] Schema is valid" -ForegroundColor Green
     }
     else {
-        Write-Host "  [FAIL] Database not found: $DatabasePath" -ForegroundColor Red
-        Write-Host "  Fix: Run './catan.ps1 database install'" -ForegroundColor Yellow
-        return @{ Healthy = $false; NeedsGames = $true; PlayerCount = 0; GameCount = 0 }
+        Write-Host "  [FAIL] Schema is outdated or corrupt" -ForegroundColor Red
+        if ($check.missingTables -and $check.missingTables.Count -gt 0) {
+            Write-Host "  Missing tables: $($check.missingTables -join ', ')" -ForegroundColor Red
+        }
     }
 
-    # Try to find sqlite3 for offline inspection
-    Write-Host ""
-    Write-Host "Checking database tables..." -ForegroundColor Yellow
-
-    $sqlite3 = $null
-    if ($IsWindows) {
-        $possiblePaths = @(
-            "sqlite3.exe",
-            "C:\ProgramData\chocolatey\bin\sqlite3.exe",
-            "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\*\sqlite3.exe"
-        )
-        foreach ($path in $possiblePaths) {
-            if (Get-Command $path -ErrorAction SilentlyContinue) {
-                $sqlite3 = $path
-                break
-            }
-        }
+    # Data
+    if ($check.hasPlayers) {
+        Write-Host "  [OK] Players: $($check.playerCount)" -ForegroundColor Green
     }
     else {
-        if (Get-Command sqlite3 -ErrorAction SilentlyContinue) {
-            $sqlite3 = "sqlite3"
-        }
+        Write-Host "  [WARN] No players configured" -ForegroundColor Yellow
     }
 
-    $playerCount = 0
-    $gameCount = 0
-
-    if ($sqlite3) {
-        $tables = & $sqlite3 $DatabasePath ".tables" 2>&1
-        $requiredTables = @("Players", "Images", "GameSaveData", "GameSaveMetadata")
-
-        foreach ($table in $requiredTables) {
-            if ($tables -match $table) {
-                Write-Host "  [OK] Table exists: $table" -ForegroundColor Green
-            }
-            else {
-                Write-Host "  [FAIL] Table missing: $table" -ForegroundColor Red
-                $healthy = $false
-            }
-        }
-
-        Write-Host ""
-        Write-Host "Checking table contents..." -ForegroundColor Yellow
-
-        $playerCountResult = & $sqlite3 $DatabasePath "SELECT COUNT(*) FROM Players;" 2>&1
-        if ($playerCountResult -match '^\d+$') {
-            $playerCount = [int]$playerCountResult
-            if ($playerCount -gt 0) {
-                Write-Host "  [OK] Players: $playerCount players configured" -ForegroundColor Green
-            }
-            else {
-                Write-Host "  [WARN] Players: No players configured" -ForegroundColor Yellow
-                $healthy = $false
-            }
-        }
-
-        $metadataCountResult = & $sqlite3 $DatabasePath "SELECT COUNT(*) FROM GameSaveMetadata;" 2>&1
-        if ($metadataCountResult -match '^\d+$') {
-            $gameCount = [int]$metadataCountResult
-            Write-Host "  [INFO] Saved games: $gameCount game(s) in database" -ForegroundColor Cyan
-            $needsGames = ($gameCount -eq 0)
-
-            if ($gameCount -gt 0) {
-                Write-Host ""
-                Write-Host "Recent saved games:" -ForegroundColor Yellow
-                # Set column widths: GameId(36), GameState(25), PlayerNames(35), TurnCount(9), SavedAt(19)
-                $recentGames = & $sqlite3 $DatabasePath -header -column -cmd ".width 36 25 35 9 19" "SELECT GameId, GameState, PlayerNames, TurnCount, datetime(SavedAt) as SavedAt FROM GameSaveMetadata ORDER BY SavedAt DESC LIMIT 5;" 2>&1
-                Write-Host $recentGames -ForegroundColor Gray
-            }
-        }
+    if ($check.hasTemplates) {
+        Write-Host "  [OK] Templates: $($check.templateCount)" -ForegroundColor Green
     }
     else {
-        Write-Host "  [SKIP] sqlite3 not found - cannot verify tables" -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "To check database health, either:" -ForegroundColor Yellow
-        Write-Host "  1. Start GameService: ./catan.ps1 run" -ForegroundColor White
-        Write-Host "  2. Install sqlite3 for offline checks" -ForegroundColor White
-        Write-Host ""
-        Write-Host "Database health: UNKNOWN (cannot verify)" -ForegroundColor Yellow
-        return @{
-            Healthy = $true  # Assume healthy if file exists, let service verify
-            NeedsGames = $true  # Assume games needed
-            PlayerCount = 0
-            GameCount = 0
-        }
+        Write-Host "  [WARN] No game templates" -ForegroundColor Yellow
     }
 
-    # Schema validation
-    Write-Host ""
-    Write-Host "Checking database schema..." -ForegroundColor Yellow
-    $schemaValid = Test-DatabaseSchema
-    if ($null -eq $schemaValid) {
-        Write-Host "  [SKIP] Test project not found - cannot validate schema" -ForegroundColor Yellow
-    }
-    elseif ($schemaValid) {
-        Write-Host "  [OK] Schema validation passed" -ForegroundColor Green
-    }
-    else {
-        Write-Host "  [FAIL] Schema validation failed" -ForegroundColor Red
-        $healthy = $false
-    }
+    Write-Host "  [INFO] Saved games: $($check.gameCount)" -ForegroundColor Cyan
 
     # Summary
     Write-Host ""
-    if ($healthy) {
+    if ($result.Healthy) {
         Write-Host "Database health: GOOD" -ForegroundColor Green
     }
     else {
         Write-Host "Database health: ISSUES FOUND" -ForegroundColor Red
-        Write-Host ""
-        Write-Host "To fix, run:" -ForegroundColor Yellow
-        Write-Host "  ./catan.ps1 database install" -ForegroundColor White
+        Write-Host "  Fix: ./catan.ps1 database install" -ForegroundColor Yellow
     }
     Write-Host ""
 
-    return @{
-        Healthy = $healthy
-        NeedsGames = $needsGames
-        PlayerCount = $playerCount
-        GameCount = $gameCount
-        SchemaValid = $schemaValid
-    }
+    return $result
 }
 
 function Import-DefaultGames {
@@ -785,8 +765,10 @@ switch ($Verb) {
             Write-Host "Generating TypeScript types..." -ForegroundColor Yellow
 
             # Generate model types from C# using TypeGenRunner (TypeGen 7.0.0)
+            # Note: do NOT use --no-build here; TypeGenRunner is not in the solution so
+            # its copy of Catan3.Shared.dll can go stale and drop newly-added types.
             $typegenRunnerProject = Join-Path $PSScriptRoot "Catan3.Shared\TypeScript\TypeGenRunner\TypeGenRunner.csproj"
-            $null = & dotnet run --project $typegenRunnerProject --no-build 2>&1
+            $null = & dotnet run --project $typegenRunnerProject 2>&1
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "  [OK] Model types updated (TypeGen 7.0.0)" -ForegroundColor Green
             } else {

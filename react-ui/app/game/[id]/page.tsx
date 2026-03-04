@@ -525,7 +525,13 @@ export default function GamePage(): React.ReactElement {
       setRobberTargetPlayers(targetPlayers);
       setRobberMenuPosition({ x: event.clientX, y: event.clientY });
     },
-    [gameState, robber?.coordinates, getPlayersWithBuildingsOnTile]
+    [
+      gameState,
+      robber?.coordinates,
+      getPlayersWithBuildingsOnTile,
+      currentPlayer?.id,
+      currentPlayer?.name,
+    ]
   );
 
   // Handler for selecting a robber target from the menu
@@ -682,6 +688,7 @@ export default function GamePage(): React.ReactElement {
     }
   }, [
     gameState,
+    boardPanel,
     boardPanel?.left,
     boardPanel?.top,
     boardPanel?.width,
@@ -718,6 +725,7 @@ export default function GamePage(): React.ReactElement {
     }
   }, [
     gameState,
+    boardPanel,
     boardPanel?.left,
     boardPanel?.top,
     boardPanel?.width,
