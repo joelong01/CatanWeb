@@ -2300,58 +2300,58 @@ namespace Catan3.GameService.Controllers
                 await connection.OpenAsync();
                 try
                 {
-                foreach (var (tableName, (sqlServerSql, sqliteSql)) in requiredTables)
-                {
-                    try
+                    foreach (var (tableName, (sqlServerSql, sqliteSql)) in requiredTables)
                     {
-                        bool tableExists;
-                        if (isSqlServer)
+                        try
                         {
-                            var checkSql = $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'";
-                            using var command = connection.CreateCommand();
-                            command.CommandText = checkSql;
-                            var existsResult = await command.ExecuteScalarAsync();
-                            tableExists = Convert.ToInt32(existsResult) > 0;
-                        }
-                        else
-                        {
-                            var checkSql = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{tableName}'";
-                            using var command = connection.CreateCommand();
-                            command.CommandText = checkSql;
-                            var existsResult = await command.ExecuteScalarAsync();
-                            tableExists = Convert.ToInt32(existsResult) > 0;
-                        }
-
-                        if (tableExists)
-                        {
-                            tablesExisting.Add(tableName);
-                            _logger.LogEvent("Database Migrate", $"Table '{tableName}' already exists");
-                        }
-                        else
-                        {
-                            // Create the table
-                            var createSql = isSqlServer ? sqlServerSql : sqliteSql;
-
-                            // Split on semicolons to handle multiple statements (CREATE TABLE + CREATE INDEX)
-                            var statements = createSql.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                            foreach (var statement in statements)
+                            bool tableExists;
+                            if (isSqlServer)
                             {
-                                if (!string.IsNullOrWhiteSpace(statement))
-                                {
-                                    await _dbContext.Database.ExecuteSqlRawAsync(statement);
-                                }
+                                var checkSql = $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'";
+                                using var command = connection.CreateCommand();
+                                command.CommandText = checkSql;
+                                var existsResult = await command.ExecuteScalarAsync();
+                                tableExists = Convert.ToInt32(existsResult) > 0;
+                            }
+                            else
+                            {
+                                var checkSql = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{tableName}'";
+                                using var command = connection.CreateCommand();
+                                command.CommandText = checkSql;
+                                var existsResult = await command.ExecuteScalarAsync();
+                                tableExists = Convert.ToInt32(existsResult) > 0;
                             }
 
-                            tablesCreated.Add(tableName);
-                            _logger.LogEvent("Database Migrate", $"Created table '{tableName}'");
+                            if (tableExists)
+                            {
+                                tablesExisting.Add(tableName);
+                                _logger.LogEvent("Database Migrate", $"Table '{tableName}' already exists");
+                            }
+                            else
+                            {
+                                // Create the table
+                                var createSql = isSqlServer ? sqlServerSql : sqliteSql;
+
+                                // Split on semicolons to handle multiple statements (CREATE TABLE + CREATE INDEX)
+                                var statements = createSql.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                                foreach (var statement in statements)
+                                {
+                                    if (!string.IsNullOrWhiteSpace(statement))
+                                    {
+                                        await _dbContext.Database.ExecuteSqlRawAsync(statement);
+                                    }
+                                }
+
+                                tablesCreated.Add(tableName);
+                                _logger.LogEvent("Database Migrate", $"Created table '{tableName}'");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            errors.Add($"Error processing table '{tableName}': {ex.Message}");
+                            _logger.LogEvent("Database Migrate Error", $"Error with table '{tableName}': {ex.Message}", LogLevel.Error);
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        errors.Add($"Error processing table '{tableName}': {ex.Message}");
-                        _logger.LogEvent("Database Migrate Error", $"Error with table '{tableName}': {ex.Message}", LogLevel.Error);
-                    }
-                }
                 }
                 finally
                 {

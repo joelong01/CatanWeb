@@ -21,7 +21,7 @@
  * - Soldier shows available count (unspent Soldier entitlements from dev cards in hand)
  */
 
-import { memo, useState, useMemo, useEffect, type ReactNode } from 'react';
+import { memo, useState, useMemo, useEffect, useCallback, type ReactNode } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRotateLeft, faRotateRight, faReceipt } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
@@ -300,9 +300,12 @@ export const ActionCluster = memo(function ActionCluster({
   purchaseStats,
   enabledButtons = { next: true },
 }: ActionClusterProps): React.ReactElement {
-  const handleAction = (action: string) => {
-    onAction?.(action);
-  };
+  const handleAction = useCallback(
+    (action: string) => {
+      onAction?.(action);
+    },
+    [onAction]
+  );
 
   // Add keyboard handler for Enter key to trigger Next button
   useEffect(() => {
@@ -325,7 +328,7 @@ export const ActionCluster = memo(function ActionCluster({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [enabledButtons.next, onAction]);
+  }, [enabledButtons.next, handleAction]);
 
   const formatStats = (stats?: EntityStats) =>
     stats ? `${stats.spent} of ${stats.max}` : undefined;

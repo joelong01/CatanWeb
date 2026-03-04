@@ -337,7 +337,13 @@ function Initialize-Database {
     }
 
     # Database needs work -- action is "create" or "install"
-    Write-Host "Database needs $($dbStatus.Action): installing..." -ForegroundColor Yellow
+    if (-not $dbStatus.SchemaValid -and (Test-Path $DatabasePath)) {
+        Write-Host "Database schema is invalid; clearing and reinstalling..." -ForegroundColor Yellow
+        Clear-Database
+    }
+    else {
+        Write-Host "Database needs $($dbStatus.Action): installing..." -ForegroundColor Yellow
+    }
     return Install-Database
 }
 
@@ -396,8 +402,10 @@ function Invoke-DatabaseDoctor {
             $result.HasGames      = ($resp.gameCount -gt 0)
             $result.PlayerCount   = $resp.playerCount
             $result.GameCount     = $resp.gameCount
-            $result.SchemaValid   = $true          # If API responds, schema is fine
             $result.Healthy       = [bool]$resp.healthy
+            # Derive schema validity from the response: if API reports unhealthy with an error, schema may be broken
+            $hasError = ($resp.PSObject.Properties.Name -contains 'error') -and (-not [string]::IsNullOrWhiteSpace([string]$resp.error))
+            $result.SchemaValid   = -not ($hasError -and -not [bool]$resp.healthy)
 
             if ($resp.healthy) {
                 $result.Action = $null
@@ -448,7 +456,14 @@ function Invoke-DatabaseDoctor {
     if (-not $Quiet) { Write-Host "  Checking schema and data..." -ForegroundColor Yellow }
 
     $gameServiceDir = Join-Path $PSScriptRoot "Catan3.GameService"
-    $rawOutput = & dotnet run --project $gameServiceDir -- --check-database 2>$null
+    $stderrFile = [System.IO.Path]::GetTempFileName()
+    try {
+        $rawOutput = & dotnet run --project $gameServiceDir -- --check-database 2>$stderrFile
+    }
+    finally {
+        $stderrContent = if (Test-Path $stderrFile) { Get-Content $stderrFile -Raw } else { $null }
+        Remove-Item $stderrFile -Force -ErrorAction SilentlyContinue
+    }
 
     # Extract JSON line from output (startup logs may precede it)
     $jsonLine = $rawOutput | Where-Object { $_ -match '^\s*\{' } | Select-Object -Last 1
@@ -456,6 +471,9 @@ function Invoke-DatabaseDoctor {
     if (-not $jsonLine) {
         if (-not $Quiet) {
             Write-Host "  [FAIL] Could not read database check output" -ForegroundColor Red
+            if ($stderrContent) {
+                Write-Host "  stderr: $($stderrContent.Trim())" -ForegroundColor Red
+            }
             Write-Host "  Try: dotnet build Catan3.GameService first" -ForegroundColor Yellow
         }
         return $result

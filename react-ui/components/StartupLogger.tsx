@@ -85,9 +85,7 @@ export function StartupLogger() {
 
   return (
     <div className="startup-log-panel">
-      <div className="startup-log-header">
-        Startup Log
-      </div>
+      <div className="startup-log-header">Startup Log</div>
       <div className="startup-log-entries">
         {entries.map((entry, i) => (
           <div key={i} className={entry.isError ? 'startup-log-error' : 'startup-log-info'}>

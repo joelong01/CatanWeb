@@ -180,7 +180,7 @@ export function FloatingPanel({
         posY: actualPosition.y,
       };
     },
-    [actualPosition, panelId]
+    [actualPosition]
   );
 
   // Mouse down handler
@@ -208,7 +208,7 @@ export function FloatingPanel({
         }
       }
     },
-    [startDrag, enableBackgroundDrag, panelId]
+    [startDrag, enableBackgroundDrag]
   );
 
   // Track mouse position for cursor change when enableBackgroundDrag is active

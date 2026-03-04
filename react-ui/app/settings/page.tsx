@@ -168,8 +168,6 @@ export default function Settings(): React.ReactElement {
 
   // Determine back navigation destination
   const backHref = activeGameId ? `/game/${activeGameId}` : '/';
-  const backLabel = activeGameId ? 'Back to Game' : 'Back';
-
   return (
     <MainLayout
       activeGameId={activeGameId}
