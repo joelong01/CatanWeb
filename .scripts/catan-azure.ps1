@@ -1831,6 +1831,12 @@ function Install-UI {
         Write-Log -Level "INFO" -Message "Staging slot exists"
     }
 
+    # Configure staging slot for Node.js with anti-Oryx settings (idempotent)
+    # This prevents Kudu from running Oryx builds on pre-built standalone Next.js deployments
+    Write-Log -Level "INFO" -Message "Configuring staging slot for Node.js..."
+    Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --slot staging --linux-fx-version `"NODE|22-lts`" --startup-file `"node server.js`"" -SuppressOutput
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot staging --settings WEBSITE_NODE_DEFAULT_VERSION=~22 SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
+
     return $true
 }
 
@@ -2705,10 +2711,8 @@ function Deploy-ReactStaging {
     $zipSize = (Get-Item $zipPath).Length / 1MB
     Write-Log -Level "INFO" -Message "Deploying React UI to staging ($([math]::Round($zipSize, 1)) MB)..."
 
-    # Configure staging slot for Node.js (production slot uses .NET for Blazor)
-    Write-Log -Level "INFO" -Message "Configuring staging slot for Node.js..."
-    Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --slot staging --linux-fx-version `"NODE|22-lts`" --startup-file `"node server.js`"" -SuppressOutput
-    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot staging --settings WEBSITE_NODE_DEFAULT_VERSION=~22 NEXT_PUBLIC_GAME_SERVICE_URL=$gameServiceUrl SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
+    # Set the GameService URL for this deploy (slot config is set at install time by Install-UI)
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot staging --settings NEXT_PUBLIC_GAME_SERVICE_URL=$gameServiceUrl" -SuppressOutput
 
     # Deploy via Kudu ZIP Deploy API (truly async, unlike az webapp deploy --async true)
     if (-not (Deploy-KuduZip -AppName $appName -ResourceGroup $rgName -ZipPath $zipPath -Slot "staging")) {
