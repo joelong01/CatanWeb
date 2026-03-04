@@ -348,9 +348,17 @@ else
     app.UseSwaggerUI();
 }
 
-// Configure static files with caching for images
+// CORS must come before static files so cross-origin fetches (e.g. React on :3000
+// fetching streamdeck-latest.json from :8080) receive Access-Control-Allow-Origin.
+app.UseCors("AllowWebUI");
+
+// Configure static files with caching for images and custom MIME types
+var contentTypeProvider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+contentTypeProvider.Mappings[".streamDeckPlugin"] = "application/octet-stream";
+
 app.UseStaticFiles(new StaticFileOptions
 {
+    ContentTypeProvider = contentTypeProvider,
     OnPrepareResponse = ctx =>
     {
         // Cache images for 7 days (they rarely change)
@@ -363,10 +371,14 @@ app.UseStaticFiles(new StaticFileOptions
         {
             ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=604800");
         }
+        // Force download for plugin files
+        if (ctx.File.Name.EndsWith(".streamDeckPlugin"))
+        {
+            ctx.Context.Response.Headers.Append("Content-Disposition",
+                $"attachment; filename=\"{ctx.File.Name}\"");
+        }
     }
 });
-
-app.UseCors("AllowWebUI");
 
 app.UseRouting();
 

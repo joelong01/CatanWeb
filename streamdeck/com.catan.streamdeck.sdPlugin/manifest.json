@@ -1,0 +1,207 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "Name": "Catan",
+  "Version": "1.0.6.0",
+  "Author": "Catan Team",
+  "UUID": "com.catan.streamdeck",
+  "Description": "Control Catan game from your Stream Deck — roll dice, deploy soldiers, buy entitlements, and advance turns.",
+  "Icon": "imgs/plugin/catan-icon",
+  "CategoryIcon": "imgs/plugin/category-icon",
+  "Category": "Catan",
+  "CodePath": "bin/plugin.js",
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "6.7"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "13"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Nodejs": {
+    "Version": "20",
+    "Debug": "enabled"
+  },
+  "Actions": [
+    {
+      "UUID": "com.catan.streamdeck.launcher",
+      "Name": "Catan",
+      "Icon": "imgs/actions/launcher/icon",
+      "Tooltip": "Open the Catan Stream Deck page",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/actions/launcher/key",
+          "TitleAlignment": "bottom",
+          "Title": "Catan"
+        }
+      ]
+    },
+    {
+      "UUID": "com.catan.streamdeck.server-toggle",
+      "Name": "Server",
+      "Icon": "imgs/actions/server-toggle/icon",
+      "Tooltip": "Toggle between Local and Azure GameService",
+      "Controllers": [
+        "Keypad"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "imgs/actions/server-toggle/key",
+          "TitleAlignment": "bottom",
+          "Title": "Local",
+          "Name": "Local"
+        },
+        {
+          "Image": "imgs/actions/server-toggle/key",
+          "TitleAlignment": "bottom",
+          "Title": "Azure",
+          "Name": "Azure"
+        }
+      ]
+    },
+    {
+      "UUID": "com.catan.streamdeck.game-state",
+      "Name": "Game State",
+      "Icon": "imgs/actions/game-state/icon",
+      "Tooltip": "Shows the current game state",
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "imgs/actions/game-state/key",
+          "TitleAlignment": "middle"
+        }
+      ]
+    },
+    {
+      "UUID": "com.catan.streamdeck.auto-navigate",
+      "Name": "Auto Navigate",
+      "Icon": "imgs/actions/auto-navigate/icon",
+      "Tooltip": "Toggle automatic page switching based on game state",
+      "Controllers": [
+        "Keypad"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "imgs/actions/auto-navigate/key",
+          "TitleAlignment": "bottom",
+          "Title": "Auto",
+          "Name": "On"
+        },
+        {
+          "Image": "imgs/actions/auto-navigate/key",
+          "TitleAlignment": "bottom",
+          "Title": "Manual",
+          "Name": "Off"
+        }
+      ]
+    },
+    {
+      "UUID": "com.catan.streamdeck.navigate",
+      "Name": "Navigate",
+      "Icon": "imgs/actions/navigate/icon",
+      "Tooltip": "Navigate to a game page",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/actions/navigate/key",
+          "TitleAlignment": "bottom"
+        }
+      ]
+    },
+    {
+      "UUID": "com.catan.streamdeck.roll",
+      "Name": "Roll",
+      "Icon": "imgs/actions/roll/icon",
+      "Tooltip": "Roll the dice with this number",
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "imgs/actions/roll/key",
+          "TitleAlignment": "middle"
+        }
+      ]
+    },
+    {
+      "UUID": "com.catan.streamdeck.soldier",
+      "Name": "Soldier",
+      "Icon": "imgs/actions/soldier/icon",
+      "Tooltip": "Deploy a soldier",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/actions/soldier/key",
+          "TitleAlignment": "bottom",
+          "Title": "Soldier"
+        }
+      ]
+    },
+    {
+      "UUID": "com.catan.streamdeck.undo",
+      "Name": "Undo",
+      "Icon": "imgs/actions/undo/icon",
+      "Tooltip": "Undo the last action",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/actions/undo/key",
+          "TitleAlignment": "bottom",
+          "Title": "Undo"
+        }
+      ]
+    },
+    {
+      "UUID": "com.catan.streamdeck.redo",
+      "Name": "Redo",
+      "Icon": "imgs/actions/redo/icon",
+      "Tooltip": "Redo the last undone action",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/actions/redo/key",
+          "TitleAlignment": "bottom",
+          "Title": "Redo"
+        }
+      ]
+    }
+  ],
+  "Profiles": [
+    {
+      "Name": "profiles/CatanHome",
+      "DeviceType": 0,
+      "Readonly": false,
+      "DontAutoSwitchWhenInstalled": false,
+      "AutoInstall": true
+    },
+    {
+      "Name": "profiles/CatanRoll",
+      "DeviceType": 0,
+      "Readonly": false,
+      "DontAutoSwitchWhenInstalled": true,
+      "AutoInstall": true
+    }
+  ]
+}

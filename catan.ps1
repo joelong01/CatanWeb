@@ -2031,6 +2031,118 @@ switch ($Verb) {
         }
     }
 
+    "streamdeck" {
+        $sdDir = Join-Path $PSScriptRoot "streamdeck"
+        $sdPlugin = Join-Path $sdDir "com.catan.streamdeck.sdPlugin"
+        $sdPackedFile = Join-Path $sdDir "com.catan.streamdeck.streamDeckPlugin"
+        $sdDownloadDir = Join-Path $PSScriptRoot "Catan3.GameService" "wwwroot" "downloads"
+        $sdManifest = Get-Content (Join-Path $sdPlugin "manifest.json") | ConvertFrom-Json
+        $sdVersion = $sdManifest.Version
+        $sdDownloadFile = Join-Path $sdDownloadDir "CatanStreamDeck-v${sdVersion}.streamDeckPlugin"
+
+        switch ($SubCommand) {
+            "build" {
+                Write-Host "Building Stream Deck plugin..." -ForegroundColor Cyan
+                Push-Location $sdDir
+                try {
+                    npm run build
+                    if ($LASTEXITCODE -ne 0) { throw "Build failed" }
+                    Write-Host "Stream Deck plugin built successfully" -ForegroundColor Green
+
+                    # Build profile zip archives from JSON definitions
+                    Write-Host "Building profile archives..." -ForegroundColor Cyan
+                    node scripts/build-profiles.mjs
+                    if ($LASTEXITCODE -ne 0) { throw "Profile build failed" }
+
+                    # Convert SVG icons to PNG (required by Elgato CLI)
+                    Write-Host "Converting SVG icons to PNG..." -ForegroundColor Cyan
+                    Get-ChildItem -Path $sdPlugin -Filter "*.svg" -Recurse | ForEach-Object {
+                        $png = $_.FullName -replace '\.svg$', '.png'
+                        $png2x = $_.FullName -replace '\.svg$', '@2x.png'
+                        if (-not (Test-Path $png)) {
+                            sips -s format png $_.FullName --out $png --resampleWidth 72 --resampleHeight 72 2>$null | Out-Null
+                        }
+                        if (-not (Test-Path $png2x)) {
+                            sips -s format png $_.FullName --out $png2x --resampleWidth 144 --resampleHeight 144 2>$null | Out-Null
+                        }
+                    }
+
+                    # Pack and copy to wwwroot for download
+                    Write-Host "Packing plugin for download..." -ForegroundColor Cyan
+                    npx streamdeck pack $sdPlugin --force --output $sdDir 2>$null
+                    if (Test-Path $sdPackedFile) {
+                        if (-not (Test-Path $sdDownloadDir)) {
+                            New-Item -ItemType Directory -Path $sdDownloadDir -Force | Out-Null
+                        }
+                        Copy-Item $sdPackedFile $sdDownloadFile -Force
+                        # Clean up old versioned downloads and write metadata
+                        Get-ChildItem -Path $sdDownloadDir -Filter "CatanStreamDeck-v*.streamDeckPlugin" | Where-Object { $_.FullName -ne $sdDownloadFile } | Remove-Item -Force
+                        @{ version = $sdVersion; filename = "CatanStreamDeck-v${sdVersion}.streamDeckPlugin" } | ConvertTo-Json | Set-Content (Join-Path $sdDownloadDir "streamdeck-latest.json")
+                        Write-Host "Plugin available at /downloads/CatanStreamDeck-v${sdVersion}.streamDeckPlugin" -ForegroundColor Green
+                    } else {
+                        Write-Host "Warning: Pack succeeded but output file not found" -ForegroundColor Yellow
+                    }
+                } finally {
+                    Pop-Location
+                }
+            }
+            "watch" {
+                Write-Host "Watching Stream Deck plugin (Ctrl+C to stop)..." -ForegroundColor Cyan
+                Push-Location $sdDir
+                try {
+                    npm run watch
+                } finally {
+                    Pop-Location
+                }
+            }
+            "pack" {
+                Write-Host "Packing Stream Deck plugin..." -ForegroundColor Cyan
+                Push-Location $sdDir
+                try {
+                    npx streamdeck pack $sdPlugin --force --output $sdDir
+                    if ($LASTEXITCODE -ne 0) { throw "Pack failed" }
+                    if (Test-Path $sdPackedFile) {
+                        if (-not (Test-Path $sdDownloadDir)) {
+                            New-Item -ItemType Directory -Path $sdDownloadDir -Force | Out-Null
+                        }
+                        Copy-Item $sdPackedFile $sdDownloadFile -Force
+                        Write-Host "Plugin packed and copied to wwwroot/downloads/" -ForegroundColor Green
+                    }
+                } finally {
+                    Pop-Location
+                }
+            }
+            "link" {
+                Write-Host "Linking Stream Deck plugin for development..." -ForegroundColor Cyan
+                Push-Location $sdDir
+                try {
+                    npx streamdeck link $sdPlugin
+                    Write-Host "Plugin linked. Restart Stream Deck to load it." -ForegroundColor Green
+                } finally {
+                    Pop-Location
+                }
+            }
+            "install" {
+                Write-Host "Installing Stream Deck plugin dependencies..." -ForegroundColor Cyan
+                Push-Location $sdDir
+                try {
+                    npm install
+                    Write-Host "Dependencies installed" -ForegroundColor Green
+                } finally {
+                    Pop-Location
+                }
+            }
+            default {
+                Write-Host "Stream Deck plugin commands:" -ForegroundColor Yellow
+                Write-Host "  ./catan.ps1 streamdeck install  - Install npm dependencies"
+                Write-Host "  ./catan.ps1 streamdeck build    - Build the plugin"
+                Write-Host "  ./catan.ps1 streamdeck watch    - Build and watch for changes"
+                Write-Host "  ./catan.ps1 streamdeck pack     - Package as .streamDeckPlugin"
+                Write-Host "  ./catan.ps1 streamdeck link     - Symlink for local development"
+            }
+        }
+    }
+
     "azure" {
         $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
 
@@ -2514,6 +2626,13 @@ switch ($Verb) {
         Write-Host "  ./catan.ps1 dependencies doctor  - Check all dependency status"
         Write-Host "  ./catan.ps1 dependencies install - Install missing dependencies"
         Write-Host "  ./catan.ps1 dependencies clean   - Remove/reset dependencies"
+        Write-Host ""
+        Write-Host "Stream Deck:" -ForegroundColor Yellow
+        Write-Host "  ./catan.ps1 streamdeck install  - Install npm dependencies"
+        Write-Host "  ./catan.ps1 streamdeck build    - Build the plugin"
+        Write-Host "  ./catan.ps1 streamdeck watch    - Build and watch for changes"
+        Write-Host "  ./catan.ps1 streamdeck pack     - Package as .streamDeckPlugin"
+        Write-Host "  ./catan.ps1 streamdeck link     - Symlink for local development"
         Write-Host ""
         Write-Host "Azure:" -ForegroundColor Yellow
         Write-Host "  ./catan.ps1 azure doctor     - Check Azure deployment health"

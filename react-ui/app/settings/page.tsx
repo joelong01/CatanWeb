@@ -9,8 +9,10 @@ import {
   faFloppyDisk,
   faCircleQuestion,
   faCheck,
+  faDownload,
 } from '@fortawesome/free-solid-svg-icons';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
+import { getServiceUrl } from '@/lib/config';
 import { useGameType } from '@/lib/stores/gameStoreHooks';
 import { gameApi } from '@/lib/api/gameApi';
 import type { HouseRules } from '@/types/generated/models';
@@ -110,6 +112,78 @@ function SettingsCategory({
       <h2 className="text-lg font-semibold text-amber-400 mb-3">{title}</h2>
       <div className="space-y-2">{children}</div>
     </div>
+  );
+}
+
+/**
+ * Stream Deck plugin download section.
+ * Fetches version metadata from the server so the download link always points
+ * to the correct versioned file.  Shows a clear error state if the metadata
+ * cannot be loaded (instead of silently falling back to a stale URL).
+ */
+function StreamDeckDownload(): React.ReactElement {
+  const [meta, setMeta] = useState<{ version: string; filename: string } | null>(null);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${getServiceUrl()}/downloads/streamdeck-latest.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => { setMeta(data); setError(false); })
+      .catch(() => { setMeta(null); setError(true); })
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <SettingsCategory title="Downloads">
+      <div className="flex items-center justify-between py-3 px-4 bg-gray-800/50 rounded-lg">
+        <div>
+          <span className="text-white font-medium">Stream Deck Plugin</span>
+          {meta?.version && (
+            <span className="text-gray-500 text-sm ml-2">v{meta.version}</span>
+          )}
+          <p className="text-gray-400 text-sm mt-1">
+            Control dice rolls, undo/redo, and navigate game states from your Elgato Stream Deck.
+          </p>
+          {error && (
+            <p className="text-red-400 text-sm mt-1">
+              Could not load plugin info from GameService.
+            </p>
+          )}
+        </div>
+        {meta ? (
+          <a
+            href={`${getServiceUrl()}/downloads/${meta.filename}`}
+            download={meta.filename}
+            className="
+              flex items-center gap-2 px-4 py-2.5
+              bg-purple-600 hover:bg-purple-500
+              text-white rounded-lg font-medium
+              transition-colors duration-200 whitespace-nowrap
+            "
+          >
+            <FontAwesomeIcon icon={faDownload} />
+            <span>Download</span>
+          </a>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="
+              flex items-center gap-2 px-4 py-2.5
+              bg-gray-600 text-gray-400 rounded-lg font-medium
+              cursor-not-allowed whitespace-nowrap
+            "
+          >
+            <FontAwesomeIcon icon={faDownload} />
+            <span>{loading ? 'Loading…' : 'Unavailable'}</span>
+          </button>
+        )}
+      </div>
+    </SettingsCategory>
   );
 }
 
@@ -228,6 +302,9 @@ export default function Settings(): React.ReactElement {
               />
             </SettingRow>
           </SettingsCategory>
+
+          {/* Downloads */}
+          <StreamDeckDownload />
 
           {/* Action buttons */}
           <div className="flex gap-3 pt-4 border-t border-gray-700">
