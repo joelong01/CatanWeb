@@ -416,6 +416,9 @@ export default function GamePage(): React.ReactElement {
   // setLastRoll hook is called earlier with other store hooks
   const rollDimTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Keyboard roll: tracks whether "1" was pressed, waiting for second digit (0, 1, 2 → 10, 11, 12)
+  const pendingRollPrefixRef = useRef(false);
+
   // Helper: Get players with buildings adjacent to a tile coordinate
   // Returns simple { id, name } objects matching Blazor's RobberTarget record
   const getPlayersWithBuildingsOnTile = useCallback(
@@ -555,12 +558,38 @@ export default function GamePage(): React.ReactElement {
     setRobberTargetPlayers([]);
   }, []);
 
-  // Keyboard shortcuts for road building (1-9) and city upgrades (A-Z)
+  // Keyboard shortcuts for dice roll, road building (1-9), and city upgrades (A-Z)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if typing in an input field
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
+      }
+
+      // Keyboard roll: when WaitingForRoll, number keys trigger a roll
+      // Keys 2-9 roll immediately. Key "1" waits for a second digit:
+      //   1+0 → 10, 1+1 → 11, 1+2 → 12, 1+(3-9) → that digit
+      if (gameState === 'WaitingForRoll') {
+        const num = parseInt(e.key);
+        if (!isNaN(num)) {
+          if (pendingRollPrefixRef.current) {
+            // Second key after "1"
+            pendingRollPrefixRef.current = false;
+            if (num >= 0 && num <= 2) {
+              handleRollClick(10 + num);
+            } else {
+              handleRollClick(num);
+            }
+          } else if (num === 1) {
+            // "1" pressed — wait for second digit
+            pendingRollPrefixRef.current = true;
+          } else if (num >= 2 && num <= 9) {
+            handleRollClick(num);
+          }
+          return;
+        }
+        // Non-digit key clears any pending "1"
+        pendingRollPrefixRef.current = false;
       }
 
       const key = e.key.toUpperCase();
@@ -636,7 +665,7 @@ export default function GamePage(): React.ReactElement {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [roads, buildings, gameState, currentPlayer, proxy]);
+  }, [roads, buildings, gameState, currentPlayer, proxy, handleRollClick]);
 
   // Star filter changed handler (stores in layoutStore for board filtering)
   const setStarFilter = useLayoutStore((state) => state.setStarFilter);
