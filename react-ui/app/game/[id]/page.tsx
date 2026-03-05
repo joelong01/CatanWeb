@@ -419,6 +419,13 @@ export default function GamePage(): React.ReactElement {
   // Keyboard roll: tracks whether "1" was pressed, waiting for second digit (0, 1, 2 → 10, 11, 12)
   const pendingRollPrefixRef = useRef(false);
 
+  // Clear pending "1" when leaving WaitingForRoll (mouse roll, state change, etc.)
+  useEffect(() => {
+    if (gameState !== 'WaitingForRoll') {
+      pendingRollPrefixRef.current = false;
+    }
+  }, [gameState]);
+
   // Helper: Get players with buildings adjacent to a tile coordinate
   // Returns simple { id, name } objects matching Blazor's RobberTarget record
   const getPlayersWithBuildingsOnTile = useCallback(
