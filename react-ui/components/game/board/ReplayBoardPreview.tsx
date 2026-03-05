@@ -83,41 +83,43 @@ export function ReplayBoardPreview({
       if (!playerId) return DEFAULT_COLORS;
       if (playerColorMap?.has(playerId)) return playerColorMap.get(playerId)!;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const players: any[] = gameModel?.players ?? [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const idx = players.findIndex((p: any) => p.id === playerId);
       return PLAYER_FALLBACKS[idx >= 0 ? idx % PLAYER_FALLBACKS.length : 0];
     },
-    [playerColorMap, players]
+    [playerColorMap, gameModel?.players]
   );
 
-  const tileItems: HexGridItem[] = useMemo(
-    () =>
-      tiles.map((tile) => {
-        const coord = cubicCoord(tile.tileKey.q, tile.tileKey.r);
-        return {
-          id: `tile-${coord.q},${coord.r},${coord.s}`,
-          coord,
-          content: <GameTile tile={tile} hexSize={50} />,
-        };
-      }),
-    [tiles]
-  );
+  const tileItems: HexGridItem[] = useMemo(() => {
+    const tiles: TileModel[] = gameModel?.tiles ?? [];
+    return tiles.map((tile) => {
+      const coord = cubicCoord(tile.tileKey.q, tile.tileKey.r);
+      return {
+        id: `tile-${coord.q},${coord.r},${coord.s}`,
+        coord,
+        content: <GameTile tile={tile} hexSize={50} />,
+      };
+    });
+  }, [gameModel?.tiles]);
 
   // Only buildings that are placed on the board (owned settlements/cities)
-  const ownedBuildings = useMemo(
-    () =>
-      buildings.filter(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (b: any) => b.ownerId && (b.buildingState === 'Settlement' || b.buildingState === 'City')
-      ),
-    [buildings]
-  );
+  const ownedBuildings = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const buildings: any[] = gameModel?.buildings ?? [];
+    return buildings.filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (b: any) => b.ownerId && (b.buildingState === 'Settlement' || b.buildingState === 'City')
+    );
+  }, [gameModel?.buildings]);
 
   // Only roads that belong to a player
-  const ownedRoads = useMemo(
+  const ownedRoads = useMemo(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    () => roads.filter((r: any) => r.ownerId),
-    [roads]
-  );
+    const roads: any[] = gameModel?.roads ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return roads.filter((r: any) => r.ownerId);
+  }, [gameModel?.roads]);
 
   const renderOverlay = useCallback(
     (layoutInfo: HexGridLayoutInfo) => {

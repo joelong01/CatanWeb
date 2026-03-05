@@ -242,7 +242,6 @@ export default function Settings(): React.ReactElement {
 
   // Determine back navigation destination
   const backHref = activeGameId ? `/game/${activeGameId}` : '/';
-
   return (
     <MainLayout
       activeGameId={activeGameId}

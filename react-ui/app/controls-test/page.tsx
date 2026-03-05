@@ -1757,7 +1757,8 @@ export default function ControlsTestPage(): React.ReactElement {
   );
 
   // Generate buildings and roads for all players to test multi-player rendering
-  const testData = useMemo(() => generateTestBuildingsAndRoads(MOCK_PLAYERS.map((p) => p.id)), []);
+  const playerIds = MOCK_PLAYERS.map((p) => p.id);
+  const testData = useMemo(() => generateTestBuildingsAndRoads(playerIds), [playerIds]);
 
   // Robber on desert tile with first player's colors
   const testRobber = useMemo(

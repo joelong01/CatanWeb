@@ -201,9 +201,9 @@ if (args.Contains("--check-database"))
         // Check if database file exists (SQLite only)
         if (!dbDetector.UseSqlServer)
         {
-            var dbPath = dbDetector.ConnectionString
-                .Replace("Data Source=", "", StringComparison.OrdinalIgnoreCase)
-                .Trim();
+            var csb = new System.Data.Common.DbConnectionStringBuilder { ConnectionString = dbDetector.ConnectionString };
+            var dbPath = csb.ContainsKey("Data Source") ? csb["Data Source"]?.ToString() ?? dbDetector.ConnectionString : dbDetector.ConnectionString;
+            dbPath = Path.GetFullPath(dbPath);
             result["databaseExists"] = File.Exists(dbPath);
             if (!(bool)result["databaseExists"])
             {
@@ -282,11 +282,12 @@ if (args.Contains("--check-database"))
                     result["healthy"] = true;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Tables exist but queries fail -- schema mismatch
+                // Tables exist but queries fail -- schema mismatch or data access issue
                 result["schemaValid"] = false;
                 result["action"] = "install";
+                result["error"] = ex.Message;
             }
         }
         else

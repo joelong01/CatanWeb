@@ -33,7 +33,6 @@ import type { HarborModel } from '@/types/generated/models/harbor-model';
 import type { BuildingModel } from '@/types/generated/models/building-model';
 import type { RoadModel } from '@/types/generated/models/road-model';
 import type { HexSide } from '@/types/generated/models/hex-side';
-import type { HexPosition } from '@/types/generated/models/hex-position';
 import type { BuildingKey } from '@/types/generated/models/building-key';
 import type { RoadKey } from '@/types/generated/models/road-key';
 import type { Entitlement } from '@/types/generated/models/entitlement';
@@ -668,6 +667,16 @@ export function GameBoard({
       });
   }, [harbors, players]);
 
+  // Build set of harbor coordinates for quick lookup
+  const _harborCoordSet = useMemo(() => {
+    const set = new Set<string>();
+    harborItems.forEach((item) => {
+      set.add(coordKeyString(item.coord));
+    });
+    return set;
+  }, [harborItems]);
+
+
   // Calculate board bounds (for water generation) - NO pan offset here
   const boardBounds = useMemo(() => {
     let minQ = Infinity,
@@ -1271,12 +1280,6 @@ export function GameBoard({
 
             const pixelPos = getEdgeMidpoint(coord, side, hSize, origin);
 
-            // Build the road key for click handler
-            const _roadKey: RoadKey = {
-              tileKey: { q: coord.q, r: coord.r, s: coord.s },
-              hexSide: side as HexSide,
-            };
-
             // Include player ID in key to force re-render on ownership/turn changes
             // Buildable roads: use current player ID (changes on turn change)
             // Owned roads: use owner ID (ensures correct colors after purchase)
@@ -1322,13 +1325,6 @@ export function GameBoard({
 
             const pixelPos = getVertexPosition(coord, position, hSize, origin);
             const _owner = players.find((p) => p.id === ownerId);
-
-            // Build the building key for click handler (city upgrades)
-            // Cast needed because generated BuildingKey has spurious 'default' property
-            const _buildingKey = {
-              hexCoordinates: { q: coord.q, r: coord.r, s: coord.s },
-              position: position as HexPosition,
-            } as BuildingKey;
 
             // City upgrade: clickable if current player owns this settlement AND has city entitlement
             const isCityUpgradeable =
@@ -1392,13 +1388,11 @@ export function GameBoard({
             }
 
             // Determine visibility based on game state (Blazor lines 214-248)
-            let _isBuildable: boolean;
             let isHidden: boolean;
             let settlementBuildIndex: string | undefined;
 
             if (isPickingBoard) {
               // PickingBoard: evaluation mode — show stars, not buildable
-              _isBuildable = false;
               // No star filter selected → hide all evaluation spots (user must choose a filter)
               if (starFilter === null) return null;
               // starFilter=0 ("All") → stars < 0 always false → show everything
@@ -1407,7 +1401,6 @@ export function GameBoard({
               isHidden = false;
             } else if (hasSettlementEntitlement && buildingState === 'PossibleSettlement') {
               // Buildable settlement spot
-              _isBuildable = true;
               settlementBuildIndex = settlementIndexMap.get(key);
 
               if (settlementBuildIndex !== undefined) {
@@ -1423,13 +1416,6 @@ export function GameBoard({
             }
 
             const pixelPos = getVertexPosition(coord, position, hSize, origin);
-
-            // Build the building key for click handler
-            // Cast needed because generated BuildingKey has spurious 'default' property
-            const _buildingKey = {
-              hexCoordinates: { q: coord.q, r: coord.r, s: coord.s },
-              position: position as HexPosition,
-            } as BuildingKey;
 
             // Visual state: Highlighted when showing build indexes, Stars when visible, Hidden otherwise
             const visualState: BuildingVisualState =

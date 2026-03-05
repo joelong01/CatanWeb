@@ -1,12 +1,6 @@
-name: Deploy React UI to Staging (from main)
+name: Deploy React UI to Staging (manual)
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'react-ui/**'
-      - '.github/workflows/deploy-react-staging.yml'
   workflow_dispatch:
 
 jobs:
