@@ -399,3 +399,10 @@ temp_old_gameservice_statemachine.cs
 .assets/SVG For Font/.iconfont-build/
 /package.json
 /package-lock.json
+
+# Stream Deck plugin build artifacts
+streamdeck/com.catan.streamdeck.sdPlugin/bin/plugin.js
+streamdeck/com.catan.streamdeck.sdPlugin/bin/plugin.js.map
+streamdeck/com.catan.streamdeck.sdPlugin/bin/package.json
+streamdeck/node_modules/
+streamdeck/*.streamDeckPlugin

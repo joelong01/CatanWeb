@@ -1,0 +1,50 @@
+{
+  "Name": "CatanHome",
+  "DeviceModel": "20GBA9901",
+  "Pages": [
+    {
+      "Name": "Catan Home",
+      "Actions": {
+        "0": {
+          "UUID": "com.catan.streamdeck.server-toggle",
+          "Settings": {},
+          "State": 0
+        },
+        "1": {
+          "UUID": "com.catan.streamdeck.game-state",
+          "Settings": {},
+          "State": 0
+        },
+        "2": {
+          "UUID": "com.catan.streamdeck.auto-navigate",
+          "Settings": {},
+          "State": 0
+        },
+        "5": {
+          "UUID": "com.catan.streamdeck.navigate",
+          "Settings": {
+            "targetPage": "roll"
+          },
+          "State": 0
+        },
+        "6": {
+          "UUID": "com.catan.streamdeck.navigate",
+          "Settings": {
+            "targetPage": "build"
+          },
+          "State": 0
+        },
+        "10": {
+          "UUID": "com.catan.streamdeck.undo",
+          "Settings": {},
+          "State": 0
+        },
+        "11": {
+          "UUID": "com.catan.streamdeck.redo",
+          "Settings": {},
+          "State": 0
+        }
+      }
+    }
+  ]
+}

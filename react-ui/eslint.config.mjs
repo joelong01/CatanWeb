@@ -36,6 +36,9 @@ const eslintConfig = defineConfig([
       ],
       // Console logging is allowed during development.
       'no-console': 'off',
+      // All <img> usages are player avatars from the game server with dynamic
+      // URLs (localhost, LAN, Azure). next/image optimization doesn't apply.
+      '@next/next/no-img-element': 'off',
       // React Compiler rules: downgrade to warn for pre-existing patterns.
       // setState-in-effect and ref-access-during-render are common React
       // patterns that work correctly but violate strict compiler rules.

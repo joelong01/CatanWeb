@@ -49,7 +49,7 @@ export function BoardViewport({
 
   // Sync with store on mount
   useEffect(() => {
-    setPan(viewport.pan);
+    setPan(viewport.pan); // eslint-disable-line react-hooks/set-state-in-effect -- store sync
     setZoom(viewport.zoom);
   }, [viewport.pan, viewport.zoom]);
 

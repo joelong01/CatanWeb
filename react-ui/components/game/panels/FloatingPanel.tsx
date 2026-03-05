@@ -148,6 +148,7 @@ export function FloatingPanel({
 
   // Sync position when store changes (e.g., after reset)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- store → local state sync
     setActualPosition({ x: panel.left, y: panel.top });
     latestPositionRef.current = { x: panel.left, y: panel.top };
   }, [panel.left, panel.top, panelId]);

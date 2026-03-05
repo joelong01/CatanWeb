@@ -10,6 +10,7 @@ import {
   hexToPixel,
   pixelToHex,
   Direction,
+  SIDE_TO_DIRECTION,
   type HexCoordinate,
   type PixelPosition,
   type HexPosition as GeometryHexPosition,
@@ -102,19 +103,6 @@ export interface GameBoardProps {
 function coordKeyString(coord: HexCoordinate): string {
   return `${coord.q},${coord.r},${coord.s}`;
 }
-
-/**
- * Map HexSide (from game data) to Direction (for neighbor calculation)
- */
-const SIDE_TO_DIRECTION: Record<HexSide, Direction> = {
-  Top: Direction.North,
-  TopRight: Direction.NorthEast,
-  BottomRight: Direction.SouthEast,
-  Bottom: Direction.South,
-  BottomLeft: Direction.SouthWest,
-  TopLeft: Direction.NorthWest,
-  None: Direction.North, // Fallback
-};
 
 /**
  * Map HexSide to the two vertex positions (in viewBox coordinates) that the harbor connects to.
@@ -655,26 +643,28 @@ export function GameBoard({
 
   // Build HexGrid items from harbors (at water hex positions)
   const harborItems: HexGridItem[] = useMemo(() => {
-    return harbors.map((harbor) => {
-      const { hexCoordinates, side } = harbor.harborKey;
-      const tileCoord = cubicCoord(hexCoordinates.q, hexCoordinates.r);
+    return harbors
+      .filter((h) => h.harborKey.side !== 'None')
+      .map((harbor) => {
+        const { hexCoordinates, side } = harbor.harborKey;
+        const tileCoord = cubicCoord(hexCoordinates.q, hexCoordinates.r);
 
-      // Find the water hex adjacent to the tile in the harbor's direction
-      const direction = SIDE_TO_DIRECTION[side];
-      const waterCoord = getNeighbor(tileCoord, direction);
-      const key = coordKeyString(waterCoord);
+        // Find the water hex adjacent to the tile in the harbor's direction
+        const direction = SIDE_TO_DIRECTION[side as GeometryHexSide];
+        const waterCoord = getNeighbor(tileCoord, direction);
+        const key = coordKeyString(waterCoord);
 
-      // Get owner colors if harbor is owned
-      const ownerColors = harbor.owner?.id
-        ? players.find((p) => p.id === harbor.owner.id)?.colors
-        : null;
+        // Get owner colors if harbor is owned
+        const ownerColors = harbor.owner?.id
+          ? players.find((p) => p.id === harbor.owner.id)?.colors
+          : null;
 
-      return {
-        id: `harbor-${key}`,
-        coord: waterCoord,
-        content: <HarborHexContent harbor={harbor} ownerColors={ownerColors} />,
-      };
-    });
+        return {
+          id: `harbor-${key}`,
+          coord: waterCoord,
+          content: <HarborHexContent harbor={harbor} ownerColors={ownerColors} />,
+        };
+      });
   }, [harbors, players]);
 
   // Build set of harbor coordinates for quick lookup
@@ -685,6 +675,7 @@ export function GameBoard({
     });
     return set;
   }, [harborItems]);
+
 
   // Calculate board bounds (for water generation) - NO pan offset here
   const boardBounds = useMemo(() => {

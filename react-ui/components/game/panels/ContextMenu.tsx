@@ -44,6 +44,7 @@ export function ContextMenu({ position, items, onClose }: ContextMenuProps): Rea
     if (x < 8) x = 8;
     if (y < 8) y = 8;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement → position
     setAdjustedPos({ x, y });
   }, [position]);
 
