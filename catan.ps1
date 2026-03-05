@@ -2392,6 +2392,96 @@ switch ($Verb) {
                 Write-Host "  Production is now serving: $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -ForegroundColor Gray
                 Write-Host "  To swap back: ./catan.ps1 azure swap-slots" -ForegroundColor Gray
             }
+            "start" {
+                Write-Host "Starting Azure services..." -ForegroundColor Cyan
+                Write-Host ""
+
+                $azureConfigFile = Join-Path $PSScriptRoot ".azure/catan-azure.json"
+                if (-not (Test-Path $azureConfigFile)) {
+                    Write-Host "Azure configuration not found. Run './catan.ps1 azure install' first." -ForegroundColor Red
+                    exit 1
+                }
+                $azureConfig = Get-Content $azureConfigFile -Raw | ConvertFrom-Json
+                $gsUrl = $azureConfig.gameService.url
+                $uiUrl = $azureConfig.ui.url
+                $sqlServer = $azureConfig.sqlServer.serverName
+                $sqlDb = $azureConfig.sqlServer.databaseName
+                $rgName = $azureConfig.resourceGroup
+
+                # Step 1: Resume database if paused (must complete before GameService can connect)
+                Write-Host -NoNewline "  Database...   "
+                $dbStatus = az sql db show --name $sqlDb --server $sqlServer --resource-group $rgName --query status -o tsv 2>$null
+                if ($dbStatus -eq "Paused") {
+                    Write-Host -NoNewline "resuming... " -ForegroundColor Yellow
+                    az sql db update --name $sqlDb --server $sqlServer --resource-group $rgName --auto-pause-delay 720 2>$null | Out-Null
+                    # Wait for resume (polls every 5s, up to 2 minutes)
+                    for ($i = 0; $i -lt 24; $i++) {
+                        Start-Sleep -Seconds 5
+                        $dbStatus = az sql db show --name $sqlDb --server $sqlServer --resource-group $rgName --query status -o tsv 2>$null
+                        if ($dbStatus -eq "Online") { break }
+                    }
+                    if ($dbStatus -eq "Online") {
+                        Write-Host "online" -ForegroundColor Green
+                    } else {
+                        Write-Host "status: $dbStatus (may still be resuming)" -ForegroundColor Yellow
+                    }
+                } elseif ($dbStatus -eq "Online") {
+                    Write-Host "already online" -ForegroundColor Green
+                } else {
+                    Write-Host "status: $dbStatus" -ForegroundColor Yellow
+                }
+
+                # Step 2: Wake GameService and UI in parallel
+                $gsJob = Start-Job -ScriptBlock {
+                    try {
+                        $r = Invoke-RestMethod -Uri "$using:gsUrl/health" -TimeoutSec 60 -ErrorAction Stop
+                        return @{ ok = $true; status = $r.status }
+                    } catch {
+                        return @{ ok = $false; error = $_.Exception.Message }
+                    }
+                }
+                $uiJob = Start-Job -ScriptBlock {
+                    try {
+                        $r = Invoke-WebRequest -Uri $using:uiUrl -TimeoutSec 60 -UseBasicParsing -ErrorAction Stop
+                        return @{ ok = $true; status = $r.StatusCode }
+                    } catch {
+                        return @{ ok = $false; error = $_.Exception.Message }
+                    }
+                }
+
+                # Wait for both with progress
+                Write-Host -NoNewline "  GameService..."
+                $gsJob | Wait-Job | Out-Null
+                $gsResult = Receive-Job $gsJob
+                if ($gsResult.ok) {
+                    Write-Host "  $($gsResult.status)" -ForegroundColor Green
+                } else {
+                    Write-Host "  failed to wake" -ForegroundColor Red
+                }
+                $gsJob | Remove-Job -Force
+
+                Write-Host -NoNewline "  React UI...   "
+                $uiJob | Wait-Job | Out-Null
+                $uiResult = Receive-Job $uiJob
+                if ($uiResult.ok) {
+                    Write-Host "  responding" -ForegroundColor Green
+                } else {
+                    Write-Host "  failed to wake" -ForegroundColor Red
+                }
+                $uiJob | Remove-Job -Force
+
+                # Summary
+                Write-Host ""
+                $allOk = $gsResult.ok -and $uiResult.ok -and ($dbStatus -eq "Online")
+                if ($allOk) {
+                    Write-Host "All services running!" -ForegroundColor Green
+                } else {
+                    Write-Host "Some services may still be starting. Run './catan.ps1 azure doctor' to check." -ForegroundColor Yellow
+                }
+                Write-Host ""
+                Write-Host "  WebUI:       $uiUrl" -ForegroundColor Gray
+                Write-Host "  GameService: $gsUrl" -ForegroundColor Gray
+            }
             "clean" {
                 Write-Host "Cleaning all Azure resources..." -ForegroundColor Yellow
                 Write-Host ""
@@ -2439,6 +2529,7 @@ switch ($Verb) {
                 Write-Host "       ./catan.ps1 azure <target> <verb>" -ForegroundColor Yellow
                 Write-Host ""
                 Write-Host "Verbs (operate on all resources):" -ForegroundColor Yellow
+                Write-Host "  start       - Wake all services (resume DB, warm up apps)"
                 Write-Host "  install     - Create all Azure resources (idempotent)"
                 Write-Host "  deploy      - Deploy everything to Azure"
                 Write-Host "  doctor      - Check health of all Azure resources"
@@ -2534,6 +2625,7 @@ switch ($Verb) {
         Write-Host "  ./catan.ps1 dependencies clean   - Remove/reset dependencies"
         Write-Host ""
         Write-Host "Azure:" -ForegroundColor Yellow
+        Write-Host "  ./catan.ps1 azure start      - Wake all services (resume DB, warm apps)"
         Write-Host "  ./catan.ps1 azure doctor     - Check Azure deployment health"
         Write-Host "  ./catan.ps1 azure install    - Create all Azure resources"
         Write-Host "  ./catan.ps1 azure deploy     - Deploy everything to Azure"
