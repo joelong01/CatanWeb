@@ -84,7 +84,7 @@ export interface GameBoardProps {
   /** Gap between hexes - default 2 */
   gap?: number;
   /** Callback when a tile is clicked */
-  onTileClick?: (tile: TileModel) => void;
+  onTileClick?: (tile: TileModel, clientX: number, clientY: number) => void;
   /** Callback when a tile is right-clicked (e.g., robber placement) */
   onTileRightClick?: (tile: TileModel, event: React.MouseEvent) => void;
   /** Set of highlighted tile keys (for dice roll highlighting) */
@@ -928,7 +928,7 @@ export function GameBoard({
       }
 
       // Tile-level left-click (or fallthrough)
-      onTileClick?.(tile);
+      onTileClick?.(tile, clientX ?? 0, clientY ?? 0);
     },
     [onTileClick, onTileRightClick, onBuildingClick, onRoadClick]
   );
@@ -1103,7 +1103,7 @@ export function GameBoard({
         setIsPanningForCursor(false);
       } else if (!state.longPressFired) {
         // Not panning, not long-press → dispatch as click
-        dispatchInteraction(state.hitTarget, 'left');
+        dispatchInteraction(state.hitTarget, 'left', e.clientX, e.clientY);
       }
 
       dragStateRef.current = null;

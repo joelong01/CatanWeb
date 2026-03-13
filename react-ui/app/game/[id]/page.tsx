@@ -544,13 +544,10 @@ export default function GamePage(): React.ReactElement {
     ]
   );
 
-  // Left-click handler for robber placement (centers menu on screen)
+  // Left-click handler for robber placement (menu at click position)
   const handleTileClick = useCallback(
-    (tile: TileModel) => {
-      showRobberMenu(tile, {
-        x: window.innerWidth / 2,
-        y: window.innerHeight / 2,
-      });
+    (tile: TileModel, clientX: number, clientY: number) => {
+      showRobberMenu(tile, { x: clientX, y: clientY });
     },
     [showRobberMenu]
   );
