@@ -490,9 +490,9 @@ export default function GamePage(): React.ReactElement {
     [buildings, players, currentPlayer?.id]
   );
 
-  // Tile right-click handler for robber movement (matches Blazor: right-click shows menu)
-  const handleTileRightClick = useCallback(
-    (tile: TileModel, event: React.MouseEvent) => {
+  // Validate and show robber target menu for a tile click
+  const showRobberMenu = useCallback(
+    (tile: TileModel, position: { x: number; y: number }) => {
       // Only handle during MustMoveRobber state
       if (gameState !== 'MustMoveRobber') return;
 
@@ -519,7 +519,7 @@ export default function GamePage(): React.ReactElement {
       const targetPlayers = getPlayersWithBuildingsOnTile(coords);
 
       console.log(
-        '[GamePage] Tile right-clicked for robber:',
+        '[GamePage] Tile clicked for robber:',
         coords,
         'targets:',
         targetPlayers.length,
@@ -533,7 +533,7 @@ export default function GamePage(): React.ReactElement {
       setPendingRobberCoords(coords);
       setPendingRobberTile(tile);
       setRobberTargetPlayers(targetPlayers);
-      setRobberMenuPosition({ x: event.clientX, y: event.clientY });
+      setRobberMenuPosition(position);
     },
     [
       gameState,
@@ -542,6 +542,25 @@ export default function GamePage(): React.ReactElement {
       currentPlayer?.id,
       currentPlayer?.name,
     ]
+  );
+
+  // Left-click handler for robber placement (centers menu on screen)
+  const handleTileClick = useCallback(
+    (tile: TileModel) => {
+      showRobberMenu(tile, {
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      });
+    },
+    [showRobberMenu]
+  );
+
+  // Right-click handler for robber placement (menu at click position)
+  const handleTileRightClick = useCallback(
+    (tile: TileModel, event: React.MouseEvent) => {
+      showRobberMenu(tile, { x: event.clientX, y: event.clientY });
+    },
+    [showRobberMenu]
   );
 
   // Handler for selecting a robber target from the menu
@@ -859,6 +878,7 @@ export default function GamePage(): React.ReactElement {
           gap={1}
           onBuildingClick={handleBuildingClick}
           onRoadClick={handleRoadClick}
+          onTileClick={handleTileClick}
           onTileRightClick={handleTileRightClick}
           hexCenterRef={hexCenterRef}
         />
