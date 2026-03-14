@@ -897,7 +897,7 @@ export function GameBoard({
   );
 
   const dispatchInteraction = useCallback(
-    (target: HitTarget, button: 'left' | 'right', clientX?: number, clientY?: number) => {
+    (target: HitTarget, button: 'left' | 'right', clientX: number, clientY: number) => {
       if (target.type === 'none') return;
 
       const tile = target.tile;
@@ -907,18 +907,6 @@ export function GameBoard({
 
       // Right-click always goes to the tile (robber placement, etc.)
       if (button === 'right') {
-        if (clientX == null || clientY == null) {
-          if (process.env.NODE_ENV !== 'production') {
-            // Missing coordinates would misplace context menus; treat as a programming error.
-            // All current call sites are expected to pass real coordinates.
-            // eslint-disable-next-line no-console
-            console.error('dispatchInteraction: right-click called without clientX/clientY', {
-              target,
-            });
-          }
-          return;
-        }
-
         // Create a real DOM MouseEvent with coordinates for menu positioning
         const nativeEvent = new MouseEvent('contextmenu', {
           clientX,
@@ -950,18 +938,6 @@ export function GameBoard({
       }
 
       // Tile-level left-click (or fallthrough)
-      if (clientX == null || clientY == null) {
-        if (process.env.NODE_ENV !== 'production') {
-          // Missing coordinates would misplace click-positioned UI; treat as a programming error.
-          // All current call sites are expected to pass real coordinates.
-          // eslint-disable-next-line no-console
-          console.error('dispatchInteraction: left-click called without clientX/clientY', {
-            target,
-          });
-        }
-        return;
-      }
-
       onTileClick?.(tile, clientX, clientY);
     },
     [onTileClick, onTileRightClick, onBuildingClick, onRoadClick]
