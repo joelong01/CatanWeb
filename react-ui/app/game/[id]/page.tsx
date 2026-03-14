@@ -490,6 +490,25 @@ export default function GamePage(): React.ReactElement {
     [buildings, players, currentPlayer?.id]
   );
 
+  // Clamp robber menu position so it stays within the viewport bounds
+  const clampRobberMenuPosition = (position: { x: number; y: number }) => {
+    if (typeof window === 'undefined') {
+      return position;
+    }
+
+    const margin = 12; // small padding from window edges
+    const menuMinWidth = 260; // estimated/minimum robber menu width
+    const menuMinHeight = 200; // estimated/minimum robber menu height
+
+    const maxX = Math.max(margin, window.innerWidth - menuMinWidth - margin);
+    const maxY = Math.max(margin, window.innerHeight - menuMinHeight - margin);
+
+    return {
+      x: Math.min(Math.max(position.x, margin), maxX),
+      y: Math.min(Math.max(position.y, margin), maxY),
+    };
+  };
+
   // Validate and show robber target menu for a tile click
   const showRobberMenu = useCallback(
     (tile: TileModel, position: { x: number; y: number }) => {
@@ -529,11 +548,13 @@ export default function GamePage(): React.ReactElement {
         currentPlayer?.name
       );
 
+      const clampedPosition = clampRobberMenuPosition(position);
+
       // Always show menu (matches Blazor behavior - menu has "Nobody" option)
       setPendingRobberCoords(coords);
       setPendingRobberTile(tile);
       setRobberTargetPlayers(targetPlayers);
-      setRobberMenuPosition(position);
+      setRobberMenuPosition(clampedPosition);
     },
     [
       gameState,
