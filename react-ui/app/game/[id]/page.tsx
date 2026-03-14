@@ -563,6 +563,7 @@ export default function GamePage(): React.ReactElement {
       getPlayersWithBuildingsOnTile,
       currentPlayer?.id,
       currentPlayer?.name,
+      clampRobberMenuPosition,
     ]
   );
 
