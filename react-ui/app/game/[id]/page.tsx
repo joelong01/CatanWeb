@@ -497,8 +497,8 @@ export default function GamePage(): React.ReactElement {
     }
 
     const margin = 12; // small padding from window edges
-    const menuMinWidth = 260; // estimated/minimum robber menu width
-    const menuMinHeight = 200; // estimated/minimum robber menu height
+    const menuMinWidth = 200; // minimum robber menu width (keep in sync with RobberTargetMenu min-w-[200px])
+    const menuMinHeight = 200; // estimated/minimum robber menu height; actual height is dynamic
 
     const maxX = Math.max(margin, window.innerWidth - menuMinWidth - margin);
     const maxY = Math.max(margin, window.innerHeight - menuMinHeight - margin);
