@@ -83,7 +83,12 @@ export interface GameBoardProps {
   hexSize?: number;
   /** Gap between hexes - default 2 */
   gap?: number;
-  /** Callback when a tile is clicked */
+  /**
+   * Callback when a tile is clicked.
+   *
+   * `clientX`/`clientY` are client (viewport) coordinates for the click position,
+   * suitable for positioning click-based UI such as context menus or popovers.
+   */
   onTileClick?: (tile: TileModel, clientX: number, clientY: number) => void;
   /** Callback when a tile is right-clicked (e.g., robber placement) */
   onTileRightClick?: (tile: TileModel, event: React.MouseEvent) => void;
