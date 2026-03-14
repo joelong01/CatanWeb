@@ -66,7 +66,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>): React.ReactElement {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         {isDev ? (
           // Dev: runtime @font-face via API route (no-cache, always reads from disk)

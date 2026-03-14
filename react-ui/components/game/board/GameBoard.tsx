@@ -907,8 +907,14 @@ export function GameBoard({
 
       // Right-click always goes to the tile (robber placement, etc.)
       if (button === 'right') {
-        // Invoke right-click handler with tile and click position
-        onTileRightClick?.(tile, clientX, clientY);
+        // Create a real DOM MouseEvent with coordinates for menu positioning
+        const nativeEvent = new MouseEvent('contextmenu', {
+          clientX,
+          clientY,
+          bubbles: true,
+          cancelable: true,
+        });
+        onTileRightClick?.(tile, nativeEvent as unknown as React.MouseEvent);
         return;
       }
 
