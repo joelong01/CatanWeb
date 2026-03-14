@@ -490,7 +490,8 @@ export default function GamePage(): React.ReactElement {
     [buildings, players, currentPlayer?.id]
   );
 
-  // Clamp robber menu position so it stays within the viewport bounds
+  // Roughly clamp robber menu position to keep it away from viewport edges.
+  // Note: Uses estimated menu dimensions; actual height is dynamic so this is best-effort.
   const clampRobberMenuPosition = (position: { x: number; y: number }) => {
     if (typeof window === 'undefined') {
       return position;
@@ -498,7 +499,7 @@ export default function GamePage(): React.ReactElement {
 
     const margin = 12; // small padding from window edges
     const menuMinWidth = 200; // minimum robber menu width (keep in sync with RobberTargetMenu min-w-[200px])
-    const menuMinHeight = 200; // estimated/minimum robber menu height; actual height is dynamic
+    const menuMinHeight = 200; // estimated/minimum robber menu height; actual height is dynamic and may be larger
 
     const maxX = Math.max(margin, window.innerWidth - menuMinWidth - margin);
     const maxY = Math.max(margin, window.innerHeight - menuMinHeight - margin);
