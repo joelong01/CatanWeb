@@ -902,8 +902,20 @@ export function GameBoard({
 
       // Right-click always goes to the tile (robber placement, etc.)
       if (button === 'right') {
+        if (clientX == null || clientY == null) {
+          if (process.env.NODE_ENV !== 'production') {
+            // Missing coordinates would misplace context menus; treat as a programming error.
+            // All current call sites are expected to pass real coordinates.
+            // eslint-disable-next-line no-console
+            console.error('dispatchInteraction: right-click called without clientX/clientY', {
+              target,
+            });
+          }
+          return;
+        }
+
         // Synthesize a minimal MouseEvent with real coordinates for menu positioning
-        const syntheticEvent = { clientX: clientX ?? 0, clientY: clientY ?? 0 } as React.MouseEvent;
+        const syntheticEvent = { clientX, clientY } as React.MouseEvent;
         onTileRightClick?.(tile, syntheticEvent);
         return;
       }
@@ -928,7 +940,19 @@ export function GameBoard({
       }
 
       // Tile-level left-click (or fallthrough)
-      onTileClick?.(tile, clientX ?? 0, clientY ?? 0);
+      if (clientX == null || clientY == null) {
+        if (process.env.NODE_ENV !== 'production') {
+          // Missing coordinates would misplace click-positioned UI; treat as a programming error.
+          // All current call sites are expected to pass real coordinates.
+          // eslint-disable-next-line no-console
+          console.error('dispatchInteraction: left-click called without clientX/clientY', {
+            target,
+          });
+        }
+        return;
+      }
+
+      onTileClick?.(tile, clientX, clientY);
     },
     [onTileClick, onTileRightClick, onBuildingClick, onRoadClick]
   );
