@@ -2459,6 +2459,13 @@ function Deploy-ReactStaging {
         return $false
     }
 
+    # Ensure staging slot is configured for Node.js (idempotent)
+    # After a production slot swap, the staging slot inherits the production runtime (DOTNETCORE:9.0)
+    # which cannot run the Next.js standalone server. Reset to NODE|22-lts on every deploy.
+    Write-Log -Level "INFO" -Message "Ensuring staging slot is configured for Node.js..."
+    Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --slot staging --linux-fx-version `"NODE|22-lts`" --startup-file `"node server.js`"" -SuppressOutput
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot staging --settings WEBSITE_NODE_DEFAULT_VERSION=~22 SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
+
     # Skip if already current (unless -Force)
     $currentCommit = Get-GitCommitHash
     if (-not $Force) {
