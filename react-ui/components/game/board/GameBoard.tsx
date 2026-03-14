@@ -919,9 +919,14 @@ export function GameBoard({
           return;
         }
 
-        // Synthesize a minimal MouseEvent with real coordinates for menu positioning
-        const syntheticEvent = { clientX, clientY } as React.MouseEvent;
-        onTileRightClick?.(tile, syntheticEvent);
+        // Create a real DOM MouseEvent with coordinates for menu positioning
+        const nativeEvent = new MouseEvent('contextmenu', {
+          clientX,
+          clientY,
+          bubbles: true,
+          cancelable: true,
+        });
+        onTileRightClick?.(tile, nativeEvent as unknown as React.MouseEvent);
         return;
       }
 
