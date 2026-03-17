@@ -1511,6 +1511,13 @@ function Get-DatabaseDoctor {
             if ($health.databaseDiagnostics -and $health.databaseDiagnostics.connected -eq $true) {
                 $result.checks.gameServiceConnected = $true
                 $result.checks.managedIdentityUser = $true
+                # A successful connection proves the DB is online — the Azure control-plane
+                # status (queried earlier) may still show "Paused" due to lag or because the
+                # health check itself woke the database.
+                if ($result.dbStatus -eq "Paused") {
+                    $result.dbStatus = "Online"
+                    $result.note = $null
+                }
             }
             else {
                 $result.checks.gameServiceConnected = $false
@@ -2748,9 +2755,14 @@ function Get-GameServiceDoctor {
             $result.deployReason = "Deployed code missing build time tracking"
         }
         elseif ($result.currentCommit -ne $result.deployedCommit) {
-            # Commit changed - definitely needs deploy
-            $result.needsDeploy = $true
-            $result.deployReason = "Git commit mismatch"
+            # Commits differ — only flag NEEDS DEPLOY if backend files actually changed.
+            # Commits that only modify scripts/docs/workflows don't require a redeploy.
+            $changedFiles = @(git -C $ProjectRoot diff --name-only "$($result.deployedCommit)..$($result.currentCommit)" 2>$null)
+            $deployableChanges = @($changedFiles | Where-Object { $_ -match '^(Catan3\.GameService|Catan3\.Shared)/' })
+            if ($deployableChanges.Count -gt 0) {
+                $result.needsDeploy = $true
+                $result.deployReason = "Git commit mismatch"
+            }
         }
         # Note: If commits match but code is uncommitted, -Force flag can be used to redeploy
 
@@ -2910,7 +2922,12 @@ function Get-UIDoctor {
             $result.needsDeploy = $true
         }
         elseif ($result.currentCommit -ne $result.deployedCommit) {
-            $result.needsDeploy = $true
+            # Commits differ — only flag NEEDS DEPLOY if frontend files actually changed.
+            $changedFiles = @(git -C $ProjectRoot diff --name-only "$($result.deployedCommit)..$($result.currentCommit)" 2>$null)
+            $deployableChanges = @($changedFiles | Where-Object { $_ -match '^react-ui/' })
+            if ($deployableChanges.Count -gt 0) {
+                $result.needsDeploy = $true
+            }
         }
 
         # --- HTTP health check ---
