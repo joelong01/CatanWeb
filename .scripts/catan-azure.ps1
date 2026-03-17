@@ -3169,8 +3169,15 @@ function Show-DoctorResult {
             Write-Host -NoNewline "MATCH".PadRight($col2) -ForegroundColor Green
             Write-Host "$($Result.currentCommit)" -ForegroundColor Gray
         } elseif ($Result.deployedCommit -and $Result.deployedCommit -ne "local") {
-            Write-Host -NoNewline "MISMATCH".PadRight($col2) -ForegroundColor Yellow
-            Write-Host "deployed: $($Result.deployedCommit) -> current: $($Result.currentCommit)" -ForegroundColor Gray
+            if ($Result.needsDeploy) {
+                # Commits differ and deployable files changed — action required
+                Write-Host -NoNewline "MISMATCH".PadRight($col2) -ForegroundColor Yellow
+                Write-Host "deployed: $($Result.deployedCommit) -> current: $($Result.currentCommit)" -ForegroundColor Gray
+            } else {
+                # Commits differ but no deployable files changed — informational only
+                Write-Host -NoNewline "OK".PadRight($col2) -ForegroundColor Green
+                Write-Host "deployed: $($Result.deployedCommit) (current: $($Result.currentCommit), no deployable changes)" -ForegroundColor Gray
+            }
         } else {
             Write-Host -NoNewline "NONE".PadRight($col2) -ForegroundColor Yellow
             Write-Host "not yet deployed" -ForegroundColor Gray
