@@ -83,10 +83,15 @@ export interface GameBoardProps {
   hexSize?: number;
   /** Gap between hexes - default 2 */
   gap?: number;
-  /** Callback when a tile is clicked */
-  onTileClick?: (tile: TileModel) => void;
+  /**
+   * Callback when a tile is clicked.
+   *
+   * `clientX`/`clientY` are client (viewport) coordinates for the click position,
+   * suitable for positioning click-based UI such as context menus or popovers.
+   */
+  onTileClick?: (tile: TileModel, clientX: number, clientY: number) => void;
   /** Callback when a tile is right-clicked (e.g., robber placement) */
-  onTileRightClick?: (tile: TileModel, event: React.MouseEvent) => void;
+  onTileRightClick?: (tile: TileModel, clientX: number, clientY: number) => void;
   /** Set of highlighted tile keys (for dice roll highlighting) */
   highlightedTiles?: Set<string>;
   /** Callback when a buildable building spot is clicked */
@@ -892,7 +897,7 @@ export function GameBoard({
   );
 
   const dispatchInteraction = useCallback(
-    (target: HitTarget, button: 'left' | 'right', clientX?: number, clientY?: number) => {
+    (target: HitTarget, button: 'left' | 'right', clientX: number, clientY: number) => {
       if (target.type === 'none') return;
 
       const tile = target.tile;
@@ -902,9 +907,7 @@ export function GameBoard({
 
       // Right-click always goes to the tile (robber placement, etc.)
       if (button === 'right') {
-        // Synthesize a minimal MouseEvent with real coordinates for menu positioning
-        const syntheticEvent = { clientX: clientX ?? 0, clientY: clientY ?? 0 } as React.MouseEvent;
-        onTileRightClick?.(tile, syntheticEvent);
+        onTileRightClick?.(tile, clientX, clientY);
         return;
       }
 
@@ -928,7 +931,7 @@ export function GameBoard({
       }
 
       // Tile-level left-click (or fallthrough)
-      onTileClick?.(tile);
+      onTileClick?.(tile, clientX, clientY);
     },
     [onTileClick, onTileRightClick, onBuildingClick, onRoadClick]
   );
@@ -1103,7 +1106,7 @@ export function GameBoard({
         setIsPanningForCursor(false);
       } else if (!state.longPressFired) {
         // Not panning, not long-press → dispatch as click
-        dispatchInteraction(state.hitTarget, 'left');
+        dispatchInteraction(state.hitTarget, 'left', e.clientX, e.clientY);
       }
 
       dragStateRef.current = null;

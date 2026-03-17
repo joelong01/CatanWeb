@@ -490,9 +490,29 @@ export default function GamePage(): React.ReactElement {
     [buildings, players, currentPlayer?.id]
   );
 
-  // Tile right-click handler for robber movement (matches Blazor: right-click shows menu)
-  const handleTileRightClick = useCallback(
-    (tile: TileModel, event: React.MouseEvent) => {
+  // Roughly clamp robber menu position to keep it away from viewport edges.
+  // Note: Uses estimated menu dimensions; actual height is dynamic so this is best-effort.
+  const clampRobberMenuPosition = useCallback((position: { x: number; y: number }) => {
+    if (typeof window === 'undefined') {
+      return position;
+    }
+
+    const margin = 12; // small padding from window edges
+    const menuMinWidth = 200; // minimum robber menu width (keep in sync with RobberTargetMenu min-w-[200px])
+    const menuMinHeight = 200; // estimated/minimum robber menu height; actual height is dynamic and may be larger
+
+    const maxX = Math.max(margin, window.innerWidth - menuMinWidth - margin);
+    const maxY = Math.max(margin, window.innerHeight - menuMinHeight - margin);
+
+    return {
+      x: Math.min(Math.max(position.x, margin), maxX),
+      y: Math.min(Math.max(position.y, margin), maxY),
+    };
+  }, []);
+
+  // Validate and show robber target menu for a tile click
+  const showRobberMenu = useCallback(
+    (tile: TileModel, position: { x: number; y: number }) => {
       // Only handle during MustMoveRobber state
       if (gameState !== 'MustMoveRobber') return;
 
@@ -519,7 +539,7 @@ export default function GamePage(): React.ReactElement {
       const targetPlayers = getPlayersWithBuildingsOnTile(coords);
 
       console.log(
-        '[GamePage] Tile right-clicked for robber:',
+        '[GamePage] Tile clicked for robber:',
         coords,
         'targets:',
         targetPlayers.length,
@@ -529,11 +549,13 @@ export default function GamePage(): React.ReactElement {
         currentPlayer?.name
       );
 
+      const clampedPosition = clampRobberMenuPosition(position);
+
       // Always show menu (matches Blazor behavior - menu has "Nobody" option)
       setPendingRobberCoords(coords);
       setPendingRobberTile(tile);
       setRobberTargetPlayers(targetPlayers);
-      setRobberMenuPosition({ x: event.clientX, y: event.clientY });
+      setRobberMenuPosition(clampedPosition);
     },
     [
       gameState,
@@ -541,7 +563,24 @@ export default function GamePage(): React.ReactElement {
       getPlayersWithBuildingsOnTile,
       currentPlayer?.id,
       currentPlayer?.name,
+      clampRobberMenuPosition,
     ]
+  );
+
+  // Left-click handler for robber placement (menu at click position)
+  const handleTileClick = useCallback(
+    (tile: TileModel, clientX: number, clientY: number) => {
+      showRobberMenu(tile, { x: clientX, y: clientY });
+    },
+    [showRobberMenu]
+  );
+
+  // Right-click handler for robber placement (menu at click position)
+  const handleTileRightClick = useCallback(
+    (tile: TileModel, clientX: number, clientY: number) => {
+      showRobberMenu(tile, { x: clientX, y: clientY });
+    },
+    [showRobberMenu]
   );
 
   // Handler for selecting a robber target from the menu
@@ -859,6 +898,7 @@ export default function GamePage(): React.ReactElement {
           gap={1}
           onBuildingClick={handleBuildingClick}
           onRoadClick={handleRoadClick}
+          onTileClick={handleTileClick}
           onTileRightClick={handleTileRightClick}
           hexCenterRef={hexCenterRef}
         />
