@@ -2090,8 +2090,14 @@ function Get-GitHubDoctor {
 #>
 function Get-GitCommitHash {
     try {
-        $hash = git -C $ProjectRoot rev-parse --short HEAD 2>$null
-        return $hash.Trim()
+        # Compare against origin/main (what CI/CD deploys) rather than the
+        # checked-out HEAD, so the doctor doesn't report NEEDS DEPLOY when
+        # the user is simply on a feature branch.
+        $hash = git -C $ProjectRoot rev-parse --short origin/main 2>$null
+        if ([string]::IsNullOrWhiteSpace($hash)) { return "unknown" }
+        # rev-parse always returns one line; Select-Object guards against
+        # edge cases where $hash is an array, which would cause .Trim() to throw.
+        return ($hash | Select-Object -First 1).Trim()
     }
     catch {
         return "unknown"
