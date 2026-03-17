@@ -7,8 +7,119 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  # Detect which components changed so we only deploy what's needed
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - id: filter
+        run: |
+          # Compare with parent commit to detect changed paths
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Backend: GameService or Shared code changes
+          if echo "$CHANGED" | grep -qE '^(Catan3\.GameService|Catan3\.Shared)/'; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Frontend: React UI changes
+          if echo "$CHANGED" | grep -qE '^react-ui/'; then
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "frontend=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # On workflow_dispatch, deploy everything
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy-gameservice:
+    name: Deploy GameService (production)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy GameService to production
+        shell: pwsh
+        run: |
+          ./.scripts/catan-azure.ps1 game-service deploy -Force -TraceLevel INFO
+
+      - name: Verify GameService production health
+        run: |
+          echo "Waiting for GameService production to start..."
+          for i in $(seq 1 60); do
+            RESPONSE=$(curl -sf -m 10 \
+              https://catan-api.azurewebsites.net/health 2>/dev/null || echo "")
+            if [ -n "$RESPONSE" ]; then
+              STATUS=$(echo "$RESPONSE" | jq -r '.status' 2>/dev/null || echo "")
+              if [ "$STATUS" = "healthy" ]; then
+                echo "GameService production healthy after $((i*10))s"
+                echo "$RESPONSE" | jq .
+                exit 0
+              fi
+            fi
+            echo "GameService production ($((i*10))s): waiting..."
+            sleep 10
+          done
+          echo "::error::GameService production did not become healthy within 10 minutes"
+          exit 1
+
+  deploy-database:
+    name: Ensure database access (production)
+    needs: [changes, deploy-gameservice]
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify database access
+        shell: pwsh
+        run: |
+          ./.scripts/catan-azure.ps1 database deploy -TraceLevel INFO
+
+  deploy-react:
     name: Deploy React + Swap
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -75,11 +186,26 @@ jobs:
           echo "::warning::Production did not respond within 3 minutes after swap"
           exit 1
 
-      - name: Summary
-        if: always()
+  verify:
+    name: Verify production
+    needs: [changes, deploy-gameservice, deploy-react, deploy-database]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Production summary
         run: |
-          echo "=== Deployment Summary ==="
-          echo "Production: https://catan.azurewebsites.net"
-          echo "Staging:    https://catan-staging.azurewebsites.net (rollback)"
+          echo "=== Production Deployment Summary ==="
           echo ""
-          echo "To rollback: az webapp deployment slot swap --name catan --resource-group rg-catan --slot staging --target-slot production"
+          echo "Backend deployed: ${{ needs.changes.outputs.backend }}"
+          echo "Frontend deployed: ${{ needs.changes.outputs.frontend }}"
+          echo ""
+          echo "=== Production URLs ==="
+          echo "React UI:    https://catan.azurewebsites.net"
+          echo "GameService: https://catan-api.azurewebsites.net"
+          echo ""
+          echo "=== Health Check ==="
+          curl -sf https://catan-api.azurewebsites.net/health | jq . || echo "GameService not responding"
+          echo ""
+          curl -sf -o /dev/null -w "React UI: HTTP %{http_code}\n" https://catan.azurewebsites.net || echo "React UI not responding"
+          echo ""
+          echo "To rollback React: az webapp deployment slot swap --name catan --resource-group rg-catan --slot staging --target-slot production"
