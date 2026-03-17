@@ -492,7 +492,7 @@ export default function GamePage(): React.ReactElement {
 
   // Roughly clamp robber menu position to keep it away from viewport edges.
   // Note: Uses estimated menu dimensions; actual height is dynamic so this is best-effort.
-  const clampRobberMenuPosition = (position: { x: number; y: number }) => {
+  const clampRobberMenuPosition = useCallback((position: { x: number; y: number }) => {
     if (typeof window === 'undefined') {
       return position;
     }
@@ -508,7 +508,7 @@ export default function GamePage(): React.ReactElement {
       x: Math.min(Math.max(position.x, margin), maxX),
       y: Math.min(Math.max(position.y, margin), maxY),
     };
-  };
+  }, []);
 
   // Validate and show robber target menu for a tile click
   const showRobberMenu = useCallback(
@@ -577,8 +577,8 @@ export default function GamePage(): React.ReactElement {
 
   // Right-click handler for robber placement (menu at click position)
   const handleTileRightClick = useCallback(
-    (tile: TileModel, event: React.MouseEvent) => {
-      showRobberMenu(tile, { x: event.clientX, y: event.clientY });
+    (tile: TileModel, clientX: number, clientY: number) => {
+      showRobberMenu(tile, { x: clientX, y: clientY });
     },
     [showRobberMenu]
   );
