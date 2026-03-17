@@ -91,7 +91,7 @@ export interface GameBoardProps {
    */
   onTileClick?: (tile: TileModel, clientX: number, clientY: number) => void;
   /** Callback when a tile is right-clicked (e.g., robber placement) */
-  onTileRightClick?: (tile: TileModel, event: React.MouseEvent) => void;
+  onTileRightClick?: (tile: TileModel, clientX: number, clientY: number) => void;
   /** Set of highlighted tile keys (for dice roll highlighting) */
   highlightedTiles?: Set<string>;
   /** Callback when a buildable building spot is clicked */
@@ -907,14 +907,7 @@ export function GameBoard({
 
       // Right-click always goes to the tile (robber placement, etc.)
       if (button === 'right') {
-        // Create a real DOM MouseEvent with coordinates for menu positioning
-        const nativeEvent = new MouseEvent('contextmenu', {
-          clientX,
-          clientY,
-          bubbles: true,
-          cancelable: true,
-        });
-        onTileRightClick?.(tile, nativeEvent as unknown as React.MouseEvent);
+        onTileRightClick?.(tile, clientX, clientY);
         return;
       }
 
