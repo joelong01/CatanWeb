@@ -870,35 +870,6 @@ namespace Catan3.Shared.GameLogic
                     return false;
             }
         }
-        public GameModel NewGame(GameType selectedGame, IList<string> playerIds)
-        {
-            // Get the appropriate game metadata based on game type
-            IGameMetadata gameInfo = selectedGame == GameType.Regular
-                ? RegularBoardInfo.Default
-                : ExpansionBoardInfo.Default;
-
-            var gameModel = GameModelExtensions.CreateNew(gameInfo, playerIds, "New Game");
-            _gameLog.GameType = selectedGame;
-
-            // Shuffle the board with the new random seed
-            gameModel.Shuffle();
-
-            _gameLog.GameType = selectedGame;
-            gameModel.GameType = selectedGame;
-            gameModel.GameState = Shared.Models.GameState.PickingBoard;
-            return gameModel;
-        }
-
-        public GameModel FromGameModel(GameModel gameModel)
-        {
-
-            // Shuffle the board with the new random seed
-            gameModel.Shuffle();
-
-
-            gameModel.GameState = Shared.Models.GameState.PickingBoard;
-            return gameModel;
-        }
         /// <summary>
         ///     Loads the game from the file path.  It can be a ".catan" file (compressed JSON) or a ".catan_test" file (uncompressed JSON).
         ///     if it is a test, we need to pull out the GameModel (ignore the array of Actions) and then load that.

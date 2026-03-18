@@ -169,14 +169,6 @@ namespace Catan3.GameService.Controllers
             return new GameStateMachine(gameLog, gameLogger, _persistenceService);
         }
 
-        /// <summary>
-        /// Gets an existing GameStateMachine for the specified gameId
-        /// </summary>
-        public static GameStateMachine GetGameStateMachine(string gameId)
-        {
-            return GameStateMachineRegistry.GetGameStateMachine(gameId);
-        }
-
         [HttpPost("game/action")]
         public Task<IActionResult> ExecuteGameAction([FromBody] JsonElement request)
         {
@@ -2364,7 +2356,7 @@ namespace Catan3.GameService.Controllers
                     try
                     {
                         _logger.LogEvent("Database Migrate", "Seeding default game templates...");
-                        await DatabaseSeeder.SeedTemplatesAsync(_dbContext, _logger);
+                        await DatabaseSeeder.UpsertSystemTemplatesAsync(_dbContext, _logger);
                         _logger.LogEvent("Database Migrate", "Default game templates seeded");
                     }
                     catch (Exception ex)

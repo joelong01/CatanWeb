@@ -97,20 +97,10 @@ public static class DatabaseSeeder
             logger?.LogInformation("[SEEDER] SeedRecordingsAsync completed");
         }
 
-        // Seed game templates if not already seeded
-        logger?.LogInformation("[SEEDER] Checking if game templates need to be seeded...");
-        var hasTemplates = await context.GameTemplates.AnyAsync();
-        logger?.LogInformation("[SEEDER] GameTemplates.Any() = {HasTemplates}", hasTemplates);
-        if (!hasTemplates)
-        {
-            logger?.LogInformation("[SEEDER] Seeding game templates...");
-            await SeedTemplatesAsync(context, logger);
-            logger?.LogInformation("[SEEDER] SeedTemplatesAsync completed");
-        }
-        else
-        {
-            logger?.LogInformation("[SEEDER] Game templates already seeded, skipping");
-        }
+        // Upsert system game templates on every startup so board data changes take effect on deploy
+        logger?.LogInformation("[SEEDER] Upserting system game templates...");
+        await UpsertSystemTemplatesAsync(context, logger);
+        logger?.LogInformation("[SEEDER] UpsertSystemTemplatesAsync completed");
 
         logger?.LogInformation("[SEEDER] Database seeding complete");
     }
@@ -335,44 +325,45 @@ public static class DatabaseSeeder
         logger?.LogInformation("Recordings seeding complete.");
     }
 
-    internal static async Task SeedTemplatesAsync(CatanDbContext context, ILogger? logger = null)
+    internal static async Task UpsertSystemTemplatesAsync(CatanDbContext context, ILogger? logger = null)
     {
         var now = DateTime.UtcNow;
 
-        var regularTemplate = BuildTemplateFromMetadata(
-            RegularBoardInfo.Default, "regular", "Regular Game", "Base");
-        var expansionTemplate = BuildTemplateFromMetadata(
-            ExpansionBoardInfo.Default, "expansion", "Expansion Game", "Expansion");
+        (string Id, string Name, string Category, IGameMetadata Metadata)[] candidates =
+        [
+            ("regular",   "Regular Game",   "Base",      RegularBoardInfo.Default),
+            ("expansion", "Expansion Game", "Expansion", ExpansionBoardInfo.Default),
+        ];
 
-        var entities = new[]
+        int count = 0;
+        foreach (var (id, name, category, metadata) in candidates)
         {
-            new GameTemplateEntity
+            var data = JsonHelper.Serialize(BuildTemplateFromMetadata(metadata, id, name, category));
+            var existing = await context.GameTemplates.FindAsync(id);
+            if (existing is null)
             {
-                Id = "regular",
-                Name = "Regular Game",
-                Category = "Base",
-                IsSystemTemplate = true,
-                Version = 1,
-                Data = JsonHelper.Serialize(regularTemplate),
-                CreatedAt = now,
-                UpdatedAt = now
-            },
-            new GameTemplateEntity
-            {
-                Id = "expansion",
-                Name = "Expansion Game",
-                Category = "Expansion",
-                IsSystemTemplate = true,
-                Version = 1,
-                Data = JsonHelper.Serialize(expansionTemplate),
-                CreatedAt = now,
-                UpdatedAt = now
+                context.GameTemplates.Add(new GameTemplateEntity
+                {
+                    Id = id,
+                    Name = name,
+                    Category = category,
+                    IsSystemTemplate = true,
+                    Version = 1,
+                    Data = data,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
             }
-        };
+            else
+            {
+                existing.Data = data;
+                existing.UpdatedAt = now;
+            }
+            count++;
+        }
 
-        context.GameTemplates.AddRange(entities);
         await context.SaveChangesAsync();
-        logger?.LogInformation("  Seeded {Count} game templates (regular, expansion)", entities.Length);
+        logger?.LogInformation("  Updated {Count} system game templates", count);
     }
 
     private static GameTemplateData BuildTemplateFromMetadata(
