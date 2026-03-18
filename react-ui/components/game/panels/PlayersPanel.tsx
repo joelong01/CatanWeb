@@ -17,7 +17,7 @@ import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { useAssetPath } from '@/lib/theme';
 import type { AssetName } from '@/lib/theme/types';
 import type { PlayerModel } from '@/types/generated/models/player-model';
-import { usePlayers, useCurrentTurnPlayerId, usePlayerProfiles } from '@/lib/stores/gameStoreHooks';
+import { usePlayers, useCurrentTurnPlayerId, usePlayerProfiles, useGameState } from '@/lib/stores/gameStoreHooks';
 import { getServiceUrl } from '@/lib/config';
 import {
   createPlayerColorsWithGradient,
@@ -389,6 +389,8 @@ function ScaledPlayersList() {
   const players = usePlayers();
   const currentPlayerId = useCurrentTurnPlayerId();
   const playerProfiles = usePlayerProfiles();
+  const gameState = useGameState();
+  const isGameOver = gameState === 'GameOver';
 
   // Measure content and container, compute scale to fit
   useEffect(() => {
@@ -438,6 +440,7 @@ function ScaledPlayersList() {
             player={player}
             profile={playerProfiles.get(player.id)}
             isCurrentPlayer={player.id === currentPlayerId}
+            isGameOver={isGameOver}
           />
         ))}
       </div>
