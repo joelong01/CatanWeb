@@ -17,7 +17,7 @@ import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { useAssetPath } from '@/lib/theme';
 import type { AssetName } from '@/lib/theme/types';
 import type { PlayerModel } from '@/types/generated/models/player-model';
-import { usePlayers, useCurrentTurnPlayerId, usePlayerProfiles, useGameState } from '@/lib/stores/gameStoreHooks';
+import { usePlayers, useCurrentTurnPlayerId, usePlayerProfiles } from '@/lib/stores/gameStoreHooks';
 import { getServiceUrl } from '@/lib/config';
 import {
   createPlayerColorsWithGradient,
@@ -235,12 +235,16 @@ interface PlayerTileProps {
   player: PlayerModel;
   profile: PlayerProfile | undefined;
   isCurrentPlayer: boolean;
+  isGameOver: boolean;
 }
 
-const PlayerTile = memo(function PlayerTile({ player, profile, isCurrentPlayer }: PlayerTileProps) {
+const PlayerTile = memo(function PlayerTile({
+  player,
+  profile,
+  isCurrentPlayer,
+  isGameOver,
+}: PlayerTileProps) {
   const colors = createColorsFromProfile(profile);
-  const gameState = useGameState();
-  const isGameOver = gameState === 'GameOver';
 
   // Count from spentEntitlementsThisGame - these are placed items
   const spentEntitlements = player.spentEntitlementsThisGame ?? [];
