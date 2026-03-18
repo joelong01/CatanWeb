@@ -25,7 +25,7 @@ Add an inline prefix label in the resource row when the game is over
 
 ## Scope
 
-- **One file changed:** `react-ui/components/game/panels/PlayersPanel.tsx`
+- **One UI code file changed:** `react-ui/components/game/panels/PlayersPanel.tsx`
 - Add `useGameState()` hook call inside `PlayerTile`
 - Swap resource source when `GameOver`
 - Add conditional inline prefix label in the resource row
