@@ -20,15 +20,15 @@ const count = isGameOver
   : player.resourcesThisTurn?.[type] ?? 0;
 ```
 
-Add a label above the resource row ("Resources This Game" vs the normal
-unlabelled turn display) so players know what they're looking at.
+Add an inline prefix label in the resource row when the game is over
+(for example, a `Game:` prefix before the resource icons) so players know what they're looking at.
 
 ## Scope
 
 - **One file changed:** `react-ui/components/game/panels/PlayersPanel.tsx`
 - Add `useGameState()` hook call inside `PlayerTile`
 - Swap resource source when `GameOver`
-- Add conditional label text
+- Add conditional inline prefix label in the resource row
 
 ## What stays the same
 
