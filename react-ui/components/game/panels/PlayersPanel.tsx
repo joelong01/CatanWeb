@@ -17,7 +17,7 @@ import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { useAssetPath } from '@/lib/theme';
 import type { AssetName } from '@/lib/theme/types';
 import type { PlayerModel } from '@/types/generated/models/player-model';
-import { usePlayers, useCurrentTurnPlayerId, usePlayerProfiles } from '@/lib/stores/gameStoreHooks';
+import { usePlayers, useCurrentTurnPlayerId, usePlayerProfiles, useGameState } from '@/lib/stores/gameStoreHooks';
 import { getServiceUrl } from '@/lib/config';
 import {
   createPlayerColorsWithGradient,
@@ -239,6 +239,8 @@ interface PlayerTileProps {
 
 const PlayerTile = memo(function PlayerTile({ player, profile, isCurrentPlayer }: PlayerTileProps) {
   const colors = createColorsFromProfile(profile);
+  const gameState = useGameState();
+  const isGameOver = gameState === 'GameOver';
 
   // Count from spentEntitlementsThisGame - these are placed items
   const spentEntitlements = player.spentEntitlementsThisGame ?? [];
@@ -344,10 +346,14 @@ const PlayerTile = memo(function PlayerTile({ player, profile, isCurrentPlayer }
         </div>
       </div>
 
-      {/* Row 2: Resources This Turn */}
-      <div className="flex gap-0.5 mt-1">
+      {/* Row 2: Resources This Turn (or This Game on GameOver) */}
+      <div className="flex gap-0.5 mt-1 items-center">
+        {isGameOver && (
+          <span className="text-xs text-white/50 mr-0.5 whitespace-nowrap">Game:</span>
+        )}
         {RESOURCE_CARD_CONFIG.map(({ type }) => {
-          const count = player.resourcesThisTurn?.[type] ?? 0;
+          const source = isGameOver ? player.resourcesThisGame : player.resourcesThisTurn;
+          const count = source?.[type] ?? 0;
           const hasHarbor =
             type !== 'goldMine' && type !== 'robber' && ownedHarbors.includes(type as OwnedHarbor);
           return (
