@@ -864,7 +864,12 @@ export default function GamePage(): React.ReactElement {
 
   const { leaveGame } = connection;
   const handleCloseGame = useCallback(async () => {
-    await gameApi.closeGame(gameId);
+    try {
+      await gameApi.closeGame(gameId);
+    } catch (error) {
+      // Log but don't abort — always clear local state so the client isn't stuck
+      console.error('[GamePage] closeGame API failed:', error);
+    }
     await leaveGame();
     clearGameState();
     localStorage.removeItem('current_gameId');
@@ -949,7 +954,7 @@ export default function GamePage(): React.ReactElement {
 
         {/* Copy game toast */}
         {copyToast && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-gray-900/90 text-white text-sm px-4 py-2 rounded-lg z-50 pointer-events-none">
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900/90 text-white text-sm px-4 py-2 rounded-lg z-50 pointer-events-none">
             {copyToast}
           </div>
         )}

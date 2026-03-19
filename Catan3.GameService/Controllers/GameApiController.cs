@@ -747,7 +747,9 @@ namespace Catan3.GameService.Controllers
             }
             catch (GameException)
             {
-                // Not in memory — load from database
+                // GameException from GetGameStateMachine means the game is not in the registry.
+                // This is the only case it throws today (see GameStateMachineRegistry).
+                // Load from database below.
             }
 
             var gameMetadata = await _dbContext.GameSaveMetadata
