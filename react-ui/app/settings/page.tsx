@@ -132,8 +132,14 @@ function StreamDeckDownload(): React.ReactElement {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then((data) => { setMeta(data); setError(false); })
-      .catch(() => { setMeta(null); setError(true); })
+      .then((data) => {
+        setMeta(data);
+        setError(false);
+      })
+      .catch(() => {
+        setMeta(null);
+        setError(true);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -142,9 +148,7 @@ function StreamDeckDownload(): React.ReactElement {
       <div className="flex items-center justify-between py-3 px-4 bg-gray-800/50 rounded-lg">
         <div>
           <span className="text-white font-medium">Stream Deck Plugin</span>
-          {meta?.version && (
-            <span className="text-gray-500 text-sm ml-2">v{meta.version}</span>
-          )}
+          {meta?.version && <span className="text-gray-500 text-sm ml-2">v{meta.version}</span>}
           <p className="text-gray-400 text-sm mt-1">
             Control dice rolls, undo/redo, and navigate game states from your Elgato Stream Deck.
           </p>

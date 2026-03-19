@@ -21,6 +21,8 @@ interface UseGameConnectionOptions {
   gameId?: string;
   /** Auto-connect on mount (default: true) */
   autoConnect?: boolean;
+  /** Called when the initial join fails (e.g. game not found in server registry) */
+  onJoinError?: (error: Error) => void;
 }
 
 interface UseGameConnectionResult {
@@ -46,7 +48,7 @@ interface UseGameConnectionResult {
  * Hook for managing GameService connection with Zustand integration.
  */
 export function useGameConnection(options: UseGameConnectionOptions): UseGameConnectionResult {
-  const { playerId, gameId, autoConnect = true } = options;
+  const { playerId, gameId, autoConnect = true, onJoinError } = options;
 
   // Get game store actions (stable references from Zustand)
   const setGameModel = useGameStore((state) => state.setGameModel);
@@ -191,6 +193,7 @@ export function useGameConnection(options: UseGameConnectionOptions): UseGameCon
     if (autoConnect) {
       proxy.connect(gameId).catch((error) => {
         console.error('[useGameConnection] Auto-connect failed:', error);
+        onJoinError?.(error instanceof Error ? error : new Error(String(error)));
       });
     }
 
@@ -199,7 +202,7 @@ export function useGameConnection(options: UseGameConnectionOptions): UseGameCon
       // Don't disconnect on unmount - the proxy is a singleton
       // and may be used by other components
     };
-  }, [proxy, gameId, autoConnect]);
+  }, [proxy, gameId, autoConnect, onJoinError]);
 
   // Callbacks
   const connect = useCallback(

@@ -17,7 +17,12 @@ import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { useAssetPath } from '@/lib/theme';
 import type { AssetName } from '@/lib/theme/types';
 import type { PlayerModel } from '@/types/generated/models/player-model';
-import { usePlayers, useCurrentTurnPlayerId, usePlayerProfiles, useGameState } from '@/lib/stores/gameStoreHooks';
+import {
+  usePlayers,
+  useCurrentTurnPlayerId,
+  usePlayerProfiles,
+  useGameState,
+} from '@/lib/stores/gameStoreHooks';
 import { getServiceUrl } from '@/lib/config';
 import {
   createPlayerColorsWithGradient,

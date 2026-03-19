@@ -70,6 +70,8 @@ export interface ActionClusterProps {
   purchaseStats?: PurchaseStats;
   /** Which buttons are enabled */
   enabledButtons?: EnabledButtons;
+  /** Silent copy-game callback — no prompt, auto-names in the background */
+  onCopy?: () => void;
 }
 
 // ============================================================================
@@ -299,6 +301,7 @@ export const ActionCluster = memo(function ActionCluster({
   onAction,
   purchaseStats,
   enabledButtons = { next: true },
+  onCopy,
 }: ActionClusterProps): React.ReactElement {
   const handleAction = useCallback(
     (action: string) => {
@@ -328,7 +331,7 @@ export const ActionCluster = memo(function ActionCluster({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [enabledButtons.next, handleAction]);
+  }, [enabledButtons.next, handleAction, onAction]);
 
   const formatStats = (stats?: EntityStats) =>
     stats ? `${stats.spent} of ${stats.max}` : undefined;
@@ -494,15 +497,32 @@ export const ActionCluster = memo(function ActionCluster({
   }));
 
   return (
-    <div className="w-full h-full">
-      <HexGrid
-        hexSize={45}
-        items={items}
-        gap={2}
-        borderColor="transparent"
-        fitToParent={true}
-        fitPadding={0}
-      />
+    <div className="w-full h-full flex flex-col">
+      <div className="flex-1">
+        <HexGrid
+          hexSize={45}
+          items={items}
+          gap={2}
+          borderColor="transparent"
+          fitToParent={true}
+          fitPadding={0}
+        />
+      </div>
+      {onCopy && (
+        <div className="flex justify-center pt-1 pb-0.5">
+          <button
+            className="px-3 py-1 text-xs rounded opacity-60 hover:opacity-100 transition-opacity"
+            style={{
+              background: colors?.cssGradient || 'var(--hex-content-gradient)',
+              color: colors?.foreground || '#ffffff',
+            }}
+            title="Save a copy of this game"
+            onClick={onCopy}
+          >
+            ⧉ Copy
+          </button>
+        </div>
+      )}
     </div>
   );
 });

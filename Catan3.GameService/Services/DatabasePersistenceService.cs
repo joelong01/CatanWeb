@@ -119,7 +119,7 @@ public class GamePersistenceService : IGamePersistence
 
         var query = dbContext.GameSaveMetadata
             .Include(m => m.GameData)
-            .Where(m => m.GameState != "GameOver"); // Exclude completed games
+            .AsQueryable();
 
         if (!string.IsNullOrEmpty(startedBy) && startedBy != "*")
             query = query.Where(m => m.StartedBy == startedBy);

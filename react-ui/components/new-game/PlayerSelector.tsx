@@ -227,46 +227,45 @@ export function PlayerSelector({
 
   const needsMore = selectedPlayerIds.length < min;
 
-  // Hex size: 100 to match GameTypeSelector
-  const hexSize = 100;
+  // All players in spiral order: optional guest occupies the next spiral slot
+  const allPlayers = [...sortedPlayers, ...(includeGuest && guestPlayer ? [guestPlayer] : [])];
 
-  // Visible players (up to 6 surrounding the center hex)
-  const visiblePlayers = sortedPlayers.slice(0, 6);
-
-  // All players in spiral order: center + players + optionally guest
-  // Guest naturally occupies the next spiral position (no detached coordinate)
-  const allPlayers = [...visiblePlayers, ...(includeGuest && guestPlayer ? [guestPlayer] : [])];
-
-  const coords = getSpiralCoordinates(allPlayers.length + 1); // +1 for center
+  // CCW spiral: fills upper-left gaps first, which feels more natural visually
+  const coords = getSpiralCoordinates(allPlayers.length + 1, false);
 
   return (
-    <div className="flex flex-col">
-      {/* Hex Grid Layout */}
-      <HexGrid
-        hexSize={hexSize}
-        coordinates={coords}
-        renderItem={(_coord, index) => {
-          if (index === 0) {
-            return (
-              <CenterHex
-                icon={faUser}
-                title="Choose"
-                subtitle="Players"
-                accentColor="text-blue-400"
-                background="linear-gradient(160deg, rgba(30, 58, 138, 0.4) 0%, rgba(23, 37, 84, 0.4) 100%)"
-              />
-            );
-          }
-          const player = allPlayers[index - 1];
-          return (
-            <PlayerCardContent
-              player={player}
-              isSelected={selectedPlayerIds.includes(player.id)}
-              onClick={() => handleTogglePlayer(player.id)}
-            />
-          );
-        }}
-      />
+    <div className="flex flex-col h-full">
+      {/* Hex grid fills available space; fitToParent scales to fit */}
+      <div className="flex-1 min-h-0 relative">
+        <div className="absolute inset-0">
+          <HexGrid
+            hexSize={100}
+            coordinates={coords}
+            fitToParent
+            renderItem={(_coord, index) => {
+              if (index === 0) {
+                return (
+                  <CenterHex
+                    icon={faUser}
+                    title="Choose"
+                    subtitle="Players"
+                    accentColor="text-blue-400"
+                    background="linear-gradient(160deg, rgba(30, 58, 138, 0.4) 0%, rgba(23, 37, 84, 0.4) 100%)"
+                  />
+                );
+              }
+              const player = allPlayers[index - 1];
+              return (
+                <PlayerCardContent
+                  player={player}
+                  isSelected={selectedPlayerIds.includes(player.id)}
+                  onClick={() => handleTogglePlayer(player.id)}
+                />
+              );
+            }}
+          />
+        </div>
+      </div>
 
       {/* Guest toggle + validation */}
       <div className="flex items-center justify-between mt-2 px-1">
