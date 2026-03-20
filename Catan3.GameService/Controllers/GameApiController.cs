@@ -181,12 +181,15 @@ namespace Catan3.GameService.Controllers
                 var gameId = request.GetProperty("gameId").GetString();
                 var playerId = request.GetProperty("playerId").GetString();
                 var messageType = request.GetProperty("messageType").GetString();
+                var sanitizedGameId = (gameId ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
+                var sanitizedPlayerId = (playerId ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
+                var sanitizedMessageType = (messageType ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
 
-                _logger.LogEvent("Command Request", $"Async command request - GameId: {gameId}, PlayerId: {playerId}, MessageType: {messageType}, CommandId: {commandId}");
+                _logger.LogEvent("Command Request", $"Async command request - GameId: {sanitizedGameId}, PlayerId: {sanitizedPlayerId}, MessageType: {sanitizedMessageType}, CommandId: {commandId}");
 
                 if (string.IsNullOrEmpty(gameId) || string.IsNullOrEmpty(playerId) || string.IsNullOrEmpty(messageType))
                 {
-                    _logger.LogEvent("Validation Error", $"Missing required fields: gameId={gameId}, playerId={playerId}, messageType={messageType}", LogLevel.Warning);
+                    _logger.LogEvent("Validation Error", $"Missing required fields: gameId={sanitizedGameId}, playerId={sanitizedPlayerId}, messageType={sanitizedMessageType}", LogLevel.Warning);
                     return Task.FromResult<IActionResult>(BadRequest("Missing required fields: gameId, playerId, messageType"));
                 }
 
@@ -197,7 +200,7 @@ namespace Catan3.GameService.Controllers
                 }
                 catch (GameException)
                 {
-                    _logger.LogEvent("Game Not Found", $"Game not found: {gameId}", LogLevel.Warning);
+                    _logger.LogEvent("Game Not Found", $"Game not found: {sanitizedGameId}", LogLevel.Warning);
                     // NOTE: Including GameId in error response is safe - client provided it in the request
                     return Task.FromResult<IActionResult>(NotFound($"Game {gameId} not found"));
                 }
@@ -217,7 +220,7 @@ namespace Catan3.GameService.Controllers
                     estimatedCompletionMs = 100 // Most commands complete very quickly
                 };
 
-                _logger.LogEvent("Command Accepted", $"Command accepted for async processing - CommandId: {commandId}, GameId: {gameId}");
+                _logger.LogEvent("Command Accepted", $"Command accepted for async processing - CommandId: {commandId}, GameId: {sanitizedGameId}");
 
                 return Task.FromResult<IActionResult>(Ok(response));
             }
@@ -235,7 +238,8 @@ namespace Catan3.GameService.Controllers
         [HttpGet("gamestate/{gameId}")]
         public IActionResult GetGameState(string gameId)
         {
-            _logger.LogEvent("API Request", $"GET /api/gamestate/{gameId} - Getting game state");
+            var sanitizedGameId = gameId.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"GET /api/gamestate/{sanitizedGameId} - Getting game state");
 
             try
             {
@@ -244,18 +248,18 @@ namespace Catan3.GameService.Controllers
 
                 var result = CreateGameStateResponse(gameId, gameModel);
 
-                _logger.LogEvent("Game State Retrieved", $"Game state retrieved successfully - GameId: {gameId}, State: {gameModel.GameState}, Players: {gameModel.Players.Count}, GameStateMachineVersion: {gameModel.GameStateMachineVersion}");
+                _logger.LogEvent("Game State Retrieved", $"Game state retrieved successfully - GameId: {sanitizedGameId}, State: {gameModel.GameState}, Players: {gameModel.Players.Count}, GameStateMachineVersion: {gameModel.GameStateMachineVersion}");
 
                 return Ok(result);
             }
             catch (GameException)
             {
-                _logger.LogEvent("Game Not Found", $"Game not found: {gameId}", LogLevel.Warning);
+                _logger.LogEvent("Game Not Found", $"Game not found: {sanitizedGameId}", LogLevel.Warning);
                 return NotFound($"Game {gameId} not found");
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Get Game State Error", $"Error getting game state for gameId: {gameId}: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Get Game State Error", $"Error getting game state for gameId: {sanitizedGameId}: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, $"Error getting game state: {ex.Message}");
             }
         }
@@ -346,7 +350,8 @@ namespace Catan3.GameService.Controllers
         [HttpPut("game/{gameId}/houserules")]
         public async Task<IActionResult> UpdateHouseRules(string gameId, [FromBody] HouseRules houseRules)
         {
-            _logger.LogEvent("API Request", $"PUT /api/game/{gameId}/houserules - Received: GoldTiles={houseRules?.GoldTiles}, SupplementalMinPlayers={houseRules?.SupplementalMinPlayers}");
+            var sanitizedGameId = gameId.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"PUT /api/game/{sanitizedGameId}/houserules - Received: GoldTiles={houseRules?.GoldTiles}, SupplementalMinPlayers={houseRules?.SupplementalMinPlayers}");
 
             try
             {
@@ -383,7 +388,8 @@ namespace Catan3.GameService.Controllers
         [HttpPost("game/{gameId}/shuffle")]
         public async Task<IActionResult> Shuffle(string gameId, [FromBody] CommandRequest request)
         {
-            _logger.LogEvent("API Request", $"POST /api/game/{gameId}/shuffle - Shuffling board");
+            var sanitizedGameId = gameId.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"POST /api/game/{sanitizedGameId}/shuffle - Shuffling board");
 
             try
             {
@@ -476,7 +482,8 @@ namespace Catan3.GameService.Controllers
         [HttpPost("game/{gameId}/winner")]
         public async Task<IActionResult> DeclareWinner(string gameId, [FromBody] DeclareWinnerRequest request)
         {
-            _logger.LogEvent("API Request", $"POST /api/game/{gameId}/winner - Declaring winner");
+            var sanitizedGameId = gameId.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"POST /api/game/{sanitizedGameId}/winner - Declaring winner");
 
             try
             {
@@ -548,7 +555,7 @@ namespace Catan3.GameService.Controllers
 
                 // Broadcast immediately — clients see the winner before any I/O
                 await _hubContext.Clients.Group(updatedGameModel.GameId).SendAsync("GameStateUpdated", updatedGameModel);
-                _logger.LogEvent("Send Client Update", $"GameStateUpdated sent for DeclareWinner - GameId={gameId}");
+                _logger.LogEvent("Send Client Update", $"GameStateUpdated sent for DeclareWinner - GameId={sanitizedGameId}");
 
                 // Post-game I/O: save game log, update lifetime stats, archive — all after broadcast
                 await SaveGameToDatabase(gameStateMachine, updatedGameModel);
@@ -559,12 +566,12 @@ namespace Catan3.GameService.Controllers
                 }
                 else
                 {
-                    _logger.LogEvent("Stats Skipped", $"Game {gameId}: SaveLifetimeStats=false, skipping stats update");
+                    _logger.LogEvent("Stats Skipped", $"Game {sanitizedGameId}: SaveLifetimeStats=false, skipping stats update");
                 }
 
                 await ArchiveCompletedGame(gameId, gameStateMachine, updatedGameModel, request.WinnerId, winnerName);
 
-                _logger.LogEvent("Winner Declared", $"Game {gameId}: {winnerName} declared winner");
+                _logger.LogEvent("Winner Declared", $"Game {sanitizedGameId}: {winnerName} declared winner");
 
                 return Ok(new
                 {
@@ -702,6 +709,7 @@ namespace Catan3.GameService.Controllers
         /// </summary>
         private async Task ArchiveCompletedGame(string gameId, GameStateMachine gameStateMachine, GameModel gameModel, string winnerId, string winnerName)
         {
+            var sanitizedGameId = gameId.Replace("\r", string.Empty).Replace("\n", string.Empty);
             try
             {
                 var serializableLog = gameStateMachine.GetSerializableLog();
@@ -726,11 +734,11 @@ namespace Catan3.GameService.Controllers
                 _dbContext.CompletedGames.Add(completedGame);
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogEvent("Game Archived", $"Archived completed game {gameId} ({completedGame.Size} bytes)");
+                _logger.LogEvent("Game Archived", $"Archived completed game {sanitizedGameId} ({completedGame.Size} bytes)");
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Archive Error", $"Failed to archive game {gameId}: {ex.Message}", LogLevel.Warning);
+                _logger.LogEvent("Archive Error", $"Failed to archive game {sanitizedGameId}: {ex.Message}", LogLevel.Warning);
                 // Don't throw - archival failure shouldn't block winner declaration
             }
         }
@@ -804,7 +812,8 @@ namespace Catan3.GameService.Controllers
         [HttpPost("game/{gameId}/replay")]
         public async Task<IActionResult> ReplayGame(string gameId, [FromQuery] string? newName = null)
         {
-            _logger.LogEvent("API Request", $"POST /api/game/{gameId}/replay - Creating replay");
+            var sanitizedGameId = gameId.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"POST /api/game/{sanitizedGameId}/replay - Creating replay");
 
             try
             {
@@ -885,7 +894,7 @@ namespace Catan3.GameService.Controllers
 
                 await _gamePersistence.SaveAsync(newGameId, compressed, metadata);
 
-                _logger.LogEvent("Game Replayed", $"Replayed {gameId} → {newGameId} at WaitingForRollForOrder - {metadata.PlayerNames}");
+                _logger.LogEvent("Game Replayed", $"Replayed {sanitizedGameId} → {newGameId} at WaitingForRollForOrder - {metadata.PlayerNames}");
 
                 return Ok(new
                 {
@@ -899,7 +908,7 @@ namespace Catan3.GameService.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Replay Game Error", $"Error replaying game {gameId}: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Replay Game Error", $"Error replaying game {sanitizedGameId}: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, new { success = false, error = $"Error replaying game: {ex.Message}" });
             }
         }
@@ -999,6 +1008,10 @@ namespace Catan3.GameService.Controllers
                     location = locationElement.GetString() ?? "";
                 }
 
+                var sanitizedGameId = (gameId ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
+                var sanitizedAction = (actionStr ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
+                var sanitizedLocation = location.Replace("\r", string.Empty).Replace("\n", string.Empty);
+
                 if (string.IsNullOrEmpty(gameId))
                 {
                     _logger.LogEvent("Validation Error", $"Missing gameId in persist request", LogLevel.Warning);
@@ -1007,17 +1020,17 @@ namespace Catan3.GameService.Controllers
 
                 if (!Enum.TryParse<LocalPersistActions>(actionStr, out var action))
                 {
-                    _logger.LogEvent("Validation Error", $"Invalid persist action: {actionStr}", LogLevel.Warning);
+                    _logger.LogEvent("Validation Error", $"Invalid persist action: {sanitizedAction}", LogLevel.Warning);
                     return BadRequest($"Invalid persist action: {actionStr}");
                 }
 
-                _logger.LogEvent("Persist Game Request", $"Persisting game - GameId: {gameId}, Action: {action}, Location: {location}");
+                _logger.LogEvent("Persist Game Request", $"Persisting game - GameId: {sanitizedGameId}, Action: {action}, Location: {sanitizedLocation}");
 
                 var persistMessage = new PersistGameMessage(action, location);
                 var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
                 await gameStateMachine.HandlePersistGameAsync(persistMessage);
 
-                _logger.LogEvent("Game Persisted", $"Game persisted successfully - GameId: {gameId}, Action: {action}");
+                _logger.LogEvent("Game Persisted", $"Game persisted successfully - GameId: {sanitizedGameId}, Action: {action}");
 
                 return Ok(new
                 {
@@ -1065,7 +1078,8 @@ namespace Catan3.GameService.Controllers
         [HttpPost("game/{gameId}/load")]
         public async Task<IActionResult> LoadGameFromDatabase(string gameId)
         {
-            _logger.LogEvent("API Request", $"POST /api/game/{gameId}/load - Loading game from database");
+            var sanitizedGameId = gameId.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"POST /api/game/{sanitizedGameId}/load - Loading game from database");
 
             try
             {
@@ -1073,7 +1087,7 @@ namespace Catan3.GameService.Controllers
                 try
                 {
                     GameStateMachineRegistry.GetGameStateMachine(gameId);
-                    _logger.LogEvent("Game Already Loaded", $"Game {gameId} already in memory");
+                    _logger.LogEvent("Game Already Loaded", $"Game {sanitizedGameId} already in memory");
                     return Ok(new { success = true, gameId = gameId, message = "Game already loaded" });
                 }
                 catch (GameException)
@@ -1088,7 +1102,7 @@ namespace Catan3.GameService.Controllers
 
                 if (gameMetadata == null)
                 {
-                    _logger.LogEvent("Game Not Found", $"Game {gameId} not found in database", LogLevel.Warning);
+                    _logger.LogEvent("Game Not Found", $"Game {sanitizedGameId} not found in database", LogLevel.Warning);
                     return NotFound(new { success = false, error = $"Game {gameId} not found in database" });
                 }
 
@@ -1112,13 +1126,13 @@ namespace Catan3.GameService.Controllers
                 // Store in registry
                 GameStateMachineRegistry.AddGameStateMachine(gameId, gameStateMachine);
 
-                _logger.LogEvent("Game Loaded", $"Game {gameId} loaded from database - State: {gameModel.GameState}, Players: {gameModel.Players.Count}");
+                _logger.LogEvent("Game Loaded", $"Game {sanitizedGameId} loaded from database - State: {gameModel.GameState}, Players: {gameModel.Players.Count}");
 
                 return Ok(new { success = true, gameId = gameId, message = "Game loaded successfully" });
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Load Game Error", $"Error loading game {gameId} from database: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Load Game Error", $"Error loading game {sanitizedGameId} from database: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, new { success = false, error = $"Error loading game: {ex.Message}" });
             }
         }
@@ -1131,9 +1145,10 @@ namespace Catan3.GameService.Controllers
         [HttpPost("game/{gameId}/close")]
         public IActionResult CloseGame(string gameId)
         {
-            _logger.LogEvent("API Request", $"POST /api/game/{gameId}/close - Closing game");
+            var sanitizedGameId = gameId.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"POST /api/game/{sanitizedGameId}/close - Closing game");
             var removed = GameStateMachineRegistry.DeleteGameStateMachine(gameId);
-            _logger.LogEvent("Game Closed", $"Game {gameId} removed from registry: {removed}");
+            _logger.LogEvent("Game Closed", $"Game {sanitizedGameId} removed from registry: {removed}");
             return Ok(new { success = true, gameId, removed });
         }
 
@@ -1144,7 +1159,8 @@ namespace Catan3.GameService.Controllers
         [HttpGet("games")]
         public async Task<IActionResult> GetSavedGames([FromQuery] string playerId = "*")
         {
-            _logger.LogEvent("API Request", $"GET /api/games - Getting saved games (playerId={playerId})");
+            var sanitizedPlayerId = playerId.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"GET /api/games - Getting saved games (playerId={sanitizedPlayerId})");
 
             try
             {
@@ -1668,6 +1684,7 @@ namespace Catan3.GameService.Controllers
             try
             {
                 var gameId = request.GetProperty("gameId").GetString();
+                var sanitizedGameId = (gameId ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
 
                 if (string.IsNullOrEmpty(gameId))
                 {
@@ -1680,11 +1697,11 @@ namespace Catan3.GameService.Controllers
 
                 if (!gameRemoved)
                 {
-                    _logger.LogEvent("Game Not Found", $"Game not found: {gameId}", LogLevel.Warning);
+                    _logger.LogEvent("Game Not Found", $"Game not found: {sanitizedGameId}", LogLevel.Warning);
                     return NotFound($"Game {gameId} not found");
                 }
 
-                _logger.LogEvent("Game Ended", $"Game ended successfully - GameId: {gameId}");
+                _logger.LogEvent("Game Ended", $"Game ended successfully - GameId: {sanitizedGameId}");
 
                 return Ok(new
                 {
@@ -1814,7 +1831,9 @@ namespace Catan3.GameService.Controllers
         [HttpPatch("game/{gameId}/rename")]
         public async Task<IActionResult> RenameGame(string gameId, [FromQuery] string newName)
         {
-            _logger.LogEvent("API Request", $"PATCH /api/game/{gameId}/rename - Renaming to '{newName}'");
+            var sanitizedGameId = gameId.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            var sanitizedNewName = (newName ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"PATCH /api/game/{sanitizedGameId}/rename - Renaming to '{sanitizedNewName}'");
 
             if (string.IsNullOrWhiteSpace(newName))
             {
@@ -1832,7 +1851,7 @@ namespace Catan3.GameService.Controllers
                 catch (GameException)
                 {
                     // Game not in registry - that's OK, we'll update database directly
-                    _logger.LogEvent("Rename Game", $"Game {gameId} not in memory, updating database only");
+                    _logger.LogEvent("Rename Game", $"Game {sanitizedGameId} not in memory, updating database only");
                 }
 
                 if (gameStateMachine != null)
@@ -1904,7 +1923,7 @@ namespace Catan3.GameService.Controllers
                     // Broadcast updated game state to all clients
                     await _hubContext.Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
 
-                    _logger.LogEvent("Game Renamed", $"Renamed game {gameId}: '{oldName}' -> '{newName}' (in-memory + database)");
+                    _logger.LogEvent("Game Renamed", $"Renamed game {sanitizedGameId}: '{oldName}' -> '{sanitizedNewName}' (in-memory + database)");
                 }
                 else
                 {
@@ -1966,14 +1985,14 @@ namespace Catan3.GameService.Controllers
                         await _dbContext.SaveChangesAsync();
                     }
 
-                    _logger.LogEvent("Game Renamed", $"Renamed game {gameId}: '{oldName}' -> '{newName}' (database only)");
+                    _logger.LogEvent("Game Renamed", $"Renamed game {sanitizedGameId}: '{oldName}' -> '{sanitizedNewName}' (database only)");
                 }
 
                 return Ok(new { success = true, gameId, gameName = newName, message = "Game renamed successfully" });
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Rename Game Error", $"Error renaming game {gameId}: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Rename Game Error", $"Error renaming game {sanitizedGameId}: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, new { success = false, error = $"Error renaming game: {ex.Message}" });
             }
         }
@@ -1984,7 +2003,8 @@ namespace Catan3.GameService.Controllers
         [HttpDelete("game/{gameId}")]
         public async Task<IActionResult> DeleteGame(string gameId)
         {
-            _logger.LogEvent("API Request", $"DELETE /api/game/{gameId} - Deleting game");
+            var sanitizedGameId = gameId.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"DELETE /api/game/{sanitizedGameId} - Deleting game");
 
             try
             {
@@ -1992,12 +2012,12 @@ namespace Catan3.GameService.Controllers
                 try
                 {
                     GameStateMachineRegistry.DeleteGameStateMachine(gameId);
-                    _logger.LogEvent("Delete Game", $"Removed game {gameId} from memory");
+                    _logger.LogEvent("Delete Game", $"Removed game {sanitizedGameId} from memory");
                 }
                 catch (GameException)
                 {
                     // Game not in registry - that's OK
-                    _logger.LogEvent("Delete Game", $"Game {gameId} not in memory");
+                    _logger.LogEvent("Delete Game", $"Game {sanitizedGameId} not in memory");
                 }
 
                 // Delete from database
@@ -2016,13 +2036,13 @@ namespace Catan3.GameService.Controllers
                 _dbContext.GameSaveMetadata.Remove(gameMetadata);
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogEvent("Game Deleted", $"Deleted game {gameId} ({gameName})");
+                _logger.LogEvent("Game Deleted", $"Deleted game {sanitizedGameId} ({gameName})");
 
                 return Ok(new { success = true, gameId, gameName, message = "Game deleted successfully" });
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Delete Game Error", $"Error deleting game {gameId}: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Delete Game Error", $"Error deleting game {sanitizedGameId}: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, new { success = false, error = $"Error deleting game: {ex.Message}" });
             }
         }
@@ -2034,7 +2054,8 @@ namespace Catan3.GameService.Controllers
         [HttpPost("game/{gameId}/copy")]
         public async Task<IActionResult> CopyGame(string gameId, [FromQuery] string? newName = null)
         {
-            _logger.LogEvent("API Request", $"POST /api/game/{gameId}/copy - Copying game");
+            var sanitizedGameId = gameId.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"POST /api/game/{sanitizedGameId}/copy - Copying game");
 
             try
             {
@@ -2114,7 +2135,7 @@ namespace Catan3.GameService.Controllers
 
                 await _gamePersistence.SaveAsync(newGameId, compressed, metadata);
 
-                _logger.LogEvent("Game Copied", $"Copied game {gameId} to {newGameId} - {metadata.PlayerNames}, {metadata.TurnCount} turns");
+                _logger.LogEvent("Game Copied", $"Copied game {sanitizedGameId} to {newGameId} - {metadata.PlayerNames}, {metadata.TurnCount} turns");
 
                 return Ok(new
                 {
@@ -2129,7 +2150,7 @@ namespace Catan3.GameService.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Copy Game Error", $"Error copying game {gameId}: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Copy Game Error", $"Error copying game {sanitizedGameId}: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, new { success = false, error = $"Error copying game: {ex.Message}" });
             }
         }
@@ -2182,12 +2203,13 @@ namespace Catan3.GameService.Controllers
 
                 // Use the GameId from the file
                 var gameId = gameModel.GameId;
+                var sanitizedGameId = gameId.Replace("\r", string.Empty).Replace("\n", string.Empty);
 
                 // Check if game already exists
                 var existingGame = await _dbContext.GameSaveMetadata.FirstOrDefaultAsync(m => m.GameId == gameId);
                 if (existingGame != null)
                 {
-                    _logger.LogEvent("Game Already Exists", $"Game {gameId} already exists in database, skipping import");
+                    _logger.LogEvent("Game Already Exists", $"Game {sanitizedGameId} already exists in database, skipping import");
                     return Ok(new
                     {
                         success = true,
@@ -2214,7 +2236,7 @@ namespace Catan3.GameService.Controllers
                 // Save to database
                 await _gamePersistence.SaveAsync(gameId, compressedData, metadata);
 
-                _logger.LogEvent("Game Imported", $"Imported game: {gameId} ({metadata.PlayerNames}) - {metadata.TurnCount} turns");
+                _logger.LogEvent("Game Imported", $"Imported game: {sanitizedGameId} ({metadata.PlayerNames}) - {metadata.TurnCount} turns");
 
                 return Ok(new
                 {
