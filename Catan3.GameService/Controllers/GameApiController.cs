@@ -1267,7 +1267,9 @@ namespace Catan3.GameService.Controllers
         [HttpPost("players")]
         public async Task<IActionResult> CreatePlayer([FromBody] PlayerProfile player)
         {
-            _logger.LogEvent("API Request", $"POST /api/players - Creating player: {player.Name}");
+            var sanitizedPlayerName = (player.Name ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
+            var sanitizedPlayerId = (player.Id ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"POST /api/players - Creating player: {sanitizedPlayerName}");
 
             try
             {
@@ -1288,7 +1290,7 @@ namespace Catan3.GameService.Controllers
                 _dbContext.Players.Add(playerEntity);
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogEvent("Player Created", $"Created player: {player.Id} ({player.Name})");
+                _logger.LogEvent("Player Created", $"Created player: {sanitizedPlayerId} ({sanitizedPlayerName})");
 
                 return Ok(new { success = true, player = player });
             }
@@ -1306,7 +1308,9 @@ namespace Catan3.GameService.Controllers
         [HttpPut("players/{id}")]
         public async Task<IActionResult> UpdatePlayer(string id, [FromBody] PlayerProfile player)
         {
-            _logger.LogEvent("API Request", $"PUT /api/players/{id} - Updating player");
+            var sanitizedId = id.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            var sanitizedPlayerName = (player.Name ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"PUT /api/players/{sanitizedId} - Updating player");
 
             try
             {
@@ -1320,7 +1324,7 @@ namespace Catan3.GameService.Controllers
                 existing.Data = JsonHelper.Serialize(player);
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogEvent("Player Updated", $"Updated player: {id} ({player.Name})");
+                _logger.LogEvent("Player Updated", $"Updated player: {sanitizedId} ({sanitizedPlayerName})");
 
                 // Notify all games containing this player
                 await NotifyPlayersUpdated(new[] { player });
@@ -1329,7 +1333,7 @@ namespace Catan3.GameService.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Update Player Error", $"Error updating player {id}: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Update Player Error", $"Error updating player {sanitizedId}: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, new { success = false, error = $"Error updating player: {ex.Message}" });
             }
         }
@@ -1340,7 +1344,8 @@ namespace Catan3.GameService.Controllers
         [HttpDelete("players/{id}")]
         public async Task<IActionResult> DeletePlayer(string id)
         {
-            _logger.LogEvent("API Request", $"DELETE /api/players/{id} - Deleting player");
+            var sanitizedId = id.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"DELETE /api/players/{sanitizedId} - Deleting player");
 
             try
             {
@@ -1361,13 +1366,13 @@ namespace Catan3.GameService.Controllers
 
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogEvent("Player Deleted", $"Deleted player: {id}");
+                _logger.LogEvent("Player Deleted", $"Deleted player: {sanitizedId}");
 
                 return Ok(new { success = true, message = $"Player '{id}' deleted" });
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Delete Player Error", $"Error deleting player {id}: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Delete Player Error", $"Error deleting player {sanitizedId}: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, new { success = false, error = $"Error deleting player: {ex.Message}" });
             }
         }
@@ -1378,7 +1383,8 @@ namespace Catan3.GameService.Controllers
         [HttpPost("players/{id}/image")]
         public async Task<IActionResult> UploadPlayerImage(string id, IFormFile file)
         {
-            _logger.LogEvent("API Request", $"POST /api/players/{id}/image - Uploading image");
+            var sanitizedId = id.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"POST /api/players/{sanitizedId}/image - Uploading image");
 
             try
             {
@@ -1440,7 +1446,7 @@ namespace Catan3.GameService.Controllers
 
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogEvent("Image Uploaded", $"Uploaded image for player: {id} ({imageData.Length} bytes)");
+                _logger.LogEvent("Image Uploaded", $"Uploaded image for player: {sanitizedId} ({imageData.Length} bytes)");
 
                 // Notify games with this player about the image change
                 var profileToNotify = JsonHelper.Deserialize<PlayerProfile>(player.Data);
@@ -1453,7 +1459,7 @@ namespace Catan3.GameService.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Upload Image Error", $"Error uploading image for {id}: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Upload Image Error", $"Error uploading image for {sanitizedId}: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, new { success = false, error = $"Error uploading image: {ex.Message}" });
             }
         }
@@ -1484,14 +1490,15 @@ namespace Catan3.GameService.Controllers
         [HttpGet("images/{id}")]
         public async Task<IActionResult> GetImage(string id)
         {
-            _logger.LogEvent("API Request", $"GET /api/images/{id} - Getting image");
+            var sanitizedId = id.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"GET /api/images/{sanitizedId} - Getting image");
 
             try
             {
                 var imageEntity = await _dbContext.Images.FindAsync(id);
                 if (imageEntity == null)
                 {
-                    _logger.LogEvent("Image Not Found", $"Image not found: {id}", LogLevel.Warning);
+                    _logger.LogEvent("Image Not Found", $"Image not found: {sanitizedId}", LogLevel.Warning);
                     return NotFound($"Image {id} not found");
                 }
 
@@ -1499,7 +1506,7 @@ namespace Catan3.GameService.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Get Image Error", $"Error getting image {id}: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Get Image Error", $"Error getting image {sanitizedId}: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, $"Error getting image: {ex.Message}");
             }
         }
@@ -2141,7 +2148,8 @@ namespace Catan3.GameService.Controllers
         [HttpPost("game/import")]
         public async Task<IActionResult> ImportGame(IFormFile file)
         {
-            _logger.LogEvent("API Request", $"POST /api/game/import - Importing game file: {file?.FileName}");
+            var sanitizedFileName = (file?.FileName ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
+            _logger.LogEvent("API Request", $"POST /api/game/import - Importing game file: {sanitizedFileName}");
 
             try
             {
