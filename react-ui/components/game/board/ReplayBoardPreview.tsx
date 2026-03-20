@@ -60,18 +60,18 @@ export function ReplayBoardPreview({
   onClick,
 }: ReplayBoardPreviewProps): React.ReactElement | null {
   // Extract data with stable references (avoids new [] on every render when gameModel is null)
-  const tiles = useMemo((): TileModel[] => gameModel?.tiles ?? [], [gameModel?.tiles]);
-  const buildings = useMemo(
+  const _tiles = useMemo((): TileModel[] => gameModel?.tiles ?? [], [gameModel?.tiles]);
+  const _buildings = useMemo(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (): any[] => gameModel?.buildings ?? [],
     [gameModel?.buildings]
   );
-  const roads = useMemo(
+  const _roads = useMemo(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (): any[] => gameModel?.roads ?? [],
     [gameModel?.roads]
   );
-  const players = useMemo(
+  const _players = useMemo(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (): any[] => gameModel?.players ?? [],
     [gameModel?.players]

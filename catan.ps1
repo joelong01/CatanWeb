@@ -1969,6 +1969,22 @@ switch ($Verb) {
                     }
                 }
             }
+            "export-game" {
+                # Export one or all saved games from local SQLite to Default Data/Games/
+                # Usage: ./catan.ps1 database export-game -Name "My Game"
+                #        ./catan.ps1 database export-game -All
+                $exportArgs = @("db-export")
+                if ($All)               { $exportArgs += "--all" }
+                elseif ($Name)          { $exportArgs += @("--name", $Name) }
+                elseif ($Target)        { $exportArgs += @("--name", $Target) }
+                else {
+                    Write-Host "Usage: ./catan.ps1 database export-game -Name 'Game Name'" -ForegroundColor Yellow
+                    Write-Host "       ./catan.ps1 database export-game -All" -ForegroundColor Yellow
+                    exit 1
+                }
+                dotnet run --project "$PSScriptRoot/Catan3.CLI" -- @exportArgs
+                if ($LASTEXITCODE -ne 0) { exit 1 }
+            }
             default {
                 Write-Host ""
                 Write-Host "Database Commands" -ForegroundColor Cyan
@@ -1977,15 +1993,18 @@ switch ($Verb) {
                 Write-Host "Usage: ./catan.ps1 database <subcommand>" -ForegroundColor Yellow
                 Write-Host ""
                 Write-Host "Subcommands:" -ForegroundColor Yellow
-                Write-Host "  doctor   - Diagnose database health and show contents"
-                Write-Host "  clean    - Delete the database (wipes all data)"
-                Write-Host "  install  - Clean and reinstall database with default data"
+                Write-Host "  doctor       - Diagnose database health and show contents"
+                Write-Host "  clean        - Delete the database (wipes all data)"
+                Write-Host "  install      - Clean and reinstall database with default data"
+                Write-Host "  export-game  - Export a saved game to Default Data/Games/ as a .catan seed file"
                 Write-Host ""
                 Write-Host "Examples:" -ForegroundColor Yellow
-                Write-Host "  ./catan.ps1 database doctor         - Check Azure SQL health (default)"
-                Write-Host "  ./catan.ps1 database doctor -Local  - Check local SQLite database"
-                Write-Host "  ./catan.ps1 database clean          - Delete local database"
-                Write-Host "  ./catan.ps1 database install        - Fresh install with default players"
+                Write-Host "  ./catan.ps1 database doctor                        - Check Azure SQL health (default)"
+                Write-Host "  ./catan.ps1 database doctor -Local                 - Check local SQLite database"
+                Write-Host "  ./catan.ps1 database clean                         - Delete local database"
+                Write-Host "  ./catan.ps1 database install                       - Fresh install with default players"
+                Write-Host "  ./catan.ps1 database export-game -Name 'Test One' - Export one game to seed data"
+                Write-Host "  ./catan.ps1 database export-game -All             - Export all saved games to seed data"
                 Write-Host ""
                 Write-Host "Note: Recording management moved to './catan.ps1 recording'" -ForegroundColor DarkYellow
                 Write-Host ""

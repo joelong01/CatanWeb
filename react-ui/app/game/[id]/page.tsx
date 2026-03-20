@@ -10,7 +10,7 @@
  */
 
 import { useMemo, useCallback, useEffect, useState, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/layout';
 import { useGameConnection } from '@/lib/hooks/useGameConnection';
 import { useGameStore } from '@/lib/stores/gameStore';
@@ -67,15 +67,19 @@ import { getStateMessage } from '@/lib/utils/gameStateMessages';
 export default function GamePage(): React.ReactElement {
   const params = useParams();
   const gameId = params.id as string;
+  const router = useRouter();
 
   // Get player ID (using dev ID for now)
   const playerId = useMemo(() => getDevPlayerId(), []);
 
-  // Connect to game
+  // Connect to game — redirect home if the game is no longer in the server registry
   const connection = useGameConnection({
     playerId,
     gameId,
     autoConnect: true,
+    onJoinError: useCallback(() => {
+      router.replace('/');
+    }, [router]),
   });
 
   // Save current game ID to localStorage for "Return to Game" navigation
@@ -100,6 +104,8 @@ export default function GamePage(): React.ReactElement {
   const setPlayerProfiles = useSetPlayerProfiles();
   const rollStats = useRollStats();
   const setLastRoll = useSetLastRoll();
+
+  const clearGameState = useGameStore((state) => state.clearGameState);
 
   // Narrow selectors for less common fields (no dedicated hooks yet)
   const entitlementPurchaseModel = useGameStore(
@@ -856,18 +862,31 @@ export default function GamePage(): React.ReactElement {
     });
   }, [players, playerProfiles]);
 
-  const handleSaveCopy = useCallback(async () => {
-    const newName = window.prompt('Enter name for the copy:', '');
-    if (newName === null) return; // User cancelled
-
+  const { leaveGame } = connection;
+  const handleCloseGame = useCallback(async () => {
     try {
-      const result = await gameApi.copyGame(gameId, newName || undefined);
-      if (result.success && result.data?.newGameId) {
-        // Navigate to the new game copy
-        window.location.href = `/game/${result.data.newGameId}`;
+      await gameApi.closeGame(gameId);
+    } catch (error) {
+      // Log but don't abort — always clear local state so the client isn't stuck
+      console.error('[GamePage] closeGame API failed:', error);
+    }
+    await leaveGame();
+    clearGameState();
+    localStorage.removeItem('current_gameId');
+    router.push('/');
+  }, [gameId, router, clearGameState, leaveGame]);
+
+  const [copyToast, setCopyToast] = useState<string | null>(null);
+
+  const handleCopyGame = useCallback(async () => {
+    try {
+      const result = await gameApi.copyGame(gameId);
+      if (result.success && result.data) {
+        setCopyToast(`Saved as '${result.data.gameName}'`);
+        setTimeout(() => setCopyToast(null), 3000);
       }
     } catch (error) {
-      console.error('[GamePage] Save copy failed:', error);
+      console.error('[GamePage] Copy game failed:', error);
     }
   }, [gameId]);
 
@@ -883,9 +902,10 @@ export default function GamePage(): React.ReactElement {
       isPickingBoard,
       onBalance: handleBalance,
       onWinner: handleWinner,
-      onSaveCopy: handleSaveCopy,
+      onSaveCopy: handleCopyGame,
+      onClose: handleCloseGame,
     }),
-    [isPickingBoard, handleBalance, handleWinner, handleSaveCopy]
+    [isPickingBoard, handleBalance, handleWinner, handleCopyGame, handleCloseGame]
   );
 
   return (
@@ -928,8 +948,16 @@ export default function GamePage(): React.ReactElement {
             onAction={handleAction}
             purchaseStats={actionPurchaseStats}
             enabledButtons={actionEnabledButtons}
+            onCopy={handleCopyGame}
           />
         </FloatingPanel>
+
+        {/* Copy game toast */}
+        {copyToast && (
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900/90 text-white text-sm px-4 py-2 rounded-lg z-50 pointer-events-none">
+            {copyToast}
+          </div>
+        )}
 
         {/* Board Measurements Panel */}
         <FloatingPanel panelId="measurements" title="Board" className="bg-white/5 border-white/10">

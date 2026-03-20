@@ -16,6 +16,8 @@ interface GameActions {
   onWinner?: () => void;
   /** Save copy callback */
   onSaveCopy?: () => void;
+  /** Close game: evict from server registry, clear active-game pointer, go home */
+  onClose?: () => void;
 }
 
 /** Props for MainLayout component */

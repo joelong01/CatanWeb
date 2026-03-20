@@ -577,9 +577,9 @@ export function GameBoard({
     containerSize?.height,
   ]);
 
-  // Handle mouse wheel zoom
+  // Handle mouse wheel zoom — registered as non-passive so preventDefault() works
   const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
+    (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -ZOOM_CONFIG.zoomStep : ZOOM_CONFIG.zoomStep;
       const newHexSize = Math.max(
@@ -592,6 +592,13 @@ export function GameBoard({
     },
     [hexSize, initialHexSize, setViewport]
   );
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
 
   // Build set of tile coordinates for quick lookup
   const tileCoordSet = useMemo(() => {
@@ -680,7 +687,6 @@ export function GameBoard({
     });
     return set;
   }, [harborItems]);
-
 
   // Calculate board bounds (for water generation) - NO pan offset here
   const boardBounds = useMemo(() => {
@@ -1572,7 +1578,6 @@ export function GameBoard({
     <div
       ref={containerRef}
       className="relative w-full h-full overflow-hidden select-none"
-      onWheel={handleWheel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
