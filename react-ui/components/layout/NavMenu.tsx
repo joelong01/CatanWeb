@@ -23,6 +23,7 @@ import {
   faObjectGroup,
   faPalette,
   faMobileScreenButton,
+  faRightFromBracket,
 } from '@fortawesome/free-solid-svg-icons';
 import {
   useLayoutStore,
@@ -52,6 +53,8 @@ interface NavMenuProps {
     onWinner?: () => void;
     /** Save copy callback */
     onSaveCopy?: () => void;
+    /** Close game: evict from server registry, clear active-game pointer, go home */
+    onClose?: () => void;
   };
 }
 
@@ -417,6 +420,16 @@ export function NavMenu({
       {currentPage === 'Game' && (
         <>
           <NavMenuItem icon={faHouse} label="Home" onClick={() => navigateTo('/')} />
+          {gameActions?.onClose && (
+            <NavMenuItem
+              icon={faRightFromBracket}
+              label="Close Game"
+              onClick={() => {
+                gameActions.onClose?.();
+                onMenuAction();
+              }}
+            />
+          )}
           {activeGameId && (
             <NavMenuItem
               icon={faMobileScreenButton}

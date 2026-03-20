@@ -196,7 +196,7 @@ export default function NewGame(): React.ReactElement {
             </div>
 
             {/* Player Selection Card */}
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+            <div className="bg-white/5 rounded-xl p-4 border border-white/10 flex flex-col">
               <PlayerSelector
                 availablePlayers={players}
                 selectedPlayerIds={selectedPlayerIds}

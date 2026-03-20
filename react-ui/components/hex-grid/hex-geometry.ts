@@ -319,7 +319,7 @@ export function pixelToHex(
  * const coords19 = getSpiralCoordinates(19);  // Standard Catan board
  * ```
  */
-export function getSpiralCoordinates(count: number): HexCoordinate[] {
+export function getSpiralCoordinates(count: number, clockwise = true): HexCoordinate[] {
   if (count <= 0) return [];
 
   const coords: HexCoordinate[] = [cubicCoord(0, 0)]; // Center
@@ -327,10 +327,9 @@ export function getSpiralCoordinates(count: number): HexCoordinate[] {
 
   let ring = 1;
   while (coords.length < count) {
-    // Start at "north" of ring (q=0, r=-ring)
+    // Collect all positions in this ring going clockwise from North
+    const ringCoords: HexCoordinate[] = [];
     let current = cubicCoord(0, -ring);
-
-    // Walk around the ring clockwise (starting from North, we go SE, S, SW, NW, N, NE)
     const walkDirections: Direction[] = [
       Direction.SouthEast,
       Direction.South,
@@ -339,12 +338,19 @@ export function getSpiralCoordinates(count: number): HexCoordinate[] {
       Direction.North,
       Direction.NorthEast,
     ];
-
     for (const dir of walkDirections) {
-      for (let step = 0; step < ring && coords.length < count; step++) {
-        coords.push(current);
+      for (let step = 0; step < ring; step++) {
+        ringCoords.push(current);
         current = getNeighbor(current, dir);
       }
+    }
+
+    // CCW: keep the starting (north) position, reverse the rest
+    const ordered = clockwise ? ringCoords : [ringCoords[0], ...ringCoords.slice(1).reverse()];
+
+    for (const coord of ordered) {
+      if (coords.length >= count) break;
+      coords.push(coord);
     }
     ring++;
   }

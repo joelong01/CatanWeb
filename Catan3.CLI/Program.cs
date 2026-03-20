@@ -29,6 +29,7 @@ public class Program
         var regularCommand = new Command("regular", "Start a Regular game (3-4 players)");
         var testCommand = new Command("test", "Run various CLI tests");
         var extractCommand = new Command("extract", "Extract GameModel from .catan file to JSON");
+        var dbExportCommand = new Command("db-export", "Export saved game(s) from the local SQLite database as .catan seed files");
 
         // Add common options to both game commands
         AddGameOptions(expansionCommand, host, Catan3.Shared.Models.GameType.Expansion);
@@ -40,10 +41,14 @@ public class Program
         // Add extract command options
         AddExtractOptions(extractCommand);
 
+        // Add db-export command options
+        AddDbExportOptions(dbExportCommand);
+
         rootCommand.AddCommand(expansionCommand);
         rootCommand.AddCommand(regularCommand);
         rootCommand.AddCommand(testCommand);
         rootCommand.AddCommand(extractCommand);
+        rootCommand.AddCommand(dbExportCommand);
 
         // Execute the command
         return await rootCommand.InvokeAsync(args);
@@ -196,6 +201,37 @@ public class Program
                 Environment.Exit(1);
             }
         }, inputOption, outputOption, indexOption, actionsOption);
+    }
+
+    private static void AddDbExportOptions(Command command)
+    {
+        var nameOption = new Option<string?>(
+            "--name",
+            "Name of the game to export (as shown in the UI)");
+
+        var allOption = new Option<bool>(
+            "--all",
+            "Export all saved games from the database");
+
+        var dbOption = new Option<string>(
+            "--db",
+            getDefaultValue: () => "Catan3.GameService/Data/catan.db",
+            "Path to the SQLite database file");
+
+        var outOption = new Option<string>(
+            "--out",
+            getDefaultValue: () => "Catan3.GameService/Default Data/Games",
+            "Output directory for .catan files");
+
+        command.AddOption(nameOption);
+        command.AddOption(allOption);
+        command.AddOption(dbOption);
+        command.AddOption(outOption);
+
+        command.SetHandler(async (name, all, db, outDir) =>
+        {
+            await DbExportCommand.RunAsync(name, all, db, outDir);
+        }, nameOption, allOption, dbOption, outOption);
     }
 
     private static IHost CreateHost()

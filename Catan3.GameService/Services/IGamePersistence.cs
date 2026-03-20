@@ -19,7 +19,7 @@ public interface IGamePersistence
     Task<byte[]?> LoadAsync(string gameId);
 
     /// <summary>
-    /// Get list of saved games metadata for display (excludes GameOver games)
+    /// Get list of saved games metadata for display
     /// </summary>
     Task<List<GameSaveMetadataEntity>> GetGamesAsync(string? startedBy = null);
 

@@ -297,6 +297,30 @@ export const gameApi = {
   },
 
   /**
+   * Creates a replay of an existing game, reset to the WaitingForRollForOrder state.
+   *
+   * @param gameId - The ID of the game to replay
+   * @param newName - Optional name for the replay
+   */
+  async replayGame(gameId: string, newName?: string): Promise<ApiResponse<CopyGameResponse>> {
+    const url = newName
+      ? `/api/game/${gameId}/replay?newName=${encodeURIComponent(newName)}`
+      : `/api/game/${gameId}/replay`;
+
+    return apiFetch<CopyGameResponse>(url, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Removes a game from the server's in-memory registry without deleting it from the database.
+   * Call this when the player explicitly closes a game session.
+   */
+  async closeGame(gameId: string): Promise<ApiResponse<void>> {
+    return apiFetch<void>(`/api/game/${gameId}/close`, { method: 'POST' });
+  },
+
+  /**
    * Deletes a game from the database.
    *
    * @param gameId - The ID of the game to delete

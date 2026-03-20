@@ -104,6 +104,11 @@ export default function Home(): React.ReactElement {
   // Responsive scale: shrink hex grids on narrow viewports so they fit.
   // Game grid at hexSize=140 is ~700px wide; with p-8 wrapper padding (64px) = 764px total.
   const [hexScale, setHexScale] = useState(1);
+  // Clear stale active-game pointer when user returns to home
+  useEffect(() => {
+    localStorage.removeItem('current_gameId');
+  }, []);
+
   useEffect(() => {
     const update = (): void => {
       const available = window.innerWidth - 32; // 16px margin each side
