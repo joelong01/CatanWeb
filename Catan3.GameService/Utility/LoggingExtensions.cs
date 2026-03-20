@@ -16,7 +16,10 @@ namespace Catan3.GameService.Utility
         /// <param name="logLevel">The log level (defaults to Information)</param>
         public static void LogEvent(this ILogger logger, string eventType, string message, LogLevel logLevel = LogLevel.Information)
         {
-            logger.Log(logLevel, "[GameService][{EventType}] {Message}", eventType, message);
+            // Sanitize user-supplied values to prevent log injection (CR/LF stripping)
+            var safeEvent = eventType?.Replace("\r", "").Replace("\n", "") ?? string.Empty;
+            var safeMessage = message?.Replace("\r", "").Replace("\n", "") ?? string.Empty;
+            logger.Log(logLevel, "[GameService][{EventType}] {Message}", safeEvent, safeMessage);
         }
     }
 }
