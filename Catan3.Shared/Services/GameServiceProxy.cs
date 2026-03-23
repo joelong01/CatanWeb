@@ -1046,6 +1046,7 @@ namespace Catan3.Shared.Services
             public string GameType { get; set; } = string.Empty;
             public int PlayerCount { get; set; }
             public int ActionCount { get; set; }
+            public string GameId { get; set; } = string.Empty;
         }
 
         /// <summary>

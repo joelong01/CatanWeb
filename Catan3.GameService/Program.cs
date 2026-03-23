@@ -153,6 +153,22 @@ else
 }
 Console.WriteLine("[STARTUP] DbContext registered");
 
+// Register ICatanDb → CosmosCatanDb when COSMOS_ENDPOINT is configured.
+// Additive in Phase 1: GameService still uses CatanDbContext directly; ICatanDb
+// is available for contract tests and gradual wiring. Step 9 makes it the default.
+var cosmosEndpoint = builder.Configuration["COSMOS_ENDPOINT"];
+if (!string.IsNullOrEmpty(cosmosEndpoint))
+{
+    Console.WriteLine($"[STARTUP] CosmosDB configured (endpoint length: {cosmosEndpoint.Length}), registering ICatanDb");
+    builder.Services.AddSingleton<Microsoft.Azure.Cosmos.CosmosClient>(
+        _ => Catan3.GameService.Abstractions.CosmosClientFactory.Create(builder.Configuration));
+    builder.Services.AddScoped<Catan3.GameService.Abstractions.ICatanDb>(sp =>
+    {
+        var client = sp.GetRequiredService<Microsoft.Azure.Cosmos.CosmosClient>();
+        return new Catan3.GameService.Abstractions.CosmosCatanDb(client, "catan");
+    });
+}
+
 // Data directory for SQLite
 var dataDir = dbDetector.DataDirectory;
 Console.WriteLine($"[STARTUP] Data directory: {dataDir}");

@@ -783,13 +783,32 @@ switch ($Verb) {
         # Stop services first to avoid file locking issues during build
         Stop-Services
 
-        # Run .NET tests
+        # Start CosmosDB Emulator and seed if not already running
+        Write-Host ""
+        Write-Host "Starting CosmosDB Emulator..." -ForegroundColor Yellow
+        $dbScript = Join-Path $PSScriptRoot ".scripts\database.ps1"
+        & $dbScript start -Yes
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  [FAIL] CosmosDB Emulator failed to start — CatanDb tests will fail" -ForegroundColor Red
+            exit 1
+        }
+        & $dbScript seed
+        # Write test params via database.ps1 (single source of emulator endpoint/key)
+        $testParamsPath = Join-Path $PSScriptRoot "Tests\GameService\CatanDb\.cosmos-test-params.json"
+        & $dbScript write-test-params
+        Write-Host "  [OK] CosmosDB Emulator running" -ForegroundColor Green
+
+        # Run .NET tests (clean up params file on exit)
         Write-Host ""
         Write-Host "Running .NET tests..." -ForegroundColor Yellow
-        & "$PSScriptRoot\.scripts\build.ps1"
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host ".NET tests failed!" -ForegroundColor Red
-            exit 1
+        try {
+            & "$PSScriptRoot\.scripts\build.ps1"
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host ".NET tests failed!" -ForegroundColor Red
+                exit 1
+            }
+        } finally {
+            if (Test-Path $testParamsPath) { Remove-Item $testParamsPath -Force }
         }
         Write-Host "  [OK] .NET tests passed" -ForegroundColor Green
 
