@@ -64,7 +64,6 @@ namespace Catan3.GameService.Controllers
         private readonly ICatanDb _db;
         private readonly IHubContext<GameHub> _hubContext;
         private readonly IGamePersistence _gamePersistence;
-        private readonly AzureSqlDiagnosticService _sqlDiagnostics;
         private readonly RecordingService _recordingService;
         private readonly GameTemplateService _templateService;
 
@@ -76,7 +75,6 @@ namespace Catan3.GameService.Controllers
             ICatanDb db,
             IHubContext<GameHub> hubContext,
             IGamePersistence gamePersistence,
-            AzureSqlDiagnosticService sqlDiagnostics,
             RecordingService recordingService,
             GameTemplateService templateService)
         {
@@ -87,7 +85,6 @@ namespace Catan3.GameService.Controllers
             _db = db;
             _hubContext = hubContext;
             _gamePersistence = gamePersistence;
-            _sqlDiagnostics = sqlDiagnostics;
             _recordingService = recordingService;
             _templateService = templateService;
         }
@@ -1729,26 +1726,28 @@ namespace Catan3.GameService.Controllers
         [HttpPost("troubleshoot")]
         public async Task<IActionResult> Troubleshoot()
         {
-            _logger.LogEvent("API Request", "POST /api/troubleshoot - Running Azure SQL troubleshooting");
+            _logger.LogEvent("API Request", "POST /api/troubleshoot - CosmosDB health check");
 
             try
             {
-                var result = await _sqlDiagnostics.TroubleshootAsync();
-
-                _logger.LogEvent("Troubleshoot Result",
-                    $"Message: {result.Message}, Fixed: {result.Fixed.Count}, Issues: {result.Issues.Count}, Connection: {result.ConnectionSuccessful}");
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogEvent("Troubleshoot Error", $"Error during troubleshooting: {ex.Message}", LogLevel.Error);
+                var players = await _db.LoadPlayersAsync();
+                var gameCount = await _db.CountGamesAsync();
                 return Ok(new
                 {
                     timestamp = DateTime.UtcNow,
-                    message = $"Troubleshooting failed: {ex.Message}",
+                    connectionSuccessful = true,
+                    message = "CosmosDB connected",
+                    playerCount = players.Count,
+                    gameCount,
+                });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new
+                {
+                    timestamp = DateTime.UtcNow,
                     connectionSuccessful = false,
-                    issues = new[] { ex.Message }
+                    message = $"CosmosDB error: {ex.Message}",
                 });
             }
         }
