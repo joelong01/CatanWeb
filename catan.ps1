@@ -1947,56 +1947,30 @@ switch ($Verb) {
     }
 
     "database" {
+        # All database commands route through .scripts/database.ps1 (CosmosDB).
+        # Pass -Azure for Azure, omit for local emulator.
         $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+        $modeFlag = if ($Azure) { @("-Azure") } else { @() }
+
         switch ($SubCommand) {
             "clean" {
-                if ($Azure) {
-                    & pwsh $dbScript nuke-containers -Azure -TraceLevel $TraceLevel
-                } else {
-                    Clear-Database
-                }
+                & pwsh $dbScript nuke-containers @modeFlag -TraceLevel $TraceLevel
+                exit $LASTEXITCODE
             }
             "install" {
-                if ($Azure) {
-                    & pwsh $dbScript install -Azure -TraceLevel $TraceLevel
-                    exit $LASTEXITCODE
-                }
-                # Local: use emulator
-                $dbStatus = Invoke-DatabaseDoctor
-                if ($dbStatus.Healthy -and -not $Force) {
-                    Write-Host "Database is already installed and healthy." -ForegroundColor Green
-                } else {
-                    if ($Force) {
-                        Write-Host "Force flag set, reinstalling database..." -ForegroundColor Yellow
-                    }
-                    Clear-Database
-                    $installed = Install-Database
-                    if (-not $installed) { exit 1 }
-                }
+                & pwsh $dbScript install @modeFlag -TraceLevel $TraceLevel
+                exit $LASTEXITCODE
             }
             "doctor" {
-                if ($Azure) {
-                    & pwsh $dbScript doctor -Azure -TraceLevel $TraceLevel
-                    exit $LASTEXITCODE
-                }
-                # Local emulator check
-                $status = Invoke-DatabaseDoctor
-                if (-not $status.Healthy) { exit 1 }
+                & pwsh $dbScript doctor @modeFlag -TraceLevel $TraceLevel
+                exit $LASTEXITCODE
             }
             "seed-data" {
-                if ($Azure) {
-                    & pwsh $dbScript seed-data -Azure -TraceLevel $TraceLevel
-                    exit $LASTEXITCODE
-                }
-                Write-Host "seed-data requires -Azure flag" -ForegroundColor Red
-                exit 1
+                & pwsh $dbScript seed-data @modeFlag -TraceLevel $TraceLevel
+                exit $LASTEXITCODE
             }
             "test" {
-                if ($Azure) {
-                    & pwsh $dbScript test -Azure -TraceLevel $TraceLevel
-                    exit $LASTEXITCODE
-                }
-                & pwsh $dbScript test -TraceLevel $TraceLevel
+                & pwsh $dbScript test @modeFlag -TraceLevel $TraceLevel
                 exit $LASTEXITCODE
             }
             "export-game" {
