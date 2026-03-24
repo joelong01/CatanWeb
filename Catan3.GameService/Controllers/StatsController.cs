@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Catan3.GameService.Data;
+using Catan3.GameService.Abstractions;
 using Catan3.Shared.Profiles;
-using Catan3.Shared.Utility;
 
 namespace Catan3.GameService.Controllers;
 
@@ -58,12 +56,12 @@ public class StatsImportRequest
 [Route("api/stats")]
 public class StatsController : ControllerBase
 {
-    private readonly CatanDbContext _dbContext;
+    private readonly ICatanDb _db;
     private readonly ILogger<StatsController> _logger;
 
-    public StatsController(CatanDbContext dbContext, ILogger<StatsController> logger)
+    public StatsController(ICatanDb db, ILogger<StatsController> logger)
     {
-        _dbContext = dbContext;
+        _db = db;
         _logger = logger;
     }
 
@@ -73,16 +71,11 @@ public class StatsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<PlayerStatsSummary>>> GetStats()
     {
-        var players = await _dbContext.Players.ToListAsync();
-        var summaries = new List<PlayerStatsSummary>();
-
-        foreach (var playerEntity in players)
+        var players = await _db.LoadPlayersAsync();
+        var summaries = players.Select(profile =>
         {
-            var profile = JsonHelper.Deserialize<PlayerProfile>(playerEntity.Data);
-            if (profile == null) continue;
-
             var stats = profile.LifetimeStats ?? LifetimeStats.Empty;
-            summaries.Add(new PlayerStatsSummary
+            return new PlayerStatsSummary
             {
                 PlayerId = profile.Id,
                 PlayerName = profile.Name,
@@ -91,12 +84,11 @@ public class StatsController : ControllerBase
                 WinRate = stats.WinRate,
                 HighestScore = stats.HighestScoreRecord,
                 AverageStars = stats.AverageStars,
-                LastPlayed = null // Could track this in the future
-            });
-        }
+                LastPlayed = null
+            };
+        }).OrderByDescending(s => s.Wins).ThenByDescending(s => s.GamesPlayed).ToList();
 
-        // Sort by wins descending, then games played
-        return Ok(summaries.OrderByDescending(s => s.Wins).ThenByDescending(s => s.GamesPlayed).ToList());
+        return Ok(summaries);
     }
 
     /// <summary>
@@ -105,21 +97,13 @@ public class StatsController : ControllerBase
     [HttpGet("export")]
     public async Task<ActionResult<StatsExportDocument>> ExportStats()
     {
-        var players = await _dbContext.Players.ToListAsync();
-        var exports = new List<PlayerStatsExport>();
-
-        foreach (var playerEntity in players)
+        var players = await _db.LoadPlayersAsync();
+        var exports = players.Select(profile => new PlayerStatsExport
         {
-            var profile = JsonHelper.Deserialize<PlayerProfile>(playerEntity.Data);
-            if (profile == null) continue;
-
-            exports.Add(new PlayerStatsExport
-            {
-                PlayerId = profile.Id,
-                PlayerName = profile.Name,
-                Stats = profile.LifetimeStats
-            });
-        }
+            PlayerId = profile.Id,
+            PlayerName = profile.Name,
+            Stats = profile.LifetimeStats
+        }).ToList();
 
         var document = new StatsExportDocument
         {
@@ -140,9 +124,7 @@ public class StatsController : ControllerBase
     public async Task<ActionResult> ImportStats([FromBody] StatsImportRequest request)
     {
         if (request.Document.Players.Count == 0)
-        {
             return BadRequest(new { error = "No players in import document" });
-        }
 
         var imported = 0;
         var merged = 0;
@@ -151,38 +133,22 @@ public class StatsController : ControllerBase
         if (request.Replace)
         {
             // Reset all existing stats first
-            var allPlayers = await _dbContext.Players.ToListAsync();
-            foreach (var playerEntity in allPlayers)
+            var allPlayers = await _db.LoadPlayersAsync();
+            foreach (var profile in allPlayers)
             {
-                var profile = JsonHelper.Deserialize<PlayerProfile>(playerEntity.Data);
-                if (profile == null) continue;
-
                 var resetProfile = new PlayerProfile(
-                    profile.Id,
-                    profile.Name,
-                    profile.Colors,
-                    profile.ImageUri,
-                    null // Clear stats
-                );
-                playerEntity.Data = JsonHelper.Serialize(resetProfile);
+                    profile.Id, profile.Name, profile.Colors, profile.ImageUri, null);
+                await _db.SavePlayerAsync(resetProfile);
             }
-            await _dbContext.SaveChangesAsync();
             _logger.LogInformation("Cleared existing stats for replace import");
         }
 
         foreach (var playerExport in request.Document.Players)
         {
-            var playerEntity = await _dbContext.Players.FindAsync(playerExport.PlayerId);
-            if (playerEntity == null)
-            {
-                _logger.LogWarning("Player {PlayerId} not found, skipping import", playerExport.PlayerId);
-                skipped++;
-                continue;
-            }
-
-            var profile = JsonHelper.Deserialize<PlayerProfile>(playerEntity.Data);
+            var profile = await _db.LoadPlayerAsync(playerExport.PlayerId);
             if (profile == null)
             {
+                _logger.LogWarning("Player {PlayerId} not found, skipping import", playerExport.PlayerId);
                 skipped++;
                 continue;
             }
@@ -190,13 +156,11 @@ public class StatsController : ControllerBase
             LifetimeStats newStats;
             if (request.Replace || profile.LifetimeStats == null)
             {
-                // Direct import
                 newStats = playerExport.Stats ?? LifetimeStats.Empty;
                 imported++;
             }
             else
             {
-                // Merge: add games/wins, keep max records
                 var existing = profile.LifetimeStats;
                 var incoming = playerExport.Stats ?? LifetimeStats.Empty;
 
@@ -206,35 +170,25 @@ public class StatsController : ControllerBase
                     Wins = existing.Wins + incoming.Wins,
                     LongestRoadWins = existing.LongestRoadWins + incoming.LongestRoadWins,
                     LargestArmyWins = existing.LargestArmyWins + incoming.LargestArmyWins,
-                    // Max records: keep higher
                     LongestRoadRecord = Math.Max(existing.LongestRoadRecord, incoming.LongestRoadRecord),
                     MostSoldiersRecord = Math.Max(existing.MostSoldiersRecord, incoming.MostSoldiersRecord),
                     MostStarsRecord = Math.Max(existing.MostStarsRecord, incoming.MostStarsRecord),
                     HighestScoreRecord = Math.Max(existing.HighestScoreRecord, incoming.HighestScoreRecord),
                     MostTargetedRecord = Math.Max(existing.MostTargetedRecord, incoming.MostTargetedRecord),
                     MostRobberRecord = Math.Max(existing.MostRobberRecord, incoming.MostRobberRecord),
-                    // Min records: keep lower
                     MinSoldiersRecord = Math.Min(existing.MinSoldiersRecord, incoming.MinSoldiersRecord),
                     MinStarsRecord = Math.Min(existing.MinStarsRecord, incoming.MinStarsRecord),
                     MinTargetedRecord = Math.Min(existing.MinTargetedRecord, incoming.MinTargetedRecord),
                     MinRobberRecord = Math.Min(existing.MinRobberRecord, incoming.MinRobberRecord),
-                    // Totals: add together
                     Totals = existing.Totals + incoming.Totals
                 };
                 merged++;
             }
 
             var updatedProfile = new PlayerProfile(
-                profile.Id,
-                profile.Name,
-                profile.Colors,
-                profile.ImageUri,
-                newStats
-            );
-            playerEntity.Data = JsonHelper.Serialize(updatedProfile);
+                profile.Id, profile.Name, profile.Colors, profile.ImageUri, newStats);
+            await _db.SavePlayerAsync(updatedProfile);
         }
-
-        await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Import complete: {Imported} imported, {Merged} merged, {Skipped} skipped",
             imported, merged, skipped);
@@ -255,29 +209,18 @@ public class StatsController : ControllerBase
     [HttpDelete]
     public async Task<ActionResult> ResetStats()
     {
-        var players = await _dbContext.Players.ToListAsync();
+        var players = await _db.LoadPlayersAsync();
         var resetCount = 0;
 
-        foreach (var playerEntity in players)
+        foreach (var profile in players)
         {
-            var profile = JsonHelper.Deserialize<PlayerProfile>(playerEntity.Data);
-            if (profile == null) continue;
-
-            // Only reset if they have stats
             if (profile.LifetimeStats == null) continue;
 
             var resetProfile = new PlayerProfile(
-                profile.Id,
-                profile.Name,
-                profile.Colors,
-                profile.ImageUri,
-                null // Clear stats
-            );
-            playerEntity.Data = JsonHelper.Serialize(resetProfile);
+                profile.Id, profile.Name, profile.Colors, profile.ImageUri, null);
+            await _db.SavePlayerAsync(resetProfile);
             resetCount++;
         }
-
-        await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Reset stats for {Count} players", resetCount);
 
