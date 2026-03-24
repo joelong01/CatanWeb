@@ -111,209 +111,49 @@ builder.Services.AddScoped<GameTemplateService>();
 // preventing Azure warmup probe timeouts on cold DB connections)
 builder.Services.AddHostedService<DatabaseSeedingService>();
 
-// Database provider detection (zero-config: SQLite locally, SQL Server on Azure)
-Console.WriteLine("[STARTUP] Creating DatabaseProviderDetector...");
-var dbDetector = new DatabaseProviderDetector(builder.Configuration);
-Console.WriteLine($"[STARTUP] Database provider: {dbDetector.ProviderName}, IsAzure: {dbDetector.IsAzure}");
-Console.WriteLine($"[STARTUP] Connection string (masked): {MaskConnectionString(dbDetector.ConnectionString)}");
-builder.Services.AddSingleton(dbDetector);
-
-static string MaskConnectionString(string? cs)
+// Register CosmosDB as the database provider
+Console.WriteLine("[STARTUP] Registering CosmosDB (ICatanDb)...");
+builder.Services.AddSingleton<Microsoft.Azure.Cosmos.CosmosClient>(
+    _ => Catan3.GameService.Abstractions.CosmosClientFactory.Create(builder.Configuration));
+builder.Services.AddScoped<Catan3.GameService.Abstractions.ICatanDb>(sp =>
 {
-    if (string.IsNullOrEmpty(cs)) return "(empty)";
-    // Mask password in connection string
-    return System.Text.RegularExpressions.Regex.Replace(cs, @"(Password|Pwd)=[^;]*", "$1=***", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-}
-
-// Register DbContext with appropriate provider
-// Use AddDbContextPool for SQL Server to enable DbContext pooling (reuses DbContext instances)
-// This works alongside ADO.NET connection pooling for optimal performance
-if (dbDetector.UseSqlServer)
-{
-    Console.WriteLine("[STARTUP] Registering DbContext with pooling (SQL Server)...");
-    builder.Services.AddDbContextPool<CatanDbContext>(options =>
-    {
-        options.UseSqlServer(dbDetector.ConnectionString, sqlOptions =>
-        {
-            sqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 3,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
-                errorNumbersToAdd: null);
-        });
-    }, poolSize: 32); // Match connection pool size
-}
-else
-{
-    Console.WriteLine("[STARTUP] Registering DbContext (SQLite)...");
-    // SQLite doesn't benefit from DbContext pooling (file-based, no connection overhead)
-    builder.Services.AddDbContext<CatanDbContext>(options =>
-    {
-        options.UseSqlite(dbDetector.ConnectionString);
-    });
-}
-Console.WriteLine("[STARTUP] DbContext registered");
-
-// Register ICatanDb → CosmosCatanDb when COSMOS_ENDPOINT is configured.
-// Additive in Phase 1: GameService still uses CatanDbContext directly; ICatanDb
-// is available for contract tests and gradual wiring. Step 9 makes it the default.
-var cosmosEndpoint = builder.Configuration["COSMOS_ENDPOINT"];
-if (!string.IsNullOrEmpty(cosmosEndpoint))
-{
-    Console.WriteLine($"[STARTUP] CosmosDB configured (endpoint length: {cosmosEndpoint.Length}), registering ICatanDb");
-    builder.Services.AddSingleton<Microsoft.Azure.Cosmos.CosmosClient>(
-        _ => Catan3.GameService.Abstractions.CosmosClientFactory.Create(builder.Configuration));
-    builder.Services.AddScoped<Catan3.GameService.Abstractions.ICatanDb>(sp =>
-    {
-        var client = sp.GetRequiredService<Microsoft.Azure.Cosmos.CosmosClient>();
-        return new Catan3.GameService.Abstractions.CosmosCatanDb(client, "catan");
-    });
-}
-
-// Data directory for SQLite
-var dataDir = dbDetector.DataDirectory;
-Console.WriteLine($"[STARTUP] Data directory: {dataDir}");
+    var client = sp.GetRequiredService<Microsoft.Azure.Cosmos.CosmosClient>();
+    return new Catan3.GameService.Abstractions.CosmosCatanDb(client, "catan");
+});
+Console.WriteLine("[STARTUP] CosmosDB registered");
 
 Console.WriteLine("[STARTUP] Building application...");
 var app = builder.Build();
 Console.WriteLine("[STARTUP] Application built successfully");
 
-// Ensure Data directory exists
-Console.WriteLine($"[STARTUP] Creating data directory: {dataDir}");
-try
-{
-    Directory.CreateDirectory(dataDir);
-    Console.WriteLine("[STARTUP] Data directory created/verified");
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"[STARTUP] WARNING: Failed to create data directory: {ex.Message}");
-}
-
-// Find default data path using detector
-var defaultDataPath = dbDetector.GetDefaultDataPath();
+// Default data path for seeding
+var defaultDataPath = Path.Combine(AppContext.BaseDirectory, "Default Data");
 Console.WriteLine($"[STARTUP] Default data path: {defaultDataPath}");
 
-// Handle --check-database command (schema + data verification, JSON output, then exit)
+// Handle --check-database command (CosmosDB health check, JSON output, then exit)
 if (args.Contains("--check-database"))
 {
     var result = new Dictionary<string, object?>
     {
         ["healthy"] = false,
-        ["databaseExists"] = false,
-        ["schemaValid"] = false,
-        ["hasPlayers"] = false,
-        ["hasGames"] = false,
-        ["hasTemplates"] = false,
+        ["provider"] = "CosmosDB",
         ["playerCount"] = 0,
         ["gameCount"] = 0,
-        ["templateCount"] = 0,
-        ["missingTables"] = Array.Empty<string>(),
-        ["extraTables"] = Array.Empty<string>(),
-        ["action"] = "install"
     };
 
     try
     {
-        // Check if database file exists (SQLite only)
-        if (!dbDetector.UseSqlServer)
-        {
-            var csb = new System.Data.Common.DbConnectionStringBuilder { ConnectionString = dbDetector.ConnectionString };
-            var dbPath = csb.ContainsKey("Data Source") ? csb["Data Source"]?.ToString() ?? dbDetector.ConnectionString : dbDetector.ConnectionString;
-            dbPath = Path.GetFullPath(dbPath);
-            result["databaseExists"] = File.Exists(dbPath);
-            if (!(bool)result["databaseExists"])
-            {
-                result["action"] = "create";
-                Console.Write(System.Text.Json.JsonSerializer.Serialize(result));
-                return;
-            }
-        }
-        else
-        {
-            result["databaseExists"] = true; // SQL Server existence checked differently
-        }
-
         using var scope = app.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
-
-        // Get expected tables from EF Core model
-        var expectedTables = context.Model.GetEntityTypes()
-            .Select(e => e.GetTableName()!)
-            .Where(t => t != null)
-            .OrderBy(t => t)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        // Get actual tables from database
-        var actualTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var conn = context.Database.GetDbConnection();
-        await conn.OpenAsync();
-        try
-        {
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = dbDetector.UseSqlServer
-                ? "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
-                : "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != '__EFMigrationsHistory'";
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                actualTables.Add(reader.GetString(0));
-            }
-        }
-        finally
-        {
-            await conn.CloseAsync();
-        }
-
-        var missing = expectedTables.Except(actualTables, StringComparer.OrdinalIgnoreCase).OrderBy(t => t).ToArray();
-        var extra = actualTables.Except(expectedTables, StringComparer.OrdinalIgnoreCase).OrderBy(t => t).ToArray();
-
-        result["missingTables"] = missing;
-        result["extraTables"] = extra;
-        result["schemaValid"] = missing.Length == 0;
-
-        // Check data if schema is valid
-        if (missing.Length == 0)
-        {
-            try
-            {
-                var playerCount = await context.Players.CountAsync();
-                var gameCount = await context.GameSaveMetadata.CountAsync();
-                var templateCount = await context.GameTemplates.CountAsync();
-
-                result["playerCount"] = playerCount;
-                result["gameCount"] = gameCount;
-                result["templateCount"] = templateCount;
-                result["hasPlayers"] = playerCount > 0;
-                result["hasGames"] = gameCount > 0;
-                result["hasTemplates"] = templateCount > 0;
-
-                // Determine action needed
-                if (playerCount == 0 || templateCount == 0)
-                {
-                    result["action"] = "install"; // needs seeding
-                }
-                else
-                {
-                    result["action"] = null; // everything looks good
-                    result["healthy"] = true;
-                }
-            }
-            catch (Exception ex)
-            {
-                // Tables exist but queries fail -- schema mismatch or data access issue
-                result["schemaValid"] = false;
-                result["action"] = "install";
-                result["error"] = ex.Message;
-            }
-        }
-        else
-        {
-            result["action"] = "install"; // missing tables
-        }
+        var db = scope.ServiceProvider.GetRequiredService<Catan3.GameService.Abstractions.ICatanDb>();
+        await db.InitializeAsync();
+        var players = await db.LoadPlayersAsync();
+        var gameCount = await db.CountGamesAsync();
+        result["playerCount"] = players.Count;
+        result["gameCount"] = gameCount;
+        result["healthy"] = true;
     }
     catch (Exception ex)
     {
-        result["action"] = "install";
         result["error"] = ex.Message;
     }
 
@@ -321,22 +161,22 @@ if (args.Contains("--check-database"))
     return;
 }
 
-// Handle --seed-database command (synchronous seeding, then exit)
+// Handle --seed-database command (synchronous initialization, then exit)
 if (args.Contains("--seed-database"))
 {
     var seedLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseSeeder");
-    seedLogger.LogInformation("[STARTUP] --seed-database flag detected, seeding synchronously...");
+    seedLogger.LogInformation("[STARTUP] --seed-database flag detected, initializing CosmosDB...");
     try
     {
         using var scope = app.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
-        var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
-        await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence, dbDetector.UseSqlServer, seedLogger);
-        seedLogger.LogInformation("[STARTUP] Database seeding completed, exiting");
+        var db = scope.ServiceProvider.GetRequiredService<Catan3.GameService.Abstractions.ICatanDb>();
+        await db.InitializeAsync();
+        await DatabaseSeeder.UpsertSystemTemplatesAsync(db, seedLogger);
+        seedLogger.LogInformation("[STARTUP] Database initialization completed, exiting");
     }
     catch (Exception ex)
     {
-        seedLogger.LogError(ex, "[STARTUP] Database seeding failed");
+        seedLogger.LogError(ex, "[STARTUP] Database initialization failed");
     }
     return;
 }
@@ -413,14 +253,9 @@ if (!isOpenApiGeneration)
 }
 
 // Health check endpoint for service readiness
-// Always checks database connectivity, but caches expensive Resource Graph diagnostics for 10 minutes
-app.MapGet("/health", async (
-    DatabaseProviderDetector detector,
-    AzureSqlDiagnosticService sqlDiagnostics,
-    CatanDbContext dbContext,
-    bool? checkDatabase) =>
+app.MapGet("/health", async (Catan3.GameService.Abstractions.ICatanDb db) =>
 {
-    // Basic health info (always returned)
+    // Basic health info
     var response = new Dictionary<string, object>
     {
         ["status"] = "healthy",
@@ -431,158 +266,30 @@ app.MapGet("/health", async (
             buildTime = Environment.GetEnvironmentVariable("DEPLOY_BUILD_TIME") ?? "unknown",
             environment = app.Environment.EnvironmentName
         },
-        ["database"] = new
-        {
-            provider = detector.ProviderName,
-            isAzure = detector.IsAzure
-        }
+        ["database"] = new { provider = "CosmosDB" }
     };
 
-    if (detector.IsAzure)
+    try
     {
-        // Always try to connect to database (cheap operation)
-        var canConnect = false;
-        Exception? dbException = null;
-
-        try
+        var players = await db.LoadPlayersAsync();
+        var gameCount = await db.CountGamesAsync();
+        response["databaseDiagnostics"] = new
         {
-            await dbContext.Database.CanConnectAsync();
-            canConnect = true;
-        }
-        catch (Exception ex)
+            connected = true,
+            checkedAt = DateTime.UtcNow,
+            playerCount = players.Count,
+            gameCount,
+        };
+    }
+    catch (Exception ex)
+    {
+        response["status"] = "degraded";
+        response["databaseDiagnostics"] = new
         {
-            dbException = ex;
-        }
-
-        // Determine if we need full Resource Graph diagnostics
-        var forceCheck = checkDatabase == true;
-        var cachedResult = HealthCheckCache.GetCachedResult();
-        var cachedWasConnected = cachedResult != null &&
-            (cachedResult as dynamic)?.connected == true;
-
-        // Run full diagnostics if:
-        // 1. Forced via ?checkDatabase=true
-        // 2. Cache expired
-        // 3. Connection status changed (was connected, now failing - or vice versa)
-        var statusChanged = cachedResult != null && canConnect != cachedWasConnected;
-        var shouldRunFullDiagnostics = forceCheck || HealthCheckCache.ShouldRefresh() || statusChanged;
-
-        if (canConnect)
-        {
-            // Database is accessible - run full troubleshoot to verify schema
-            if (shouldRunFullDiagnostics || cachedResult == null)
-            {
-                try
-                {
-                    var troubleshootResult = await sqlDiagnostics.TroubleshootAsync();
-                    var diagnosticResult = new
-                    {
-                        connected = troubleshootResult.ConnectionSuccessful,
-                        checkedAt = DateTime.UtcNow,
-                        status = troubleshootResult.SchemaMissing ? "schema-missing" : "Online",
-                        schemaMissing = troubleshootResult.SchemaMissing,
-                        checks = troubleshootResult.Checks,
-                        issues = troubleshootResult.Issues,
-                        cannotFix = troubleshootResult.CannotFix,
-                        issue = troubleshootResult.SchemaMissing ? "Missing required database tables" : (string?)null,
-                        recommendation = troubleshootResult.SchemaMissing
-                            ? "Run './catan.ps1 azure database install' to create missing tables"
-                            : (string?)null
-                    };
-                    HealthCheckCache.Update(diagnosticResult);
-                    response["databaseDiagnostics"] = diagnosticResult;
-                }
-                catch (Exception ex)
-                {
-                    // Fallback if troubleshoot fails
-                    var diagnosticResult = new
-                    {
-                        connected = true,
-                        checkedAt = DateTime.UtcNow,
-                        status = "Online",
-                        issue = (string?)null,
-                        recommendation = (string?)null,
-                        troubleshootError = ex.Message
-                    };
-                    HealthCheckCache.Update(diagnosticResult);
-                    response["databaseDiagnostics"] = diagnosticResult;
-                }
-            }
-            else
-            {
-                // Use cached result
-                response["databaseDiagnostics"] = cachedResult ?? new
-                {
-                    connected = true,
-                    checkedAt = DateTime.UtcNow,
-                    status = "Online",
-                    issue = (string?)null,
-                    recommendation = (string?)null
-                };
-            }
-        }
-        else
-        {
-            // Database connection failed
-            response["status"] = "degraded";
-
-            if (shouldRunFullDiagnostics)
-            {
-                try
-                {
-                    // Run expensive Resource Graph diagnostics
-                    var diagnosis = await sqlDiagnostics.DiagnoseAsync(dbException);
-                    var diagnosticResult = new
-                    {
-                        connected = false,
-                        checkedAt = DateTime.UtcNow,
-                        status = diagnosis.AzureStatus?.DatabaseStatus ?? "Unknown",
-                        publicNetworkAccess = diagnosis.AzureStatus?.PublicNetworkAccess,
-                        issue = diagnosis.Issue.ToString(),
-                        recommendation = diagnosis.Recommendation,
-                        error = diagnosis.ConnectionError
-                    };
-                    HealthCheckCache.Update(diagnosticResult);
-                    response["databaseDiagnostics"] = diagnosticResult;
-                }
-                catch (Exception ex)
-                {
-                    response["databaseDiagnostics"] = new
-                    {
-                        connected = false,
-                        checkedAt = DateTime.UtcNow,
-                        error = $"Diagnostic check failed: {ex.Message}"
-                    };
-                }
-            }
-            else if (cachedResult != null)
-            {
-                // Use cached diagnostics but update connection status
-                response["databaseDiagnostics"] = new
-                {
-                    connected = false,
-                    checkedAt = DateTime.UtcNow,
-                    cachedDiagnosticsFrom = (cachedResult as dynamic)?.checkedAt,
-                    status = (cachedResult as dynamic)?.status ?? "Unknown",
-                    publicNetworkAccess = (cachedResult as dynamic)?.publicNetworkAccess,
-                    issue = (cachedResult as dynamic)?.issue,
-                    recommendation = (cachedResult as dynamic)?.recommendation,
-                    error = dbException?.Message
-                };
-                response["databaseDiagnosticsCached"] = true;
-            }
-            else
-            {
-                // No cache, can't run diagnostics - just report the error
-                response["databaseDiagnostics"] = new
-                {
-                    connected = false,
-                    checkedAt = DateTime.UtcNow,
-                    error = dbException?.Message,
-                    recommendation = "Run with ?checkDatabase=true for full diagnostics"
-                };
-            }
-        }
+            connected = false,
+            checkedAt = DateTime.UtcNow,
+            error = ex.Message,
+        };
     }
 
     return Results.Ok(response);
