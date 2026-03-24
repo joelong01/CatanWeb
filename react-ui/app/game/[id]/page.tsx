@@ -644,35 +644,8 @@ export default function GamePage(): React.ReactElement {
         pendingRollPrefixRef.current = false;
       }
 
-      // Purchase shortcuts (case-insensitive):
-      // WaitingForNext: s=Settlement, c=City, k=Soldier, r=Road, d=DevCard
-      // WaitingForRoll: k=Soldier only
-      const lowerKey = e.key.toLowerCase();
-      if (gameState === 'WaitingForNext') {
-        switch (lowerKey) {
-          case 's':
-            if (canPurchaseSettlement) { e.preventDefault(); handleAction('settlement'); return; }
-            break;
-          case 'c':
-            if (canPurchaseCity) { e.preventDefault(); handleAction('city'); return; }
-            break;
-          case 'k':
-            if (canPlaySoldier) { e.preventDefault(); handleAction('soldier'); return; }
-            break;
-          case 'r':
-            if (canPurchaseRoad) { e.preventDefault(); handleAction('road'); return; }
-            break;
-          case 'd':
-            if (canPurchaseDevCard) { e.preventDefault(); handleAction('devcard'); return; }
-            break;
-        }
-      } else if (gameState === 'WaitingForRoll' && lowerKey === 'k' && canPlaySoldier) {
-        e.preventDefault();
-        handleAction('soldier');
-        return;
-      }
-
       const key = e.key.toUpperCase();
+      const lowerKey = e.key.toLowerCase();
 
       // Handle number keys (1-9) for road building or settlement placement
       const num = parseInt(e.key);
@@ -739,7 +712,36 @@ export default function GamePage(): React.ReactElement {
           const settlement = upgradeableSettlements[cityIndex];
           console.log('[GamePage] Keyboard shortcut: upgrading settlement', key);
           proxy.upgradeBuilding(settlement.buildingKey);
+          return;
         }
+      }
+
+      // Purchase shortcuts — only fire AFTER placement logic above has had a chance.
+      // Priority: place already-purchased entitlements first, buy new ones second.
+      // WaitingForNext: s=Settlement, c=City, k=Soldier, r=Road, d=DevCard
+      // WaitingForRoll: k=Soldier only
+      // Unrecognized keys are ignored (no fall-through to other handlers).
+      if (gameState === 'WaitingForNext') {
+        switch (lowerKey) {
+          case 's':
+            if (canPurchaseSettlement) { e.preventDefault(); handleAction('settlement'); }
+            return;
+          case 'c':
+            if (canPurchaseCity) { e.preventDefault(); handleAction('city'); }
+            return;
+          case 'k':
+            if (canPlaySoldier) { e.preventDefault(); handleAction('soldier'); }
+            return;
+          case 'r':
+            if (canPurchaseRoad) { e.preventDefault(); handleAction('road'); }
+            return;
+          case 'd':
+            if (canPurchaseDevCard) { e.preventDefault(); handleAction('devcard'); }
+            return;
+        }
+      } else if (gameState === 'WaitingForRoll' && lowerKey === 'k') {
+        if (canPlaySoldier) { e.preventDefault(); handleAction('soldier'); }
+        return;
       }
     };
 
