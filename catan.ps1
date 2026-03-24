@@ -327,24 +327,10 @@ function Install-Database {
 }
 
 function Initialize-Database {
-    Write-Host "Checking database..." -ForegroundColor Cyan
-
-    $dbStatus = Invoke-DatabaseDoctor -Quiet
-
-    if ($null -eq $dbStatus.Action) {
-        Write-Host "Database is healthy" -ForegroundColor Green
-        return $true
-    }
-
-    # Database needs work -- action is "create" or "install"
-    if (-not $dbStatus.SchemaValid -and (Test-Path $DatabasePath)) {
-        Write-Host "Database schema is invalid; clearing and reinstalling..." -ForegroundColor Yellow
-        Clear-Database
-    }
-    else {
-        Write-Host "Database needs $($dbStatus.Action): installing..." -ForegroundColor Yellow
-    }
-    return Install-Database
+    Write-Host "Checking Cosmos emulator..." -ForegroundColor Cyan
+    $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+    & pwsh $dbScript install
+    return ($LASTEXITCODE -eq 0)
 }
 
 function Clear-Database {
@@ -1666,12 +1652,13 @@ switch ($Verb) {
             Write-Host ""
         }
 
-        # Check database
+        # Check database (Cosmos emulator)
         Write-Host "Checking database..." -ForegroundColor Yellow
-        $dbStatus = Invoke-DatabaseDoctor
-        if (-not $dbStatus.Healthy) {
+        $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+        & pwsh $dbScript doctor
+        if ($LASTEXITCODE -ne 0) {
             Write-Host ""
-            Write-Host "Some issues found. Run './catan.ps1 install' to fix." -ForegroundColor Yellow
+            Write-Host "Some issues found. Run './catan.ps1 database install' to fix." -ForegroundColor Yellow
             exit 1
         }
     }
@@ -1687,24 +1674,13 @@ switch ($Verb) {
         & "$PSScriptRoot\.scripts\dependencies.ps1" -Install -Yes:$Yes
         Write-Host ""
 
-        # Check database status first
-        Write-Host "Checking database..." -ForegroundColor Yellow
-        $dbStatus = Invoke-DatabaseDoctor
-
-        if ($dbStatus.Healthy -and -not $Force) {
-            Write-Host "Database is already installed and healthy." -ForegroundColor Green
-        } else {
-            if ($Force) {
-                Write-Host "Force flag set, reinstalling database..." -ForegroundColor Yellow
-            } else {
-                Write-Host "Database needs installation..." -ForegroundColor Yellow
-            }
-            Clear-Database
-            $installed = Install-Database
-            if (-not $installed) {
-                Write-Host "Database installation failed!" -ForegroundColor Red
-                exit 1
-            }
+        # Install database (Cosmos emulator)
+        Write-Host "Installing database..." -ForegroundColor Yellow
+        $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+        & pwsh $dbScript install
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Database installation failed!" -ForegroundColor Red
+            exit 1
         }
         Write-Host ""
         Write-Host "Installation complete!" -ForegroundColor Green

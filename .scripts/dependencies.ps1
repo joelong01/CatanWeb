@@ -4,7 +4,7 @@ Master dependency management script for Catan3 development environment.
 .DESCRIPTION
 Orchestrates installation, verification, and cleanup of all development dependencies:
 - .NET 9 SDK
-- SQLite (for local database)
+- Docker (for CosmosDB emulator)
 - Node.js and npm (for Claude Code and other tools)
 - Claude CLI
 - VC++ Debug redistributable (Windows only, for Desktop app)
@@ -83,10 +83,10 @@ $script:DependencyScripts = @(
         Platforms = @("Windows", "macOS", "Linux")
     },
     @{
-        Name = "sqlite"
-        Script = "sqlite.ps1"
-        Description = "SQLite Database"
-        Required = $true
+        Name = "docker"
+        Script = "docker.ps1"
+        Description = "Docker (Cosmos emulator)"
+        Required = $false
         Platforms = @("Windows", "macOS", "Linux")
     },
     @{
@@ -341,7 +341,7 @@ Options:
 
 Dependencies Managed:
     - .NET 9 SDK          Required for building all projects
-    - SQLite              Required for local database
+    - Docker              For CosmosDB local emulator
     - Node.js/npm         Optional, for Claude Code and dev tools
     - Claude CLI          Optional, for AI-assisted development
     - VC++ Debug          Windows only, for Desktop app debugging
