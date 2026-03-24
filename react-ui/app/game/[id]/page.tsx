@@ -718,30 +718,25 @@ export default function GamePage(): React.ReactElement {
 
       // Purchase shortcuts — only fire AFTER placement logic above has had a chance.
       // Priority: place already-purchased entitlements first, buy new ones second.
-      // WaitingForNext: s=Settlement, c=City, k=Soldier, r=Road, d=DevCard
-      // WaitingForRoll: k=Soldier only
-      // Unrecognized keys are ignored (no fall-through to other handlers).
-      if (gameState === 'WaitingForNext') {
-        switch (lowerKey) {
-          case 's':
-            if (canPurchaseSettlement) { e.preventDefault(); handleAction('settlement'); }
-            return;
-          case 'c':
-            if (canPurchaseCity) { e.preventDefault(); handleAction('city'); }
-            return;
-          case 'k':
-            if (canPlaySoldier) { e.preventDefault(); handleAction('soldier'); }
-            return;
-          case 'r':
-            if (canPurchaseRoad) { e.preventDefault(); handleAction('road'); }
-            return;
-          case 'd':
-            if (canPurchaseDevCard) { e.preventDefault(); handleAction('devcard'); }
-            return;
-        }
-      } else if (gameState === 'WaitingForRoll' && lowerKey === 'k') {
-        if (canPlaySoldier) { e.preventDefault(); handleAction('soldier'); }
-        return;
+      // No game-state gating here — the canPurchase* flags already encode whether
+      // the purchase is valid in the current state (server sets enabled:false when not).
+      // Works in WaitingForNext, WaitingForRoll (soldier), Supplemental, etc.
+      switch (lowerKey) {
+        case 's':
+          if (canPurchaseSettlement) { e.preventDefault(); handleAction('settlement'); }
+          return;
+        case 'c':
+          if (canPurchaseCity) { e.preventDefault(); handleAction('city'); }
+          return;
+        case 'k':
+          if (canPlaySoldier) { e.preventDefault(); handleAction('soldier'); }
+          return;
+        case 'r':
+          if (canPurchaseRoad) { e.preventDefault(); handleAction('road'); }
+          return;
+        case 'd':
+          if (canPurchaseDevCard) { e.preventDefault(); handleAction('devcard'); }
+          return;
       }
     };
 
