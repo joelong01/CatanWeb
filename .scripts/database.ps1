@@ -1479,6 +1479,18 @@ function Invoke-SeedDefaultData {
         $null = Invoke-SeedFromJsonFiles -Container $db.GetContainer("players") `
             -Directory (Join-Path $defaultDataPath "Players") -Label "Player"
 
+        Write-Log -Level "INFO" -Message "Seeding games..."
+        $null = Invoke-SeedFromJsonFiles -Container $db.GetContainer("games") `
+            -Directory (Join-Path $defaultDataPath "Games") -Label "Game"
+
+        Write-Log -Level "INFO" -Message "Seeding completed games..."
+        $null = Invoke-SeedFromJsonFiles -Container $db.GetContainer("completed-games") `
+            -Directory (Join-Path $defaultDataPath "CompletedGames") -Label "CompletedGame"
+
+        Write-Log -Level "INFO" -Message "Seeding templates..."
+        $null = Invoke-SeedFromJsonFiles -Container $db.GetContainer("templates") `
+            -Directory (Join-Path $defaultDataPath "Templates") -Label "Template"
+
         Write-Log -Level "INFO" -Message "Seeding recordings..."
         $null = Invoke-SeedFromJsonFiles -Container $db.GetContainer("recordings") `
             -Directory (Join-Path $defaultDataPath "Recordings") -Label "Recording"

@@ -1,0 +1,12 @@
+{
+  "id": "75f60506-43db-48f1-9d6d-0ef85cec40c6",
+  "name": "Susie",
+  "colors": {
+    "primary": "#800080",
+    "secondary": "#400040",
+    "foreground": "#FFFFFF"
+  },
+  "imageUri": null,
+  "imageData": null,
+  "imageContentType": null
+}
