@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
-using Catan3.GameService.Data;
+using Catan3.GameService.Abstractions;
 using Catan3.Shared.Models;
+using Catan3.Shared.Services;
 using Catan3.Shared.Utility;
-using Microsoft.EntityFrameworkCore;
 
 namespace Catan3.GameService.Services;
 
@@ -56,13 +56,7 @@ public class RecordingService
 
     /// <summary>
     /// Starts recording for a game. Captures the initial game state and saves to database immediately.
-    /// If a previous recording exists for this GameID, it is deleted to prevent duplicates with
-    /// divergent states (which can happen when stop+start recording on the same game).
     /// </summary>
-    /// <param name="gameId">The game ID to record</param>
-    /// <param name="name">The recording name (typically the game name)</param>
-    /// <param name="initialGameModel">The initial game state</param>
-    /// <returns>The recording ID, or null if already recording this game</returns>
     public async Task<string?> StartRecordingAsync(string gameId, string name, GameModel initialGameModel)
     {
         var recording = new ActiveRecording(gameId, name, initialGameModel);
@@ -74,8 +68,7 @@ public class RecordingService
         }
 
         // Delete any existing recordings for this GameID to prevent duplicates
-        // This handles the case where recording was stopped and started again on the same game
-        await DeleteRecordingsByGameIdAsync(initialGameModel.GameId);
+        await DeleteRecordingsByGameIdInternalAsync(initialGameModel.GameId);
 
         // Save to database immediately
         await SaveRecordingToDatabaseAsync(recording);
@@ -85,37 +78,13 @@ public class RecordingService
         return recording.RecordingId;
     }
 
-    /// <summary>
-    /// Checks if a game is currently being recorded.
-    /// </summary>
-    public bool IsRecording(string gameId)
-    {
-        return _activeRecordings.ContainsKey(gameId);
-    }
+    public bool IsRecording(string gameId) => _activeRecordings.ContainsKey(gameId);
 
-    /// <summary>
-    /// Gets the number of actions recorded so far for a game.
-    /// </summary>
-    public int GetActionCount(string gameId)
-    {
-        if (_activeRecordings.TryGetValue(gameId, out var recording))
-        {
-            return recording.Actions.Count;
-        }
-        return 0;
-    }
+    public int GetActionCount(string gameId) =>
+        _activeRecordings.TryGetValue(gameId, out var recording) ? recording.Actions.Count : 0;
 
-    /// <summary>
-    /// Gets the recording name for a game.
-    /// </summary>
-    public string? GetRecordingName(string gameId)
-    {
-        if (_activeRecordings.TryGetValue(gameId, out var recording))
-        {
-            return recording.Name;
-        }
-        return null;
-    }
+    public string? GetRecordingName(string gameId) =>
+        _activeRecordings.TryGetValue(gameId, out var recording) ? recording.Name : null;
 
     /// <summary>
     /// Records an action and saves to database immediately.
@@ -125,8 +94,6 @@ public class RecordingService
         if (_activeRecordings.TryGetValue(gameId, out var recording))
         {
             recording.Actions.Add(message);
-
-            // Save to database after each action for crash recovery
             await SaveRecordingToDatabaseAsync(recording);
 
             _logger.LogDebug("Recorded action {ActionType} for game {GameId}, total actions: {Count}",
@@ -135,10 +102,9 @@ public class RecordingService
     }
 
     /// <summary>
-    /// Stops recording. The recording is already saved in database.
+    /// Stops recording. Returns summary + data, or null if not recording.
     /// </summary>
-    /// <returns>The recording entity, or null if not recording</returns>
-    public async Task<RecordingEntity?> StopRecordingAsync(string gameId)
+    public async Task<(GameServiceProxy.RecordingSummary Summary, string Data)?> StopRecordingAsync(string gameId)
     {
         if (!_activeRecordings.TryRemove(gameId, out var recording))
         {
@@ -146,13 +112,13 @@ public class RecordingService
             return null;
         }
 
-        // Final save to ensure everything is persisted
-        var entity = await SaveRecordingToDatabaseAsync(recording);
+        // Final save
+        var (summary, data) = await SaveRecordingToDatabaseAsync(recording);
 
         _logger.LogInformation("Stopped recording '{Name}' for game {GameId} with {ActionCount} actions",
             recording.Name, gameId, recording.Actions.Count);
 
-        return entity;
+        return (summary, data);
     }
 
     /// <summary>
@@ -162,9 +128,7 @@ public class RecordingService
     {
         if (_activeRecordings.TryRemove(gameId, out var recording))
         {
-            // Remove from database
             await DeleteRecordingAsync(recording.RecordingId);
-
             _logger.LogInformation("Cancelled recording {RecordingId} for game {GameId}",
                 recording.RecordingId, gameId);
             return true;
@@ -173,68 +137,53 @@ public class RecordingService
     }
 
     /// <summary>
-    /// Saves or updates the recording in the database.
+    /// Saves or updates the recording in the database. Returns summary + data.
     /// </summary>
-    private async Task<RecordingEntity> SaveRecordingToDatabaseAsync(ActiveRecording recording)
+    private async Task<(GameServiceProxy.RecordingSummary Summary, string Data)> SaveRecordingToDatabaseAsync(ActiveRecording recording)
     {
         var recordingData = new RecordingData
         {
             InitialGameModel = recording.InitialGameModel,
             Actions = recording.Actions
         };
+        var jsonData = JsonHelper.Serialize(recordingData);
 
-        var entity = new RecordingEntity
+        var summary = new GameServiceProxy.RecordingSummary
         {
             Id = recording.RecordingId,
             Name = recording.Name,
             CreatedAt = recording.StartedAt,
             GameType = recording.InitialGameModel.GameType.ToString(),
             PlayerCount = recording.InitialGameModel.Players.Count,
-            PlayerIds = string.Join(",", recording.InitialGameModel.Players.Select(p => p.Id)),
             ActionCount = recording.Actions.Count,
-            Data = JsonHelper.Serialize(recordingData)
+            GameId = recording.InitialGameModel.GameId,
         };
 
         using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<ICatanDb>();
+        await db.SaveRecordingAsync(summary, jsonData);
 
-        var existing = await dbContext.Recordings.FindAsync(recording.RecordingId);
-        if (existing != null)
-        {
-            // Update existing
-            existing.ActionCount = entity.ActionCount;
-            existing.Data = entity.Data;
-        }
-        else
-        {
-            // Add new
-            dbContext.Recordings.Add(entity);
-        }
-
-        await dbContext.SaveChangesAsync();
-        return entity;
+        return (summary, jsonData);
     }
 
     /// <summary>
     /// Gets all saved recordings from the database.
     /// </summary>
-    public async Task<List<RecordingEntity>> GetRecordingsAsync()
+    public async Task<IReadOnlyList<GameServiceProxy.RecordingSummary>> GetRecordingsAsync()
     {
         using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
-        return await dbContext.Recordings
-            .OrderByDescending(r => r.CreatedAt)
-            .ToListAsync();
+        var db = scope.ServiceProvider.GetRequiredService<ICatanDb>();
+        return await db.ListRecordingsAsync();
     }
 
     /// <summary>
-    /// Gets a specific recording by ID.
+    /// Gets a specific recording by ID (summary + data).
     /// </summary>
-    public async Task<RecordingEntity?> GetRecordingAsync(string recordingId)
+    public async Task<(GameServiceProxy.RecordingSummary Summary, string Data)?> GetRecordingAsync(string recordingId)
     {
         using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
-        return await dbContext.Recordings.FindAsync(recordingId);
+        var db = scope.ServiceProvider.GetRequiredService<ICatanDb>();
+        return await db.LoadRecordingAsync(recordingId);
     }
 
     /// <summary>
@@ -243,45 +192,24 @@ public class RecordingService
     public async Task<bool> DeleteRecordingAsync(string recordingId)
     {
         using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<ICatanDb>();
 
-        var recording = await dbContext.Recordings.FindAsync(recordingId);
-        if (recording == null)
-        {
-            return false;
-        }
+        var existing = await db.LoadRecordingAsync(recordingId);
+        if (existing == null) return false;
 
-        dbContext.Recordings.Remove(recording);
-        await dbContext.SaveChangesAsync();
-
+        await db.DeleteRecordingAsync(recordingId);
         _logger.LogInformation("Deleted recording {RecordingId}", recordingId);
         return true;
     }
 
     /// <summary>
-    /// Deletes all recordings that contain the specified GameID in their data.
-    /// This prevents duplicate recordings when stop+start recording on the same game.
+    /// Deletes all recordings for a given GameID.
     /// </summary>
-    private async Task DeleteRecordingsByGameIdAsync(string gameId)
+    private async Task DeleteRecordingsByGameIdInternalAsync(string gameId)
     {
         using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
-
-        // Find recordings where the data contains this gameId
-        // We search for the JSON pattern "gameId":"<gameId>" to match the embedded GameID
-        var searchPattern = $"\"gameId\":\"{gameId}\"";
-        var matchingRecordings = await dbContext.Recordings
-            .Where(r => r.Data.Contains(searchPattern))
-            .ToListAsync();
-
-        if (matchingRecordings.Count > 0)
-        {
-            dbContext.Recordings.RemoveRange(matchingRecordings);
-            await dbContext.SaveChangesAsync();
-
-            _logger.LogInformation("Deleted {Count} existing recording(s) for GameID {GameId} to prevent duplicates",
-                matchingRecordings.Count, gameId);
-        }
+        var db = scope.ServiceProvider.GetRequiredService<ICatanDb>();
+        await db.DeleteRecordingsByGameIdAsync(gameId);
     }
 
     /// <summary>
@@ -290,16 +218,24 @@ public class RecordingService
     public async Task<bool> RenameRecordingAsync(string recordingId, string newName)
     {
         using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<ICatanDb>();
 
-        var recording = await dbContext.Recordings.FindAsync(recordingId);
-        if (recording == null)
+        var existing = await db.LoadRecordingAsync(recordingId);
+        if (existing == null) return false;
+
+        var (summary, data) = existing.Value;
+        // Create updated summary with new name
+        var updated = new GameServiceProxy.RecordingSummary
         {
-            return false;
-        }
-
-        recording.Name = newName;
-        await dbContext.SaveChangesAsync();
+            Id = summary.Id,
+            Name = newName,
+            CreatedAt = summary.CreatedAt,
+            GameType = summary.GameType,
+            PlayerCount = summary.PlayerCount,
+            ActionCount = summary.ActionCount,
+            GameId = summary.GameId,
+        };
+        await db.SaveRecordingAsync(updated, data);
 
         _logger.LogInformation("Renamed recording {RecordingId} to '{NewName}'", recordingId, newName);
         return true;
@@ -322,44 +258,35 @@ public class RecordingService
     }
 
     /// <summary>
-    /// Imports a recording from external source (e.g., syncing between local and Azure databases).
+    /// Imports a recording from external source.
     /// Skips if a recording with the same ID already exists.
     /// </summary>
     public async Task<bool> ImportRecordingAsync(
-        string id,
-        string name,
-        DateTime createdAt,
-        string gameType,
-        int playerCount,
-        string playerIds,
-        int actionCount,
-        string data)
+        string id, string name, DateTime createdAt,
+        string gameType, int playerCount, string playerIds,
+        int actionCount, string data)
     {
         using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<ICatanDb>();
 
-        // Check if recording already exists
-        var existing = await dbContext.Recordings.FindAsync(id);
+        var existing = await db.LoadRecordingAsync(id);
         if (existing != null)
         {
             _logger.LogInformation("Recording {RecordingId} already exists, skipping import", id);
             return false;
         }
 
-        var entity = new RecordingEntity
+        var summary = new GameServiceProxy.RecordingSummary
         {
             Id = id,
             Name = name,
             CreatedAt = createdAt,
             GameType = gameType,
             PlayerCount = playerCount,
-            PlayerIds = playerIds,
             ActionCount = actionCount,
-            Data = data
+            GameId = string.Empty, // imported recordings may not have gameId
         };
-
-        dbContext.Recordings.Add(entity);
-        await dbContext.SaveChangesAsync();
+        await db.SaveRecordingAsync(summary, data);
 
         _logger.LogInformation("Imported recording {RecordingId} '{Name}'", id, name);
         return true;

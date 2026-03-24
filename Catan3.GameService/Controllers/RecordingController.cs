@@ -6,6 +6,7 @@ using Catan3.Shared.Models;
 using Catan3.Shared.GameLogic;
 using Catan3.Shared.Utility;
 using Catan3.Shared.Interfaces;
+using Catan3.Shared.Services;
 
 namespace Catan3.GameService.Controllers;
 
@@ -163,48 +164,18 @@ public class RecordingController : ControllerBase
     public async Task<ActionResult<List<RecordingSummary>>> GetRecordings()
     {
         var recordings = await _recordingService.GetRecordingsAsync();
-        var summaries = recordings.Select(r =>
+        var summaries = recordings.Select(r => new RecordingSummary
         {
-            // Extract GameId from the recording data JSON
-            var gameId = ExtractGameIdFromData(r.Data);
-            return new RecordingSummary
-            {
-                Id = r.Id,
-                Name = r.Name,
-                CreatedAt = r.CreatedAt,
-                GameType = r.GameType,
-                PlayerCount = r.PlayerCount,
-                ActionCount = r.ActionCount,
-                GameId = gameId
-            };
+            Id = r.Id,
+            Name = r.Name,
+            CreatedAt = r.CreatedAt,
+            GameType = r.GameType,
+            PlayerCount = r.PlayerCount,
+            ActionCount = r.ActionCount,
+            GameId = r.GameId
         }).ToList();
 
         return Ok(summaries);
-    }
-
-    /// <summary>
-    /// Extracts the GameId from recording data JSON without full deserialization.
-    /// </summary>
-    private static string ExtractGameIdFromData(string data)
-    {
-        if (string.IsNullOrEmpty(data))
-            return string.Empty;
-
-        try
-        {
-            using var doc = JsonDocument.Parse(data);
-            if (doc.RootElement.TryGetProperty("initialGameModel", out var initialGameModel) &&
-                initialGameModel.TryGetProperty("gameId", out var gameIdElement))
-            {
-                return gameIdElement.GetString() ?? string.Empty;
-            }
-        }
-        catch
-        {
-            // Ignore parse errors
-        }
-
-        return string.Empty;
     }
 
     /// <summary>
@@ -213,22 +184,23 @@ public class RecordingController : ControllerBase
     [HttpGet("recording/{id}")]
     public async Task<ActionResult> GetRecording(string id)
     {
-        var recording = await _recordingService.GetRecordingAsync(id);
-        if (recording == null)
+        var result = await _recordingService.GetRecordingAsync(id);
+        if (result == null)
         {
             return NotFound(new { message = $"Recording {id} not found" });
         }
 
+        var (summary, data) = result.Value;
         return Ok(new
         {
-            id = recording.Id,
-            name = recording.Name,
-            createdAt = recording.CreatedAt,
-            gameType = recording.GameType,
-            playerCount = recording.PlayerCount,
-            playerIds = recording.PlayerIds,
-            actionCount = recording.ActionCount,
-            data = recording.Data
+            id = summary.Id,
+            name = summary.Name,
+            createdAt = summary.CreatedAt,
+            gameType = summary.GameType,
+            playerCount = summary.PlayerCount,
+            actionCount = summary.ActionCount,
+            gameId = summary.GameId,
+            data
         });
     }
 
@@ -278,20 +250,21 @@ public class RecordingController : ControllerBase
     [HttpPost("recording/stop/{gameId}")]
     public async Task<ActionResult<object>> StopRecording(string gameId)
     {
-        var recording = await _recordingService.StopRecordingAsync(gameId);
-        if (recording == null)
+        var result = await _recordingService.StopRecordingAsync(gameId);
+        if (result == null)
         {
             return NotFound(new { message = $"No active recording for game {gameId}" });
         }
 
+        var (summary, _) = result.Value;
         _logger.LogInformation("Stopped recording for game {GameId}, saved as {Name} with {ActionCount} actions",
-            gameId, recording.Name, recording.ActionCount);
+            gameId, summary.Name, summary.ActionCount);
 
         return Ok(new
         {
-            recordingId = recording.Id,
-            name = recording.Name,
-            actionCount = recording.ActionCount,
+            recordingId = summary.Id,
+            name = summary.Name,
+            actionCount = summary.ActionCount,
             message = "Recording saved"
         });
     }
@@ -402,14 +375,16 @@ public class RecordingController : ControllerBase
     public async Task<ActionResult<ReplayResult>> ReplayRecording(string id)
     {
         // Load the recording
-        var recording = await _recordingService.GetRecordingAsync(id);
-        if (recording == null)
+        var result = await _recordingService.GetRecordingAsync(id);
+        if (result == null)
         {
             return NotFound(new { message = $"Recording {id} not found" });
         }
 
+        var (recording, data) = result.Value;
+
         // Parse the recording data
-        var recordingData = _recordingService.ParseRecordingData(recording.Data);
+        var recordingData = _recordingService.ParseRecordingData(data);
         if (recordingData == null)
         {
             return BadRequest(new { message = "Failed to parse recording data" });
@@ -530,13 +505,14 @@ public class RecordingController : ControllerBase
     [HttpGet("recording/{id}/actions")]
     public async Task<ActionResult<List<ActionSummary>>> GetRecordingActions(string id)
     {
-        var recording = await _recordingService.GetRecordingAsync(id);
-        if (recording == null)
+        var result = await _recordingService.GetRecordingAsync(id);
+        if (result == null)
         {
             return NotFound(new { message = $"Recording {id} not found" });
         }
 
-        var recordingData = _recordingService.ParseRecordingData(recording.Data);
+        var (_, data) = result.Value;
+        var recordingData = _recordingService.ParseRecordingData(data);
         if (recordingData == null)
         {
             return BadRequest(new { message = "Failed to parse recording data" });
@@ -560,13 +536,14 @@ public class RecordingController : ControllerBase
     [HttpPost("recording/{id}/replay/start")]
     public async Task<ActionResult> StartReplaySession(string id)
     {
-        var recording = await _recordingService.GetRecordingAsync(id);
-        if (recording == null)
+        var result = await _recordingService.GetRecordingAsync(id);
+        if (result == null)
         {
             return NotFound(new { message = $"Recording {id} not found" });
         }
 
-        var recordingData = _recordingService.ParseRecordingData(recording.Data);
+        var (recording, data) = result.Value;
+        var recordingData = _recordingService.ParseRecordingData(data);
         if (recordingData == null)
         {
             return BadRequest(new { message = "Failed to parse recording data" });
