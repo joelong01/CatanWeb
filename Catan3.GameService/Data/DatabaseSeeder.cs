@@ -325,6 +325,26 @@ public static class DatabaseSeeder
         logger?.LogInformation("Recordings seeding complete.");
     }
 
+    /// <summary>
+    /// Upserts system templates via ICatanDb (CosmosDB path).
+    /// </summary>
+    internal static async Task UpsertSystemTemplatesAsync(Abstractions.ICatanDb db, ILogger? logger = null)
+    {
+        (string Id, string Name, string Category, IGameMetadata Metadata)[] candidates =
+        [
+            ("regular",   "Regular Game",   "Base",      RegularBoardInfo.Default),
+            ("expansion", "Expansion Game", "Expansion", ExpansionBoardInfo.Default),
+        ];
+
+        foreach (var (id, name, category, metadata) in candidates)
+        {
+            var templateData = BuildTemplateFromMetadata(metadata, id, name, category);
+            await db.SaveTemplateAsync(id, name, category, isSystemTemplate: true, templateData);
+        }
+
+        logger?.LogInformation("  Upserted {Count} system game templates", candidates.Length);
+    }
+
     internal static async Task UpsertSystemTemplatesAsync(CatanDbContext context, ILogger? logger = null)
     {
         var now = DateTime.UtcNow;
