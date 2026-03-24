@@ -663,21 +663,41 @@ function Test-LocalContainerExists {
 #>
 function Invoke-LocalSeed {
     Write-Log -Level "INFO" -Message "Seeding: ensuring database '$DatabaseName' exists..."
-    Invoke-CosmosRest -Method "POST" -Path "/dbs" -ResourceType "dbs" `
-        -Body @{ id = $DatabaseName } | Out-Null
 
-    foreach ($name in $Containers.Keys) {
-        $partKey = $Containers[$name]
-        Write-Log -Level "INFO" -Message "  Container '$name' ($partKey)..."
-        $body = @{
-            id             = $name
-            partitionKey   = @{ paths = @($partKey); kind = "Hash"; version = 2 }
-            indexingPolicy = $ContainerIndexPolicies[$name]
-        }
-        Invoke-CosmosRest -Method "POST" -Path "/dbs/$DatabaseName/colls" `
-            -ResourceType "colls" -ResourceId "dbs/$DatabaseName" -Body $body | Out-Null
+    # Use SDK — handles retries for 503 (emulator still starting) internally
+    $client = New-CosmosClient -IsAzure:$false -Endpoint $EmulatorEndpoint -Key $EmulatorKey
+    if (-not $client) {
+        Write-Log -Level "ERROR" -Message "Failed to create Cosmos SDK client."
+        return
     }
-    Write-Log -Level "INFO" -Message "Seed complete."
+
+    try {
+        # Retry loop for emulator cold start
+        $deadline = (Get-Date).AddSeconds(90)
+        $db = $null
+        while ($null -eq $db) {
+            try {
+                $db = ($client.CreateDatabaseIfNotExistsAsync($DatabaseName).GetAwaiter().GetResult()).Database
+            } catch {
+                if ((Get-Date) -ge $deadline) { throw }
+                $msg = $_.Exception.Message
+                if ($msg -match "503|ServiceUnavailable|still starting") {
+                    Write-Log -Level "INFO" -Message "  Emulator still starting, retrying in 5s..."
+                    Start-Sleep -Seconds 5
+                } else { throw }
+            }
+        }
+
+        foreach ($name in $Containers.Keys) {
+            $partKey = $Containers[$name]
+            Write-Log -Level "INFO" -Message "  Container '$name' ($partKey)..."
+            $props = [Microsoft.Azure.Cosmos.ContainerProperties]::new($name, $partKey)
+            $db.CreateContainerIfNotExistsAsync($props).GetAwaiter().GetResult() | Out-Null
+        }
+        Write-Log -Level "INFO" -Message "Seed complete."
+    } finally {
+        $client.Dispose()
+    }
 }
 
 # ── Local doctor ────────────────────────────────────────────────────────────────
