@@ -698,22 +698,22 @@ export default function GamePage(): React.ReactElement {
 
         // Then try city upgrades (reverse alphabet: Z=0, Y=1, X=2, etc.)
         const hasCityEntitlement = currentPlayer?.unspentEntitlements?.includes('City');
-        if (!hasCityEntitlement || !buildings || !currentPlayer) return;
+        if (hasCityEntitlement && buildings && currentPlayer) {
+          const upgradeableSettlements = buildings.filter(
+            (b) => b.buildingState === 'Settlement' && b.ownerId === currentPlayer.id
+          );
 
-        // Build list of upgradeable settlements (same logic as GameBoard)
-        const upgradeableSettlements = buildings.filter(
-          (b) => b.buildingState === 'Settlement' && b.ownerId === currentPlayer.id
-        );
+          // Reverse alphabet mapping: Z=0, Y=1, X=2, etc.
+          const cityIndex = 25 - letterIndex; // Z (25) -> 0, Y (24) -> 1, etc.
 
-        // Reverse alphabet mapping: Z=0, Y=1, X=2, etc.
-        const cityIndex = 25 - letterIndex; // Z (25) -> 0, Y (24) -> 1, etc.
-
-        if (cityIndex >= 0 && cityIndex < upgradeableSettlements.length) {
-          const settlement = upgradeableSettlements[cityIndex];
-          console.log('[GamePage] Keyboard shortcut: upgrading settlement', key);
-          proxy.upgradeBuilding(settlement.buildingKey);
-          return;
+          if (cityIndex >= 0 && cityIndex < upgradeableSettlements.length) {
+            const settlement = upgradeableSettlements[cityIndex];
+            console.log('[GamePage] Keyboard shortcut: upgrading settlement', key);
+            proxy.upgradeBuilding(settlement.buildingKey);
+            return;
+          }
         }
+        // Letter didn't match any road or city — fall through to purchase shortcuts
       }
 
       // Purchase shortcuts — only fire AFTER placement logic above has had a chance.
