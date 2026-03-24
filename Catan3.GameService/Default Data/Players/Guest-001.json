@@ -2,7 +2,7 @@
   "id": "Guest-001",
   "name": "Guest",
   "colors": {
-    "primary": "#FF008C",
+    "primary": "#ff008cff",
     "secondary": "#CC8400",
     "foreground": "#000000"
   },
