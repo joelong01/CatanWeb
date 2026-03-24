@@ -66,52 +66,11 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy GameService to staging slot
+      # Infrastructure first (firewall, RBAC, app settings), then deploy
+      - name: Deploy GameService to staging
         shell: pwsh
         run: |
-          ./.scripts/catan-azure.ps1 game-service deploy -Slot staging -Force -TraceLevel INFO
-
-      - name: Verify GameService staging health
-        run: |
-          echo "Waiting for GameService staging to start..."
-          for i in $(seq 1 60); do
-            RESPONSE=$(curl -sf -m 10 \
-              https://catan-api-staging.azurewebsites.net/health 2>/dev/null || echo "")
-            if [ -n "$RESPONSE" ]; then
-              STATUS=$(echo "$RESPONSE" | jq -r '.status' 2>/dev/null || echo "")
-              if [ "$STATUS" = "healthy" ]; then
-                echo "GameService staging healthy after $((i*10))s"
-                echo "$RESPONSE" | jq .
-                exit 0
-              fi
-            fi
-            echo "GameService staging ($((i*10))s): waiting..."
-            sleep 10
-          done
-          echo "::error::GameService staging did not become healthy within 10 minutes"
-          exit 1
-
-  deploy-database:
-    name: Ensure database access (staging)
-    needs: [changes, deploy-gameservice]
-    if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Grant staging slot database access
-        shell: pwsh
-        run: |
-          pwsh .scripts/database.ps1 deploy -Azure -TraceLevel INFO
+          pwsh .scripts/catan-cicd.ps1 gameservice -Slot staging -TraceLevel INFO
 
   deploy-react:
     name: Deploy React UI (staging)
@@ -136,26 +95,14 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy React UI to staging slot
+      - name: Deploy React UI to staging
         shell: pwsh
         run: |
-          ./.scripts/catan-azure.ps1 ui deploy-staging -Force -TraceLevel INFO
-
-      - name: Verify React staging
-        run: |
-          for i in $(seq 1 30); do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 10 \
-              https://catan-staging.azurewebsites.net 2>/dev/null || echo "000")
-            echo "React staging ($((i*10))s): HTTP $CODE"
-            [ "$CODE" = "200" ] && exit 0
-            sleep 10
-          done
-          echo "::error::React staging did not respond within 5 minutes"
-          exit 1
+          pwsh .scripts/catan-cicd.ps1 react -Slot staging -TraceLevel INFO
 
   verify:
     name: Verify staging
-    needs: [changes, deploy-gameservice, deploy-react, deploy-database]
+    needs: [changes, deploy-gameservice, deploy-react]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
