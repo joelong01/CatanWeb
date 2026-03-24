@@ -1947,14 +1947,22 @@ switch ($Verb) {
     }
 
     "database" {
+        $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
         switch ($SubCommand) {
             "clean" {
-                Clear-Database
+                if ($Azure) {
+                    & pwsh $dbScript nuke-containers -Azure -TraceLevel $TraceLevel
+                } else {
+                    Clear-Database
+                }
             }
             "install" {
-                # Check database status first
+                if ($Azure) {
+                    & pwsh $dbScript install -Azure -TraceLevel $TraceLevel
+                    exit $LASTEXITCODE
+                }
+                # Local: use emulator
                 $dbStatus = Invoke-DatabaseDoctor
-
                 if ($dbStatus.Healthy -and -not $Force) {
                     Write-Host "Database is already installed and healthy." -ForegroundColor Green
                 } else {
@@ -1963,30 +1971,33 @@ switch ($Verb) {
                     }
                     Clear-Database
                     $installed = Install-Database
-                    if (-not $installed) {
-                        exit 1
-                    }
+                    if (-not $installed) { exit 1 }
                 }
             }
             "doctor" {
-                if ($Local) {
-                    # Check local SQLite database
-                    $status = Invoke-DatabaseDoctor
-                    if (-not $status.Healthy) {
-                        exit 1
-                    }
+                if ($Azure) {
+                    & pwsh $dbScript doctor -Azure -TraceLevel $TraceLevel
+                    exit $LASTEXITCODE
                 }
-                else {
-                    # Default: Check Azure SQL via catan-azure.ps1
-                    $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
-                    if (Test-Path $azureScript) {
-                        & $azureScript database doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
-                    }
-                    else {
-                        Write-Host "Azure script not found. Use -Local for local database check." -ForegroundColor Red
-                        exit 1
-                    }
+                # Local emulator check
+                $status = Invoke-DatabaseDoctor
+                if (-not $status.Healthy) { exit 1 }
+            }
+            "seed-data" {
+                if ($Azure) {
+                    & pwsh $dbScript seed-data -Azure -TraceLevel $TraceLevel
+                    exit $LASTEXITCODE
                 }
+                Write-Host "seed-data requires -Azure flag" -ForegroundColor Red
+                exit 1
+            }
+            "test" {
+                if ($Azure) {
+                    & pwsh $dbScript test -Azure -TraceLevel $TraceLevel
+                    exit $LASTEXITCODE
+                }
+                & pwsh $dbScript test -TraceLevel $TraceLevel
+                exit $LASTEXITCODE
             }
             "export-game" {
                 # Export one or all saved games from local SQLite to Default Data/Games/
@@ -2204,16 +2215,17 @@ switch ($Verb) {
 
         switch ($SubCommand) {
             "install" {
+                $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
                 Write-Host "Installing all Azure resources..." -ForegroundColor Cyan
                 Write-Host ""
                 & $azureScript game-service install -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
-                & $azureScript database install -TraceLevel $TraceLevel
+                & pwsh $dbScript install -Azure -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
                 & $azureScript ui install -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
-                # Configure database connection and grant managed identity access
-                & $azureScript database deploy -TraceLevel $TraceLevel
+                # Deploy RBAC and app settings for CosmosDB
+                & pwsh $dbScript deploy -Azure -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
                 Write-Host ""
                 Write-Host "All Azure resources installed and configured!" -ForegroundColor Green
@@ -2261,9 +2273,10 @@ switch ($Verb) {
                         Write-Host "GameService deployment complete!" -ForegroundColor Green
                     }
                     "database" {
+                        $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
                         Write-Host "Deploying database configuration..." -ForegroundColor Cyan
                         Write-Host ""
-                        & $azureScript database deploy -Force:$Force -TraceLevel $TraceLevel
+                        & pwsh $dbScript deploy -Azure -TraceLevel $TraceLevel
                         if ($LASTEXITCODE -ne 0) { exit 1 }
                         Write-Host ""
                         Write-Host "Database deployment complete!" -ForegroundColor Green
@@ -2300,42 +2313,17 @@ switch ($Verb) {
                             Write-Host "  GameService: OK - skipping" -ForegroundColor Green
                         }
 
-                        # Database doctor
-                        $dbDoctor = & $azureScript database doctor -HashTable -TraceLevel $TraceLevel
-                        $dbNeedsInstall = $dbDoctor.needsInstall
-                        $dbConnected = $dbDoctor.checks.gameServiceConnected
-                        $dbNeedsDeploy = $dbDoctor.needsDeploy
-                        $dbSchemaValid = $dbDoctor.checks.schemaValid
-
-                        if ($dbNeedsInstall) {
-                            Write-Host "  Database: Not installed - installing..." -ForegroundColor Yellow
-                            & $azureScript database install -TraceLevel $TraceLevel
+                        # Database: use database.ps1 for CosmosDB
+                        $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+                        $dbDoctor = & pwsh $dbScript doctor -Azure -HashTable -TraceLevel $TraceLevel
+                        if ($dbDoctor.Status -ne "Ready") {
+                            Write-Host "  Database: Needs setup" -ForegroundColor Yellow
+                            & pwsh $dbScript install -Azure -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
-                            $dbNeedsDeploy = $true
-                        }
-
-                        if ($dbConnected -and -not $Force) {
-                            Write-Host "  Database: Connected - skipping" -ForegroundColor Green
-                        }
-                        elseif ($dbNeedsDeploy -or $Force) {
-                            Write-Host "  Database: Needs configuration" -ForegroundColor Yellow
-                            & $azureScript database deploy -Force:$Force -TraceLevel $TraceLevel
+                            & pwsh $dbScript deploy -Azure -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
-                        }
-                        else {
-                            Write-Host "  Database: OK - skipping" -ForegroundColor Green
-                        }
-
-                        # Check for schema issues
-                        if (-not $dbSchemaValid -and $dbDoctor.missingTables) {
-                            Write-Host "  Database: Schema missing tables - creating directly..." -ForegroundColor Yellow
-                            Write-Host "  Database: Missing: $($dbDoctor.missingTables -join ', ')" -ForegroundColor Yellow
-                            & $azureScript database fix -TraceLevel $TraceLevel
-                            if ($LASTEXITCODE -ne 0) {
-                                Write-Host "  Database: Failed to create missing tables" -ForegroundColor Red
-                                exit 1
-                            }
-                            Write-Host "  Database: Schema repaired successfully" -ForegroundColor Green
+                        } else {
+                            Write-Host "  Database: Ready - skipping" -ForegroundColor Green
                         }
                         elseif (-not $dbSchemaValid) {
                             Write-Host "  Database: Schema check incomplete - may need to run deploy again after database wakes" -ForegroundColor Yellow
@@ -2402,7 +2390,8 @@ switch ($Verb) {
                     # Pass through -Json and -HashTable to the individual doctor calls
                     # The catan-azure.ps1 script now handles all formatting
                     & $azureScript game-service doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
-                    & $azureScript database doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                    $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+                    & pwsh $dbScript doctor -Azure -TraceLevel $TraceLevel
                     & $azureScript ui doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
 
                     # Show summary if not in JSON/HashTable mode
