@@ -569,6 +569,9 @@
             _dotNetRef = DotNetObjectReference.Create(this);
             await JSRuntime.InvokeVoidAsync("viewportScaler.initialize", null, null, _dotNetRef);
 
+            // Initialize global keyboard shortcuts for purchase actions
+            await JSRuntime.InvokeVoidAsync("gameKeyboardShortcuts.initialize", _dotNetRef);
+
             // Get initial layout mode
             await UpdateLayoutModeAsync();
 
@@ -647,6 +650,39 @@
         {
             Console.WriteLine($"[Game] Failed to re-sync after visibility change: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Called from JavaScript when a purchase keyboard shortcut key is pressed.
+    /// Maps s=Settlement, c=City, k=Soldier, r=Road, d=DevCard.
+    /// Soldier (k) is valid in both WaitingForNext and WaitingForRoll; others only in WaitingForNext.
+    /// </summary>
+    [JSInvokable]
+    public async Task OnPurchaseKeyPressed(string key)
+    {
+        if (_disposed) return;
+        if (GameModel == null) return;
+
+        var state = GameModel.GameState;
+
+        var entitlement = key switch
+        {
+            "s" when state == GameState.WaitingForNext => Entitlement.Settlement,
+            "c" when state == GameState.WaitingForNext => Entitlement.City,
+            "r" when state == GameState.WaitingForNext => Entitlement.Road,
+            "d" when state == GameState.WaitingForNext => Entitlement.DevCard,
+            "k" when state == GameState.WaitingForNext || state == GameState.WaitingForRoll => Entitlement.Soldier,
+            _ => Entitlement.Undefined
+        };
+
+        if (entitlement == Entitlement.Undefined) return;
+        if (!CanPurchase(entitlement)) return;
+
+        await InvokeAsync(async () =>
+        {
+            await OnPurchaseClick(entitlement);
+            StateHasChanged();
+        });
     }
 
     /// <summary>
@@ -1783,6 +1819,13 @@
         _flipAnimationCts?.Dispose();
         _dotNetRef?.Dispose();
         // Don't dispose the Connection service - it's a singleton that persists across pages
-        await Task.CompletedTask;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("gameKeyboardShortcuts.dispose");
+        }
+        catch
+        {
+            // Ignore errors during dispose (JS may not be available)
+        }
     }
 }
