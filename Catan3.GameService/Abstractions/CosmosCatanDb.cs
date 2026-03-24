@@ -625,19 +625,23 @@ public sealed class CosmosCatanDb : ICatanDb
 
 /// <summary>
 /// Builds a CosmosClient for the active environment.
-/// Detects local emulator vs. Azure via COSMOS_ENDPOINT / WEBSITE_SITE_NAME config.
+/// Detection is config-as-code — no environment variable dependencies:
+///   - Azure App Service (WEBSITE_SITE_NAME present): reads COSMOS_ENDPOINT from App Settings,
+///     authenticates via DefaultAzureCredential (Managed Identity).
+///   - Local dev (WEBSITE_SITE_NAME absent): defaults to Cosmos emulator at localhost:8081
+///     with the well-known emulator key. COSMOS_ENDPOINT in config overrides if present.
 /// </summary>
 public static class CosmosClientFactory
 {
-    // STJ options shared by all client instances — camelCase matches [JsonPropertyName] attributes.
+    private const string EmulatorEndpoint = "http://localhost:8081";
+    private const string EmulatorKey =
+        "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw=";
+
     private static readonly JsonSerializerOptions _stjOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    // Singleton handler: reused across HttpClient instances inside the SDK.
-    // 5-min pooled connection lifetime lets the SDK react to DNS changes on the account
-    // (best practice from https://learn.microsoft.com/azure/cosmos-db/best-practice-dotnet).
     private static readonly System.Net.Http.SocketsHttpHandler _socketsHandler = new()
     {
         PooledConnectionLifetime = TimeSpan.FromMinutes(5),
@@ -645,29 +649,30 @@ public static class CosmosClientFactory
 
     public static CosmosClient Create(IConfiguration configuration)
     {
-        var endpoint = configuration["COSMOS_ENDPOINT"]
-            ?? throw new InvalidOperationException(
-                "COSMOS_ENDPOINT is required when running in CosmosDB mode.");
-
         var isAzure = !string.IsNullOrEmpty(configuration["WEBSITE_SITE_NAME"]);
+
         if (isAzure)
         {
+            // Azure App Service: COSMOS_ENDPOINT must be in App Settings (set by database.ps1 deploy)
+            var endpoint = configuration["COSMOS_ENDPOINT"]
+                ?? throw new InvalidOperationException(
+                    "COSMOS_ENDPOINT not found in App Settings. Run: database.ps1 deploy -Azure");
+
             return new CosmosClient(endpoint, new DefaultAzureCredential(), new CosmosClientOptions
             {
-                // STJ serializer for all document reads/writes
                 UseSystemTextJsonSerializerWithOptions = _stjOptions,
-                // Direct mode: lower latency than Gateway for data-plane ops
                 ConnectionMode = ConnectionMode.Direct,
-                // DNS refresh — avoids stale connections after regional failover
                 HttpClientFactory = () => new System.Net.Http.HttpClient(_socketsHandler, disposeHandler: false),
             });
         }
 
-        // Local emulator: well-known fixed key; emulator uses HTTP (no TLS)
-        var key = configuration["COSMOS_KEY"]
-            ?? "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw=";
+        // Local dev: use emulator by default, allow config override
+        var localEndpoint = configuration["COSMOS_ENDPOINT"] ?? EmulatorEndpoint;
+        var localKey = configuration["COSMOS_KEY"] ?? EmulatorKey;
 
-        return new CosmosClient(endpoint, key, new CosmosClientOptions
+        Console.WriteLine($"[STARTUP] CosmosDB: local emulator at {localEndpoint}");
+
+        return new CosmosClient(localEndpoint, localKey, new CosmosClientOptions
         {
             UseSystemTextJsonSerializerWithOptions = _stjOptions,
             ConnectionMode = ConnectionMode.Gateway,
