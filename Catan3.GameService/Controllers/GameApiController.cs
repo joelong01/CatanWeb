@@ -11,7 +11,6 @@ using Catan3.Shared.Interfaces;
 using Catan3.GameService.Abstractions;
 using Catan3.GameService.Services;
 using Catan3.GameService.Utility;
-using Catan3.GameService.Data;
 using Catan3.GameService.Hubs;
 
 namespace Catan3.GameService.Controllers
@@ -2211,16 +2210,13 @@ namespace Catan3.GameService.Controllers
             {
                 await _db.InitializeAsync();
 
-                // Seed system templates
-                await DatabaseSeeder.UpsertSystemTemplatesAsync(_db, _logger);
-
-                _logger.LogEvent("Database Migrate Complete", "Database initialized and templates seeded");
+                _logger.LogEvent("Database Migrate Complete", "Database initialized");
 
                 return Ok(new
                 {
                     timestamp = DateTime.UtcNow,
                     success = true,
-                    message = "Database initialized via ICatanDb. System templates seeded."
+                    message = "Database initialized via ICatanDb."
                 });
             }
             catch (Exception ex)

@@ -301,9 +301,6 @@ function Initialize-Database {
     return ($LASTEXITCODE -eq 0)
 }
 
-# Dead SQLite functions removed (Install-Database, Clear-Database,
-# Invoke-DatabaseDoctor, Import-DefaultGames). All database operations
-# now route through .scripts/database.ps1 (CosmosDB).
 
 function Stop-ChildProcesses {
     param([int]$ParentPid)
@@ -1518,7 +1515,8 @@ switch ($Verb) {
 
         # Only clean database if explicitly requested
         if ($cleanDatabase) {
-            Clear-Database
+            $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+            & pwsh $dbScript nuke-containers
         }
 
         # Clean build artifacts
