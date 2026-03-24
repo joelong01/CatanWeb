@@ -986,42 +986,42 @@ function Deploy-AzureDatabase {
     $rg      = $Config.resourceGroup
     $appName = $Config.gameService.appName
 
-    # 1. Set COSMOS_ENDPOINT app setting
-    Write-Log -Level "INFO" -Message "Setting COSMOS_ENDPOINT on App Service '$appName'..."
+    # 1. Set COSMOS_ENDPOINT and COSMOS_DATABASE on production slot
+    Write-Log -Level "INFO" -Message "Setting Cosmos app settings on '$appName' (production)..."
     $null = Invoke-Azure webapp config appsettings set `
         --name $appName `
         --resource-group $rg `
-        --settings "COSMOS_ENDPOINT=$Endpoint" `
+        --settings "COSMOS_ENDPOINT=$Endpoint" "COSMOS_DATABASE=$DatabaseName" `
         --output none
     if ($LASTEXITCODE -ne 0) {
-        Write-Log -Level "ERROR" -Message "Failed to set COSMOS_ENDPOINT app setting."
+        Write-Log -Level "ERROR" -Message "Failed to set Cosmos app settings on production."
         return $false
     }
 
-    # 3. Get managed identity principal ID
-    Write-Log -Level "INFO" -Message "Retrieving managed identity for '$appName'..."
-    $principalId = Invoke-Azure webapp identity show `
+    # 2. Set Cosmos app settings on all deployment slots
+    $slotsJson = Invoke-Azure webapp deployment slot list `
         --name $appName `
         --resource-group $rg `
-        --query principalId `
-        --output tsv
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($principalId)) {
-        Write-Log -Level "WARN" -Message "Managed identity not found — assigning one..."
-        $null = Invoke-Azure webapp identity assign --name $appName --resource-group $rg --output none
-        $principalId = Invoke-Azure webapp identity show `
+        --query "[].name" `
+        --output json
+    $slots = if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($slotsJson)) {
+        ($slotsJson | ConvertFrom-Json)
+    } else { @() }
+
+    foreach ($slot in $slots) {
+        Write-Log -Level "INFO" -Message "Setting Cosmos app settings on slot '$slot'..."
+        $null = Invoke-Azure webapp config appsettings set `
             --name $appName `
             --resource-group $rg `
-            --query principalId `
-            --output tsv
+            --slot $slot `
+            --settings "COSMOS_ENDPOINT=$Endpoint" "COSMOS_DATABASE=$DatabaseName" `
+            --output none
         if ($LASTEXITCODE -ne 0) {
-            Write-Log -Level "ERROR" -Message "Failed to get managed identity principal ID."
-            return $false
+            Write-Log -Level "WARN" -Message "Failed to set Cosmos app settings on slot '$slot'."
         }
     }
-    $principalId = $principalId.Trim()
-    Write-Log -Level "DEBUG" -Message "Principal ID: $principalId"
 
-    # 4. Get Cosmos account resource ID (scope for all role assignments)
+    # 3. Get Cosmos account resource ID (scope for all role assignments)
     $accountId = Invoke-Azure cosmosdb show `
         --name $AccountName `
         --resource-group $rg `
@@ -1033,38 +1033,100 @@ function Deploy-AzureDatabase {
     }
     $accountId = $accountId.Trim()
 
-    # 5+6. Grant role to App Service MI and signed-in developer
-    $developerOid = (Invoke-Azure ad signed-in-user show --query id --output tsv).Trim()
+    # 4. Collect all principals that need RBAC: production MI, slot MIs, developer
+    $principals = @()
 
-    $principals = @( @{ Id = $principalId; Label = "App Service managed identity" } )
-    if (-not [string]::IsNullOrWhiteSpace($developerOid)) {
-        $principals += @{ Id = $developerOid; Label = "signed-in developer ($developerOid)" }
+    # Production managed identity
+    $prodPrincipal = Get-OrAssignManagedIdentity -AppName $appName -ResourceGroup $rg
+    if ($prodPrincipal) {
+        $principals += @{ Id = $prodPrincipal; Label = "production managed identity" }
     }
 
-    Write-Log -Level "INFO" -Message "Granting data contributor role..."
+    # Slot managed identities
+    foreach ($slot in $slots) {
+        $slotPrincipal = Get-OrAssignManagedIdentity -AppName $appName -ResourceGroup $rg -Slot $slot
+        if ($slotPrincipal) {
+            $principals += @{ Id = $slotPrincipal; Label = "slot '$slot' managed identity" }
+        }
+    }
+
+    # Signed-in developer
+    $developerOid = (Invoke-Azure ad signed-in-user show --query id --output tsv 2>$null)
+    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($developerOid)) {
+        $principals += @{ Id = $developerOid.Trim(); Label = "signed-in developer" }
+    }
+
+    # 5. Grant RBAC to each principal (idempotent — skips if already assigned)
+    Write-Log -Level "INFO" -Message "Granting data contributor role to $($principals.Count) principals..."
     foreach ($p in $principals) {
-        Write-Log -Level "INFO" -Message "  Granting to $($p.Label)..."
+        Write-Log -Level "INFO" -Message "  Granting to $($p.Label) ($($p.Id))..."
         $ok = Grant-CosmosRbac -AccountName $AccountName -ResourceGroup $rg `
                                -PrincipalId $p.Id -Scope $accountId
         if (-not $ok) {
             Write-Log -Level "ERROR" -Message "  RBAC grant failed: $($p.Label)"
             return $false
         }
-        Write-Log -Level "INFO" -Message "  RBAC granted: $($p.Label)"
     }
 
-    Write-Log -Level "INFO" -Message "App Service '$appName' configured for CosmosDB."
+    Write-Log -Level "INFO" -Message "App Service '$appName' (+ $($slots.Count) slots) configured for CosmosDB."
     return $true
 }
 
 <#
 .SYNOPSIS
+    Gets (or assigns) a managed identity for an App Service or slot.
+    Returns the principal ID, or $null on failure.
+#>
+function Get-OrAssignManagedIdentity {
+    param([string]$AppName, [string]$ResourceGroup, [string]$Slot)
+
+    $slotArgs = if ($Slot) { @("--slot", $Slot) } else { @() }
+    $label = if ($Slot) { "'$AppName' slot '$Slot'" } else { "'$AppName'" }
+
+    $principalId = Invoke-Azure webapp identity show `
+        --name $AppName --resource-group $ResourceGroup @slotArgs `
+        --query principalId --output tsv
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($principalId)) {
+        Write-Log -Level "WARN" -Message "Managed identity not found for $label — assigning..."
+        $null = Invoke-Azure webapp identity assign --name $AppName --resource-group $ResourceGroup @slotArgs --output none
+        $principalId = Invoke-Azure webapp identity show `
+            --name $AppName --resource-group $ResourceGroup @slotArgs `
+            --query principalId --output tsv
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log -Level "ERROR" -Message "Failed to get managed identity for $label."
+            return $null
+        }
+    }
+    return $principalId.Trim()
+}
+
+<#
+.SYNOPSIS
     Grants Cosmos DB Built-in Data Contributor role to a principal (idempotent).
+    Checks for existing assignment FIRST to avoid creating duplicates.
     Returns $true on success or if already assigned.
 #>
 function Grant-CosmosRbac {
     param([string]$AccountName, [string]$ResourceGroup, [string]$PrincipalId, [string]$Scope)
 
+    # Check first — avoid creating duplicate assignments
+    $existingJson = Invoke-Azure cosmosdb sql role assignment list `
+        --account-name $AccountName `
+        --resource-group $ResourceGroup `
+        --output json
+    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($existingJson)) {
+        $existing = $existingJson | ConvertFrom-Json
+        $match = $existing | Where-Object {
+            $_.principalId -eq $PrincipalId -and
+            $_.roleDefinitionId -match $CosmosDataContributorRoleId
+        }
+        if ($match) {
+            Write-Log -Level "INFO" -Message "  RBAC already granted — skipped."
+            return $true
+        }
+    }
+
+    # No existing assignment — create one
     $null = Invoke-Azure cosmosdb sql role assignment create `
         --account-name $AccountName `
         --resource-group $ResourceGroup `
@@ -1072,16 +1134,8 @@ function Grant-CosmosRbac {
         --principal-id $PrincipalId `
         --scope $Scope `
         --output none
-    if ($LASTEXITCODE -eq 0) { return $true }
-
-    # Non-zero exit — check if the assignment already exists
-    $existing = Invoke-Azure cosmosdb sql role assignment list `
-        --account-name $AccountName `
-        --resource-group $ResourceGroup `
-        --query "[?principalId=='$PrincipalId']" `
-        --output tsv
-    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($existing)) {
-        Write-Log -Level "DEBUG" -Message "Role already assigned to $PrincipalId — OK."
+    if ($LASTEXITCODE -eq 0) {
+        Write-Log -Level "INFO" -Message "  RBAC granted (new assignment)."
         return $true
     }
 
