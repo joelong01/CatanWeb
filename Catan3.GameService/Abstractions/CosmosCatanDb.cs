@@ -20,9 +20,11 @@ namespace Catan3.GameService.Abstractions;
 /// configures the SDK to use STJ for all document serialization. Doc classes use
 /// [JsonPropertyName] attributes. Newtonsoft.Json is still a direct package reference
 /// because the SDK requires it for internal metadata operations (see MS best practices).
-/// Complex shared types (PlayerProfile, GameTemplateData) are still stored as STJ-serialized
-/// strings to decouple the doc schema from the shared model evolution — see profileJson,
-/// bag of primitives.
+///
+/// Player documents use a flattened model — profile fields (name, colors, imageUri,
+/// imageData, imageContentType, lifetimeStats) are first-class CosmosDB properties,
+/// not wrapped in a serialized string. This enables querying/indexing individual fields.
+/// Template dataJson remains serialized (generated from C# code at startup).
 /// </summary>
 public sealed class CosmosCatanDb : ICatanDb
 {
@@ -68,23 +70,29 @@ public sealed class CosmosCatanDb : ICatanDb
         var iter = _players.GetItemQueryIterator<PlayerDoc>("SELECT * FROM c");
         while (iter.HasMoreResults)
             foreach (var doc in await iter.ReadNextAsync())
-            {
-                var p = DeserializeProfile(doc.ProfileJson);
-                if (p is not null) results.Add(p);
-            }
+                results.Add(DocToProfile(doc));
         return results;
     }
 
     public async Task<PlayerProfile?> LoadPlayerAsync(string id)
     {
         var doc = await TryReadAsync<PlayerDoc>(_players, id);
-        return doc is null ? null : DeserializeProfile(doc.ProfileJson);
+        return doc is null ? null : DocToProfile(doc);
     }
 
     public async Task SavePlayerAsync(PlayerProfile player)
     {
+        // Read-then-write to preserve imageData/imageContentType on profile-only updates
         var doc = await TryReadAsync<PlayerDoc>(_players, player.Id) ?? new PlayerDoc { Id = player.Id };
-        doc.ProfileJson = JsonHelper.Serialize(player);
+        doc.Name = player.Name;
+        doc.Colors = new PlayerColorsDoc
+        {
+            Primary = player.Colors.Primary,
+            Secondary = player.Colors.Secondary,
+            Foreground = player.Colors.Foreground,
+        };
+        doc.ImageUri = player.ImageUri;
+        doc.LifetimeStats = player.LifetimeStats;
         await _players.UpsertItemAsync(doc, new PartitionKey(player.Id), _writeOptions);
     }
 
@@ -314,8 +322,12 @@ public sealed class CosmosCatanDb : ICatanDb
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    private static PlayerProfile? DeserializeProfile(string? json) =>
-        json is null ? null : JsonHelper.Deserialize<PlayerProfile>(json);
+    private static PlayerProfile DocToProfile(PlayerDoc doc) => new(
+        id: doc.Id,
+        name: doc.Name,
+        colors: new PlayerColors(doc.Colors.Primary, doc.Colors.Secondary, doc.Colors.Foreground),
+        imageUri: doc.ImageUri,
+        lifetimeStats: doc.LifetimeStats);
 
     private static async Task<T?> TryReadAsync<T>(Container container, string id)
     {
@@ -437,15 +449,35 @@ public sealed class CosmosCatanDb : ICatanDb
         [JsonPropertyName("id")]
         public string Id { get; set; } = string.Empty;
 
-        /// <summary>STJ-serialized PlayerProfile (avoids Newtonsoft vs STJ attribute conflicts).</summary>
-        [JsonPropertyName("profileJson")]
-        public string? ProfileJson { get; set; }
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonPropertyName("colors")]
+        public PlayerColorsDoc Colors { get; set; } = new();
+
+        [JsonPropertyName("imageUri")]
+        public string? ImageUri { get; set; }
 
         [JsonPropertyName("imageData")]
         public string? ImageData { get; set; }
 
         [JsonPropertyName("imageContentType")]
         public string? ImageContentType { get; set; }
+
+        [JsonPropertyName("lifetimeStats")]
+        public LifetimeStats? LifetimeStats { get; set; }
+    }
+
+    private class PlayerColorsDoc
+    {
+        [JsonPropertyName("primary")]
+        public string Primary { get; set; } = "#CCCCCC";
+
+        [JsonPropertyName("secondary")]
+        public string Secondary { get; set; } = "#999999";
+
+        [JsonPropertyName("foreground")]
+        public string Foreground { get; set; } = "#000000";
     }
 
     private class GameDoc
