@@ -948,7 +948,6 @@ export default function GamePage(): React.ReactElement {
             onAction={handleAction}
             purchaseStats={actionPurchaseStats}
             enabledButtons={actionEnabledButtons}
-            onCopy={handleCopyGame}
           />
         </FloatingPanel>
 

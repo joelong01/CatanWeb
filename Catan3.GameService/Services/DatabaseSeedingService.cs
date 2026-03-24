@@ -1,47 +1,44 @@
+using Catan3.GameService.Abstractions;
 using Catan3.GameService.Data;
 
 namespace Catan3.GameService.Services;
 
 /// <summary>
-/// Runs database seeding as a background service so Kestrel starts listening
-/// immediately. This prevents Azure App Service warmup probe timeouts when
-/// the database connection is slow (e.g., cold Azure SQL + Managed Identity).
+/// Runs database initialization and seeding as a background service so Kestrel starts
+/// listening immediately. For CosmosDB: calls InitializeAsync() to create containers,
+/// then seeds system templates. For SQLite: runs EF Core migrations and seeds default data.
 /// </summary>
 public class DatabaseSeedingService : BackgroundService
 {
     private readonly IServiceProvider _services;
-    private readonly DatabaseProviderDetector _dbDetector;
     private readonly ILogger<DatabaseSeedingService> _logger;
 
-    public DatabaseSeedingService(IServiceProvider services, DatabaseProviderDetector dbDetector, ILogger<DatabaseSeedingService> logger)
+    public DatabaseSeedingService(IServiceProvider services, ILogger<DatabaseSeedingService> logger)
     {
         _services = services;
-        _dbDetector = dbDetector;
         _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // Yield immediately so Kestrel can start listening before we do any work.
-        // Without this, everything before the first 'await' runs synchronously and
-        // blocks the host startup pipeline (service resolution, DB connections, etc.).
         await Task.Yield();
 
-        var defaultDataPath = _dbDetector.GetDefaultDataPath();
-        _logger.LogInformation("[SEEDER-BG] Starting background database seeding (defaultDataPath: {DefaultDataPath})", defaultDataPath);
+        _logger.LogInformation("[SEEDER-BG] Starting background database initialization");
 
         try
         {
             using var scope = _services.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<CatanDbContext>();
-            var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
+            var db = scope.ServiceProvider.GetRequiredService<ICatanDb>();
 
-            await DatabaseSeeder.SeedAsync(context, defaultDataPath, gamePersistence, _dbDetector.UseSqlServer, _logger);
-            _logger.LogInformation("[SEEDER-BG] Database seeding completed successfully");
+            // Upsert system templates on every startup to stay in sync with code changes.
+            // Database and containers must already exist (created by catan.ps1 database install).
+            await DatabaseSeeder.UpsertSystemTemplatesAsync(db, _logger);
+            _logger.LogInformation("[SEEDER-BG] System templates upserted");
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[SEEDER-BG] Database seeding failed. The service is running, but database operations may fail until connection is restored.");
+            _logger.LogError(ex, "[SEEDER-BG] Failed to upsert templates. Is the database installed? Run: ./catan.ps1 database install");
         }
     }
 }

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
-using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using Catan3.Shared.Models;
 using Catan3.Shared.Utility;
@@ -9,9 +8,9 @@ using Catan3.Shared.Profiles;
 using Catan3.Shared.GameLogic;
 using Catan3.Shared.Extensions;
 using Catan3.Shared.Interfaces;
+using Catan3.GameService.Abstractions;
 using Catan3.GameService.Services;
 using Catan3.GameService.Utility;
-using Catan3.GameService.Data;
 using Catan3.GameService.Hubs;
 
 namespace Catan3.GameService.Controllers
@@ -61,10 +60,9 @@ namespace Catan3.GameService.Controllers
         private readonly IPersistenceService _persistenceService;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<GameApiController> _logger;
-        private readonly CatanDbContext _dbContext;
+        private readonly ICatanDb _db;
         private readonly IHubContext<GameHub> _hubContext;
         private readonly IGamePersistence _gamePersistence;
-        private readonly AzureSqlDiagnosticService _sqlDiagnostics;
         private readonly RecordingService _recordingService;
         private readonly GameTemplateService _templateService;
 
@@ -73,10 +71,9 @@ namespace Catan3.GameService.Controllers
             IPersistenceService persistenceService,
             ILoggerFactory loggerFactory,
             ILogger<GameApiController> logger,
-            CatanDbContext dbContext,
+            ICatanDb db,
             IHubContext<GameHub> hubContext,
             IGamePersistence gamePersistence,
-            AzureSqlDiagnosticService sqlDiagnostics,
             RecordingService recordingService,
             GameTemplateService templateService)
         {
@@ -84,10 +81,9 @@ namespace Catan3.GameService.Controllers
             _persistenceService = persistenceService;
             _loggerFactory = loggerFactory;
             _logger = logger;
-            _dbContext = dbContext;
+            _db = db;
             _hubContext = hubContext;
             _gamePersistence = gamePersistence;
-            _sqlDiagnostics = sqlDiagnostics;
             _recordingService = recordingService;
             _templateService = templateService;
         }
@@ -593,25 +589,20 @@ namespace Catan3.GameService.Controllers
         /// </summary>
         private async Task UpdatePlayerLifetimeStats(GameModel gameModel, string winnerId)
         {
-            // Batch-load all player entities in one query
-            var playerIds = gameModel.Players.Select(p => p.Id).ToList();
-            var playerEntities = await _dbContext.Players
-                .Where(e => playerIds.Contains(e.Id))
-                .ToListAsync();
-            var entityMap = playerEntities.ToDictionary(e => e.Id);
+            // Load all player profiles for participants
+            var profileMap = new Dictionary<string, PlayerProfile>();
+            foreach (var player in gameModel.Players)
+            {
+                var profile = await _db.LoadPlayerAsync(player.Id);
+                if (profile != null)
+                    profileMap[player.Id] = profile;
+            }
 
             foreach (var player in gameModel.Players)
             {
-                if (!entityMap.TryGetValue(player.Id, out var playerEntity))
+                if (!profileMap.TryGetValue(player.Id, out var profile))
                 {
                     _logger.LogEvent("Stats Update", $"Player {player.Id} not found in database, skipping stats update", LogLevel.Warning);
-                    continue;
-                }
-
-                var profile = JsonHelper.Deserialize<PlayerProfile>(playerEntity.Data);
-                if (profile == null)
-                {
-                    _logger.LogEvent("Stats Update", $"Could not deserialize profile for {player.Id}, skipping", LogLevel.Warning);
                     continue;
                 }
 
@@ -653,13 +644,11 @@ namespace Catan3.GameService.Controllers
                 );
 
                 // Save back to database
-                playerEntity.Data = JsonHelper.Serialize(updatedProfile);
+                await _db.SavePlayerAsync(updatedProfile);
                 _logger.LogEvent("Stats Update", $"Updated stats for {player.Name}: Games={updatedStats.GamesPlayed}, Wins={updatedStats.Wins}, " +
                     $"MostStars={updatedStats.MostStarsRecord}, AveStars={updatedStats.AverageStars:F1}, " +
                     $"Targeted={updatedStats.Totals.TimesTargeted}, Robber={updatedStats.Totals.ResourcesLostToRobber}");
             }
-
-            await _dbContext.SaveChangesAsync();
         }
 
         /// <summary>
@@ -708,7 +697,7 @@ namespace Catan3.GameService.Controllers
                 var json = JsonHelper.Serialize(serializableLog);
                 var compressed = JsonHelper.Compress(json);
 
-                var completedGame = new CompletedGameEntity
+                var completedGame = new CompletedGameRecord
                 {
                     GameId = gameId,
                     GameName = gameModel.GameName,
@@ -723,8 +712,7 @@ namespace Catan3.GameService.Controllers
                     Size = compressed.Length
                 };
 
-                _dbContext.CompletedGames.Add(completedGame);
-                await _dbContext.SaveChangesAsync();
+                await _db.SaveCompletedGameAsync(completedGame);
 
                 _logger.LogEvent("Game Archived", $"Archived completed game {gameId} ({completedGame.Size} bytes)");
             }
@@ -752,14 +740,12 @@ namespace Catan3.GameService.Controllers
                 // Load from database below.
             }
 
-            var gameMetadata = await _dbContext.GameSaveMetadata
-                .Include(m => m.GameData)
-                .FirstOrDefaultAsync(m => m.GameId == gameId);
+            var gameSaveData = await _db.LoadGameAsync(gameId);
 
-            if (gameMetadata == null)
+            if (gameSaveData == null)
                 return null;
 
-            var decompressedJson = JsonHelper.Decompress(gameMetadata.GameData.CompressedData);
+            var decompressedJson = JsonHelper.Decompress(gameSaveData.CompressedData);
             var serializableLog = JsonHelper.Deserialize<SerializableLog>(decompressedJson);
             if (serializableLog == null)
                 return null;
@@ -777,10 +763,11 @@ namespace Catan3.GameService.Controllers
         private async Task<string> GenerateCopyNameAsync(string originalName)
         {
             var prefix = $"{originalName} - Copy ";
-            var existingNames = await _dbContext.GameSaveMetadata
-                .Where(m => m.GameName.StartsWith(prefix))
-                .Select(m => m.GameName)
-                .ToListAsync();
+            var allGames = await _db.ListGamesAsync();
+            var existingNames = allGames
+                .Where(g => g.GameName.StartsWith(prefix))
+                .Select(g => g.GameName)
+                .ToList();
 
             var usedNumbers = new HashSet<int>();
             foreach (var name in existingNames)
@@ -1081,19 +1068,17 @@ namespace Catan3.GameService.Controllers
                     // Not loaded, continue to load from database
                 }
 
-                // Load from database using two-table structure
-                var gameMetadata = await _dbContext.GameSaveMetadata
-                    .Include(m => m.GameData)
-                    .FirstOrDefaultAsync(m => m.GameId == gameId);
+                // Load from database
+                var gameSaveData = await _db.LoadGameAsync(gameId);
 
-                if (gameMetadata == null)
+                if (gameSaveData == null)
                 {
                     _logger.LogEvent("Game Not Found", $"Game {gameId} not found in database", LogLevel.Warning);
                     return NotFound(new { success = false, error = $"Game {gameId} not found in database" });
                 }
 
-                // Decompress and deserialize the log from the data table
-                var decompressedJson = JsonHelper.Decompress(gameMetadata.GameData.CompressedData);
+                // Decompress and deserialize the log from the saved data
+                var decompressedJson = JsonHelper.Decompress(gameSaveData.CompressedData);
                 var serializableLog = JsonHelper.Deserialize<Catan3.Shared.Interfaces.SerializableLog>(decompressedJson);
                 if (serializableLog == null)
                 {
@@ -1148,32 +1133,26 @@ namespace Catan3.GameService.Controllers
 
             try
             {
-                var query = _dbContext.GameSaveMetadata
-                    .Include(m => m.GameData)
-                    .AsQueryable();
-
                 // Filter by playerId unless "*" (get all)
-                if (playerId != "*" && !string.IsNullOrEmpty(playerId))
-                {
-                    query = query.Where(m => m.StartedBy == playerId);
-                }
+                string? startedBy = (playerId != "*" && !string.IsNullOrEmpty(playerId)) ? playerId : null;
+                var gameSummaries = await _db.ListGamesAsync(startedBy);
 
-                var games = await query
-                    .OrderByDescending(m => m.SavedAt)
-                    .Select(m => new
+                var games = gameSummaries
+                    .OrderByDescending(g => g.SavedAt)
+                    .Select(g => new
                     {
-                        m.GameId,
-                        m.GameName,
-                        m.GameState,
-                        m.GameType,
-                        m.PlayerCount,
-                        m.PlayerNames,
-                        m.TurnCount,
-                        Size = m.GameData.Size,
-                        m.SavedAt,
-                        m.CreatedAt
+                        g.GameId,
+                        g.GameName,
+                        g.GameState,
+                        g.GameType,
+                        g.PlayerCount,
+                        g.PlayerNames,
+                        g.TurnCount,
+                        g.Size,
+                        g.SavedAt,
+                        g.CreatedAt
                     })
-                    .ToListAsync();
+                    .ToList();
 
                 _logger.LogEvent("Saved Games", $"Found {games.Count} saved games");
 
@@ -1206,15 +1185,12 @@ namespace Catan3.GameService.Controllers
             try
             {
                 // Get players from database (no caching - always fresh)
-                var playerEntities = await _dbContext.Players.ToListAsync();
+                var allPlayers = await _db.LoadPlayersAsync();
                 var players = new List<PlayerProfile>();
                 var schemaErrors = new List<string>();
 
-                foreach (var entity in playerEntities)
+                foreach (var profile in allPlayers)
                 {
-                    var profile = JsonHelper.Deserialize<PlayerProfile>(entity.Data);
-                    if (profile == null) continue;
-
                     // Validate schema version if player has lifetime stats
                     if (profile.LifetimeStats != null)
                     {
@@ -1274,21 +1250,14 @@ namespace Catan3.GameService.Controllers
             try
             {
                 // Check if player ID already exists
-                var existing = await _dbContext.Players.FindAsync(player.Id);
+                var existing = await _db.LoadPlayerAsync(sanitizedPlayerId);
                 if (existing != null)
                 {
                     return BadRequest(new { success = false, error = $"Player with ID '{player.Id}' already exists" });
                 }
 
-                // Create player entity
-                var playerEntity = new PlayerEntity
-                {
-                    Id = player.Id,
-                    Data = JsonHelper.Serialize(player)
-                };
-
-                _dbContext.Players.Add(playerEntity);
-                await _dbContext.SaveChangesAsync();
+                // Save player profile directly
+                await _db.SavePlayerAsync(player);
 
                 _logger.LogEvent("Player Created", $"Created player: {sanitizedPlayerId} ({sanitizedPlayerName})");
 
@@ -1314,15 +1283,14 @@ namespace Catan3.GameService.Controllers
 
             try
             {
-                var existing = await _dbContext.Players.FindAsync(id);
+                var existing = await _db.LoadPlayerAsync(id);
                 if (existing == null)
                 {
                     return NotFound(new { success = false, error = $"Player '{id}' not found" });
                 }
 
-                // Update the data
-                existing.Data = JsonHelper.Serialize(player);
-                await _dbContext.SaveChangesAsync();
+                // Save the updated player profile
+                await _db.SavePlayerAsync(player);
 
                 _logger.LogEvent("Player Updated", $"Updated player: {sanitizedId} ({sanitizedPlayerName})");
 
@@ -1349,22 +1317,14 @@ namespace Catan3.GameService.Controllers
 
             try
             {
-                var existing = await _dbContext.Players.FindAsync(id);
+                var existing = await _db.LoadPlayerAsync(id);
                 if (existing == null)
                 {
                     return NotFound(new { success = false, error = $"Player '{id}' not found" });
                 }
 
-                _dbContext.Players.Remove(existing);
-
-                // Also delete associated image if exists
-                var image = await _dbContext.Images.FindAsync(id);
-                if (image != null)
-                {
-                    _dbContext.Images.Remove(image);
-                }
-
-                await _dbContext.SaveChangesAsync();
+                // DeletePlayerAsync handles image deletion internally
+                await _db.DeletePlayerAsync(id);
 
                 _logger.LogEvent("Player Deleted", $"Deleted player: {sanitizedId}");
 
@@ -1389,8 +1349,8 @@ namespace Catan3.GameService.Controllers
             try
             {
                 // Verify player exists
-                var player = await _dbContext.Players.FindAsync(id);
-                if (player == null)
+                var playerProfile = await _db.LoadPlayerAsync(id);
+                if (playerProfile == null)
                 {
                     return NotFound(new { success = false, error = $"Player '{id}' not found" });
                 }
@@ -1412,48 +1372,23 @@ namespace Catan3.GameService.Controllers
                 await file.CopyToAsync(memoryStream);
                 var imageData = memoryStream.ToArray();
 
-                // Create or update image entity
-                var existingImage = await _dbContext.Images.FindAsync(id);
-                if (existingImage != null)
-                {
-                    existingImage.Data = imageData;
-                    existingImage.ContentType = file.ContentType;
-                }
-                else
-                {
-                    var imageEntity = new ImageEntity
-                    {
-                        Id = id,
-                        Data = imageData,
-                        ContentType = file.ContentType
-                    };
-                    _dbContext.Images.Add(imageEntity);
-                }
+                // Save image via ICatanDb
+                await _db.SaveImageAsync(id, imageData, file.ContentType);
 
                 // Update player's ImageUri
-                var playerProfile = JsonHelper.Deserialize<PlayerProfile>(player.Data);
-                if (playerProfile != null)
-                {
-                    var updatedProfile = new PlayerProfile(
-                        playerProfile.Id,
-                        playerProfile.Name,
-                        playerProfile.Colors,
-                        $"/api/images/{id}",
-                        playerProfile.LifetimeStats
-                    );
-                    player.Data = JsonHelper.Serialize(updatedProfile);
-                }
-
-                await _dbContext.SaveChangesAsync();
+                var updatedProfile = new PlayerProfile(
+                    playerProfile.Id,
+                    playerProfile.Name,
+                    playerProfile.Colors,
+                    $"/api/images/{id}",
+                    playerProfile.LifetimeStats
+                );
+                await _db.SavePlayerAsync(updatedProfile);
 
                 _logger.LogEvent("Image Uploaded", $"Uploaded image for player: {sanitizedId} ({imageData.Length} bytes)");
 
                 // Notify games with this player about the image change
-                var profileToNotify = JsonHelper.Deserialize<PlayerProfile>(player.Data);
-                if (profileToNotify != null)
-                {
-                    await NotifyPlayersUpdated(new[] { profileToNotify });
-                }
+                await NotifyPlayersUpdated(new[] { updatedProfile });
 
                 return Ok(new { success = true, imageUri = $"/api/images/{id}" });
             }
@@ -1495,14 +1430,14 @@ namespace Catan3.GameService.Controllers
 
             try
             {
-                var imageEntity = await _dbContext.Images.FindAsync(id);
-                if (imageEntity == null)
+                var imageResult = await _db.LoadImageAsync(id);
+                if (imageResult == null)
                 {
                     _logger.LogEvent("Image Not Found", $"Image not found: {sanitizedId}", LogLevel.Warning);
                     return NotFound($"Image {id} not found");
                 }
 
-                return File(imageEntity.Data, imageEntity.ContentType);
+                return File(imageResult.Value.Data, imageResult.Value.ContentType);
             }
             catch (Exception ex)
             {
@@ -1752,8 +1687,8 @@ namespace Catan3.GameService.Controllers
 
             try
             {
-                var playerCount = await _dbContext.Players.CountAsync();
-                var gameCount = await _dbContext.GameSaveMetadata.CountAsync();
+                var playerCount = (await _db.LoadPlayersAsync()).Count;
+                var gameCount = await _db.CountGamesAsync();
 
                 var result = new
                 {
@@ -1790,26 +1725,28 @@ namespace Catan3.GameService.Controllers
         [HttpPost("troubleshoot")]
         public async Task<IActionResult> Troubleshoot()
         {
-            _logger.LogEvent("API Request", "POST /api/troubleshoot - Running Azure SQL troubleshooting");
+            _logger.LogEvent("API Request", "POST /api/troubleshoot - CosmosDB health check");
 
             try
             {
-                var result = await _sqlDiagnostics.TroubleshootAsync();
-
-                _logger.LogEvent("Troubleshoot Result",
-                    $"Message: {result.Message}, Fixed: {result.Fixed.Count}, Issues: {result.Issues.Count}, Connection: {result.ConnectionSuccessful}");
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogEvent("Troubleshoot Error", $"Error during troubleshooting: {ex.Message}", LogLevel.Error);
+                var players = await _db.LoadPlayersAsync();
+                var gameCount = await _db.CountGamesAsync();
                 return Ok(new
                 {
                     timestamp = DateTime.UtcNow,
-                    message = $"Troubleshooting failed: {ex.Message}",
+                    connectionSuccessful = true,
+                    message = "CosmosDB connected",
+                    playerCount = players.Count,
+                    gameCount,
+                });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new
+                {
+                    timestamp = DateTime.UtcNow,
                     connectionSuccessful = false,
-                    issues = new[] { ex.Message }
+                    message = $"CosmosDB error: {ex.Message}",
                 });
             }
         }
@@ -1916,23 +1853,21 @@ namespace Catan3.GameService.Controllers
                 else
                 {
                     // Game not loaded - update database directly
-                    var gameMetadata = await _dbContext.GameSaveMetadata
-                        .Include(m => m.GameData)
-                        .FirstOrDefaultAsync(m => m.GameId == gameId);
+                    var gameSaveData = await _db.LoadGameAsync(gameId);
 
-                    if (gameMetadata == null)
+                    if (gameSaveData == null)
                     {
                         return NotFound(new { success = false, error = $"Game {gameId} not found" });
                     }
 
-                    var oldName = gameMetadata.GameName;
+                    var oldName = gameSaveData.GameName;
                     if (oldName == newName)
                     {
                         return Ok(new { success = true, gameId, gameName = newName, message = "Name unchanged" });
                     }
 
                     // Update the game name in the compressed data
-                    var decompressedJson = JsonHelper.Decompress(gameMetadata.GameData.CompressedData);
+                    var decompressedJson = JsonHelper.Decompress(gameSaveData.CompressedData);
                     var serializableLog = JsonHelper.Deserialize<SerializableLog>(decompressedJson);
 
                     if (serializableLog != null)
@@ -1957,20 +1892,45 @@ namespace Catan3.GameService.Controllers
                         var updatedJson = JsonHelper.Serialize(updatedLog);
                         var compressed = JsonHelper.Compress(updatedJson);
 
-                        // Update database
-                        gameMetadata.GameName = newName;
-                        gameMetadata.GameData.CompressedData = compressed;
-                        gameMetadata.GameData.Size = compressed.Length;
-                        gameMetadata.SavedAt = DateTime.UtcNow;
+                        // Save updated game via ICatanDb
+                        var updatedGameSave = new GameSaveData
+                        {
+                            GameId = gameSaveData.GameId,
+                            GameName = newName,
+                            GameState = gameSaveData.GameState,
+                            GameType = gameSaveData.GameType,
+                            StartedBy = gameSaveData.StartedBy,
+                            PlayerCount = gameSaveData.PlayerCount,
+                            PlayerNames = gameSaveData.PlayerNames,
+                            TurnCount = gameSaveData.TurnCount,
+                            SavedAt = DateTime.UtcNow,
+                            CreatedAt = gameSaveData.CreatedAt,
+                            CompressedData = compressed,
+                            Size = compressed.Length
+                        };
 
-                        await _dbContext.SaveChangesAsync();
+                        await _db.SaveGameAsync(updatedGameSave);
                     }
                     else
                     {
                         // Just update metadata if we can't parse the log
-                        gameMetadata.GameName = newName;
-                        gameMetadata.SavedAt = DateTime.UtcNow;
-                        await _dbContext.SaveChangesAsync();
+                        var updatedGameSave = new GameSaveData
+                        {
+                            GameId = gameSaveData.GameId,
+                            GameName = newName,
+                            GameState = gameSaveData.GameState,
+                            GameType = gameSaveData.GameType,
+                            StartedBy = gameSaveData.StartedBy,
+                            PlayerCount = gameSaveData.PlayerCount,
+                            PlayerNames = gameSaveData.PlayerNames,
+                            TurnCount = gameSaveData.TurnCount,
+                            SavedAt = DateTime.UtcNow,
+                            CreatedAt = gameSaveData.CreatedAt,
+                            CompressedData = gameSaveData.CompressedData,
+                            Size = gameSaveData.Size
+                        };
+
+                        await _db.SaveGameAsync(updatedGameSave);
                     }
 
                     _logger.LogEvent("Game Renamed", $"Renamed game {gameId}: '{oldName}' -> '{newName}' (database only)");
@@ -2008,20 +1968,16 @@ namespace Catan3.GameService.Controllers
                 }
 
                 // Delete from database
-                var gameMetadata = await _dbContext.GameSaveMetadata
-                    .Include(m => m.GameData)
-                    .FirstOrDefaultAsync(m => m.GameId == gameId);
+                var gameSaveData = await _db.LoadGameAsync(gameId);
 
-                if (gameMetadata == null)
+                if (gameSaveData == null)
                 {
                     return NotFound(new { success = false, error = $"Game {gameId} not found in database" });
                 }
 
-                var gameName = gameMetadata.GameName;
+                var gameName = gameSaveData.GameName;
 
-                // Remove metadata (cascade will remove GameData due to FK relationship)
-                _dbContext.GameSaveMetadata.Remove(gameMetadata);
-                await _dbContext.SaveChangesAsync();
+                await _db.DeleteGameAsync(gameId);
 
                 _logger.LogEvent("Game Deleted", $"Deleted game {gameId} ({gameName})");
 
@@ -2192,7 +2148,7 @@ namespace Catan3.GameService.Controllers
                 var gameId = gameModel.GameId;
 
                 // Check if game already exists
-                var existingGame = await _dbContext.GameSaveMetadata.FirstOrDefaultAsync(m => m.GameId == gameId);
+                var existingGame = await _db.LoadGameAsync(gameId);
                 if (existingGame != null)
                 {
                     _logger.LogEvent("Game Already Exists", $"Game {gameId} already exists in database, skipping import");
@@ -2242,331 +2198,35 @@ namespace Catan3.GameService.Controllers
         }
 
         /// <summary>
-        /// Applies database schema migrations/updates.
-        /// Creates any missing tables required by the application.
-        /// Safe to call multiple times - idempotent operation.
+        /// Database schema initialization. With CosmosDB, containers are created via ICatanDb.InitializeAsync().
+        /// This endpoint delegates to ICatanDb and seeds system templates.
         /// </summary>
         [HttpPost("database/migrate")]
         public async Task<IActionResult> MigrateDatabase()
         {
-            _logger.LogEvent("API Request", "POST /api/database/migrate - Applying database migrations");
-
-            var result = new
-            {
-                timestamp = DateTime.UtcNow,
-                success = false,
-                message = "",
-                tablesCreated = new List<string>(),
-                tablesExisting = new List<string>(),
-                errors = new List<string>()
-            };
-
-            var tablesCreated = new List<string>();
-            var tablesExisting = new List<string>();
-            var errors = new List<string>();
+            _logger.LogEvent("API Request", "POST /api/database/migrate - Initializing database");
 
             try
             {
-                // First, try EF Core migrations if they exist
-                var pendingMigrations = await _dbContext.Database.GetPendingMigrationsAsync();
-                if (pendingMigrations.Any())
-                {
-                    _logger.LogEvent("Database Migrate", $"Applying {pendingMigrations.Count()} pending migration(s)...");
-                    await _dbContext.Database.MigrateAsync();
-                    _logger.LogEvent("Database Migrate", "Migrations applied successfully");
+                await _db.InitializeAsync();
 
-                    return Ok(new
-                    {
-                        timestamp = DateTime.UtcNow,
-                        success = true,
-                        message = $"Applied {pendingMigrations.Count()} migration(s)",
-                        migrationsApplied = pendingMigrations.ToList()
-                    });
-                }
-
-                // No migrations - check and create missing tables manually
-                var isSqlServer = _dbContext.Database.ProviderName?.Contains("SqlServer") == true;
-                _logger.LogEvent("Database Migrate", $"Provider: {_dbContext.Database.ProviderName}, IsSqlServer: {isSqlServer}");
-
-                // Define required tables and their creation SQL
-                var requiredTables = new Dictionary<string, (string SqlServer, string Sqlite)>
-                {
-                    ["Players"] = (
-                        @"CREATE TABLE [Players] (
-                            [Id] NVARCHAR(255) NOT NULL,
-                            [Data] NVARCHAR(MAX) NOT NULL,
-                            CONSTRAINT [PK_Players] PRIMARY KEY ([Id])
-                        )",
-                        @"CREATE TABLE ""Players"" (
-                            ""Id"" TEXT NOT NULL CONSTRAINT ""PK_Players"" PRIMARY KEY,
-                            ""Data"" TEXT NOT NULL
-                        )"
-                    ),
-                    ["Images"] = (
-                        @"CREATE TABLE [Images] (
-                            [Id] NVARCHAR(255) NOT NULL,
-                            [ContentType] NVARCHAR(100) NOT NULL,
-                            [Data] VARBINARY(MAX) NOT NULL,
-                            CONSTRAINT [PK_Images] PRIMARY KEY ([Id])
-                        )",
-                        @"CREATE TABLE ""Images"" (
-                            ""Id"" TEXT NOT NULL CONSTRAINT ""PK_Images"" PRIMARY KEY,
-                            ""ContentType"" TEXT NOT NULL,
-                            ""Data"" BLOB NOT NULL
-                        )"
-                    ),
-                    ["GameSaveData"] = (
-                        @"CREATE TABLE [GameSaveData] (
-                            [Id] INT NOT NULL IDENTITY(1,1),
-                            [CompressedData] VARBINARY(MAX) NOT NULL,
-                            [Size] INT NOT NULL,
-                            CONSTRAINT [PK_GameSaveData] PRIMARY KEY ([Id])
-                        )",
-                        @"CREATE TABLE ""GameSaveData"" (
-                            ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_GameSaveData"" PRIMARY KEY AUTOINCREMENT,
-                            ""CompressedData"" BLOB NOT NULL,
-                            ""Size"" INTEGER NOT NULL
-                        )"
-                    ),
-                    ["GameSaveMetadata"] = (
-                        @"CREATE TABLE [GameSaveMetadata] (
-                            [Id] INT NOT NULL IDENTITY(1,1),
-                            [GameId] NVARCHAR(255) NULL,
-                            [StartedBy] NVARCHAR(255) NULL,
-                            [SavedAt] DATETIME2 NOT NULL,
-                            [CreatedAt] DATETIME2 NOT NULL,
-                            [GameState] NVARCHAR(50) NULL,
-                            [GameType] NVARCHAR(50) NULL,
-                            [PlayerCount] INT NOT NULL,
-                            [PlayerNames] NVARCHAR(500) NULL,
-                            [TurnCount] INT NOT NULL,
-                            [GameName] NVARCHAR(255) NULL,
-                            [GameDataId] INT NOT NULL,
-                            CONSTRAINT [PK_GameSaveMetadata] PRIMARY KEY ([Id]),
-                            CONSTRAINT [FK_GameSaveMetadata_GameSaveData_GameDataId] FOREIGN KEY ([GameDataId]) REFERENCES [GameSaveData] ([Id]) ON DELETE CASCADE
-                        );
-                        CREATE UNIQUE INDEX [IX_GameSaveMetadata_GameId] ON [GameSaveMetadata] ([GameId]);
-                        CREATE INDEX [IX_GameSaveMetadata_StartedBy] ON [GameSaveMetadata] ([StartedBy]);
-                        CREATE INDEX [IX_GameSaveMetadata_GameState] ON [GameSaveMetadata] ([GameState]);
-                        CREATE INDEX [IX_GameSaveMetadata_SavedAt] ON [GameSaveMetadata] ([SavedAt])",
-                        @"CREATE TABLE ""GameSaveMetadata"" (
-                            ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_GameSaveMetadata"" PRIMARY KEY AUTOINCREMENT,
-                            ""GameId"" TEXT NULL,
-                            ""StartedBy"" TEXT NULL,
-                            ""SavedAt"" TEXT NOT NULL,
-                            ""CreatedAt"" TEXT NOT NULL,
-                            ""GameState"" TEXT NULL,
-                            ""GameType"" TEXT NULL,
-                            ""PlayerCount"" INTEGER NOT NULL,
-                            ""PlayerNames"" TEXT NULL,
-                            ""TurnCount"" INTEGER NOT NULL,
-                            ""GameName"" TEXT NULL,
-                            ""GameDataId"" INTEGER NOT NULL,
-                            CONSTRAINT ""FK_GameSaveMetadata_GameSaveData_GameDataId"" FOREIGN KEY (""GameDataId"") REFERENCES ""GameSaveData"" (""Id"") ON DELETE CASCADE
-                        );
-                        CREATE UNIQUE INDEX ""IX_GameSaveMetadata_GameId"" ON ""GameSaveMetadata"" (""GameId"");
-                        CREATE INDEX ""IX_GameSaveMetadata_StartedBy"" ON ""GameSaveMetadata"" (""StartedBy"");
-                        CREATE INDEX ""IX_GameSaveMetadata_GameState"" ON ""GameSaveMetadata"" (""GameState"");
-                        CREATE INDEX ""IX_GameSaveMetadata_SavedAt"" ON ""GameSaveMetadata"" (""SavedAt"")"
-                    ),
-                    ["CompletedGames"] = (
-                        @"CREATE TABLE [CompletedGames] (
-                            [Id] INT NOT NULL IDENTITY(1,1),
-                            [GameId] NVARCHAR(255) NOT NULL,
-                            [GameName] NVARCHAR(255) NOT NULL,
-                            [WinnerId] NVARCHAR(255) NOT NULL,
-                            [WinnerName] NVARCHAR(255) NOT NULL,
-                            [CompletedAt] DATETIME2 NOT NULL,
-                            [StartedAt] DATETIME2 NOT NULL,
-                            [PlayerCount] INT NOT NULL,
-                            [PlayerNames] NVARCHAR(500) NOT NULL,
-                            [TurnCount] INT NOT NULL,
-                            [CompressedData] VARBINARY(MAX) NOT NULL,
-                            [Size] INT NOT NULL,
-                            CONSTRAINT [PK_CompletedGames] PRIMARY KEY ([Id])
-                        );
-                        CREATE INDEX [IX_CompletedGames_GameId] ON [CompletedGames] ([GameId]);
-                        CREATE INDEX [IX_CompletedGames_WinnerId] ON [CompletedGames] ([WinnerId]);
-                        CREATE INDEX [IX_CompletedGames_CompletedAt] ON [CompletedGames] ([CompletedAt])",
-                        @"CREATE TABLE ""CompletedGames"" (
-                            ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_CompletedGames"" PRIMARY KEY AUTOINCREMENT,
-                            ""GameId"" TEXT NOT NULL,
-                            ""GameName"" TEXT NOT NULL,
-                            ""WinnerId"" TEXT NOT NULL,
-                            ""WinnerName"" TEXT NOT NULL,
-                            ""CompletedAt"" TEXT NOT NULL,
-                            ""StartedAt"" TEXT NOT NULL,
-                            ""PlayerCount"" INTEGER NOT NULL,
-                            ""PlayerNames"" TEXT NOT NULL,
-                            ""TurnCount"" INTEGER NOT NULL,
-                            ""CompressedData"" BLOB NOT NULL,
-                            ""Size"" INTEGER NOT NULL
-                        );
-                        CREATE INDEX ""IX_CompletedGames_GameId"" ON ""CompletedGames"" (""GameId"");
-                        CREATE INDEX ""IX_CompletedGames_WinnerId"" ON ""CompletedGames"" (""WinnerId"");
-                        CREATE INDEX ""IX_CompletedGames_CompletedAt"" ON ""CompletedGames"" (""CompletedAt"")"
-                    ),
-                    ["Recordings"] = (
-                        @"CREATE TABLE [Recordings] (
-                            [Id] NVARCHAR(255) NOT NULL,
-                            [Name] NVARCHAR(255) NOT NULL,
-                            [CreatedAt] DATETIME2 NOT NULL,
-                            [GameType] NVARCHAR(50) NOT NULL,
-                            [PlayerCount] INT NOT NULL,
-                            [PlayerIds] NVARCHAR(500) NOT NULL,
-                            [ActionCount] INT NOT NULL,
-                            [Data] NVARCHAR(MAX) NOT NULL,
-                            CONSTRAINT [PK_Recordings] PRIMARY KEY ([Id])
-                        );
-                        CREATE INDEX [IX_Recordings_Name] ON [Recordings] ([Name]);
-                        CREATE INDEX [IX_Recordings_CreatedAt] ON [Recordings] ([CreatedAt])",
-                        @"CREATE TABLE ""Recordings"" (
-                            ""Id"" TEXT NOT NULL CONSTRAINT ""PK_Recordings"" PRIMARY KEY,
-                            ""Name"" TEXT NOT NULL,
-                            ""CreatedAt"" TEXT NOT NULL,
-                            ""GameType"" TEXT NOT NULL,
-                            ""PlayerCount"" INTEGER NOT NULL,
-                            ""PlayerIds"" TEXT NOT NULL,
-                            ""ActionCount"" INTEGER NOT NULL,
-                            ""Data"" TEXT NOT NULL
-                        );
-                        CREATE INDEX ""IX_Recordings_Name"" ON ""Recordings"" (""Name"");
-                        CREATE INDEX ""IX_Recordings_CreatedAt"" ON ""Recordings"" (""CreatedAt"")"
-                    ),
-                    ["GameTemplates"] = (
-                        @"CREATE TABLE [GameTemplates] (
-                            [Id] NVARCHAR(100) NOT NULL,
-                            [Name] NVARCHAR(255) NOT NULL,
-                            [Category] NVARCHAR(50) NULL,
-                            [IsSystemTemplate] BIT NOT NULL DEFAULT 0,
-                            [Version] INT NOT NULL DEFAULT 1,
-                            [Data] NVARCHAR(MAX) NOT NULL,
-                            [CreatedAt] DATETIME2 NOT NULL,
-                            [UpdatedAt] DATETIME2 NOT NULL,
-                            CONSTRAINT [PK_GameTemplates] PRIMARY KEY ([Id])
-                        );
-                        CREATE INDEX [IX_GameTemplates_Category] ON [GameTemplates] ([Category])",
-                        @"CREATE TABLE ""GameTemplates"" (
-                            ""Id"" TEXT NOT NULL CONSTRAINT ""PK_GameTemplates"" PRIMARY KEY,
-                            ""Name"" TEXT NOT NULL,
-                            ""Category"" TEXT NULL,
-                            ""IsSystemTemplate"" INTEGER NOT NULL DEFAULT 0,
-                            ""Version"" INTEGER NOT NULL DEFAULT 1,
-                            ""Data"" TEXT NOT NULL,
-                            ""CreatedAt"" TEXT NOT NULL,
-                            ""UpdatedAt"" TEXT NOT NULL
-                        );
-                        CREATE INDEX ""IX_GameTemplates_Category"" ON ""GameTemplates"" (""Category"")"
-                    )
-                };
-
-                // Check which tables exist and create missing ones
-                var connection = _dbContext.Database.GetDbConnection();
-                await connection.OpenAsync();
-                try
-                {
-                    foreach (var (tableName, (sqlServerSql, sqliteSql)) in requiredTables)
-                    {
-                        try
-                        {
-                            bool tableExists;
-                            if (isSqlServer)
-                            {
-                                var checkSql = $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'";
-                                using var command = connection.CreateCommand();
-                                command.CommandText = checkSql;
-                                var existsResult = await command.ExecuteScalarAsync();
-                                tableExists = Convert.ToInt32(existsResult) > 0;
-                            }
-                            else
-                            {
-                                var checkSql = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{tableName}'";
-                                using var command = connection.CreateCommand();
-                                command.CommandText = checkSql;
-                                var existsResult = await command.ExecuteScalarAsync();
-                                tableExists = Convert.ToInt32(existsResult) > 0;
-                            }
-
-                            if (tableExists)
-                            {
-                                tablesExisting.Add(tableName);
-                                _logger.LogEvent("Database Migrate", $"Table '{tableName}' already exists");
-                            }
-                            else
-                            {
-                                // Create the table
-                                var createSql = isSqlServer ? sqlServerSql : sqliteSql;
-
-                                // Split on semicolons to handle multiple statements (CREATE TABLE + CREATE INDEX)
-                                var statements = createSql.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                                foreach (var statement in statements)
-                                {
-                                    if (!string.IsNullOrWhiteSpace(statement))
-                                    {
-                                        await _dbContext.Database.ExecuteSqlRawAsync(statement);
-                                    }
-                                }
-
-                                tablesCreated.Add(tableName);
-                                _logger.LogEvent("Database Migrate", $"Created table '{tableName}'");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            errors.Add($"Error processing table '{tableName}': {ex.Message}");
-                            _logger.LogEvent("Database Migrate Error", $"Error with table '{tableName}': {ex.Message}", LogLevel.Error);
-                        }
-                    }
-                }
-                finally
-                {
-                    await connection.CloseAsync();
-                }
-
-                // If GameTemplates was just created, seed the default templates
-                if (tablesCreated.Contains("GameTemplates"))
-                {
-                    try
-                    {
-                        _logger.LogEvent("Database Migrate", "Seeding default game templates...");
-                        await DatabaseSeeder.UpsertSystemTemplatesAsync(_dbContext, _logger);
-                        _logger.LogEvent("Database Migrate", "Default game templates seeded");
-                    }
-                    catch (Exception ex)
-                    {
-                        errors.Add($"Error seeding templates: {ex.Message}");
-                        _logger.LogEvent("Database Migrate Error", $"Error seeding templates: {ex.Message}", LogLevel.Error);
-                    }
-                }
-
-                var success = errors.Count == 0;
-                var message = tablesCreated.Count > 0
-                    ? $"Created {tablesCreated.Count} table(s): {string.Join(", ", tablesCreated)}"
-                    : "All tables already exist";
-
-                _logger.LogEvent("Database Migrate Complete", $"Success: {success}, Created: {tablesCreated.Count}, Existing: {tablesExisting.Count}, Errors: {errors.Count}");
+                _logger.LogEvent("Database Migrate Complete", "Database initialized");
 
                 return Ok(new
                 {
                     timestamp = DateTime.UtcNow,
-                    success,
-                    message,
-                    tablesCreated,
-                    tablesExisting,
-                    errors
+                    success = true,
+                    message = "Database initialized via ICatanDb."
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogEvent("Database Migrate Error", $"Error during migration: {ex.Message}", LogLevel.Error);
+                _logger.LogEvent("Database Migrate Error", $"Error during initialization: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, new
                 {
                     timestamp = DateTime.UtcNow,
                     success = false,
-                    message = $"Migration failed: {ex.Message}",
-                    tablesCreated,
-                    tablesExisting,
-                    errors = new List<string> { ex.Message }
+                    message = $"Initialization failed: {ex.Message}"
                 });
             }
         }
