@@ -57,12 +57,12 @@ $repoRoot  = Split-Path $scriptDir
 function Write-Step {
     param([int]$Number, [string]$Title)
     Write-Host ""
-    Write-Host "━━━ Step $Number: $Title ━━━" -ForegroundColor Cyan
+    Write-Host "--- Step $Number`: $Title ---" -ForegroundColor Cyan
 }
 
-function Write-Ok   { param([string]$Msg) Write-Host "  ✓ $Msg" -ForegroundColor Green }
-function Write-Fail { param([string]$Msg) Write-Host "  ✗ $Msg" -ForegroundColor Red }
-function Write-Info { param([string]$Msg) Write-Host "  · $Msg" -ForegroundColor Gray }
+function Write-Ok   { param([string]$Msg) Write-Host "  [OK] $Msg" -ForegroundColor Green }
+function Write-Fail { param([string]$Msg) Write-Host "  [FAIL] $Msg" -ForegroundColor Red }
+function Write-Info { param([string]$Msg) Write-Host "  [..] $Msg" -ForegroundColor Gray }
 
 function Invoke-Step {
     param([scriptblock]$Block, [string]$Label)
@@ -244,9 +244,9 @@ function Show-Help {
 # ─── Main ───────────────────────────────────────────────────────────────────
 
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║  Catan CI/CD Deploy — $($Slot.ToUpper().PadRight(18))║" -ForegroundColor Cyan
-Write-Host "╚══════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host "  Catan CI/CD Deploy -- $($Slot.ToUpper())" -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Cyan
 
 switch ($Action) {
     "help" {
