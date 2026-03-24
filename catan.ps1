@@ -118,7 +118,7 @@ $GameServicePort = 8080
 $ReactUIPort = 3000
 $GameServiceUrl = "http://localhost:$GameServicePort"
 $ReactUIUrl = "http://localhost:$ReactUIPort"
-$DatabasePath = Join-Path $PSScriptRoot "Catan3.GameService\Data\catan.db"
+# SQLite removed — all database operations use CosmosDB via .scripts/database.ps1
 $PidFile = Join-Path $PSScriptRoot ".webui-pids.json"
 
 function Test-PortInUse {
@@ -294,317 +294,13 @@ function Start-ReactUI {
     Start-Process $ReactUIUrl
 }
 
-function Install-Database {
-    Write-Host "Installing database..." -ForegroundColor Cyan
-
-    $dataDir = Split-Path $DatabasePath -Parent
-
-    # Create Data directory if it doesn't exist
-    if (-not (Test-Path $dataDir)) {
-        Write-Host "Creating Data directory..." -ForegroundColor Yellow
-        New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
-    }
-
-    # Run the database seed tool
-    $gameServicePath = Join-Path $PSScriptRoot "Catan3.GameService"
-
-    Push-Location $gameServicePath
-    try {
-        # Use dotnet run with a seed argument to initialize the database
-        Write-Host "Seeding database with default data..." -ForegroundColor Yellow
-        $result = & dotnet run -- --seed-database 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "Database installation failed!" -ForegroundColor Red
-            Write-Host $result -ForegroundColor Red
-            return $false
-        }
-        Write-Host "Database installed successfully at $DatabasePath" -ForegroundColor Green
-        return $true
-    }
-    finally {
-        Pop-Location
-    }
-}
-
 function Initialize-Database {
-    Write-Host "Checking database..." -ForegroundColor Cyan
-
-    $dbStatus = Invoke-DatabaseDoctor -Quiet
-
-    if ($null -eq $dbStatus.Action) {
-        Write-Host "Database is healthy" -ForegroundColor Green
-        return $true
-    }
-
-    # Database needs work -- action is "create" or "install"
-    if (-not $dbStatus.SchemaValid -and (Test-Path $DatabasePath)) {
-        Write-Host "Database schema is invalid; clearing and reinstalling..." -ForegroundColor Yellow
-        Clear-Database
-    }
-    else {
-        Write-Host "Database needs $($dbStatus.Action): installing..." -ForegroundColor Yellow
-    }
-    return Install-Database
+    Write-Host "Checking Cosmos emulator..." -ForegroundColor Cyan
+    $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+    & pwsh $dbScript install
+    return ($LASTEXITCODE -eq 0)
 }
 
-function Clear-Database {
-    Write-Host "Cleaning database..." -ForegroundColor Yellow
-
-    if (Test-Path $DatabasePath) {
-        Remove-Item $DatabasePath -Force
-        Write-Host "Database deleted: $DatabasePath" -ForegroundColor Green
-    }
-    else {
-        Write-Host "Database not found (already clean)" -ForegroundColor Gray
-    }
-
-    # Also remove any SQLite journal/wal files
-    $dbDir = Split-Path $DatabasePath -Parent
-    if (Test-Path $dbDir) {
-        Get-ChildItem $dbDir -Filter "*.db-*" | Remove-Item -Force
-    }
-}
-
-function Invoke-DatabaseDoctor {
-    param(
-        [switch]$UseApi,     # Force using API instead of dotnet check
-        [switch]$Quiet       # Suppress display output (for programmatic use)
-    )
-
-    # Default result shape -- every caller gets the same keys
-    $result = @{
-        Healthy       = $false
-        SchemaValid   = $false
-        HasPlayers    = $false
-        HasGames      = $false
-        HasTemplates  = $false
-        PlayerCount   = 0
-        GameCount     = 0
-        TemplateCount = 0
-        MissingTables = @()
-        Action        = "install"
-    }
-
-    if (-not $Quiet) {
-        Write-Host ""
-        Write-Host "Database Doctor" -ForegroundColor Cyan
-        Write-Host "===============" -ForegroundColor Cyan
-        Write-Host ""
-    }
-
-    # ── Path 1: API check (when GameService is already running) ──
-    $serviceRunning = Test-PortInUse -Port $GameServicePort
-    if ($serviceRunning -or $UseApi) {
-        if (-not $Quiet) { Write-Host "Checking via GameService API..." -ForegroundColor Yellow }
-        try {
-            $resp = Invoke-RestMethod -Uri "$GameServiceUrl/api/database/health" -Method Get -TimeoutSec 5
-            $result.HasPlayers    = ($resp.playerCount -gt 0)
-            $result.HasGames      = ($resp.gameCount -gt 0)
-            $result.PlayerCount   = $resp.playerCount
-            $result.GameCount     = $resp.gameCount
-            $result.Healthy       = [bool]$resp.healthy
-            # Derive schema validity from the response: if API reports unhealthy with an error, schema may be broken
-            $hasError = ($resp.PSObject.Properties.Name -contains 'error') -and (-not [string]::IsNullOrWhiteSpace([string]$resp.error))
-            $result.SchemaValid   = -not ($hasError -and -not [bool]$resp.healthy)
-
-            if ($resp.healthy) {
-                $result.Action = $null
-            }
-            elseif ($resp.needsSeeding) {
-                $result.Action = "install"
-            }
-
-            if (-not $Quiet) {
-                if ($resp.healthy) {
-                    Write-Host "  [OK] Database is healthy" -ForegroundColor Green
-                }
-                else {
-                    Write-Host "  [WARN] Database needs attention" -ForegroundColor Yellow
-                }
-                Write-Host "  Players:   $($resp.playerCount)" -ForegroundColor Gray
-                Write-Host "  Games:     $($resp.gameCount)" -ForegroundColor Gray
-            }
-            return $result
-        }
-        catch {
-            if (-not $Quiet) {
-                Write-Host "  [FAIL] Could not reach health endpoint: $_" -ForegroundColor Red
-            }
-            return $result
-        }
-    }
-
-    # ── Path 2: Offline check via `dotnet run -- --check-database` ──
-
-    # Quick check: does the database file even exist?
-    if (-not (Test-Path $DatabasePath)) {
-        $result.Action = "create"
-        if (-not $Quiet) {
-            Write-Host "  [FAIL] Database not found: $DatabasePath" -ForegroundColor Red
-            Write-Host ""
-            Write-Host "  Fix: ./catan.ps1 database install" -ForegroundColor Yellow
-        }
-        return $result
-    }
-
-    if (-not $Quiet) {
-        $fileInfo = Get-Item $DatabasePath
-        Write-Host "  [OK] Database file: $DatabasePath ($([math]::Round($fileInfo.Length / 1024, 1)) KB)" -ForegroundColor Green
-    }
-
-    # Run --check-database (uses EF Core model as source of truth)
-    if (-not $Quiet) { Write-Host "  Checking schema and data..." -ForegroundColor Yellow }
-
-    $gameServiceDir = Join-Path $PSScriptRoot "Catan3.GameService"
-    $stderrFile = [System.IO.Path]::GetTempFileName()
-    try {
-        $rawOutput = & dotnet run --project $gameServiceDir -- --check-database 2>$stderrFile
-    }
-    finally {
-        $stderrContent = if (Test-Path $stderrFile) { Get-Content $stderrFile -Raw } else { $null }
-        Remove-Item $stderrFile -Force -ErrorAction SilentlyContinue
-    }
-
-    # Extract JSON line from output (startup logs may precede it)
-    $jsonLine = $rawOutput | Where-Object { $_ -match '^\s*\{' } | Select-Object -Last 1
-
-    if (-not $jsonLine) {
-        if (-not $Quiet) {
-            Write-Host "  [FAIL] Could not read database check output" -ForegroundColor Red
-            if ($stderrContent) {
-                Write-Host "  stderr: $($stderrContent.Trim())" -ForegroundColor Red
-            }
-            Write-Host "  Try: dotnet build Catan3.GameService first" -ForegroundColor Yellow
-        }
-        return $result
-    }
-
-    try {
-        $check = $jsonLine | ConvertFrom-Json
-    }
-    catch {
-        if (-not $Quiet) {
-            Write-Host "  [FAIL] Invalid JSON from database check: $_" -ForegroundColor Red
-        }
-        return $result
-    }
-
-    # Map JSON result into our hashtable
-    $result.Healthy       = [bool]$check.healthy
-    $result.SchemaValid   = [bool]$check.schemaValid
-    $result.HasPlayers    = [bool]$check.hasPlayers
-    $result.HasGames      = [bool]$check.hasGames
-    $result.HasTemplates  = [bool]$check.hasTemplates
-    $result.PlayerCount   = [int]$check.playerCount
-    $result.GameCount     = [int]$check.gameCount
-    $result.TemplateCount = [int]$check.templateCount
-    $result.MissingTables = @($check.missingTables)
-    $result.Action        = $check.action   # $null, "install", or "create"
-
-    if ($Quiet) { return $result }
-
-    # ── Display results ──
-
-    # Schema
-    if ($check.schemaValid) {
-        Write-Host "  [OK] Schema is valid" -ForegroundColor Green
-    }
-    else {
-        Write-Host "  [FAIL] Schema is outdated or corrupt" -ForegroundColor Red
-        if ($check.missingTables -and $check.missingTables.Count -gt 0) {
-            Write-Host "  Missing tables: $($check.missingTables -join ', ')" -ForegroundColor Red
-        }
-    }
-
-    # Data
-    if ($check.hasPlayers) {
-        Write-Host "  [OK] Players: $($check.playerCount)" -ForegroundColor Green
-    }
-    else {
-        Write-Host "  [WARN] No players configured" -ForegroundColor Yellow
-    }
-
-    if ($check.hasTemplates) {
-        Write-Host "  [OK] Templates: $($check.templateCount)" -ForegroundColor Green
-    }
-    else {
-        Write-Host "  [WARN] No game templates" -ForegroundColor Yellow
-    }
-
-    Write-Host "  [INFO] Saved games: $($check.gameCount)" -ForegroundColor Cyan
-
-    # Summary
-    Write-Host ""
-    if ($result.Healthy) {
-        Write-Host "Database health: GOOD" -ForegroundColor Green
-    }
-    else {
-        Write-Host "Database health: ISSUES FOUND" -ForegroundColor Red
-        Write-Host "  Fix: ./catan.ps1 database install" -ForegroundColor Yellow
-    }
-    Write-Host ""
-
-    return $result
-}
-
-function Import-DefaultGames {
-    $defaultGamesPath = Join-Path $PSScriptRoot "Catan3.GameService\Default Data\Games"
-
-    if (-not (Test-Path $defaultGamesPath)) {
-        return  # No games folder, nothing to import
-    }
-
-    $catanFiles = Get-ChildItem -Path $defaultGamesPath -Filter "*.catan" -ErrorAction SilentlyContinue
-
-    if ($catanFiles.Count -eq 0) {
-        return  # No .catan files, nothing to import
-    }
-
-    Write-Host ""
-    Write-Host "Importing default games..." -ForegroundColor Cyan
-
-    # Wait for service to be ready (in case we just started it)
-    $ready = Wait-ForService -Url "$GameServiceUrl/health" -TimeoutSeconds 10
-    if (-not $ready) {
-        Write-Host "  [WARN] GameService not responding, skipping game import" -ForegroundColor Yellow
-        return
-    }
-
-    Write-Host "  Found $($catanFiles.Count) game file(s)" -ForegroundColor Yellow
-
-    foreach ($file in $catanFiles) {
-        try {
-            Write-Host "  Importing: $($file.Name)..." -ForegroundColor Gray -NoNewline
-
-            # Use PowerShell 7's -Form parameter for proper multipart handling
-            $form = @{
-                file = Get-Item -Path $file.FullName
-            }
-
-            $response = Invoke-RestMethod -Uri "$GameServiceUrl/api/game/import" `
-                -Method Post `
-                -Form $form `
-                -TimeoutSec 30
-
-            if ($response.success) {
-                if ($response.message -eq "Game already exists") {
-                    Write-Host " already exists" -ForegroundColor Gray
-                }
-                else {
-                    Write-Host " imported ($($response.playerNames), $($response.turnCount) turns)" -ForegroundColor Green
-                }
-            }
-            else {
-                Write-Host " failed: $($response.error)" -ForegroundColor Red
-            }
-        }
-        catch {
-            Write-Host " error: $_" -ForegroundColor Red
-        }
-    }
-
-    Write-Host ""
-}
 
 function Stop-ChildProcesses {
     param([int]$ParentPid)
@@ -783,13 +479,32 @@ switch ($Verb) {
         # Stop services first to avoid file locking issues during build
         Stop-Services
 
-        # Run .NET tests
+        # Start CosmosDB Emulator and seed if not already running
+        Write-Host ""
+        Write-Host "Starting CosmosDB Emulator..." -ForegroundColor Yellow
+        $dbScript = Join-Path $PSScriptRoot ".scripts\database.ps1"
+        & $dbScript start -Yes
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  [FAIL] CosmosDB Emulator failed to start — CatanDb tests will fail" -ForegroundColor Red
+            exit 1
+        }
+        & $dbScript seed
+        # Write test params via database.ps1 (single source of emulator endpoint/key)
+        $testParamsPath = Join-Path $PSScriptRoot "Tests\GameService\CatanDb\.cosmos-test-params.json"
+        & $dbScript write-test-params
+        Write-Host "  [OK] CosmosDB Emulator running" -ForegroundColor Green
+
+        # Run .NET tests (clean up params file on exit)
         Write-Host ""
         Write-Host "Running .NET tests..." -ForegroundColor Yellow
-        & "$PSScriptRoot\.scripts\build.ps1"
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host ".NET tests failed!" -ForegroundColor Red
-            exit 1
+        try {
+            & "$PSScriptRoot\.scripts\build.ps1"
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host ".NET tests failed!" -ForegroundColor Red
+                exit 1
+            }
+        } finally {
+            if (Test-Path $testParamsPath) { Remove-Item $testParamsPath -Force }
         }
         Write-Host "  [OK] .NET tests passed" -ForegroundColor Green
 
@@ -1647,12 +1362,13 @@ switch ($Verb) {
             Write-Host ""
         }
 
-        # Check database
+        # Check database (Cosmos emulator)
         Write-Host "Checking database..." -ForegroundColor Yellow
-        $dbStatus = Invoke-DatabaseDoctor
-        if (-not $dbStatus.Healthy) {
+        $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+        & pwsh $dbScript doctor
+        if ($LASTEXITCODE -ne 0) {
             Write-Host ""
-            Write-Host "Some issues found. Run './catan.ps1 install' to fix." -ForegroundColor Yellow
+            Write-Host "Some issues found. Run './catan.ps1 database install' to fix." -ForegroundColor Yellow
             exit 1
         }
     }
@@ -1668,24 +1384,13 @@ switch ($Verb) {
         & "$PSScriptRoot\.scripts\dependencies.ps1" -Install -Yes:$Yes
         Write-Host ""
 
-        # Check database status first
-        Write-Host "Checking database..." -ForegroundColor Yellow
-        $dbStatus = Invoke-DatabaseDoctor
-
-        if ($dbStatus.Healthy -and -not $Force) {
-            Write-Host "Database is already installed and healthy." -ForegroundColor Green
-        } else {
-            if ($Force) {
-                Write-Host "Force flag set, reinstalling database..." -ForegroundColor Yellow
-            } else {
-                Write-Host "Database needs installation..." -ForegroundColor Yellow
-            }
-            Clear-Database
-            $installed = Install-Database
-            if (-not $installed) {
-                Write-Host "Database installation failed!" -ForegroundColor Red
-                exit 1
-            }
+        # Install database (Cosmos emulator)
+        Write-Host "Installing database..." -ForegroundColor Yellow
+        $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+        & pwsh $dbScript install
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Database installation failed!" -ForegroundColor Red
+            exit 1
         }
         Write-Host ""
         Write-Host "Installation complete!" -ForegroundColor Green
@@ -1810,7 +1515,8 @@ switch ($Verb) {
 
         # Only clean database if explicitly requested
         if ($cleanDatabase) {
-            Clear-Database
+            $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+            & pwsh $dbScript nuke-containers
         }
 
         # Clean build artifacts
@@ -1928,62 +1634,36 @@ switch ($Verb) {
     }
 
     "database" {
+        # All database commands route through .scripts/database.ps1 (CosmosDB).
+        # Pass -Azure for Azure, omit for local emulator.
+        $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+        $modeFlag = if ($Azure) { @("-Azure") } else { @() }
+
         switch ($SubCommand) {
             "clean" {
-                Clear-Database
+                & pwsh $dbScript nuke-containers @modeFlag -TraceLevel $TraceLevel
+                exit $LASTEXITCODE
             }
             "install" {
-                # Check database status first
-                $dbStatus = Invoke-DatabaseDoctor
-
-                if ($dbStatus.Healthy -and -not $Force) {
-                    Write-Host "Database is already installed and healthy." -ForegroundColor Green
-                } else {
-                    if ($Force) {
-                        Write-Host "Force flag set, reinstalling database..." -ForegroundColor Yellow
-                    }
-                    Clear-Database
-                    $installed = Install-Database
-                    if (-not $installed) {
-                        exit 1
-                    }
-                }
+                & pwsh $dbScript install @modeFlag -TraceLevel $TraceLevel
+                exit $LASTEXITCODE
             }
             "doctor" {
-                if ($Local) {
-                    # Check local SQLite database
-                    $status = Invoke-DatabaseDoctor
-                    if (-not $status.Healthy) {
-                        exit 1
-                    }
-                }
-                else {
-                    # Default: Check Azure SQL via catan-azure.ps1
-                    $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
-                    if (Test-Path $azureScript) {
-                        & $azureScript database doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
-                    }
-                    else {
-                        Write-Host "Azure script not found. Use -Local for local database check." -ForegroundColor Red
-                        exit 1
-                    }
-                }
+                & pwsh $dbScript doctor @modeFlag -TraceLevel $TraceLevel
+                exit $LASTEXITCODE
+            }
+            "seed-data" {
+                & pwsh $dbScript seed-data @modeFlag -TraceLevel $TraceLevel
+                exit $LASTEXITCODE
+            }
+            "test" {
+                & pwsh $dbScript test @modeFlag -TraceLevel $TraceLevel
+                exit $LASTEXITCODE
             }
             "export-game" {
-                # Export one or all saved games from local SQLite to Default Data/Games/
-                # Usage: ./catan.ps1 database export-game -Name "My Game"
-                #        ./catan.ps1 database export-game -All
-                $exportArgs = @("db-export")
-                if ($All)               { $exportArgs += "--all" }
-                elseif ($Name)          { $exportArgs += @("--name", $Name) }
-                elseif ($Target)        { $exportArgs += @("--name", $Target) }
-                else {
-                    Write-Host "Usage: ./catan.ps1 database export-game -Name 'Game Name'" -ForegroundColor Yellow
-                    Write-Host "       ./catan.ps1 database export-game -All" -ForegroundColor Yellow
-                    exit 1
-                }
-                dotnet run --project "$PSScriptRoot/Catan3.CLI" -- @exportArgs
-                if ($LASTEXITCODE -ne 0) { exit 1 }
+                Write-Host "export-game is not yet migrated to CosmosDB." -ForegroundColor Red
+                Write-Host "The CLI db-export command still uses the old SQLite path." -ForegroundColor Red
+                exit 1
             }
             default {
                 Write-Host ""
@@ -1993,18 +1673,22 @@ switch ($Verb) {
                 Write-Host "Usage: ./catan.ps1 database <subcommand>" -ForegroundColor Yellow
                 Write-Host ""
                 Write-Host "Subcommands:" -ForegroundColor Yellow
-                Write-Host "  doctor       - Diagnose database health and show contents"
-                Write-Host "  clean        - Delete the database (wipes all data)"
-                Write-Host "  install      - Clean and reinstall database with default data"
-                Write-Host "  export-game  - Export a saved game to Default Data/Games/ as a .catan seed file"
+                Write-Host "  doctor       - Check CosmosDB health (emulator or Azure)"
+                Write-Host "  install      - Install emulator, create containers, seed data"
+                Write-Host "  clean        - Delete containers (nuke-containers)"
+                Write-Host "  seed-data    - Seed players and recordings"
+                Write-Host "  test         - Run contract tests"
+                Write-Host ""
+                Write-Host "Flags:" -ForegroundColor Yellow
+                Write-Host "  -Azure       - Target Azure CosmosDB instead of local emulator"
                 Write-Host ""
                 Write-Host "Examples:" -ForegroundColor Yellow
-                Write-Host "  ./catan.ps1 database doctor                        - Check Azure SQL health (default)"
-                Write-Host "  ./catan.ps1 database doctor -Local                 - Check local SQLite database"
-                Write-Host "  ./catan.ps1 database clean                         - Delete local database"
-                Write-Host "  ./catan.ps1 database install                       - Fresh install with default players"
-                Write-Host "  ./catan.ps1 database export-game -Name 'Test One' - Export one game to seed data"
-                Write-Host "  ./catan.ps1 database export-game -All             - Export all saved games to seed data"
+                Write-Host "  ./catan.ps1 database doctor                        - Check local emulator"
+                Write-Host "  ./catan.ps1 database doctor -Azure                 - Check Azure CosmosDB"
+                Write-Host "  ./catan.ps1 database install                       - Install local emulator + seed"
+                Write-Host "  ./catan.ps1 database install -Azure                - Install Azure account + seed"
+                Write-Host "  ./catan.ps1 database test                          - Run tests against emulator"
+                Write-Host "  ./catan.ps1 database test -Azure                   - Run tests against Azure"
                 Write-Host ""
                 Write-Host "Note: Recording management moved to './catan.ps1 recording'" -ForegroundColor DarkYellow
                 Write-Host ""
@@ -2185,16 +1869,17 @@ switch ($Verb) {
 
         switch ($SubCommand) {
             "install" {
+                $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
                 Write-Host "Installing all Azure resources..." -ForegroundColor Cyan
                 Write-Host ""
                 & $azureScript game-service install -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
-                & $azureScript database install -TraceLevel $TraceLevel
+                & pwsh $dbScript install -Azure -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
                 & $azureScript ui install -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
-                # Configure database connection and grant managed identity access
-                & $azureScript database deploy -TraceLevel $TraceLevel
+                # Deploy RBAC and app settings for CosmosDB
+                & pwsh $dbScript deploy -Azure -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
                 Write-Host ""
                 Write-Host "All Azure resources installed and configured!" -ForegroundColor Green
@@ -2242,9 +1927,10 @@ switch ($Verb) {
                         Write-Host "GameService deployment complete!" -ForegroundColor Green
                     }
                     "database" {
+                        $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
                         Write-Host "Deploying database configuration..." -ForegroundColor Cyan
                         Write-Host ""
-                        & $azureScript database deploy -Force:$Force -TraceLevel $TraceLevel
+                        & pwsh $dbScript deploy -Azure -TraceLevel $TraceLevel
                         if ($LASTEXITCODE -ne 0) { exit 1 }
                         Write-Host ""
                         Write-Host "Database deployment complete!" -ForegroundColor Green
@@ -2281,45 +1967,17 @@ switch ($Verb) {
                             Write-Host "  GameService: OK - skipping" -ForegroundColor Green
                         }
 
-                        # Database doctor
-                        $dbDoctor = & $azureScript database doctor -HashTable -TraceLevel $TraceLevel
-                        $dbNeedsInstall = $dbDoctor.needsInstall
-                        $dbConnected = $dbDoctor.checks.gameServiceConnected
-                        $dbNeedsDeploy = $dbDoctor.needsDeploy
-                        $dbSchemaValid = $dbDoctor.checks.schemaValid
-
-                        if ($dbNeedsInstall) {
-                            Write-Host "  Database: Not installed - installing..." -ForegroundColor Yellow
-                            & $azureScript database install -TraceLevel $TraceLevel
+                        # Database: use database.ps1 for CosmosDB
+                        $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+                        $dbDoctor = & pwsh $dbScript doctor -Azure -HashTable -TraceLevel $TraceLevel
+                        if ($dbDoctor.Status -ne "Ready") {
+                            Write-Host "  Database: Needs setup" -ForegroundColor Yellow
+                            & pwsh $dbScript install -Azure -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
-                            $dbNeedsDeploy = $true
-                        }
-
-                        if ($dbConnected -and -not $Force) {
-                            Write-Host "  Database: Connected - skipping" -ForegroundColor Green
-                        }
-                        elseif ($dbNeedsDeploy -or $Force) {
-                            Write-Host "  Database: Needs configuration" -ForegroundColor Yellow
-                            & $azureScript database deploy -Force:$Force -TraceLevel $TraceLevel
+                            & pwsh $dbScript deploy -Azure -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
-                        }
-                        else {
-                            Write-Host "  Database: OK - skipping" -ForegroundColor Green
-                        }
-
-                        # Check for schema issues
-                        if (-not $dbSchemaValid -and $dbDoctor.missingTables) {
-                            Write-Host "  Database: Schema missing tables - creating directly..." -ForegroundColor Yellow
-                            Write-Host "  Database: Missing: $($dbDoctor.missingTables -join ', ')" -ForegroundColor Yellow
-                            & $azureScript database fix -TraceLevel $TraceLevel
-                            if ($LASTEXITCODE -ne 0) {
-                                Write-Host "  Database: Failed to create missing tables" -ForegroundColor Red
-                                exit 1
-                            }
-                            Write-Host "  Database: Schema repaired successfully" -ForegroundColor Green
-                        }
-                        elseif (-not $dbSchemaValid) {
-                            Write-Host "  Database: Schema check incomplete - may need to run deploy again after database wakes" -ForegroundColor Yellow
+                        } else {
+                            Write-Host "  Database: Ready - skipping" -ForegroundColor Green
                         }
 
                         # UI doctor
@@ -2383,7 +2041,8 @@ switch ($Verb) {
                     # Pass through -Json and -HashTable to the individual doctor calls
                     # The catan-azure.ps1 script now handles all formatting
                     & $azureScript game-service doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
-                    & $azureScript database doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
+                    $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+                    & pwsh $dbScript doctor -Azure -TraceLevel $TraceLevel
                     & $azureScript ui doctor -TraceLevel $TraceLevel -Json:$Json -HashTable:$HashTable
 
                     # Show summary if not in JSON/HashTable mode

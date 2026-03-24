@@ -152,6 +152,7 @@ gameModel.Robber.PreviousCoordinates = null;
 ### 3.6 `PlayerFromId()` — Redundant Overload
 
 `PlayerModelExtensions.cs` has two overloads:
+
 - `PlayerFromId(this IList<PlayerModel>, string)` — lines 13-16
 - `PlayerFromId(this IEnumerable<PlayerModel>, string)` — lines 18-21
 
@@ -325,6 +326,7 @@ The codebase migrated from hanging GET (long-polling) to SignalR but left behind
 ### 5.3 Recording/Replay Endpoints in Production
 
 `RecordingController.cs` exposes test recording infrastructure at `/api/recording/*`:
+
 - `POST /api/recording/start/{gameId}`
 - `POST /api/recording/stop/{gameId}`
 - `POST /api/recording/replay`
@@ -346,6 +348,7 @@ recording, robber placement, and victory display.
 ### 6.1 Roll Grid — Rendered 3 Times
 
 The same roll entry UI (for loop from 2-12 with click handlers) appears at:
+
 - Landscape mode: lines 148-165
 - Portrait mode bottom: lines 251-266
 - Portrait mode center: lines 252-262
@@ -355,6 +358,7 @@ The same roll entry UI (for loop from 2-12 with click handlers) appears at:
 ### 6.2 Purchase Controls — Rendered 2 Times
 
 Five `PurchaseButton` components are declared in both:
+
 - Landscape mode: lines 97-145
 - Portrait mode bottom: lines 269-318
 
@@ -363,6 +367,7 @@ Five `PurchaseButton` components are declared in both:
 ### 6.3 Board Measurements — Rendered 2 Times
 
 Identical `BoardMeasurement` component with identical parameters at:
+
 - Landscape mode: lines 167-178
 - Portrait mode bottom: lines 236-246
 
@@ -379,6 +384,7 @@ refresh triggers.
 ### 6.5 NavMenu — Unreachable Methods
 
 `NavMenu.razor` contains two TODO methods that are never called from any UI element:
+
 - `OnSaveGame()` (line 311) — `// TODO: Implement game save via GameConnection`
 - `OnShowDebugWindow()` (line 424) — `// TODO: Implement debug window`
 
@@ -424,6 +430,7 @@ Three public handler methods exist in `GameStateMachine` but are **not** declare
 ### 7.4 Board Info Factory — Three Creation Paths
 
 Board metadata can be created via:
+
 1. Hardcoded singletons (`RegularBoardInfo.Default`, `ExpansionBoardInfo.Default`)
 2. JSON templates via `BoardInfoJsonAdapter`
 3. Fallback logic when templates aren't seeded

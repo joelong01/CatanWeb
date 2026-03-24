@@ -1,4 +1,4 @@
-using Catan3.GameService.Data;
+using Catan3.GameService.Abstractions;
 
 namespace Catan3.GameService.Services;
 
@@ -9,22 +9,22 @@ namespace Catan3.GameService.Services;
 public interface IGamePersistence
 {
     /// <summary>
-    /// Save game state to database (two-table upsert: metadata + data)
+    /// Save game state to database.
     /// </summary>
     Task<bool> SaveAsync(string gameId, byte[] data, GameMetadata metadata);
 
     /// <summary>
-    /// Load compressed game data from database
+    /// Load compressed game data from database.
     /// </summary>
     Task<byte[]?> LoadAsync(string gameId);
 
     /// <summary>
-    /// Get list of saved games metadata for display
+    /// Get list of saved games summaries for display.
     /// </summary>
-    Task<List<GameSaveMetadataEntity>> GetGamesAsync(string? startedBy = null);
+    Task<List<GameSummary>> GetGameSummariesAsync(string? startedBy = null);
 
     /// <summary>
-    /// Delete a game save (cascades to data table)
+    /// Delete a game save.
     /// </summary>
     Task<bool> DeleteAsync(string gameId);
 }
