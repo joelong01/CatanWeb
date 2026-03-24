@@ -1254,7 +1254,7 @@ namespace Catan3.GameService.Controllers
             try
             {
                 // Check if player ID already exists
-                var existing = await _db.LoadPlayerAsync(player.Id);
+                var existing = await _db.LoadPlayerAsync(sanitizedPlayerId);
                 if (existing != null)
                 {
                     return BadRequest(new { success = false, error = $"Player with ID '{player.Id}' already exists" });
