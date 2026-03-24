@@ -41,17 +41,30 @@ public sealed class CosmosCatanDb : ICatanDb
     {
         _client = client;
         _databaseName = databaseName;
+
+        // Bind container references immediately (no network call — just local objects).
+        // Containers must already exist: created by 'catan.ps1 database install' or CI/CD.
+        // If they don't exist, operations will fail with a clear CosmosException.
+        var db = _client.GetDatabase(_databaseName);
+        _players        = db.GetContainer("players");
+        _games          = db.GetContainer("games");
+        _completedGames = db.GetContainer("completed-games");
+        _templates      = db.GetContainer("templates");
+        _recordings     = db.GetContainer("recordings");
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-    // Shared write options — suppresses returning the full document body on upsert,
-    // saving serialization cost and network bandwidth (best practice: write-heavy workloads).
     private static readonly ItemRequestOptions _writeOptions = new()
     {
         EnableContentResponseOnWrite = false,
     };
 
+    /// <summary>
+    /// Creates database and containers if they don't exist.
+    /// Called by 'catan.ps1 database install' and contract tests — NOT by the running app.
+    /// The app assumes infrastructure is already provisioned.
+    /// </summary>
     public async Task InitializeAsync()
     {
         var db = (await _client.CreateDatabaseIfNotExistsAsync(_databaseName)).Database;

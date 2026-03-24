@@ -31,17 +31,14 @@ public class DatabaseSeedingService : BackgroundService
             using var scope = _services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ICatanDb>();
 
-            // InitializeAsync creates database and containers if they don't exist
-            await db.InitializeAsync();
-            _logger.LogInformation("[SEEDER-BG] Database initialized");
-
-            // Seed system templates (upserted on every startup to stay in sync with code)
+            // Upsert system templates on every startup to stay in sync with code changes.
+            // Database and containers must already exist (created by catan.ps1 database install).
             await DatabaseSeeder.UpsertSystemTemplatesAsync(db, _logger);
             _logger.LogInformation("[SEEDER-BG] System templates upserted");
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[SEEDER-BG] Database initialization failed. Service is running but database operations may fail.");
+            _logger.LogError(ex, "[SEEDER-BG] Failed to upsert templates. Is the database installed? Run: ./catan.ps1 database install");
         }
     }
 }
