@@ -122,11 +122,14 @@
 | 64 | GameTemplateService point read | Soon |
 | 65 | Document DeletePlayerAsync cascade | Soon |
 | 67 | SaveTemplateAsync mutates caller data | Soon |
-| 77 | Staging missing Cosmos app settings | CI/CD |
-| 78 | Staging identity missing RBAC role | CI/CD |
-| 79 | Deploy skips GameService on workflow changes | CI/CD |
-| 80 | RBAC assignments not idempotent | CI/CD |
+| 77 | Staging missing Cosmos app settings | CI/CD — CLOSED |
+| 78 | Staging identity missing RBAC role | CI/CD — CLOSED |
+| 79 | Deploy skips GameService on workflow changes | CI/CD — CLOSED |
+| 80 | RBAC assignments not idempotent | CI/CD — CLOSED |
 | 81 | React renders raw HTML error page | UX |
+| 82 | One-time SQL Server data migration | CLOSED |
+| 84 | Health check circular dependency | CI/CD — CLOSED |
+| 85 | Ops disabling publicNetworkAccess | CI/CD — CLOSED |
 
 ## PRs
 
@@ -135,6 +138,9 @@
 | 74 | CosmosDB migration (cosmos-migration → staging) | Merged |
 | 75 | CosmosDB migration (staging → main) | Open |
 | 76 | CI/CD fixes for CosmosDB (cosmos-migration → staging) | Merged |
+| 83 | CI/CD pipeline fixes for slot support (#77-80) | Merged |
+| 86 | catan-cicd.ps1 orchestrator (#84, #85) | Merged |
+| 87 | Unicode fix for catan-cicd.ps1 | Merged |
 
 ## Architecture Diagram
 
@@ -148,10 +154,30 @@ CosmosCatanDb (.NET SDK)
 Azure CosmosDB / Local Emulator
 ```
 
+### CI/CD Orchestrator
+
+- **`catan-cicd.ps1`** — Unified CI/CD script solving circular dependency
+  - Infrastructure runs BEFORE app deployment (firewall → app settings → RBAC → deploy → verify)
+  - Both deploy-staging.yml and deploy-azure.yml use it
+  - Fixes ops team disabling `publicNetworkAccess` between deploys
+
+### SQL Server Data Migration (#82)
+
+- **`export-sql.ps1`** — Exported all 6 SQL tables via AAD token auth
+  - Fixed `Invoke-Sqlcmd` truncation with `-MaxBinaryLength 10485760`
+  - Raw exports preserved in `Default Data/sql-export/` (gitignored)
+- **`transform-to-cosmos.ps1`** — Transformed to CosmosDB document format
+  - Players: flattened with embedded base64 images
+  - Games: merged metadata + data tables into single documents
+  - Recordings: extracted gameId as first-class field
+  - Templates: extracted summary fields (minPlayers, maxPlayers, etc.)
+- **Verified on staging:** 9 players, 29 games, 4 completed games, 3 templates, 5 recordings — all loading correctly
+
 ## Next Steps
 
-1. Fix remaining must-fix issues (#57, #58)
-2. Fix CI/CD issues (#77-80) so staging deploys correctly
-3. Merge PR #75 to main after staging validation
-4. Convert templates from C# code to seed JSON files (use CLI to extract from .catan files)
-5. Remove DatabaseSeedingService entirely once templates are seeded via database.ps1
+1. Merge PR #75 to main (staging validated, all blocking issues closed)
+2. Run `workflow_dispatch` on production deploy to force full deploy
+3. Fix remaining non-blocking issues (#60-65, #67, #69-72, #81)
+4. Remove Azure SQL from resource group and clean up sqlServer config
+5. Convert templates from C# code to seed JSON files
+6. Remove DatabaseSeedingService entirely
