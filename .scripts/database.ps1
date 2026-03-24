@@ -245,7 +245,10 @@ function New-CosmosClient {
         $cred = [Azure.Identity.DefaultAzureCredential]::new()
         return [Microsoft.Azure.Cosmos.CosmosClient]::new($Endpoint, $cred)
     } else {
-        return [Microsoft.Azure.Cosmos.CosmosClient]::new($Endpoint, $Key)
+        # Local emulator requires Gateway mode (vnext-preview doesn't support Direct)
+        $opts = [Microsoft.Azure.Cosmos.CosmosClientOptions]::new()
+        $opts.ConnectionMode = [Microsoft.Azure.Cosmos.ConnectionMode]::Gateway
+        return [Microsoft.Azure.Cosmos.CosmosClient]::new($Endpoint, $Key, $opts)
     }
 }
 
@@ -270,7 +273,14 @@ function Invoke-CosmosUpsert {
         if ([int]$resp.StatusCode -ge 200 -and [int]$resp.StatusCode -lt 300) {
             return $true
         } else {
+            $errBody = ""
+            try {
+                $reader = [System.IO.StreamReader]::new($resp.Content)
+                $errBody = $reader.ReadToEnd()
+                $reader.Dispose()
+            } catch {}
             Write-Log -Level "ERROR" -Message "Cosmos upsert failed: HTTP $($resp.StatusCode)"
+            if ($errBody) { Write-Log -Level "ERROR" -Message "  response: $(($errBody -replace '\s+', ' ').Trim().Substring(0, [Math]::Min(500, $errBody.Length)))" }
             return $false
         }
     } catch {

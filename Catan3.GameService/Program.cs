@@ -92,7 +92,7 @@ Console.WriteLine("[STARTUP] Using DatabaseBackedPersistenceService for game per
 builder.Services.AddHttpClient();
 
 // Register Azure SQL diagnostic service for connection troubleshooting
-builder.Services.AddSingleton<AzureSqlDiagnosticService>();
+// AzureSqlDiagnosticService removed — CosmosDB doesn't need SQL-specific diagnostics
 
 // Register SignalR-based client notification service for real-time updates
 builder.Services.AddSingleton<SignalRNotificationService>();
